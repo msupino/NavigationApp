@@ -372,6 +372,10 @@ setInterval(refreshZuluClock, 1000);
 const legendCtrl = L.control({ position: 'bottomleft' });
 legendCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control');
+  // Route totals ride above the legend in the same control, so they inherit its
+  // clear corner instead of needing a spot of their own. drawSummaryPill() shows it.
+  const sum = document.getElementById('route-summary');
+  if (sum) wrap.appendChild(sum);
   const el = document.getElementById('map-legend');
   if (el) { el.style.display = ''; wrap.appendChild(el); }
   L.DomEvent.disableClickPropagation(wrap);
@@ -597,7 +601,10 @@ function commitGoto() {
   const lng = lngD + lngM / 60 + lngS / 3600;
   const ll = finishLatLng(lat, lng);
   if (!ll) { coordBox.classList.add('error'); return false; }
-  map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 11));
+  // Jump, don't slide: when the current zoom already is the go-to zoom this is a
+  // same-zoom setView, which Leaflet animates as a pan — a long glide across the
+  // country for a coordinate you typed, and the canvas overlay lags behind it.
+  map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 11), { animate: false });
   dropGotoMarker(ll.lat, ll.lng);
   exitGotoEdit();
   return true;
@@ -1737,6 +1744,30 @@ function hideSearchOverlay() {
 document.getElementById('search-trigger').onclick = showSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
 
+// Reference-link overflow (⋯). The six links behind it are read once; keeping them
+// inline cost the menu bar more width than the flight plan itself and forced the
+// desktop bar onto a second row.
+(function wireFooterMore() {
+  const btn = document.getElementById('footer-more-btn');
+  const menu = document.getElementById('footer-more-menu');
+  if (!btn || !menu) return;
+  const setOpen = open => {
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  btn.onclick = e => {
+    e.stopPropagation();
+    setOpen(menu.hidden);
+  };
+  // Any click elsewhere, or Escape, closes it — same dismissal rules as the
+  // toolbar dropdowns, so nothing is left hanging over the map.
+  document.addEventListener('click', e => {
+    if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) setOpen(false);
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.hidden) setOpen(false); });
+  menu.addEventListener('click', () => setOpen(false));
+})();
+
 // Issue #420: keyboard-shortcuts cheat-sheet trigger. The '?' key shortcut
 // is wired in interact.js; this button gives non-keyboard users (touch /
 // mouse) a discoverable entry point.
@@ -2005,10 +2036,14 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-document.getElementById('plan').onclick = () => {
+const openFlightPlan = () => {
   if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
   showFlightPlan();
 };
+document.getElementById('plan').onclick = openFlightPlan;
+// Same action from the promoted top-level button (see index.html data-sec="plan").
+const planTopBtn = document.getElementById('plan-top');
+if (planTopBtn) planTopBtn.onclick = openFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
@@ -2305,7 +2340,7 @@ if (msaCb) {
     window.showMsa = e.target.checked;
     try { localStorage.setItem(MSA_KEY, window.showMsa ? '1' : '0'); }
     catch (err) { /* storage unavailable */ }
-    if (state.selected) showInspector();   // rebuild so the MSA row appears/clears
+    refreshInspectorIfVisible();   // rebuild so the MSA row appears/clears
   };
 }
 // --- route-wide wind inputs (#722) ----------------------------------
@@ -4259,7 +4294,7 @@ if (vorCb) {
     if (showVorStations && vors === null) await loadVors();
     syncVorUI();
     draw();
-    if (state.selected) showInspector();   // refresh radial/DME rows
+    refreshInspectorIfVisible();   // refresh radial/DME rows
     if (typeof showCenterCoord === 'function') showCenterCoord();
     if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
   };
@@ -4272,7 +4307,7 @@ if (vorRefSelect) {
       else localStorage.removeItem(VOR_REF_KEY);
     } catch (err) { /* */ }
     draw();
-    if (state.selected) showInspector();
+    refreshInspectorIfVisible();
     if (typeof showCenterCoord === 'function') showCenterCoord();
     // Keep an open flight plan's Radial/DME columns in sync.
     if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
@@ -4769,7 +4804,10 @@ function refreshMapAfterToolbarModeChange() {
 
 // --- section toggles -------------------------------------------------
 (function makeSectionToggle() {
-  const sections = Array.from(document.querySelectorAll('.tb-section'));
+  // .tb-standalone entries (Flight plan) are plain actions wearing the section-head
+  // look — they have no body to open, so they stay out of the accordion, the
+  // hover-open, the persisted open state and the open-count bookkeeping.
+  const sections = Array.from(document.querySelectorAll('.tb-section:not(.tb-standalone)'));
   const toolbar = document.getElementById('toolbar');
   function updateToolbarOpenCount() {
     const count = sections.filter(sec => sec.classList.contains('open')).length;
@@ -4972,7 +5010,7 @@ function formatTuneValue(spec, value) {
 function redrawAfterTune() {
   applyTuningCssVars();
   draw();
-  if (state.selected) showInspector();
+  refreshInspectorIfVisible();
   // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
   // tuning its opacity / lat-lng offset updates it live.
   if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
@@ -5352,7 +5390,7 @@ loadAirfields().then(() => {
   applyLegAltitudesToRoute();
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   draw();
-  if (state.selected) showInspector();
+  refreshInspectorIfVisible();
   // Airfield-plate overlays are mutually exclusive — restore only the first
   // enabled plate and clear any stale extras, so a past double-on state (e.g.
   // from a cold-start toggle race) can never stack two plates on load.
@@ -5386,7 +5424,7 @@ loadAirfields().then(() => {
 loadLegAltitudes().then(() => {
   if (applyLegAltitudesToRoute()) {
     draw();
-    if (state.selected) showInspector();
+    refreshInspectorIfVisible();
   }
 });
 // Comm-change dataset (issue #399): parallel fetch so the rings appear
@@ -5399,7 +5437,7 @@ loadCommChange().then(() => showCommChange ? loadNavWaypoints() : null)
     retryPendingInspectorSelection();
     if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     draw();
-    if (state.selected) showInspector();
+    refreshInspectorIfVisible();
   });
 // Restore flight-plan modal if it was open before refresh / language change.
 let restoredFlightPlan = false;

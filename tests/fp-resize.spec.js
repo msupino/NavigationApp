@@ -180,10 +180,10 @@ test.describe('Flight-plan modal table print', () => {
     const csv = await downloadText(download);
 
     expect(csv.charCodeAt(0)).toBe(0xfeff);
-    expect(csv).toContain('Flight plan\r\n#,From,To,Hdg,Speed (kt),Alt (ft),Time,Fuel (gal),Cum. time,Cum. fuel');
+    expect(csv).toContain('Flight plan\r\n#,From,To,Hdg,Dist (NM),Speed (kt),Alt (ft),Time,Fuel (gal),Cum. time,Cum. fuel');
     expect(csv).toContain('1,LLHZ,LLHA,');
     expect(csv).toContain('\r\nTotal,,,,');
-    expect(csv).toContain('\r\nReturn route\r\n#,From,To,Hdg,Speed (kt),Alt (ft),Time,Fuel (gal),Cum. time,Cum. fuel');
+    expect(csv).toContain('\r\nReturn route\r\n#,From,To,Hdg,Dist (NM),Speed (kt),Alt (ft),Time,Fuel (gal),Cum. time,Cum. fuel');
     expect(csv).toContain('1,LLHA,LLHZ,');
     expect(csv).not.toContain('<table');
     expect(csv).not.toContain('✕');
@@ -201,7 +201,7 @@ test.describe('Flight-plan modal table print', () => {
     expect(csv.charCodeAt(0)).toBe(0xfeff);
     expect(csv).toContain('תכנית טיסה');
     expect(csv).toContain('כיוון');
-    expect(csv).not.toContain('מרחק (מ״י)');
+    expect(csv).toContain('מרחק (מ״י)');     // distance ships visible now
     expect(csv).not.toContain('◊');
     expect(csv).not.toContain('¬∞');
   });

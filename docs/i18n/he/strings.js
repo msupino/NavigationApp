@@ -114,6 +114,8 @@ window.S = {
   modeChipNote: 'הוספת הערות',
   modeChipStop: 'לחץ לסיום',
   modeChipTitle: 'לחץ ליציאה מהמצב',
+  fpHeadersNarrow: { dist: 'NM', speed: 'kt', alt: 'גובה', time: 'זמן', fuel: 'דלק',
+    cumTime: 'מצטבר', cumFuel: 'דלק מצטבר' },
   fpMobileSummary: function (legs, nm, time, gal) {
     return legs + ' קטעים · ' + nm + ' NM · ' + time + ' · ' + gal + ' גלון';
   },
@@ -529,6 +531,8 @@ window.S = {
   legendTitle: 'מקרא',
   legendAirfield: 'שדה תעופה',
   legendWaypoint: 'נקודת דיווח',
+  legendVor: 'תחנת VOR',
+  tbMoreLinks: 'קישורים נוספים (מאגר, ויקי, תקלות, אודות, פרטיות, תנאים)',
   legendAtcChange: 'שינוי תדר',
   commChangeBadge: '📡 נקודת שינוי תדר',
   commChangeNoteText: 'שינוי תדר',
@@ -567,6 +571,7 @@ window.S = {
   altPairsDistance: 'מ״י',
   altPairsBlocked: 'חסום',
   altitudeUnknown: 'לא ידוע',
+  altitudeUnsetShort: '—',
   altPairsUnknown: 'לא ידוע',
   altPairsOneWay: 'חד-כיווני',
   altPairsTwoWay: 'דו-כיווני',
