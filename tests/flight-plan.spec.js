@@ -104,6 +104,9 @@ test.describe('Flight plan', () => {
     await expect(modal).toBeVisible();
 
     await modal.locator('.fp-columns summary').click();
+    // Per-leg distance now SHIPS visible (it is a nav-log staple), so hide it here
+    // explicitly — this test is about the selector, not about the defaults.
+    await modal.locator('.fp-columns input[data-fp-col="dist"]').uncheck();
     await modal.locator('.fp-columns input[data-fp-col="fuel"]').uncheck();
     await modal.locator('.fp-columns input[data-fp-col="cumFuel"]').uncheck();
 

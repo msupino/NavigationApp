@@ -253,9 +253,9 @@ test.describe('navaid.view — sanity validation', () => {
     await page.waitForFunction(() => typeof map !== 'undefined');
 
     const z = await page.evaluate(() => map.getZoom());
-    // Saved zoom rejected → fell back to the L.map() construction
-    // default (zoom: 9).
-    expect(z).toBe(9);
+    // Saved zoom rejected → fell back to the L.map() construction default, which is
+    // now the gistable landing zoom (defaultViewZoom = 11; z9 drew the chart at 0.13x).
+    expect(z).toBe(11);
   });
 
   test('malformed JSON in navaid.view is discarded gracefully', async ({ page }) => {

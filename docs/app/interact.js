@@ -180,7 +180,12 @@ function tryRestoreInspectorSelection(sel) {
   const normalized = normalizeInspectorSelection(sel);
   if (normalized) {
     state.selected = normalized;
-    showInspector();
+    // A reload restores BOTH the flight plan and the selection. The plan hides the
+    // inspector (it would cover the right-hand columns), so showing it here dropped
+    // the panel straight back on top of the plan it had just been hidden for. Keep
+    // the selection, defer the panel: the plan hands it back when it closes.
+    if (typeof fpOpen !== 'undefined' && fpOpen) window.__inspectorDeferredByPlan = true;
+    else showInspector();
     return 'restored';
   }
   if (!inspectorSelectionDataReady(sel)) return 'pending';
@@ -1203,7 +1208,8 @@ function appendVorRadialRow(body, lat, lng) {
   if (typeof vorByIdent !== 'function' || typeof vorRadialDme !== 'function') return;
   if (vors === null && typeof loadVors === 'function') {
     loadVors().then(() => {
-      if (state.selected) showInspector();
+      // Data-arrival refresh only — must not raise a panel the flight plan hid.
+      refreshInspectorIfVisible();
     });
   }
   const row = document.createElement('div');
@@ -2281,6 +2287,17 @@ function finalizeInspectorActions(body) {
   body.appendChild(wrap);
 }
 
+// Re-render an inspector that is ALREADY on screen, and never resurrect a hidden
+// one. showInspector() also clears .hidden, so the flight plan's edit handlers --
+// which call it to keep an open selection in sync -- popped the inspector back over
+// the modal that had deliberately hidden it (inspector z 2320 vs modal 2000). Editing
+// a speed in the plan should not raise a panel the plan just put away.
+function refreshInspectorIfVisible() {
+  const insp = document.getElementById('inspector');
+  if (!insp || insp.classList.contains('hidden')) return;
+  if (state.selected && typeof showInspector === 'function') showInspector();
+}
+
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
@@ -3270,7 +3287,24 @@ function grabSelected(px, py, latlng) {
   return false;
 }
 
+// A pinch is not a tap. A two-finger zoom ends with a synthesized click, and on a
+// phone that opened the inspector for whatever waypoint happened to be under the
+// fingers. Leaflet suppresses the click that follows a DRAG, but nothing covers
+// multi-touch gestures, so track them and swallow taps for a moment afterwards.
+let _multiTouchUntil = 0;
+const MULTI_TOUCH_GRACE_MS = 700;
+(function armMultiTouchGuard() {
+  const el = document.getElementById('map');
+  if (!el) return;
+  const mark = () => { _multiTouchUntil = Date.now() + MULTI_TOUCH_GRACE_MS; };
+  el.addEventListener('touchstart', e => { if (e.touches && e.touches.length > 1) mark(); }, { passive: true });
+  // Lifting one finger of a pinch leaves the other down — still a gesture, not a tap.
+  el.addEventListener('touchend', e => { if (e.touches && e.touches.length >= 1) mark(); }, { passive: true });
+})();
+function touchGestureInProgress() { return Date.now() < _multiTouchUntil; }
+
 map.on('mousedown', e => {
+  if (touchGestureInProgress()) return;
   pendingOverlayAction = null;
   const p = e.containerPoint;
   // Hit-test priority matches paint order so the topmost element wins:
@@ -3523,6 +3557,9 @@ window.addEventListener('pointerup', endMouseDrag);
 window.addEventListener('pointercancel', endMouseDrag);
 
 map.on('click', e => {
+  // Tail end of a pinch — see the multi-touch guard above. Also drops any action the
+  // gesture's first touch parked, so a zoom can't add a waypoint either.
+  if (touchGestureInProgress()) { pendingOverlayAction = null; downHit = false; return; }
   // Commit a parked overlay action — reached only when the mousedown did not
   // turn into a pan (Leaflet suppresses 'click' after a drag).
   if (pendingOverlayAction) {

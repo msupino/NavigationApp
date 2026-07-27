@@ -33,6 +33,9 @@ async function loadRoute(page) {
   await page.evaluate(route => {
     state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
     syncLegs();
+    // Frame the route instead of trusting the landing view: these tests drag labels by
+    // screen coordinates, and the route runs off the top of the map at the default zoom.
+    if (typeof fitView === 'function') fitView();
     draw();
   }, ROUTE);
 }
