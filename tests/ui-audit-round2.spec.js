@@ -590,6 +590,29 @@ test('the legend cannot come to rest under the toolbar', async ({ page }) => {
   expect(await overlaps()).toBe(false);        // and on restore, where it used to hide the totals
 });
 
+test('the legend can still be dragged freely after being pushed clear', async ({ page }) => {
+  // The first version of the clamp tested only "fully above the bar", so a card whose
+  // x-range overlapped the toolbar was pinned to bottom+6: draggable up, never back down.
+  await boot(page);
+  await withRoute(page);
+  const legend = page.locator('#map-legend');
+  const drag = async (toX, toY) => {
+    const b = await legend.boundingBox();
+    await page.mouse.move(b.x + 20, b.y + 6);
+    await page.mouse.down();
+    await page.mouse.move(toX, toY, { steps: 6 });
+    await page.mouse.up();
+    return (await legend.boundingBox()).y;
+  };
+  await drag(60, 8);                          // into the bar -> pushed clear below it
+  const parked = (await legend.boundingBox()).y;
+  const moved = await drag(60, 420);          // now drag it far down the same column
+  expect(moved).toBeGreaterThan(parked + 100);
+  // ...and still further down, then back up to just below the bar
+  const lower = await drag(60, 650);
+  expect(lower).toBeGreaterThan(moved);
+});
+
 test('printing warns when the route runs off the page, and can fit it', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {

@@ -408,7 +408,12 @@ legendCtrl.addTo(map);
     if (!t.height) return y;                       // hidden (print, mobile modal)
     const w = box.offsetWidth, h = box.offsetHeight;
     const horizontallyClear = x + w < t.left || x > t.right;
-    if (horizontallyClear || y + h < t.top) return y;
+    // Leave the position alone unless the card would actually SIT ON the bar: clear to
+    // its side, fully above it, or fully below it are all fine. Testing only "above"
+    // pinned every card below the bar to bottom+6 -- it could be dragged up but never
+    // back down again.
+    const verticallyClear = y + h < t.top || y > t.bottom;
+    if (horizontallyClear || verticallyClear) return y;
     return t.bottom + 6;
   }
   function applyPos(x, y) {
