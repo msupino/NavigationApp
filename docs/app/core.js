@@ -245,6 +245,8 @@ NavAid.tuningDefaults = {
   hitWaypointExtraPx: { value: 6, min: 0, max: 40, step: 1, label: 'Waypoint hit extra' },
   hitLegPx: { value: 8, min: 1, max: 60, step: 1, label: 'Leg line hit width' },
   defaultLegSpeedKt: { value: 90, min: 20, max: 400, step: 5, label: 'Default leg speed (kt)' },
+  legLabelMaxScale: { value: 2, min: 1, max: 8, step: 0.5,
+    label: 'Max leg-label zoom scale (x)' },
   unknownProfileAltFt: { value: 2000, min: 500, max: 15000, step: 100,
     label: 'Height the profile draws a leg with no altitude at (ft)' },
   defaultViewZoom: { value: 11, min: 8, max: 14, step: 0.5, label: 'First-run map zoom' },
@@ -496,7 +498,7 @@ NavAid.tuningGroups = [
   { name: 'Frequency changes', keys: ['commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm', 'a4x2MarkLabelBgColor', 'a4x2MarkLabelInkColor'] },
-  { name: 'Route defaults', keys: ['defaultLegSpeedKt', 'unknownProfileAltFt'] },
+  { name: 'Route defaults', keys: ['defaultLegSpeedKt', 'unknownProfileAltFt', 'legLabelMaxScale'] },
   { name: 'First-run view', keys: ['defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Gestures', keys: ['touchRotateGesture'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
@@ -1252,6 +1254,10 @@ window.S = Object.assign({
   tbPrintPageSize: 'Page size',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
   modalCloseTitle: 'Close',
+  printClipWarn: '⚠ The route runs past the page — printing would cut it off.',
+  printFitPage: '⤢ Fit page to route',
+  printFitPageTitle: 'Pick the smallest page size and orientation that holds the whole route, and centre it',
+  printNoFit: '⚠ No page size holds this route — split it or print more than one page.',
   tbPrint: '🖨 Print',
   tbPrintTitle: 'Print or save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying glass (M)',
@@ -1460,8 +1466,18 @@ var legLineWidth = 0.5;     // leg route line width scale (0.5 ≈ 1.75 px of th
 var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5 px)
 
 function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
-  return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+  // Capped as well as floored. The raw curve doubles every zoom level (8x at the
+  // z15 maximum), so zooming in to READ the chart was the moment a single kite grew
+  // to cover a third of the screen and bury the very detail being inspected. The
+  // Display "Leg arrow size" slider still multiplies on top, so anyone who wants
+  // bigger labels can still have them.
+  const raw = Math.max(0.35, Math.pow(2, map.getZoom() - 12));
+  return Math.min(_legLabelMaxScale(), raw) * legArrowSize;
 }
+const _legLabelMaxScale = () => {
+  const v = (typeof tune === 'function') ? Number(tune('legLabelMaxScale')) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : 2;
+};
 // Readout for a Leaflet zoom level: the raw level plus a linear scale
 // multiplier. Zoom is logarithmic — each whole level doubles on-screen
 // scale — so the multiplier is anchored at z12 (= 1×, the chart-tile
