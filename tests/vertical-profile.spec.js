@@ -7,10 +7,9 @@ async function boot(page) {
     typeof routeProfile === 'function' && typeof showFlightPlan === 'function');
 }
 
-// 3 legs at 3000 / 6000 / 6000 ft. Each leg keeps its own altitude, so real
-// height changes show along the course (leg 1 ramps gradually 3000→6000).
-// Departure/destination field elevations are stubbed low so a TOC (climb-out,
-// leg 0) and TOD (descent into the field, last leg) exist.
+// 3 legs at 3000 / 6000 / 6000 ft. Each leg keeps its own altitude. Field elevations
+// are stubbed low at both ends; only the leg that STARTS on a field climbs, so there
+// is one TOC and — since no descent is invented onto the destination — no TOD.
 async function seed(page) {
   await page.evaluate(() => {
     state.waypoints = [
@@ -25,25 +24,25 @@ async function seed(page) {
   });
 }
 
-test('routeProfile: per-leg altitudes, one TOC on leg 1, one TOD on the last leg', async ({ page }) => {
+test('routeProfile: per-leg altitudes, one TOC off the field, no TOD', async ({ page }) => {
   await boot(page);
   await seed(page);
-  const p = await page.evaluate(() => routeProfile({ gph: 8, climbFpm: 700, descentFpm: 500, climbKt: 75, descentKt: 110 }));
+  const p = await page.evaluate(() => routeProfile({ gph: 8, climbFpm: 700, climbKt: 75 }));
   const last = p.legs.length - 1;
-  // Exactly one TOC (climb-out, first leg) and one TOD (descent, last leg).
+  // The climb off the departure field is the only ramp, so exactly one TOC and no TOD
+  // (the model no longer invents a descent onto the destination).
   expect(p.tocs.length).toBe(1);
-  expect(p.tods.length).toBe(1);
   expect(p.tocs[0].leg).toBe(0);
-  expect(p.tods[0].leg).toBe(last);
+  expect(p.tods).toBeUndefined();
   // Each leg keeps its own planned altitude — height changes along the course.
   expect(p.legs[0].cruiseAlt).toBe(3000);
   expect(p.legs[1].cruiseAlt).toBe(6000);
   expect(p.legs[2].cruiseAlt).toBe(6000);
-  // Leg 0 climbs out of the field; leg 1 ramps gradually up to 6000 (no marker);
-  // the last leg descends to the field. Each transition is a ramp on its leg.
+  // Only the leg starting ON the field ramps; mid-route altitude changes are level,
+  // and the last leg no longer descends into the field.
   expect(p.legs[0].climbDist).toBeGreaterThan(0);
-  expect(p.legs[1].climbDist).toBeGreaterThan(0);
-  expect(p.legs[last].descDist).toBeGreaterThan(0);
+  expect(p.legs[1].climbDist).toBe(0);
+  expect(p.legs[last].descDist).toBe(0);
   // Climb cannot span past the first leg → TOC fraction is within (0,1].
   expect(p.tocs[0].frac).toBeGreaterThan(0);
   expect(p.tocs[0].frac).toBeLessThanOrEqual(1);
@@ -53,7 +52,7 @@ test('routeProfile: per-leg altitudes, one TOC on leg 1, one TOD on the last leg
   expect(p.totalDist).toBeGreaterThan(0);
 });
 
-test('TOC/TOD endpoint distances follow aircraft climb/descent performance', async ({ page }) => {
+test('TOC distance follows climb performance, and V/S never moves the clock', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(() => {
     state.waypoints = [
@@ -66,36 +65,59 @@ test('TOC/TOD endpoint distances follow aircraft climb/descent performance', asy
     routeEndpointElev = i => (i === 0 ? 1000 : i === state.legs.length ? 1000 : null);
 
     window.profileVS = 0;
-    const slow = routeProfile({ gph: 8, climbFpm: 100, descentFpm: 100, climbKt: 30, descentKt: 30 });
+    const slow = routeProfile({ gph: 8, climbFpm: 100, climbKt: 30 });
     window.profileVS = 1400;
-    const fast = routeProfile({ gph: 8, climbFpm: 2000, descentFpm: 2000, climbKt: 200, descentKt: 200 });
+    const fast = routeProfile({ gph: 8, climbFpm: 2000, climbKt: 200 });
     window.profileVS = 0;
+    const stillAir = state.legs.reduce((acc, l, i) => {
+      const g = geo(state.waypoints[i], state.waypoints[i + 1]);
+      return acc + g.dist / l.flightSpeed;
+    }, 0);
     return {
       slowToc: slow.legs[0].climbDist,
-      slowTod: slow.legs[1].descDist,
       fastToc: fast.legs[0].climbDist,
-      fastTod: fast.legs[1].descDist,
       tocFrac: slow.tocs[0].frac,
-      todFrac: slow.tods[0].frac,
       firstLegDist: slow.legs[0].dist,
-      lastLegDist: slow.legs[1].dist,
+      slowTime: slow.totalTimeH, fastTime: fast.totalTimeH,
+      slowFuel: slow.totalFuel, fastFuel: fast.totalFuel,
+      stillAir,
     };
   });
 
   // Slow profile: 2000 ft at 100 fpm = 20 min; 30 kt for 20 min = 10 NM.
   expect(result.slowToc).toBeCloseTo(10, 5);
-  expect(result.slowTod).toBeCloseTo(10, 5);
   expect(result.tocFrac).toBeCloseTo(10 / result.firstLegDist, 5);
-  expect(result.todFrac).toBeCloseTo((result.lastLegDist - 10) / result.lastLegDist, 5);
 
-  // Faster V/S and speed change endpoint marker distances too.
+  // A faster V/S shortens the drawn ramp...
   expect(result.fastToc).toBeLessThan(result.slowToc);
-  expect(result.fastTod).toBeLessThan(result.slowTod);
   expect(result.fastToc).toBeCloseTo(200 * (2000 / 1400) / 60, 5);
-  expect(result.fastTod).toBeCloseTo(200 * (2000 / 1400) / 60, 5);
+
+  // ...and changes NOTHING about time or fuel, which are distance and speed alone.
+  expect(result.slowTime).toBeCloseTo(result.fastTime, 10);
+  expect(result.slowTime).toBeCloseTo(result.stillAir, 10);
+  expect(result.slowFuel).toBeCloseTo(result.fastFuel, 10);
 });
 
-test('flat route (constant altitude) has no TOC/TOD', async ({ page }) => {
+test('a leg starting at a mid-route airfield climbs; its neighbours stay level', async ({ page }) => {
+  await boot(page);
+  const p = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 34.9, name: 'FIELD' },
+      { lat: 32.7, lng: 35.1, name: 'C' },
+    ];
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 110; l.inboundAltitude = 4000; });
+    routeEndpointElev = i => (i === 1 ? 300 : null);   // only the middle point is a field
+    return routeProfile({ gph: 8, climbFpm: 500, climbKt: 80 });
+  });
+  expect(p.legs[0].climbDist).toBe(0);          // does not start on a field
+  expect(p.legs[1].climbDist).toBeGreaterThan(0);
+  expect(p.tocs.length).toBe(1);
+  expect(p.tocs[0].leg).toBe(1);
+  expect(p.legs[1].startAlt).toBe(300);
+});
+
+test('flat route with no field has no TOC', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     state.waypoints = [{ lat: 32, lng: 34.8, name: 'A' }, { lat: 32.4, lng: 35, name: 'B' }];
@@ -104,10 +126,9 @@ test('flat route (constant altitude) has no TOC/TOD', async ({ page }) => {
   });
   const p = await page.evaluate(() => routeProfile({ gph: 8 }));
   expect(p.tocs.length).toBe(0);
-  expect(p.tods.length).toBe(0);
 });
 
-test('non-airfield endpoints: profile starts/ends at leg altitude, no TOC/TOD', async ({ page }) => {
+test('non-airfield endpoints: profile starts/ends at leg altitude, no TOC', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     state.waypoints = [
@@ -120,9 +141,8 @@ test('non-airfield endpoints: profile starts/ends at leg altitude, no TOC/TOD', 
     // No routeEndpointElev stub → synthetic waypoints are not airfields (null).
   });
   const p = await page.evaluate(() => routeProfile({ gph: 8 }));
-  // No airfield at either end → no climb-out / descent, no markers.
+  // No airfield anywhere → nothing to climb away from, no markers.
   expect(p.tocs.length).toBe(0);
-  expect(p.tods.length).toBe(0);
   // Profile begins at the first leg's altitude and ends at the last leg's.
   expect(p.pts[0].alt).toBe(3000);
   expect(p.pts[p.pts.length - 1].alt).toBe(4000);
