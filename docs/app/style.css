@@ -268,27 +268,21 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
 .footer-more-menu .footer-link-text { display: inline; }
 body.theme-light .footer-more-menu { background: #fff; border-color: rgba(0, 0, 0, 0.2); }
 
-/* Route totals pill — same card language as the legend, sits just above it. */
+/* Route totals — the legend card's top row, above its own title, separated by a rule.
+   Inherits the card's background, theme and drag position, so it cannot drift away
+   from it. */
 .route-summary {
-  background: rgba(255, 255, 255, 0.92);
-  color: #161412;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  border-radius: 6px;
-  padding: 4px 9px;
-  margin-bottom: 6px;
-  font: 600 13px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.35;
   white-space: nowrap;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-  pointer-events: none;
-}
-body.theme-dark .route-summary {
-  background: rgba(28, 26, 24, 0.92);
-  color: #f2efe9;
-  border-color: rgba(255, 255, 255, 0.25);
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.45);
 }
 @media (max-width: 699px) {
-  /* Phones: keep it, but tighter — screen real estate is scarce. */
-  .route-summary { font-size: 12px; padding: 3px 7px; }
+  /* Phones: tighter — screen real estate is scarce. */
+  .route-summary { font-size: 11px; }
 }
 
 /* --- collapsible sections ------------------------------------------ */
