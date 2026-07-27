@@ -86,9 +86,14 @@ test('the profile drawing height for an unset altitude is gistable', async ({ pa
 
 test('route totals are always on screen, and match the plan', async ({ page }) => {
   await boot(page);
-  const emptyHidden = await page.evaluate(() =>
-    document.getElementById('route-summary').style.display === 'none');
-  expect(emptyHidden).toBe(true);              // nothing to summarise yet
+  // Nothing to summarise yet: the ink is hidden but the row keeps its box, so the
+  // hand-placed legend card does not resize the moment a route appears.
+  const emptyState = await page.evaluate(() => {
+    const p = document.getElementById('route-summary');
+    return { vis: getComputedStyle(p).visibility, display: getComputedStyle(p).display };
+  });
+  expect(emptyState.vis).toBe('hidden');
+  expect(emptyState.display).not.toBe('none');
   await withRoute(page);
   const r = await page.evaluate(() => {
     const pill = document.getElementById('route-summary');
@@ -96,7 +101,7 @@ test('route totals are always on screen, and match the plan', async ({ page }) =
     const fp = [...document.querySelectorAll('.modal *')]
       .map(e => e.childNodes.length === 1 ? e.textContent.trim() : '')
       .find(t => /leg[s]? ·/.test(t));
-    return { pill: pill.textContent, visible: pill.style.display !== 'none', fp };
+    return { pill: pill.textContent, visible: getComputedStyle(pill).visibility === 'visible', fp };
   });
   expect(r.visible).toBe(true);
   expect(r.pill).toBe(r.fp);                   // the pill and the plan cannot disagree
@@ -540,4 +545,134 @@ test('only a leg starting on an airfield gets a ramp', async ({ page }) => {
   expect(r.depRamp1).toBe(0);                 // mid-route legs stay level
   expect(r.depStart).toBe(300);               // ramp begins at field elevation
   expect(r.endAlt).toBe(4000);                // and nothing descends into the end
+});
+
+// --- round-3 fixes ---------------------------------------------------------
+
+test('leg labels stop growing past the cap', async ({ page }) => {
+  // 2^(zoom-12) with no ceiling meant 8x at the z15 maximum: one kite covered a third
+  // of the screen and buried the chart detail you had zoomed in to read.
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const at = z => { map.setView([32.1, 34.9], z, { animate: false }); return +legZoomScale().toFixed(2); };
+    const scales = { z10: at(10), z12: at(12), z13: at(13), z14: at(14), z15: at(15) };
+    NavAid.tuningDefaults.legLabelMaxScale.value = 4;
+    const raised = at(15);
+    NavAid.tuningDefaults.legLabelMaxScale.value = 2;
+    return { scales, raised, cap: tune('legLabelMaxScale') };
+  });
+  expect(r.scales.z10).toBeCloseTo(0.35, 2);   // floor still there
+  expect(r.scales.z12).toBeCloseTo(1, 2);
+  expect(r.scales.z13).toBeCloseTo(2, 2);
+  expect(r.scales.z14).toBeCloseTo(2, 2);      // capped
+  expect(r.scales.z15).toBeCloseTo(2, 2);
+  expect(r.raised).toBeCloseTo(4, 2);          // and the cap is gistable
+});
+
+test('the legend cannot come to rest under the toolbar', async ({ page }) => {
+  await boot(page);
+  await withRoute(page);
+  const legend = page.locator('#map-legend');
+  const b = await legend.boundingBox();
+  await page.mouse.move(b.x + 20, b.y + 6);
+  await page.mouse.down();
+  await page.mouse.move(60, 8, { steps: 6 });   // aim into the menu bar
+  await page.mouse.up();
+  const overlaps = () => page.evaluate(() => {
+    const l = document.getElementById('map-legend').getBoundingClientRect();
+    const t = document.getElementById('toolbar').getBoundingClientRect();
+    return !(l.right < t.left || t.right < l.left || l.bottom < t.top || t.bottom < l.top);
+  });
+  expect(await overlaps()).toBe(false);        // pushed clear on drop
+  await page.reload();
+  await page.waitForFunction(() => typeof syncLegs === 'function');
+  await withRoute(page);
+  expect(await overlaps()).toBe(false);        // and on restore, where it used to hide the totals
+});
+
+test('the legend can still be dragged freely after being pushed clear', async ({ page }) => {
+  // The first version of the clamp tested only "fully above the bar", so a card whose
+  // x-range overlapped the toolbar was pinned to bottom+6: draggable up, never back down.
+  await boot(page);
+  await withRoute(page);
+  const legend = page.locator('#map-legend');
+  const drag = async (toX, toY) => {
+    const b = await legend.boundingBox();
+    await page.mouse.move(b.x + 20, b.y + 6);
+    await page.mouse.down();
+    await page.mouse.move(toX, toY, { steps: 6 });
+    await page.mouse.up();
+    return (await legend.boundingBox()).y;
+  };
+  await drag(60, 8);                          // into the bar -> pushed clear below it
+  const parked = (await legend.boundingBox()).y;
+  const moved = await drag(60, 420);          // now drag it far down the same column
+  expect(moved).toBeGreaterThan(parked + 100);
+  // ...and still further down, then back up to just below the bar
+  const lower = await drag(60, 650);
+  expect(lower).toBeGreaterThan(moved);
+});
+
+test('printing warns when the route runs off the page, and can fit it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.44, lng: 34.90, name: 'HADERA' }];
+    state.legs = []; syncLegs(); map.setView([32.31, 34.87], 11, { animate: false });
+    setPage('A4'); pageOrient = 'portrait'; pageOffset = { x: 400, y: 260 }; draw();
+  });
+  const before = await page.evaluate(() => ({ fit: routePageFit().fits,
+    warn: !document.getElementById('print-clip-warn').hidden,
+    text: document.getElementById('print-clip-warn').textContent,
+    fitBtn: !document.getElementById('print-fit').hidden }));
+  expect(before.fit).toBe(false);
+  expect(before.warn).toBe(true);              // silently clipped before
+  expect(before.text).toMatch(/past the page/);
+  expect(before.fitBtn).toBe(true);
+  const after = await page.evaluate(() => {
+    document.getElementById('print-fit').click();
+    return { fit: routePageFit().fits, warn: !document.getElementById('print-clip-warn').hidden,
+      fitBtn: !document.getElementById('print-fit').hidden, orient: pageOrient };
+  });
+  expect(after.fit).toBe(true);                // one click puts the whole route on the page
+  expect(after.warn).toBe(false);
+  expect(after.fitBtn).toBe(false);
+});
+
+test('a route too long for any page says so instead of offering a fit', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // ~106 NM: past A3's 56.7 x 40.09 NM at 1:250,000, so no page can hold it.
+    state.waypoints = [{ lat: 31.23, lng: 34.79, name: 'LLBS' }, { lat: 32.99, lng: 35.57, name: 'LLIB' }];
+    state.legs = []; syncLegs(); fitView(); setPage('A4'); draw();
+    return { text: document.getElementById('print-clip-warn').textContent,
+      warn: !document.getElementById('print-clip-warn').hidden,
+      fitBtn: !document.getElementById('print-fit').hidden };
+  });
+  expect(r.warn).toBe(true);
+  expect(r.text).toMatch(/No page size/);
+  expect(r.fitBtn).toBe(false);                // nothing to offer, so no dead button
+});
+
+test('the legend keeps its size with no route, across reloads', async ({ page }) => {
+  await boot(page);
+  const size = () => page.evaluate(() => {
+    const b = document.getElementById('map-legend').getBoundingClientRect();
+    return { w: Math.round(b.width), h: Math.round(b.height),
+      vis: getComputedStyle(document.getElementById('route-summary')).visibility };
+  });
+  await withRoute(page);
+  const withR = await size();
+  expect(withR.vis).toBe('visible');
+  await page.evaluate(() => { state.waypoints = []; state.legs = []; syncLegs(); draw(); });
+  const cleared = await size();
+  expect(cleared.vis).toBe('hidden');          // ink gone, box kept
+  expect(cleared.w).toBe(withR.w);
+  expect(cleared.h).toBe(withR.h);
+  // ...and the reserved width survives a reload, when there is no route to measure
+  await page.reload();
+  await page.waitForFunction(() => typeof syncLegs === 'function');
+  await page.evaluate(() => { state.waypoints = []; state.legs = []; syncLegs(); draw(); });
+  const afterReload = await size();
+  expect(afterReload.w).toBe(withR.w);
+  expect(afterReload.h).toBe(withR.h);
 });

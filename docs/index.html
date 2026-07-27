@@ -123,7 +123,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=458">
+  <link rel="stylesheet" href="app/style.css?v=463">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -572,6 +572,13 @@
             </button>
           </div>
         </div>
+        <!-- Clipping warning + one-click fix. The page frame is a fixed real-world
+             size, so a long route simply cannot fit and Print used to cut it off
+             without a word. Both are shown only when the route actually overruns
+             (see refreshPrintFit). -->
+        <div id="print-clip-warn" class="print-clip-warn" hidden></div>
+        <button id="print-fit" type="button" hidden
+                data-i18n="printFitPage" data-i18n-title="printFitPageTitle"></button>
         <div class="tb-print-separator" aria-hidden="true"></div>
         <button id="print" data-i18n="tbPrint" data-i18n-title="tbPrintTitle"></button>
       </div>
@@ -793,7 +800,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=458';
+      var v = '?v=463';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

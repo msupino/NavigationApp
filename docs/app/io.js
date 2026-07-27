@@ -1571,6 +1571,7 @@ function applyPage() {
   // boot (docs/app/io.js boot restore calls applyPage without refreshPageButtons).
   refreshPageButtons();
   draw();
+  refreshPrintFit();
 }
 
 // Reflect the active page size on the A3/A4 buttons (.active + aria-pressed →
@@ -1648,6 +1649,31 @@ function toggleOrientation() {
   if (pageSize) { applyPage(); fitPageFrame(); }
   refreshOrientButton();
 }
+// Keep the clipping warning and the fit button in step with the page frame, the map
+// view and the route. Called from applyPage/draw, so panning the map, resizing the
+// page, dragging the frame or editing the route all re-evaluate it.
+function refreshPrintFit() {
+  const warn = document.getElementById('print-clip-warn');
+  const fitBtn = document.getElementById('print-fit');
+  if (!warn || !fitBtn) return;
+  const noFrame = !pageSize || !state.waypoints || !state.waypoints.length;
+  const fit = noFrame ? { fits: true } : routePageFit();
+  if (noFrame || fit.fits) {
+    warn.hidden = true;
+    fitBtn.hidden = true;
+    return;
+  }
+  // Is there any page that COULD hold it? Ask without committing, so the message can
+  // distinguish "press the button" from "no page is big enough, split the route".
+  const savedSize = pageSize, savedOrient = pageOrient, savedOffset = pageOffset;
+  const pick = fitPageToRoute();
+  pageSize = savedSize; pageOrient = savedOrient; pageOffset = savedOffset;
+  warn.hidden = false;
+  warn.textContent = pick ? (S.printClipWarn || 'The route runs past the page.')
+    : (S.printNoFit || 'No page size holds this route.');
+  fitBtn.hidden = !pick;
+}
+
 function refreshOrientButton() {
   const btn = document.getElementById('page-orient');
   if (!btn) return;
