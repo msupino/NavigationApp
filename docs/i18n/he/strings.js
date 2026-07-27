@@ -117,7 +117,16 @@ window.S = {
   fpHeadersNarrow: { dist: 'NM', speed: 'kt', alt: 'גובה', time: 'זמן', fuel: 'דלק',
     cumTime: 'מצטבר', cumFuel: 'דלק מצטבר' },
   fpMobileSummary: function (legs, nm, time, gal) {
-    return legs + ' קטעים · ' + nm + ' NM · ' + time + ' · ' + gal + ' גלון';
+    // Each value is an LTR run inside RTL text, so without isolation the bidi
+    // algorithm merges the neighbouring numbers and separators into one run and
+    // reorders them -- "46.0 NM · 5.2 · 30:40" came out scrambled on screen.
+    // U+2066 LRI and U+2069 PDI pin the direction of each value, adding no glyphs.
+    // NOTE: no apostrophes in comments in this file -- a straight quote puts cspell
+    // into string context for everything below it, and the Hebrew dictionary stops
+    // being applied, so `npm run lint:spell` reports the rest of the file as typos.
+    const ltr = v => '\u2066' + v + '\u2069';
+    return ltr(legs) + ' קטעים · ' + ltr(nm + ' NM') + ' · ' + ltr(time) +
+      ' · ' + ltr(gal) + ' גלון';
   },
   vorInfoType: 'סוג',
   vorInfoChannel: 'ערוץ',

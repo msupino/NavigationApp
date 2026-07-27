@@ -372,10 +372,6 @@ setInterval(refreshZuluClock, 1000);
 const legendCtrl = L.control({ position: 'bottomleft' });
 legendCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control');
-  // Route totals ride above the legend in the same control, so they inherit its
-  // clear corner instead of needing a spot of their own. drawSummaryPill() shows it.
-  const sum = document.getElementById('route-summary');
-  if (sum) wrap.appendChild(sum);
   const el = document.getElementById('map-legend');
   if (el) { el.style.display = ''; wrap.appendChild(el); }
   L.DomEvent.disableClickPropagation(wrap);
@@ -2041,9 +2037,6 @@ const openFlightPlan = () => {
   showFlightPlan();
 };
 document.getElementById('plan').onclick = openFlightPlan;
-// Same action from the promoted top-level button (see index.html data-sec="plan").
-const planTopBtn = document.getElementById('plan-top');
-if (planTopBtn) planTopBtn.onclick = openFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
