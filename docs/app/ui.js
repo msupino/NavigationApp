@@ -9,15 +9,26 @@
 // kept adding waypoints (a click meant to dismiss a panel silently added one).
 // One-time nudge over the map while the route is empty. The core action had no
 // discoverable entry point: a plain click did nothing and the add tool is two levels
-// into a menu.
+// into a menu. Once is the point: it is onboarding, not a status readout, so it is
+// shown to a given browser exactly once (navaid.hintEmptyRoute) and never returns --
+// not on the next visit, and not after a later Clear map.
+const EMPTY_HINT_KEY = 'navaid.hintEmptyRoute';
+function emptyRouteHintSeen() {
+  try { return localStorage.getItem(EMPTY_HINT_KEY) === '1'; }
+  catch (e) { return false; }          // storage unavailable -> show it, harmless
+}
 function refreshEmptyRouteHint() {
   const empty = !state.waypoints || !state.waypoints.length;
   let el = document.getElementById('empty-route-hint');
   if (!empty || state.mode) { if (el) el.remove(); return; }
   if (!el) {
+    // The flag is written when the hint is CREATED, and an element already on screen
+    // is left alone, so marking it seen cannot make it vanish mid-read.
+    if (emptyRouteHintSeen()) return;
     el = document.createElement('div');
     el.id = 'empty-route-hint';
     document.body.appendChild(el);
+    try { localStorage.setItem(EMPTY_HINT_KEY, '1'); } catch (e) { /* storage unavailable */ }
   }
   el.textContent = S.emptyRouteHint || 'Click the map to add your first waypoint';
 }

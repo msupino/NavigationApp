@@ -324,3 +324,40 @@ test('with a route present, clicking a chart waypoint inspects it instead', asyn
   expect(r.selType).toBe('navwp');     // its info panel, as before
   expect(r.mode).toBeNull();
 });
+
+test('the empty-route hint is shown once per browser, then never again', async ({ page }) => {
+  // It is onboarding, not a status readout: a returning user should not be told how
+  // to start a route on every visit.
+  await boot(page);
+  await expect(page.locator('#empty-route-hint')).toBeVisible();
+  const flag = await page.evaluate(() => localStorage.getItem('navaid.hintEmptyRoute'));
+  expect(flag).toBe('1');
+  await page.reload();
+  await page.waitForFunction(() => typeof draw === 'function');
+  await page.evaluate(() => { state.waypoints = []; state.legs = []; syncLegs(); draw(); });
+  await expect(page.locator('#empty-route-hint')).toHaveCount(0);   // empty route, no nudge
+});
+
+test('the hint does not come back after Clear map', async ({ page }) => {
+  await boot(page);
+  await expect(page.locator('#empty-route-hint')).toBeVisible();
+  await page.evaluate(async () => {
+    map.fire('click', { latlng: L.latLng(32.2, 34.9) });
+    await new Promise(r => setTimeout(r, 60));
+    setMode(null);
+    state.waypoints = []; state.legs = []; syncLegs(); draw();
+    if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
+  });
+  await expect(page.locator('#empty-route-hint')).toHaveCount(0);
+});
+
+test('a hint already on screen is not removed by being marked seen', async ({ page }) => {
+  // The flag is written when the element is created, and an existing element is left
+  // alone, so the nudge cannot blink out from under the reader.
+  await boot(page);
+  const el = page.locator('#empty-route-hint');
+  await expect(el).toBeVisible();
+  await page.evaluate(() => { draw(); refreshEmptyRouteHint(); refreshEmptyRouteHint(); });
+  await expect(el).toBeVisible();
+  await expect(el).toHaveText(/route/i);
+});
