@@ -224,26 +224,38 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   height: 12px;
   border: 2px solid #e74c3c;
 }
-/* VOR: teal ring with a centre dot, echoing the station symbol on the map. */
+/* VOR: the same symbol drawVors() paints — ring, four N/E/S/W ticks just outside it,
+   and a filled centre dot — in the same tune-driven colour. The first swatch was a
+   plain ringed dot in a hand-picked teal, so it did not match the map. Geometry mirrors
+   the canvas at 1:1 of an 18px box: ring r=6, ticks 3px out, dot r=1.5. */
 .legend-vor::before {
   content: '';
   position: absolute;
-  left: 2px;
-  top: 2px;
+  left: 3px;
+  top: 3px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid #1c7c74;
+  border: 2px solid var(--navaid-vor-marker-color, #127a7a);
 }
 .legend-vor::after {
   content: '';
   position: absolute;
-  left: 7px;
-  top: 7px;
-  width: 4px;
-  height: 4px;
+  left: 8px;
+  top: 8px;
+  width: 3px;
+  height: 3px;
   border-radius: 50%;
-  background: #1c7c74;
+  background: var(--navaid-vor-marker-color, #127a7a);
+}
+/* The four ticks: one gradient-drawn cross behind the ring, clipped to the tick ends
+   by the ring's own opaque border sitting on top of it. */
+.legend-vor {
+  background:
+    linear-gradient(to right, var(--navaid-vor-marker-color, #127a7a) 0 100%) no-repeat 50% 0 / 2px 4px,
+    linear-gradient(to right, var(--navaid-vor-marker-color, #127a7a) 0 100%) no-repeat 50% 100% / 2px 4px,
+    linear-gradient(to bottom, var(--navaid-vor-marker-color, #127a7a) 0 100%) no-repeat 0 50% / 4px 2px,
+    linear-gradient(to bottom, var(--navaid-vor-marker-color, #127a7a) 0 100%) no-repeat 100% 50% / 4px 2px;
 }
 
 /* Overflow for the reference links — a popover anchored to its ⋯ toggle. */

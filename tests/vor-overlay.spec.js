@@ -929,3 +929,58 @@ test('the selected station draws a published-range ring; unpublished draws none'
   expect(r.ramCov).toBeUndefined();
   expect(r.withCov).toBeGreaterThan(r.noCov);   // ring only when a range is published
 });
+
+// The legend swatch stands for the canvas-drawn station symbol, so the two must not
+// drift. The first version was a plain ringed dot in a hand-picked teal: no N/E/S/W
+// ticks (the feature that identifies the symbol) and a colour close to but not the
+// marker's own.
+test('the legend VOR swatch matches the drawn station symbol', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof drawVors === 'function' && typeof tune === 'function');
+  const r = await page.evaluate(() => {
+    showVorStations = true; draw();
+    const sw = document.querySelector('.legend-vor');
+    const root = getComputedStyle(document.documentElement);
+    const ring = getComputedStyle(sw, '::before');
+    const dot = getComputedStyle(sw, '::after');
+    const rgb = hex => {
+      const h = hex.replace('#', '');
+      return 'rgb(' + [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)).join(', ') + ')';
+    };
+    return {
+      cssVar: root.getPropertyValue('--navaid-vor-marker-color').trim(),
+      tuneColor: tune('vorMarkerColor'),
+      wantRgb: rgb(tune('vorMarkerColor')),
+      ringColor: ring.borderColor,
+      dotColor: dot.backgroundColor,
+      // four ticks = four background gradients
+      tickLayers: getComputedStyle(sw).backgroundImage.split('gradient').length - 1,
+      ringRadiusPx: parseFloat(ring.width) / 2,
+      markerRadiusPx: tune('vorMarkerRadiusPx'),
+    };
+  });
+  // the swatch colour comes from the same tune key the canvas uses
+  expect(r.cssVar).toBe(r.tuneColor);
+  expect(r.ringColor).toBe(r.wantRgb);
+  expect(r.dotColor).toBe(r.wantRgb);
+  // ring + centre dot + the four ticks that identify a VOR
+  expect(r.tickLayers).toBe(4);
+  expect(r.ringRadiusPx).toBeGreaterThan(3);
+});
+
+test('a gist recolour of the stations recolours the legend with them', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof applyTuningCssVars === 'function');
+  const r = await page.evaluate(() => {
+    NavAid.tuningDefaults.vorMarkerColor.value = '#aa3300';
+    applyTuningCssVars();
+    const after = getComputedStyle(document.documentElement)
+      .getPropertyValue('--navaid-vor-marker-color').trim();
+    const ring = getComputedStyle(document.querySelector('.legend-vor'), '::before').borderColor;
+    NavAid.tuningDefaults.vorMarkerColor.value = '#127a7a';
+    applyTuningCssVars();
+    return { after, ring };
+  });
+  expect(r.after).toBe('#aa3300');
+  expect(r.ring).toBe('rgb(170, 51, 0)');
+});

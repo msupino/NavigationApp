@@ -262,6 +262,10 @@ function applyTuningCssVars() {
   root.setProperty('--navaid-inspector-max-height-offset',
     (tune('inspectorDefaultTopPx') + tune('inspectorBottomGapPx')) + 'px');
 
+  // The legend's VOR swatch is CSS, but the marker it stands for is canvas-drawn from
+  // this tune key — publish it so the two cannot drift (and so a gist recolour of the
+  // stations recolours the legend with them).
+  root.setProperty('--navaid-vor-marker-color', tune('vorMarkerColor'));
   px('--navaid-zulu-clock-min-width', 'zuluClockMinWidthPx');
   px('--navaid-zulu-clock-pad-y', 'zuluClockPadYPx');
   px('--navaid-zulu-clock-pad-x', 'zuluClockPadXPx');
