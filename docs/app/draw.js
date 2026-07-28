@@ -1090,11 +1090,15 @@ var _layerGen = 0;
 // Satellite / OSM) share the CVFR datasets.
 const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
 function layerDataPrefix() {
+  // An explicit choice (View/Set -> "Nav waypoints from") wins over the base layer, so
+  // Satellite / OSM / Navigation are no longer stuck on CVFR: they used to fall through
+  // to 'cvfr' with no way to ask for the LSA or helicopter sets, even though both ship.
+  if (typeof navDataPrefix === 'string' && _PREFIX_LAYER_NAME[navDataPrefix]) return navDataPrefix;
   const l = currentLayerName();
   for (const p in _PREFIX_LAYER_NAME) {
     if (_PREFIX_LAYER_NAME[p] === l) return p;
   }
-  return 'cvfr';   // Navigation / Satellite / OSM share the CVFR datasets
+  return 'cvfr';   // Navigation / Satellite / OSM follow the CVFR datasets by default
 }
 // Display label for a data-prefix ('cvfr'/'lsa'/'heli'), reusing the already
 // -translated S.layerLabels dict (keyed by full layer name) instead of a
