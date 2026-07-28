@@ -269,6 +269,30 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
 body.theme-light .footer-more-menu { background: #fff; border-color: rgba(0, 0, 0, 0.2); }
 
 
+/* Group rules inside a toolbar menu (Display: map | waypoint | leg arrow | widths).
+   Same weight as the Print submenu's separator so the menus look of a piece. */
+#toolbar .tb-group-separator {
+  height: 1px;
+  margin: 3px 4px;
+  background: #33302f;
+}
+body.theme-light #toolbar .tb-group-separator { background: #d8dde5; }
+
+/* Colour pickers in the Display menu: same footprint as the sliders beside them so the
+   rows line up (the native swatch is otherwise taller and wider than the track). */
+#toolbar .navtoggle input[type="color"] {
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid #5a5555;
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+#toolbar .navtoggle input[type="color"]::-webkit-color-swatch-wrapper { padding: 1px; }
+#toolbar .navtoggle input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
 /* Print-clipping warning inside the Print menu. */
 .print-clip-warn {
   font-size: 11px;

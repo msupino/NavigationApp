@@ -4513,6 +4513,89 @@ YELLOW_EL.oninput = e => {
   draw();
 };
 
+// Kite / cumulative-kite / note fill opacity. This writes the SAME tune key every
+// drawing path reads (tune('kiteNoteAlpha') in draw.js), so the value propagates to the
+// PNG export and the print sheet with no second code path -- there is one number, not a
+// screen one and a paper one.
+//
+// The slider's default is whatever the gist (or the shipped default) says, not a
+// hardcoded 50%: gistKiteAlpha remembers that value so the reset button returns to it,
+// and the gist arrives asynchronously, so syncKiteAlphaSlider() re-reads it once the
+// remote config lands -- unless the pilot has already chosen their own value.
+const KITEALPHA_KEY = 'navaid.legArrowAlpha';
+let gistKiteAlpha = tune('kiteNoteAlpha');
+const KITEALPHA_EL = document.getElementById('kite-alpha');
+function syncKiteAlphaSlider(fromGist) {
+  if (!KITEALPHA_EL) return;
+  if (fromGist) {
+    gistKiteAlpha = tune('kiteNoteAlpha');
+    let stored = null;
+    try { stored = localStorage.getItem(KITEALPHA_KEY); } catch (e) { /* */ }
+    if (stored !== null) return;                 // the pilot's choice outranks the gist
+  }
+  KITEALPHA_EL.value = String(Math.round(tune('kiteNoteAlpha') * 100));
+  updateSliderVal(KITEALPHA_EL, KITEALPHA_EL.value + '%');
+}
+if (KITEALPHA_EL) {
+  KITEALPHA_EL.min = '0'; KITEALPHA_EL.max = '100'; KITEALPHA_EL.step = '5';
+  try {
+    const stored = parseFloat(localStorage.getItem(KITEALPHA_KEY));
+    if (Number.isFinite(stored)) setTune('kiteNoteAlpha', stored);
+  } catch (e) { /* storage unavailable */ }
+  syncKiteAlphaSlider();
+  KITEALPHA_EL.oninput = e => {
+    setTune('kiteNoteAlpha', parseFloat(e.target.value) / 100);
+    updateSliderVal(e.target, e.target.value + '%');
+    try { localStorage.setItem(KITEALPHA_KEY, String(tune('kiteNoteAlpha'))); }
+    catch (err) { /* storage unavailable */ }
+    draw();
+  };
+}
+
+// Colour pickers for the two fills a pilot actually tweaks: waypoint labels and the leg
+// arrows. Both write the tune key the drawing code reads, so screen, PNG export and print
+// stay one value -- and both remember the gist/shipped colour so their reset returns to it
+// rather than to a hardcoded hex.
+function wireColorPicker(elId, tuneKeys, storageKey) {
+  const keys = Array.isArray(tuneKeys) ? tuneKeys : [tuneKeys];
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const shipped = keys.map(k => tune(k));
+  const applyAll = v => keys.forEach(k => setTune(k, v));
+  try {
+    const stored = localStorage.getItem(storageKey);
+    if (stored && /^#[0-9a-f]{6}$/i.test(stored)) applyAll(stored);
+  } catch (e) { /* storage unavailable */ }
+  el.value = tune(keys[0]);
+  el.oninput = () => {
+    applyAll(el.value);
+    try { localStorage.setItem(storageKey, tune(keys[0])); } catch (e) { /* */ }
+    draw();
+  };
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'slider-reset';
+  btn.textContent = '↻';
+  btn.title = S.resetToDefault || 'Reset to default';
+  btn.setAttribute('aria-label', btn.title);
+  btn.onclick = e => {
+    e.preventDefault(); e.stopPropagation();
+    try { localStorage.removeItem(storageKey); } catch (err) { /* */ }
+    keys.forEach((k, i) => setTune(k, shipped[i]));
+    el.value = tune(keys[0]);
+    draw();
+  };
+  el.parentElement.appendChild(btn);
+}
+// Waypoint colour drives waypointFillColor -- the same fill the Waypoint-opacity slider
+// fades. (labelFillColor exists in the registry but nothing draws with it: yellowFill()
+// has no callers, which is why pointing the picker at it changed nothing on screen.)
+wireColorPicker('waypoint-color', 'waypointFillColor', 'navaid.waypointColor');
+// One "leg arrow" control covers the nav arrow AND the cumulative arrow, which carry
+// separate fill keys. The RETURN arrows keep their own colours on purpose -- they are
+// deliberately different so the return path reads as the return path.
+wireColorPicker('leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor'], 'navaid.legArrowColor');
+
 const MAPOPACITY_KEY = 'navaid.mapOpacity.v2';
 // `var` (not `let`) so writes from any module via window.mapOpacity reach
 // the same binding the export reads — same hazard documented for every
@@ -4559,7 +4642,10 @@ WP_EL.oninput = e => {
 };
 
 const LEGARROW_KEY = 'navaid.legArrowSize';
-const LEGARROW_MIN = 1, LEGARROW_MAX = 3, LEGARROW_STEP = 0.1;
+// 1.0 sits in the MIDDLE of the travel, not at the start: the range was 1..3, so the
+// shipped size was the smallest available and the slider could only enlarge. 0.2..1.8
+// on a 0.1 grid keeps 1.0 exactly centred and lands on the tick.
+const LEGARROW_MIN = 0.2, LEGARROW_MAX = 1.8, LEGARROW_STEP = 0.1;
 try {
   const v = parseFloat(localStorage.getItem(LEGARROW_KEY));
   if (!isNaN(v)) window.legArrowSize =Math.max(LEGARROW_MIN, Math.min(LEGARROW_MAX, v));
@@ -4579,7 +4665,10 @@ LEGARROW_EL.oninput = e => {
 // Key bumped to v2 so existing users pick up the new 0.5 default + 0.1–2.0
 // range instead of a stale saved value from the old 0.5–6 slider.
 const LEGLINEWIDTH_KEY = 'navaid.legLineWidth2';
-const LEGLINEWIDTH_MIN = 0.1, LEGLINEWIDTH_MAX = 2, LEGLINEWIDTH_STEP = 0.1;
+// Shipped default (0.5) centred on the travel: it used to sit at 21% of a 0.1..2 range,
+// so the slider mostly thickened and barely thinned. 0.1..0.9 on a 0.1 grid puts 0.5
+// in the middle and on a tick.
+const LEGLINEWIDTH_MIN = 0.1, LEGLINEWIDTH_MAX = 0.9, LEGLINEWIDTH_STEP = 0.1;
 try {
   const v = parseFloat(localStorage.getItem(LEGLINEWIDTH_KEY));
   if (!isNaN(v)) window.legLineWidth = Math.max(LEGLINEWIDTH_MIN, Math.min(LEGLINEWIDTH_MAX, v));
@@ -4597,7 +4686,9 @@ LEGLINEWIDTH_EL.oninput = e => {
 };
 
 const DRIFTLINEWIDTH_KEY = 'navaid.driftLineWidth';
-const DRIFTLINEWIDTH_MIN = 0.5, DRIFTLINEWIDTH_MAX = 6, DRIFTLINEWIDTH_STEP = 0.5;
+// Same treatment: the default (1) sat at 9% of a 0.5..6 range. 0.2..1.8 on a 0.1 grid
+// centres it, and the finer step gives 17 stops instead of a coarse half-unit jump.
+const DRIFTLINEWIDTH_MIN = 0.2, DRIFTLINEWIDTH_MAX = 1.8, DRIFTLINEWIDTH_STEP = 0.1;
 try {
   const v = parseFloat(localStorage.getItem(DRIFTLINEWIDTH_KEY));
   if (!isNaN(v)) window.driftLineWidth = Math.max(DRIFTLINEWIDTH_MIN, Math.min(DRIFTLINEWIDTH_MAX, v));
@@ -4616,6 +4707,24 @@ DRIFTLINEWIDTH_EL.oninput = e => {
 // Per-slider reset buttons for the Display section sliders + the magnifier
 // zoom and wind-field altitude sliders (each restores its HTML default value
 // and re-fires the slider's own input handler).
+// The kite-opacity reset returns to the GIST value, so it is wired by hand rather than
+// through addSliderReset (which restores the HTML default attribute).
+if (KITEALPHA_EL) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'slider-reset';
+  btn.textContent = '↻';
+  btn.title = S.resetToDefault || 'Reset to default';
+  btn.setAttribute('aria-label', btn.title);
+  btn.onclick = e => {
+    e.preventDefault(); e.stopPropagation();
+    try { localStorage.removeItem(KITEALPHA_KEY); } catch (err) { /* */ }
+    setTune('kiteNoteAlpha', gistKiteAlpha);
+    syncKiteAlphaSlider();
+    draw();
+  };
+  KITEALPHA_EL.parentElement.appendChild(btn);
+}
 ['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width',
  'mag-zoom', 'windfield-alt']
   .forEach(id => addSliderReset(document.getElementById(id)));
@@ -5757,6 +5866,7 @@ if (typeof loadTerrain === "function") loadTerrain();
 // repaint so they take effect. Silent fallback to defaults if the fetch fails.
 if (typeof loadRemoteConfig === "function") {
   loadRemoteConfig().then(n => {
+    if (typeof syncKiteAlphaSlider === 'function') syncKiteAlphaSlider(true);
     if (!n) return;
     if (typeof applyTuningCssVars === "function") applyTuningCssVars();
     // Gist may have flipped a default-layer-visibility bool — reconcile the
