@@ -4737,6 +4737,31 @@ html[data-theme="light"] #insp-body .insp-actions {
     padding: 0 6px;
   }
   .insp-btn { padding: 11px 7px; }
+  /* The hamburger is THE way to reach every menu on a phone, and it was 42x21 --
+     the smallest target in the app sat on its most-used control. */
+  #toolbar-toggle {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* The coordinate readout is a button in disguise ("Click to go to coordinates") and
+     was 19px tall. Grow the strike area with padding, not type size, so the readout
+     itself looks unchanged. Skipped while its go-to editor is open, which swaps the
+     text for input fields that size themselves. */
+  #coord-readout:not(.editing) {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  /* ...and while editing, the six DMS fields were a 22px-tall row. Grow the fields
+     vertically only: the row is already 196px wide on a 375px screen, so widening
+     them would push it off the edge. */
+  #coord-readout.editing .goto-num {
+    min-height: 34px;
+    font-size: 15px;
+  }
 }
 
 /* Mobile flight-plan summary: the table is ~2.6x the screen width, so Time,
