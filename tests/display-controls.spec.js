@@ -246,3 +246,41 @@ test('a pilot choice outranks a later gist value', async ({ page }) => {
   expect(r.slider).toBe('25');                 // slider left alone
   expect(r.gistRemembered).toBeCloseTo(0.7, 5);// but reset would go to the gist value
 });
+
+test('waypoint size does not move or resize the cumulative arrow', async ({ page }) => {
+  // The cumulative arrow belongs to the leg-arrow controls. Its default offset used to
+  // include the LIVE waypoint disc radius, so dragging Waypoint size slid the arrow
+  // outwards — one slider moving another slider's marker.
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.1, lng: 34.86, name: 'A' }, { lat: 32.3, lng: 34.9, name: 'B' }];
+    state.legs = []; syncLegs(); window.showCumTime = true;
+    map.setView([32.2, 34.88], 11, { animate: false });
+    const probe = () => {
+      draw();
+      const c = cumLabelCenter(0), b = proj(state.waypoints[1]);
+      const h = _cumKiteHalfDims();
+      return { scale: cumKiteDrawScale(), offset: Math.hypot(c.x - b.x, c.y - b.y),
+        halfW: h.halfW, discR: waypointDiscRadiusPx() };
+    };
+    window.wpSize = 1; window.legArrowSize = 1;
+    const base = probe();
+    window.wpSize = 1.8;
+    const bigWp = probe();
+    window.wpSize = 0.4;
+    const smallWp = probe();
+    window.wpSize = 1;
+    const bigArrow = (window.legArrowSize = 1.8, probe());
+    window.legArrowSize = 1;
+    return { base, bigWp, smallWp, bigArrow };
+  });
+  // waypoint size: no effect on the arrow at all now
+  expect(r.bigWp.offset).toBeCloseTo(r.base.offset, 3);
+  expect(r.smallWp.offset).toBeCloseTo(r.base.offset, 3);
+  expect(r.bigWp.scale).toBeCloseTo(r.base.scale, 6);
+  // ...and the biggest disc still cannot reach the arrow
+  expect(r.bigWp.offset - r.bigWp.halfW).toBeGreaterThan(r.bigWp.discR);
+  // leg-arrow size still drives both its size and its clearance
+  expect(r.bigArrow.scale).toBeGreaterThan(r.base.scale);
+  expect(r.bigArrow.offset).toBeGreaterThan(r.base.offset);
+});
