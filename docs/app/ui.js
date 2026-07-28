@@ -4582,26 +4582,53 @@ YELLOW_EL.oninput = e => {
 // hardcoded 50%: gistKiteAlpha remembers that value so the reset button returns to it,
 // and the gist arrives asynchronously, so syncKiteAlphaSlider() re-reads it once the
 // remote config lands -- unless the pilot has already chosen their own value.
+// Display controls that write TUNE keys (rather than plain globals) have to be re-applied
+// after the remote config lands: loadRemoteConfig() writes NavAid.tuning wholesale, and
+// the gist ships every one of these keys, so a stored user choice was silently clobbered
+// on each load -- the picker still showed the chosen colour while the map drew the gist's.
+// Registered here, applied at boot AND again after the gist.
+const STORED_TUNE_OVERRIDES = [];
+function registerTuneOverride(storageKey, tuneKeys, validate) {
+  STORED_TUNE_OVERRIDES.push({ storageKey, keys: tuneKeys, validate });
+  applyStoredTuneOverride(STORED_TUNE_OVERRIDES[STORED_TUNE_OVERRIDES.length - 1]);
+}
+function applyStoredTuneOverride(entry) {
+  let stored = null;
+  try { stored = localStorage.getItem(entry.storageKey); } catch (e) { return null; }
+  if (stored === null) return null;
+  const v = entry.validate ? entry.validate(stored) : stored;
+  if (v === null || v === undefined) return null;
+  entry.keys.forEach(k => setTune(k, v));
+  return v;
+}
+// Called after loadRemoteConfig(): the pilot's saved choices outrank the gist.
+function reapplyStoredTuneOverrides() {
+  for (const entry of STORED_TUNE_OVERRIDES) applyStoredTuneOverride(entry);
+}
+
 const KITEALPHA_KEY = 'navaid.legArrowAlpha';
 let gistKiteAlpha = tune('kiteNoteAlpha');
 const KITEALPHA_EL = document.getElementById('kite-alpha');
 function syncKiteAlphaSlider(fromGist) {
   if (!KITEALPHA_EL) return;
   if (fromGist) {
+    // Remember what the gist asked for (that is what reset returns to), then let the
+    // pilot's stored choice win again -- reapplyStoredTuneOverrides() has already
+    // rewritten the tune key by the time this runs.
     gistKiteAlpha = tune('kiteNoteAlpha');
     let stored = null;
     try { stored = localStorage.getItem(KITEALPHA_KEY); } catch (e) { /* */ }
-    if (stored !== null) return;                 // the pilot's choice outranks the gist
+    if (stored !== null) return;
   }
   KITEALPHA_EL.value = String(Math.round(tune('kiteNoteAlpha') * 100));
   updateSliderVal(KITEALPHA_EL, KITEALPHA_EL.value + '%');
 }
 if (KITEALPHA_EL) {
   KITEALPHA_EL.min = '0'; KITEALPHA_EL.max = '100'; KITEALPHA_EL.step = '5';
-  try {
-    const stored = parseFloat(localStorage.getItem(KITEALPHA_KEY));
-    if (Number.isFinite(stored)) setTune('kiteNoteAlpha', stored);
-  } catch (e) { /* storage unavailable */ }
+  registerTuneOverride(KITEALPHA_KEY, ['kiteNoteAlpha'], v => {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  });
   syncKiteAlphaSlider();
   KITEALPHA_EL.oninput = e => {
     setTune('kiteNoteAlpha', parseFloat(e.target.value) / 100);
@@ -4622,10 +4649,8 @@ function wireColorPicker(elId, tuneKeys, storageKey) {
   if (!el) return;
   const shipped = keys.map(k => tune(k));
   const applyAll = v => keys.forEach(k => setTune(k, v));
-  try {
-    const stored = localStorage.getItem(storageKey);
-    if (stored && /^#[0-9a-f]{6}$/i.test(stored)) applyAll(stored);
-  } catch (e) { /* storage unavailable */ }
+  registerTuneOverride(storageKey, keys,
+    v => (/^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null));
   el.value = tune(keys[0]);
   el.oninput = () => {
     applyAll(el.value);
@@ -5937,7 +5962,15 @@ if (typeof loadTerrain === "function") loadTerrain();
 // repaint so they take effect. Silent fallback to defaults if the fetch fails.
 if (typeof loadRemoteConfig === "function") {
   loadRemoteConfig().then(n => {
+    // The gist has just overwritten NavAid.tuning: restore the pilot's saved overrides
+    // on top of it, then let the controls re-read.
+    if (typeof reapplyStoredTuneOverrides === 'function') reapplyStoredTuneOverrides();
     if (typeof syncKiteAlphaSlider === 'function') syncKiteAlphaSlider(true);
+    for (const [id, keys] of [['waypoint-color', ['waypointFillColor']],
+      ['leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor']]]) {
+      const el = document.getElementById(id);
+      if (el) el.value = tune(keys[0]);
+    }
     if (!n) return;
     if (typeof applyTuningCssVars === "function") applyTuningCssVars();
     // Gist may have flipped a default-layer-visibility bool — reconcile the
