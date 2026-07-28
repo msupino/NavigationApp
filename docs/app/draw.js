@@ -3803,20 +3803,91 @@ function pageFrameRect() {
            y: (vh() - h) / 2 + pageOffset.y, w, h };
 }
 
-// Does the whole route sit inside the page frame? The frame is a fixed REAL-WORLD
-// size (A4 is ~40x28 NM at 1:250,000), so a long route cannot fit however far you
-// zoom -- and nothing said so: Print happily produced a page with two thirds of the
-// route outside it. Reports what is inside so the UI can warn.
+// Every piece of INK the export will draw, as screen-space rectangles: waypoint discs,
+// leg kites, cumulative kites (both directions), notes, comm callouts, report points
+// and the flight-plan card. Testing waypoint coordinates alone was not enough -- a
+// kite is ~18.5 x 33 mm of ink hanging off its leg, so a route whose waypoints all sit
+// inside the frame can still print with its labels sliced off the edge.
+function routeInkRects() {
+  const rects = [];
+  const wps = state.waypoints || [];
+  const push = (x, y, w, h) => { if (Number.isFinite(x) && Number.isFinite(y)) rects.push({ x, y, w, h }); };
+  // A rotated box (kite): take the axis-aligned bounds of its four corners.
+  const pushRotated = (c, ax, ay, halfL, halfW) => {
+    if (!c || !Number.isFinite(ax)) return;
+    let dx = ax - c.x, dy = ay - c.y;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len; dy /= len;
+    const nx = -dy, ny = dx;
+    const xs = [], ys = [];
+    for (const sl of [-1, 1]) for (const sw of [-1, 1]) {
+      xs.push(c.x + dx * halfL * sl + nx * halfW * sw);
+      ys.push(c.y + dy * halfL * sl + ny * halfW * sw);
+    }
+    push(Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  };
+
+  for (let i = 0; i < wps.length; i++) {
+    const p = proj(wps[i]);
+    const g = (typeof waypointGeom === 'function') ? waypointGeom(i) : null;
+    const r = g && Number.isFinite(g.r) ? g.r : 6;
+    push(p.x - r, p.y - r, r * 2, r * 2);
+  }
+  const sc = (typeof legZoomScale === 'function') ? legZoomScale() : 1;
+  const halfL = (tune('legKiteCellWidthPx') * 2 + tune('legKiteTriangleLenPx')) * sc / 2;
+  const halfW = tune('legKiteHeightPx') * sc / 2;
+  const cum = (typeof _cumKiteHalfDims === 'function') ? _cumKiteHalfDims() : null;
+  for (let i = 0; i < (state.legs || []).length; i++) {
+    const A = wps[i] && proj(wps[i]), B = wps[i + 1] && proj(wps[i + 1]);
+    if (!A || !B) continue;
+    if (typeof legLabelCenter === 'function') {
+      pushRotated(legLabelCenter(i, 'in'), B.x, B.y, halfL, halfW);
+      if (typeof showReturn !== 'undefined' && showReturn) {
+        pushRotated(legLabelCenter(i, 'out'), A.x, A.y, halfL, halfW);
+      }
+    }
+    if (cum && typeof showCumTime !== 'undefined' && showCumTime) {
+      if (typeof cumLabelCenter === 'function') pushRotated(cumLabelCenter(i), B.x, B.y, cum.halfL, cum.halfW);
+      if (typeof showReturn !== 'undefined' && showReturn && typeof cumLabelRetCenter === 'function') {
+        pushRotated(cumLabelRetCenter(i), A.x, A.y, cum.halfL, cum.halfW);
+      }
+    }
+  }
+  for (let i = 0; i < (state.notes || []).length; i++) {
+    const n = state.notes[i];
+    const box = (n && n.cc && typeof commCalloutRect === 'function') ? commCalloutRect(n)
+      : (typeof noteRect === 'function' ? noteRect(i) : null);
+    if (box) push(box.x, box.y, box.w, box.h);
+    // A comm callout also draws a leader to its anchor point.
+    if (n && n.cc && typeof commCalloutGeom === 'function') {
+      const g = commCalloutGeom(n);
+      if (g && g.tail) push(g.tail.x - 2, g.tail.y - 2, 4, 4);
+    }
+    if (n && n.rp && typeof reportPointGeom === 'function') {
+      const g = reportPointGeom(n);
+      if (g) { const p = proj({ lat: g.lat, lng: g.lng }); push(p.x - 12, p.y - 12, 24, 24); }
+    }
+  }
+  if (typeof planCardRect !== 'undefined' && planCardRect) {
+    push(planCardRect.x, planCardRect.y, planCardRect.w, planCardRect.h);
+  }
+  return rects;
+}
+
+// Does everything the export draws sit inside the page frame? The frame is a fixed
+// REAL-WORLD size (A4 is ~40x28 NM at 1:250,000), so a long route cannot fit however
+// far you zoom -- and nothing said so: Print happily produced a page with two thirds
+// of the route outside it. Reports what is inside so the UI can warn.
 function routePageFit() {
   const r = pageFrameRect();
-  const wps = (state.waypoints || []);
-  if (!r || !wps.length) return { fits: true, inside: wps.length, total: wps.length };
+  const items = routeInkRects();
+  if (!r || !items.length) return { fits: true, inside: items.length, total: items.length };
   let inside = 0;
-  for (const w of wps) {
-    const p = proj(w);
-    if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) inside++;
+  for (const it of items) {
+    if (it.x >= r.x && it.x + it.w <= r.x + r.w &&
+        it.y >= r.y && it.y + it.h <= r.y + r.h) inside++;
   }
-  return { fits: inside === wps.length, inside, total: wps.length };
+  return { fits: inside === items.length, inside, total: items.length };
 }
 
 // Smallest page that holds the route, centred on it. Tries every size/orientation in
@@ -3825,12 +3896,16 @@ function routePageFit() {
 function fitPageToRoute() {
   const wps = (state.waypoints || []);
   if (!wps.length) return false;
+  // Fit the INK, not the waypoints: fitting to bare coordinates chose a page that
+  // satisfied the old check while kites and notes still hung off the edge -- the
+  // button would clear its own warning and still print a clipped sheet.
+  const items = routeInkRects();
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const w of wps) {
-    const p = proj(w);
-    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  for (const it of items) {
+    minX = Math.min(minX, it.x); maxX = Math.max(maxX, it.x + it.w);
+    minY = Math.min(minY, it.y); maxY = Math.max(maxY, it.y + it.h);
   }
+  if (!Number.isFinite(minX)) return false;
   const need = { w: maxX - minX, h: maxY - minY };
   const mid = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
   const mpp = metresPerPixel();

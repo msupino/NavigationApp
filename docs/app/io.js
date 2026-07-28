@@ -1669,8 +1669,18 @@ function refreshPrintFit() {
   const pick = fitPageToRoute();
   pageSize = savedSize; pageOrient = savedOrient; pageOffset = savedOffset;
   warn.hidden = false;
-  warn.textContent = pick ? (S.printClipWarn || 'The route runs past the page.')
-    : (S.printNoFit || 'No page size holds this route.');
+  // Name what is actually clipped. Saying "the route runs past the page" while the
+  // route plainly sits inside the frame reads as a warning that failed to clear --
+  // the overhang is often a 18.5 x 33 mm kite hanging off an otherwise-contained leg.
+  const frame = pageFrameRect();
+  const routeInside = frame && (state.waypoints || []).every(w => {
+    const p = proj(w);
+    return p.x >= frame.x && p.x <= frame.x + frame.w &&
+           p.y >= frame.y && p.y <= frame.y + frame.h;
+  });
+  warn.textContent = !pick ? (S.printNoFit || 'No page size holds this route.')
+    : routeInside ? (S.printClipWarnLabels || 'A label hangs past the page.')
+      : (S.printClipWarn || 'The route runs past the page.');
   fitBtn.hidden = !pick;
 }
 
