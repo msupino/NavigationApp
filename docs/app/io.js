@@ -1729,6 +1729,7 @@ let flightPlanEscape = null;
 let flightPlanCleanup = null;             // tears down drag listeners attached
                                           // outside the modal subtree (window).
 var fpOpen = false;                       // true while flight-plan modal is shown
+let flightPlanPrevFocus = null;           // element to hand focus back to on close
 
 // Returns true if wp.name matches a known airfield ICAO code.
 // Used to decide whether to add startup/taxi fuel to the first leg.
@@ -1748,6 +1749,18 @@ function closeFlightPlan() {
   if (flightPlanBack) {
     flightPlanBack.remove();
     flightPlanBack = null;
+  }
+  if (flightPlanPrevFocus) {
+    const el = flightPlanPrevFocus;
+    flightPlanPrevFocus = null;
+    if (document.contains(el)) {
+      try { el.focus(); } catch (e) { /* unfocusable by now */ }
+      if (document.activeElement !== el && el.closest) {
+        const sec = el.closest('.tb-section');
+        const head = sec && sec.querySelector('.tb-section-head');
+        if (head) { try { head.focus(); } catch (e) { /* */ } }
+      }
+    }
   }
   refreshFlightPlan = null;
   drawProfileStripIfOpen = null;
@@ -2982,6 +2995,13 @@ function showFlightPlan() {
   // Close via the Close button or Escape (#86).
   document.body.appendChild(back);
   flightPlanBack = back;
+  // Keyboard reach, minus the Tab trap: this panel is deliberately non-blocking (the
+  // backdrop passes clicks through so the map stays draggable), so trapping Tab inside
+  // it would be wrong -- but focus still has to land in the dialog, or Tab starts at
+  // the top of the document behind it. Restored on close.
+  flightPlanPrevFocus = document.activeElement;
+  const fpCloseX = box.querySelector('.modal-close-x');
+  if (fpCloseX) { try { fpCloseX.focus(); } catch (e) { /* */ } }
   // #78: keep the modal in sync with the live route. draw() calls this after
   // each redraw so dragging a waypoint or reversing the route updates dist /
   // hdg / time / total. A leg-count change (delete wp, import, clear) tears
@@ -4790,11 +4810,46 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   box.appendChild(title);
 
   let closed = false;
+  // Keyboard reach. Only the hand-rolled shortcuts sheet moved focus, trapped Tab and
+  // gave focus back; every modal built here -- freq table, altitude pairs, airport
+  // charts, NOTAM list, share, saved routes, the flight plan -- opened with focus still
+  // on the toolbar button behind the backdrop, so Tab walked the page underneath
+  // instead of the dialog. Doing it in the factory covers all of them at once.
+  let prevFocus = null;
+  function focusables() {
+    return [...box.querySelectorAll(
+      'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])')]
+      .filter(el => !el.disabled && el.offsetParent !== null);
+  }
+  function onTrapTab(e) {
+    if (e.key !== 'Tab') return;
+    const f = focusables();
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
   function close() {
     if (closed) return;
     closed = true;
     window.removeEventListener('keydown', onEsc);
+    box.removeEventListener('keydown', onTrapTab);
     if (back.parentNode) back.remove();
+    // Put focus back where it came from, so closing a dialog does not dump the caret at
+    // the top of the document. Opening a modal closes the toolbar dropdown, so the
+    // trigger is usually hidden by now and focus() on it is a silent no-op -- fall back
+    // to the section head that owns it, which is visible and is where a keyboard user
+    // would continue from.
+    const restore = el => {
+      if (!el || !document.contains(el)) return false;
+      try { el.focus(); } catch (e) { return false; }
+      return document.activeElement === el;
+    };
+    if (!restore(prevFocus) && prevFocus && prevFocus.closest) {
+      const sec = prevFocus.closest('.tb-section');
+      restore(sec && sec.querySelector('.tb-section-head'));
+    }
+    prevFocus = null;
     if (typeof onClose === 'function') onClose();
   }
   back._navaidClose = close;
@@ -4844,6 +4899,12 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
     // Opening any modal closes the toolbar dropdowns so they don't overlap it.
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     window.addEventListener('keydown', onEsc);
+    box.addEventListener('keydown', onTrapTab);
+    prevFocus = document.activeElement;
+    // Prefer the close button (a harmless first stop) over whatever control happens
+    // to be first in the DOM -- Tab from there reaches everything anyway.
+    const firstStop = box.querySelector('.modal-close-x') || focusables()[0];
+    if (firstStop) { try { firstStop.focus(); } catch (e) { /* */ } }
   }
   return { back, box, title, close, show };
 }
