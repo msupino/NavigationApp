@@ -24,6 +24,9 @@ window.S = {
   sliderStandardSuffix: '(תקני)',
   tbWpSize: 'גודל ציון דרך',                         // מחוון בקטע תצוגה
   tbWpSizeTitle: 'גודל ציון דרך ושמו',
+  tbNavWpSource: 'ציוני ניווט מתוך',
+  tbNavWpSourceTitle: 'מאיזו מפה נלקחים ציוני הניווט, שינויי התדר וגבהי הקטעים. ״לפי המפה״ הולך אחרי שכבת הבסיס, ובלוויין/OSM/ניווט חוזר ל-CVFR.',
+  tbNavWpSourceFollow: 'לפי המפה',
   tbShowNavWp: 'הצג/נעץ ציוני ניווט',                // מתג שכבת מפה
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
   tbShowReporting: 'הצג נקודות דיווח חובה',

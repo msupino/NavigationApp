@@ -123,7 +123,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=482">
+  <link rel="stylesheet" href="app/style.css?v=483">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -245,6 +245,13 @@
         <div class="tb-group" data-i18n="tbGrpOverlays"></div>
         <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
           <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
+        </label>
+        <!-- Which chart the nav data comes from. Satellite / OSM / Navigation used to be
+             pinned to CVFR with no way to ask for the LSA or helicopter sets, though both
+             ship. Drives waypoints, comm changes and leg altitudes together. -->
+        <label class="navtoggle" data-i18n-title="tbNavWpSourceTitle">
+          <span data-i18n="tbNavWpSource"></span>
+          <select id="navwp-source"></select>
         </label>
         <label class="navtoggle" data-i18n-title="tbShowAirfieldsTitle">
           <input type="checkbox" id="airfield-cb" checked> <span data-i18n="tbShowAirfields"></span>
@@ -820,7 +827,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=482';
+      var v = '?v=483';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

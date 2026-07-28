@@ -109,6 +109,40 @@ function paintLegendVor() {
 }
 paintLegendVor();
 
+// Nav-data source picker: "Follow chart" (default) or an explicit chart. The value
+// drives layerDataPrefix(), so one change swaps waypoints, comm changes and leg
+// altitudes together -- they belong to one chart, and mixing them (heli waypoints with
+// CVFR altitudes) would quietly produce a wrong plan.
+const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
+(function wireNavWpSource() {
+  const sel = document.getElementById('navwp-source');
+  if (!sel) return;
+  try {
+    const stored = localStorage.getItem(NAVWP_SOURCE_KEY);
+    if (stored === 'cvfr' || stored === 'lsa' || stored === 'heli') window.navDataPrefix = stored;
+  } catch (e) { /* storage unavailable */ }
+  const opts = [['', S.tbNavWpSourceFollow || 'Follow chart'],
+    ['cvfr', (S.layerLabels && S.layerLabels.CVFR) || 'CVFR'],
+    ['lsa', (S.layerLabels && S.layerLabels['Low Alt']) || 'Low Alt'],
+    ['heli', (S.layerLabels && S.layerLabels.Helicopters) || 'Helicopters']];
+  for (const [value, label] of opts) {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label;
+    sel.appendChild(o);
+  }
+  sel.value = navDataPrefix || '';
+  sel.onchange = () => {
+    window.navDataPrefix = sel.value || null;
+    try {
+      if (navDataPrefix) localStorage.setItem(NAVWP_SOURCE_KEY, navDataPrefix);
+      else localStorage.removeItem(NAVWP_SOURCE_KEY);
+    } catch (e) { /* storage unavailable */ }
+    // Same path a base-layer switch takes, so every dataset and the open alt-pairs
+    // table follow, and a route pinned to another chart is not rewritten.
+    if (typeof reloadLayerDatasets === 'function') reloadLayerDatasets();
+  };
+})();
+
 // base map layer picker (replaces the Leaflet layers control)
 const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
