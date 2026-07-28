@@ -929,3 +929,65 @@ test('the selected station draws a published-range ring; unpublished draws none'
   expect(r.ramCov).toBeUndefined();
   expect(r.withCov).toBeGreaterThan(r.noCov);   // ring only when a range is published
 });
+
+// The legend swatch stands for the canvas-drawn station symbol, so it is painted by
+// the SAME function the map uses (drawVorSymbol). Earlier attempts approximated it in
+// CSS — first a plain ringed dot, then gradients for the ticks — and neither looked
+// like the map, because stroke width, tick length and dot size are all ratios of the
+// radius that an 18px CSS box cannot reproduce.
+test('the legend VOR swatch is painted by the map symbol function', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof drawVorSymbol === 'function' &&
+    typeof paintLegendVor === 'function');
+  const r = await page.evaluate(() => {
+    // Prove the legend goes through the shared painter, not a copy of it.
+    let calls = 0;
+    const orig = window.drawVorSymbol;
+    window.drawVorSymbol = function (...a) { calls++; return orig.apply(this, a); };
+    paintLegendVor();
+    window.drawVorSymbol = orig;
+    const cv = document.querySelector('canvas.legend-vor');
+    const ctx = cv.getContext('2d');
+    const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    // Antialiasing means most pixels of an 18px symbol are partly transparent: count
+    // any ink for coverage, but sample colour only from a solid pixel.
+    let ink = 0, solid = 0, sample = null;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] > 10) ink++;
+      if (d[i + 3] > 200) { solid++; if (!sample) sample = [d[i], d[i + 1], d[i + 2]]; }
+    }
+    const hex = tune('vorMarkerColor').replace('#', '');
+    const want = [0, 2, 4].map(k => parseInt(hex.slice(k, k + 2), 16));
+    return { calls, ink, solid, sample, want, isCanvas: cv.tagName === 'CANVAS' };
+  });
+  expect(r.isCanvas).toBe(true);
+  expect(r.calls).toBe(1);                       // the map's own painter drew it
+  expect(r.ink).toBeGreaterThan(60);             // ring + ticks + dot actually rendered
+  expect(r.solid).toBeGreaterThan(10);           // and not only faint antialiasing
+  // and in the colour the canvas markers use
+  for (let i = 0; i < 3; i++) expect(Math.abs(r.sample[i] - r.want[i])).toBeLessThan(12);
+});
+
+test('a gist recolour of the stations repaints the legend swatch', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof applyTuningCssVars === 'function' &&
+    typeof paintLegendVor === 'function');
+  const r = await page.evaluate(() => {
+    const read = () => {
+      const cv = document.querySelector('canvas.legend-vor');
+      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) return [d[i], d[i + 1], d[i + 2]];
+      return null;
+    };
+    const before = read();
+    NavAid.tuningDefaults.vorMarkerColor.value = '#aa3300';
+    applyTuningCssVars();                        // repaints via paintLegendVor
+    const after = read();
+    NavAid.tuningDefaults.vorMarkerColor.value = '#127a7a';
+    applyTuningCssVars();
+    return { before, after };
+  });
+  expect(r.after[0]).toBeGreaterThan(150);       // now reddish
+  expect(r.after[2]).toBeLessThan(60);
+  expect(r.before).not.toEqual(r.after);
+});

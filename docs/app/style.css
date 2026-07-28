@@ -224,27 +224,10 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   height: 12px;
   border: 2px solid #e74c3c;
 }
-/* VOR: teal ring with a centre dot, echoing the station symbol on the map. */
-.legend-vor::before {
-  content: '';
-  position: absolute;
-  left: 2px;
-  top: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid #1c7c74;
-}
-.legend-vor::after {
-  content: '';
-  position: absolute;
-  left: 7px;
-  top: 7px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #1c7c74;
-}
+/* VOR: painted into this canvas by drawVorSymbol() -- the same function the map uses
+   (see paintLegendVor in ui.js). CSS cannot reproduce it: stroke width, tick length and
+   dot size are all ratios of the radius, and an approximation looked wrong at 18px. */
+.legend-vor { display: inline-block; width: 18px; height: 18px; }
 
 /* Overflow for the reference links — a popover anchored to its ⋯ toggle. */
 .footer-more { position: relative; display: inline-flex; }
