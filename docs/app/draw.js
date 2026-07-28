@@ -1823,6 +1823,31 @@ function drawNavWaypoints() {
 // `force` draws the stations regardless of the "Show VOR stations" toggle —
 // used by the PNG export so the exported chart shows the stations whenever it
 // carries VOR info (plan-card Radial/DME columns) even with the toggle off.
+// The VOR station symbol, in one place: ring, four N/E/S/W ticks just outside it, and
+// a filled centre dot. Shared with the map legend's swatch (ui.js paints it into a
+// small canvas) -- the legend used to approximate this in CSS and looked nothing like
+// it, because stroke width, tick length and dot size are all ratios of the radius.
+function drawVorSymbol(ctx, x, y, r, col, lineWidth, tickLen) {
+  const tick = Number.isFinite(tickLen) ? tickLen : 4;
+  ctx.save();
+  ctx.strokeStyle = col;
+  ctx.fillStyle = col;
+  ctx.lineWidth = lineWidth;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+    ctx.beginPath();
+    ctx.moveTo(x + dx * r, y + dy * r);
+    ctx.lineTo(x + dx * (r + tick), y + dy * (r + tick));
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawVors(force) {
   if ((!showVorStations && !force) || !vors || !vors.length) return;
   const r = tune('vorMarkerRadiusPx');
@@ -1875,22 +1900,7 @@ function drawVors(force) {
     const s = proj(v);
     const sel = v.ident === selIdent;
     const col = sel ? tune('vorSelectedColor') : tune('vorMarkerColor');
-    octx.strokeStyle = col;
-    octx.fillStyle = col;
-    octx.lineWidth = tune('vorMarkerWidthPx') * (sel ? 1.6 : 1);
-    octx.beginPath();
-    octx.arc(s.x, s.y, r, 0, Math.PI * 2);
-    octx.stroke();
-    // N/E/S/W ticks just outside the ring.
-    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
-      octx.beginPath();
-      octx.moveTo(s.x + dx * r, s.y + dy * r);
-      octx.lineTo(s.x + dx * (r + 4), s.y + dy * (r + 4));
-      octx.stroke();
-    }
-    octx.beginPath();
-    octx.arc(s.x, s.y, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
-    octx.fill();
+    drawVorSymbol(octx, s.x, s.y, r, col, tune('vorMarkerWidthPx') * (sel ? 1.6 : 1));
     if (showLabels) {
       const label = v.ident + '  ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq);
       const lx = s.x + r + 6, ly = s.y;

@@ -224,83 +224,10 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   height: 12px;
   border: 2px solid #e74c3c;
 }
-/* VOR: teal ring with a centre dot, echoing the station symbol on the map. */
-.legend-vor::before {
-  content: '';
-  position: absolute;
-  left: 2px;
-  top: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid #1c7c74;
-}
-.legend-vor::after {
-  content: '';
-  position: absolute;
-  left: 7px;
-  top: 7px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #1c7c74;
-}
-
-/* Overflow for the reference links — a popover anchored to its ⋯ toggle. */
-.footer-more { position: relative; display: inline-flex; }
-.footer-more-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  inset-inline-end: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 5px;
-  border-radius: 6px;
-  background: #262222;
-  border: 1px solid #3a3636;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-  z-index: 2400;
-  white-space: nowrap;
-}
-.footer-more-menu[hidden] { display: none; }
-.footer-more-menu .footer-link { justify-content: flex-start; }
-.footer-more-menu .footer-link-text { display: inline; }
-body.theme-light .footer-more-menu { background: #fff; border-color: rgba(0, 0, 0, 0.2); }
-
-
-/* Print-clipping warning inside the Print menu. */
-.print-clip-warn {
-  font-size: 11px;
-  line-height: 1.35;
-  padding: 4px 6px;
-  margin: 2px 0;
-  border-radius: 4px;
-  color: #ffd7a1;
-  background: rgba(196, 127, 23, 0.18);
-  border: 1px solid rgba(196, 127, 23, 0.5);
-  max-width: 220px;
-  white-space: normal;
-}
-.print-clip-warn[hidden] { display: none; }
-body.theme-light .print-clip-warn { color: #7a4a00; background: rgba(196, 127, 23, 0.12); }
-
-/* Route totals — the legend card's top row, above its own title, separated by a rule.
-   Inherits the card's background, theme and drag position, so it cannot drift away
-   from it. */
-.route-summary {
-  font-weight: 700;
-  font-size: 12px;
-  line-height: 1.35;
-  white-space: nowrap;
-  padding-bottom: 4px;
-  margin-bottom: 5px;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.45);
-}
-@media (max-width: 699px) {
-  /* Phones: tighter — screen real estate is scarce. */
-  .route-summary { font-size: 11px; }
-}
+/* VOR: painted into this canvas by drawVorSymbol() -- the same function the map uses
+   (see paintLegendVor in ui.js). CSS cannot reproduce it: stroke width, tick length and
+   dot size are all ratios of the radius, and an approximation looked wrong at 18px. */
+.legend-vor { display: inline-block; width: 18px; height: 18px; }
 
 /* --- collapsible sections ------------------------------------------ */
 .tb-section {
