@@ -2241,11 +2241,38 @@ document.getElementById('limit-kites-cb').onchange = e => {
   const modal = document.getElementById('sim-modal');
   const closeBtn = document.getElementById('sim-modal-close');
   if (!trigger || !modal) return;
+  // This panel is hand-rolled rather than built by createDraggableModal, and its
+  // markup declares role="dialog" aria-modal="true" -- a promise it was not keeping:
+  // focus stayed on the plane icon behind it, Tab walked the page underneath, and
+  // closing left focus nowhere. Same treatment the factory dialogs get.
+  const box = modal.querySelector('.modal') || modal;
+  let prevFocus = null;
+  const focusables = () => [...box.querySelectorAll(
+    'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el => !el.disabled && el.offsetParent !== null);
+  const onTrapTab = e => {
+    if (e.key !== 'Tab') return;
+    const f = focusables();
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
   const open = () => {
     if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
     modal.classList.remove('hidden');
+    prevFocus = document.activeElement;
+    box.addEventListener('keydown', onTrapTab);
+    const firstStop = closeBtn || focusables()[0];
+    if (firstStop) { try { firstStop.focus(); } catch (e) { /* */ } }
   };
-  const close = () => modal.classList.add('hidden');
+  const close = () => {
+    modal.classList.add('hidden');
+    box.removeEventListener('keydown', onTrapTab);
+    const el = prevFocus;
+    prevFocus = null;
+    if (el && document.contains(el)) { try { el.focus(); } catch (e) { /* */ } }
+  };
   trigger.addEventListener('click', open);
   if (closeBtn) closeBtn.addEventListener('click', close);
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
