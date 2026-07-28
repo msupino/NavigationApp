@@ -309,3 +309,87 @@ test('the standard marker is visible and not clipped', async ({ page }) => {
   expect(r.back.text).toMatch(/standard/);
   expect(r.back.clipped).toBe(false);
 });
+
+// --- persistence across a reload, gist included ------------------------------------
+// Reported: change the leg-arrow colour, refresh, and the map is back to the default
+// while the picker still shows the chosen colour. Cause: loadRemoteConfig() rewrites
+// NavAid.tuning after boot and the gist ships every one of these keys, so the stored
+// choice was clobbered — the swatch had been set from localStorage, the drawing had not.
+
+test('a stored tune override outranks the gist', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const set = (id, v) => { const el = document.getElementById(id); el.value = v;
+      el.dispatchEvent(new Event('input', { bubbles: true })); };
+    set('leg-arrow-color', '#222222');
+    set('waypoint-color', '#111111');
+    set('kite-alpha', '25');
+    const chosen = { leg: tune('legKiteFillColor'), cum: tune('cumKiteFillColor'),
+      wp: tune('waypointFillColor'), alpha: tune('kiteNoteAlpha') };
+    // exactly what the live gist ships for these keys
+    setTune('legKiteFillColor', '#00ff00');
+    setTune('cumKiteFillColor', '#00ff00');
+    setTune('waypointFillColor', '#fff6aa');
+    setTune('kiteNoteAlpha', 0.5);
+    const clobbered = { leg: tune('legKiteFillColor'), alpha: tune('kiteNoteAlpha') };
+    reapplyStoredTuneOverrides();
+    return { chosen, clobbered,
+      restored: { leg: tune('legKiteFillColor'), cum: tune('cumKiteFillColor'),
+        wp: tune('waypointFillColor'), alpha: tune('kiteNoteAlpha') } };
+  });
+  expect(r.clobbered.leg).toBe('#00ff00');          // the gist really does overwrite
+  expect(r.clobbered.alpha).toBe(0.5);
+  expect(r.restored).toEqual(r.chosen);             // and the pilot's choice comes back
+});
+
+test('colour and opacity choices survive an actual reload', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const set = (id, v) => { const el = document.getElementById(id); el.value = v;
+      el.dispatchEvent(new Event('input', { bubbles: true })); };
+    set('leg-arrow-color', '#3366aa');
+    set('waypoint-color', '#aa6633');
+    set('kite-alpha', '30');
+  });
+  await page.reload();
+  await page.waitForFunction(() => typeof tune === 'function');
+  const r = await page.evaluate(() => ({
+    leg: tune('legKiteFillColor'), cum: tune('cumKiteFillColor'),
+    wp: tune('waypointFillColor'), alpha: tune('kiteNoteAlpha'),
+    // the swatches must agree with what is drawn — the bug was precisely that they did not
+    legSwatch: document.getElementById('leg-arrow-color').value,
+    wpSwatch: document.getElementById('waypoint-color').value,
+    alphaSlider: document.getElementById('kite-alpha').value }));
+  expect(r.leg).toBe('#3366aa');
+  expect(r.cum).toBe('#3366aa');
+  expect(r.wp).toBe('#aa6633');
+  expect(r.alpha).toBeCloseTo(0.3, 5);
+  expect(r.legSwatch).toBe('#3366aa');
+  expect(r.wpSwatch).toBe('#aa6633');
+  expect(r.alphaSlider).toBe('30');
+});
+
+test('every Display control persists across a reload', async ({ page }) => {
+  // "check all vars are persistent" — the plain globals were never at risk from the gist
+  // (it only writes tune keys), but assert the whole panel rather than assuming.
+  await boot(page);
+  await page.evaluate(() => {
+    const set = (id, v) => { const el = document.getElementById(id); el.value = String(v);
+      el.dispatchEvent(new Event('input', { bubbles: true })); };
+    set('map-opacity', 55); set('yellow-alpha', 35); set('wp-size', 1.3);
+    set('leg-arrow-size', 1.4); set('leg-line-width', 0.7); set('drift-line-width', 1.6);
+  });
+  await page.reload();
+  await page.waitForFunction(() => typeof draw === 'function');
+  const r = await page.evaluate(() => ({
+    mapOpacity, yellowAlpha, wpSize, legArrowSize, legLineWidth, driftLineWidth,
+    sliders: ['map-opacity', 'yellow-alpha', 'wp-size', 'leg-arrow-size',
+      'leg-line-width', 'drift-line-width'].map(id => document.getElementById(id).value) }));
+  expect(r.mapOpacity).toBeCloseTo(0.55, 5);
+  expect(r.yellowAlpha).toBeCloseTo(0.35, 5);
+  expect(r.wpSize).toBeCloseTo(1.3, 5);
+  expect(r.legArrowSize).toBeCloseTo(1.4, 5);
+  expect(r.legLineWidth).toBeCloseTo(0.7, 5);
+  expect(r.driftLineWidth).toBeCloseTo(1.6, 5);
+  expect(r.sliders).toEqual(['55', '35', '1.3', '1.4', '0.7', '1.6']);
+});
