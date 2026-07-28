@@ -87,6 +87,28 @@ document.getElementById('app-version').textContent = 'v' + NavAid.version;
   if (lv) lv.textContent = 'v' + NavAid.version;
 }
 
+// Paint the legend's VOR swatch with drawVorSymbol() — the very function drawVors()
+// uses — so the key cannot drift from the symbol it explains. Scaled to the 18px box:
+// the radius leaves room for the ticks, and stroke/tick/dot follow the same ratios as
+// the map because they are computed from that radius by the shared painter.
+function paintLegendVor() {
+  const cv = document.querySelector('canvas.legend-vor');
+  if (!cv || typeof drawVorSymbol !== 'function') return;
+  const dpr = window.devicePixelRatio || 1;
+  const box = 18;
+  cv.width = box * dpr;
+  cv.height = box * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, box, box);
+  const mapR = tune('vorMarkerRadiusPx');            // 9 on the map
+  const r = 5.5;                                     // ring + ticks fit an 18px box
+  const k = r / mapR;                                // keep every ratio the map uses
+  drawVorSymbol(ctx, box / 2, box / 2, r, tune('vorMarkerColor'),
+    Math.max(1, tune('vorMarkerWidthPx') * k), 4 * k);
+}
+paintLegendVor();
+
 // base map layer picker (replaces the Leaflet layers control)
 const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
@@ -262,10 +284,10 @@ function applyTuningCssVars() {
   root.setProperty('--navaid-inspector-max-height-offset',
     (tune('inspectorDefaultTopPx') + tune('inspectorBottomGapPx')) + 'px');
 
-  // The legend's VOR swatch is CSS, but the marker it stands for is canvas-drawn from
-  // this tune key — publish it so the two cannot drift (and so a gist recolour of the
-  // stations recolours the legend with them).
+  // The legend's VOR swatch is a canvas painted by the map's own symbol function, so a
+  // tune/gist recolour has to repaint it (see paintLegendVor).
   root.setProperty('--navaid-vor-marker-color', tune('vorMarkerColor'));
+  if (typeof paintLegendVor === 'function') paintLegendVor();
   px('--navaid-zulu-clock-min-width', 'zuluClockMinWidthPx');
   px('--navaid-zulu-clock-pad-y', 'zuluClockPadYPx');
   px('--navaid-zulu-clock-pad-x', 'zuluClockPadXPx');

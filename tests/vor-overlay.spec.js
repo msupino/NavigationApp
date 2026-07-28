@@ -930,57 +930,64 @@ test('the selected station draws a published-range ring; unpublished draws none'
   expect(r.withCov).toBeGreaterThan(r.noCov);   // ring only when a range is published
 });
 
-// The legend swatch stands for the canvas-drawn station symbol, so the two must not
-// drift. The first version was a plain ringed dot in a hand-picked teal: no N/E/S/W
-// ticks (the feature that identifies the symbol) and a colour close to but not the
-// marker's own.
-test('the legend VOR swatch matches the drawn station symbol', async ({ page }) => {
+// The legend swatch stands for the canvas-drawn station symbol, so it is painted by
+// the SAME function the map uses (drawVorSymbol). Earlier attempts approximated it in
+// CSS — first a plain ringed dot, then gradients for the ticks — and neither looked
+// like the map, because stroke width, tick length and dot size are all ratios of the
+// radius that an 18px CSS box cannot reproduce.
+test('the legend VOR swatch is painted by the map symbol function', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof drawVors === 'function' && typeof tune === 'function');
+  await page.waitForFunction(() => typeof drawVorSymbol === 'function' &&
+    typeof paintLegendVor === 'function');
   const r = await page.evaluate(() => {
-    showVorStations = true; draw();
-    const sw = document.querySelector('.legend-vor');
-    const root = getComputedStyle(document.documentElement);
-    const ring = getComputedStyle(sw, '::before');
-    const dot = getComputedStyle(sw, '::after');
-    const rgb = hex => {
-      const h = hex.replace('#', '');
-      return 'rgb(' + [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)).join(', ') + ')';
-    };
-    return {
-      cssVar: root.getPropertyValue('--navaid-vor-marker-color').trim(),
-      tuneColor: tune('vorMarkerColor'),
-      wantRgb: rgb(tune('vorMarkerColor')),
-      ringColor: ring.borderColor,
-      dotColor: dot.backgroundColor,
-      // four ticks = four background gradients
-      tickLayers: getComputedStyle(sw).backgroundImage.split('gradient').length - 1,
-      ringRadiusPx: parseFloat(ring.width) / 2,
-      markerRadiusPx: tune('vorMarkerRadiusPx'),
-    };
+    // Prove the legend goes through the shared painter, not a copy of it.
+    let calls = 0;
+    const orig = window.drawVorSymbol;
+    window.drawVorSymbol = function (...a) { calls++; return orig.apply(this, a); };
+    paintLegendVor();
+    window.drawVorSymbol = orig;
+    const cv = document.querySelector('canvas.legend-vor');
+    const ctx = cv.getContext('2d');
+    const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    // Antialiasing means most pixels of an 18px symbol are partly transparent: count
+    // any ink for coverage, but sample colour only from a solid pixel.
+    let ink = 0, solid = 0, sample = null;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] > 10) ink++;
+      if (d[i + 3] > 200) { solid++; if (!sample) sample = [d[i], d[i + 1], d[i + 2]]; }
+    }
+    const hex = tune('vorMarkerColor').replace('#', '');
+    const want = [0, 2, 4].map(k => parseInt(hex.slice(k, k + 2), 16));
+    return { calls, ink, solid, sample, want, isCanvas: cv.tagName === 'CANVAS' };
   });
-  // the swatch colour comes from the same tune key the canvas uses
-  expect(r.cssVar).toBe(r.tuneColor);
-  expect(r.ringColor).toBe(r.wantRgb);
-  expect(r.dotColor).toBe(r.wantRgb);
-  // ring + centre dot + the four ticks that identify a VOR
-  expect(r.tickLayers).toBe(4);
-  expect(r.ringRadiusPx).toBeGreaterThan(3);
+  expect(r.isCanvas).toBe(true);
+  expect(r.calls).toBe(1);                       // the map's own painter drew it
+  expect(r.ink).toBeGreaterThan(60);             // ring + ticks + dot actually rendered
+  expect(r.solid).toBeGreaterThan(10);           // and not only faint antialiasing
+  // and in the colour the canvas markers use
+  for (let i = 0; i < 3; i++) expect(Math.abs(r.sample[i] - r.want[i])).toBeLessThan(12);
 });
 
-test('a gist recolour of the stations recolours the legend with them', async ({ page }) => {
+test('a gist recolour of the stations repaints the legend swatch', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof applyTuningCssVars === 'function');
+  await page.waitForFunction(() => typeof applyTuningCssVars === 'function' &&
+    typeof paintLegendVor === 'function');
   const r = await page.evaluate(() => {
+    const read = () => {
+      const cv = document.querySelector('canvas.legend-vor');
+      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) return [d[i], d[i + 1], d[i + 2]];
+      return null;
+    };
+    const before = read();
     NavAid.tuningDefaults.vorMarkerColor.value = '#aa3300';
-    applyTuningCssVars();
-    const after = getComputedStyle(document.documentElement)
-      .getPropertyValue('--navaid-vor-marker-color').trim();
-    const ring = getComputedStyle(document.querySelector('.legend-vor'), '::before').borderColor;
+    applyTuningCssVars();                        // repaints via paintLegendVor
+    const after = read();
     NavAid.tuningDefaults.vorMarkerColor.value = '#127a7a';
     applyTuningCssVars();
-    return { after, ring };
+    return { before, after };
   });
-  expect(r.after).toBe('#aa3300');
-  expect(r.ring).toBe('rgb(170, 51, 0)');
+  expect(r.after[0]).toBeGreaterThan(150);       // now reddish
+  expect(r.after[2]).toBeLessThan(60);
+  expect(r.before).not.toEqual(r.after);
 });
