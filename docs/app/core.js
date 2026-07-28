@@ -635,6 +635,9 @@ window.S = Object.assign({
   sliderStandardSuffix: '(standard)',
   tbWpSize: 'Waypoint size',                        // Display slider label
   tbWpSizeTitle: 'Waypoint circle and name size',
+  tbNavWpSource: 'Nav waypoints from',
+  tbNavWpSourceTitle: 'Which chart the nav waypoints, comm changes and leg altitudes come from. Follow chart uses the base layer, and falls back to CVFR on Satellite / OSM / Navigation.',
+  tbNavWpSourceFollow: 'Follow chart',
   tbShowNavWp: 'Show/pin nav waypoints',            // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
@@ -1450,6 +1453,10 @@ var legAltitudeMapPrefix = null; // Which layer prefix ('cvfr'/'lsa'/'heli') the
 // template replaces it, or when a saved route is loaded — those repin to the
 // then-active layer on the next apply. Not persisted: after a reload the
 // route repins to the restored layer, matching pre-existing boot behavior.
+// Explicit nav-data source ('cvfr' | 'lsa' | 'heli'), or null to follow the base layer.
+// Drives waypoints, comm-change AND leg altitudes together -- they are one chart's data,
+// so mixing (heli waypoints with CVFR altitudes) would be wrong.
+var navDataPrefix = null;
 var routeAltPrefix = null;
 // Id of the saved-library entry the current route was loaded from (or saved
 // as). Set by routeLibraryApply / routeLibrarySaveCurrent; cleared whenever the
