@@ -193,9 +193,12 @@ test.describe('Sliders persist to localStorage', () => {
     expect(await wp.getAttribute('min')).toBe('0.1');
     expect(await wp.getAttribute('max')).toBe('2');
     expect(await wp.getAttribute('step')).toBe('0.1');
+    // Leg-arrow size is centred on the shipped 1 (was 1..3, where 1 was the minimum and
+    // the slider could only enlarge). Selector 1 is the size the print spec pins, so it
+    // has to stay reachable exactly — 0.2..1.8 on a 0.1 grid keeps it on a tick.
     const la = page.locator('#leg-arrow-size');
-    expect(await la.getAttribute('min')).toBe('1');
-    expect(await la.getAttribute('max')).toBe('3');
+    expect(await la.getAttribute('min')).toBe('0.2');
+    expect(await la.getAttribute('max')).toBe('1.8');
     expect(await la.getAttribute('step')).toBe('0.1');
   });
 
@@ -208,16 +211,21 @@ test.describe('Sliders persist to localStorage', () => {
     expect(await av.textContent()).toBe('50%');
   });
 
-  test('kite/note opacity is gist-only (no Display slider) and defaults to 0.5', async ({ page }) => {
+  test('leg-arrow opacity is a Display slider over the same gist key', async ({ page }) => {
     await boot(page);
-    // The label-opacity slider stays; the kite/note one is not a Display slider.
+    // It used to be gist-only, with this test asserting the slider did NOT exist. It is
+    // now exposed as "Leg arrow opacity" — but over the SAME tune key, so the gist still
+    // sets the default and the value still reaches the export and the print sheet.
     await expect(page.locator('#yellow-alpha')).toHaveCount(1);
-    await expect(page.locator('#kite-alpha')).toHaveCount(0);
-    // Kite/note opacity lives in the tune registry (gist-overridable), default 0.5.
+    await expect(page.locator('#kite-alpha')).toHaveCount(1);
     expect(await page.evaluate(() => tune('kiteNoteAlpha'))).toBe(0.5);
-    // setTune (the path the gist uses) moves it.
+    // setTune (the path the gist uses) still moves it.
     await page.evaluate(() => setTune('kiteNoteAlpha', 0.2));
     expect(await page.evaluate(() => tune('kiteNoteAlpha'))).toBe(0.2);
+    // ...and so does the slider, writing that key rather than a parallel variable.
+    await page.locator('#kite-alpha').fill('45');
+    await page.locator('#kite-alpha').dispatchEvent('input');
+    expect(await page.evaluate(() => tune('kiteNoteAlpha'))).toBeCloseTo(0.45, 5);
   });
 
   test('decimal sliders show toFixed(2) in value display', async ({ page }) => {
