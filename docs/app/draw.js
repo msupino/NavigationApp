@@ -44,10 +44,12 @@ function cumKiteDrawScale() {
     ? (tune('cumKitePrintHeightMm') * ppm / tune('cumKiteHeightPx')) * sel
     : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
 }
-// Waypoint disc radius in screen px (ground-sized).
-function waypointDiscRadiusPx() {
+// Waypoint disc radius in screen px (ground-sized). `sizeSel` defaults to the live
+// wpSize selector; pass 1 for the shipped size (see cumDefaultLabelPerp).
+function waypointDiscRadiusPx(sizeSel) {
   const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
-  const wpSz = (typeof wpSize === 'number') ? wpSize : 1;
+  const wpSz = Number.isFinite(sizeSel) ? sizeSel
+    : ((typeof wpSize === 'number') ? wpSize : 1);
   return ppm
     ? (tune('waypointPrintDiaMm') / 2) * ppm * wpSz
     : tune('waypointBaseRadiusPx') * wpSz *
@@ -60,7 +62,14 @@ function cumDefaultLabelPerp() {
   // Clear the waypoint disc, then a full cum-kite height (so the whole kite sits
   // off the disc with a half-height gap), plus the margin. Keeps the cum kite
   // clearly separated from the waypoint.
-  return waypointDiscRadiusPx() +
+  //
+  // The disc term is taken at the SHIPPED waypoint size, not the live one: the
+  // cumulative arrow belongs to the leg-arrow controls, and reading the live wpSize made
+  // it slide outwards whenever waypoints were resized -- one slider moving another
+  // slider's marker. The clearance is dominated by the arrow's own height anyway (at the
+  // largest waypoint size the disc is r=24px while the arrow's near edge sits ~71px out),
+  // so dropping the coupling cannot let the disc reach the arrow.
+  return waypointDiscRadiusPx(1) +
          tune('cumKiteHeightPx') * cumKiteDrawScale() +
          tune('defaultLabelMarginPx') * cumKiteDrawScale();
 }

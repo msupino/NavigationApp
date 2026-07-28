@@ -229,6 +229,86 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
    dot size are all ratios of the radius, and an approximation looked wrong at 18px. */
 .legend-vor { display: inline-block; width: 18px; height: 18px; }
 
+/* Overflow for the reference links — a popover anchored to its ⋯ toggle. */
+.footer-more { position: relative; display: inline-flex; }
+.footer-more-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  inset-inline-end: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px;
+  border-radius: 6px;
+  background: #262222;
+  border: 1px solid #3a3636;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  z-index: 2400;
+  white-space: nowrap;
+}
+.footer-more-menu[hidden] { display: none; }
+.footer-more-menu .footer-link { justify-content: flex-start; }
+.footer-more-menu .footer-link-text { display: inline; }
+body.theme-light .footer-more-menu { background: #fff; border-color: rgba(0, 0, 0, 0.2); }
+
+
+/* Group rules inside a toolbar menu (Display: map | waypoint | leg arrow | widths).
+   Same weight as the Print submenu's separator so the menus look of a piece. */
+#toolbar .tb-group-separator {
+  height: 1px;
+  margin: 3px 4px;
+  background: #33302f;
+}
+body.theme-light #toolbar .tb-group-separator { background: #d8dde5; }
+
+/* Colour pickers in the Display menu: same footprint as the sliders beside them so the
+   rows line up (the native swatch is otherwise taller and wider than the track). */
+#toolbar .navtoggle input[type="color"] {
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid #5a5555;
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+#toolbar .navtoggle input[type="color"]::-webkit-color-swatch-wrapper { padding: 1px; }
+#toolbar .navtoggle input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+/* Print-clipping warning inside the Print menu. */
+.print-clip-warn {
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 4px 6px;
+  margin: 2px 0;
+  border-radius: 4px;
+  color: #ffd7a1;
+  background: rgba(196, 127, 23, 0.18);
+  border: 1px solid rgba(196, 127, 23, 0.5);
+  max-width: 220px;
+  white-space: normal;
+}
+.print-clip-warn[hidden] { display: none; }
+body.theme-light .print-clip-warn { color: #7a4a00; background: rgba(196, 127, 23, 0.12); }
+
+/* Route totals — the legend card's top row, above its own title, separated by a rule.
+   Inherits the card's background, theme and drag position, so it cannot drift away
+   from it. */
+.route-summary {
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.45);
+}
+@media (max-width: 699px) {
+  /* Phones: tighter — screen real estate is scarce. */
+  .route-summary { font-size: 11px; }
+}
+
 /* --- collapsible sections ------------------------------------------ */
 .tb-section {
   border-top: 1px solid #3a3636;
@@ -470,6 +550,12 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   min-width: 0;
 }
 #toolbar .slider-val { min-width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; white-space: nowrap; }
+/* The two symbol-size readouts append "(standard)" at selector 1, which is wider than
+   the 3em the numeric readouts need. Let them size to content so the suffix is not
+   clipped; the menu is content-sized, so the row simply gets a little wider. */
+#toolbar #wp-size-val,
+#toolbar #leg-arrow-size-val { min-width: max-content; }
+
 /* Look-ahead time readouts vary in length as the slider moves ("now" →
    "+72h · 12-31 12:00Z"); a fixed width keeps the row — and the whole
    content-sized dropdown menu — from growing and jumping mid-drag. Sized to

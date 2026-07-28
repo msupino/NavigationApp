@@ -101,7 +101,10 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
   // ---------------------------------------------------------------------
   test('legacy navaid.route migrates raw offsets by legArrowSize and stamps _m', async ({ page }) => {
     const RAW = 88;     // raw screen pixels (pre-#393 save under legArrowSize=2)
-    const AS = 2;
+    // 1.5, not 2: the leg-arrow size slider now runs 0.2..1.8 (centred on the shipped
+    // 1), so a seeded 2 is clamped on load and this test is about offset migration
+    // scaling by legArrowSize, not about the slider's range.
+    const AS = 1.5;
     await page.addInitScript(({ raw, as, hz, ha }) => {
       try {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
@@ -143,7 +146,10 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
   // ---------------------------------------------------------------------
   test('migration is idempotent across reload', async ({ page }) => {
     const RAW = 88;
-    const AS = 2;
+    // 1.5, not 2: the leg-arrow size slider now runs 0.2..1.8 (centred on the shipped
+    // 1), so a seeded 2 is clamped on load and this test is about offset migration
+    // scaling by legArrowSize, not about the slider's range.
+    const AS = 1.5;
     await page.addInitScript(({ raw, as, hz, ha }) => {
       try {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
@@ -198,7 +204,10 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
   //    drift-cone-aware perpendicular at draw time (issue #394).
   // ---------------------------------------------------------------------
   test('toolbar reset-all writes default invariant + asks for confirm', async ({ page }) => {
-    const AS = 2;
+    // 1.5, not 2: the leg-arrow size slider now runs 0.2..1.8 (centred on the shipped
+    // 1), so a seeded 2 is clamped on load and this test is about offset migration
+    // scaling by legArrowSize, not about the slider's range.
+    const AS = 1.5;
     await page.addInitScript(as => {
       try {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
@@ -253,7 +262,10 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
   //    are covered by the issue-#394 tests below.)
   // ---------------------------------------------------------------------
   test('export → reload → import preserves rendered position at legArrowSize=2', async ({ page }) => {
-    const AS = 2;
+    // 1.5, not 2: the leg-arrow size slider now runs 0.2..1.8 (centred on the shipped
+    // 1), so a seeded 2 is clamped on load and this test is about offset migration
+    // scaling by legArrowSize, not about the slider's range.
+    const AS = 1.5;
     await page.addInitScript(as => {
       try {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
