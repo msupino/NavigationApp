@@ -123,7 +123,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=467">
+  <link rel="stylesheet" href="app/style.css?v=468">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -371,7 +371,8 @@
         <!-- Offline chart packs (chart layers only; wired by offline-tiles.js). -->
         <div id="offline-tiles-group" class="tb-group-box" hidden>
           <button id="offline-tiles-btn" type="button" data-i18n="tbOfflineCharts" data-i18n-title="tbOfflineChartsTitle"></button>
-          <button id="offline-tiles-del" type="button" hidden data-i18n="offlineDelete"></button>
+          <button id="offline-tiles-del" type="button" hidden
+                  data-i18n="offlineDelete" data-i18n-title="offlineDeleteTitle"></button>
           <span id="offline-tiles-status" class="offline-tiles-status"></span>
         </div>
       </div>
@@ -800,7 +801,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=467';
+      var v = '?v=468';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

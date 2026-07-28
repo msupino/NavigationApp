@@ -107,3 +107,57 @@ test('the flight plan takes focus but does NOT trap Tab', async ({ page }) => {
   expect(after.closed).toBe(true);
   expect(after.notBody).toBe(true);      // focus handed back, not dumped
 });
+
+// The simulator panel is hand-rolled (#sim-modal), not built by createDraggableModal,
+// yet its markup declares role="dialog" aria-modal="true" — a promise it was not
+// keeping: focus stayed on the plane icon behind it and Tab walked the page underneath.
+test('the simulator panel keeps its aria-modal promise', async ({ page }) => {
+  await boot(page);
+  const opened = await page.evaluate(() => {
+    const t = document.getElementById('sim-trigger');
+    t.focus();
+    t.click();
+    const modal = document.getElementById('sim-modal');
+    const box = modal.querySelector('.modal');
+    return { visible: !modal.classList.contains('hidden'),
+      ariaModal: box.getAttribute('aria-modal'),
+      focusInside: box.contains(document.activeElement) };
+  });
+  expect(opened.visible).toBe(true);
+  expect(opened.ariaModal).toBe('true');
+  expect(opened.focusInside).toBe(true);
+
+  const trapped = await page.evaluate(() => {
+    const box = document.querySelector('#sim-modal .modal');
+    const f = [...box.querySelectorAll('button, input:not([type=hidden]), select, [tabindex]:not([tabindex="-1"])')]
+      .filter(el => !el.disabled && el.offsetParent !== null);
+    if (f.length < 2) return { skip: true };
+    f[f.length - 1].focus();
+    const ev = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    f[f.length - 1].dispatchEvent(ev);
+    return { wrapped: document.activeElement === f[0], prevented: ev.defaultPrevented };
+  });
+  if (!trapped.skip) {
+    expect(trapped.wrapped).toBe(true);
+    expect(trapped.prevented).toBe(true);
+  }
+
+  const closed = await page.evaluate(() => {
+    document.getElementById('sim-modal-close').click();
+    return { hidden: document.getElementById('sim-modal').classList.contains('hidden'),
+      backOnTrigger: document.activeElement === document.getElementById('sim-trigger') };
+  });
+  expect(closed.hidden).toBe(true);
+  expect(closed.backOnTrigger).toBe(true);   // the trigger is a visible footer icon, so it can take focus back
+});
+
+test('the destructive offline-maps button explains itself', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const del = document.getElementById('offline-tiles-del');
+    const dl = document.getElementById('offline-tiles-btn');
+    return { delTitle: del.title, dlTitle: dl.title };
+  });
+  expect(r.delTitle.length).toBeGreaterThan(10);   // had no title at all; its sibling did
+  expect(r.dlTitle.length).toBeGreaterThan(10);
+});

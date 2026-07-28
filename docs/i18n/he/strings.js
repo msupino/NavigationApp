@@ -672,6 +672,7 @@ window.S = {
   tbOfflineChartsTitle: 'הורדה מראש של שכבת המפה הנוכחית כך שהמפה תעבוד ללא אינטרנט (הקשה נוספת מבטלת)',
   offlineDownloadConfirm: 'להוריד את המפה הנוכחית לשימוש לא-מקוון? בערך ',
   offlineDelete: '🗑 מחק מפות לא-מקוונות',
+  offlineDeleteTitle: 'מסיר את אריחי המפה שהורדו מהמכשיר הזה — האפליקציה תמשיך לעבוד באינטרנט',
   offlineDeleteConfirm: 'למחוק את המפות הלא-מקוונות?',
   offlineCancel: '✕ ביטול — ',
   offlineCancelled: 'בוטל',

@@ -1297,6 +1297,7 @@ window.S = Object.assign({
   tbOfflineChartsTitle: 'Pre-download the current map layer so it works with no internet (tap again to cancel)',
   offlineDownloadConfirm: 'Download the current map for offline use? About ',
   offlineDelete: '🗑 Delete offline maps',
+  offlineDeleteTitle: 'Remove the downloaded map tiles from this device — the app keeps working online',
   offlineDeleteConfirm: 'Delete the offline maps?',
   offlineCancel: '✕ Cancel — ',
   offlineCancelled: 'cancelled',
