@@ -21,6 +21,7 @@ window.S = {
   tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
   tbShowWpNames: 'הצג שמות ציוני דרך',              // מתג בקטע תצוגה
   tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
+  sliderStandardSuffix: '(תקני)',
   tbWpSize: 'גודל ציון דרך',                         // מחוון בקטע תצוגה
   tbWpSizeTitle: 'גודל ציון דרך ושמו',
   tbShowNavWp: 'הצג/נעץ ציוני ניווט',                // מתג שכבת מפה
@@ -625,8 +626,14 @@ window.S = {
   tbClearStore: '🗑 נקה אחסון מקומי',
   tbClearStoreTitle: 'מחק את כל המסלולים השמורים וההגדרות במכשיר זה',
   tbClearStoreConfirm: 'למחוק את כל המסלולים השמורים וההגדרות במכשיר זה? לא ניתן לבטל.',
-  tbTransparency: 'שקיפות תוויות',
-  tbTransparencyTitle: 'שקיפות רקע תוויות נקודות דרך',
+  tbTransparency: 'אטימות ציוני דרך',
+  tbTransparencyTitle: 'אטימות עיגולי ציוני הדרך ורקע התוויות שלהם',
+  tbLegArrowAlpha: 'אטימות חץ הקטע',
+  tbLegArrowAlphaTitle: 'אטימות המילוי של חצי הקטע/המצטבר והפתקים — במסך ובהדפסה/ייצוא באותה מידה',
+  tbLegArrowColor: 'צבע חץ הקטע',
+  tbLegArrowColorTitle: 'צבע המילוי של חצי הקטע — חל גם על הדפסה/ייצוא',
+  tbWaypointColor: 'צבע ציוני דרך',
+  tbWaypointColorTitle: 'צבע המילוי של עיגולי ציוני הדרך ורקע התוויות — חל גם על הדפסה/ייצוא',
   tbMapOpacity: 'בהירות מפה',
   tbMapOpacityTitle: 'בהירות מפת הרקע',
   tbLegArrowSize: 'גודל חץ קטע',

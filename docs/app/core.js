@@ -632,6 +632,7 @@ window.S = Object.assign({
   tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
   tbShowWpNames: 'Show waypoint names',             // Display toggle
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
+  sliderStandardSuffix: '(standard)',
   tbWpSize: 'Waypoint size',                        // Display slider label
   tbWpSizeTitle: 'Waypoint circle and name size',
   tbShowNavWp: 'Show/pin nav waypoints',            // Map overlay toggle
@@ -1230,8 +1231,14 @@ window.S = Object.assign({
   tbClearStore: '🗑 Clear local store',
   tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
   tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',
-  tbTransparency: 'Label opacity',
-  tbTransparencyTitle: 'Opacity of waypoint label backgrounds',
+  tbTransparency: 'Waypoint opacity',
+  tbTransparencyTitle: 'Opacity of the waypoint discs and their label backgrounds',
+  tbLegArrowAlpha: 'Leg arrow opacity',
+  tbLegArrowAlphaTitle: 'Fill opacity of the leg / cumulative arrows and notes — on screen and in print/export alike',
+  tbLegArrowColor: 'Leg arrow color',
+  tbLegArrowColorTitle: 'Fill color of the leg arrows — applies to print/export too',
+  tbWaypointColor: 'Waypoint color',
+  tbWaypointColorTitle: 'Fill color of the waypoint discs and their label backgrounds — applies to print/export too',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',

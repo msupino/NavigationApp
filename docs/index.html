@@ -123,7 +123,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=472">
+  <link rel="stylesheet" href="app/style.css?v=481">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -297,29 +297,48 @@
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecDisplay"></div>
       <div class="tb-section-body">
         <button id="theme-toggle" type="button" data-i18n-title="tbLightModeTitle"></button>
-        <label class="navtoggle" data-i18n-title="tbTransparencyTitle">
-          <span data-i18n="tbTransparency"></span>
-          <input type="range" id="yellow-alpha" value="50">
-          <span class="slider-val" id="yellow-alpha-val"></span>
-        </label>
+        <!-- Grouped coarse to fine, separated by rules: the base map, then the waypoint
+             controls, then the leg-arrow controls, then the line widths. Within a group
+             the order is always size, opacity, colour. -->
         <label class="navtoggle" data-i18n-title="tbMapOpacityTitle">
           <span data-i18n="tbMapOpacity"></span>
           <input type="range" id="map-opacity" value="80">
           <span class="slider-val" id="map-opacity-val"></span>
         </label>
+        <div class="tb-group-separator" aria-hidden="true"></div>
         <label class="navtoggle" data-i18n-title="tbWpSizeTitle">
           <span data-i18n="tbWpSize"></span>
           <input type="range" id="wp-size" value="1">
           <span class="slider-val" id="wp-size-val"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbTransparencyTitle">
+          <span data-i18n="tbTransparency"></span>
+          <input type="range" id="yellow-alpha" value="50">
+          <span class="slider-val" id="yellow-alpha-val"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbWaypointColorTitle">
+          <span data-i18n="tbWaypointColor"></span>
+          <input type="color" id="waypoint-color">
+        </label>
+        <div class="tb-group-separator" aria-hidden="true"></div>
         <label class="navtoggle" data-i18n-title="tbLegArrowSizeTitle">
           <span data-i18n="tbLegArrowSize"></span>
           <input type="range" id="leg-arrow-size" value="1">
           <span class="slider-val" id="leg-arrow-size-val"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbLegArrowAlphaTitle">
+          <span data-i18n="tbLegArrowAlpha"></span>
+          <input type="range" id="kite-alpha" value="50">
+          <span class="slider-val" id="kite-alpha-val"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbLegArrowColorTitle">
+          <span data-i18n="tbLegArrowColor"></span>
+          <input type="color" id="leg-arrow-color">
+        </label>
+        <div class="tb-group-separator" aria-hidden="true"></div>
         <label class="navtoggle" data-i18n-title="tbLegLineWidthTitle">
           <span data-i18n="tbLegLineWidth"></span>
-          <input type="range" id="leg-line-width" min="0.1" max="2" step="0.1" value="0.5">
+          <input type="range" id="leg-line-width" min="0.1" max="0.9" step="0.1" value="0.5">
           <span class="slider-val" id="leg-line-width-val"></span>
         </label>
         <label class="navtoggle" data-i18n-title="tbDriftLineWidthTitle">
@@ -801,7 +820,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=472';
+      var v = '?v=481';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
