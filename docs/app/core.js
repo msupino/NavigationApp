@@ -632,6 +632,7 @@ window.S = Object.assign({
   tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
   tbShowWpNames: 'Show waypoint names',             // Display toggle
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
+  sliderStandardSuffix: '(standard)',
   tbWpSize: 'Waypoint size',                        // Display slider label
   tbWpSizeTitle: 'Waypoint circle and name size',
   tbShowNavWp: 'Show/pin nav waypoints',            // Map overlay toggle

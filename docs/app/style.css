@@ -550,6 +550,12 @@ body.theme-light .print-clip-warn { color: #7a4a00; background: rgba(196, 127, 2
   min-width: 0;
 }
 #toolbar .slider-val { min-width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; white-space: nowrap; }
+/* The two symbol-size readouts append "(standard)" at selector 1, which is wider than
+   the 3em the numeric readouts need. Let them size to content so the suffix is not
+   clipped; the menu is content-sized, so the row simply gets a little wider. */
+#toolbar #wp-size-val,
+#toolbar #leg-arrow-size-val { min-width: max-content; }
+
 /* Look-ahead time readouts vary in length as the slider moves ("now" →
    "+72h · 12-31 12:00Z"); a fixed width keeps the row — and the whole
    content-sized dropdown menu — from growing and jumping mid-drag. Sized to

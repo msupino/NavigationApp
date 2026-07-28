@@ -284,3 +284,28 @@ test('waypoint size does not move or resize the cumulative arrow', async ({ page
   expect(r.bigArrow.scale).toBeGreaterThan(r.base.scale);
   expect(r.bigArrow.offset).toBeGreaterThan(r.base.offset);
 });
+
+test('the standard marker is visible and not clipped', async ({ page }) => {
+  await boot(page);
+  await showToolbarControl(page, '#leg-arrow-size');
+  const r = await page.evaluate(() => {
+    const read = id => {
+      const el = document.getElementById(id + '-val');
+      return { text: el.textContent, clipped: el.scrollWidth > el.clientWidth + 1 };
+    };
+    const before = { wp: read('wp-size'), leg: read('leg-arrow-size') };
+    // move off the standard, then back
+    const el = document.getElementById('leg-arrow-size');
+    el.value = '0.6'; el.dispatchEvent(new Event('input', { bubbles: true }));
+    const off = read('leg-arrow-size');
+    el.value = '1'; el.dispatchEvent(new Event('input', { bubbles: true }));
+    return { before, off, back: read('leg-arrow-size') };
+  });
+  expect(r.before.wp.text).toMatch(/standard/);
+  expect(r.before.leg.text).toMatch(/standard/);
+  expect(r.before.leg.clipped).toBe(false);      // the suffix must actually be readable
+  expect(r.off.text).toBe('0.60');               // silent when off-standard? no — plain number
+  expect(r.off.text).not.toMatch(/standard/);
+  expect(r.back.text).toMatch(/standard/);
+  expect(r.back.clipped).toBe(false);
+});

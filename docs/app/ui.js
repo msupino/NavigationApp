@@ -4655,13 +4655,24 @@ try {
   const v = parseFloat(localStorage.getItem(WPSIZE_KEY));
   if (!isNaN(v)) window.wpSize =Math.max(WP_SIZE_MIN, Math.min(WP_SIZE_MAX, v));
 } catch (e) { /* storage unavailable */ }
+// Symbol-size readout. Selector 1 IS the printed standard -- the fixed physical sizes
+// (7mm waypoint disc, 18.5mm leg arrow, 9.5mm cum arrow, 21x14mm note) are pinned at
+// selector 1 and everything else multiplies them. The slider can now go below 1 as well
+// as above, so say so when it sits on the standard: departing from it should be visible,
+// not silent, because it changes what comes out of the printer.
+function sizeSliderVal(v) {
+  const n = parseFloat(v);
+  const txt = n.toFixed(2);
+  return Math.abs(n - 1) < 1e-9 ? txt + ' ' + (S.sliderStandardSuffix || '(standard)') : txt;
+}
+
 const WP_EL = document.getElementById('wp-size');
 WP_EL.min = String(WP_SIZE_MIN); WP_EL.max = String(WP_SIZE_MAX); WP_EL.step = String(WP_SIZE_STEP);
 WP_EL.value = wpSize;
-updateSliderVal(WP_EL, parseFloat(wpSize).toFixed(2));
+updateSliderVal(WP_EL, sizeSliderVal(wpSize));
 WP_EL.oninput = e => {
   window.wpSize =parseFloat(e.target.value);
-  updateSliderVal(e.target, parseFloat(e.target.value).toFixed(2));
+  updateSliderVal(e.target, sizeSliderVal(e.target.value));
   try { localStorage.setItem(WPSIZE_KEY, String(wpSize)); }
   catch (err) { /* storage unavailable */ }
   draw();
@@ -4679,10 +4690,10 @@ try {
 const LEGARROW_EL = document.getElementById('leg-arrow-size');
 LEGARROW_EL.min = String(LEGARROW_MIN); LEGARROW_EL.max = String(LEGARROW_MAX); LEGARROW_EL.step = String(LEGARROW_STEP);
 LEGARROW_EL.value = legArrowSize;
-updateSliderVal(LEGARROW_EL, parseFloat(legArrowSize).toFixed(2));
+updateSliderVal(LEGARROW_EL, sizeSliderVal(legArrowSize));
 LEGARROW_EL.oninput = e => {
   window.legArrowSize =parseFloat(e.target.value);
-  updateSliderVal(e.target, parseFloat(e.target.value).toFixed(2));
+  updateSliderVal(e.target, sizeSliderVal(e.target.value));
   try { localStorage.setItem(LEGARROW_KEY, String(legArrowSize)); }
   catch (err) { /* storage unavailable */ }
   draw();

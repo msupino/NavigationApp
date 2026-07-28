@@ -228,13 +228,24 @@ test.describe('Sliders persist to localStorage', () => {
     expect(await page.evaluate(() => tune('kiteNoteAlpha'))).toBeCloseTo(0.45, 5);
   });
 
-  test('decimal sliders show toFixed(2) in value display', async ({ page }) => {
+  test('decimal sliders show toFixed(2), and mark selector 1 as the standard', async ({ page }) => {
     await boot(page);
     const wv = page.locator('#wp-size-val');
-    expect(await wv.textContent()).toMatch(/^\d+\.\d{2}$/);
+    // Selector 1 is the size the print spec pins (7mm disc, 18.5mm arrow, ...), and the
+    // slider can now go either side of it — so sitting on the standard says so.
+    expect(await wv.textContent()).toBe('1.00 (standard)');
     await page.locator('#wp-size').fill('0.5');
     await page.locator('#wp-size').dispatchEvent('input');
     expect(await wv.textContent()).toBe('0.50');
+    await page.locator('#wp-size').fill('1');
+    await page.locator('#wp-size').dispatchEvent('input');
+    expect(await wv.textContent()).toBe('1.00 (standard)');
+    // same treatment for the leg-arrow size selector
+    const lv = page.locator('#leg-arrow-size-val');
+    expect(await lv.textContent()).toBe('1.00 (standard)');
+    await page.locator('#leg-arrow-size').fill('1.4');
+    await page.locator('#leg-arrow-size').dispatchEvent('input');
+    expect(await lv.textContent()).toBe('1.40');
   });
 });
 

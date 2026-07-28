@@ -21,6 +21,7 @@ window.S = {
   tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
   tbShowWpNames: 'הצג שמות ציוני דרך',              // מתג בקטע תצוגה
   tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
+  sliderStandardSuffix: '(תקני)',
   tbWpSize: 'גודל ציון דרך',                         // מחוון בקטע תצוגה
   tbWpSizeTitle: 'גודל ציון דרך ושמו',
   tbShowNavWp: 'הצג/נעץ ציוני ניווט',                // מתג שכבת מפה
