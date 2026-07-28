@@ -121,3 +121,46 @@ test('an empty route still reports a fit', async ({ page }) => {
   expect(r.fit.fits).toBe(true);
   expect(r.rects).toBe(0);
 });
+
+test('the message names what is clipped: labels, not the route', async ({ page }) => {
+  // The route plainly inside the frame plus a warning saying "the route runs past the
+  // page" reads as a warning that failed to clear. Say it is a label.
+  await boot(page);
+  await twoLegRoute(page);
+  await clipTheInkOnly(page);
+  const r = await page.evaluate(() => {
+    const frame = pageFrameRect();
+    return { routeInside: state.waypoints.every(w => { const p = proj(w);
+        return p.x >= frame.x && p.x <= frame.x + frame.w &&
+               p.y >= frame.y && p.y <= frame.y + frame.h; }),
+      text: document.getElementById('print-clip-warn').textContent };
+  });
+  expect(r.routeInside).toBe(true);
+  expect(r.text).toMatch(/label or marker/);
+  expect(r.text).not.toMatch(/The route runs past/);
+});
+
+test('a genuine route overrun still blames the route', async ({ page }) => {
+  await boot(page);
+  await twoLegRoute(page);
+  const r = await page.evaluate(() => {
+    // shove the frame right off the route
+    pageOffset = { x: 600, y: 0 };
+    draw();
+    return { fits: routePageFit().fits, text: document.getElementById('print-clip-warn').textContent };
+  });
+  expect(r.fits).toBe(false);
+  expect(r.text).toMatch(/route runs past the page/);
+});
+
+test('a route too long for any page keeps its own message', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [{ lat: 31.23, lng: 34.79, name: 'LLBS' }, { lat: 32.99, lng: 35.57, name: 'LLIB' }];
+    state.legs = []; syncLegs(); fitView(); setPage('A4'); draw();
+    return { text: document.getElementById('print-clip-warn').textContent,
+      fitBtn: !document.getElementById('print-fit').hidden };
+  });
+  expect(r.text).toMatch(/No page size/);
+  expect(r.fitBtn).toBe(false);
+});

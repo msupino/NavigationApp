@@ -1255,6 +1255,7 @@ window.S = Object.assign({
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
   modalCloseTitle: 'Close',
   printClipWarn: '⚠ The route runs past the page — printing would cut it off.',
+  printClipWarnLabels: '⚠ The route fits, but a label or marker hangs past the page — drag it inside, or fit the page.',
   printFitPage: '⤢ Fit page to route',
   printFitPageTitle: 'Pick the smallest page size and orientation that holds the whole route, and centre it',
   printNoFit: '⚠ No page size holds this route — split it or print more than one page.',
