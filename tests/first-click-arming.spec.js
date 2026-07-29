@@ -86,3 +86,67 @@ test('once a route exists, a plain click still never adds', async ({ page }) => 
   await page.waitForTimeout(80);
   expect(await page.evaluate(() => state.waypoints.length)).toBe(2);
 });
+
+// --- chart points: inspect vs prime -------------------------------------------------
+// Reported after the arming gate landed: "I can't inspect a waypoint/airport without
+// adding it to a route". Two conditions had drifted apart — the arm was gated on the hint
+// while the hit filter still dropped chart points for ANY empty route, so a returning user
+// clicking an airfield on an empty map got neither an inspector nor a waypoint.
+
+const airfieldClick = (page) => page.evaluate(async () => {
+  await loadAirfields();
+  const af = airfields.find(a => /LLHZ/.test(a.icao || a.name || '')) || airfields[0];
+  map.setView([af.lat, af.lng], 12, { animate: false });
+  showAirfields = true; draw();
+  const p = map.latLngToContainerPoint(af);
+  map.fire('mousedown', { latlng: L.latLng(af.lat, af.lng), containerPoint: p,
+    originalEvent: new MouseEvent('mousedown') });
+  map.fire('click', { latlng: L.latLng(af.lat, af.lng), containerPoint: p,
+    originalEvent: new MouseEvent('click') });
+  await new Promise(r => setTimeout(r, 120));
+  return { wps: state.waypoints.length, mode: state.mode,
+    selType: state.selected && state.selected.type,
+    inspector: !document.getElementById('inspector').classList.contains('hidden'),
+    title: (document.getElementById('insp-title') || {}).value || null };
+});
+
+test('a returning user can inspect an airfield on an empty map', async ({ page }) => {
+  await returning(page);
+  const r = await airfieldClick(page);
+  expect(r.inspector).toBe(true);          // the report: this was false
+  expect(r.selType).toBe('airfield');
+  expect(r.title).toMatch(/LLHZ/);
+  expect(r.wps).toBe(0);                   // and nothing was added to a route
+  expect(r.mode).toBeNull();
+});
+
+test('a new user clicking an airfield starts the route with it', async ({ page }) => {
+  // While the hint is up the map is primed: clicking the named points you want to route
+  // between is the obvious first gesture, so a chart point adds rather than inspects.
+  await fresh(page);
+  await expect(page.locator('#empty-route-hint')).toBeVisible();
+  const r = await airfieldClick(page);
+  expect(r.wps).toBe(1);
+  expect(r.mode).toBe('add');
+  expect(r.selType).toBe('wp');
+});
+
+test('in add mode an airfield still joins the route', async ({ page }) => {
+  await returning(page);
+  await page.evaluate(() => setMode('add'));
+  const r = await airfieldClick(page);
+  expect(r.wps).toBe(1);
+  expect(r.selType).toBe('wp');
+});
+
+test('with a route, an airfield inspects rather than joining', async ({ page }) => {
+  await returning(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.6, lng: 35.1, name: 'X' }, { lat: 32.7, lng: 35.2, name: 'Y' }];
+    state.legs = []; syncLegs(); setMode(null); draw();
+  });
+  const r = await airfieldClick(page);
+  expect(r.wps).toBe(2);                   // unchanged
+  expect(r.selType).toBe('airfield');
+  expect(r.inspector).toBe(true);
+});

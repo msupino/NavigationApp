@@ -3303,6 +3303,17 @@ const MULTI_TOUCH_GRACE_MS = 700;
 })();
 function touchGestureInProgress() { return Date.now() < _multiTouchUntil; }
 
+// Is the map primed to start a route? True only while the one-time empty-route hint is on
+// screen with no route yet: that is the window in which a press on a chart point should
+// fall through to the add path instead of opening its inspector, and in which a plain
+// click arms add mode. Gating both on the same predicate keeps them from disagreeing --
+// when only the arm was gated, a returning user clicking an airfield on an empty map got
+// neither behaviour: no waypoint AND no inspector.
+function routePrimingArmed() {
+  if (state.waypoints && state.waypoints.length) return false;
+  return !!document.getElementById('empty-route-hint');
+}
+
 map.on('mousedown', e => {
   if (touchGestureInProgress()) return;
   pendingOverlayAction = null;
@@ -3322,12 +3333,13 @@ map.on('mousedown', e => {
     return !(wi >= 0 && wpHitSet.has(wi));
   });
   let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
-  // Empty route, no mode: the map is primed to start one, so a press on a CHART POINT
-  // (nav waypoint / airfield marker) falls through to the add path instead of being
-  // consumed as a selection — clicking the named points you want to route between is
-  // the obvious gesture. Only `chartPoint` candidates are dropped, so comm-change
-  // rings stay in the chooser and VOR / NOTAM stay inspectable with no route.
-  const primingRoute = includeOverlayChoices && !(state.waypoints && state.waypoints.length);
+  // While the map is PRIMED (see routePrimingArmed: empty route and the hint still up), a
+  // press on a CHART POINT falls through to the add path instead of being consumed as a
+  // selection — clicking the named points you want to route between is the obvious gesture
+  // for a first route. Only `chartPoint` candidates are dropped, so comm-change rings stay
+  // in the chooser and VOR / NOTAM stay inspectable. Once the hint is gone those points are
+  // inspectable again, which is what a returning user expects from a click.
+  const primingRoute = includeOverlayChoices && routePrimingArmed();
   if (primingRoute) ovHits = ovHits.filter(h => !h.chartPoint);
   // NOTAM areas / lines / badges are clickable too — include them as overlay
   // choices so an overlap surfaces the multi-selector. Waypoints stay higher
@@ -3578,8 +3590,7 @@ map.on('click', e => {
   // something, and got an unwanted point plus add mode armed. The affordance now lives
   // exactly as long as the instruction that explains it; afterwards, add mode is entered
   // deliberately (Edit menu, or the A key) and a plain click does nothing, as before.
-  const hintOnScreen = !!document.getElementById('empty-route-hint');
-  if (!state.mode && hintOnScreen && (!state.waypoints || !state.waypoints.length)) {
+  if (!state.mode && routePrimingArmed()) {
     if (typeof setMode === 'function') setMode('add');
   }
   if (state.mode === 'add') {
@@ -3816,12 +3827,13 @@ mapEl.addEventListener('touchstart', e => {
     return !(wi >= 0 && wpHitSet.has(wi));
   });
   let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
-  // Empty route, no mode: the map is primed to start one, so a press on a CHART POINT
-  // (nav waypoint / airfield marker) falls through to the add path instead of being
-  // consumed as a selection — clicking the named points you want to route between is
-  // the obvious gesture. Only `chartPoint` candidates are dropped, so comm-change
-  // rings stay in the chooser and VOR / NOTAM stay inspectable with no route.
-  const primingRoute = includeOverlayChoices && !(state.waypoints && state.waypoints.length);
+  // While the map is PRIMED (see routePrimingArmed: empty route and the hint still up), a
+  // press on a CHART POINT falls through to the add path instead of being consumed as a
+  // selection — clicking the named points you want to route between is the obvious gesture
+  // for a first route. Only `chartPoint` candidates are dropped, so comm-change rings stay
+  // in the chooser and VOR / NOTAM stay inspectable. Once the hint is gone those points are
+  // inspectable again, which is what a returning user expects from a click.
+  const primingRoute = includeOverlayChoices && routePrimingArmed();
   if (primingRoute) ovHits = ovHits.filter(h => !h.chartPoint);
   // NOTAM areas/lines/badges as overlay choices (see the mousedown handler).
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
