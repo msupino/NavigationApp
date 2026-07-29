@@ -4291,9 +4291,15 @@ async function flyRoute() {
       pad + '  <altitudeMode>absolute</altitudeMode>\n' +
       pad + '</Camera>\n';
     const camera = (i, pad, hdg = inboundHeading(i)) => cameraAt(wps[i], altM(i), hdg, pad);
+    // Every duration goes through here, so scaling once covers legs, turns and the
+    // opening fly-to alike. kmlTourMinSegSec is an absolute floor — Earth stutters
+    // on sub-tenth-second moves, which 4x speed on a dense route would produce.
+    const tourScale = 1 / geTourSpeed();
     const flyToCamera = (pos, alt, hdg, dur, mode) =>
       '    <gx:FlyTo>\n' +
-      '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
+      '      <gx:duration>' +
+      Math.max(_kmlTourMinSegSec(), dur * tourScale).toFixed(2) +
+      '</gx:duration>\n' +
       '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
       cameraAt(pos, alt, hdg, '      ') +
       '    </gx:FlyTo>\n';
@@ -4316,7 +4322,8 @@ async function flyRoute() {
       const to = wps[i + 1];
       const { dist } = geo(from, to);
       const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
-      const legDur = Math.max(4, Math.min(45, durH * 60 * 4));
+      const legDur = Math.max(_kmlTourLegMinSec(),
+        Math.min(_kmlTourLegMaxSec(), durH * 60 * _kmlTourSecPerFlightMin()));
       const legHdg = outboundHeading(i);
       const hasTurn = i < wps.length - 2 && dist > 0;
       const turnStartF = hasTurn ? Math.max(0, 1 - turnBufferNm(i + 1) / dist) : 1;
@@ -4401,6 +4408,24 @@ async function flyRoute() {
   title.className = 'modal-title';
   title.textContent = S.chooseGeMode;
   addModalCloseX(box, () => { document.removeEventListener('keydown', onEsc); back.remove(); });
+  // Playback speed lives in the dialog rather than the toolbar: it only means
+  // anything at export time, and the pick is remembered for the next export.
+  const speedRow = document.createElement('label');
+  speedRow.className = 'modal-row';
+  speedRow.id = 'ge-tour-speed-row';
+  const speedLabel = document.createElement('span');
+  speedLabel.textContent = S.geTourSpeed;
+  const speedSel = document.createElement('select');
+  speedSel.id = 'ge-tour-speed';
+  for (const m of GE_TOUR_SPEEDS) {
+    const o = document.createElement('option');
+    o.value = String(m);
+    o.textContent = S.geTourSpeedOpt(m);
+    speedSel.appendChild(o);
+  }
+  speedSel.value = String(geTourSpeed());
+  speedSel.onchange = () => { speedSel.value = String(setGeTourSpeed(speedSel.value)); };
+  speedRow.append(speedLabel, speedSel);
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
@@ -4416,7 +4441,7 @@ async function flyRoute() {
   cancel.className = 'modal-cancel';
   cancel.onclick = close;
   btns.appendChild(cancel);
-  box.append(title, btns);
+  box.append(title, speedRow, btns);
   back.appendChild(box);
   back.onclick = e => { if (e.target === back) close(); };
   document.body.appendChild(back);

@@ -346,6 +346,8 @@ window.S = {
   chooseGeMode: 'פתח ב-',
   geModeApp: 'Google Earth Pro (KML)',
   geModeWeb: 'Google Earth Web',
+  geTourSpeed: 'מהירות הסיור',
+  geTourSpeedOpt: function(m) { return m === 1 ? '1x (רגיל)' : m + 'x'; },
   legTitle: function(n) { return 'קטע ' + n; },
   legArrow: '←',
 
