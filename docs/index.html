@@ -30,9 +30,12 @@
   <meta name="twitter:description" content="CVFR Israel map navigation aid for pilots. Plan routes on the Israeli aeronautical chart with waypoints, headings, distances, times and flight-plan tools.">
   <meta name="twitter:image" content="https://navaid.supino.org/assets/og-preview.jpg">
   <link rel="canonical" href="https://navaid.supino.org/">
-  <link rel="alternate" hreflang="he" href="https://navaid.supino.org/?lang=he">
-  <link rel="alternate" hreflang="en" href="https://navaid.supino.org/?lang=en">
-  <link rel="alternate" hreflang="x-default" href="https://navaid.supino.org/">
+  <!-- No hreflang alternates. ?lang=he / ?lang=en are not separate documents: the same
+       HTML is served either way and the language is applied client-side, so the variants
+       could not be self-canonical the way hreflang requires. Advertising them made Google
+       crawl each one, find canonical="/" and file it under "Alternate page with proper
+       canonical tag" — a report about pages that never existed as pages. The in-app
+       switcher and the persisted choice are unaffected. -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
