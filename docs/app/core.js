@@ -249,6 +249,14 @@ NavAid.tuningDefaults = {
     label: 'Max leg-label zoom scale (x)' },
   unknownProfileAltFt: { value: 2000, min: 500, max: 15000, step: 100,
     label: 'Height the profile draws a leg with no altitude at (ft)' },
+  kmlTourSecPerFlightMin: { value: 4, min: 0.5, max: 30, step: 0.5,
+    label: 'Google Earth tour: seconds per minute of flight' },
+  kmlTourLegMinSec: { value: 4, min: 0.5, max: 120, step: 0.5,
+    label: 'Google Earth tour: shortest leg (s)' },
+  kmlTourLegMaxSec: { value: 45, min: 2, max: 600, step: 1,
+    label: 'Google Earth tour: longest leg (s)' },
+  kmlTourMinSegSec: { value: 0.2, min: 0.05, max: 3, step: 0.05,
+    label: 'Google Earth tour: shortest camera move (s)' },
   defaultViewZoom: { value: 11, min: 8, max: 14, step: 0.5, label: 'First-run map zoom' },
   touchRotateGesture: { value: 0, min: 0, max: 1, step: 1, label: 'Two-finger rotate gesture (0/1)' },
   defaultViewLat: { value: 32.1, min: 29, max: 34, step: 0.05, label: 'First-run map centre latitude' },
@@ -499,6 +507,7 @@ NavAid.tuningGroups = [
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm', 'a4x2MarkLabelBgColor', 'a4x2MarkLabelInkColor'] },
   { name: 'Route defaults', keys: ['defaultLegSpeedKt', 'unknownProfileAltFt', 'legLabelMaxScale'] },
+  { name: 'Google Earth tour', keys: ['kmlTourSecPerFlightMin', 'kmlTourLegMinSec', 'kmlTourLegMaxSec', 'kmlTourMinSegSec'] },
   { name: 'First-run view', keys: ['defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Gestures', keys: ['touchRotateGesture'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
@@ -949,6 +958,8 @@ window.S = Object.assign({
   chooseGeMode: 'Open in',
   geModeApp: 'Google Earth Pro (KML)',
   geModeWeb: 'Google Earth Web',
+  geTourSpeed: 'Tour speed',
+  geTourSpeedOpt: function(m) { return m === 1 ? '1x (normal)' : m + 'x'; },
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
@@ -1592,6 +1603,38 @@ const _unknownProfileAltFt = () => {
   const v = (typeof tune === 'function') ? Number(tune('unknownProfileAltFt')) : NaN;
   return Number.isFinite(v) && v > 0 ? v : 2000;
 };
+
+// Google Earth tour pacing. The exported KML carries fixed <gx:duration> values —
+// Earth has no playback-speed control — so the whole pace is decided here at export
+// time. The base pace is "seconds of tour per minute of flight" (4 => ~15x real
+// time) with per-leg clamps; the user's speed multiplier then scales every duration
+// uniformly, so a leg's share of the tour stays proportional at any speed.
+const _tuneNum = (key, fallback) => {
+  const v = (typeof tune === 'function') ? Number(tune(key)) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+};
+const _kmlTourSecPerFlightMin = () => _tuneNum('kmlTourSecPerFlightMin', 4);
+const _kmlTourLegMinSec = () => _tuneNum('kmlTourLegMinSec', 4);
+const _kmlTourLegMaxSec = () => _tuneNum('kmlTourLegMaxSec', 45);
+const _kmlTourMinSegSec = () => _tuneNum('kmlTourMinSegSec', 0.2);
+
+// Playback speed multiplier picked in the Google Earth dialog. Higher = faster
+// flight, i.e. shorter durations, hence the reciprocal at the call site.
+const GE_TOUR_SPEED_KEY = 'navaid.geTourSpeed';
+const GE_TOUR_SPEEDS = [0.5, 1, 2, 4];
+function geTourSpeed() {
+  let v = NaN;
+  try { v = Number(localStorage.getItem(GE_TOUR_SPEED_KEY)); } catch (e) { /* storage off */ }
+  return GE_TOUR_SPEEDS.indexOf(v) !== -1 ? v : 1;
+}
+function setGeTourSpeed(multiplier) {
+  const v = GE_TOUR_SPEEDS.indexOf(Number(multiplier)) !== -1 ? Number(multiplier) : 1;
+  try {
+    if (v === 1) localStorage.removeItem(GE_TOUR_SPEED_KEY);
+    else localStorage.setItem(GE_TOUR_SPEED_KEY, String(v));
+  } catch (e) { /* storage off */ }
+  return v;
+}
 
 const _defaultLegSpeedKt = () => {
   const v = (typeof tune === 'function') ? Number(tune('defaultLegSpeedKt')) : NaN;

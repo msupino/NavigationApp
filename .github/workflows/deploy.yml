@@ -324,7 +324,13 @@ jobs:
     # npm ci + Playwright install while Pages updates, then waits on URL/SHA.
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The suite outgrew the old 15 min: the last run under it took 13.9 min for
+    # 1364 tests and the next PR's 17 new tests pushed it past the cap, where the
+    # SIGINT surfaced as four bogus wind.spec failures (tests killed mid-flight,
+    # green locally and in the previous run) — a timeout that looked like a
+    # regression. This job also runs 4 workers to CI's 100%, so it needs the
+    # larger budget of the two, not the smaller.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
