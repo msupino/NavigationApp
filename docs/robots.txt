@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
+# Preview deployments serve the same HTML as production, canonical included, so every one
+# Google finds is reported as "Alternate page with proper canonical tag" and eats crawl
+# budget on builds that disappear. The canonical already keeps them out of the index; this
+# keeps them out of the crawl. Paths match the GA exclusion in index.html.
+Disallow: /staging/
+Disallow: /pr/
+Disallow: /branch/
 
 Sitemap: https://navaid.supino.org/sitemap.xml

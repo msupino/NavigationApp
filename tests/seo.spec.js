@@ -1,5 +1,5 @@
 // @ts-check
-// Verifies SEO-critical URLs — canonical, hreflang, Open Graph, JSON-LD,
+// Verifies SEO-critical URLs — canonical, Open Graph, JSON-LD,
 // sitemap, and robots.txt — all point to navaid.supino.org (the custom
 // domain), not msupino.github.io/NavigationApp/ (which 302-redirects).
 //
@@ -78,19 +78,15 @@ test.describe('SEO URLs', () => {
     expect(resp.headers()['content-type']).toContain('image/png');
   });
 
-  test('canonical and hreflang use custom domain', async ({ page }) => {
+  test('canonical uses the custom domain, with no hreflang alternates', async ({ page }) => {
     await page.goto('.');
     const canonical = page.locator('link[rel="canonical"]');
     await expect(canonical).toHaveAttribute('href', CUSTOM_DOMAIN + '/');
-
-    const hreflangHe = page.locator('link[hreflang="he"]');
-    await expect(hreflangHe).toHaveAttribute('href', CUSTOM_DOMAIN + '/?lang=he');
-
-    const hreflangEn = page.locator('link[hreflang="en"]');
-    await expect(hreflangEn).toHaveAttribute('href', CUSTOM_DOMAIN + '/?lang=en');
-
-    const hreflangDefault = page.locator('link[hreflang="x-default"]');
-    await expect(hreflangDefault).toHaveAttribute('href', CUSTOM_DOMAIN + '/');
+    // The ?lang= alternates are gone on purpose. They are not separate documents — the
+    // same HTML is served either way, language applied client-side — so they could not be
+    // self-canonical as hreflang requires, and Search Console reported every one as
+    // "Alternate page with proper canonical tag".
+    await expect(page.locator('link[rel="alternate"][hreflang]')).toHaveCount(0);
   });
 
   test('Open Graph tags use custom domain', async ({ page }) => {
@@ -146,11 +142,12 @@ test.describe('SEO URLs', () => {
       expect(href).toContain(CUSTOM_DOMAIN);
       expect(href).not.toContain('msupino.github.io');
     }
-    expect(text).toContain('hreflang="he"');
-    expect(text).toContain(CUSTOM_DOMAIN + '/?lang=he');
-    // Single canonical URL with hreflang alternates (no ?lang= or locale-path
-    // duplicates that redirect).
-    expect(locs.length).toBe(1);
+    // No hreflang alternates and no ?lang= URLs: those are not separate pages (see the
+    // canonical test above). What IS listed is the app plus the three legal/about pages,
+    // each of which declares itself canonical.
+    expect(text).not.toContain('hreflang=');
+    expect(text).not.toContain('?lang=');
+    expect(locs.length).toBe(4);
   });
 
   test('no msupino.github.io URLs in SEO tags', async ({ page }) => {

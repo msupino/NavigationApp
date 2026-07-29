@@ -1,12 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+<!-- One entry per real document. The language variants are NOT separate pages: the same
+     HTML is served either way and the language is applied in the browser, so listing them
+     as translation alternates had Google crawl each one, find the canonical pointing back
+     here, and report it as an alternate page. Every URL below declares itself canonical.
+     (Deliberately free of the query-parameter and alternate-link literals, so the SEO
+     tests can assert their absence on the whole file.) -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://navaid.supino.org/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://navaid.supino.org/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="he" href="https://navaid.supino.org/?lang=he"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://navaid.supino.org/"/>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://navaid.supino.org/about.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://navaid.supino.org/privacy.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://navaid.supino.org/terms.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>
