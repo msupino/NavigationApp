@@ -2282,6 +2282,25 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { right: auto;
   user-select: none;
 }
 .modal-title:active { cursor: grabbing; }
+.modal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #e8e8e8;
+}
+.modal-row select {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #201d1d;
+  border: 1px solid #3a3636;
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-height: 32px;
+}
 .modal-btns {
   display: flex;
   gap: 8px;
@@ -3924,6 +3943,7 @@ body.theme-light .row input[type="number"],
 body.theme-light .row input[type="text"],
 body.theme-light .row select,
 body.theme-light .row textarea,
+body.theme-light .modal-row select,
 body.theme-light .fp-aircraft select,
 body.theme-light .fp-aircraft input,
 body.theme-light .fp-columns summary,
@@ -4009,6 +4029,7 @@ body.theme-light .flight-table th {
 body.theme-light #insp-title,
 body.theme-light #mag-settings-title,
 body.theme-light .modal-title,
+body.theme-light .modal-row,
 body.theme-light .flight-plan-sub,
 body.theme-light #toolbar .navtoggle,
 body.theme-light #mag-settings-body .navtoggle,
