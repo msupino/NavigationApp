@@ -3571,12 +3571,15 @@ map.on('click', e => {
   }
   if (downHit) { downHit = false; return; }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.
-  // First click on an EMPTY route ARMS add mode, then falls through to the normal add
-  // path below. Clicking the map is the first thing anyone tries and it did nothing
-  // (add-mode lives two levels into a menu). Arming it — rather than dropping a single
-  // point — means the next click keeps adding, chart waypoints snap exactly as they do
-  // in add mode, and the mode chip states what is happening and how to stop.
-  if (!state.mode && (!state.waypoints || !state.waypoints.length)) {
+  // First click on an empty route ARMS add mode -- but only while the one-time hint is
+  // actually on screen telling the user to do it. Keying this off "route is empty" alone
+  // meant every returning user got a waypoint dropped whenever they clicked open map with
+  // no route loaded: they had already learned the app, cleared the map, clicked to look at
+  // something, and got an unwanted point plus add mode armed. The affordance now lives
+  // exactly as long as the instruction that explains it; afterwards, add mode is entered
+  // deliberately (Edit menu, or the A key) and a plain click does nothing, as before.
+  const hintOnScreen = !!document.getElementById('empty-route-hint');
+  if (!state.mode && hintOnScreen && (!state.waypoints || !state.waypoints.length)) {
     if (typeof setMode === 'function') setMode('add');
   }
   if (state.mode === 'add') {
