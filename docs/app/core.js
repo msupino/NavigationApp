@@ -1627,8 +1627,8 @@ function geTourSpeed() {
   try { v = Number(localStorage.getItem(GE_TOUR_SPEED_KEY)); } catch (e) { /* storage off */ }
   return GE_TOUR_SPEEDS.indexOf(v) !== -1 ? v : 1;
 }
-function setGeTourSpeed(mult) {
-  const v = GE_TOUR_SPEEDS.indexOf(Number(mult)) !== -1 ? Number(mult) : 1;
+function setGeTourSpeed(multiplier) {
+  const v = GE_TOUR_SPEEDS.indexOf(Number(multiplier)) !== -1 ? Number(multiplier) : 1;
   try {
     if (v === 1) localStorage.removeItem(GE_TOUR_SPEED_KEY);
     else localStorage.setItem(GE_TOUR_SPEED_KEY, String(v));
