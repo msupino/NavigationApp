@@ -20,10 +20,24 @@ async function boot(page) {
   await page.waitForFunction(() => typeof state !== 'undefined' && window.airfields && window.navWP);
 }
 
+// Desktop now keeps the search docked on screen permanently (see
+// docked-search.spec.js); the hide-on-close behaviour these cases cover is the
+// mobile overlay's, so they run at phone width.
+async function bootMobile(page) {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await boot(page);
+}
+
 test.describe('Floating search overlay (#194)', () => {
-  test('Overlay is hidden by default', async ({ page }) => {
-    await boot(page);
+  test('Overlay is hidden by default on mobile', async ({ page }) => {
+    await bootMobile(page);
     await expect(page.locator('#search-overlay')).toHaveClass(/hidden/);
+  });
+
+  test('Overlay is docked, not hidden, on desktop', async ({ page }) => {
+    await boot(page);
+    await expect(page.locator('#search-overlay')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#search-overlay')).toHaveClass(/docked/);
   });
 
   test('Toolbar 🔍 Find button opens the overlay and focuses the input', async ({ page }) => {
@@ -47,8 +61,8 @@ test.describe('Floating search overlay (#194)', () => {
   });
 
   test('Escape closes the overlay and clears the input', async ({ page }) => {
-    await boot(page);
-    await page.locator('#search-trigger').click();
+    await bootMobile(page);
+    await page.evaluate(() => showSearchOverlay());
     await page.locator('#wp-search').fill('LLBG');
     await page.keyboard.press('Escape');
     await expect(page.locator('#search-overlay')).toHaveClass(/hidden/);
@@ -56,8 +70,8 @@ test.describe('Floating search overlay (#194)', () => {
   });
 
   test('✕ close button hides the overlay', async ({ page }) => {
-    await boot(page);
-    await page.locator('#search-trigger').click();
+    await bootMobile(page);
+    await page.evaluate(() => showSearchOverlay());
     await page.locator('#search-close').click();
     await expect(page.locator('#search-overlay')).toHaveClass(/hidden/);
   });

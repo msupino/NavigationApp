@@ -404,7 +404,7 @@ setInterval(refreshZuluClock, 1000);
     box.style.transform = 'none';   // cancel the desktop below-the-bar offset
   }
   try {
-    const p = JSON.parse(localStorage.getItem(KEY) || 'null');
+    const p = JSON.parse(localStorage.getItem(navLangPosKey(KEY)) || 'null');
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
   } catch (e) { /* storage unavailable */ }
   function start(cx, cy) {
@@ -417,7 +417,7 @@ setInterval(refreshZuluClock, 1000);
     const end = () => {
       box.classList.remove('dragging');
       const r2 = box.getBoundingClientRect();
-      try { localStorage.setItem(KEY, JSON.stringify({ x: r2.left, y: r2.top })); }
+      try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify({ x: r2.left, y: r2.top })); }
       catch (e) { /* storage unavailable */ }
       document.removeEventListener('mousemove', mm);
       document.removeEventListener('mouseup', end);
@@ -462,19 +462,27 @@ legendCtrl.addTo(map);
   // number ended up the invisible one. Only pushes DOWN, and only while the card
   // actually overlaps the bar horizontally, so the rest of the map stays fair game.
   function clearOfToolbar(x, y) {
-    const tb = document.getElementById('toolbar');
-    if (!tb) return y;
-    const t = tb.getBoundingClientRect();
-    if (!t.height) return y;                       // hidden (print, mobile modal)
     const w = box.offsetWidth, h = box.offsetHeight;
-    const horizontallyClear = x + w < t.left || x > t.right;
-    // Leave the position alone unless the card would actually SIT ON the bar: clear to
-    // its side, fully above it, or fully below it are all fine. Testing only "above"
-    // pinned every card below the bar to bottom+6 -- it could be dragged up but never
-    // back down again.
-    const verticallyClear = y + h < t.top || y > t.bottom;
-    if (horizontallyClear || verticallyClear) return y;
-    return t.bottom + 6;
+    // The docked search sits directly under the bar, i.e. exactly where a card
+    // pushed clear of the bar lands — and it paints above the legend, so the card
+    // ended up unreachable there. Both count as chrome to be pushed past, lowest
+    // obstacle last so a stack of them resolves in one pass.
+    const chrome = ['toolbar', 'search-overlay']
+      .map(id => document.getElementById(id))
+      .filter(el => el && !el.classList.contains('hidden'))
+      .map(el => el.getBoundingClientRect())
+      .filter(r => r.height)                       // hidden (print, mobile modal)
+      .sort((a, b) => a.bottom - b.bottom);
+    for (const t of chrome) {
+      const horizontallyClear = x + w < t.left || x > t.right;
+      // Leave the position alone unless the card would actually SIT ON the bar: clear to
+      // its side, fully above it, or fully below it are all fine. Testing only "above"
+      // pinned every card below the bar to bottom+6 -- it could be dragged up but never
+      // back down again.
+      const verticallyClear = y + h < t.top || y > t.bottom;
+      if (!horizontallyClear && !verticallyClear) y = t.bottom + 6;
+    }
+    return y;
   }
   function applyPos(x, y) {
     const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
@@ -488,7 +496,7 @@ legendCtrl.addTo(map);
     box.style.margin = '0';
   }
   try {
-    const p = JSON.parse(localStorage.getItem(KEY) || 'null');
+    const p = JSON.parse(localStorage.getItem(navLangPosKey(KEY)) || 'null');
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
   } catch (e) { /* storage unavailable */ }
   function start(cx, cy) {
@@ -501,7 +509,7 @@ legendCtrl.addTo(map);
     const end = () => {
       box.classList.remove('dragging');
       const r2 = box.getBoundingClientRect();
-      try { localStorage.setItem(KEY, JSON.stringify({ x: r2.left, y: r2.top })); }
+      try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify({ x: r2.left, y: r2.top })); }
       catch (e) { /* storage unavailable */ }
       document.removeEventListener('mousemove', mm);
       document.removeEventListener('mouseup', end);
@@ -1800,7 +1808,12 @@ wpSearch.addEventListener('keydown', e => {
     const first = wpResults.querySelector('.wp-search-item');
     if (first) first.click();
   } else if (e.key === 'Escape') {
-    hideSearchOverlay();
+    // Route through escapeSearch, not straight to hide: docked, the first
+    // Escape clears the query and only a second one puts the panel away.
+    // Stop it here — the document-level handler runs the same function, and
+    // letting it bubble applied both steps to one keypress.
+    e.stopPropagation();
+    escapeSearch();
   }
 });
 // Floating search overlay — Ctrl/Cmd-F opens it, Escape or ✕ closes it. The
@@ -1827,9 +1840,169 @@ function hideSearchOverlay() {
   searchOverlay.classList.add('hidden');
   closeSearch();
   wpSearch.value = '';
+  // Docked, dismissal is a preference rather than a one-off: the panel is part
+  // of the desktop furniture, so whether it is up must survive a reload.
+  if (searchDocked()) setSearchDockShown(false);
 }
-document.getElementById('search-trigger').onclick = showSearchOverlay;
+// Escape while docked clears the query first and only dismisses the panel on a
+// second press with nothing left to clear — so the common case (wrong search
+// term) does not cost the panel.
+function escapeSearch() {
+  if (searchDocked() && wpSearch.value) {
+    closeSearch();
+    wpSearch.value = '';
+    return;
+  }
+  hideSearchOverlay();
+}
+document.getElementById('search-trigger').onclick = revealSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
+
+// Ctrl/Cmd-F and the toolbar button always bring the panel up and put the caret
+// in it — never dismiss it, since Ctrl-F pressed while already in the search box
+// means "search", not "put the search away". Dismissal is the ✕, or Escape with
+// nothing left to clear. Docked, whether it is up is remembered under
+// navaid.searchShown; mobile keeps its summoned overlay.
+const SEARCH_SHOWN_KEY = 'navaid.searchShown';
+function searchDockShown() {
+  try { return localStorage.getItem(SEARCH_SHOWN_KEY) !== '0'; } catch (e) { return true; }
+}
+function setSearchDockShown(on) {
+  try {
+    if (on) localStorage.removeItem(SEARCH_SHOWN_KEY);
+    else localStorage.setItem(SEARCH_SHOWN_KEY, '0');
+  } catch (e) { /* storage unavailable */ }
+}
+function revealSearchOverlay() {
+  if (searchDocked()) setSearchDockShown(true);
+  showSearchOverlay();
+}
+
+// Desktop keeps the search on screen permanently, parked under the menu bar on
+// the side the language reads from and draggable anywhere from there. Mobile has
+// no room for a standing panel, so it stays the summoned overlay.
+const SEARCH_DOCK_MQ = window.matchMedia('(min-width: 681px)');
+const SEARCH_POS_KEY = 'navaid.searchPos';
+function searchDocked() { return searchOverlay.classList.contains('docked'); }
+(function dockSearchOnDesktop() {
+  const box = searchOverlay;
+  const savedPos = () => {
+    try {
+      const p = JSON.parse(localStorage.getItem(navLangPosKey(SEARCH_POS_KEY)) || 'null');
+      return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : null;
+    } catch (e) { return null; }
+  };
+  // Same rule as the legend: never come to rest ON the menu bar, but above and
+  // below are both fine, so a panel dragged down can be dragged back up.
+  function clearOfToolbar(x, y) {
+    const tb = document.getElementById('toolbar');
+    if (!tb) return y;
+    const t = tb.getBoundingClientRect();
+    if (!t.height) return y;
+    const w = box.offsetWidth, h = box.offsetHeight;
+    if (x + w < t.left || x > t.right) return y;
+    if (y + h < t.top || y > t.bottom) return y;
+    return t.bottom + 6;
+  }
+  function applyPos(x, y) {
+    const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
+    const cx = Math.max(0, Math.min(maxX, x));
+    box.style.left = cx + 'px';
+    box.style.top = Math.max(0, Math.min(maxY, clearOfToolbar(cx, y))) + 'px';
+    box.style.right = 'auto';
+    box.style.transform = 'none';
+  }
+  function clearInlinePos() {
+    box.style.left = '';
+    box.style.top = '';
+    box.style.right = '';
+    box.style.transform = '';
+  }
+  // The CSS parks it at top:46px, which is right only while the menu bar is one
+  // row tall. It wraps to two on narrower desktops, so the default sits under
+  // whatever height the bar actually has.
+  function parkBelowToolbar() {
+    const tb = document.getElementById('toolbar');
+    const t = tb && tb.getBoundingClientRect();
+    if (!t || !t.height) return;
+    box.style.top = Math.round(t.bottom + 6) + 'px';
+  }
+  function sync() {
+    if (SEARCH_DOCK_MQ.matches) {
+      box.classList.add('docked');
+      // Shown by default; only a deliberate dismissal keeps it down.
+      box.classList.toggle('hidden', !searchDockShown());
+      const p = savedPos();
+      if (p) applyPos(p.x, p.y); else { clearInlinePos(); parkBelowToolbar(); }
+    } else {
+      // Back to a phone-width viewport: drop the docked geometry so the overlay
+      // returns to its centred, summoned form rather than a stranded panel.
+      box.classList.remove('docked');
+      box.classList.add('hidden');
+      clearInlinePos();
+    }
+  }
+  // A dragged-to position is only meaningful at the width it was chosen at, and
+  // the side default flips with the language, so re-clamp on resize.
+  const onResize = () => {
+    // Don't trust the mediaquery `change` event alone to flip the dock: some
+    // viewport resizes (devtools/CDP among them) arrive without it, which left
+    // a docked panel stranded at phone width. Reconcile on every resize.
+    if (SEARCH_DOCK_MQ.matches !== searchDocked()) { sync(); return; }
+    if (!searchDocked()) return;
+    const p = savedPos();
+    if (p) applyPos(p.x, p.y); else { clearInlinePos(); parkBelowToolbar(); }
+  };
+  if (SEARCH_DOCK_MQ.addEventListener) SEARCH_DOCK_MQ.addEventListener('change', sync);
+  else if (SEARCH_DOCK_MQ.addListener) SEARCH_DOCK_MQ.addListener(sync);
+  window.addEventListener('resize', onResize);
+  // The bar's height is not settled at boot and changes later anyway — it wraps
+  // to a second row on narrower desktops and when a section is expanded. Sampling
+  // it once parked the panel under a one-row bar that then grew over it, so track
+  // it for as long as the panel is using the default position.
+  if (window.ResizeObserver) {
+    const tb = document.getElementById('toolbar');
+    if (tb) new ResizeObserver(() => { if (searchDocked() && !savedPos()) parkBelowToolbar(); }).observe(tb);
+  }
+
+  // Drag from the panel's own chrome only — the input, the results list and the
+  // buttons keep their normal behaviour, or the search would be untypeable.
+  const isDragSurface = t => t === box || (t && t.classList && t.classList.contains('search-hint'));
+  function start(cx, cy) {
+    const r = box.getBoundingClientRect();
+    const off = { x: cx - r.left, y: cy - r.top };
+    box.classList.add('dragging');
+    const move = (mx, my) => applyPos(mx - off.x, my - off.y);
+    const mm = ev => move(ev.clientX, ev.clientY);
+    const tm = ev => { if (ev.touches.length === 1) { ev.preventDefault(); move(ev.touches[0].clientX, ev.touches[0].clientY); } };
+    const end = () => {
+      box.classList.remove('dragging');
+      const r2 = box.getBoundingClientRect();
+      try { localStorage.setItem(navLangPosKey(SEARCH_POS_KEY), JSON.stringify({ x: r2.left, y: r2.top })); }
+      catch (e) { /* storage unavailable */ }
+      document.removeEventListener('mousemove', mm);
+      document.removeEventListener('mouseup', end);
+      window.removeEventListener('touchmove', tm);
+      window.removeEventListener('touchend', end);
+    };
+    document.addEventListener('mousemove', mm);
+    document.addEventListener('mouseup', end);
+    window.addEventListener('touchmove', tm, { passive: false });
+    window.addEventListener('touchend', end);
+  }
+  box.addEventListener('mousedown', e => {
+    if (!searchDocked() || !isDragSurface(e.target)) return;
+    e.preventDefault();
+    start(e.clientX, e.clientY);
+  });
+  box.addEventListener('touchstart', e => {
+    if (!searchDocked() || e.touches.length !== 1 || !isDragSurface(e.target)) return;
+    e.preventDefault();
+    start(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  sync();
+})();
 
 // Reference-link overflow (⋯). The six links behind it are read once; keeping them
 // inline cost the menu bar more width than the flight plan itself and forced the
@@ -1875,9 +2048,13 @@ document.addEventListener('keydown', e => {
       if (t !== wpSearch) return;
     }
     e.preventDefault();
-    showSearchOverlay();
-  } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden')) {
-    hideSearchOverlay();
+    revealSearchOverlay();
+  } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden') &&
+             // Docked, the panel is always on screen, so Escape must only mean
+             // "clear the search" when the search is what the user is in — else
+             // it would swallow the key from every other Escape-driven action.
+             (!searchDocked() || document.activeElement === wpSearch || wpSearch.value)) {
+    escapeSearch();
   } else if (shortcutPlain(e, 'KeyR', 'r')) {
     const t = e.target;
     if (shortcutTypingTarget(t)) return;
@@ -2084,7 +2261,7 @@ for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadR
   try {
     // On phones the inspector is a fixed bottom sheet (see the mobile block in
     // style.css); a saved drag position would override that, so ignore it there.
-    const p = JSON.parse(localStorage.getItem(INSP_POS_KEY) || 'null');
+    const p = JSON.parse(localStorage.getItem(navLangPosKey(INSP_POS_KEY)) || 'null');
     if (!isNarrow() && p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyInspPos(p.x, p.y);
   } catch (e) { /* */ }
   header.addEventListener('mousedown', function (e) {
@@ -2105,7 +2282,7 @@ for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadR
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       const r2 = insp.getBoundingClientRect();
-      try { localStorage.setItem(INSP_POS_KEY, JSON.stringify({ x: r2.left, y: r2.top })); }
+      try { localStorage.setItem(navLangPosKey(INSP_POS_KEY), JSON.stringify({ x: r2.left, y: r2.top })); }
       catch (e2) { /* */ }
     };
     document.addEventListener('mousemove', onMove);
@@ -5337,7 +5514,7 @@ function createTuningPanel() {
       panel.style.right = 'auto';
     }
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStorage.getItem(navLangPosKey(KEY));
       if (raw) {
         const p = JSON.parse(raw);
         requestAnimationFrame(() => setPos(p.x, p.y));
@@ -5359,7 +5536,7 @@ function createTuningPanel() {
       dragging = false;
       panel.classList.remove('dragging');
       const r = panel.getBoundingClientRect();
-      try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); }
+      try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify({ x: r.left, y: r.top })); }
       catch (e) { /* storage unavailable */ }
     }
     header.addEventListener('mousedown', e => {
