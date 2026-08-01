@@ -3909,6 +3909,25 @@ body.theme-light .insp-notam-link { color: #1d6fe0; }
     top: 46px;
   }
 
+  /* Desktop: the search is a permanent panel under the menu bar rather than a
+     summoned overlay — parked on the side the language reads from (left for
+     English, right for Hebrew) and draggable from anywhere that isn't the
+     input, the results or a button. There is no room for this on mobile, where
+     it stays the centred overlay that Ctrl-F / the toolbar button summons. */
+  #search-overlay.docked {
+    left: 12px;
+    right: auto;
+    transform: none;
+    cursor: grab;
+  }
+  html[dir="rtl"] #search-overlay.docked {
+    left: auto;
+    right: 12px;
+  }
+  #search-overlay.docked.dragging { cursor: grabbing; }
+  /* Nothing to close — the panel is permanent here. */
+  #search-overlay.docked #search-close { display: none; }
+
   #tuning-panel {
     top: 46px;
     max-height: calc(100vh - 58px);

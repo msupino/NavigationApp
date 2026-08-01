@@ -1830,7 +1830,7 @@ function showFlightPlan() {
       el.style.margin = '0';
     }
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStorage.getItem(navLangPosKey(KEY));
       if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
     } catch (e) {}
     function start(cx, cy) {
@@ -1843,7 +1843,7 @@ function showFlightPlan() {
       if (!dragging) return;
       dragging = false;
       const r = el.getBoundingClientRect();
-      try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); } catch (e) {}
+      try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify({ x: r.left, y: r.top })); } catch (e) {}
     }
     title.addEventListener('mousedown', e => {
       e.preventDefault();
