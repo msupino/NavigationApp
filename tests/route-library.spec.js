@@ -200,7 +200,7 @@ test.describe('Inspector', () => {
     await page.mouse.up();
     const after = await insp.boundingBox();
     expect(Math.abs(after.x - before.x)).toBeGreaterThan(40);
-    const pos = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.inspPos') || 'null'));
+    const pos = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.inspPos.en') || 'null'));
     expect(pos && Number.isFinite(pos.x)).toBeTruthy();
   });
 });

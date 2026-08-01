@@ -1,0 +1,239 @@
+// Desktop keeps the waypoint search on screen permanently under the menu bar,
+// parked on the side the language reads from and draggable from there. Mobile
+// keeps the summoned overlay — there is no room for a standing panel.
+const { test, expect } = require('./_setup');
+
+const box = '#search-overlay';
+const geom = page => page.evaluate(() => {
+  const b = document.getElementById('search-overlay');
+  const r = b.getBoundingClientRect();
+  const tb = document.getElementById('toolbar').getBoundingClientRect();
+  return {
+    left: Math.round(r.left),
+    rightGap: Math.round(window.innerWidth - r.right),
+    top: Math.round(r.top),
+    docked: b.classList.contains('docked'),
+    hidden: b.classList.contains('hidden'),
+    overlapsBar: r.top < tb.bottom && r.left < tb.right && r.right > tb.left,
+  };
+});
+
+test('desktop shows the search docked below the menu bar, left in English', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const g = await geom(page);
+  expect(g.docked).toBe(true);
+  expect(g.hidden).toBe(false);
+  expect(g.left).toBeLessThan(g.rightGap);   // parked on the left
+  expect(g.overlapsBar).toBe(false);         // clear of the menu bar
+});
+
+test('Hebrew parks it on the right', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const g = await geom(page);
+  expect(g.docked).toBe(true);
+  expect(g.rightGap).toBeLessThan(g.left);
+  expect(g.overlapsBar).toBe(false);
+});
+
+test('mobile keeps the summoned centred overlay', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  let g = await geom(page);
+  expect(g.docked).toBe(false);
+  expect(g.hidden).toBe(true);
+  // The trigger lives inside the collapsed mobile toolbar, so drive the same
+  // entry point the button does rather than fighting the hamburger.
+  await page.evaluate(() => showSearchOverlay());
+  g = await geom(page);
+  expect(g.hidden).toBe(false);
+  expect(Math.abs(g.left - g.rightGap)).toBeLessThanOrEqual(2);  // centred
+  await expect(page.locator('#search-close')).toBeVisible();
+});
+
+test('crossing the breakpoint docks and undocks', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  expect((await geom(page)).docked).toBe(true);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.waitForFunction(() => !document.getElementById('search-overlay').classList.contains('docked'));
+  expect((await geom(page)).hidden).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.waitForFunction(() => document.getElementById('search-overlay').classList.contains('docked'));
+  expect((await geom(page)).hidden).toBe(false);
+});
+
+test('Escape clears the query first, and only dismisses on a second press', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  await page.click('#wp-search');
+  await page.fill('#wp-search', 'LLHZ');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#wp-search')).toHaveValue('');
+  expect((await geom(page)).hidden).toBe(false);   // query gone, panel stays
+  await page.keyboard.press('Escape');
+  expect((await geom(page)).hidden).toBe(true);    // nothing left to clear -> dismissed
+});
+
+test('Ctrl-F always reveals and focuses, never dismisses', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  expect((await geom(page)).hidden).toBe(false);
+  await page.keyboard.press('Control+f');
+  await expect(page.locator('#wp-search')).toBeFocused();
+  expect((await geom(page)).hidden).toBe(false);
+  // Pressed again while already in the box it still means "search", not "close".
+  await page.keyboard.press('Control+f');
+  expect((await geom(page)).hidden).toBe(false);
+  await expect(page.locator('#wp-search')).toBeFocused();
+});
+
+test('a dismissal is remembered across reloads, and Ctrl-F brings it back', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  await page.click('#search-close');
+  expect((await geom(page)).hidden).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.searchShown'))).toBe('0');
+  await page.reload();
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  expect((await geom(page)).hidden).toBe(true);   // stays down until asked for
+  await page.keyboard.press('Control+f');
+  const g = await geom(page);
+  expect(g.hidden).toBe(false);
+  expect(g.docked).toBe(true);
+  expect(g.left).toBeLessThan(g.rightGap);        // back on its side, still docked
+  expect(await page.evaluate(() => localStorage.getItem('navaid.searchShown'))).toBeNull();
+});
+
+test('the ✕ dismisses the docked panel and the toolbar button brings it back', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  await expect(page.locator('#search-close')).toBeVisible();
+  await page.click('#search-close');
+  expect((await geom(page)).hidden).toBe(true);
+  // The trigger sits inside a desktop toolbar menu, so drive the handler the
+  // button is wired to rather than opening the menu just to click it.
+  await page.evaluate(() => document.getElementById('search-trigger').onclick());
+  expect((await geom(page)).hidden).toBe(false);
+  await expect(page.locator('#wp-search')).toBeFocused();
+});
+
+test('dragging the panel persists its spot across reload', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const before = await geom(page);
+  const b = await page.locator(box).boundingBox();
+  // Grab the panel's own chrome (its bottom edge), not the input.
+  await page.mouse.move(b.x + b.width - 6, b.y + b.height - 3);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width - 6 + 180, b.y + b.height - 3 + 160, { steps: 8 });
+  await page.mouse.up();
+  const moved = await geom(page);
+  expect(moved.left).toBeGreaterThan(before.left + 100);
+  const stored = await page.evaluate(() => localStorage.getItem('navaid.searchPos.en'));
+  expect(stored).not.toBeNull();
+  await page.reload();
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const after = await geom(page);
+  expect(Math.abs(after.left - moved.left)).toBeLessThanOrEqual(2);
+  expect(Math.abs(after.top - moved.top)).toBeLessThanOrEqual(2);
+});
+
+test('typing in the input does not drag the panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const before = await geom(page);
+  await page.click('#wp-search');
+  await page.keyboard.type('LLHZ');
+  const after = await geom(page);
+  expect(after.left).toBe(before.left);
+  expect(after.top).toBe(before.top);
+  await expect(page.locator('#wp-search')).toHaveValue('LLHZ');
+});
+
+test('a position dragged in Hebrew does not move the English one', async ({ page }) => {
+  // Positions are per-language: the RTL layout mirrors LTR, so one spot cannot
+  // serve both. Every draggable stores under navLangPosKey(base).
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const heBefore = await geom(page);
+  const b = await page.locator(box).boundingBox();
+  await page.mouse.move(b.x + 6, b.y + b.height - 3);
+  await page.mouse.down();
+  await page.mouse.move(b.x + 6 - 200, b.y + b.height - 3 + 140, { steps: 8 });
+  await page.mouse.up();
+  const heMoved = await geom(page);
+  expect(heMoved.left).toBeLessThan(heBefore.left - 100);
+  const keys = await page.evaluate(() => ({
+    he: localStorage.getItem('navaid.searchPos.he'),
+    en: localStorage.getItem('navaid.searchPos.en'),
+    unscoped: localStorage.getItem('navaid.searchPos'),
+  }));
+  expect(keys.he).not.toBeNull();
+  expect(keys.en).toBeNull();
+  expect(keys.unscoped).toBeNull();
+  // English is untouched: still parked at its own default on the left.
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const en = await geom(page);
+  expect(en.left).toBeLessThan(en.rightGap);
+  expect(en.top).not.toBe(heMoved.top);
+});
+
+test('every draggable panel stores its position under a per-language key', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof navLangPosKey === 'function');
+  // The bases below are every position store in the app; each must go through
+  // navLangPosKey so Hebrew and English keep separate spots.
+  const bases = ['navaid.clockPos', 'navaid.legendPos', 'navaid.searchPos', 'navaid.inspPos',
+    'navaid.toolbarPos', 'navaid.toolbarPosDesktop', 'navaid.tunePanelPos', 'navaid.fpPos'];
+  const keys = await page.evaluate(bs => bs.map(b => navLangPosKey(b)), bases);
+  expect(keys).toEqual(bases.map(b => b + '.en'));
+  const he = await page.evaluate(bs => {
+    document.documentElement.lang = 'he';
+    const out = bs.map(b => navLangPosKey(b));
+    document.documentElement.lang = 'en';
+    return out;
+  }, bases);
+  expect(he).toEqual(bases.map(b => b + '.he'));
+});
+
+test('the legend stays draggable when pushed clear past the docked search', async ({ page }) => {
+  // Both the docked panel and a legend pushed clear of the menu bar want
+  // toolbar.bottom + 6, and the panel paints on top — the legend used to become
+  // ungrabbable there, so the clamp treats the panel as chrome to clear too.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const overlap = await page.evaluate(() => {
+    const l = document.getElementById('map-legend').getBoundingClientRect();
+    const s = document.getElementById('search-overlay').getBoundingClientRect();
+    return l.top < s.bottom && l.bottom > s.top && l.left < s.right && l.right > s.left;
+  });
+  expect(overlap).toBe(false);
+  const legend = page.locator('#map-legend');
+  const drag = async (toX, toY) => {
+    const b = await legend.boundingBox();
+    await page.mouse.move(b.x + 20, b.y + 6);
+    await page.mouse.down();
+    await page.mouse.move(toX, toY, { steps: 6 });
+    await page.mouse.up();
+    return (await legend.boundingBox()).y;
+  };
+  const parked = await drag(60, 8);          // into the bar -> pushed clear of bar + panel
+  const moved = await drag(60, 480);         // and still draggable from there
+  expect(moved).toBeGreaterThan(parked + 100);
+});

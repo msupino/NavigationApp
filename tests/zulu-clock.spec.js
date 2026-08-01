@@ -84,7 +84,7 @@ test.describe('Zulu clock', () => {
     if (!after) throw new Error('no box');
     expect(after.x).toBeLessThan(before.x - 100);
     expect(after.y).toBeGreaterThan(before.y + 120);
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.clockPos'));
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.clockPos.en'));
     expect(stored).toBeTruthy();
 
     await page.reload();
@@ -112,7 +112,7 @@ test.describe('Zulu clock', () => {
     if (!after) throw new Error('no box');
     expect(after.x).toBeGreaterThan(before.x + 140);
     expect(after.y).toBeLessThan(before.y - 100);
-    expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos'))).toBeTruthy();
+    expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.en'))).toBeTruthy();
 
     await page.reload();
     await page.waitForFunction(() =>
