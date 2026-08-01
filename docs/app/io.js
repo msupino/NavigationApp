@@ -4237,11 +4237,27 @@ async function flyRoute() {
     const elevFt = af && Number(af.elev_ft);
     return Number.isFinite(elevFt) ? Math.round(elevFt * 0.3048) : null;
   };
-  // A leg with no altitude is flown at kmlUnsetLegAglFt above the ground rather
-  // than at absolute 0 m, which put the camera at sea level — underground over
-  // any terrain. Departing an airfield, "the ground" is that field's elevation
-  // (so the whole leg holds one height, as the aircraft would); with no field to
-  // measure from, relativeToGround lets Earth follow the terrain instead.
+  // A leg with no altitude borrows the route's own numbers before inventing one:
+  // the next leg ahead that has an altitude, else the last one behind it. The
+  // departure leg out of an airfield is the common case — it is usually left
+  // blank while the cruise legs are filled in, and climbing out to the cruise
+  // height is what the aircraft does anyway.
+  const nextKnownAltFt = legIdx => {
+    for (let j = legIdx + 1; j < state.legs.length; j++) {
+      const a = state.legs[j] && state.legs[j].inboundAltitude;
+      if (Number.isFinite(a)) return a;
+    }
+    for (let j = legIdx - 1; j >= 0; j--) {
+      const a = state.legs[j] && state.legs[j].inboundAltitude;
+      if (Number.isFinite(a)) return a;
+    }
+    return null;
+  };
+  // Only when the whole route is blank: fly kmlUnsetLegAglFt above the ground
+  // rather than the old absolute 0 m, which put the camera at sea level —
+  // underground over any terrain. Departing an airfield, "the ground" is that
+  // field's elevation (so the leg holds one height, as the aircraft would); with
+  // no field to measure from, relativeToGround lets Earth follow the terrain.
   const unsetAglM = () => Math.round(_kmlUnsetLegAglFt() * 0.3048);
   const unsetAlt = startIdx => {
     const fieldM = fieldGroundM(startIdx);
@@ -4249,14 +4265,20 @@ async function flyRoute() {
       ? { alt: fieldM + unsetAglM(), mode: 'absolute' }
       : { alt: unsetAglM(), mode: 'relativeToGround' };
   };
+  const legAlt = legIdx => {
+    const leg = state.legs[legIdx];
+    if (!leg) return { alt: altitudeMetersForExport(2000, 2000), mode: 'absolute' };
+    if (Number.isFinite(leg.inboundAltitude)) {
+      return { alt: altitudeMetersForExport(leg.inboundAltitude), mode: 'absolute' };
+    }
+    const inherited = nextKnownAltFt(legIdx);
+    if (inherited !== null) return { alt: altitudeMetersForExport(inherited), mode: 'absolute' };
+    return unsetAlt(legIdx);
+  };
   const altAt = i => {
     const groundM = endpointGroundM(i);
     if (groundM !== null) return { alt: groundM, mode: 'absolute' };
-    const legIdx = Math.min(i, state.legs.length - 1);
-    const leg = state.legs[legIdx];
-    if (!leg) return { alt: altitudeMetersForExport(2000, 2000), mode: 'absolute' };
-    if (!Number.isFinite(leg.inboundAltitude)) return unsetAlt(legIdx);
-    return { alt: altitudeMetersForExport(leg.inboundAltitude), mode: 'absolute' };
+    return legAlt(Math.min(i, state.legs.length - 1));
   };
   const altM = i => altAt(i).alt;
   const inboundHeading = i => {
@@ -4283,12 +4305,7 @@ async function flyRoute() {
     const inDist = geo(wps[i - 1], wps[i]).dist;
     return Math.max(0, Math.min(0.5, inDist * 0.15));
   };
-  const legAltitude = i => {
-    const leg = state.legs[i];
-    if (!leg) return { alt: altitudeMetersForExport(2000, 2000), mode: 'absolute' };
-    if (!Number.isFinite(leg.inboundAltitude)) return unsetAlt(i);
-    return { alt: altitudeMetersForExport(leg.inboundAltitude), mode: 'absolute' };
-  };
+  const legAltitude = i => legAlt(i);
   const tourFractions = (legIndex, dist) => {
     const out = [];
     const add = f => {

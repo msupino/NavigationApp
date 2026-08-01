@@ -109,3 +109,59 @@ test('the unset height is gistable', async ({ page }) => {
   expect(relative.length).toBeGreaterThan(0);
   for (const c of relative) expect(c.alt).toBe(Math.round(1500 * 0.3048));
 });
+
+test('a blank departure leg out of an airfield inherits the next leg altitude', async ({ page }) => {
+  await boot(page);
+  const af = await page.evaluate(() =>
+    (a => ({ lat: a.lat, lng: a.lng, name: a.name, elevFt: Number(a.elev_ft) }))(
+      airfields.find(x => x.name === 'LLHZ')));
+  const kml = await kmlFor(page, `
+    state.waypoints = [{ lat: ${af.lat}, lng: ${af.lng}, name: '${af.name}' },
+                       { lat: ${af.lat + 0.25}, lng: ${af.lng + 0.10}, name: 'B' },
+                       { lat: ${af.lat + 0.50}, lng: ${af.lng + 0.20}, name: 'C' }];
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 90; });
+    state.legs[0].inboundAltitude = null;   // departure leg left blank
+    state.legs[1].inboundAltitude = 3500;   // cruise filled in
+    draw();
+  `);
+  const cams = cameras(kml);
+  const cruiseM = Math.round(3500 * 0.3048);
+  // The blank departure leg flies the cruise height, not field + 800 ft.
+  expect(cams.some(c => c.mode === 'absolute' && c.alt === cruiseM)).toBe(true);
+  const fieldPlus800 = Math.round(af.elevFt * 0.3048) + 244;
+  expect(cams.some(c => c.alt === fieldPlus800)).toBe(false);
+  expect(cams.every(c => c.mode === 'absolute')).toBe(true);
+});
+
+test('a blank leg with altitudes only behind it inherits backwards', async ({ page }) => {
+  await boot(page);
+  const kml = await kmlFor(page, `
+    state.waypoints = [{ lat: 31.60, lng: 35.00, name: 'A' },
+                       { lat: 31.85, lng: 35.10, name: 'B' },
+                       { lat: 32.10, lng: 35.20, name: 'C' }];
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 90; });
+    state.legs[0].inboundAltitude = 2500;
+    state.legs[1].inboundAltitude = null;   // nothing ahead to borrow from
+    draw();
+  `);
+  const cams = cameras(kml);
+  expect(cams.some(c => c.mode === 'absolute' && c.alt === Math.round(2500 * 0.3048))).toBe(true);
+  expect(cams.some(c => c.mode === 'relativeToGround')).toBe(false);
+});
+
+test('800 ft AGL applies only when the whole route is blank', async ({ page }) => {
+  await boot(page);
+  const kml = await kmlFor(page, `
+    state.waypoints = [{ lat: 31.60, lng: 35.00, name: 'A' },
+                       { lat: 31.85, lng: 35.10, name: 'B' },
+                       { lat: 32.10, lng: 35.20, name: 'C' }];
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 90; l.inboundAltitude = null; });
+    draw();
+  `);
+  const rel = cameras(kml).filter(c => c.mode === 'relativeToGround');
+  expect(rel.length).toBeGreaterThan(0);
+  for (const c of rel) expect(c.alt).toBe(244);
+});
