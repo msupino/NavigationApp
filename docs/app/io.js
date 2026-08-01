@@ -4231,12 +4231,34 @@ async function flyRoute() {
     const elevFt = af && Number(af.elev_ft);
     return Number.isFinite(elevFt) ? Math.round(elevFt * 0.3048) : null;
   };
-  const altM = i => {
-    const groundM = endpointGroundM(i);
-    if (groundM !== null) return groundM;
-    const leg = state.legs[Math.min(i, state.legs.length - 1)];
-    return altitudeMetersForExport(leg ? leg.inboundAltitude : 2000, leg ? 0 : 2000);
+  // Height of the airfield a waypoint sits on, if any — not just the endpoints.
+  const fieldGroundM = i => {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[i]) : null;
+    const elevFt = af && Number(af.elev_ft);
+    return Number.isFinite(elevFt) ? Math.round(elevFt * 0.3048) : null;
   };
+  // A leg with no altitude is flown at kmlUnsetLegAglFt above the ground rather
+  // than at absolute 0 m, which put the camera at sea level — underground over
+  // any terrain. Departing an airfield, "the ground" is that field's elevation
+  // (so the whole leg holds one height, as the aircraft would); with no field to
+  // measure from, relativeToGround lets Earth follow the terrain instead.
+  const unsetAglM = () => Math.round(_kmlUnsetLegAglFt() * 0.3048);
+  const unsetAlt = startIdx => {
+    const fieldM = fieldGroundM(startIdx);
+    return fieldM !== null
+      ? { alt: fieldM + unsetAglM(), mode: 'absolute' }
+      : { alt: unsetAglM(), mode: 'relativeToGround' };
+  };
+  const altAt = i => {
+    const groundM = endpointGroundM(i);
+    if (groundM !== null) return { alt: groundM, mode: 'absolute' };
+    const legIdx = Math.min(i, state.legs.length - 1);
+    const leg = state.legs[legIdx];
+    if (!leg) return { alt: altitudeMetersForExport(2000, 2000), mode: 'absolute' };
+    if (!Number.isFinite(leg.inboundAltitude)) return unsetAlt(legIdx);
+    return { alt: altitudeMetersForExport(leg.inboundAltitude), mode: 'absolute' };
+  };
+  const altM = i => altAt(i).alt;
   const inboundHeading = i => {
     if (i <= 0) return geo(wps[0], wps[1]).brg;
     return geo(wps[i - 1], wps[i]).brg;
@@ -4261,9 +4283,11 @@ async function flyRoute() {
     const inDist = geo(wps[i - 1], wps[i]).dist;
     return Math.max(0, Math.min(0.5, inDist * 0.15));
   };
-  const legAltitudeM = i => {
+  const legAltitude = i => {
     const leg = state.legs[i];
-    return altitudeMetersForExport(leg ? leg.inboundAltitude : 2000, leg ? 0 : 2000);
+    if (!leg) return { alt: altitudeMetersForExport(2000, 2000), mode: 'absolute' };
+    if (!Number.isFinite(leg.inboundAltitude)) return unsetAlt(i);
+    return { alt: altitudeMetersForExport(leg.inboundAltitude), mode: 'absolute' };
   };
   const tourFractions = (legIndex, dist) => {
     const out = [];
@@ -4280,7 +4304,7 @@ async function flyRoute() {
   function downloadKml() {
     const esc = s => String(s).replace(/[<>&]/g,
       c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-    const cameraAt = (pos, alt, hdg, pad) =>
+    const cameraAt = (pos, alt, hdg, pad, altMode = 'absolute') =>
       pad + '<Camera>\n' +
       pad + '  <longitude>' + pos.lng + '</longitude>\n' +
       pad + '  <latitude>' + pos.lat + '</latitude>\n' +
@@ -4288,23 +4312,28 @@ async function flyRoute() {
       pad + '  <heading>' + hdg.toFixed(1) + '</heading>\n' +
       pad + '  <tilt>70</tilt>\n' +
       pad + '  <roll>0</roll>\n' +
-      pad + '  <altitudeMode>absolute</altitudeMode>\n' +
+      pad + '  <altitudeMode>' + altMode + '</altitudeMode>\n' +
       pad + '</Camera>\n';
-    const camera = (i, pad, hdg = inboundHeading(i)) => cameraAt(wps[i], altM(i), hdg, pad);
+    const camera = (i, pad, hdg = inboundHeading(i)) => {
+      const a = altAt(i);
+      return cameraAt(wps[i], a.alt, hdg, pad, a.mode);
+    };
     // Every duration goes through here, so scaling once covers legs, turns and the
     // opening fly-to alike. kmlTourMinSegSec is an absolute floor — Earth stutters
     // on sub-tenth-second moves, which 4x speed on a dense route would produce.
     const tourScale = 1 / geTourSpeed();
-    const flyToCamera = (pos, alt, hdg, dur, mode) =>
+    const flyToCamera = (pos, alt, hdg, dur, mode, altMode = 'absolute') =>
       '    <gx:FlyTo>\n' +
       '      <gx:duration>' +
       Math.max(_kmlTourMinSegSec(), dur * tourScale).toFixed(2) +
       '</gx:duration>\n' +
       '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
-      cameraAt(pos, alt, hdg, '      ') +
+      cameraAt(pos, alt, hdg, '      ', altMode) +
       '    </gx:FlyTo>\n';
-    const flyTo = (i, dur, mode, hdg = inboundHeading(i)) =>
-      flyToCamera(wps[i], altM(i), hdg, dur, mode);
+    const flyTo = (i, dur, mode, hdg = inboundHeading(i)) => {
+      const a = altAt(i);
+      return flyToCamera(wps[i], a.alt, hdg, dur, mode, a.mode);
+    };
     let lastTourHeading = null;
     const continuousHeading = hdg => {
       let next = normalizeHeading(hdg);
@@ -4343,8 +4372,8 @@ async function flyRoute() {
           const turnSegPart = (f - a) / (1 - turnStartF);
           segDur = Math.max(segDur, turnDur * turnSegPart);
         }
-        const alt = f >= 1 ? altM(i + 1) : legAltitudeM(i);
-        tour += flyToCamera(pos, alt, continuousHeading(hdg), Math.max(0.6, segDur), 'smooth');
+        const a = f >= 1 ? altAt(i + 1) : legAltitude(i);
+        tour += flyToCamera(pos, a.alt, continuousHeading(hdg), Math.max(0.6, segDur), 'smooth', a.mode);
         prevF = f;
       }
     }

@@ -257,6 +257,8 @@ NavAid.tuningDefaults = {
     label: 'Google Earth tour: longest leg (s)' },
   kmlTourMinSegSec: { value: 0.2, min: 0.05, max: 3, step: 0.05,
     label: 'Google Earth tour: shortest camera move (s)' },
+  kmlUnsetLegAglFt: { value: 800, min: 100, max: 5000, step: 50,
+    label: 'Google Earth tour: height for a leg with no altitude (ft AGL)' },
   defaultViewZoom: { value: 11, min: 8, max: 14, step: 0.5, label: 'First-run map zoom' },
   touchRotateGesture: { value: 0, min: 0, max: 1, step: 1, label: 'Two-finger rotate gesture (0/1)' },
   defaultViewLat: { value: 32.1, min: 29, max: 34, step: 0.05, label: 'First-run map centre latitude' },
@@ -507,7 +509,7 @@ NavAid.tuningGroups = [
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm', 'a4x2MarkLabelBgColor', 'a4x2MarkLabelInkColor'] },
   { name: 'Route defaults', keys: ['defaultLegSpeedKt', 'unknownProfileAltFt', 'legLabelMaxScale'] },
-  { name: 'Google Earth tour', keys: ['kmlTourSecPerFlightMin', 'kmlTourLegMinSec', 'kmlTourLegMaxSec', 'kmlTourMinSegSec'] },
+  { name: 'Google Earth tour', keys: ['kmlTourSecPerFlightMin', 'kmlTourLegMinSec', 'kmlTourLegMaxSec', 'kmlTourMinSegSec', 'kmlUnsetLegAglFt'] },
   { name: 'First-run view', keys: ['defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Gestures', keys: ['touchRotateGesture'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
@@ -1617,6 +1619,11 @@ const _kmlTourSecPerFlightMin = () => _tuneNum('kmlTourSecPerFlightMin', 4);
 const _kmlTourLegMinSec = () => _tuneNum('kmlTourLegMinSec', 4);
 const _kmlTourLegMaxSec = () => _tuneNum('kmlTourLegMaxSec', 45);
 const _kmlTourMinSegSec = () => _tuneNum('kmlTourMinSegSec', 0.2);
+// A leg with no altitude used to export as absolute 0 m — sea level, i.e. the
+// camera underground over any terrain. It is flown at this height instead:
+// above the departure field's elevation when the leg starts from one, else
+// above the terrain directly below (Earth resolves that from relativeToGround).
+const _kmlUnsetLegAglFt = () => _tuneNum('kmlUnsetLegAglFt', 800);
 
 // Playback speed multiplier picked in the Google Earth dialog. Higher = faster
 // flight, i.e. shorter durations, hence the reciprocal at the call site.
