@@ -3925,8 +3925,8 @@ body.theme-light .insp-notam-link { color: #1d6fe0; }
     right: 12px;
   }
   #search-overlay.docked.dragging { cursor: grabbing; }
-  /* Nothing to close — the panel is permanent here. */
-  #search-overlay.docked #search-close { display: none; }
+  /* Dismissable here too: ✕ (or Ctrl-F while focused) puts it away, and the
+     choice is remembered. Ctrl-F / the toolbar button brings it back. */
 
   #tuning-panel {
     top: 46px;

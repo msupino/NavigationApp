@@ -68,15 +68,63 @@ test('crossing the breakpoint docks and undocks', async ({ page }) => {
   expect((await geom(page)).hidden).toBe(false);
 });
 
-test('the docked panel has no close button and Escape only clears the query', async ({ page }) => {
+test('Escape clears the query first, and only dismisses on a second press', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof searchDocked === 'function');
-  await expect(page.locator('#search-close')).toBeHidden();
+  await page.click('#wp-search');
   await page.fill('#wp-search', 'LLHZ');
   await page.keyboard.press('Escape');
   await expect(page.locator('#wp-search')).toHaveValue('');
-  expect((await geom(page)).hidden).toBe(false);   // still on screen
+  expect((await geom(page)).hidden).toBe(false);   // query gone, panel stays
+  await page.keyboard.press('Escape');
+  expect((await geom(page)).hidden).toBe(true);    // nothing left to clear -> dismissed
+});
+
+test('Ctrl-F always reveals and focuses, never dismisses', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  expect((await geom(page)).hidden).toBe(false);
+  await page.keyboard.press('Control+f');
+  await expect(page.locator('#wp-search')).toBeFocused();
+  expect((await geom(page)).hidden).toBe(false);
+  // Pressed again while already in the box it still means "search", not "close".
+  await page.keyboard.press('Control+f');
+  expect((await geom(page)).hidden).toBe(false);
+  await expect(page.locator('#wp-search')).toBeFocused();
+});
+
+test('a dismissal is remembered across reloads, and Ctrl-F brings it back', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  await page.click('#search-close');
+  expect((await geom(page)).hidden).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.searchShown'))).toBe('0');
+  await page.reload();
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  expect((await geom(page)).hidden).toBe(true);   // stays down until asked for
+  await page.keyboard.press('Control+f');
+  const g = await geom(page);
+  expect(g.hidden).toBe(false);
+  expect(g.docked).toBe(true);
+  expect(g.left).toBeLessThan(g.rightGap);        // back on its side, still docked
+  expect(await page.evaluate(() => localStorage.getItem('navaid.searchShown'))).toBeNull();
+});
+
+test('the ✕ dismisses the docked panel and the toolbar button brings it back', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  await expect(page.locator('#search-close')).toBeVisible();
+  await page.click('#search-close');
+  expect((await geom(page)).hidden).toBe(true);
+  // The trigger sits inside a desktop toolbar menu, so drive the handler the
+  // button is wired to rather than opening the menu just to click it.
+  await page.evaluate(() => document.getElementById('search-trigger').onclick());
+  expect((await geom(page)).hidden).toBe(false);
+  await expect(page.locator('#wp-search')).toBeFocused();
 });
 
 test('dragging the panel persists its spot across reload', async ({ page }) => {
@@ -161,4 +209,31 @@ test('every draggable panel stores its position under a per-language key', async
     return out;
   }, bases);
   expect(he).toEqual(bases.map(b => b + '.he'));
+});
+
+test('the legend stays draggable when pushed clear past the docked search', async ({ page }) => {
+  // Both the docked panel and a legend pushed clear of the menu bar want
+  // toolbar.bottom + 6, and the panel paints on top — the legend used to become
+  // ungrabbable there, so the clamp treats the panel as chrome to clear too.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const overlap = await page.evaluate(() => {
+    const l = document.getElementById('map-legend').getBoundingClientRect();
+    const s = document.getElementById('search-overlay').getBoundingClientRect();
+    return l.top < s.bottom && l.bottom > s.top && l.left < s.right && l.right > s.left;
+  });
+  expect(overlap).toBe(false);
+  const legend = page.locator('#map-legend');
+  const drag = async (toX, toY) => {
+    const b = await legend.boundingBox();
+    await page.mouse.move(b.x + 20, b.y + 6);
+    await page.mouse.down();
+    await page.mouse.move(toX, toY, { steps: 6 });
+    await page.mouse.up();
+    return (await legend.boundingBox()).y;
+  };
+  const parked = await drag(60, 8);          // into the bar -> pushed clear of bar + panel
+  const moved = await drag(60, 480);         // and still draggable from there
+  expect(moved).toBeGreaterThan(parked + 100);
 });

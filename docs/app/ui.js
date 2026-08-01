@@ -462,19 +462,27 @@ legendCtrl.addTo(map);
   // number ended up the invisible one. Only pushes DOWN, and only while the card
   // actually overlaps the bar horizontally, so the rest of the map stays fair game.
   function clearOfToolbar(x, y) {
-    const tb = document.getElementById('toolbar');
-    if (!tb) return y;
-    const t = tb.getBoundingClientRect();
-    if (!t.height) return y;                       // hidden (print, mobile modal)
     const w = box.offsetWidth, h = box.offsetHeight;
-    const horizontallyClear = x + w < t.left || x > t.right;
-    // Leave the position alone unless the card would actually SIT ON the bar: clear to
-    // its side, fully above it, or fully below it are all fine. Testing only "above"
-    // pinned every card below the bar to bottom+6 -- it could be dragged up but never
-    // back down again.
-    const verticallyClear = y + h < t.top || y > t.bottom;
-    if (horizontallyClear || verticallyClear) return y;
-    return t.bottom + 6;
+    // The docked search sits directly under the bar, i.e. exactly where a card
+    // pushed clear of the bar lands — and it paints above the legend, so the card
+    // ended up unreachable there. Both count as chrome to be pushed past, lowest
+    // obstacle last so a stack of them resolves in one pass.
+    const chrome = ['toolbar', 'search-overlay']
+      .map(id => document.getElementById(id))
+      .filter(el => el && !el.classList.contains('hidden'))
+      .map(el => el.getBoundingClientRect())
+      .filter(r => r.height)                       // hidden (print, mobile modal)
+      .sort((a, b) => a.bottom - b.bottom);
+    for (const t of chrome) {
+      const horizontallyClear = x + w < t.left || x > t.right;
+      // Leave the position alone unless the card would actually SIT ON the bar: clear to
+      // its side, fully above it, or fully below it are all fine. Testing only "above"
+      // pinned every card below the bar to bottom+6 -- it could be dragged up but never
+      // back down again.
+      const verticallyClear = y + h < t.top || y > t.bottom;
+      if (!horizontallyClear && !verticallyClear) y = t.bottom + 6;
+    }
+    return y;
   }
   function applyPos(x, y) {
     const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
@@ -1800,7 +1808,12 @@ wpSearch.addEventListener('keydown', e => {
     const first = wpResults.querySelector('.wp-search-item');
     if (first) first.click();
   } else if (e.key === 'Escape') {
-    hideSearchOverlay();
+    // Route through escapeSearch, not straight to hide: docked, the first
+    // Escape clears the query and only a second one puts the panel away.
+    // Stop it here — the document-level handler runs the same function, and
+    // letting it bubble applied both steps to one keypress.
+    e.stopPropagation();
+    escapeSearch();
   }
 });
 // Floating search overlay — Ctrl/Cmd-F opens it, Escape or ✕ closes it. The
@@ -1824,20 +1837,46 @@ function showSearchOverlay() {
   }
 }
 function hideSearchOverlay() {
-  if (searchDocked()) {
-    // Docked, there is nothing to hide — Escape/✕ clear the query instead, which
-    // is the part the user actually wants gone.
-    closeSearch();
-    wpSearch.value = '';
-    wpSearch.blur();
-    return;
-  }
   searchOverlay.classList.add('hidden');
   closeSearch();
   wpSearch.value = '';
+  // Docked, dismissal is a preference rather than a one-off: the panel is part
+  // of the desktop furniture, so whether it is up must survive a reload.
+  if (searchDocked()) setSearchDockShown(false);
 }
-document.getElementById('search-trigger').onclick = showSearchOverlay;
+// Escape while docked clears the query first and only dismisses the panel on a
+// second press with nothing left to clear — so the common case (wrong search
+// term) does not cost the panel.
+function escapeSearch() {
+  if (searchDocked() && wpSearch.value) {
+    closeSearch();
+    wpSearch.value = '';
+    return;
+  }
+  hideSearchOverlay();
+}
+document.getElementById('search-trigger').onclick = revealSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
+
+// Ctrl/Cmd-F and the toolbar button always bring the panel up and put the caret
+// in it — never dismiss it, since Ctrl-F pressed while already in the search box
+// means "search", not "put the search away". Dismissal is the ✕, or Escape with
+// nothing left to clear. Docked, whether it is up is remembered under
+// navaid.searchShown; mobile keeps its summoned overlay.
+const SEARCH_SHOWN_KEY = 'navaid.searchShown';
+function searchDockShown() {
+  try { return localStorage.getItem(SEARCH_SHOWN_KEY) !== '0'; } catch (e) { return true; }
+}
+function setSearchDockShown(on) {
+  try {
+    if (on) localStorage.removeItem(SEARCH_SHOWN_KEY);
+    else localStorage.setItem(SEARCH_SHOWN_KEY, '0');
+  } catch (e) { /* storage unavailable */ }
+}
+function revealSearchOverlay() {
+  if (searchDocked()) setSearchDockShown(true);
+  showSearchOverlay();
+}
 
 // Desktop keeps the search on screen permanently, parked under the menu bar on
 // the side the language reads from and draggable anywhere from there. Mobile has
@@ -1892,7 +1931,8 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
   function sync() {
     if (SEARCH_DOCK_MQ.matches) {
       box.classList.add('docked');
-      box.classList.remove('hidden');
+      // Shown by default; only a deliberate dismissal keeps it down.
+      box.classList.toggle('hidden', !searchDockShown());
       const p = savedPos();
       if (p) applyPos(p.x, p.y); else { clearInlinePos(); parkBelowToolbar(); }
     } else {
@@ -2008,13 +2048,13 @@ document.addEventListener('keydown', e => {
       if (t !== wpSearch) return;
     }
     e.preventDefault();
-    showSearchOverlay();
+    revealSearchOverlay();
   } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden') &&
              // Docked, the panel is always on screen, so Escape must only mean
              // "clear the search" when the search is what the user is in — else
              // it would swallow the key from every other Escape-driven action.
              (!searchDocked() || document.activeElement === wpSearch || wpSearch.value)) {
-    hideSearchOverlay();
+    escapeSearch();
   } else if (shortcutPlain(e, 'KeyR', 'r')) {
     const t = e.target;
     if (shortcutTypingTarget(t)) return;
