@@ -419,7 +419,7 @@ setInterval(refreshZuluClock, 1000);
     box.style.transform = 'none';   // cancel the desktop below-the-bar offset
   }
   try {
-    const p = JSON.parse(localStorage.getItem(navLangPosKey(KEY)) || 'null');
+    const p = JSON.parse(navLangPosRead(KEY) || 'null');
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
   } catch (e) { /* storage unavailable */ }
   function start(cx, cy) {
@@ -511,7 +511,7 @@ legendCtrl.addTo(map);
     box.style.margin = '0';
   }
   try {
-    const p = JSON.parse(localStorage.getItem(navLangPosKey(KEY)) || 'null');
+    const p = JSON.parse(navLangPosRead(KEY) || 'null');
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
   } catch (e) { /* storage unavailable */ }
   function start(cx, cy) {
@@ -891,6 +891,22 @@ const wpResults = document.getElementById('wp-search-results');
 function closeSearch() {
   wpResults.classList.add('hidden');
   wpResults.innerHTML = '';
+}
+// The two-line "type space-separated codes" tip teaches the search once and then
+// costs two permanent lines above the map — on the docked desktop panel it never
+// went away. Retire it after the pilot has actually searched.
+const SEARCH_TIP_KEY = 'navaid.searchTipDone';
+function searchTipDone() {
+  try { return localStorage.getItem(SEARCH_TIP_KEY) === '1'; } catch (e) { return false; }
+}
+function retireSearchTip() {
+  const tip = document.getElementById('wp-search-hint');
+  if (tip) tip.classList.add('hidden');
+  try { localStorage.setItem(SEARCH_TIP_KEY, '1'); } catch (e) { /* storage unavailable */ }
+}
+function applySearchTipState() {
+  const tip = document.getElementById('wp-search-hint');
+  if (tip) tip.classList.toggle('hidden', searchTipDone());
 }
 // Exact-match lookup of one token against airfields + navWP — case-
 // insensitive on the English ICAO code, exact on the Hebrew label.
@@ -1704,6 +1720,8 @@ function runSearch() {
   if (multi && !lastToken) { closeSearch(); return; }
   const q = lastToken.toUpperCase();
   if (!q) { closeSearch(); return; }
+  // They are searching — the tip has done its job.
+  if (!searchTipDone()) retireSearchTip();
   // Searchable sources — every named thing drawn on the map. Adding a dataset is
   // one entry here rather than another branch below. `routable` marks sources whose
   // `name` is a canonical route point, so multi-token route building can accept
@@ -1904,12 +1922,17 @@ const SEARCH_POS_KEY = 'navaid.searchPos';
 function searchDocked() { return searchOverlay.classList.contains('docked'); }
 (function dockSearchOnDesktop() {
   const box = searchOverlay;
-  const savedPos = () => {
+  // Read once and keep it: the only thing that changes this is the pilot dragging
+  // the panel (see the drag-end below). It used to be re-read, with a JSON.parse,
+  // on every toolbar resize via the ResizeObserver.
+  const readSavedPos = () => {
     try {
-      const p = JSON.parse(localStorage.getItem(navLangPosKey(SEARCH_POS_KEY)) || 'null');
+      const p = JSON.parse(navLangPosRead(SEARCH_POS_KEY) || 'null');
       return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : null;
     } catch (e) { return null; }
   };
+  let savedPosCache = readSavedPos();
+  const savedPos = () => savedPosCache;
   // Same rule as the legend: never come to rest ON the menu bar, but above and
   // below are both fine, so a panel dragged down can be dragged back up.
   function clearOfToolbar(x, y) {
@@ -1997,7 +2020,8 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
     const end = () => {
       box.classList.remove('dragging');
       const r2 = box.getBoundingClientRect();
-      try { localStorage.setItem(navLangPosKey(SEARCH_POS_KEY), JSON.stringify({ x: r2.left, y: r2.top })); }
+      savedPosCache = { x: r2.left, y: r2.top };
+      try { localStorage.setItem(navLangPosKey(SEARCH_POS_KEY), JSON.stringify(savedPosCache)); }
       catch (e) { /* storage unavailable */ }
       document.removeEventListener('mousemove', mm);
       document.removeEventListener('mouseup', end);
@@ -2020,6 +2044,7 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
     start(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: false });
   sync();
+  applySearchTipState();
 })();
 
 // Reference-link overflow (⋯). The six links behind it are read once; keeping them
@@ -2213,8 +2238,23 @@ document.getElementById('export-select').onchange = e => {
   else if (v === 'json-track') {
     const shown = (typeof shownTracks !== 'undefined') ? shownTracks : [];
     if (!shown.length) { alert(S.tbTrackExportNoTrack || 'No GPS track shown — open Saved routes and click Show on a track first.'); return; }
-    const entry = (typeof loadRouteLibrary === 'function' ? loadRouteLibrary() : []).find(e => e.id === shown[shown.length - 1].id);
-    if (entry && typeof downloadGpsTrackJson === 'function') downloadGpsTrackJson(entry);
+    const pick = shown[shown.length - 1];
+    const entry = (typeof loadRouteLibrary === 'function' ? loadRouteLibrary() : []).find(e => e.id === pick.id);
+    // A missing entry means the library could not be read (corrupt blob) or the
+    // track is gone. Falling through silently looked identical to a successful
+    // export: the picker reset and no file appeared.
+    if (!entry || typeof downloadGpsTrackJson !== 'function') {
+      alert(S.errTrackExportFailed || 'That track could not be read from your saved routes.');
+      return;
+    }
+    // With several tracks shown, "the last one shown" is not something the user can
+    // see — name it before writing the file.
+    if (shown.length > 1) {
+      const name = entry.name || pick.name || '';
+      const ask = S.trackExportConfirm ? S.trackExportConfirm(name) : ('Export the track "' + name + '"?');
+      if (!confirm(ask)) return;
+    }
+    downloadGpsTrackJson(entry);
   }
   else if (v === 'gpx') exportGpx();
   else if (v === 'pln') exportPln();
@@ -2285,7 +2325,7 @@ for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadR
   try {
     // On phones the inspector is a fixed bottom sheet (see the mobile block in
     // style.css); a saved drag position would override that, so ignore it there.
-    const p = JSON.parse(localStorage.getItem(navLangPosKey(INSP_POS_KEY)) || 'null');
+    const p = JSON.parse(navLangPosRead(INSP_POS_KEY) || 'null');
     if (!isNarrow() && p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyInspPos(p.x, p.y);
   } catch (e) { /* */ }
   header.addEventListener('mousedown', function (e) {
@@ -5183,6 +5223,7 @@ function refreshMapAfterToolbarModeChange() {
   const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
   // Position is per-language (RTL mirrors LTR, so the spot differs by language).
   const posKey = () => navLangPosKey(toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
+  const posBase = () => (toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
 
   function clampPos(x, y) {
@@ -5201,7 +5242,7 @@ function refreshMapAfterToolbarModeChange() {
 
   function restorePos() {
     try {
-      const raw = localStorage.getItem(posKey());
+      const raw = navLangPosRead(posBase());
       if (raw) {
         const p = JSON.parse(raw);
         requestAnimationFrame(() => setPos(p.x, p.y));
@@ -5592,7 +5633,7 @@ function createTuningPanel() {
       panel.style.right = 'auto';
     }
     try {
-      const raw = localStorage.getItem(navLangPosKey(KEY));
+      const raw = navLangPosRead(KEY);
       if (raw) {
         const p = JSON.parse(raw);
         requestAnimationFrame(() => setPos(p.x, p.y));
