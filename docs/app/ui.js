@@ -179,6 +179,21 @@ layerSelect.onchange = () => {
 // The active base layer decides which data files feed the overlays. On a layer
 // switch, drop the per-layer caches and reload whatever is currently shown, so
 // e.g. the LSA layer shows LSA waypoints while CVFR shows CVFR waypoints.
+// Apply the new chart's own NOTAM choice. The overlay flag is per chart (see
+// notamPrefKey), so a switch has to re-read it and bring the checkbox with it —
+// otherwise the previous chart's state stays on screen under the new chart.
+function applyNotamPrefForLayer() {
+  const pref = notamPrefRead();
+  const on = pref === null ? false : pref;
+  if (window.showNotam === on) return Promise.resolve(false);
+  window.showNotam = on;
+  const cb = document.getElementById('notam-cb');
+  if (cb && !cb.disabled) cb.checked = on;
+  const after = () => { if (typeof refreshNotamListBtn === 'function') refreshNotamListBtn(); return true; };
+  if (on && typeof ensureNotams === 'function') return Promise.resolve(ensureNotams()).then(after);
+  return Promise.resolve(after());
+}
+
 function reloadLayerDatasets() {
   _layerGen++;               // invalidate any in-flight fetch from the previous layer
   navWP = null;
@@ -188,7 +203,7 @@ function reloadLayerDatasets() {
   areas = null;
   // routeTemplates is a single shared list filtered per layer at render time —
   // no reload needed on layer switch.
-  const jobs = [loadAreas()];
+  const jobs = [loadAreas(), applyNotamPrefForLayer()];
   // drawCommChangeRings() needs navWP even when only "show comm-change" is on
   // (not nav-waypoints/reporting) — include it here too, or rings silently
   // stop drawing after a layer switch until the user toggles nav-waypoints.
@@ -3187,8 +3202,39 @@ if (typeof loadSigmets === 'function') {
 }
 
 // --- NOTAM overlay + list (FAA NOTAM API, Israel FIR LLLL) ----------
+// Whether the overlay is on is remembered PER CHART: the NOTAM feed is FIR-wide
+// (one LLLL source, no per-chart split available in it), but what you want on
+// screen is not. CVFR cross-country wants the airspace NOTAMs up; an LSA or
+// helicopter chart is usually flown with them off, and one shared flag meant
+// switching charts carried the other chart's choice over. Keyed off
+// layerDataPrefix() so it follows the same cvfr/lsa/heli split as the waypoint,
+// comm-change and leg-altitude datasets — including the "Nav waypoints from"
+// override, so a chart-less base map follows whatever data it is showing.
 const NOTAM_KEY = 'navaid.showNotam';
-try { const s = localStorage.getItem(NOTAM_KEY); if (s !== null) window.showNotam = s === '1'; } catch (e) { /* */ }
+function notamPrefKey() {
+  const pfx = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+  return NOTAM_KEY + '.' + pfx;
+}
+// A pre-split preference applies to whichever chart is up when it is first read,
+// exactly like navLangPosRead: adopt it rather than dropping it, and leave the
+// legacy key so the other charts inherit it once too.
+function notamPrefRead() {
+  try {
+    const scoped = localStorage.getItem(notamPrefKey());
+    if (scoped !== null) return scoped === '1';
+    const legacy = localStorage.getItem(NOTAM_KEY);
+    if (legacy === null) return null;
+    localStorage.setItem(notamPrefKey(), legacy);
+    return legacy === '1';
+  } catch (e) { return null; }   // storage unavailable
+}
+function notamPrefWrite(on) {
+  try { localStorage.setItem(notamPrefKey(), on ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+}
+{
+  const pref = notamPrefRead();
+  if (pref !== null) window.showNotam = pref;
+}
 const notamCb = document.getElementById('notam-cb');
 const notamListBtn = document.getElementById('notam-list-btn');
 const notamControls = document.getElementById('notam-controls');
@@ -3209,8 +3255,7 @@ function refreshNotamListBtn() {
     notamCb.disabled = !have;
     // Re-check from the saved preference when the feed is present again.
     if (have && !notamCb.checked) {
-      let pref = false; try { pref = localStorage.getItem(NOTAM_KEY) === '1'; } catch (e) { /* */ }
-      if (pref) { notamCb.checked = true; window.showNotam = true; }
+      if (notamPrefRead() === true) { notamCb.checked = true; window.showNotam = true; }
     }
     if (lbl) {
       lbl.classList.toggle('navtoggle-disabled', !have);
@@ -3443,7 +3488,7 @@ if (notamCb) {
   notamCb.checked = !!window.showNotam;
   notamCb.onchange = async e => {
     window.showNotam = e.target.checked;
-    try { localStorage.setItem(NOTAM_KEY, window.showNotam ? '1' : '0'); } catch (err) { /* */ }
+    notamPrefWrite(window.showNotam);
     if (window.showNotam) await ensureNotams();
     refreshNotamListBtn();   // toggle the timeline slider's visibility too
     draw();
@@ -6897,7 +6942,10 @@ NavAid.defaultVisibilityMap = [
   ['reporting-cb', 'navaid.showReporting', 'defaultShowReporting'],
   ['force-snap-cb', 'navaid.forceSnap', 'defaultForceSnap'],
   ['ret-cb', 'navaid.showReturn', 'defaultShowReturn'],
-  ['notam-cb', 'navaid.showNotam', 'defaultShowNotam'],
+  // Per-chart key (see notamPrefKey): a plain string would consult the legacy
+  // shared key, conclude the pilot had never chosen, and stamp the shipped
+  // default over the current chart's real preference.
+  ['notam-cb', () => notamPrefKey(), 'defaultShowNotam'],
   ['show-wind-cb', 'navaid.showWind', 'defaultShowWind'],
   ['windfield-cb', 'navaid.windField', 'defaultWindField'],
   ['ims-pwx-cb', 'navaid.imsPwx', 'defaultImsPwx'],
@@ -6911,9 +6959,12 @@ NavAid.defaultVisibilityMap = [
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;
-  for (const [cbId, lsKey, tuneKey] of NavAid.defaultVisibilityMap) {
+  for (const [cbId, lsKeyRaw, tuneKey] of NavAid.defaultVisibilityMap) {
     const cb = document.getElementById(cbId);
     if (!cb) continue;                                   // not wired yet
+    // A row may carry a function when its key depends on state (the NOTAM
+    // overlay is remembered per chart).
+    const lsKey = typeof lsKeyRaw === 'function' ? lsKeyRaw() : lsKeyRaw;
     let stored = null;
     try { stored = localStorage.getItem(lsKey); } catch (e) { /* */ }
     if (stored !== null) continue;                       // user set this — leave it
