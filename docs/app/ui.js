@@ -2196,6 +2196,12 @@ document.getElementById('export-select').onchange = e => {
   const v = e.target.value;
   e.target.value = '';
   if (v === 'json') save();
+  else if (v === 'json-track') {
+    const shown = (typeof shownTracks !== 'undefined') ? shownTracks : [];
+    if (!shown.length) { alert(S.tbTrackExportNoTrack || 'No GPS track shown — open Saved routes and click Show on a track first.'); return; }
+    const entry = (typeof loadRouteLibrary === 'function' ? loadRouteLibrary() : []).find(e => e.id === shown[shown.length - 1].id);
+    if (entry && typeof downloadGpsTrackJson === 'function') downloadGpsTrackJson(entry);
+  }
   else if (v === 'gpx') exportGpx();
   else if (v === 'pln') exportPln();
   else if (v === 'fdr') exportFdr();

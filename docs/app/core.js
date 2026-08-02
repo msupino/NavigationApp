@@ -1080,6 +1080,8 @@ window.S = Object.assign({
   tbClearTitle: 'Remove all waypoints and notes',
   tbExportMenu: '⬇ Export',
   tbExport: '⬇ JSON — NavAid route file',
+  tbTrackExport: '⬇ JSON — recorded GPS track',
+  tbTrackExportTitle: 'Export the currently shown GPS track as JSON (show a track from Saved routes first)',
   tbExportTitle: 'Export route (JSON / GPX / PLN / FDR)',
   tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
