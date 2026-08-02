@@ -3255,21 +3255,31 @@ function notamPrefKey() {
   const pfx = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
   return NOTAM_KEY + '.' + pfx;
 }
-// A pre-split preference applies to whichever chart is up when it is first read,
-// exactly like navLangPosRead: adopt it rather than dropping it, and leave the
-// legacy key so the other charts inherit it once too.
+// A chart the pilot has never set INHERITS the choice they last made elsewhere,
+// rather than defaulting to off. Defaulting to off made NOTAMs vanish on the first
+// switch to another chart — including the ultralight-bubble NOTAMs, which matter
+// most on the LSA chart they disappeared from. Charts only diverge once the pilot
+// actually toggles one. A pre-split preference is adopted the same way, with the
+// legacy key left for the other charts (as navLangPosRead does for positions).
+const NOTAM_LAST_KEY = NOTAM_KEY + '.last';
 function notamPrefRead() {
   try {
     const scoped = localStorage.getItem(notamPrefKey());
     if (scoped !== null) return scoped === '1';
-    const legacy = localStorage.getItem(NOTAM_KEY);
-    if (legacy === null) return null;
-    localStorage.setItem(notamPrefKey(), legacy);
-    return legacy === '1';
+    const inherited = localStorage.getItem(NOTAM_KEY) !== null
+      ? localStorage.getItem(NOTAM_KEY)
+      : localStorage.getItem(NOTAM_LAST_KEY);
+    if (inherited === null) return null;
+    localStorage.setItem(notamPrefKey(), inherited);
+    return inherited === '1';
   } catch (e) { return null; }   // storage unavailable
 }
 function notamPrefWrite(on) {
-  try { localStorage.setItem(notamPrefKey(), on ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+  try {
+    localStorage.setItem(notamPrefKey(), on ? '1' : '0');
+    // What an untouched chart inherits next.
+    localStorage.setItem(NOTAM_LAST_KEY, on ? '1' : '0');
+  } catch (e) { /* storage unavailable */ }
 }
 {
   const pref = notamPrefRead();

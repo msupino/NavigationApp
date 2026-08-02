@@ -52,7 +52,10 @@ test('the preference key follows the chart, not the session', async ({ page }) =
                          heli: 'navaid.showNotam.heli' });
 });
 
-test('turning NOTAMs on for CVFR leaves LSA and heli off', async ({ page }) => {
+test('an untouched chart inherits the last choice instead of hiding NOTAMs', async ({ page }) => {
+  // Defaulting an untouched chart to OFF made NOTAMs vanish on the first switch —
+  // including the drawable ULTRALIGHT BUBBLE ones, which matter most on the LSA
+  // chart they disappeared from.
   await boot(page);
   await setLayer(page, 'CVFR');
   await page.evaluate(async () => {
@@ -64,15 +67,33 @@ test('turning NOTAMs on for CVFR leaves LSA and heli off', async ({ page }) => {
 
   const lsa = await setLayer(page, 'Low Alt');
   expect(lsa.prefix).toBe('lsa');
-  expect(lsa.showNotam).toBe(false);       // LSA keeps its own (unset -> off)
-  expect(lsa.checked).toBe(false);
+  expect(lsa.showNotam).toBe(true);        // inherited, not silently dropped
+  expect(lsa.checked).toBe(true);
 
   const heli = await setLayer(page, 'Helicopters');
-  expect(heli.showNotam).toBe(false);
+  expect(heli.showNotam).toBe(true);
+});
+
+test('charts diverge once one is actually toggled', async ({ page }) => {
+  await boot(page);
+  await setLayer(page, 'CVFR');
+  await page.evaluate(async () => {
+    const cb = document.getElementById('notam-cb');
+    cb.checked = true; await cb.onchange({ target: cb });
+  });
+  await setLayer(page, 'Low Alt');
+  await page.evaluate(async () => {
+    const cb = document.getElementById('notam-cb');
+    cb.checked = false; await cb.onchange({ target: cb });   // explicit: off on LSA
+  });
+  expect(await page.evaluate(() => localStorage.getItem('navaid.showNotam.lsa'))).toBe('0');
 
   const back = await setLayer(page, 'CVFR');
-  expect(back.showNotam).toBe(true);       // and CVFR still has it on
+  expect(back.showNotam).toBe(true);       // CVFR keeps its own on
   expect(back.checked).toBe(true);
+
+  const lsaAgain = await setLayer(page, 'Low Alt');
+  expect(lsaAgain.showNotam).toBe(false);  // and LSA keeps its own off
 });
 
 test('each chart keeps its own choice across a reload', async ({ page }) => {
@@ -87,7 +108,7 @@ test('each chart keeps its own choice across a reload', async ({ page }) => {
   expect(await page.evaluate(() => notamPrefRead())).toBe(true);      // boots on CVFR
   expect(await page.evaluate(() => !!window.showNotam)).toBe(true);
   const lsa = await setLayer(page, 'Low Alt');
-  expect(lsa.showNotam).toBe(false);
+  expect(lsa.showNotam).toBe(false);       // explicitly stored '0'
 });
 
 test('a pre-split preference is adopted, not dropped', async ({ page }) => {
