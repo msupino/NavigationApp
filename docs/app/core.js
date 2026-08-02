@@ -2297,7 +2297,15 @@ function legAltitudeIsBlocked(leg, key) {
   return false;
 }
 function legAltitudePlaceholder(leg, key) {
-  return legAltitudeIsBlocked(leg, key) ? altitudeBlockedLabel() : altitudeUnknownLabel();
+  if (legAltitudeIsBlocked(leg, key)) return altitudeBlockedLabel();
+  // Tables keep the explicit word (see kiteAltitudeLabel) — but a phone's alt
+  // column is 42px, where "Unknown" / "לא ידוע" renders as "Unkno" / "לא יד".
+  // Below the breakpoint the dash the kites use is the honest choice.
+  if (typeof window !== 'undefined' && window.matchMedia &&
+      window.matchMedia('(max-width: 680px)').matches) {
+    return S.altitudeUnsetShort || '—';
+  }
+  return altitudeUnknownLabel();
 }
 // Map kites are glanced at, not read: a full-width "Unknown" on every leg label was
 // the loudest text on the chart and looked like an error rather than "not set yet".

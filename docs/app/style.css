@@ -2749,7 +2749,9 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 }
 .plan-name:focus { outline: 1px solid #1d6fe0; }
 .plan-num {
-  width: 64px;
+  /* Wide enough for the "Unknown" / "לא ידוע" placeholder the tables use for an
+     unset altitude — at 64px it rendered as "Unkno". */
+  width: 78px;
   font: inherit;
   font-size: 13px;
   color: #e8e8e8;
@@ -4797,7 +4799,12 @@ html[data-theme="light"] #insp-body .insp-actions {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
+    /* center (for the 44px touch target) replaces the base rule's
+       space-between, which is what spaced the three bars — without a row-gap
+       they stack into one 6px smudge, and this toggle is the ONLY way into the
+       menus on a phone (it is display:none from 681px up). */
     justify-content: center;
+    row-gap: 4px;
   }
   /* The coordinate readout is a button in disguise ("Click to go to coordinates") and
      was 19px tall. Grow the strike area with padding, not type size, so the readout
