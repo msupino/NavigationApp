@@ -126,7 +126,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=500">
+  <link rel="stylesheet" href="app/style.css?v=502">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -244,6 +244,13 @@
         <label class="navtoggle" data-i18n-title="tbLayerTitle">
           <span data-i18n="tbLayerLabel"></span>
           <select id="layer-select"></select>
+        </label>
+        <!-- Seed speed for a leg with nothing to inherit from. Drives the
+             defaultLegSpeedKt tune key, so the gist default still applies until
+             the pilot sets their own aircraft's cruise here. -->
+        <label class="navtoggle" data-i18n-title="tbDefaultSpeedTitle">
+          <span data-i18n="tbDefaultSpeedLabel"></span>
+          <input type="number" id="default-speed" min="20" max="400" step="5" inputmode="numeric">
         </label>
         <div class="tb-group" data-i18n="tbGrpOverlays"></div>
         <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
@@ -831,7 +838,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=500';
+      var v = '?v=502';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
