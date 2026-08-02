@@ -595,6 +595,7 @@ window.S = {
   altPairsDistance: 'מ״י',
   altPairsBlocked: 'חסום',
   altitudeUnknown: 'לא ידוע',
+  profileAssumedNote: function(ft) { return 'לא הוגדר גובה — מוצג ב-' + ft + ' רגל'; },
   altitudeUnsetShort: '—',
   altPairsUnknown: 'לא ידוע',
   altPairsOneWay: 'חד-כיווני',

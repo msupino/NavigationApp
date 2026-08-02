@@ -877,6 +877,22 @@ function closeSearch() {
   wpResults.classList.add('hidden');
   wpResults.innerHTML = '';
 }
+// The two-line "type space-separated codes" tip teaches the search once and then
+// costs two permanent lines above the map — on the docked desktop panel it never
+// went away. Retire it after the pilot has actually searched.
+const SEARCH_TIP_KEY = 'navaid.searchTipDone';
+function searchTipDone() {
+  try { return localStorage.getItem(SEARCH_TIP_KEY) === '1'; } catch (e) { return false; }
+}
+function retireSearchTip() {
+  const tip = document.getElementById('wp-search-hint');
+  if (tip) tip.classList.add('hidden');
+  try { localStorage.setItem(SEARCH_TIP_KEY, '1'); } catch (e) { /* storage unavailable */ }
+}
+function applySearchTipState() {
+  const tip = document.getElementById('wp-search-hint');
+  if (tip) tip.classList.toggle('hidden', searchTipDone());
+}
 // Exact-match lookup of one token against airfields + navWP — case-
 // insensitive on the English ICAO code, exact on the Hebrew label.
 // Airfields tried first (smaller, strongly-known set; same priority as
@@ -1689,6 +1705,8 @@ function runSearch() {
   if (multi && !lastToken) { closeSearch(); return; }
   const q = lastToken.toUpperCase();
   if (!q) { closeSearch(); return; }
+  // They are searching — the tip has done its job.
+  if (!searchTipDone()) retireSearchTip();
   // Searchable sources — every named thing drawn on the map. Adding a dataset is
   // one entry here rather than another branch below. `routable` marks sources whose
   // `name` is a canonical route point, so multi-token route building can accept
@@ -2011,6 +2029,7 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
     start(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: false });
   sync();
+  applySearchTipState();
 })();
 
 // Reference-link overflow (⋯). The six links behind it are read once; keeping them
