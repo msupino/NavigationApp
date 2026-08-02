@@ -904,6 +904,12 @@ function applyMapBearing(d) {
   try { map.setBearing(b); } catch (e) { /* rotate plugin absent */ }
 }
 function save() {
+  // An empty route used to export a JSON of empty arrays — a file that looks
+  // like a route and imports as nothing. Say so instead.
+  if (routeIsEmpty()) {
+    alert(S.errNothingToSave);
+    return;
+  }
   const data = serializeRoute();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -1350,6 +1356,39 @@ function loadPln(file) {
   reader.readAsText(file);
 }
 
+// Merge a saved-routes library array (what "Export library" writes) into the
+// stored library, under fresh ids. Shared by the Saved-routes "Import library"
+// button and by load() below, which auto-detects the shape — importing a file
+// you just exported must work from either entry point, and it used to fail the
+// single-route validator with "root.waypoints: missing".
+// GPS-track entries carry `track` rather than `data`; they were silently dropped
+// before, so a library round-trip lost every recorded track.
+function importRouteLibraryArray(arr) {
+  if (!Array.isArray(arr)) return null;
+  const merged = loadRouteLibrary();
+  let added = 0;
+  for (const it of arr) {
+    if (!it) continue;
+    const isTrack = it.kind === 'gps' && Array.isArray(it.track) && it.track.length;
+    if (!it.data && !isTrack) continue;
+    if (it.data && typeof validateRoute === 'function' && validateRoute(it.data)) continue;
+    const entry = { id: routeLibraryId(),
+      name: (it.name || 'Route').toString().slice(0, 80),
+      savedAt: it.savedAt || new Date().toISOString() };
+    if (isTrack) { entry.kind = 'gps'; entry.track = it.track; }
+    else { entry.data = it.data; }
+    merged.unshift(entry);
+    added++;
+  }
+  return { merged, added };
+}
+// A library file is an array of entries carrying route data or a track — as
+// opposed to a single route object, which carries waypoints/legs/notes.
+function looksLikeRouteLibrary(d) {
+  return Array.isArray(d) && d.some(it => it && (it.data ||
+    (it.kind === 'gps' && Array.isArray(it.track))));
+}
+
 function load(file) {
   // #146: hard cap on file size before we even read it. Route JSON is
   // typically <100 KB; 2 MB leaves room for big routes / future fields and
@@ -1367,6 +1406,23 @@ function load(file) {
       d = JSON.parse(reader.result);
     } catch (err) {
       alert(S.errLoadFile + err.message);
+      return;
+    }
+    // A saved-routes library exported from the Saved routes menu is an ARRAY of
+    // entries, not a route. Importing one here used to fail the route validator
+    // with "root.waypoints: missing"; merge it into the library instead.
+    if (Array.isArray(d)) {
+      if (!looksLikeRouteLibrary(d)) { alert(S.errNotRouteLibrary); return; }
+      const res = importRouteLibraryArray(d);
+      if (!res || !res.added) {
+        alert(S.routeLibraryImportNone || 'No valid routes in that file');
+        return;
+      }
+      if (persistRouteLibrary(res.merged) && typeof showToast === 'function') {
+        showToast(S.routeLibraryImportedN
+          ? S.routeLibraryImportedN(res.added)
+          : res.added + ' route(s) imported');
+      }
       return;
     }
     // Strict schema check before applying any state — issue #101. Any
