@@ -4813,6 +4813,30 @@ function reapplyStoredTuneOverrides() {
   for (const entry of STORED_TUNE_OVERRIDES) applyStoredTuneOverride(entry);
 }
 
+// Default leg speed. Seeds a new leg that has no earlier leg to copy from, so it
+// belongs beside the layer picker rather than in the hidden tuning panel — it is
+// the one performance number every pilot needs to set once for their aircraft.
+// Registered as a tune override so it outranks the gist and survives its reload.
+const DEFAULTSPEED_KEY = 'navaid.defaultSpeed';
+const DEFAULTSPEED_EL = document.getElementById('default-speed');
+const defaultSpeedOk = n => Number.isFinite(n) && n >= 20 && n <= 400;
+function syncDefaultSpeedInput() {
+  if (DEFAULTSPEED_EL) DEFAULTSPEED_EL.value = String(Math.round(tune('defaultLegSpeedKt')));
+}
+if (DEFAULTSPEED_EL) {
+  registerTuneOverride(DEFAULTSPEED_KEY, ['defaultLegSpeedKt'], v => {
+    const n = Math.round(Number(v));
+    return defaultSpeedOk(n) ? n : null;
+  });
+  syncDefaultSpeedInput();
+  DEFAULTSPEED_EL.onchange = () => {
+    const n = Math.round(Number(DEFAULTSPEED_EL.value));
+    if (!defaultSpeedOk(n)) { syncDefaultSpeedInput(); return; }   // reject junk, show what is in force
+    setTune('defaultLegSpeedKt', n);
+    try { localStorage.setItem(DEFAULTSPEED_KEY, String(n)); } catch (e) { /* storage unavailable */ }
+  };
+}
+
 const KITEALPHA_KEY = 'navaid.legArrowAlpha';
 let gistKiteAlpha = tune('kiteNoteAlpha');
 const KITEALPHA_EL = document.getElementById('kite-alpha');
@@ -6174,6 +6198,9 @@ if (typeof loadRemoteConfig === "function") {
     // on top of it, then let the controls re-read.
     if (typeof reapplyStoredTuneOverrides === 'function') reapplyStoredTuneOverrides();
     if (typeof syncKiteAlphaSlider === 'function') syncKiteAlphaSlider(true);
+    // Show whatever is in force now — the gist's value, or the pilot's saved one
+    // that reapplyStoredTuneOverrides() just put back on top of it.
+    if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
     for (const [id, keys] of [['waypoint-color', ['waypointFillColor']],
       ['leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor']]]) {
       const el = document.getElementById(id);
