@@ -1886,7 +1886,7 @@ function showFlightPlan() {
       el.style.margin = '0';
     }
     try {
-      const raw = localStorage.getItem(navLangPosKey(KEY));
+      const raw = navLangPosRead(KEY);
       if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
     } catch (e) {}
     function start(cx, cy) {
@@ -4279,20 +4279,15 @@ async function flyRoute() {
     await loadAirfields();
   }
   const wps = state.waypoints;
-  const endpointGroundM = i => {
-    if (i !== 0 && i !== wps.length - 1) return null;
-    const af = typeof airfieldAtWaypoint === 'function'
-      ? airfieldAtWaypoint(wps[i])
-      : null;
-    const elevFt = af && Number(af.elev_ft);
-    return Number.isFinite(elevFt) ? Math.round(elevFt * 0.3048) : null;
-  };
-  // Height of the airfield a waypoint sits on, if any — not just the endpoints.
+  // Height of the airfield a waypoint sits on, if any.
   const fieldGroundM = i => {
     const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[i]) : null;
     const elevFt = af && Number(af.elev_ft);
     return Number.isFinite(elevFt) ? Math.round(elevFt * 0.3048) : null;
   };
+  // Same lookup, but only the route's two ends sit ON the ground in the tour.
+  const endpointGroundM = i =>
+    (i === 0 || i === wps.length - 1) ? fieldGroundM(i) : null;
   // A leg with no altitude borrows the route's own numbers before inventing one:
   // the next leg ahead that has an altitude, else the last one behind it. The
   // departure leg out of an airfield is the common case — it is usually left
@@ -4361,7 +4356,6 @@ async function flyRoute() {
     const inDist = geo(wps[i - 1], wps[i]).dist;
     return Math.max(0, Math.min(0.5, inDist * 0.15));
   };
-  const legAltitude = i => legAlt(i);
   const tourFractions = (legIndex, dist) => {
     const out = [];
     const add = f => {
@@ -4445,7 +4439,7 @@ async function flyRoute() {
           const turnSegPart = (f - a) / (1 - turnStartF);
           segDur = Math.max(segDur, turnDur * turnSegPart);
         }
-        const a = f >= 1 ? altAt(i + 1) : legAltitude(i);
+        const a = f >= 1 ? altAt(i + 1) : legAlt(i);
         tour += flyToCamera(pos, a.alt, continuousHeading(hdg), Math.max(0.6, segDur), 'smooth', a.mode);
         prevF = f;
       }
