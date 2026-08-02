@@ -245,6 +245,13 @@
           <span data-i18n="tbLayerLabel"></span>
           <select id="layer-select"></select>
         </label>
+        <!-- Seed speed for a leg with nothing to inherit from. Drives the
+             defaultLegSpeedKt tune key, so the gist default still applies until
+             the pilot sets their own aircraft's cruise here. -->
+        <label class="navtoggle" data-i18n-title="tbDefaultSpeedTitle">
+          <span data-i18n="tbDefaultSpeedLabel"></span>
+          <input type="number" id="default-speed" min="20" max="400" step="5" inputmode="numeric">
+        </label>
         <div class="tb-group" data-i18n="tbGrpOverlays"></div>
         <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
           <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
