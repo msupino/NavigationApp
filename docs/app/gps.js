@@ -530,10 +530,13 @@ function downloadGpsTrackGpx(entry) {
   a.href = URL.createObjectURL(blob);
   a.download = (entry.name || 'track').replace(/[^\w\-]+/g, '_') + '.gpx';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // revoking synchronously after click can abort the download (Firefox/Safari)
 }
 function downloadGpsTrackJson(entry) {
-  const blob = new Blob([JSON.stringify(entry, null, 2)], { type: 'application/json' });
+  // A single-entry LIBRARY array, not a bare entry: that is the shape load()
+  // recognises, so an exported track can be imported back. A lone object went
+  // through the single-route validator and failed with "root.waypoints: missing".
+  const blob = new Blob([JSON.stringify([entry], null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = (entry.name || 'track').replace(/[^\w\-]+/g, '_') + '.json';
