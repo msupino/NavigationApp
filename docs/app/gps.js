@@ -532,6 +532,14 @@ function downloadGpsTrackGpx(entry) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+function downloadGpsTrackJson(entry) {
+  const blob = new Blob([JSON.stringify(entry, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (entry.name || 'track').replace(/[^\w\-]+/g, '_') + '.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
 
 // Breadcrumb of the in-progress recording, drawn on the overlay.
 function drawGpsTrack() {

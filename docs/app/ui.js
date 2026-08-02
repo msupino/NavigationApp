@@ -1523,7 +1523,11 @@ function showRouteLibraryModal(focusSave) {
         gpx.type = 'button';
         gpx.textContent = S.routeLibraryExportGpx || 'GPX';
         gpx.onclick = () => { if (typeof downloadGpsTrackGpx === 'function') downloadGpsTrackGpx(entry); };
-        actions.append(loadBtn, rename, gpx, del);   // read-only track: Show/Hide + GPX only
+        const json = document.createElement('button');
+        json.type = 'button';
+        json.textContent = S.routeLibraryExportJson || 'JSON';
+        json.onclick = () => { if (typeof downloadGpsTrackJson === 'function') downloadGpsTrackJson(entry); };
+        actions.append(loadBtn, rename, gpx, json, del);   // read-only track: Show/Hide + GPX + JSON
       } else {
         actions.append(loadBtn, save, rename, dup, del);
       }
