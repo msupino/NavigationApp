@@ -1091,6 +1091,8 @@ window.S = Object.assign({
   tbTrackExportTitle: 'Export the currently shown GPS track as JSON (show a track from Saved routes first)',
   // Referenced by ui.js/gps.js but previously undefined in either table, so they
   // fell back to their English literal even in a Hebrew session.
+  errTrackExportFailed: 'That track could not be read from your saved routes.',
+  trackExportConfirm: function(name) { return 'Export the track "' + name + '"?'; },
   tbTrackExportNoTrack: 'No GPS track shown — open Saved routes and click Show on a track first.',
   resetToDefault: 'Reset to default',
   tbExportTitle: 'Export route (JSON / GPX / PLN / FDR)',
@@ -1845,6 +1847,22 @@ const pad3 = n => String(n).padStart(3, '0');
 function navLangPosKey(base) {
   const lang = (document.documentElement && document.documentElement.lang === 'he') ? 'he' : 'en';
   return base + '.' + lang;
+}
+// Read a position, adopting a pre-split blob. Positions used to be stored under the
+// bare key for both languages; splitting them per language would otherwise discard
+// every spot the pilot had already dragged (legend, clock, inspector, toolbar,
+// tuning panel, flight plan) and snap each panel back to its default. On the first
+// read we inherit the legacy value into this language's key. The legacy key is left
+// in place so the other language inherits it too, once.
+function navLangPosRead(base) {
+  try {
+    const scoped = localStorage.getItem(navLangPosKey(base));
+    if (scoped !== null) return scoped;
+    const legacy = localStorage.getItem(base);
+    if (legacy === null) return null;
+    localStorage.setItem(navLangPosKey(base), legacy);
+    return legacy;
+  } catch (e) { return null; }   // storage unavailable
 }
 
 // --- NOTAM decoder ---------------------------------------------------
