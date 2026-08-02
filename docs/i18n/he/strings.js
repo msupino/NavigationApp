@@ -595,6 +595,7 @@ window.S = {
   altPairsDistance: 'מ״י',
   altPairsBlocked: 'חסום',
   altitudeUnknown: 'לא ידוע',
+  profileAssumedNote: function(ft) { return 'לא הוגדר גובה — מוצג ב-' + ft + ' רגל'; },
   altitudeUnsetShort: '—',
   altPairsUnknown: 'לא ידוע',
   altPairsOneWay: 'חד-כיווני',
@@ -765,6 +766,8 @@ window.S = {
   // (אימוג'י בתווית הכפיל את האייקון בתפריט הנייד).
   tbGpsRecord: 'התחל הקלטה',
   tbGpsRecordTitle: 'התחל להקליט את המסלול בפועל מ-GPS המכשיר; עצירה שומרת אותו במסלולים',
+  errTrackExportFailed: 'לא ניתן לקרוא את הרצועה מהמסלולים השמורים.',
+  trackExportConfirm: function(name) { return 'לייצא את הרצועה "' + name + '"?'; },
   tbTrackExportNoTrack: 'לא מוצג מסלול GPS — פתח "מסלולים שמורים" ולחץ הצג על מסלול תחילה.',
   resetToDefault: 'אפס לברירת מחדל',
   gpsLiveNotifTitle: 'מיקום NavAid',
