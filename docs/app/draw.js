@@ -695,10 +695,31 @@ function notamActive(n, now) {
   if (start) { const s = ms(start); if (Number.isFinite(s) && s > t) return false; }
   return true;
 }
-function activeNotams() {
+// Which chart a NOTAM belongs to. The feed is FIR-wide with no chart field, but
+// the ultralight ones say so in their text ("ULTRALIGHT BUBBLE CLSD HAHULA
+// (BHULA)") — those are the LSA chart's business and clutter a CVFR plan, which
+// is what "separate NOTAMs between CVFR and LSA" asked for.
+//
+// Deliberately ultralight-only. The helicopter signal in this feed is not
+// separable: most HEL mentions are general closures that merely name it ("AD CLSD
+// TO ALL FLT INCLUDING HEL"), so matching them would hide FIR-wide NOTAMs from
+// CVFR. Everything not explicitly ultralight stays on every chart.
+const NOTAM_ULTRALIGHT_RE = /ULTRALIGHT|POWERED PARA|PARAGLID|MICROLIGHT|HANG GLID/i;
+function notamChartTag(n) {
+  return NOTAM_ULTRALIGHT_RE.test((n && n.text) || '') ? 'lsa' : null;
+}
+function notamOnChart(n, prefix) {
+  const tag = notamChartTag(n);
+  return tag === null || tag === prefix;
+}
+// opts.allCharts skips the chart filter, for callers that mean "the whole feed".
+function activeNotams(opts) {
   // The timeline slider scrubs a look-ahead time; null = live "now".
   const now = Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
-  return Array.isArray(notams) ? notams.filter(n => notamActive(n, now)) : [];
+  if (!Array.isArray(notams)) return [];
+  const everyChart = !!(opts && opts.allCharts);
+  const prefix = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+  return notams.filter(n => notamActive(n, now) && (everyChart || notamOnChart(n, prefix)));
 }
 // Resolve a NOTAM fix name (CVFR reporting point / airfield / VOR) → coords.
 // Route-closure NOTAMs name fixes ("BTN NEGEV-HOVAV") instead of giving

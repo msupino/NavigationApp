@@ -142,3 +142,55 @@ test('the "Nav waypoints from" override decides the key on a base map', async ({
   expect(key.before).toBe('navaid.showNotam.cvfr');   // base map follows CVFR by default
   expect(key.after).toBe('navaid.showNotam.heli');    // and the override moves it
 });
+
+// Ultralight NOTAMs belong to the LSA chart: the feed says so in their text, and a
+// CVFR plan does not want the bubble closures.
+const UL_FEED = { fir: 'LLLL', notams: [
+  { id: 'C0006/26', icao: 'LLLL', type: 'AECH', text: 'ULTRALIGHT BUBBLE ZVULUN NORTH (BZVUE) AVBL FOR ULTRALIGHT ACFT.',
+    start: '2020-01-01T00:00:00Z', end: '2035-01-01T00:00:00Z',
+    geom: { type: 'circle', lat: 32.8, lng: 35.1, radiusNm: 4 } },
+  { id: 'C1639/26', icao: 'LLBG', type: 'FALC', text: 'AD CLSD TO ALL FLT INCLUDING HEL, DUE WIP.',
+    start: '2020-01-01T00:00:00Z', end: '2035-01-01T00:00:00Z',
+    geom: { type: 'circle', lat: 32.0, lng: 34.88, radiusNm: 3 } },
+] };
+
+async function bootUl(page) {
+  await page.route(NOTAM_RE, r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(UL_FEED) }));
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof activeNotams === 'function' && Array.isArray(window.notams) && window.notams.length === 2);
+}
+
+const idsOn = (page, layer) => page.evaluate(async (n) => {
+  const sel = document.getElementById('layer-select');
+  sel.value = n; sel.onchange();
+  await new Promise(r => setTimeout(r, 250));
+  return { prefix: layerDataPrefix(), ids: activeNotams().map(x => x.id).sort() };
+}, layer);
+
+test('the LSA chart shows ultralight NOTAMs; CVFR and heli do not', async ({ page }) => {
+  await bootUl(page);
+  const cvfr = await idsOn(page, 'CVFR');
+  expect(cvfr.ids).toEqual(['C1639/26']);              // general only
+
+  const lsa = await idsOn(page, 'Low Alt');
+  expect(lsa.ids).toEqual(['C0006/26', 'C1639/26']);   // general + ultralight
+
+  const heli = await idsOn(page, 'Helicopters');
+  expect(heli.ids).toEqual(['C1639/26']);
+});
+
+test('a general closure that merely mentions HEL stays on every chart', async ({ page }) => {
+  await bootUl(page);
+  for (const layer of ['CVFR', 'Low Alt', 'Helicopters']) {
+    const out = await idsOn(page, layer);
+    expect(out.ids).toContain('C1639/26');
+  }
+});
+
+test('the whole feed is still reachable with allCharts', async ({ page }) => {
+  await bootUl(page);
+  await idsOn(page, 'CVFR');
+  const all = await page.evaluate(() => activeNotams({ allCharts: true }).map(n => n.id).sort());
+  expect(all).toEqual(['C0006/26', 'C1639/26']);
+});
