@@ -466,6 +466,8 @@ window.S = {
   tbClearTitle: 'הסר את כל ציוני הדרך וההערות',
   tbExportMenu: '⬇ ייצוא',
   tbExport: '⬇ JSON — קובץ מסלול של NavAid',
+  tbTrackExport: '⬇ JSON — רצועת GPS מוקלטת',
+  tbTrackExportTitle: 'ייצא את רצועת ה-GPS המוצגת כ-JSON (הצג רצועה מ״מסלולים שמורים״ תחילה)',
   tbExportTitle: 'ייצא מסלול (JSON / GPX / PLN)',
   tbImport: '⬆ ייבא',
   tbImportTitle: 'ייבא JSON מסלול',
