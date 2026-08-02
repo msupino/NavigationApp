@@ -443,6 +443,8 @@ window.S = {
   tbAddNote: '📝 הוסף הערה (N)',
   tbAddNoteTitle: 'לחץ על המפה להוספת הערה (לחץ שוב לעצירה)',
   tbLayerLabel: 'שכבה',
+  tbDefaultSpeedLabel: 'מהירות ברירת מחדל (קשר)',
+  tbDefaultSpeedTitle: 'המהירות שתינתן לקטע חדש כשאין קטע קודם להעתיק ממנו',
   tbLayerTitle: 'שכבת מפה בסיסית',
   tbGrpOverlays: 'שכבות-על',
   tbGrpRouteInfo: 'מידע מסלול',

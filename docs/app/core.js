@@ -1057,6 +1057,8 @@ window.S = Object.assign({
   tbAddNote: '📝 Add note (N)',
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
+  tbDefaultSpeedLabel: 'Default speed (kt)',
+  tbDefaultSpeedTitle: 'Speed given to a new leg when there is no earlier leg to copy from',
   tbLayerTitle: 'Base map layer',
   tbGrpOverlays: 'Overlays',          // View sub-group headings (layout A)
   tbGrpRouteInfo: 'Route info',
