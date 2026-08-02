@@ -59,10 +59,14 @@ test.describe('Route import rejection', () => {
     expect(len).toBe(3);                       // original route intact
   });
 
-  test('root is array (not object): rejected with type error', async ({ page }) => {
+  // A top-level array is now read as a saved-routes library first (that is what
+  // "Export library" writes), so an array of junk is rejected as "not a library"
+  // rather than with the single-route validator's "expected object, got array".
+  // See export-import-guards.spec.js.
+  test('root is array of junk: rejected as not a saved-routes library', async ({ page }) => {
     const msg = await uploadAndCapture(page, '[1,2,3]');
-    expect(msg).toMatch(/Invalid route file/);
-    expect(msg).toMatch(/root.*expected object.*array/);
+    expect(msg).toMatch(/not a saved-routes library/);
+    expect(msg).not.toMatch(/waypoints/);
   });
 
   test('missing waypoints field: rejected', async ({ page }) => {

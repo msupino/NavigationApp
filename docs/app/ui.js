@@ -1360,9 +1360,11 @@ function showRouteLibraryModal(focusSave) {
   exportBtn.onclick = () => {
     // When the stored library is corrupt, export the raw blob verbatim so the
     // user can attempt recovery — not the empty parsed fallback.
-    const payload = (NavAid.routeLibraryCorrupt && typeof NavAid.routeLibraryCorruptRaw === 'string')
-      ? NavAid.routeLibraryCorruptRaw
-      : JSON.stringify(loadRouteLibrary(), null, 2);
+    const corrupt = NavAid.routeLibraryCorrupt && typeof NavAid.routeLibraryCorruptRaw === 'string';
+    const lib = corrupt ? null : loadRouteLibrary().filter(e => e && !e.deleted);
+    // An empty library exported as "[]" — a file that imports as nothing.
+    if (!corrupt && !lib.length) { alert(S.routeLibraryExportEmpty || 'No saved routes to export yet.'); return; }
+    const payload = corrupt ? NavAid.routeLibraryCorruptRaw : JSON.stringify(lib, null, 2);
     const blob = new Blob([payload], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1386,26 +1388,23 @@ function showRouteLibraryModal(focusSave) {
     reader.onload = () => {
       let arr;
       try { arr = JSON.parse(reader.result); } catch (err) { alert(S.errLoadFile + err.message); return; }
-      if (!Array.isArray(arr)) { alert(S.errLoadFile + 'expected a route-library array'); return; }
-      // Merge valid entries (fresh ids) into the existing library.
-      const merged = loadRouteLibrary();
-      let added = 0;
-      for (const it of arr) {
-        if (!it || !it.data) continue;
-        if (typeof validateRoute === 'function' && validateRoute(it.data)) continue;
-        merged.unshift({ id: routeLibraryId(), name: (it.name || 'Route').toString().slice(0, 80),
-          savedAt: it.savedAt || new Date().toISOString(), data: it.data });
-        added++;
-      }
-      if (!added) {   // file had no valid routes → nothing to write
+      if (!Array.isArray(arr)) { alert(S.errNotRouteLibrary || 'That file is not a saved-routes library.'); return; }
+      // Merging (fresh ids, tracks included) is shared with the toolbar Import,
+      // which auto-detects a library file — one code path, one behaviour.
+      const res = importRouteLibraryArray(arr);
+      if (!res || !res.added) {   // file had no valid routes → nothing to write
         if (typeof showToast === 'function') showToast(S.routeLibraryImportNone || 'No valid routes in that file');
         return;
       }
       // Only claim success (render + toast) if the write actually happened — a
       // corrupt library refuses the write, so don't show a false "imported".
-      if (persistRouteLibrary(merged)) {
+      if (persistRouteLibrary(res.merged)) {
         render();
-        if (typeof showToast === 'function') showToast(added + ' route(s) imported');
+        if (typeof showToast === 'function') {
+          showToast(S.routeLibraryImportedN
+            ? S.routeLibraryImportedN(res.added)
+            : res.added + ' route(s) imported');
+        }
       }
     };
     reader.readAsText(f);
@@ -4793,6 +4792,30 @@ function reapplyStoredTuneOverrides() {
   for (const entry of STORED_TUNE_OVERRIDES) applyStoredTuneOverride(entry);
 }
 
+// Default leg speed. Seeds a new leg that has no earlier leg to copy from, so it
+// belongs beside the layer picker rather than in the hidden tuning panel — it is
+// the one performance number every pilot needs to set once for their aircraft.
+// Registered as a tune override so it outranks the gist and survives its reload.
+const DEFAULTSPEED_KEY = 'navaid.defaultSpeed';
+const DEFAULTSPEED_EL = document.getElementById('default-speed');
+const defaultSpeedOk = n => Number.isFinite(n) && n >= 20 && n <= 400;
+function syncDefaultSpeedInput() {
+  if (DEFAULTSPEED_EL) DEFAULTSPEED_EL.value = String(Math.round(tune('defaultLegSpeedKt')));
+}
+if (DEFAULTSPEED_EL) {
+  registerTuneOverride(DEFAULTSPEED_KEY, ['defaultLegSpeedKt'], v => {
+    const n = Math.round(Number(v));
+    return defaultSpeedOk(n) ? n : null;
+  });
+  syncDefaultSpeedInput();
+  DEFAULTSPEED_EL.onchange = () => {
+    const n = Math.round(Number(DEFAULTSPEED_EL.value));
+    if (!defaultSpeedOk(n)) { syncDefaultSpeedInput(); return; }   // reject junk, show what is in force
+    setTune('defaultLegSpeedKt', n);
+    try { localStorage.setItem(DEFAULTSPEED_KEY, String(n)); } catch (e) { /* storage unavailable */ }
+  };
+}
+
 const KITEALPHA_KEY = 'navaid.legArrowAlpha';
 let gistKiteAlpha = tune('kiteNoteAlpha');
 const KITEALPHA_EL = document.getElementById('kite-alpha');
@@ -6153,6 +6176,9 @@ if (typeof loadRemoteConfig === "function") {
     // on top of it, then let the controls re-read.
     if (typeof reapplyStoredTuneOverrides === 'function') reapplyStoredTuneOverrides();
     if (typeof syncKiteAlphaSlider === 'function') syncKiteAlphaSlider(true);
+    // Show whatever is in force now — the gist's value, or the pilot's saved one
+    // that reapplyStoredTuneOverrides() just put back on top of it.
+    if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
     for (const [id, keys] of [['waypoint-color', ['waypointFillColor']],
       ['leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor']]]) {
       const el = document.getElementById(id);
