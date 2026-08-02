@@ -1204,6 +1204,7 @@ window.S = Object.assign({
   altPairsDistance: 'NM',
   altPairsBlocked: 'Blocked',
   altitudeUnknown: 'Unknown',
+  profileAssumedNote: function(ft) { return 'No altitude set — drawn at ' + ft + ' ft'; },
   altitudeUnsetShort: '—',                          // map kite placeholder — see kiteAltitudeLabel
   altPairsUnknown: 'Unknown',
   altPairsOneWay: 'One way',
@@ -2149,12 +2150,16 @@ function routeProfile(ac) {
     // Time is speed and distance only -- the ramp above costs nothing.
     const timeH = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
     const fuel = timeH * gph;
+    // assumed: nothing was typed for this leg, so cr is unknownProfileAltFt. The
+    // strip must not draw an invented height as confidently as a real one.
+    const assumed = !altKnown(i);
+    if (assumed) out.hasAssumed = true;
     out.legs.push({ dist, timeH, fuel, climbDist, descDist: 0,
-      cruiseDist: Math.max(0, dist - climbDist), startAlt, cruiseAlt: cr, endAlt: cr });
+      cruiseDist: Math.max(0, dist - climbDist), startAlt, cruiseAlt: cr, endAlt: cr, assumed });
     // Vertices: field elevation, ramp up to the leg altitude, then level to the end.
-    out.pts.push({ d: cum, alt: startAlt });
-    if (climbDist > 0) out.pts.push({ d: cum + climbDist, alt: cr });
-    out.pts.push({ d: cum + dist, alt: cr });
+    out.pts.push({ d: cum, alt: startAlt, assumed });
+    if (climbDist > 0) out.pts.push({ d: cum + climbDist, alt: cr, assumed });
+    out.pts.push({ d: cum + dist, alt: cr, assumed });
     if (climbDist > 0) {
       out.tocs.push({ leg: i, frac: dist > 0 ? climbDist / dist : 0, alt: cr });
     }
@@ -2162,7 +2167,8 @@ function routeProfile(ac) {
     out.wpTime.push(out.totalTimeH);
   }
   // Drop consecutive duplicate vertices.
-  out.pts = out.pts.filter((p, i, arr) => i === 0 || p.d !== arr[i - 1].d || p.alt !== arr[i - 1].alt);
+  out.pts = out.pts.filter((p, i, arr) => i === 0 || p.d !== arr[i - 1].d || p.alt !== arr[i - 1].alt ||
+    p.assumed !== arr[i - 1].assumed);
   return out;
 }
 

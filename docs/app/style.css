@@ -523,6 +523,15 @@ body.theme-light .print-clip-warn { color: #7a4a00; background: rgba(196, 127, 2
 #toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#lang-toggle):not(#footer-links) {
   display: none;
 }
+/* With the sections hidden the panel kept the expanded layout's gaps and width,
+   leaving ~120px of blank space around the ☰. Shrink it to its four remaining
+   rows. */
+#toolbar.collapsed {
+  gap: 2px;
+  width: max-content;
+  min-width: 0;
+}
+#toolbar.collapsed #toolbar-handle { width: auto; }
 
 /* Always-visible language picker — small separator from the sections below. */
 #toolbar > #lang-toggle {
@@ -1272,6 +1281,7 @@ body.theme-dark .leaflet-control-zoom a:hover {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
 #wp-search-results.hidden { display: none; }
+#wp-search-hint.hidden { display: none; }
 .search-hint {
   display: block;
   margin: 4px 6px 0;
@@ -4839,4 +4849,35 @@ html[data-theme="light"] #insp-body .insp-actions {
   border: 0;
   border-top: 1px solid #d8dee6;
   margin: 8px 0 4px;
+}
+
+/* Phone bottom band was a three-way pile-up: the legend ran under Leaflet's
+   attribution (which wraps to two lines at this width), and the mode chip covered
+   both the legend and the coordinate readout. Lift each clear of the one below it.
+   This block lives at the end of the file on purpose: the base #mode-chip /
+   #empty-route-hint rules are declared later than the other phone overrides, and
+   with equal id specificity source order decides. */
+@media (max-width: 680px) {
+  .leaflet-bottom.leaflet-left { bottom: 36px; }
+  .leaflet-control-attribution { font-size: 10px; line-height: 1.25; }
+  /* A centred chip crosses the bottom-left legend on any phone-width screen, so
+     here it takes the free slot on the right, above the coordinate readout. */
+  #mode-chip {
+    left: auto;
+    right: 8px;
+    transform: none;
+    bottom: 80px;
+    font-size: 12px;
+    padding: 8px 10px;
+    /* Narrow enough to clear the legend beside it; the label wraps rather than
+       widening back over it. */
+    max-width: 44vw;
+    white-space: normal;
+    line-height: 1.2;
+    text-align: center;
+  }
+  html[dir="rtl"] #mode-chip { right: auto; left: 8px; }
+  /* The hint is pointer-transparent, so it may sit over the legend — but keep it
+     above the chip so the two never stack. */
+  #empty-route-hint { bottom: 136px; }
 }

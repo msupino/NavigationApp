@@ -96,3 +96,82 @@ test('the Hebrew unset-altitude placeholder also fits on a phone', async ({ page
   });
   expect(out.textW).toBeLessThanOrEqual(out.usable);   // no "לא יד"
 });
+
+test('the phone bottom band does not pile up legend, chip, coords and attribution', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof syncLegs === 'function');
+  const boxes = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
+    state.legs = []; syncLegs(); state.mode = 'add'; draw();
+    if (typeof refreshModeChip === 'function') refreshModeChip();
+    const get = sel => { const e = document.querySelector(sel); if (!e) return null;
+      const r = e.getBoundingClientRect(); return r.height ? { top: r.top, bottom: r.bottom, left: r.left, right: r.right } : null; };
+    return { legend: get('#map-legend'), chip: get('#mode-chip'),
+             coord: get('#coord-readout'), attrib: get('.leaflet-control-attribution') };
+  });
+  const hits = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  expect(boxes.legend).not.toBeNull();
+  expect(boxes.attrib).not.toBeNull();
+  // The legend must sit clear of the attribution, which wraps to two lines here.
+  expect(boxes.legend.bottom).toBeLessThanOrEqual(boxes.attrib.top + 1);
+  if (boxes.chip) {
+    expect(hits(boxes.chip, boxes.legend)).toBe(false);
+    expect(hits(boxes.chip, boxes.coord)).toBe(false);
+  }
+});
+
+test('the collapsed phone toolbar is no taller than its four visible rows', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!document.getElementById('toolbar-toggle'));
+  const out = await page.evaluate(() => {
+    const tb = document.getElementById('toolbar');
+    const r = tb.getBoundingClientRect();
+    const rows = [...tb.children].filter(c => c.getBoundingClientRect().height > 0);
+    const rowSum = rows.reduce((a, c) => a + c.getBoundingClientRect().height, 0);
+    return { h: r.height, rowSum, rows: rows.length };
+  });
+  // Was 200px around ~160px of content; allow gaps + padding, not 40px of void.
+  expect(out.h).toBeLessThanOrEqual(out.rowSum + 24);
+});
+
+test('the search tip retires after the first search and stays gone', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof runSearch === 'function');
+  await expect(page.locator('#wp-search-hint')).toBeVisible();
+  await page.fill('#wp-search', 'LLHZ');
+  await page.dispatchEvent('#wp-search', 'input');
+  await expect(page.locator('#wp-search-hint')).toBeHidden();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.searchTipDone'))).toBe('1');
+  await page.reload();
+  await page.waitForFunction(() => typeof runSearch === 'function');
+  await expect(page.locator('#wp-search-hint')).toBeHidden();
+});
+
+test('an unset altitude is drawn dashed and captioned, not as a confident line', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof routeProfile === 'function');
+  const out = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 90; l.inboundAltitude = null; });
+    const unset = routeProfile();
+    state.legs.forEach(l => { l.inboundAltitude = 3000; });
+    const known = routeProfile();
+    return {
+      unsetHasAssumed: !!unset.hasAssumed,
+      unsetLegAssumed: unset.legs.map(l => l.assumed),
+      knownHasAssumed: !!known.hasAssumed,
+      knownLegAssumed: known.legs.map(l => l.assumed),
+      noteFn: typeof S.profileAssumedNote === 'function' && S.profileAssumedNote(2000),
+    };
+  });
+  expect(out.unsetHasAssumed).toBe(true);
+  expect(out.unsetLegAssumed).toEqual([true]);
+  expect(out.knownHasAssumed).toBe(false);
+  expect(out.knownLegAssumed).toEqual([false]);
+  expect(out.noteFn).toMatch(/2000/);
+});

@@ -310,12 +310,37 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   ctx.closePath();
   ctx.fillStyle = colorWithAlpha(tune('profileAreaColor'), 0.2);
   ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
-  for (const p of prof.pts) ctx.lineTo(px(p.d), py(p.alt));
+  // Legs with no altitude typed are drawn at unknownProfileAltFt. Stroke those
+  // segments dashed and caption the strip, so an invented height cannot be read
+  // as a flown one — a solid confident line said "we are at 2000" for a route
+  // the pilot had not given any altitude at all.
   ctx.strokeStyle = tune('profileLineColor');
   ctx.lineWidth = 2;
-  ctx.stroke();
+  for (let i = 1; i < prof.pts.length; i++) {
+    const a = prof.pts[i - 1], b = prof.pts[i];
+    ctx.setLineDash(b.assumed ? [5, 4] : []);
+    ctx.beginPath();
+    ctx.moveTo(px(a.d), py(a.alt));
+    ctx.lineTo(px(b.d), py(b.alt));
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  if (prof.hasAssumed) {
+    const note = S.profileAssumedNote
+      ? S.profileAssumedNote(Math.round(_unknownProfileAltFt()))
+      : 'No altitude set';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    // A route with no altitude is drawn at the top of the strip, so the caption
+    // lands on the very line it is describing — give it a backdrop rather than
+    // guessing at a corner that happens to be free.
+    const nw = ctx.measureText(note).width;
+    ctx.fillStyle = colorWithAlpha(tune('profileBgColor'), 0.82);
+    ctx.fillRect(x + w - nw - 6, y + 1, nw + 5, 12);
+    ctx.fillStyle = tune('profileTextColor');
+    ctx.fillText(note, x + w - 3, y + 2);
+  }
   // TOC/TOD dots
   const dot = (m, color, label) => {
     let cum = 0;
