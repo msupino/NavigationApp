@@ -115,3 +115,91 @@ test('halving the speed doubles the ETE exactly', async ({ page }) => {
   }, [BASE, NORTH]);
   expect(out.slow / out.fast).toBeCloseTo(2, 6);
 });
+
+// --- V/S must never move the clock on a departure leg ----------------------
+// V/S used to change leg time; that was removed, and the only place it still
+// shapes anything is the climb ramp drawn out of an airfield. So the departure
+// leg is exactly where a regression would reappear: the ramp is real there, and
+// smearing its climb time into the ETE would look plausible.
+const LLHZ = { lat: 32.17944, lng: 34.83444, name: 'LLHZ' };   // elev 121 ft
+const NORTH_OF_LLHZ = { lat: 32.17944 + D_LAT, lng: 34.83444, name: 'B' };
+
+async function departureLeg(page, vs, alt, speed) {
+  return page.evaluate(async ([a, b, v, altFt, kt]) => {
+    if (typeof loadAirfields === 'function') await loadAirfields();
+    window.profileVS = v;                       // what the plan's V/S box sets
+    state.waypoints = [{ ...a }, { ...b }];
+    state.legs = []; syncLegs();
+    state.legs[0].flightSpeed = kt;
+    state.legs[0].inboundAltitude = altFt;
+    draw();
+    const p = routeProfile();
+    return {
+      leg: toHMS(p.legs[0].timeH),
+      total: toHMS(p.totalTimeH),
+      kite: toHMS(legKiteTimeH(0, p)),
+      dist: p.legs[0].dist,
+      climbDist: p.legs[0].climbDist,           // the ramp V/S does shape
+      startAlt: p.legs[0].startAlt,
+      tocs: p.tocs.length,
+      fuel: p.legs[0].fuel,
+    };
+  }, [LLHZ, NORTH_OF_LLHZ, vs, alt, speed]);
+}
+
+test('a leg out of an airfield really does climb (the case V/S shapes)', async ({ page }) => {
+  await boot(page);
+  const r = await departureLeg(page, 500, 5000, 120);
+  expect(r.dist).toBeCloseTo(LEG_NM, 2);
+  expect(r.climbDist).toBeGreaterThan(0);          // ramp exists
+  expect(Math.round(r.startAlt)).toBe(121);        // starts at LLHZ field elevation
+  expect(r.tocs).toBe(1);                          // and a TOC is marked
+});
+
+test('V/S does not change the ETE of a departure leg', async ({ page }) => {
+  await boot(page);
+  const rates = [100, 300, 500, 1000, 2000];
+  const seen = [];
+  for (const vs of rates) seen.push(await departureLeg(page, vs, 5000, 120));
+  // 30 NM at 120 kt is 15:00 whatever the climb rate.
+  for (const r of seen) {
+    expect(r.leg).toBe('15:00');
+    expect(r.kite).toBe('15:00');
+    expect(r.total).toBe('15:00');
+  }
+  // The ramp itself DOES move with V/S — proof the rate reached the model at all.
+  const climbs = seen.map(r => Math.round(r.climbDist * 100) / 100);
+  expect(new Set(climbs).size).toBeGreaterThan(1);
+  expect(climbs[0]).toBeGreaterThan(climbs[climbs.length - 1]);   // slower climb, longer ramp
+});
+
+test('V/S does not change fuel or the ETE at other speeds either', async ({ page }) => {
+  await boot(page);
+  for (const [kt, expected] of [[60, '30:00'], [90, '20:00'], [150, '12:00']]) {
+    const slow = await departureLeg(page, 100, 6500, kt);
+    const fast = await departureLeg(page, 2000, 6500, kt);
+    expect(slow.leg).toBe(expected);
+    expect(fast.leg).toBe(expected);
+    expect(slow.fuel).toBeCloseTo(fast.fuel, 6);   // fuel follows time, so it must not move
+  }
+});
+
+test('the departure ETE matches the same leg flown from a non-airfield', async ({ page }) => {
+  // No climb ramp away from a field; the ETE must be identical either way.
+  await boot(page);
+  const fromField = await departureLeg(page, 500, 5000, 120);
+  const fromNowhere = await page.evaluate(([b, dlat]) => {
+    window.profileVS = 500;
+    const a = { lat: b.lat - dlat, lng: b.lng + 0.4, name: 'X' };   // open country
+    state.waypoints = [a, { ...b, lng: b.lng + 0.4 }];
+    state.legs = []; syncLegs();
+    state.legs[0].flightSpeed = 120;
+    state.legs[0].inboundAltitude = 5000;
+    draw();
+    const p = routeProfile();
+    return { leg: toHMS(p.legs[0].timeH), climbDist: p.legs[0].climbDist };
+  }, [NORTH_OF_LLHZ, D_LAT]);
+  expect(fromField.leg).toBe('15:00');
+  expect(fromNowhere.leg).toBe('15:00');
+  expect(fromNowhere.climbDist).toBe(0);           // and no ramp invented there
+});
