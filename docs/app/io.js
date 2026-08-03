@@ -876,6 +876,12 @@ function serializeRoute() {
       outboundSpeed: l.outboundSpeed,
       inLabel: l.inLabel,
       outLabel: l.outLabel,
+      // Which speeds are still following the "Default speed" setting rather than
+      // being the pilot's own numbers. Without these on the wire, saving a route
+      // to the library and loading it back froze the whole route at the old
+      // default -- the same trap restoreRoute() guards against.
+      ...(l._legSpeedAuto ? { speedAuto: 1 } : {}),
+      ...(l._legSpeedAutoRet ? { retSpeedAuto: 1 } : {}),
       ...(l.cumLabel ? { cumLabel: l.cumLabel } : {}),
       ...(l.cumLabelRet ? { cumLabelRet: l.cumLabelRet } : {}),
       ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
@@ -1491,6 +1497,10 @@ function applyRouteData(d) {
                          : { a: 0, _default: 1, _m: 1 },
     cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
                                : { a: 0, _default: 1, _m: 1 },
+    // Absent = pinned, so a route written before these existed (or by hand) keeps
+    // the explicit speeds it names instead of drifting with the local default.
+    ...(l.speedAuto ? { _legSpeedAuto: 1 } : {}),
+    ...(l.retSpeedAuto ? { _legSpeedAutoRet: 1 } : {}),
     ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
   }));
   state.notes = d.notes.map(n => ({
@@ -4762,6 +4772,10 @@ function restoreRoute() {
     outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
     inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
     outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
+    // Reloading the tab is not a speed edit, so a leg still tracking the default
+    // keeps tracking it -- otherwise one refresh would freeze the whole route.
+    ...(l._legSpeedAuto ? { _legSpeedAuto: 1 } : {}),
+    ...(l._legSpeedAutoRet ? { _legSpeedAutoRet: 1 } : {}),
     ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
   }));
   state.notes = d.notes.map(n => ({

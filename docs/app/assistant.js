@@ -489,7 +489,13 @@
           // Pin as manual so the CVFR dataset reconciler doesn't overwrite it.
           if (typeof markLegAltitudeManual === 'function') markLegAltitudeManual(i);
         }
-        if (Number.isFinite(a.speedKt)) legs[i].flightSpeed = a.speedKt;
+        if (Number.isFinite(a.speedKt)) {
+          legs[i].flightSpeed = a.speedKt;
+          // Asked-for speed, so pin it: the default-speed control must not overwrite
+          // it. Forward only -- set_leg never sets outboundSpeed, so the return speed
+          // keeps following the default instead of freezing at whatever it was.
+          if (typeof markLegSpeedManual === 'function') markLegSpeedManual(legs[i], 'flightSpeed');
+        }
         if (typeof draw === 'function') draw();
         toast(t('assistantEditedRoute', 'Assistant edited the route'));
         return { ok: true, leg: a.leg, altitudeFt: legs[i].inboundAltitude, speedKt: legs[i].flightSpeed };
