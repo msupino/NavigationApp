@@ -645,6 +645,39 @@
   let busy = false;
   const MAX_ITERS = 6;
 
+  // Tools carry a `tier`: 'read' answers questions, 'route' rewrites the pilot's
+  // route, 'out' writes it somewhere. Only 'read' may run unasked. The tier field
+  // existed on every tool but was never consulted, so a state-changing call went
+  // straight through — and the model's context includes NOTAM free text from a
+  // public feed, so instruction-shaped text in a NOTAM body could rewrite a route
+  // the pilot only asked about. Consent is per session, not per call: an ordinary
+  // "plan me a route" turn should not become a click-fest.
+  let stateToolsAllowed = false;
+  function allowStateTools() {
+    if (stateToolsAllowed) return true;
+    const ask = t('assistantAllowEdits',
+      'Let the assistant change your route in this session? It can replace waypoints, ' +
+      'speeds and altitudes, and save routes. You can undo any change.');
+    // confirmAction is the module's existing confirmation hook (save_route already
+    // uses it, and _setConfirm can stub it) — one prompt path, not two.
+    let ok = false;
+    try { ok = !!confirmAction(ask); } catch (e) { ok = false; }
+    stateToolsAllowed = ok;
+    return ok;
+  }
+  // One place where a tool is chosen, gated and run — the loop calls this, and so
+  // does the test seam below, so what is tested is the path that actually runs.
+  async function runToolGated(name, args) {
+    const tool = TOOLS.find(x => x.name === name);
+    // Anything that is not read-only needs consent. Refusals come back as a tool
+    // error so the model explains itself instead of pretending the edit happened.
+    if (tool && tool.tier && tool.tier !== 'read' && !allowStateTools()) {
+      return { error: 'declined: the pilot has not allowed route changes in this session' };
+    }
+    try { return tool ? await tool.run(args || {}) : { error: 'unknown tool ' + name }; }
+    catch (e) { return { error: String((e && e.message) || e) }; }
+  }
+
   async function runAgent(userText) {
     if (busy) return;
     busy = true;
@@ -668,10 +701,7 @@
         const responses = [];
         for (const call of calls) {
           renderActivity(call.name, call.args);
-          const tool = TOOLS.find(x => x.name === call.name);
-          let result;
-          try { result = tool ? await tool.run(call.args || {}) : { error: 'unknown tool ' + call.name }; }
-          catch (e) { result = { error: String((e && e.message) || e) }; }
+          const result = await runToolGated(call.name, call.args || {});
           // Gemini requires a non-empty functionResponse object; JSON.stringify
           // drops undefined values, so coerce to a serializable shape.
           const response = (result && typeof result === 'object') ? result : { result: result == null ? null : result };
@@ -927,7 +957,9 @@
     close: () => { if (panel && !panel.classList.contains('hidden')) toggle(); },
     send: (text) => runAgent(text),
     reset: resetChat,
-    _tools: TOOLS,
+    _tools: TOOLS,                 // raw tools — BYPASS the tier gate
+    _runTool: runToolGated,        // the gated path the agent loop uses
+    _resetConsent: () => { stateToolsAllowed = false; },
     _resolvePoint: resolvePoint,
     _corridorPath: corridorPath,
     _setProvider: (fn) => { providerSend = fn || geminiSend; },
