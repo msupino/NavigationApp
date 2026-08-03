@@ -728,6 +728,10 @@ window.S = Object.assign({
   routeLibraryExportCorrupt: 'Export corrupted data',
   routeLibraryExportEmpty: 'No saved routes to export yet.',
   routeLibraryImportedN: function(n) { return n + ' route(s) imported'; },
+  errRouteLibraryWriteFailed: 'Those routes could not be saved to this device (storage full, or the saved-route library is unreadable). Nothing was imported.',
+  routeLibraryImportSkipped: function(added, skipped) {
+    return added + ' route(s) imported, ' + skipped + ' skipped (not a valid route)';
+  },
   errNotRouteLibrary: 'That file is not a saved-routes library (expected a list of routes).',
   routeLibraryDiscardCorrupt: 'Discard corrupted library',
   routeLibraryDiscardCorruptConfirm: 'Discard the corrupted saved-route library and start with an empty one? This cannot be undone — export it first if you might want to recover it.',
@@ -1662,6 +1666,38 @@ function setGeTourSpeed(multiplier) {
     else localStorage.setItem(GE_TOUR_SPEED_KEY, String(v));
   } catch (e) { /* storage off */ }
   return v;
+}
+
+// What altitude does a leg FLY at, for an exporter that must write a number?
+// Every export used to answer differently for a leg with nothing entered: the GPX
+// wrote 0 m (sea level, so a GPS unit showed every point at zero), PLN and FDR
+// invented 2 000 ft, and the KML inherited from the route. One answer now:
+//
+//   1. the leg's own altitude
+//   2. the next leg ahead that has one, else the last one behind it — the
+//      departure leg out of a field is usually the blank one, and climbing to the
+//      cruise height is what the aircraft does
+//   3. kmlUnsetLegAglFt above the departure field's elevation, when it sits on one
+//   4. unknownProfileAltFt, so the number is at least plausible airspace
+//
+// Returns { ft, source } so a caller that CAN express height-above-ground (the KML
+// tour) knows step 3/4 was a guess rather than a flown altitude.
+function routeExportAltitudeFt(legIdx, opts) {
+  const legs = (opts && opts.legs) || (typeof state === 'object' && state.legs) || [];
+  const leg = legs[legIdx];
+  if (leg && Number.isFinite(leg.inboundAltitude)) return { ft: leg.inboundAltitude, source: 'leg' };
+  for (let j = legIdx + 1; j < legs.length; j++) {
+    const a = legs[j] && legs[j].inboundAltitude;
+    if (Number.isFinite(a)) return { ft: a, source: 'ahead' };
+  }
+  for (let j = legIdx - 1; j >= 0; j--) {
+    const a = legs[j] && legs[j].inboundAltitude;
+    if (Number.isFinite(a)) return { ft: a, source: 'behind' };
+  }
+  const fieldFt = (opts && Number.isFinite(opts.departureFieldFt)) ? opts.departureFieldFt : null;
+  const aglFt = _kmlUnsetLegAglFt();
+  if (fieldFt !== null) return { ft: fieldFt + aglFt, source: 'field+agl' };
+  return { ft: _unknownProfileAltFt(), source: 'assumed' };
 }
 
 const _defaultLegSpeedKt = () => {

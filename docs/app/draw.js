@@ -316,14 +316,34 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   // the pilot had not given any altitude at all.
   ctx.strokeStyle = tune('profileLineColor');
   ctx.lineWidth = 2;
-  for (let i = 1; i < prof.pts.length; i++) {
-    const a = prof.pts[i - 1], b = prof.pts[i];
-    ctx.setLineDash(b.assumed ? [5, 4] : []);
+  ctx.lineJoin = 'round';
+  // Stroke consecutive same-dash points as ONE path so the joins survive: drawing
+  // a segment at a time left butt ends at every TOC kink. A run's dash state is
+  // its points' own `assumed`, and the segment BETWEEN two runs is dashed if
+  // either side is assumed — that boundary is half invented, so it must not read
+  // as measured.
+  let runStart = 0;
+  const strokeRun = (from, to, dashed) => {
+    if (to <= from) return;
+    ctx.setLineDash(dashed ? [5, 4] : []);
     ctx.beginPath();
-    ctx.moveTo(px(a.d), py(a.alt));
-    ctx.lineTo(px(b.d), py(b.alt));
+    ctx.moveTo(px(prof.pts[from].d), py(prof.pts[from].alt));
+    for (let k = from + 1; k <= to; k++) ctx.lineTo(px(prof.pts[k].d), py(prof.pts[k].alt));
     ctx.stroke();
+  };
+  for (let i = 1; i < prof.pts.length; i++) {
+    const changed = !!prof.pts[i].assumed !== !!prof.pts[runStart].assumed;
+    if (!changed) continue;
+    strokeRun(runStart, i - 1, !!prof.pts[runStart].assumed);
+    // The bridging segment: dashed when either end is assumed.
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(px(prof.pts[i - 1].d), py(prof.pts[i - 1].alt));
+    ctx.lineTo(px(prof.pts[i].d), py(prof.pts[i].alt));
+    ctx.stroke();
+    runStart = i;
   }
+  strokeRun(runStart, prof.pts.length - 1, !!prof.pts[runStart].assumed);
   ctx.setLineDash([]);
   if (prof.hasAssumed) {
     const note = S.profileAssumedNote

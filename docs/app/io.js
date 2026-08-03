@@ -811,6 +811,13 @@ function encodeRouteLegAltitudes(l) {
     outboundAltitude: encodeRouteAltitude(l.outboundAltitude),
   };
 }
+// Field elevation under a waypoint, when it sits on an airfield — the departure
+// field is what an unset leg's fallback height is measured from.
+function exportFieldElevFt(wp) {
+  const af = (typeof airfieldAtWaypoint === 'function') ? airfieldAtWaypoint(wp) : null;
+  const ft = af && Number(af.elev_ft);
+  return Number.isFinite(ft) ? ft : null;
+}
 function altitudeMetersForExport(ft, fallbackFt = 0) {
   const v = Number.isFinite(ft) ? ft : fallbackFt;
   return Math.max(0, Math.round(v * 0.3048));
@@ -928,9 +935,13 @@ function exportGpx() {
   const wps = state.waypoints;
   const esc = s => String(s).replace(/[<>&]/g,
     c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  // Shared resolution (see routeExportAltitudeFt): an unset leg used to export as
+  // 0 m here — sea level — so a GPS unit showed every point on the deck.
   const altM = i => {
-    const leg = state.legs[Math.min(i, state.legs.length - 1)];
-    return altitudeMetersForExport(leg ? leg.inboundAltitude : 2000, leg ? 0 : 2000);
+    const legIdx = Math.min(i, state.legs.length - 1);
+    const { ft } = routeExportAltitudeFt(legIdx,
+      { departureFieldFt: exportFieldElevFt(wps[legIdx] || wps[i]) });
+    return altitudeMetersForExport(ft);
   };
   let rtepts = '';
   for (let i = 0; i < wps.length; i++) {
@@ -991,8 +1002,9 @@ function exportPln() {
   const idOf = i => (wpLabel(i).replace(/[^A-Za-z0-9]/g, '').toUpperCase() ||
     ('WP' + (i + 1))).slice(0, 12);
   const altFt = i => {
-    const leg = state.legs[Math.min(i, state.legs.length - 1)];
-    return Number.isFinite(leg && leg.inboundAltitude) ? leg.inboundAltitude : 2000;
+    const legIdx = Math.min(i, state.legs.length - 1);
+    return routeExportAltitudeFt(legIdx,
+      { departureFieldFt: exportFieldElevFt(wps[legIdx] || wps[i]) }).ft;
   };
   const firstAlt = altFt(0);
   let pts = '';
@@ -1100,7 +1112,8 @@ function exportFdr() {
   const W = state.waypoints.map(toXY);
   const leg = state.legs.map((l, i) => ({
     spdMS: Math.max(1, (l.flightSpeed || 90)) * KT_TO_MS,
-    alt: Number.isFinite(l.inboundAltitude) ? l.inboundAltitude : 2000,
+    alt: routeExportAltitudeFt(i,
+      { departureFieldFt: exportFieldElevFt(state.waypoints[i]) }).ft,
     len: hyp(sub(W[i + 1], W[i])),
   }));
 
@@ -1367,11 +1380,14 @@ function importRouteLibraryArray(arr) {
   if (!Array.isArray(arr)) return null;
   const merged = loadRouteLibrary();
   let added = 0;
+  // Entries the file carried but we refused. Silently dropping them let a user
+  // delete a source file believing it round-tripped, so the count is reported.
+  let skipped = 0;
   for (const it of arr) {
     if (!it) continue;
     const isTrack = it.kind === 'gps' && Array.isArray(it.track) && it.track.length;
-    if (!it.data && !isTrack) continue;
-    if (it.data && typeof validateRoute === 'function' && validateRoute(it.data)) continue;
+    if (!it.data && !isTrack) { skipped++; continue; }
+    if (it.data && typeof validateRoute === 'function' && validateRoute(it.data)) { skipped++; continue; }
     const entry = { id: routeLibraryId(),
       name: (it.name || 'Route').toString().slice(0, 80),
       savedAt: it.savedAt || new Date().toISOString() };
@@ -1380,7 +1396,16 @@ function importRouteLibraryArray(arr) {
     merged.unshift(entry);
     added++;
   }
-  return { merged, added };
+  return { merged, added, skipped };
+}
+// What to say after a merge: the plain count, or the count plus what was refused.
+function routeLibraryImportMessage(res) {
+  if (res.skipped && S.routeLibraryImportSkipped) {
+    return S.routeLibraryImportSkipped(res.added, res.skipped);
+  }
+  return S.routeLibraryImportedN
+    ? S.routeLibraryImportedN(res.added)
+    : res.added + ' route(s) imported';
 }
 // A library file is an array of entries carrying route data or a track — as
 // opposed to a single route object, which carries waypoints/legs/notes.
@@ -1418,11 +1443,13 @@ function load(file) {
         alert(S.routeLibraryImportNone || 'No valid routes in that file');
         return;
       }
-      if (persistRouteLibrary(res.merged) && typeof showToast === 'function') {
-        showToast(S.routeLibraryImportedN
-          ? S.routeLibraryImportedN(res.added)
-          : res.added + ' route(s) imported');
+      if (!persistRouteLibrary(res.merged)) {
+        // A refused write (corrupt library / full storage) used to short-circuit
+        // the toast and say nothing at all — indistinguishable from success.
+        alert(S.errRouteLibraryWriteFailed);
+        return;
       }
+      if (typeof showToast === 'function') showToast(routeLibraryImportMessage(res));
       return;
     }
     // Strict schema check before applying any state — issue #101. Any
@@ -4293,38 +4320,25 @@ async function flyRoute() {
   // departure leg out of an airfield is the common case — it is usually left
   // blank while the cruise legs are filled in, and climbing out to the cruise
   // height is what the aircraft does anyway.
-  const nextKnownAltFt = legIdx => {
-    for (let j = legIdx + 1; j < state.legs.length; j++) {
-      const a = state.legs[j] && state.legs[j].inboundAltitude;
-      if (Number.isFinite(a)) return a;
-    }
-    for (let j = legIdx - 1; j >= 0; j--) {
-      const a = state.legs[j] && state.legs[j].inboundAltitude;
-      if (Number.isFinite(a)) return a;
-    }
-    return null;
-  };
+
   // Only when the whole route is blank: fly kmlUnsetLegAglFt above the ground
   // rather than the old absolute 0 m, which put the camera at sea level —
   // underground over any terrain. Departing an airfield, "the ground" is that
   // field's elevation (so the leg holds one height, as the aircraft would); with
   // no field to measure from, relativeToGround lets Earth follow the terrain.
   const unsetAglM = () => Math.round(_kmlUnsetLegAglFt() * 0.3048);
-  const unsetAlt = startIdx => {
-    const fieldM = fieldGroundM(startIdx);
-    return fieldM !== null
-      ? { alt: fieldM + unsetAglM(), mode: 'absolute' }
-      : { alt: unsetAglM(), mode: 'relativeToGround' };
-  };
+
+  // Same resolution every export uses (routeExportAltitudeFt). The tour is the one
+  // consumer that can express height-above-ground, so when the answer is a guess
+  // AND the leg starts nowhere near a field, it flies relativeToGround instead of
+  // an absolute height — that is what stops the camera going underground.
   const legAlt = legIdx => {
     const leg = state.legs[legIdx];
-    if (!leg) return { alt: altitudeMetersForExport(2000, 2000), mode: 'absolute' };
-    if (Number.isFinite(leg.inboundAltitude)) {
-      return { alt: altitudeMetersForExport(leg.inboundAltitude), mode: 'absolute' };
-    }
-    const inherited = nextKnownAltFt(legIdx);
-    if (inherited !== null) return { alt: altitudeMetersForExport(inherited), mode: 'absolute' };
-    return unsetAlt(legIdx);
+    if (!leg) return { alt: altitudeMetersForExport(_unknownProfileAltFt()), mode: 'absolute' };
+    const fieldFt = fieldGroundM(legIdx) !== null ? fieldGroundM(legIdx) / 0.3048 : null;
+    const r = routeExportAltitudeFt(legIdx, { departureFieldFt: fieldFt });
+    if (r.source === 'assumed') return { alt: unsetAglM(), mode: 'relativeToGround' };
+    return { alt: altitudeMetersForExport(r.ft), mode: 'absolute' };
   };
   const altAt = i => {
     const groundM = endpointGroundM(i);
@@ -4439,8 +4453,10 @@ async function flyRoute() {
           const turnSegPart = (f - a) / (1 - turnStartF);
           segDur = Math.max(segDur, turnDur * turnSegPart);
         }
-        const a = f >= 1 ? altAt(i + 1) : legAlt(i);
-        tour += flyToCamera(pos, a.alt, continuousHeading(hdg), Math.max(0.6, segDur), 'smooth', a.mode);
+        // Named for what it is: `a` collided with the turn-fraction `a` above.
+        const altInfo = f >= 1 ? altAt(i + 1) : legAlt(i);
+        tour += flyToCamera(pos, altInfo.alt, continuousHeading(hdg),
+          Math.max(0.6, segDur), 'smooth', altInfo.mode);
         prevF = f;
       }
     }

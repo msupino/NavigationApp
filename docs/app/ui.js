@@ -1429,14 +1429,12 @@ function showRouteLibraryModal(focusSave) {
       }
       // Only claim success (render + toast) if the write actually happened — a
       // corrupt library refuses the write, so don't show a false "imported".
-      if (persistRouteLibrary(res.merged)) {
-        render();
-        if (typeof showToast === 'function') {
-          showToast(S.routeLibraryImportedN
-            ? S.routeLibraryImportedN(res.added)
-            : res.added + ' route(s) imported');
-        }
+      if (!persistRouteLibrary(res.merged)) {
+        alert(S.errRouteLibraryWriteFailed);   // never claim success on a refused write
+        return;
       }
+      render();
+      if (typeof showToast === 'function') showToast(routeLibraryImportMessage(res));
     };
     reader.readAsText(f);
   };
@@ -3293,7 +3291,12 @@ const notamTimeVal = document.getElementById('notam-time-val');
 const notamUpdatedEl = document.getElementById('notam-updated');
 function refreshNotamListBtn() {
   const have = Array.isArray(notams) && notams.length;
-  if (notamListBtn) notamListBtn.hidden = !have;
+  // The list is chart-filtered, so the BUTTON follows what this chart can show —
+  // gating it on the whole feed offered an empty list. `have` stays feed-presence:
+  // it also drives the toggle's disabled state, and tying that to the filtered
+  // count would let the timeline slider disable (and uncheck) the overlay.
+  const shownHere = (typeof activeNotams === 'function') ? activeNotams() : [];
+  if (notamListBtn) notamListBtn.hidden = !(have && shownHere.length);
   // Gray out the NOTAM toggle when the feed has no data (source currently
   // unavailable). Data-driven: every call re-evaluates, so when a non-empty
   // feed is present the toggle is enabled again. (The feed is loaded once per
@@ -3475,7 +3478,11 @@ function showNotamModal(only) {
         it.onclick = () => {
           if (!window.showNotam) {
             window.showNotam = true;
-            try { localStorage.setItem(NOTAM_KEY, '1'); } catch (err) { /* */ }
+            // Per-chart key, not the bare legacy one: writing NOTAM_KEY here left
+            // the choice where this chart never reads it (so it reverted on
+            // reload) while planting a legacy value every OTHER chart then
+            // inherited. See notamPrefKey / notamPrefWrite.
+            notamPrefWrite(true);
             if (notamCb) notamCb.checked = true;
           }
           dismiss();

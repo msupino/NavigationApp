@@ -367,6 +367,12 @@ body.theme-light .print-clip-warn { color: #7a4a00; background: rgba(196, 127, 2
   margin-inline-start: 6px;
 }
 .tb-section.open .tb-section-head::after { transform: rotate(90deg); }
+/* Mirror the caret in RTL: a collapsed disclosure must point the way it opens,
+   which is leftward in Hebrew. Rotating the mirrored glyph the other way keeps the
+   OPEN state pointing down in both languages. (io.js already does this for the
+   arrows it builds in JS — these two CSS carets were the inconsistent pair.) */
+html[dir="rtl"] .tb-section-head::after { content: '◀'; }
+html[dir="rtl"] .tb-section.open .tb-section-head::after { transform: rotate(-90deg); }
 /* A standalone head IS the action (Flight plan) — no dropdown, so no caret and no
    hover-open behaviour; it just has to sit in the row looking like its neighbours. */
 .tb-standalone-head::after { content: none; }
@@ -3577,6 +3583,8 @@ body.theme-light .insp-notam-link { color: #1d6fe0; }
 .charts-airport-header.open::before {
   transform: rotate(90deg);
 }
+html[dir="rtl"] .charts-airport-header::before { content: '◀'; }
+html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg); }
 .charts-airport-header:hover {
   color: #e0d8d8;
   background: rgba(255,255,255,0.06);
@@ -4783,6 +4791,14 @@ html[data-theme="light"] #insp-body .insp-actions {
 /* Touch targets. Zoom was 30px and the footer links 15px tall — well under the
    44px minimum, and unhittable in flight. */
 @media (max-width: 680px), (pointer: coarse) {
+  /* Three controls the earlier touch pass missed, each measured on a 375px phone:
+     the map's heading entry (38x19), the language picker (71x21) — which is one of
+     only four controls the COLLAPSED toolbar leaves reachable — and the search
+     panel's dismiss (28x28). */
+  #rotate-hdg { min-height: 44px; min-width: 56px; font-size: 15px; }
+  #lang-select { min-height: 44px; font-size: 15px; }
+  #search-close { min-width: 44px; min-height: 44px; }
+
   /* Leaflet sizes these via `.leaflet-touch .leaflet-bar a` (two classes), which
      outspecifies a bare `.leaflet-control-zoom a` — hence the doubled selectors. */
   .leaflet-control-zoom a,
