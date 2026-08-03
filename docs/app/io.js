@@ -1051,18 +1051,22 @@ function buildIcaoFpl(profile, opts) {
   const errs = [];
   if (wps.length < 2) return { errs: ['errFplNeedRoute'] };
 
-  const dep = fplAerodrome(wps[0]);
-  if (!dep) errs.push('errFplDepNotAerodrome');
+  // A plan is normally filed field-to-field. When an end is not a known aerodrome the
+  // pilot is warned but not blocked: ICAO's own answer is ZZZZ in field 13/16 with the
+  // point named in field 18 (DEP/ or DEST/), which is what real plans out of a strip or
+  // to a junction look like.
+  const depIcao = fplAerodrome(wps[0]);
+  const depPlain = depIcao ? '' : (fplRoutePoint(wps[0]) || '');
+  if (!depIcao && !depPlain) errs.push('errFplDepUnnamed');
 
-  // Destination: an ICAO code when the last waypoint is a field, otherwise ZZZZ
-  // with the plain-language name carried in field 18 (DEST/), per ICAO.
   const lastWp = wps[wps.length - 1];
   const destIcao = fplAerodrome(lastWp);
   const destPlain = destIcao ? '' : (fplRoutePoint(lastWp) || '');
   if (!destIcao && !destPlain) errs.push('errFplDestUnnamed');
 
-  // Field 15 lists what is flown BETWEEN the two aerodromes.
-  const mid = wps.slice(1, destIcao ? wps.length - 1 : wps.length);
+  // Field 15 lists what is flown BETWEEN the two end fields. An end that is filed as
+  // ZZZZ is still a point on the route, so it stays in the list.
+  const mid = wps.slice(depIcao ? 1 : 0, destIcao ? wps.length - 1 : wps.length);
   const pts = [];
   const unusable = [];
   for (const wp of mid) {
@@ -1115,12 +1119,15 @@ function buildIcaoFpl(profile, opts) {
   // that form, so the message it builds must not be mailed to the FPL desk as if
   // it were one. The text is still shown; only sending is withheld.
   if (p.kind === 'crosscountry') warns.push('warnFplCrossForm');
+  if (!depIcao) warns.push('warnFplDepNotAerodrome');
+  if (!destIcao) warns.push('warnFplDestNotAerodrome');
   const opens = fplEarliestFiling(utc.when);
   const nowRef = o.now instanceof Date ? o.now : new Date();
   if (opens && nowRef.getTime() < opens.getTime()) warns.push('warnFplEarly');
   if (mixedSpeed) warns.push('warnFplMixedSpeed');
 
   const f18 = ['DOF/' + utc.dof];
+  if (!depIcao) f18.push('DEP/' + depPlain);
   if (!destIcao) f18.push('DEST/' + destPlain);
   const rmk = ['PIC ' + String(p.pic).trim().toUpperCase(),
     'LICENSE ' + String(p.license).trim()];
@@ -1131,7 +1138,7 @@ function buildIcaoFpl(profile, opts) {
     '(FPL-' + reg + '-VG',
     '-' + String(p.type).trim().toUpperCase() + '/' + String(p.wake).trim().toUpperCase() +
       '-' + String(p.equip).trim().toUpperCase() + '/' + String(p.surv).trim().toUpperCase(),
-    '-' + dep + utc.eobt,
+    '-' + (depIcao || 'ZZZZ') + utc.eobt,
     '-N' + fplPad(speedKt, 4) + 'VFR ' + pts.join(' '),
     '-' + (destIcao || 'ZZZZ') + fplHhmm(eetH),
     '-' + f18.join(' '),
@@ -1140,7 +1147,7 @@ function buildIcaoFpl(profile, opts) {
     '-E/' + endurance + ' P/' + fplPad(persons || 1, 3) + ')',
   ].join('\n');
   return {
-    text, dep, dest: destIcao || destPlain, eet: fplHhmm(eetH),
+    text, dep: depIcao || depPlain, dest: destIcao || destPlain, eet: fplHhmm(eetH),
     eetMinutes: Math.round(eetH * 60), mixedSpeed, warns,
     opensAt: fplEarliestFiling(utc.when),
     to: String(p.aisEmail || '').trim() || fplFileTo(p.kind),
@@ -7467,12 +7474,28 @@ function showFplDialog() {
     return n === 1 ? (S.fplPilotOnly || 'pilot only')
       : (S.fplPilotPlus ? S.fplPilotPlus(n - 1) : 'pilot + ' + (n - 1));
   }
-  function routeSummaryText() {
+  // Hebrew names, a Latin ICAO code and an arrow in one line reorder badly under bidi
+  // (the code jumped to the wrong end and the sequence read backwards). Each name goes
+  // in its own <bdi> so it cannot drag its neighbours around, and the arrow points the
+  // way the UI reads.
+  function fillRouteSummary(el) {
+    el.textContent = '';
+    const rtl = (document.documentElement.getAttribute('dir') === 'rtl');
     const names = (state.waypoints || []).map(w => {
       const raw = (w && w.name) ? String(w.name) : '';
       return (typeof navName === 'function' && navName(raw)) || raw;
     }).filter(Boolean);
-    return names.join('  →  ');
+    names.forEach((name, i) => {
+      if (i) {
+        const sep = document.createElement('span');
+        sep.className = 'fpl-route-sep';
+        sep.textContent = rtl ? ' ← ' : ' → ';
+        el.appendChild(sep);
+      }
+      const bdi = document.createElement('bdi');
+      bdi.textContent = name;
+      el.appendChild(bdi);
+    });
   }
   function renderDetails() {
     body.textContent = '';
@@ -7480,7 +7503,7 @@ function showFplDialog() {
     const routeLine = document.createElement('div');
     routeLine.className = 'fpl-route';
     routeLine.id = 'fpl-route-summary';
-    routeLine.textContent = routeSummaryText();
+    fillRouteSummary(routeLine);
     body.appendChild(routeLine);
 
     const derived = document.createElement('div');

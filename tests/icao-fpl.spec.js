@@ -112,16 +112,42 @@ test('the route field lists the points between the two aerodromes', async ({ pag
   expect(field15).not.toContain('LLES');    // destination is field 16
 });
 
-test('a non-aerodrome destination files ZZZZ and names it in field 18', async ({ page }) => {
+// A plan is normally filed field-to-field, but an end that is not a known airfield is
+// warned about, not blocked: ICAO files ZZZZ and names the point in field 18.
+test('a route not ending at an airfield is warned about and filed as ZZZZ', async ({ page }) => {
   await boot(page);
   await route(page, ['LLHZ', 'APOLN', 'ARENA', 'NAGID']);
   const res = await build(page);
+  expect(res.errs).toBeUndefined();                    // allowed
+  expect(res.warns).toContain('warnFplDestNotAerodrome');
   expect(res.text).toMatch(/^-ZZZZ\d{4}$/m);
   expect(res.text).toContain('DEST/NAGID');
-  // RMK is free text, so anything after it is swallowed -- DEST must precede it.
+  // RMK is free text, so anything after it is swallowed -- the names must precede it.
   expect(res.text.indexOf('DEST/')).toBeLessThan(res.text.indexOf('RMK/'));
-  const field15 = res.text.split('\n')[3];
-  expect(field15).toContain('NAGID');       // still flown, so still in the route
+  expect(res.text.split('\n')[3]).toContain('NAGID');  // still flown, so still in field 15
+});
+
+test('a route not starting at an airfield is warned about and filed as ZZZZ', async ({ page }) => {
+  await boot(page);
+  await route(page, ['APOLN', 'ARENA', 'LLES']);
+  const res = await build(page);
+  expect(res.errs).toBeUndefined();
+  expect(res.warns).toContain('warnFplDepNotAerodrome');
+  expect(res.text).toMatch(/^-ZZZZ\d{4}$/m);
+  expect(res.text).toContain('DEP/APOLN');
+  expect(res.text.indexOf('DEP/')).toBeLessThan(res.text.indexOf('RMK/'));
+  expect(res.text.split('\n')[3]).toContain('APOLN');
+});
+
+test('a route between two airfields files both ICAO codes and no warning', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const res = await build(page);
+  expect(res.text).toContain('-LLHZ');
+  expect(res.text).toMatch(/^-LLES\d{4}$/m);
+  expect(res.text).not.toContain('ZZZZ');
+  expect(res.warns).not.toContain('warnFplDepNotAerodrome');
+  expect(res.warns).not.toContain('warnFplDestNotAerodrome');
 });
 
 // Field 16 is filed on a 5-minute grid, rounded UP: nobody files 00:33, and rounding
@@ -317,6 +343,37 @@ test('a Hebrew pilot name is refused — the message is ASCII', async ({ page })
   expect(ok.errs).toBeUndefined();
 });
 
+// Hebrew names + a Latin ICAO code + an arrow in one line reordered under bidi: the
+// code jumped to the wrong end and the sequence read backwards.
+// The pilot should know the likely outcome, not just the mechanism.
+test('the non-airfield warnings say it will probably be declined', async ({ page }) => {
+  for (const lang of ['en', 'he']) {
+    await boot(page, '?lang=' + lang + '&nogist');
+    const texts = await page.evaluate(() =>
+      [S.warnFplDepNotAerodrome, S.warnFplDestNotAerodrome]);
+    for (const t of texts) {
+      expect(t).toBeTruthy();
+      expect(t).toMatch(lang === 'en' ? /probably be declined/i : /יידחה/);
+    }
+  }
+});
+
+test('the route summary is bidi-isolated per waypoint', async ({ page }) => {
+  for (const [lang, arrow] of [['en', '→'], ['he', '←']]) {
+    await boot(page, '?lang=' + lang + '&nogist');
+    await route(page);
+    await page.evaluate(() => { showFlightPlan(); document.getElementById('fpl-open').click(); });
+    const summary = page.locator('#fpl-route-summary');
+    // One <bdi> per waypoint, so no name can drag its neighbours around.
+    await expect(summary.locator('bdi')).toHaveCount(4);
+    expect(await summary.locator('bdi').first().textContent()).toBe('LLHZ');
+    // The arrow points the way the UI reads.
+    const seps = await summary.locator('.fpl-route-sep').allTextContents();
+    expect(seps.length).toBe(3);
+    for (const sep of seps) expect(sep.trim()).toBe(arrow);
+  }
+});
+
 test('the mail note carries no address, so RTL cannot garble it', async ({ page }) => {
   for (const lang of ['en', 'he']) {
     await boot(page, '?lang=' + lang + '&nogist');
@@ -363,14 +420,6 @@ test('the mail link keeps the recipient literal', async ({ page }) => {
   expect(res.to).not.toContain('%40');
 });
 
-test('a departure that is not an aerodrome is refused with a reason', async ({ page }) => {
-  await boot(page);
-  await route(page, ['APOLN', 'ARENA', 'LLES']);
-  const res = await build(page);
-  expect(res.errs).toContain('errFplDepNotAerodrome');
-  expect(res.text).toBeUndefined();
-});
-
 test('missing pilot or aircraft details are refused, one message per field', async ({ page }) => {
   await boot(page);
   await route(page);
@@ -390,9 +439,11 @@ test('every error and warning code has text in both languages', async ({ page })
   for (const lang of ['en', 'he']) {
     await boot(page, '?lang=' + lang + '&nogist');
     const missing = await page.evaluate(() => {
-      const codes = ['errFplNeedRoute', 'errFplDepNotAerodrome', 'errFplDestUnnamed',
+      const codes = ['errFplNeedRoute', 'errFplDepUnnamed', 'errFplDestUnnamed',
         'errFplBadPoints', 'errFplNoPoints', 'errFplNoSpeed', 'errFplNoEet', 'errFplEobt',
-        'errFplEndurance', 'errFplProfile', 'warnFplLead', 'warnFplMixedSpeed'];
+        'errFplEndurance', 'errFplProfile', 'errFplLatinOnly', 'warnFplLead', 'warnFplEarly',
+        'warnFplMixedSpeed', 'warnFplCrossForm', 'warnFplDepNotAerodrome',
+        'warnFplDestNotAerodrome', 'fplAckRequired'];
       return codes.filter(c => !S[c]);
     });
     expect(missing, 'missing in ' + lang).toEqual([]);
