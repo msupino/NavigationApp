@@ -932,6 +932,239 @@ function save() {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // revoking synchronously after click can abort the download (Firefox/Safari)
 }
 
+// --- ICAO flight plan (FPL) -------------------------------------------
+// Builds the ICAO 2012 FPL message for the drawn route, e.g.
+//
+//   (FPL-4XCWH-VG
+//   -ULAC/L-S/C
+//   -LLHZ0800
+//   -N0090VFR SFAIM APOLN ARENA
+//   -ZZZZ0030
+//   -DOF/260804 DEST/ZASHD RMK/PIC A PILOT LICENSE 1 CELL 0
+//   -E/0500 P/002)
+//
+// Shape and field order follow the AIP's own sample (א'-11 נספח א'), including
+// N0090VFR with no separator and the closing paren tight against P/nnn.
+//
+// The route, speed, EET and the two aerodromes come from the route the pilot
+// drew; everything else is the pilot/aircraft profile they fill once. This
+// only FORMATS a plan -- filing it is the pilot's act, so nothing here sends.
+const FPL_PROFILE_FIELDS = [
+  'reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
+  'endurance', 'persons', 'kind', 'aisEmail',
+];
+// Where a plan is filed, per AIP Israel א'-11 §3.ב: a flight along the published
+// routes goes to AIS (or by phone), a cross-country flight is email-only to the
+// FPL desk. Both are the published addresses, not a guess -- and the pilot can
+// still override the address in the dialog.
+const FPL_FILE_TO = { routes: 'ais@iaa.gov.il', crosscountry: 'fpl@iaa.gov.il' };
+// א'-11 §3.ד.1(א): a routes plan is filed no later than 60 min before departure.
+const FPL_MIN_LEAD_MIN = 60;
+// א'-11 §3.ד.1(ב): there is an EARLIEST time too. A flight departing at or before
+// 17:00 may be filed from 18:00 the day before; a later departure must be filed on
+// the day of the flight. Both thresholds are local clock times.
+const FPL_SAME_DAY_AFTER_MIN = 17 * 60;      // departures after this are same-day filing
+const FPL_EVE_OPEN_MIN = 18 * 60;            // and the evening-before window opens here
+// The earliest instant this plan may be submitted, given its local departure.
+function fplEarliestFiling(when) {
+  if (!(when instanceof Date)) return null;
+  const depMin = when.getHours() * 60 + when.getMinutes();
+  const open = new Date(when.getTime());
+  if (depMin <= FPL_SAME_DAY_AFTER_MIN) {
+    open.setDate(open.getDate() - 1);                       // the evening before
+    open.setHours(Math.floor(FPL_EVE_OPEN_MIN / 60), FPL_EVE_OPEN_MIN % 60, 0, 0);
+  } else {
+    open.setHours(0, 0, 0, 0);                              // same day, from midnight
+  }
+  return open;
+}
+// Field 16's EET is filed on a 5-minute grid.
+const FPL_EET_ROUND_MIN = 5;
+// א'-11 §5: valid from 30 min before the filed time until 30 min after -- 60 min
+// after for a domestic VFR flight. Past that the plan lapses and must be re-filed.
+const FPL_WINDOW_BEFORE_MIN = 30;
+const FPL_WINDOW_AFTER_VFR_MIN = 60;
+function fplFileTo(kind) {
+  return FPL_FILE_TO[kind] || FPL_FILE_TO.routes;
+}
+// Conservative: one address, no display name, no separators. Anything else could smuggle
+// extra mailto headers (a "?bcc=" tail) into the URL built from this field.
+const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+// Encode for a mailto URL, but leave the @ readable: percent-encoding it made some
+// clients show a mangled recipient, while ?, & and spaces must not survive.
+function fplMailtoAddress(addr) {
+  return encodeURIComponent(String(addr || '')).replace(/%40/g, '@');
+}
+// The pilot thinks in local time; the message is UTC. Take the local date and
+// clock time they entered and derive BOTH field 13's EOBT and field 18's DOF from
+// the same instant, so a departure that crosses midnight in UTC (any evening
+// flight, Israel being UTC+2/+3) gets the right date rather than yesterday's.
+function fplUtcFromLocal(dateStr, timeStr) {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ''));
+  const t = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/.exec(String(timeStr || ''));
+  if (!d || !t) return null;
+  const when = new Date(Number(d[1]), Number(d[2]) - 1, Number(d[3]),
+    Number(t[1]), Number(t[2]), 0, 0);
+  if (isNaN(when.getTime())) return null;
+  return {
+    when,
+    eobt: fplPad(when.getUTCHours(), 2) + fplPad(when.getUTCMinutes(), 2),
+    dof: fplPad(when.getUTCFullYear() % 100, 2) + fplPad(when.getUTCMonth() + 1, 2) +
+      fplPad(when.getUTCDate(), 2),
+  };
+}
+function fplLeadMinutes(when, now) {
+  if (!(when instanceof Date)) return null;
+  const ref = now instanceof Date ? now : new Date();
+  return Math.round((when.getTime() - ref.getTime()) / 60000);
+}
+// A 3-letter call sign is what pilots say and what the site's own field takes;
+// the message needs the full registration.
+function fplRegistration(raw) {
+  const up = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!up) return '';
+  return /^4X/.test(up) ? up : '4X' + up;
+}
+// Field 18 keeps RMK/ LAST: it is free text, so any indicator written after it
+// is swallowed into the remarks rather than read as its own field.
+function fplPad(n, width) {
+  const s = String(Math.max(0, Math.trunc(Number(n) || 0)));
+  return s.length >= width ? s.slice(-width) : '0'.repeat(width - s.length) + s;
+}
+function fplHhmm(hours) {
+  const total = Math.round((Number(hours) || 0) * 60);
+  return fplPad(Math.floor(total / 60), 2) + fplPad(total % 60, 2);
+}
+// A waypoint is an aerodrome only if it resolves in the airfield dataset; anything
+// else (a reporting point, a free "NAME=lat,lng") is not a legal field 13/16 code.
+function fplAerodrome(wp) {
+  const raw = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
+  if (!raw) return null;
+  const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(raw) : null;
+  return af ? raw : null;
+}
+function fplRoutePoint(wp) {
+  const raw = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
+  if (!raw) return null;
+  const canon = (typeof canonicalNavWaypointName === 'function')
+    ? String(canonicalNavWaypointName(raw) || raw).toUpperCase() : raw;
+  // Only plain A-Z0-9 codes belong in field 15; a coordinate or a localised label
+  // would be rejected by the AIS parser, so say so instead of shipping it.
+  return /^[A-Z0-9]{2,7}$/.test(canon) ? canon : null;
+}
+function buildIcaoFpl(profile, opts) {
+  const p = profile || {};
+  const o = opts || {};
+  const wps = state.waypoints || [];
+  const errs = [];
+  if (wps.length < 2) return { errs: ['errFplNeedRoute'] };
+
+  // A plan is normally filed field-to-field. When an end is not a known aerodrome the
+  // pilot is warned but not blocked: ICAO's own answer is ZZZZ in field 13/16 with the
+  // point named in field 18 (DEP/ or DEST/), which is what real plans out of a strip or
+  // to a junction look like.
+  const depIcao = fplAerodrome(wps[0]);
+  const depPlain = depIcao ? '' : (fplRoutePoint(wps[0]) || '');
+  if (!depIcao && !depPlain) errs.push('errFplDepUnnamed');
+
+  const lastWp = wps[wps.length - 1];
+  const destIcao = fplAerodrome(lastWp);
+  const destPlain = destIcao ? '' : (fplRoutePoint(lastWp) || '');
+  if (!destIcao && !destPlain) errs.push('errFplDestUnnamed');
+
+  // Field 15 lists what is flown BETWEEN the two end fields. An end that is filed as
+  // ZZZZ is still a point on the route, so it stays in the list.
+  const mid = wps.slice(depIcao ? 1 : 0, destIcao ? wps.length - 1 : wps.length);
+  const pts = [];
+  const unusable = [];
+  for (const wp of mid) {
+    const code = fplRoutePoint(wp);
+    if (code) pts.push(code); else unusable.push((wp && wp.name) || '?');
+  }
+  if (unusable.length) errs.push('errFplBadPoints');
+  if (!pts.length) errs.push('errFplNoPoints');
+
+  const legs = state.legs || [];
+  const speedKt = Math.round(Number(legs.length ? legs[0].flightSpeed : 0));
+  if (!(speedKt > 0)) errs.push('errFplNoSpeed');
+  // Cruising TAS is one number in field 15; a route flown at mixed speeds has no
+  // single answer, so the first leg's speed is used and the caller is told.
+  const mixedSpeed = legs.some(l => Math.round(Number(l.flightSpeed)) !== speedKt);
+
+  const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
+  // Filed to the next whole 5 minutes: nobody files 00:33, and rounding UP never
+  // understates the time the plan is held open for.
+  const rawEetH = prof && prof.totalTimeH > 0 ? prof.totalTimeH : 0;
+  const eetH = rawEetH > 0 ? Math.ceil(rawEetH * 60 / FPL_EET_ROUND_MIN) * FPL_EET_ROUND_MIN / 60 : 0;
+  if (!(eetH > 0)) errs.push('errFplNoEet');
+
+  for (const f of ['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'endurance', 'persons']) {
+    if (!String(p[f] || '').trim()) errs.push('errFplProfile:' + f);
+  }
+  const reg = fplRegistration(p.reg);
+  // Departure is entered as a local date + clock time (what the pilot reads off a
+  // watch); both UTC fields come from that one instant.
+  const utc = fplUtcFromLocal(o.dateLocal, o.timeLocal);
+  if (!utc) errs.push('errFplEobt');
+  const endurance = String(p.endurance || '').replace(/[^0-9]/g, '');
+  if (endurance && !/^[0-9]{4}$/.test(endurance)) errs.push('errFplEndurance');
+  const persons = String(p.persons || '').replace(/[^0-9]/g, '');
+  const toAddr = String(p.aisEmail || '').trim() || fplFileTo(p.kind);
+  if (!FPL_EMAIL_RE.test(toAddr)) errs.push('errFplBadAddress');
+  // Field 18 is an ASCII telex message: a Hebrew name would arrive as mojibake or
+  // be rejected outright, so the pilot's name and licence must be Latin.
+  const NON_ASCII = /[^\x20-\x7E]/;
+  if (NON_ASCII.test(String(p.pic || '')) || NON_ASCII.test(String(p.license || ''))) {
+    errs.push('errFplLatinOnly');
+  }
+  if (errs.length) return { errs, unusable };
+
+  // Warnings never block: the pilot may be phoning it in, or filing for tomorrow.
+  const warns = [];
+  const lead = fplLeadMinutes(utc.when, o.now);
+  if (lead !== null && lead < FPL_MIN_LEAD_MIN) warns.push('warnFplLead');
+  // A cross-country (מרחב) plan is filed on the AIP's own tabular form (א'-11
+  // נספח ב': registration, IAS, fuel time, every route point with WGS-84
+  // coordinates, signatures) -- not as an ICAO message. NavAid does not produce
+  // that form, so the message it builds must not be mailed to the FPL desk as if
+  // it were one. The text is still shown; only sending is withheld.
+  if (p.kind === 'crosscountry') warns.push('warnFplCrossForm');
+  if (!depIcao) warns.push('warnFplDepNotAerodrome');
+  if (!destIcao) warns.push('warnFplDestNotAerodrome');
+  const opens = fplEarliestFiling(utc.when);
+  const nowRef = o.now instanceof Date ? o.now : new Date();
+  if (opens && nowRef.getTime() < opens.getTime()) warns.push('warnFplEarly');
+  if (mixedSpeed) warns.push('warnFplMixedSpeed');
+
+  const f18 = ['DOF/' + utc.dof];
+  if (!depIcao) f18.push('DEP/' + depPlain);
+  if (!destIcao) f18.push('DEST/' + destPlain);
+  const rmk = ['PIC ' + String(p.pic).trim().toUpperCase(),
+    'LICENSE ' + String(p.license).trim()];
+  if (String(p.cell || '').trim()) rmk.push('CELL ' + String(p.cell).trim());
+  f18.push('RMK/' + rmk.join(' '));                       // free text: must stay last
+
+  const text = [
+    '(FPL-' + reg + '-VG',
+    '-' + String(p.type).trim().toUpperCase() + '/' + String(p.wake).trim().toUpperCase() +
+      '-' + String(p.equip).trim().toUpperCase() + '/' + String(p.surv).trim().toUpperCase(),
+    '-' + (depIcao || 'ZZZZ') + utc.eobt,
+    '-N' + fplPad(speedKt, 4) + 'VFR ' + pts.join(' '),
+    '-' + (destIcao || 'ZZZZ') + fplHhmm(eetH),
+    '-' + f18.join(' '),
+    // No space before the paren: that is how the AIP's own sample closes
+    // (א'-11 נספח א'). fpl.co.il emits "P/002 )"; the AIP is the authority.
+    '-E/' + endurance + ' P/' + fplPad(persons || 1, 3) + ')',
+  ].join('\n');
+  return {
+    text, dep: depIcao || depPlain, dest: destIcao || destPlain, eet: fplHhmm(eetH),
+    eetMinutes: Math.round(eetH * 60), mixedSpeed, warns,
+    opensAt: fplEarliestFiling(utc.when),
+    to: toAddr,
+    eobtUtc: utc.eobt, dof: utc.dof, lead,
+  };
+}
+
 // --- GPX export --------------------------------------------------------
 function exportGpx() {
   if (state.waypoints.length < 2) {
@@ -3091,6 +3324,14 @@ function showFlightPlan() {
   navLogBtn.title = S.tbNavLogTitle || 'Open a printable kneeboard nav log (save as PDF)';
   navLogBtn.onclick = exportNavLog;
   btns.appendChild(navLogBtn);
+  // File the plan from the panel where the pilot has just read it back.
+  const fplBtn = document.createElement('button');
+  fplBtn.type = 'button';
+  fplBtn.id = 'fpl-open';
+  fplBtn.textContent = S.tbFpl || 'Flight plan (FPL)';
+  fplBtn.title = S.tbFplTitle || '';
+  fplBtn.onclick = () => showFplDialog();
+  btns.appendChild(fplBtn);
   box.appendChild(btns);
   addModalCloseX(box, closeFlightPlan);
 
@@ -3131,6 +3372,9 @@ function showFlightPlan() {
       };
   flightPlanEscape = function (e) {
     if (e.key !== 'Escape') return;
+    // A dialog opened FROM this panel (the FPL builder) owns Escape while it is
+    // up; closing the plan underneath it would take the pilot's work with it.
+    if (fplDialogOpen || document.querySelector('.modal-back.fpl-modal')) return;
     closeFlightPlan();
     // The global window-level Escape handler in interact.js otherwise runs
     // after this one and toggles the magnifier off whenever the plan is
@@ -3184,8 +3428,11 @@ function chooseOrientation(size, onPick) {
   // #86: Escape closes the picker (counts as cancel).
   function onEsc(e) { if (e.key === 'Escape') close(); }
   function close() {
-    document.removeEventListener('keydown', onEsc);
+    document.removeEventListener('keydown', onEsc, true);
     back.remove();
+    // Cleared on the next tick so the very Escape that closed this dialog cannot
+    // also be read as "no dialog open" by a listener further along the same event.
+    setTimeout(() => { fplDialogOpen = false; }, 0);
   }
   for (const [label, val] of [[S.landscape, 'landscape'], [S.portrait, 'portrait']]) {
     const b = document.createElement('button');
@@ -3247,7 +3494,18 @@ function showSigmetDecoded() {
   title.textContent = S.sigmetModalTitle || 'Active SIGMETs';
   box.appendChild(title);
   function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
-  function onEsc(e) { if (e.key === 'Escape') close(); }
+  // Capture phase + stopPropagation: this dialog is opened from the flight-plan
+  // panel, whose own document-level Escape listener would otherwise close it too.
+  function onEsc(e) {
+    if (e.key !== 'Escape') return;
+    // stopImmediatePropagation, not stopPropagation: the flight-plan panel's own
+    // Escape listener sits on `document` too, and a plain stopPropagation does not
+    // stop another listener on the SAME node -- so the panel closed underneath this
+    // dialog, taking the pilot's half-filled plan with it.
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    close();
+  }
   addModalCloseX(box, close);
   for (const s of sigmets) {
     const item = document.createElement('div');
@@ -7081,4 +7339,542 @@ function shareRoute() {
       // Fallback: show the URL in a prompt so the user can copy manually.
       window.prompt(S.shareCopied, r.url);
     });
+}
+
+// Latin runs inside a Hebrew sentence (ICAO, NavAid, ZZZZ, DEST/, an address, a
+// section number) reorder under bidi and the line comes out scrambled. Setting the
+// text through here puts every Latin/numeric run in its own <bdi>, so each keeps its
+// own direction and cannot drag its neighbours around. textContent alone cannot do
+// this -- the isolation has to be in the markup.
+const FPL_LATIN_RUN = /([A-Za-z][A-Za-z0-9@._/'\-]*(?:\s+[A-Za-z0-9@._/'\-]+)*)/g;
+function fplSetBidiText(el, text) {
+  el.textContent = '';
+  const str = String(text == null ? '' : text);
+  let last = 0;
+  str.replace(FPL_LATIN_RUN, (run, _g, idx) => {
+    if (idx > last) el.appendChild(document.createTextNode(str.slice(last, idx)));
+    const bdi = document.createElement('bdi');
+    bdi.textContent = run;
+    el.appendChild(bdi);
+    last = idx + run.length;
+    return run;
+  });
+  if (last < str.length) el.appendChild(document.createTextNode(str.slice(last)));
+  return el;
+}
+
+// --- FPL dialog -------------------------------------------------------
+// Two steps, mirroring how a pilot actually files: fill the aircraft/pilot
+// details once (they persist), then review the exact message and hand it to
+// your own mail app. NavAid never sends: filing carries the PIC's name and
+// licence, and the approval has to come back to the pilot (AIP א'-11 §4).
+const FPL_PROFILE_PREFIX = 'navaid.fpl.';
+const FPL_DEFAULT_ENDURANCE = '0500';
+// True while the FPL dialog is up. The flight-plan panel's own Escape listener and
+// the global one both live on nodes above this dialog, and listener order between
+// them is not something to rely on -- so the panel checks this flag instead of
+// looking for the dialog in the DOM (by then the dialog may already be removed).
+let fplDialogOpen = false;
+// Dropped fields whose stored values must not linger: `pilotEmail` existed while the
+// dialog asked for the pilot's own address, and an early build let that same address be
+// typed into the filing address -- which then silently outranked the published one.
+const FPL_DEAD_FIELDS = ['pilotEmail'];
+function fplProfileRead() {
+  const p = {};
+  for (const f of FPL_PROFILE_FIELDS) {
+    try { p[f] = localStorage.getItem(FPL_PROFILE_PREFIX + f) || ''; }
+    catch (e) { p[f] = ''; }
+  }
+  try {
+    const dead = {};
+    for (const f of FPL_DEAD_FIELDS) {
+      dead[f] = localStorage.getItem(FPL_PROFILE_PREFIX + f);
+      if (dead[f] !== null) localStorage.removeItem(FPL_PROFILE_PREFIX + f);
+    }
+    // A filing address that is really the pilot's own address is the old mistake, not
+    // a deliberate override: clear it so the published address applies again.
+    const to = String(p.aisEmail || '').trim();
+    if (to && Object.values(FPL_DEAD_FIELDS.map(f => dead[f])).some(v => v && v.trim() === to)) {
+      p.aisEmail = '';
+      localStorage.removeItem(FPL_PROFILE_PREFIX + 'aisEmail');
+    }
+  } catch (e) { /* storage unavailable */ }
+  if (!p.kind) p.kind = 'routes';
+  if (!p.wake) p.wake = 'L';
+  if (!p.equip) p.equip = 'S';
+  if (!p.surv) p.surv = 'C';
+  return p;
+}
+function fplProfileWrite(p) {
+  for (const f of FPL_PROFILE_FIELDS) {
+    let v = String(p[f] == null ? '' : p[f]);
+    // Never persist the published filing address as if it were the pilot's choice --
+    // otherwise a future AIP change would be shadowed by this copy of the old one.
+    if (f === 'aisEmail' && Object.values(FPL_FILE_TO).includes(v.trim())) v = '';
+    try { localStorage.setItem(FPL_PROFILE_PREFIX + f, v); }
+    catch (e) { /* storage unavailable */ }
+  }
+}
+// Local date/time defaults: today, and the next whole 10 minutes far enough out
+// to satisfy the 60-minute filing rule rather than tripping its warning at once.
+function fplDefaultWhen(now) {
+  const d = now instanceof Date ? new Date(now.getTime()) : new Date();
+  d.setMinutes(d.getMinutes() + FPL_MIN_LEAD_MIN + 5);
+  d.setMinutes(Math.ceil(d.getMinutes() / 10) * 10, 0, 0);
+  const pad = n => String(n).padStart(2, '0');
+  return {
+    date: d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
+    time: pad(d.getHours()) + ':' + pad(d.getMinutes()),
+  };
+}
+function fplErrText(code) {
+  const key = String(code).split(':')[0];
+  return (window.S && S[key]) || key;
+}
+function showFplDialog() {
+  const back = document.createElement('div');
+  back.className = 'modal-back fpl-modal';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.fplTitle || 'ICAO flight plan';
+  function close() {
+    // Same capture flag as the registration below, or the listener never detaches.
+    document.removeEventListener('keydown', onEsc, true);
+    back.remove();
+    // Cleared next tick so the very Escape that closed this dialog cannot also be
+    // read as "no dialog open" by a listener further along the same event.
+    setTimeout(() => { fplDialogOpen = false; }, 0);
+  }
+  function onEsc(e) {
+    if (e.key !== 'Escape') return;
+    // stopImmediatePropagation, not stopPropagation: the flight-plan panel's Escape
+    // listener sits on `document` too, and stopPropagation does not stop another
+    // listener on the SAME node -- so the panel closed underneath this dialog and
+    // took the half-filled plan with it.
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    close();
+  }
+  addModalCloseX(box, close);
+  const body = document.createElement('div');
+  body.className = 'fpl-body';
+  box.append(title, body);
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) close(); };
+  back._navaidClose = close;
+  document.body.appendChild(back);
+  fplDialogOpen = true;
+  document.addEventListener('keydown', onEsc, true);
+
+  const profile = fplProfileRead();
+  const when = fplDefaultWhen();
+  const state1 = { date: when.date, time: when.time };
+
+  const row = (labelText, el) => {
+    const wrap = document.createElement('label');
+    wrap.className = 'fpl-row';
+    const span = document.createElement('span');
+    span.textContent = labelText;
+    wrap.append(span, el);
+    return wrap;
+  };
+  const input = (value, type, attrs) => {
+    const el = document.createElement('input');
+    el.type = type || 'text';
+    el.value = value == null ? '' : String(value);
+    for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, v);
+    return el;
+  };
+
+  // Human units in, ICAO codes out. A pilot does not think "E/0400" or "P/002",
+  // and wake/equipment/transponder are the same on every flight they ever file --
+  // so the derived facts read as sentences, the per-flight choices are pickers in
+  // real units, and the raw ICAO fields sit under Advanced with working defaults.
+  const ENDURANCE_CHOICES = [];
+  for (let m = 30; m <= 480; m += 30) ENDURANCE_CHOICES.push(m);
+  const TYPE_SUGGESTIONS = ['C172', 'C152', 'PA28', 'DA40', 'SR22', 'AT3', 'C42', 'EV97', 'ULAC'];
+  const hhmmFromMinutes = m => fplPad(Math.floor(m / 60), 2) + fplPad(m % 60, 2);
+  function enduranceLabel(mins) {
+    const h = Math.floor(mins / 60), m = mins % 60;
+    if (!h) return S.fplMinutes ? S.fplMinutes(m) : m + ' min';
+    if (!m) return S.fplHours ? S.fplHours(h) : h + ' h';
+    return (S.fplHoursMins ? S.fplHoursMins(h, m) : h + ' h ' + m + ' min');
+  }
+  function personsLabel(n) {
+    return n === 1 ? (S.fplPilotOnly || 'pilot only')
+      : (S.fplPilotPlus ? S.fplPilotPlus(n - 1) : 'pilot + ' + (n - 1));
+  }
+  // Hebrew names, a Latin ICAO code and an arrow in one line reorder badly under bidi
+  // (the code jumped to the wrong end and the sequence read backwards). Each name goes
+  // in its own <bdi> so it cannot drag its neighbours around, and the arrow points the
+  // way the UI reads.
+  function fillRouteSummary(el) {
+    el.textContent = '';
+    const rtl = (document.documentElement.getAttribute('dir') === 'rtl');
+    const names = (state.waypoints || []).map(w => {
+      const raw = (w && w.name) ? String(w.name) : '';
+      return (typeof navName === 'function' && navName(raw)) || raw;
+    }).filter(Boolean);
+    names.forEach((name, i) => {
+      if (i) {
+        const sep = document.createElement('span');
+        sep.className = 'fpl-route-sep';
+        sep.textContent = rtl ? ' ← ' : ' → ';
+        el.appendChild(sep);
+      }
+      const bdi = document.createElement('bdi');
+      bdi.textContent = name;
+      el.appendChild(bdi);
+    });
+  }
+  function renderDetails() {
+    body.textContent = '';
+    // The route, in the pilot's own language, so it is obvious which plan this is.
+    const routeLine = document.createElement('div');
+    routeLine.className = 'fpl-route';
+    routeLine.id = 'fpl-route-summary';
+    fillRouteSummary(routeLine);
+    body.appendChild(routeLine);
+
+    const derived = document.createElement('div');
+    derived.className = 'fpl-derived';
+    const speedKt = Math.round(Number((state.legs[0] || {}).flightSpeed) || 0);
+    const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
+    const eetMin = prof && prof.totalTimeH > 0
+      ? Math.ceil(prof.totalTimeH * 60 / FPL_EET_ROUND_MIN) * FPL_EET_ROUND_MIN : 0;
+    const eet = eetMin ? fplHhmm(eetMin / 60) : '----';
+    // Speed and total time are the ROUTE's -- editing them here would file a plan
+    // that disagrees with the map, so they are shown, and changed by editing legs.
+    fplSetBidiText(derived, [
+      S.fplSpeedRow ? S.fplSpeedRow(speedKt) : '',
+      S.fplEetRow ? S.fplEetRow(eet, eetMin ? enduranceLabel(eetMin) : '--') : '',
+    ].filter(Boolean).join('  ·  '));
+    body.appendChild(derived);
+
+    // Departure: just the two fields. A "Change" link here only hid them behind a
+    // click. The UTC the message will actually carry is shown beside the time, since
+    // that is the one thing a pilot cannot work out at a glance.
+    const dateEl = input(state1.date, 'date');
+    const timeEl = input(state1.time, 'time');
+    dateEl.id = 'fpl-date';
+    timeEl.id = 'fpl-time';
+    const utcHint = document.createElement('span');
+    utcHint.className = 'fpl-inline-hint';
+    utcHint.id = 'fpl-utc-hint';
+    const timeBox = document.createElement('span');
+    timeBox.className = 'fpl-time-box';
+    timeBox.append(timeEl, utcHint);
+    const syncWhen = () => {
+      state1.date = dateEl.value;
+      state1.time = timeEl.value;
+      const utc = fplUtcFromLocal(state1.date, state1.time);
+      utcHint.textContent = utc ? utc.eobt + 'Z' : '';
+    };
+    dateEl.onchange = syncWhen;
+    timeEl.onchange = syncWhen;
+    body.append(row(S.fplDate || 'Date', dateEl), row(S.fplTime || 'Departure (local)', timeBox));
+    syncWhen();
+
+    // Call sign: the one field that changes most, so it leads and it is big.
+    // "4X-" is fixed for every Israeli registration, so it is printed beside the
+    // field instead of being something to type (or to forget).
+    const reg = input(profile.reg.replace(/^4X-?/i, ''), 'text',
+      { maxlength: '4', placeholder: 'CWH', autocapitalize: 'characters', 'aria-label': S.fplReg || 'Call sign' });
+    reg.id = 'fpl-reg';
+    reg.className = 'fpl-reg-input';
+    const regBox = document.createElement('span');
+    regBox.className = 'fpl-reg-box';
+    const regPrefix = document.createElement('span');
+    regPrefix.className = 'fpl-reg-prefix';
+    regPrefix.textContent = '4X-';
+    regBox.append(regPrefix, reg);
+    const regRow = row(S.fplReg || 'Call sign', regBox);
+    regRow.classList.add('fpl-row-major');
+    body.appendChild(regRow);
+
+    // Aircraft type: free text (any ICAO designator) with the common ones offered.
+    const type = input(profile.type, 'text', { maxlength: '4', placeholder: 'C172', list: 'fpl-types' });
+    type.id = 'fpl-type';
+    const list = document.createElement('datalist');
+    list.id = 'fpl-types';
+    for (const t of TYPE_SUGGESTIONS) {
+      const o = document.createElement('option');
+      o.value = t;
+      list.appendChild(o);
+    }
+    body.append(row(S.fplType || 'Aircraft type', type), list);
+
+    // Endurance in hours, not "0400".
+    const endurance = document.createElement('select');
+    endurance.id = 'fpl-endurance';
+    for (const mins of ENDURANCE_CHOICES) {
+      const o = document.createElement('option');
+      o.value = hhmmFromMinutes(mins);
+      o.textContent = enduranceLabel(mins);
+      endurance.appendChild(o);
+    }
+    // Five hours is the usual tankful; the pilot's own choice wins once made.
+    endurance.value = /^[0-9]{4}$/.test(profile.endurance) ? profile.endurance : FPL_DEFAULT_ENDURANCE;
+    if (!endurance.value || endurance.selectedIndex < 0) endurance.value = FPL_DEFAULT_ENDURANCE;
+    body.appendChild(row(S.fplEndurance || 'Fuel endurance', endurance));
+
+    // Persons as "pilot + n", which is how anyone actually counts them.
+    const persons = document.createElement('select');
+    persons.id = 'fpl-persons';
+    for (let n = 1; n <= 10; n++) {
+      const o = document.createElement('option');
+      o.value = String(n);
+      o.textContent = personsLabel(n);
+      persons.appendChild(o);
+    }
+    persons.value = String(Math.min(10, Math.max(1, parseInt(profile.persons, 10) || 1)));
+    body.appendChild(row(S.fplPersons || 'Persons on board', persons));
+
+    // Pilot details, shown. They persist, so this is a once-per-device chore.
+    const pic = input(profile.pic, 'text');
+    const license = input(profile.license, 'text');
+    const cell = input(profile.cell, 'tel');
+    pic.id = 'fpl-pic';
+    license.id = 'fpl-license';
+    // No "your email" field: the pilot's own mail client is the sender, so their
+    // address is the From and the approval comes back to it by itself.
+    pic.setAttribute('lang', 'en');
+    pic.setAttribute('placeholder', 'ISRAEL ISRAELI');
+    body.append(
+      row(S.fplPic || 'Pilot in command', pic),
+      row(S.fplLicense || 'License', license),
+      row(S.fplCell || 'Mobile', cell));
+    const latinHint = document.createElement('div');
+    latinHint.className = 'fpl-hint';
+    fplSetBidiText(latinHint, S.fplLatinHint || '');
+    body.appendChild(latinHint);
+
+    // Advanced: the ICAO letters and where the plan is filed. Right by default.
+    const adv = document.createElement('details');
+    adv.className = 'fpl-advanced';
+    const sum = document.createElement('summary');
+    sum.textContent = S.fplAdvanced || 'Advanced';
+    adv.appendChild(sum);
+    const kind = document.createElement('select');
+    kind.id = 'fpl-kind';
+    for (const [val, label] of [['routes', S.fplKindRoutes], ['crosscountry', S.fplKindCross]]) {
+      const o = document.createElement('option');
+      o.value = val; o.textContent = label || val;
+      kind.appendChild(o);
+    }
+    kind.value = profile.kind || 'routes';
+    const wake = input(profile.wake || 'L', 'text', { maxlength: '1' });
+    const equip = input(profile.equip || 'S', 'text', { maxlength: '20' });
+    const surv = input(profile.surv || 'C', 'text', { maxlength: '20' });
+    // The published address for this flight type IS the value, not a hint: it comes
+    // from AIP א'-11 §3.ב, so it should be what gets used unless the pilot changes it.
+    const aisEmail = input(profile.aisEmail || fplFileTo(kind.value), 'email');
+    aisEmail.id = 'fpl-ais-email';
+    kind.onchange = () => {
+      // Follow the flight type while the field still holds a published address;
+      // a hand-typed one is the pilot's and is left alone.
+      const published = Object.values(FPL_FILE_TO);
+      if (!aisEmail.value.trim() || published.includes(aisEmail.value.trim())) {
+        aisEmail.value = fplFileTo(kind.value);
+      }
+    };
+    adv.append(
+      row(S.fplKind || 'Flight type', kind),
+      row(S.fplWake || 'Wake category', wake),
+      row(S.fplEquip || 'Equipment', equip),
+      row(S.fplSurv || 'Transponder', surv),
+      row(S.fplAisEmail || 'File to', aisEmail));
+    body.appendChild(adv);
+
+    const errBox = document.createElement('div');
+    errBox.className = 'fpl-errs';
+    body.appendChild(errBox);
+
+    const btns = document.createElement('div');
+    btns.className = 'modal-btns';
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.id = 'fpl-next';
+    next.className = 'fpl-primary';
+    next.textContent = S.fplNext || 'Continue';
+    next.onclick = () => {
+      Object.assign(profile, {
+        reg: reg.value.trim(), type: type.value.trim(), wake: wake.value.trim(),
+        equip: equip.value.trim(), surv: surv.value.trim(), pic: pic.value.trim(),
+        license: license.value.trim(), cell: cell.value.trim(), endurance: endurance.value,
+        persons: persons.value, kind: kind.value, aisEmail: aisEmail.value.trim(),
+      });
+      fplProfileWrite(profile);
+      const res = buildIcaoFpl(profile, { dateLocal: state1.date, timeLocal: state1.time });
+      if (res.errs) {
+        errBox.textContent = '';
+        for (const code of [...new Set(res.errs.map(e => String(e).split(':')[0]))]) {
+          const li = document.createElement('div');
+          fplSetBidiText(li, '⚠ ' + fplErrText(code));
+          errBox.appendChild(li);
+        }
+        return;
+      }
+      renderReview(res);
+    };
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'modal-cancel';
+    cancel.textContent = S.cancel || 'Cancel';
+    cancel.onclick = close;
+    btns.append(next, cancel);
+    body.appendChild(btns);
+  }
+
+  function renderReview(res) {
+    const profileForSubject = profile;
+    body.textContent = '';
+    const head = document.createElement('div');
+    head.className = 'fpl-step';
+    head.textContent = S.fplStepReview || 'Review and file';
+    body.appendChild(head);
+
+    const from = document.createElement('div');
+    from.className = 'fpl-derived';
+    const speedKt = Math.round(Number((state.legs[0] || {}).flightSpeed) || 0);
+    for (const line of [
+      (S.fplSpeedRow ? S.fplSpeedRow(speedKt) : ''),
+      (S.fplEetRow ? S.fplEetRow(res.eet, enduranceLabel(res.eetMinutes || 0)) : ''),
+      (S.fplUtcRow ? S.fplUtcRow(res.dof, res.eobtUtc) : ''),
+    ]) {
+      if (!line) continue;
+      const d = document.createElement('div');
+      fplSetBidiText(d, line);
+      from.appendChild(d);
+    }
+    body.appendChild(from);
+
+    for (const code of res.warns || []) {
+      const w = document.createElement('div');
+      w.className = 'fpl-warn';
+      fplSetBidiText(w, '⚠ ' + fplErrText(code));
+      body.appendChild(w);
+    }
+
+    const pre = document.createElement('pre');
+    pre.className = 'fpl-text';
+    pre.id = 'fpl-text';
+    pre.textContent = res.text;
+    body.appendChild(pre);
+
+    // Both acknowledgements, as the official filing page requires, and for the
+    // same reason: NavAid is a planning aid, not a briefing.
+    const acks = [];
+    for (const [id, label] of [['fpl-ack-aip', S.fplAckAip], ['fpl-ack-wx', S.fplAckWx]]) {
+      const wrap = document.createElement('label');
+      wrap.className = 'fpl-ack';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = id;
+      const span = document.createElement('span');
+      span.textContent = label || id;
+      wrap.append(cb, span);
+      body.appendChild(wrap);
+      acks.push(cb);
+    }
+
+    const note = document.createElement('div');
+    note.className = 'fpl-hint';
+    fplSetBidiText(note, [S.fplMailNote || '', S.fplWindowNote || ''].filter(Boolean).join(' '));
+    body.appendChild(note);
+
+    const btns = document.createElement('div');
+    btns.className = 'modal-btns';
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.id = 'fpl-copy';
+    copy.textContent = S.fplCopy || 'Copy';
+    copy.onclick = () => {
+      const write = (navigator.clipboard && navigator.clipboard.writeText)
+        ? navigator.clipboard.writeText(res.text)
+        : Promise.reject(new Error('no clipboard API'));
+      write.then(() => showToast(S.fplCopied))
+        .catch(() => window.prompt(S.fplCopied, res.text));
+    };
+    const mail = document.createElement('button');
+    mail.type = 'button';
+    mail.id = 'fpl-mail';
+    mail.textContent = S.fplOpenMail || 'Submit flight plan';
+    mail.onclick = () => {
+      if (!acksDone()) {
+        ackAsked = true;
+        ackNote.hidden = false;
+        sync();
+        const first = acks.find(cb => !cb.checked);
+        if (first) first.focus();
+        return;
+      }
+      // mailto only: a static site has no sender of its own, and the pilot must be
+      // the one who files. cc keeps the pilot on the thread the approval returns on.
+      // The AIP prescribes no subject line (א'-11 §3.ב only names the address), so this
+      // is our own convention: registration, the two fields, and the date of flight --
+      // enough for the desk, and for the pilot's own sent folder, to identify the plan.
+      const q = ['subject=' + encodeURIComponent(
+        'FPL ' + fplRegistration(profileForSubject.reg) + ' ' +
+        res.dep + '-' + res.dest + ' ' + res.dof),
+        'body=' + encodeURIComponent(res.text)];
+      // The address goes in literally: percent-encoding the @ makes some clients
+      // (and some webmail handlers) show or send a mangled recipient.
+      // res.to passed FPL_EMAIL_RE in the builder, and is encoded here anyway (bar the
+      // @) so no address can smuggle extra headers into this URL.
+      location.href = 'mailto:' + fplMailtoAddress(res.to) + '?' + q.join('&');
+      // A machine with no mail client registered (or webmail that never registered a
+      // handler) drops mailto: on the floor with no error of any kind. There is nothing
+      // to detect, so say what should have happened and leave the address and the plan
+      // on screen to send by hand.
+      fallback.hidden = false;
+    };
+    const formOnly = (res.warns || []).includes('warnFplCrossForm');
+    if (formOnly) mail.hidden = true;
+    // The button stays ENABLED with the boxes unticked: a disabled control explains
+    // nothing, so the click is what says what is missing, and the boxes are marked.
+    const fallback = document.createElement('div');
+    fallback.className = 'fpl-hint fpl-fallback';
+    fallback.id = 'fpl-mail-fallback';
+    fallback.hidden = true;
+    const fbText = document.createElement('span');
+    fplSetBidiText(fbText, (S.fplNoMailApp || '') + ' ');
+    const fbAddr = document.createElement('bdi');       // an address inside RTL text
+    fbAddr.className = 'fpl-fallback-addr';
+    fbAddr.textContent = res.to;
+    fallback.append(fbText, fbAddr);
+    body.appendChild(fallback);
+
+    const ackNote = document.createElement('div');
+    ackNote.className = 'fpl-warn';
+    ackNote.id = 'fpl-ack-required';
+    ackNote.hidden = true;
+    fplSetBidiText(ackNote, '⚠ ' + (S.fplAckRequired || 'Confirm both checks before submitting.'));
+    // appendChild, not insertBefore(ackNote, btns): btns is not in the DOM yet at
+    // this point, and insertBefore threw -- which aborted the render and left the
+    // review step with no buttons at all.
+    body.appendChild(ackNote);
+    const acksDone = () => acks.every(cb => cb.checked);
+    // Marks appear only after a submit was actually attempted, and each box clears its
+    // own mark as it is ticked -- the note goes once nothing is outstanding.
+    let ackAsked = false;
+    const sync = () => {
+      for (const cb of acks) {
+        cb.closest('.fpl-ack').classList.toggle('fpl-ack-missing', ackAsked && !cb.checked);
+      }
+      if (acksDone()) ackNote.hidden = true;
+    };
+    for (const cb of acks) cb.addEventListener('change', sync);
+    const backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.id = 'fpl-back';
+    backBtn.textContent = S.fplBack || 'Back';
+    backBtn.onclick = renderDetails;
+    btns.append(copy, mail, backBtn);
+    body.appendChild(btns);
+  }
+
+  renderDetails();
 }

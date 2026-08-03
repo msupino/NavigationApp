@@ -332,6 +332,10 @@ const GDRIVE_SETTINGS_KEYS = [
   // cruise/climb numbers with the aircraft profile.
   'navaid.vorFreqOverrides', 'navaid.vorRef', 'navaid.navDataPrefix',
   'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed',
+  // The FPL profile: aircraft and pilot details worth having on every device.
+  // Written by fplProfileWrite() as navaid.fpl.<field>.
+  ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
+    'endurance', 'persons', 'kind', 'aisEmail'].map(f => 'navaid.fpl.' + f),
 ];
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
 const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';

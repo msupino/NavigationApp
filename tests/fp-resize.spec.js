@@ -171,7 +171,7 @@ test.describe('Flight-plan modal table print', () => {
     const modal = await openFlightPlan(page);
     const buttons = await modal.locator('.modal-btns button').evaluateAll(btns =>
       btns.map(btn => btn.textContent.trim()));
-    expect(buttons).toEqual(['Print', 'CSV', 'Nav log (PDF)']);
+    expect(buttons).toEqual(['Print', 'CSV', 'Nav log (PDF)', '✈ Submit flight plan']);
 
     const downloadPromise = page.waitForEvent('download');
     await modal.locator('.modal-btns button', { hasText: 'CSV' }).click();
