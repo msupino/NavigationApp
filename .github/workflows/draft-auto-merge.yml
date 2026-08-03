@@ -6,6 +6,18 @@ name: Draft + auto-merge
 on:
   pull_request:
     types: [opened, ready_for_review]
+  # Self-dispatch: the watcher below hands its remaining wait to a fresh run
+  # rather than failing when a PR legitimately takes longer than one window
+  # (a conflict to resolve, a re-push, two 15-min e2e runs back to back).
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number to watch until it merges
+        required: true
+      round:
+        description: Hand-off count; the watcher stops handing off after 3
+        required: false
+        default: '1'
 
 permissions:
   contents: write
@@ -26,7 +38,7 @@ jobs:
           echo "PR #${{ github.event.pull_request.number }} converted to draft."
 
   enable-auto-merge:
-    if: github.event.action == 'ready_for_review'
+    if: github.event_name == 'workflow_dispatch' || github.event.action == 'ready_for_review'
     runs-on: ubuntu-latest
     # Wait synchronously for the merge so we can explicitly dispatch
     # downstream `Deploy` and `Auto PR dev to main` workflows after dev has
@@ -36,17 +48,24 @@ jobs:
     # workflow_run — not just the direct push/pull_request events the docs
     # call out). workflow_dispatch IS exempt, so we trigger downstream
     # workflows explicitly via `gh workflow run` after the merge lands.
-    # 60 min covers worst-case CI (e2e + retries).
+    # 60 min covers one worst-case CI pass (e2e + retries). A PR that needs
+    # longer gets handed to a fresh run instead of failing here -- see MAX_ROUNDS.
     timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
       - name: Enable auto-merge (squash) and wait for merge
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
+          PR: ${{ inputs.pr || github.event.pull_request.number }}
           TITLE: ${{ github.event.pull_request.title }}
+          ROUND: ${{ inputs.round || '1' }}
+          MAX_ROUNDS: '3'
         run: |
           set -e
+          # A handed-off run has no pull_request payload, so read the title back.
+          if [ -z "$TITLE" ]; then
+            TITLE=$(gh pr view "$PR" --json title --jq '.title')
+          fi
           # Guard: only enable if PR is not a draft.
           STATE=$(gh pr view "$PR" \
             --json isDraft,state --jq 'select(.isDraft==false and .state=="OPEN") | "ok"')
@@ -58,10 +77,12 @@ jobs:
           # setting only fires for human-initiated merges. Auto-merge enabled
           # by github-actions[bot] honors the flags passed here, not the
           # repo setting.
+          # Re-arming an already-armed PR is a no-op; tolerate it so a hand-off
+          # round can't die here under `set -e`.
           gh pr merge "$PR" \
             --auto --squash --delete-branch \
-            --subject "$TITLE"
-          echo "Auto-merge enabled for PR #$PR."
+            --subject "$TITLE" || echo "Auto-merge already enabled for PR #$PR."
+          echo "Auto-merge enabled for PR #$PR (watch round $ROUND)."
           # GITHUB_TOKEN-initiated bot merges suppress `push: dev`,
           # `pull_request: closed`, AND `workflow_run` chained events
           # (GitHub anti-recursion rule — verified empirically against
@@ -94,5 +115,22 @@ jobs:
             esac
             sleep 30
           done
-          echo "::error::Timed out waiting for PR #$PR to merge after 60 min."
+          # Out of window. Auto-merge is still armed, so the PR is fine -- what
+          # would be lost is the post-merge dispatch below, which nothing else
+          # performs (bot merges suppress push/closed/workflow_run events). So
+          # hand the remaining wait to a fresh run (workflow_dispatch is exempt
+          # from the anti-recursion rule) rather than failing a healthy PR.
+          if [ "$ROUND" -lt "$MAX_ROUNDS" ]; then
+            NEXT=$((ROUND + 1))
+            echo "::notice::PR #$PR still open after 60 min; handing the watch to round $NEXT."
+            # The dispatch reads its inputs from the workflow file on the default
+            # branch, so this only works once this change is on main. Until then
+            # (or if the dispatch is refused) warn rather than fail: the PR still
+            # merges on its own; only the Deploy dispatch needs a hand.
+            gh workflow run "Draft + auto-merge" --ref "${{ github.event.repository.default_branch }}" \
+              -f pr="$PR" -f round="$NEXT" || \
+              echo "::warning::Could not hand off the watch for PR #$PR. Auto-merge stays armed; dispatch Deploy by hand once it lands."
+            exit 0
+          fi
+          echo "::error::PR #$PR still not merged after $MAX_ROUNDS watch rounds (3 h). Auto-merge is still armed, but nothing will dispatch Deploy when it lands -- dispatch it by hand, or re-run this workflow with pr=$PR."
           exit 1
