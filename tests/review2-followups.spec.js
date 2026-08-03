@@ -1,5 +1,7 @@
 // Follow-ups from the second review of main.
 const { test, expect } = require('./_setup');
+const fs = require('fs');
+const path = require('path');
 
 const NOTAM_RE = /notam-data\/notam\.json/;
 const FEED = { fir: 'LLLL', notams: [
@@ -33,9 +35,12 @@ test('the assistant reads the whole FIR, not just the chart on screen', async ({
   });
   expect(out.onChart).toEqual([]);                 // hidden on CVFR, as designed
   expect(out.wholeFeed).toEqual(['UL1/26']);       // still reachable
-  // The assistant's own accessor must use the unfiltered list.
-  const src = await (await fetch('http://localhost:8000/app/assistant.js')).text();
+  // The assistant's tool list is closure-private, so pin the call site itself.
+  // Read it from disk rather than over HTTP: no network, and CodeQL rightly
+  // objects to pulling source over an insecure connection.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'docs', 'app', 'assistant.js'), 'utf8');
   expect(src).toMatch(/activeNotams\(\{\s*allCharts:\s*true\s*\}\)/);
+  expect(src).not.toMatch(/activeNotams\(\)/);   // no bare call left behind
 });
 
 test('the NOTAM list button hides when this chart has nothing to list', async ({ page }) => {
