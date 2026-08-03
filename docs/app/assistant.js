@@ -185,7 +185,10 @@
     return (typeof decodeNotam === 'function') ? decodeNotam(n) : (n && (n.text || n.id)) || '';
   }
   function activeList() {
-    if (typeof activeNotams === 'function') return activeNotams() || [];
+    // The whole FIR, not the chart on screen: a question about NOTAMs is not
+    // scoped to the chart the map happens to be showing, and the per-chart filter
+    // would have the assistant deny the ultralight ones on a CVFR chart.
+    if (typeof activeNotams === 'function') return activeNotams({ allCharts: true }) || [];
     return Array.isArray(typeof notams !== 'undefined' ? notams : null) ? notams : [];
   }
 

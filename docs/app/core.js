@@ -728,6 +728,10 @@ window.S = Object.assign({
   routeLibraryExportCorrupt: 'Export corrupted data',
   routeLibraryExportEmpty: 'No saved routes to export yet.',
   routeLibraryImportedN: function(n) { return n + ' route(s) imported'; },
+  errRouteLibraryWriteFailed: 'Those routes could not be saved to this device (storage full, or the saved-route library is unreadable). Nothing was imported.',
+  routeLibraryImportSkipped: function(added, skipped) {
+    return added + ' route(s) imported, ' + skipped + ' skipped (not a valid route)';
+  },
   errNotRouteLibrary: 'That file is not a saved-routes library (expected a list of routes).',
   routeLibraryDiscardCorrupt: 'Discard corrupted library',
   routeLibraryDiscardCorruptConfirm: 'Discard the corrupted saved-route library and start with an empty one? This cannot be undone — export it first if you might want to recover it.',

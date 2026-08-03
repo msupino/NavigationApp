@@ -105,6 +105,10 @@ window.S = {
   routeLibraryCorruptBanner: 'לא ניתן לקרוא את המסלולים השמורים (הנתונים פגומים). ייצא את הנתונים הגולמיים כדי לנסות לשחזר, או מחק כדי להתחיל מחדש. השמירה חסומה עד אז.',
   routeLibraryExportEmpty: 'אין מסלולים שמורים לייצוא.',
   routeLibraryImportedN: function(n) { return n + ' מסלולים יובאו'; },
+  errRouteLibraryWriteFailed: 'לא ניתן לשמור את המסלולים במכשיר (אין מקום, או שספריית המסלולים אינה קריאה). דבר לא יובא.',
+  routeLibraryImportSkipped: function(added, skipped) {
+    return added + ' מסלולים יובאו, ' + skipped + ' נדחו (אינם מסלול תקין)';
+  },
   errNotRouteLibrary: 'הקובץ אינו ספריית מסלולים שמורים (מצופה רשימת מסלולים).',
   routeLibraryExportCorrupt: 'ייצא נתונים פגומים',
   routeLibraryDiscardCorrupt: 'מחק ספרייה פגומה',
