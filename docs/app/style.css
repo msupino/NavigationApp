@@ -5126,3 +5126,8 @@ html[dir="rtl"] .fpl-inline-hint { direction: ltr; }
 .fpl-ack-missing input { outline: 2px solid #ffcf7a; outline-offset: 1px; }
 body.theme-light .fpl-ack-missing { color: #8a5300; }
 body.theme-light .fpl-ack-missing input { outline-color: #8a5300; }
+
+/* Shown after Submit: what should have happened, and the address to use by hand. */
+.fpl-fallback { border-inline-start: 2px solid #3a3636; padding-inline-start: 8px; }
+.fpl-fallback-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
+body.theme-light .fpl-fallback { border-inline-start-color: #d8d4d4; }

@@ -987,6 +987,14 @@ const FPL_WINDOW_AFTER_VFR_MIN = 60;
 function fplFileTo(kind) {
   return FPL_FILE_TO[kind] || FPL_FILE_TO.routes;
 }
+// Conservative: one address, no display name, no separators. Anything else could smuggle
+// extra mailto headers (a "?bcc=" tail) into the URL built from this field.
+const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+// Encode for a mailto URL, but leave the @ readable: percent-encoding it made some
+// clients show a mangled recipient, while ?, & and spaces must not survive.
+function fplMailtoAddress(addr) {
+  return encodeURIComponent(String(addr || '')).replace(/%40/g, '@');
+}
 // The pilot thinks in local time; the message is UTC. Take the local date and
 // clock time they entered and derive BOTH field 13's EOBT and field 18's DOF from
 // the same instant, so a departure that crosses midnight in UTC (any evening
@@ -1101,6 +1109,8 @@ function buildIcaoFpl(profile, opts) {
   const endurance = String(p.endurance || '').replace(/[^0-9]/g, '');
   if (endurance && !/^[0-9]{4}$/.test(endurance)) errs.push('errFplEndurance');
   const persons = String(p.persons || '').replace(/[^0-9]/g, '');
+  const toAddr = String(p.aisEmail || '').trim() || fplFileTo(p.kind);
+  if (!FPL_EMAIL_RE.test(toAddr)) errs.push('errFplBadAddress');
   // Field 18 is an ASCII telex message: a Hebrew name would arrive as mojibake or
   // be rejected outright, so the pilot's name and licence must be Latin.
   const NON_ASCII = /[^\x20-\x7E]/;
@@ -1150,7 +1160,7 @@ function buildIcaoFpl(profile, opts) {
     text, dep: depIcao || depPlain, dest: destIcao || destPlain, eet: fplHhmm(eetH),
     eetMinutes: Math.round(eetH * 60), mixedSpeed, warns,
     opensAt: fplEarliestFiling(utc.when),
-    to: String(p.aisEmail || '').trim() || fplFileTo(p.kind),
+    to: toAddr,
     eobtUtc: utc.eobt, dof: utc.dof, lead,
   };
 }
@@ -7790,12 +7800,31 @@ function showFplDialog() {
         'body=' + encodeURIComponent(res.text)];
       // The address goes in literally: percent-encoding the @ makes some clients
       // (and some webmail handlers) show or send a mangled recipient.
-      location.href = 'mailto:' + res.to + '?' + q.join('&');
+      // res.to passed FPL_EMAIL_RE in the builder, and is encoded here anyway (bar the
+      // @) so no address can smuggle extra headers into this URL.
+      location.href = 'mailto:' + fplMailtoAddress(res.to) + '?' + q.join('&');
+      // A machine with no mail client registered (or webmail that never registered a
+      // handler) drops mailto: on the floor with no error of any kind. There is nothing
+      // to detect, so say what should have happened and leave the address and the plan
+      // on screen to send by hand.
+      fallback.hidden = false;
     };
     const formOnly = (res.warns || []).includes('warnFplCrossForm');
     if (formOnly) mail.hidden = true;
     // The button stays ENABLED with the boxes unticked: a disabled control explains
     // nothing, so the click is what says what is missing, and the boxes are marked.
+    const fallback = document.createElement('div');
+    fallback.className = 'fpl-hint fpl-fallback';
+    fallback.id = 'fpl-mail-fallback';
+    fallback.hidden = true;
+    const fbText = document.createElement('span');
+    fbText.textContent = (S.fplNoMailApp || '') + ' ';
+    const fbAddr = document.createElement('bdi');       // an address inside RTL text
+    fbAddr.className = 'fpl-fallback-addr';
+    fbAddr.textContent = res.to;
+    fallback.append(fbText, fbAddr);
+    body.appendChild(fallback);
+
     const ackNote = document.createElement('div');
     ackNote.className = 'fpl-warn';
     ackNote.id = 'fpl-ack-required';

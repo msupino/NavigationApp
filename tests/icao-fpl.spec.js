@@ -317,6 +317,31 @@ test('submitting without the acknowledgements says what is missing', async ({ pa
   await expect(page.locator('.fpl-ack-missing')).toHaveCount(0);
 });
 
+// mailto: fails silently on a device with no mail app, so submitting must leave the
+// pilot able to file by hand rather than wondering whether anything happened.
+test('submitting reveals the address to use if no mail app opens', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'CWH', type: 'C172', pic: 'A PILOT',
+      license: '1', persons: '2', endurance: '0500', kind: 'routes' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('#fpl-mail-fallback')).toBeHidden();
+  await page.locator('#fpl-ack-aip').check();
+  await page.locator('#fpl-ack-wx').check();
+  // Stop the navigation the click would trigger; the panel is what matters here.
+  await page.evaluate(() => { window.__navGuard = true; });
+  await page.locator('#fpl-mail').click();
+  await expect(page.locator('#fpl-mail-fallback')).toBeVisible();
+  await expect(page.locator('.fpl-fallback-addr')).toHaveText('ais@iaa.gov.il');
+  await expect(page.locator('#fpl-copy')).toBeVisible();       // and Copy is right there
+});
+
 test('Escape closes the FPL dialog and leaves the flight plan open', async ({ page }) => {
   await boot(page);
   await route(page);
@@ -411,13 +436,27 @@ test('the published address is not persisted as a pilot override', async ({ page
   expect(await page.evaluate(() => localStorage.getItem('navaid.fpl.aisEmail'))).toBe('ops@example.com');
 });
 
-test('the mail link keeps the recipient literal', async ({ page }) => {
+test('the mail link keeps the recipient readable but cannot carry extra headers', async ({ page }) => {
   await boot(page);
   await route(page);
   const res = await build(page);
-  // Percent-encoding the @ mangles the recipient in some clients.
   expect(res.to).toBe('ais@iaa.gov.il');
-  expect(res.to).not.toContain('%40');
+  const encoded = await page.evaluate(a => fplMailtoAddress(a), res.to);
+  expect(encoded).toBe('ais@iaa.gov.il');          // @ stays literal (clients mangle %40)
+  // A crafted address cannot smuggle mailto headers through the URL.
+  const nasty = await page.evaluate(() => fplMailtoAddress('x@y.com?bcc=evil@z.com&subject=hi'));
+  expect(nasty).not.toContain('?');
+  expect(nasty).not.toContain('&');
+});
+
+test('an invalid filing address is refused', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  for (const bad of ['x@y.com?bcc=evil@z.com', 'not-an-email', 'a b@c.com', 'a@b']) {
+    const res = await build(page, { ...PROFILE, aisEmail: bad });
+    expect(res.errs, bad).toContain('errFplBadAddress');
+  }
+  expect((await build(page, { ...PROFILE, aisEmail: 'ops@example.com' })).errs).toBeUndefined();
 });
 
 test('missing pilot or aircraft details are refused, one message per field', async ({ page }) => {
@@ -441,7 +480,7 @@ test('every error and warning code has text in both languages', async ({ page })
     const missing = await page.evaluate(() => {
       const codes = ['errFplNeedRoute', 'errFplDepUnnamed', 'errFplDestUnnamed',
         'errFplBadPoints', 'errFplNoPoints', 'errFplNoSpeed', 'errFplNoEet', 'errFplEobt',
-        'errFplEndurance', 'errFplProfile', 'errFplLatinOnly', 'warnFplLead', 'warnFplEarly',
+        'errFplEndurance', 'errFplProfile', 'errFplLatinOnly', 'errFplBadAddress', 'warnFplLead', 'warnFplEarly',
         'warnFplMixedSpeed', 'warnFplCrossForm', 'warnFplDepNotAerodrome',
         'warnFplDestNotAerodrome', 'fplAckRequired'];
       return codes.filter(c => !S[c]);
