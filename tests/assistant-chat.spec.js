@@ -89,6 +89,10 @@ test('the FAB is present and opening the panel shows settings when no key is set
 test('agent loop: model tool-call runs the tool and the result is fed back', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(async () => {
+    // set_route is a 'route'-tier tool, so the loop now asks once per session before
+    // letting the model change the route (see assistant-tier-gate.spec.js). Grant it.
+    NavAid.assistant._resetConsent();
+    NavAid.assistant._setConfirm(() => true);
     let turn = 0, fedBack = null;
     NavAid.assistant._setProvider(async (msgs) => {
       turn++;

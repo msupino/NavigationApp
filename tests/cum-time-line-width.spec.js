@@ -57,7 +57,7 @@ test.describe('Leg line-width slider', () => {
     await page.locator('#leg-line-width').dispatchEvent('input');
     const live = await page.evaluate(() => window.legLineWidth);
     expect(live).toBeCloseTo(0.8, 1);
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.legLineWidth2'));
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.legLineWidth3'));
     expect(parseFloat(stored)).toBeCloseTo(0.8, 1);
   });
 
@@ -108,7 +108,7 @@ test.describe('Drift line-width slider', () => {
     await page.locator('#drift-line-width').fill('1.5');
     await page.locator('#drift-line-width').dispatchEvent('input');
     expect(await page.evaluate(() => window.driftLineWidth)).toBeCloseTo(1.5, 1);
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.driftLineWidth'));
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.driftLineWidth2'));
     expect(parseFloat(stored)).toBeCloseTo(1.5, 1);
   });
 
