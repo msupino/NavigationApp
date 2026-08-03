@@ -1367,11 +1367,14 @@ function importRouteLibraryArray(arr) {
   if (!Array.isArray(arr)) return null;
   const merged = loadRouteLibrary();
   let added = 0;
+  // Entries the file carried but we refused. Silently dropping them let a user
+  // delete a source file believing it round-tripped, so the count is reported.
+  let skipped = 0;
   for (const it of arr) {
     if (!it) continue;
     const isTrack = it.kind === 'gps' && Array.isArray(it.track) && it.track.length;
-    if (!it.data && !isTrack) continue;
-    if (it.data && typeof validateRoute === 'function' && validateRoute(it.data)) continue;
+    if (!it.data && !isTrack) { skipped++; continue; }
+    if (it.data && typeof validateRoute === 'function' && validateRoute(it.data)) { skipped++; continue; }
     const entry = { id: routeLibraryId(),
       name: (it.name || 'Route').toString().slice(0, 80),
       savedAt: it.savedAt || new Date().toISOString() };
@@ -1380,7 +1383,16 @@ function importRouteLibraryArray(arr) {
     merged.unshift(entry);
     added++;
   }
-  return { merged, added };
+  return { merged, added, skipped };
+}
+// What to say after a merge: the plain count, or the count plus what was refused.
+function routeLibraryImportMessage(res) {
+  if (res.skipped && S.routeLibraryImportSkipped) {
+    return S.routeLibraryImportSkipped(res.added, res.skipped);
+  }
+  return S.routeLibraryImportedN
+    ? S.routeLibraryImportedN(res.added)
+    : res.added + ' route(s) imported';
 }
 // A library file is an array of entries carrying route data or a track — as
 // opposed to a single route object, which carries waypoints/legs/notes.
@@ -1418,11 +1430,13 @@ function load(file) {
         alert(S.routeLibraryImportNone || 'No valid routes in that file');
         return;
       }
-      if (persistRouteLibrary(res.merged) && typeof showToast === 'function') {
-        showToast(S.routeLibraryImportedN
-          ? S.routeLibraryImportedN(res.added)
-          : res.added + ' route(s) imported');
+      if (!persistRouteLibrary(res.merged)) {
+        // A refused write (corrupt library / full storage) used to short-circuit
+        // the toast and say nothing at all — indistinguishable from success.
+        alert(S.errRouteLibraryWriteFailed);
+        return;
       }
+      if (typeof showToast === 'function') showToast(routeLibraryImportMessage(res));
       return;
     }
     // Strict schema check before applying any state — issue #101. Any
@@ -4439,8 +4453,10 @@ async function flyRoute() {
           const turnSegPart = (f - a) / (1 - turnStartF);
           segDur = Math.max(segDur, turnDur * turnSegPart);
         }
-        const a = f >= 1 ? altAt(i + 1) : legAlt(i);
-        tour += flyToCamera(pos, a.alt, continuousHeading(hdg), Math.max(0.6, segDur), 'smooth', a.mode);
+        // Named for what it is: `a` collided with the turn-fraction `a` above.
+        const altInfo = f >= 1 ? altAt(i + 1) : legAlt(i);
+        tour += flyToCamera(pos, altInfo.alt, continuousHeading(hdg),
+          Math.max(0.6, segDur), 'smooth', altInfo.mode);
         prevF = f;
       }
     }
