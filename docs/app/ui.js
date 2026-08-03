@@ -2267,6 +2267,7 @@ document.getElementById('export-select').onchange = e => {
 };
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
+
 document.getElementById('route-templates').onclick = showRouteTemplatesModal;
 // Wrap so the click Event isn't forwarded as showRouteLibraryModal's focusSave
 // argument (which would prefill + focus the name field just for browsing).
