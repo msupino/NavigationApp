@@ -5070,17 +5070,35 @@ LEGARROW_EL.oninput = e => {
   draw();
 };
 
-// Key bumped to v2 so existing users pick up the new 0.5 default + 0.1–2.0
-// range instead of a stale saved value from the old 0.5–6 slider.
-const LEGLINEWIDTH_KEY = 'navaid.legLineWidth2';
+// A slider whose RANGE changed needs a new key, or an out-of-range saved value gets
+// silently clamped and the pilot sees a width they never chose. Bumping alone would
+// reset everyone, including the majority whose value still fits — so adopt the old
+// value when it falls inside the new range, and fall back to the shipped default
+// only when it genuinely cannot be honoured. Same shape as navLangPosRead's adoption.
+function adoptRangedNumber(key, legacyKeys, min, max, shipped) {
+  const inRange = v => Number.isFinite(v) && v >= min && v <= max;
+  try {
+    const own = parseFloat(localStorage.getItem(key));
+    if (inRange(own)) return own;
+    for (const old of legacyKeys) {
+      const v = parseFloat(localStorage.getItem(old));
+      if (inRange(v)) { localStorage.setItem(key, String(v)); return v; }
+    }
+  } catch (e) { /* storage unavailable */ }
+  return shipped;
+}
+
+// Key bumped again (v3): v2 was introduced for a 0.1–2.0 range, and the range was
+// later narrowed to 0.1–0.9 WITHOUT a bump — so a saved 1.5 was quietly clamped to
+// 0.9, the exact failure the first bump existed to prevent.
+const LEGLINEWIDTH_KEY = 'navaid.legLineWidth3';
+const LEGLINEWIDTH_LEGACY = ['navaid.legLineWidth2', 'navaid.legLineWidth'];
 // Shipped default (0.5) centred on the travel: it used to sit at 21% of a 0.1..2 range,
 // so the slider mostly thickened and barely thinned. 0.1..0.9 on a 0.1 grid puts 0.5
 // in the middle and on a tick.
 const LEGLINEWIDTH_MIN = 0.1, LEGLINEWIDTH_MAX = 0.9, LEGLINEWIDTH_STEP = 0.1;
-try {
-  const v = parseFloat(localStorage.getItem(LEGLINEWIDTH_KEY));
-  if (!isNaN(v)) window.legLineWidth = Math.max(LEGLINEWIDTH_MIN, Math.min(LEGLINEWIDTH_MAX, v));
-} catch (e) { /* storage unavailable */ }
+window.legLineWidth = adoptRangedNumber(LEGLINEWIDTH_KEY, LEGLINEWIDTH_LEGACY,
+  LEGLINEWIDTH_MIN, LEGLINEWIDTH_MAX, window.legLineWidth);
 const LEGLINEWIDTH_EL = document.getElementById('leg-line-width');
 LEGLINEWIDTH_EL.min = String(LEGLINEWIDTH_MIN); LEGLINEWIDTH_EL.max = String(LEGLINEWIDTH_MAX); LEGLINEWIDTH_EL.step = String(LEGLINEWIDTH_STEP);
 LEGLINEWIDTH_EL.value = legLineWidth;
@@ -5093,14 +5111,15 @@ LEGLINEWIDTH_EL.oninput = e => {
   draw();
 };
 
-const DRIFTLINEWIDTH_KEY = 'navaid.driftLineWidth';
+// Versioned for the same reason: this slider went 0.5–6 -> 0.2–1.8 on the original
+// key, so a saved 3 was clamped to 1.8.
+const DRIFTLINEWIDTH_KEY = 'navaid.driftLineWidth2';
+const DRIFTLINEWIDTH_LEGACY = ['navaid.driftLineWidth'];
 // Same treatment: the default (1) sat at 9% of a 0.5..6 range. 0.2..1.8 on a 0.1 grid
 // centres it, and the finer step gives 17 stops instead of a coarse half-unit jump.
 const DRIFTLINEWIDTH_MIN = 0.2, DRIFTLINEWIDTH_MAX = 1.8, DRIFTLINEWIDTH_STEP = 0.1;
-try {
-  const v = parseFloat(localStorage.getItem(DRIFTLINEWIDTH_KEY));
-  if (!isNaN(v)) window.driftLineWidth = Math.max(DRIFTLINEWIDTH_MIN, Math.min(DRIFTLINEWIDTH_MAX, v));
-} catch (e) { /* storage unavailable */ }
+window.driftLineWidth = adoptRangedNumber(DRIFTLINEWIDTH_KEY, DRIFTLINEWIDTH_LEGACY,
+  DRIFTLINEWIDTH_MIN, DRIFTLINEWIDTH_MAX, window.driftLineWidth);
 const DRIFTLINEWIDTH_EL = document.getElementById('drift-line-width');
 DRIFTLINEWIDTH_EL.min = String(DRIFTLINEWIDTH_MIN); DRIFTLINEWIDTH_EL.max = String(DRIFTLINEWIDTH_MAX); DRIFTLINEWIDTH_EL.step = String(DRIFTLINEWIDTH_STEP);
 DRIFTLINEWIDTH_EL.value = driftLineWidth;

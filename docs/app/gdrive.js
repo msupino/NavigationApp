@@ -314,11 +314,16 @@ const GDRIVE_SETTINGS_KEYS = [
   // legLineWidth2, not legLineWidth: the key was bumped to v2 when the slider's
   // range changed, and the old name has not been written since — so this list was
   // syncing a dead key and leaving the live one behind.
-  'navaid.legArrowSize', 'navaid.legLineWidth2', 'navaid.driftLineWidth',
+  'navaid.legArrowSize', 'navaid.legLineWidth3', 'navaid.driftLineWidth2',
   'navaid.wpSize', 'navaid.legArrowAlpha', 'navaid.yellowAlpha',
+  // Colours picked in the Display menu. Written by wireColorPicker with the key
+  // passed as an ARGUMENT, which is exactly why the drift guard could not see
+  // them and they sat unsynced.
+  'navaid.waypointColor', 'navaid.legArrowColor',
   'navaid.trainingOpacity',
   'navaid.cvfrOpacity', 'navaid.heliOpacity', 'navaid.circuitOpacity',
   'navaid.plateOpacity', 'navaid.commfailOpacity', 'navaid.mapOpacity.v2',
+  'navaid.wxOpacity',   // one slider fades both the PWX and SIGWX overlays
   // flight-plan columns, aircraft profile, user data corrections
   'navaid.fpColumns', 'navaid.aircraft', 'navaid.airfieldFreqOverrides',
   'navaid.commFreqOverrides', 'navaid.overlayBoundsOverrides',
