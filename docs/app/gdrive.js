@@ -301,17 +301,32 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.showFreqChanges', 'navaid.showMidLeg',
   'navaid.highlightDiff', 'navaid.limitLegKites', 'navaid.showMsa',
   'navaid.showReporting', 'navaid.forceSnap', 'navaid.showReturn',
-  'navaid.showNotam', 'navaid.showWind', 'navaid.windField', 'navaid.imsPwx',
+  'navaid.showWind', 'navaid.windField', 'navaid.imsPwx',
+  // NOTAM visibility is remembered per chart (see notamPrefKey), so the shared
+  // 'navaid.showNotam' this list used to carry is no longer written by anything —
+  // syncing it silently stopped carrying the pilot's choice between devices.
+  'navaid.showNotam.cvfr', 'navaid.showNotam.lsa', 'navaid.showNotam.heli',
+  'navaid.showNotam.last',
   'navaid.sigwxOv', 'navaid.showLsaBubbles', 'navaid.showCircuit',
   'navaid.showTraining', 'navaid.showCvfr', 'navaid.showHeli',
   'navaid.showCommfail',
   // sizes / widths / opacities
-  'navaid.legArrowSize', 'navaid.legLineWidth', 'navaid.driftLineWidth',
+  // legLineWidth2, not legLineWidth: the key was bumped to v2 when the slider's
+  // range changed, and the old name has not been written since — so this list was
+  // syncing a dead key and leaving the live one behind.
+  'navaid.legArrowSize', 'navaid.legLineWidth2', 'navaid.driftLineWidth',
+  'navaid.wpSize', 'navaid.legArrowAlpha', 'navaid.yellowAlpha',
+  'navaid.trainingOpacity',
   'navaid.cvfrOpacity', 'navaid.heliOpacity', 'navaid.circuitOpacity',
   'navaid.plateOpacity', 'navaid.commfailOpacity', 'navaid.mapOpacity.v2',
   // flight-plan columns, aircraft profile, user data corrections
   'navaid.fpColumns', 'navaid.aircraft', 'navaid.airfieldFreqOverrides',
   'navaid.commFreqOverrides', 'navaid.overlayBoundsOverrides',
+  // Siblings of the above that were never added: the VOR corrections belong with
+  // the other freq overrides, the nav-data source with the base layer, and the
+  // cruise/climb numbers with the aircraft profile.
+  'navaid.vorFreqOverrides', 'navaid.vorRef', 'navaid.navDataPrefix',
+  'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed',
 ];
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
 const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';
