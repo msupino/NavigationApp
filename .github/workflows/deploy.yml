@@ -23,16 +23,13 @@ permissions:
   deployments: write
   pull-requests: write
 
-# Single global group: the deploy job rebuilds EVERY open PR/branch preview
-# into one Pages artifact and republishes the whole site. Per-PR groups let two
-# deploys run concurrently, so an older job holding a stale snapshot of another
-# PR could publish last and overwrite a fresh preview — surfacing as "stale CDN"
-# in e2e-deployed. Serializing all deploys means the last publish is always the
-# newest snapshot. cancel-in-progress:false queues runs (Actions keeps only the
-# newest pending), so no in-flight publish is aborted half-written.
-concurrency:
-  group: pages
-  cancel-in-progress: false
+# NOTE: the `pages` serialisation lives on the `deploy` JOB, not here at workflow
+# level. It used to gate the whole workflow, which had two costs: Actions keeps
+# only the newest PENDING run per group, so two pushes close together silently
+# dropped one entirely — and because `build` / `e2e-deployed` were inside the
+# group, a dropped run never reported those required checks at all, leaving
+# auto-merge blocked on contexts that would never arrive. Only the publish step
+# actually needs serialising; see the comment on the deploy job.
 
 jobs:
   lint:
@@ -260,6 +257,15 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    # THE publish step, and the only thing that needs a global lock: it republishes
+    # the whole site (every open PR/branch preview) from one artifact, so two
+    # concurrent publishes let an older snapshot land last and overwrite a fresh
+    # preview — the "stale CDN" failures in e2e-deployed. cancel-in-progress:false
+    # queues rather than aborting a half-written publish. Scoped to this job, a
+    # queued run still runs build and e2e-deployed, so required checks always report.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
