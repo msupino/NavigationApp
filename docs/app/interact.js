@@ -943,8 +943,10 @@ function propagateAlt(i, key, newVal, oldVal) {
   const speedKey = key === 'flightSpeed' || key === 'outboundSpeed';
   // A typed speed is the pilot's own number even when it matches what was already
   // there, so pin it manual ahead of the no-change early return -- otherwise typing
-  // the current default would leave the leg still tracking the default.
-  if (speedKey && typeof markLegSpeedManual === 'function') markLegSpeedManual(state.legs[i]);
+  // the current default would leave the leg still tracking the default. Pin only the
+  // direction that was edited: the backward walk below would otherwise let one
+  // return-speed keystroke pin every leg's FORWARD speed too.
+  if (speedKey && typeof markLegSpeedManual === 'function') markLegSpeedManual(state.legs[i], key);
   if (altitudeKey ? sameAltitudeValue(newVal, oldVal) : newVal === oldVal) return;
   let pairChanged = false;
   if (altitudeKey) {
@@ -957,7 +959,7 @@ function propagateAlt(i, key, newVal, oldVal) {
       ? !sameAltitudeValue(state.legs[j][key], oldVal)
       : state.legs[j][key] !== oldVal) break;
     state.legs[j][key] = newVal;
-    if (speedKey && typeof markLegSpeedManual === 'function') markLegSpeedManual(state.legs[j]);
+    if (speedKey && typeof markLegSpeedManual === 'function') markLegSpeedManual(state.legs[j], key);
     if (altitudeKey) {
       markLegAltitudeManual(j);
       pairChanged = syncLegAltitudePairFromRouteLeg(j, key, newVal) || pairChanged;
@@ -1019,9 +1021,11 @@ function splitLegCopy(source) {
   // the new sub-legs auto so they re-derive their own charted altitudes for the
   // new endpoint pairs instead of freezing at the parent's value.
   if (!source || source._legAltitudeAuto) leg._legAltitudeAuto = 1;
-  // Same for speed: split a leg the pilot never typed a speed on and both halves
-  // keep following the default; split a 110 kt leg and they keep the 110.
+  // Same for speed, per direction: split a leg the pilot never typed a speed on and
+  // both halves keep following the default; split a 110 kt leg and they keep the 110.
+  // (the leg above is a bare literal, so these are set, not deleted)
   if (!source || source._legSpeedAuto) leg._legSpeedAuto = 1;
+  if (!source || source._legSpeedAutoRet) leg._legSpeedAutoRet = 1;
   return leg;
 }
 

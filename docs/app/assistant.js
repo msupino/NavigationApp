@@ -491,8 +491,10 @@
         }
         if (Number.isFinite(a.speedKt)) {
           legs[i].flightSpeed = a.speedKt;
-          // Asked-for speed, so pin it: the default-speed control must not overwrite it.
-          if (typeof markLegSpeedManual === 'function') markLegSpeedManual(legs[i]);
+          // Asked-for speed, so pin it: the default-speed control must not overwrite
+          // it. Forward only -- set_leg never sets outboundSpeed, so the return speed
+          // keeps following the default instead of freezing at whatever it was.
+          if (typeof markLegSpeedManual === 'function') markLegSpeedManual(legs[i], 'flightSpeed');
         }
         if (typeof draw === 'function') draw();
         toast(t('assistantEditedRoute', 'Assistant edited the route'));
