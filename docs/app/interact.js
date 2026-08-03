@@ -940,6 +940,11 @@ function hitCumLabelRet(px, py) {
 // changes downstream are preserved.
 function propagateAlt(i, key, newVal, oldVal) {
   const altitudeKey = key === 'inboundAltitude' || key === 'outboundAltitude';
+  const speedKey = key === 'flightSpeed' || key === 'outboundSpeed';
+  // A typed speed is the pilot's own number even when it matches what was already
+  // there, so pin it manual ahead of the no-change early return -- otherwise typing
+  // the current default would leave the leg still tracking the default.
+  if (speedKey && typeof markLegSpeedManual === 'function') markLegSpeedManual(state.legs[i]);
   if (altitudeKey ? sameAltitudeValue(newVal, oldVal) : newVal === oldVal) return;
   let pairChanged = false;
   if (altitudeKey) {
@@ -952,6 +957,7 @@ function propagateAlt(i, key, newVal, oldVal) {
       ? !sameAltitudeValue(state.legs[j][key], oldVal)
       : state.legs[j][key] !== oldVal) break;
     state.legs[j][key] = newVal;
+    if (speedKey && typeof markLegSpeedManual === 'function') markLegSpeedManual(state.legs[j]);
     if (altitudeKey) {
       markLegAltitudeManual(j);
       pairChanged = syncLegAltitudePairFromRouteLeg(j, key, newVal) || pairChanged;
@@ -1013,6 +1019,9 @@ function splitLegCopy(source) {
   // the new sub-legs auto so they re-derive their own charted altitudes for the
   // new endpoint pairs instead of freezing at the parent's value.
   if (!source || source._legAltitudeAuto) leg._legAltitudeAuto = 1;
+  // Same for speed: split a leg the pilot never typed a speed on and both halves
+  // keep following the default; split a 110 kt leg and they keep the 110.
+  if (!source || source._legSpeedAuto) leg._legSpeedAuto = 1;
   return leg;
 }
 
