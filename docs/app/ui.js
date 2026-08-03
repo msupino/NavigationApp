@@ -3478,7 +3478,11 @@ function showNotamModal(only) {
         it.onclick = () => {
           if (!window.showNotam) {
             window.showNotam = true;
-            try { localStorage.setItem(NOTAM_KEY, '1'); } catch (err) { /* */ }
+            // Per-chart key, not the bare legacy one: writing NOTAM_KEY here left
+            // the choice where this chart never reads it (so it reverted on
+            // reload) while planting a legacy value every OTHER chart then
+            // inherited. See notamPrefKey / notamPrefWrite.
+            notamPrefWrite(true);
             if (notamCb) notamCb.checked = true;
           }
           dismiss();
