@@ -1069,6 +1069,8 @@ function routeTemplateLeg(templateLeg, speed) {
     const leg = newLeg();
     leg.flightSpeed = speed;
     leg.outboundSpeed = speed;
+    // The template names its own cruise speed, so the leg is not tracking the default.
+    if (typeof markLegSpeedManual === 'function') markLegSpeedManual(leg);
     return leg;
   }
   const labels = typeof _defaultLegLabels === 'function'
@@ -2164,6 +2166,7 @@ document.getElementById('reverse').onclick = () => {
       // leg is flown A->B or B->A — so carry it over unchanged; dropping it made
       // Reverse silently discard a pulled forecast and corrupt heading/GS/ETE.
       ...(l.wind ? { wind: l.wind } : {}),
+      ...(l._legSpeedAuto ? { _legSpeedAuto: 1 } : {}),   // reversing is not a speed edit
       ...(l._legAltitudeAuto ? { _legAltitudeAuto: 1 } : {}),
       ...(l._legAltitudeKey ? { _legAltitudeKey: l._legAltitudeKey } : {}),
       ...(l._legAltitudeOutboundBlocked || l._legAltitudeOneWay
@@ -4915,6 +4918,13 @@ if (DEFAULTSPEED_EL) {
     if (!defaultSpeedOk(n)) { syncDefaultSpeedInput(); return; }   // reject junk, show what is in force
     setTune('defaultLegSpeedKt', n);
     try { localStorage.setItem(DEFAULTSPEED_KEY, String(n)); } catch (e) { /* storage unavailable */ }
+    // Carry the legs that never had a speed typed on them, so setting the aircraft's
+    // cruise once fixes the whole route rather than only the legs drawn after.
+    if (typeof applyDefaultSpeedToAutoLegs === 'function' && applyDefaultSpeedToAutoLegs(n)) {
+      if (typeof persist === 'function') persist();
+      draw();
+      refreshInspectorIfVisible();
+    }
   };
 }
 
