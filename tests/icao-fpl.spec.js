@@ -383,6 +383,40 @@ test('the non-airfield warnings say it will probably be declined', async ({ page
   }
 });
 
+// Warnings and hints mix Hebrew with Latin runs (ICAO, ZZZZ, DEST/, NavAid, an
+// address). Without isolation the line comes out scrambled on screen.
+test('warning and hint text isolates its Latin runs in Hebrew', async ({ page }) => {
+  await boot(page, '?lang=he&nogist');
+  await route(page, ['LLHZ', 'APOLN', 'ARENA', 'NAGID']);   // triggers the ZZZZ warning
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'CWH', type: 'C172', pic: 'A PILOT',
+      license: '1', persons: '2', endurance: '0500', kind: 'crosscountry' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  const warns = page.locator('.fpl-warn');
+  expect(await warns.count()).toBeGreaterThan(0);
+  // Every Latin run inside a warning sits in its own <bdi>.
+  const bdiPerWarn = await warns.evaluateAll(els => els.map(e => ({
+    text: e.textContent,
+    bdis: [...e.querySelectorAll('bdi')].map(b => b.textContent),
+  })));
+  const withLatin = bdiPerWarn.filter(w => /[A-Za-z]/.test(w.text));
+  expect(withLatin.length).toBeGreaterThan(0);
+  for (const w of withLatin) expect(w.bdis.length).toBeGreaterThan(0);
+  // The mail note too, and the derived line.
+  for (const sel of ['.fpl-hint', '.fpl-derived']) {
+    const el = page.locator(sel).first();
+    if (await el.count()) {
+      const t = await el.textContent();
+      if (/[A-Za-z]/.test(t)) expect(await el.locator('bdi').count()).toBeGreaterThan(0);
+    }
+  }
+});
+
 test('the route summary is bidi-isolated per waypoint', async ({ page }) => {
   for (const [lang, arrow] of [['en', '→'], ['he', '←']]) {
     await boot(page, '?lang=' + lang + '&nogist');

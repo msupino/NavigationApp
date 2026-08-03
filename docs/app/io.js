@@ -7341,6 +7341,28 @@ function shareRoute() {
     });
 }
 
+// Latin runs inside a Hebrew sentence (ICAO, NavAid, ZZZZ, DEST/, an address, a
+// section number) reorder under bidi and the line comes out scrambled. Setting the
+// text through here puts every Latin/numeric run in its own <bdi>, so each keeps its
+// own direction and cannot drag its neighbours around. textContent alone cannot do
+// this -- the isolation has to be in the markup.
+const FPL_LATIN_RUN = /([A-Za-z][A-Za-z0-9@._/'\-]*(?:\s+[A-Za-z0-9@._/'\-]+)*)/g;
+function fplSetBidiText(el, text) {
+  el.textContent = '';
+  const str = String(text == null ? '' : text);
+  let last = 0;
+  str.replace(FPL_LATIN_RUN, (run, _g, idx) => {
+    if (idx > last) el.appendChild(document.createTextNode(str.slice(last, idx)));
+    const bdi = document.createElement('bdi');
+    bdi.textContent = run;
+    el.appendChild(bdi);
+    last = idx + run.length;
+    return run;
+  });
+  if (last < str.length) el.appendChild(document.createTextNode(str.slice(last)));
+  return el;
+}
+
 // --- FPL dialog -------------------------------------------------------
 // Two steps, mirroring how a pilot actually files: fill the aircraft/pilot
 // details once (they persist), then review the exact message and hand it to
@@ -7525,10 +7547,10 @@ function showFplDialog() {
     const eet = eetMin ? fplHhmm(eetMin / 60) : '----';
     // Speed and total time are the ROUTE's -- editing them here would file a plan
     // that disagrees with the map, so they are shown, and changed by editing legs.
-    derived.textContent = [
+    fplSetBidiText(derived, [
       S.fplSpeedRow ? S.fplSpeedRow(speedKt) : '',
       S.fplEetRow ? S.fplEetRow(eet, eetMin ? enduranceLabel(eetMin) : '--') : '',
-    ].filter(Boolean).join('  ·  ');
+    ].filter(Boolean).join('  ·  '));
     body.appendChild(derived);
 
     // Departure: just the two fields. A "Change" link here only hid them behind a
@@ -7626,7 +7648,7 @@ function showFplDialog() {
       row(S.fplCell || 'Mobile', cell));
     const latinHint = document.createElement('div');
     latinHint.className = 'fpl-hint';
-    latinHint.textContent = S.fplLatinHint || '';
+    fplSetBidiText(latinHint, S.fplLatinHint || '');
     body.appendChild(latinHint);
 
     // Advanced: the ICAO letters and where the plan is filed. Right by default.
@@ -7690,7 +7712,7 @@ function showFplDialog() {
         errBox.textContent = '';
         for (const code of [...new Set(res.errs.map(e => String(e).split(':')[0]))]) {
           const li = document.createElement('div');
-          li.textContent = '⚠ ' + fplErrText(code);
+          fplSetBidiText(li, '⚠ ' + fplErrText(code));
           errBox.appendChild(li);
         }
         return;
@@ -7724,7 +7746,7 @@ function showFplDialog() {
     ]) {
       if (!line) continue;
       const d = document.createElement('div');
-      d.textContent = line;
+      fplSetBidiText(d, line);
       from.appendChild(d);
     }
     body.appendChild(from);
@@ -7732,7 +7754,7 @@ function showFplDialog() {
     for (const code of res.warns || []) {
       const w = document.createElement('div');
       w.className = 'fpl-warn';
-      w.textContent = '⚠ ' + fplErrText(code);
+      fplSetBidiText(w, '⚠ ' + fplErrText(code));
       body.appendChild(w);
     }
 
@@ -7760,7 +7782,7 @@ function showFplDialog() {
 
     const note = document.createElement('div');
     note.className = 'fpl-hint';
-    note.textContent = [S.fplMailNote || '', S.fplWindowNote || ''].filter(Boolean).join(' ');
+    fplSetBidiText(note, [S.fplMailNote || '', S.fplWindowNote || ''].filter(Boolean).join(' '));
     body.appendChild(note);
 
     const btns = document.createElement('div');
@@ -7818,7 +7840,7 @@ function showFplDialog() {
     fallback.id = 'fpl-mail-fallback';
     fallback.hidden = true;
     const fbText = document.createElement('span');
-    fbText.textContent = (S.fplNoMailApp || '') + ' ';
+    fplSetBidiText(fbText, (S.fplNoMailApp || '') + ' ');
     const fbAddr = document.createElement('bdi');       // an address inside RTL text
     fbAddr.className = 'fpl-fallback-addr';
     fbAddr.textContent = res.to;
@@ -7829,7 +7851,7 @@ function showFplDialog() {
     ackNote.className = 'fpl-warn';
     ackNote.id = 'fpl-ack-required';
     ackNote.hidden = true;
-    ackNote.textContent = '⚠ ' + (S.fplAckRequired || 'Confirm both checks before submitting.');
+    fplSetBidiText(ackNote, '⚠ ' + (S.fplAckRequired || 'Confirm both checks before submitting.'));
     // appendChild, not insertBefore(ackNote, btns): btns is not in the DOM yet at
     // this point, and insertBefore threw -- which aborted the render and left the
     // review step with no buttons at all.
