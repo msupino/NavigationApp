@@ -65,25 +65,70 @@ test('every synced key is one the app still uses', () => {
   expect(dead).toEqual([]);
 });
 
-// For the reverse direction, resolve `const FOO_KEY = 'navaid.x'` -> setItem(FOO_KEY)
-// per file, and only when the const name is unique in that file — ui.js declares
-// many local `const KEY`, and collapsing those by name would invent writes.
-function writtenKeys() {
-  const written = new Set();
-  for (const f of fs.readdirSync(APP_DIR).filter(x => x.endsWith('.js'))) {
-    const src = fs.readFileSync(path.join(APP_DIR, f), 'utf8');
-    for (const m of src.matchAll(/localStorage\.setItem\(\s*'(navaid\.[^']+)'/g)) written.add(m[1]);
-    const counts = new Map(), vals = new Map();
-    for (const m of src.matchAll(/(?:const|var|let)\s+([A-Za-z_$][\w$]*)\s*=\s*'(navaid\.[^']+)'/g)) {
-      counts.set(m[1], (counts.get(m[1]) || 0) + 1);
-      vals.set(m[1], m[2]);
-    }
-    for (const m of src.matchAll(/localStorage\.setItem\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)) {
-      const n = m[1];
-      if (counts.get(n) === 1) written.add(vals.get(n));
-    }
+// For the reverse direction, do NOT try to trace which keys reach a setItem call.
+// The previous version resolved literals and `const FOO_KEY =` aliases, and missed
+// every key handed to a HELPER as an argument — wireColorPicker(el, tuneKeys,
+// 'navaid.waypointColor') writes inside the helper, so the key was invisible and
+// two colour settings sat unsynced while this test passed green.
+//
+// The rule is now blunt on purpose: EVERY `navaid.*` string literal in app source
+// must be either synced or listed below with a reason. A blunt rule cannot be
+// out-manoeuvred by a new indirection; the cost is that read-only legacy keys need
+// an explicit entry, which is a feature — it forces a decision to be written down.
+const NOT_A_SYNCED_SETTING = [
+  // Device-local by nature: geometry, per-device UI state, local caches.
+  [/Pos$/,                        'panel geometry is per device'],
+  [/^navaid\.sec\./,             'toolbar section expand/collapse'],
+  [/Collapsed$/,                  'toolbar collapse state'],
+  [/^navaid\.legendPillW$/,       'measured pixel width, recomputed on load'],
+  [/^navaid\.bearing$/,           'map rotation, per device'],
+  [/^navaid\.view$/,              'last map centre/zoom, per device'],
+  [/^navaid\.theme$/,             'light/dark follows the screen you are on'],
+  [/^navaid\.searchShown$/,       'docked-search dismissal, per screen size'],
+  [/^navaid\.magnifier/,          'loupe state, per device'],
+  [/^navaid\.notamViewTime$/,     'transient timeline scrub'],
+  [/^navaid\.tracks\./,          'which recorded tracks are drawn locally'],
+  [/^navaid\.plateAirfield$/,     'last plate viewed, per device'],
+  [/^navaid\.windField(Alt|Opacity)$/, 'transient overlay state'],
+  // Secrets: never leave the device.
+  [/^navaid\.ai\./,              'API keys and assistant endpoint — never synced'],
+  // Covered by another mechanism.
+  [/^navaid\.route$/,            'the working route; the library covers saved ones'],
+  [/^navaid\.routes$/,           'the route library, synced as its own file'],
+  [/^navaid\.undo/,              'undo stack, in-memory lifetime'],
+  [/tile/i,                       'offline tile cache lives on the device'],
+  [/^navaid\.sync/,              'sync opt-in flag itself'],
+  [/^navaid\.settings/,          'sync bookkeeping'],
+  [/^navaid\.corrupt/,           'corrupt-blob recovery marker'],
+  // One-time hints: showing them again on a new device is correct.
+  [/^navaid\.hint/,              'one-time hint, per device'],
+  [/TipDone$/,                    'one-time tip, per device'],
+  // Legacy keys that are READ for migration and never written.
+  [/^navaid\.showVor$/,          'pre-split VOR key, read once then removed'],
+  [/^navaid\.showNotam$/,        'pre-per-chart NOTAM key, read for adoption only'],
+  [/^navaid\.legLineWidth2?$/,   'superseded when the slider range narrowed; read for adoption'],
+  [/^navaid\.driftLineWidth$/,   'superseded when the slider range narrowed; read for adoption'],
+  // Dev-only scratch space.
+  [/^navaid\.editor\./,          '?edit=1 overlay editor scratch data'],
+  [/^navaid\.sim/,               'simulator link, per device'],
+  [/^navaid\.apkReloadedForBuild$/, 'APK self-reload bookkeeping'],
+  [/^navaid\.toolbarPosDesktop$/, 'panel geometry (the *Pos rule misses this suffix)'],
+  [/^navaid\.wxTime$/,           'forecast valid-time pick, only reused if still offered'],
+  // sessionStorage, not a setting: these live for one tab visit.
+  [/^navaid\.selected$/,         'sessionStorage — restores the selection after a reload'],
+  [/^navaid\.fpOpen$/,           'sessionStorage — was the flight plan open'],
+  [/^navaid\.openChartModal$/,   'sessionStorage — reopen the chart viewer after a reload'],
+];
+
+// Every navaid.* literal the app mentions, wherever it appears.
+function allKeyLiterals() {
+  const src = appSources({ excludeAllowlistFile: true });
+  const out = new Set();
+  for (const line of src.split('\n')) {
+    if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
+    for (const m of line.matchAll(/'(navaid\.[A-Za-z0-9._]+)'/g)) out.add(m[1]);
   }
-  return written;
+  return [...out];
 }
 
 test('the allowlist still refuses secrets and panel geometry', () => {
@@ -93,26 +138,16 @@ test('the allowlist still refuses secrets and panel geometry', () => {
   expect(keys).toContain('navaid.layer');
 });
 
-test('no setting the app writes is missing from the allowlist', () => {
+test('every navaid.* key in the app is synced or declared device-local', () => {
   const synced = new Set(allowlist());
-  // Deliberately device-local, or covered by another file — reasons in gdrive.js.
-  const DEVICE_LOCAL = [
-    /Pos$/, /^navaid\.sec\./, /^navaid\.ai\.key/, /^navaid\.route$/, /^navaid\.routes$/,
-    /^navaid\.view$/, /tile/i, /^navaid\.sync/, /^navaid\.settings/, /^navaid\.undo/,
-    /Collapsed$/, /^navaid\.hint/, /TipDone$/, /^navaid\.searchShown$/, /^navaid\.theme$/,
-    /^navaid\.sim/, /^navaid\.tracks\./, /^navaid\.plateAirfield$/, /^navaid\.bearing$/,
-    /^navaid\.legendPillW$/, /^navaid\.corrupt/, /^navaid\.windField(Alt|Opacity)$/,
-    /^navaid\.magnifier/, /^navaid\.notamViewTime$/, /^navaid\.showVor$/,
-    /^navaid\.editor\./,          // ?edit=1 scratch data for the dev overlay editor
-    /^navaid\.showNotam$/,         // legacy shared key: read for migration, never written
-  ];
-  const missing = [...writtenKeys()]
+  const undeclared = allKeyLiterals()
     .filter(k => !synced.has(k))
-    .filter(k => !DEVICE_LOCAL.some(re => re.test(k)))
+    .filter(k => !NOT_A_SYNCED_SETTING.some(([re]) => re.test(k)))
     .sort();
-  // Anything here is a user setting that silently fails to follow the pilot to
-  // another device. Add it to the allowlist, or to DEVICE_LOCAL with a reason.
-  expect(missing).toEqual([]);
+  // Anything here is a setting that silently fails to follow the pilot to another
+  // device. Either add it to GDRIVE_SETTINGS_KEYS, or add it to
+  // NOT_A_SYNCED_SETTING with the reason it should stay on this device.
+  expect(undeclared).toEqual([]);
 });
 
 test('every chart variant of a per-chart setting is synced', () => {
