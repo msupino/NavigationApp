@@ -4762,6 +4762,9 @@ function restoreRoute() {
     outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
     inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
     outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
+    // Reloading the tab is not a speed edit, so a leg still tracking the default
+    // keeps tracking it -- otherwise one refresh would freeze the whole route.
+    ...(l._legSpeedAuto ? { _legSpeedAuto: 1 } : {}),
     ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
   }));
   state.notes = d.notes.map(n => ({

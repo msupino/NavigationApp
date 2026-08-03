@@ -1705,6 +1705,25 @@ const _defaultLegSpeedKt = () => {
   const v = (typeof tune === 'function') ? Number(tune('defaultLegSpeedKt')) : NaN;
   return Number.isFinite(v) && v > 0 ? v : 90;
 };
+// A leg's speed tracks the default until someone types one. Raising "Default speed"
+// should carry the whole untouched route with it -- a pilot who sets 110 kt for their
+// aircraft means the legs they already drew, not only the next one. Any typed speed
+// (nav-log cell, inspector, assistant) pins the leg and it keeps its own number.
+// Mirrors _legAltitudeAuto, and rides along in snapshots because those spread ...leg.
+function markLegSpeedManual(leg) {
+  if (leg) delete leg._legSpeedAuto;
+}
+function applyDefaultSpeedToAutoLegs(kt) {
+  const n = Number(kt);
+  if (!Number.isFinite(n) || n <= 0) return false;
+  let changed = false;
+  for (const leg of state.legs) {
+    if (!leg || !leg._legSpeedAuto) continue;
+    if (leg.flightSpeed !== n) { leg.flightSpeed = n; changed = true; }
+    if (leg.outboundSpeed !== n) { leg.outboundSpeed = n; changed = true; }
+  }
+  return changed;
+}
 const newLeg = () => {
   const d = _defaultLegLabels();
   const seed = _defaultLegSpeedKt();
@@ -1713,6 +1732,7 @@ const newLeg = () => {
     outboundAltitude: NaN,
     flightSpeed: seed,
     outboundSpeed: seed,
+    _legSpeedAuto: 1,              // still tracking defaultLegSpeedKt; no speed typed yet
     _legAltitudeAuto: 1,           // fresh leg; safe to fill from dataset
     inLabel: d.inLabel,                  // marker offset: along leg, perpendicular
     outLabel: d.outLabel,
@@ -2768,6 +2788,9 @@ function syncLegs() {
       leg.flightSpeed = prev.flightSpeed;
       leg.outboundSpeed = Number.isFinite(prev.outboundSpeed) && prev.outboundSpeed > 0
         ? prev.outboundSpeed : prev.flightSpeed;
+      // Inheriting a hand-typed speed makes the appended leg hand-typed too, so a
+      // later change of the default can't undercut the speed it was extended at.
+      if (!prev._legSpeedAuto) delete leg._legSpeedAuto;
     }
     state.legs.push(leg);
     applyLegAltitudeToLeg(i);
