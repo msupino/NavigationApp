@@ -995,7 +995,7 @@ window.S = Object.assign({
   fplPersons: 'Persons on board',
   fplPic: 'Pilot in command',
   fplLatinHint: 'Latin letters — the message cannot carry Hebrew.',
-  fplLicense: 'Licence number',
+  fplLicense: 'License number',
   fplCell: 'Mobile',
   fplAisEmail: 'Send flight plan to',
   fplFrom: 'From the route',

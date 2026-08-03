@@ -7622,7 +7622,7 @@ function showFplDialog() {
     pic.setAttribute('placeholder', 'ISRAEL ISRAELI');
     body.append(
       row(S.fplPic || 'Pilot in command', pic),
-      row(S.fplLicense || 'Licence', license),
+      row(S.fplLicense || 'License', license),
       row(S.fplCell || 'Mobile', cell));
     const latinHint = document.createElement('div');
     latinHint.className = 'fpl-hint';
