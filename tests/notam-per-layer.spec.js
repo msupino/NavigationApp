@@ -194,3 +194,34 @@ test('the whole feed is still reachable with allCharts', async ({ page }) => {
   const all = await page.evaluate(() => activeNotams({ allCharts: true }).map(n => n.id).sort());
   expect(all).toEqual(['C0006/26', 'C1639/26']);
 });
+
+test('turning the overlay on from the NOTAM list writes the per-chart key', async ({ page }) => {
+  // The list's "show on map" click had its own persist call, which the per-chart
+  // split left pointing at the legacy shared key: the choice reverted on reload
+  // and planted a legacy value every other chart then inherited.
+  await bootUl(page);
+  const out = await page.evaluate(async () => {
+    const sel = document.getElementById('layer-select');
+    sel.value = 'Low Alt'; sel.onchange();
+    await new Promise(r => setTimeout(r, 250));
+    localStorage.removeItem('navaid.showNotam');
+    localStorage.removeItem('navaid.showNotam.lsa');
+    localStorage.removeItem('navaid.showNotam.last');
+    window.showNotam = false;
+    await showNotamModal();
+    const item = document.querySelector('.notam-item-clickable');
+    if (item) item.onclick();
+    return {
+      showNotam: !!window.showNotam,
+      scoped: localStorage.getItem('navaid.showNotam.lsa'),
+      legacy: localStorage.getItem('navaid.showNotam'),
+      last: localStorage.getItem('navaid.showNotam.last'),
+      clickable: !!item,
+    };
+  });
+  expect(out.clickable).toBe(true);
+  expect(out.showNotam).toBe(true);
+  expect(out.scoped).toBe('1');      // this chart's own key
+  expect(out.last).toBe('1');        // and what an untouched chart inherits
+  expect(out.legacy).toBeNull();     // never the legacy shared key
+});
