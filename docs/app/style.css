@@ -4897,3 +4897,237 @@ html[data-theme="light"] #insp-body .insp-actions {
      above the chip so the two never stack. */
   #empty-route-hint { bottom: 136px; }
 }
+
+/* --- ICAO flight-plan dialog ------------------------------------------
+   Two-step form: details, then the message to review before filing. The
+   monospace block must survive a long field-15 route without pushing the
+   dialog wide, so it wraps and scrolls inside itself. */
+.fpl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.fpl-step {
+  font-weight: 600;
+  font-size: 13px;
+  color: #e8e8e8;
+  margin-bottom: 2px;
+}
+/* Two columns, so every field starts on the same line however long its label is.
+   space-between left the boxes ragged, which read as sloppy next to the labels. */
+.fpl-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #e8e8e8;
+}
+.fpl-row input,
+.fpl-row select {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #201d1d;
+  border: 1px solid #3a3636;
+  border-radius: 6px;
+  padding: 4px 6px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+/* The composites (4X- + field, time + its UTC readout) fill the same column. */
+.fpl-reg-box,
+.fpl-time-box { width: 100%; }
+.fpl-reg-box .fpl-reg-input,
+.fpl-time-box input { flex: 1 1 auto; }
+.fpl-hint,
+.fpl-derived {
+  font-size: 12px;
+  color: #b9b3b3;
+  line-height: 1.35;
+}
+.fpl-inline-hint {
+  font-size: 12px;
+  color: #b9b3b3;
+  white-space: nowrap;
+}
+.fpl-time-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fpl-warn,
+.fpl-errs > div {
+  font-size: 12px;
+  color: #ffcf7a;
+  line-height: 1.45;
+}
+.fpl-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e8e8e8;
+  background: #201d1d;
+  border: 1px solid #3a3636;
+  border-radius: 6px;
+  padding: 8px;
+  margin: 2px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 34vh;
+  overflow-y: auto;
+  /* The message is machine-read: never let a bidi run reorder it, even in Hebrew. */
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+.fpl-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #e8e8e8;
+  line-height: 1.4;
+}
+.fpl-ack input {
+  margin-top: 2px;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+}
+
+/* Light theme for the FPL dialog (see the dark rules above). */
+body.theme-light .fpl-step,
+body.theme-light .fpl-row,
+body.theme-light .fpl-ack {
+  color: #1c1a1a;
+}
+body.theme-light .fpl-row input,
+body.theme-light .fpl-row select,
+body.theme-light .fpl-text {
+  color: #1c1a1a;
+  background: #fff;
+  border-color: #c9c4c4;
+}
+body.theme-light .fpl-hint,
+body.theme-light .fpl-derived,
+body.theme-light .fpl-inline-hint {
+  color: #55504f;
+}
+body.theme-light .fpl-warn,
+body.theme-light .fpl-errs > div {
+  color: #8a5300;
+}
+
+/* FPL step 1: derived facts read as sentences, one prominent field, the rest quiet. */
+/* The dialog is sized by its content, so a 12-point route used to stretch it off
+   the screen. Cap the box and let the route wrap onto as many lines as it needs. */
+.fpl-modal .modal {
+  width: min(92vw, 430px);
+  box-sizing: border-box;
+}
+.fpl-route {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #e8e8e8;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #3a3636;
+  overflow-wrap: anywhere;
+  max-height: 4.6em;          /* ~3 lines, then scroll rather than push the form down */
+  overflow-y: auto;
+}
+.fpl-body > * { min-width: 0; }
+.fpl-when {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fpl-link {
+  font: inherit;
+  font-size: 12px;
+  color: #7fb2ff;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.fpl-subfields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0 2px 10px;
+  border-left: 2px solid #3a3636;
+  margin-bottom: 2px;
+}
+html[dir="rtl"] .fpl-subfields {
+  padding-left: 0;
+  padding-right: 10px;
+  border-left: 0;
+  border-right: 2px solid #3a3636;
+}
+.fpl-row-major .fpl-reg-input {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.fpl-advanced summary {
+  font-size: 12px;
+  color: #b9b3b3;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.fpl-advanced .fpl-row { margin-top: 3px; }
+.fpl-advanced { margin-top: 2px; }
+.fpl-modal .modal-btns { margin-top: 6px; }
+.fpl-ack { margin: 1px 0; }
+.fpl-primary { font-weight: 600; }
+
+body.theme-light .fpl-route { color: #1c1a1a; border-bottom-color: #d8d4d4; }
+body.theme-light .fpl-subfields { border-left-color: #d8d4d4; }
+body.theme-light html[dir="rtl"] .fpl-subfields,
+html[dir="rtl"] body.theme-light .fpl-subfields { border-right-color: #d8d4d4; }
+body.theme-light .fpl-link { color: #1a56b0; }
+body.theme-light .fpl-advanced summary { color: #55504f; }
+
+/* Call sign: fixed 4X- lead-in, typed part only in the field. */
+.fpl-reg-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  direction: ltr;                     /* a registration reads LTR in either UI language */
+}
+.fpl-reg-prefix {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: #b9b3b3;
+}
+.fpl-reg-box .fpl-reg-input { min-width: 0; }
+body.theme-light .fpl-reg-prefix { color: #55504f; }
+
+/* Hebrew UI, Latin data: call sign, type, licence, phone, address, date and time are
+   all LTR content. Left in RTL they reorder on screen (a phone number reads backwards),
+   so the fields are forced LTR while their labels stay in the UI direction. */
+html[dir="rtl"] .fpl-row input,
+html[dir="rtl"] .fpl-row select,
+html[dir="rtl"] .fpl-reg-box,
+html[dir="rtl"] .fpl-time-box {
+  direction: ltr;
+  text-align: left;
+}
+html[dir="rtl"] .fpl-inline-hint { direction: ltr; }
+
+/* Unticked acknowledgement the pilot just tried to submit past. */
+.fpl-ack-missing { color: #ffcf7a; }
+.fpl-ack-missing input { outline: 2px solid #ffcf7a; outline-offset: 1px; }
+body.theme-light .fpl-ack-missing { color: #8a5300; }
+body.theme-light .fpl-ack-missing input { outline-color: #8a5300; }
+
+/* Shown after Submit: what should have happened, and the address to use by hand. */
+.fpl-fallback { border-inline-start: 2px solid #3a3636; padding-inline-start: 8px; }
+.fpl-fallback-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
+body.theme-light .fpl-fallback { border-inline-start-color: #d8d4d4; }
