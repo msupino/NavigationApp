@@ -2166,7 +2166,11 @@ document.getElementById('reverse').onclick = () => {
       // leg is flown A->B or B->A — so carry it over unchanged; dropping it made
       // Reverse silently discard a pulled forecast and corrupt heading/GS/ETE.
       ...(l.wind ? { wind: l.wind } : {}),
-      ...(l._legSpeedAuto ? { _legSpeedAuto: 1 } : {}),   // reversing is not a speed edit
+      // Reversing is not a speed edit, so the pins travel -- but they travel WITH the
+      // speeds, which swap above when the return path is shown. With it hidden both
+      // directions take the forward speed, so both take the forward pin.
+      ...((showReturn ? l._legSpeedAutoRet : l._legSpeedAuto) ? { _legSpeedAuto: 1 } : {}),
+      ...(l._legSpeedAuto ? { _legSpeedAutoRet: 1 } : {}),
       ...(l._legAltitudeAuto ? { _legAltitudeAuto: 1 } : {}),
       ...(l._legAltitudeKey ? { _legAltitudeKey: l._legAltitudeKey } : {}),
       ...(l._legAltitudeOutboundBlocked || l._legAltitudeOneWay
@@ -4907,6 +4911,19 @@ const defaultSpeedOk = n => Number.isFinite(n) && n >= 20 && n <= 400;
 function syncDefaultSpeedInput() {
   if (DEFAULTSPEED_EL) DEFAULTSPEED_EL.value = String(Math.round(tune('defaultLegSpeedKt')));
 }
+// Single carry point. The toolbar input is not the only writer of the in-force
+// default -- the gist reload, the dev tuning panel (and its per-key reset), and a
+// Drive settings win all move it -- and every one of them used to leave the legs
+// still tracking it behind at the old number, showing a control whose value the
+// route did not match and which the pilot had no reason to touch.
+function carryDefaultSpeedToRoute() {
+  if (typeof applyDefaultSpeedToAutoLegs !== 'function') return false;
+  if (!applyDefaultSpeedToAutoLegs(tune('defaultLegSpeedKt'))) return false;
+  if (typeof persist === 'function') persist();
+  draw();
+  refreshInspectorIfVisible();
+  return true;
+}
 if (DEFAULTSPEED_EL) {
   registerTuneOverride(DEFAULTSPEED_KEY, ['defaultLegSpeedKt'], v => {
     const n = Math.round(Number(v));
@@ -4920,11 +4937,7 @@ if (DEFAULTSPEED_EL) {
     try { localStorage.setItem(DEFAULTSPEED_KEY, String(n)); } catch (e) { /* storage unavailable */ }
     // Carry the legs that never had a speed typed on them, so setting the aircraft's
     // cruise once fixes the whole route rather than only the legs drawn after.
-    if (typeof applyDefaultSpeedToAutoLegs === 'function' && applyDefaultSpeedToAutoLegs(n)) {
-      if (typeof persist === 'function') persist();
-      draw();
-      refreshInspectorIfVisible();
-    }
+    carryDefaultSpeedToRoute();
   };
 }
 
@@ -5621,6 +5634,10 @@ function formatTuneValue(spec, value) {
 
 function redrawAfterTune() {
   applyTuningCssVars();
+  // The tuning panel can move defaultLegSpeedKt too (Route defaults group), so the
+  // legs following it come along -- and the toolbar input re-reads the new value.
+  if (typeof applyDefaultSpeedToAutoLegs === 'function') applyDefaultSpeedToAutoLegs(tune('defaultLegSpeedKt'));
+  if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
   draw();
   refreshInspectorIfVisible();
   // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
@@ -6311,6 +6328,8 @@ if (typeof loadRemoteConfig === "function") {
     // Show whatever is in force now — the gist's value, or the pilot's saved one
     // that reapplyStoredTuneOverrides() just put back on top of it.
     if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
+    // A gist-shipped default is in force now, so the legs following it move too.
+    if (typeof carryDefaultSpeedToRoute === 'function') carryDefaultSpeedToRoute();
     for (const [id, keys] of [['waypoint-color', ['waypointFillColor']],
       ['leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor']]]) {
       const el = document.getElementById(id);
