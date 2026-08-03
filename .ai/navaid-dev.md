@@ -507,8 +507,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.mapOpacity.v2` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
 - `navaid.legArrowSize` — leg-arrow size slider value.
-- `navaid.legLineWidth2` — route-line width scale (default 0.5, range 0.1–2.0; key bumped from `navaid.legLineWidth` when the default/range changed).
-- `navaid.driftLineWidth` — drift-line width scale.
+- `navaid.legLineWidth3` — route-line width scale (default 0.5, range 0.1–0.9). Bumped twice: `legLineWidth` → `legLineWidth2` when the default/range first changed, then → `legLineWidth3` when the range narrowed again to 0.1–0.9. A legacy value is adopted when it falls inside the current range (see `adoptRangedNumber`), so only genuinely out-of-range settings fall back to the default instead of being silently clamped.
+- `navaid.driftLineWidth2` — drift-line width scale (default 1, range 0.2–1.8). Versioned when the range narrowed from 0.5–6; legacy values inside the new range are adopted.
 - `navaid.showReturn` — `'0'` / `'1'` for the return-leg overlay.
 - `navaid.showMidLeg` — `'0'` / `'1'` for the mid-leg distance badge.
 - `navaid.showCumTime` — `'0'` / `'1'` for cumulative-time kites.
