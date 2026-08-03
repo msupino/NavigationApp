@@ -407,6 +407,7 @@ window.S = {
   assistantKeySaved: 'ההגדרות נשמרו',
   assistantNoKey: 'הוסף מפתח API בהגדרות כדי להתחיל שיחה.',
   assistantError: 'שגיאת עוזר',
+  assistantAllowEdits: 'לאפשר לעוזר לשנות את המסלול בהפעלה הזו? הוא יכול להחליף ציוני דרך, מהירויות וגבהים, ולשמור מסלולים. כל שינוי אפשר לבטל.',
   assistantEditedRoute: 'העוזר עדכן את המסלול',
   assistantConfirmSave: 'לשמור מסלול זה בשם',
   assistantActNotam: 'בודק NOTAM',

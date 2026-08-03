@@ -1020,6 +1020,7 @@ window.S = Object.assign({
   assistantKeySaved: 'Settings saved',
   assistantNoKey: 'Add an API key in settings to start chatting.',
   assistantError: 'Assistant error',
+  assistantAllowEdits: 'Let the assistant change your route in this session? It can replace waypoints, speeds and altitudes, and save routes. You can undo any change.',
   assistantEditedRoute: 'Assistant edited the route',
   assistantConfirmSave: 'Save this route as',
   assistantActNotam: 'checking NOTAMs',
