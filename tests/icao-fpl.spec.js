@@ -10,6 +10,12 @@
 //   -E/0400 P/002)
 const { test, expect } = require('./_setup');
 
+// The whole point of these cases is the local-clock-to-UTC conversion, so the browser
+// timezone is pinned: without it the suite asserted whatever the machine happened to be
+// (it passed on a laptop in Israel and failed on a UTC CI runner). Israel is UTC+3 in
+// summer, UTC+2 in winter -- both exercised below.
+test.use({ timezoneId: 'Asia/Jerusalem' });
+
 async function boot(page, q = '?lang=en&nogist') {
   await page.addInitScript(() => {
     try {
@@ -49,12 +55,18 @@ const PROFILE = {
   endurance: '0400', persons: '2', kind: 'routes',
 };
 
-// `now` cannot cross into the page as a Date, so it travels as epoch ms.
+// `now` is given as a LOCAL wall-clock string and built inside the page, where the
+// timezone is the pinned one. Building it in Node would use the runner's timezone and
+// silently shift the instant.
 const build = (page, profile, opts) => {
   const o = { ...(opts || { dateLocal: '2022-09-29', timeLocal: '14:00' }) };
-  if (o.now instanceof Date) { o.nowMs = o.now.getTime(); delete o.now; }
   return page.evaluate(([p, opt]) => {
-    if (opt.nowMs) opt.now = new Date(opt.nowMs);
+    if (opt.nowLocal) {
+      const [d, t] = opt.nowLocal.split('T');
+      const [y, mo, da] = d.split('-').map(Number);
+      const [h, mi] = t.split(':').map(Number);
+      opt.now = new Date(y, mo - 1, da, h, mi, 0, 0);
+    }
     return buildIcaoFpl(p, opt);
   }, [profile || PROFILE, o]);
 };
@@ -90,6 +102,15 @@ test('the departure time is converted from local to UTC', async ({ page }) => {
   expect(res.eobtUtc).toBe('0800');
   expect(res.dof).toBe('260804');
   expect(res.text).toContain('-LLHZ0800');
+});
+
+test('a winter departure converts at UTC+2', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  // Israel is UTC+2 in January: 11:00 local files as 0900.
+  const res = await build(page, PROFILE, { dateLocal: '2027-01-14', timeLocal: '11:00' });
+  expect(res.eobtUtc).toBe('0900');
+  expect(res.dof).toBe('270114');
 });
 
 test('an evening departure that crosses midnight in UTC files the right date', async ({ page }) => {
@@ -204,6 +225,7 @@ test('mixed leg speeds are flagged, not silently averaged', async ({ page }) => 
 test('a departure less than 60 minutes out is warned about', async ({ page }) => {
   await boot(page);
   await route(page);
+  // Computed in the page, so "20 minutes from now" is 20 minutes in the pinned zone.
   const soon = await page.evaluate(() => {
     const d = new Date(Date.now() + 20 * 60000);
     const pad = n => String(n).padStart(2, '0');
@@ -224,8 +246,7 @@ test('filing too early for a morning flight is warned about', async ({ page }) =
   // A 10:00 departure on the 20th may be filed from 18:00 on the 19th. Filing at
   // 09:00 on the 19th is too early.
   const res = await build(page, PROFILE, {
-    dateLocal: '2026-08-20', timeLocal: '10:00',
-    now: new Date(2026, 7, 19, 9, 0, 0),
+    dateLocal: '2026-08-20', timeLocal: '10:00', nowLocal: '2026-08-19T09:00',
   });
   expect(res.warns).toContain('warnFplEarly');
   expect(res.text).toBeTruthy();                 // still only a warning
@@ -235,8 +256,7 @@ test('the evening-before window opens at 18:00 for a morning flight', async ({ p
   await boot(page);
   await route(page);
   const res = await build(page, PROFILE, {
-    dateLocal: '2026-08-20', timeLocal: '10:00',
-    now: new Date(2026, 7, 19, 18, 5, 0),
+    dateLocal: '2026-08-20', timeLocal: '10:00', nowLocal: '2026-08-19T18:05',
   });
   expect(res.warns).not.toContain('warnFplEarly');
 });
@@ -246,9 +266,9 @@ test('a departure after 17:00 must wait for the day of the flight', async ({ pag
   await route(page);
   const args = { dateLocal: '2026-08-20', timeLocal: '19:00' };
   // 18:30 the evening before is early enough for a morning flight, but not for this one.
-  const early = await build(page, PROFILE, { ...args, now: new Date(2026, 7, 19, 18, 30, 0) });
+  const early = await build(page, PROFILE, { ...args, nowLocal: '2026-08-19T18:30' });
   expect(early.warns).toContain('warnFplEarly');
-  const sameDay = await build(page, PROFILE, { ...args, now: new Date(2026, 7, 20, 8, 0, 0) });
+  const sameDay = await build(page, PROFILE, { ...args, nowLocal: '2026-08-20T08:00' });
   expect(sameDay.warns).not.toContain('warnFplEarly');
 });
 
