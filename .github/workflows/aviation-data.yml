@@ -58,6 +58,8 @@ jobs:
                 : [],
               raw: s.rawSigmet,
             }));
+          // An empty SIGMET list is real information -- most days there are none over
+          // Israel -- so emptiness here publishes. Contrast the station map below.
           if (sigOk) {
             writeFileSync('sigmet/sigmet.json', JSON.stringify({
               generatedAt: new Date().toISOString(), source: 'NOAA AWC isigmet', sigmets,
@@ -89,7 +91,13 @@ jobs:
           const stations = {};
           for (const m of (metars || [])) if (m && m.icaoId) (stations[m.icaoId] ||= {}).metar = m;
           for (const t of (tafs || [])) if (t && t.icaoId) (stations[t.icaoId] ||= {}).taf = t;
-          if (metarsOk && tafsOk) {
+          // ...and here emptiness IS a failure. A 200 with an empty array, or a response
+          // whose shape no longer carries icaoId, leaves `stations` empty -- every Israeli
+          // field losing its METAR at once is a broken feed or a broken ids parameter, never
+          // the weather. Publishing it would blank the app's wind and cloud reports while
+          // reporting success, which is exactly what failing closed is meant to prevent.
+          const wxOk = metarsOk && tafsOk && Object.keys(stations).length > 0;
+          if (wxOk) {
             writeFileSync('wx/wx.json', JSON.stringify({
               generatedAt: new Date().toISOString(), source: 'NOAA AWC', stations,
             }));

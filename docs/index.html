@@ -841,6 +841,11 @@
         'app/assistant.js' + v,
         'app/offline-tiles.js' + v
       ];
+      // Subresource integrity for the pinned CDN dependencies. A wrong hash means the
+      // browser refuses the script and the app is a blank page, so these are not guesses:
+      // regenerate one with
+      //   curl -sL <url> | openssl dgst -sha384 -binary | openssl base64 -A
+      // and prefix the result with 'sha384-'. Bumping a version REQUIRES a new hash.
       var sri = {
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js': 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js': 'sha384-MtIdllebpZyms2pw9K3YJl8BEqrKNQCdSFAySjeglab6z2PkeFdF4Lb9cDsnxQuG',

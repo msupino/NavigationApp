@@ -117,3 +117,36 @@ test('failed PWX and partial SIGWX candidates preserve both last-good manifests'
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test('a last-good manifest whose PNGs are gone is refused, not preserved', async () => {
+  const { finalizeImsManifests } = await import('../scripts/finalize-ims-manifests.mjs');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'navaid-ims-'));
+  const root = path.join(tmp, 'ims-root');
+  const pwxCandidate = path.join(tmp, 'pwx.json');
+  const sigCandidate = path.join(tmp, 'sig.json');
+  try {
+    // The candidate is incomplete, so PWX falls to its last-good -- but that manifest points
+    // at a PNG nothing has on disk. Preserving it would publish a manifest of 404s and call
+    // the run a success; the guarantee that the fresh download cannot clobber the previous
+    // run's files belongs to the naming scheme, not to this function, so it is checked here.
+    put(path.join(root, 'ims/pwx/present.png'));
+    put(path.join(root, 'ims/pwx.json'), { generatedAt: 'old-pwx', levels: [
+      { level: '50', times: [
+        { valid: '12:00', png: 'ims/pwx/present.png' },
+        { valid: '15:00', png: 'ims/pwx/deleted.png' },
+      ] },
+    ] });
+    put(path.join(root, 'ims/sigwx.json'), { generatedAt: 'old-sig', times: [] });
+    put(pwxCandidate, { generatedAt: 'new-pwx', levels: [
+      { level: '50', times: [{ valid: '12:00', png: 'ims/pwx/never-converted.png' }] },
+    ] });
+    put(sigCandidate, { generatedAt: 'new-sig', times: [] });
+
+    expect(() => finalizeImsManifests(root, pwxCandidate, sigCandidate))
+      .toThrow(/missing PNG/i);
+    // ...and it failed before deleting anything.
+    expect(fs.existsSync(path.join(root, 'ims/pwx/present.png'))).toBe(true);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

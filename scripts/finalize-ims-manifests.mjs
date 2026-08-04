@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 const readJson = file => JSON.parse(readFileSync(file, 'utf8'));
 
-function retainCompleteCandidate({ candidateFile, liveFile, entries, filter }) {
+function retainCompleteCandidate({ candidateFile, liveFile, entries, filter, hasPng }) {
   const candidate = readJson(candidateFile);
   const expected = entries(candidate).length;
   const kept = filter(candidate);
@@ -15,6 +15,16 @@ function retainCompleteCandidate({ candidateFile, liveFile, entries, filter }) {
   }
   if (!existsSync(liveFile)) {
     throw new Error(`Incomplete candidate (${actual}/${expected}) and no last-good manifest: ${liveFile}`);
+  }
+  // Preserving is only safe if the last-good manifest still describes files that are on
+  // disk. Today the fresh download cannot clobber it (source-named PNGs never collide with
+  // the previous run's), but that is a property of the naming, not of this function -- so
+  // check it here rather than leave the guarantee to a caller nobody reads.
+  const live = readJson(liveFile);
+  const missing = entries(live).map(entry => entry.png).filter(png => !hasPng(png));
+  if (missing.length) {
+    throw new Error(`Last-good manifest ${liveFile} references ${missing.length} missing `
+      + `PNG(s), first: ${missing[0]}`);
   }
   return { status: 'preserved', expected, actual };
 }
@@ -37,6 +47,7 @@ export function finalizeImsManifests(rootDir, pwxCandidateFile, sigwxCandidateFi
   const pwx = retainCompleteCandidate({
     candidateFile: pwxCandidateFile,
     liveFile: pwxFile,
+    hasPng: has,
     entries: doc => doc.levels.flatMap(level => level.times),
     filter: doc => ({ ...doc, levels: doc.levels
       .map(level => ({ ...level, times: level.times.filter(time => has(time.png)) }))
@@ -45,6 +56,7 @@ export function finalizeImsManifests(rootDir, pwxCandidateFile, sigwxCandidateFi
   const sigwx = retainCompleteCandidate({
     candidateFile: sigwxCandidateFile,
     liveFile: sigwxFile,
+    hasPng: has,
     entries: doc => doc.times,
     filter: doc => ({ ...doc, times: doc.times.filter(time => has(time.png)) }),
   });
@@ -61,8 +73,11 @@ export function finalizeImsManifests(rootDir, pwxCandidateFile, sigwxCandidateFi
     ...walkPngs(join(rootDir, 'ims/sigwx')),
   ]) {
     if (!referenced.has(resolve(file))) {
-      unlinkSync(file);
-      pruned++;
+      // A file that vanished between the walk and here is already gone; that is the
+      // outcome this loop wanted, so it must not fail the run.
+      try { unlinkSync(file); pruned++; } catch (e) {
+        if (e.code !== 'ENOENT') throw e;
+      }
     }
   }
   return { pwx, sigwx, pruned };

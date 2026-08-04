@@ -64,9 +64,22 @@ jobs:
             throw lastErr;
           };
           const abs = f => (f.startsWith('http') ? f : 'https://ims.gov.il' + f);
+          // The sanitiser collapses every run of unsafe characters to one '-', so two
+          // different source PDFs can reduce to the same name -- and then one silently
+          // overwrites the other, which is the exact mislabelling this naming exists to
+          // prevent. A collision means the charts cannot be told apart, so stop: the step
+          // fails, nothing is published, and every category keeps its complete last-good.
+          const stemSources = new Map();
           const sourceStem = f => {
-            const name = new URL(abs(f)).pathname.split('/').pop() || 'chart';
-            return name.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_-]+/g, '-');
+            const url = abs(f);
+            const name = new URL(url).pathname.split('/').pop() || 'chart';
+            const stem = name.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_-]+/g, '-');
+            const seen = stemSources.get(stem);
+            if (seen && seen !== url) {
+              throw new Error(`chart name collision: ${stem} <- ${seen} and ${url}`);
+            }
+            stemSources.set(stem, url);
+            return stem;
           };
 
           // --- PWX wind/temperature (georeferenced map overlay) ---
