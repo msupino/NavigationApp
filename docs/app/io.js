@@ -4,6 +4,87 @@
 // inspector's #insp-close already uses this pattern; modals now match it
 // (plate viewer, charts modal, flight plan) — see issue thread on toolbar
 // cleanup. `onClose` is invoked when the user clicks the X.
+// Drag-to-move on a modal's title bar, with the position remembered per UI language
+// (navLangPosKey). Returns a cleanup function that detaches the window-level listeners,
+// so re-opening a dialog cannot accumulate stale handlers.
+function makeModalDraggable(el, handle, key) {
+  let dx = 0, dy = 0, dragging = false;
+  function clamp(x, y) {
+    return {
+      x: Math.max(0, Math.min(window.innerWidth - el.offsetWidth, x)),
+      y: Math.max(0, Math.min(window.innerHeight - el.offsetHeight, y)),
+    };
+  }
+  function setPos(x, y) {
+    const c = clamp(x, y);
+    el.style.left = c.x + 'px';
+    el.style.top = c.y + 'px';
+    el.style.margin = '0';
+  }
+  if (key) {
+    try {
+      const raw = navLangPosRead(key);
+      if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
+    } catch (e) { /* no stored position */ }
+  }
+  function start(cx, cy) {
+    const r = el.getBoundingClientRect();
+    // Pin to viewport coordinates first: a flex-centred modal has no left/top of its
+    // own, so writing them mid-drag made the window jump to a different origin.
+    const cs = getComputedStyle(el);
+    if (cs.position !== 'fixed' && cs.position !== 'absolute') el.style.position = 'fixed';
+    el.style.margin = '0';
+    el.style.left = r.left + 'px';
+    el.style.top = r.top + 'px';
+    dx = cx - r.left; dy = cy - r.top;
+    dragging = true;
+  }
+  function move(cx, cy) { if (dragging) setPos(cx - dx, cy - dy); }
+  function end() {
+    if (!dragging) return;
+    dragging = false;
+    if (!key) return;
+    const r = el.getBoundingClientRect();
+    try { localStorage.setItem(navLangPosKey(key), JSON.stringify({ x: r.left, y: r.top })); }
+    catch (e) { /* storage unavailable */ }
+  }
+  function onMouseDown(e) {
+    e.preventDefault();
+    start(e.clientX, e.clientY);
+    const onMove = ev => move(ev.clientX, ev.clientY);
+    const onUp = () => {
+      end();
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+  function onTouchStart(e) {
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+    start(e.touches[0].clientX, e.touches[0].clientY);
+  }
+  function onTouchMove(e) {
+    if (!dragging || e.touches.length !== 1) return;
+    e.preventDefault();
+    move(e.touches[0].clientX, e.touches[0].clientY);
+  }
+  handle.addEventListener('mousedown', onMouseDown);
+  handle.addEventListener('touchstart', onTouchStart, { passive: false });
+  window.addEventListener('touchmove', onTouchMove, { passive: false });
+  window.addEventListener('touchend', end);
+  window.addEventListener('touchcancel', end);
+  handle.classList.add('modal-drag-handle');
+  return function cleanup() {
+    handle.removeEventListener('mousedown', onMouseDown);
+    handle.removeEventListener('touchstart', onTouchStart, { passive: false });
+    window.removeEventListener('touchmove', onTouchMove, { passive: false });
+    window.removeEventListener('touchend', end);
+    window.removeEventListener('touchcancel', end);
+  };
+}
+
 function addModalCloseX(box, onClose, options = {}) {
   const x = document.createElement('button');
   x.className = 'modal-close-x';
@@ -935,7 +1016,7 @@ function save() {
 // --- ICAO flight plan (FPL) -------------------------------------------
 // Builds the ICAO 2012 FPL message for the drawn route, e.g.
 //
-//   (FPL-4XCWH-VG
+//   (FPL-4XHLH-VG
 //   -ULAC/L-S/C
 //   -LLHZ0800
 //   -N0090VFR SFAIM APOLN ARENA
@@ -951,39 +1032,46 @@ function save() {
 // only FORMATS a plan -- filing it is the pilot's act, so nothing here sends.
 const FPL_PROFILE_FIELDS = [
   'reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
-  'endurance', 'persons', 'kind', 'aisEmail',
+  'endurance', 'persons', 'kind', 'aisEmail', 'replyTo',
 ];
 // Where a plan is filed, per AIP Israel א'-11 §3.ב: a flight along the published
 // routes goes to AIS (or by phone), a cross-country flight is email-only to the
 // FPL desk. Both are the published addresses, not a guess -- and the pilot can
 // still override the address in the dialog.
 const FPL_FILE_TO = { routes: 'ais@iaa.gov.il', crosscountry: 'fpl@iaa.gov.il' };
-// א'-11 §3.ד.1(א): a routes plan is filed no later than 60 min before departure.
-const FPL_MIN_LEAD_MIN = 60;
+// א׳-11 §3.ד.1(א): a routes plan is filed no later than this long before departure.
+// These are tune keys (group "Flight plan filing"), so an AIP amendment can be followed
+// from the gist; the numbers here are only fallbacks.
+const _fplTune = (key, fallback) => {
+  const v = (typeof tune === 'function') ? Number(tune(key)) : NaN;
+  return Number.isFinite(v) && v >= 0 ? v : fallback;
+};
+const FPL_MIN_LEAD_MIN = () => _fplTune('fplMinLeadMin', 60);
 // א'-11 §3.ד.1(ב): there is an EARLIEST time too. A flight departing at or before
 // 17:00 may be filed from 18:00 the day before; a later departure must be filed on
 // the day of the flight. Both thresholds are local clock times.
-const FPL_SAME_DAY_AFTER_MIN = 17 * 60;      // departures after this are same-day filing
-const FPL_EVE_OPEN_MIN = 18 * 60;            // and the evening-before window opens here
+const FPL_SAME_DAY_AFTER_MIN = () => _fplTune('fplSameDayAfterMin', 17 * 60);
+const FPL_EVE_OPEN_MIN = () => _fplTune('fplEveOpenMin', 18 * 60);
 // The earliest instant this plan may be submitted, given its local departure.
 function fplEarliestFiling(when) {
   if (!(when instanceof Date)) return null;
   const depMin = when.getHours() * 60 + when.getMinutes();
   const open = new Date(when.getTime());
-  if (depMin <= FPL_SAME_DAY_AFTER_MIN) {
+  if (depMin <= FPL_SAME_DAY_AFTER_MIN()) {
     open.setDate(open.getDate() - 1);                       // the evening before
-    open.setHours(Math.floor(FPL_EVE_OPEN_MIN / 60), FPL_EVE_OPEN_MIN % 60, 0, 0);
+    const evening = FPL_EVE_OPEN_MIN();
+    open.setHours(Math.floor(evening / 60), evening % 60, 0, 0);
   } else {
     open.setHours(0, 0, 0, 0);                              // same day, from midnight
   }
   return open;
 }
-// Field 16's EET is filed on a 5-minute grid.
-const FPL_EET_ROUND_MIN = 5;
+// Field 16's EET is filed on a grid this many minutes wide.
+const FPL_EET_ROUND_MIN = () => _fplTune('fplEetRoundMin', 5) || 5;
 // א'-11 §5: valid from 30 min before the filed time until 30 min after -- 60 min
 // after for a domestic VFR flight. Past that the plan lapses and must be re-filed.
-const FPL_WINDOW_BEFORE_MIN = 30;
-const FPL_WINDOW_AFTER_VFR_MIN = 60;
+const FPL_WINDOW_BEFORE_MIN = () => _fplTune('fplWindowBeforeMin', 30);
+const FPL_WINDOW_AFTER_VFR_MIN = () => _fplTune('fplWindowAfterVfrMin', 60);
 function fplFileTo(kind) {
   return FPL_FILE_TO[kind] || FPL_FILE_TO.routes;
 }
@@ -992,6 +1080,26 @@ function fplFileTo(kind) {
 const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 // Encode for a mailto URL, but leave the @ readable: percent-encoding it made some
 // clients show a mangled recipient, while ?, & and spaces must not survive.
+// Builds the mailto URL for a plan. `replyTo` is the pilot's own address: on a borrowed
+// machine the sending account is not theirs, so the approval would land in someone
+// else's inbox. RFC 6068 only blesses to/cc/bcc/subject/body, and most clients ignore a
+// reply-to parameter -- so the address is CC'd as well, which every client honours and
+// which is what actually gets the pilot the thread.
+function fplMailtoUrl(res, opts) {
+  const o = opts || {};
+  const subject = 'FPL ' + (o.reg ? fplRegistration(o.reg) + ' ' : '') +
+    res.dep + '-' + res.dest + ' ' + res.dof;
+  const q = ['subject=' + encodeURIComponent(subject),
+    'body=' + encodeURIComponent(res.text)];
+  const reply = String(o.replyTo || '').trim();
+  if (reply && FPL_EMAIL_RE.test(reply)) {
+    q.push('cc=' + fplMailtoAddress(reply));
+    q.push('reply-to=' + fplMailtoAddress(reply));   // honoured by some clients, ignored by others
+  }
+  // The recipient goes in literally bar the @: percent-encoding that mangles it in some
+  // clients, and everything else stays encoded so no address can smuggle headers in.
+  return 'mailto:' + fplMailtoAddress(res.to) + '?' + q.join('&');
+}
 function fplMailtoAddress(addr) {
   return encodeURIComponent(String(addr || '')).replace(/%40/g, '@');
 }
@@ -1052,6 +1160,15 @@ function fplRoutePoint(wp) {
   // would be rejected by the AIS parser, so say so instead of shipping it.
   return /^[A-Z0-9]{2,7}$/.test(canon) ? canon : null;
 }
+// The aircraft/pilot details both plans need. One list, one check: the ICAO message
+// refuses to build without them, and the cross-country form says which are blank (but
+// still prints -- it is signed by hand, and a pilot may complete it on paper).
+const FPL_REQUIRED_PROFILE = ['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license',
+  'cell', 'endurance', 'persons'];
+function fplMissingProfileFields(p) {
+  const prof = p || {};
+  return FPL_REQUIRED_PROFILE.filter(f => !String(prof[f] || '').trim());
+}
 function buildIcaoFpl(profile, opts) {
   const p = profile || {};
   const o = opts || {};
@@ -1095,12 +1212,16 @@ function buildIcaoFpl(profile, opts) {
   // Filed to the next whole 5 minutes: nobody files 00:33, and rounding UP never
   // understates the time the plan is held open for.
   const rawEetH = prof && prof.totalTimeH > 0 ? prof.totalTimeH : 0;
-  const eetH = rawEetH > 0 ? Math.ceil(rawEetH * 60 / FPL_EET_ROUND_MIN) * FPL_EET_ROUND_MIN / 60 : 0;
+  const grid = FPL_EET_ROUND_MIN();
+  const eetH = rawEetH > 0 ? Math.ceil(rawEetH * 60 / grid) * grid / 60 : 0;
   if (!(eetH > 0)) errs.push('errFplNoEet');
 
-  for (const f of ['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'endurance', 'persons']) {
-    if (!String(p[f] || '').trim()) errs.push('errFplProfile:' + f);
-  }
+  for (const f of fplMissingProfileFields(p)) errs.push('errFplProfile:' + f);
+  // The pilot's own address is required to file: that is where the approval comes back,
+  // and the sending account may not be theirs.
+  const replyAddr = String(p.replyTo || '').trim();
+  if (!replyAddr) errs.push('errFplReplyToRequired');
+  else if (!FPL_EMAIL_RE.test(replyAddr)) errs.push('errFplReplyToInvalid');
   const reg = fplRegistration(p.reg);
   // Departure is entered as a local date + clock time (what the pilot reads off a
   // watch); both UTC fields come from that one instant.
@@ -1122,7 +1243,7 @@ function buildIcaoFpl(profile, opts) {
   // Warnings never block: the pilot may be phoning it in, or filing for tomorrow.
   const warns = [];
   const lead = fplLeadMinutes(utc.when, o.now);
-  if (lead !== null && lead < FPL_MIN_LEAD_MIN) warns.push('warnFplLead');
+  if (lead !== null && lead < FPL_MIN_LEAD_MIN()) warns.push('warnFplLead');
   // A cross-country (מרחב) plan is filed on the AIP's own tabular form (א'-11
   // נספח ב': registration, IAS, fuel time, every route point with WGS-84
   // coordinates, signatures) -- not as an ICAO message. NavAid does not produce
@@ -1140,8 +1261,8 @@ function buildIcaoFpl(profile, opts) {
   if (!depIcao) f18.push('DEP/' + depPlain);
   if (!destIcao) f18.push('DEST/' + destPlain);
   const rmk = ['PIC ' + String(p.pic).trim().toUpperCase(),
-    'LICENSE ' + String(p.license).trim()];
-  if (String(p.cell || '').trim()) rmk.push('CELL ' + String(p.cell).trim());
+    'LICENSE ' + String(p.license).trim(),
+    'CELL ' + String(p.cell).trim()];
   f18.push('RMK/' + rmk.join(' '));                       // free text: must stay last
 
   const text = [
@@ -2139,70 +2260,14 @@ function showFlightPlan() {
   title.textContent = S.flightPlan;
   box.appendChild(title);
 
-  // Drag-to-move on the title bar (mouse + touch).
-  (function (el) {
-    const KEY = 'navaid.fpPos';
-    let dx = 0, dy = 0, dragging = false;
-    function clamp(x, y) {
-      return {
-        x: Math.max(0, Math.min(window.innerWidth - el.offsetWidth, x)),
-        y: Math.max(0, Math.min(window.innerHeight - el.offsetHeight, y)),
-      };
-    }
-    function setPos(x, y) {
-      const c = clamp(x, y);
-      el.style.left = c.x + 'px';
-      el.style.top = c.y + 'px';
-      el.style.margin = '0';
-    }
-    try {
-      const raw = navLangPosRead(KEY);
-      if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
-    } catch (e) {}
-    function start(cx, cy) {
-      const r = el.getBoundingClientRect();
-      dx = cx - r.left; dy = cy - r.top;
-      dragging = true;
-    }
-    function move(cx, cy) { if (dragging) setPos(cx - dx, cy - dy); }
-    function end() {
-      if (!dragging) return;
-      dragging = false;
-      const r = el.getBoundingClientRect();
-      try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify({ x: r.left, y: r.top })); } catch (e) {}
-    }
-    title.addEventListener('mousedown', e => {
-      e.preventDefault();
-      start(e.clientX, e.clientY);
-      const onMove = ev => move(ev.clientX, ev.clientY);
-      const onUp = () => { end(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-    });
-    function onTouchStart(e) {
-      if (e.touches.length !== 1) return;
-      e.preventDefault();
-      start(e.touches[0].clientX, e.touches[0].clientY);
-    }
-    function onTouchMove(e) {
-      if (!dragging || e.touches.length !== 1) return;
-      e.preventDefault();
-      move(e.touches[0].clientX, e.touches[0].clientY);
-    }
-    title.addEventListener('touchstart', onTouchStart, { passive: false });
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('touchend', end);
-    window.addEventListener('touchcancel', end);
-    // closeFlightPlan() invokes this to detach the window-level listeners so
-    // a re-open doesn't accumulate stale handlers (closures capture el/dragging).
-    flightPlanCleanup = function () {
-      title.removeEventListener('touchstart', onTouchStart, { passive: false });
-      window.removeEventListener('touchmove', onTouchMove, { passive: false });
-      window.removeEventListener('touchend', end);
-      window.removeEventListener('touchcancel', end);
-      restoreInspector();          // put the inspector back if it was open
-    };
-  })(box);
+  // Drag-to-move on the title bar (mouse + touch), position remembered per language.
+  const stopPlanDrag = makeModalDraggable(box, title, 'navaid.fpPos');
+  // closeFlightPlan() invokes this to detach the window-level listeners so a re-open
+  // doesn't accumulate stale handlers.
+  flightPlanCleanup = function () {
+    stopPlanDrag();
+    restoreInspector();          // put the inspector back if it was open
+  };
 
   loadAircraft();
   const fpAircraft = document.createElement('div');
@@ -3329,7 +3394,7 @@ function showFlightPlan() {
   fplBtn.type = 'button';
   fplBtn.id = 'fpl-open';
   fplBtn.textContent = S.tbFpl || 'Flight plan (FPL)';
-  fplBtn.title = S.tbFplTitle || '';
+  fplBtn.title = (typeof fplIsolate === 'function') ? fplIsolate(S.tbFplTitle || '') : (S.tbFplTitle || '');
   fplBtn.onclick = () => showFplDialog();
   btns.appendChild(fplBtn);
   box.appendChild(btns);
@@ -3428,11 +3493,8 @@ function chooseOrientation(size, onPick) {
   // #86: Escape closes the picker (counts as cancel).
   function onEsc(e) { if (e.key === 'Escape') close(); }
   function close() {
-    document.removeEventListener('keydown', onEsc, true);
+    document.removeEventListener('keydown', onEsc);
     back.remove();
-    // Cleared on the next tick so the very Escape that closed this dialog cannot
-    // also be read as "no dialog open" by a listener further along the same event.
-    setTimeout(() => { fplDialogOpen = false; }, 0);
   }
   for (const [label, val] of [[S.landscape, 'landscape'], [S.portrait, 'portrait']]) {
     const b = document.createElement('button');
@@ -7347,6 +7409,10 @@ function shareRoute() {
 // own direction and cannot drag its neighbours around. textContent alone cannot do
 // this -- the isolation has to be in the markup.
 const FPL_LATIN_RUN = /([A-Za-z][A-Za-z0-9@._/'\-]*(?:\s+[A-Za-z0-9@._/'\-]+)*)/g;
+function fplIsolate(text) {
+  return String(text == null ? '' : text)
+    .replace(FPL_LATIN_RUN, run => '\u2068' + run + '\u2069');
+}
 function fplSetBidiText(el, text) {
   el.textContent = '';
   const str = String(text == null ? '' : text);
@@ -7375,10 +7441,15 @@ const FPL_DEFAULT_ENDURANCE = '0500';
 // them is not something to rely on -- so the panel checks this flag instead of
 // looking for the dialog in the DOM (by then the dialog may already be removed).
 let fplDialogOpen = false;
+// True while the cross-country form is stacked on top of the FPL dialog. The dialog's
+// own Escape listener was registered first, so it fires FIRST in the capture phase --
+// the form's stopImmediatePropagation cannot save it. The dialog therefore checks this
+// flag instead of relying on listener order.
+let fplXcOpen = false;
 // Dropped fields whose stored values must not linger: `pilotEmail` existed while the
 // dialog asked for the pilot's own address, and an early build let that same address be
 // typed into the filing address -- which then silently outranked the published one.
-const FPL_DEAD_FIELDS = ['pilotEmail'];
+const FPL_DEAD_FIELDS = ['pilotEmail', 'ias'];
 function fplProfileRead() {
   const p = {};
   for (const f of FPL_PROFILE_FIELDS) {
@@ -7419,7 +7490,7 @@ function fplProfileWrite(p) {
 // to satisfy the 60-minute filing rule rather than tripping its warning at once.
 function fplDefaultWhen(now) {
   const d = now instanceof Date ? new Date(now.getTime()) : new Date();
-  d.setMinutes(d.getMinutes() + FPL_MIN_LEAD_MIN + 5);
+  d.setMinutes(d.getMinutes() + FPL_MIN_LEAD_MIN() + 5);
   d.setMinutes(Math.ceil(d.getMinutes() / 10) * 10, 0, 0);
   const pad = n => String(n).padStart(2, '0');
   return {
@@ -7442,6 +7513,7 @@ function showFplDialog() {
   function close() {
     // Same capture flag as the registration below, or the listener never detaches.
     document.removeEventListener('keydown', onEsc, true);
+    stopDrag();                  // detach the window-level drag listeners
     back.remove();
     // Cleared next tick so the very Escape that closed this dialog cannot also be
     // read as "no dialog open" by a listener further along the same event.
@@ -7449,6 +7521,8 @@ function showFplDialog() {
   }
   function onEsc(e) {
     if (e.key !== 'Escape') return;
+    // A dialog stacked on this one (the cross-country form) owns Escape while it is up.
+    if (fplXcOpen) return;
     // stopImmediatePropagation, not stopPropagation: the flight-plan panel's Escape
     // listener sits on `document` too, and stopPropagation does not stop another
     // listener on the SAME node -- so the panel closed underneath this dialog and
@@ -7461,6 +7535,9 @@ function showFplDialog() {
   const body = document.createElement('div');
   body.className = 'fpl-body';
   box.append(title, body);
+  // Movable by its title bar. No storage key: this dialog deliberately does not
+  // remember a moved position -- it is short-lived and always opens centred.
+  const stopDrag = makeModalDraggable(box, title, null);
   back.appendChild(box);
   back.onclick = e => { if (e.target === back) close(); };
   back._navaidClose = close;
@@ -7506,52 +7583,113 @@ function showFplDialog() {
     return n === 1 ? (S.fplPilotOnly || 'pilot only')
       : (S.fplPilotPlus ? S.fplPilotPlus(n - 1) : 'pilot + ' + (n - 1));
   }
-  // Hebrew names, a Latin ICAO code and an arrow in one line reorder badly under bidi
-  // (the code jumped to the wrong end and the sequence read backwards). Each name goes
-  // in its own <bdi> so it cannot drag its neighbours around, and the arrow points the
-  // way the UI reads.
-  function fillRouteSummary(el) {
-    el.textContent = '';
-    const rtl = (document.documentElement.getAttribute('dir') === 'rtl');
-    const names = (state.waypoints || []).map(w => {
-      const raw = (w && w.name) ? String(w.name) : '';
-      return (typeof navName === 'function' && navName(raw)) || raw;
-    }).filter(Boolean);
-    names.forEach((name, i) => {
-      if (i) {
-        const sep = document.createElement('span');
-        sep.className = 'fpl-route-sep';
-        sep.textContent = rtl ? ' ← ' : ' → ';
-        el.appendChild(sep);
+  // "Fill in the aircraft and pilot details" says nothing about WHICH is blank. This
+  // names them, in the UI language, and outlines the boxes so the eye lands on them.
+  function fplFieldLabel(key) {
+    const map = {
+      reg: S.fplReg, type: S.fplType, wake: S.fplWake, equip: S.fplEquip, surv: S.fplSurv,
+      pic: S.fplPic, license: S.fplLicense, cell: S.fplCell, endurance: S.fplEndurance,
+      persons: S.fplPersons, replyTo: S.fplReplyTo,
+    };
+    return map[key] || key;
+  }
+  function showFieldErrors(errBox, errs, elsByKey) {
+    errBox.textContent = '';
+    for (const el of Object.values(elsByKey || {})) {
+      if (el && el.classList) el.classList.remove('fpl-input-missing');
+    }
+    const missing = [];
+    const others = [];
+    for (const code of errs) {
+      const [key, field] = String(code).split(':');
+      if (key === 'errFplProfile' && field) missing.push(field);
+      else if (!others.includes(key)) others.push(key);
+      // The email has its own error codes, but it is a field like any other: mark it.
+      if (key === 'errFplReplyToRequired' || key === 'errFplReplyToInvalid') {
+        const el = elsByKey && elsByKey.replyTo;
+        if (el && el.classList) el.classList.add('fpl-input-missing');
+        if (el && el.focus) el.focus();
       }
-      const bdi = document.createElement('bdi');
-      bdi.textContent = name;
-      el.appendChild(bdi);
-    });
+    }
+    if (missing.length) {
+      const li = document.createElement('div');
+      const names = missing.map(fplFieldLabel).join(', ');
+      fplSetBidiText(li, '⚠ ' + (S.errFplProfileList ? S.errFplProfileList(names)
+        : fplErrText('errFplProfile') + ' ' + names));
+      errBox.appendChild(li);
+      for (const f of missing) {
+        const el = elsByKey && elsByKey[f];
+        if (el && el.classList) el.classList.add('fpl-input-missing');
+      }
+    }
+    for (const code of others) {
+      const li = document.createElement('div');
+      fplSetBidiText(li, '⚠ ' + fplErrText(code));
+      errBox.appendChild(li);
+    }
+    const first = missing[0] && elsByKey && elsByKey[missing[0]];
+    if (first && first.focus) first.focus();
   }
   function renderDetails() {
     body.textContent = '';
-    // The route, in the pilot's own language, so it is obvious which plan this is.
-    const routeLine = document.createElement('div');
-    routeLine.className = 'fpl-route';
-    routeLine.id = 'fpl-route-summary';
-    fillRouteSummary(routeLine);
-    body.appendChild(routeLine);
-
-    const derived = document.createElement('div');
-    derived.className = 'fpl-derived';
-    const speedKt = Math.round(Number((state.legs[0] || {}).flightSpeed) || 0);
-    const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
-    const eetMin = prof && prof.totalTimeH > 0
-      ? Math.ceil(prof.totalTimeH * 60 / FPL_EET_ROUND_MIN) * FPL_EET_ROUND_MIN : 0;
-    const eet = eetMin ? fplHhmm(eetMin / 60) : '----';
-    // Speed and total time are the ROUTE's -- editing them here would file a plan
-    // that disagrees with the map, so they are shown, and changed by editing legs.
-    fplSetBidiText(derived, [
-      S.fplSpeedRow ? S.fplSpeedRow(speedKt) : '',
-      S.fplEetRow ? S.fplEetRow(eet, eetMin ? enduranceLabel(eetMin) : '--') : '',
-    ].filter(Boolean).join('  ·  '));
-    body.appendChild(derived);
+    // Which artifact are we producing? That governs everything below it -- the
+    // address, whether there is a submit button at all -- so it leads. Default is
+    // the ICAO message, which is what a routes flight files.
+    const kind = document.createElement('select');
+    kind.id = 'fpl-kind';
+    for (const [val, label, tip] of [
+      ['routes', S.fplKindRoutes, S.fplKindRoutesTip],
+      ['crosscountry', S.fplKindCross, S.fplKindCrossTip],
+    ]) {
+      const o = document.createElement('option');
+      o.value = val;
+      o.textContent = fplIsolate(label || val);
+      if (tip) o.title = fplIsolate(tip);
+      kind.appendChild(o);
+    }
+    // Every waypoint a published point (airfield or reporting point) means this is a
+    // flight along the published infrastructure -- א'-11 §2.ח -- so the cross-country
+    // option does not apply and is not selectable.
+    const allPublished = (state.waypoints || []).length > 1 &&
+      (state.waypoints || []).every(w => {
+        const code = String((w && w.name) || '').trim().toUpperCase();
+        if (!code) return false;
+        if (typeof airfieldByIcao === 'function' && airfieldByIcao(code)) return true;
+        return typeof findNavWpToken === 'function' && !!findNavWpToken(code);
+      });
+    const crossOpt = kind.querySelector('option[value="crosscountry"]');
+    const routesOpt = kind.querySelector('option[value="routes"]');
+    const offNetwork = (state.waypoints || []).length > 1 && !allPublished;
+    if (allPublished && crossOpt) {
+      crossOpt.disabled = true;
+      crossOpt.title = fplIsolate(S.fplKindCrossNa || '');
+    }
+    // ...and a point outside the published set rules out the ICAO message: that plan
+    // says the flight is along the published infrastructure, and it is not.
+    if (offNetwork && routesOpt) {
+      routesOpt.disabled = true;
+      routesOpt.title = fplIsolate(S.fplKindRoutesNa || '');
+    }
+    kind.value = offNetwork ? 'crosscountry'
+      : (allPublished ? 'routes' : (profile.kind === 'crosscountry' ? 'crosscountry' : 'routes'));
+    const kindNoteText = offNetwork ? S.fplKindRoutesNa
+      : (allPublished ? S.fplKindCrossNa
+        : (kind.value === 'crosscountry' ? S.fplKindCrossTip : S.fplKindRoutesTip));
+    if (kindNoteText) {
+      const kindNote = document.createElement('div');
+      kindNote.className = 'fpl-hint';
+      kindNote.id = 'fpl-kind-note';
+      fplSetBidiText(kindNote, kindNoteText);
+      body.appendChild(kindNote);
+      // Keep the explanation in step with the choice.
+      if (!offNetwork && !allPublished) {
+        kind.addEventListener('change', () => fplSetBidiText(kindNote,
+          kind.value === 'crosscountry' ? (S.fplKindCrossTip || '') : (S.fplKindRoutesTip || '')));
+      }
+    }
+    const kindRow = row(S.fplKind || 'Flight type', kind);
+    kindRow.classList.add('fpl-row-major', 'fpl-row-stacked');
+    body.appendChild(kindRow);
 
     // Departure: just the two fields. A "Change" link here only hid them behind a
     // click. The UTC the message will actually carry is shown beside the time, since
@@ -7581,7 +7719,7 @@ function showFplDialog() {
     // "4X-" is fixed for every Israeli registration, so it is printed beside the
     // field instead of being something to type (or to forget).
     const reg = input(profile.reg.replace(/^4X-?/i, ''), 'text',
-      { maxlength: '4', placeholder: 'CWH', autocapitalize: 'characters', 'aria-label': S.fplReg || 'Call sign' });
+      { maxlength: '4', placeholder: 'HLH', autocapitalize: 'characters', 'aria-label': S.fplReg || 'Call sign' });
     reg.id = 'fpl-reg';
     reg.className = 'fpl-reg-input';
     const regBox = document.createElement('span');
@@ -7594,17 +7732,57 @@ function showFplDialog() {
     regRow.classList.add('fpl-row-major');
     body.appendChild(regRow);
 
-    // Aircraft type: free text (any ICAO designator) with the common ones offered.
-    const type = input(profile.type, 'text', { maxlength: '4', placeholder: 'C172', list: 'fpl-types' });
-    type.id = 'fpl-type';
-    const list = document.createElement('datalist');
-    list.id = 'fpl-types';
+    // Aircraft type: ONE row. The dropdown covers the common designators; picking
+    // "Other…" turns that same row into a text box for any other ICAO code, rather than
+    // adding a second field asking for what the dropdown already asked for.
+    const typeSel = document.createElement('select');
+    typeSel.id = 'fpl-type-select';
     for (const t of TYPE_SUGGESTIONS) {
       const o = document.createElement('option');
-      o.value = t;
-      list.appendChild(o);
+      o.value = t; o.textContent = t;
+      typeSel.appendChild(o);
     }
-    body.append(row(S.fplType || 'Aircraft type', type), list);
+    const otherOpt = document.createElement('option');
+    otherOpt.value = '_other';
+    otherOpt.textContent = fplIsolate(S.fplTypeOther || 'Other…');
+    typeSel.appendChild(otherOpt);
+    const type = input(profile.type, 'text',
+      { maxlength: '4', placeholder: 'C172', autocapitalize: 'characters',
+        'aria-label': S.fplType || 'Aircraft type' });
+    type.id = 'fpl-type';
+    const backToList = document.createElement('button');
+    backToList.type = 'button';
+    backToList.className = 'fpl-link';
+    backToList.id = 'fpl-type-list';
+    backToList.textContent = S.fplTypeFromList || '☰';
+    backToList.title = fplIsolate(S.fplTypeFromListTip || '');
+    const typeBox = document.createElement('span');
+    typeBox.className = 'fpl-type-box';
+    typeBox.append(typeSel, type, backToList);
+
+    const storedType = String(profile.type || '').toUpperCase();
+    const typeListed = !storedType || TYPE_SUGGESTIONS.includes(storedType);
+    const showType = other => {
+      typeSel.hidden = other;
+      type.hidden = !other;
+      backToList.hidden = !other;
+      if (other) type.focus();
+    };
+    typeSel.value = typeListed ? (storedType || TYPE_SUGGESTIONS[0]) : '_other';
+    type.value = typeListed ? typeSel.value : storedType;
+    showType(!typeListed);
+    typeSel.onchange = () => {
+      const other = typeSel.value === '_other';
+      if (!other) type.value = typeSel.value;
+      else type.value = '';
+      showType(other);
+    };
+    backToList.onclick = () => {
+      typeSel.value = TYPE_SUGGESTIONS[0];
+      type.value = typeSel.value;
+      showType(false);
+    };
+    body.appendChild(row(S.fplType || 'Aircraft type', typeBox));
 
     // Endurance in hours, not "0400".
     const endurance = document.createElement('select');
@@ -7638,18 +7816,26 @@ function showFplDialog() {
     const cell = input(profile.cell, 'tel');
     pic.id = 'fpl-pic';
     license.id = 'fpl-license';
-    // No "your email" field: the pilot's own mail client is the sender, so their
-    // address is the From and the approval comes back to it by itself.
+    cell.id = 'fpl-cell';
     pic.setAttribute('lang', 'en');
     pic.setAttribute('placeholder', 'ISRAEL ISRAELI');
+    // The pilot's own address, required and in the open: the approval comes back by
+    // mail, and on a machine whose account is not theirs it would otherwise land in the
+    // owner's inbox. It rides along as cc on the message.
+    const replyTo = input(profile.replyTo, 'email', { placeholder: 'you@example.com' });
+    replyTo.id = 'fpl-reply-to';
+    const replyRow = row(S.fplReplyTo || 'Your email', replyTo);
+    replyRow.title = fplIsolate(S.fplReplyToTip || '');
+    replyTo.title = replyRow.title;
     body.append(
       row(S.fplPic || 'Pilot in command', pic),
-      row(S.fplLicense || 'License', license),
-      row(S.fplCell || 'Mobile', cell));
+      row(S.fplLicense || 'License', license));
+    // Right under the fields it describes -- after the email row it read as being
+    // about the address.
     const latinHint = document.createElement('div');
     latinHint.className = 'fpl-hint';
     fplSetBidiText(latinHint, S.fplLatinHint || '');
-    body.appendChild(latinHint);
+    body.append(latinHint, row(S.fplCell || 'Mobile', cell), replyRow);
 
     // Advanced: the ICAO letters and where the plan is filed. Right by default.
     const adv = document.createElement('details');
@@ -7657,14 +7843,6 @@ function showFplDialog() {
     const sum = document.createElement('summary');
     sum.textContent = S.fplAdvanced || 'Advanced';
     adv.appendChild(sum);
-    const kind = document.createElement('select');
-    kind.id = 'fpl-kind';
-    for (const [val, label] of [['routes', S.fplKindRoutes], ['crosscountry', S.fplKindCross]]) {
-      const o = document.createElement('option');
-      o.value = val; o.textContent = label || val;
-      kind.appendChild(o);
-    }
-    kind.value = profile.kind || 'routes';
     const wake = input(profile.wake || 'L', 'text', { maxlength: '1' });
     const equip = input(profile.equip || 'S', 'text', { maxlength: '20' });
     const surv = input(profile.surv || 'C', 'text', { maxlength: '20' });
@@ -7672,6 +7850,7 @@ function showFplDialog() {
     // from AIP א'-11 §3.ב, so it should be what gets used unless the pilot changes it.
     const aisEmail = input(profile.aisEmail || fplFileTo(kind.value), 'email');
     aisEmail.id = 'fpl-ais-email';
+
     kind.onchange = () => {
       // Follow the flight type while the field still holds a published address;
       // a hand-typed one is the pilot's and is left alone.
@@ -7680,14 +7859,27 @@ function showFplDialog() {
         aisEmail.value = fplFileTo(kind.value);
       }
     };
-    adv.append(
-      row(S.fplKind || 'Flight type', kind),
-      row(S.fplWake || 'Wake category', wake),
-      row(S.fplEquip || 'Equipment', equip),
-      row(S.fplSurv || 'Transponder', surv),
-      row(S.fplAisEmail || 'File to', aisEmail));
+    // These are single letters from an ICAO table; without a tooltip they mean nothing
+    // to anyone who has not filed a plan by hand before.
+    const advRows = [
+      [row(S.fplWake || 'Wake category', wake), S.fplWakeTip],
+      [row(S.fplEquip || 'Equipment', equip), S.fplEquipTip],
+      [row(S.fplSurv || 'Transponder', surv), S.fplSurvTip],
+      [row(S.fplAisEmail || 'File to', aisEmail), S.fplAisEmailTip],
+    ];
+    for (const [rowEl, tip] of advRows) {
+      if (tip) {
+        // title attributes cannot carry markup, so the isolation goes in as Unicode.
+        rowEl.title = fplIsolate(tip);
+        const field = rowEl.querySelector('input, select');
+        if (field) field.title = fplIsolate(tip);
+      }
+      adv.appendChild(rowEl);
+    }
     body.appendChild(adv);
 
+    const fieldEls = { reg, type, wake, equip, surv, pic, license, cell, endurance,
+      persons, replyTo };
     const errBox = document.createElement('div');
     errBox.className = 'fpl-errs';
     body.appendChild(errBox);
@@ -7704,17 +7896,35 @@ function showFplDialog() {
         reg: reg.value.trim(), type: type.value.trim(), wake: wake.value.trim(),
         equip: equip.value.trim(), surv: surv.value.trim(), pic: pic.value.trim(),
         license: license.value.trim(), cell: cell.value.trim(), endurance: endurance.value,
+        replyTo: replyTo.value.trim(),
         persons: persons.value, kind: kind.value, aisEmail: aisEmail.value.trim(),
       });
       fplProfileWrite(profile);
+      if (kind.value === 'crosscountry') {
+        // Same required details as the ICAO plan, checked the same way, before the form
+        // is drawn -- the form is the printable output, not a second place to type.
+        // The SAME list the ICAO plan requires -- not a subset. The form has no boxes for
+        // the wake/equipment/transponder letters, but they are part of the aircraft's
+        // details either way and they always carry a default, so there is no case where
+        // one plan accepts what the other rejects.
+        const errsXc = fplMissingProfileFields(profile).map(f => 'errFplProfile:' + f);
+        // The email is required here too: the form is mailed to the FPL desk, and the
+        // sheet offers to open that mail with the pilot copied in.
+        const replyXc = String(profile.replyTo || '').trim();
+        if (!replyXc) errsXc.push('errFplReplyToRequired');
+        else if (!FPL_EMAIL_RE.test(replyXc)) errsXc.push('errFplReplyToInvalid');
+        // ...and the same date/time check, since the sheet prints both.
+        if (!fplUtcFromLocal(state1.date, state1.time)) errsXc.push('errFplEobt');
+        if (errsXc.length) {
+          showFieldErrors(errBox, errsXc, fieldEls);
+          return;
+        }
+        showFplXcForm({ dateLocal: state1.date, timeLocal: state1.time });
+        return;
+      }
       const res = buildIcaoFpl(profile, { dateLocal: state1.date, timeLocal: state1.time });
       if (res.errs) {
-        errBox.textContent = '';
-        for (const code of [...new Set(res.errs.map(e => String(e).split(':')[0]))]) {
-          const li = document.createElement('div');
-          fplSetBidiText(li, '⚠ ' + fplErrText(code));
-          errBox.appendChild(li);
-        }
+        showFieldErrors(errBox, res.errs, fieldEls);
         return;
       }
       renderReview(res);
@@ -7764,10 +7974,14 @@ function showFplDialog() {
     pre.textContent = res.text;
     body.appendChild(pre);
 
-    // Both acknowledgements, as the official filing page requires, and for the
-    // same reason: NavAid is a planning aid, not a briefing.
+    // Both acknowledgements, as the official filing page requires, and for the same
+    // reason: NavAid is a planning aid, not a briefing. Only shown when something is
+    // actually being filed -- opening the authority's form files nothing, and the form
+    // carries its own signature line.
     const acks = [];
-    for (const [id, label] of [['fpl-ack-aip', S.fplAckAip], ['fpl-ack-wx', S.fplAckWx]]) {
+    const wantAcks = !(res.warns || []).includes('warnFplCrossForm');
+    for (const [id, label] of (wantAcks
+      ? [['fpl-ack-aip', S.fplAckAip], ['fpl-ack-wx', S.fplAckWx]] : [])) {
       const wrap = document.createElement('label');
       wrap.className = 'fpl-ack';
       const cb = document.createElement('input');
@@ -7790,6 +8004,7 @@ function showFplDialog() {
     const copy = document.createElement('button');
     copy.type = 'button';
     copy.id = 'fpl-copy';
+    copy.className = 'modal-cancel';        // secondary: submitting is the primary action
     copy.textContent = S.fplCopy || 'Copy';
     copy.onclick = () => {
       const write = (navigator.clipboard && navigator.clipboard.writeText)
@@ -7798,11 +8013,16 @@ function showFplDialog() {
       write.then(() => showToast(S.fplCopied))
         .catch(() => window.prompt(S.fplCopied, res.text));
     };
+    const formOnly = (res.warns || []).includes('warnFplCrossForm');
     const mail = document.createElement('button');
     mail.type = 'button';
     mail.id = 'fpl-mail';
+    mail.className = 'fpl-primary';
     mail.textContent = S.fplOpenMail || 'Submit flight plan';
     mail.onclick = () => {
+      // A cross-country plan never reaches this step (Continue opens the form
+      // instead), but the guard stays: this button must never mail one.
+      if (formOnly) return;
       if (!acksDone()) {
         ackAsked = true;
         ackNote.hidden = false;
@@ -7816,23 +8036,16 @@ function showFplDialog() {
       // The AIP prescribes no subject line (א'-11 §3.ב only names the address), so this
       // is our own convention: registration, the two fields, and the date of flight --
       // enough for the desk, and for the pilot's own sent folder, to identify the plan.
-      const q = ['subject=' + encodeURIComponent(
-        'FPL ' + fplRegistration(profileForSubject.reg) + ' ' +
-        res.dep + '-' + res.dest + ' ' + res.dof),
-        'body=' + encodeURIComponent(res.text)];
-      // The address goes in literally: percent-encoding the @ makes some clients
-      // (and some webmail handlers) show or send a mangled recipient.
-      // res.to passed FPL_EMAIL_RE in the builder, and is encoded here anyway (bar the
-      // @) so no address can smuggle extra headers into this URL.
-      location.href = 'mailto:' + fplMailtoAddress(res.to) + '?' + q.join('&');
+      location.href = fplMailtoUrl(res, {
+        reg: profileForSubject.reg,
+        replyTo: profileForSubject.replyTo,
+      });
       // A machine with no mail client registered (or webmail that never registered a
       // handler) drops mailto: on the floor with no error of any kind. There is nothing
       // to detect, so say what should have happened and leave the address and the plan
       // on screen to send by hand.
       fallback.hidden = false;
     };
-    const formOnly = (res.warns || []).includes('warnFplCrossForm');
-    if (formOnly) mail.hidden = true;
     // The button stays ENABLED with the boxes unticked: a disabled control explains
     // nothing, so the click is what says what is missing, and the boxes are marked.
     const fallback = document.createElement('div');
@@ -7870,6 +8083,7 @@ function showFplDialog() {
     const backBtn = document.createElement('button');
     backBtn.type = 'button';
     backBtn.id = 'fpl-back';
+    backBtn.className = 'modal-cancel';
     backBtn.textContent = S.fplBack || 'Back';
     backBtn.onclick = renderDetails;
     btns.append(copy, mail, backBtn);
@@ -7877,4 +8091,523 @@ function showFplDialog() {
   }
 
   renderDetails();
+}
+
+// --- Cross-country (מרחב) plan form ----------------------------------
+// AIP א'-11 נספח ב' is a tabular form, not an ICAO message: registration, IAS,
+// fuel time, every route point with WGS-84 coordinates, plus signatures. It
+// cannot be filed by email as a text message, and NavAid must not stuff the
+// authority's own PDF (copyrighted, and not an AcroForm). So this renders the
+// same rows as an editable on-screen form: everything NavAid knows is filled in,
+// the pilot completes the rest and saves it as a PDF to send and sign.
+// Form-only fields, kept beside the shared profile under the same navaid.fpl.* prefix.
+const FPL_XC_KEYS = ['company', 'purpose', 'altField'];
+// Fields this form shares with the ICAO dialog -- it is largely the same information, so
+// it is entered once and an edit made HERE writes back to the shared profile rather than
+// being thrown away when the sheet closes.
+const FPL_XC_SHARED_KEYS = ['reg', 'type', 'pic', 'license', 'cell', 'persons', 'endurance'];
+function fplXcRow(label, el) {
+  const wrap = document.createElement('label');
+  wrap.className = 'xc-field';
+  const span = document.createElement('span');
+  span.className = 'xc-label';
+  span.textContent = label;
+  wrap.append(span, el);
+  return wrap;
+}
+function fplXcInput(value, opts) {
+  const el = document.createElement('input');
+  el.type = (opts && opts.type) || 'text';
+  el.className = 'xc-input';
+  el.value = value == null ? '' : String(value);
+  if (opts && opts.placeholder) el.placeholder = opts.placeholder;
+  // Locked only when it actually carries a value. A blank locked box would be a field
+  // the pilot can neither see nor fill (the departure time, when the sheet is opened
+  // without going through the dialog).
+  if (opts && opts.fromDialog && String(el.value).trim()) {
+    el.readOnly = true;
+    el.classList.add('xc-ro');
+    el.tabIndex = -1;
+    el.title = (window.S && S.xcFromDialogTip) || '';
+  } else {
+    el.classList.add('xc-rw');
+  }
+  return el;
+}
+// One row per waypoint: the point, its WGS-84 position, and the leg time to it.
+// This is the part that is pure drudgery on paper and that NavAid already knows.
+function fplXcRouteRows() {
+  const wps = state.waypoints || [];
+  const legs = state.legs || [];
+  const rows = [];
+  let cum = 0;
+  for (let i = 0; i < wps.length; i++) {
+    const w = wps[i];
+    const name = (typeof waypointDisplayLabel === 'function')
+      ? waypointDisplayLabel(w, i)
+      : ((typeof navName === 'function' && navName(w.name)) || w.name || '');
+    let legMin = 0;
+    if (i > 0) {
+      const g = (typeof geo === 'function') ? geo(wps[i - 1], wps[i]) : null;
+      const kt = Number((legs[i - 1] || {}).flightSpeed) || 0;
+      if (g && kt > 0) legMin = Math.round((g.dist / kt) * 60);
+      cum += legMin;
+    }
+    // Altitude of the leg arriving at this point (the departure point takes the first
+    // leg's), which is the "גובה טיסה משוער" the form asks for alongside the position.
+    const altLeg = i === 0 ? legs[0] : legs[i - 1];
+    const altFt = altLeg && Number.isFinite(altLeg.inboundAltitude) ? altLeg.inboundAltitude : null;
+    rows.push({
+      name,
+      altFt,
+      code: String(w.name || '').toUpperCase(),
+      // Degrees + decimal minutes, the same readout the app shows elsewhere, which is
+      // the form the AIP asks for (נ.צ. רשת WGS-84).
+      pos: (typeof fmtLatLng === 'function')
+        ? (fmtLatLng(w.lat, 'N', 'S') + ' ' + fmtLatLng(w.lng, 'E', 'W'))
+        : (Number(w.lat).toFixed(4) + ' ' + Number(w.lng).toFixed(4)),
+      legMin: i === 0 ? '' : String(legMin),
+      cumMin: i === 0 ? '0' : String(cum),
+    });
+  }
+  return rows;
+}
+function showFplXcForm(opts) {
+  if ((state.waypoints || []).length < 2) { alert(S.errFplNeedRoute); return; }
+  const o = opts || {};
+  const back = document.createElement('div');
+  back.className = 'modal-back fpl-xc-modal';
+  const box = document.createElement('div');
+  box.className = 'modal xc-sheet';
+  // The form is an official Hebrew document: it is reproduced as-is, in Hebrew and
+  // RTL, whatever language the app is running in. A translated facsimile would not be
+  // the form the authority asked for.
+  box.setAttribute('dir', 'rtl');
+  box.setAttribute('lang', 'he');
+  function close() {
+    document.removeEventListener('keydown', onEsc, true);
+    document.body.classList.remove('printing-xc');
+    back.remove();
+    // Next tick, so the very Escape that closed this form is not also read as
+    // "no form open" by a listener further along the same event.
+    setTimeout(() => { fplXcOpen = false; }, 0);
+  }
+  function onEsc(e) {
+    if (e.key !== 'Escape') return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    close();
+  }
+  back._navaidClose = close;
+
+  const profile = fplProfileRead();
+  const stored = {};
+  for (const k of FPL_XC_KEYS) {
+    try { stored[k] = localStorage.getItem(FPL_PROFILE_PREFIX + k) || ''; }
+    catch (e) { stored[k] = ''; }
+  }
+  const wps = state.waypoints;
+  const rows = fplXcRouteRows();
+  const pad2 = n => String(n).padStart(2, '0');
+  const now = new Date();
+  const todayLocal = now.getFullYear() + '-' + pad2(now.getMonth() + 1) + '-' + pad2(now.getDate());
+  // Times: the departure the pilot already entered in the dialog, and the landing that
+  // follows from the route's own total -- both local, which is what this form carries.
+  const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
+  const depLocal = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(String(o.timeLocal || ''))
+    ? String(o.timeLocal) : '';
+  const rawEetMin = prof && prof.totalTimeH > 0 ? Math.round(prof.totalTimeH * 60) : 0;
+  const arrLocal = (() => {
+    if (!depLocal || !rawEetMin) return '';
+    const [h, m] = depLocal.split(':').map(Number);
+    const t = (h * 60 + m + rawEetMin) % (24 * 60);
+    return pad2(Math.floor(t / 60)) + ':' + pad2(t % 60);
+  })();
+  const flightDate = /^\d{4}-\d{2}-\d{2}$/.test(String(o.dateLocal || ''))
+    ? String(o.dateLocal) : todayLocal;
+
+  const cell = (el, cls) => {
+    const td = document.createElement('td');
+    if (cls) td.className = cls;
+    td.appendChild(el);
+    return td;
+  };
+  const headCell = (text, opts) => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    if (opts && opts.colSpan) th.colSpan = opts.colSpan;
+    if (opts && opts.rowSpan) th.rowSpan = opts.rowSpan;
+    if (opts && opts.cls) th.className = opts.cls;
+    return th;
+  };
+  // Wraps a table in its own horizontal scroll region, so a narrow screen scrolls the
+  // form instead of compressing its columns.
+  const scrollWrap = t => {
+    const w = document.createElement('div');
+    w.className = 'xc-scroll';
+    w.appendChild(t);
+    return w;
+  };
+  const mkTable = () => {
+    const t = document.createElement('table');
+    t.className = 'xc-t';
+    t.appendChild(document.createElement('thead'));
+    t.appendChild(document.createElement('tbody'));
+    return t;
+  };
+  const thead = t => t.tHead;
+  const tbody = t => t.tBodies[0];
+
+  // --- page header, as printed on the form -----------------------------
+
+  const header = document.createElement('div');
+  header.className = 'xc-head';
+  for (const [right, left] of [['פמ"ת פנים ארצי', 'נספח ב\''], ['תוכנית לטיסת מרחב', 'א\' - 11']]) {
+    const line = document.createElement('div');
+    line.className = 'xc-head-line';
+    const r = document.createElement('strong');
+    r.textContent = right;
+    const l = document.createElement('strong');
+    l.textContent = left;
+    line.append(r, l);
+    header.appendChild(line);
+  }
+
+  // The sheet itself is RTL because the form is; text in the APP's language (this note,
+  // the buttons) needs the app's direction, or an English sentence inside the RTL box
+  // comes out reordered.
+  const uiDir = (document.documentElement.getAttribute('dir') === 'rtl') ? 'rtl' : 'ltr';
+  const legend = document.createElement('div');
+  legend.className = 'xc-note xc-legend';
+  legend.dir = uiDir;
+  fplSetBidiText(legend, S.xcLegend || '');
+
+  const dateLine = document.createElement('div');
+  dateLine.className = 'xc-date-line';
+  const dateLabel = document.createElement('span');
+  dateLabel.textContent = 'לתאריך :';
+  const dateInput = fplXcInput(flightDate, { type: 'date', fromDialog: true });
+  dateInput.id = 'xc-date';
+  dateLine.append(dateLabel, dateInput);
+
+  // --- block 1: aircraft and pilot ------------------------------------
+  const t1 = mkTable();
+  // Column widths as the paper has them: names wide, codes narrow.
+  const t1cols = document.createElement('colgroup');
+  for (const w of ['12%', '13%', '11%', '22%', '13%', '15%', '14%']) {
+    const c = document.createElement('col');
+    c.style.width = w;
+    t1cols.appendChild(c);
+  }
+  t1.appendChild(t1cols);
+  const t1head = document.createElement('tr');
+  const t1row = document.createElement('tr');
+  const fields = {};
+  for (const [key, label, value] of [
+    ['callsign', 'אות קריאה', fplRegistration(profile.reg)],
+    ['reg', 'רישום מטוס', fplRegistration(profile.reg)],
+    ['type', 'סוג מטוס', profile.type],
+    ['pic', 'שם הטייס', profile.pic],
+    ['license', 'מס\' הרישיון', profile.license],
+    ['company', 'שם החברה', stored.company],
+    ['purpose', 'מטרת הטיסה', stored.purpose],
+  ]) {
+    t1head.appendChild(headCell(label));
+    const ownRow1 = ['company', 'purpose'].includes(key);
+    fields[key] = fplXcInput(value, ownRow1 ? {} : { fromDialog: true });
+    fields[key].id = 'xc-' + key;
+    t1row.appendChild(cell(fields[key]));
+  }
+  thead(t1).appendChild(t1head);
+  tbody(t1).appendChild(t1row);
+
+  // --- block 2: times, fields, fuel, speed, persons, declarations ------
+  const t2 = mkTable();
+  const t2head = document.createElement('tr');
+  const t2row = document.createElement('tr');
+  const lastRaw = String((wps[wps.length - 1] || {}).name || '').trim();
+  const lastName = ((typeof navName === 'function' && navName(lastRaw)) || lastRaw || '');
+  for (const [key, label, value] of [
+    ['eobt', 'זמן המראה משוער', depLocal],
+    ['eta', 'זמן נחיתה סופית', arrLocal],
+    ['dest', 'שדה יעד סופי', lastName],
+    ['altField', 'שדה משנה', stored.altField],
+    ['fuel', 'זמן דלק', profile.endurance],
+    // Always the Default speed under View/Set -- the setting is the source, not a copy of
+    // it remembered here (a stored value would shadow the setting for good). Editable on
+    // the sheet for a one-off, but not carried to the next flight.
+    ['ias', 'מהירות בקשר IAS',
+      (typeof tune === 'function' ? String(Math.round(Number(tune('defaultLegSpeedKt')) || 0) || '') : '')],
+    ['persons', 'מס\' נפשות במטוס', profile.persons],
+    ['caaEntry', 'יש חדירה לרת"א', ''],
+    ['caaApproval', 'יש אישור רת"א', ''],
+    ['aerialWork', 'עבודות אויר', ''],
+  ]) {
+    t2head.appendChild(headCell(label));
+    const ownField = ['dest', 'eta', 'altField',
+      'caaEntry', 'caaApproval', 'aerialWork'].includes(key);
+    fields[key] = fplXcInput(value, ownField ? {} : { fromDialog: true });
+    fields[key].id = 'xc-' + key;
+    t2row.appendChild(cell(fields[key]));
+  }
+  thead(t2).appendChild(t2head);
+  tbody(t2).appendChild(t2row);
+
+  // --- block 3: route detail -------------------------------------------
+  const t3 = mkTable();
+  t3.classList.add('xc-t-route');
+  // Column widths via <colgroup>: the header's first row spans (point rowspan, זמן
+  // colspan 2, detail rowspan), so nth-child rules were sizing the group cell instead
+  // of the time columns -- which is what threw the table out of alignment.
+  const cg = document.createElement('colgroup');
+  for (const cls of ['xc-col-point', 'xc-col-time', 'xc-col-time', 'xc-col-detail']) {
+    const col = document.createElement('col');
+    col.className = cls;
+    cg.appendChild(col);
+  }
+  t3.insertBefore(cg, t3.tHead);
+  const r1 = document.createElement('tr');
+  r1.appendChild(headCell('שדה יציאה/ אתר', { rowSpan: 2 }));
+  r1.appendChild(headCell('זמן', { colSpan: 2 }));
+  const detailHead = document.createElement('th');
+  detailHead.rowSpan = 2;
+  detailHead.className = 'xc-detail-head';
+  const dh1 = document.createElement('div');
+  dh1.textContent = 'פירוט הנתיבים';
+  const dh2 = document.createElement('div');
+  dh2.className = 'xc-detail-sub';
+  dh2.textContent = '(יש לפרט מיקום וגובה טיסה משוער - ישובים, צמתים, נ.צ. רשת WGS-84, שעה משוערת) ';
+  detailHead.append(dh1, dh2);
+  r1.appendChild(detailHead);
+  const r2 = document.createElement('tr');
+  r2.appendChild(headCell('המראה'));
+  r2.appendChild(headCell('נחיתה'));
+  thead(t3).append(r1, r2);
+  // One row per waypoint, prefilled with what NavAid knows; the blank form has eight
+  // ruled rows, so short routes still get the same page furniture.
+  const routeInputs = [];
+  const rowCount = Math.max(8, rows.length);
+  for (let i = 0; i < rowCount; i++) {
+    const r = rows[i];
+    const tr = document.createElement('tr');
+    // The form has its own time columns, so the time goes there -- not into the route
+    // detail, which is for position and planned altitude.
+    // The waypoint's own name, always -- for a custom point the name IS the code, and
+    // pairing them printed it twice ("התחלה התחלה").
+    const latinOnly = t => /^[\x20-\x7E]*$/.test(String(t || ''));
+    const siteName = r ? (r.name || r.code || '') : '';
+    const site = fplXcInput(siteName);
+    if (siteName && latinOnly(siteName)) site.dir = 'ltr';
+    // Estimated clock time over this point, from the departure the pilot entered.
+    const eta = (() => {
+      if (!depLocal || !r || r.cumMin === '') return '';
+      const [h, m] = depLocal.split(':').map(Number);
+      const t = (h * 60 + m + Number(r.cumMin || 0)) % (24 * 60);
+      return pad2(Math.floor(t / 60)) + ':' + pad2(t % 60);
+    })();
+    // The two זמן columns are the actual takeoff and landing, so only the first and
+    // last rows carry them. The per-point ESTIMATE goes in the detail column, which is
+    // what that column's own header asks for ("שעה משוערת").
+    const dep = fplXcInput(i === 0 ? (depLocal || '') : '');
+    const arr = fplXcInput(r && rows.length && i === rows.length - 1 ? (arrLocal || '') : '');
+    dep.dir = 'ltr';
+    arr.dir = 'ltr';
+    // A wrapping editable cell, not an <input>: a single-line field clipped the text on
+    // screen and printed it clipped too, which is worse than ugly on a filed form.
+    const detail = document.createElement('div');
+    detail.className = 'xc-input xc-detail-input';
+    detail.contentEditable = 'true';
+    detail.setAttribute('role', 'textbox');
+    detail.dir = 'ltr';
+    // Position, altitude and the estimate; the name is in the point column, not repeated.
+    detail.textContent = r
+      ? [
+        r.pos,
+        Number.isFinite(r.altFt) ? r.altFt + 'ft' : '',
+        eta || (r.cumMin ? '+' + r.cumMin : ''),
+      ].filter(Boolean).join('   ')
+      : '';
+    detail.dir = 'ltr';
+    tr.append(cell(site), cell(dep), cell(arr), cell(detail));
+    tbody(t3).appendChild(tr);
+    routeInputs.push({ site, dep, arr, detail });
+  }
+
+  // --- labelled lines and the notes box --------------------------------
+  const lines = document.createElement('div');
+  lines.className = 'xc-lines';
+  const textEls = {};
+  for (const [key, label, big] of [
+    ['rules', 'כללי טיסה :', false],
+    ['approvals', 'אישורים מצורפים :', false],
+    ['coord', 'תיאומים שבוצעו ע"י המפעיל/טייס :', false],
+    ['aisNotes', 'הערות מודיעין טיס והגבלות :', true],
+    ['cell', 'טלפון נייד לבירורים :', false],
+  ]) {
+    const wrap = document.createElement('div');
+    wrap.className = 'xc-line' + (big ? ' xc-line-big' : '');
+    const lab = document.createElement('span');
+    lab.className = 'xc-line-label';
+    lab.textContent = label;
+    // The free-text lines and the mobile-for-queries stay editable: they belong to this
+    // sheet, and the notes box is filled in by AIS.
+    const prefill = key === 'cell' ? profile.cell : (key === 'rules' ? 'VFR' : '');
+    const el = big ? document.createElement('textarea') : fplXcInput(prefill);
+    if (big) { el.className = 'xc-input xc-textarea'; el.rows = 4; }
+    el.id = 'xc-' + key;
+    wrap.append(lab, el);
+    lines.appendChild(wrap);
+    textEls[key] = el;
+  }
+
+  // Signature pads: draw with a finger or a mouse, so the form can be signed before it
+  // is saved as a PDF rather than printed, signed by hand and scanned back in.
+  const sigs = document.createElement('div');
+  sigs.className = 'xc-sigs';
+  const sigPads = [];
+  for (const [key, label] of [['pilot', 'חתימת הטייס :'], ['briefer', 'חתימת התדריכן :']]) {
+    const d = document.createElement('div');
+    d.className = 'xc-sig';
+    const sp = document.createElement('span');
+    sp.textContent = label;
+    const pad = document.createElement('canvas');
+    pad.className = 'xc-sig-pad';
+    pad.id = 'xc-sig-' + key;
+    // Backing store at 2x for a signature that still looks like ink when printed.
+    const cssW = 200, cssH = 52;
+    pad.width = cssW * 2;
+    pad.height = cssH * 2;
+    pad.style.width = cssW + 'px';
+    pad.style.height = cssH + 'px';
+    const ctx = pad.getContext('2d');
+    ctx.scale(2, 2);
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    // Presentation values come from the tuning registry, not from literals in here.
+    ctx.strokeStyle = (typeof tune === 'function' && tune('fplSignatureInk')) || '#111111';
+    let drawing = false;
+    const at = e => {
+      const r = pad.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * (cssW / r.width), y: (e.clientY - r.top) * (cssH / r.height) };
+    };
+    pad.addEventListener('pointerdown', e => {
+      drawing = true;
+      pad.setPointerCapture(e.pointerId);
+      const p = at(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      e.preventDefault();
+    });
+    pad.addEventListener('pointermove', e => {
+      if (!drawing) return;
+      const p = at(e);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      e.preventDefault();
+    });
+    const stop = () => { drawing = false; };
+    pad.addEventListener('pointerup', stop);
+    pad.addEventListener('pointercancel', stop);
+    pad.addEventListener('pointerleave', stop);
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'fpl-link xc-sig-clear';
+    clear.textContent = S.xcSigClear || 'Clear';
+    clear.onclick = () => ctx.clearRect(0, 0, cssW, cssH);
+    d.append(sp, pad, clear);
+    sigs.appendChild(d);
+    sigPads.push({ key, pad, clear: () => ctx.clearRect(0, 0, cssW, cssH) });
+  }
+
+  const footer = document.createElement('div');
+  footer.className = 'xc-foot';
+  for (const t of ['18 מאי 2023', 'רשות התעופה האזרחית', 'עדכון 1/23']) {
+    const d = document.createElement('div');
+    d.textContent = t;
+    footer.appendChild(d);
+  }
+
+  // --- controls (screen only) ------------------------------------------
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns xc-controls';
+  btns.dir = uiDir;
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.id = 'xc-save';
+  save.className = 'fpl-primary';
+  save.textContent = S.xcSavePdf || 'Print / Save as PDF';
+  // Say what the button does: a static page cannot write a PDF itself, so this is the
+  // browser's print dialog with "Save as PDF" as the destination.
+  save.title = fplIsolate(S.xcSavePdfTip || '');
+  save.onclick = () => {
+    // The form's own fields are remembered for next time; the dialog's are changed there.
+    for (const k of FPL_XC_KEYS) {
+      try { localStorage.setItem(FPL_PROFILE_PREFIX + k, fields[k] ? fields[k].value.trim() : ''); }
+      catch (e) { /* storage unavailable */ }
+    }
+    document.body.classList.add('printing-xc');
+    setTimeout(() => {
+      try { window.print(); } finally {
+        setTimeout(() => document.body.classList.remove('printing-xc'), 0);
+      }
+    }, 50);
+  };
+  const mailBtn = document.createElement('button');
+  mailBtn.type = 'button';
+  mailBtn.id = 'xc-mail';
+  mailBtn.textContent = S.xcMailDesk || 'Mail to the FPL desk';
+  mailBtn.title = fplIsolate(S.xcMailDeskTip || '');
+  mailBtn.onclick = () => {
+    // No attachment is possible from a page, so the mail is opened with the address, the
+    // subject and a reminder; the pilot attaches the PDF they saved. The pilot's own
+    // address is copied in, as on the ICAO path.
+    const to = fplFileTo('crosscountry');
+    const reply = String(profile.replyTo || '').trim();
+    const subject = 'FPL ' + fplRegistration(profile.reg) + ' ' +
+      (fields.dest ? fields.dest.value.trim() : '') + ' ' + (dateInput.value || '');
+    const q = ['subject=' + encodeURIComponent(subject),
+      'body=' + encodeURIComponent(S.xcMailBody || '')];
+    if (reply && FPL_EMAIL_RE.test(reply)) {
+      q.push('cc=' + fplMailtoAddress(reply));
+      q.push('reply-to=' + fplMailtoAddress(reply));
+    }
+    location.href = 'mailto:' + fplMailtoAddress(to) + '?' + q.join('&');
+  };
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.id = 'xc-clear';
+  clearBtn.textContent = S.xcClearForm || 'Clear form';
+  clearBtn.title = fplIsolate(S.xcClearFormTip || '');
+  clearBtn.onclick = () => {
+    if (!confirm(S.xcClearFormConfirm || 'Clear the fields you filled in on this form?')) return;
+    // Only what the pilot typed here: the form's own boxes, the free-text lines and the
+    // signatures. The dialog's values and the generated route stay.
+    for (const el of Object.values(fields)) {
+      if (el && !el.readOnly) el.value = '';
+    }
+    for (const [key, el] of Object.entries(textEls)) {
+      if (!el) continue;
+      // The rules line is a value the app fills, not something the pilot typed, so
+      // clearing the form restores it rather than blanking it.
+      el.value = (key === 'rules') ? 'VFR' : '';
+    }
+    for (const pad of sigPads) pad.clear();
+  };
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'modal-cancel';
+  cancel.textContent = S.cancel || 'Cancel';
+  cancel.onclick = close;
+  btns.append(save, mailBtn, clearBtn, cancel);
+  addModalCloseX(box, close);
+
+  box.append(header, legend, dateLine, scrollWrap(t1), scrollWrap(t2), scrollWrap(t3),
+    lines, sigs, footer, btns);
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) close(); };
+  fplXcOpen = true;
+  document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc, true);
+  return { fields, textEls, routeInputs, sigPads };
 }

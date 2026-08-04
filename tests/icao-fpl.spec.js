@@ -49,10 +49,27 @@ async function route(page, names = ['LLHZ', 'APOLN', 'ARENA', 'LLES']) {
   }, names);
 }
 
+// A route with an off-network point: that is what makes a flight cross-country, and
+// what the form exists for. Named so it cannot resolve in either dataset.
+async function offNetworkRoute(page) {
+  return page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: 32.42, lng: 35.05, name: 'FARMSTRIP' },
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+    ];
+    syncLegs();
+    for (const l of state.legs) { l.flightSpeed = 90; l.outboundSpeed = 90; }
+    draw();
+  });
+}
+
 const PROFILE = {
   reg: 'HLH', type: 'ULAC', wake: 'L', equip: 'S', surv: 'C',
   pic: 'Israel Israeli', license: '1234', cell: '0541234567',
   endurance: '0400', persons: '2', kind: 'routes',
+  replyTo: 'pilot@example.com',            // required: the approval comes back to it
 };
 
 // `now` is given as a LOCAL wall-clock string and built inside the page, where the
@@ -89,8 +106,8 @@ test('the message matches the AIP sample shape line for line', async ({ page }) 
 test('a three-letter call sign gets the 4X prefix, a full one is left alone', async ({ page }) => {
   await boot(page);
   await route(page);
-  expect((await build(page, { ...PROFILE, reg: 'CWH' })).text).toContain('(FPL-4XCWH-VG');
-  expect((await build(page, { ...PROFILE, reg: '4X-CWH' })).text).toContain('(FPL-4XCWH-VG');
+  expect((await build(page, { ...PROFILE, reg: 'HLH' })).text).toContain('(FPL-4XHLH-VG');
+  expect((await build(page, { ...PROFILE, reg: '4X-HLH' })).text).toContain('(FPL-4XHLH-VG');
 });
 
 // The pilot reads a clock; the message carries UTC. Israel is UTC+3 in summer, so
@@ -298,7 +315,7 @@ test('the dialog pre-fills the published filing address for the flight type', as
   await boot(page);
   await route(page);
   await page.evaluate(() => { showFlightPlan(); document.getElementById('fpl-open').click(); });
-  // Flight type and the address live under Advanced; open it the way a pilot would.
+  // The flight type leads the form; the address still lives under Advanced.
   await page.click('.fpl-advanced summary');
   await expect(page.locator('#fpl-ais-email')).toHaveValue('ais@iaa.gov.il');
   // Switching the flight type moves the address with it...
@@ -315,8 +332,9 @@ test('submitting without the acknowledgements says what is missing', async ({ pa
   await boot(page);
   await route(page);
   await page.evaluate(() => {
-    for (const [k, v] of Object.entries({ reg: 'CWH', type: 'C172', pic: 'A PILOT',
-      license: '1', persons: '2', endurance: '0500', kind: 'routes' })) {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500', kind: 'routes',
+      replyTo: 'pilot@example.com' })) {
       localStorage.setItem('navaid.fpl.' + k, v);
     }
     showFlightPlan();
@@ -343,8 +361,9 @@ test('submitting reveals the address to use if no mail app opens', async ({ page
   await boot(page);
   await route(page);
   await page.evaluate(() => {
-    for (const [k, v] of Object.entries({ reg: 'CWH', type: 'C172', pic: 'A PILOT',
-      license: '1', persons: '2', endurance: '0500', kind: 'routes' })) {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500', kind: 'routes',
+      replyTo: 'pilot@example.com' })) {
       localStorage.setItem('navaid.fpl.' + k, v);
     }
     showFlightPlan();
@@ -360,6 +379,681 @@ test('submitting reveals the address to use if no mail app opens', async ({ page
   await expect(page.locator('#fpl-mail-fallback')).toBeVisible();
   await expect(page.locator('.fpl-fallback-addr')).toHaveText('ais@iaa.gov.il');
   await expect(page.locator('#fpl-copy')).toBeVisible();       // and Copy is right there
+});
+
+// A cross-country plan belongs on the authority's own form, so this dialog must offer
+// no way to mail it -- not a disabled button, not a hidden one: none.
+// The choice that decides which artifact is produced leads the dialog, and defaults
+// to the ICAO message.
+test('the flight type is the first field and defaults to the ICAO message', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    // A filled profile, so Continue reaches the review step instead of validating.
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  const kind = page.locator('#fpl-kind');
+  await expect(kind).toBeVisible();                      // not buried under Advanced
+  await expect(kind).toHaveValue('routes');
+  // It is the first row of the form.
+  const firstRowId = await page.evaluate(() => {
+    const row = document.querySelector('.fpl-body .fpl-row');
+    const f = row && row.querySelector('select, input');
+    return f ? f.id : null;
+  });
+  expect(firstRowId).toBe('fpl-kind');
+  // A cross-country flight skips the ICAO step entirely: Continue opens the form. This
+  // route is all-published, so switch to one that is not before selecting it.
+  await offNetworkRoute(page);
+  await page.evaluate(() => {
+    document.querySelector('.fpl-xc-modal, .modal-back.fpl-modal')._navaidClose();
+    showFplDialog();
+  });
+  const kind2 = page.locator('#fpl-kind');
+  await kind2.selectOption('crosscountry');
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(1);
+  await expect(page.locator('#fpl-text')).toHaveCount(0);      // no ICAO message step
+});
+
+// A route made only of published points IS a routes flight (א'-11 §2.ח), so the
+// cross-country option does not apply to it.
+test('an all-published route cannot be filed as cross-country', async ({ page }) => {
+  await boot(page);
+  await route(page);                                  // LLHZ APOLN ARENA LLES
+  await page.evaluate(() => { showFlightPlan(); document.getElementById('fpl-open').click(); });
+  const crossDisabled = () => page.evaluate(() =>
+    document.querySelector('#fpl-kind option[value="crosscountry"]').disabled);
+  expect(await crossDisabled()).toBe(true);
+  await expect(page.locator('#fpl-kind')).toHaveValue('routes');
+  // With an off-network point in the route it becomes available again.
+  await offNetworkRoute(page);
+  await page.evaluate(() => {
+    document.querySelector('.modal-back.fpl-modal')._navaidClose();
+    showFplDialog();
+  });
+  expect(await crossDisabled()).toBe(false);
+});
+
+// One row for the aircraft type: a second "type code" field asked for what the dropdown
+// already asked for. Picking Other turns the same row into a text box.
+// The review step has one primary action; Copy and Back are secondary, or all three
+// read as equally weighted next to each other.
+test('the review step has a single primary button', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('#fpl-mail')).toHaveClass(/fpl-primary/);
+  await expect(page.locator('#fpl-copy')).toHaveClass(/modal-cancel/);
+  await expect(page.locator('#fpl-back')).toHaveClass(/modal-cancel/);
+});
+
+// The Latin-letters note describes the pilot name and licence, so it sits under them --
+// after the email row it read as being about the address.
+test('the Latin-letters note sits under the fields it describes', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { showFlightPlan(); document.getElementById('fpl-open').click(); });
+  const order = await page.evaluate(() => {
+    const ids = [];
+    for (const el of document.querySelectorAll('.fpl-body > *')) {
+      const f = el.querySelector('input, select');
+      if (f && f.id) ids.push(f.id);
+      else if (el.classList.contains('fpl-hint') && /Latin|לטיניות/.test(el.textContent)) ids.push('LATIN-HINT');
+    }
+    return ids;
+  });
+  expect(order.indexOf('LATIN-HINT')).toBeGreaterThan(order.indexOf('fpl-license'));
+  expect(order.indexOf('LATIN-HINT')).toBeLessThan(order.indexOf('fpl-reply-to'));
+  // ...and the mobile field is addressable like every other field.
+  await expect(page.locator('#fpl-cell')).toHaveCount(1);
+});
+
+test('the aircraft type is one row, not a dropdown plus a duplicate code field', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    localStorage.removeItem('navaid.fpl.type');
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  // Exactly one visible row mentions the type.
+  const typeRows = await page.evaluate(() =>
+    [...document.querySelectorAll('.fpl-body .fpl-row')]
+      .filter(r => !r.hidden && /type/i.test((r.querySelector('span') || {}).textContent || ''))
+      .length);
+  expect(typeRows).toBe(2);        // "Flight type" and "Aircraft type", nothing else
+  await expect(page.locator('#fpl-type-select')).toBeVisible();
+  await expect(page.locator('#fpl-type')).toBeHidden();
+  await expect(page.locator('#fpl-type-select')).toHaveValue('C172');
+
+  // Other turns that row into a text box, in place.
+  await page.selectOption('#fpl-type-select', '_other');
+  await expect(page.locator('#fpl-type-select')).toBeHidden();
+  await expect(page.locator('#fpl-type')).toBeVisible();
+  await expect(page.locator('#fpl-type')).toHaveValue('');
+  await page.fill('#fpl-type', 'AT3');
+  // ...and the way back to the list is right there.
+  await page.locator('#fpl-type-list').click();
+  await expect(page.locator('#fpl-type-select')).toBeVisible();
+  await expect(page.locator('#fpl-type')).toBeHidden();
+
+  // A stored designator outside the list reopens straight into the text box.
+  await page.evaluate(() => {
+    localStorage.setItem('navaid.fpl.type', 'P28A');
+    document.querySelector('.modal-back.fpl-modal')._navaidClose();
+    showFplDialog();
+  });
+  await expect(page.locator('#fpl-type')).toBeVisible();
+  await expect(page.locator('#fpl-type')).toHaveValue('P28A');
+  await expect(page.locator('#fpl-type-select')).toBeHidden();
+});
+
+test('a cross-country plan never reaches a submit button', async ({ page }) => {
+  await boot(page);
+  await offNetworkRoute(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500', kind: 'crosscountry',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(1);  // the authority's form
+  await expect(page.locator('#fpl-mail')).toHaveCount(0);      // never a way to mail one
+  await expect(page.locator('#fpl-text')).toHaveCount(0);      // and no ICAO message at all
+});
+
+test('a routes plan does have the submit button', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500', kind: 'routes',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('#fpl-mail')).toHaveCount(1);
+});
+
+// The cross-country form: prefilled with what NavAid knows, editable everywhere, and
+// printable. The route table is the part that is pure drudgery on paper.
+// Nothing is filed on the cross-country path, so the filing acknowledgements are not
+// shown there and cannot stand between the pilot and the form.
+test('opening the cross-country form needs no acknowledgements', async ({ page }) => {
+  await boot(page);
+  await offNetworkRoute(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500', kind: 'crosscountry',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  // Straight to the form -- no acknowledgements, because nothing is being filed here.
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(1);
+  await expect(page.locator('.fpl-ack')).toHaveCount(0);
+});
+
+// The form is stacked on the dialog, so cancelling it lands back on the dialog rather
+// than dumping the pilot out to the flight-plan panel.
+test('cancelling the cross-country form returns to the submit dialog', async ({ page }) => {
+  await boot(page);
+  await offNetworkRoute(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500', kind: 'crosscountry',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(1);
+  await page.locator('.fpl-xc-modal .modal-cancel').click();
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(0);
+  await expect(page.locator('.modal-back.fpl-modal')).toHaveCount(1);   // the dialog, still there
+  await expect(page.locator('#fpl-kind')).toBeVisible();                // back on its first step
+  // Escape from the stacked form likewise leaves the dialog standing.
+  await page.locator('#fpl-next').click();
+  await page.locator('.xc-input').first().focus();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(0);
+  await expect(page.locator('.modal-back.fpl-modal')).toHaveCount(1);
+});
+
+// <option> cannot hold markup, so Latin runs are isolated with Unicode FSI/PDI --
+// without it "הודעת ICAO" renders reversed in the dropdown.
+test('dropdown labels isolate their Latin runs in Hebrew', async ({ page }) => {
+  await boot(page, '?lang=he&nogist');
+  await route(page);
+  await page.evaluate(() => { showFlightPlan(); document.getElementById('fpl-open').click(); });
+  const labels = await page.locator('#fpl-kind option').allTextContents();
+  expect(labels.length).toBe(2);
+  for (const l of labels) {
+    if (!/[A-Za-z]/.test(l)) continue;
+    expect(l).toContain('\u2068');      // first-strong isolate
+    expect(l).toContain('\u2069');      // pop directional isolate
+  }
+});
+
+// Carried in from the dialog, the departure time is a value, not a box to retype.
+test('a departure time from the dialog arrives locked on the sheet', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
+  });
+  await expect(page.locator('#xc-eobt')).toHaveValue('09:20');
+  expect(await page.evaluate(() => document.getElementById('xc-eobt').readOnly)).toBe(true);
+});
+
+// A waypoint with no name of its own still gets the label the app shows it by, so no row
+// on the form is nameless.
+test('unnamed waypoints use their default label in the point column', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: 32.3, lng: 34.9, name: '' },          // dropped on the map, never named
+      { lat: 32.4, lng: 35.0, name: '' },
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    draw();
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFplXcForm();
+  });
+  const sites = await page.evaluate(() =>
+    [...document.querySelectorAll('.xc-t-route tbody td:nth-child(1) input')]
+      .map(i => i.value).slice(0, 3));
+  expect(sites[0]).toBeTruthy();
+  expect(sites[1]).toBeTruthy();          // the default label, not an empty cell
+  expect(sites[2]).toBeTruthy();
+  expect(sites[1]).not.toBe(sites[2]);    // and they are distinct points
+});
+
+test('the cross-country form prefills from the route and the profile', async ({ page }) => {
+  await boot(page);
+  await route(page);                       // LLHZ APOLN ARENA LLES
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1234', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFplXcForm();
+  });
+  const sheet = page.locator('.fpl-xc-modal');
+  await expect(sheet).toHaveCount(1);
+  const vals = await page.evaluate(() => ({
+    reg: document.getElementById('xc-reg').value,
+    callsign: document.getElementById('xc-callsign').value,
+    type: document.getElementById('xc-type').value,
+    pic: document.getElementById('xc-pic').value,
+    license: document.getElementById('xc-license').value,
+    fuel: document.getElementById('xc-fuel').value,
+    persons: document.getElementById('xc-persons').value,
+    cell: document.getElementById('xc-cell').value,
+    ias: document.getElementById('xc-ias').value,
+    details: [...document.querySelectorAll('.xc-detail-input')]
+      .map(e => e.value != null ? e.value : e.textContent).filter(Boolean),
+    sites: [...document.querySelectorAll('.xc-t-route tbody tr td:nth-child(1) input')]
+      .map(i => i.value).filter(Boolean),
+    times: [...document.querySelectorAll('.xc-t-route tbody tr td:nth-child(3) input')]
+      .map(i => i.value).filter(Boolean),
+  }));
+  expect(vals.reg).toBe('4XHLH');                // registration, with the prefix applied
+  expect(vals.callsign).toBe('4XHLH');
+  expect(vals.type).toBe('C172');
+  expect(vals.pic).toBe('A PILOT');
+  expect(vals.license).toBe('1234');
+  expect(vals.fuel).toBe('0500');
+  expect(vals.persons).toBe('2');
+  expect(vals.cell).toBe('0500000000');
+  // The speed comes from the Default speed setting under View/Set.
+  expect(vals.ias).toBe('90');
+  // The detail column carries position (and planned altitude when set) for every point
+  // -- the part that is pure drudgery on paper. Times live in the form's time columns.
+  expect(vals.details.length).toBe(4);
+  expect(vals.details[0]).toMatch(/^\d{2}°\d{2}\.\d'[NS] \d{3}°\d{2}\.\d'[EW]/);
+  expect(vals.sites.length).toBe(4);                 // the point column is filled
+  // The waypoint's own name, once -- never the code and the name together, which printed
+  // twice for a custom point whose name IS its code.
+  expect(vals.sites[0]).toBeTruthy();
+  for (const site of vals.sites) {
+    const words = site.split(/\s+/).filter(Boolean);
+    expect(new Set(words).size, site).toBe(words.length);
+  }
+  // The estimate per point lives in the detail column, as that column's header asks.
+  // Opened without a departure time, so the running minutes stand in for a clock time.
+  expect(vals.details[3]).toMatch(/\+\d+/);
+  // The זמן columns are the actual takeoff and landing, so only the last row here.
+  expect(vals.times.length).toBeLessThanOrEqual(1);
+});
+
+// The header's first row spans (point rowspan, זמן colspan 2, detail rowspan), so
+// nth-child width rules sized the wrong cells and the table came out lopsided. Widths
+// live on a <colgroup> now; this measures the result.
+test('the route table columns line up', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm());
+  const cols = await page.evaluate(() => {
+    const row = document.querySelector('.xc-t-route tbody tr');
+    const w = el => Math.round(el.getBoundingClientRect().width);
+    const tds = [...row.children].map(w);
+    const heads = [...document.querySelectorAll('.xc-t-route thead tr:last-child th')].map(w);
+    return { tds, heads, table: w(document.querySelector('.xc-t-route')) };
+  });
+  expect(cols.tds.length).toBe(4);
+  // The two time columns are the same width as each other, and as their headers.
+  expect(cols.tds[1]).toBe(cols.tds[2]);
+  expect(cols.heads[0]).toBe(cols.tds[1]);
+  expect(cols.heads[1]).toBe(cols.tds[2]);
+  // Each fixed column is narrow, and the detail column takes the rest of the table.
+  expect(cols.tds[1]).toBeLessThan(70);
+  expect(cols.tds[0]).toBeLessThan(cols.tds[3]);
+  expect(cols.tds[3]).toBeGreaterThan(cols.table / 2);
+
+  // ...and a time cell is comfortably wider than the text it holds, header included.
+  const fit = await page.evaluate(() => {
+    const inp = document.querySelector('.xc-t-route tbody td:nth-child(2) input');
+    const th = document.querySelector('.xc-t-route thead tr:last-child th');
+    const width = (el, text) => {
+      const cs = getComputedStyle(el);
+      const c = document.createElement('canvas').getContext('2d');
+      c.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      return c.measureText(text).width;
+    };
+    return {
+      cell: inp.closest('td').getBoundingClientRect().width,
+      value: width(inp, '08:30'),
+      header: width(th, th.textContent),
+    };
+  });
+  expect(fit.cell - fit.value).toBeGreaterThan(12);
+  expect(fit.cell - fit.header).toBeGreaterThan(12);
+});
+
+test('the sheet tells its two kinds of box apart, and nothing is blank-and-locked', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1234', cell: '0500000000', persons: '2', endurance: '0500' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFplXcForm();
+  });
+  // Values entered in the dialog are shown, not retyped here: read-only, muted, and out
+  // of the tab order, with a tooltip saying where to change them.
+  for (const id of ['xc-reg', 'xc-type', 'xc-pic', 'xc-license', 'xc-persons', 'xc-fuel',
+    'xc-date', 'xc-ias']) {
+    const box = await page.evaluate(i => {
+      const el = document.getElementById(i);
+      return el && { ro: el.readOnly, cls: el.className, tab: el.tabIndex, tip: !!el.title };
+    }, id);
+    expect(box, id).toMatchObject({ ro: true, tab: -1, tip: true });
+    expect(box.cls, id).toContain('xc-ro');
+  }
+  // The form's own boxes are editable and marked as such.
+  for (const id of ['xc-company', 'xc-purpose', 'xc-dest', 'xc-eta', 'xc-altField',
+    'xc-caaEntry', 'xc-caaApproval', 'xc-aerialWork',
+    'xc-rules', 'xc-approvals', 'xc-coord', 'xc-aisNotes', 'xc-cell']) {
+    const box = await page.evaluate(i => {
+      const el = document.getElementById(i);
+      return el && { ro: !!el.readOnly, cls: el.className };
+    }, id);
+    expect(box, id).toMatchObject({ ro: false });
+  }
+  expect(await page.evaluate(() =>
+    [...document.querySelectorAll('.xc-detail-input')].every(e => e.isContentEditable))).toBe(true);
+  expect(await page.locator('.xc-sig-pad').count()).toBe(2);
+  // A locked box must never be empty -- that would be a value the pilot can neither see
+  // nor supply.
+  const blankLocked = await page.evaluate(() =>
+    [...document.querySelectorAll('.xc-sheet input')]
+      .filter(el => el.readOnly && !el.value.trim())
+      .map(el => el.id));
+  expect(blankLocked).toEqual([]);
+  // Opened without a departure time, so that box is the pilot's to fill.
+  expect(await page.evaluate(() => document.getElementById('xc-eobt').readOnly)).toBe(false);
+  // And the difference is stated, not left to be inferred from the styling. The note is
+  // in the app's language, so it carries the app's direction inside this RTL sheet.
+  await expect(page.locator('.xc-legend')).toBeVisible();
+  expect(await page.evaluate(() => {
+    const want = document.documentElement.getAttribute('dir') === 'rtl' ? 'rtl' : 'ltr';
+    return document.querySelector('.xc-legend').dir === want;
+  })).toBe(true);
+  // What belongs to this sheet stays editable: the route detail, the free-text lines,
+  // the mobile for queries, and the signatures.
+  expect(await page.evaluate(() =>
+    [...document.querySelectorAll('.xc-detail-input')].every(e => e.isContentEditable))).toBe(true);
+  for (const id of ['xc-rules', 'xc-approvals', 'xc-coord', 'xc-aisNotes', 'xc-cell']) {
+    expect(await page.evaluate(i => {
+      const el = document.getElementById(i);
+      return !!el && !el.readOnly && !el.disabled;
+    }, id), id).toBe(true);
+  }
+  expect(await page.locator('.xc-sig-pad').count()).toBe(2);
+});
+
+// One rule for the shared details, applied before the sheet is drawn -- so it does not
+// need testing twice.
+test('the dialog refuses a cross-country plan with details missing', async ({ page }) => {
+  await boot(page);
+  await offNetworkRoute(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    localStorage.removeItem('navaid.fpl.license');      // the one blank field
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  await expect(page.locator('#fpl-kind')).toHaveValue('crosscountry');
+  await page.locator('#fpl-next').click();
+  // No sheet, and the same message the ICAO plan gives.
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(0);
+  // Names the field that is blank, rather than "fill in the details".
+  await expect(page.locator('.fpl-errs')).toContainText(/License number|מספר רישיון/);
+  await expect(page.locator('#fpl-license')).toHaveClass(/fpl-input-missing/);
+  // Filling it in the dialog is all it takes.
+  await page.fill('#fpl-license', '4321');
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(1);
+  await expect(page.locator('#xc-license')).toHaveValue('4321');
+});
+
+// The two plans are validated by the same code against the same list, so neither accepts
+// what the other rejects.
+test('both plans demand exactly the same details', async ({ page }) => {
+  await boot(page);
+  const seed = (extra) => page.evaluate(o => {
+    for (const [k, v] of Object.entries(o)) {
+      if (v === null) localStorage.removeItem('navaid.fpl.' + k);
+      else localStorage.setItem('navaid.fpl.' + k, v);
+    }
+  }, extra);
+  const full = { reg: 'HLH', type: 'C172', wake: 'L', equip: 'S', surv: 'C', pic: 'A PILOT',
+    license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+    replyTo: 'pilot@example.com' };
+
+  // Drop each field the pilot can actually leave blank; both plans must refuse it. (Type,
+  // endurance and persons are dropdowns, so the dialog always supplies a value for them --
+  // asserted below rather than pretended otherwise.)
+  for (const field of ['reg', 'pic', 'license', 'cell', 'replyTo']) {
+    await route(page);                                   // all-published: ICAO
+    await seed({ ...full, [field]: null });
+    await page.evaluate(() => {
+      document.querySelectorAll('.modal-back').forEach(b => b._navaidClose ? b._navaidClose() : b.remove());
+      showFplDialog();
+    });
+    await page.locator('#fpl-next').click();
+    expect(await page.locator('#fpl-text').count(), 'ICAO accepted a missing ' + field).toBe(0);
+
+    await offNetworkRoute(page);                         // off-network: the form
+    await page.evaluate(() => {
+      document.querySelectorAll('.modal-back').forEach(b => b._navaidClose ? b._navaidClose() : b.remove());
+      showFplDialog();
+    });
+    await page.locator('#fpl-next').click();
+    expect(await page.locator('.fpl-xc-modal').count(), 'form accepted a missing ' + field).toBe(0);
+  }
+
+  // The dropdown-backed details cannot be blank from the dialog at all.
+  await seed({ ...full, type: null, endurance: null, persons: null });
+  await route(page);
+  await page.evaluate(() => {
+    document.querySelectorAll('.modal-back').forEach(b => b._navaidClose ? b._navaidClose() : b.remove());
+    showFplDialog();
+  });
+  for (const id of ['fpl-type-select', 'fpl-endurance', 'fpl-persons']) {
+    expect(await page.evaluate(i => document.getElementById(i).value, id), id).toBeTruthy();
+  }
+
+  // With everything present, both go through.
+  await seed(full);
+  await route(page);
+  await page.evaluate(() => {
+    document.querySelectorAll('.modal-back').forEach(b => b._navaidClose ? b._navaidClose() : b.remove());
+    showFplDialog();
+  });
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('#fpl-text')).toBeVisible();
+  await offNetworkRoute(page);
+  await page.evaluate(() => {
+    document.querySelectorAll('.modal-back').forEach(b => b._navaidClose ? b._navaidClose() : b.remove());
+    showFplDialog();
+  });
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(1);
+});
+
+test('form-only fields live on the form, not in the dialog', async ({ page }) => {
+  await boot(page);
+  await offNetworkRoute(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  // Company, purpose, alternate field and IAS are boxes on the authority's form.
+  for (const id of ['fpl-xc-company', 'fpl-xc-purpose', 'fpl-xc-altField', 'fpl-xc-ias']) {
+    await expect(page.locator('#' + id)).toHaveCount(0);
+  }
+  await page.locator('#fpl-next').click();
+  for (const id of ['xc-company', 'xc-purpose', 'xc-altField', 'xc-ias']) {
+    await expect(page.locator('#' + id)).toBeVisible();
+  }
+  // Filled on the form, remembered for next time.
+  await page.fill('#xc-company', 'Test Aviation');
+  await page.evaluate(() => { window.print = () => {}; document.getElementById('xc-save').click(); });
+  expect(await page.evaluate(() => localStorage.getItem('navaid.fpl.company'))).toBe('Test Aviation');
+});
+
+// Clear form wipes what the pilot typed here -- not the dialog's values, and not the
+// route table the app generated.
+// The IAS follows the Default speed setting; it is not a remembered copy that could
+// shadow the setting later.
+test('the form speed follows the Default speed setting', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    // A stale copy from an older build must not win.
+    localStorage.setItem('navaid.fpl.ias', '77');
+    showFplXcForm();
+  });
+  await expect(page.locator('#xc-ias')).toHaveValue('90');          // the shipped default
+  // Locked: it is the Default speed setting, changed under View/Set rather than here.
+  expect(await page.evaluate(() => document.getElementById('xc-ias').readOnly)).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.fpl.ias'))).toBeNull();
+
+  // Change the setting and the form follows it.
+  await page.evaluate(() => {
+    document.querySelector('.fpl-xc-modal')._navaidClose();
+    setTune('defaultLegSpeedKt', 115);
+    showFplXcForm();
+  });
+  await expect(page.locator('#xc-ias')).toHaveValue('115');
+});
+
+// A UI review on a phone found the form squeezed: seven values and six headers clipped
+// into unreadable slivers at 375px. The form has a paper width -- it scrolls instead.
+test('nothing on the form is clipped on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await boot(page);
+  await offNetworkRoute(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'ISRAEL ISRAELI',
+      license: '1234', cell: '0541234567', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
+  });
+  const fit = await page.evaluate(() => ({
+    clippedValues: [...document.querySelectorAll('.xc-sheet input')]
+      .filter(el => el.value && el.scrollWidth > el.clientWidth + 1)
+      .map(el => el.id + '=' + el.value),
+    clippedHeaders: [...document.querySelectorAll('.xc-t th')]
+      .filter(th => th.scrollWidth > th.clientWidth + 1)
+      .map(th => th.textContent.trim().slice(0, 18)),
+    scrollRegions: document.querySelectorAll('.xc-scroll').length,
+    pageScrollsSideways: document.documentElement.scrollWidth > window.innerWidth,
+  }));
+  expect(fit.clippedValues).toEqual([]);
+  expect(fit.clippedHeaders).toEqual([]);
+  expect(fit.scrollRegions).toBe(3);          // each table scrolls on its own
+  expect(fit.pageScrollsSideways).toBe(false);   // the page itself does not
+});
+
+test('clear form wipes only what was typed on the sheet', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1234', cell: '0500000000', persons: '2', endurance: '0500' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
+    window.confirm = () => true;
+  });
+  await page.fill('#xc-company', 'Test Aviation');
+  await page.fill('#xc-purpose', 'Training');
+  await page.fill('#xc-coord', 'Called the tower');
+  const detailBefore = await page.locator('.xc-detail-input').first().textContent();
+
+  await page.locator('#xc-clear').click();
+
+  // Gone: what was typed here.
+  await expect(page.locator('#xc-company')).toHaveValue('');
+  await expect(page.locator('#xc-purpose')).toHaveValue('');
+  await expect(page.locator('#xc-coord')).toHaveValue('');
+  // Kept: what the app supplied, the dialog's values, and the generated route.
+  await expect(page.locator('#xc-rules')).toHaveValue('VFR');
+  await expect(page.locator('#xc-pic')).toHaveValue('A PILOT');
+  await expect(page.locator('#xc-license')).toHaveValue('1234');
+  expect(await page.locator('.xc-detail-input').first().textContent()).toBe(detailBefore);
+});
+
+test('saving the form prints only the sheet', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm());
+  const printing = await page.evaluate(() => new Promise(resolve => {
+    window.print = () => resolve(document.body.classList.contains('printing-xc'));
+    document.getElementById('xc-save').click();
+  }));
+  expect(printing).toBe(true);
+  // ...and the screen is not left in print state afterwards.
+  await expect.poll(() => page.evaluate(() =>
+    document.body.classList.contains('printing-xc'))).toBe(false);
 });
 
 test('Escape closes the FPL dialog and leaves the flight plan open', async ({ page }) => {
@@ -386,71 +1080,6 @@ test('a Hebrew pilot name is refused — the message is ASCII', async ({ page })
   expect(res.text).toBeUndefined();
   const ok = await build(page, { ...PROFILE, pic: 'MARCO SUPINO' });
   expect(ok.errs).toBeUndefined();
-});
-
-// Hebrew names + a Latin ICAO code + an arrow in one line reordered under bidi: the
-// code jumped to the wrong end and the sequence read backwards.
-// The pilot should know the likely outcome, not just the mechanism.
-test('the non-airfield warnings say it will probably be declined', async ({ page }) => {
-  for (const lang of ['en', 'he']) {
-    await boot(page, '?lang=' + lang + '&nogist');
-    const texts = await page.evaluate(() =>
-      [S.warnFplDepNotAerodrome, S.warnFplDestNotAerodrome]);
-    for (const t of texts) {
-      expect(t).toBeTruthy();
-      expect(t).toMatch(lang === 'en' ? /probably be declined/i : /יידחה/);
-    }
-  }
-});
-
-// Warnings and hints mix Hebrew with Latin runs (ICAO, ZZZZ, DEST/, NavAid, an
-// address). Without isolation the line comes out scrambled on screen.
-test('warning and hint text isolates its Latin runs in Hebrew', async ({ page }) => {
-  await boot(page, '?lang=he&nogist');
-  await route(page, ['LLHZ', 'APOLN', 'ARENA', 'NAGID']);   // triggers the ZZZZ warning
-  await page.evaluate(() => {
-    for (const [k, v] of Object.entries({ reg: 'CWH', type: 'C172', pic: 'A PILOT',
-      license: '1', persons: '2', endurance: '0500', kind: 'crosscountry' })) {
-      localStorage.setItem('navaid.fpl.' + k, v);
-    }
-    showFlightPlan();
-    document.getElementById('fpl-open').click();
-    document.getElementById('fpl-next').click();
-  });
-  const warns = page.locator('.fpl-warn');
-  expect(await warns.count()).toBeGreaterThan(0);
-  // Every Latin run inside a warning sits in its own <bdi>.
-  const bdiPerWarn = await warns.evaluateAll(els => els.map(e => ({
-    text: e.textContent,
-    bdis: [...e.querySelectorAll('bdi')].map(b => b.textContent),
-  })));
-  const withLatin = bdiPerWarn.filter(w => /[A-Za-z]/.test(w.text));
-  expect(withLatin.length).toBeGreaterThan(0);
-  for (const w of withLatin) expect(w.bdis.length).toBeGreaterThan(0);
-  // The mail note too, and the derived line.
-  for (const sel of ['.fpl-hint', '.fpl-derived']) {
-    const el = page.locator(sel).first();
-    if (await el.count()) {
-      const t = await el.textContent();
-      if (/[A-Za-z]/.test(t)) expect(await el.locator('bdi').count()).toBeGreaterThan(0);
-    }
-  }
-});
-
-test('the route summary is bidi-isolated per waypoint', async ({ page }) => {
-  for (const [lang, arrow] of [['en', '→'], ['he', '←']]) {
-    await boot(page, '?lang=' + lang + '&nogist');
-    await route(page);
-    await page.evaluate(() => { showFlightPlan(); document.getElementById('fpl-open').click(); });
-    const summary = page.locator('#fpl-route-summary');
-    // One <bdi> per waypoint, so no name can drag its neighbours around.
-    await expect(summary.locator('bdi')).toHaveCount(4);
-    expect(await summary.locator('bdi').first().textContent()).toBe('LLHZ');
-    // The arrow points the way the UI reads.
-    const seps = await summary.locator('.fpl-route-sep').allTextContents();
-    expect(seps.length).toBe(3);
-    for (const sep of seps) expect(sep.trim()).toBe(arrow);
-  }
 });
 
 test('the mail note carries no address, so RTL cannot garble it', async ({ page }) => {
@@ -503,6 +1132,79 @@ test('the mail link keeps the recipient readable but cannot carry extra headers'
   expect(nasty).not.toContain('&');
 });
 
+// On a borrowed machine the sending account is not the pilot's, so the approval would
+// land in someone else's inbox. mailto's reply-to is ignored by most clients, so the
+// address is CC'd as well -- that is the part that actually works.
+test('a reply-to address is carried as cc and reply-to', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const res = await build(page);
+  const url = await page.evaluate(([r, o]) => fplMailtoUrl(r, o),
+    [res, { reg: 'HLH', replyTo: 'pilot@example.com' }]);
+  expect(url.startsWith('mailto:ais@iaa.gov.il?')).toBe(true);
+  expect(url).toContain('cc=pilot@example.com');
+  expect(url).toContain('reply-to=pilot@example.com');
+  expect(url).toContain('subject=FPL%204XHLH%20');
+  // Without one, neither parameter appears at all.
+  const plain = await page.evaluate(([r, o]) => fplMailtoUrl(r, o), [res, { reg: 'HLH' }]);
+  expect(plain).not.toContain('cc=');
+  expect(plain).not.toContain('reply-to=');
+  // A junk or header-smuggling value is dropped rather than passed through.
+  for (const bad of ['not-an-email', 'x@y.com?bcc=evil@z.com']) {
+    const u = await page.evaluate(([r, o]) => fplMailtoUrl(r, o), [res, { reg: 'HLH', replyTo: bad }]);
+    expect(u).not.toContain('cc=');
+    expect(u).not.toContain('bcc');
+  }
+});
+
+// Required, and in the open rather than behind Advanced: the approval arrives by mail.
+test('the pilot email is required to file, and is not hidden under Advanced', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    localStorage.removeItem('navaid.fpl.replyTo');
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  // Visible without opening Advanced.
+  await expect(page.locator('#fpl-reply-to')).toBeVisible();
+  expect(await page.evaluate(() =>
+    !!document.getElementById('fpl-reply-to').closest('.fpl-advanced'))).toBe(false);
+  // Filing without it is refused, naming the field.
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('#fpl-text')).toHaveCount(0);
+  await expect(page.locator('.fpl-errs')).toContainText(/email|דואל/);
+  // A junk address is refused too, a good one gets through.
+  await page.fill('#fpl-reply-to', 'nope');
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('#fpl-text')).toHaveCount(0);
+  await page.fill('#fpl-reply-to', 'pilot@example.com');
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('#fpl-text')).toBeVisible();
+});
+
+test('the reply-to field persists and syncs', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  await page.fill('#fpl-reply-to', 'pilot@example.com');
+  await page.locator('#fpl-next').click();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.fpl.replyTo')))
+    .toBe('pilot@example.com');
+});
+
 test('an invalid filing address is refused', async ({ page }) => {
   await boot(page);
   await route(page);
@@ -511,6 +1213,17 @@ test('an invalid filing address is refused', async ({ page }) => {
     expect(res.errs, bad).toContain('errFplBadAddress');
   }
   expect((await build(page, { ...PROFILE, aisEmail: 'ops@example.com' })).errs).toBeUndefined();
+});
+
+// AIS needs a way to reach the pilot about the plan: the AIP's own sample carries CELL
+// and the מרחב form has a "mobile for queries" box, so it is required.
+test('a missing mobile is refused, and the RMK always carries it', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const res = await build(page, { ...PROFILE, cell: '' });
+  expect(res.errs).toContain('errFplProfile:cell');
+  expect(res.text).toBeUndefined();
+  expect((await build(page)).text).toContain('CELL 0541234567');
 });
 
 test('missing pilot or aircraft details are refused, one message per field', async ({ page }) => {

@@ -335,7 +335,8 @@ const GDRIVE_SETTINGS_KEYS = [
   // The FPL profile: aircraft and pilot details worth having on every device.
   // Written by fplProfileWrite() as navaid.fpl.<field>.
   ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
-    'endurance', 'persons', 'kind', 'aisEmail'].map(f => 'navaid.fpl.' + f),
+    'endurance', 'persons', 'kind', 'aisEmail', 'replyTo',
+    'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
 ];
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
 const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';
