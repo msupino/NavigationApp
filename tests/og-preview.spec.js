@@ -1,10 +1,17 @@
 // @ts-check
 // One-off generator for docs/assets/og-preview.jpg (Open Graph / Twitter card
-// image, 1200×630). Not part of the regular suite — run on demand:
-//   npx playwright test tests/og-preview.spec.js --reporter=line
+// image, 1200×630). On demand only:
+//   OG_PREVIEW=1 npx playwright test tests/og-preview.spec.js --reporter=line
 const { test } = require('./_setup');
 const path = require('path');
 const { LLHZ, LLHA } = require('./_airfieldArp');
+
+// Nothing used to enforce the "not part of the regular suite" above, so every full-suite
+// run silently rewrote a COMMITTED asset: the file then rode along in whatever PR was open
+// (it reached #1417 as a 14 KB-larger image nobody had asked for). Same guard the other
+// generator uses — see wiki-screenshots.spec.js and its WIKI_IMG check.
+test.skip(!process.env.OG_PREVIEW,
+  'og-preview generator — set OG_PREVIEW to run');
 
 // 11-waypoint LLHZ → LLHA coastal route — same fixture share-route.spec.js
 // uses, so the preview image stays in sync with the canonical demo route.

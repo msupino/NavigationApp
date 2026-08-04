@@ -188,6 +188,49 @@ test('a real edit is still detected when the snapshot also carries a dropped key
   expect(r.updatedAt).toBeGreaterThan(1000);
 });
 
+test('a key ADDED to the allowlist is not read as a local edit either', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // The mirror image of the removal case: after a release ADDS an allowlist key, a device
+    // that already had that value in localStorage has it in `values` and absent from its
+    // older snapshot. Simulated by deleting a key from the snapshot the other way round.
+    localStorage.setItem('navaid.layer', 'nav');
+    const snap = collectSyncableSettings();
+    delete snap['navaid.layer'];                       // as if 'navaid.layer' were new
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob(1000);
+    const remote = { updatedAt: 1000, values: collectSyncableSettings() };
+    return {
+      changed: local.changedLocally,
+      updatedAt: local.updatedAt,
+      winner: mergeSettings({ updatedAt: local.updatedAt, values: local.values }, remote).winner,
+      // ...and the value is still published, so the new key does reach the blob.
+      published: local.values['navaid.layer'],
+    };
+  });
+  expect(r.changed).toBe(false);
+  expect(r.updatedAt).toBe(500);
+  expect(r.winner).toBe('remote');
+  expect(r.published).toBe('nav');
+});
+
+test('a key deleted since the last sync is still a local edit', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // The snapshot HAS an opinion about this key and we no longer have it: a real deletion,
+    // which must still win so the tombstone reaches the other devices.
+    localStorage.removeItem('navaid.layer');
+    const snap = Object.assign({}, collectSyncableSettings(), { 'navaid.layer': 'heli' });
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob(1000);
+    return { changed: local.changedLocally, updatedAt: local.updatedAt };
+  });
+  expect(r.changed).toBe(true);
+  expect(r.updatedAt).toBeGreaterThan(1000);
+});
+
 test('an explicit null is a tombstone: it deletes the key instead of being ignored', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {

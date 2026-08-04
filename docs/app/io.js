@@ -1073,7 +1073,8 @@ const FPL_EET_ROUND_MIN = () => _fplTune('fplEetRoundMin', 5) || 5;
 const FPL_WINDOW_BEFORE_MIN = () => _fplTune('fplWindowBeforeMin', 30);
 const FPL_WINDOW_AFTER_VFR_MIN = () => _fplTune('fplWindowAfterVfrMin', 60);
 function fplFileTo(kind) {
-  return FPL_FILE_TO[kind] || FPL_FILE_TO.routes;
+  return Object.prototype.hasOwnProperty.call(FPL_FILE_TO, kind)
+    ? FPL_FILE_TO[kind] : FPL_FILE_TO.routes;
 }
 // The address a plan is actually filed to: the pilot's override when it is a valid
 // address, otherwise the published one for this flight type. This decides where the plan
@@ -1106,9 +1107,6 @@ function fplIsPublishedAddress(addr, kind) {
   if (kind) return a === String(fplFileTo(kind) || '').toLowerCase();
   return Object.values(FPL_FILE_TO).some(v => String(v).toLowerCase() === a);
 }
-// Airfield names inside one error payload. ' | ' cannot occur in a name, so the message can
-// split the list back apart and address the first leg to the FIRST field.
-const FPL_LIST_SEP = ' | ';
 // Conservative: one address, no display name, no separators. Anything else could smuggle
 // extra mailto headers (a "?bcc=" tail) into the URL built from this field.
 const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -1280,7 +1278,7 @@ function buildIcaoFpl(profile, opts) {
   // One plan describes one flight, field to field: a field in the middle is a landing,
   // and a landing means a second plan.
   const midFields = fplMidRouteAirfields();
-  if (midFields.length) errs.push('errFplMidAirfield:' + midFields.join(FPL_LIST_SEP));
+  if (midFields.length) errs.push({ code: 'errFplMidAirfield', names: midFields.slice() });
 
   const legs = state.legs || [];
   const speedKt = Math.round(Number(legs.length ? legs[0].flightSpeed : 0));
@@ -7566,7 +7564,7 @@ function fplProfileWrite(p) {
     let v = String(p[f] == null ? '' : p[f]);
     // Never persist the published filing address as if it were the pilot's choice --
     // otherwise a future AIP change would be shadowed by this copy of the old one.
-    if (f === 'aisEmail' && Object.values(FPL_FILE_TO).includes(v.trim())) v = '';
+    if (f === 'aisEmail' && fplIsPublishedAddress(v)) v = '';
     try { localStorage.setItem(FPL_PROFILE_PREFIX + f, v); }
     catch (e) { /* storage unavailable */ }
   }
@@ -7685,18 +7683,33 @@ function showFplDialog() {
     }
     const missing = [];
     const others = [];
-    for (const code of errs) {
-      const [key, field] = String(code).split(':');
+    for (const entry of errs) {
+      // An entry is either a 'code' / 'code:field' string, or { code, names } when the
+      // message needs a list -- no separator smuggled through the code, so nothing can
+      // truncate it and no language table has to know how it was joined.
+      const isObj = entry && typeof entry === 'object';
+      const key = isObj ? entry.code : String(entry).split(':')[0];
+      const field = isObj ? '' : String(entry).split(':')[1];
       if (key === 'errFplProfile' && field) missing.push(field);
       else if (key === 'errFplMidAirfield') {
+        const names = (isObj && entry.names) || [];
         const li = document.createElement('div');
-        fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield ? S.errFplMidAirfield(field || '') : key));
+        fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield ? S.errFplMidAirfield(names) : key));
         errBox.appendChild(li);
       } else if (!others.includes(key)) others.push(key);
       // The email has its own error codes, but it is a field like any other: mark it.
       if (key === 'errFplReplyToRequired' || key === 'errFplReplyToInvalid') {
         const el = elsByKey && elsByKey.replyTo;
         if (el && el.classList) el.classList.add('fpl-input-missing');
+        if (el && el.focus) el.focus();
+      }
+      // ...and so is the filing address, which sits inside the collapsed Advanced section:
+      // mark it, open the section, and focus it, or the refusal names a box nobody can see.
+      if (key === 'errFplBadAddress') {
+        const el = elsByKey && elsByKey.aisEmail;
+        if (el && el.classList) el.classList.add('fpl-input-missing');
+        const det = el && el.closest && el.closest('details');
+        if (det) det.open = true;
         if (el && el.focus) el.focus();
       }
     }
@@ -7943,8 +7956,7 @@ function showFplDialog() {
     kind.onchange = () => {
       // Follow the flight type while the field still holds a published address;
       // a hand-typed one is the pilot's and is left alone.
-      const published = Object.values(FPL_FILE_TO);
-      if (!aisEmail.value.trim() || published.includes(aisEmail.value.trim())) {
+      if (!aisEmail.value.trim() || fplIsPublishedAddress(aisEmail.value)) {
         aisEmail.value = fplFileTo(kind.value);
       }
     };
@@ -7967,7 +7979,7 @@ function showFplDialog() {
     }
     body.appendChild(adv);
 
-    const fieldEls = { reg, type, wake, equip, surv, pic, license, cell, endurance,
+    const fieldEls = { aisEmail, reg, type, wake, equip, surv, pic, license, cell, endurance,
       persons, replyTo };
     const errBox = document.createElement('div');
     errBox.className = 'fpl-errs';
@@ -8009,7 +8021,7 @@ function showFplDialog() {
         if (!fplUtcFromLocal(state1.date, state1.time)) errsXc.push('errFplEobt');
         // ...and the same field-to-field rule: a field in the middle is two plans.
         const midXc = fplMidRouteAirfields();
-        if (midXc.length) errsXc.push('errFplMidAirfield:' + midXc.join(FPL_LIST_SEP));
+        if (midXc.length) errsXc.push({ code: 'errFplMidAirfield', names: midXc.slice() });
         if (errsXc.length) {
           showFieldErrors(errBox, errsXc, fieldEls);
           return;
@@ -8075,7 +8087,10 @@ function showFplDialog() {
     // carries its own signature line.
     const acks = [];
     const wantAcks = !(res.warns || []).includes('warnFplCrossForm');
-    const ackList = wantAcks ? [['fpl-ack-aip', S.fplAckAip], ['fpl-ack-wx', S.fplAckWx]] : [];
+    const ackList = wantAcks ? [
+      ['fpl-ack-aip', S.fplAckAip || 'I checked this plan against the AIP and the published NOTAMs'],
+      ['fpl-ack-wx', S.fplAckWx || 'I checked the weather forecast'],
+    ] : [];
     // Third box when the flight lands at a site we can name. Controlled fields get the
     // tower wording (א׳-11 §2.ח: coordinated with the tower, continuous radio contact);
     // everywhere else it is the site's operator, as the filing page words it.
@@ -8112,7 +8127,7 @@ function showFplDialog() {
     // A recipient that is not the published one is worth seeing before pressing submit.
     // The note above carries no address on purpose (one inside RTL text reordered), so
     // without this a device-local override would redirect the plan silently.
-    if (res.to && !fplIsPublishedAddress(res.to, res.kind || (profile && profile.kind))) {
+    if (res.to && !fplIsPublishedAddress(res.to, profile && profile.kind)) {
       const custom = document.createElement('div');
       custom.className = 'fpl-warn';
       custom.id = 'fpl-custom-recipient';
@@ -8312,8 +8327,13 @@ function showFplXcForm(opts) {
   // the form the authority asked for.
   box.setAttribute('dir', 'rtl');
   box.setAttribute('lang', 'he');
+  const sigPadCleanups = [];
   function close() {
     document.removeEventListener('keydown', onEsc, true);
+    // The signature pads listen on window for scroll/resize, so they have to be unhooked
+    // with the sheet -- the sheet is rebuilt on every open.
+    for (const off of sigPadCleanups) off();
+    sigPadCleanups.length = 0;
     document.body.classList.remove('printing-xc');
     back.remove();
     // Next tick, so the very Escape that closed this form is not also read as
@@ -8619,17 +8639,29 @@ function showFplXcForm(opts) {
     // Presentation values come from the tuning registry, not from literals in here.
     ctx.strokeStyle = (typeof tune === 'function' && tune('fplSignatureInk')) || '#111111';
     let drawing = false;
-    // The rect is read once per stroke, not per move: a getBoundingClientRect between
-    // ctx.lineTo and ctx.stroke forces a layout flush on every touch sample, and the pad
-    // cannot move mid-stroke (touch-action: none holds the pointer).
+    // Map from the CONTENT box, not the border box: getBoundingClientRect() includes the
+    // border whatever box-sizing says, so dividing by r.width put the ink ~1px off the
+    // finger at the edges. clientLeft/clientWidth are the border width and the drawing area,
+    // so this stays right if the border ever changes.
+    // The rect is cached per stroke rather than read between ctx.lineTo and ctx.stroke on
+    // every touch sample -- but it is dropped on scroll and resize, because the sheet is a
+    // scrolling box: touch-action: none only stops gestures that START on the pad, so a
+    // wheel or a second finger moves the pad mid-stroke and a frozen rect painted the rest
+    // of the signature at the old position (or off the canvas entirely).
     let rect = null;
+    const dropRect = () => { rect = null; };
     const at = e => {
-      const r = rect || pad.getBoundingClientRect();
-      return { x: (e.clientX - r.left) * (cssW / r.width), y: (e.clientY - r.top) * (cssH / r.height) };
+      const r = rect || (rect = pad.getBoundingClientRect());
+      const w = pad.clientWidth || cssW;
+      const h = pad.clientHeight || cssH;
+      return { x: (e.clientX - r.left - pad.clientLeft) * (cssW / w),
+        y: (e.clientY - r.top - pad.clientTop) * (cssH / h) };
     };
+    window.addEventListener('scroll', dropRect, true);   // capture: any ancestor scrolling
+    window.addEventListener('resize', dropRect);
     pad.addEventListener('pointerdown', e => {
       drawing = true;
-      rect = pad.getBoundingClientRect();
+      rect = null;
       pad.setPointerCapture(e.pointerId);
       const p = at(e);
       ctx.beginPath();
@@ -8644,6 +8676,10 @@ function showFplXcForm(opts) {
       e.preventDefault();
     });
     const stop = () => { drawing = false; rect = null; };
+    sigPadCleanups.push(() => {
+      window.removeEventListener('scroll', dropRect, true);
+      window.removeEventListener('resize', dropRect);
+    });
     pad.addEventListener('pointerup', stop);
     pad.addEventListener('pointercancel', stop);
     pad.addEventListener('pointerleave', stop);

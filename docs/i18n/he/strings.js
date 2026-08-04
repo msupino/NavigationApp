@@ -474,10 +474,10 @@ window.S = {
   errFplReplyToRequired: 'הזן את הדואל שלך — האישור חוזר אליו.',
   errFplReplyToInvalid: 'כתובת הדואל אינה תקפה.',
   errFplProfileList: function(list) { return 'חסר עדיין: ' + list + '.'; },
-  errFplMidAirfield: function(list) {
-    const names = String(list).split(' | ');
-    return 'המסלול נוחת ב' + names.join(', ') + ' בדרך, ולכן אינו תוכנית טיסה אחת — '
-      + 'הגישו תוכנית עד ' + names[0] + ', ואחריה תוכנית נוספת להמשך.';
+  errFplMidAirfield: function(names) {
+    const list = Array.isArray(names) ? names : [names];
+    return 'המסלול נוחת ב' + list.join(', ') + ' בדרך, ולכן אינו תוכנית טיסה אחת — '
+      + 'הגישו תוכנית עד ' + list[0] + ', ואחריה תוכנית נוספת להמשך.';
   },
   errFplEobt: 'הזן תאריך ושעת המראה תקפים.',
   errFplEndurance: 'בחר את כמות הדלק בכלי הטיס.',

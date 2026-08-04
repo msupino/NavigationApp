@@ -5287,8 +5287,12 @@ body.theme-light .xc-input.xc-rw { background: #fff; border-color: #c9c4c4; }
   body.printing-xc .xc-t { min-width: 0; }
   body.printing-xc #xc-clear,
   body.printing-xc #xc-mail { display: none !important; }
-  body.printing-xc .xc-ro,
-  body.printing-xc .xc-rw { color: #111; background: none; }
+  body.printing-xc .xc-input.xc-ro,
+  body.printing-xc .xc-input.xc-rw { color: #111; background: none; }
+  /* ...including the rule under each field: `border-color: transparent` on a locked box is
+     for the screen only, and a printed form with no line under a value is not the form. */
+  body.printing-xc .xc-input.xc-ro,
+  body.printing-xc .xc-input.xc-rw { border-bottom: 1px solid #999; }
   body.printing-xc .xc-legend { display: none !important; }
 }
 
@@ -5306,9 +5310,10 @@ body.theme-light .xc-input.xc-rw { background: #fff; border-color: #c9c4c4; }
      invisible box. The print rule below drops the box back to the printed form's rule. */
   border: 1px dashed #6d6767;
   border-bottom-style: solid;
-  /* The pointer-to-bitmap maths maps the pad's style width/height, so the border must sit
-     outside the drawing area -- under the global border-box it ate 1px off each side and
-     the ink drifted from the finger. */
+  /* content-box so the drawing area really is the pad's style width/height (the bitmap is
+     sized from those). The border is then outside it, and `at()` subtracts clientLeft/Top,
+     so the ink lands under the finger; under the global border-box the border ate into the
+     drawing area and the stroke was scaled by 198/200. */
   box-sizing: content-box;
   background: #fff;
   border-radius: 2px;

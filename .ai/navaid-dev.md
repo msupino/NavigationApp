@@ -574,13 +574,15 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   enforces this: every `navaid.*` literal must be synced or declared in
   `NOT_A_SYNCED_SETTING` with a reason. Protocol details that a second
   reader/writer of that file MUST honour:
-  - **Dropping a key from the allowlist is a normal event, and the change
-    detector must survive it.** `_localSettingsBlob()` compares the collected
-    values against the stored snapshot **per current allowlist key**, never as
-    raw JSON strings: a snapshot written by an older build still carries the
-    removed key, and a string compare read that as an edit made on this device —
-    it then stamped itself above the remote and pushed pre-upgrade values over a
-    peer's newer ones, once, on every upgraded device.
+  - **Changing the allowlist — in either direction — is a normal event, and the
+    change detector must survive it.** `_settingsChangedLocally()` compares only
+    the keys the snapshot has an *opinion* about: a key it holds that we no longer
+    do is a deletion (a real edit), and a key we hold that it lacks is "no
+    information", the same rule this protocol already states for absent keys.
+    Comparing raw JSON strings read a *removal* as a local edit; comparing every
+    current key read an *addition* the same way. Either one made the device stamp
+    itself above the remote and push pre-upgrade values over a peer's newer ones,
+    once, on every upgraded device.
   - `values[key] === null` is a **tombstone** ("deleted on the authoring
     device"), not "no value". A reader that drops nulls when re-publishing
     erases the deletion for every device that has not synced yet. A key that is

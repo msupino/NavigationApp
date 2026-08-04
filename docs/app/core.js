@@ -1107,12 +1107,12 @@ window.S = Object.assign({
   errFplReplyToRequired: 'Enter your own email — the approval comes back to it.',
   errFplReplyToInvalid: 'That email address is not valid.',
   errFplProfileList: function(list) { return 'Still needed: ' + list + '.'; },
-  errFplMidAirfield: function(list) {
-    // The payload is the whole list; the first leg goes to the FIRST field, not to all of
-    // them, and three fields on the way are three plans rather than two.
-    const names = String(list).split(' | ');
-    return 'This route lands at ' + names.join(', ') + ' on the way, so it is not a single '
-      + 'flight plan \u2014 file the first leg to ' + names[0] + ', then a plan onward from there.';
+  errFplMidAirfield: function(names) {
+    // Every field on the way is named, but the first leg goes to the FIRST of them -- and
+    // three fields on the way are three plans, so the message states no count.
+    const list = Array.isArray(names) ? names : [names];
+    return 'This route lands at ' + list.join(', ') + ' on the way, so it is not a single '
+      + 'flight plan \u2014 file the first leg to ' + list[0] + ', then a plan onward from there.';
   },
   errFplEobt: 'Enter a valid date and departure time.',
   errFplEndurance: 'Pick how much fuel is on board.',

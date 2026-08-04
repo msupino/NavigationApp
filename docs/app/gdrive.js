@@ -464,6 +464,24 @@ function _sameSettingsValues(a, b) {
   }
   return true;
 }
+// Did THIS device edit its settings since the last sync? Only keys the snapshot has an
+// opinion about can answer that:
+//   a key the snapshot HAS and we no longer do is a deletion -- a real edit;
+//   a key we have that the snapshot does NOT is "no information", per the same rule the
+//     blob protocol already states for absent keys. It happens whenever the allowlist
+//     gains a key (the value was sitting in localStorage before it was ever synced), and
+//     counting it as an edit made the device stamp itself above the remote and push its
+//     pre-upgrade values over a peer's newer ones -- once, on every upgraded device.
+// Removing a key from the allowlist is covered too: the loop only visits current keys.
+function _settingsChangedLocally(values, snapValues) {
+  if (!snapValues) return false;
+  for (const k of GDRIVE_SETTINGS_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(snapValues, k)) continue;
+    if (!Object.prototype.hasOwnProperty.call(values, k)) return true;    // deleted here
+    if (values[k] !== snapValues[k]) return true;                          // changed here
+  }
+  return false;
+}
 
 // Every stamp this device writes is strictly greater than both its own last
 // stamp and the remote's, i.e. monotonic rather than raw wall-clock. That kills
@@ -490,11 +508,10 @@ function _recordSettingsSynced(values, stamp) {
   // likely to be refused at quota. Ignoring that failure left a stale snapshot
   // with a current syncedAt, which reads as a permanent local edit: the device
   // would then win every later sync and push its pre-sync values over everyone.
-  // Serialize in canonical allowlist order. _localSettingsBlob compares this
-  // string against JSON.stringify(collectSyncableSettings()), which always emits
-  // allowlist order — a snapshot built by Object.assign (the first-sync union) has
-  // a different key order, so the strings differed forever and every later sync
-  // reported a phantom local edit and pushed over a newer remote.
+  // Serialized in canonical allowlist order. That no longer decides anything --
+  // _localSettingsBlob compares per key now, not as strings -- but it is kept so the
+  // stored file stays diffable, and so a snapshot built by Object.assign (the
+  // first-sync union) and one built here are byte-identical for the same values.
   const canon = {};
   for (const k of GDRIVE_SETTINGS_KEYS) {
     if (values && Object.prototype.hasOwnProperty.call(values, k) && values[k] !== null) {
@@ -534,7 +551,6 @@ function mergeSettings(local, remote) {
 // they win; otherwise keep the last synced timestamp so a newer remote wins.
 function _localSettingsBlob(remoteAt) {
   const values = collectSyncableSettings();
-  const cur = JSON.stringify(values);
   // Fall back to the in-memory baseline when storage could not hold the snapshot.
   const snap = _lsGet(SETTINGS_SNAP_KEY) !== null ? _lsGet(SETTINGS_SNAP_KEY) : _settingsSnapMem;
   let snapValues = null;
@@ -553,16 +569,12 @@ function _localSettingsBlob(remoteAt) {
   // the recorded stamp rank us.
   const syncedAt = +_lsGet(SETTINGS_SYNCED_AT_KEY) || 0;
   const firstSync = snap === null && !syncedAt;
-  // Compared per CURRENT allowlist key, not as raw JSON strings. A snapshot written by an
-  // older build carries keys this build no longer syncs (removing one is a normal event --
-  // navaid.showCommChange, then navaid.fpl.aisEmail), and a string compare read that as an
-  // edit this device had made: it then stamped itself above the remote and pushed its own
-  // pre-upgrade values over a peer's newer ones, once, on every upgraded device. Per-key is
-  // also what _sameSettingsValues already does, so the two agree.
-  const changedLocally = snap !== null && !_sameSettingsValues(values, snapValues);
+  // Per key, and only for keys the snapshot has an opinion about -- see
+  // _settingsChangedLocally. A raw JSON string compare called an allowlist change an edit.
+  const changedLocally = snap !== null && _settingsChangedLocally(values, snapValues);
   const updatedAt = firstSync ? 0
     : (changedLocally ? _nextSettingsStamp(remoteAt) : syncedAt);
-  return { values, cur, snapValues, firstSync, updatedAt, changedLocally };
+  return { values, snapValues, firstSync, updatedAt, changedLocally };
 }
 
 // Generic app-data helpers (the route ones hard-code the file name + array shape).
