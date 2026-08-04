@@ -121,9 +121,22 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.openChartModal$/,   'sessionStorage — reopen the chart viewer after a reload'],
 ];
 
+// gdrive.js minus the allowlist array itself. The aliveness checks must not read the array
+// (every entry would prove its own aliveness), but the sweep below MUST read the rest of the
+// file: gdrive.js owns all the sync bookkeeping keys, so excluding it wholesale exempted the
+// one file most likely to add a device-local key from the rule it is supposed to obey.
+function allowlistFileOutsideTheArray() {
+  const src = fs.readFileSync(path.join(APP_DIR, 'gdrive.js'), 'utf8');
+  const start = src.indexOf('GDRIVE_SETTINGS_KEYS = [');
+  if (start === -1) return src;
+  const end = src.indexOf('];', start);
+  return src.slice(0, start) + src.slice(end);
+}
+
 // Every navaid.* literal the app mentions, wherever it appears.
 function allKeyLiterals() {
-  const src = appSources({ excludeAllowlistFile: true });
+  const src = appSources({ excludeAllowlistFile: true }) + '\n'
+    + allowlistFileOutsideTheArray();
   const out = new Set();
   for (const line of src.split('\n')) {
     if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
@@ -164,6 +177,21 @@ test('the address a flight plan is filed to is never synced', () => {
   // The rest of the profile is meant to travel — catch the fix being "applied" by
   // deleting the whole block.
   expect(fields).toContain('reg');
+});
+
+test('the sweep reads the allowlist file too, minus the array', () => {
+  // Excluding gdrive.js wholesale made the sweep blind to every key defined in the file that
+  // owns the sync bookkeeping -- delete the /^navaid\\.settings/ declaration and the suite
+  // stayed green. These keys exist only there.
+  const seen = allKeyLiterals();
+  for (const k of ['navaid.settingsSnapshot', 'navaid.settingsSnapKeys',
+    'navaid.settingsSyncedAt', 'navaid.syncSettings']) {
+    expect(seen, k).toContain(k);
+  }
+  // ...and the array's own entries are still NOT read from there, or every stale entry in it
+  // would prove its own aliveness.
+  const onlyInTheArray = allowlist().filter(k => !allowlistFileOutsideTheArray().includes("'" + k + "'"));
+  expect(onlyInTheArray.length).toBeGreaterThan(0);
 });
 
 test('every navaid.* key in the app is synced or declared device-local', () => {

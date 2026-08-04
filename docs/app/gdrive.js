@@ -483,9 +483,10 @@ function _sameSettingsValues(a, b) {
 //     is why the snapshot records WHICH keys it covered (SETTINGS_SNAPKEYS_KEY). Without
 //     that record (a snapshot from an older build) absence counts as an edit: pushing our
 //     values can cost a peer one round of settings, dropping the pilot's own edit is
-//     permanent, so the tie breaks that way.
+//     permanent, so the tie breaks that way -- but see the remote check below, which is what
+//     keeps that tie-break from costing a peer its own edits.
 // Removing a key from the allowlist is covered too: the loop only visits current keys.
-function _settingsChangedLocally(values, snapValues, snapKeys) {
+function _settingsChangedLocally(values, snapValues, snapKeys, remoteValues) {
   // A snapshot that will not parse is no baseline at all. Treat that as changed so this
   // device's values are pushed rather than silently replaced.
   if (!snapValues) return true;
@@ -493,6 +494,13 @@ function _settingsChangedLocally(values, snapValues, snapKeys) {
   for (const k of GDRIVE_SETTINGS_KEYS) {
     if (!has(snapValues, k)) {
       if (snapKeys && snapKeys.indexOf(k) === -1) continue;   // not syncable then
+      // No key list to consult (a snapshot from a build before it was recorded), so the two
+      // reasons for absence are indistinguishable from the values alone -- EXCEPT that the
+      // remote answers half of it. If the remote already carries this key, our value may
+      // simply be the stale local copy of something a peer has since changed, and claiming
+      // an edit would stamp us above them and push it back over their newer one. If the
+      // remote has never seen the key, our value is genuinely new information.
+      if (!snapKeys && remoteValues && has(remoteValues, k)) continue;
       if (has(values, k)) return true;                        // set here since
       continue;
     }
@@ -544,7 +552,6 @@ function _recordSettingsSynced(values, stamp) {
   // gained this key" from "the pilot has since set it". Best-effort: a build without it
   // falls back to treating absence as an edit.
   _settingsSnapKeysMem = GDRIVE_SETTINGS_KEYS.slice();
-  _lsSet(SETTINGS_SNAPKEYS_KEY, JSON.stringify(_settingsSnapKeysMem));
   if (!_lsSet(SETTINGS_SNAP_KEY, canonStr)) {
     // Do NOT throw: by now the values are applied locally and/or already uploaded,
     // so rejecting would leave storage and the running app disagreeing and skip the
@@ -557,10 +564,18 @@ function _recordSettingsSynced(values, stamp) {
     // popped the once-only conflict dialog, where accepting discarded the user's
     // newer local edit.
     _lsDel(SETTINGS_SNAP_KEY);
-    _lsDel(SETTINGS_SNAPKEYS_KEY);      // the key list describes a snapshot that is now gone
-    _settingsSnapKeysMem = null;
+    // The stored list would describe a snapshot that is now gone. _settingsSnapKeysMem is
+    // KEPT: it still describes the in-memory snapshot, which is the baseline this session
+    // will actually use, and throwing it away re-armed the allowlist-gain false edit.
+    _lsDel(SETTINGS_SNAPKEYS_KEY);
     _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
     return;
+  }
+  // Written AFTER the snapshot, and its failure is tolerated: without it the detector falls
+  // back to the ambiguous branch above, which is a smaller loss than a refused snapshot.
+  // Storing it first let 1.5 KB of key names take the space the snapshot needed.
+  if (!_lsSet(SETTINGS_SNAPKEYS_KEY, JSON.stringify(_settingsSnapKeysMem))) {
+    _lsDel(SETTINGS_SNAPKEYS_KEY);      // no stale list beside a fresh snapshot
   }
   _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
 }
@@ -576,7 +591,7 @@ function mergeSettings(local, remote) {
 // Local blob with a change-detected timestamp: if the current settings differ
 // from the snapshot we last synced, they changed on THIS device → stamp now so
 // they win; otherwise keep the last synced timestamp so a newer remote wins.
-function _localSettingsBlob(remoteAt) {
+function _localSettingsBlob(remoteAt, remoteValues) {
   const values = collectSyncableSettings();
   // Fall back to the in-memory baseline when storage could not hold the snapshot.
   const snap = _lsGet(SETTINGS_SNAP_KEY) !== null ? _lsGet(SETTINGS_SNAP_KEY) : _settingsSnapMem;
@@ -600,8 +615,10 @@ function _localSettingsBlob(remoteAt) {
   // _settingsChangedLocally. A raw JSON string compare called an allowlist change an edit;
   // ignoring every absent key dropped the pilot's first setting of anything.
   let snapKeys = null;
-  const rawSnapKeys = _lsGet(SETTINGS_SNAPKEYS_KEY) !== null
-    ? _lsGet(SETTINGS_SNAPKEYS_KEY) : _settingsSnapKeysMem;
+  // Prefer the in-memory list: it always describes the snapshot this session wrote, whereas
+  // a stored one can be left over from an earlier sync if its write was refused at quota.
+  const rawSnapKeys = _settingsSnapKeysMem !== null
+    ? _settingsSnapKeysMem : _lsGet(SETTINGS_SNAPKEYS_KEY);
   if (rawSnapKeys) {
     try {
       const parsed = typeof rawSnapKeys === 'string' ? JSON.parse(rawSnapKeys) : rawSnapKeys;
@@ -609,7 +626,7 @@ function _localSettingsBlob(remoteAt) {
     } catch (e) { snapKeys = null; }
   }
   const changedLocally = snap !== null
-    && _settingsChangedLocally(values, snapValues, snapKeys);
+    && _settingsChangedLocally(values, snapValues, snapKeys, remoteValues);
   const updatedAt = firstSync ? 0
     : (changedLocally ? _nextSettingsStamp(remoteAt) : syncedAt);
   return { values, snapValues, firstSync, updatedAt, changedLocally };
@@ -691,7 +708,7 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
         remote.values && typeof remote.values === 'object');
       const remoteValues = remoteOk ? remote.values : null;
       const remoteAt = remoteOk ? (+remote.updatedAt || 0) : 0;
-      const local = _localSettingsBlob(remoteAt);
+      const local = _localSettingsBlob(remoteAt, remoteValues);
 
       const push = (values, stamp, snapshot) =>
         gdriveAssertUnchanged(file && file.id, seen)

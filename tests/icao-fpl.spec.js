@@ -1656,36 +1656,54 @@ test('a scroll mid-stroke does not paint the signature at the old position', asy
     // Continue the stroke at the pad's new on-screen position, same place ON the pad.
     send('pointermove', box.left + pad.clientLeft + 120, box.top + pad.clientTop + 6);
     send('pointerup', box.left + pad.clientLeft + 120, box.top + pad.clientTop + 6);
-    return { scrolled: sheet.scrollTop, rows: inkedRows(), height: pad.height };
+    const d = ctx.getImageData(0, 0, pad.width, pad.height).data;
+    const cols = [];
+    for (let x = 0; x < pad.width; x++) {
+      for (let y = 0; y < pad.height; y++) {
+        if (d[(y * pad.width + x) * 4 + 3] > 0) { cols.push(x); break; }
+      }
+    }
+    return { scrolled: sheet.scrollTop, rows: inkedRows(), height: pad.height,
+      width: pad.width, minCol: cols[0], maxCol: cols[cols.length - 1] };
   });
   expect(r.scrolled).toBeGreaterThan(0);               // the sheet really did scroll
-  // The stroke stays on the row the finger traced. With the rect frozen at pointerdown the
-  // continuation was mapped through the old position, so it ran away by the scroll delta
-  // (60 CSS px on a 52 px pad -- i.e. clean off the canvas).
   expect(r.rows.length).toBeGreaterThan(0);
+  // The stroke has to REACH the far column the finger traced. A frozen rect subtracts the
+  // scroll delta from y, which drags the stroke up and off the canvas after a few pixels --
+  // measured cols 38..62 instead of 38..241 -- while still leaving every inked row in the
+  // top third, which is why a vertical assertion alone passed with the fix deleted.
+  expect(r.maxCol).toBeGreaterThan(r.width * 0.5);
   expect(Math.max(...r.rows)).toBeLessThan(r.height / 3);
 });
 
 test('the sheet unhooks its scroll listener when it closes', async ({ page }) => {
   await boot(page);
   await route(page);
-  const counts = await page.evaluate(() => {
-    const seen = { add: 0, remove: 0 };
+  const seen = await page.evaluate(() => {
+    // The function REFERENCES, not the call counts: removing a different function with the
+    // right event name leaves the real listener live, and a count-only test passes.
+    const added = [], removed = [];
     const add = window.addEventListener.bind(window);
     const rm = window.removeEventListener.bind(window);
-    window.addEventListener = (t, f, o) => { if (t === 'scroll' || t === 'resize') seen.add++; return add(t, f, o); };
-    window.removeEventListener = (t, f, o) => { if (t === 'scroll' || t === 'resize') seen.remove++; return rm(t, f, o); };
+    const track = t => t === 'scroll' || t === 'resize';
+    window.addEventListener = (t, f, o) => { if (track(t)) added.push({ t, f, c: !!o }); return add(t, f, o); };
+    window.removeEventListener = (t, f, o) => { if (track(t)) removed.push({ t, f, c: !!o }); return rm(t, f, o); };
     for (let i = 0; i < 3; i++) {
       showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
       document.querySelector('.fpl-xc-modal .modal-cancel').click();
     }
     window.addEventListener = add; window.removeEventListener = rm;
-    return seen;
+    // Every registration must have a matching removal: same function object, same event,
+    // same capture flag. Leftovers retain both canvases per cycle.
+    const leftover = added.filter(a =>
+      !removed.some(r => r.f === a.f && r.t === a.t && r.c === a.c));
+    return { added: added.length, removed: removed.length, leftover: leftover.map(l => l.t) };
   });
-  // One pair per open, released on close -- not two per pad, and not left behind: three
-  // open/close cycles used to leave six live listeners retaining both canvases each.
-  expect(counts.add).toBe(6);
-  expect(counts.remove).toBe(6);
+  expect(seen.leftover).toEqual([]);
+  // Balanced, and the sheet really did register something -- without pinning HOW many, which
+  // a legitimate refactor (a ResizeObserver, say) would change without leaking anything.
+  expect(seen.added).toBeGreaterThan(0);
+  expect(seen.removed).toBe(seen.added);
 });
 
 test('the sheet fits a 320px screen, Clear links included', async ({ page }) => {
@@ -1704,7 +1722,10 @@ test('the sheet fits a 320px screen, Clear links included', async ({ page }) => 
       const cx = Math.round(r.left + r.width / 2), cy = Math.round(r.top + r.height / 2);
       const hit = document.elementFromPoint(cx, cy);
       return { left: Math.round(r.left), right: Math.round(r.right),
-        hittable: !!hit && (hit === el || el.contains(hit) || hit.contains(el)) };
+        w: Math.round(r.width), h: Math.round(r.height),
+        // Not `hit.contains(el)`: a collapsed element resolves to its own parent, so that
+        // arm accepted a pad with no size at all.
+        hittable: !!hit && (hit === el || el.contains(hit)) };
     };
     return { pads: [...document.querySelectorAll('.xc-sig-pad')].map(seen),
       clears: [...document.querySelectorAll('.xc-sig-clear')].map(seen),
@@ -1720,7 +1741,86 @@ test('the sheet fits a 320px screen, Clear links included', async ({ page }) => 
     expect(el.right).toBeLessThanOrEqual(320);
     expect(el.hittable).toBe(true);
   }
+  // ...and big enough to use: `max-width: 0` on the pad satisfied every bound above while
+  // making the sheet impossible to sign.
+  for (const pad of narrow.pads) {
+    expect(pad.w).toBeGreaterThanOrEqual(150);
+    expect(pad.h).toBeGreaterThanOrEqual(40);
+  }
   expect(narrow.overflowX).toBe(0);
+});
+
+test('a signature keeps its aspect, so the ink is not stretched', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
+  const geom = await page.evaluate(() => [...document.querySelectorAll('.xc-sig-pad')].map(pad => ({
+    sx: pad.width / pad.clientWidth, sy: pad.height / pad.clientHeight,
+    cw: pad.clientWidth, ch: pad.clientHeight })));
+  // The bitmap is sized from the pad's style width/height and the pointer maths scales x and
+  // y independently, so letting the pad shrink stored the stroke stretched: a 45-degree
+  // signature was saved at 38 degrees and printed that way. Equal scales or nothing.
+  for (const g of geom) expect(g.sx).toBeCloseTo(g.sy, 5);
+  // And a diagonal really does come back as a diagonal.
+  const diag = await page.evaluate(() => {
+    const pad = document.getElementById('xc-sig-pilot');
+    const ctx = pad.getContext('2d');
+    const r = pad.getBoundingClientRect();
+    const x0 = r.left + pad.clientLeft, y0 = r.top + pad.clientTop;
+    const send = (t, x, y) => pad.dispatchEvent(new PointerEvent(t, {
+      pointerId: 1, clientX: x, clientY: y, bubbles: true }));
+    const n = 10, dx = pad.clientHeight;      // a true 45-degree run, within the pad
+    send('pointerdown', x0, y0);
+    for (let i = 1; i <= n; i++) send('pointermove', x0 + dx * i / n, y0 + dx * i / n);
+    send('pointerup', x0 + dx, y0 + dx);
+    const d = ctx.getImageData(0, 0, pad.width, pad.height).data;
+    const pts = [];
+    for (let y = 0; y < pad.height; y++) {
+      for (let x = 0; x < pad.width; x++) {
+        if (d[(y * pad.width + x) * 4 + 3] > 0) { pts.push([x, y]); break; }
+      }
+    }
+    const first = pts[0], last = pts[pts.length - 1];
+    return Math.atan2(last[1] - first[1], last[0] - first[0]) * 180 / Math.PI;
+  });
+  expect(diag).toBeGreaterThan(40);
+  expect(diag).toBeLessThan(50);
+});
+
+test('a dialog label never paints over its own field', async ({ page }) => {
+  for (const width of [280, 320, 375]) {
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page);
+    await route(page);
+    await page.evaluate(() => {
+      for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+        license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+        replyTo: 'pilot@example.com' })) {
+        localStorage.setItem('navaid.fpl.' + k, v);
+      }
+      showFlightPlan();
+      document.getElementById('fpl-open').click();
+    });
+    // Labels do not clip, so a starved label column painted them straight across the inputs:
+    // at 280px Transponder overlapped its own control by 49px, and at 320px by 12px.
+    const overlaps = await page.evaluate(() => {
+      const out = [];
+      for (const row of document.querySelectorAll('.fpl-modal .fpl-row')) {
+        const label = row.querySelector('span, label');
+        const ctrl = row.querySelector('input, select, textarea');
+        if (!label || !ctrl) continue;
+        const l = label.getBoundingClientRect(), c = ctrl.getBoundingClientRect();
+        if (l.width === 0 || c.width === 0) continue;
+        // Same row only: a stacked layout puts the control below the label.
+        if (Math.abs(l.top - c.top) > 4) continue;
+        const over = Math.round(Math.min(l.right, c.right) - Math.max(l.left, c.left));
+        if (over > 1) out.push([label.textContent.trim().slice(0, 20), over]);
+      }
+      return out;
+    });
+    expect(overlaps, 'width ' + width).toEqual([]);
+  }
 });
 
 test('saving the form prints only the sheet', async ({ page }) => {
