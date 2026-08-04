@@ -7676,6 +7676,16 @@ function showFplDialog() {
     };
     return map[key] || key;
   }
+  // 'code' | 'code:field' | { code, names } -> { key, field, names }. One shape, so a
+  // message that needs a list can never be handed one that has none.
+  function fplErrEntry(entry) {
+    if (entry && typeof entry === 'object') {
+      return { key: String(entry.code || ''), field: String(entry.field || ''),
+        names: Array.isArray(entry.names) ? entry.names : [] };
+    }
+    const [key, field] = String(entry).split(':');
+    return { key: key || '', field: field || '', names: [] };
+  }
   function showFieldErrors(errBox, errs, elsByKey) {
     errBox.textContent = '';
     for (const el of Object.values(elsByKey || {})) {
@@ -7684,17 +7694,16 @@ function showFplDialog() {
     const missing = [];
     const others = [];
     for (const entry of errs) {
-      // An entry is either a 'code' / 'code:field' string, or { code, names } when the
-      // message needs a list -- no separator smuggled through the code, so nothing can
-      // truncate it and no language table has to know how it was joined.
-      const isObj = entry && typeof entry === 'object';
-      const key = isObj ? entry.code : String(entry).split(':')[0];
-      const field = isObj ? '' : String(entry).split(':')[1];
+      // Every entry is normalised to one shape here, so no renderer has to ask what it was
+      // given. Producers may push 'code', 'code:field', or { code, names } -- a list travels
+      // as data, never as text inside the code, where a ':' would truncate it and every
+      // language table would have to know how it was joined.
+      const { key, field, names } = fplErrEntry(entry);
       if (key === 'errFplProfile' && field) missing.push(field);
       else if (key === 'errFplMidAirfield') {
-        const names = (isObj && entry.names) || [];
         const li = document.createElement('div');
-        fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield ? S.errFplMidAirfield(names) : key));
+        fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield && names.length
+          ? S.errFplMidAirfield(names) : fplErrText(key)));
         errBox.appendChild(li);
       } else if (!others.includes(key)) others.push(key);
       // The email has its own error codes, but it is a field like any other: mark it.
@@ -8327,13 +8336,12 @@ function showFplXcForm(opts) {
   // the form the authority asked for.
   box.setAttribute('dir', 'rtl');
   box.setAttribute('lang', 'he');
-  const sigPadCleanups = [];
   function close() {
     document.removeEventListener('keydown', onEsc, true);
-    // The signature pads listen on window for scroll/resize, so they have to be unhooked
-    // with the sheet -- the sheet is rebuilt on every open.
-    for (const off of sigPadCleanups) off();
-    sigPadCleanups.length = 0;
+    // The pads' rect invalidation listens on window, so it is unhooked with the sheet --
+    // which is rebuilt on every open.
+    window.removeEventListener('scroll', dropAllSigRects, true);
+    window.removeEventListener('resize', dropAllSigRects);
     document.body.classList.remove('printing-xc');
     back.remove();
     // Next tick, so the very Escape that closed this form is not also read as
@@ -8617,6 +8625,13 @@ function showFplXcForm(opts) {
   const sigs = document.createElement('div');
   sigs.className = 'xc-sigs';
   const sigPads = [];
+  // Every pad's cached rect is dropped together, by ONE listener pair for the sheet -- see
+  // dropAllSigRects below. The sheet is a scrolling box and touch-action: none only stops
+  // gestures that start on a pad, so a wheel or a second finger moves a pad mid-stroke.
+  const sigRectDroppers = [];
+  const dropAllSigRects = () => { for (const drop of sigRectDroppers) drop(); };
+  window.addEventListener('scroll', dropAllSigRects, true);   // capture: any ancestor
+  window.addEventListener('resize', dropAllSigRects);
   for (const [key, label] of [['pilot', 'חתימת הטייס :'], ['briefer', 'חתימת התדריכן :']]) {
     const d = document.createElement('div');
     d.className = 'xc-sig';
@@ -8649,7 +8664,7 @@ function showFplXcForm(opts) {
     // wheel or a second finger moves the pad mid-stroke and a frozen rect painted the rest
     // of the signature at the old position (or off the canvas entirely).
     let rect = null;
-    const dropRect = () => { rect = null; };
+    sigRectDroppers.push(() => { rect = null; });
     const at = e => {
       const r = rect || (rect = pad.getBoundingClientRect());
       const w = pad.clientWidth || cssW;
@@ -8657,8 +8672,6 @@ function showFplXcForm(opts) {
       return { x: (e.clientX - r.left - pad.clientLeft) * (cssW / w),
         y: (e.clientY - r.top - pad.clientTop) * (cssH / h) };
     };
-    window.addEventListener('scroll', dropRect, true);   // capture: any ancestor scrolling
-    window.addEventListener('resize', dropRect);
     pad.addEventListener('pointerdown', e => {
       drawing = true;
       rect = null;
@@ -8676,10 +8689,6 @@ function showFplXcForm(opts) {
       e.preventDefault();
     });
     const stop = () => { drawing = false; rect = null; };
-    sigPadCleanups.push(() => {
-      window.removeEventListener('scroll', dropRect, true);
-      window.removeEventListener('resize', dropRect);
-    });
     pad.addEventListener('pointerup', stop);
     pad.addEventListener('pointercancel', stop);
     pad.addEventListener('pointerleave', stop);

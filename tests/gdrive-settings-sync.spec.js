@@ -198,6 +198,9 @@ test('a key ADDED to the allowlist is not read as a local edit either', async ({
     const snap = collectSyncableSettings();
     delete snap['navaid.layer'];                       // as if 'navaid.layer' were new
     localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    // ...and the snapshot says so: it was written against an allowlist without that key.
+    localStorage.setItem('navaid.settingsSnapKeys',
+      JSON.stringify(GDRIVE_SETTINGS_KEYS.filter(k => k !== 'navaid.layer')));
     localStorage.setItem('navaid.settingsSyncedAt', '500');
     const local = _localSettingsBlob(1000);
     const remote = { updatedAt: 1000, values: collectSyncableSettings() };
@@ -229,6 +232,74 @@ test('a key deleted since the last sync is still a local edit', async ({ page })
   });
   expect(r.changed).toBe(true);
   expect(r.updatedAt).toBeGreaterThan(1000);
+});
+
+test('setting something for the FIRST time since the last sync is a local edit', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // The key was already syncable and simply had no value, so the snapshot has no entry for
+    // it -- byte-identical in the values to "the allowlist gained this key". Only the
+    // recorded key list tells them apart, and getting it wrong loses the pilot's setting:
+    // the newer remote wins, then the parity write absorbs the local value into the
+    // snapshot, so it is never uploaded and never would be.
+    localStorage.removeItem('navaid.layer');
+    const snap = collectSyncableSettings();            // no navaid.layer in it
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSnapKeys', JSON.stringify(GDRIVE_SETTINGS_KEYS));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    localStorage.setItem('navaid.layer', 'nav');       // the pilot's first choice
+    const local = _localSettingsBlob(1000);
+    const remote = { updatedAt: 1000, values: { 'navaid.layer': 'heli' } };
+    return { changed: local.changedLocally, updatedAt: local.updatedAt,
+      winner: mergeSettings({ updatedAt: local.updatedAt, values: local.values }, remote).winner };
+  });
+  expect(r.changed).toBe(true);
+  expect(r.updatedAt).toBeGreaterThan(1000);
+  expect(r.winner).toBe('local');
+});
+
+test('with no recorded key list, an absent key counts as an edit', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // A snapshot from a build that did not record its allowlist. The two cases cannot be
+    // told apart, so the tie breaks towards keeping the pilot's edit: pushing costs a peer
+    // one round of settings, dropping the edit is permanent.
+    localStorage.removeItem('navaid.settingsSnapKeys');
+    localStorage.removeItem('navaid.layer');
+    const snap = collectSyncableSettings();
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    localStorage.setItem('navaid.layer', 'nav');
+    return { changed: _localSettingsBlob(1000).changedLocally };
+  });
+  expect(r.changed).toBe(true);
+});
+
+test('a snapshot that will not parse is treated as no baseline, not as parity', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.setItem('navaid.layer', 'nav');
+    localStorage.setItem('navaid.settingsSnapshot', '{not json');
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob(1000);
+    return { changed: local.changedLocally, updatedAt: local.updatedAt };
+  });
+  // Reporting parity here would let a remote blob silently replace settings this device
+  // cannot prove anything about.
+  expect(r.changed).toBe(true);
+  expect(r.updatedAt).toBeGreaterThan(1000);
+});
+
+test('a completed sync records the allowlist its snapshot covered', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.removeItem('navaid.settingsSnapKeys');
+    _recordSettingsSynced(collectSyncableSettings(), 1234);
+    const raw = localStorage.getItem('navaid.settingsSnapKeys');
+    const parsed = JSON.parse(raw || 'null');
+    return { isArray: Array.isArray(parsed), same: JSON.stringify(parsed) === JSON.stringify(GDRIVE_SETTINGS_KEYS) };
+  });
+  expect(r).toEqual({ isArray: true, same: true });
 });
 
 test('an explicit null is a tombstone: it deletes the key instead of being ignored', async ({ page }) => {
