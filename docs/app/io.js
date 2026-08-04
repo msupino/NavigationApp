@@ -8194,10 +8194,10 @@ function showFplDialog() {
 // the pilot completes the rest and saves it as a PDF to send and sign.
 // Form-only fields, kept beside the shared profile under the same navaid.fpl.* prefix.
 const FPL_XC_KEYS = ['company', 'purpose', 'altField'];
-// Fields this form shares with the ICAO dialog -- it is largely the same information, so
-// it is entered once and an edit made HERE writes back to the shared profile rather than
-// being thrown away when the sheet closes.
-const FPL_XC_SHARED_KEYS = ['reg', 'type', 'pic', 'license', 'cell', 'persons', 'endurance'];
+// The fields this form shares with the ICAO dialog (reg, type, pic, license, cell,
+// persons, endurance) need no list of their own: the dialog is the single place they are
+// entered, and every one of them is drawn here locked (`fromDialog`), so there is nothing
+// on this sheet to write back.
 function fplXcRow(label, el) {
   const wrap = document.createElement('label');
   wrap.className = 'xc-field';
@@ -8541,10 +8541,14 @@ function showFplXcForm(opts) {
     const lab = document.createElement('span');
     lab.className = 'xc-line-label';
     lab.textContent = label;
-    // The free-text lines and the mobile-for-queries stay editable: they belong to this
-    // sheet, and the notes box is filled in by AIS.
+    // The free-text lines belong to this sheet and the notes box is filled in by AIS, so
+    // those stay editable. The mobile does NOT: it is the same number the dialog already
+    // required, so it is locked and greyed like every other dialog value -- otherwise the
+    // sheet offers a second place to change one number, and Clear form wipes a value the
+    // pilot never typed here.
     const prefill = key === 'cell' ? profile.cell : (key === 'rules' ? 'VFR' : '');
-    const el = big ? document.createElement('textarea') : fplXcInput(prefill);
+    const el = big ? document.createElement('textarea')
+      : fplXcInput(prefill, key === 'cell' ? { fromDialog: true } : {});
     if (big) { el.className = 'xc-input xc-textarea'; el.rows = 4; }
     el.id = 'xc-' + key;
     wrap.append(lab, el);
@@ -8679,7 +8683,9 @@ function showFplXcForm(opts) {
       if (el && !el.readOnly) el.value = '';
     }
     for (const [key, el] of Object.entries(textEls)) {
-      if (!el) continue;
+      // A locked line came from the dialog (the mobile), so it is not the pilot's
+      // typing here and Clear form leaves it -- same rule as the table cells above.
+      if (!el || el.readOnly) continue;
       // The rules line is a value the app fills, not something the pilot typed, so
       // clearing the form restores it rather than blanking it.
       el.value = (key === 'rules') ? 'VFR' : '';

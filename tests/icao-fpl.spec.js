@@ -933,7 +933,7 @@ test('the sheet tells its two kinds of box apart, and nothing is blank-and-locke
   // Values entered in the dialog are shown, not retyped here: read-only, muted, and out
   // of the tab order, with a tooltip saying where to change them.
   for (const id of ['xc-reg', 'xc-type', 'xc-pic', 'xc-license', 'xc-persons', 'xc-fuel',
-    'xc-date', 'xc-ias']) {
+    'xc-date', 'xc-ias', 'xc-cell']) {
     const box = await page.evaluate(i => {
       const el = document.getElementById(i);
       return el && { ro: el.readOnly, cls: el.className, tab: el.tabIndex, tip: !!el.title };
@@ -944,7 +944,7 @@ test('the sheet tells its two kinds of box apart, and nothing is blank-and-locke
   // The form's own boxes are editable and marked as such.
   for (const id of ['xc-company', 'xc-purpose', 'xc-dest', 'xc-eta', 'xc-altField',
     'xc-caaEntry', 'xc-caaApproval', 'xc-aerialWork',
-    'xc-rules', 'xc-approvals', 'xc-coord', 'xc-aisNotes', 'xc-cell']) {
+    'xc-rules', 'xc-approvals', 'xc-coord', 'xc-aisNotes']) {
     const box = await page.evaluate(i => {
       const el = document.getElementById(i);
       return el && { ro: !!el.readOnly, cls: el.className };
@@ -970,17 +970,6 @@ test('the sheet tells its two kinds of box apart, and nothing is blank-and-locke
     const want = document.documentElement.getAttribute('dir') === 'rtl' ? 'rtl' : 'ltr';
     return document.querySelector('.xc-legend').dir === want;
   })).toBe(true);
-  // What belongs to this sheet stays editable: the route detail, the free-text lines,
-  // the mobile for queries, and the signatures.
-  expect(await page.evaluate(() =>
-    [...document.querySelectorAll('.xc-detail-input')].every(e => e.isContentEditable))).toBe(true);
-  for (const id of ['xc-rules', 'xc-approvals', 'xc-coord', 'xc-aisNotes', 'xc-cell']) {
-    expect(await page.evaluate(i => {
-      const el = document.getElementById(i);
-      return !!el && !el.readOnly && !el.disabled;
-    }, id), id).toBe(true);
-  }
-  expect(await page.locator('.xc-sig-pad').count()).toBe(2);
 });
 
 // One rule for the shared details, applied before the sheet is drawn -- so it does not
@@ -1215,7 +1204,47 @@ test('clear form wipes only what was typed on the sheet', async ({ page }) => {
   await expect(page.locator('#xc-rules')).toHaveValue('VFR');
   await expect(page.locator('#xc-pic')).toHaveValue('A PILOT');
   await expect(page.locator('#xc-license')).toHaveValue('1234');
+  // The mobile is one of those dialog values, even though it sits on a free-text line
+  // among boxes that clear -- it is the number the dialog already required.
+  await expect(page.locator('#xc-cell')).toHaveValue('0500000000');
+  expect(await page.evaluate(() => document.getElementById('xc-cell').readOnly)).toBe(true);
   expect(await page.locator('.xc-detail-input').first().textContent()).toBe(detailBefore);
+});
+
+test('the signature pads look like somewhere to draw, but print as a rule', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm());
+  // The pad is white on a white sheet, so a bottom rule alone left an invisible box: it
+  // has to be outlined all round ON SCREEN, in either theme.
+  for (const theme of ['theme-light', 'theme-dark']) {
+    await page.evaluate(t => {
+      document.body.classList.remove('theme-light', 'theme-dark');
+      document.body.classList.add(t);
+    }, theme);
+    const box = await page.evaluate(() => {
+      const cs = getComputedStyle(document.querySelector('.xc-sig-pad'));
+      return { top: cs.borderTopStyle, side: cs.borderInlineStartStyle,
+        bottom: cs.borderBottomStyle, colour: cs.borderTopColor,
+        bg: cs.backgroundColor, width: cs.borderTopWidth };
+    });
+    expect(box, theme).toMatchObject({ top: 'dashed', side: 'dashed', bottom: 'solid' });
+    expect(parseFloat(box.width), theme).toBeGreaterThan(0);
+    // Outlined, and against the pad's own white -- not the same colour as it.
+    expect(box.bg, theme).toBe('rgb(255, 255, 255)');
+    expect(box.colour, theme).not.toBe('rgb(255, 255, 255)');
+  }
+  // On paper the signature sits on the form's rule, with no box around it.
+  await page.emulateMedia({ media: 'print' });
+  await page.evaluate(() => document.body.classList.add('printing-xc'));
+  const printed = await page.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.xc-sig-pad'));
+    return { top: cs.borderTopWidth, side: cs.borderInlineStartWidth,
+      bottom: cs.borderBottomStyle, colour: cs.borderBottomColor };
+  });
+  expect(printed).toMatchObject({ top: '0px', side: '0px', bottom: 'solid',
+    colour: 'rgb(17, 17, 17)' });
+  await page.emulateMedia({ media: null });
 });
 
 test('saving the form prints only the sheet', async ({ page }) => {

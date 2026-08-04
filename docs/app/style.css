@@ -5298,8 +5298,12 @@ body.theme-light .xc-rw { background: #fff; border-color: #c9c4c4; }
 }
 .xc-sig { display: flex; align-items: baseline; gap: 6px; }
 .xc-sig-pad {
-  border-bottom: 1px solid #6d6767;
-  background: #fff;          /* ink on paper, in either theme */
+  /* Dashed all round ON SCREEN so it reads as somewhere to draw: the pad is white (ink
+     on paper, in either theme) and the sheet is white too, so a bottom rule alone left an
+     invisible box. The print rule below drops the box back to the printed form's rule. */
+  border: 1px dashed #6d6767;
+  border-bottom-style: solid;
+  background: #fff;
   border-radius: 2px;
   touch-action: none;        /* drawing must not scroll the sheet */
   cursor: crosshair;
@@ -5326,7 +5330,7 @@ body.theme-light .xc-input {
 body.theme-light .xc-t th,
 body.theme-light .xc-t td,
 body.theme-light .xc-foot,
-body.theme-light .xc-sig-rule { border-color: #8f8a8a; }
+body.theme-light .xc-sig-pad { border-color: #8f8a8a; }
 
 /* Print: the sheet only, on white, with the field values as printed text. */
 @media print {
@@ -5382,8 +5386,13 @@ body.theme-light .xc-sig-rule { border-color: #8f8a8a; }
   body.printing-xc .xc-t th { color: #111; }
   body.printing-xc .xc-t th,
   body.printing-xc .xc-t td,
-  body.printing-xc .xc-foot,
-  body.printing-xc .xc-sig-rule { border-color: #111; }
+  body.printing-xc .xc-foot { border-color: #111; }
+  /* On paper the signature sits on the form's rule, not in a box. */
+  body.printing-xc .xc-sig-pad {
+    border: 0;
+    border-bottom: 1px solid #111;
+    border-radius: 0;
+  }
   @page { margin: 12mm; }
 }
 
