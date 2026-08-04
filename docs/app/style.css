@@ -4934,11 +4934,20 @@ body.theme-light .fpl-input-missing { outline-color: #8a5300; }
 .fpl-row-stacked select { width: 100%; }
 .fpl-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 190px;
+  /* The control column gives way before the label does. A fixed 190px starved the label
+     column on a narrow screen -- at 280px it collapsed to 24px and the labels, which do not
+     clip, painted straight across their own inputs (Transponder overlapped by 49px, and at
+     320px it still overlapped by 12px). */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 190px);
   align-items: center;
   gap: 10px;
   font-size: 13px;
   color: #e8e8e8;
+}
+/* Below that, one column: a 130px control beside a 130px label helps nobody. */
+@media (max-width: 359px) {
+  .fpl-row { grid-template-columns: 1fr; gap: 2px; }
+  .fpl-row select, .fpl-row input { width: 100%; }
 }
 /* Native date/time pickers draw their own icons from the colour scheme, so without this
    the calendar and clock glyphs came out dark-on-dark and vanished. */
@@ -5326,8 +5335,11 @@ body.theme-light .xc-input.xc-rw { background: #fff; border-color: #c9c4c4; }
   white-space: nowrap;
   flex-wrap: wrap;             /* label above the pad before anything leaves the sheet */
   max-width: 100%;
+  /* The pad keeps its own 200px: its bitmap is sized from that width and the pointer maths
+     scales x and y independently, so a shrunken pad stored the signature stretched (measured
+     1.27x horizontally -- a 45-degree stroke saved at 38 degrees). Wrapping the row is what
+     makes the sheet fit; the pad was never the part that had to give. */
 }
-.xc-sig-pad { max-width: 100%; }   /* shrinks below its 200px style width on a small screen */
 .xc-sig-pad {
   /* Dashed all round ON SCREEN so it reads as somewhere to draw: the pad is white (ink
      on paper, in either theme) and the sheet is white too, so a bottom rule alone left an
@@ -5349,13 +5361,19 @@ body.theme-light .xc-input.xc-rw { background: #fff; border-color: #c9c4c4; }
 /* Footer on one line, as printed: date, authority, revision. */
 .xc-foot {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
   margin-top: 10px;
   padding-top: 4px;
   border-top: 1px solid #6d6767;
   font-size: 11px;
   white-space: nowrap;
+  /* Three nowrap items: on a 280px screen they overflowed and took the whole sheet into a
+     sideways scroll, with the revision line off the left edge. */
+  flex-wrap: wrap;
+}
+@media (min-width: 420px) {
+  .xc-foot { justify-content: space-between; }   /* as printed, once there is room */
 }
 
 body.theme-light .xc-input {

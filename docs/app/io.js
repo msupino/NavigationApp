@@ -7583,7 +7583,11 @@ function fplDefaultWhen(now) {
 }
 function fplErrText(code) {
   const key = String(code).split(':')[0];
-  return (window.S && S[key]) || key;
+  const text = window.S && S[key];
+  // Some entries are functions of their payload (errFplMidAirfield, errFplProfileList). One
+  // reached here without its payload and rendered its own source into the dialog, so a
+  // function is never text: fall back to the key, which at least names the problem.
+  return (typeof text === 'string' && text) ? text : key;
 }
 function showFplDialog() {
   const back = document.createElement('div');
@@ -7699,11 +7703,14 @@ function showFplDialog() {
       // as data, never as text inside the code, where a ':' would truncate it and every
       // language table would have to know how it was joined.
       const { key, field, names } = fplErrEntry(entry);
+      if (!key) continue;               // nothing to say; never render a bare marker
       if (key === 'errFplProfile' && field) missing.push(field);
       else if (key === 'errFplMidAirfield') {
         const li = document.createElement('div');
         fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield && names.length
-          ? S.errFplMidAirfield(names) : fplErrText(key)));
+          ? S.errFplMidAirfield(names)
+          : (S.errFplMidAirfieldPlain || 'This route lands at an airfield on the way, '
+            + 'so it is not a single flight plan.')));
         errBox.appendChild(li);
       } else if (!others.includes(key)) others.push(key);
       // The email has its own error codes, but it is a field like any other: mark it.

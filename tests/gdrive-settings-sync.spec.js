@@ -302,6 +302,75 @@ test('a completed sync records the allowlist its snapshot covered', async ({ pag
   expect(r).toEqual({ isArray: true, same: true });
 });
 
+test('without a key list, a value the remote already has is not claimed as an edit', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // A snapshot from a build that recorded no key list. navaid.layer is absent from it, and
+    // the two possible reasons are indistinguishable from the values -- but the REMOTE
+    // answers half of it: it already carries this key, so our value may simply be the stale
+    // local copy of something a peer has since changed. Claiming an edit here stamped this
+    // device above the peer and pushed the old value back over their newer one, which the
+    // peer then pulled down: their edit gone from the blob AND from their device.
+    localStorage.removeItem('navaid.settingsSnapKeys');
+    localStorage.setItem('navaid.layer', 'heli');       // stale pre-upgrade local
+    const snap = collectSyncableSettings();
+    delete snap['navaid.layer'];
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const remoteValues = Object.assign({}, collectSyncableSettings(), { 'navaid.layer': 'cvfr' });
+    const local = _localSettingsBlob(1000, remoteValues);
+    return { changed: local.changedLocally, updatedAt: local.updatedAt };
+  });
+  expect(r.changed).toBe(false);
+  expect(r.updatedAt).toBe(500);
+});
+
+test('without a key list, a value the remote has never seen IS an edit', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // Same shape, except the remote has no opinion about the key: our value is genuinely new
+    // information, so it has to be published or it never propagates.
+    localStorage.removeItem('navaid.settingsSnapKeys');
+    localStorage.setItem('navaid.layer', 'heli');
+    const snap = collectSyncableSettings();
+    delete snap['navaid.layer'];
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const remoteValues = Object.assign({}, snap);       // no navaid.layer
+    const local = _localSettingsBlob(1000, remoteValues);
+    return { changed: local.changedLocally, updatedAt: local.updatedAt,
+      published: local.values['navaid.layer'] };
+  });
+  expect(r.changed).toBe(true);
+  expect(r.updatedAt).toBeGreaterThan(1000);
+  expect(r.published).toBe('heli');
+});
+
+test('a refused key-list write leaves no stale list beside a fresh snapshot', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // The list is written AFTER the snapshot and its failure is tolerated -- but a list left
+    // over from an EARLIER sync would describe the wrong snapshot, and the detector would
+    // skip a real edit as "not syncable then".
+    localStorage.setItem('navaid.settingsSnapKeys', JSON.stringify(['navaid.layer']));
+    const realSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) {
+      if (k === 'navaid.settingsSnapKeys') throw new Error('QuotaExceededError');
+      return realSet.call(this, k, v);
+    };
+    let threw = false;
+    try { _recordSettingsSynced(collectSyncableSettings(), 4321); } catch (e) { threw = true; }
+    Storage.prototype.setItem = realSet;
+    return { threw, stored: localStorage.getItem('navaid.settingsSnapKeys'),
+      snapshot: !!localStorage.getItem('navaid.settingsSnapshot'),
+      syncedAt: localStorage.getItem('navaid.settingsSyncedAt') };
+  });
+  expect(r.threw).toBe(false);          // a refused list is tolerated, never fatal
+  expect(r.stored).toBe(null);          // ...and the stale one is gone, not left behind
+  expect(r.snapshot).toBe(true);        // the snapshot, which matters more, was written
+  expect(r.syncedAt).toBe('4321');
+});
+
 test('an explicit null is a tombstone: it deletes the key instead of being ignored', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {

@@ -1107,6 +1107,9 @@ window.S = Object.assign({
   errFplReplyToRequired: 'Enter your own email — the approval comes back to it.',
   errFplReplyToInvalid: 'That email address is not valid.',
   errFplProfileList: function(list) { return 'Still needed: ' + list + '.'; },
+  // Used when the list of fields is unavailable -- a message must never be a function.
+  errFplMidAirfieldPlain: 'This route lands at an airfield on the way, so it is not a single '
+    + 'flight plan: file it in legs.',
   errFplMidAirfield: function(names) {
     // Every field on the way is named, but the first leg goes to the FIRST of them -- and
     // three fields on the way are three plans, so the message states no count.

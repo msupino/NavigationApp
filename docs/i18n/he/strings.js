@@ -474,6 +474,7 @@ window.S = {
   errFplReplyToRequired: 'הזן את הדואל שלך — האישור חוזר אליו.',
   errFplReplyToInvalid: 'כתובת הדואל אינה תקפה.',
   errFplProfileList: function(list) { return 'חסר עדיין: ' + list + '.'; },
+  errFplMidAirfieldPlain: 'המסלול נוחת בשדה תעופה בדרך, ולכן אינו תוכנית טיסה אחת: הגישו אותו בקטעים.',
   errFplMidAirfield: function(names) {
     const list = Array.isArray(names) ? names : [names];
     return 'המסלול נוחת ב' + list.join(', ') + ' בדרך, ולכן אינו תוכנית טיסה אחת — '

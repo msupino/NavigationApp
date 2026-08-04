@@ -587,9 +587,13 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     or the pilot set it for the first time (the normal state, since most keys are
     unset until used) — and skipping both dropped that first setting for good. So
     the snapshot records the allowlist it was written against, in
-    `navaid.settingsSnapKeys`; without that record absence counts as an edit,
-    because pushing costs a peer one round of settings while dropping the pilot's
-    edit is permanent.
+    `navaid.settingsSnapKeys` (written AFTER the snapshot, and tolerated if refused:
+    the snapshot is what the detector cannot work without). With no such record the
+    remote settles the ambiguity instead — a key the remote already carries may be
+    our stale copy of a peer's newer value, so it is not claimed as an edit; a key
+    the remote has never seen is genuinely new information and is. Getting that
+    backwards is not "one lost round": the loser pulls the winner's values down, so
+    either verdict can destroy an edit permanently.
   - `values[key] === null` is a **tombstone** ("deleted on the authoring
     device"), not "no value". A reader that drops nulls when re-publishing
     erases the deletion for every device that has not synced yet. A key that is
