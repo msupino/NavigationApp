@@ -1073,7 +1073,8 @@ const FPL_EET_ROUND_MIN = () => _fplTune('fplEetRoundMin', 5) || 5;
 const FPL_WINDOW_BEFORE_MIN = () => _fplTune('fplWindowBeforeMin', 30);
 const FPL_WINDOW_AFTER_VFR_MIN = () => _fplTune('fplWindowAfterVfrMin', 60);
 function fplFileTo(kind) {
-  return FPL_FILE_TO[kind] || FPL_FILE_TO.routes;
+  return Object.prototype.hasOwnProperty.call(FPL_FILE_TO, kind)
+    ? FPL_FILE_TO[kind] : FPL_FILE_TO.routes;
 }
 // The address a plan is actually filed to: the pilot's override when it is a valid
 // address, otherwise the published one for this flight type. This decides where the plan
@@ -1084,10 +1085,27 @@ function fplFilingAddress(profile, kind) {
   if (override && FPL_EMAIL_RE.test(override)) return override;
   return fplFileTo(kind || (profile && profile.kind));
 }
-// Is this the published address, or one the pilot set? A redirected plan is worth
-// showing before it is sent.
-function fplIsPublishedAddress(addr) {
-  return Object.values(FPL_FILE_TO).includes(String(addr || '').trim());
+// A typed override that is not an address at all is refused rather than silently ignored --
+// the pilot meant to send the plan somewhere. One predicate so both plan paths agree: the
+// ICAO path used to refuse it while the cross-country path fell back without a word.
+function fplBadFilingOverride(profile) {
+  const override = String((profile && profile.aisEmail) || '').trim();
+  return !!override && !FPL_EMAIL_RE.test(override);
+}
+// Is this the published address, or one the pilot set? A redirected plan is worth showing
+// before it is sent.
+//   With a `kind`, the question is "is this the published address FOR THIS FLIGHT TYPE" --
+//     membership of the whole set is not the same question, since a routes plan addressed
+//     to the cross-country desk is redirected just as surely as one sent anywhere else.
+//   Without one, it is "is this any published address", which is what deciding whether to
+//     persist a value as a deliberate override needs.
+// Compared case-insensitively: mail domains are, so AIS@iaa.gov.il IS the published
+// address and warning about it would only teach the pilot to ignore the warning.
+function fplIsPublishedAddress(addr, kind) {
+  const a = String(addr || '').trim().toLowerCase();
+  if (!a) return false;
+  if (kind) return a === String(fplFileTo(kind) || '').toLowerCase();
+  return Object.values(FPL_FILE_TO).some(v => String(v).toLowerCase() === a);
 }
 // Conservative: one address, no display name, no separators. Anything else could smuggle
 // extra mailto headers (a "?bcc=" tail) into the URL built from this field.
@@ -1159,11 +1177,15 @@ function fplHhmm(hours) {
 }
 // A waypoint is an aerodrome only if it resolves in the airfield dataset; anything
 // else (a reporting point, a free "NAME=lat,lng") is not a legal field 13/16 code.
+function fplAerodromeRef(wp) {
+  const code = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
+  if (!code) return null;
+  const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(code) : null;
+  return af ? { code, af } : null;
+}
 function fplAerodrome(wp) {
-  const raw = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
-  if (!raw) return null;
-  const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(raw) : null;
-  return af ? raw : null;
+  const ref = fplAerodromeRef(wp);
+  return ref ? ref.code : null;
 }
 function fplRoutePoint(wp) {
   const raw = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
@@ -1193,7 +1215,7 @@ function fplMissingProfileFields(p) {
 function fplAirfieldName(af, fallbackCode) {
   const named = (af && typeof referenceLocaleName === 'function')
     ? referenceLocaleName(af, 'airfield') : '';
-  return named || (af && (af.en || af.he)) || fallbackCode || '';
+  return named || fallbackCode || '';
 }
 // Known airfields strictly between the endpoints. Returns their names for the message.
 function fplMidRouteAirfields() {
@@ -1201,22 +1223,25 @@ function fplMidRouteAirfields() {
   if (wps.length < 3) return [];
   const out = [];
   for (let i = 1; i < wps.length - 1; i++) {
-    const code = String((wps[i] && wps[i].name) || '').trim().toUpperCase();
-    if (!code) continue;
-    const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(code) : null;
-    if (af) out.push(fplAirfieldName(af, code));
+    const ref = fplAerodromeRef(wps[i]);
+    if (!ref) continue;
+    const name = fplAirfieldName(ref.af, ref.code);
+    // A route that passes the same field twice names it once.
+    if (!out.includes(name)) out.push(name);
   }
   return out;
 }
 function fplLandingSite() {
   const wps = state.waypoints || [];
   if (wps.length < 2) return null;
-  const last = wps[wps.length - 1];
-  const code = String((last && last.name) || '').trim().toUpperCase();
-  if (!code) return null;
-  const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(code) : null;
-  if (!af) return null;
-  return { code, label: fplAirfieldName(af, code), controlled: !!(af.clearance || af.atis) };
+  const ref = fplAerodromeRef(wps[wps.length - 1]);
+  if (!ref) return null;
+  // A published clearance or ATIS frequency is a PROXY for a controlled field, not a
+  // declaration of one: the six fields that publish one get the א׳-11 §2.ח tower wording,
+  // and a towered field that publishes neither gets the operator wording. The pilot is the
+  // one declaring either way -- the app never asserts an airspace class it does not know.
+  return { code: ref.code, label: fplAirfieldName(ref.af, ref.code),
+    controlled: !!(ref.af.clearance || ref.af.atis) };
 }
 function buildIcaoFpl(profile, opts) {
   const p = profile || {};
@@ -1253,7 +1278,7 @@ function buildIcaoFpl(profile, opts) {
   // One plan describes one flight, field to field: a field in the middle is a landing,
   // and a landing means a second plan.
   const midFields = fplMidRouteAirfields();
-  if (midFields.length) errs.push('errFplMidAirfield:' + midFields.join(', '));
+  if (midFields.length) errs.push({ code: 'errFplMidAirfield', names: midFields.slice() });
 
   const legs = state.legs || [];
   const speedKt = Math.round(Number(legs.length ? legs[0].flightSpeed : 0));
@@ -1286,10 +1311,10 @@ function buildIcaoFpl(profile, opts) {
   const persons = String(p.persons || '').replace(/[^0-9]/g, '');
   // An override that is not a valid address is refused rather than silently ignored --
   // the pilot meant to send it somewhere.
-  const rawTo = String(p.aisEmail || '').trim();
-  if (rawTo && !FPL_EMAIL_RE.test(rawTo)) errs.push('errFplBadAddress');
+  if (fplBadFilingOverride(p)) errs.push('errFplBadAddress');
+  // No second test on the resolved address: fplFilingAddress returns either the override
+  // that just passed FPL_EMAIL_RE or a published literal, so a re-check can never fail.
   const toAddr = fplFilingAddress(p, p.kind);
-  if (!FPL_EMAIL_RE.test(toAddr)) errs.push('errFplBadAddress');
   // Field 18 is an ASCII telex message: a Hebrew name would arrive as mojibake or
   // be rejected outright, so the pilot's name and licence must be Latin.
   const NON_ASCII = /[^\x20-\x7E]/;
@@ -7539,7 +7564,7 @@ function fplProfileWrite(p) {
     let v = String(p[f] == null ? '' : p[f]);
     // Never persist the published filing address as if it were the pilot's choice --
     // otherwise a future AIP change would be shadowed by this copy of the old one.
-    if (f === 'aisEmail' && Object.values(FPL_FILE_TO).includes(v.trim())) v = '';
+    if (f === 'aisEmail' && fplIsPublishedAddress(v)) v = '';
     try { localStorage.setItem(FPL_PROFILE_PREFIX + f, v); }
     catch (e) { /* storage unavailable */ }
   }
@@ -7558,7 +7583,11 @@ function fplDefaultWhen(now) {
 }
 function fplErrText(code) {
   const key = String(code).split(':')[0];
-  return (window.S && S[key]) || key;
+  const text = window.S && S[key];
+  // Some entries are functions of their payload (errFplMidAirfield, errFplProfileList). One
+  // reached here without its payload and rendered its own source into the dialog, so a
+  // function is never text: fall back to the key, which at least names the problem.
+  return (typeof text === 'string' && text) ? text : key;
 }
 function showFplDialog() {
   const back = document.createElement('div');
@@ -7651,6 +7680,16 @@ function showFplDialog() {
     };
     return map[key] || key;
   }
+  // 'code' | 'code:field' | { code, names } -> { key, field, names }. One shape, so a
+  // message that needs a list can never be handed one that has none.
+  function fplErrEntry(entry) {
+    if (entry && typeof entry === 'object') {
+      return { key: String(entry.code || ''), field: String(entry.field || ''),
+        names: Array.isArray(entry.names) ? entry.names : [] };
+    }
+    const [key, field] = String(entry).split(':');
+    return { key: key || '', field: field || '', names: [] };
+  }
   function showFieldErrors(errBox, errs, elsByKey) {
     errBox.textContent = '';
     for (const el of Object.values(elsByKey || {})) {
@@ -7658,18 +7697,35 @@ function showFplDialog() {
     }
     const missing = [];
     const others = [];
-    for (const code of errs) {
-      const [key, field] = String(code).split(':');
+    for (const entry of errs) {
+      // Every entry is normalised to one shape here, so no renderer has to ask what it was
+      // given. Producers may push 'code', 'code:field', or { code, names } -- a list travels
+      // as data, never as text inside the code, where a ':' would truncate it and every
+      // language table would have to know how it was joined.
+      const { key, field, names } = fplErrEntry(entry);
+      if (!key) continue;               // nothing to say; never render a bare marker
       if (key === 'errFplProfile' && field) missing.push(field);
       else if (key === 'errFplMidAirfield') {
         const li = document.createElement('div');
-        fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield ? S.errFplMidAirfield(field || '') : key));
+        fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield && names.length
+          ? S.errFplMidAirfield(names)
+          : (S.errFplMidAirfieldPlain || 'This route lands at an airfield on the way, '
+            + 'so it is not a single flight plan.')));
         errBox.appendChild(li);
       } else if (!others.includes(key)) others.push(key);
       // The email has its own error codes, but it is a field like any other: mark it.
       if (key === 'errFplReplyToRequired' || key === 'errFplReplyToInvalid') {
         const el = elsByKey && elsByKey.replyTo;
         if (el && el.classList) el.classList.add('fpl-input-missing');
+        if (el && el.focus) el.focus();
+      }
+      // ...and so is the filing address, which sits inside the collapsed Advanced section:
+      // mark it, open the section, and focus it, or the refusal names a box nobody can see.
+      if (key === 'errFplBadAddress') {
+        const el = elsByKey && elsByKey.aisEmail;
+        if (el && el.classList) el.classList.add('fpl-input-missing');
+        const det = el && el.closest && el.closest('details');
+        if (det) det.open = true;
         if (el && el.focus) el.focus();
       }
     }
@@ -7916,8 +7972,7 @@ function showFplDialog() {
     kind.onchange = () => {
       // Follow the flight type while the field still holds a published address;
       // a hand-typed one is the pilot's and is left alone.
-      const published = Object.values(FPL_FILE_TO);
-      if (!aisEmail.value.trim() || published.includes(aisEmail.value.trim())) {
+      if (!aisEmail.value.trim() || fplIsPublishedAddress(aisEmail.value)) {
         aisEmail.value = fplFileTo(kind.value);
       }
     };
@@ -7940,7 +7995,7 @@ function showFplDialog() {
     }
     body.appendChild(adv);
 
-    const fieldEls = { reg, type, wake, equip, surv, pic, license, cell, endurance,
+    const fieldEls = { aisEmail, reg, type, wake, equip, surv, pic, license, cell, endurance,
       persons, replyTo };
     const errBox = document.createElement('div');
     errBox.className = 'fpl-errs';
@@ -7975,11 +8030,14 @@ function showFplDialog() {
         const replyXc = String(profile.replyTo || '').trim();
         if (!replyXc) errsXc.push('errFplReplyToRequired');
         else if (!FPL_EMAIL_RE.test(replyXc)) errsXc.push('errFplReplyToInvalid');
+        // ...and the same refusal of a filing address that is not an address, since this
+        // path honours the override too.
+        if (fplBadFilingOverride(profile)) errsXc.push('errFplBadAddress');
         // ...the same date/time check, since the sheet prints both...
         if (!fplUtcFromLocal(state1.date, state1.time)) errsXc.push('errFplEobt');
         // ...and the same field-to-field rule: a field in the middle is two plans.
         const midXc = fplMidRouteAirfields();
-        if (midXc.length) errsXc.push('errFplMidAirfield:' + midXc.join(', '));
+        if (midXc.length) errsXc.push({ code: 'errFplMidAirfield', names: midXc.slice() });
         if (errsXc.length) {
           showFieldErrors(errBox, errsXc, fieldEls);
           return;
@@ -8045,15 +8103,24 @@ function showFplDialog() {
     // carries its own signature line.
     const acks = [];
     const wantAcks = !(res.warns || []).includes('warnFplCrossForm');
-    const ackList = wantAcks ? [['fpl-ack-aip', S.fplAckAip], ['fpl-ack-wx', S.fplAckWx]] : [];
+    const ackList = wantAcks ? [
+      ['fpl-ack-aip', S.fplAckAip || 'I checked this plan against the AIP and the published NOTAMs'],
+      ['fpl-ack-wx', S.fplAckWx || 'I checked the weather forecast'],
+    ] : [];
     // Third box when the flight lands at a site we can name. Controlled fields get the
     // tower wording (א׳-11 §2.ח: coordinated with the tower, continuous radio contact);
     // everywhere else it is the site's operator, as the filing page words it.
     const landing = wantAcks ? fplLandingSite() : null;
     if (landing) {
+      // English literal fallbacks, as every other string in this file has: a submission
+      // gate labelled with its own DOM id would ask the pilot to confirm something they
+      // cannot read.
       ackList.push(['fpl-ack-landing', landing.controlled
-        ? (S.fplAckTower ? S.fplAckTower(landing.label) : '')
-        : (S.fplAckLanding ? S.fplAckLanding(landing.label) : '')]);
+        ? (S.fplAckTower ? S.fplAckTower(landing.label)
+          : 'I coordinated the landing with ' + landing.label +
+            ' tower, and will keep continuous radio contact')
+        : (S.fplAckLanding ? S.fplAckLanding(landing.label)
+          : 'I coordinated the landing with the operator of ' + landing.label)]);
     }
     for (const [id, label] of ackList) {
       const wrap = document.createElement('label');
@@ -8076,7 +8143,7 @@ function showFplDialog() {
     // A recipient that is not the published one is worth seeing before pressing submit.
     // The note above carries no address on purpose (one inside RTL text reordered), so
     // without this a device-local override would redirect the plan silently.
-    if (res.to && !fplIsPublishedAddress(res.to)) {
+    if (res.to && !fplIsPublishedAddress(res.to, profile && profile.kind)) {
       const custom = document.createElement('div');
       custom.className = 'fpl-warn';
       custom.id = 'fpl-custom-recipient';
@@ -8278,6 +8345,10 @@ function showFplXcForm(opts) {
   box.setAttribute('lang', 'he');
   function close() {
     document.removeEventListener('keydown', onEsc, true);
+    // The pads' rect invalidation listens on window, so it is unhooked with the sheet --
+    // which is rebuilt on every open.
+    window.removeEventListener('scroll', dropAllSigRects, true);
+    window.removeEventListener('resize', dropAllSigRects);
     document.body.classList.remove('printing-xc');
     back.remove();
     // Next tick, so the very Escape that closed this form is not also read as
@@ -8561,6 +8632,13 @@ function showFplXcForm(opts) {
   const sigs = document.createElement('div');
   sigs.className = 'xc-sigs';
   const sigPads = [];
+  // Every pad's cached rect is dropped together, by ONE listener pair for the sheet -- see
+  // dropAllSigRects below. The sheet is a scrolling box and touch-action: none only stops
+  // gestures that start on a pad, so a wheel or a second finger moves a pad mid-stroke.
+  const sigRectDroppers = [];
+  const dropAllSigRects = () => { for (const drop of sigRectDroppers) drop(); };
+  window.addEventListener('scroll', dropAllSigRects, true);   // capture: any ancestor
+  window.addEventListener('resize', dropAllSigRects);
   for (const [key, label] of [['pilot', 'חתימת הטייס :'], ['briefer', 'חתימת התדריכן :']]) {
     const d = document.createElement('div');
     d.className = 'xc-sig';
@@ -8583,12 +8661,27 @@ function showFplXcForm(opts) {
     // Presentation values come from the tuning registry, not from literals in here.
     ctx.strokeStyle = (typeof tune === 'function' && tune('fplSignatureInk')) || '#111111';
     let drawing = false;
+    // Map from the CONTENT box, not the border box: getBoundingClientRect() includes the
+    // border whatever box-sizing says, so dividing by r.width put the ink ~1px off the
+    // finger at the edges. clientLeft/clientWidth are the border width and the drawing area,
+    // so this stays right if the border ever changes.
+    // The rect is cached per stroke rather than read between ctx.lineTo and ctx.stroke on
+    // every touch sample -- but it is dropped on scroll and resize, because the sheet is a
+    // scrolling box: touch-action: none only stops gestures that START on the pad, so a
+    // wheel or a second finger moves the pad mid-stroke and a frozen rect painted the rest
+    // of the signature at the old position (or off the canvas entirely).
+    let rect = null;
+    sigRectDroppers.push(() => { rect = null; });
     const at = e => {
-      const r = pad.getBoundingClientRect();
-      return { x: (e.clientX - r.left) * (cssW / r.width), y: (e.clientY - r.top) * (cssH / r.height) };
+      const r = rect || (rect = pad.getBoundingClientRect());
+      const w = pad.clientWidth || cssW;
+      const h = pad.clientHeight || cssH;
+      return { x: (e.clientX - r.left - pad.clientLeft) * (cssW / w),
+        y: (e.clientY - r.top - pad.clientTop) * (cssH / h) };
     };
     pad.addEventListener('pointerdown', e => {
       drawing = true;
+      rect = null;
       pad.setPointerCapture(e.pointerId);
       const p = at(e);
       ctx.beginPath();
@@ -8602,7 +8695,7 @@ function showFplXcForm(opts) {
       ctx.stroke();
       e.preventDefault();
     });
-    const stop = () => { drawing = false; };
+    const stop = () => { drawing = false; rect = null; };
     pad.addEventListener('pointerup', stop);
     pad.addEventListener('pointercancel', stop);
     pad.addEventListener('pointerleave', stop);
@@ -8658,7 +8751,7 @@ function showFplXcForm(opts) {
     // No attachment is possible from a page, so the mail is opened with the address, the
     // subject and a reminder; the pilot attaches the PDF they saved. The pilot's own
     // address is copied in, as on the ICAO path.
-    const to = fplFilingAddress(profile, 'crosscountry');
+    const to = mailTo;
     const reply = String(profile.replyTo || '').trim();
     const subject = 'FPL ' + fplRegistration(profile.reg) + ' ' +
       (fields.dest ? fields.dest.value.trim() : '') + ' ' + (dateInput.value || '');
@@ -8670,6 +8763,25 @@ function showFplXcForm(opts) {
     }
     location.href = 'mailto:' + fplMailtoAddress(to) + '?' + q.join('&');
   };
+  // The address this sheet will mail to, named on the sheet when it is not the published
+  // desk -- the pilot is still reading NavAid here; once the mail app is open they have
+  // left. Same rule as the ICAO review step, and the tooltip stops claiming "the FPL desk"
+  // when the plan is going somewhere else.
+  const mailTo = fplFilingAddress(profile, 'crosscountry');
+  let recipientNote = null;
+  if (!fplIsPublishedAddress(mailTo, 'crosscountry')) {
+    mailBtn.title = fplIsolate((S.fplCustomRecipient || '') + ' ' + mailTo);
+    recipientNote = document.createElement('div');
+    recipientNote.className = 'fpl-warn';
+    recipientNote.id = 'xc-custom-recipient';
+    recipientNote.dir = (document.documentElement.getAttribute('dir') === 'rtl') ? 'rtl' : 'ltr';
+    const lead = document.createElement('span');
+    lead.textContent = '\u26a0 ' + (S.fplCustomRecipient || '') + ' ';
+    const addr = document.createElement('bdi');
+    addr.className = 'fpl-custom-addr';
+    addr.textContent = mailTo;
+    recipientNote.append(lead, addr);
+  }
   const clearBtn = document.createElement('button');
   clearBtn.type = 'button';
   clearBtn.id = 'xc-clear';
@@ -8701,7 +8813,9 @@ function showFplXcForm(opts) {
   addModalCloseX(box, close);
 
   box.append(header, legend, dateLine, scrollWrap(t1), scrollWrap(t2), scrollWrap(t3),
-    lines, sigs, footer, btns);
+    lines, sigs, footer);
+  if (recipientNote) box.appendChild(recipientNote);
+  box.appendChild(btns);
   back.appendChild(box);
   back.onclick = e => { if (e.target === back) close(); };
   fplXcOpen = true;

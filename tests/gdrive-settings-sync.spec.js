@@ -146,6 +146,208 @@ test('an established device with local edits stamps a real timestamp and wins ov
   expect(r.winner).toBe('local');
 });
 
+test('a snapshot key this build no longer syncs is not read as a local edit', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // A snapshot written by an OLDER build: same values for every key this build syncs,
+    // plus one key that has since been dropped from the allowlist (navaid.fpl.aisEmail was,
+    // and navaid.showCommChange was before it -- removing one is a normal event).
+    localStorage.setItem('navaid.layer', 'nav');
+    const snap = Object.assign({}, collectSyncableSettings(),
+      { 'navaid.fpl.aisEmail': 'ops@example.com', 'navaid.gone.forever': '1' });
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob(1000);
+    const remote = { updatedAt: 1000, values: collectSyncableSettings() };
+    return {
+      changed: local.changedLocally,
+      updatedAt: local.updatedAt,
+      winner: mergeSettings({ updatedAt: local.updatedAt, values: local.values }, remote).winner,
+    };
+  });
+  // Compared per CURRENT allowlist key: the extra keys are invisible, so this device made
+  // no edit. A raw JSON string compare called it an edit, stamped above the remote and
+  // pushed pre-upgrade values over a peer's newer ones -- once per upgraded device.
+  expect(r.changed).toBe(false);
+  expect(r.updatedAt).toBe(500);
+  expect(r.winner).toBe('remote');
+});
+
+test('a real edit is still detected when the snapshot also carries a dropped key', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.setItem('navaid.layer', 'nav');
+    const snap = Object.assign({}, collectSyncableSettings(),
+      { 'navaid.layer': 'heli', 'navaid.fpl.aisEmail': 'ops@example.com' });
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob(1000);
+    return { changed: local.changedLocally, updatedAt: local.updatedAt };
+  });
+  expect(r.changed).toBe(true);                 // navaid.layer really did change
+  expect(r.updatedAt).toBeGreaterThan(1000);
+});
+
+test('a key ADDED to the allowlist is not read as a local edit either', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // The mirror image of the removal case: after a release ADDS an allowlist key, a device
+    // that already had that value in localStorage has it in `values` and absent from its
+    // older snapshot. Simulated by deleting a key from the snapshot the other way round.
+    localStorage.setItem('navaid.layer', 'nav');
+    const snap = collectSyncableSettings();
+    delete snap['navaid.layer'];                       // as if 'navaid.layer' were new
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    // ...and the snapshot says so: it was written against an allowlist without that key.
+    localStorage.setItem('navaid.settingsSnapKeys',
+      JSON.stringify(GDRIVE_SETTINGS_KEYS.filter(k => k !== 'navaid.layer')));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob(1000);
+    const remote = { updatedAt: 1000, values: collectSyncableSettings() };
+    return {
+      changed: local.changedLocally,
+      updatedAt: local.updatedAt,
+      winner: mergeSettings({ updatedAt: local.updatedAt, values: local.values }, remote).winner,
+      // ...and the value is still published, so the new key does reach the blob.
+      published: local.values['navaid.layer'],
+    };
+  });
+  expect(r.changed).toBe(false);
+  expect(r.updatedAt).toBe(500);
+  expect(r.winner).toBe('remote');
+  expect(r.published).toBe('nav');
+});
+
+test('a key deleted since the last sync is still a local edit', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // The snapshot HAS an opinion about this key and we no longer have it: a real deletion,
+    // which must still win so the tombstone reaches the other devices.
+    localStorage.removeItem('navaid.layer');
+    const snap = Object.assign({}, collectSyncableSettings(), { 'navaid.layer': 'heli' });
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob(1000);
+    return { changed: local.changedLocally, updatedAt: local.updatedAt };
+  });
+  expect(r.changed).toBe(true);
+  expect(r.updatedAt).toBeGreaterThan(1000);
+});
+
+test('setting something for the FIRST time since the last sync is a local edit', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // The key was already syncable and simply had no value, so the snapshot has no entry for
+    // it -- byte-identical in the values to "the allowlist gained this key". Only the
+    // recorded key list tells them apart, and getting it wrong loses the pilot's setting:
+    // the newer remote wins, then the parity write absorbs the local value into the
+    // snapshot, so it is never uploaded and never would be.
+    localStorage.removeItem('navaid.layer');
+    const snap = collectSyncableSettings();            // no navaid.layer in it
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSnapKeys', JSON.stringify(GDRIVE_SETTINGS_KEYS));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    localStorage.setItem('navaid.layer', 'nav');       // the pilot's first choice
+    const local = _localSettingsBlob(1000);
+    const remote = { updatedAt: 1000, values: { 'navaid.layer': 'heli' } };
+    return { changed: local.changedLocally, updatedAt: local.updatedAt,
+      winner: mergeSettings({ updatedAt: local.updatedAt, values: local.values }, remote).winner };
+  });
+  expect(r.changed).toBe(true);
+  expect(r.updatedAt).toBeGreaterThan(1000);
+  expect(r.winner).toBe('local');
+});
+
+test('a completed sync records the allowlist its snapshot covered', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.removeItem('navaid.settingsSnapKeys');
+    _recordSettingsSynced(collectSyncableSettings(), 1234);
+    const raw = localStorage.getItem('navaid.settingsSnapKeys');
+    const parsed = JSON.parse(raw || 'null');
+    return { isArray: Array.isArray(parsed), same: JSON.stringify(parsed) === JSON.stringify(GDRIVE_SETTINGS_KEYS) };
+  });
+  expect(r).toEqual({ isArray: true, same: true });
+});
+
+test('a refused key-list write leaves no stale list beside a fresh snapshot', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // The list is written AFTER the snapshot and its failure is tolerated -- but a list left
+    // over from an EARLIER sync would describe the wrong snapshot, and the detector would
+    // skip a real edit as "not syncable then".
+    localStorage.setItem('navaid.settingsSnapKeys', JSON.stringify(['navaid.layer']));
+    const realSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) {
+      if (k === 'navaid.settingsSnapKeys') throw new Error('QuotaExceededError');
+      return realSet.call(this, k, v);
+    };
+    let threw = false;
+    try { _recordSettingsSynced(collectSyncableSettings(), 4321); } catch (e) { threw = true; }
+    Storage.prototype.setItem = realSet;
+    return { threw, stored: localStorage.getItem('navaid.settingsSnapKeys'),
+      snapshot: !!localStorage.getItem('navaid.settingsSnapshot'),
+      syncedAt: localStorage.getItem('navaid.settingsSyncedAt') };
+  });
+  expect(r.threw).toBe(false);          // a refused list is tolerated, never fatal
+  expect(r.stored).toBe(null);          // ...and the stale one is gone, not left behind
+  expect(r.snapshot).toBe(true);        // the snapshot, which matters more, was written
+  expect(r.syncedAt).toBe('4321');
+});
+
+test('a snapshot with no key list is adopted once, then read exactly', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // A baseline from a build before the key list existed. It cannot say whether a key it
+    // lacks was unsyncable then or simply unset, and neither the values nor the remote can
+    // recover that -- asking the remote resolved a peer's DELETION as "not an edit" and
+    // erased a value the pilot had just typed. So the baseline is adopted instead: values we
+    // hold for keys it lacks are taken into it, as if they had been synced.
+    localStorage.removeItem('navaid.settingsSnapKeys');
+    localStorage.setItem('navaid.layer', 'heli');
+    const snap = collectSyncableSettings();
+    delete snap['navaid.layer'];
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+
+    const first = _localSettingsBlob(1000);
+    const adoptedSnap = JSON.parse(localStorage.getItem('navaid.settingsSnapshot'));
+    const listed = JSON.parse(localStorage.getItem('navaid.settingsSnapKeys') || 'null');
+    // Nothing is claimed as an edit on the strength of a baseline that cannot say...
+    const afterAdopt = { changed: first.changedLocally, updatedAt: first.updatedAt };
+    // ...and from here on the baseline is exact: the SAME key changing IS an edit.
+    localStorage.setItem('navaid.layer', 'cvfr');
+    const second = _localSettingsBlob(1000);
+    return { afterAdopt, adopted: adoptedSnap['navaid.layer'],
+      listedIsFull: Array.isArray(listed) && listed.length === GDRIVE_SETTINGS_KEYS.length,
+      changedAfter: second.changedLocally, updatedAtAfter: second.updatedAt };
+  });
+  expect(r.afterAdopt).toEqual({ changed: false, updatedAt: 500 });
+  expect(r.adopted).toBe('heli');          // taken into the baseline, not published over
+  expect(r.listedIsFull).toBe(true);       // ...and the baseline now describes itself
+  expect(r.changedAfter).toBe(true);       // a real later edit is detected exactly
+  expect(r.updatedAtAfter).toBeGreaterThan(1000);
+});
+
+test('an unparseable snapshot lets the newer remote heal this device', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.setItem('navaid.layer', 'nav');
+    localStorage.setItem('navaid.settingsSnapshot', '{not json');
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob(1000);
+    return { changed: local.changedLocally, updatedAt: local.updatedAt,
+      winner: mergeSettings({ updatedAt: local.updatedAt, values: local.values },
+        { updatedAt: 1000, values: { 'navaid.layer': 'heli' } }).winner };
+  });
+  // A baseline that will not parse proves nothing, so it must not outrank a newer remote:
+  // claiming an edit there overwrote a peer's values AND dropped peer-only keys from the blob
+  // entirely -- there is no snapshot to tombstone them from, so a third device lost them too.
+  expect(r.changed).toBe(false);
+  expect(r.updatedAt).toBe(500);
+  expect(r.winner).toBe('remote');
+});
+
 test('an explicit null is a tombstone: it deletes the key instead of being ignored', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {

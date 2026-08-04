@@ -564,8 +564,39 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   optional Drive **settings** sync. The synced blob lives in Drive app-data as
   `navaid-settings.json` (separate from `navaid-routes.json`); the allowlist is
   `GDRIVE_SETTINGS_KEYS` in `gdrive.js` and deliberately excludes API keys,
-  panel geometry, and the working route. Protocol details that a second
+  panel geometry, and the working route. It also excludes, as a rule, **any key
+  that decides where data is sent** — `navaid.ai.baseUrl`, and
+  `navaid.fpl.aisEmail` (the address a flight plan is filed to: an override
+  synced from a settings blob would redirect every device's plan). The pilot's
+  own `navaid.fpl.replyTo` IS synced: it is cc'd, so a wrong value costs them
+  their copy but cannot misdirect the plan, and it is required to file — keeping
+  it device-local would block a second device. `tests/settings-sync-allowlist.spec.js`
+  enforces this: every `navaid.*` literal must be synced or declared in
+  `NOT_A_SYNCED_SETTING` with a reason. Protocol details that a second
   reader/writer of that file MUST honour:
+  - **Changing the allowlist — in either direction — is a normal event, and the
+    change detector must survive it.** `_settingsChangedLocally()` compares only
+    the keys the snapshot has an *opinion* about: a key it holds that we no longer
+    do is a deletion (a real edit), and a key we hold that it lacks is "no
+    information", the same rule this protocol already states for absent keys.
+    Comparing raw JSON strings read a *removal* as a local edit; comparing every
+    current key read an *addition* the same way. Either one made the device stamp
+    itself above the remote and push pre-upgrade values over a peer's newer ones,
+    once, on every upgraded device. But "absent from the snapshot" has **two**
+    causes that the values alone cannot distinguish — the allowlist gained the key,
+    or the pilot set it for the first time (the normal state, since most keys are
+    unset until used) — and skipping both dropped that first setting for good. So
+    the snapshot records the allowlist it was written against, in
+    `navaid.settingsSnapKeys` (written AFTER the snapshot, and tolerated if refused:
+    the snapshot is what the detector cannot work without). A snapshot that predates
+    that record is **adopted once** by `_adoptLegacySnapshot()` — every allowlisted
+    key we hold but it lacks is taken into it, as if synced — so the ambiguous case
+    exists for one call instead of forever. Do not try to resolve it by consulting
+    the remote: a remote that already holds the key cannot say whether our value is
+    a stale copy or a fresh first setting, and a remote *tombstone* reads as "the
+    remote has it", so a peer's deletion silently erased a value the pilot had just
+    typed. Getting any of this backwards is not "one lost round": the loser applies
+    the winner's values, so either verdict destroys a real setting somewhere.
   - `values[key] === null` is a **tombstone** ("deleted on the authoring
     device"), not "no value". A reader that drops nulls when re-publishing
     erases the deletion for every device that has not synced yet. A key that is

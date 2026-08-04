@@ -4930,15 +4930,27 @@ body.theme-light .fpl-input-missing { outline-color: #8a5300; }
 .fpl-type-box select,
 .fpl-type-box input { flex: 1 1 auto; min-width: 0; }
 .fpl-type-box [hidden] { display: none !important; }
-.fpl-row-stacked { grid-template-columns: 1fr; gap: 2px; }
-.fpl-row-stacked select { width: 100%; }
 .fpl-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 190px;
+  /* The control column gives way before the label does. A fixed 190px starved the label
+     column on a narrow screen -- at 280px it collapsed to 24px and the labels, which do not
+     clip, painted straight across their own inputs (Transponder overlapped by 49px, and at
+     320px it still overlapped by 12px). */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 190px);
   align-items: center;
   gap: 10px;
   font-size: 13px;
   color: #e8e8e8;
+}
+/* Declared AFTER .fpl-row: at equal specificity the earlier rule won, so this class -- the
+   one the flight-type row uses to get a full-width select -- did nothing at all. */
+.fpl-row-stacked { grid-template-columns: 1fr; gap: 2px; }
+.fpl-row-stacked select { width: 100%; }
+
+/* Below that, one column: a 130px control beside a 130px label helps nobody. */
+@media (max-width: 359px) {
+  .fpl-row { grid-template-columns: 1fr; gap: 2px; }
+  .fpl-row select, .fpl-row input { width: 100%; }
 }
 /* Native date/time pickers draw their own icons from the colour scheme, so without this
    the calendar and clock glyphs came out dark-on-dark and vanished. */
@@ -5119,6 +5131,13 @@ html[dir="rtl"] .fpl-subfields {
   padding: 8px 14px;
   overflow: visible;
 }
+/* Four buttons do not fit a phone in one row: squeezed to a quarter of 375px each, every
+   label broke onto three lines ("Print / Save / as PDF"). Let the ROW wrap instead, so each
+   button keeps its own label on one line. */
+.fpl-modal .modal-btns,
+.fpl-xc-modal .modal-btns { flex-wrap: wrap; }
+.fpl-modal .modal-btns button,
+.fpl-xc-modal .modal-btns button { white-space: nowrap; }
 
 body.theme-light .fpl-route { color: #1c1a1a; border-bottom-color: #d8d4d4; }
 body.theme-light .fpl-subfields { border-left-color: #d8d4d4; }
@@ -5154,8 +5173,12 @@ html[dir="rtl"] .fpl-time-box {
 }
 html[dir="rtl"] .fpl-inline-hint { direction: ltr; }
 
+/* An address shown inside prose: monospace, and LTR whatever the sheet's direction is.
+   Two places show one (the redirected recipient, and the copy-it-by-hand fallback). */
+.fpl-custom-addr,
+.fpl-fallback-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
+
 /* Unticked acknowledgement the pilot just tried to submit past. */
-.fpl-custom-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
 .fpl-ack-missing { color: #ffcf7a; }
 .fpl-ack-missing input { outline: 2px solid #ffcf7a; outline-offset: 1px; }
 body.theme-light .fpl-ack-missing { color: #8a5300; }
@@ -5163,7 +5186,6 @@ body.theme-light .fpl-ack-missing input { outline-color: #8a5300; }
 
 /* Shown after Submit: what should have happened, and the address to use by hand. */
 .fpl-fallback { border-inline-start: 2px solid #3a3636; padding-inline-start: 8px; }
-.fpl-fallback-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
 body.theme-light .fpl-fallback { border-inline-start-color: #d8d4d4; }
 
 /* --- Cross-country (מרחב) plan form ----------------------------------
@@ -5275,8 +5297,8 @@ body.theme-light .fpl-fallback { border-inline-start-color: #d8d4d4; }
 }
 .xc-rw { background: #201d1d; border-color: #3a3636; }
 .xc-legend { margin-bottom: 4px; }
-body.theme-light .xc-ro { background: none; border-color: transparent; color: #55504f; }
-body.theme-light .xc-rw { background: #fff; border-color: #c9c4c4; }
+body.theme-light .xc-input.xc-ro { background: none; border-color: transparent; color: #55504f; }
+body.theme-light .xc-input.xc-rw { background: #fff; border-color: #c9c4c4; }
 /* On paper both are just values. */
 @media print {
   /* On paper there is no scrolling: let every table print at its full width. */
@@ -5284,8 +5306,15 @@ body.theme-light .xc-rw { background: #fff; border-color: #c9c4c4; }
   body.printing-xc .xc-t { min-width: 0; }
   body.printing-xc #xc-clear,
   body.printing-xc #xc-mail { display: none !important; }
-  body.printing-xc .xc-ro,
-  body.printing-xc .xc-rw { color: #111; background: none; }
+  /* Specific enough to beat the light-theme screen rules, which are themselves qualified
+     with .xc-input. `border-color: transparent` on a locked box is for the screen only: a
+     printed form with no line under a value is not the form. */
+  body.printing-xc .xc-input.xc-ro,
+  body.printing-xc .xc-input.xc-rw {
+    color: #111;
+    background: none;
+    border-bottom: 1px solid #999;
+  }
   body.printing-xc .xc-legend { display: none !important; }
 }
 
@@ -5294,15 +5323,37 @@ body.theme-light .xc-rw { background: #fff; border-color: #c9c4c4; }
   justify-content: space-between;
   gap: 24px;
   margin: 14px 0 6px;
-  white-space: nowrap;
+  /* Wraps on a narrow sheet. Two 200px pads plus their labels need ~690px, so on a phone
+     the briefer's pad was laid out entirely off the sheet (measured left: -339px at 375px
+     wide) -- and it could not be scrolled to either, because the pads carry
+     touch-action: none, so dragging them draws instead of scrolling. The tables solve the
+     same problem with their own .xc-scroll wrappers; a canvas you have to sign in cannot,
+     so this row stacks instead. Print puts them back on one line: paper is wide. */
+  flex-wrap: wrap;
 }
-.xc-sig { display: flex; align-items: baseline; gap: 6px; }
+.xc-sig {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  flex-wrap: wrap;             /* label above the pad before anything leaves the sheet */
+  max-width: 100%;
+  /* The pad keeps its own 200px: its bitmap is sized from that width and the pointer maths
+     scales x and y independently, so a shrunken pad stored the signature stretched (measured
+     1.27x horizontally -- a 45-degree stroke saved at 38 degrees). Wrapping the row is what
+     makes the sheet fit; the pad was never the part that had to give. */
+}
 .xc-sig-pad {
   /* Dashed all round ON SCREEN so it reads as somewhere to draw: the pad is white (ink
      on paper, in either theme) and the sheet is white too, so a bottom rule alone left an
      invisible box. The print rule below drops the box back to the printed form's rule. */
   border: 1px dashed #6d6767;
   border-bottom-style: solid;
+  /* content-box so the drawing area really is the pad's style width/height (the bitmap is
+     sized from those). The border is then outside it, and `at()` subtracts clientLeft/Top,
+     so the ink lands under the finger; under the global border-box the border ate into the
+     drawing area and the stroke was scaled by 198/200. */
+  box-sizing: content-box;
   background: #fff;
   border-radius: 2px;
   touch-action: none;        /* drawing must not scroll the sheet */
@@ -5313,13 +5364,19 @@ body.theme-light .xc-rw { background: #fff; border-color: #c9c4c4; }
 /* Footer on one line, as printed: date, authority, revision. */
 .xc-foot {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
   margin-top: 10px;
   padding-top: 4px;
   border-top: 1px solid #6d6767;
   font-size: 11px;
   white-space: nowrap;
+  /* Three nowrap items: on a 280px screen they overflowed and took the whole sheet into a
+     sideways scroll, with the revision line off the left edge. */
+  flex-wrap: wrap;
+}
+@media (min-width: 420px) {
+  .xc-foot { justify-content: space-between; }   /* as printed, once there is room */
 }
 
 body.theme-light .xc-input {
@@ -5372,6 +5429,8 @@ body.theme-light .xc-sig-pad { border-color: #8f8a8a; }
   body.printing-xc .xc-t tr,
   body.printing-xc .xc-line,
   body.printing-xc .xc-sigs { page-break-inside: avoid; break-inside: avoid; }
+  /* Paper is wide: the two signatures go side by side even though the screen stacks them. */
+  body.printing-xc .xc-sigs { flex-wrap: nowrap; }
   body.printing-xc .xc-t thead { display: table-header-group; }
   body.printing-xc .xc-input {
     color: #111;
@@ -5387,6 +5446,9 @@ body.theme-light .xc-sig-pad { border-color: #8f8a8a; }
   body.printing-xc .xc-t th,
   body.printing-xc .xc-t td,
   body.printing-xc .xc-foot { border-color: #111; }
+  /* App chrome, not part of the authority's form: the redirected-recipient warning is for
+     the pilot on screen and must not print on the sheet they hand in. */
+  body.printing-xc #xc-custom-recipient { display: none !important; }
   /* On paper the signature sits on the form's rule, not in a box. */
   body.printing-xc .xc-sig-pad {
     border: 0;
