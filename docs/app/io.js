@@ -1075,6 +1075,20 @@ const FPL_WINDOW_AFTER_VFR_MIN = () => _fplTune('fplWindowAfterVfrMin', 60);
 function fplFileTo(kind) {
   return FPL_FILE_TO[kind] || FPL_FILE_TO.routes;
 }
+// The address a plan is actually filed to: the pilot's override when it is a valid
+// address, otherwise the published one for this flight type. This decides where the plan
+// goes, so it is deliberately one function -- the ICAO path and the cross-country form
+// used to answer it separately, and the form's copy ignored the override entirely.
+function fplFilingAddress(profile, kind) {
+  const override = String((profile && profile.aisEmail) || '').trim();
+  if (override && FPL_EMAIL_RE.test(override)) return override;
+  return fplFileTo(kind || (profile && profile.kind));
+}
+// Is this the published address, or one the pilot set? A redirected plan is worth
+// showing before it is sent.
+function fplIsPublishedAddress(addr) {
+  return Object.values(FPL_FILE_TO).includes(String(addr || '').trim());
+}
 // Conservative: one address, no display name, no separators. Anything else could smuggle
 // extra mailto headers (a "?bcc=" tail) into the URL built from this field.
 const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -1169,6 +1183,41 @@ function fplMissingProfileFields(p) {
   const prof = p || {};
   return FPL_REQUIRED_PROFILE.filter(f => !String(prof[f] || '').trim());
 }
+// Where the flight lands, for the coordination acknowledgement: the last waypoint, if it
+// resolves to something we can name. `controlled` is inferred from the field publishing a
+// clearance or ATIS frequency -- a proxy for controlled airspace, not a declaration of
+// it, so the wording it selects talks about the tower rather than asserting an airspace
+// class the app does not know.
+// The field's name as the rest of the UI shows it (locale-aware), not its ICAO code:
+// navName resolves reporting points only, so an airfield code came back unchanged.
+function fplAirfieldName(af, fallbackCode) {
+  const named = (af && typeof referenceLocaleName === 'function')
+    ? referenceLocaleName(af, 'airfield') : '';
+  return named || (af && (af.en || af.he)) || fallbackCode || '';
+}
+// Known airfields strictly between the endpoints. Returns their names for the message.
+function fplMidRouteAirfields() {
+  const wps = state.waypoints || [];
+  if (wps.length < 3) return [];
+  const out = [];
+  for (let i = 1; i < wps.length - 1; i++) {
+    const code = String((wps[i] && wps[i].name) || '').trim().toUpperCase();
+    if (!code) continue;
+    const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(code) : null;
+    if (af) out.push(fplAirfieldName(af, code));
+  }
+  return out;
+}
+function fplLandingSite() {
+  const wps = state.waypoints || [];
+  if (wps.length < 2) return null;
+  const last = wps[wps.length - 1];
+  const code = String((last && last.name) || '').trim().toUpperCase();
+  if (!code) return null;
+  const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(code) : null;
+  if (!af) return null;
+  return { code, label: fplAirfieldName(af, code), controlled: !!(af.clearance || af.atis) };
+}
 function buildIcaoFpl(profile, opts) {
   const p = profile || {};
   const o = opts || {};
@@ -1201,6 +1250,11 @@ function buildIcaoFpl(profile, opts) {
   if (unusable.length) errs.push('errFplBadPoints');
   if (!pts.length) errs.push('errFplNoPoints');
 
+  // One plan describes one flight, field to field: a field in the middle is a landing,
+  // and a landing means a second plan.
+  const midFields = fplMidRouteAirfields();
+  if (midFields.length) errs.push('errFplMidAirfield:' + midFields.join(', '));
+
   const legs = state.legs || [];
   const speedKt = Math.round(Number(legs.length ? legs[0].flightSpeed : 0));
   if (!(speedKt > 0)) errs.push('errFplNoSpeed');
@@ -1230,7 +1284,11 @@ function buildIcaoFpl(profile, opts) {
   const endurance = String(p.endurance || '').replace(/[^0-9]/g, '');
   if (endurance && !/^[0-9]{4}$/.test(endurance)) errs.push('errFplEndurance');
   const persons = String(p.persons || '').replace(/[^0-9]/g, '');
-  const toAddr = String(p.aisEmail || '').trim() || fplFileTo(p.kind);
+  // An override that is not a valid address is refused rather than silently ignored --
+  // the pilot meant to send it somewhere.
+  const rawTo = String(p.aisEmail || '').trim();
+  if (rawTo && !FPL_EMAIL_RE.test(rawTo)) errs.push('errFplBadAddress');
+  const toAddr = fplFilingAddress(p, p.kind);
   if (!FPL_EMAIL_RE.test(toAddr)) errs.push('errFplBadAddress');
   // Field 18 is an ASCII telex message: a Hebrew name would arrive as mojibake or
   // be rejected outright, so the pilot's name and licence must be Latin.
@@ -7603,7 +7661,11 @@ function showFplDialog() {
     for (const code of errs) {
       const [key, field] = String(code).split(':');
       if (key === 'errFplProfile' && field) missing.push(field);
-      else if (!others.includes(key)) others.push(key);
+      else if (key === 'errFplMidAirfield') {
+        const li = document.createElement('div');
+        fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield ? S.errFplMidAirfield(field || '') : key));
+        errBox.appendChild(li);
+      } else if (!others.includes(key)) others.push(key);
       // The email has its own error codes, but it is a field like any other: mark it.
       if (key === 'errFplReplyToRequired' || key === 'errFplReplyToInvalid') {
         const el = elsByKey && elsByKey.replyTo;
@@ -7913,8 +7975,11 @@ function showFplDialog() {
         const replyXc = String(profile.replyTo || '').trim();
         if (!replyXc) errsXc.push('errFplReplyToRequired');
         else if (!FPL_EMAIL_RE.test(replyXc)) errsXc.push('errFplReplyToInvalid');
-        // ...and the same date/time check, since the sheet prints both.
+        // ...the same date/time check, since the sheet prints both...
         if (!fplUtcFromLocal(state1.date, state1.time)) errsXc.push('errFplEobt');
+        // ...and the same field-to-field rule: a field in the middle is two plans.
+        const midXc = fplMidRouteAirfields();
+        if (midXc.length) errsXc.push('errFplMidAirfield:' + midXc.join(', '));
         if (errsXc.length) {
           showFieldErrors(errBox, errsXc, fieldEls);
           return;
@@ -7980,8 +8045,17 @@ function showFplDialog() {
     // carries its own signature line.
     const acks = [];
     const wantAcks = !(res.warns || []).includes('warnFplCrossForm');
-    for (const [id, label] of (wantAcks
-      ? [['fpl-ack-aip', S.fplAckAip], ['fpl-ack-wx', S.fplAckWx]] : [])) {
+    const ackList = wantAcks ? [['fpl-ack-aip', S.fplAckAip], ['fpl-ack-wx', S.fplAckWx]] : [];
+    // Third box when the flight lands at a site we can name. Controlled fields get the
+    // tower wording (א׳-11 §2.ח: coordinated with the tower, continuous radio contact);
+    // everywhere else it is the site's operator, as the filing page words it.
+    const landing = wantAcks ? fplLandingSite() : null;
+    if (landing) {
+      ackList.push(['fpl-ack-landing', landing.controlled
+        ? (S.fplAckTower ? S.fplAckTower(landing.label) : '')
+        : (S.fplAckLanding ? S.fplAckLanding(landing.label) : '')]);
+    }
+    for (const [id, label] of ackList) {
       const wrap = document.createElement('label');
       wrap.className = 'fpl-ack';
       const cb = document.createElement('input');
@@ -7998,6 +8072,22 @@ function showFplDialog() {
     note.className = 'fpl-hint';
     fplSetBidiText(note, [S.fplMailNote || '', S.fplWindowNote || ''].filter(Boolean).join(' '));
     body.appendChild(note);
+
+    // A recipient that is not the published one is worth seeing before pressing submit.
+    // The note above carries no address on purpose (one inside RTL text reordered), so
+    // without this a device-local override would redirect the plan silently.
+    if (res.to && !fplIsPublishedAddress(res.to)) {
+      const custom = document.createElement('div');
+      custom.className = 'fpl-warn';
+      custom.id = 'fpl-custom-recipient';
+      const lead = document.createElement('span');
+      lead.textContent = '⚠ ' + (S.fplCustomRecipient || '') + ' ';
+      const addr = document.createElement('bdi');      // an address inside RTL text
+      addr.className = 'fpl-custom-addr';
+      addr.textContent = res.to;
+      custom.append(lead, addr);
+      body.appendChild(custom);
+    }
 
     const btns = document.createElement('div');
     btns.className = 'modal-btns';
@@ -8064,7 +8154,9 @@ function showFplDialog() {
     ackNote.className = 'fpl-warn';
     ackNote.id = 'fpl-ack-required';
     ackNote.hidden = true;
-    fplSetBidiText(ackNote, '⚠ ' + (S.fplAckRequired || 'Confirm both checks before submitting.'));
+    // No count in the wording: a landing site adds a third check, so "both" was wrong
+    // exactly when the third one appeared.
+    fplSetBidiText(ackNote, '⚠ ' + (S.fplAckRequired || 'Confirm the checks before submitting.'));
     // appendChild, not insertBefore(ackNote, btns): btns is not in the DOM yet at
     // this point, and insertBefore threw -- which aborted the render and left the
     // review step with no buttons at all.
@@ -8102,10 +8194,10 @@ function showFplDialog() {
 // the pilot completes the rest and saves it as a PDF to send and sign.
 // Form-only fields, kept beside the shared profile under the same navaid.fpl.* prefix.
 const FPL_XC_KEYS = ['company', 'purpose', 'altField'];
-// Fields this form shares with the ICAO dialog -- it is largely the same information, so
-// it is entered once and an edit made HERE writes back to the shared profile rather than
-// being thrown away when the sheet closes.
-const FPL_XC_SHARED_KEYS = ['reg', 'type', 'pic', 'license', 'cell', 'persons', 'endurance'];
+// The fields this form shares with the ICAO dialog (reg, type, pic, license, cell,
+// persons, endurance) need no list of their own: the dialog is the single place they are
+// entered, and every one of them is drawn here locked (`fromDialog`), so there is nothing
+// on this sheet to write back.
 function fplXcRow(label, el) {
   const wrap = document.createElement('label');
   wrap.className = 'xc-field';
@@ -8449,10 +8541,14 @@ function showFplXcForm(opts) {
     const lab = document.createElement('span');
     lab.className = 'xc-line-label';
     lab.textContent = label;
-    // The free-text lines and the mobile-for-queries stay editable: they belong to this
-    // sheet, and the notes box is filled in by AIS.
+    // The free-text lines belong to this sheet and the notes box is filled in by AIS, so
+    // those stay editable. The mobile does NOT: it is the same number the dialog already
+    // required, so it is locked and greyed like every other dialog value -- otherwise the
+    // sheet offers a second place to change one number, and Clear form wipes a value the
+    // pilot never typed here.
     const prefill = key === 'cell' ? profile.cell : (key === 'rules' ? 'VFR' : '');
-    const el = big ? document.createElement('textarea') : fplXcInput(prefill);
+    const el = big ? document.createElement('textarea')
+      : fplXcInput(prefill, key === 'cell' ? { fromDialog: true } : {});
     if (big) { el.className = 'xc-input xc-textarea'; el.rows = 4; }
     el.id = 'xc-' + key;
     wrap.append(lab, el);
@@ -8562,7 +8658,7 @@ function showFplXcForm(opts) {
     // No attachment is possible from a page, so the mail is opened with the address, the
     // subject and a reminder; the pilot attaches the PDF they saved. The pilot's own
     // address is copied in, as on the ICAO path.
-    const to = fplFileTo('crosscountry');
+    const to = fplFilingAddress(profile, 'crosscountry');
     const reply = String(profile.replyTo || '').trim();
     const subject = 'FPL ' + fplRegistration(profile.reg) + ' ' +
       (fields.dest ? fields.dest.value.trim() : '') + ' ' + (dateInput.value || '');
@@ -8587,7 +8683,9 @@ function showFplXcForm(opts) {
       if (el && !el.readOnly) el.value = '';
     }
     for (const [key, el] of Object.entries(textEls)) {
-      if (!el) continue;
+      // A locked line came from the dialog (the mobile), so it is not the pilot's
+      // typing here and Clear form leaves it -- same rule as the table cells above.
+      if (!el || el.readOnly) continue;
       // The rules line is a value the app fills, not something the pilot typed, so
       // clearing the form restores it rather than blanking it.
       el.value = (key === 'rules') ? 'VFR' : '';

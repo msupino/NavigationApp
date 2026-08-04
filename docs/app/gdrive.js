@@ -334,8 +334,22 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed',
   // The FPL profile: aircraft and pilot details worth having on every device.
   // Written by fplProfileWrite() as navaid.fpl.<field>.
+  // replyTo IS here; aisEmail is not. The difference is what a wrong value does:
+  //   replyTo is the pilot's own address, cc'd so the approval reaches them. A wrong one
+  //     means they do not get their copy. It cannot misdirect the plan -- AIS is still
+  //     the recipient -- and writing this blob needs the Google account whose mailbox
+  //     already holds every plan the pilot sent, so a hostile value buys an attacker
+  //     nothing they could not already read. It is also required to file, so keeping it
+  //     device-local would block a pilot on a second device until they retype it.
+  //   aisEmail decides where the plan GOES: fplFilingAddress() prefers it over the
+  //     published FPL_FILE_TO, so syncing it would make the recipient settable from the
+  //     settings blob, and an override on one device would file from every device. The
+  //     mail client does show To: before the pilot sends, so this is easy to miss rather
+  //     than impossible to see -- but a recipient has no business in a synced blob.
+  //     Same rule that keeps navaid.ai.baseUrl out: never sync a key that decides
+  //     where data is sent.
   ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
-    'endurance', 'persons', 'kind', 'aisEmail', 'replyTo',
+    'endurance', 'persons', 'kind', 'replyTo',
     'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
 ];
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)

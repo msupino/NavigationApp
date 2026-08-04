@@ -90,8 +90,9 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.tracks\./,          'which recorded tracks are drawn locally'],
   [/^navaid\.plateAirfield$/,     'last plate viewed, per device'],
   [/^navaid\.windField(Alt|Opacity)$/, 'transient overlay state'],
-  // Secrets: never leave the device.
+  // Secrets, and anything that decides WHERE data is sent: never leave the device.
   [/^navaid\.ai\./,              'API keys and assistant endpoint — never synced'],
+  [/^navaid\.fpl\.aisEmail$/,    'the address the flight plan is filed to — a synced blob must not be able to redirect it'],
   // Covered by another mechanism.
   [/^navaid\.route$/,            'the working route; the library covers saved ones'],
   [/^navaid\.routes$/,           'the route library, synced as its own file'],
@@ -136,6 +137,33 @@ test('the allowlist still refuses secrets and panel geometry', () => {
   expect(keys.some(k => k.startsWith('navaid.ai.key'))).toBe(false);
   expect(keys.some(k => /Pos$/.test(k))).toBe(false);
   expect(keys).toContain('navaid.layer');
+});
+
+// The FPL profile is synced as a block of composed navaid.fpl.<field> keys, so no
+// literal exists for the sweep above to see — dropping the wrong field back in would
+// go unnoticed. aisEmail is the address the plan is FILED to (fplBuild prefers it over
+// the published FPL_FILE_TO), so a settings blob that could set it would send the plan
+// somewhere other than AIS while the pilot believes it was filed. Assert it by name.
+test('the address a flight plan is filed to is never synced', () => {
+  // The block is written as ...['reg', ...].map(f => 'navaid.fpl.' + f), so allowlist()
+  // sees the bare field names, not composed keys — asserting on 'navaid.fpl.aisEmail'
+  // would pass whether or not the field is there. Read the field list itself.
+  const src = fs.readFileSync(path.join(APP_DIR, 'gdrive.js'), 'utf8');
+  const m = src.match(/\.\.\.\[([^\]]+)\]\.map\(f => 'navaid\.fpl\.' \+ f\)/);
+  expect(m).not.toBeNull();
+  const fields = [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]);
+  // aisEmail is the address the plan is FILED to (fplBuild prefers p.aisEmail over the
+  // published FPL_FILE_TO). Synced, a settings blob could send the plan somewhere other
+  // than AIS while the pilot believes it was filed — and nothing would alert if the
+  // flight went down.
+  expect(fields).not.toContain('aisEmail');
+  // replyTo is deliberately still synced: it is the pilot's own address and a wrong one
+  // cannot misdirect the plan, only cost them their copy. Asserted so the fix is not
+  // "applied" by dropping every address.
+  expect(fields).toContain('replyTo');
+  // The rest of the profile is meant to travel — catch the fix being "applied" by
+  // deleting the whole block.
+  expect(fields).toContain('reg');
 });
 
 test('every navaid.* key in the app is synced or declared device-local', () => {
