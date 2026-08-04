@@ -334,21 +334,21 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed',
   // The FPL profile: aircraft and pilot details worth having on every device.
   // Written by fplProfileWrite() as navaid.fpl.<field>.
-  // Neither aisEmail nor replyTo is here. Both are addresses the plan is SENT to:
-  // aisEmail is the recipient, replyTo is cc'd on every filed plan and so receives a
-  // copy of the pilot's name, licence, mobile, registration, POB and route. The rule the
-  // codebase already set for itself -- never sync a key that decides where data is sent
-  // (navaid.ai.baseUrl is out for the same reason) -- covers both. The cost is one field
-  // re-entered per device; the alternative is a settings blob that can silently add a
-  // recipient to every plan the pilot files.
-  // aisEmail specifically: it is the address the plan is filed to
+  // replyTo IS here; aisEmail is not. The difference is what a wrong value does:
+  //   replyTo is the pilot's own address, cc'd so the approval reaches them. A wrong one
+  //     means they do not get their copy. It cannot misdirect the plan -- AIS is still
+  //     the recipient -- and writing this blob needs the Google account whose mailbox
+  //     already holds every plan the pilot sent, so a hostile value buys an attacker
+  //     nothing they could not already read. It is also required to file, so keeping it
+  //     device-local would block a pilot on a second device until they retype it.
+  //   aisEmail decides where the plan GOES
   // (fplBuild takes p.aisEmail over the published FPL_FILE_TO), so syncing it makes
   // the recipient settable from the settings blob. The failure is silent and it is
   // the bad kind -- the plan never reaches AIS while the pilot believes it was
   // filed, so nobody is alerted if the flight goes down. Same rule that keeps
   // navaid.ai.baseUrl out: never sync a key that decides where data is sent.
   ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
-    'endurance', 'persons', 'kind',
+    'endurance', 'persons', 'kind', 'replyTo',
     'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
 ];
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
