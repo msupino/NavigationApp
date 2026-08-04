@@ -73,10 +73,11 @@ jobs:
       - name: JS syntax check (node --check)
         run: |
           set -e
-          for f in docs/app/core.js docs/app/draw.js docs/app/interact.js docs/app/io.js docs/app/ui.js docs/sw.js docs/i18n/he/strings.js docs/i18n/en/strings.js; do
+          while IFS= read -r -d '' f; do
             echo "node --check $f"
             node --check "$f"
-          done
+          done < <(find docs/app docs/i18n -type f -name '*.js' -print0 | sort -z)
+          node --check docs/sw.js
 
       - name: JSON validation
         run: |

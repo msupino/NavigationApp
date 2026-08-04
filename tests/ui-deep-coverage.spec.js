@@ -530,12 +530,12 @@ test.describe('Charts modal navigation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Toolbar drag (#toolbar-handle → navaid.toolbarPos)
+// Toolbar drag (#toolbar-handle → navaid.toolbarPos.<lang>)
 // ---------------------------------------------------------------------------
 test.describe('Toolbar drag', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('dragging the handle writes navaid.toolbarPos to localStorage', async ({ page }) => {
+  test('dragging the handle writes navaid.toolbarPos.<lang> to localStorage', async ({ page }) => {
     await boot(page);
     const handle = page.locator('#toolbar-handle');
     const handleBox = await handle.boundingBox();

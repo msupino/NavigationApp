@@ -8,10 +8,10 @@ NavAid is a static web app deployed via GitHub Pages from a workflow.
  and source/data grouped below (`app/`, `data/`, `i18n/`, `assets/`,
  `legacy/`; `byop/` remains a stable public chart-PDF URL).
 - `mobile/` — Capacitor workspace for native iOS / Android packaging.
-  It points `webDir` at `../docs` and keeps native tooling out of the
-  static Pages app.
-- `docs/data/nav-waypoints.json` — 173 Israeli VFR reporting points
- (`{name, he, lat, lng}`); shipped, lazily fetched by the "Show/pin
+  Its tiny `shell/` web payload opens `https://navaid.supino.org` through
+  Capacitor (`webDir: "shell"`); native tooling stays out of the static app.
+- `docs/data/cvfr-nav-waypoints.json` — 172 Israeli CVFR reporting points
+ (`{name, en, he, lat, lng, report}`); shipped, lazily fetched by the "Show/pin
  navigation waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
  reference table (page 113, 2025 edition) — see `.ai/navaid-dev.md` for refresh
  procedure.
@@ -25,9 +25,8 @@ NavAid is a static web app deployed via GitHub Pages from a workflow.
 
 - `main` — production (https://navaid.supino.org/).
 - `dev` — staging (https://navaid.supino.org/staging/).
-- Any open PR → auto-deployed to
-  https://navaid.supino.org/pr/NNN/ and
-  https://navaid.supino.org/branch/BRANCH_NAME/
+- Pull requests are assembled and tested as local CI artifacts only. Unreviewed
+  PR JavaScript is never published under the production origin.
 - `export-leg-attributes` — old draft PR branch.
 
 Each push to `main` or `dev` re-runs the workflow, which checks out
@@ -55,8 +54,10 @@ both branches and assembles a single Pages site:
 - **Before creating a feature branch from `dev`, bring production back
   into `dev` first when possible.** Fetch `origin`, check out `dev`,
   fast-forward it to `origin/dev`, integrate `origin/main` when it can
-  be done cleanly, resolve and push that update if needed, then branch
-  from the updated `dev` tip.
+  be done cleanly, then branch from the updated `dev` tip. If histories
+  diverge but the trees are identical after promotion, branch from `dev`;
+  otherwise use a reviewed maintenance PR. Never directly push protected
+  branches as routine recovery.
 - **Before `git commit`, verify the current branch** (`git branch
   --show-current`, and `git status` if needed). If it is not the branch
   the user intended for this work, or you are unsure, **ask the user**
@@ -64,10 +65,8 @@ both branches and assembles a single Pages site:
   different branch). Do not commit on `main`, `dev`, or unrelated work
   by mistake.
 - **Always run `node --check` on every changed `.js` file** before
-  committing (the app code lives in `docs/app/core.js`,
-  `docs/app/draw.js`, `docs/app/interact.js`, `docs/app/io.js`,
-  `docs/app/ui.js`, `docs/sw.js`, and the locale bundles
-  `docs/i18n/en/strings.js` / `docs/i18n/he/strings.js`).
+  committing. App code is every `docs/app/*.js`, plus `docs/sw.js` and
+  `docs/i18n/**/*.js`; CI enumerates these paths mechanically.
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
   the area, create one.
@@ -86,11 +85,11 @@ both branches and assembles a single Pages site:
 - **Every PR must be preceded by a GitHub issue.** Open the issue first,
   then create the PR referencing it (`Fixes #N` or `Closes #N`).
 - Persist UI state to `localStorage` only via existing `navaid.*`
-  keys. The authoritative list lives in
-  `.ai/navaid-dev.md` (see the **Persistence**
-  section); grep `localStorage.setItem` / `sessionStorage.setItem`
-  in `docs/` to verify. Add new keys only with a clear reason.
-  Notable keys (see `.ai/navaid-dev.md` for the full list):
+  keys. The mechanically enforced registry/policy lives in
+  `tests/settings-sync-allowlist.spec.js`; `.ai/navaid-dev.md` summarizes
+  the key families. Grep storage calls in `docs/` and update both the sync
+  allowlist or device-local reason and the docs when adding a key.
+  Notable keys:
   - `navaid.route` — route geometry (waypoints / legs / notes).
   - `navaid.view` — map center / zoom / bearing, persisted across
     reloads. `F` (no modifier) re-runs fit-to-route; the `⌖ Fit to
@@ -105,8 +104,10 @@ both branches and assembles a single Pages site:
   `S.shortcutXxx` strings in `docs/app/core.js` (English defaults) +
   `docs/i18n/he/strings.js` (Hebrew). See `.ai/navaid-dev.md` "Keyboard shortcuts
   cheat-sheet" for the rendering pipeline.
-- No web-app JavaScript dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
-  (both loaded from `unpkg.com`). Chart tiles are served from
+- No new web-app JavaScript dependencies without explicit review. The live
+  inventory in `docs/index.html` is Leaflet, `leaflet-rotate@0.2.8`,
+  `leaflet-imageoverlay-rotated@0.2.1`, and `leaflet-velocity@1.7.0`.
+  Chart tiles are served from
   `https://navaid-tiles.supino.org`. No build step, no bundler, no
   transpiler — keep `docs/` plain HTML / CSS / JS. Capacitor dependencies
   live only under `mobile/`.

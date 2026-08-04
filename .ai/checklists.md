@@ -33,7 +33,7 @@ Use these as quick pre-commit reminders.
 - Update source-of-truth notes in `.ai/data.md` or `.ai/navaid-dev.md` if the source
   changed.
 - Keep route templates free of leg altitude values that belong in
-  `leg-altitude.json`.
+  active `<prefix>-leg-altitude.json`.
 
 ## Branch / PR
 

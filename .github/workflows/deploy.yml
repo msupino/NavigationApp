@@ -6,7 +6,7 @@ on:
     branches: [main, dev]
   pull_request:
     branches: [main, dev]
-    types: [opened, synchronize, closed]
+    types: [opened, synchronize, reopened]
   # Bot-merged PRs (gh pr merge --auto via GITHUB_TOKEN) suppress both
   # `push: dev` and `pull_request: closed`. The workflow_run chain we
   # previously used here was ALSO silently suppressed (anti-recursion
@@ -18,10 +18,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-  deployments: write
-  pull-requests: write
 
 # NOTE: the `pages` serialisation lives on the `deploy` JOB, not here at workflow
 # level. It used to gate the whole workflow, which had two costs: Actions keeps
@@ -90,10 +86,11 @@ jobs:
       - name: JS syntax check
         run: |
           set -e
-          for f in docs/app/core.js docs/app/draw.js docs/app/interact.js docs/app/io.js docs/app/ui.js docs/sw.js docs/i18n/he/strings.js docs/i18n/en/strings.js; do
+          while IFS= read -r -d '' f; do
             echo "node --check $f"
             node --check "$f"
-          done
+          done < <(find docs/app docs/i18n -type f -name '*.js' -print0 | sort -z)
+          node --check docs/sw.js
       - name: JSON validation
         run: |
           set -e
@@ -121,15 +118,24 @@ jobs:
         with:
           ref: main
           path: m
+          persist-credentials: false
       - name: Checkout dev (staging)
         uses: actions/checkout@v6
         with:
           ref: dev
           path: d
+          persist-credentials: false
+      - name: Checkout current PR for artifact-only verification
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: p
+          persist-credentials: false
       - name: Assemble site
         run: |
           # docs/byop/ is ~133 MB of PDFs (#105). Keep ONE copy at the
-          # production root; staging + every PR/branch preview points at it
+          # production root; staging and PR verification artifacts point at it
           # via an absolute path. Without this the Pages artifact balloons to
           # >1 GB on a busy day (main + dev + ~7 PRs × 2 = ~1.8 GB).
           mkdir -p site/staging
@@ -179,23 +185,9 @@ jobs:
             fi
             rewrite_cache_busts "$ROOT" "$SHA"
           done
-      - name: Checkout open PR branches (preview deployments)
+      - name: Assemble current PR for artifact-only verification
+        if: github.event_name == 'pull_request'
         run: |
-          cd m
-          mkdir -p ../site/pr ../site/branch
-          # Fetch all open-PR branches in one network round trip — much
-          # cheaper than one fetch per PR. Then build each preview in
-          # parallel (xargs -P 4) since the per-PR work is independent.
-          REFS=$(gh pr list --state open --json number,headRefName,baseRefName \
-            --jq '.[] | select(.baseRefName == "main" or .baseRefName == "dev") | "\(.number)\t\(.headRefName)"')
-          if [ -z "$REFS" ]; then
-            echo "No open PRs."
-            exit 0
-          fi
-          BRANCHES=$(printf '%s\n' "$REFS" | cut -f2)
-          # shellcheck disable=SC2086
-          git fetch origin --depth 1 -q $BRANCHES 2>/dev/null || true
-
           rewrite_cache_busts() {
             ROOT=$1
             SHA=$2
@@ -219,50 +211,29 @@ jobs:
             fi
           }
 
-          build_preview() {
-            NUM=$1; BRANCH=$2
-            echo "== PR #$NUM ($BRANCH) =="
-            STAGING=$(mktemp -d)
-            git archive "origin/$BRANCH" docs/ | tar x -C "$STAGING" --strip-components=1 2>/dev/null \
-              || { echo "  skip (archive failed)"; rm -rf "$STAGING"; return; }
-            SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) \
-              || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; return; }
-            # PR/branch previews are non-canonical — keep them out of the index.
-            sed -i '0,/<head>/s//<head>\n  <meta name="robots" content="noindex">/' "$STAGING/index.html" 2>/dev/null || true
-            rewrite_cache_busts "$STAGING" "$SHA"
-            # No byop copy under previews — io.js plateBase() resolves plates
-            # against the shared root copy at runtime.
-            rm -rf "$STAGING/byop"
-            mv "$STAGING" "../site/pr/$NUM"
-            # Branch names can contain slashes (feat/foo) — create the parent
-            # path before the hardlink copy, else cp fails with "No such file".
-            mkdir -p "$(dirname "../site/branch/$BRANCH")"
-            cp -rl "../site/pr/$NUM" "../site/branch/$BRANCH"
-            echo "  → /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
-          }
-          # build_preview runs in xargs-spawned subshells; it CALLS
-          # rewrite_cache_busts, so that function must be exported too —
-          # otherwise the rewrite silently no-ops and previews ship raw
-          # source (version: '1.0', ?v= literals, stale SW CACHE name).
-          export -f build_preview rewrite_cache_busts
-
-          printf '%s\n' "$REFS" | xargs -P 4 -I{} bash -c 'IFS=$'\''\t'\'' read -r n b <<< "{}"; build_preview "$n" "$b"'
-        env:
-          GH_TOKEN: ${{ github.token }}
+          NUM="${{ github.event.number }}"
+          SHA="${{ github.event.pull_request.head.sha }}"
+          SHORT="${SHA:0:7}"
+          mkdir -p "site/pr/$NUM"
+          cp -rl p/docs/. "site/pr/$NUM/"
+          rm -rf "site/pr/$NUM/byop"
+          sed -i '0,/<head>/s//<head>\n  <meta name="robots" content="noindex">/' "site/pr/$NUM/index.html"
+          rewrite_cache_busts "site/pr/$NUM" "$SHORT"
+          echo "Assembled /pr/$NUM/ for local artifact verification only ($SHORT)."
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
-    # THE publish step, and the only thing that needs a global lock: it republishes
-    # the whole site (every open PR/branch preview) from one artifact, so two
-    # concurrent publishes let an older snapshot land last and overwrite a fresh
-    # preview — the "stale CDN" failures in e2e-deployed. cancel-in-progress:false
-    # queues rather than aborting a half-written publish. Scoped to this job, a
-    # queued run still runs build and e2e-deployed, so required checks always report.
+    permissions:
+      pages: write
+      id-token: write
+    # Only trusted main/dev or manually dispatched runs publish Pages. Pull-request
+    # artifacts are tested locally and never served under the production origin.
     concurrency:
       group: pages
       cancel-in-progress: false
@@ -273,63 +244,15 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Create PR deployment
-        if: github.event_name == 'pull_request' && github.event.action != 'closed'
-        run: |
-          URL="https://msupino.github.io/NavigationApp/pr/${{ github.event.number }}/"
-          DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments" --input - <<EOF
-          {
-            "ref": "${{ github.head_ref }}",
-            "environment": "pr-preview-${{ github.event.number }}",
-            "auto_merge": false,
-            "required_contexts": [],
-            "description": "PR preview at $URL"
-          }
-          EOF
-          )
-          DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r '.id // empty')
-          if [ -n "$DEPLOY_ID" ]; then
-            gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" --input - <<EOF
-          {
-            "state": "success",
-            "environment_url": "$URL",
-            "log_url": "$URL",
-            "description": "PR preview at $URL"
-          }
-          EOF
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Post preview link comment
-        if: github.event_name == 'pull_request' && github.event.action != 'closed'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.number }}
-          SHA: ${{ github.event.pull_request.head.sha }}
-          BRANCH: ${{ github.head_ref }}
-          REPO: ${{ github.repository }}
-        run: |
-          URL="https://msupino.github.io/NavigationApp/branch/${BRANCH}/"
-          SHORT="${SHA:0:7}"
-          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`' "$URL" "$URL" "$SHORT")
-          # Update existing bot comment if present, otherwise create new one.
-          EXISTING=$(gh api "repos/${REPO}/issues/${PR}/comments" \
-            --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("### 🚀 Preview deployed")))] | .[0].id // empty')
-          if [ -n "$EXISTING" ]; then
-            gh api "repos/${REPO}/issues/comments/${EXISTING}" -X PATCH -f body="$BODY"
-          else
-            gh api "repos/${REPO}/issues/${PR}/comments" -f body="$BODY"
-          fi
 
   e2e-deployed:
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
-    # Only the published site must be ready before tests — not the tail of
-    # `deploy` (deployment records + PR comment). After `build`, `deploy`
-    # publishes the artifact; this job runs in parallel and spends checkout +
-    # npm ci + Playwright install while Pages updates, then waits on URL/SHA.
+    if: github.event_name == 'pull_request'
+    # Pull requests never deploy. Test the Pages artifact produced by `build`
+    # through a local HTTP server so deploy-time rewrites are still covered.
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     # The suite outgrew the old 15 min: the last run under it took 13.9 min for
     # 1364 tests and the next PR's 17 new tests pushed it past the cap, where the
     # SIGINT surfaced as four bogus wind.spec failures (tests killed mid-flight,
@@ -342,6 +265,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -364,14 +288,10 @@ jobs:
           PR_NUM: ${{ github.event.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # Test the byte-identical artifact the deploy job publishes, served
-          # from a local HTTP server — NOT the live CDN. GitHub Pages' Fastly
-          # edge cannot be force-purged, and every PR deploy republishes the
-          # whole site, so concurrent PRs raced and served each other stale
-          # content (flaky "stale CDN" failures, #491). The artifact is exactly
-          # what Pages would publish, so local hosting keeps all deploy-rewrite
-          # coverage (cache-bust ?v=, version SHA, /pr/N/ subpath URLs, byop
-          # base path) while being fully deterministic.
+          # Serve the byte-identical Pages artifact locally. This keeps
+          # deploy-rewrite coverage (cache-bust ?v=, version SHA, /pr/N/
+          # subpath URLs, and the byop base path) deterministic without
+          # exposing untrusted pull-request code on the production origin.
           PREVIEW="_site/pr/$PR_NUM"
           if [ ! -f "$PREVIEW/app/core.js" ]; then
             echo "::error::No preview at $PREVIEW in the built artifact"; exit 1

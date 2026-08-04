@@ -8,6 +8,7 @@ name: Monitor chart data freshness
 #
 # Feeds + the producing workflow's cadence → freshness budget:
 #   sigmet-data/sigmet.json   aviation-data.yml  every 20m* -> 4h
+#   wx-data/wx.json           aviation-data.yml  every 20m* -> 4h
 #   ims-data/ims/pwx.json     ims-charts.yml     hourly*    -> 5h
 #   ims-data/ims/sigwx.json   ims-charts.yml     hourly*    -> 6h
 #   (*GitHub often skips scheduled runs, so the real cadence is 2-3h — the
@@ -34,6 +35,7 @@ jobs:
             const RAW = `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/`;
             const feeds = [
               { label: 'SIGMET (sigmet-data/sigmet.json)', url: 'sigmet-data/sigmet.json', maxHours: 4 },
+              { label: 'Weather (wx-data/wx.json)', url: 'wx-data/wx.json', maxHours: 4 },
               { label: 'PWX charts (ims-data/ims/pwx.json)', url: 'ims-data/ims/pwx.json', maxHours: 5 },
               { label: 'SIGWX charts (ims-data/ims/sigwx.json)', url: 'ims-data/ims/sigwx.json', maxHours: 6 },
               { label: 'NOTAMs (notam-data/notam.json)', url: 'notam-data/notam.json', maxHours: 6 },

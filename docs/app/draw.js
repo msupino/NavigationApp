@@ -3848,8 +3848,13 @@ function drawSummaryPill(prof, totalDist, totalH) {
   pill.style.visibility = '';
   // Trip fuel includes the taxi/takeoff allowance when departing an airfield —
   // exactly the plan's rule (io.js taxiFuel), or the pill would read 1.1 gal light.
-  const taxi = (aircraft && aircraft.taxiGal > 0 && typeof isAirport === 'function' &&
-    state.waypoints[0] && isAirport(state.waypoints[0])) ? aircraft.taxiGal : 0;
+  // A fresh browser has no persisted aircraft object until the plan is opened,
+  // but the plan already uses the tuning defaults in that state. Use the same
+  // effective profile here so merely opening the plan cannot change this total.
+  const summaryAircraft = (aircraft && typeof aircraft === 'object')
+    ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+  const taxi = (summaryAircraft.taxiGal > 0 && typeof isAirport === 'function' &&
+    state.waypoints[0] && isAirport(state.waypoints[0])) ? summaryAircraft.taxiGal : 0;
   const gal = prof && prof.totalFuel > 0 ? prof.totalFuel + taxi : 0;
   pill.style.display = '';
   pill.textContent = (typeof S.fpMobileSummary === 'function')

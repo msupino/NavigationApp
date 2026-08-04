@@ -11,10 +11,17 @@ function workflow(name) {
 }
 
 test.describe('dev workflow guards', () => {
-  test('Draft auto-merge enables squash merges for PRs', () => {
+  test('Draft auto-merge squashes topic branches and merges long-lived ones', () => {
     const yml = workflow('draft-auto-merge.yml');
     expect(yml).toContain('gh pr merge "$PR"');
-    expect(yml).toContain('--auto --squash --delete-branch');
+    // Was `--auto --squash --delete-branch`, hard-coded for every PR. A squashed dev -> main
+    // promo hands main dev's content with none of its ancestry, so the NEXT promo reports
+    // every flattened file as "changed in both" -- #1425 opened with 37 files of conflicts
+    // nobody had written. The flags are chosen per PR now; see the two guards below.
+    expect(yml).toContain('--auto $METHOD $DELETE');
+    expect(yml).toContain('METHOD=--squash');
+    expect(yml).toMatch(/case "\$HEAD_REF" in main\|dev\) METHOD=--merge/);
+    expect(yml).toMatch(/case "\$BASE" in main\) METHOD=--merge/);
   });
 
   test('Auto PR dev to main squash-syncs main into dev', () => {

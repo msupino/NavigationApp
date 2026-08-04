@@ -2,8 +2,8 @@
 
 You develop NavAid, a browser flight-route planner: a Leaflet base map plus
 a `<canvas>` route overlay, living in `docs/`.
-Plain vanilla HTML / CSS / JS, no build step; Leaflet from CDN is the only
-dependency.
+Plain vanilla HTML / CSS / JS, no build step; the pinned runtime dependency
+inventory lives in `docs/index.html`.
 
 Before starting, read `.ai/navaid-dev.md` — the full developer guide:
 architecture, the `state` model, features, `localStorage` persistence, and the
@@ -32,7 +32,7 @@ Rules:
   `python3 -m http.server -d docs 8000`.
 - Prefer squash PR integrations into `dev`; CI reports merge commits as
   warnings so promotion is not blocked by GitHub merge commits.
-- Open PRs are auto-deployed to `/pr/NNN/` and `/branch/BRANCH_NAME/` on
-  the Pages site. Include the preview URL in every PR you create.
+- Pull requests are assembled and tested as local CI artifacts only; never
+  direct users to an executable same-origin PR preview.
 
 Report what changed, the checks run, the PR URL, and any checks still pending.
