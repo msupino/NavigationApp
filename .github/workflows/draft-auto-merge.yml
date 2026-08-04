@@ -78,14 +78,37 @@ jobs:
             echo "PR #$PR is draft — skipping auto-merge."
             exit 0
           fi
-          # --delete-branch is required: the repo's delete_branch_on_merge
-          # setting only fires for human-initiated merges. Auto-merge enabled
-          # by github-actions[bot] honors the flags passed here, not the
-          # repo setting.
+          BASE=$(gh pr view "$PR" --json baseRefName --jq '.baseRefName')
+          HEAD_REF=$(gh pr view "$PR" --json headRefName --jq '.headRefName')
+          # A feature PR into dev is squashed: one commit per change, and dev is the only
+          # place that history is read. The dev -> main PROMO must NOT be squashed. A squash
+          # gives main dev's content with none of its ancestry, so git stops knowing that main
+          # contains dev's commits, and the NEXT promo reports every file touched as "changed
+          # in both" -- 37 files of phantom conflicts on #1425, resolved only by merging main
+          # back into dev to restore what the squash threw away.
+          # Squash ONLY a topic branch into dev. Any PR between two long-lived branches --
+          # dev -> main promoting, or main -> dev backmerging after one -- must keep ancestry,
+          # or the next PR between them conflicts on every file the squash flattened.
+          METHOD=--squash
+          case "$HEAD_REF" in main|dev) METHOD=--merge ;; esac
+          case "$BASE" in main) METHOD=--merge ;; esac
+          # --delete-branch is required for feature branches: the repo's
+          # delete_branch_on_merge setting only fires for human-initiated merges, and
+          # auto-merge enabled by github-actions[bot] honors the flags passed here.
+          # But a promo PR's HEAD is `dev`, so passing it there asks GitHub to delete the
+          # integration branch on every promotion. Branch protection has been refusing that;
+          # this stops asking. Keyed on the head ref, not the base, so no long-lived branch
+          # can be deleted however the PR is pointed.
+          DELETE=--delete-branch
+          case "$HEAD_REF" in
+            main|dev) DELETE= ;;
+          esac
+          echo "Arming PR #$PR ($HEAD_REF -> $BASE) with ${METHOD}${DELETE:+ $DELETE}."
           # Re-arming an already-armed PR is a no-op; tolerate it so a hand-off
           # round can't die here under `set -e`.
+          # shellcheck disable=SC2086
           gh pr merge "$PR" \
-            --auto --squash --delete-branch \
+            --auto $METHOD $DELETE \
             --subject "$TITLE" || echo "Auto-merge already enabled for PR #$PR."
           echo "Auto-merge enabled for PR #$PR (watch round $ROUND)."
           # GITHUB_TOKEN-initiated bot merges suppress `push: dev`,
@@ -104,7 +127,6 @@ jobs:
                 # suppressed when the upstream completion was driven by
                 # GITHUB_TOKEN. workflow_dispatch is exempt from
                 # anti-recursion (per GitHub docs), so this fires reliably.
-                BASE=$(gh pr view "$PR" --json baseRefName --jq '.baseRefName')
                 FAILED=0
                 gh workflow run Deploy --ref "$BASE" || {
                   echo "::error::Failed to dispatch Deploy on $BASE"; FAILED=1;
