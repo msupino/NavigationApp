@@ -84,4 +84,26 @@ test.describe('workflow trust and integrity gates', () => {
     expect(ims).toContain('scripts/finalize-ims-manifests.mjs');
     expect(ims).toContain('persist-credentials: false');
   });
+
+  test('only a topic branch into dev is squashed; long-lived branches keep ancestry', () => {
+    const arm = read('.github/workflows/draft-auto-merge.yml');
+    // A squashed dev -> main promo gives main dev's content with none of its ancestry, so git
+    // stops knowing main contains dev's commits and the NEXT promo reports every flattened
+    // file as "changed in both" -- 37 files of phantom conflicts on #1425. The same applies to
+    // a main -> dev backmerge, which exists precisely to restore that ancestry.
+    expect(arm).toContain('METHOD=--squash');
+    expect(arm).toMatch(/case "\$HEAD_REF" in main\|dev\) METHOD=--merge/);
+    expect(arm).toMatch(/case "\$BASE" in main\) METHOD=--merge/);
+    // ...and the flags must be variables, not a hard-coded --squash on the merge call.
+    expect(arm).toContain('--auto $METHOD $DELETE');
+    expect(arm).not.toMatch(/--auto --squash --delete-branch/);
+  });
+
+  test('auto-merge never asks to delete a long-lived branch', () => {
+    const arm = read('.github/workflows/draft-auto-merge.yml');
+    // A promo PR's HEAD is `dev`, so a blanket --delete-branch asks GitHub to delete the
+    // integration branch on every promotion. Branch protection refused it; this stops asking.
+    // Keyed on the head ref, so no long-lived branch can be deleted however a PR is pointed.
+    expect(arm).toMatch(/case "\$HEAD_REF" in\s*\n\s*main\|dev\) DELETE= ;;/);
+  });
 });
