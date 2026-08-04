@@ -3,16 +3,24 @@
 All shipped operational data lives under `docs/data/`. Keep data changes
 separate from UI refactors when possible.
 
+The IMS chart workflow finalizes PWX and SIGWX manifests category-by-category.
+A category is replaced only when every PNG referenced by its candidate manifest
+was converted successfully; otherwise its complete last-good manifest is kept.
+After both decisions, PNGs not referenced by either live manifest are pruned.
+
 ## Dataset Index
 
 - `airfields.json` - airfields, ARPs, names, runways, plates, frequencies,
   ATIS/clearance, and metadata used by inspectors and charts.
-- `nav-waypoints.json` - Israeli CVFR reporting points with canonical code,
-  Hebrew label, and coordinates.
-- `leg-altitude.json` - known altitude pairs for CVFR route segments.
+- `cvfr-nav-waypoints.json`, `lsa-nav-waypoints.json`,
+  `heli-nav-waypoints.json` - layer-specific reporting points. The active
+  `navDataPrefix` selects the runtime file.
+- `cvfr-leg-altitude.json`, `lsa-leg-altitude.json`,
+  `heli-leg-altitude.json` - layer-specific known altitude pairs.
 - `route-templates.json` - ready-made route templates. Do not duplicate leg
-  altitude values here when they belong in `leg-altitude.json`.
-- `comm-change.json` - frequency-change boundaries and call-sign defaults.
+  altitude values here when they belong in a leg-altitude dataset.
+- `cvfr-comm-change.json`, `lsa-comm-change.json`,
+  `heli-comm-change.json` - frequency-change boundaries and defaults.
 - `vor.json` - VOR stations used by radial/DME readouts.
 - `terrain.json` - coarse elevation grid for MSA warnings.
 - `wx.json` - weather metadata/source configuration.
@@ -36,7 +44,8 @@ The NOTAM layer is fed by a scheduled Action, not a hand-maintained file:
   NOTAM's `geom` (polygon / circle / line), with airport count badges for
   coordinate-less airport NOTAMs and a full-text list modal.
 - Geometry the source omits is derived client-side: CVFR route closures resolve
-  named fixes against `nav-waypoints.json` / `airfields.json` / `vor.json`;
+  named fixes against the active nav-waypoint dataset / `airfields.json` /
+  `vor.json`;
   prose border NOTAMs are buffered from `notam-borders.json`.
 - The list modal decodes the ICAO Q-code + abbreviations (Raw toggle for source
   text); a timeline slider scrubs which NOTAMs are active at a future time.
@@ -51,10 +60,11 @@ The NOTAM layer is fed by a scheduled Action, not a hand-maintained file:
 
 ## Nav Waypoints
 
-`nav-waypoints.json` contains published Israeli VFR reporting points:
+`cvfr-nav-waypoints.json` currently contains 172 published reporting points
+under `waypoints`:
 
 ```json
-{ "name": "BAZRA", "he": "בצרה", "lat": 32.21861, "lng": 34.8825 }
+{ "name": "ZLHAV", "en": "Lehavim Junction", "he": "צומת להבים", "lat": 31.3725, "lng": 34.79333, "report": "mandatory" }
 ```
 
 The IAA CVFR waypoint reference table is the source of truth. Airfield ARPs do
@@ -63,7 +73,7 @@ not belong here; richer airfield records belong in `airfields.json`.
 When updating:
 
 1. Regenerate from the published table.
-2. Keep `{ name, he, lat, lng }`.
+2. Keep `{ name, en, he, lat, lng, report }` and the top-level report metadata.
 3. Round coordinates consistently.
 4. Diff code/name changes manually.
 5. Run waypoint/dataset tests.
@@ -89,12 +99,13 @@ npx playwright test tests/airfields-dataset.spec.js tests/airfield-arp.spec.js
 
 ## Leg Altitudes
 
-`leg-altitude.json` stores per-direction values for known CVFR legs.
+The active `<prefix>-leg-altitude.json` stores per-direction values for its
+chart family.
 
 Use `null` for no known value in a direction, and mark blocked/one-way paths
 with the existing schema. Do not infer altitudes from route templates once the
-leg is known; migrate the value into `leg-altitude.json` and strip it from the
-template.
+leg is known; migrate the value into the matching prefixed dataset and strip it
+from the template.
 
 The altitude-pairs chart is an editing/viewing surface for this dataset. If you
 change schema or status semantics, update the chart tests and the UI copy in
@@ -109,7 +120,7 @@ Rules:
 - Use canonical waypoint codes.
 - Keep user-editable display names out unless necessary.
 - Keep speed/profile defaults in the template.
-- Store leg altitudes in `leg-altitude.json`, not in the template, when the leg
+- Store leg altitudes in the matching prefixed dataset, not in the template, when the leg
   is a known CVFR segment.
 - A template also keeps minimal `notes` (freq-change callouts: `cc`,
   `freqName`, optional `freqAuto`) and `commChangeSuppressions`; it does not
@@ -136,7 +147,7 @@ python3 scripts/build_terrain.py /path/to/hgt --out docs/data/terrain.json
 ## BYOP PDFs
 
 `docs/byop/` is intentionally public and stable. Deploy keeps one production
-copy and points staging/PR previews at it to avoid huge Pages artifacts.
+copy and staging resolves plates against that shared root URL.
 
 Do not move or duplicate these PDFs without updating:
 

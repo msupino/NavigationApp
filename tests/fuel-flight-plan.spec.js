@@ -89,6 +89,31 @@ test.describe('Fuel/endurance flight plan modal', () => {
     expect(totalFuel).toBeGreaterThan(0);
   });
 
+  test('opening the flight plan does not change the route-summary fuel total', async ({ page }) => {
+    await boot(page);
+    const before = await page.locator('#route-summary').innerText();
+    expect(before).toContain('gal');
+
+    await openFlightPlan(page);
+
+    await expect(page.locator('#route-summary')).toHaveText(before);
+  });
+
+  test('a saved aircraft profile drives the route summary before the plan is opened', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      localStorage.setItem('navaid.aircraft', JSON.stringify({ gph: 9, taxiGal: 1.1 }));
+    });
+    await page.reload();
+    await page.waitForFunction(() => typeof state !== 'undefined' && state.legs.length > 0);
+
+    const before = await page.locator('#route-summary').innerText();
+    await openFlightPlan(page);
+
+    expect(parseFloat(await page.locator('#aircraft-gph').inputValue())).toBe(9);
+    await expect(page.locator('#route-summary')).toHaveText(before);
+  });
+
   test('clearing GPH shows -- in fuel cells', async ({ page }) => {
     await boot(page);
     await openFlightPlan(page);

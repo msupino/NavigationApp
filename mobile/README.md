@@ -88,8 +88,8 @@ recording works there.
 ## Notes
 
 - The web app detects the shell (`isNativeCapacitorShell()` in
-  `docs/app/ui.js`) via the injected `window.Capacitor` bridge: it keeps
-  Google Analytics browser-only. The service worker DOES register inside the
+  `docs/app/ui.js`) via the injected `window.Capacitor` bridge. No third-party
+  analytics runtime is loaded. The service worker DOES register inside the
   remote-URL shell — offline depends on it; only the legacy local-origin
   (`app.navaid.local`) shell skips it.
 - Contract tests: `tests/capacitor-mobile.spec.js` +

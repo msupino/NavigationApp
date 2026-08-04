@@ -59,14 +59,13 @@ test('Clear resets route-wide wind so a new route does not inherit it', async ({
 test('GPX export writes track elevation in metres, not feet-deflated', async ({ page }) => {
   await bootRoute(page);
   const has = await page.evaluate(() => {
-    if (typeof gpsTrackToGpx !== 'function') return 'no-fn';
+    if (typeof gpsTrackToGpx !== 'function') throw new Error('gpsTrackToGpx is not exposed');
     const gpx = gpsTrackToGpx({ name: 'T', track: [
       { lat: 32.0, lng: 34.8, t: 1, alt: 914 },   // 914 m (~3000 ft)
       { lat: 32.1, lng: 34.9, t: 2, alt: 915 },
     ] });
     return gpx;
   });
-  test.skip(has === 'no-fn', 'gpsTrackToGpx not exposed');
   expect(has).toContain('<ele>914</ele>');       // metres, not 914/3.28 = 278.6
   expect(has).not.toContain('<ele>278');
 });

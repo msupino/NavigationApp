@@ -33,7 +33,8 @@ Important paths:
 - `docs/data/` - shipped JSON aviation datasets.
 - `docs/i18n/` - locale string bundles.
 - `docs/byop/` - stable public chart/plate PDF URL space.
-- `mobile/` - Capacitor native iOS / Android wrapper around `docs/`.
+- `mobile/` - Capacitor native iOS / Android shell that opens the live site;
+  its `webDir` is `mobile/shell`, not `docs/`.
 - `tests/` - Playwright and dataset regression coverage.
 - `.github/workflows/` - CI, deploy, review, data refresh, and PR automation.
 

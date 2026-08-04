@@ -76,14 +76,11 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(iosInfo).toContain('<string>NavAid</string>');
   });
 
-  test('keeps analytics browser-only but lets the SW run in the remote shell', () => {
+  test('loads no analytics runtime and lets the SW run in the remote shell', () => {
     const indexHtml = readText('docs/index.html');
     const uiJs = readText('docs/app/ui.js');
 
-    // GA gated on both the legacy local origin AND the injected Capacitor
-    // bridge (the remote-URL shell loads the production hostname).
-    expect(indexHtml).toContain("location.hostname !== 'app.navaid.local'");
-    expect(indexHtml).toContain("typeof window.Capacitor === 'undefined'");
+    expect(indexHtml).not.toContain('googletagmanager');
     expect(uiJs).toContain('function isNativeCapacitorShell()');
     // The SW must register in the remote-URL shell (offline + chart packs
     // depend on it) — only the legacy local-origin shell skips it.

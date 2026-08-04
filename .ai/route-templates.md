@@ -15,10 +15,10 @@ notes, wind, and comm-change suppressions. A template intentionally does not.
 - `defaultSpeed` — applied to every leg on build.
 - `waypoints` — an array of **canonical codes** (e.g. `"LLHZ"`, `"SFAIM"`), not
   coordinates and not localized labels. Coordinates are resolved from
-  `nav-waypoints.json` / `airfields.json` at build time.
+  active `<prefix>-nav-waypoints.json` / `airfields.json` at build time.
 - `notes` — **lean** freq-change callouts keyed by `cc` (waypoint code) with
   `freqName` (+ optional `freqAuto`). No `freq`, `lat`, or `lng` — frequency
-  is derived from `comm-change.json`, and the callout position is derived from
+  is derived from the active `<prefix>-comm-change.json`, and the callout position is derived from
   that waypoint at build time (same default offset as auto-seeding).
   `text`/`color`/`shape` default to the standard freq-change box.
 - `commChangeSuppressions` — array of waypoint codes whose auto comm-change note
@@ -27,7 +27,7 @@ notes, wind, and comm-change suppressions. A template intentionally does not.
 ## What a template DROPS (resolved at build time instead)
 
 - **Per-leg altitudes.** Do **not** store a `legs` array for known CVFR
-  segments — altitudes come from `leg-altitude.json` (the single source of
+  segments — altitudes come from the active `<prefix>-leg-altitude.json` (the single source of
   truth). `defaultSpeed` sets the speed; altitudes are inferred. (`legs` is
   accepted by the loader for the rare custom-altitude template, but prefer
   leaving it out.)
@@ -44,8 +44,8 @@ notes, wind, and comm-change suppressions. A template intentionally does not.
    - Set `notes` to the freq-change callouts (keep `cc` / `freqName`; add
      `freqAuto` only when the callout should keep following route defaults).
    - Set `commChangeSuppressions` for points that should stay silent.
-   - Leave `legs` out so altitudes track `leg-altitude.json`.
-3. If a waypoint code is missing from `nav-waypoints.json` / `airfields.json`,
+   - Leave `legs` out so altitudes track the active prefixed altitude dataset.
+3. If a waypoint code is missing from the active prefixed waypoint dataset / `airfields.json`,
    add it there first — the build throws on an unknown code.
 4. Validate JSON and run the template tests:
    ```bash
@@ -56,5 +56,5 @@ notes, wind, and comm-change suppressions. A template intentionally does not.
 ## Apply path (for reference)
 
 `normalizeRouteTemplateData` → `routeFromTemplate` (resolves codes to coords,
-builds legs from `leg-altitude.json`, copies notes + `commChangeSuppressions`)
+builds legs from the active prefixed altitude dataset, copies notes + `commChangeSuppressions`)
 → `applyRouteTemplate` (sets state, seeds non-suppressed comm-change notes).

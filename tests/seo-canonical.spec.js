@@ -35,22 +35,13 @@ test('switching language still works without the alternates', async ({ page }) =
   expect(en.sample).not.toBe(he.sample);
 });
 
-test('robots.txt keeps crawlers out of the preview deployments', () => {
+test('robots.txt keeps crawlers out of non-production and reserved paths', () => {
   const robots = read('robots.txt');
   for (const p of ['/staging/', '/pr/', '/branch/']) {
     expect(robots, p).toContain('Disallow: ' + p);
   }
   expect(robots).toContain('Allow: /');                    // production still crawlable
   expect(robots).toContain('Sitemap: https://navaid.supino.org/sitemap.xml');
-});
-
-test('the disallowed paths match the ones the app treats as previews', () => {
-  // index.html excludes the same three from GA; if one list grows the other must too.
-  const html = read('index.html');
-  const ga = html.match(/\(\?:(staging\|pr\|branch)\)/);
-  expect(ga, 'GA preview regex not found — keep robots.txt in step with it').not.toBeNull();
-  const robots = read('robots.txt');
-  for (const seg of ga[1].split('|')) expect(robots).toContain('Disallow: /' + seg + '/');
 });
 
 test('the sitemap lists only self-canonical pages, with no alternates', () => {

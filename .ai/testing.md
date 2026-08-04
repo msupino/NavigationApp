@@ -2,17 +2,11 @@
 
 ## Static Checks
 
-Run syntax checks on every changed JavaScript file:
+Run syntax checks on every changed JavaScript file. To match CI mechanically:
 
 ```bash
-node --check docs/app/core.js
-node --check docs/app/draw.js
-node --check docs/app/interact.js
-node --check docs/app/io.js
-node --check docs/app/ui.js
+find docs/app docs/i18n -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node --check
 node --check docs/sw.js
-node --check docs/i18n/he/strings.js
-node --check docs/i18n/en/strings.js
 ```
 
 Run spell check when touching user-facing English/Hebrew strings:
@@ -64,10 +58,13 @@ Use this map to choose focused coverage:
 
 Check `tests/README.md` for the current CI vs deployed-e2e split.
 
-## Deployed E2E
+## Built-artifact E2E
 
-Deploy workflow runs a subset against the Pages preview. It excludes service
-worker/PWA tests because deployed previews already have a live service worker.
+On pull requests, Deploy assembles the exact Pages artifact but does not publish
+it. `e2e-deployed` downloads that artifact, serves `_site/pr/NNN/` from
+`127.0.0.1`, and runs the subset against the rewritten bytes. Service-worker
+and PWA suites remain in the normal CI job because they require isolated cache
+state and are excluded from the shared artifact subset.
 
 Use relative navigation in tests:
 
@@ -75,8 +72,8 @@ Use relative navigation in tests:
 await page.goto('?lang=he');
 ```
 
-Do not use root-relative paths like `/?lang=he`; they escape the `/pr/NNN/`
-preview base path.
+Do not use root-relative paths like `/?lang=he`; they escape the artifact's
+`/pr/NNN/` base path.
 
 ## Visual Checks
 

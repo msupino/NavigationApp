@@ -7,13 +7,13 @@ A browser flight-route planner. Leaflet slippy map (live chart tiles from
 `https://navaid-tiles.supino.org`) with a canvas overlay that draws the route,
 free-text notes, and an
 optional VFR-reporting-point reference layer. Plain HTML / CSS / JS, no
-build step; Leaflet from CDN is the only dependency. This repository now
+build step; pinned Leaflet plugins are listed in `docs/index.html`. This repository now
 carries the static web app source only.
 
-- **Live (production):** https://msupino.github.io/NavigationApp/
-- **Live (staging):** https://msupino.github.io/NavigationApp/staging/
-- **PR preview (by number):** https://msupino.github.io/NavigationApp/pr/NNN/
-- **PR preview (by branch):** https://msupino.github.io/NavigationApp/branch/BRANCH_NAME/
+- **Live (production):** https://navaid.supino.org/
+- **Live (staging):** https://navaid.supino.org/staging/
+- **Pull-request verification:** built as an Actions artifact and served only
+  on localhost during E2E; unreviewed code is not deployed under the live origin.
 - **Repo:** https://github.com/msupino/NavigationApp (fork of liorbenhorin/NavigationApp)
 
 ## AI Docs
@@ -61,8 +61,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 ## Files (`docs/`)
 
 - `index.html` — page, toolbar, Leaflet + the ordered app scripts. Title
-  is "NavAid"; `favicon.svg` is a small plane glyph; GA4 tag
-  `G-0XM5PHEK8B` and a Web App Manifest are embedded. Assets carry
+  is "NavAid"; `favicon.svg` is a small plane glyph and a Web App Manifest is
+  embedded. Mutable analytics scripts are intentionally absent. Assets carry
   `?v=N` query strings; cache-bust is now **rewritten automatically by
   `.github/workflows/deploy.yml`** to `?v=<short-sha>` at upload time,
   so the in-source value is just a static placeholder and doesn't need
@@ -88,11 +88,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `i18n/` — locale string bundles.
 - `assets/` — icons and social preview images.
 - `manifest.json`, `sw.js` — PWA manifest + offline app-shell service worker.
-- `../mobile/` — Capacitor native iOS / Android wrapper. It keeps its own
-  `package.json` and `package-lock.json`, points `webDir` at `../docs`, and
-  must not introduce a build step for the GitHub Pages app.
-- `data/nav-waypoints.json` — 173 published Israeli VFR reporting points
-  (`{name, he, lat, lng}`). Fetched once at boot. **Source:** IAA CVFR
+- `../mobile/` — Capacitor native iOS / Android remote-URL shell. It keeps its
+  own tooling, uses the small `mobile/shell` webDir, and opens
+  `https://navaid.supino.org`; it must not introduce a build step for Pages.
+- `data/cvfr-nav-waypoints.json` — 172 published Israeli CVFR reporting points
+  under `waypoints`, with `{name, en, he, lat, lng, report}`. **Source:** IAA CVFR
   chart waypoint reference table (page 113, 2025 edition), shipped as
   `113_waypoints.csv` upstream. CSV → JSON migration in issue #406 /
   PR `feat/unified-waypoints`. ARP rows in the CSV are intentionally
@@ -147,7 +147,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Toolbar:** on phones / narrow viewports (`max-width: 680px`) the
   toolbar is the original floating vertical column with a `⋯` drag handle
   (`#toolbar-handle`) and hamburger collapse control. Position is persisted
-  at `navaid.toolbarPos`, re-clamped on `window resize`; collapsed state is
+  at `navaid.toolbarPos.<lang>`, re-clamped on `window resize`; collapsed state is
   persisted at `navaid.toolbarCollapsed`. On desktop (`min-width: 681px`)
   those same `.tb-section` groups render as a fixed top menubar with
   Windows-like dropdown panels. Desktop ignores saved mobile drag/collapse
@@ -265,7 +265,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   arrows: the arrow point stays on the waypoint, the stored note coordinate
   is the movable far tail, and the name/frequency are drawn above/below the
   arrow rather than inside a note box. Selecting the callout opens inspector
-  fields for name + frequency. If `docs/data/comm-change.json` defines a root
+  fields for name + frequency. If `docs/data/cvfr-comm-change.json` defines a root
   `callSigns` catalog and a point's `callSigns` array, the inspector also
   shows a call-sign dropdown; choosing an option copies its default primary
   frequency into the editable frequency field. Call-sign names use the
@@ -373,7 +373,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   be resized down to a compact few-row view for filtered results.
 - **Route templates never carry altitudes.** `route-templates.json`
   entries define only waypoints + `defaultSpeed`; leg altitudes are
-  resolved from `leg-altitude.json` (the charted/inferred CVFR pairs).
+  resolved from the active `<prefix>-leg-altitude.json` dataset.
   Do not add `inboundAltitude` / `outboundAltitude` to a template — they
   must come from the altitude dataset so a route stays consistent with
   the chart. Templates are listed alphabetically by name.
@@ -402,8 +402,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   resolves to an airfield elevation. The V/S input persists at
   `navaid.profileVS` and moves the climb/descent ramp, including endpoint
   TOC/TOD markers.
-- **Show Nav Waypoints** (default **on**): `nav-waypoints.json` is
-  fetched once at boot; renders 173 white-fill / black-stroke 3.5 px
+- **Show Nav Waypoints** (default **on**): the active
+  `<prefix>-nav-waypoints.json` is fetched once at boot; CVFR currently has
+  172 points and renders white-fill / black-stroke 3.5 px
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export. Source: IAA CVFR chart page 113 (2025 edition) — see the
   Notes / pending section.
@@ -418,7 +419,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `airfields.json` that carries a non-empty `plates[]` as a
   collapsible section (header `ICAO — English name`, plate chips
   grouped by `plateCategory()`). `🧭 Alt pairs` opens the
-  `leg-altitude.json` editing table; each direction, each row, and the full
+  active `<prefix>-leg-altitude.json` editing table; each direction, each row, and the full
   page have reset controls that restore values to the loaded origin data.
   **Airfields are listed alphabetically by ICAO** — `renderList()` sorts `withPlates` via
   `a.name.localeCompare(b.name)` before rendering, so JSON row order
@@ -475,6 +476,13 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 
 ## Persistence (`localStorage` + `sessionStorage`, all keyed `navaid.*`)
 
+The enforceable inventory is `GDRIVE_SETTINGS_KEYS` plus the reasoned
+`NOT_A_SYNCED_SETTING` registry in `tests/settings-sync-allowlist.spec.js`.
+That test scans every app literal so a new key cannot silently escape the
+sync/device-local decision. The list below documents the main keys and dynamic
+families; when code and prose disagree, update both rather than treating prose
+as a machine-readable registry.
+
 `localStorage` (persisted across reloads):
 
 - `navaid.route` — `{waypoints, legs, notes}` (debounced; route geometry
@@ -493,13 +501,19 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.layer` — selected base layer name.
 - `navaid.lang` — `'en'` / `'he'`; bootstrap script in `index.html`
   reads this before the app loads.
-- `navaid.toolbarPos` — `{x, y}` of the floating mobile toolbar.
+- `navaid.toolbarPos.<lang>` and `navaid.toolbarPosDesktop.<lang>` — `{x, y}`
+  for the floating mobile toolbar and desktop menubar.
 - `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed floating
   mobile toolbar. Desktop menubar view ignores this value.
 - `navaid.sec.<sectionId>` — `'0'` / `'1'` per accordion section
   (`build`, `view`, `display`, `charts`, `export`, `print`, `sim`, etc.).
-- `navaid.inspPos` — `{x, y}` of the dragged inspector panel.
-- `navaid.tunePanelPos` — `{x, y}` of the hidden tuning panel.
+- `navaid.inspPos.<lang>`, `navaid.clockPos.<lang>`,
+  `navaid.legendPos.<lang>`, `navaid.searchPos.<lang>`,
+  `navaid.tunePanelPos.<lang>`, and `navaid.fpPos.<lang>` —
+  language-specific dragged panel/widget positions. On first read,
+  `navLangPosRead()` adopts a legacy bare position key into the active
+  language's key and leaves the bare key available for the other language.
+  Position keys and other panel geometry are device-local.
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
 - `navaid.yellowAlpha` — Label-opacity slider value (waypoint labels).
@@ -521,6 +535,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.showReporting` — `'0'` / `'1'` for mandatory-reporting badges.
 - `navaid.showMsa` — `'0'` / `'1'` for the leg-inspector MSA row.
 - `navaid.showWind` — `'0'` / `'1'` for wind inputs, arrows, and readout.
+- `navaid.windField`, `navaid.windFieldAlt`, `navaid.windFieldOpacity`, and
+  `navaid.wxTime` — wind-field visibility and device-local forecast scrub state.
 - `navaid.showSigmet` — `'0'` / `'1'` for the SIGMET overlay.
 - `navaid.showVorStations` — `'0'` / `'1'` for VOR/DME station markers.
 - `navaid.showVor` — legacy VOR marker key, migrated once to
@@ -631,13 +647,23 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   the `?align=1` align editor, keyed by overlay PNG filename; axis-aligned
   (`sw`/`ne`) or rotated (`tl`/`tr`/`bl`). Wins over `airfields.json` bounds.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
-- `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
+- `navaid.fpPos.<lang>` — `{x, y}` of the dragged Flight Plan modal (included
+  in the language-scoped position migration described above).
 - `navaid.fpColumns` — JSON array of hidden Flight Plan table column keys
   (`seq`, `from`, `to`, `hdg`, `dist`, `speed`, `alt`, `time`, `fuel`,
   `cumTime`, `cumFuel`, `radial`, `dme`, optional `freq`). When the key is
   absent, `dist` is hidden by default; an explicit empty array means the user
   chose All columns. Missing keys are shown, so newly added columns default
   visible.
+- `navaid.fpl.<field>` — flight-plan pilot/aircraft/contact form values;
+  `replyTo` may sync, while `aisEmail` is device-local because it controls the
+  filing destination. See the allowlist test for the exact decision.
+- `navaid.imsPwx`, `navaid.sigwxOv`, `navaid.showNotam.<prefix>`, and the
+  related opacity keys — current chart/overlay choices (per-chart families are
+  enumerated from the active CVFR/LSA/heli prefixes by tests).
+- `navaid.apkReloadedForBuild` — native-shell reload bookkeeping, device-local.
+- Session keys: `navaid.selected`, `navaid.fpOpen`, and
+  `navaid.openChartModal` restore transient UI state within a tab visit.
 - `navaid.simUrl` — simulator bridge base URL.
 - `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
 - `navaid.simFollow` — `'0'` / `'1'` for simulator-follow mode.
@@ -680,7 +706,7 @@ downloadable `route.json`.
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
   the area, create one. See `tests/README.md` for which tests run in CI
-  vs. deployed e2e.
+  vs. built-artifact e2e.
 - **Keep `tests/README.md` in sync** when adding tests that don't run in
   e2e-deployed, or when changing the exclusion pattern in `deploy.yml`.
 - **Deploy is a workflow** at `.github/workflows/deploy.yml`. It
@@ -688,9 +714,12 @@ downloadable `route.json`.
   checks out **both** branches, and assembles one Pages site:
   - `main/docs/` → `/`
   - `dev/docs/`  → `/staging/`
-  - `origin/<PR-branch>/docs/` → `/pr/NNN/` and `/branch/<BRANCH>/`
-  - `actions/deploy-pages@v4` publishes the result.
-- **Staging deploy** = `git push origin dev`.
+  - on PRs, the current head is also assembled under `/pr/NNN/` inside the
+    artifact for localhost E2E only; the deploy job is skipped.
+  - `actions/deploy-pages@v4` publishes only trusted non-PR runs.
+- **Staging deploy** follows an issue + feature-branch PR into `dev`; the merge
+  push publishes staging. Direct protected-branch pushes are exceptional and
+  require explicit maintainer authorization.
 - **Production deploy** = merge a `dev` → `main` pull request (`main` is
   branch-protected; the merge triggers the same workflow).
   **Before merging**: delete `REVIEW.md` from repo root if it exists
@@ -712,9 +741,8 @@ downloadable `route.json`.
   `docs/app/core.js`, so the toolbar identifies the exact deployed commit.
   Do not manually increase the source version number; the regex is
   idempotent (matches both `'x.y'` and `'x.y-anything'`).
-- PR preview links: when creating a PR include the direct preview URL
-  in the PR body: `https://msupino.github.io/NavigationApp/pr/NNN/` or
-  `https://msupino.github.io/NavigationApp/branch/BRANCH_NAME/`
+- PRs have no executable public preview. Use CI's built artifact and local
+  Playwright/browser verification.
 - Watch run status: `gh run list --workflow=deploy.yml --limit 5`.
 - **GitHub issues**: a review agent files bugs as GitHub issues on this
   repo. Check open issues at the start of a session:
@@ -730,15 +758,14 @@ downloadable `route.json`.
   (`.github/workflows/deploy.yml`) have `workflow_dispatch:`. Manual
   trigger: `gh workflow run CI --ref dev` /
   `gh workflow run Deploy --ref dev`.
-- **Admin-bypass pushes can silently swallow workflow events.** Pushing
+- **Explicitly authorized admin-bypass pushes can silently swallow workflow events.** Pushing
   to `dev` / `main` as a repo admin while branch protection has required
   status checks pending records a "Bypassed rule violations" entry but
   the push event sometimes fails to fire `Deploy` or `CI`. If no run
   appears within ~30 s of a push (`gh run list --limit 5`), dispatch
   manually with the commands above.
-- Prefer landing changes via PRs — `pull_request` events fire reliably,
-  no admin bypass needed. Direct push to `dev` is allowed but is the
-  source of the missed-run bug above.
+- Land ordinary changes through an issue and feature-branch PR to `dev`.
+  Admin bypass is not routine recovery and requires explicit authorization.
 - Deploy uses `concurrency: { group: pages, cancel-in-progress: false }`
   so a fast burst of pushes queues runs instead of cancelling them; do
   not flip `cancel-in-progress` back to `true` — staging deploys are
@@ -758,7 +785,7 @@ downloadable `route.json`.
   `msupino/NavigationApp-tiles`, served from
   `https://navaid-tiles.supino.org`, so canvas tile fetches remain
   readable without the old proxy path.
-- `nav-waypoints.json` — 173 Israeli CVFR reporting points.
+- `cvfr-nav-waypoints.json` — 172 Israeli CVFR reporting points.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the
   sole source of truth — the legacy KMZ dataset
@@ -766,20 +793,20 @@ downloadable `route.json`.
   carried ~91 stale codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B
   Maarav/Mizrah`, etc.) and had several reporting points off the
   chart by hundreds of metres (notably `BEZRA` ~752 m, `KUVSH` ~648 m,
-  causing ~1° heading drift on cross-country legs). `{name, he, lat,
-  lng}`: `name` = 5-letter chart code, `he` = Hebrew place name from
+  causing ~1° heading drift on cross-country legs). `{name, en, he, lat,
+  lng, report}`: `name` = 5-letter chart code, `he` = Hebrew place name from
   CSV `Name` column. CSV rows where `Reporting == ARP` are skipped
   here — airfield ARPs live in `airfields.json` with richer data
   (runways, plates, English label). To refresh: replace the CSV with
   the latest chart edition, regenerate the JSON keeping the same
-  `{waypoints: [{name, he, lat, lng}]}` shape and `name`/`he`/`lat`/
-  `lng` mapping (CSV `Code` → `name`, CSV `Name` → `he`, decimal
+  `{waypoints: [{name, en, he, lat, lng, report}]}` shape and field
+  mapping (CSV `Code` → `name`, CSV `Name` → `he`, decimal
   columns → `lat`/`lng` rounded to 5 dp), and diff for sanity. The
   exact migration is documented in the body of the PR that introduced
   it (#406).
 - `proposed-altitudes.json` — candidate altitude pairs for detected green
   CVFR route segments. Coordinates are intentionally not duplicated here:
-  segment endpoints resolve by `from` / `to` against `nav-waypoints.json`
+  segment endpoints resolve by `from` / `to` against `cvfr-nav-waypoints.json`
   and `airfields.json`. `inboundAltitude` means `from -> to`;
   `outboundAltitude` means `to -> from`; `oneWay: true` rows use `null`
   for the disallowed direction. The extraction/review trail lives in
@@ -792,12 +819,12 @@ downloadable `route.json`.
   tags. When refreshing from new PDFs, use the guide's same-route review rules
   before trusting OCR or nearest yellow signs, especially around Haifa / LLHA,
   Herzliya, Beer Sheba, the coastal strip, and Arad / Metzada.
-- `comm-change.json` — dataset of CVFR reporting points where pilots
+- `cvfr-comm-change.json` — dataset of CVFR reporting points where pilots
   must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
   on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).
   Schema: `{version, source, _definition, _NOTE, _TODO, callSigns,
   points:[{name, commChange, callSigns, routeHints, note, source}]}`.
-  `name` matches an ICAO 5-letter code in `nav-waypoints.json`; airfield
+  `name` matches an ICAO 5-letter code in `cvfr-nav-waypoints.json`; airfield
   endpoints may use 4-letter LLxx ICAO codes where the frequency point is
   the field itself. A point's `callSigns` array contains catalog IDs from
   the root `callSigns` object. Optional `routeHints` entries map adjacent
@@ -840,26 +867,25 @@ downloadable `route.json`.
     `app/core.js`, Hebrew overrides in `i18n/he/strings.js`).
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
-- GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.
-  The native Capacitor shell uses host `app.navaid.local`; `index.html` skips
-  production GA and `ui.js` skips browser PWA service-worker registration on
-  that host so native app launches do not behave like production web sessions.
+- The app does not load a third-party analytics runtime. The remote-URL
+  Capacitor shell is detected through `window.Capacitor`; the production
+  service worker still provides native offline behavior. Only the retired
+  `app.navaid.local` shell skips the SW.
 
 ## Native mobile packaging
 
 - The native app workspace lives in `mobile/` and uses Capacitor. Run
-  `cd mobile && npm install && npm run sync` to copy the current `docs/` app
-  into the generated native projects.
+  `cd mobile && npm install && npm run sync` to validate/sync the small shell;
+  the WebView loads the live production URL.
 - `mobile/capacitor.config.json` owns the native app metadata:
-  `appId: org.supino.navaid`, `appName: NavAid`, `webDir: ../docs`, and
-  host `app.navaid.local`.
+  `appId: org.supino.navaid`, `appName: NavAid`, `webDir: shell`, and
+  `server.url: https://navaid.supino.org`.
 - Keep Capacitor packages in `mobile/package.json`; the root package remains
   only the Playwright/static-check tooling for the web app.
 - `mobile/scripts/validate-capacitor.mjs` and
   `tests/capacitor-mobile.spec.js` guard the wrapper configuration in CI.
-- Current limitation: the mobile shell bundles the static app but still loads
-  Leaflet / leaflet-rotate from `unpkg.com` and live chart tiles from their
-  network hosts. True offline native use needs a later PR to vendor Leaflet and
-  add native tile download/storage.
+- The installed shell updates with web deploys. Offline behavior comes from the
+  production service worker after the first online launch, including explicitly
+  downloaded chart packs; native-only changes still require rebuilding the app.
 
 <!-- ci-flake-audit: no-op change to trigger a full CI run -->
