@@ -341,12 +341,13 @@ const GDRIVE_SETTINGS_KEYS = [
   //     already holds every plan the pilot sent, so a hostile value buys an attacker
   //     nothing they could not already read. It is also required to file, so keeping it
   //     device-local would block a pilot on a second device until they retype it.
-  //   aisEmail decides where the plan GOES
-  // (fplBuild takes p.aisEmail over the published FPL_FILE_TO), so syncing it makes
-  // the recipient settable from the settings blob. The failure is silent and it is
-  // the bad kind -- the plan never reaches AIS while the pilot believes it was
-  // filed, so nobody is alerted if the flight goes down. Same rule that keeps
-  // navaid.ai.baseUrl out: never sync a key that decides where data is sent.
+  //   aisEmail decides where the plan GOES: fplFilingAddress() prefers it over the
+  //     published FPL_FILE_TO, so syncing it would make the recipient settable from the
+  //     settings blob, and an override on one device would file from every device. The
+  //     mail client does show To: before the pilot sends, so this is easy to miss rather
+  //     than impossible to see -- but a recipient has no business in a synced blob.
+  //     Same rule that keeps navaid.ai.baseUrl out: never sync a key that decides
+  //     where data is sent.
   ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
     'endurance', 'persons', 'kind', 'replyTo',
     'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
