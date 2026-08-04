@@ -5119,6 +5119,13 @@ html[dir="rtl"] .fpl-subfields {
   padding: 8px 14px;
   overflow: visible;
 }
+/* Four buttons do not fit a phone in one row: squeezed to a quarter of 375px each, every
+   label broke onto three lines ("Print / Save / as PDF"). Let the ROW wrap instead, so each
+   button keeps its own label on one line. */
+.fpl-modal .modal-btns,
+.fpl-xc-modal .modal-btns { flex-wrap: wrap; }
+.fpl-modal .modal-btns button,
+.fpl-xc-modal .modal-btns button { white-space: nowrap; }
 
 body.theme-light .fpl-route { color: #1c1a1a; border-bottom-color: #d8d4d4; }
 body.theme-light .fpl-subfields { border-left-color: #d8d4d4; }
@@ -5301,9 +5308,15 @@ body.theme-light .xc-input.xc-rw { background: #fff; border-color: #c9c4c4; }
   justify-content: space-between;
   gap: 24px;
   margin: 14px 0 6px;
-  white-space: nowrap;
+  /* Wraps on a narrow sheet. Two 200px pads plus their labels need ~690px, so on a phone
+     the briefer's pad was laid out entirely off the sheet (measured left: -339px at 375px
+     wide) -- and it could not be scrolled to either, because the pads carry
+     touch-action: none, so dragging them draws instead of scrolling. The tables solve the
+     same problem with their own .xc-scroll wrappers; a canvas you have to sign in cannot,
+     so this row stacks instead. Print puts them back on one line: paper is wide. */
+  flex-wrap: wrap;
 }
-.xc-sig { display: flex; align-items: baseline; gap: 6px; }
+.xc-sig { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
 .xc-sig-pad {
   /* Dashed all round ON SCREEN so it reads as somewhere to draw: the pad is white (ink
      on paper, in either theme) and the sheet is white too, so a bottom rule alone left an
@@ -5383,7 +5396,7 @@ body.theme-light .xc-sig-pad { border-color: #8f8a8a; }
   body.printing-xc .xc-t { page-break-inside: auto; break-inside: auto; }
   body.printing-xc .xc-t tr,
   body.printing-xc .xc-line,
-  body.printing-xc .xc-sigs { page-break-inside: avoid; break-inside: avoid; }
+  body.printing-xc .xc-sigs { page-break-inside: avoid; break-inside: avoid; flex-wrap: nowrap; }
   body.printing-xc .xc-t thead { display: table-header-group; }
   body.printing-xc .xc-input {
     color: #111;

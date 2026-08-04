@@ -1571,6 +1571,52 @@ test('the signature pad inks under the finger, border and all', async ({ page })
   expect(inked.end).toBeGreaterThan(0);
 });
 
+test('both signature pads and every button fit a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
+  const phone = await page.evaluate(() => {
+    const sheet = document.querySelector('.xc-sheet');
+    const pads = [...document.querySelectorAll('.xc-sig-pad')].map(el => {
+      const r = el.getBoundingClientRect();
+      return { left: Math.round(r.left), right: Math.round(r.right) };
+    });
+    const btns = [...document.querySelectorAll('.fpl-xc-modal .modal-btns button')].map(b => {
+      const r = b.getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height),
+        lh: parseFloat(getComputedStyle(b).lineHeight) };
+    });
+    return { pads, btns, overflowX: sheet.scrollWidth - sheet.clientWidth,
+      padRows: new Set(pads.map((_, i) =>
+        Math.round(document.querySelectorAll('.xc-sig-pad')[i].getBoundingClientRect().top))).size };
+  });
+  // The briefer's pad was laid out at left: -339px -- off the sheet, and unreachable, since
+  // the pads carry touch-action: none so dragging them draws instead of scrolling.
+  for (const pad of phone.pads) {
+    expect(pad.left).toBeGreaterThanOrEqual(0);
+    expect(pad.right).toBeLessThanOrEqual(375);
+  }
+  expect(phone.padRows).toBe(2);            // stacked on a phone
+  expect(phone.overflowX).toBe(0);          // ...so the sheet no longer scrolls sideways
+  // Four buttons squeezed into one row broke every label onto three lines; the ROW wraps now.
+  for (const b of phone.btns) expect(b.h).toBeLessThan(b.lh * 2);
+});
+
+test('on a wide screen the pads sit side by side and the buttons on one row', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
+  const wide = await page.evaluate(() => ({
+    padRows: new Set([...document.querySelectorAll('.xc-sig-pad')]
+      .map(el => Math.round(el.getBoundingClientRect().top))).size,
+    btnRows: new Set([...document.querySelectorAll('.fpl-xc-modal .modal-btns button')]
+      .map(b => Math.round(b.getBoundingClientRect().top))).size,
+  }));
+  expect(wide).toEqual({ padRows: 1, btnRows: 1 });
+});
+
 test('saving the form prints only the sheet', async ({ page }) => {
   await boot(page);
   await route(page);
