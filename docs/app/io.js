@@ -1174,7 +1174,14 @@ function fplMissingProfileFields(p) {
 // clearance or ATIS frequency -- a proxy for controlled airspace, not a declaration of
 // it, so the wording it selects talks about the tower rather than asserting an airspace
 // class the app does not know.
-// Known airfields strictly between the endpoints. Returns their labels for the message.
+// The field's name as the rest of the UI shows it (locale-aware), not its ICAO code:
+// navName resolves reporting points only, so an airfield code came back unchanged.
+function fplAirfieldName(af, fallbackCode) {
+  const named = (af && typeof referenceLocaleName === 'function')
+    ? referenceLocaleName(af, 'airfield') : '';
+  return named || (af && (af.en || af.he)) || fallbackCode || '';
+}
+// Known airfields strictly between the endpoints. Returns their names for the message.
 function fplMidRouteAirfields() {
   const wps = state.waypoints || [];
   if (wps.length < 3) return [];
@@ -1182,10 +1189,8 @@ function fplMidRouteAirfields() {
   for (let i = 1; i < wps.length - 1; i++) {
     const code = String((wps[i] && wps[i].name) || '').trim().toUpperCase();
     if (!code) continue;
-    if (typeof airfieldByIcao === 'function' && airfieldByIcao(code)) {
-      out.push((typeof waypointDisplayLabel === 'function')
-        ? waypointDisplayLabel(wps[i], i) : code);
-    }
+    const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(code) : null;
+    if (af) out.push(fplAirfieldName(af, code));
   }
   return out;
 }
@@ -1197,9 +1202,7 @@ function fplLandingSite() {
   if (!code) return null;
   const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(code) : null;
   if (!af) return null;
-  const label = (typeof waypointDisplayLabel === 'function')
-    ? waypointDisplayLabel(last, wps.length - 1) : code;
-  return { code, label, controlled: !!(af.clearance || af.atis) };
+  return { code, label: fplAirfieldName(af, code), controlled: !!(af.clearance || af.atis) };
 }
 function buildIcaoFpl(profile, opts) {
   const p = profile || {};

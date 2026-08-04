@@ -346,8 +346,10 @@ test('a route landing at an airfield on the way is refused as two plans', async 
   const res = await build(page);
   expect(res.errs.some(e => String(e).startsWith('errFplMidAirfield'))).toBe(true);
   expect(res.text).toBeUndefined();
-  // The message names the field, so it is clear where to split.
-  expect(res.errs.find(e => String(e).startsWith('errFplMidAirfield'))).toMatch(/LLES|Ein Shemer|שמר/);
+  // Names the field the way the rest of the UI does -- not its ICAO code.
+  const msg = res.errs.find(e => String(e).startsWith('errFplMidAirfield'));
+  expect(msg).toMatch(/Ein Shemer/);
+  expect(msg).not.toMatch(/LLES/);
 });
 
 test('the dialog refuses it too, and names the field', async ({ page }) => {
@@ -373,6 +375,13 @@ test('the dialog refuses it too, and names the field', async ({ page }) => {
   });
   await expect(page.locator('#fpl-text')).toHaveCount(0);          // no message built
   await expect(page.locator('.fpl-errs')).toContainText(/two flight plans|שתי תוכניות/);
+  await expect(page.locator('.fpl-errs')).toContainText(/Ein Shemer/);
+  // Submission is unreachable: there is no review step, so no submit button exists.
+  await expect(page.locator('#fpl-mail')).toHaveCount(0);
+  await expect(page.locator('.fpl-ack')).toHaveCount(0);
+  // Pressing Continue again keeps refusing rather than letting it through.
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('#fpl-text')).toHaveCount(0);
 });
 
 // Reporting points in the middle are the normal case and must stay fine.
@@ -404,7 +413,8 @@ test('a landing site adds a third acknowledgement, naming it', async ({ page }) 
   await expect(third).toHaveCount(1);
   // Names the site, so it is obvious who is to be called.
   const text = await page.locator('#fpl-ack-landing').locator('..').textContent();
-  expect(text).toMatch(/Ein Shemer|LLES|שמר/);
+  expect(text).toMatch(/Ein Shemer/);       // the name, not LLES
+  expect(text).not.toMatch(/LLES/);
 
   // All three gate the submission, not just the original two.
   await page.locator('#fpl-ack-aip').check();
