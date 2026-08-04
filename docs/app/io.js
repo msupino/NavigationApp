@@ -1169,6 +1169,23 @@ function fplMissingProfileFields(p) {
   const prof = p || {};
   return FPL_REQUIRED_PROFILE.filter(f => !String(prof[f] || '').trim());
 }
+// Where the flight lands, for the coordination acknowledgement: the last waypoint, if it
+// resolves to something we can name. `controlled` is inferred from the field publishing a
+// clearance or ATIS frequency -- a proxy for controlled airspace, not a declaration of
+// it, so the wording it selects talks about the tower rather than asserting an airspace
+// class the app does not know.
+function fplLandingSite() {
+  const wps = state.waypoints || [];
+  if (wps.length < 2) return null;
+  const last = wps[wps.length - 1];
+  const code = String((last && last.name) || '').trim().toUpperCase();
+  if (!code) return null;
+  const af = (typeof airfieldByIcao === 'function') ? airfieldByIcao(code) : null;
+  if (!af) return null;
+  const label = (typeof waypointDisplayLabel === 'function')
+    ? waypointDisplayLabel(last, wps.length - 1) : code;
+  return { code, label, controlled: !!(af.clearance || af.atis) };
+}
 function buildIcaoFpl(profile, opts) {
   const p = profile || {};
   const o = opts || {};
@@ -7980,8 +7997,17 @@ function showFplDialog() {
     // carries its own signature line.
     const acks = [];
     const wantAcks = !(res.warns || []).includes('warnFplCrossForm');
-    for (const [id, label] of (wantAcks
-      ? [['fpl-ack-aip', S.fplAckAip], ['fpl-ack-wx', S.fplAckWx]] : [])) {
+    const ackList = wantAcks ? [['fpl-ack-aip', S.fplAckAip], ['fpl-ack-wx', S.fplAckWx]] : [];
+    // Third box when the flight lands at a site we can name. Controlled fields get the
+    // tower wording (א׳-11 §2.ח: coordinated with the tower, continuous radio contact);
+    // everywhere else it is the site's operator, as the filing page words it.
+    const landing = wantAcks ? fplLandingSite() : null;
+    if (landing) {
+      ackList.push(['fpl-ack-landing', landing.controlled
+        ? (S.fplAckTower ? S.fplAckTower(landing.label) : '')
+        : (S.fplAckLanding ? S.fplAckLanding(landing.label) : '')]);
+    }
+    for (const [id, label] of ackList) {
       const wrap = document.createElement('label');
       wrap.className = 'fpl-ack';
       const cb = document.createElement('input');

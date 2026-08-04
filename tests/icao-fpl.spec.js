@@ -327,6 +327,84 @@ test('the dialog pre-fills the published filing address for the flight type', as
   await expect(page.locator('#fpl-ais-email')).toHaveValue('ops@example.com');
 });
 
+// The official filing page carries a third box naming the destination's operator, so a
+// plan that lands somewhere we can name asks for that coordination too.
+test('a landing site adds a third acknowledgement, naming it', async ({ page }) => {
+  await boot(page);
+  await route(page);                       // ... -> LLES, an uncontrolled field
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('.fpl-ack')).toHaveCount(3);
+  const third = page.locator('#fpl-ack-landing');
+  await expect(third).toHaveCount(1);
+  // Names the site, so it is obvious who is to be called.
+  const text = await page.locator('#fpl-ack-landing').locator('..').textContent();
+  expect(text).toMatch(/Ein Shemer|LLES|שמר/);
+
+  // All three gate the submission, not just the original two.
+  await page.locator('#fpl-ack-aip').check();
+  await page.locator('#fpl-ack-wx').check();
+  await page.locator('#fpl-mail').click();
+  await expect(page.locator('#fpl-ack-required')).toBeVisible();
+  await expect(page.locator('.fpl-ack-missing')).toHaveCount(1);
+  await third.check();
+  await expect(page.locator('#fpl-ack-required')).toBeHidden();
+});
+
+// A controlled field is a tower call, not an operator call (א׳-11 §2.ח).
+test('a controlled destination asks about the tower and radio contact', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ'), es = airfieldByIcao('LLES');
+    state.waypoints = [
+      { lat: es.lat, lng: es.lng, name: 'LLES' },
+      { lat: 32.3, lng: 34.9, name: 'APOLN' },
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },     // controlled: has clearance/ATIS
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    draw();
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  const text = await page.locator('#fpl-ack-landing').locator('..').textContent();
+  expect(text).toMatch(/tower|מגדל/);
+  expect(text).toMatch(/radio|רדיו/);
+});
+
+// Only the landing end. A plan cannot route over an airfield by the rules, and the
+// departure field is one the pilot is already standing on.
+test('a route that does not land at a named site has only the two boxes', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'APOLN', 'ARENA', 'NAGID']);   // ends at a reporting point
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('.fpl-ack')).toHaveCount(2);
+  await expect(page.locator('#fpl-ack-landing')).toHaveCount(0);
+});
+
 // A disabled button explains nothing: submitting with the boxes unticked has to say so.
 test('submitting without the acknowledgements says what is missing', async ({ page }) => {
   await boot(page);
@@ -346,11 +424,13 @@ test('submitting without the acknowledgements says what is missing', async ({ pa
   await expect(page.locator('#fpl-ack-required')).toBeHidden();
   await mail.click();
   await expect(page.locator('#fpl-ack-required')).toBeVisible();
-  await expect(page.locator('.fpl-ack-missing')).toHaveCount(2);
-  // Ticking one leaves the other marked; ticking both clears the message.
-  await page.locator('#fpl-ack-aip').check();
-  await expect(page.locator('.fpl-ack-missing')).toHaveCount(1);
-  await page.locator('#fpl-ack-wx').check();
+  const outstanding = await page.locator('.fpl-ack input').count();
+  await expect(page.locator('.fpl-ack-missing')).toHaveCount(outstanding);
+  // Ticking one leaves the others marked; ticking them all clears the message.
+  const boxes = await page.locator('.fpl-ack input').all();
+  await boxes[0].check();
+  await expect(page.locator('.fpl-ack-missing')).toHaveCount(boxes.length - 1);
+  for (const cb of boxes.slice(1)) await cb.check();
   await expect(page.locator('#fpl-ack-required')).toBeHidden();
   await expect(page.locator('.fpl-ack-missing')).toHaveCount(0);
 });
@@ -371,8 +451,8 @@ test('submitting reveals the address to use if no mail app opens', async ({ page
     document.getElementById('fpl-next').click();
   });
   await expect(page.locator('#fpl-mail-fallback')).toBeHidden();
-  await page.locator('#fpl-ack-aip').check();
-  await page.locator('#fpl-ack-wx').check();
+  // Tick every acknowledgement this route asks for (a landing site adds a third).
+  for (const cb of await page.locator('.fpl-ack input').all()) await cb.check();
   // Stop the navigation the click would trigger; the panel is what matters here.
   await page.evaluate(() => { window.__navGuard = true; });
   await page.locator('#fpl-mail').click();

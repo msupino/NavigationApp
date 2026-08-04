@@ -447,6 +447,8 @@ window.S = {
   xcOpenForm: 'מלא את טופס טיסת המרחב',
   fplNoMailApp: 'הדואל שלך אמור להיפתח עם התוכנית. אם דבר לא קרה, במכשיר הזה אין תוכנת דואל מוגדרת — לחץ העתק ושלח את התוכנית בעצמך אל:',
   fplAckRequired: 'אשר את שני הסעיפים שלמעלה לפני הגשת התוכנית.',
+  fplAckLanding: function(site) { return 'תיאמתי את הנחיתה עם מפעיל ' + site; },
+  fplAckTower: function(site) { return 'תיאמתי את הנחיתה עם מגדל ' + site + ', ואשמור על קשר רדיו רציף'; },
   fplCopy: 'העתק',
   fplCopied: 'תוכנית הטיסה הועתקה.',
   fplOpenMail: 'הגש תוכנית טיסה',
