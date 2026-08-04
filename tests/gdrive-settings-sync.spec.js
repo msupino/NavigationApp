@@ -258,38 +258,6 @@ test('setting something for the FIRST time since the last sync is a local edit',
   expect(r.winner).toBe('local');
 });
 
-test('with no recorded key list, an absent key counts as an edit', async ({ page }) => {
-  await boot(page);
-  const r = await page.evaluate(() => {
-    // A snapshot from a build that did not record its allowlist. The two cases cannot be
-    // told apart, so the tie breaks towards keeping the pilot's edit: pushing costs a peer
-    // one round of settings, dropping the edit is permanent.
-    localStorage.removeItem('navaid.settingsSnapKeys');
-    localStorage.removeItem('navaid.layer');
-    const snap = collectSyncableSettings();
-    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
-    localStorage.setItem('navaid.settingsSyncedAt', '500');
-    localStorage.setItem('navaid.layer', 'nav');
-    return { changed: _localSettingsBlob(1000).changedLocally };
-  });
-  expect(r.changed).toBe(true);
-});
-
-test('a snapshot that will not parse is treated as no baseline, not as parity', async ({ page }) => {
-  await boot(page);
-  const r = await page.evaluate(() => {
-    localStorage.setItem('navaid.layer', 'nav');
-    localStorage.setItem('navaid.settingsSnapshot', '{not json');
-    localStorage.setItem('navaid.settingsSyncedAt', '500');
-    const local = _localSettingsBlob(1000);
-    return { changed: local.changedLocally, updatedAt: local.updatedAt };
-  });
-  // Reporting parity here would let a remote blob silently replace settings this device
-  // cannot prove anything about.
-  expect(r.changed).toBe(true);
-  expect(r.updatedAt).toBeGreaterThan(1000);
-});
-
 test('a completed sync records the allowlist its snapshot covered', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
@@ -300,50 +268,6 @@ test('a completed sync records the allowlist its snapshot covered', async ({ pag
     return { isArray: Array.isArray(parsed), same: JSON.stringify(parsed) === JSON.stringify(GDRIVE_SETTINGS_KEYS) };
   });
   expect(r).toEqual({ isArray: true, same: true });
-});
-
-test('without a key list, a value the remote already has is not claimed as an edit', async ({ page }) => {
-  await boot(page);
-  const r = await page.evaluate(() => {
-    // A snapshot from a build that recorded no key list. navaid.layer is absent from it, and
-    // the two possible reasons are indistinguishable from the values -- but the REMOTE
-    // answers half of it: it already carries this key, so our value may simply be the stale
-    // local copy of something a peer has since changed. Claiming an edit here stamped this
-    // device above the peer and pushed the old value back over their newer one, which the
-    // peer then pulled down: their edit gone from the blob AND from their device.
-    localStorage.removeItem('navaid.settingsSnapKeys');
-    localStorage.setItem('navaid.layer', 'heli');       // stale pre-upgrade local
-    const snap = collectSyncableSettings();
-    delete snap['navaid.layer'];
-    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
-    localStorage.setItem('navaid.settingsSyncedAt', '500');
-    const remoteValues = Object.assign({}, collectSyncableSettings(), { 'navaid.layer': 'cvfr' });
-    const local = _localSettingsBlob(1000, remoteValues);
-    return { changed: local.changedLocally, updatedAt: local.updatedAt };
-  });
-  expect(r.changed).toBe(false);
-  expect(r.updatedAt).toBe(500);
-});
-
-test('without a key list, a value the remote has never seen IS an edit', async ({ page }) => {
-  await boot(page);
-  const r = await page.evaluate(() => {
-    // Same shape, except the remote has no opinion about the key: our value is genuinely new
-    // information, so it has to be published or it never propagates.
-    localStorage.removeItem('navaid.settingsSnapKeys');
-    localStorage.setItem('navaid.layer', 'heli');
-    const snap = collectSyncableSettings();
-    delete snap['navaid.layer'];
-    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
-    localStorage.setItem('navaid.settingsSyncedAt', '500');
-    const remoteValues = Object.assign({}, snap);       // no navaid.layer
-    const local = _localSettingsBlob(1000, remoteValues);
-    return { changed: local.changedLocally, updatedAt: local.updatedAt,
-      published: local.values['navaid.layer'] };
-  });
-  expect(r.changed).toBe(true);
-  expect(r.updatedAt).toBeGreaterThan(1000);
-  expect(r.published).toBe('heli');
 });
 
 test('a refused key-list write leaves no stale list beside a fresh snapshot', async ({ page }) => {
@@ -369,6 +293,59 @@ test('a refused key-list write leaves no stale list beside a fresh snapshot', as
   expect(r.stored).toBe(null);          // ...and the stale one is gone, not left behind
   expect(r.snapshot).toBe(true);        // the snapshot, which matters more, was written
   expect(r.syncedAt).toBe('4321');
+});
+
+test('a snapshot with no key list is adopted once, then read exactly', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // A baseline from a build before the key list existed. It cannot say whether a key it
+    // lacks was unsyncable then or simply unset, and neither the values nor the remote can
+    // recover that -- asking the remote resolved a peer's DELETION as "not an edit" and
+    // erased a value the pilot had just typed. So the baseline is adopted instead: values we
+    // hold for keys it lacks are taken into it, as if they had been synced.
+    localStorage.removeItem('navaid.settingsSnapKeys');
+    localStorage.setItem('navaid.layer', 'heli');
+    const snap = collectSyncableSettings();
+    delete snap['navaid.layer'];
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(snap));
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+
+    const first = _localSettingsBlob(1000);
+    const adoptedSnap = JSON.parse(localStorage.getItem('navaid.settingsSnapshot'));
+    const listed = JSON.parse(localStorage.getItem('navaid.settingsSnapKeys') || 'null');
+    // Nothing is claimed as an edit on the strength of a baseline that cannot say...
+    const afterAdopt = { changed: first.changedLocally, updatedAt: first.updatedAt };
+    // ...and from here on the baseline is exact: the SAME key changing IS an edit.
+    localStorage.setItem('navaid.layer', 'cvfr');
+    const second = _localSettingsBlob(1000);
+    return { afterAdopt, adopted: adoptedSnap['navaid.layer'],
+      listedIsFull: Array.isArray(listed) && listed.length === GDRIVE_SETTINGS_KEYS.length,
+      changedAfter: second.changedLocally, updatedAtAfter: second.updatedAt };
+  });
+  expect(r.afterAdopt).toEqual({ changed: false, updatedAt: 500 });
+  expect(r.adopted).toBe('heli');          // taken into the baseline, not published over
+  expect(r.listedIsFull).toBe(true);       // ...and the baseline now describes itself
+  expect(r.changedAfter).toBe(true);       // a real later edit is detected exactly
+  expect(r.updatedAtAfter).toBeGreaterThan(1000);
+});
+
+test('an unparseable snapshot lets the newer remote heal this device', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.setItem('navaid.layer', 'nav');
+    localStorage.setItem('navaid.settingsSnapshot', '{not json');
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob(1000);
+    return { changed: local.changedLocally, updatedAt: local.updatedAt,
+      winner: mergeSettings({ updatedAt: local.updatedAt, values: local.values },
+        { updatedAt: 1000, values: { 'navaid.layer': 'heli' } }).winner };
+  });
+  // A baseline that will not parse proves nothing, so it must not outrank a newer remote:
+  // claiming an edit there overwrote a peer's values AND dropped peer-only keys from the blob
+  // entirely -- there is no snapshot to tombstone them from, so a third device lost them too.
+  expect(r.changed).toBe(false);
+  expect(r.updatedAt).toBe(500);
+  expect(r.winner).toBe('remote');
 });
 
 test('an explicit null is a tombstone: it deletes the key instead of being ignored', async ({ page }) => {

@@ -1751,13 +1751,35 @@ test('the sheet fits a 320px screen, Clear links included', async ({ page }) => 
 });
 
 test('a signature keeps its aspect, so the ink is not stretched', async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 700 });
   await boot(page);
   await route(page);
-  await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
-  const geom = await page.evaluate(() => [...document.querySelectorAll('.xc-sig-pad')].map(pad => ({
-    sx: pad.width / pad.clientWidth, sy: pad.height / pad.clientHeight,
-    cw: pad.clientWidth, ch: pad.clientHeight })));
+  // Every width the sheet is expected to work at, INCLUDING the narrow ones where a
+  // shrinkable pad actually shrank -- at 320px it never did, so testing only there passed
+  // with the max-width that caused the stretch still in place.
+  const geom = [];
+  for (const width of [240, 280, 320, 375, 768]) {
+    await page.setViewportSize({ width, height: 812 });
+    await page.evaluate(() => {
+      for (const b of [...document.querySelectorAll('.fpl-xc-modal .modal-cancel')]) b.click();
+      showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
+    });
+    for (const g of await page.evaluate(() => [...document.querySelectorAll('.xc-sig-pad')].map(pad => ({
+      sx: pad.width / pad.clientWidth, sy: pad.height / pad.clientHeight,
+      cw: pad.clientWidth, ch: pad.clientHeight,
+      styleW: parseFloat(pad.style.width), styleH: parseFloat(pad.style.height) })))) {
+      geom.push(Object.assign(g, { width }));
+    }
+  }
+  // The drawing area is what the bitmap was sized from, at every width.
+  for (const g of geom) {
+    expect(g.cw, 'width ' + g.width).toBe(g.styleW);
+    expect(g.ch, 'width ' + g.width).toBe(g.styleH);
+  }
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.evaluate(() => {
+    for (const b of [...document.querySelectorAll('.fpl-xc-modal .modal-cancel')]) b.click();
+    showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
+  });
   // The bitmap is sized from the pad's style width/height and the pointer maths scales x and
   // y independently, so letting the pad shrink stored the stroke stretched: a 45-degree
   // signature was saved at 38 degrees and printed that way. Equal scales or nothing.
@@ -1804,22 +1826,107 @@ test('a dialog label never paints over its own field', async ({ page }) => {
     });
     // Labels do not clip, so a starved label column painted them straight across the inputs:
     // at 280px Transponder overlapped its own control by 49px, and at 320px by 12px.
-    const overlaps = await page.evaluate(() => {
-      const out = [];
+    const seen = await page.evaluate(() => {
+      const out = [], rows = [];
       for (const row of document.querySelectorAll('.fpl-modal .fpl-row')) {
         const label = row.querySelector('span, label');
         const ctrl = row.querySelector('input, select, textarea');
         if (!label || !ctrl) continue;
-        const l = label.getBoundingClientRect(), c = ctrl.getBoundingClientRect();
-        if (l.width === 0 || c.width === 0) continue;
-        // Same row only: a stacked layout puts the control below the label.
-        if (Math.abs(l.top - c.top) > 4) continue;
-        const over = Math.round(Math.min(l.right, c.right) - Math.max(l.left, c.left));
+        rows.push(1);
+        // The label's own box is its grid track and can never exceed it -- what paints over
+        // the field is the TEXT, which does not clip. Measure the ink with a Range.
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        const ink = range.getBoundingClientRect();
+        const c = ctrl.getBoundingClientRect();
+        if (!ink.width || !c.width) continue;
+        // A stacked row is fine by definition: the control sits below the label.
+        const stacked = ink.bottom <= c.top + 1 || c.bottom <= ink.top + 1;
+        if (stacked) continue;
+        const over = Math.round(Math.min(ink.right, c.right) - Math.max(ink.left, c.left));
         if (over > 1) out.push([label.textContent.trim().slice(0, 20), over]);
+        // ...and the text must not be clipped by its own box either.
+        if (label.scrollWidth > label.clientWidth + 1) {
+          out.push([label.textContent.trim().slice(0, 20),
+            'clipped by ' + (label.scrollWidth - label.clientWidth)]);
+        }
       }
-      return out;
+      return { out, rows: rows.length };
     });
-    expect(overlaps, 'width ' + width).toEqual([]);
+    expect(seen.rows, 'width ' + width + ' inspected no rows').toBeGreaterThan(8);
+    expect(seen.out, 'width ' + width).toEqual([]);
+  }
+});
+
+test('the sheet fits a 280px screen too, footer included', async ({ page }) => {
+  // The footer's three nowrap items overflowed only below 300px, so a 320px test could not
+  // see it: measured 17px of sheet scroll with the revision line at x = -11.
+  await page.setViewportSize({ width: 280, height: 700 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
+  const narrow = await page.evaluate(() => {
+    const sheet = document.querySelector('.xc-sheet');
+    const foot = document.querySelector('.xc-foot');
+    foot.scrollIntoView({ block: 'center' });
+    return { overflowX: sheet.scrollWidth - sheet.clientWidth,
+      items: [...foot.children].map(el => {
+        const r = el.getBoundingClientRect();
+        return { left: Math.round(r.left), right: Math.round(r.right) };
+      }) };
+  });
+  expect(narrow.overflowX).toBe(0);
+  expect(narrow.items.length).toBeGreaterThan(0);
+  for (const it of narrow.items) {
+    expect(it.left).toBeGreaterThanOrEqual(0);
+    expect(it.right).toBeLessThanOrEqual(280);
+  }
+});
+
+test('the flight-type row really gets the full width it asks for', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 812 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  // .fpl-row-stacked was declared before .fpl-row at equal specificity, so it lost: the row
+  // asked for one full-width column and silently kept the 190px control track.
+  const row = await page.evaluate(() => {
+    const sel = document.getElementById('fpl-kind');
+    const r = sel.closest('.fpl-row');
+    return { stacked: r.classList.contains('fpl-row-stacked'),
+      cols: getComputedStyle(r).gridTemplateColumns.split(' ').length,
+      selW: Math.round(sel.getBoundingClientRect().width),
+      rowW: Math.round(r.getBoundingClientRect().width) };
+  });
+  expect(row.stacked).toBe(true);
+  expect(row.cols).toBe(1);
+  expect(row.selW).toBeGreaterThan(row.rowW * 0.9);
+});
+
+test('the mid-airfield message has a plain-string form for a nameless entry', async ({ page }) => {
+  await boot(page);
+  for (const lang of ['en', 'he']) {
+    await page.goto('?lang=' + lang + '&nogist');
+    await page.waitForFunction(() => typeof buildIcaoFpl === 'function');
+    const r = await page.evaluate(() => ({
+      plain: S.errFplMidAirfieldPlain,
+      // fplErrText must never return a function: S holds both strings and payload
+      // functions under one lookup, and one reached the dialog and rendered its source.
+      viaErrText: String(fplErrText('errFplMidAirfield')),
+      profileList: String(fplErrText('errFplProfileList')),
+    }));
+    expect(typeof r.plain, lang).toBe('string');
+    expect(r.plain.length, lang).toBeGreaterThan(20);
+    expect(r.viaErrText, lang).not.toMatch(/function|=>|\{/);
+    expect(r.profileList, lang).not.toMatch(/function|=>|\{/);
   }
 });
 
