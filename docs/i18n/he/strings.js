@@ -474,7 +474,11 @@ window.S = {
   errFplReplyToRequired: 'הזן את הדואל שלך — האישור חוזר אליו.',
   errFplReplyToInvalid: 'כתובת הדואל אינה תקפה.',
   errFplProfileList: function(list) { return 'חסר עדיין: ' + list + '.'; },
-  errFplMidAirfield: function(list) { return 'המסלול נוחת ב' + list + ' בדרך, ולכן מדובר בשתי תוכניות טיסה ולא באחת — הגישו תוכנית עד ' + list + ', ואחריה תוכנית נוספת להמשך.'; },
+  errFplMidAirfield: function(list) {
+    const names = String(list).split(' | ');
+    return 'המסלול נוחת ב' + names.join(', ') + ' בדרך, ולכן אינו תוכנית טיסה אחת — '
+      + 'הגישו תוכנית עד ' + names[0] + ', ואחריה תוכנית נוספת להמשך.';
+  },
   errFplEobt: 'הזן תאריך ושעת המראה תקפים.',
   errFplEndurance: 'בחר את כמות הדלק בכלי הטיס.',
   errFplLatinOnly: 'רשום את שם הטייס ומספר הרישיון באותיות לטיניות — הודעת תוכנית הטיסה אינה יכולה לשאת עברית.',

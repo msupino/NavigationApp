@@ -553,7 +553,13 @@ function _localSettingsBlob(remoteAt) {
   // the recorded stamp rank us.
   const syncedAt = +_lsGet(SETTINGS_SYNCED_AT_KEY) || 0;
   const firstSync = snap === null && !syncedAt;
-  const changedLocally = snap !== null && cur !== snap;
+  // Compared per CURRENT allowlist key, not as raw JSON strings. A snapshot written by an
+  // older build carries keys this build no longer syncs (removing one is a normal event --
+  // navaid.showCommChange, then navaid.fpl.aisEmail), and a string compare read that as an
+  // edit this device had made: it then stamped itself above the remote and pushed its own
+  // pre-upgrade values over a peer's newer ones, once, on every upgraded device. Per-key is
+  // also what _sameSettingsValues already does, so the two agree.
+  const changedLocally = snap !== null && !_sameSettingsValues(values, snapValues);
   const updatedAt = firstSync ? 0
     : (changedLocally ? _nextSettingsStamp(remoteAt) : syncedAt);
   return { values, cur, snapValues, firstSync, updatedAt, changedLocally };

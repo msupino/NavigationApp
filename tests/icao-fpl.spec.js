@@ -374,7 +374,7 @@ test('the dialog refuses it too, and names the field', async ({ page }) => {
     document.getElementById('fpl-next').click();
   });
   await expect(page.locator('#fpl-text')).toHaveCount(0);          // no message built
-  await expect(page.locator('.fpl-errs')).toContainText(/two flight plans|שתי תוכניות/);
+  await expect(page.locator('.fpl-errs')).toContainText(/not a single flight plan|אינו תוכנית טיסה אחת/);
   await expect(page.locator('.fpl-errs')).toContainText(/Ein Shemer/);
   // Submission is unreachable: there is no review step, so no submit button exists.
   await expect(page.locator('#fpl-mail')).toHaveCount(0);
@@ -382,6 +382,53 @@ test('the dialog refuses it too, and names the field', async ({ page }) => {
   // Pressing Continue again keeps refusing rather than letting it through.
   await page.locator('#fpl-next').click();
   await expect(page.locator('#fpl-text')).toHaveCount(0);
+});
+
+test('two fields on the way name both, but send the first leg to one', async ({ page }) => {
+  await boot(page);
+  const msg = await page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ'), es = airfieldByIcao('LLES'),
+      mg = airfieldByIcao('LLMG'), pl = airfieldByIcao('LLPL');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: es.lat, lng: es.lng, name: 'LLES' },
+      { lat: mg.lat, lng: mg.lng, name: 'LLMG' },
+      { lat: pl.lat, lng: pl.lng, name: 'LLPL' },
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    const code = (buildIcaoFpl({ reg: 'HLH', type: 'C172', wake: 'L', equip: 'S', surv: 'C',
+      pic: 'A PILOT', license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'p@example.com' }, { dateLocal: '2026-08-05', timeLocal: '09:20' }).errs || [])
+      .find(e => String(e).startsWith('errFplMidAirfield'));
+    return { code, text: S.errFplMidAirfield(String(code).split(':')[1]) };
+  });
+  // Both fields are named as being on the way...
+  expect(msg.text).toMatch(/Ein Shemer/);
+  expect(msg.text).toMatch(/Megiddo/);
+  // ...but the first leg goes to the FIRST of them, not to a list of two destinations,
+  // and the count is not asserted as "two" when three plans are needed.
+  expect(msg.text).toMatch(/file the first leg to Ein Shemer,/);
+  expect(msg.text).not.toMatch(/first leg to Ein Shemer, Megiddo/);
+  expect(msg.text).not.toMatch(/two flight plans/);
+});
+
+test('the same field twice on the way is named once', async ({ page }) => {
+  await boot(page);
+  const names = await page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ'), es = airfieldByIcao('LLES'), pl = airfieldByIcao('LLPL');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: es.lat, lng: es.lng, name: 'LLES' },
+      { lat: pl.lat, lng: pl.lng, name: 'LLPL' },
+      { lat: es.lat, lng: es.lng, name: 'LLES' },
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+    ];
+    syncLegs();
+    return fplMidRouteAirfields();
+  });
+  expect(names).toEqual([...new Set(names)]);
+  expect(names.filter(n => /Ein Shemer/.test(n))).toHaveLength(1);
 });
 
 // Reporting points in the middle are the normal case and must stay fine.
@@ -493,9 +540,19 @@ test('submitting without the acknowledgements says what is missing', async ({ pa
   await expect(page.locator('#fpl-ack-required')).toBeVisible();
   // The wording carries no count: a landing site makes it three, so "both" would be wrong.
   const note = await page.locator('#fpl-ack-required').textContent();
-  expect(note).not.toMatch(/both|two|שני|שתי/);
-  const outstanding = await page.locator('.fpl-ack input').count();
-  await expect(page.locator('.fpl-ack-missing')).toHaveCount(outstanding);
+  expect(note).not.toMatch(/both|two/);
+  // ...and the same for the Hebrew string, which this page (?lang=en) never renders.
+  const heNote = await page.evaluate(async () => {
+    const src = await (await fetch('i18n/he/strings.js')).text();
+    const m = src.match(/fplAckRequired:\s*'([^']*)'/);
+    return m ? m[1] : '';
+  });
+  expect(heNote).not.toMatch(/שני|שתי/);
+  // Pinned, not read back from the DOM under test: this route ends at LLES, so it is the
+  // two standing checks plus the landing one. Deriving the count from `.fpl-ack input`
+  // meant the assertion passed just as well with the third box deleted.
+  await expect(page.locator('.fpl-ack input')).toHaveCount(3);
+  await expect(page.locator('.fpl-ack-missing')).toHaveCount(3);
   // Ticking one leaves the others marked; ticking them all clears the message.
   const boxes = await page.locator('.fpl-ack input').all();
   await boxes[0].check();
@@ -1245,6 +1302,156 @@ test('the signature pads look like somewhere to draw, but print as a rule', asyn
   expect(printed).toMatchObject({ top: '0px', side: '0px', bottom: 'solid',
     colour: 'rgb(17, 17, 17)' });
   await page.emulateMedia({ media: null });
+});
+
+test('the published-address test asks about THIS flight type, in any case', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => ({
+    // The other desk's address is a redirect too: membership of the set is not the question.
+    crossOnRoutes: fplIsPublishedAddress('fpl@iaa.gov.il', 'routes'),
+    aisOnCross: fplIsPublishedAddress('ais@iaa.gov.il', 'crosscountry'),
+    aisOnRoutes: fplIsPublishedAddress('ais@iaa.gov.il', 'routes'),
+    crossOnCross: fplIsPublishedAddress('fpl@iaa.gov.il', 'crosscountry'),
+    // Mail domains are case-insensitive, so this IS the published address.
+    upper: fplIsPublishedAddress('AIS@iaa.gov.il', 'routes'),
+    mixed: fplIsPublishedAddress('ais@IAA.gov.IL', 'routes'),
+    padded: fplIsPublishedAddress('  ais@iaa.gov.il  ', 'routes'),
+    // Without a kind the question is "any published address", which is what deciding
+    // whether to persist an override needs.
+    anyCross: fplIsPublishedAddress('fpl@iaa.gov.il'),
+    anyJunk: fplIsPublishedAddress('ops@example.com'),
+    blank: fplIsPublishedAddress('', 'routes'),
+  }));
+  expect(r).toEqual({
+    crossOnRoutes: false, aisOnCross: false, aisOnRoutes: true, crossOnCross: true,
+    upper: true, mixed: true, padded: true, anyCross: true, anyJunk: false, blank: false,
+  });
+});
+
+test('a routes plan sent to the other desk is flagged', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500', kind: 'routes',
+      replyTo: 'pilot@example.com', aisEmail: 'fpl@iaa.gov.il' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('#fpl-custom-recipient')).toBeVisible();
+  await expect(page.locator('#fpl-custom-recipient .fpl-custom-addr')).toHaveText('fpl@iaa.gov.il');
+});
+
+test('the published address in the wrong case raises no alarm', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500', kind: 'routes',
+      replyTo: 'pilot@example.com', aisEmail: 'AIS@iaa.gov.il' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('#fpl-text')).toBeVisible();     // it did build
+  await expect(page.locator('#fpl-custom-recipient')).toHaveCount(0);
+});
+
+test('the cross-country sheet names a recipient that is not the desk', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
+  });
+  // The published desk needs no warning...
+  await expect(page.locator('#xc-custom-recipient')).toHaveCount(0);
+  await page.evaluate(() => {
+    for (const b of [...document.querySelectorAll('.fpl-xc-modal .modal-cancel')]) b.click();
+    localStorage.setItem('navaid.fpl.aisEmail', 'ops@example.com');
+    showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
+  });
+  // ...an override does, on the sheet, before the mail app is opened.
+  await expect(page.locator('#xc-custom-recipient')).toBeVisible();
+  await expect(page.locator('#xc-custom-recipient .fpl-custom-addr')).toHaveText('ops@example.com');
+  // The button's tooltip stops claiming the FPL desk, and the mail goes where it says.
+  expect(await page.evaluate(() => document.getElementById('xc-mail').title))
+    .toContain('ops@example.com');
+  // It is app chrome, not part of the authority's form, so it does not print.
+  await page.emulateMedia({ media: 'print' });
+  await page.evaluate(() => document.body.classList.add('printing-xc'));
+  await expect(page.locator('#xc-custom-recipient')).toBeHidden();
+  await page.emulateMedia({ media: null });
+});
+
+test('a filing address that is not an address is refused on both paths', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const errs = await page.evaluate(() => {
+    const p = { reg: 'HLH', type: 'C172', wake: 'L', equip: 'S', surv: 'C', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com', aisEmail: 'not-an-email' };
+    return {
+      predicate: fplBadFilingOverride(p),
+      blankIsFine: fplBadFilingOverride({ aisEmail: '' }),
+      icao: (buildIcaoFpl(p, { dateLocal: '2026-08-05', timeLocal: '09:20' }).errs || []),
+      // ...and the cross-country path, which used to fall back without a word.
+      resolved: fplFilingAddress(p, 'crosscountry'),
+    };
+  });
+  expect(errs.predicate).toBe(true);
+  expect(errs.blankIsFine).toBe(false);
+  expect(errs.icao).toContain('errFplBadAddress');
+  expect(errs.resolved).toBe('fpl@iaa.gov.il');
+  // The dialog's cross-country branch refuses it rather than silently filing to the desk.
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com', aisEmail: 'not-an-email', kind: 'crosscountry' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('.fpl-xc-modal')).toHaveCount(0);
+  await expect(page.locator('.fpl-errs')).toContainText(/address|כתובת/);
+});
+
+test('locked and editable boxes look different in BOTH themes', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1234', cell: '0500000000', persons: '2', endurance: '0500' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
+  });
+  for (const theme of ['theme-light', 'theme-dark']) {
+    const pair = await page.evaluate(t => {
+      document.body.classList.remove('theme-light', 'theme-dark');
+      document.body.classList.add(t);
+      const k = id => {
+        const c = getComputedStyle(document.getElementById(id));
+        return [c.backgroundColor, c.borderBottomColor, c.color].join('|');
+      };
+      return { locked: k('xc-pic'), editable: k('xc-coord') };
+    }, theme);
+    // In light theme `body.theme-light .xc-input` used to win over `.xc-ro` at equal
+    // specificity, so every dialog-owned box rendered byte-identically to an editable one
+    // and the sheet's legend explaining the difference described nothing.
+    expect(pair.locked, theme).not.toBe(pair.editable);
+  }
 });
 
 test('saving the form prints only the sheet', async ({ page }) => {

@@ -5154,8 +5154,12 @@ html[dir="rtl"] .fpl-time-box {
 }
 html[dir="rtl"] .fpl-inline-hint { direction: ltr; }
 
+/* An address shown inside prose: monospace, and LTR whatever the sheet's direction is.
+   Two places show one (the redirected recipient, and the copy-it-by-hand fallback). */
+.fpl-custom-addr,
+.fpl-fallback-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
+
 /* Unticked acknowledgement the pilot just tried to submit past. */
-.fpl-custom-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
 .fpl-ack-missing { color: #ffcf7a; }
 .fpl-ack-missing input { outline: 2px solid #ffcf7a; outline-offset: 1px; }
 body.theme-light .fpl-ack-missing { color: #8a5300; }
@@ -5163,7 +5167,6 @@ body.theme-light .fpl-ack-missing input { outline-color: #8a5300; }
 
 /* Shown after Submit: what should have happened, and the address to use by hand. */
 .fpl-fallback { border-inline-start: 2px solid #3a3636; padding-inline-start: 8px; }
-.fpl-fallback-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
 body.theme-light .fpl-fallback { border-inline-start-color: #d8d4d4; }
 
 /* --- Cross-country (מרחב) plan form ----------------------------------
@@ -5275,8 +5278,8 @@ body.theme-light .fpl-fallback { border-inline-start-color: #d8d4d4; }
 }
 .xc-rw { background: #201d1d; border-color: #3a3636; }
 .xc-legend { margin-bottom: 4px; }
-body.theme-light .xc-ro { background: none; border-color: transparent; color: #55504f; }
-body.theme-light .xc-rw { background: #fff; border-color: #c9c4c4; }
+body.theme-light .xc-input.xc-ro { background: none; border-color: transparent; color: #55504f; }
+body.theme-light .xc-input.xc-rw { background: #fff; border-color: #c9c4c4; }
 /* On paper both are just values. */
 @media print {
   /* On paper there is no scrolling: let every table print at its full width. */
@@ -5303,6 +5306,10 @@ body.theme-light .xc-rw { background: #fff; border-color: #c9c4c4; }
      invisible box. The print rule below drops the box back to the printed form's rule. */
   border: 1px dashed #6d6767;
   border-bottom-style: solid;
+  /* The pointer-to-bitmap maths maps the pad's style width/height, so the border must sit
+     outside the drawing area -- under the global border-box it ate 1px off each side and
+     the ink drifted from the finger. */
+  box-sizing: content-box;
   background: #fff;
   border-radius: 2px;
   touch-action: none;        /* drawing must not scroll the sheet */
@@ -5387,6 +5394,9 @@ body.theme-light .xc-sig-pad { border-color: #8f8a8a; }
   body.printing-xc .xc-t th,
   body.printing-xc .xc-t td,
   body.printing-xc .xc-foot { border-color: #111; }
+  /* App chrome, not part of the authority's form: the redirected-recipient warning is for
+     the pilot on screen and must not print on the sheet they hand in. */
+  body.printing-xc #xc-custom-recipient { display: none !important; }
   /* On paper the signature sits on the form's rule, not in a box. */
   body.printing-xc .xc-sig-pad {
     border: 0;

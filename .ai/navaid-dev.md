@@ -564,8 +564,23 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   optional Drive **settings** sync. The synced blob lives in Drive app-data as
   `navaid-settings.json` (separate from `navaid-routes.json`); the allowlist is
   `GDRIVE_SETTINGS_KEYS` in `gdrive.js` and deliberately excludes API keys,
-  panel geometry, and the working route. Protocol details that a second
+  panel geometry, and the working route. It also excludes, as a rule, **any key
+  that decides where data is sent** — `navaid.ai.baseUrl`, and
+  `navaid.fpl.aisEmail` (the address a flight plan is filed to: an override
+  synced from a settings blob would redirect every device's plan). The pilot's
+  own `navaid.fpl.replyTo` IS synced: it is cc'd, so a wrong value costs them
+  their copy but cannot misdirect the plan, and it is required to file — keeping
+  it device-local would block a second device. `tests/settings-sync-allowlist.spec.js`
+  enforces this: every `navaid.*` literal must be synced or declared in
+  `NOT_A_SYNCED_SETTING` with a reason. Protocol details that a second
   reader/writer of that file MUST honour:
+  - **Dropping a key from the allowlist is a normal event, and the change
+    detector must survive it.** `_localSettingsBlob()` compares the collected
+    values against the stored snapshot **per current allowlist key**, never as
+    raw JSON strings: a snapshot written by an older build still carries the
+    removed key, and a string compare read that as an edit made on this device —
+    it then stamped itself above the remote and pushed pre-upgrade values over a
+    peer's newer ones, once, on every upgraded device.
   - `values[key] === null` is a **tombstone** ("deleted on the authoring
     device"), not "no value". A reader that drops nulls when re-publishing
     erases the deletion for every device that has not synced yet. A key that is
