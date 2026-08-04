@@ -4930,8 +4930,6 @@ body.theme-light .fpl-input-missing { outline-color: #8a5300; }
 .fpl-type-box select,
 .fpl-type-box input { flex: 1 1 auto; min-width: 0; }
 .fpl-type-box [hidden] { display: none !important; }
-.fpl-row-stacked { grid-template-columns: 1fr; gap: 2px; }
-.fpl-row-stacked select { width: 100%; }
 .fpl-row {
   display: grid;
   /* The control column gives way before the label does. A fixed 190px starved the label
@@ -4944,6 +4942,11 @@ body.theme-light .fpl-input-missing { outline-color: #8a5300; }
   font-size: 13px;
   color: #e8e8e8;
 }
+/* Declared AFTER .fpl-row: at equal specificity the earlier rule won, so this class -- the
+   one the flight-type row uses to get a full-width select -- did nothing at all. */
+.fpl-row-stacked { grid-template-columns: 1fr; gap: 2px; }
+.fpl-row-stacked select { width: 100%; }
+
 /* Below that, one column: a 130px control beside a 130px label helps nobody. */
 @media (max-width: 359px) {
   .fpl-row { grid-template-columns: 1fr; gap: 2px; }

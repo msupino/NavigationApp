@@ -588,12 +588,15 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     unset until used) — and skipping both dropped that first setting for good. So
     the snapshot records the allowlist it was written against, in
     `navaid.settingsSnapKeys` (written AFTER the snapshot, and tolerated if refused:
-    the snapshot is what the detector cannot work without). With no such record the
-    remote settles the ambiguity instead — a key the remote already carries may be
-    our stale copy of a peer's newer value, so it is not claimed as an edit; a key
-    the remote has never seen is genuinely new information and is. Getting that
-    backwards is not "one lost round": the loser pulls the winner's values down, so
-    either verdict can destroy an edit permanently.
+    the snapshot is what the detector cannot work without). A snapshot that predates
+    that record is **adopted once** by `_adoptLegacySnapshot()` — every allowlisted
+    key we hold but it lacks is taken into it, as if synced — so the ambiguous case
+    exists for one call instead of forever. Do not try to resolve it by consulting
+    the remote: a remote that already holds the key cannot say whether our value is
+    a stale copy or a fresh first setting, and a remote *tombstone* reads as "the
+    remote has it", so a peer's deletion silently erased a value the pilot had just
+    typed. Getting any of this backwards is not "one lost round": the loser applies
+    the winner's values, so either verdict destroys a real setting somewhere.
   - `values[key] === null` is a **tombstone** ("deleted on the authoring
     device"), not "no value". A reader that drops nulls when re-publishing
     erases the deletion for every device that has not synced yet. A key that is

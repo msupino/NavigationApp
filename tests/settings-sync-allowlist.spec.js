@@ -190,8 +190,11 @@ test('the sweep reads the allowlist file too, minus the array', () => {
   }
   // ...and the array's own entries are still NOT read from there, or every stale entry in it
   // would prove its own aliveness.
-  const onlyInTheArray = allowlist().filter(k => !allowlistFileOutsideTheArray().includes("'" + k + "'"));
-  expect(onlyInTheArray.length).toBeGreaterThan(0);
+  // Pinned to the whole array, not just "more than zero": a helper that cut only PART of it
+  // would leak the rest into the sweep, where those entries would prove their own aliveness.
+  const outside = allowlistFileOutsideTheArray();
+  const leaked = allowlist().filter(k => outside.includes("'" + k + "'"));
+  expect(leaked).toEqual([]);
 });
 
 test('every navaid.* key in the app is synced or declared device-local', () => {
