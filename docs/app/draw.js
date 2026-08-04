@@ -804,10 +804,17 @@ function notamFlashPulse() {
 // Does a NOTAM have anything to show on the map (area / route line / a known
 // Find an airfield by ICAO, case-insensitively — the NOTAM modal normalises
 // icao with toUpperCase(), so the map side must too or the list/map disagree.
+let airfieldsByIcao = null;              // built on first use, dropped when airfields reload
 function airfieldByIcao(code) {
   const u = String(code || '').toUpperCase();
   if (!u || !Array.isArray(airfields)) return null;
-  return airfields.find(a => String(a.name || '').toUpperCase() === u) || null;
+  // Indexed rather than scanned: the NOTAM draw path calls this per marker, and the FPL
+  // validation calls it once per waypoint, each scan re-upper-casing every name.
+  if (!airfieldsByIcao || airfieldsByIcao._for !== airfields) {
+    airfieldsByIcao = new Map(airfields.map(a => [String(a.name || '').toUpperCase(), a]));
+    airfieldsByIcao._for = airfields;
+  }
+  return airfieldsByIcao.get(u) || null;
 }
 // airport for its ICAO)? FIR-wide (LLLL) ones don't.
 function notamMappable(n) {
