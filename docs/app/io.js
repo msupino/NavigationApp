@@ -1174,6 +1174,21 @@ function fplMissingProfileFields(p) {
 // clearance or ATIS frequency -- a proxy for controlled airspace, not a declaration of
 // it, so the wording it selects talks about the tower rather than asserting an airspace
 // class the app does not know.
+// Known airfields strictly between the endpoints. Returns their labels for the message.
+function fplMidRouteAirfields() {
+  const wps = state.waypoints || [];
+  if (wps.length < 3) return [];
+  const out = [];
+  for (let i = 1; i < wps.length - 1; i++) {
+    const code = String((wps[i] && wps[i].name) || '').trim().toUpperCase();
+    if (!code) continue;
+    if (typeof airfieldByIcao === 'function' && airfieldByIcao(code)) {
+      out.push((typeof waypointDisplayLabel === 'function')
+        ? waypointDisplayLabel(wps[i], i) : code);
+    }
+  }
+  return out;
+}
 function fplLandingSite() {
   const wps = state.waypoints || [];
   if (wps.length < 2) return null;
@@ -1217,6 +1232,11 @@ function buildIcaoFpl(profile, opts) {
   }
   if (unusable.length) errs.push('errFplBadPoints');
   if (!pts.length) errs.push('errFplNoPoints');
+
+  // One plan describes one flight, field to field: a field in the middle is a landing,
+  // and a landing means a second plan.
+  const midFields = fplMidRouteAirfields();
+  if (midFields.length) errs.push('errFplMidAirfield:' + midFields.join(', '));
 
   const legs = state.legs || [];
   const speedKt = Math.round(Number(legs.length ? legs[0].flightSpeed : 0));
@@ -7620,7 +7640,11 @@ function showFplDialog() {
     for (const code of errs) {
       const [key, field] = String(code).split(':');
       if (key === 'errFplProfile' && field) missing.push(field);
-      else if (!others.includes(key)) others.push(key);
+      else if (key === 'errFplMidAirfield') {
+        const li = document.createElement('div');
+        fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield ? S.errFplMidAirfield(field || '') : key));
+        errBox.appendChild(li);
+      } else if (!others.includes(key)) others.push(key);
       // The email has its own error codes, but it is a field like any other: mark it.
       if (key === 'errFplReplyToRequired' || key === 'errFplReplyToInvalid') {
         const el = elsByKey && elsByKey.replyTo;
@@ -7930,8 +7954,11 @@ function showFplDialog() {
         const replyXc = String(profile.replyTo || '').trim();
         if (!replyXc) errsXc.push('errFplReplyToRequired');
         else if (!FPL_EMAIL_RE.test(replyXc)) errsXc.push('errFplReplyToInvalid');
-        // ...and the same date/time check, since the sheet prints both.
+        // ...the same date/time check, since the sheet prints both...
         if (!fplUtcFromLocal(state1.date, state1.time)) errsXc.push('errFplEobt');
+        // ...and the same field-to-field rule: a field in the middle is two plans.
+        const midXc = fplMidRouteAirfields();
+        if (midXc.length) errsXc.push('errFplMidAirfield:' + midXc.join(', '));
         if (errsXc.length) {
           showFieldErrors(errBox, errsXc, fieldEls);
           return;

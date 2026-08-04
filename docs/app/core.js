@@ -1106,6 +1106,7 @@ window.S = Object.assign({
   errFplReplyToRequired: 'Enter your own email — the approval comes back to it.',
   errFplReplyToInvalid: 'That email address is not valid.',
   errFplProfileList: function(list) { return 'Still needed: ' + list + '.'; },
+  errFplMidAirfield: function(list) { return 'This route lands at ' + list + ' on the way, so it is two flight plans, not one — file the first leg to ' + list + ', then a second plan onward.'; },
   errFplEobt: 'Enter a valid date and departure time.',
   errFplEndurance: 'Pick how much fuel is on board.',
   errFplLatinOnly: 'Write the pilot name and license in Latin letters — the flight-plan message cannot carry Hebrew.',
