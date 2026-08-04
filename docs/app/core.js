@@ -1932,6 +1932,18 @@ function routeWaypointAtPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DE
 function routeOccupiesPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DEG) {
   return routeWaypointAtPoint(point, skipIdx, eps) !== -1;
 }
+// Is `point` where waypoint `i`'s NEIGHBOUR sits? Two waypoints at one place only make a
+// zero-length leg when they are adjacent, and dropping a waypoint on the one next to it is
+// the deliberate delete gesture. Landing on any OTHER waypoint is an ordinary route that
+// passes a point twice -- a local sortie back to its own departure field, most of all.
+function routeNeighbourAtPoint(i, point, eps = SAME_REFERENCE_POINT_DEG) {
+  if (!point || !state || !Array.isArray(state.waypoints)) return false;
+  const wps = state.waypoints;
+  const prev = i > 0 ? wps[i - 1] : null;
+  const next = i < wps.length - 1 ? wps[i + 1] : null;
+  return !!((prev && sameMapPoint(prev, point, eps)) ||
+            (next && sameMapPoint(next, point, eps)));
+}
 function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   const rad = d => (d * Math.PI) / 180;
   const phi1 = rad(a.lat), phi2 = rad(b.lat);

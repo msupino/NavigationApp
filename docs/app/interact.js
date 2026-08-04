@@ -3411,7 +3411,7 @@ map.on('mousedown', e => {
     state.selected = { type: 'wp', index: wp };
     drag = { kind: 'wp', i: wp, moved: false,
              origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
-             originSnapArmed: false };
+             origName: state.waypoints[wp].name, originSnapArmed: false };
     map.dragging.disable();
     // Highlight now, but defer the inspector to release-without-move so you can
     // drag a waypoint (or grab one while panning) without the panel popping up.
@@ -3546,8 +3546,10 @@ function endMouseDrag() {
     if (drag.kind === 'wp' && drag.moved) {
       const wp = state.waypoints[drag.i];
       const snappedToSelf = sameMapPoint(wp, { lat: drag.origLat, lng: drag.origLng });
-      const snappedToOther = routeOccupiesPoint(wp, drag.i);
-      if ((snappedToSelf && !drag.originSnapArmed) || snappedToOther) {
+      // Dropped on the waypoint NEXT to it: the delete gesture. It used to be any waypoint
+      // at all, which is what made a circular route impossible to draw -- dragging the last
+      // waypoint onto the first deleted it instead of closing the route.
+      if (routeNeighbourAtPoint(drag.i, wp)) {
         deleteWaypoint(drag.i);   // removes the adjacent leg too; bare splice+syncLegs would drop the tail leg and misalign the rest
         state.selected = null;
         showInspector(); draw();
@@ -3555,6 +3557,22 @@ function endMouseDrag() {
         map.dragging.enable();
         drag = null;
         return;
+      }
+      // Landed on another waypoint that is NOT a neighbour: the two are the same place now,
+      // so it takes that point's name. Keeping the old one left a closed route whose last
+      // waypoint said "TWO" while sitting on LLHZ -- and the flight plan reads the NAME, so
+      // the destination filed as ZZZZ instead of the field the aircraft lands at.
+      const onIdx = routeWaypointAtPoint(wp, drag.i);
+      if (onIdx !== -1 && state.waypoints[onIdx].name) {
+        wp.name = state.waypoints[onIdx].name;
+      }
+      // Picked up and put back without ever leaving: a cancel, as in every drag UI. This
+      // used to delete the waypoint, and `moved` is set by a single pixel -- so at high zoom
+      // a 2px nudge was enough to lose it.
+      if (snappedToSelf && !drag.originSnapArmed) {
+        wp.lat = drag.origLat; wp.lng = drag.origLng;
+        if (typeof drag.origName === 'string') wp.name = drag.origName;
+        syncLegs();
       }
     }
     // #487: a waypoint drag may have landed (snapped) on a comm-change point.
@@ -3608,11 +3626,12 @@ map.on('click', e => {
   }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
-    // #104: ignore the click if a waypoint already sits at the snap target.
-    // Without this an add-mode click on a nav-WP / airfield that already has
-    // a route waypoint produces a duplicate at the same coords and a leg
-    // with zero distance.
-    if (routeOccupiesPoint(r)) {
+    // #104: ignore the click when it lands on the point the next leg would START from --
+    // that, and only that, produces a duplicate at the same coords and a leg with zero
+    // distance. Any EARLIER waypoint is fair game: clicking the departure field again is how
+    // a local sortie is closed into a circular route, and a route may pass a point twice.
+    const tail = state.waypoints[state.waypoints.length - 1];
+    if (tail && sameMapPoint(tail, r)) {
       return;
     }
     state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
@@ -3895,7 +3914,7 @@ mapEl.addEventListener('touchstart', e => {
   } else if (wp >= 0) {
     touchDrag = { kind: 'wp', i: wp, moved: false,
                   origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
-                  originSnapArmed: false };
+                  origName: state.waypoints[wp].name, originSnapArmed: false };
     state.selected = { type: 'wp', index: wp };
   } else if (lab) {
     _materialiseDefaultLegLabel(lab.i, lab.which);
@@ -3989,8 +4008,8 @@ function endTouch() {
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
       const wp = state.waypoints[touchDrag.i];
       const snappedToSelf = sameMapPoint(wp, { lat: touchDrag.origLat, lng: touchDrag.origLng });
-      const snappedToOther = routeOccupiesPoint(wp, touchDrag.i);
-      if ((snappedToSelf && !touchDrag.originSnapArmed) || snappedToOther) {
+      // Same two rules as the mouse path -- see endMouseDrag.
+      if (routeNeighbourAtPoint(touchDrag.i, wp)) {
         deleteWaypoint(touchDrag.i);   // removes the adjacent leg too (see endMouseDrag)
         state.selected = null;
         showInspector(); draw();
@@ -3998,6 +4017,16 @@ function endTouch() {
         map.dragging.enable();
         touchDrag = null;
         return;
+      }
+      // Adopt the name of the point it landed on -- see endMouseDrag.
+      const onIdx = routeWaypointAtPoint(wp, touchDrag.i);
+      if (onIdx !== -1 && state.waypoints[onIdx].name) {
+        wp.name = state.waypoints[onIdx].name;
+      }
+      if (snappedToSelf && !touchDrag.originSnapArmed) {
+        wp.lat = touchDrag.origLat; wp.lng = touchDrag.origLng;
+        if (typeof touchDrag.origName === 'string') wp.name = touchDrag.origName;
+        syncLegs();
       }
     }
     // #487: seed a comm-change note if a touch waypoint-drag landed on one.
