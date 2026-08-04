@@ -62,16 +62,17 @@ test.describe('workflow trust and integrity gates', () => {
   });
 
   test('scheduled feed jobs preserve last-good outputs on partial failures', () => {
+    // The aviation build is a module now, so its publish rules are covered behaviourally in
+    // tests/aviation-feeds.spec.js instead of by grepping this YAML -- a substring cannot tell
+    // a working guard from a commented-out one. What is left to assert here is the wiring.
     const aviation = read('.github/workflows/aviation-data.yml');
-    expect(aviation).toContain('SIGMET publish skipped; preserving last-good branch.');
-    expect(aviation).toContain('WX publish skipped; preserving last-good branch.');
-    // A transport error is not the only way this feed can lie. A 200 carrying an empty array,
-    // or a shape that no longer has icaoId, leaves the station map empty -- publishing that
-    // blanks every field's weather while reporting success, so emptiness has to block too.
-    expect(aviation).toContain("Object.keys(stations).length > 0");
-    expect(aviation).toContain('if (wxOk)');
-    // ...whereas no SIGMETs over Israel is the normal case and must still publish.
-    expect(aviation).toContain('if (sigOk)');
+    expect(aviation).toContain('node scripts/build-aviation-feeds.mjs');
+    expect(aviation).not.toContain("node --input-type=module <<'NODE'");
+    // The script lives in the repo, so the job needs a checkout the heredoc did not...
+    expect(aviation).toMatch(/uses: actions\/checkout/);
+    // ...and it must not carry a token: the data branches are pushed with an explicit
+    // x-access-token URL, never with the checkout's credentials.
+    expect(aviation).toContain('persist-credentials: false');
     expect(read('.github/workflows/charts-monitor.yml')).toContain('wx-data/wx.json');
 
     const ims = read('.github/workflows/ims-charts.yml');
