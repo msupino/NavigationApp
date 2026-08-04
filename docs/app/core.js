@@ -1079,7 +1079,7 @@ window.S = Object.assign({
   xcSavePdfTip: 'Opens the print dialog — choose "Save as PDF" as the destination to get a file to attach, or a printer to sign on paper.',
   xcOpenForm: 'Fill the cross-country form',
   fplNoMailApp: 'Your mail app should have opened with the plan. If nothing happened, this device has no mail app set up — press Copy and send the plan yourself to:',
-  fplAckRequired: 'Confirm both checks above before submitting the plan.',
+  fplAckRequired: 'Confirm the checks above before submitting the plan.',
   fplAckLanding: function(site) { return 'I coordinated the landing with the operator of ' + site; },
   fplAckTower: function(site) { return 'I coordinated the landing with ' + site + ' tower, and will keep continuous radio contact'; },
   fplCopy: 'Copy',

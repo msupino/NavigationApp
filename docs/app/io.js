@@ -8120,7 +8120,9 @@ function showFplDialog() {
     ackNote.className = 'fpl-warn';
     ackNote.id = 'fpl-ack-required';
     ackNote.hidden = true;
-    fplSetBidiText(ackNote, '⚠ ' + (S.fplAckRequired || 'Confirm both checks before submitting.'));
+    // No count in the wording: a landing site adds a third check, so "both" was wrong
+    // exactly when the third one appeared.
+    fplSetBidiText(ackNote, '⚠ ' + (S.fplAckRequired || 'Confirm the checks before submitting.'));
     // appendChild, not insertBefore(ackNote, btns): btns is not in the DOM yet at
     // this point, and insertBefore threw -- which aborted the render and left the
     // review step with no buttons at all.

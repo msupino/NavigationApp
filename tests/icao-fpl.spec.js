@@ -491,6 +491,9 @@ test('submitting without the acknowledgements says what is missing', async ({ pa
   await expect(page.locator('#fpl-ack-required')).toBeHidden();
   await mail.click();
   await expect(page.locator('#fpl-ack-required')).toBeVisible();
+  // The wording carries no count: a landing site makes it three, so "both" would be wrong.
+  const note = await page.locator('#fpl-ack-required').textContent();
+  expect(note).not.toMatch(/both|two|שני|שתי/);
   const outstanding = await page.locator('.fpl-ack input').count();
   await expect(page.locator('.fpl-ack-missing')).toHaveCount(outstanding);
   // Ticking one leaves the others marked; ticking them all clears the message.
