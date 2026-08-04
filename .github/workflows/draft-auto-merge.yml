@@ -22,6 +22,11 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # `gh workflow run` below needs this. Without it the dispatch fails with
+  # "HTTP 403: Resource not accessible by integration", so the post-merge chain
+  # (Deploy, and the dev->main promo PR) silently never happened and the promo had
+  # to be triggered by hand every time.
+  actions: write
 
 jobs:
   ensure-draft:
@@ -100,13 +105,19 @@ jobs:
                 # GITHUB_TOKEN. workflow_dispatch is exempt from
                 # anti-recursion (per GitHub docs), so this fires reliably.
                 BASE=$(gh pr view "$PR" --json baseRefName --jq '.baseRefName')
-                gh workflow run Deploy --ref "$BASE" || \
-                  echo "::warning::Failed to dispatch Deploy on $BASE"
+                FAILED=0
+                gh workflow run Deploy --ref "$BASE" || {
+                  echo "::error::Failed to dispatch Deploy on $BASE"; FAILED=1;
+                }
                 if [ "$BASE" = "dev" ]; then
-                  gh workflow run "Auto PR dev to main" --ref dev || \
-                    echo "::warning::Failed to dispatch Auto PR dev to main"
+                  gh workflow run "Auto PR dev to main" --ref dev || {
+                    echo "::error::Failed to dispatch Auto PR dev to main -- promote by hand"
+                    FAILED=1
+                  }
                 fi
-                exit 0
+                # The merge itself succeeded, but a dropped dispatch means the promo PR
+                # never appears. Fail loudly rather than reporting success.
+                exit $FAILED
                 ;;
               CLOSED)
                 echo "::warning::PR #$PR closed without merging."
