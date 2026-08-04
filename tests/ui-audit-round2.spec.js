@@ -217,13 +217,18 @@ test.describe('phone layout', () => {
       document.getElementById('plan').click();
       const tbl = document.querySelector('.modal table');
       const scroll = document.querySelector('.fp-scroll');
+      const altInputs = [...document.querySelectorAll('.modal tbody .fp-col-alt .plan-num')];
       return { tableW: tbl.scrollWidth, paneW: scroll.clientWidth,
+        minAltInputW: Math.min(...altInputs.map(el => el.getBoundingClientRect().width)),
+        altAppearance: getComputedStyle(altInputs[0]).appearance,
         heads: [...document.querySelectorAll('.modal thead th')]
           .filter(t => !(t.hidden || getComputedStyle(t).display === 'none'))
           .map(t => t.textContent.trim()).filter(Boolean),
         csv: [...document.querySelectorAll('.modal thead th')].map(t => t.dataset.csv).filter(Boolean) };
     });
     expect(r.tableW).toBeLessThanOrEqual(r.paneW + 1);
+    expect(r.minAltInputW).toBeGreaterThanOrEqual(52);
+    expect(r.altAppearance).toBe('textfield');
     expect(r.heads).toEqual(['#', 'To', 'Hdg', 'Alt', 'Time']);
     // Short titles are display-only: the CSV export contract keeps its full names.
     expect(r.csv).toContain('Dist (NM)');      // display says "NM"

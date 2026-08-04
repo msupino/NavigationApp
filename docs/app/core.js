@@ -1735,6 +1735,10 @@ function saveAircraft() {
   try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
 }
 
+// Route totals are visible before the Flight plan modal is ever opened, so the
+// persisted performance profile must be available to the first draw.
+loadAircraft();
+
 const DEFAULT_LABEL_FILL_COLOR = '#fff6aa';
 
 // Tinted fill from any "#rrggbb" hex. Alpha defaults to yellowAlpha (the

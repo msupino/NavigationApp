@@ -2127,7 +2127,18 @@ body.theme-light .shortcuts-help-keys kbd {
   .fp-scroll table { font-size: 12px; }
   .fp-scroll th,
   .fp-scroll td { padding: 3px 4px; }
-  .fp-scroll .plan-num { width: 42px; }
+  /* Leave room for four altitude digits beside the native number spinner.
+     At 42px, 800 rendered as 80 and 1500 as 15 on a real phone viewport. */
+  .fp-scroll .plan-num {
+    width: 52px;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .fp-scroll .plan-num::-webkit-inner-spin-button,
+  .fp-scroll .plan-num::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+  }
   .fp-scroll input[type="text"] { width: 58px; min-width: 0; }
   /* While a modal is open, the floating map legend and toolbar would overlap
      it on a small screen — hide them until it closes. */
