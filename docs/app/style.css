@@ -5155,6 +5155,7 @@ html[dir="rtl"] .fpl-time-box {
 html[dir="rtl"] .fpl-inline-hint { direction: ltr; }
 
 /* Unticked acknowledgement the pilot just tried to submit past. */
+.fpl-custom-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
 .fpl-ack-missing { color: #ffcf7a; }
 .fpl-ack-missing input { outline: 2px solid #ffcf7a; outline-offset: 1px; }
 body.theme-light .fpl-ack-missing { color: #8a5300; }

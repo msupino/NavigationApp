@@ -1080,6 +1080,7 @@ window.S = Object.assign({
   xcOpenForm: 'Fill the cross-country form',
   fplNoMailApp: 'Your mail app should have opened with the plan. If nothing happened, this device has no mail app set up — press Copy and send the plan yourself to:',
   fplAckRequired: 'Confirm both checks above before submitting the plan.',
+  fplCustomRecipient: 'Not the published AIS address — this plan will be sent to:',
   fplCopy: 'Copy',
   fplCopied: 'Flight plan copied.',
   fplOpenMail: 'Submit flight plan',
