@@ -197,6 +197,7 @@ test('the sweep reads the allowlist file too, minus the array', () => {
   expect(leaked).toEqual([]);
 });
 
+
 test('every navaid.* key in the app is synced or declared device-local', () => {
   const synced = new Set(allowlist());
   const undeclared = allKeyLiterals()
