@@ -582,7 +582,14 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     Comparing raw JSON strings read a *removal* as a local edit; comparing every
     current key read an *addition* the same way. Either one made the device stamp
     itself above the remote and push pre-upgrade values over a peer's newer ones,
-    once, on every upgraded device.
+    once, on every upgraded device. But "absent from the snapshot" has **two**
+    causes that the values alone cannot distinguish — the allowlist gained the key,
+    or the pilot set it for the first time (the normal state, since most keys are
+    unset until used) — and skipping both dropped that first setting for good. So
+    the snapshot records the allowlist it was written against, in
+    `navaid.settingsSnapKeys`; without that record absence counts as an edit,
+    because pushing costs a peer one round of settings while dropping the pilot's
+    edit is permanent.
   - `values[key] === null` is a **tombstone** ("deleted on the authoring
     device"), not "no value". A reader that drops nulls when re-publishing
     erases the deletion for every device that has not synced yet. A key that is

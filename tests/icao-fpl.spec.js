@@ -1478,10 +1478,10 @@ test('the Hebrew two-plans message names the fields and one first leg', async ({
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => typeof buildIcaoFpl === 'function');
   const text = await page.evaluate(() => S.errFplMidAirfield(['עין שמר', 'מגידו']));
-  expect(text).toContain('עין שמר');
-  expect(text).toContain('מגידו');
-  expect(text).toContain('הגישו תוכנית עד עין שמר,');       // one first leg, the first field
-  expect(text).not.toContain('עד עין שמר, מגידו');
+  // Exact, not a set of substrings: reverting the Hebrew string to String(names) joins with
+  // a bare comma, which slipped past a negative written with a comma-space.
+  expect(text).toBe('המסלול נוחת בעין שמר, מגידו בדרך, ולכן אינו תוכנית טיסה אחת — '
+    + 'הגישו תוכנית עד עין שמר, ואחריה תוכנית נוספת להמשך.');
   expect(text).not.toMatch(/שתי תוכניות/);                  // no count
   // Both tables take the array itself, so neither has to know how a list was joined.
   expect(await page.evaluate(() => S.errFplMidAirfield(['עין שמר']))).toContain('עין שמר');
@@ -1591,6 +1591,8 @@ test('both signature pads and every button fit a phone', async ({ page }) => {
       padRows: new Set(pads.map((_, i) =>
         Math.round(document.querySelectorAll('.xc-sig-pad')[i].getBoundingClientRect().top))).size };
   });
+  expect(phone.pads).toHaveLength(2);       // or the loops below assert nothing
+  expect(phone.btns).toHaveLength(4);
   // The briefer's pad was laid out at left: -339px -- off the sheet, and unreachable, since
   // the pads carry touch-action: none so dragging them draws instead of scrolling.
   for (const pad of phone.pads) {
@@ -1608,13 +1610,117 @@ test('on a wide screen the pads sit side by side and the buttons on one row', as
   await boot(page);
   await route(page);
   await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
-  const wide = await page.evaluate(() => ({
-    padRows: new Set([...document.querySelectorAll('.xc-sig-pad')]
-      .map(el => Math.round(el.getBoundingClientRect().top))).size,
-    btnRows: new Set([...document.querySelectorAll('.fpl-xc-modal .modal-btns button')]
-      .map(b => Math.round(b.getBoundingClientRect().top))).size,
-  }));
-  expect(wide).toEqual({ padRows: 1, btnRows: 1 });
+  const wide = await page.evaluate(() => {
+    const pads = [...document.querySelectorAll('.xc-sig-pad')];
+    const btns = [...document.querySelectorAll('.fpl-xc-modal .modal-btns button')];
+    const top = el => Math.round(el.getBoundingClientRect().top);
+    return { pads: pads.length, btns: btns.length,
+      padRows: new Set(pads.map(top)).size, btnRows: new Set(btns.map(top)).size,
+      // ...and genuinely beside each other, not stacked with equal tops by accident.
+      padsApart: pads.length === 2
+        && Math.abs(pads[0].getBoundingClientRect().left
+          - pads[1].getBoundingClientRect().left) > 100 };
+  });
+  // Counts asserted too: a Set of one top has size 1 whether there are two pads on one row
+  // or only one pad at all.
+  expect(wide).toEqual({ pads: 2, btns: 4, padRows: 1, btnRows: 1, padsApart: true });
+});
+
+test('a scroll mid-stroke does not paint the signature at the old position', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
+  const r = await page.evaluate(() => {
+    const pad = document.getElementById('xc-sig-pilot');
+    const sheet = document.querySelector('.xc-sheet');
+    const ctx = pad.getContext('2d');
+    const send = (type, x, y) => pad.dispatchEvent(new PointerEvent(type, {
+      pointerId: 1, clientX: x, clientY: y, bubbles: true }));
+    const inkedRows = () => {
+      const d = ctx.getImageData(0, 0, pad.width, pad.height).data;
+      const rows = new Set();
+      for (let y = 0; y < pad.height; y++) {
+        for (let x = 0; x < pad.width; x++) if (d[(y * pad.width + x) * 4 + 3] > 0) { rows.add(y); break; }
+      }
+      return [...rows];
+    };
+    // Start a stroke near the pad's top...
+    let box = pad.getBoundingClientRect();
+    send('pointerdown', box.left + pad.clientLeft + 20, box.top + pad.clientTop + 6);
+    // ...then scroll the sheet under it (a wheel, or a second finger: touch-action: none on
+    // the pad only stops gestures that START on the pad).
+    sheet.scrollTop += 60;
+    sheet.dispatchEvent(new Event('scroll', { bubbles: true }));
+    box = pad.getBoundingClientRect();                 // the pad has MOVED
+    // Continue the stroke at the pad's new on-screen position, same place ON the pad.
+    send('pointermove', box.left + pad.clientLeft + 120, box.top + pad.clientTop + 6);
+    send('pointerup', box.left + pad.clientLeft + 120, box.top + pad.clientTop + 6);
+    return { scrolled: sheet.scrollTop, rows: inkedRows(), height: pad.height };
+  });
+  expect(r.scrolled).toBeGreaterThan(0);               // the sheet really did scroll
+  // The stroke stays on the row the finger traced. With the rect frozen at pointerdown the
+  // continuation was mapped through the old position, so it ran away by the scroll delta
+  // (60 CSS px on a 52 px pad -- i.e. clean off the canvas).
+  expect(r.rows.length).toBeGreaterThan(0);
+  expect(Math.max(...r.rows)).toBeLessThan(r.height / 3);
+});
+
+test('the sheet unhooks its scroll listener when it closes', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const counts = await page.evaluate(() => {
+    const seen = { add: 0, remove: 0 };
+    const add = window.addEventListener.bind(window);
+    const rm = window.removeEventListener.bind(window);
+    window.addEventListener = (t, f, o) => { if (t === 'scroll' || t === 'resize') seen.add++; return add(t, f, o); };
+    window.removeEventListener = (t, f, o) => { if (t === 'scroll' || t === 'resize') seen.remove++; return rm(t, f, o); };
+    for (let i = 0; i < 3; i++) {
+      showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
+      document.querySelector('.fpl-xc-modal .modal-cancel').click();
+    }
+    window.addEventListener = add; window.removeEventListener = rm;
+    return seen;
+  });
+  // One pair per open, released on close -- not two per pad, and not left behind: three
+  // open/close cycles used to leave six live listeners retaining both canvases each.
+  expect(counts.add).toBe(6);
+  expect(counts.remove).toBe(6);
+});
+
+test('the sheet fits a 320px screen, Clear links included', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
+  const narrow = await page.evaluate(() => {
+    const sheet = document.querySelector('.xc-sheet');
+    // Bring the row into view first: elementFromPoint answers about the VIEWPORT, so an
+    // element below the fold would report unhittable for a reason that has nothing to do
+    // with the horizontal layout under test.
+    document.querySelector('.xc-sigs').scrollIntoView({ block: 'center' });
+    const seen = el => {
+      const r = el.getBoundingClientRect();
+      const cx = Math.round(r.left + r.width / 2), cy = Math.round(r.top + r.height / 2);
+      const hit = document.elementFromPoint(cx, cy);
+      return { left: Math.round(r.left), right: Math.round(r.right),
+        hittable: !!hit && (hit === el || el.contains(hit) || hit.contains(el)) };
+    };
+    return { pads: [...document.querySelectorAll('.xc-sig-pad')].map(seen),
+      clears: [...document.querySelectorAll('.xc-sig-clear')].map(seen),
+      overflowX: sheet.scrollWidth - sheet.clientWidth };
+  });
+  expect(narrow.pads).toHaveLength(2);
+  expect(narrow.clears).toHaveLength(2);
+  // At 320px the row wrapped but each line was still wider than the sheet, so both pads and
+  // both Clear links sat at negative x -- elementFromPoint returned null for the links, so a
+  // mis-drawn signature could not be cleared at all.
+  for (const el of [...narrow.pads, ...narrow.clears]) {
+    expect(el.left).toBeGreaterThanOrEqual(0);
+    expect(el.right).toBeLessThanOrEqual(320);
+    expect(el.hittable).toBe(true);
+  }
+  expect(narrow.overflowX).toBe(0);
 });
 
 test('saving the form prints only the sheet', async ({ page }) => {

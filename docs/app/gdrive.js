@@ -355,6 +355,8 @@ const GDRIVE_SETTINGS_KEYS = [
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
 const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';
 const SETTINGS_SNAP_KEY = 'navaid.settingsSnapshot';
+// The allowlist the snapshot above was written against -- see _settingsChangedLocally.
+const SETTINGS_SNAPKEYS_KEY = 'navaid.settingsSnapKeys';
 
 function _lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 // Returns false when the write did NOT land (quota/blocked). Callers that record
@@ -467,18 +469,35 @@ function _sameSettingsValues(a, b) {
 // Did THIS device edit its settings since the last sync? Only keys the snapshot has an
 // opinion about can answer that:
 //   a key the snapshot HAS and we no longer do is a deletion -- a real edit;
-//   a key we have that the snapshot does NOT is "no information", per the same rule the
-//     blob protocol already states for absent keys. It happens whenever the allowlist
-//     gains a key (the value was sitting in localStorage before it was ever synced), and
-//     counting it as an edit made the device stamp itself above the remote and push its
-//     pre-upgrade values over a peer's newer ones -- once, on every upgraded device.
+//   a key we have that the snapshot does NOT has two possible reasons, and the values alone
+//     cannot tell them apart:
+//       the allowlist has GAINED the key since -- the value was sitting in localStorage
+//         before it was ever syncable, so there is no information about it, and counting it
+//         as an edit made the device stamp itself above the remote and push its pre-upgrade
+//         values over a peer's newer ones, once, on every upgraded device;
+//       the key was already syncable and simply had no value -- so the pilot has set it for
+//         the FIRST time, which is a real edit. Skipping it silently dropped that setting:
+//         the newer remote won, and the following parity write absorbed the local value
+//         into the snapshot, so it was never uploaded and never would be.
+//     Most keys are unset until first used, so that second case is the common one -- which
+//     is why the snapshot records WHICH keys it covered (SETTINGS_SNAPKEYS_KEY). Without
+//     that record (a snapshot from an older build) absence counts as an edit: pushing our
+//     values can cost a peer one round of settings, dropping the pilot's own edit is
+//     permanent, so the tie breaks that way.
 // Removing a key from the allowlist is covered too: the loop only visits current keys.
-function _settingsChangedLocally(values, snapValues) {
-  if (!snapValues) return false;
+function _settingsChangedLocally(values, snapValues, snapKeys) {
+  // A snapshot that will not parse is no baseline at all. Treat that as changed so this
+  // device's values are pushed rather than silently replaced.
+  if (!snapValues) return true;
+  const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   for (const k of GDRIVE_SETTINGS_KEYS) {
-    if (!Object.prototype.hasOwnProperty.call(snapValues, k)) continue;
-    if (!Object.prototype.hasOwnProperty.call(values, k)) return true;    // deleted here
-    if (values[k] !== snapValues[k]) return true;                          // changed here
+    if (!has(snapValues, k)) {
+      if (snapKeys && snapKeys.indexOf(k) === -1) continue;   // not syncable then
+      if (has(values, k)) return true;                        // set here since
+      continue;
+    }
+    if (!has(values, k)) return true;                         // deleted here
+    if (values[k] !== snapValues[k]) return true;             // changed here
   }
   return false;
 }
@@ -501,6 +520,7 @@ function _nextSettingsStamp(remoteAt) {
 // storage-pressured device has no baseline at all: it could never detect a local
 // edit, so the user's change was silently reverted by the next remote blob.
 let _settingsSnapMem = null;
+let _settingsSnapKeysMem = null;
 
 function _recordSettingsSynced(values, stamp) {
   // The snapshot is the biggest write in the feature (every allowlisted key,
@@ -520,6 +540,11 @@ function _recordSettingsSynced(values, stamp) {
   }
   const canonStr = JSON.stringify(canon);
   _settingsSnapMem = canonStr;               // always keep an in-memory baseline
+  // Which keys this snapshot had an opinion about, so a later build can tell "the allowlist
+  // gained this key" from "the pilot has since set it". Best-effort: a build without it
+  // falls back to treating absence as an edit.
+  _settingsSnapKeysMem = GDRIVE_SETTINGS_KEYS.slice();
+  _lsSet(SETTINGS_SNAPKEYS_KEY, JSON.stringify(_settingsSnapKeysMem));
   if (!_lsSet(SETTINGS_SNAP_KEY, canonStr)) {
     // Do NOT throw: by now the values are applied locally and/or already uploaded,
     // so rejecting would leave storage and the running app disagreeing and skip the
@@ -532,6 +557,8 @@ function _recordSettingsSynced(values, stamp) {
     // popped the once-only conflict dialog, where accepting discarded the user's
     // newer local edit.
     _lsDel(SETTINGS_SNAP_KEY);
+    _lsDel(SETTINGS_SNAPKEYS_KEY);      // the key list describes a snapshot that is now gone
+    _settingsSnapKeysMem = null;
     _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
     return;
   }
@@ -569,9 +596,20 @@ function _localSettingsBlob(remoteAt) {
   // the recorded stamp rank us.
   const syncedAt = +_lsGet(SETTINGS_SYNCED_AT_KEY) || 0;
   const firstSync = snap === null && !syncedAt;
-  // Per key, and only for keys the snapshot has an opinion about -- see
-  // _settingsChangedLocally. A raw JSON string compare called an allowlist change an edit.
-  const changedLocally = snap !== null && _settingsChangedLocally(values, snapValues);
+  // Per key, and read against the allowlist the snapshot was written with -- see
+  // _settingsChangedLocally. A raw JSON string compare called an allowlist change an edit;
+  // ignoring every absent key dropped the pilot's first setting of anything.
+  let snapKeys = null;
+  const rawSnapKeys = _lsGet(SETTINGS_SNAPKEYS_KEY) !== null
+    ? _lsGet(SETTINGS_SNAPKEYS_KEY) : _settingsSnapKeysMem;
+  if (rawSnapKeys) {
+    try {
+      const parsed = typeof rawSnapKeys === 'string' ? JSON.parse(rawSnapKeys) : rawSnapKeys;
+      if (Array.isArray(parsed)) snapKeys = parsed;
+    } catch (e) { snapKeys = null; }
+  }
+  const changedLocally = snap !== null
+    && _settingsChangedLocally(values, snapValues, snapKeys);
   const updatedAt = firstSync ? 0
     : (changedLocally ? _nextSettingsStamp(remoteAt) : syncedAt);
   return { values, snapValues, firstSync, updatedAt, changedLocally };
