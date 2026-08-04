@@ -1075,6 +1075,20 @@ const FPL_WINDOW_AFTER_VFR_MIN = () => _fplTune('fplWindowAfterVfrMin', 60);
 function fplFileTo(kind) {
   return FPL_FILE_TO[kind] || FPL_FILE_TO.routes;
 }
+// The address a plan is actually filed to: the pilot's override when it is a valid
+// address, otherwise the published one for this flight type. This decides where the plan
+// goes, so it is deliberately one function -- the ICAO path and the cross-country form
+// used to answer it separately, and the form's copy ignored the override entirely.
+function fplFilingAddress(profile, kind) {
+  const override = String((profile && profile.aisEmail) || '').trim();
+  if (override && FPL_EMAIL_RE.test(override)) return override;
+  return fplFileTo(kind || (profile && profile.kind));
+}
+// Is this the published address, or one the pilot set? A redirected plan is worth
+// showing before it is sent.
+function fplIsPublishedAddress(addr) {
+  return Object.values(FPL_FILE_TO).includes(String(addr || '').trim());
+}
 // Conservative: one address, no display name, no separators. Anything else could smuggle
 // extra mailto headers (a "?bcc=" tail) into the URL built from this field.
 const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -1270,7 +1284,11 @@ function buildIcaoFpl(profile, opts) {
   const endurance = String(p.endurance || '').replace(/[^0-9]/g, '');
   if (endurance && !/^[0-9]{4}$/.test(endurance)) errs.push('errFplEndurance');
   const persons = String(p.persons || '').replace(/[^0-9]/g, '');
-  const toAddr = String(p.aisEmail || '').trim() || fplFileTo(p.kind);
+  // An override that is not a valid address is refused rather than silently ignored --
+  // the pilot meant to send it somewhere.
+  const rawTo = String(p.aisEmail || '').trim();
+  if (rawTo && !FPL_EMAIL_RE.test(rawTo)) errs.push('errFplBadAddress');
+  const toAddr = fplFilingAddress(p, p.kind);
   if (!FPL_EMAIL_RE.test(toAddr)) errs.push('errFplBadAddress');
   // Field 18 is an ASCII telex message: a Hebrew name would arrive as mojibake or
   // be rejected outright, so the pilot's name and licence must be Latin.
@@ -8055,6 +8073,22 @@ function showFplDialog() {
     fplSetBidiText(note, [S.fplMailNote || '', S.fplWindowNote || ''].filter(Boolean).join(' '));
     body.appendChild(note);
 
+    // A recipient that is not the published one is worth seeing before pressing submit.
+    // The note above carries no address on purpose (one inside RTL text reordered), so
+    // without this a device-local override would redirect the plan silently.
+    if (res.to && !fplIsPublishedAddress(res.to)) {
+      const custom = document.createElement('div');
+      custom.className = 'fpl-warn';
+      custom.id = 'fpl-custom-recipient';
+      const lead = document.createElement('span');
+      lead.textContent = '⚠ ' + (S.fplCustomRecipient || '') + ' ';
+      const addr = document.createElement('bdi');      // an address inside RTL text
+      addr.className = 'fpl-custom-addr';
+      addr.textContent = res.to;
+      custom.append(lead, addr);
+      body.appendChild(custom);
+    }
+
     const btns = document.createElement('div');
     btns.className = 'modal-btns';
     const copy = document.createElement('button');
@@ -8620,7 +8654,7 @@ function showFplXcForm(opts) {
     // No attachment is possible from a page, so the mail is opened with the address, the
     // subject and a reminder; the pilot attaches the PDF they saved. The pilot's own
     // address is copied in, as on the ICAO path.
-    const to = fplFileTo('crosscountry');
+    const to = fplFilingAddress(profile, 'crosscountry');
     const reply = String(profile.replyTo || '').trim();
     const subject = 'FPL ' + fplRegistration(profile.reg) + ' ' +
       (fields.dest ? fields.dest.value.trim() : '') + ' ' + (dateInput.value || '');

@@ -1163,6 +1163,32 @@ test('nothing on the form is clipped on a phone', async ({ page }) => {
   expect(fit.pageScrollsSideways).toBe(false);   // the page itself does not
 });
 
+// Where a plan is filed is one decision, asked by both paths. The form's copy of it used
+// to ignore an override entirely, so a pilot who set one did not get it honoured there.
+test('the filing address is one decision for both paths', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const answers = await page.evaluate(() => ({
+    routesPublished: fplFilingAddress({ kind: 'routes' }, 'routes'),
+    crossPublished: fplFilingAddress({ kind: 'crosscountry' }, 'crosscountry'),
+    overrideRoutes: fplFilingAddress({ aisEmail: 'ops@example.com' }, 'routes'),
+    overrideCross: fplFilingAddress({ aisEmail: 'ops@example.com' }, 'crosscountry'),
+    junkFallsBack: fplFilingAddress({ aisEmail: 'not-an-email' }, 'crosscountry'),
+    smugglingFallsBack: fplFilingAddress({ aisEmail: 'x@y.com?bcc=evil@z.com' }, 'routes'),
+    publishedCheck: [fplIsPublishedAddress('ais@iaa.gov.il'),
+      fplIsPublishedAddress('fpl@iaa.gov.il'), fplIsPublishedAddress('ops@example.com')],
+  }));
+  expect(answers.routesPublished).toBe('ais@iaa.gov.il');
+  expect(answers.crossPublished).toBe('fpl@iaa.gov.il');
+  // The override applies on BOTH paths, not just the ICAO one.
+  expect(answers.overrideRoutes).toBe('ops@example.com');
+  expect(answers.overrideCross).toBe('ops@example.com');
+  // Junk or header-smuggling never becomes the recipient.
+  expect(answers.junkFallsBack).toBe('fpl@iaa.gov.il');
+  expect(answers.smugglingFallsBack).toBe('ais@iaa.gov.il');
+  expect(answers.publishedCheck).toEqual([true, true, false]);
+});
+
 test('clear form wipes only what was typed on the sheet', async ({ page }) => {
   await boot(page);
   await route(page);
@@ -1353,6 +1379,38 @@ test('the reply-to field persists and syncs', async ({ page }) => {
   await page.locator('#fpl-next').click();
   expect(await page.evaluate(() => localStorage.getItem('navaid.fpl.replyTo')))
     .toBe('pilot@example.com');
+});
+
+// An override is device-local now, but it still redirects the plan on this device. The
+// note deliberately carries no address, so without this the redirect would be silent.
+test('a recipient that is not the published address is shown before submitting', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const open = () => page.evaluate(() => {
+    const dlg = document.querySelector('.modal-back.fpl-modal');
+    if (dlg && dlg._navaidClose) dlg._navaidClose();
+    if (window.fpOpen) closeFlightPlan();
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+  });
+
+  // The published address: nothing to shout about.
+  await open();
+  await expect(page.locator('#fpl-custom-recipient')).toHaveCount(0);
+
+  // An override: named, so it cannot redirect the plan unnoticed.
+  await page.evaluate(() => localStorage.setItem('navaid.fpl.aisEmail', 'ops@example.com'));
+  await open();
+  await expect(page.locator('#fpl-custom-recipient')).toBeVisible();
+  await expect(page.locator('.fpl-custom-addr')).toHaveText('ops@example.com');
 });
 
 test('an invalid filing address is refused', async ({ page }) => {

@@ -1082,6 +1082,7 @@ window.S = Object.assign({
   fplAckRequired: 'Confirm the checks above before submitting the plan.',
   fplAckLanding: function(site) { return 'I coordinated the landing with the operator of ' + site; },
   fplAckTower: function(site) { return 'I coordinated the landing with ' + site + ' tower, and will keep continuous radio contact'; },
+  fplCustomRecipient: 'Not the published AIS address — this plan will be sent to:',
   fplCopy: 'Copy',
   fplCopied: 'Flight plan copied.',
   fplOpenMail: 'Submit flight plan',
