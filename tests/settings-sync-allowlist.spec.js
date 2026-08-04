@@ -93,6 +93,7 @@ const NOT_A_SYNCED_SETTING = [
   // Secrets, and anything that decides WHERE data is sent: never leave the device.
   [/^navaid\.ai\./,              'API keys and assistant endpoint — never synced'],
   [/^navaid\.fpl\.aisEmail$/,    'the address the flight plan is filed to — a synced blob must not be able to redirect it'],
+  [/^navaid\.fpl\.replyTo$/,     'cc\'d on every filed plan — a synced blob must not be able to add a recipient'],
   // Covered by another mechanism.
   [/^navaid\.route$/,            'the working route; the library covers saved ones'],
   [/^navaid\.routes$/,           'the route library, synced as its own file'],
@@ -157,6 +158,9 @@ test('the address a flight plan is filed to is never synced', () => {
   // than AIS while the pilot believes it was filed — and nothing would alert if the
   // flight went down.
   expect(fields).not.toContain('aisEmail');
+  // replyTo is cc'd on every filed plan, so a synced blob could add itself as a
+  // recipient of the pilot's name, licence, mobile, registration, POB and route.
+  expect(fields).not.toContain('replyTo');
   // The rest of the profile is meant to travel — catch the fix being "applied" by
   // deleting the whole block.
   expect(fields).toContain('reg');
