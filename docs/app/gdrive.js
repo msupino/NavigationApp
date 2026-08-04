@@ -334,8 +334,14 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed',
   // The FPL profile: aircraft and pilot details worth having on every device.
   // Written by fplProfileWrite() as navaid.fpl.<field>.
+  // aisEmail is deliberately NOT here: it is the address the plan is filed to
+  // (fplBuild takes p.aisEmail over the published FPL_FILE_TO), so syncing it makes
+  // the recipient settable from the settings blob. The failure is silent and it is
+  // the bad kind -- the plan never reaches AIS while the pilot believes it was
+  // filed, so nobody is alerted if the flight goes down. Same rule that keeps
+  // navaid.ai.baseUrl out: never sync a key that decides where data is sent.
   ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
-    'endurance', 'persons', 'kind', 'aisEmail', 'replyTo',
+    'endurance', 'persons', 'kind', 'replyTo',
     'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
 ];
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
