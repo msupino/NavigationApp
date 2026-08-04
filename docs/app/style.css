@@ -4917,6 +4917,21 @@ html[data-theme="light"] #insp-body .insp-actions {
 }
 /* Two columns, so every field starts on the same line however long its label is.
    space-between left the boxes ragged, which read as sloppy next to the labels. */
+/* display:grid beats the hidden attribute's UA display:none, so a row set hidden in JS
+   stayed on screen (the Other-type code box). */
+.fpl-row[hidden] { display: none !important; }
+/* A field the pilot tried to submit past. */
+.fpl-input-missing { outline: 2px solid #ffcf7a; outline-offset: 1px; }
+body.theme-light .fpl-input-missing { outline-color: #8a5300; }
+/* A row whose control carries a long label (the flight type) gets the full width:
+   in the fixed field column the option text was clipped mid-word. */
+/* Type row: dropdown or free text in the same slot, never both. */
+.fpl-type-box { display: flex; align-items: center; gap: 6px; width: 100%; }
+.fpl-type-box select,
+.fpl-type-box input { flex: 1 1 auto; min-width: 0; }
+.fpl-type-box [hidden] { display: none !important; }
+.fpl-row-stacked { grid-template-columns: 1fr; gap: 2px; }
+.fpl-row-stacked select { width: 100%; }
 .fpl-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 190px;
@@ -4925,6 +4940,14 @@ html[data-theme="light"] #insp-body .insp-actions {
   font-size: 13px;
   color: #e8e8e8;
 }
+/* Native date/time pickers draw their own icons from the colour scheme, so without this
+   the calendar and clock glyphs came out dark-on-dark and vanished. */
+.fpl-row input,
+.fpl-row select,
+.xc-input { color-scheme: dark; }
+body.theme-light .fpl-row input,
+body.theme-light .fpl-row select,
+body.theme-light .xc-input { color-scheme: light; }
 .fpl-row input,
 .fpl-row select {
   font: inherit;
@@ -5086,6 +5109,16 @@ html[dir="rtl"] .fpl-subfields {
 .fpl-modal .modal-btns { margin-top: 6px; }
 .fpl-ack { margin: 1px 0; }
 .fpl-primary { font-weight: 600; }
+/* Hebrew glyphs (ך, ן, ק) descend below the Latin baseline, and the base rule's tight
+   line box clipped them. Earlier I shrank the padding here, which made it worse -- the
+   fix is a taller line box, not a smaller one. */
+.fpl-modal .modal-btns button,
+.fpl-xc-modal .modal-btns button {
+  height: auto;
+  line-height: 1.8;
+  padding: 8px 14px;
+  overflow: visible;
+}
 
 body.theme-light .fpl-route { color: #1c1a1a; border-bottom-color: #d8d4d4; }
 body.theme-light .fpl-subfields { border-left-color: #d8d4d4; }
@@ -5131,3 +5164,227 @@ body.theme-light .fpl-ack-missing input { outline-color: #8a5300; }
 .fpl-fallback { border-inline-start: 2px solid #3a3636; padding-inline-start: 8px; }
 .fpl-fallback-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; }
 body.theme-light .fpl-fallback { border-inline-start-color: #d8d4d4; }
+
+/* --- Cross-country (מרחב) plan form ----------------------------------
+   A facsimile of AIP א'-11 נספח ב': an editable sheet on screen that prints as
+   the authority's form. Ruled boxes, header and footer as printed. */
+.xc-sheet {
+  max-width: min(96vw, 900px);
+  /* The sheet scrolls as one document; clipping the route table hid most of the
+     route behind the blocks below it. */
+  max-height: 84vh;
+  overflow-y: auto;
+  font-size: 12px;
+}
+/* The close button is inset-inline-end, which is the left in this RTL sheet -- exactly
+   where the second caption sits. Keep the header clear of it, direction-aware so it
+   holds either way round. Printing drops the button, so the inset goes with it. */
+.xc-head {
+  margin-bottom: 6px;
+  padding-inline-end: 2.4em;
+}
+@media print { body.printing-xc .xc-head { padding-inline-end: 0; } }
+/* Right and left captions on one line, as printed -- stacked, they ran together. */
+.xc-head-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.xc-date-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 8px;
+  white-space: nowrap;
+}
+.xc-date-line .xc-input { width: 10em; }
+/* The form has a paper width. On a narrow screen it scrolls rather than compressing --
+   squeezed into 375px it clipped registrations, times and every long header. */
+.xc-scroll { overflow-x: auto; margin-bottom: 6px; }
+.xc-t {
+  min-width: 620px;
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 6px;
+  table-layout: fixed;
+}
+.xc-t th,
+.xc-t td {
+  border: 1px solid #6d6767;
+  padding: 2px 4px;
+  text-align: center;
+  vertical-align: middle;
+  font-weight: 400;
+}
+.xc-t th { font-weight: 600; font-size: 11px; line-height: 1.25; }
+.xc-t .xc-input { border: 0; background: none; text-align: center; padding: 2px; }
+.xc-t-route { table-layout: fixed; }
+/* Widths belong on the colgroup: the header spans make nth-child unreliable here. */
+.xc-col-point { width: 14em; }       /* code plus the site name, which can be long */
+.xc-col-time { width: 4.4em; }      /* hh:mm needs 32px and the header 34px; 41px was tight */
+.xc-col-detail { width: auto; }
+.xc-t-route th,
+.xc-t-route td { overflow: hidden; }
+.xc-t-route thead th { font-size: 10px; padding: 2px 1px; line-height: 1.2; }
+.xc-t-route tbody .xc-input { font-size: 12px; padding: 2px 3px; text-align: center; }
+.xc-t-route tbody td:first-child .xc-input { text-align: center; }
+.xc-detail-head { text-align: center; }
+.xc-detail-sub { font-size: 10px; font-weight: 400; line-height: 1.2; }
+/* The route detail wraps instead of clipping: it is the widest content on the form. */
+.xc-detail-input {
+  text-align: start !important;
+  white-space: pre-wrap;
+  /* break-word, not anywhere: a coordinate should wrap between its parts, not mid-token
+     ("32°10." / "8'N"). */
+  overflow-wrap: break-word;
+  min-height: 1.5em;
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+}
+.xc-detail-input:focus { outline: 1px solid #6d6767; }
+.xc-t-route td:last-child { text-align: start; }
+.xc-lines { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.xc-line { display: flex; align-items: baseline; gap: 8px; }
+.xc-line-label { white-space: nowrap; font-weight: 600; }
+.xc-line .xc-input { flex: 1 1 auto; }
+.xc-line-big { flex-direction: column; align-items: stretch; }
+.xc-input {
+  font: inherit;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: #201d1d;
+  border: 1px solid #3a3636;
+  border-radius: 3px;
+  padding: 3px 5px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.xc-textarea { resize: vertical; }
+/* Two kinds of box on this sheet, told apart at a glance: values carried in from the
+   submit dialog (flat, muted, not focusable) and the form's own fields (boxed). */
+.xc-ro {
+  background: none;
+  border-color: transparent;
+  color: #b9b3b3;
+  cursor: default;
+}
+.xc-rw { background: #201d1d; border-color: #3a3636; }
+.xc-legend { margin-bottom: 4px; }
+body.theme-light .xc-ro { background: none; border-color: transparent; color: #55504f; }
+body.theme-light .xc-rw { background: #fff; border-color: #c9c4c4; }
+/* On paper both are just values. */
+@media print {
+  /* On paper there is no scrolling: let every table print at its full width. */
+  body.printing-xc .xc-scroll { overflow: visible !important; }
+  body.printing-xc .xc-t { min-width: 0; }
+  body.printing-xc #xc-clear,
+  body.printing-xc #xc-mail { display: none !important; }
+  body.printing-xc .xc-ro,
+  body.printing-xc .xc-rw { color: #111; background: none; }
+  body.printing-xc .xc-legend { display: none !important; }
+}
+
+.xc-sigs {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 14px 0 6px;
+  white-space: nowrap;
+}
+.xc-sig { display: flex; align-items: baseline; gap: 6px; }
+.xc-sig-pad {
+  border-bottom: 1px solid #6d6767;
+  background: #fff;          /* ink on paper, in either theme */
+  border-radius: 2px;
+  touch-action: none;        /* drawing must not scroll the sheet */
+  cursor: crosshair;
+}
+.xc-sig-clear { font-size: 11px; }
+@media print { body.printing-xc .xc-sig-clear { display: none !important; } }
+/* Footer on one line, as printed: date, authority, revision. */
+.xc-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 4px;
+  border-top: 1px solid #6d6767;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+body.theme-light .xc-input {
+  color: #1c1a1a;
+  background: #fff;
+  border-color: #c9c4c4;
+}
+body.theme-light .xc-t th,
+body.theme-light .xc-t td,
+body.theme-light .xc-foot,
+body.theme-light .xc-sig-rule { border-color: #8f8a8a; }
+
+/* Print: the sheet only, on white, with the field values as printed text. */
+@media print {
+  body.printing-xc { color: #111; background: #fff; }
+  /* Everything except the sheet, by structure rather than by a list of ids: the docked
+     search, the legend, the clock and the map all sit as body children and one of them
+     printed straight across the form. */
+  body.printing-xc > *:not(.modal-back.fpl-xc-modal) { display: none !important; }
+  body.printing-xc .fpl-xc-modal .modal-btns,
+  body.printing-xc .fpl-xc-modal .modal-close-x { display: none !important; }
+  body.printing-xc .modal-back.fpl-xc-modal {
+    display: block;
+    position: static;
+    inset: auto;
+    background: none;
+  }
+  /* The on-screen scroll cap must not survive into print, or the page stops
+     mid-form. !important because the sheet carries its own max-height. */
+  body.printing-xc .fpl-xc-modal .modal,
+  body.printing-xc .xc-sheet {
+    display: block;
+    position: static;
+    width: auto !important;
+    max-width: none !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none;
+    background: #fff;
+    color: #111;
+  }
+  body.printing-xc .modal-back.fpl-xc-modal {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  /* Let the sheet flow onto a second page instead of being cut off, but never split
+     a table row or a labelled block down the middle. */
+  body.printing-xc .xc-t { page-break-inside: auto; break-inside: auto; }
+  body.printing-xc .xc-t tr,
+  body.printing-xc .xc-line,
+  body.printing-xc .xc-sigs { page-break-inside: avoid; break-inside: avoid; }
+  body.printing-xc .xc-t thead { display: table-header-group; }
+  body.printing-xc .xc-input {
+    color: #111;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid #999;
+    border-radius: 0;
+  }
+  body.printing-xc .xc-t .xc-input { border-bottom: 0; }
+  body.printing-xc .xc-sigs,
+  body.printing-xc .xc-foot,
+  body.printing-xc .xc-t th { color: #111; }
+  body.printing-xc .xc-t th,
+  body.printing-xc .xc-t td,
+  body.printing-xc .xc-foot,
+  body.printing-xc .xc-sig-rule { border-color: #111; }
+  @page { margin: 12mm; }
+}
+
+/* Draggable modal titles show it. */
+.modal-drag-handle { cursor: move; user-select: none; }
