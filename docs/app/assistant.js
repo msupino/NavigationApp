@@ -677,7 +677,10 @@
     const tool = TOOLS.find(x => x.name === name);
     // Anything that is not read-only needs consent. Refusals come back as a tool
     // error so the model explains itself instead of pretending the edit happened.
-    if (tool && tool.tier && tool.tier !== 'read' && !allowStateTools()) {
+    // Fails CLOSED on a missing tier: the earlier `tool.tier &&` let a tool declared
+    // without one skip the gate. Every tool carries a tier today, so this guards the
+    // next one added rather than closing a live hole.
+    if (tool && tool.tier !== 'read' && !allowStateTools()) {
       return { error: 'declined: the pilot has not allowed route changes in this session' };
     }
     try { return tool ? await tool.run(args || {}) : { error: 'unknown tool ' + name }; }

@@ -327,6 +327,151 @@ test('the dialog pre-fills the published filing address for the flight type', as
   await expect(page.locator('#fpl-ais-email')).toHaveValue('ops@example.com');
 });
 
+// One plan is one flight, field to field. A field in the middle means the aircraft lands
+// there and departs again -- two plans, which one plan cannot describe (one EOBT, one
+// destination, one EET).
+test('a route landing at an airfield on the way is refused as two plans', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ'), es = airfieldByIcao('LLES'), pl = airfieldByIcao('LLPL');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: es.lat, lng: es.lng, name: 'LLES' },      // a field in the middle
+      { lat: pl.lat, lng: pl.lng, name: 'LLPL' },
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    draw();
+  });
+  const res = await build(page);
+  expect(res.errs.some(e => String(e).startsWith('errFplMidAirfield'))).toBe(true);
+  expect(res.text).toBeUndefined();
+  // Names the field the way the rest of the UI does -- not its ICAO code.
+  const msg = res.errs.find(e => String(e).startsWith('errFplMidAirfield'));
+  expect(msg).toMatch(/Ein Shemer/);
+  expect(msg).not.toMatch(/LLES/);
+});
+
+test('the dialog refuses it too, and names the field', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ'), es = airfieldByIcao('LLES'), pl = airfieldByIcao('LLPL');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: es.lat, lng: es.lng, name: 'LLES' },
+      { lat: pl.lat, lng: pl.lng, name: 'LLPL' },
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    draw();
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('#fpl-text')).toHaveCount(0);          // no message built
+  await expect(page.locator('.fpl-errs')).toContainText(/two flight plans|שתי תוכניות/);
+  await expect(page.locator('.fpl-errs')).toContainText(/Ein Shemer/);
+  // Submission is unreachable: there is no review step, so no submit button exists.
+  await expect(page.locator('#fpl-mail')).toHaveCount(0);
+  await expect(page.locator('.fpl-ack')).toHaveCount(0);
+  // Pressing Continue again keeps refusing rather than letting it through.
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('#fpl-text')).toHaveCount(0);
+});
+
+// Reporting points in the middle are the normal case and must stay fine.
+test('reporting points in the middle are not affected', async ({ page }) => {
+  await boot(page);
+  await route(page);                       // LLHZ APOLN ARENA LLES
+  const res = await build(page);
+  expect(res.errs).toBeUndefined();
+  expect(res.text).toContain('-N0090VFR APOLN ARENA');
+});
+
+// The official filing page carries a third box naming the destination's operator, so a
+// plan that lands somewhere we can name asks for that coordination too.
+test('a landing site adds a third acknowledgement, naming it', async ({ page }) => {
+  await boot(page);
+  await route(page);                       // ... -> LLES, an uncontrolled field
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('.fpl-ack')).toHaveCount(3);
+  const third = page.locator('#fpl-ack-landing');
+  await expect(third).toHaveCount(1);
+  // Names the site, so it is obvious who is to be called.
+  const text = await page.locator('#fpl-ack-landing').locator('..').textContent();
+  expect(text).toMatch(/Ein Shemer/);       // the name, not LLES
+  expect(text).not.toMatch(/LLES/);
+
+  // All three gate the submission, not just the original two.
+  await page.locator('#fpl-ack-aip').check();
+  await page.locator('#fpl-ack-wx').check();
+  await page.locator('#fpl-mail').click();
+  await expect(page.locator('#fpl-ack-required')).toBeVisible();
+  await expect(page.locator('.fpl-ack-missing')).toHaveCount(1);
+  await third.check();
+  await expect(page.locator('#fpl-ack-required')).toBeHidden();
+});
+
+// A controlled field is a tower call, not an operator call (א׳-11 §2.ח).
+test('a controlled destination asks about the tower and radio contact', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ'), es = airfieldByIcao('LLES');
+    state.waypoints = [
+      { lat: es.lat, lng: es.lng, name: 'LLES' },
+      { lat: 32.3, lng: 34.9, name: 'APOLN' },
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },     // controlled: has clearance/ATIS
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    draw();
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  const text = await page.locator('#fpl-ack-landing').locator('..').textContent();
+  expect(text).toMatch(/tower|מגדל/);
+  expect(text).toMatch(/radio|רדיו/);
+});
+
+// Only the landing end. A plan cannot route over an airfield by the rules, and the
+// departure field is one the pilot is already standing on.
+test('a route that does not land at a named site has only the two boxes', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'APOLN', 'ARENA', 'NAGID']);   // ends at a reporting point
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('.fpl-ack')).toHaveCount(2);
+  await expect(page.locator('#fpl-ack-landing')).toHaveCount(0);
+});
+
 // A disabled button explains nothing: submitting with the boxes unticked has to say so.
 test('submitting without the acknowledgements says what is missing', async ({ page }) => {
   await boot(page);
@@ -346,11 +491,16 @@ test('submitting without the acknowledgements says what is missing', async ({ pa
   await expect(page.locator('#fpl-ack-required')).toBeHidden();
   await mail.click();
   await expect(page.locator('#fpl-ack-required')).toBeVisible();
-  await expect(page.locator('.fpl-ack-missing')).toHaveCount(2);
-  // Ticking one leaves the other marked; ticking both clears the message.
-  await page.locator('#fpl-ack-aip').check();
-  await expect(page.locator('.fpl-ack-missing')).toHaveCount(1);
-  await page.locator('#fpl-ack-wx').check();
+  // The wording carries no count: a landing site makes it three, so "both" would be wrong.
+  const note = await page.locator('#fpl-ack-required').textContent();
+  expect(note).not.toMatch(/both|two|שני|שתי/);
+  const outstanding = await page.locator('.fpl-ack input').count();
+  await expect(page.locator('.fpl-ack-missing')).toHaveCount(outstanding);
+  // Ticking one leaves the others marked; ticking them all clears the message.
+  const boxes = await page.locator('.fpl-ack input').all();
+  await boxes[0].check();
+  await expect(page.locator('.fpl-ack-missing')).toHaveCount(boxes.length - 1);
+  for (const cb of boxes.slice(1)) await cb.check();
   await expect(page.locator('#fpl-ack-required')).toBeHidden();
   await expect(page.locator('.fpl-ack-missing')).toHaveCount(0);
 });
@@ -371,8 +521,8 @@ test('submitting reveals the address to use if no mail app opens', async ({ page
     document.getElementById('fpl-next').click();
   });
   await expect(page.locator('#fpl-mail-fallback')).toBeHidden();
-  await page.locator('#fpl-ack-aip').check();
-  await page.locator('#fpl-ack-wx').check();
+  // Tick every acknowledgement this route asks for (a landing site adds a third).
+  for (const cb of await page.locator('.fpl-ack input').all()) await cb.check();
   // Stop the navigation the click would trigger; the panel is what matters here.
   await page.evaluate(() => { window.__navGuard = true; });
   await page.locator('#fpl-mail').click();
@@ -783,7 +933,7 @@ test('the sheet tells its two kinds of box apart, and nothing is blank-and-locke
   // Values entered in the dialog are shown, not retyped here: read-only, muted, and out
   // of the tab order, with a tooltip saying where to change them.
   for (const id of ['xc-reg', 'xc-type', 'xc-pic', 'xc-license', 'xc-persons', 'xc-fuel',
-    'xc-date', 'xc-ias']) {
+    'xc-date', 'xc-ias', 'xc-cell']) {
     const box = await page.evaluate(i => {
       const el = document.getElementById(i);
       return el && { ro: el.readOnly, cls: el.className, tab: el.tabIndex, tip: !!el.title };
@@ -794,7 +944,7 @@ test('the sheet tells its two kinds of box apart, and nothing is blank-and-locke
   // The form's own boxes are editable and marked as such.
   for (const id of ['xc-company', 'xc-purpose', 'xc-dest', 'xc-eta', 'xc-altField',
     'xc-caaEntry', 'xc-caaApproval', 'xc-aerialWork',
-    'xc-rules', 'xc-approvals', 'xc-coord', 'xc-aisNotes', 'xc-cell']) {
+    'xc-rules', 'xc-approvals', 'xc-coord', 'xc-aisNotes']) {
     const box = await page.evaluate(i => {
       const el = document.getElementById(i);
       return el && { ro: !!el.readOnly, cls: el.className };
@@ -820,17 +970,6 @@ test('the sheet tells its two kinds of box apart, and nothing is blank-and-locke
     const want = document.documentElement.getAttribute('dir') === 'rtl' ? 'rtl' : 'ltr';
     return document.querySelector('.xc-legend').dir === want;
   })).toBe(true);
-  // What belongs to this sheet stays editable: the route detail, the free-text lines,
-  // the mobile for queries, and the signatures.
-  expect(await page.evaluate(() =>
-    [...document.querySelectorAll('.xc-detail-input')].every(e => e.isContentEditable))).toBe(true);
-  for (const id of ['xc-rules', 'xc-approvals', 'xc-coord', 'xc-aisNotes', 'xc-cell']) {
-    expect(await page.evaluate(i => {
-      const el = document.getElementById(i);
-      return !!el && !el.readOnly && !el.disabled;
-    }, id), id).toBe(true);
-  }
-  expect(await page.locator('.xc-sig-pad').count()).toBe(2);
 });
 
 // One rule for the shared details, applied before the sheet is drawn -- so it does not
@@ -1013,6 +1152,32 @@ test('nothing on the form is clipped on a phone', async ({ page }) => {
   expect(fit.pageScrollsSideways).toBe(false);   // the page itself does not
 });
 
+// Where a plan is filed is one decision, asked by both paths. The form's copy of it used
+// to ignore an override entirely, so a pilot who set one did not get it honoured there.
+test('the filing address is one decision for both paths', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const answers = await page.evaluate(() => ({
+    routesPublished: fplFilingAddress({ kind: 'routes' }, 'routes'),
+    crossPublished: fplFilingAddress({ kind: 'crosscountry' }, 'crosscountry'),
+    overrideRoutes: fplFilingAddress({ aisEmail: 'ops@example.com' }, 'routes'),
+    overrideCross: fplFilingAddress({ aisEmail: 'ops@example.com' }, 'crosscountry'),
+    junkFallsBack: fplFilingAddress({ aisEmail: 'not-an-email' }, 'crosscountry'),
+    smugglingFallsBack: fplFilingAddress({ aisEmail: 'x@y.com?bcc=evil@z.com' }, 'routes'),
+    publishedCheck: [fplIsPublishedAddress('ais@iaa.gov.il'),
+      fplIsPublishedAddress('fpl@iaa.gov.il'), fplIsPublishedAddress('ops@example.com')],
+  }));
+  expect(answers.routesPublished).toBe('ais@iaa.gov.il');
+  expect(answers.crossPublished).toBe('fpl@iaa.gov.il');
+  // The override applies on BOTH paths, not just the ICAO one.
+  expect(answers.overrideRoutes).toBe('ops@example.com');
+  expect(answers.overrideCross).toBe('ops@example.com');
+  // Junk or header-smuggling never becomes the recipient.
+  expect(answers.junkFallsBack).toBe('fpl@iaa.gov.il');
+  expect(answers.smugglingFallsBack).toBe('ais@iaa.gov.il');
+  expect(answers.publishedCheck).toEqual([true, true, false]);
+});
+
 test('clear form wipes only what was typed on the sheet', async ({ page }) => {
   await boot(page);
   await route(page);
@@ -1039,7 +1204,47 @@ test('clear form wipes only what was typed on the sheet', async ({ page }) => {
   await expect(page.locator('#xc-rules')).toHaveValue('VFR');
   await expect(page.locator('#xc-pic')).toHaveValue('A PILOT');
   await expect(page.locator('#xc-license')).toHaveValue('1234');
+  // The mobile is one of those dialog values, even though it sits on a free-text line
+  // among boxes that clear -- it is the number the dialog already required.
+  await expect(page.locator('#xc-cell')).toHaveValue('0500000000');
+  expect(await page.evaluate(() => document.getElementById('xc-cell').readOnly)).toBe(true);
   expect(await page.locator('.xc-detail-input').first().textContent()).toBe(detailBefore);
+});
+
+test('the signature pads look like somewhere to draw, but print as a rule', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm());
+  // The pad is white on a white sheet, so a bottom rule alone left an invisible box: it
+  // has to be outlined all round ON SCREEN, in either theme.
+  for (const theme of ['theme-light', 'theme-dark']) {
+    await page.evaluate(t => {
+      document.body.classList.remove('theme-light', 'theme-dark');
+      document.body.classList.add(t);
+    }, theme);
+    const box = await page.evaluate(() => {
+      const cs = getComputedStyle(document.querySelector('.xc-sig-pad'));
+      return { top: cs.borderTopStyle, side: cs.borderInlineStartStyle,
+        bottom: cs.borderBottomStyle, colour: cs.borderTopColor,
+        bg: cs.backgroundColor, width: cs.borderTopWidth };
+    });
+    expect(box, theme).toMatchObject({ top: 'dashed', side: 'dashed', bottom: 'solid' });
+    expect(parseFloat(box.width), theme).toBeGreaterThan(0);
+    // Outlined, and against the pad's own white -- not the same colour as it.
+    expect(box.bg, theme).toBe('rgb(255, 255, 255)');
+    expect(box.colour, theme).not.toBe('rgb(255, 255, 255)');
+  }
+  // On paper the signature sits on the form's rule, with no box around it.
+  await page.emulateMedia({ media: 'print' });
+  await page.evaluate(() => document.body.classList.add('printing-xc'));
+  const printed = await page.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.xc-sig-pad'));
+    return { top: cs.borderTopWidth, side: cs.borderInlineStartWidth,
+      bottom: cs.borderBottomStyle, colour: cs.borderBottomColor };
+  });
+  expect(printed).toMatchObject({ top: '0px', side: '0px', bottom: 'solid',
+    colour: 'rgb(17, 17, 17)' });
+  await page.emulateMedia({ media: null });
 });
 
 test('saving the form prints only the sheet', async ({ page }) => {
@@ -1203,6 +1408,38 @@ test('the reply-to field persists and syncs', async ({ page }) => {
   await page.locator('#fpl-next').click();
   expect(await page.evaluate(() => localStorage.getItem('navaid.fpl.replyTo')))
     .toBe('pilot@example.com');
+});
+
+// An override is device-local now, but it still redirects the plan on this device. The
+// note deliberately carries no address, so without this the redirect would be silent.
+test('a recipient that is not the published address is shown before submitting', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const open = () => page.evaluate(() => {
+    const dlg = document.querySelector('.modal-back.fpl-modal');
+    if (dlg && dlg._navaidClose) dlg._navaidClose();
+    if (window.fpOpen) closeFlightPlan();
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+  });
+
+  // The published address: nothing to shout about.
+  await open();
+  await expect(page.locator('#fpl-custom-recipient')).toHaveCount(0);
+
+  // An override: named, so it cannot redirect the plan unnoticed.
+  await page.evaluate(() => localStorage.setItem('navaid.fpl.aisEmail', 'ops@example.com'));
+  await open();
+  await expect(page.locator('#fpl-custom-recipient')).toBeVisible();
+  await expect(page.locator('.fpl-custom-addr')).toHaveText('ops@example.com');
 });
 
 test('an invalid filing address is refused', async ({ page }) => {
