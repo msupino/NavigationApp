@@ -327,6 +327,72 @@ test('the dialog pre-fills the published filing address for the flight type', as
   await expect(page.locator('#fpl-ais-email')).toHaveValue('ops@example.com');
 });
 
+// One plan is one flight, field to field. A field in the middle means the aircraft lands
+// there and departs again -- two plans, which one plan cannot describe (one EOBT, one
+// destination, one EET).
+test('a route landing at an airfield on the way is refused as two plans', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ'), es = airfieldByIcao('LLES'), pl = airfieldByIcao('LLPL');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: es.lat, lng: es.lng, name: 'LLES' },      // a field in the middle
+      { lat: pl.lat, lng: pl.lng, name: 'LLPL' },
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    draw();
+  });
+  const res = await build(page);
+  expect(res.errs.some(e => String(e).startsWith('errFplMidAirfield'))).toBe(true);
+  expect(res.text).toBeUndefined();
+  // Names the field the way the rest of the UI does -- not its ICAO code.
+  const msg = res.errs.find(e => String(e).startsWith('errFplMidAirfield'));
+  expect(msg).toMatch(/Ein Shemer/);
+  expect(msg).not.toMatch(/LLES/);
+});
+
+test('the dialog refuses it too, and names the field', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const hz = airfieldByIcao('LLHZ'), es = airfieldByIcao('LLES'), pl = airfieldByIcao('LLPL');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: es.lat, lng: es.lng, name: 'LLES' },
+      { lat: pl.lat, lng: pl.lng, name: 'LLPL' },
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    draw();
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+    document.getElementById('fpl-next').click();
+  });
+  await expect(page.locator('#fpl-text')).toHaveCount(0);          // no message built
+  await expect(page.locator('.fpl-errs')).toContainText(/two flight plans|שתי תוכניות/);
+  await expect(page.locator('.fpl-errs')).toContainText(/Ein Shemer/);
+  // Submission is unreachable: there is no review step, so no submit button exists.
+  await expect(page.locator('#fpl-mail')).toHaveCount(0);
+  await expect(page.locator('.fpl-ack')).toHaveCount(0);
+  // Pressing Continue again keeps refusing rather than letting it through.
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('#fpl-text')).toHaveCount(0);
+});
+
+// Reporting points in the middle are the normal case and must stay fine.
+test('reporting points in the middle are not affected', async ({ page }) => {
+  await boot(page);
+  await route(page);                       // LLHZ APOLN ARENA LLES
+  const res = await build(page);
+  expect(res.errs).toBeUndefined();
+  expect(res.text).toContain('-N0090VFR APOLN ARENA');
+});
+
 // The official filing page carries a third box naming the destination's operator, so a
 // plan that lands somewhere we can name asks for that coordination too.
 test('a landing site adds a third acknowledgement, naming it', async ({ page }) => {
@@ -347,7 +413,8 @@ test('a landing site adds a third acknowledgement, naming it', async ({ page }) 
   await expect(third).toHaveCount(1);
   // Names the site, so it is obvious who is to be called.
   const text = await page.locator('#fpl-ack-landing').locator('..').textContent();
-  expect(text).toMatch(/Ein Shemer|LLES|שמר/);
+  expect(text).toMatch(/Ein Shemer/);       // the name, not LLES
+  expect(text).not.toMatch(/LLES/);
 
   // All three gate the submission, not just the original two.
   await page.locator('#fpl-ack-aip').check();
@@ -424,6 +491,9 @@ test('submitting without the acknowledgements says what is missing', async ({ pa
   await expect(page.locator('#fpl-ack-required')).toBeHidden();
   await mail.click();
   await expect(page.locator('#fpl-ack-required')).toBeVisible();
+  // The wording carries no count: a landing site makes it three, so "both" would be wrong.
+  const note = await page.locator('#fpl-ack-required').textContent();
+  expect(note).not.toMatch(/both|two|שני|שתי/);
   const outstanding = await page.locator('.fpl-ack input').count();
   await expect(page.locator('.fpl-ack-missing')).toHaveCount(outstanding);
   // Ticking one leaves the others marked; ticking them all clears the message.
