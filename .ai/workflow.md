@@ -14,10 +14,10 @@ git pull --ff-only origin dev
 git merge-base --is-ancestor origin/main HEAD || git merge --ff-only origin/main
 ```
 
-If `origin/main` cannot fast-forward into `dev`, stop and resolve the branch
-relationship deliberately; do not force-push `dev` without explicit maintainer
-approval. If `dev` did fast-forward, push the update to `origin/dev` before
-branching.
+If `origin/main` cannot fast-forward into `dev`, compare their trees. When the
+trees are identical (the normal post-promotion shape), branch from updated
+`origin/dev`. Otherwise stop and use a reviewed feature/maintenance PR; never
+push directly to `dev` or `main` as routine recovery.
 
 Create feature branches with the `codex/` prefix unless the user requested a
 specific branch:
@@ -41,8 +41,8 @@ PR body should include:
 - `Fixes #N` or `Closes #N`.
 - Summary bullets.
 - Tests run.
-- Preview URL after PR number is known when useful:
-  `https://msupino.github.io/NavigationApp/pr/NNN/`.
+- PR verification is attached to Actions as a built artifact and exercised by
+  the artifact E2E job; it is not published as an executable web preview.
 
 ## Commit Safety
 
@@ -104,22 +104,23 @@ Stop any local server you start before finishing.
 
 CI runs on PR branches and on pushes to `dev` / `main`.
 
-Deploy builds:
+Deploy builds on trusted `main`/`dev` pushes:
 
 - `main/docs/` to production root.
 - `dev/docs/` to `/staging/`.
-- open PR branches to `/pr/NNN/` and `/branch/BRANCH_NAME/`.
+- Pull requests assemble `/pr/NNN/` only inside the CI artifact, serve it from
+  localhost for E2E, and do not invoke the Pages deploy job.
 
-If a direct `dev` or `main` push does not create CI/Deploy runs within about
-30 seconds, dispatch manually:
+If an explicitly authorized maintainer push or merged PR does not create
+CI/Deploy runs within about 30 seconds, dispatch manually:
 
 ```bash
 gh workflow run CI --ref dev
 gh workflow run Deploy --ref dev
 ```
 
-Prefer PRs over direct `dev` pushes; PR events are more reliable and keep the
-history reviewable.
+Ordinary changes always use an issue and feature-branch PR targeting `dev`.
+Direct protected-branch pushes require explicit maintainer authorization.
 
 ## Squash Policy
 

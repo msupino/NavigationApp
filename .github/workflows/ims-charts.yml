@@ -5,7 +5,7 @@ name: Update IMS PWX charts
 # branch as georeferenced transparent PNGs the app overlays on the map.
 #   source list:  https://ims.gov.il/he/wind_and_temperature_maps  (JSON)
 #   PDFs:         https://ims.gov.il/.../map_images/PWX/PWX_<run>_<lvl>_<valid>.pdf
-#   published:    ims-data/ims/pwx/<lvl>/<valid>.png  +  ims-data/ims/pwx.json
+#   published:    model/date-bearing PNGs + ims-data/ims/{pwx,sigwx}.json
 
 on:
   schedule:
@@ -24,14 +24,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Checkout workflow helpers
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Install poppler + imagemagick
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils imagemagick
 
       - name: Build PWX + SIGWX PNGs + manifests
         run: |
-          # Start from the existing ims-data so a chart a slow run can't fetch
-          # keeps its last-good file (and stays in the pruned manifest) instead
-          # of vanishing. New downloads overwrite; misses retain the old PNG.
+          # Start from existing ims-data. Each category is promoted only after
+          # every candidate chart converts; a partial run keeps that category's
+          # complete last-good manifest and files.
           git clone --depth 1 --branch ims-data \
             "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ims \
             2>/dev/null && rm -rf ims/.git || mkdir -p ims
@@ -60,6 +64,10 @@ jobs:
             throw lastErr;
           };
           const abs = f => (f.startsWith('http') ? f : 'https://ims.gov.il' + f);
+          const sourceStem = f => {
+            const name = new URL(abs(f)).pathname.split('/').pop() || 'chart';
+            return name.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_-]+/g, '-');
+          };
 
           // --- PWX wind/temperature (georeferenced map overlay) ---
           // IMS pressure-level code → flight level (900/850/700/500 hPa). The
@@ -76,7 +84,9 @@ jobs:
             const entry = { level: lvl, label: LABELS[lvl], times: [] };
             for (const t of Object.keys(times)) {
               const f = times[t] && times[t].file; if (!f) continue;
-              const png = `ims/pwx/${lvl}/${t.replace(':', '')}.png`;
+              // Keep the model/date-bearing source name in the path. Reusing
+              // only HHMM lets a failed replacement masquerade as today's chart.
+              const png = `ims/pwx/${lvl}/${sourceStem(f)}.png`;
               // Model run time is the first YYYYMMDDHHMM in the filename
               // (PWX_<run>_<lvl>_<valid>.pdf) — the cropped-off "BASED ON MODEL
               // RUN" line. Same for every chart.
@@ -88,7 +98,7 @@ jobs:
             if (entry.times.length) pwx.levels.push(entry);
           }
           pwx.levels.sort((a, b) => Number(a.level) - Number(b.level));
-          writeFileSync('ims/ims/pwx.json', JSON.stringify(pwx, null, 1));
+          writeFileSync('/tmp/pwx.candidate.json', JSON.stringify(pwx, null, 1));
 
           // --- SIGWX significant weather (full-page chart, viewer only) ---
           const sigwx = { generatedAt: new Date().toISOString(),
@@ -96,13 +106,13 @@ jobs:
           const sdata = await get('https://ims.gov.il/he/significantly_weather_maps');
           for (const t of Object.keys(sdata)) {
             const f = sdata[t] && sdata[t].file; if (!f) continue;
-            const png = `ims/sigwx/${t.replace(':', '')}.png`;
+            const png = `ims/sigwx/${sourceStem(f)}.png`;
             sigwx.times.push({ valid: t, day: sdata[t].day || '', png });
             lines.push([abs(f), 'ims/' + png, 'sigwx'].join('\t'));
           }
           // Order by day then valid time so the dropdown reads chronologically.
           sigwx.times.sort((a, b) => (a.day + a.valid).localeCompare(b.day + b.valid));
-          writeFileSync('ims/ims/sigwx.json', JSON.stringify(sigwx, null, 1));
+          writeFileSync('/tmp/sigwx.candidate.json', JSON.stringify(sigwx, null, 1));
 
           console.error('pwx levels:', pwx.levels.map(l => l.level + '×' + l.times.length).join(' '),
             '| sigwx:', sigwx.times.length);
@@ -137,21 +147,8 @@ jobs:
           # Drop manifest entries whose PNG didn't actually download/convert
           # (e.g. a far-out forecast IMS hasn't published yet) so the app never
           # points at a missing image.
-          node --input-type=module <<'PRUNE'
-          const { existsSync, writeFileSync, readFileSync } = await import('node:fs');
-          const has = png => existsSync('ims/' + png);
-          const pwx = JSON.parse(readFileSync('ims/ims/pwx.json', 'utf8'));
-          pwx.levels = pwx.levels
-            .map(l => ({ ...l, times: l.times.filter(t => has(t.png)) }))
-            .filter(l => l.times.length);
-          writeFileSync('ims/ims/pwx.json', JSON.stringify(pwx, null, 1));
-          const sig = JSON.parse(readFileSync('ims/ims/sigwx.json', 'utf8'));
-          sig.times = sig.times.filter(t => has(t.png));
-          writeFileSync('ims/ims/sigwx.json', JSON.stringify(sig, null, 1));
-          console.error('after prune — pwx:',
-            pwx.levels.map(l => l.level + '×' + l.times.length).join(' '),
-            '| sigwx:', sig.times.length);
-          PRUNE
+          node scripts/finalize-ims-manifests.mjs \
+            ims /tmp/pwx.candidate.json /tmp/sigwx.candidate.json
 
       - name: Publish ims-data branch
         run: |

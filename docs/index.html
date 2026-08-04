@@ -105,27 +105,10 @@
       window.__navLang = lang;
     }());
   </script>
-  <!-- Google Analytics (GA4) — production only. Excludes /staging/,
-       /pr/NNN/, /branch/NAME/ so only the canonical production site at
-       https://navaid.supino.org/ feeds the GA4 property.
-       The regex matches an optional `NavigationApp/` repo prefix
-       (GitHub Pages serves the site under that path) followed by any
-       of `staging/`, `pr/`, `branch/`. -->
-  <script>
-    if (location.hostname !== 'app.navaid.local' &&
-        typeof window.Capacitor === 'undefined' &&   // native shell loads the prod URL — keep GA browser-only
-        !location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
-      (function(w,d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);
-      j.async=true;j.src='https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B';
-      f.parentNode.insertBefore(j,f);})(window,document,'script');
-      window.dataLayer = window.dataLayer || [];
-      window.gtag = function(){ dataLayer.push(arguments); };
-      window.gtag('js', new Date());
-      window.gtag('config', 'G-0XM5PHEK8B');
-    }
-  </script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css"
+        integrity="sha384-Qm8XP6jA/vqgUN+6tu/z6ZsIHXhzrR9iXidnm7fEzyTqGgWfekx335Jj55dexNPB" crossorigin="anonymous">
   <link rel="stylesheet" href="app/style.css?v=630">
 </head>
 <body>
@@ -832,8 +815,8 @@
     <div id="legend-version" class="map-legend-version"></div>
   </div>
 
-  <!-- Dynamic in-order loader. Inserts every script (Leaflet, the
-       lang-specific strings.js, then the 5 app modules) with async=false
+  <!-- Dynamic in-order loader. Inserts every pinned Leaflet dependency, the
+       lang-specific strings.js, then all app modules with async=false
        so they execute in queued order, replacing the previous document.write
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
@@ -858,9 +841,19 @@
         'app/assistant.js' + v,
         'app/offline-tiles.js' + v
       ];
+      var sri = {
+        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js': 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH',
+        'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js': 'sha384-MtIdllebpZyms2pw9K3YJl8BEqrKNQCdSFAySjeglab6z2PkeFdF4Lb9cDsnxQuG',
+        'https://unpkg.com/leaflet-imageoverlay-rotated@0.2.1/Leaflet.ImageOverlay.Rotated.js': 'sha384-7oBmAX73N5DMKPSTLhXDB3qYFCIcDn1NtkLTsqtvLbzJjwYn/GF+0TnSMG6o4Bg9',
+        'https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.js': 'sha384-quWDbobCTGKxZkGplLk3Dw6mrjO/vIqTVLDRTh1MNumhbQ5ZDCviVnH3UNOpwrEQ'
+      };
       for (var i = 0; i < srcs.length; i++) {
         var s = document.createElement('script');
         s.src = srcs[i];
+        if (sri[srcs[i]]) {
+          s.integrity = sri[srcs[i]];
+          s.crossOrigin = 'anonymous';
+        }
         s.async = false;            // in-order, like parser-inserted
         document.head.appendChild(s);
       }

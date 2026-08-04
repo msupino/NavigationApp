@@ -36,11 +36,14 @@ jobs:
           const BBOX = { s: 28, n: 35, w: 32, e: 38 };
           const inBox = c => Array.isArray(c) && c.some(p =>
             p && p.lat >= BBOX.s && p.lat <= BBOX.n && p.lon >= BBOX.w && p.lon <= BBOX.e);
-          let sig = [];
+          let sig = [], sigOk = false;
           try {
             const r = await fetch('https://aviationweather.gov/api/data/isigmet?format=json',
               { headers: { 'User-Agent': 'NavAid-aviation-bot' } });
-            if (r.ok) sig = await r.json();
+            if (!r.ok) throw new Error('isigmet ' + r.status);
+            sig = await r.json();
+            if (!Array.isArray(sig)) throw new Error('isigmet response is not an array');
+            sigOk = true;
           } catch (e) { console.error('isigmet:', e.message); }
           const sigmets = (Array.isArray(sig) ? sig : [])
             .filter(s => FIRS.has(s.firId) || inBox(s.coords))
@@ -55,10 +58,14 @@ jobs:
                 : [],
               raw: s.rawSigmet,
             }));
-          writeFileSync('sigmet/sigmet.json', JSON.stringify({
-            generatedAt: new Date().toISOString(), source: 'NOAA AWC isigmet', sigmets,
-          }, null, 1));
-          console.log('SIGMETs:', sigmets.length);
+          if (sigOk) {
+            writeFileSync('sigmet/sigmet.json', JSON.stringify({
+              generatedAt: new Date().toISOString(), source: 'NOAA AWC isigmet', sigmets,
+            }, null, 1));
+            console.log('SIGMETs:', sigmets.length);
+          } else {
+            console.error('SIGMET publish skipped; preserving last-good branch.');
+          }
 
           // --- METAR / TAF (Israeli fields) ---
           const IDS = (process.env.IDS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -68,21 +75,37 @@ jobs:
             if (!r.ok) throw new Error(kind + ' ' + r.status);
             return r.json();
           };
-          let metars = [], tafs = [];
-          try { metars = await api('metar'); } catch (e) { console.error(e.message); }
-          try { tafs = await api('taf'); } catch (e) { console.error(e.message); }
+          let metars = [], tafs = [], metarsOk = false, tafsOk = false;
+          try {
+            metars = await api('metar');
+            if (!Array.isArray(metars)) throw new Error('metar response is not an array');
+            metarsOk = true;
+          } catch (e) { console.error(e.message); }
+          try {
+            tafs = await api('taf');
+            if (!Array.isArray(tafs)) throw new Error('taf response is not an array');
+            tafsOk = true;
+          } catch (e) { console.error(e.message); }
           const stations = {};
           for (const m of (metars || [])) if (m && m.icaoId) (stations[m.icaoId] ||= {}).metar = m;
           for (const t of (tafs || [])) if (t && t.icaoId) (stations[t.icaoId] ||= {}).taf = t;
-          writeFileSync('wx/wx.json', JSON.stringify({
-            generatedAt: new Date().toISOString(), source: 'NOAA AWC', stations,
-          }));
-          console.log('WX stations:', Object.keys(stations).length);
+          if (metarsOk && tafsOk) {
+            writeFileSync('wx/wx.json', JSON.stringify({
+              generatedAt: new Date().toISOString(), source: 'NOAA AWC', stations,
+            }));
+            console.log('WX stations:', Object.keys(stations).length);
+          } else {
+            console.error('WX publish skipped; preserving last-good branch.');
+          }
           NODE
 
       - name: Publish data branches
         run: |
-          publish () {  # $1 = dir, $2 = branch, $3 = bot-name
+          publish () {  # $1 = dir, $2 = branch, $3 = bot-name, $4 = expected file
+            if [ ! -f "$1/$4" ]; then
+              echo "Skipping $2; $1/$4 was not produced."
+              return
+            fi
             ( cd "$1"
               git init -q
               git checkout -q -b "$2"
@@ -93,5 +116,5 @@ jobs:
                   "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
                   "$2" )
           }
-          publish sigmet sigmet-data sigmet-bot
-          publish wx     wx-data     wx-bot
+          publish sigmet sigmet-data sigmet-bot sigmet.json
+          publish wx     wx-data     wx-bot     wx.json

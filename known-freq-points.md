@@ -1,7 +1,9 @@
 # Known Frequency Points
 
-This file mirrors `points[]` in `docs/data/comm-change.json`. Rows marked `TBD`
-are comm-change points that do not have `points[].callSigns` assigned yet.
+This CVFR summary mirrors `points[]` in `docs/data/cvfr-comm-change.json`.
+LSA and helicopter data live in their correspondingly prefixed files. Rows
+marked `TBD` are comm-change points that do not have `points[].callSigns`
+assigned yet.
 
 | Waypoint / destination | Call signs | Frequencies |
 | --- | --- | --- |
