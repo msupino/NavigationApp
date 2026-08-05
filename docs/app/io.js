@@ -1315,10 +1315,15 @@ function buildIcaoFpl(profile, opts) {
   // No second test on the resolved address: fplFilingAddress returns either the override
   // that just passed FPL_EMAIL_RE or a published literal, so a re-check can never fail.
   const toAddr = fplFilingAddress(p, p.kind);
-  // Field 18 is an ASCII telex message: a Hebrew name would arrive as mojibake or
-  // be rejected outright, so the pilot's name and licence must be Latin.
+  // The WHOLE message is an ASCII telex: Hebrew arrives as mojibake or is rejected outright.
+  // This guarded only pic and licence, so with an RTL keyboard still on, a Hebrew
+  // registration produced "(FPL--VG" -- an ICAO plan with no aircraft identification at all,
+  // because fplRegistration strips every non-A-Z0-9 character to nothing -- and a Hebrew
+  // aircraft type went into field 9 verbatim. Every field that reaches the message is
+  // checked, not just the two that happen to be free text.
   const NON_ASCII = /[^\x20-\x7E]/;
-  if (NON_ASCII.test(String(p.pic || '')) || NON_ASCII.test(String(p.license || ''))) {
+  const latinFields = ['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell'];
+  if (latinFields.some(f => NON_ASCII.test(String(p[f] || '')))) {
     errs.push('errFplLatinOnly');
   }
   if (errs.length) return { errs, unusable };
@@ -2392,8 +2397,14 @@ function showFlightPlan() {
   [gphInp, taxiInp].forEach(inp => {
     inp.oninput = function () {
       const a = readAircraftInputs();
+      // An empty box still reads as "no profile" in memory, so the fuel cells show '--' while
+      // it is empty -- that is deliberate, and tests/fuel-flight-plan.spec.js pins it. What it
+      // must NOT do is PERSIST that: saving null wrote the string "null", which loadAircraft
+      // read back as truthy for good, so the pilot's gph/taxi were gone after a reload and
+      // every fuel figure stayed '--'. Storage keeps the last usable profile.
       aircraft = a;
-      saveAircraft(); draw(); refresh();
+      if (a) saveAircraft();
+      draw(); refresh();
     };
   });
   syncAircraftUI();

@@ -1959,8 +1959,16 @@ function drawVors(force) {
   const selIdent = selectedStation ||
     (typeof inspectorVorRef === 'string' && inspectorVorRef) || vorRef;
   const selV = selIdent ? vors.find(v => v.ident === selIdent) : null;
-  if (selV && selV.coverageNm > 0 && typeof notamCirclePoints === 'function') {
-    const pts = notamCirclePoints(selV.lat, selV.lng, selV.coverageNm, tune('vorRangeRingSteps')).map(c => proj({ lat: c[0], lng: c[1] }));
+  const ringPts = (selV && selV.coverageNm > 0 && typeof notamCirclePoints === 'function')
+    ? notamCirclePoints(selV.lat, selV.lng, selV.coverageNm, tune('vorRangeRingSteps'))
+      .map(c => proj({ lat: c[0], lng: c[1] }))
+    : [];
+  // Guarded like every other polygon path here (drawSigmets, drawNotams): the step count is a
+  // tuning key, so the live gist or ?tune=1 can set it to 0, and pts[0] on an empty array
+  // threw INSIDE draw() -- taking the route line, kites, waypoints, notes and the page frame
+  // down with it, not just the ring. Skipping only the ring keeps the stations below drawn.
+  if (ringPts.length >= 3) {
+    const pts = ringPts;
     octx.save();
     octx.beginPath();
     octx.moveTo(pts[0].x, pts[0].y);
