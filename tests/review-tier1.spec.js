@@ -161,10 +161,11 @@ test('clearing the fuel-burn box keeps the saved aircraft profile', async ({ pag
   await gph.fill('');            // select-all + delete, the normal prelude to retyping
   const after = await page.evaluate(() => {
     const stored = localStorage.getItem('navaid.aircraft');
-    // Reload the profile the way a fresh page would.
-    aircraft = null;
+    // Reload the profile the way a fresh page would. `window.` is explicit because this body
+    // runs in the PAGE: `aircraft` is core.js's top-level var, not anything in this file.
+    window.aircraft = null;
     loadAircraft();
-    return { stored, afterReload: aircraft };
+    return { stored, afterReload: window.aircraft };
   });
   // An empty box reads as "no profile" IN MEMORY, so the fuel cells show '--' while it is
   // empty -- deliberate, and pinned by tests/fuel-flight-plan.spec.js. What must not happen is
@@ -174,7 +175,7 @@ test('clearing the fuel-burn box keeps the saved aircraft profile', async ({ pag
   expect(after.afterReload).toMatchObject({ gph: 9.5 });
   // ...and a real edit still lands.
   await gph.fill('7.25');
-  expect(await page.evaluate(() => aircraft.gph)).toBe(7.25);
+  expect(await page.evaluate(() => window.aircraft.gph)).toBe(7.25);
 });
 
 test('a poisoned aircraft value from an older build is ignored on load', async ({ page }) => {
@@ -183,9 +184,9 @@ test('a poisoned aircraft value from an older build is ignored on load', async (
     const out = {};
     for (const raw of ['null', '{}', '{"gph":0}', 'not json', '{"gph":8,"taxiGal":1}']) {
       localStorage.setItem('navaid.aircraft', raw);
-      aircraft = null;
+      window.aircraft = null;              // page global (core.js), not a local
       loadAircraft();
-      out[raw] = aircraft && aircraft.gph;
+      out[raw] = window.aircraft && window.aircraft.gph;
     }
     return out;
   });
