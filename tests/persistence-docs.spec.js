@@ -27,6 +27,7 @@ test('developer guide documents persisted navaid.* keys used by app code', () =>
     'navaid.vorFreqOverrides',
     'navaid.profileVS',
     'navaid.pageSize',
+    'navaid.navDataPrefix',
     'navaid.simUrl',
     'navaid.simOn',
     'navaid.simFollow',
