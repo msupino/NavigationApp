@@ -2964,6 +2964,11 @@ function drawLegs() {
     const timeStr = durH > 0 ? toHMS(durH) : '--';
     const timeStrOut = durOut > 0 ? toHMS(durOut) : '--';
 
+    // The pilot can hide this leg's nav kite (both directions). Everything else the leg
+    // draws is unaffected -- this is about an unreadable pile of kites in a busy area, not
+    // about hiding the leg.
+    const kiteOff = typeof legKiteHidden === 'function' && legKiteHidden(leg);
+
     drawMinuteMarkers(sa, sb, durH);
 
     const ang = Math.atan2(sb.y - sa.y, sb.x - sa.x);
@@ -3003,7 +3008,7 @@ function drawLegs() {
     // already gated by legAllowsReturn).
     const inboundBlocked = typeof legAltitudeIsBlocked === 'function' &&
       legAltitudeIsBlocked(leg, 'inboundAltitude');
-    if (!inboundBlocked) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
+    if (!inboundBlocked && !kiteOff) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
@@ -3022,7 +3027,7 @@ function drawLegs() {
     }
 
     if (showReturn && legAllowsReturn(i)) {
-      drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
+      if (!kiteOff) drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
         tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
