@@ -14,7 +14,7 @@
 // not on the next visit, and not after a later Clear map.
 const EMPTY_HINT_KEY = 'navaid.hintEmptyRoute';
 function emptyRouteHintSeen() {
-  try { return localStorage.getItem(EMPTY_HINT_KEY) === '1'; }
+  try { return lsGet(EMPTY_HINT_KEY) === '1'; }
   catch (e) { return false; }          // storage unavailable -> show it, harmless
 }
 function refreshEmptyRouteHint() {
@@ -118,7 +118,7 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
   const sel = document.getElementById('navwp-source');
   if (!sel) return;
   try {
-    const stored = localStorage.getItem(NAVWP_SOURCE_KEY);
+    const stored = lsGet(NAVWP_SOURCE_KEY);
     if (stored === 'cvfr' || stored === 'lsa' || stored === 'heli') window.navDataPrefix = stored;
   } catch (e) { /* storage unavailable */ }
   const opts = [['', S.tbNavWpSourceFollow || 'Follow chart'],
@@ -820,7 +820,7 @@ const VIEW_LAT_MIN = 28, VIEW_LAT_MAX = 34;
 const VIEW_LNG_MIN = 33, VIEW_LNG_MAX = 36;
 function readSavedView() {
   let raw = null;
-  try { raw = localStorage.getItem(VIEW_KEY); } catch (e) { return null; }
+  try { raw = lsGet(VIEW_KEY); } catch (e) { return null; }
   if (!raw) return null;
   let d;
   try { d = JSON.parse(raw); } catch (e) { return null; }
@@ -844,7 +844,7 @@ try {
   if (sv && sv.bearing !== null && map.setBearing) {
     map.setBearing(sv.bearing);
   } else {
-    const sb = parseFloat(localStorage.getItem(BEARING_KEY));
+    const sb = parseFloat(lsGet(BEARING_KEY));
     if (Number.isFinite(sb)) map.setBearing(sb);
   }
 } catch (e) { /* storage unavailable */ }
@@ -897,7 +897,7 @@ function closeSearch() {
 // went away. Retire it after the pilot has actually searched.
 const SEARCH_TIP_KEY = 'navaid.searchTipDone';
 function searchTipDone() {
-  try { return localStorage.getItem(SEARCH_TIP_KEY) === '1'; } catch (e) { return false; }
+  try { return lsGet(SEARCH_TIP_KEY) === '1'; } catch (e) { return false; }
 }
 function retireSearchTip() {
   const tip = document.getElementById('wp-search-hint');
@@ -1901,7 +1901,7 @@ document.getElementById('search-close').onclick = hideSearchOverlay;
 // navaid.searchShown; mobile keeps its summoned overlay.
 const SEARCH_SHOWN_KEY = 'navaid.searchShown';
 function searchDockShown() {
-  try { return localStorage.getItem(SEARCH_SHOWN_KEY) !== '0'; } catch (e) { return true; }
+  try { return lsGet(SEARCH_SHOWN_KEY) !== '0'; } catch (e) { return true; }
 }
 function setSearchDockShown(on) {
   try {
@@ -2431,19 +2431,19 @@ const SIM_URL_KEY  = 'navaid.simUrl';
 const SIM_ON_KEY   = 'navaid.simOn';
 const SIM_FOLLOW_KEY = 'navaid.simFollow';
 try {
-  const sr = localStorage.getItem(RETURN_KEY);
+  const sr = lsGet(RETURN_KEY);
   if (sr !== null) window.showReturn =sr === '1';
-  const sm = localStorage.getItem(MIDLEG_KEY);
+  const sm = lsGet(MIDLEG_KEY);
   if (sm !== null) window.showMidLeg =sm === '1';
-  const sc = localStorage.getItem(CUMTIME_KEY);
+  const sc = lsGet(CUMTIME_KEY);
   if (sc !== null) window.showCumTime = sc === '1';
-  const slk = localStorage.getItem(LIMIT_KITES_KEY);
+  const slk = lsGet(LIMIT_KITES_KEY);
   if (slk !== null) window.limitLegKites = slk === '1';
-  const su = localStorage.getItem(SIM_URL_KEY);
+  const su = lsGet(SIM_URL_KEY);
   if (su) window.simUrl = su;
-  const son = localStorage.getItem(SIM_ON_KEY);
+  const son = lsGet(SIM_ON_KEY);
   if (son !== null) window.simOn = son === '1';
-  const sf = localStorage.getItem(SIM_FOLLOW_KEY);
+  const sf = lsGet(SIM_FOLLOW_KEY);
   if (sf !== null) window.simFollow = sf === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ret-cb').checked = showReturn;
@@ -2532,7 +2532,7 @@ document.getElementById('limit-kites-cb').onchange = e => {
   // Read localStorage directly — the global simOn may not yet reflect the
   // stored value when this IIFE runs (timing with other restore code).
   let _savedOn = false;
-  try { _savedOn = localStorage.getItem('navaid.simOn') === '1'; } catch (e) { /* */ }
+  try { _savedOn = lsGet('navaid.simOn') === '1'; } catch (e) { /* */ }
   if (_savedOn && typeof window.simStart === 'function') {
     connected = true;
     setConnectLabel();
@@ -2601,7 +2601,7 @@ document.getElementById('mid-cb').onchange = e => {
 };
 const WPNAME_KEY = 'navaid.showWpNames';
 try {
-  const sn = localStorage.getItem(WPNAME_KEY);
+  const sn = lsGet(WPNAME_KEY);
   if (sn !== null) window.showWpNames =sn === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('wpname-cb').checked = showWpNames;
@@ -2613,7 +2613,7 @@ document.getElementById('wpname-cb').onchange = e => {
 };
 const DIFF_KEY = 'navaid.highlightDiff';
 try {
-  const sd = localStorage.getItem(DIFF_KEY);
+  const sd = lsGet(DIFF_KEY);
   if (sd !== null) window.highlightDiff =sd === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('diff-cb').checked = highlightDiff;
@@ -2624,7 +2624,7 @@ document.getElementById('diff-cb').onchange = e => {
 };
 const DRIFT_KEY = 'navaid.showDrift';
 try {
-  const sd = localStorage.getItem(DRIFT_KEY);
+  const sd = lsGet(DRIFT_KEY);
   if (sd !== null) window.showDrift =sd === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('drift-cb').checked = showDrift;
@@ -2656,7 +2656,7 @@ function snapExistingWaypoints() {
 }
 const NAVWP_KEY = 'navaid.showNavWP';
 try {
-  const stored = localStorage.getItem(NAVWP_KEY);
+  const stored = lsGet(NAVWP_KEY);
   // New users (null) get the default-on; '0' / '1' override.
   if (stored !== null) window.showNavWP =stored === '1';
 } catch (e) { /* storage unavailable */ }
@@ -2673,7 +2673,7 @@ document.getElementById('navwp-cb').onchange = async e => {
 };
 const REPORTING_KEY = 'navaid.showReporting';
 try {
-  const stored = localStorage.getItem(REPORTING_KEY);
+  const stored = lsGet(REPORTING_KEY);
   if (stored !== null) window.showReporting = stored === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('reporting-cb').checked = showReporting;
@@ -2688,7 +2688,7 @@ document.getElementById('reporting-cb').onchange = async e => {
 // it is a planning aid, not a terrain-warning system, so users opt in.
 const MSA_KEY = 'navaid.showMsa';
 try {
-  const stored = localStorage.getItem(MSA_KEY);
+  const stored = lsGet(MSA_KEY);
   if (stored !== null) window.showMsa = stored === '1';
 } catch (e) { /* storage unavailable */ }
 const msaCb = document.getElementById('msa-cb');
@@ -2717,7 +2717,7 @@ window.refreshWindInputs = refreshWindInputs;
 // it's a planning aid, not part of the core route picture.
 const WIND_KEY = 'navaid.showWind';
 try {
-  const stored = localStorage.getItem(WIND_KEY);
+  const stored = lsGet(WIND_KEY);
   if (stored !== null) window.showWind = stored === '1';
 } catch (e) { /* storage unavailable */ }
 const showWindCb = document.getElementById('show-wind-cb');
@@ -3155,7 +3155,7 @@ if (windDepartSlider) {
 
   if (opacity) {
     let saved = null;
-    try { saved = localStorage.getItem(OPACITY_KEY); } catch (e) { /* */ }
+    try { saved = lsGet(OPACITY_KEY); } catch (e) { /* */ }
     opacity.value = (saved !== null) ? saved : String(tn('windFieldDefaultOpacity', 0.7));
     opacity.oninput = () => {
       try { localStorage.setItem(OPACITY_KEY, opacity.value); } catch (e) { /* */ }
@@ -3182,7 +3182,7 @@ if (windDepartSlider) {
   function applyAltLabel() { if (altVal) altVal.textContent = altFt().toLocaleString() + ' ft'; }
   if (altSlider) {
     let saved = null;
-    try { saved = localStorage.getItem(ALT_KEY); } catch (e) { /* */ }
+    try { saved = lsGet(ALT_KEY); } catch (e) { /* */ }
     altSlider.value = (saved !== null) ? saved : String(defaultAltFt());   // tunable default
     applyAltLabel();
     altSlider.oninput = applyAltLabel;
@@ -3197,7 +3197,7 @@ if (windDepartSlider) {
     };
   }
 
-  try { if (localStorage.getItem(KEY) === '1') cb.checked = true; } catch (e) { /* */ }
+  try { if (lsGet(KEY) === '1') cb.checked = true; } catch (e) { /* */ }
   showControls(cb.checked);
   cb.onchange = () => {
     try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* */ }
@@ -3270,11 +3270,11 @@ function notamPrefKey() {
 const NOTAM_LAST_KEY = NOTAM_KEY + '.last';
 function notamPrefRead() {
   try {
-    const scoped = localStorage.getItem(notamPrefKey());
+    const scoped = lsGet(notamPrefKey());
     if (scoped !== null) return scoped === '1';
-    const inherited = localStorage.getItem(NOTAM_KEY) !== null
-      ? localStorage.getItem(NOTAM_KEY)
-      : localStorage.getItem(NOTAM_LAST_KEY);
+    const inherited = lsGet(NOTAM_KEY) !== null
+      ? lsGet(NOTAM_KEY)
+      : lsGet(NOTAM_LAST_KEY);
     if (inherited === null) return null;
     localStorage.setItem(notamPrefKey(), inherited);
     return inherited === '1';
@@ -3573,7 +3573,7 @@ if (notamListBtn) notamListBtn.onclick = () => { ensureNotams().then(showNotamMo
 const OVERLAY_OVERRIDES_KEY = 'navaid.overlayBoundsOverrides';
 
 function overlayOverrides() {
-  try { return JSON.parse(localStorage.getItem(OVERLAY_OVERRIDES_KEY)) || {}; }
+  try { return JSON.parse(lsGet(OVERLAY_OVERRIDES_KEY)) || {}; }
   catch (e) { return {}; }
 }
 function saveOverlayOverride(png, geom) {
@@ -3613,15 +3613,27 @@ function buildOverlayLayer(base, ov, ver, type) {
 
 // ── Circuit overlay ──────────────────────────────────────────────────────────
 const CIRCUIT_SHOW_KEY    = 'navaid.showCircuit';
+// Storage can THROW, not just return null: with site data blocked (Safari private mode,
+// Chrome's "block third-party cookies and site data") every localStorage access raises
+// SecurityError. The overlay-toggle reads below run at module scope, so one throw aborted the
+// rest of this file -- ~3480 lines: every overlay toggle, the plate wiring, the toolbar
+// persistence and the tuning panel -- while the map still rendered, so the app looked alive
+// and simply had no controls. Every other read in this file was already wrapped; these were
+// the ones that were not.
+function lsGet(key) {
+  // eslint-disable-next-line no-restricted-globals -- the one place that must touch the API
+  try { return window.localStorage.getItem(key); } catch (e) { return null; }
+}
+function lsNum(key, fallback) {
+  const v = parseFloat(lsGet(key));
+  return isNaN(v) ? fallback : v;
+}
 const CIRCUIT_OPACITY_KEY = 'navaid.circuitOpacity';
 const CIRCUIT_DEFAULT_OPACITY = 0.6;
 
-window.showCircuit = localStorage.getItem(CIRCUIT_SHOW_KEY) === '1';
+window.showCircuit = lsGet(CIRCUIT_SHOW_KEY) === '1';
 window.circuitLayerGroup = null;
-let circuitOpacity = (() => {
-  const v = parseFloat(localStorage.getItem(CIRCUIT_OPACITY_KEY));
-  return isNaN(v) ? CIRCUIT_DEFAULT_OPACITY : v;
-})();
+let circuitOpacity = lsNum(CIRCUIT_OPACITY_KEY, CIRCUIT_DEFAULT_OPACITY);
 
 // Unlike byop plates (a single copy at the deployed root — see plateBase()),
 // circuit-img PNGs are committed to the repo and ship WITH every preview
@@ -3657,12 +3669,9 @@ const TRAINING_SHOW_KEY    = 'navaid.showTraining';
 const TRAINING_OPACITY_KEY = 'navaid.trainingOpacity';
 const TRAINING_DEFAULT_OPACITY = 0.6;
 
-window.showTraining = localStorage.getItem(TRAINING_SHOW_KEY) === '1';
+window.showTraining = lsGet(TRAINING_SHOW_KEY) === '1';
 window.trainingLayerGroup = null;
-let trainingOpacity = (() => {
-  const v = parseFloat(localStorage.getItem(TRAINING_OPACITY_KEY));
-  return isNaN(v) ? TRAINING_DEFAULT_OPACITY : v;
-})();
+let trainingOpacity = lsNum(TRAINING_OPACITY_KEY, TRAINING_DEFAULT_OPACITY);
 
 // Same resolution rule as circuitImgBase(): training-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
@@ -3695,12 +3704,9 @@ const CVFR_SHOW_KEY    = 'navaid.showCvfr';
 const CVFR_OPACITY_KEY = 'navaid.cvfrOpacity';
 const CVFR_DEFAULT_OPACITY = 0.6;
 
-window.showCvfr = localStorage.getItem(CVFR_SHOW_KEY) === '1';
+window.showCvfr = lsGet(CVFR_SHOW_KEY) === '1';
 window.cvfrLayerGroup = null;
-let cvfrOpacity = (() => {
-  const v = parseFloat(localStorage.getItem(CVFR_OPACITY_KEY));
-  return isNaN(v) ? CVFR_DEFAULT_OPACITY : v;
-})();
+let cvfrOpacity = lsNum(CVFR_OPACITY_KEY, CVFR_DEFAULT_OPACITY);
 
 // Same resolution rule as trainingImgBase(): cvfr-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
@@ -3733,12 +3739,9 @@ const HELI_SHOW_KEY    = 'navaid.showHeli';
 const HELI_OPACITY_KEY = 'navaid.heliOpacity';
 const HELI_DEFAULT_OPACITY = 0.6;
 
-window.showHeli = localStorage.getItem(HELI_SHOW_KEY) === '1';
+window.showHeli = lsGet(HELI_SHOW_KEY) === '1';
 window.heliLayerGroup = null;
-let heliOpacity = (() => {
-  const v = parseFloat(localStorage.getItem(HELI_OPACITY_KEY));
-  return isNaN(v) ? HELI_DEFAULT_OPACITY : v;
-})();
+let heliOpacity = lsNum(HELI_OPACITY_KEY, HELI_DEFAULT_OPACITY);
 
 // Same resolution rule as cvfrImgBase(): heli-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
@@ -3771,12 +3774,9 @@ const COMMFAIL_SHOW_KEY    = 'navaid.showCommfail';
 const COMMFAIL_OPACITY_KEY = 'navaid.commfailOpacity';
 const COMMFAIL_DEFAULT_OPACITY = 0.6;
 
-window.showCommfail = localStorage.getItem(COMMFAIL_SHOW_KEY) === '1';
+window.showCommfail = lsGet(COMMFAIL_SHOW_KEY) === '1';
 window.commfailLayerGroup = null;
-let commfailOpacity = (() => {
-  const v = parseFloat(localStorage.getItem(COMMFAIL_OPACITY_KEY));
-  return isNaN(v) ? COMMFAIL_DEFAULT_OPACITY : v;
-})();
+let commfailOpacity = lsNum(COMMFAIL_OPACITY_KEY, COMMFAIL_DEFAULT_OPACITY);
 
 // Same resolution rule as cvfrImgBase(): commfail-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
@@ -3809,7 +3809,7 @@ function applyCommfailOpacity(v) {
 // CVFR). This picker limits every plate overlay to a single airfield.
 const PLATE_AIRFIELD_KEY = 'navaid.plateAirfield';
 window.plateAirfield = (() => {
-  try { return localStorage.getItem(PLATE_AIRFIELD_KEY) || ''; } catch (_) { return ''; }
+  try { return lsGet(PLATE_AIRFIELD_KEY) || ''; } catch (_) { return ''; }
 })();
 const PLATE_OTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
                       'heli_overlay', 'commfail_overlay'];
@@ -4221,13 +4221,13 @@ window.overlayAlign = overlayAlign;
 const PLATE_OPACITY_KEY = 'navaid.plateOpacity';
 const PLATE_DEFAULT_OPACITY = 0.6;
 let plateOpacity = (() => {
-  const v = parseFloat(localStorage.getItem(PLATE_OPACITY_KEY));
+  const v = parseFloat(lsGet(PLATE_OPACITY_KEY));
   if (!isNaN(v)) return v;
   // One-time migration: adopt a value saved under any of the old per-layer
   // opacity keys (before the sliders were united) so customised users keep it.
   for (const k of ['navaid.circuitOpacity', 'navaid.trainingOpacity',
                    'navaid.cvfrOpacity', 'navaid.heliOpacity', 'navaid.commfailOpacity']) {
-    const ov = parseFloat(localStorage.getItem(k));
+    const ov = parseFloat(lsGet(k));
     if (!isNaN(ov)) {
       try { localStorage.setItem(PLATE_OPACITY_KEY, String(ov)); } catch (_) {}
       return ov;
@@ -4245,7 +4245,7 @@ function applyPlateOpacity(v) {
 
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
-  const stored = localStorage.getItem(AIRFIELDS_KEY);
+  const stored = lsGet(AIRFIELDS_KEY);
   if (stored !== null) window.showAirfields =stored === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('airfield-cb').checked = showAirfields;
@@ -4262,7 +4262,7 @@ document.getElementById('airfield-cb').onchange = async e => {
 // --- LSA airspace bubbles overlay toggle (Extra layers) ------------------
 const LSA_BUBBLES_KEY = 'navaid.showLsaBubbles';
 try {
-  const stored = localStorage.getItem(LSA_BUBBLES_KEY);
+  const stored = lsGet(LSA_BUBBLES_KEY);
   if (stored !== null) window.showLsaBubbles = stored === '1';
 } catch (e) { /* storage unavailable */ }
 const lsaCb = document.getElementById('lsa-cb');
@@ -4657,8 +4657,8 @@ const vorCb = document.getElementById('vor-cb');
 const vorRefRow = document.getElementById('vor-ref-row');
 const vorRefSelect = document.getElementById('vor-ref-select');
 try {
-  const storedStations = localStorage.getItem(VOR_STATIONS_KEY);
-  const legacyStations = localStorage.getItem(VOR_LEGACY_KEY);
+  const storedStations = lsGet(VOR_STATIONS_KEY);
+  const legacyStations = lsGet(VOR_LEGACY_KEY);
   if (storedStations !== null) {
     window.showVorStations = storedStations === '1';
   } else if (legacyStations !== null) {
@@ -4666,7 +4666,7 @@ try {
     localStorage.setItem(VOR_STATIONS_KEY, window.showVorStations ? '1' : '0');
     localStorage.removeItem(VOR_LEGACY_KEY);
   }
-  const ref = localStorage.getItem(VOR_REF_KEY);
+  const ref = lsGet(VOR_REF_KEY);
   if (ref) window.vorRef = ref;
 } catch (e) { /* storage unavailable */ }
 function populateVorRefSelect() {
@@ -4729,7 +4729,7 @@ loadVors().then(() => {
 });
 const FORCE_SNAP_KEY = 'navaid.forceSnap';
 try {
-  const stored = localStorage.getItem(FORCE_SNAP_KEY);
+  const stored = lsGet(FORCE_SNAP_KEY);
   if (stored !== null) window.forceSnap = stored === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('force-snap-cb').checked = forceSnap;
@@ -4745,7 +4745,7 @@ document.getElementById('force-snap-cb').onchange = e => {
 // state get the new default-on behavior.
 const COMMCHANGE_KEY = 'navaid.showFreqChanges';
 try {
-  const stored = localStorage.getItem(COMMCHANGE_KEY);
+  const stored = lsGet(COMMCHANGE_KEY);
   if (stored !== null) window.showCommChange = stored === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('commchange-cb').checked = showCommChange;
@@ -4773,7 +4773,7 @@ document.getElementById('commchange-cb').onchange = async e => {
 const THEME_KEY = 'navaid.theme';
 let displayTheme = 'light';                 // default light; a stored choice wins below
 try {
-  const stored = localStorage.getItem(THEME_KEY);
+  const stored = lsGet(THEME_KEY);
   if (stored === 'light' || stored === 'dark') displayTheme = stored;
   if (stored === 'day') displayTheme = 'light';
 } catch (e) { /* storage unavailable */ }
@@ -4826,7 +4826,7 @@ if (CLEAR_STORE_EL) {
 }
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
-  const v = parseFloat(localStorage.getItem(ALPHA_KEY));
+  const v = parseFloat(lsGet(ALPHA_KEY));
   if (!isNaN(v)) window.yellowAlpha =Math.max(0, Math.min(1, v));
 } catch (e) { /* storage unavailable */ }
 function updateSliderVal(el, val) {
@@ -4890,7 +4890,7 @@ function registerTuneOverride(storageKey, tuneKeys, validate) {
 }
 function applyStoredTuneOverride(entry) {
   let stored = null;
-  try { stored = localStorage.getItem(entry.storageKey); } catch (e) { return null; }
+  try { stored = lsGet(entry.storageKey); } catch (e) { return null; }
   if (stored === null) return null;
   const v = entry.validate ? entry.validate(stored) : stored;
   if (v === null || v === undefined) return null;
@@ -4953,7 +4953,7 @@ function syncKiteAlphaSlider(fromGist) {
     // rewritten the tune key by the time this runs.
     gistKiteAlpha = tune('kiteNoteAlpha');
     let stored = null;
-    try { stored = localStorage.getItem(KITEALPHA_KEY); } catch (e) { /* */ }
+    try { stored = lsGet(KITEALPHA_KEY); } catch (e) { /* */ }
     if (stored !== null) return;
   }
   KITEALPHA_EL.value = String(Math.round(tune('kiteNoteAlpha') * 100));
@@ -5028,7 +5028,7 @@ function applyMapOpacity() {
   }
 }
 try {
-  const v = parseFloat(localStorage.getItem(MAPOPACITY_KEY));
+  const v = parseFloat(lsGet(MAPOPACITY_KEY));
   if (!isNaN(v)) mapOpacity = Math.max(0.1, Math.min(1, v));
 } catch (e) { /* storage unavailable */ }
 const MAPOPACITY_EL = document.getElementById('map-opacity');
@@ -5047,7 +5047,7 @@ MAPOPACITY_EL.oninput = e => {
 const WPSIZE_KEY = 'navaid.wpSize';
 const WP_SIZE_MIN = 0.1, WP_SIZE_MAX = 2, WP_SIZE_STEP = 0.1;
 try {
-  const v = parseFloat(localStorage.getItem(WPSIZE_KEY));
+  const v = parseFloat(lsGet(WPSIZE_KEY));
   if (!isNaN(v)) window.wpSize =Math.max(WP_SIZE_MIN, Math.min(WP_SIZE_MAX, v));
 } catch (e) { /* storage unavailable */ }
 // Symbol-size readout. Selector 1 IS the printed standard -- the fixed physical sizes
@@ -5079,7 +5079,7 @@ const LEGARROW_KEY = 'navaid.legArrowSize';
 // on a 0.1 grid keeps 1.0 exactly centred and lands on the tick.
 const LEGARROW_MIN = 0.2, LEGARROW_MAX = 1.8, LEGARROW_STEP = 0.1;
 try {
-  const v = parseFloat(localStorage.getItem(LEGARROW_KEY));
+  const v = parseFloat(lsGet(LEGARROW_KEY));
   if (!isNaN(v)) window.legArrowSize =Math.max(LEGARROW_MIN, Math.min(LEGARROW_MAX, v));
 } catch (e) { /* storage unavailable */ }
 const LEGARROW_EL = document.getElementById('leg-arrow-size');
@@ -5102,10 +5102,10 @@ LEGARROW_EL.oninput = e => {
 function adoptRangedNumber(key, legacyKeys, min, max, shipped) {
   const inRange = v => Number.isFinite(v) && v >= min && v <= max;
   try {
-    const own = parseFloat(localStorage.getItem(key));
+    const own = parseFloat(lsGet(key));
     if (inRange(own)) return own;
     for (const old of legacyKeys) {
-      const v = parseFloat(localStorage.getItem(old));
+      const v = parseFloat(lsGet(old));
       if (inRange(v)) { localStorage.setItem(key, String(v)); return v; }
     }
   } catch (e) { /* storage unavailable */ }
@@ -5187,7 +5187,7 @@ const _a4x2Btn = document.getElementById('page-a4x2');
 if (_a4x2Btn) _a4x2Btn.onclick = () => setPage('A4x2');
 // Restore last-used orientation and wire the toolbar toggle button.
 try {
-  const stored = localStorage.getItem('navaid.pageOrient');
+  const stored = lsGet('navaid.pageOrient');
   if (stored === 'portrait' || stored === 'landscape') window.pageOrient = stored;
 } catch (e) { /* storage unavailable */ }
 document.getElementById('page-orient').onclick = toggleOrientation;
@@ -5209,7 +5209,7 @@ refreshOrientButton();
 // Restore the A3/A4 page frame across reloads — the frame re-centres on the
 // current map view, so it reappears over the same area.
 try {
-  const sp = localStorage.getItem('navaid.pageSize');
+  const sp = lsGet('navaid.pageSize');
   if ((sp === 'A3' || sp === 'A4' || sp === 'A4x2') && typeof setPage === 'function') setPage(sp);
 } catch (e) { /* storage unavailable */ }
 document.getElementById('print').onclick = showExportModal;
@@ -5400,7 +5400,7 @@ function refreshMapAfterToolbarModeChange() {
     }
     restorePos();
     let sc = null;
-    try { sc = localStorage.getItem(COLLAPSED_KEY); } catch (e) { /* storage unavailable */ }
+    try { sc = lsGet(COLLAPSED_KEY); } catch (e) { /* storage unavailable */ }
     // Default collapsed on phones — an expanded toolbar column covers ~half the
     // map on a narrow screen. A saved phone choice wins.
     const narrowDefault = !!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches);
@@ -5515,7 +5515,7 @@ function refreshMapAfterToolbarModeChange() {
     if (!head) continue;
     const key = 'navaid.sec.' + sec.dataset.sec;
     try {
-      if (localStorage.getItem(key) === '1') sec.classList.add('open');
+      if (lsGet(key) === '1') sec.classList.add('open');
     } catch (e) { /* storage unavailable */ }
     head.setAttribute('aria-expanded', sec.classList.contains('open') ? 'true' : 'false');
     function toggle() {
@@ -6374,30 +6374,57 @@ function imsNearestTimeIndex(times) {
 }
 // Shared valid-time dropdown for the IMS weather-chart overlays. Wind/temp (PWX)
 // and significant-weather (SIGWX) are both IMS products issued for the same
-// 00/03/06/12/18Z valid times, so one #wx-time dropdown drives both. The option
-// value is the valid string; each overlay resolves its own data by matching it.
+// 00/03/06/12/18Z valid times, so one #wx-time dropdown drives both.
+//
+// The option value carries the DAY as well as the valid time ("05/08/2026|18:00"), because
+// the two feeds do not always offer the same days: deduping on the valid string alone let
+// PWX's 18:00 on the 5th swallow SIGWX's 18:00 on the 4th, and since each overlay resolved
+// its own entry by valid alone, whichever feed lost the race then rendered a chart 24 h from
+// the day printed on the selected option. Use NavWxTime.match(entry) to resolve rather than
+// comparing to the raw value.
 const NavWxTime = (function () {
   const KEY = 'navaid.wxTime';
   const sel = document.getElementById('wx-time');
   let seeded = false;
   // Merge a feed's times into the dropdown (deduped by valid), and seed the
   // initial selection once — the saved time if still offered, else nearest now.
+  // "day|valid", or just "valid" when the feed gives no day.
+  const keyOf = t => (t && t.day ? t.day + '|' + t.valid : (t ? String(t.valid || '') : ''));
+  function parse(v) {
+    const s = String(v || '');
+    const i = s.indexOf('|');
+    return i < 0 ? { day: '', valid: s } : { day: s.slice(0, i), valid: s.slice(i + 1) };
+  }
   function ensure(times) {
     if (!sel || !Array.isArray(times)) return;
     const have = new Set(Array.from(sel.options, o => o.value));
     for (const t of times) {
-      if (!t || !t.valid || have.has(t.valid)) continue;
+      if (!t || !t.valid || have.has(keyOf(t))) continue;
       const o = document.createElement('option');
-      o.value = t.valid;
+      o.value = keyOf(t);
       o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
-      sel.appendChild(o); have.add(t.valid);
+      sel.appendChild(o); have.add(o.value);
     }
+    // Chronological, so a 00:00 belonging to tomorrow does not sort above today's 18:00.
+    const opts = Array.from(sel.options).sort((a, b) => {
+      const A = parse(a.value), B = parse(b.value);
+      const norm = d => String(d).split('/').reverse().join('');   // dd/mm/yyyy -> yyyymmdd
+      return (norm(A.day) + A.valid).localeCompare(norm(B.day) + B.valid);
+    });
+    for (const o of opts) sel.appendChild(o);
     if (!seeded && sel.options.length) {
       let saved = '';
-      try { saved = localStorage.getItem(KEY) || ''; } catch (e) {}
-      if (saved && have.has(saved)) sel.value = saved;
+      try { saved = lsGet(KEY) || ''; } catch (e) {}
+      const savedValid = parse(saved).valid;
+      const match = Array.from(sel.options).find(o => o.value === saved)
+        // A value stored by a build that keyed on the valid time alone.
+        || (savedValid && Array.from(sel.options).find(o => parse(o.value).valid === savedValid));
+      if (match) sel.value = match.value;
+      // ...and the day goes to imsNearestTimeIndex, which has always known how to use one.
+      // Without it every hour was assumed to be TODAY, so at 23:45 the dropdown seeded to a
+      // chart hours old instead of the one about to become valid.
       else sel.selectedIndex = Math.max(0, imsNearestTimeIndex(
-        Array.from(sel.options, o => ({ valid: o.value }))));
+        Array.from(sel.options, o => parse(o.value))));
       seeded = true;
     }
   }
@@ -6406,6 +6433,15 @@ const NavWxTime = (function () {
   });
   return {
     value: () => (sel ? sel.value : ''),
+    // Does this manifest entry belong to the selected option? Both sides may lack a day
+    // (older manifests), in which case the valid time is all there is to go on.
+    match: t => {
+      if (!sel || !t) return false;
+      const sel1 = parse(sel.value);
+      if (String(t.valid || '') !== sel1.valid) return false;
+      if (!sel1.day || !t.day) return true;
+      return String(t.day) === sel1.day;
+    },
     ensure,
     onChange: fn => { if (sel) sel.addEventListener('change', fn); },
   };
@@ -6425,7 +6461,7 @@ const NavWxOpacity = (function () {
   const label = () => { if (valEl) valEl.textContent = Math.round(value() * 100) + '%'; };
   if (sel) {
     let v = DEFAULT;
-    try { const s = parseFloat(localStorage.getItem(KEY)); if (!isNaN(s)) v = s; } catch (e) {}
+    try { const s = parseFloat(lsGet(KEY)); if (!isNaN(s)) v = s; } catch (e) {}
     sel.value = String(v); label();
     sel.addEventListener('input', () => { try { localStorage.setItem(KEY, sel.value); } catch (e) {} label(); });
   }
@@ -6457,7 +6493,7 @@ const NavWxOpacity = (function () {
   const currentLevel = () => (manifest && manifest.levels.find(l => l.level === levelSel.value)) || null;
   const currentTime = () => {
     const lv = currentLevel();
-    return lv && lv.times.find(t => t.valid === timeSel.value);
+    return lv && lv.times.find(t => NavWxTime.match(t));
   };
 
   function removeLayer() {
@@ -6548,7 +6584,7 @@ const NavWxOpacity = (function () {
       fillTimes();
       // Restore the saved selection + on/off so a reload keeps the overlay.
       try {
-        const sv = JSON.parse(localStorage.getItem(KEY) || 'null');
+        const sv = JSON.parse(lsGet(KEY) || 'null');
         if (sv) {
           if (sv.level && [...levelSel.options].some(o => o.value === sv.level)) {
             levelSel.value = sv.level; fillTimes();
@@ -6939,7 +6975,7 @@ const NavWxOpacity = (function () {
   function currentTime() {
     // Resolve by valid string — the shared #wx-time dropdown's option order is
     // not this manifest's array order.
-    return manifest && manifest.times.find(t => t.valid === timeSel.value);
+    return manifest && manifest.times.find(t => NavWxTime.match(t));
   }
   function boundsFrom(B, latOff, lngOff, latSc, lngSc) {
     const cLat = (B.s + B.n) / 2, cLng = (B.w + B.e) / 2;
@@ -7018,7 +7054,7 @@ const NavWxOpacity = (function () {
       box.hidden = false;
       // Restore persisted state.
       let saved = null;
-      try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { /* */ }
+      try { saved = JSON.parse(lsGet(KEY) || 'null'); } catch (e) { /* */ }
       // The shared #wx-time dropdown was seeded to now (Zulu) by NavWxTime.
       if (saved && saved.on) { cb.checked = true; controls.hidden = false; updateLayer(); }
     })
@@ -7073,7 +7109,7 @@ NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
     // overlay is remembered per chart).
     const lsKey = typeof lsKeyRaw === 'function' ? lsKeyRaw() : lsKeyRaw;
     let stored = null;
-    try { stored = localStorage.getItem(lsKey); } catch (e) { /* */ }
+    try { stored = lsGet(lsKey); } catch (e) { /* */ }
     if (stored !== null) continue;                       // user set this — leave it
     const desired = !!tune(tuneKey);
     if (cb.checked === desired) continue;                // already matches

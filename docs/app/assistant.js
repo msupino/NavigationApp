@@ -412,6 +412,17 @@
           // global range, a naive -90..90 / -180..180 check would accept a swap
           // and plot a wrong point a pilot might trust. Reject so the model fixes it.
           if (lat < 27 || lat > 36 || lng < 32 || lng > 38) return null;
+          // The padded boxes OVERLAP (both admit 32-36), so the check above does not actually
+          // catch the swap its comment describes: every northern-Israel point (lat 32-33.3,
+          // lng 34.2-35.9) survives transposition, because the swapped lat lands under 36 and
+          // the swapped lng over 32. LLKS as "35.57,32.98" was accepted and drawn in the sea
+          // north of Cyprus, ~250 NM out, and reported as success.
+          // Israel's real lat and lng ranges do NOT overlap (33.4 < 34.2), so a transposition
+          // is decidable: reject when the point is outside the tight box but its transpose is
+          // inside it. Points legitimately outside (over the sea to the west, say) are
+          // untouched, which narrowing the padded box would not have managed.
+          const inTight = (la, ln) => la >= 29 && la <= 34 && ln >= 33 && ln <= 36.5;
+          if (!inTight(lat, lng) && inTight(lng, lat)) return null;
           return { lat, lng, name: (m[1] || '').trim() };
         };
         const raw = Array.isArray(a.points) ? a.points.map(n => String(n == null ? '' : n).trim()).filter(Boolean) : [];
