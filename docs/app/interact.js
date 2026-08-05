@@ -764,6 +764,10 @@ function hitLegLabel(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
     const f = legFrame(i);
     if (!f) continue;
+    // A hidden kite is not drawn, so it must not be hit-testable either -- the same reason
+    // a blocked one-way kite is skipped below. Otherwise hiding it leaves an invisible
+    // clickable, draggable object on the map.
+    if (typeof legKiteHidden === 'function' && legKiteHidden(state.legs[i])) continue;
     for (const which of ['in', 'out']) {
       if (which === 'out' && (!showReturn || !legAllowsReturn(i))) continue;
       // A blocked inbound one-way leg draws NO nav kite (see draw.js) — so it must
@@ -2463,6 +2467,28 @@ function showInspector() {
       draw();
     };
     body.appendChild(reset);
+    // Hide / show this leg's nav kite (both directions). Nothing else about the leg changes,
+    // and the line stays selectable, which is how this button is reached again to restore it.
+    const hideBtn = document.createElement('button');
+    hideBtn.className = 'insp-btn';
+    const kiteOff = typeof legKiteHidden === 'function' && legKiteHidden(leg);
+    hideBtn.textContent = kiteOff
+      ? (S.showLegKite || 'Show kite')
+      : (S.hideLegKite || 'Hide kite');
+    hideBtn.title = kiteOff
+      ? (S.showLegKiteTitle || "Draw this leg's heading / time / altitude kite again")
+      : (S.hideLegKiteTitle ||
+         "Hide this leg's heading / time / altitude kite. The leg, its times and the plan are unchanged.");
+    hideBtn.setAttribute('aria-label', hideBtn.title);
+    hideBtn.setAttribute('aria-pressed', kiteOff ? 'true' : 'false');
+    hideBtn.onclick = () => {
+      if (legKiteHidden(leg)) delete leg.hideKite;
+      else leg.hideKite = 1;
+      if (typeof persist === 'function') persist();
+      draw();
+      showInspector();          // relabel the button to what it now does
+    };
+    body.appendChild(hideBtn);
     // Add an identification/report-point oval on this leg (draggable along it,
     // auto time from the leg start). CAAI נקי הזדהות.
     const addRp = document.createElement('button');

@@ -979,6 +979,9 @@ function serializeRoute() {
       // back silently recomputed every Radial/DME against the GLOBAL VOR -- the
       // plan and nav log then showed different navigational values than when saved.
       ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
+      // Whether the pilot hid this leg's nav kite. Same class of state as the dragged
+      // label offsets beside it: their own decision about how the chart should read.
+      ...(l.hideKite ? { hideKite: 1 } : {}),
       ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
     })),
     notes: state.notes.map(n => ({
@@ -1954,6 +1957,7 @@ function applyRouteData(d) {
     cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
                                : { a: 0, _default: 1, _m: 1 },
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
+    ...(l.hideKite ? { hideKite: 1 } : {}),
     // Absent = pinned, so a route written before these existed (or by hand) keeps
     // the explicit speeds it names instead of drifting with the local default.
     ...(l.speedAuto ? { _legSpeedAuto: 1 } : {}),
@@ -5214,6 +5218,7 @@ function restoreRoute() {
     cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
                                : { a: 0, _default: 1, _m: 1 },
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
+    ...(l.hideKite ? { hideKite: 1 } : {}),
     // Reloading the tab is not a speed edit, so a leg still tracking the default
     // keeps tracking it -- otherwise one refresh would freeze the whole route.
     ...(l._legSpeedAuto ? { _legSpeedAuto: 1 } : {}),

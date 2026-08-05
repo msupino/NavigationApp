@@ -817,6 +817,10 @@ window.S = Object.assign({
   resetLegMarkers: '↻ Reset marker position',       // inspector leg button — reset label offsets
   addReportPoint: '＋ Add identification-point marker',  // inspector leg button — drop a נקי הזדהות oval on the leg
   resetLegMarkersTitle: 'Reset marker position',
+  hideLegKite: '⊘ Hide kite',                  // inspector leg button — hide this leg's nav kite
+  showLegKite: '◉ Show kite',
+  hideLegKiteTitle: "Hide this leg's heading / time / altitude kite, both directions. The leg, its other markers and the flight plan are unchanged — click the leg line to bring the kite back.",
+  showLegKiteTitle: "Draw this leg's heading / time / altitude kite again",
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
@@ -2090,6 +2094,16 @@ const pad3 = n => String(n).padStart(3, '0');
 // Per-language localStorage key for draggable menu/panel POSITIONS. The RTL
 // (Hebrew) layout mirrors the LTR (English) one, so a spot dragged in one
 // language is wrong in the other — store each language's position separately.
+// A leg whose NAV KITE the pilot has hidden -- the heading/time/altitude marker, both
+// the inbound one and the return one. Nothing else about the leg changes: the line, its
+// drift cone, the cumulative-time kite, the distance badge, the minute marks and the wind
+// arrow all still draw, and the flight plan is untouched. Clicking the line still selects
+// the leg (hitLeg never went through a marker), which is how the kite is brought back
+// from the leg inspector.
+function legKiteHidden(leg) {
+  return !!(leg && leg.hideKite);
+}
+
 function navLangPosKey(base) {
   const lang = (document.documentElement && document.documentElement.lang === 'he') ? 'he' : 'en';
   return base + '.' + lang;
