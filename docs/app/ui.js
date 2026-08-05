@@ -6385,7 +6385,13 @@ function imsNearestTimeIndex(times) {
 const NavWxTime = (function () {
   const KEY = 'navaid.wxTime';
   const sel = document.getElementById('wx-time');
-  let seeded = false;
+  // The pilot's own choice, which nothing may override. Everything else is a default the
+  // dropdown is still free to improve as more options arrive: PWX and SIGWX are fetched
+  // independently, so seeding once off whichever answered first made RESPONSE ORDER decide
+  // the default. Near midnight PWX could seed yesterday's 18:00 and a later SIGWX response
+  // could add today's 00:00 without selecting it -- the newer chart visibly in the list,
+  // the overlay nearly six hours stale.
+  let pinned = false;
   // Merge a feed's times into the dropdown (deduped by valid), and seed the
   // initial selection once — the saved time if still offered, else nearest now.
   // "day|valid", or just "valid" when the feed gives no day.
@@ -6412,26 +6418,64 @@ const NavWxTime = (function () {
       return (norm(A.day) + A.valid).localeCompare(norm(B.day) + B.valid);
     });
     for (const o of opts) sel.appendChild(o);
-    if (!seeded && sel.options.length) {
-      let saved = '';
-      try { saved = lsGet(KEY) || ''; } catch (e) {}
-      const savedValid = parse(saved).valid;
-      const match = Array.from(sel.options).find(o => o.value === saved)
-        // A value stored by a build that keyed on the valid time alone.
-        || (savedValid && Array.from(sel.options).find(o => parse(o.value).valid === savedValid));
-      if (match) sel.value = match.value;
-      // ...and the day goes to imsNearestTimeIndex, which has always known how to use one.
-      // Without it every hour was assumed to be TODAY, so at 23:45 the dropdown seeded to a
-      // chart hours old instead of the one about to become valid.
-      else sel.selectedIndex = Math.max(0, imsNearestTimeIndex(
-        Array.from(sel.options, o => parse(o.value))));
-      seeded = true;
+    reseed();
+  }
+  // Choose the default. Re-run on every merge until the selection is pinned, so a feed that
+  // arrives second can still supply a closer time.
+  function reseed() {
+    if (pinned || !sel || !sel.options.length) return;
+    let saved = '';
+    try { saved = lsGet(KEY) || ''; } catch (e) {}
+    const savedValid = parse(saved).valid;
+    const exact = Array.from(sel.options).find(o => o.value === saved);
+    if (exact) {
+      // A day-qualified stored value is a decision this pilot made earlier, not a guess:
+      // honour it and stop reconsidering.
+      sel.value = exact.value;
+      if (parse(saved).day) pinned = true;
+      return;
     }
+    // A value stored by a build that keyed on the valid time alone: the HOUR is a real
+    // preference, the day was never recorded. Keep the hour and let imsNearestTimeIndex pick
+    // which day of it -- assuming the first one offered put the pilot on yesterday's chart.
+    const sameHour = savedValid &&
+      Array.from(sel.options).filter(o => parse(o.value).valid === savedValid);
+    if (sameHour && sameHour.length) {
+      const i = Math.max(0, imsNearestTimeIndex(sameHour.map(o => parse(o.value))));
+      sel.value = sameHour[i].value;
+      return;
+    }
+    // ...and the day goes to imsNearestTimeIndex, which has always known how to use one.
+    // Without it every hour was assumed to be TODAY, so at 23:45 the dropdown seeded to a
+    // chart hours old instead of the one about to become valid.
+    sel.selectedIndex = Math.max(0, imsNearestTimeIndex(
+      Array.from(sel.options, o => parse(o.value))));
+  }
+  // Move to a time the caller can actually render, if the current one is not among them.
+  // The dropdown accumulates options from both feeds and every PWX level, so a level change
+  // used to leave a time selected that the new level does not publish: currentTime() then
+  // found nothing and the overlay was REMOVED, even though that level had valid charts.
+  // Changing level is itself a request to see that level, so this overrides a pin.
+  function prefer(times, force) {
+    if (!sel || !Array.isArray(times) || !times.length) return false;
+    // A pinned choice stands unless the pilot just asked for a different level: PWX must not
+    // drag the shared dropdown off a SIGWX-only time the pilot chose deliberately.
+    if (pinned && !force) return false;
+    const offered = times.filter(t => t && t.valid);
+    if (!offered.length) return false;
+    if (offered.some(t => api.match(t))) return false;          // already showable
+    const keys = new Set(offered.map(keyOf));
+    const usable = Array.from(sel.options).filter(o => keys.has(o.value));
+    if (!usable.length) return false;
+    const near = Math.max(0, imsNearestTimeIndex(usable.map(o => parse(o.value))));
+    sel.value = usable[near].value;
+    return true;
   }
   if (sel) sel.addEventListener('change', () => {
+    pinned = true;
     try { localStorage.setItem(KEY, sel.value); } catch (e) {}
   });
-  return {
+  const api = {
     value: () => (sel ? sel.value : ''),
     // Does this manifest entry belong to the selected option? Both sides may lack a day
     // (older manifests), in which case the valid time is all there is to go on.
@@ -6443,8 +6487,10 @@ const NavWxTime = (function () {
       return String(t.day) === sel1.day;
     },
     ensure,
+    prefer,
     onChange: fn => { if (sel) sel.addEventListener('change', fn); },
   };
+  return api;
 })();
 
 // Shared opacity for the IMS weather-chart overlays — one #wx-opacity slider
@@ -6540,9 +6586,15 @@ const NavWxOpacity = (function () {
   map.on('move zoom zoomend viewreset', applyRotation);
   // Merge this level's valid times into the shared #wx-time dropdown (deduped;
   // does not clear SIGWX's options). The selection persists in the element.
-  function fillTimes() {
+  // `force` = the pilot just changed level, so landing on a renderable time outranks a
+  // pinned one. Only ever moves the shared selection while this overlay is actually on.
+  function fillTimes(force) {
     const lv = currentLevel();
-    if (lv) NavWxTime.ensure(lv.times);
+    if (!lv) return;
+    NavWxTime.ensure(lv.times);
+    // ...then make sure the selection is one THIS level publishes, or the overlay would be
+    // removed on a level change despite valid charts being available at the new level.
+    if (cb.checked) NavWxTime.prefer(lv.times, force);
   }
 
   // Persist the on/off + selections so a reload keeps the overlay as it was.
@@ -6560,9 +6612,12 @@ const NavWxOpacity = (function () {
 
   cb.addEventListener('change', () => {
     controls.hidden = !cb.checked;
+    // Switching the overlay ON is also a moment where the selected time has to be one this
+    // level publishes -- otherwise it appears to do nothing at all.
+    if (cb.checked) fillTimes(true);
     updateLayer(); persist();
   });
-  levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); persist(); });
+  levelSel.addEventListener('change', () => { fillTimes(true); updateLayer(); persist(); });
   timeSel.addEventListener('change', () => { updateLayer(); persist(); });
   // Opacity is the shared #wx-opacity slider (NavWxOpacity) — re-apply on change.
   NavWxOpacity.onChange(() => { if (layer) layer.setOpacity(NavWxOpacity.value()); });
