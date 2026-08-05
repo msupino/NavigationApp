@@ -79,9 +79,11 @@ test('toggling on adds a georeferenced image overlay at the manifest bounds', as
 test('changing the level keeps the selected valid time', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
-  await page.locator('#wx-time').selectOption('18:00');   // pick a non-default period
+  // Selected by LABEL: the option value carries the day too ("21/06/2026|18:00"), because
+  // PWX and SIGWX can offer the same clock time on different days.
+  await page.locator('#wx-time').selectOption({ label: '21/06/2026 18:00Z' });
   await page.locator('#ims-pwx-level').selectOption('50');      // switch FL (FL180 also has 18:00)
-  expect(await page.locator('#wx-time').inputValue()).toBe('18:00');
+  expect(await page.locator('#wx-time').inputValue()).toContain('18:00');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer'))
     .toHaveAttribute('src', /ims\/pwx\/50\/1800\.png/);
 });
@@ -90,14 +92,14 @@ test('overlay on/off + selection persists across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
   await page.locator('#ims-pwx-level').selectOption('50');
-  await page.locator('#wx-time').selectOption('18:00');
+  await page.locator('#wx-time').selectOption({ label: '21/06/2026 18:00Z' });
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer')).toHaveCount(1);
   await page.reload();
   await page.waitForFunction(() => document.getElementById('ims-pwx') && !document.getElementById('ims-pwx').hidden);
   // Restored: toggle on, same level/time, overlay re-added.
   await expect(page.locator('#ims-pwx-cb')).toBeChecked();
   expect(await page.locator('#ims-pwx-level').inputValue()).toBe('50');
-  expect(await page.locator('#wx-time').inputValue()).toBe('18:00');
+  expect(await page.locator('#wx-time').inputValue()).toContain('18:00');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer'))
     .toHaveAttribute('src', /ims\/pwx\/50\/1800\.png/);
 });
