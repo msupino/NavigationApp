@@ -1474,6 +1474,8 @@ window.S = Object.assign({
   tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
   tbGpsLiveStop: 'Hide location',
   gpsUnsupported: 'GPS is not available in this browser.',
+  // Prefixes an age in seconds: "GPS fix 47s" — the fix is that old, not that recent.
+  gpsFixStale: 'GPS fix',
   wpLabel: 'WP',
   gpsNoTrack: 'No track recorded.',
   gpsLiveNotifTitle: 'NavAid location',
