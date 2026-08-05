@@ -944,6 +944,16 @@ function routeSnapshotForStorage() {
 // Serializable, schema-clean snapshot of the current route. Shared by the
 // JSON file export (save), the route library (#677), and any other route
 // persistence — keep this the single source of the on-disk route shape.
+// A per-leg reference-VOR override (#... the Radial/DME source for one leg) as it
+// travels on the wire: an ident string or nothing. An unknown ident is kept rather
+// than dropped -- legVorObj() already falls back to the global VOR when vorByIdent
+// cannot resolve it, so a route saved against another nav-data release still loads.
+function sanitizeVorRef(v) {
+  if (typeof v !== 'string') return null;
+  const t = v.trim().toUpperCase();
+  return t && t.length <= 8 ? t : null;
+}
+
 function serializeRoute() {
   const commChangeSuppressions = routeCommChangeSuppressions();
   const data = {
@@ -965,6 +975,10 @@ function serializeRoute() {
       ...(l._legSpeedAutoRet ? { retSpeedAuto: 1 } : {}),
       ...(l.cumLabel ? { cumLabel: l.cumLabel } : {}),
       ...(l.cumLabelRet ? { cumLabelRet: l.cumLabelRet } : {}),
+      // The leg's own reference VOR. Without it on the wire, a saved route loaded
+      // back silently recomputed every Radial/DME against the GLOBAL VOR -- the
+      // plan and nav log then showed different navigational values than when saved.
+      ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
       ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
     })),
     notes: state.notes.map(n => ({
@@ -1939,6 +1953,7 @@ function applyRouteData(d) {
                          : { a: 0, _default: 1, _m: 1 },
     cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
                                : { a: 0, _default: 1, _m: 1 },
+    ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
     // Absent = pinned, so a route written before these existed (or by hand) keeps
     // the explicit speeds it names instead of drifting with the local default.
     ...(l.speedAuto ? { _legSpeedAuto: 1 } : {}),
@@ -2792,9 +2807,13 @@ function showFlightPlan() {
     const sel = document.createElement('select');
     sel.className = 'fp-leg-vor';
     sel.onchange = () => {
-      if (state.legs[legIdx]) state.legs[legIdx].vorRef = sel.value || null;
+      if (state.legs[legIdx]) state.legs[legIdx].vorRef = sanitizeVorRef(sel.value);
       refresh();
       if (retRefresh) retRefresh();
+      // A per-leg VOR is a route edit: it has to reach the working-route snapshot and
+      // the map overlay, not just this modal.
+      if (typeof draw === 'function') draw();
+      if (typeof persist === 'function') persist();
     };
     const val = document.createElement('span');
     val.className = 'fp-radial-val';
@@ -5186,6 +5205,15 @@ function restoreRoute() {
     outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
     inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
     outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
+    // The dragged cumulative-time kites and the leg's reference VOR are pilot-authored
+    // route layout, exactly like inLabel/outLabel: the snapshot carried all three, but
+    // rebuilding the leg without them silently reset the kites to their default place
+    // and the Radial/DME back to the global VOR on every reload.
+    cumLabel: l.cumLabel ? _normalizeLegLabel(l.cumLabel, legacyAS)
+                         : { a: 0, _default: 1, _m: 1 },
+    cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
+                               : { a: 0, _default: 1, _m: 1 },
+    ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
     // Reloading the tab is not a speed edit, so a leg still tracking the default
     // keeps tracking it -- otherwise one refresh would freeze the whole route.
     ...(l._legSpeedAuto ? { _legSpeedAuto: 1 } : {}),
