@@ -49,8 +49,11 @@ jobs:
           # and download jobs can be unit-tested; a scheduled workflow cannot be
           # exercised before it reaches the default branch, so tests are the only
           # pre-merge signal. See tests/ims-chart-jobs.spec.js.
+          # Run-scoped scratch dir: fixed /tmp names are a predictable-path write
+          # (CodeQL js/insecure-temporary-file) and this costs one line.
+          WORK="$(mktemp -d)"
           node scripts/build-ims-chart-jobs.mjs \
-            /tmp/pwx.candidate.json /tmp/sigwx.candidate.json /tmp/jobs.tsv
+            "$WORK/pwx.candidate.json" "$WORK/sigwx.candidate.json" "$WORK/jobs.tsv"
 
           # Download each PDF -> PNG. PWX: crop to frame + white→transparent (overlay).
           # SIGWX: full page as-is (in-app viewer).
@@ -65,27 +68,27 @@ jobs:
             # space requests so we don't get rate-limited (which showed up as
             # dl-fail and emptied the SIGWX manifest).
             if curl -fsS --connect-timeout 20 --max-time 90 --retry 6 --retry-delay 5 --retry-all-errors \
-                 -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
+                 -A 'NavAid-ims-bot' "$url" -o "$WORK/c.pdf"; then
               if [ "$mode" = "pwx" ]; then
-                pdftoppm -png -r 150 /tmp/c.pdf /tmp/cpng && \
-                convert /tmp/cpng-1.png -fuzz 18% -transparent white "$out" && \
+                pdftoppm -png -r 150 "$WORK/c.pdf" "$WORK/cpng" && \
+                convert "$WORK/cpng-1.png" -fuzz 18% -transparent white "$out" && \
                 echo "ok  $out" || echo "conv-fail $out"
               else
-                pdftoppm -png -r 150 /tmp/c.pdf /tmp/cpng && \
-                cp /tmp/cpng-1.png "$out" && echo "ok  $out" || echo "conv-fail $out"
+                pdftoppm -png -r 150 "$WORK/c.pdf" "$WORK/cpng" && \
+                cp "$WORK/cpng-1.png" "$out" && echo "ok  $out" || echo "conv-fail $out"
               fi
             else
               echo "dl-fail $url"
             fi
             sleep 1
-          done < /tmp/jobs.tsv
+          done < "$WORK/jobs.tsv"
           echo "PNG count: $(find ims -name '*.png' | wc -l)"
 
           # Drop manifest entries whose PNG didn't actually download/convert
           # (e.g. a far-out forecast IMS hasn't published yet) so the app never
           # points at a missing image.
           node scripts/finalize-ims-manifests.mjs \
-            ims /tmp/pwx.candidate.json /tmp/sigwx.candidate.json
+            ims "$WORK/pwx.candidate.json" "$WORK/sigwx.candidate.json"
 
       - name: Publish ims-data branch
         run: |

@@ -138,7 +138,13 @@ export async function writeImsChartJobs({ pwxFile, sigwxFile, jobsFile, write = 
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [, , pwxFile = '/tmp/pwx.candidate.json', sigwxFile = '/tmp/sigwx.candidate.json',
-    jobsFile = '/tmp/jobs.tsv'] = process.argv;
+  // The three output paths are required rather than defaulted to /tmp: fixed names in a
+  // shared temp dir are a predictable-path write, and the caller has a run-scoped `mktemp -d`
+  // to hand them anyway.
+  const [, , pwxFile, sigwxFile, jobsFile] = process.argv;
+  if (!pwxFile || !sigwxFile || !jobsFile) {
+    console.error('usage: build-ims-chart-jobs.mjs <pwx.json> <sigwx.json> <jobs.tsv>');
+    process.exit(2);
+  }
   await writeImsChartJobs({ pwxFile, sigwxFile, jobsFile });
 }

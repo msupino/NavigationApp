@@ -84,7 +84,11 @@ test.describe('workflow trust and integrity gates', () => {
     expect(ims).not.toContain("node --input-type=module <<'NODE'");
     // A final line with no newline still fills read's variables, so the loop must consume it.
     expect(ims).toContain(`while IFS=$'\\t' read -r url out mode || [ -n "$url" ]; do`);
-    expect(ims).toContain('/tmp/pwx.candidate.json');
+    // Candidates are built and finalized from one run-scoped scratch dir, so finalize sees
+    // exactly what this run produced (and no fixed /tmp name is written).
+    expect(ims).toContain('WORK="$(mktemp -d)"');
+    expect(ims).toContain('"$WORK/pwx.candidate.json"');
+    expect(ims).not.toMatch(/-o \/tmp\/|< \/tmp\/|\/tmp\/\w+\.candidate\.json/);
     expect(ims).toContain('scripts/finalize-ims-manifests.mjs');
     expect(ims).toContain('persist-credentials: false');
   });
