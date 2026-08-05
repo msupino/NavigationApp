@@ -3316,6 +3316,46 @@ const MULTI_TOUCH_GRACE_MS = 700;
 })();
 function touchGestureInProgress() { return Date.now() < _multiTouchUntil; }
 
+// A loop visits one place twice, so a press there hits two waypoints at the SAME coordinates.
+// The chooser has nothing to choose between -- and worse, it consumed the press, so the shared
+// point of a closed route could not be dragged at all. Collapse those candidates to one drag
+// that carries every index at that place, which keeps the loop closed while it moves.
+function coincidentWaypointIndices(hits) {
+  if (!hits || hits.length < 2) return null;
+  const first = state.waypoints[hits[0].index];
+  if (!first) return null;
+  for (const h of hits) {
+    const wp = state.waypoints[h.index];
+    // Exact coordinates AND the same name: that is what a repeated VISIT to one point looks
+    // like, because extending the route through a waypoint copies all three fields. Anything
+    // merely close -- even inside sameMapPoint's ~22 m -- can be two real waypoints a pilot
+    // needs to pick between, so it still gets the chooser.
+    if (!wp || wp.lat !== first.lat || wp.lng !== first.lng ||
+        (wp.name || '') !== (first.name || '')) return null;
+  }
+  return hits.map(h => h.index);
+}
+
+// In ADD mode a press on a waypoint EXTENDS the route through that point instead of opening
+// its inspector: that is how a loop is drawn, by pressing the point you want to come back to.
+// Only a press without movement -- a drag still repositions the waypoint, so you can nudge the
+// point you just placed without leaving the mode. Returns true when it consumed the release.
+function addModeExtendThroughWaypoint(i) {
+  if (state.mode !== 'add') return false;
+  const src = state.waypoints[i];
+  if (!src) return false;
+  const tail = state.waypoints[state.waypoints.length - 1];
+  // #104's rule, unchanged: repeating the point the next leg would START from is the one case
+  // that makes a zero-length leg. Pressing the last waypoint therefore does nothing.
+  if (tail && typeof sameMapPoint === 'function' && sameMapPoint(tail, src)) return false;
+  state.waypoints.push({ lat: src.lat, lng: src.lng, name: src.name });
+  syncLegs();
+  if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+  state.selected = { type: 'wp', index: state.waypoints.length - 1 };
+  draw();
+  return true;
+}
+
 // Is the map primed to start a route? True only while the one-time empty-route hint is on
 // screen with no route yet: that is the window in which a press on a chart point should
 // fall through to the add path instead of opening its inspector, and in which a plain
@@ -3398,6 +3438,19 @@ map.on('mousedown', e => {
     };
     map.dragging.disable();
     showInspector(); draw();
+    return;
+  }
+  const coincident = coincidentWaypointIndices(wpHits);
+  if (coincident) {
+    // Same place, more than one visit: drag them together rather than asking which.
+    const lead = coincident[0];
+    downHit = true;
+    state.selected = { type: 'wp', index: lead };
+    drag = { kind: 'wp', i: lead, also: coincident.slice(1), moved: false,
+             origLat: state.waypoints[lead].lat, origLng: state.waypoints[lead].lng,
+             origName: state.waypoints[lead].name, originSnapArmed: false };
+    map.dragging.disable();
+    draw();
     return;
   }
   if (wpHits.length > 1) {
@@ -3513,6 +3566,11 @@ map.on('mousemove', e => {
     const wp = state.waypoints[drag.i];
     const r = applyNavSnap(e.latlng, wp.name || '', dragOriginExclude(drag, e.latlng));
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
+    // Every other visit to the same place moves with it, so a loop stays closed.
+    for (const j of (drag.also || [])) {
+      const other = state.waypoints[j];
+      if (other) { other.lat = wp.lat; other.lng = wp.lng; other.name = wp.name; }
+    }
     draw();   // move silently — but keep an already-open inspector in sync
     if (!document.getElementById('inspector').classList.contains('hidden')) showInspector();
   } else if (drag.kind === 'note') {
@@ -3572,6 +3630,15 @@ function endMouseDrag() {
       if (snappedToSelf && !drag.originSnapArmed) {
         wp.lat = drag.origLat; wp.lng = drag.origLng;
         if (typeof drag.origName === 'string') wp.name = drag.origName;
+        // Every visit the drag carried goes back too, or a cancelled drag would leave the
+        // loop's two ends in different places.
+        for (const j of (drag.also || [])) {
+          const other = state.waypoints[j];
+          if (other) {
+            other.lat = drag.origLat; other.lng = drag.origLng;
+            if (typeof drag.origName === 'string') other.name = drag.origName;
+          }
+        }
         syncLegs();
       }
     }
@@ -3586,6 +3653,13 @@ function endMouseDrag() {
     // Open the inspector on a clean waypoint click (released without a move);
     // a drag-to-reposition leaves a closed inspector closed, but refreshes one
     // that was already open (e.g. snapping onto a comm-change point).
+    if (drag.kind === 'wp' && !drag.moved && addModeExtendThroughWaypoint(drag.i)) {
+      // Extended the route through this point; no inspector, and the new waypoint is selected.
+      if (typeof setLiveDragging === 'function') setLiveDragging(false);
+      map.dragging.enable();
+      drag = null;
+      return;
+    }
     if (drag.kind === 'wp') {
       const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
       if (!drag.moved || inspOpen) showInspector();
@@ -3914,6 +3988,15 @@ mapEl.addEventListener('touchstart', e => {
       offLng: state.notes[note].lng - ll.lng,
     };
     state.selected = selectionForNoteHit(note);
+  } else if (coincidentWaypointIndices(activeWpHits)) {
+    // A loop's shared point: one place, several visits. Drag them together instead of asking
+    // which one was meant -- the chooser used to consume the press, so it could not be moved.
+    const together = coincidentWaypointIndices(activeWpHits);
+    const lead = together[0];
+    touchDrag = { kind: 'wp', i: lead, also: together.slice(1), moved: false,
+                  origLat: state.waypoints[lead].lat, origLng: state.waypoints[lead].lng,
+                  origName: state.waypoints[lead].name, originSnapArmed: false };
+    state.selected = { type: 'wp', index: lead };
   } else if (wpAmbiguous) {
     e.preventDefault();
     showPointChoice(activeWpHits);
@@ -3986,6 +4069,10 @@ mapEl.addEventListener('touchmove', e => {
     const wp = state.waypoints[touchDrag.i];
     const r = applyNavSnap(ll, wp.name || '', dragOriginExclude(touchDrag, ll));
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
+    for (const j of (touchDrag.also || [])) {
+      const other = state.waypoints[j];
+      if (other) { other.lat = wp.lat; other.lng = wp.lng; other.name = wp.name; }
+    }
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
     const n = state.notes[touchDrag.i];
@@ -4035,6 +4122,15 @@ function endTouch() {
         if (typeof touchDrag.origName === 'string') wp.name = touchDrag.origName;
         syncLegs();
       }
+    }
+    // Same rule as the mouse path: a TAP on a waypoint in add mode extends the route through
+    // it. The two paths have drifted six times before, so both call the one helper.
+    if (touchDrag.kind === 'wp' && !touchDrag.moved &&
+        addModeExtendThroughWaypoint(touchDrag.i)) {
+      if (typeof setLiveDragging === 'function') setLiveDragging(false);
+      map.dragging.enable();
+      touchDrag = null;
+      return;
     }
     // #487: seed a comm-change note if a touch waypoint-drag landed on one.
     let changed = false;
