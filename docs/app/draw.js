@@ -85,7 +85,10 @@ function legKiteAlongHalfPx(sc) {
 // tracks correctly on a rotated map.
 function drawOwnShip(pos, hdg) {
   if (!pos) return;
-  drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol
+  // A frozen fix is drawn faded, and without the heading predictor: extrapolating a track
+  // from a position that stopped updating is the one thing a stale fix must not do.
+  const stale = typeof gpsFixStale === 'function' && gpsFixStale();
+  if (!stale) drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol
   const s = proj(pos);
   // Screen angle from a projected geographic offset in the heading direction,
   // so it stays correct under map rotation (map.setBearing) — same approach as
@@ -100,6 +103,8 @@ function drawOwnShip(pos, hdg) {
   const screenAngle = Math.atan2(p2.y - s.y, p2.x - s.x) + Math.PI / 2;
   const r = tune('liveAircraftRadiusPx');
   octx.save();
+  // Inside the existing save/restore, on the overlay canvas the symbol is actually drawn on.
+  if (stale) octx.globalAlpha = 0.35;
   octx.translate(s.x, s.y);
   octx.rotate(screenAngle);
 

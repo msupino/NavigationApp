@@ -56,8 +56,10 @@ function terrainMaxAtLatLng(lat, lng) {
   return g.units === 'm' ? v * M_TO_FT : v;
 }
 
-// Max terrain elevation (ft) sampled along the great-circle-ish straight leg
-// A→B, or null when the route leaves coverage.
+// Max terrain elevation (ft) sampled along the great-circle-ish straight leg A→B, or null
+// when ANY sample is unknown -- outside the grid box, or a hole in the data. A partial
+// answer is indistinguishable from a complete one to every caller, so there is no safe way
+// to return one.
 function terrainMaxAlongLeg(a, b) {
   if (!a || !b || !terrainHasCoverage()) return null;
   const N = 64;
@@ -65,7 +67,15 @@ function terrainMaxAlongLeg(a, b) {
   for (let i = 0; i <= N; i++) {
     const t = i / N;
     const e = terrainMaxAtLatLng(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t);
-    if (e != null) max = (max == null) ? e : Math.max(max, e);
+    // ANY unknown sample voids the whole leg. Skipping them and returning the max of the
+    // rest reported the highest terrain we happen to know about as if it were the highest
+    // terrain there is: a leg running from inside the grid towards ground above 9000 ft
+    // answered ~3600 ft, legMsaFt turned that into a ~4600 ft MSA, and because the leg
+    // inspector clears its below-MSA flag whenever the planned altitude is above that
+    // number, the warning went away too. That is the "false safe value" this file's own
+    // header says it must never produce, so an incomplete answer is no answer.
+    if (e == null) return null;
+    max = (max == null) ? e : Math.max(max, e);
   }
   return max;
 }
