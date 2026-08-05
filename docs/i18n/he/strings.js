@@ -918,6 +918,7 @@ window.S = {
   tbGpsLiveTitle: 'הצגת המיקום החי שלך על המפה (GPS, ללא הקלטה)',
   tbGpsLiveStop: 'הסתר מיקום',
   gpsUnsupported: 'GPS אינו זמין בדפדפן זה.',
+  gpsFixStale: 'קליטת GPS מלפני',
   wpLabel: 'צד״ר',
   gpsNoTrack: 'לא הוקלט מסלול.',
   gpsError: 'שגיאת GPS: ',
