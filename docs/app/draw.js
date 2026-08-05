@@ -85,7 +85,10 @@ function legKiteAlongHalfPx(sc) {
 // tracks correctly on a rotated map.
 function drawOwnShip(pos, hdg) {
   if (!pos) return;
-  drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol
+  // A frozen fix is drawn faded, and without the heading predictor: extrapolating a track
+  // from a position that stopped updating is the one thing a stale fix must not do.
+  const stale = typeof gpsFixStale === 'function' && gpsFixStale();
+  if (!stale) drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol
   const s = proj(pos);
   // Screen angle from a projected geographic offset in the heading direction,
   // so it stays correct under map rotation (map.setBearing) — same approach as
@@ -100,6 +103,8 @@ function drawOwnShip(pos, hdg) {
   const screenAngle = Math.atan2(p2.y - s.y, p2.x - s.x) + Math.PI / 2;
   const r = tune('liveAircraftRadiusPx');
   octx.save();
+  // Inside the existing save/restore, on the overlay canvas the symbol is actually drawn on.
+  if (stale) octx.globalAlpha = 0.35;
   octx.translate(s.x, s.y);
   octx.rotate(screenAngle);
 
@@ -1954,8 +1959,16 @@ function drawVors(force) {
   const selIdent = selectedStation ||
     (typeof inspectorVorRef === 'string' && inspectorVorRef) || vorRef;
   const selV = selIdent ? vors.find(v => v.ident === selIdent) : null;
-  if (selV && selV.coverageNm > 0 && typeof notamCirclePoints === 'function') {
-    const pts = notamCirclePoints(selV.lat, selV.lng, selV.coverageNm, tune('vorRangeRingSteps')).map(c => proj({ lat: c[0], lng: c[1] }));
+  const ringPts = (selV && selV.coverageNm > 0 && typeof notamCirclePoints === 'function')
+    ? notamCirclePoints(selV.lat, selV.lng, selV.coverageNm, tune('vorRangeRingSteps'))
+      .map(c => proj({ lat: c[0], lng: c[1] }))
+    : [];
+  // Guarded like every other polygon path here (drawSigmets, drawNotams): the step count is a
+  // tuning key, so the live gist or ?tune=1 can set it to 0, and pts[0] on an empty array
+  // threw INSIDE draw() -- taking the route line, kites, waypoints, notes and the page frame
+  // down with it, not just the ring. Skipping only the ring keeps the stations below drawn.
+  if (ringPts.length >= 3) {
+    const pts = ringPts;
     octx.save();
     octx.beginPath();
     octx.moveTo(pts[0].x, pts[0].y);

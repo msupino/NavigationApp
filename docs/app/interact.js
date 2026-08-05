@@ -3694,6 +3694,13 @@ window.addEventListener('keydown', e => {
   if (shortcutTypingTarget(t)) {
     return;                              // typing in a field — leave the WP alone
   }
+  // A blocking modal owns the keyboard. Zoom and the mode keys already checked for a backdrop
+  // (further down), but the ROUTE-EDITING keys below did not: with the NOTAM list or the
+  // charts dialog open, focus sits on one of its buttons -- not a typing target -- and Tab is
+  // trapped inside it, so Backspace is the natural "go back". That deleted the selected
+  // waypoint behind the dialog, silently, with the route and the filed plan one point short.
+  // Undo (Ctrl-Z) is deliberately still allowed: it is a recovery key, not a route edit.
+  const modalOpen = !!document.querySelector('.modal-back');
   // Ctrl/Cmd-Z undoes the last committed edit. Shift-Ctrl-Z (redo) is left
   // alone — there is no redo, so don't swallow it.
   if (shortcutKey(e, 'KeyZ', 'z') && (e.ctrlKey || e.metaKey) &&
@@ -3767,7 +3774,7 @@ window.addEventListener('keydown', e => {
   }
   // X (no modifier): delete the freq-change callout linked to the selected waypoint.
   if (shortcutPlain(e, 'KeyX', 'x')) {
-    if (!state.selected) return;
+    if (modalOpen || !state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
       const note = state.notes[freqNote];
@@ -3782,7 +3789,7 @@ window.addEventListener('keydown', e => {
   }
   // Z (no modifier): add a freq-change callout to a selected named waypoint.
   if (shortcutPlain(e, 'KeyZ', 'z')) {
-    if (!state.selected || state.selected.type !== 'wp') return;
+    if (modalOpen || !state.selected || state.selected.type !== 'wp') return;
     const wp = state.waypoints[state.selected.index];
     if (!wp || !wp.name || !showCommChange) return;
     const ccKey = waypointFreqChangeKey(wp);
@@ -3794,13 +3801,13 @@ window.addEventListener('keydown', e => {
   }
   // D (no modifier): delete the selected waypoint or note (freq callout goes with its waypoint).
   if (shortcutPlain(e, 'KeyD', 'd')) {
-    if (!state.selected) return;
+    if (modalOpen || !state.selected) return;
     deleteSelectedWpOrNote();
     return;
   }
   // Delete / Backspace: delete freq callout first, otherwise waypoint/note.
   if (e.key === 'Delete' || e.key === 'Backspace') {
-    if (!state.selected) return;
+    if (modalOpen || !state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
       const note = state.notes[freqNote];
