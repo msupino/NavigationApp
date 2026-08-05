@@ -31,6 +31,14 @@ function gpsReleaseWakeLock() {
 const GPS_SIMPLIFY_EPS_DEG = 0.0003;   // ~30 m
 const GPS_MIN_MOVE_M = 10;             // de-jitter: drop sub-10 m steps
 const GPS_MAX_ACC_M = 100;             // drop low-accuracy fixes
+// A fix older than this is no longer "where you are". Nothing here timed a fix at all: a
+// watch that stops delivering -- WebView backgrounded, indoor dropout, a native watcher that
+// stalls -- left the own-ship symbol and the heading predictor frozen at the last known
+// position, drawn exactly as if they were live, while the aircraft flew on. Neither
+// watchPosition nor the native watcher raises an error in that case, so nothing else would
+// ever notice.
+const GPS_STALE_MS = 20000;           // grey the symbol and say how old the fix is
+const GPS_STALE_TICK_MS = 2000;       // ...and notice it without waiting for a new fix
 const GPS_MAX_POINTS = 50000;
 
 // Douglas–Peucker simplification. eps in degrees. Endpoints always kept.
@@ -96,7 +104,10 @@ function _bgGeo() {
 function gpsStartWatch(onPos, onErr, title, message) {
   const bg = _bgGeo();
   if (!bg) {
-    return { web: navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true }) };
+    // `timeout` matters as much as accuracy: without it a watch that never delivers again
+    // simply goes quiet, and onErr is never called.
+    return { web: navigator.geolocation.watchPosition(onPos, onErr,
+      { enableHighAccuracy: true, timeout: GPS_STALE_MS, maximumAge: 0 }) };
   }
   const h = { native: null, stopped: false };
   // addWatcher is typed Promise<string>, but on some runtimes (Capacitor 8
@@ -155,12 +166,47 @@ function onLivePosition(pos) {
             : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : 0);
   const isFirst = (_gpsLivePrev === null);
   _gpsLivePrev = p;
-  gpsOwn = { lat: p.lat, lng: p.lng, hdg };
+  // Carry the fix time so everything downstream can tell live from frozen.
+  gpsOwn = { lat: p.lat, lng: p.lng, hdg, t: pos.timestamp || Date.now() };
+  gpsNoteFixArrived();
   scheduleDraw();
   if (typeof map !== 'undefined') {
     if (isFirst) map.setView([p.lat, p.lng], map.getZoom());
     else if (gpsFollow) map.setView([p.lat, p.lng], map.getZoom());
   }
+}
+
+// Is the current own-ship fix stale? Age is measured from the fix's own timestamp, not from
+// when we happened to receive it.
+function gpsFixAgeMs() {
+  if (!gpsOwn || !Number.isFinite(gpsOwn.t)) return null;
+  return Math.max(0, Date.now() - gpsOwn.t);
+}
+function gpsFixStale() {
+  const age = gpsFixAgeMs();
+  return age != null && age > GPS_STALE_MS;
+}
+// No fix means no callback, so staleness cannot be noticed by the fix handler. This ticks
+// while a live watch (or a recording) is on, and redraws once when the fix crosses from fresh
+// to stale so the symbol and the readout change without waiting for data that is not coming.
+var _gpsStaleTimer = null;
+var _gpsWasStale = false;
+function gpsNoteFixArrived() {
+  if (_gpsWasStale) { _gpsWasStale = false; }
+  if (_gpsStaleTimer) return;
+  _gpsStaleTimer = setInterval(() => {
+    if (!gpsLiveOn && !gpsRecording) { gpsStopStaleWatchdog(); return; }
+    const stale = gpsFixStale();
+    if (stale !== _gpsWasStale) {
+      _gpsWasStale = stale;
+      scheduleDraw();
+      if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+    }
+  }, GPS_STALE_TICK_MS);
+}
+function gpsStopStaleWatchdog() {
+  if (_gpsStaleTimer) { clearInterval(_gpsStaleTimer); _gpsStaleTimer = null; }
+  _gpsWasStale = false;
 }
 
 function startLiveLocation() {
@@ -178,6 +224,7 @@ function stopLiveLocation() {
   gpsLiveWatchId = null;
   gpsLiveOn = false;
   _gpsLivePrev = null;
+  if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
   scheduleDraw();
 }
@@ -192,13 +239,24 @@ var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
-  if (!gpsRecording) { el.textContent = ''; return; }
+  // A stale fix is worth saying even when nothing is being recorded: the map still shows an
+  // own-ship symbol, and the pilot has no other way to tell it is frozen.
+  if (!gpsRecording) {
+    const age = gpsFixStale() ? gpsFixAgeMs() : null;
+    el.textContent = age == null ? ''
+      : ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(age / 1000) + 's';
+    return;
+  }
   const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
   const mm = String(Math.floor(secs / 60)).padStart(2, '0');
   const ss = String(secs % 60).padStart(2, '0');
   let s = gpsTrack.length + ' pts · ' + mm + ':' + ss;
   if (gpsLastGS != null) s += ' · ' + Math.round(gpsLastGS) + ' kt';
   if (gpsLastAlt != null) s += ' · ' + Math.round(gpsLastAlt) + ' ft';
+  if (gpsFixStale()) {
+    s += ' · ' + ((S && S.gpsFixStale) || 'GPS fix') + ' ' +
+      Math.round(gpsFixAgeMs() / 1000) + 's';
+  }
   el.textContent = s;
 }
 
@@ -226,7 +284,9 @@ function onGpsPosition(pos) {
   // heading: device value when moving, else bearing from the previous point.
   let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
             : (prev ? geo(prev, pt).brg : 0);
-  gpsOwn = { lat: pt.lat, lng: pt.lng, hdg };
+  // Same fix time as the live path: a stalled RECORDING freezes the same symbol.
+  gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t };
+  gpsNoteFixArrived();
   gpsUpdateReadout();
   scheduleDraw();
   if (gpsFollow && typeof map !== 'undefined') map.setView([pt.lat, pt.lng], map.getZoom());

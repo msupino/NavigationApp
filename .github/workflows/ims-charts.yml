@@ -41,127 +41,54 @@ jobs:
             2>/dev/null && rm -rf ims/.git || mkdir -p ims
           mkdir -p ims/ims/pwx ims/ims/sigwx
           # PWX is rendered full-page (no crop) so the chart's title band + frame
-          # show on the overlay; the bounds below are extended to the full page
-          # so the inner map frame still aligns (margins L14/R14/T15/B118 @150dpi).
+          # show on the overlay; the bounds are extended to the full page so the
+          # inner map frame still aligns (margins L14/R14/T15/B118 @150dpi).
 
-          node --input-type=module <<'NODE' > /tmp/jobs.tsv
-          const { writeFileSync } = await import('node:fs');
-          const lines = [];
-          // ims.gov.il is slow/throttly from CI IPs — undici's 10s connect
-          // timeout + no retry meant a single slow connect failed the whole run.
-          // Retry with backoff and a generous per-attempt timeout.
-          const sleep = ms => new Promise(r => setTimeout(r, ms));
-          const get = async u => {
-            let lastErr;
-            for (let i = 0; i < 4; i++) {
-              try {
-                const r = await fetch(u, { headers: { 'User-Agent': 'NavAid-ims-bot' },
-                  signal: AbortSignal.timeout(30000) });
-                if (!r.ok) throw new Error(u + ' ' + r.status);
-                return (await r.json()).data || {};
-              } catch (e) { lastErr = e; await sleep(3000 * (i + 1)); }
-            }
-            throw lastErr;
-          };
-          const abs = f => (f.startsWith('http') ? f : 'https://ims.gov.il' + f);
-          // The sanitiser collapses every run of unsafe characters to one '-', so two
-          // different source PDFs can reduce to the same name -- and then one silently
-          // overwrites the other, which is the exact mislabelling this naming exists to
-          // prevent. A collision means the charts cannot be told apart, so stop: the step
-          // fails, nothing is published, and every category keeps its complete last-good.
-          const stemSources = new Map();
-          const sourceStem = f => {
-            const url = abs(f);
-            const name = new URL(url).pathname.split('/').pop() || 'chart';
-            const stem = name.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_-]+/g, '-');
-            const seen = stemSources.get(stem);
-            if (seen && seen !== url) {
-              throw new Error(`chart name collision: ${stem} <- ${seen} and ${url}`);
-            }
-            stemSources.set(stem, url);
-            return stem;
-          };
-
-          // --- PWX wind/temperature (georeferenced map overlay) ---
-          // IMS pressure-level code → flight level (900/850/700/500 hPa). The
-          // app sorts these by code descending = FL030 → FL180 (low to high),
-          // defaulting to the lowest (FL030).
-          const LABELS = { '90': 'FL030', '85': 'FL050', '70': 'FL100', '50': 'FL180' };
-          const pwx = { generatedAt: new Date().toISOString(),
-            source: 'IMS wind_and_temperature_maps', run: '',
-            bounds: { s: 28.849, n: 34.075, w: 32.903, e: 37.097 }, levels: [] };
-          const pdata = await get('https://ims.gov.il/he/wind_and_temperature_maps');
-          for (const lvl of Object.keys(pdata)) {
-            if (!LABELS[lvl]) continue;
-            const times = pdata[lvl] || {};
-            const entry = { level: lvl, label: LABELS[lvl], times: [] };
-            for (const t of Object.keys(times)) {
-              const f = times[t] && times[t].file; if (!f) continue;
-              // Keep the model/date-bearing source name in the path. Reusing
-              // only HHMM lets a failed replacement masquerade as today's chart.
-              const png = `ims/pwx/${lvl}/${sourceStem(f)}.png`;
-              // Model run time is the first YYYYMMDDHHMM in the filename
-              // (PWX_<run>_<lvl>_<valid>.pdf) — the cropped-off "BASED ON MODEL
-              // RUN" line. Same for every chart.
-              if (!pwx.run) { const mr = f.match(/_(\d{12})_/); if (mr) pwx.run = mr[1]; }
-              entry.times.push({ valid: t, day: times[t].day || '', png });
-              lines.push([abs(f), 'ims/' + png, 'pwx'].join('\t'));
-            }
-            entry.times.sort((a, b) => a.valid.localeCompare(b.valid));
-            if (entry.times.length) pwx.levels.push(entry);
-          }
-          pwx.levels.sort((a, b) => Number(a.level) - Number(b.level));
-          writeFileSync('/tmp/pwx.candidate.json', JSON.stringify(pwx, null, 1));
-
-          // --- SIGWX significant weather (full-page chart, viewer only) ---
-          const sigwx = { generatedAt: new Date().toISOString(),
-            source: 'IMS significantly_weather_maps', times: [] };
-          const sdata = await get('https://ims.gov.il/he/significantly_weather_maps');
-          for (const t of Object.keys(sdata)) {
-            const f = sdata[t] && sdata[t].file; if (!f) continue;
-            const png = `ims/sigwx/${sourceStem(f)}.png`;
-            sigwx.times.push({ valid: t, day: sdata[t].day || '', png });
-            lines.push([abs(f), 'ims/' + png, 'sigwx'].join('\t'));
-          }
-          // Order by day then valid time so the dropdown reads chronologically.
-          sigwx.times.sort((a, b) => (a.day + a.valid).localeCompare(b.day + b.valid));
-          writeFileSync('/tmp/sigwx.candidate.json', JSON.stringify(sigwx, null, 1));
-
-          console.error('pwx levels:', pwx.levels.map(l => l.level + '×' + l.times.length).join(' '),
-            '| sigwx:', sigwx.times.length);
-          process.stdout.write(lines.join('\n'));
-          NODE
+          # The chart list + candidate manifests live in
+          # scripts/build-ims-chart-jobs.mjs so the pairing between manifest entries
+          # and download jobs can be unit-tested; a scheduled workflow cannot be
+          # exercised before it reaches the default branch, so tests are the only
+          # pre-merge signal. See tests/ims-chart-jobs.spec.js.
+          # Run-scoped scratch dir: fixed /tmp names are a predictable-path write
+          # (CodeQL js/insecure-temporary-file) and this costs one line.
+          WORK="$(mktemp -d)"
+          node scripts/build-ims-chart-jobs.mjs \
+            "$WORK/pwx.candidate.json" "$WORK/sigwx.candidate.json" "$WORK/jobs.tsv"
 
           # Download each PDF -> PNG. PWX: crop to frame + white→transparent (overlay).
           # SIGWX: full page as-is (in-app viewer).
-          while IFS=$'\t' read -r url out mode; do
+          # `|| [ -n "$url" ]`: read fails on a final line with no newline but still
+          # fills the variables, so without this the last chart of the list is
+          # silently skipped — which froze the SIGWX manifest (#1429). The list is
+          # newline-terminated now; this keeps the loop correct either way.
+          while IFS=$'\t' read -r url out mode || [ -n "$url" ]; do
             [ -z "$url" ] && continue
             mkdir -p "$(dirname "$out")"
             # IMS is slow/throttly from CI IPs — generous timeout + retries, and
             # space requests so we don't get rate-limited (which showed up as
             # dl-fail and emptied the SIGWX manifest).
             if curl -fsS --connect-timeout 20 --max-time 90 --retry 6 --retry-delay 5 --retry-all-errors \
-                 -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
+                 -A 'NavAid-ims-bot' "$url" -o "$WORK/c.pdf"; then
               if [ "$mode" = "pwx" ]; then
-                pdftoppm -png -r 150 /tmp/c.pdf /tmp/cpng && \
-                convert /tmp/cpng-1.png -fuzz 18% -transparent white "$out" && \
+                pdftoppm -png -r 150 "$WORK/c.pdf" "$WORK/cpng" && \
+                convert "$WORK/cpng-1.png" -fuzz 18% -transparent white "$out" && \
                 echo "ok  $out" || echo "conv-fail $out"
               else
-                pdftoppm -png -r 150 /tmp/c.pdf /tmp/cpng && \
-                cp /tmp/cpng-1.png "$out" && echo "ok  $out" || echo "conv-fail $out"
+                pdftoppm -png -r 150 "$WORK/c.pdf" "$WORK/cpng" && \
+                cp "$WORK/cpng-1.png" "$out" && echo "ok  $out" || echo "conv-fail $out"
               fi
             else
               echo "dl-fail $url"
             fi
             sleep 1
-          done < /tmp/jobs.tsv
+          done < "$WORK/jobs.tsv"
           echo "PNG count: $(find ims -name '*.png' | wc -l)"
 
           # Drop manifest entries whose PNG didn't actually download/convert
           # (e.g. a far-out forecast IMS hasn't published yet) so the app never
           # points at a missing image.
           node scripts/finalize-ims-manifests.mjs \
-            ims /tmp/pwx.candidate.json /tmp/sigwx.candidate.json
+            ims "$WORK/pwx.candidate.json" "$WORK/sigwx.candidate.json"
 
       - name: Publish ims-data branch
         run: |
