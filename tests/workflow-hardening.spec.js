@@ -76,11 +76,14 @@ test.describe('workflow trust and integrity gates', () => {
     expect(read('.github/workflows/charts-monitor.yml')).toContain('wx-data/wx.json');
 
     const ims = read('.github/workflows/ims-charts.yml');
-    expect(ims).toContain('sourceStem(f)');
-    // Two source PDFs can sanitise to one filename, and then one overwrites the other -- a
-    // chart labelled as one valid time showing another, which is what source-naming exists to
-    // prevent. A collision has to stop the run so every category keeps its last-good.
-    expect(ims).toContain('chart name collision');
+    // Source-naming and the collision guard are a module now (behaviour lives in
+    // tests/ims-chart-jobs.spec.js, including the rule that every manifest entry gets a
+    // download job the shell actually runs -- a list piped on stdout was not
+    // newline-terminated, so `while read` dropped the last chart and froze SIGWX, #1429).
+    expect(ims).toContain('node scripts/build-ims-chart-jobs.mjs');
+    expect(ims).not.toContain("node --input-type=module <<'NODE'");
+    // A final line with no newline still fills read's variables, so the loop must consume it.
+    expect(ims).toContain(`while IFS=$'\\t' read -r url out mode || [ -n "$url" ]; do`);
     expect(ims).toContain('/tmp/pwx.candidate.json');
     expect(ims).toContain('scripts/finalize-ims-manifests.mjs');
     expect(ims).toContain('persist-credentials: false');
