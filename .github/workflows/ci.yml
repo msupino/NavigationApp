@@ -111,6 +111,20 @@ jobs:
           fi
           echo "cache-bust ok: $vs"
 
+      - name: No merge-conflict markers in tracked files
+        run: |
+          # A conflict resolved by editing BOTH sides passes every other check here: the two
+          # cache-bust values agree, so the step above is happy, and markers inside <head> or
+          # a <script> body do not necessarily fail html-validate. They do break the page.
+          # Only the unambiguous forms are matched ("<<<<<<< x" / ">>>>>>> x"); a bare
+          # ======= is a legitimate Markdown underline.
+          if git grep -nE '^(<<<<<<< |>>>>>>> )' -- . > /tmp/conflict-markers.txt; then
+            echo "::error::Merge-conflict markers committed to tracked files:"
+            cat /tmp/conflict-markers.txt
+            exit 1
+          fi
+          echo "no conflict markers"
+
       - name: Service worker cache name sanity (docs/sw.js)
         run: |
           if ! grep -qE "^const CACHE = 'navaid-v[0-9]+';" docs/sw.js; then

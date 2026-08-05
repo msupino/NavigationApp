@@ -7464,10 +7464,25 @@ function _simSetStatus(ok) {
   el.style.color = ok ? tune('simStatusOkColor') : tune('simStatusErrColor');
 }
 
+// AbortSignal.timeout() is recent enough that a WebView with working fetch and
+// AbortController can still lack it -- and the expression THROWS before fetch is even
+// called, which the catch below turns into "No data". The simulator link then never
+// attempted a connection and looked exactly like a simulator that was not running.
+function _simAbort(ms) {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return { signal: AbortSignal.timeout(ms), done: () => {} };
+  }
+  if (typeof AbortController !== 'function') return { signal: undefined, done: () => {} };
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms);
+  return { signal: c.signal, done: () => clearTimeout(t) };
+}
+
 async function _simFetch() {
+  const ab = _simAbort(900);
   try {
     const url = (typeof simUrl === 'string' && simUrl.trim()) || 'http://localhost:2020';
-    const res = await fetch(url, { signal: AbortSignal.timeout(900) });
+    const res = await fetch(url, { signal: ab.signal });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     if (typeof d.latitude !== 'number' || typeof d.longitude !== 'number') throw new Error('bad data');
@@ -7483,6 +7498,8 @@ async function _simFetch() {
     draw();
   } catch (e) {
     _simSetStatus(false);
+  } finally {
+    ab.done();          // the fallback's timer would otherwise fire after every poll
   }
 }
 

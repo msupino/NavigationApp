@@ -394,14 +394,18 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   and delete buttons. The Nav log button opens a print-ready kneeboard
   document; its comm-change radio-frequency list is sorted by route waypoint
   order, not by note insertion order.
-- **Vertical profile / TOC / TOD:** `routeProfile()` in `core.js`
+- **Vertical profile / TOC (there is no TOD):** `routeProfile()` in `core.js`
   draws per-leg altitude ramps in the flight-plan modal and emits map markers
-  while the plan is open. Departure TOC and final TOD use the aircraft/profile
-  climb and descent performance (speed plus ft/min vertical speed), capped to
-  the available leg distance, and are emitted only when the route endpoint
-  resolves to an airfield elevation. The V/S input persists at
-  `navaid.profileVS` and moves the climb/descent ramp, including endpoint
-  TOC/TOD markers.
+  while the plan is open. The only ramp is the departure climb — that is where
+  the aircraft demonstrably leaves a known elevation. Departure TOC uses the
+  aircraft/profile climb performance (speed plus ft/min vertical speed), capped
+  to the available leg distance, and is emitted only when the departure resolves
+  to an airfield elevation. **No TOD:** no descent is invented onto the
+  destination field, and a leg starting anywhere other than an airfield is drawn
+  level at its own altitude with no synthesized mid-route ramp. `routeProfile()`
+  returns `tocs` and no `tods`, which `tests/vertical-profile.spec.js` pins. The
+  V/S input persists at `navaid.profileVS` and moves the climb ramp and its TOC
+  marker.
 - **Show Nav Waypoints** (default **on**): the active
   `<prefix>-nav-waypoints.json` is fetched once at boot; CVFR currently has
   172 points and renders white-fill / black-stroke 3.5 px
@@ -499,6 +503,16 @@ as a machine-readable registry.
   the `⌖ Fit to screen` toolbar button (Build section) or the `F`
   keyboard shortcut (when not focused in an input).
 - `navaid.layer` — selected base layer name.
+- `navaid.navDataPrefix` — which chart the *navigation data* comes from,
+  independently of the base layer's visuals: `''`/absent = **follow chart**
+  (the default), or an explicit `'cvfr'` / `'lsa'` / `'heli'`. One value drives
+  `layerDataPrefix()`, so it swaps nav waypoints, comm changes and leg altitudes
+  together — they belong to one chart, and mixing them (heli waypoints against
+  CVFR altitudes) would quietly produce a wrong plan. Changing it takes the same
+  path as a base-layer switch, so a route pinned to another chart is not
+  rewritten. Synced by Drive (`GDRIVE_SETTINGS_KEYS`), alongside
+  `navaid.layer`. Note that these are two independent settings: the base chart
+  decides what you see, this decides what the plan is computed from.
 - `navaid.lang` — `'en'` / `'he'`; bootstrap script in `index.html`
   reads this before the app loads.
 - `navaid.toolbarPos.<lang>` and `navaid.toolbarPosDesktop.<lang>` — `{x, y}`
