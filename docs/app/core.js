@@ -1727,7 +1727,10 @@ var planCardRect = null;
 function loadAircraft() {
   try {
     const raw = localStorage.getItem('navaid.aircraft');
-    if (raw) aircraft = JSON.parse(raw);
+    // `raw` can be the literal "null" from a build that persisted a cleared input; that is
+    // truthy, so it used to load as `aircraft = null` forever. Accept only a usable profile.
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && typeof parsed === 'object' && Number(parsed.gph) > 0) aircraft = parsed;
   } catch (e) { /* storage unavailable */ }
 }
 
@@ -2261,7 +2264,12 @@ function routeFreqSources() {
   // last leg — so if no comm-change switched to it yet, the final leg still
   // shows the arrival airport's freq. A comm-change at the same leg overrides
   // (notes are pushed after, so they sort last in the carry-forward).
-  if (legCount > 0 && wps.length > 1) {
+  // Only when there IS a later leg to attach it to. On a single-leg route the last leg is
+  // also the first, so `legCount - 1` is 0 -- the departure's own index -- and the stable
+  // sort below let the destination (pushed second) win it. A local hop then printed the
+  // ARRIVAL field's frequency from the moment of departure, which is the one leg where the
+  // pilot is certainly still on the departure field's.
+  if (legCount > 1) {
     const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[wps.length - 1]) : null;
     const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
     if (f) out.push({ wpi: legCount - 1, freq: f });
@@ -3348,6 +3356,27 @@ function applyLegAltitudeToLeg(i) {
 // Identity of a leg's two endpoints (rounded coords). Used to detect when a
 // waypoint was moved/snapped to a different point so a hand-edited altitude
 // doesn't carry the old leg's in/out onto the new one.
+// Did the leg's endpoints actually MOVE, or just wobble? The signature is 5-dp coordinates,
+// i.e. ~1 m, and `drag.moved` is set by a single pixel -- so comparing signature strings made
+// a 2 px nudge at high zoom count as "the pilot pointed this leg somewhere else", which reverted
+// the leg to auto and (for endpoints not on a charted segment, i.e. any hand-placed point)
+// blanked a typed 3500 ft in the plan card, the nav log, the profile and the export.
+// The threshold is the app's own "same point" tolerance, the one sameMapPoint and the snap
+// suppression already use, so "same place" means one thing everywhere.
+function legEndpointsMoved(oldSig, newSig) {
+  if (!oldSig || !newSig) return oldSig !== newSig;
+  const parse = sig => String(sig).split('|').map(p => {
+    const [lat, lng] = p.split(',').map(Number);
+    return { lat, lng };
+  });
+  const a = parse(oldSig), b = parse(newSig);
+  if (a.length !== 2 || b.length !== 2) return oldSig !== newSig;
+  for (let k = 0; k < 2; k++) {
+    if (!Number.isFinite(a[k].lat) || !Number.isFinite(b[k].lat)) return oldSig !== newSig;
+    if (!sameMapPoint(a[k], b[k])) return true;
+  }
+  return false;
+}
 function legEndpointSig(i) {
   const a = state.waypoints[i], b = state.waypoints[i + 1];
   if (!a || !b) return '';
@@ -3376,10 +3405,12 @@ function applyLegAltitudesToRoute() {
       // dataset rather than keeping the previous leg's in/out.
       if (leg._altSig === undefined) {
         leg._altSig = sig;                 // adopt current; don't clobber on load
-      } else if (leg._altSig !== sig) {
+      } else if (legEndpointsMoved(leg._altSig, sig)) {
         leg._legAltitudeAuto = 1;          // endpoints changed → back to auto
         if (applyLegAltitudeToLeg(i)) changed = true;
         leg._altSig = sig;
+      } else if (leg._altSig !== sig) {
+        leg._altSig = sig;                 // moved, but not far enough to mean anything
       }
       continue;
     }
