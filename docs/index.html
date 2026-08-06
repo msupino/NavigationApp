@@ -857,6 +857,28 @@
         'https://unpkg.com/leaflet-imageoverlay-rotated@0.2.1/Leaflet.ImageOverlay.Rotated.js': 'sha384-7oBmAX73N5DMKPSTLhXDB3qYFCIcDn1NtkLTsqtvLbzJjwYn/GF+0TnSMG6o4Bg9',
         'https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.js': 'sha384-quWDbobCTGKxZkGplLk3Dw6mrjO/vIqTVLDRTh1MNumhbQ5ZDCviVnH3UNOpwrEQ'
       };
+      // A script that fails to load must SAY so. Blocking Leaflet (a CDN outage, a filtering
+      // airfield network, a captive portal, or an SRI mismatch after a version bump) produced a
+      // fully-drawn toolbar over a blank grey chart: every menu present and styled, the console
+      // full of "L is not defined", and nothing on screen to say the app was not working. A
+      // pilot would reasonably read that as "no chart data here".
+      function loadFailed(src) {
+        var seen = document.getElementById('boot-error');
+        if (!seen) {
+          seen = document.createElement('div');
+          seen.id = 'boot-error';
+          seen.setAttribute('role', 'alert');
+          seen.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;' +
+            'align-items:center;justify-content:center;padding:24px;text-align:center;' +
+            'font:600 15px/1.5 system-ui,sans-serif;color:#fff;background:rgba(24,18,18,0.94)';
+          document.body.appendChild(seen);
+        }
+        // Deliberately not translated: the language table is itself one of these scripts.
+        seen.textContent = 'NavAid could not load a required component (' +
+          String(src).replace(/^https?:\/\//, '').split('/')[0] +
+          '). Check the connection and reload — the chart and route tools are unavailable ' +
+          'until it loads.';
+      }
       for (var i = 0; i < srcs.length; i++) {
         var s = document.createElement('script');
         s.src = srcs[i];
@@ -865,6 +887,7 @@
           s.crossOrigin = 'anonymous';
         }
         s.async = false;            // in-order, like parser-inserted
+        s.onerror = (function (src) { return function () { loadFailed(src); }; }(srcs[i]));
         document.head.appendChild(s);
       }
     }());
