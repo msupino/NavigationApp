@@ -2,10 +2,11 @@
 // Two things about the wind field, both discovered while fixing its rotation:
 //
 //  1. leaflet-velocity scales particle speed by mapArea^0.4, taking mapArea from
-//     map.getBounds() — the axis-aligned box of a ROTATED viewport, which grows with the
-//     bearing even though the visible area does not. Measured on this map: 0.1216 deg² at 0°,
-//     0.2814 at 45°, 0.1216 again at 90°, giving particles ~36% too fast at 45°. Direction
-//     and position are fine and the colour ramp reads real m/s, so nothing a pilot READS is
+//     map.getBounds() — the axis-aligned box of a ROTATED viewport, which grows toward the
+//     diagonals even though the visible area does not. Swept at 15° steps, the animation was
+//     too fast at 20 of 24 bearings: 1.00x at 0/90/180/270 (only the cardinals were right),
+//     1.20x at 15/75/…, 1.32x at 30/60/…, peaking 1.36x at 45/135/225/315. Direction and
+//     position are fine and the colour ramp reads real m/s, so nothing a pilot READS is
 //     wrong — the animation just overstates the wind.
 //  2. leaflet-velocity was in the same "required script" list as Leaflet itself, so a blocked
 //     jsdelivr blacked out the entire app behind "could not load a required component" — for
@@ -55,23 +56,37 @@ async function screenMagnitude(page, bearing) {
     map.eachLayer(l => { if (l._windy) lyr = l; });
     const c = document.querySelector('canvas.velocity-overlay');
     const v = lyr._windy.field(Math.round(c.width / 2), Math.round(c.height / 2));
-    return { screen: Math.hypot(v[0], v[1]), data: v[2] };
+    return { screen: Math.hypot(v[0], v[1]), data: v[2],
+      angle: Math.atan2(v[1], v[0]) * 180 / Math.PI };
   });
 }
 
-test('particle speed does not change with the map bearing', async ({ page }) => {
+test('particle speed is the same at every bearing, and the direction tracks it', async ({ page }) => {
+  test.setTimeout(180000);
   await bootWithField(page);
-  const at0 = await screenMagnitude(page, 0);
-  const at45 = await screenMagnitude(page, 45);
-  const at90 = await screenMagnitude(page, 90);
-  // Same wind, so the same animation speed at every bearing. Unpatched this read
-  // 12.66 / 17.26 / 12.66 — 1.36x too fast at 45°, correct at the right angles, because the
-  // rotated bounding box is largest at the diagonals.
-  expect(at0.data).toBeCloseTo(10, 1);
-  expect(at45.screen / at0.screen).toBeCloseTo(1, 1);
-  expect(at90.screen / at0.screen).toBeCloseTo(1, 1);
-  // ...and the data speed the colour ramp uses is untouched throughout.
-  expect(at45.data).toBeCloseTo(at0.data, 1);
+  // Sampling three bearings was not enough to call this tested: the error follows a 4-fold
+  // curve that is ZERO at the cardinals, so 0/90/180/270 alone would have looked perfect.
+  // Unpatched, measured at 15° steps: 1.00x at 0/90/180/270, 1.20x at 15/75/105/…,
+  // 1.32x at 30/60/120/…, peaking 1.36x at 45/135/225/315 — wrong at 20 of 24 bearings.
+  const rows = [];
+  for (const b of [0, 15, 30, 45, 60, 90, 135, 180, 225, 270, 315, 345]) {
+    rows.push(await screenMagnitude(page, b));
+    rows[rows.length - 1].bearing = b;
+  }
+  const base = rows[0];
+  expect(base.data).toBeCloseTo(10, 1);
+  for (const r of rows) {
+    // Same wind, same animation speed — whatever the map is turned to.
+    expect(r.screen / base.screen, 'speed at ' + r.bearing + '°').toBeCloseTo(1, 1);
+    // ...and the data speed the colour ramp reads is untouched throughout.
+    expect(r.data, 'data speed at ' + r.bearing + '°').toBeCloseTo(base.data, 1);
+    // The screen direction turns WITH the map: a due-east wind points along +x at 0° and
+    // rotates by exactly the bearing. Without the rebuild it stayed at 0° for every bearing.
+    const want = ((r.bearing % 360) + 360) % 360;
+    const got = ((r.angle % 360) + 360) % 360;
+    const off = Math.min(Math.abs(got - want), 360 - Math.abs(got - want));
+    expect(off, 'direction at ' + r.bearing + '° read ' + r.angle + '°').toBeLessThanOrEqual(2);
+  }
 });
 
 test('the patch is applied to the library, not vendored around it', () => {
