@@ -20,6 +20,19 @@ on:
     - cron: '23 * * * *'        # hourly (UTC)
   workflow_dispatch:
 
+# The only scheduled publisher that declared neither: without `permissions` the job took the
+# repository default scopes -- on a permissive repo that is write access to issues, PRs,
+# actions and packages -- for a step that curls an external site and regex-parses its HTML.
+# Without a concurrency group, a workflow_dispatch fired inside the hourly run's window gave
+# two runs force-pushing notam-data, where whichever finished last won: an older snapshot
+# could overwrite a newer one. Both siblings (aviation-data, ims-charts) guard this already.
+permissions:
+  contents: write
+
+concurrency:
+  group: notam-data
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -177,15 +190,37 @@ jobs:
               '| skipped IFR/checklist:', skipped,
               '| with geom:', out.notams.filter(n => n.geom).length,
               '| with dates:', out.notams.filter(n => n.start || n.end).length);
-            // Publish only if we actually got full NOTAM detail for a good share
-            // of them (guards against a Radware block that lets the list through
-            // but 403s the detail pages, which would publish text-less NOTAMs).
-            if (detailOk >= Math.max(1, uniq.length * 0.5)) fetched = true;
-            else console.error('too few detail pages succeeded — keep last-good');
+            // Publish only when nearly every detail page parsed. At the old 50% a Radware
+            // throttle that let the list through but blocked half the detail pages published a
+            // HALF list under a fresh generatedAt: the missing NOTAMs -- which can include a
+            // CVFR route closure or an active danger area -- were indistinguishable from "no
+            // NOTAM there", and the staleness monitor stayed green because the timestamp was
+            // current. A partial list presented as complete is the false-safe value this repo
+            // refuses elsewhere (see terrain.js on MSA).
+            out.detailOk = detailOk;
+            out.detailTotal = uniq.length;
+            if (detailOk >= Math.max(1, Math.ceil(uniq.length * 0.9))) {
+              fetched = true;
+              if (detailOk < uniq.length) {
+                console.error('::warning::NOTAM detail incomplete: ' + detailOk + '/' +
+                  uniq.length + ' pages parsed; publishing with coverage recorded.');
+              }
+            } else {
+              console.error('::error::NOTAM detail too incomplete to publish: ' + detailOk +
+                '/' + uniq.length + ' pages parsed. Keeping last-good; the feed will not' +
+                ' advance until this succeeds.');
+            }
           }
           await run().catch(e => console.error('fetch failed:', e.message));
           if (fetched) writeFileSync('out/notam.json', JSON.stringify(out, null, 1));
-          else console.error('Not publishing; keeping last-good NOTAMs.');
+          else {
+            // Exit non-zero. A run that publishes nothing used to be a green check with an
+            // empty annotations panel -- identical in the Actions list to a successful one --
+            // so the only detector was charts-monitor noticing staleness hours later. That is
+            // how the SIGWX feed sat frozen for ~9 h behind unbroken green runs (#1429).
+            console.error('::error::Not publishing; keeping last-good NOTAMs.');
+            process.exitCode = 1;
+          }
           NODE
 
       - name: Publish notam-data branch
