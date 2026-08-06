@@ -51,14 +51,64 @@ test.describe('workflow trust and integrity gates', () => {
     }
   });
 
-  test('pull requests are verified as local artifacts and never deployed to Pages', () => {
+  // PR previews are published again, deliberately replacing the rule that no pull request
+  // is ever deployed. That rule was one way to keep a fork's code off the production
+  // origin; the narrower way keeps the feature and still closes the hole, so what is
+  // pinned here is the same-repo condition rather than the absence of previews.
+  test('pull requests publish previews, but only from this repository', () => {
     const workflow = read('.github/workflows/deploy.yml');
     const doc = YAML.parse(read('.github/workflows/deploy.yml'));
-    expect(String(doc.jobs.deploy.if || '')).toContain("github.event_name != 'pull_request'");
-    // Nothing may fetch or publish other people's branches from this workflow.
-    expect(workflow).not.toContain('gh pr list --state open');
-    expect(workflow).not.toContain('site/branch/');
-    expect(workflow).not.toContain('Post preview link comment');
+    const deploy = doc.jobs.deploy;
+    // A preview is same-origin with the live app: it shares localStorage, the
+    // service-worker scope and any stored Drive/BYOK token, whatever path it sits under.
+    // So a fork's branch must never reach it -- gated in the job AND in the branch list.
+    expect(String(deploy.if || '')).toMatch(/head\.repo\.full_name == github\.repository/);
+    expect(workflow).toContain('isCrossRepository == false');
+    // The two things that make a preview findable from the PR.
+    expect(workflow).toContain('Create PR deployment');
+    expect(workflow).toContain('Post preview link comment');
+    expect(deploy.permissions).toMatchObject({ deployments: 'write', 'pull-requests': 'write' });
+    // One URL for the comment and the deployment record: they used to differ
+    // (/branch/<name>/ versus /pr/<n>/), so the two links on a PR could show
+    // different builds after a rebase.
+    expect(workflow).not.toMatch(/\/branch\/\$\{BRANCH\}\//);
+    // Previews stay out of search results, and the deployment is marked transient so the
+    // Deployments tab does not accumulate live-looking entries.
+    expect(workflow).toContain('name="robots" content="noindex"');
+    expect(workflow).toContain('"transient_environment": true');
+    // Every preview gets its OWN storage namespace, injected as the first script in its
+    // <head>. Same origin as the live app means same localStorage without it.
+    expect(workflow).toContain('pr-store.js');
+    expect(workflow).toContain('s/__PR_PREFIX__/pr-${NUM}./');
+    // ...and a preview that could not be isolated is not published at all.
+    expect(workflow).toMatch(/skipping its preview/);
+    // The shim must never reach production or staging: only the preview branch injects it.
+    const assemble = workflow.slice(workflow.indexOf('- name: Assemble site'),
+      workflow.indexOf('- name: Build previews'));
+    expect(assemble).not.toContain('pr-store.js');
+  });
+
+  test('the deployed-site suite runs against a preview with the shim stripped', () => {
+    const workflow = read('.github/workflows/deploy.yml');
+    // The suite seeds localStorage from page.addInitScript, which runs BEFORE any page
+    // script -- so with the shim active every seeded key is namespaced away, the app boots
+    // without the controls the tests click, and the whole run times out (observed: 171
+    // passed, 1533 did not run). The shim is a property of the PUBLISHED preview and is
+    // covered on its own by tests/preview-store-isolation.spec.js.
+    const serve = workflow.slice(workflow.indexOf('Serve published site locally'));
+    expect(serve).toMatch(/sed -i '\/<script src="pr-store\.js">/);
+  });
+
+  test('the storage shim exists and is inert until a prefix is substituted', () => {
+    const shim = read('.github/preview/pr-store.js');
+    expect(shim).toContain('__PR_PREFIX__');
+    // Guard for a half-applied build: an unsubstituted placeholder must leave the real
+    // store alone rather than isolating under a literal placeholder name.
+    expect(shim).toMatch(/indexOf\('__PR_'\) === 0\) return/);
+    for (const fn of ['getItem', 'setItem', 'removeItem', 'clear', 'key']) {
+      expect(shim, fn + ' not wrapped').toContain(fn + ':');
+    }
+    expect(shim).toContain('sessionStorage');
   });
 
   test('scheduled feed jobs preserve last-good outputs on partial failures', () => {

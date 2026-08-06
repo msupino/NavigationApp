@@ -483,6 +483,31 @@ function validateRoute(d) {
           _v(l.outLabel, 'p', 'number', p + '.outLabel', errs);
         }
       }
+      // The canonical shape grew: the two cumulative-time labels, the per-leg reference
+      // VOR, the hidden-kite flag and the speed-auto pins all travel on the wire now, and
+      // "strict" validated none of them. `hideKite: "false"` passed the advertised check
+      // and then read as TRUE in applyRouteData, and a malformed label became non-finite
+      // offsets at render time instead of the promised field-path error.
+      for (const k of ['cumLabel', 'cumLabelRet']) {
+        if (!Object.prototype.hasOwnProperty.call(l, k)) continue;
+        if (_v(l, k, 'object', p, errs)) {
+          _v(l[k], 'a', 'number', p + '.' + k, errs);
+          if (!l[k]._default) _v(l[k], 'p', 'number', p + '.' + k, errs);
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(l, 'vorRef')) {
+        if (_vKind(l.vorRef) !== 'string') {
+          errs.push(p + '.vorRef: expected string, got ' + _vKind(l.vorRef));
+        } else if (l.vorRef.length > 8) {
+          errs.push(p + '.vorRef: expected an ident of at most 8 characters');
+        }
+      }
+      // Written only as the literal 1, so anything else -- "false", 0, "" -- is a file
+      // saying something the app cannot honestly interpret.
+      for (const k of ['hideKite', 'speedAuto', 'retSpeedAuto']) {
+        if (!Object.prototype.hasOwnProperty.call(l, k)) continue;
+        if (l[k] !== 1) errs.push(p + '.' + k + ': expected 1, got ' + JSON.stringify(l[k]));
+      }
     }
   }
   if (notesOk) {
@@ -7474,23 +7499,40 @@ function _simSetStatus(ok) {
 // called, which the catch below turns into "No data". The simulator link then never
 // attempted a connection and looked exactly like a simulator that was not running.
 function _simAbort(ms) {
-  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
-    return { signal: AbortSignal.timeout(ms), done: () => {} };
+  // An AbortController either way, so simStop() can cancel an in-flight poll rather than
+  // waiting out its timeout. AbortSignal.timeout() alone gave no handle to do that.
+  if (typeof AbortController !== 'function') {
+    return { signal: undefined, done: () => {}, abort: () => {} };
   }
-  if (typeof AbortController !== 'function') return { signal: undefined, done: () => {} };
   const c = new AbortController();
   const t = setTimeout(() => c.abort(), ms);
-  return { signal: c.signal, done: () => clearTimeout(t) };
+  return {
+    signal: c.signal,
+    done: () => clearTimeout(t),
+    abort: () => { clearTimeout(t); c.abort(); },
+  };
 }
 
+// Every start gets a new session id, and a poll only applies its result if its own session
+// is still the current one. Without it, a request already in flight when the pilot pressed
+// Stop still repopulated the aircraft and wrote "Connected" when it settled -- and a quick
+// stop/start let the OLD session's fix overwrite the new session's position.
+let _simSession = 0;
+let _simAborter = null;
+
 async function _simFetch() {
+  const session = _simSession;
   const ab = _simAbort(900);
+  _simAborter = ab;
   try {
     const url = (typeof simUrl === 'string' && simUrl.trim()) || 'http://localhost:2020';
     const res = await fetch(url, { signal: ab.signal });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     if (typeof d.latitude !== 'number' || typeof d.longitude !== 'number') throw new Error('bad data');
+    // Stopped, or restarted, while this request was in flight: its answer is about a
+    // session the pilot has already ended, so it must not touch the map or the status.
+    if (session !== _simSession) return;
     window.simAircraft = {
       lat: d.latitude,
       lng: d.longitude,
@@ -7502,14 +7544,16 @@ async function _simFetch() {
     if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
     draw();
   } catch (e) {
-    _simSetStatus(false);
+    if (session === _simSession) _simSetStatus(false);
   } finally {
     ab.done();          // the fallback's timer would otherwise fire after every poll
+    if (_simAborter === ab) _simAborter = null;
   }
 }
 
 function simStart() {
   if (_simInterval) return;
+  _simSession++;                 // anything still in flight belongs to the previous session
   simOn = true;
   window.simAircraft = null;
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
@@ -7520,8 +7564,12 @@ function simStart() {
 
 function simStop() {
   simOn = false;
+  _simSession++;                 // invalidate any in-flight poll's result
   window.simAircraft = null;
   if (_simInterval) { clearInterval(_simInterval); _simInterval = null; }
+  // ...and don't wait for its timeout: abort it now so the socket and the fallback timer
+  // go with it.
+  if (_simAborter) { try { _simAborter.abort(); } catch (e) { /* already settled */ } }
   try { localStorage.setItem('navaid.simOn', '0'); } catch (e) { /* */ }
   const _el = window._simStatusEl;
   if (_el) _el.textContent = '';
