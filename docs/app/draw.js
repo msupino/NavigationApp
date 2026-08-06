@@ -861,8 +861,12 @@ function flashNotam(id) {
   // Frame the map on the NOTAM so the highlight is actually in view.
   const pts = notamLatLngs(n);
   if (typeof map !== 'undefined' && map && pts.length) {
-    if (pts.length === 1) map.setView(pts[0], Math.max(map.getZoom(), 10), { animate: true });
-    else map.fitBounds(L.latLngBounds(pts), { padding: [80, 80], maxZoom: 11, animate: true });
+    if (pts.length === 1) {
+      map.setView(pts[0], Math.max(map.getZoom(), tune('fitNotamPointZoom')), { animate: true });
+    } else {
+      map.fitBounds(L.latLngBounds(pts),
+        fitOpts('fitNotamPaddingPx', 'fitNotamMaxZoom', { animate: true }));
+    }
   }
   notamFlashId = id;
   notamFlashStart = performance.now();

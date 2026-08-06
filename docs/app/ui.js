@@ -4345,7 +4345,7 @@ function showLsaChart() {
     row.onclick = () => {
       try {
         const b = L.latLngBounds(a.coords.map(c => L.latLng(c[0], c[1])));
-        map.fitBounds(b, { padding: [40, 40], maxZoom: 12 });
+        map.fitBounds(b, fitOpts('fitAreaPaddingPx', 'fitAreaMaxZoom'));
       } catch (err) { /* */ }
       window.__lsaHighlight = a; draw();
       setTimeout(() => { if (window.__lsaHighlight === a) { window.__lsaHighlight = null; draw(); } }, 2000);
