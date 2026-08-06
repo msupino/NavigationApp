@@ -2109,6 +2109,36 @@ function legKiteHidden(leg) {
   return !!(leg && leg.hideKite);
 }
 
+// A PR preview may SHARE a big static asset directory with the deployed root instead of
+// carrying its own copy: every preview used to ship ~12 MB of chart-overlay imagery it had
+// not changed, and with several PRs open that pushed one Pages artifact near 300 MB, past
+// what Pages can publish inside the deploy action's (non-configurable) ceiling.
+//
+// The build omits a directory only when the branch has not touched it, and lists what it
+// omitted in window.__navPreviewSharedDirs. So a branch that DOES edit an overlay still
+// previews its own images -- the saving is only ever taken where there is nothing to see.
+//
+// Filesystem links cannot do this job: actions/upload-pages-artifact packs with
+// `tar --dereference --hard-dereference`, which turns both soft and hard links back into
+// full copies, and Pages does not serve through symlinks either. Hence a URL-level
+// indirection, the same trick plateBase() uses for the byop plate set.
+function navPreviewSharesDir(dir) {
+  const shared = (typeof window !== 'undefined' && window.__navPreviewSharedDirs) || null;
+  return !!(shared && shared.indexOf(dir) >= 0);
+}
+
+// Base URL for a static asset directory: this document's own copy, unless the build told us
+// this preview shares the root's.
+function navAssetBase(dir) {
+  const here = new URL(dir + '/', document.baseURI).href;
+  if (!navPreviewSharesDir(dir)) return here;
+  // Strip the preview suffix exactly as plateBase() does -- `branch/.+` so a branch name
+  // containing a slash strips fully.
+  const u = new URL(here);
+  u.pathname = u.pathname.replace(/[^/]*\/$/, '').replace(/(staging|pr\/[^/]+|branch\/.+)\/$/, '') + dir + '/';
+  return u.href;
+}
+
 function navLangPosKey(base) {
   const lang = (document.documentElement && document.documentElement.lang === 'he') ? 'he' : 'en';
   return base + '.' + lang;

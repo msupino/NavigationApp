@@ -255,6 +255,28 @@ jobs:
             # No byop copy under previews -- io.js plateBase() resolves plates against the
             # shared root copy at runtime.
             rm -rf "$STAGING/byop"
+            # Same trick for the chart-overlay image sets, which are ~12 MB of the ~14.7 MB a
+            # preview would otherwise carry (docs/ is 141 MB, of which byop is 126 MB). A set
+            # is dropped ONLY when this branch has not touched it, so a branch that edits an
+            # overlay still previews its own images; ui.js navAssetBase() then resolves the
+            # dropped ones against the deployed root. Filesystem links cannot help here:
+            # upload-pages-artifact packs with --dereference --hard-dereference.
+            SHARED=""
+            for d in circuit-img training-img cvfr-img heli-img commfail-img; do
+              [ -d "$STAGING/$d" ] || continue
+              if git diff --quiet "origin/main...origin/$BRANCH" -- "docs/$d" 2>/dev/null; then
+                rm -rf "$STAGING/$d"
+                SHARED="$SHARED\"$d\","
+              else
+                echo "  keeps its own $d (branch modified it)"
+              fi
+            done
+            if [ -n "$SHARED" ]; then
+              # Tell the page which directories it does not carry. First script in <head>,
+              # before any overlay loader runs.
+              printf 'window.__navPreviewSharedDirs=[%s];\n' "${SHARED%,}" > "$STAGING/preview-shared.js"
+              sed -i '0,/<head>/s//<head>\n  <script src="preview-shared.js"><\/script>/' "$STAGING/index.html" 2>/dev/null || true
+            fi
             # ...and no service worker: Cache Storage is per ORIGIN, so a preview worker's
             # cleanup used to delete the live app's offline shell just by being visited.
             rm -f "$STAGING/sw.js"

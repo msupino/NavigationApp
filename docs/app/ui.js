@@ -3648,7 +3648,8 @@ let circuitOpacity = lsNum(CIRCUIT_OPACITY_KEY, CIRCUIT_DEFAULT_OPACITY);
 // document base like the app's own scripts, WITHOUT stripping any preview
 // suffix — stripping to root 404s on previews that carry their own images.
 function circuitImgBase() {
-  return new URL('circuit-img/', document.baseURI).href;
+  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
+  return navAssetBase('circuit-img');
 }
 
 function loadCircuitOverlays() {
@@ -3683,7 +3684,8 @@ let trainingOpacity = lsNum(TRAINING_OPACITY_KEY, TRAINING_DEFAULT_OPACITY);
 // Same resolution rule as circuitImgBase(): training-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
 function trainingImgBase() {
-  return new URL('training-img/', document.baseURI).href;
+  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
+  return navAssetBase('training-img');
 }
 
 function loadTrainingOverlays() {
@@ -3718,7 +3720,8 @@ let cvfrOpacity = lsNum(CVFR_OPACITY_KEY, CVFR_DEFAULT_OPACITY);
 // Same resolution rule as trainingImgBase(): cvfr-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
 function cvfrImgBase() {
-  return new URL('cvfr-img/', document.baseURI).href;
+  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
+  return navAssetBase('cvfr-img');
 }
 
 function loadCvfrOverlays() {
@@ -3753,7 +3756,8 @@ let heliOpacity = lsNum(HELI_OPACITY_KEY, HELI_DEFAULT_OPACITY);
 // Same resolution rule as cvfrImgBase(): heli-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
 function heliImgBase() {
-  return new URL('heli-img/', document.baseURI).href;
+  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
+  return navAssetBase('heli-img');
 }
 
 function loadHeliOverlays() {
@@ -3788,7 +3792,8 @@ let commfailOpacity = lsNum(COMMFAIL_OPACITY_KEY, COMMFAIL_DEFAULT_OPACITY);
 // Same resolution rule as cvfrImgBase(): commfail-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
 function commfailImgBase() {
-  return new URL('commfail-img/', document.baseURI).href;
+  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
+  return navAssetBase('commfail-img');
 }
 
 function loadCommfailOverlays() {
