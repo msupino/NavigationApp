@@ -434,6 +434,11 @@ jobs:
           # times out. The shim is a deployment property of a published preview, and it is
           # covered on its own by tests/preview-store-isolation.spec.js.
           sed -i '/<script src="pr-store.js"><\/script>/d' "$PREVIEW/index.html" 2>/dev/null || true
+          # ...and put sw.js back for the same reason. A PUBLISHED preview deliberately has
+          # none (Cache Storage is per origin, so its worker's cleanup would delete the live
+          # app's offline shell), but this job exists to verify the PR's app build, and part
+          # of that build is the service worker -- offline-tiles.spec.js reads its source.
+          cp docs/sw.js "$PREVIEW/sw.js" 2>/dev/null || true
           python3 -m http.server 8000 --directory _site >/tmp/http.log 2>&1 &
           SRV=$!
           trap 'kill $SRV 2>/dev/null || true' EXIT

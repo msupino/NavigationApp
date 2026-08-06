@@ -97,6 +97,9 @@ test.describe('workflow trust and integrity gates', () => {
     // covered on its own by tests/preview-store-isolation.spec.js.
     const serve = workflow.slice(workflow.indexOf('Serve published site locally'));
     expect(serve).toMatch(/sed -i '\/<script src="pr-store\.js">/);
+    // Same reasoning for sw.js: the published preview has none on purpose, but this job
+    // verifies the PR's build and the suite reads the worker's source.
+    expect(serve).toMatch(/cp docs\/sw\.js "\$PREVIEW\/sw\.js"/);
   });
 
   test('no PR metadata is ever interpolated into shell source', () => {
