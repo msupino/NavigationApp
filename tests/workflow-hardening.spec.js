@@ -76,6 +76,28 @@ test.describe('workflow trust and integrity gates', () => {
     // Deployments tab does not accumulate live-looking entries.
     expect(workflow).toContain('name="robots" content="noindex"');
     expect(workflow).toContain('"transient_environment": true');
+    // Every preview gets its OWN storage namespace, injected as the first script in its
+    // <head>. Same origin as the live app means same localStorage without it.
+    expect(workflow).toContain('pr-store.js');
+    expect(workflow).toContain('s/__PR_PREFIX__/pr-${NUM}./');
+    // ...and a preview that could not be isolated is not published at all.
+    expect(workflow).toMatch(/skipping its preview/);
+    // The shim must never reach production or staging: only the preview branch injects it.
+    const assemble = workflow.slice(workflow.indexOf('- name: Assemble site'),
+      workflow.indexOf('- name: Build previews'));
+    expect(assemble).not.toContain('pr-store.js');
+  });
+
+  test('the storage shim exists and is inert until a prefix is substituted', () => {
+    const shim = read('.github/preview/pr-store.js');
+    expect(shim).toContain('__PR_PREFIX__');
+    // Guard for a half-applied build: an unsubstituted placeholder must leave the real
+    // store alone rather than isolating under a literal placeholder name.
+    expect(shim).toMatch(/indexOf\('__PR_'\) === 0\) return/);
+    for (const fn of ['getItem', 'setItem', 'removeItem', 'clear', 'key']) {
+      expect(shim, fn + ' not wrapped').toContain(fn + ':');
+    }
+    expect(shim).toContain('sessionStorage');
   });
 
   test('scheduled feed jobs preserve last-good outputs on partial failures', () => {

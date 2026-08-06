@@ -227,6 +227,27 @@ jobs:
               || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; return; }
             # Previews are non-canonical -- keep them out of search indexes.
             sed -i '0,/<head>/s//<head>\n  <meta name="robots" content="noindex">/' "$STAGING/index.html" 2>/dev/null || true
+            # ...and give the preview its OWN localStorage/sessionStorage namespace. It is
+            # served from the production origin, and storage is per origin, not per path:
+            # without this an unreviewed branch reads the pilot's saved routes, their
+            # Drive/BYOK tokens and every setting from the live app, and can overwrite them.
+            # Injected only here, so dev and production are untouched.
+            # Take the shim from the branch being previewed when it has one, else from
+            # main. Only the checkouts of main (m/) and dev (d/) exist on disk here, so a
+            # branch's own copy has to come out of git rather than off the filesystem.
+            if ! git show "origin/$BRANCH:.github/preview/pr-store.js" > "$STAGING/pr-store.js" 2>/dev/null; then
+              cp .github/preview/pr-store.js "$STAGING/pr-store.js" 2>/dev/null || true
+            fi
+            if [ ! -s "$STAGING/pr-store.js" ]; then
+              # No isolation available => do not publish this preview at all. Serving it
+              # would give an unreviewed branch the live app's storage on the same origin.
+              echo "::warning::PR #$NUM has no pr-store.js on its branch or on main; skipping its preview"
+              rm -rf "$STAGING"
+              return
+            fi
+            sed -i "s/__PR_PREFIX__/pr-${NUM}./" "$STAGING/pr-store.js"
+            # First script in <head>, before anything reads storage.
+            sed -i '0,/<head>/s//<head>\n  <script src="pr-store.js"><\/script>/' "$STAGING/index.html" 2>/dev/null || true
             rewrite_cache_busts "$STAGING" "$SHA"
             # No byop copy under previews -- io.js plateBase() resolves plates against the
             # shared root copy at runtime.
