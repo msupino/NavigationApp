@@ -102,6 +102,23 @@ test.describe('workflow trust and integrity gates', () => {
     expect(serve).toMatch(/cp docs\/sw\.js "\$PREVIEW\/sw\.js"/);
   });
 
+  test('Pages deploys queue per PR instead of piling up on one group', () => {
+    const doc = YAML.parse(read('.github/workflows/deploy.yml'));
+    const c = doc.jobs.deploy.concurrency;
+    // One shared 'pages' group meant every open PR's whole-site publish queued behind every
+    // other, until actions/deploy-pages hit its 10-minute wait and failed -- blocking
+    // unrelated PRs and the promo. A PR's deploys now supersede only THAT PR's.
+    expect(String(c.group)).toMatch(/pages-pr-\{0\}/);
+    expect(String(c.group)).toMatch(/pages-prod/);
+    expect(String(c['cancel-in-progress'])).toMatch(/github\.event_name == 'pull_request'/);
+    // Production publishes must never be cancelled by a preview: they are in their own
+    // group, and cancel-in-progress is false for anything that is not a pull request.
+    expect(String(c.group)).not.toBe('pages');
+    // ...and the wait has to survive sitting behind another deployment.
+    const step = doc.jobs.deploy.steps.find(x => String(x.uses || '').includes('deploy-pages'));
+    expect(Number(step.with.timeout)).toBeGreaterThan(600000);
+  });
+
   test('no PR metadata is ever interpolated into shell source', () => {
     const workflow = read('.github/workflows/deploy.yml');
     // A branch name is attacker-controlled and git accepts $( ) inside a ref, so

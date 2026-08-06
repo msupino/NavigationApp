@@ -304,9 +304,22 @@ jobs:
       id-token: write
       deployments: write        # the "View deployment" record on the PR
       pull-requests: write      # the preview-link comment
+    # Restoring previews turned every PR event into a whole-site Pages publish, and Pages
+    # deploys ONE at a time -- so with several PRs open the deploys queued behind each other
+    # until actions/deploy-pages hit its own 10-minute wait and failed with
+    # "Current status: deployment_queued ... Timeout reached, aborting!". That blocked
+    # unrelated PRs and the dev->main promo, none of which had anything wrong with them.
+    #
+    # Two changes. A PR's deploys are grouped PER PR and supersede each other: a new push
+    # makes the previous preview of that PR pointless, and cancelling it cannot strand
+    # another PR's required check (which one shared 'pages-preview' group would have done).
+    # Production/staging publishes keep their own group and are never cancelled.
     concurrency:
-      group: pages
-      cancel-in-progress: false
+      group: >-
+        ${{ github.event_name == 'pull_request'
+            && format('pages-pr-{0}', github.event.number)
+            || 'pages-prod' }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -314,6 +327,11 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # ...and wait long enough to sit behind another deployment instead of failing.
+          # Queueing is normal now that every open PR publishes; a 10-minute ceiling was
+          # shorter than the queue on a busy afternoon.
+          timeout: 1800000        # 30 min (action default: 600000)
 
       - name: Create PR deployment
         if: github.event_name == 'pull_request' && github.event.action != 'closed'
