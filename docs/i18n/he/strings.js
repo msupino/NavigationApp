@@ -519,6 +519,8 @@ window.S = {
   windFetchErr: 'משיכת הרוח נכשלה — בדוק חיבור',
   tbWindField: 'הצג שדה רוח',
   tbWindFieldTitle: 'שדה רוחות עיליות מונפש (~3000 רגל) ממקור Open-Meteo חי',
+  windFieldNorthUpNote: '— רק בכיוון צפון',
+  windFieldNorthUpNoteTitle: 'שדה הרוח מצויר רק כאשר המפה מכוונת לצפון. החזירו את הכיוון ל-0° (חוגת הכיוון) כדי לאפשר אותו.',
   tbWindFieldAlt: 'גובה',
   tbWindFieldOpacity: 'בהירות שדה',
   tbWindFieldOpacityReset: 'אפס בהירות',

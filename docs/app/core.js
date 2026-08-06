@@ -1155,6 +1155,8 @@ window.S = Object.assign({
   windFetchErr: 'Wind fetch failed — check connection',
   tbWindField: 'Show wind field',
   tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
+  windFieldNorthUpNote: '— north-up only',
+  windFieldNorthUpNoteTitle: 'The wind field can only be drawn with the map oriented north. Set the bearing to 0° (the ⌖ dial, or tap it) to enable it.',
   tbWindFieldAlt: 'Altitude',
   tbWindFieldOpacity: 'Field opacity',
   tbWindFieldOpacityReset: 'Reset opacity',

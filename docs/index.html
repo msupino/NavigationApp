@@ -459,8 +459,13 @@
           </div>
           <!-- Animated wind-field overlay (live Open-Meteo grid → leaflet-velocity). -->
           <div class="tb-group-box">
-            <label class="navtoggle" data-i18n-title="tbWindFieldTitle">
+            <label class="navtoggle navtoggle-wrap" data-i18n-title="tbWindFieldTitle">
               <input type="checkbox" id="windfield-cb"> <span data-i18n="tbWindField"></span>
+              <!-- Shown only while the map is rotated: the field can only be drawn north-up
+                   (leaflet-velocity derives its bounds from two viewport corners, which is
+                   wrong at any bearing), so the toggle is disabled rather than offering
+                   something that cannot work. -->
+              <span id="windfield-north-note" class="tb-note" hidden></span>
             </label>
             <div id="windfield-controls" hidden>
               <label class="navtoggle">

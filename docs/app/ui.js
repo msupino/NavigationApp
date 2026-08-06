@@ -3122,7 +3122,26 @@ if (windDepartSlider) {
   // (bearing != 0) hide the field and show a note; it reappears automatically at
   // 0°. 'rotate' fires continuously during a dial drag → coalesce per frame.
   const isRotated = () => ((map.getBearing ? map.getBearing() : 0) || 0) !== 0;
+  // The toggle itself is disabled while the map is rotated, with a note beside its label:
+  // offering a checkbox that cannot produce a field -- and only explaining why in a status
+  // line further down, after it is ticked -- reads as a broken feature. The checked state is
+  // left alone, so a field that was on comes back by itself at 0°.
+  const noteEl = document.getElementById('windfield-north-note');
+  function applyAvailability() {
+    const rotated = isRotated();
+    cb.disabled = rotated;
+    const lbl = cb.closest('label');
+    if (lbl) lbl.classList.toggle('navtoggle-disabled', rotated);
+    if (noteEl) {
+      noteEl.hidden = !rotated;
+      noteEl.textContent = rotated
+        ? ((window.S && S.windFieldNorthUpNote) || '— north-up only') : '';
+      noteEl.title = rotated
+        ? ((window.S && S.windFieldNorthUpNoteTitle) || 'Set the map bearing to 0° to enable the wind field') : '';
+    }
+  }
   function applyRotationState() {
+    applyAvailability();
     if (!cb.checked || !store) return;
     if (isRotated()) {
       if (layer) removeLayer();
@@ -3137,6 +3156,9 @@ if (windDepartSlider) {
       if (statusEl) { statusEl.textContent = ''; statusEl.style.display = 'none'; }
     }
   }
+  // ...and once at boot, so a page loaded on a rotated map starts in the right state rather
+  // than waiting for the first rotate event.
+  applyAvailability();
   let rotStatePending = false;
   function onWindViewChange() {
     if (busy || rotStatePending) return;   // mid-fetch: addLayer will settle state on completion
