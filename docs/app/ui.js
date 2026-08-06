@@ -2166,6 +2166,13 @@ document.getElementById('reverse').onclick = () => {
       // leg is flown A->B or B->A — so carry it over unchanged; dropping it made
       // Reverse silently discard a pulled forecast and corrupt heading/GS/ETE.
       ...(l.wind ? { wind: l.wind } : {}),
+      // Same argument for the two per-leg choices added since: the reference VOR the
+      // leg's Radial/DME is measured from, and whether its nav kite is hidden. Both
+      // belong to the physical segment, not to the direction of travel. Dropping
+      // vorRef silently moved that leg's published Radial/DME back to the GLOBAL VOR;
+      // dropping hideKite made a deliberately decluttered leg redraw its kite.
+      ...(l.vorRef ? { vorRef: l.vorRef } : {}),
+      ...(l.hideKite ? { hideKite: 1 } : {}),
       // Reversing is not a speed edit, so the pins travel -- but they travel WITH the
       // speeds, which swap above when the return path is shown. With it hidden both
       // directions take the forward speed, so both take the forward pin.
