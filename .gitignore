@@ -1,5 +1,10 @@
 .DS_Store
+# Both forms: the trailing slash matches a DIRECTORY only, so a `node_modules`
+# SYMLINK (what a scratch worktree needs to borrow the real install) slipped past it
+# and was committed in 62e5fb8.
+node_modules
 node_modules/
+mobile/node_modules
 mobile/node_modules/
 mobile/android/.gradle/
 mobile/android/app/build/
