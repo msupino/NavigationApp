@@ -41,12 +41,14 @@ both branches and assembles a single Pages site:
 - Use `.ai/README.md` as the quick index for AI-specific workflow,
   architecture, data, UI, testing, and checklist docs. Keep `.ai/`
   updated when behavior, storage, workflow, or test expectations change.
-- **Cache-bust is automatic at deploy time.** All `?v=N` values in
-  `docs/index.html` must remain equal (CI lint enforces). The deploy
-  workflow rewrites them to the short commit SHA at upload time, so
-  the source value itself doesn't need to be bumped per commit — it's
-  just a placeholder kept consistent across `docs/app/*.js` / `docs/app/style.css` /
-  `strings.js` references.
+- **Cache-bust is automatic at deploy time. Do NOT bump it.** Every `?v=` in
+  `docs/index.html` is the literal placeholder `?v=src` and must stay that way
+  (CI lint enforces that they all agree; `tests/workflow-hardening.spec.js`
+  enforces the placeholder itself). The deploy workflow rewrites them to the
+  short commit SHA at upload time, along with `NavAid.version` and the
+  service-worker cache name, so the real cache-bust is per commit and automatic.
+  Bumping a number here buys nothing and makes every pull request conflict with
+  every other one on this single line — each merge then invalidating the rest.
 - **Toolbar version SHA suffix is automatic at deploy time.** The
   same Deploy step rewrites `NavAid.version` in `docs/app/core.js` from
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact

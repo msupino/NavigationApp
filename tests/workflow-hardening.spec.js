@@ -102,6 +102,20 @@ test.describe('workflow trust and integrity gates', () => {
     expect(serve).toMatch(/cp docs\/sw\.js "\$PREVIEW\/sw\.js"/);
   });
 
+  test('the source cache-bust is a placeholder that Deploy rewrites', () => {
+    const html = read('docs/index.html');
+    const values = [...new Set([...html.matchAll(/\?v=([A-Za-z0-9]+)/g)].map(m => m[1]))];
+    // One value, and specifically the placeholder: a hand-bumped number here was the one
+    // line EVERY pull request touched, so any two PRs conflicted by construction and each
+    // merge invalidated the rest. The real cache-bust is the published commit's SHA.
+    expect(values).toEqual(['src']);
+    const deploy = read('.github/workflows/deploy.yml');
+    // ...which only holds if Deploy actually substitutes it, everywhere it appears.
+    expect(deploy).toMatch(/s\/\\\?v=\[A-Za-z0-9\]\+\/\?v=\$\{SHA\}\/g/);
+    expect(deploy).toMatch(/version: '\(\[0-9\]\+\\\.\[0-9\]\+\)/);   // core.js version string
+    expect(deploy).toMatch(/const CACHE = 'navaid-\$\{SHA\}'/);              // service-worker cache
+  });
+
   test('Pages deploys queue per PR instead of piling up on one group', () => {
     const doc = YAML.parse(read('.github/workflows/deploy.yml'));
     const c = doc.jobs.deploy.concurrency;
