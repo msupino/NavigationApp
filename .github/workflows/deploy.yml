@@ -125,13 +125,6 @@ jobs:
           ref: dev
           path: d
           persist-credentials: false
-      - name: Checkout current PR for artifact-only verification
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: p
-          persist-credentials: false
       - name: Assemble site
         run: |
           # docs/byop/ is ~133 MB of PDFs (#105). Keep ONE copy at the
@@ -185,17 +178,30 @@ jobs:
             fi
             rewrite_cache_busts "$ROOT" "$SHA"
           done
-      - name: Assemble current PR for artifact-only verification
-        if: github.event_name == 'pull_request'
+      - name: Build previews for every open PR
+        # Pages publishes the WHOLE site from one artifact, so every deploy has to
+        # rebuild every preview -- otherwise a push to dev would delete the previews of
+        # all open PRs. Fetch every open-PR branch in one round trip, then build them in
+        # parallel since the per-PR work is independent.
         run: |
+          cd m
+          mkdir -p ../site/pr ../site/branch
+          REFS=$(gh pr list --state open --json number,headRefName,baseRefName,isCrossRepository \
+            --jq '.[] | select((.baseRefName == "main" or .baseRefName == "dev") and .isCrossRepository == false) | "\(.number)\t\(.headRefName)"')
+          if [ -z "$REFS" ]; then
+            echo "No open same-repo PRs."
+            exit 0
+          fi
+          BRANCHES=$(printf '%s\n' "$REFS" | cut -f2)
+          # shellcheck disable=SC2086
+          git fetch origin --depth 1 -q $BRANCHES 2>/dev/null || true
+
           rewrite_cache_busts() {
             ROOT=$1
             SHA=$2
             INDEX="$ROOT/index.html"
             CORE="$ROOT/app/core.js"
             [ -f "$CORE" ] || CORE="$ROOT/core.js"
-            HE_STRINGS="$ROOT/i18n/he/strings.js"
-            [ -f "$HE_STRINGS" ] || HE_STRINGS="$ROOT/he/strings.js"
             if [ -f "$INDEX" ]; then
               sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$INDEX" 2>/dev/null || true
             fi
@@ -211,29 +217,76 @@ jobs:
             fi
           }
 
-          NUM="${{ github.event.number }}"
-          SHA="${{ github.event.pull_request.head.sha }}"
-          SHORT="${SHA:0:7}"
-          mkdir -p "site/pr/$NUM"
-          cp -rl p/docs/. "site/pr/$NUM/"
-          rm -rf "site/pr/$NUM/byop"
-          sed -i '0,/<head>/s//<head>\n  <meta name="robots" content="noindex">/' "site/pr/$NUM/index.html"
-          rewrite_cache_busts "site/pr/$NUM" "$SHORT"
-          echo "Assembled /pr/$NUM/ for local artifact verification only ($SHORT)."
+          build_preview() {
+            NUM=$1; BRANCH=$2
+            echo "== PR #$NUM ($BRANCH) =="
+            STAGING=$(mktemp -d)
+            git archive "origin/$BRANCH" docs/ | tar x -C "$STAGING" --strip-components=1 2>/dev/null \
+              || { echo "  skip (archive failed)"; rm -rf "$STAGING"; return; }
+            SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) \
+              || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; return; }
+            # Previews are non-canonical -- keep them out of search indexes.
+            sed -i '0,/<head>/s//<head>\n  <meta name="robots" content="noindex">/' "$STAGING/index.html" 2>/dev/null || true
+            # ...and give the preview its OWN localStorage/sessionStorage namespace. It is
+            # served from the production origin, and storage is per origin, not per path:
+            # without this an unreviewed branch reads the pilot's saved routes, their
+            # Drive/BYOK tokens and every setting from the live app, and can overwrite them.
+            # Injected only here, so dev and production are untouched.
+            # Take the shim from the branch being previewed when it has one, else from
+            # main. Only the checkouts of main (m/) and dev (d/) exist on disk here, so a
+            # branch's own copy has to come out of git rather than off the filesystem.
+            if ! git show "origin/$BRANCH:.github/preview/pr-store.js" > "$STAGING/pr-store.js" 2>/dev/null; then
+              cp .github/preview/pr-store.js "$STAGING/pr-store.js" 2>/dev/null || true
+            fi
+            if [ ! -s "$STAGING/pr-store.js" ]; then
+              # No isolation available => do not publish this preview at all. Serving it
+              # would give an unreviewed branch the live app's storage on the same origin.
+              echo "::warning::PR #$NUM has no pr-store.js on its branch or on main; skipping its preview"
+              rm -rf "$STAGING"
+              return
+            fi
+            sed -i "s/__PR_PREFIX__/pr-${NUM}./" "$STAGING/pr-store.js"
+            # First script in <head>, before anything reads storage.
+            sed -i '0,/<head>/s//<head>\n  <script src="pr-store.js"><\/script>/' "$STAGING/index.html" 2>/dev/null || true
+            rewrite_cache_busts "$STAGING" "$SHA"
+            # No byop copy under previews -- io.js plateBase() resolves plates against the
+            # shared root copy at runtime.
+            rm -rf "$STAGING/byop"
+            mv "$STAGING" "../site/pr/$NUM"
+            # Branch names contain slashes (feat/foo), so create the parent first.
+            mkdir -p "$(dirname "../site/branch/$BRANCH")"
+            cp -rl "../site/pr/$NUM" "../site/branch/$BRANCH"
+            echo "  -> /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
+          }
+          # build_preview runs in xargs-spawned subshells and CALLS rewrite_cache_busts, so
+          # that function must be exported too -- otherwise the rewrite silently no-ops and
+          # previews ship raw source (version: '1.0', ?v= literals, stale SW CACHE name).
+          export -f build_preview rewrite_cache_busts
+
+          printf '%s\n' "$REFS" | xargs -P 4 -I{} bash -c 'IFS=$'"'"'\t'"'"' read -r n b <<< "{}"; build_preview "$n" "$b"'
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
-    if: github.event_name != 'pull_request'
+    # PR previews publish again -- but ONLY for branches in this repository. A pull
+    # request from a fork must never get its code served from the production origin:
+    # `navaid.supino.org/pr/<n>/` shares localStorage, the service-worker scope and any
+    # stored Drive/BYOK token with the live app, so a preview is same-origin with real
+    # pilot data no matter which path it sits under.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     needs: build
     runs-on: ubuntu-latest
     permissions:
       pages: write
       id-token: write
-    # Only trusted main/dev or manually dispatched runs publish Pages. Pull-request
-    # artifacts are tested locally and never served under the production origin.
+      deployments: write        # the "View deployment" record on the PR
+      pull-requests: write      # the preview-link comment
     concurrency:
       group: pages
       cancel-in-progress: false
@@ -244,6 +297,60 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Create PR deployment
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          URL: https://navaid.supino.org/pr/${{ github.event.number }}/
+        run: |
+          DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments" --input - <<EOF
+          {
+            "ref": "${{ github.event.pull_request.head.sha }}",
+            "environment": "pr-preview-${{ github.event.number }}",
+            "auto_merge": false,
+            "required_contexts": [],
+            "transient_environment": true,
+            "description": "PR preview at $URL"
+          }
+          EOF
+          )
+          DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r '.id // empty')
+          if [ -z "$DEPLOY_ID" ]; then
+            echo "::warning::Could not create the deployment record; the preview itself is live at $URL"
+            exit 0
+          fi
+          gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" --input - <<EOF
+          {
+            "state": "success",
+            "environment_url": "$URL",
+            "log_url": "$URL",
+            "description": "PR preview at $URL"
+          }
+          EOF
+
+      - name: Post preview link comment
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          # One URL for both the comment and the deployment record. They used to differ
+          # (/branch/<name>/ in the comment, /pr/<n>/ in the record), so the two links on
+          # the same PR could show different builds after a rebase.
+          URL="https://navaid.supino.org/pr/${PR}/"
+          SHORT="${SHA:0:7}"
+          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`\n\n<sub>Not indexed, and rebuilt on every push. Shares an origin with the live app, so it can see the same saved routes and settings.</sub>' "$URL" "$URL" "$SHORT")
+          # Update the existing bot comment rather than adding one per push.
+          EXISTING=$(gh api "repos/${REPO}/issues/${PR}/comments" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("### 🚀 Preview deployed")))] | .[0].id // empty')
+          if [ -n "$EXISTING" ]; then
+            gh api "repos/${REPO}/issues/comments/${EXISTING}" -X PATCH -f body="$BODY"
+          else
+            gh api "repos/${REPO}/issues/${PR}/comments" -f body="$BODY"
+          fi
 
   e2e-deployed:
     if: github.event_name == 'pull_request'
@@ -303,6 +410,13 @@ jobs:
             "$SHA"*) echo "Preview matches HEAD" ;;
             *) echo "::error::Built preview ($SHA) is not HEAD ($HEAD_SHA)"; exit 1 ;;
           esac
+          # Serve the preview WITHOUT its storage shim. The suite seeds localStorage from
+          # page.addInitScript, which runs before any page script -- so with the shim
+          # active every seeded key (open toolbar sections, feature flags) is namespaced
+          # away, the app boots without the controls the tests click, and the whole run
+          # times out. The shim is a deployment property of a published preview, and it is
+          # covered on its own by tests/preview-store-isolation.spec.js.
+          sed -i '/<script src="pr-store.js"><\/script>/d' "$PREVIEW/index.html" 2>/dev/null || true
           python3 -m http.server 8000 --directory _site >/tmp/http.log 2>&1 &
           SRV=$!
           trap 'kill $SRV 2>/dev/null || true' EXIT

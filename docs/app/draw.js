@@ -3959,9 +3959,18 @@ function routeInkRects() {
   for (let i = 0; i < (state.legs || []).length; i++) {
     const A = wps[i] && proj(wps[i]), B = wps[i + 1] && proj(wps[i + 1]);
     if (!A || !B) continue;
-    if (typeof legLabelCenter === 'function') {
-      pushRotated(legLabelCenter(i, 'in'), B.x, B.y, halfL, halfW);
-      if (typeof showReturn !== 'undefined' && showReturn) {
+    // Only ink that is actually DRAWN may drive the clipping warning and "Fit page to
+    // route" -- otherwise an invisible kite can claim the route hangs off the page, or
+    // push the fit onto a larger sheet than the export needs. Mirror drawLegs()'s gates:
+    // a hidden kite, a blocked one-way inbound, and the return direction.
+    const legI = (state.legs || [])[i];
+    const kiteOff = typeof legKiteHidden === 'function' && legKiteHidden(legI);
+    const inBlocked = typeof legAltitudeIsBlocked === 'function' &&
+      legAltitudeIsBlocked(legI, 'inboundAltitude');
+    if (typeof legLabelCenter === 'function' && !kiteOff) {
+      if (!inBlocked) pushRotated(legLabelCenter(i, 'in'), B.x, B.y, halfL, halfW);
+      if (typeof showReturn !== 'undefined' && showReturn &&
+          (typeof legAllowsReturn !== 'function' || legAllowsReturn(i))) {
         pushRotated(legLabelCenter(i, 'out'), A.x, A.y, halfL, halfW);
       }
     }

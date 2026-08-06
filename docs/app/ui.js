@@ -2166,6 +2166,13 @@ document.getElementById('reverse').onclick = () => {
       // leg is flown A->B or B->A — so carry it over unchanged; dropping it made
       // Reverse silently discard a pulled forecast and corrupt heading/GS/ETE.
       ...(l.wind ? { wind: l.wind } : {}),
+      // Same argument for the two per-leg choices added since: the reference VOR the
+      // leg's Radial/DME is measured from, and whether its nav kite is hidden. Both
+      // belong to the physical segment, not to the direction of travel. Dropping
+      // vorRef silently moved that leg's published Radial/DME back to the GLOBAL VOR;
+      // dropping hideKite made a deliberately decluttered leg redraw its kite.
+      ...(l.vorRef ? { vorRef: l.vorRef } : {}),
+      ...(l.hideKite ? { hideKite: 1 } : {}),
       // Reversing is not a speed edit, so the pins travel -- but they travel WITH the
       // speeds, which swap above when the return path is shown. With it hidden both
       // directions take the forward speed, so both take the forward pin.
@@ -6392,6 +6399,17 @@ const NavWxTime = (function () {
   // could add today's 00:00 without selecting it -- the newer chart visibly in the list,
   // the overlay nearly six hours stale.
   let pinned = false;
+  // Consumers of the shared selection. The overlays used to listen for the DOM `change`
+  // event only, which a programmatic assignment does not fire -- so re-seeding moved the
+  // dropdown to a newer valid time while an already-drawn overlay kept its old PNG, and
+  // the UI labelled an 18:00 chart as 00:00. Anything that renders the selected time
+  // subscribes here instead and is told whether the pilot made the change.
+  const subs = [];
+  function notify(programmatic) {
+    for (const fn of subs) {
+      try { fn({ programmatic: !!programmatic }); } catch (e) { /* one bad subscriber */ }
+    }
+  }
   // Merge a feed's times into the dropdown (deduped by valid), and seed the
   // initial selection once — the saved time if still offered, else nearest now.
   // "day|valid", or just "valid" when the feed gives no day.
@@ -6424,6 +6442,8 @@ const NavWxTime = (function () {
   // arrives second can still supply a closer time.
   function reseed() {
     if (pinned || !sel || !sel.options.length) return;
+    const was = sel.value;
+    const changed = () => { if (sel.value !== was) notify(true); };
     let saved = '';
     try { saved = lsGet(KEY) || ''; } catch (e) {}
     const savedValid = parse(saved).valid;
@@ -6433,6 +6453,7 @@ const NavWxTime = (function () {
       // honour it and stop reconsidering.
       sel.value = exact.value;
       if (parse(saved).day) pinned = true;
+      changed();
       return;
     }
     // A value stored by a build that keyed on the valid time alone: the HOUR is a real
@@ -6443,6 +6464,7 @@ const NavWxTime = (function () {
     if (sameHour && sameHour.length) {
       const i = Math.max(0, imsNearestTimeIndex(sameHour.map(o => parse(o.value))));
       sel.value = sameHour[i].value;
+      changed();
       return;
     }
     // ...and the day goes to imsNearestTimeIndex, which has always known how to use one.
@@ -6450,6 +6472,7 @@ const NavWxTime = (function () {
     // chart hours old instead of the one about to become valid.
     sel.selectedIndex = Math.max(0, imsNearestTimeIndex(
       Array.from(sel.options, o => parse(o.value))));
+    changed();
   }
   // Move to a time the caller can actually render, if the current one is not among them.
   // The dropdown accumulates options from both feeds and every PWX level, so a level change
@@ -6468,12 +6491,15 @@ const NavWxTime = (function () {
     const usable = Array.from(sel.options).filter(o => keys.has(o.value));
     if (!usable.length) return false;
     const near = Math.max(0, imsNearestTimeIndex(usable.map(o => parse(o.value))));
+    const was = sel.value;
     sel.value = usable[near].value;
+    if (sel.value !== was) notify(true);
     return true;
   }
   if (sel) sel.addEventListener('change', () => {
     pinned = true;
     try { localStorage.setItem(KEY, sel.value); } catch (e) {}
+    notify(false);
   });
   const api = {
     value: () => (sel ? sel.value : ''),
@@ -6488,7 +6514,9 @@ const NavWxTime = (function () {
     },
     ensure,
     prefer,
-    onChange: fn => { if (sel) sel.addEventListener('change', fn); },
+    // Called for BOTH a pilot change and a programmatic re-seed; the argument says which,
+    // so a subscriber can redraw either way but only persist a real choice.
+    onChange: fn => { if (typeof fn === 'function') subs.push(fn); },
   };
   return api;
 })();
@@ -6618,7 +6646,11 @@ const NavWxOpacity = (function () {
     updateLayer(); persist();
   });
   levelSel.addEventListener('change', () => { fillTimes(true); updateLayer(); persist(); });
-  timeSel.addEventListener('change', () => { updateLayer(); persist(); });
+  NavWxTime.onChange(e => {
+    updateLayer();
+    // A re-seed is not a pilot pin, so it must not be written back as one.
+    if (!e || !e.programmatic) persist();
+  });
   // Opacity is the shared #wx-opacity slider (NavWxOpacity) — re-apply on change.
   NavWxOpacity.onChange(() => { if (layer) layer.setOpacity(NavWxOpacity.value()); });
 
@@ -7096,7 +7128,10 @@ const NavWxOpacity = (function () {
   NavAid.refreshSigwxOv = updateLayer;
 
   cb.addEventListener('change', () => { controls.hidden = !cb.checked; updateLayer(); persist(); });
-  timeSel.addEventListener('change', () => { updateLayer(); persist(); });
+  NavWxTime.onChange(e => {
+    updateLayer();
+    if (!e || !e.programmatic) persist();     // a re-seed is not a pilot pin
+  });
   // Opacity is the shared #wx-opacity slider (NavWxOpacity) — re-render on change.
   NavWxOpacity.onChange(() => updateLayer());
 

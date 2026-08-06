@@ -519,7 +519,12 @@
       run: async (a) => {
         const wps = (typeof state !== 'undefined' && state.waypoints) || [];
         if (wps.length < 2) return { error: 'nothing to save' };
-        if (!confirmAction(t('assistantConfirmSave', 'Save this route as') + ' "' + a.name + '"?')) return { cancelled: true };
+        // The gate above already showed and confirmed this exact save, so asking again here
+        // would be two dialogs for one action.
+        if (!mutationApproved('save_route') &&
+            !confirmAction(t('assistantConfirmSave', 'Save this route as') + ' "' + a.name + '"?')) {
+          return { cancelled: true };
+        }
         if (typeof routeLibrarySaveCurrent === 'function') { routeLibrarySaveCurrent(a.name); return { ok: true, name: a.name }; }
         return { error: 'save unavailable' };
       },
@@ -669,21 +674,121 @@
   // public feed, so instruction-shaped text in a NOTAM body could rewrite a route
   // the pilot only asked about. Consent is per session, not per call: an ordinary
   // "plan me a route" turn should not become a click-fest.
-  let stateToolsAllowed = false;
-  function allowStateTools() {
-    if (stateToolsAllowed) return true;
-    const ask = t('assistantAllowEdits',
-      'Let the assistant change your route in this session? It can replace waypoints, ' +
-      'speeds and altitudes, and save routes. You can undo any change.');
-    // confirmAction is the module's existing confirmation hook (save_route already
-    // uses it, and _setConfirm can stub it) — one prompt path, not two.
+  // Consent lasts ONE TURN, not the session, and the prompt names the concrete change.
+  // A session-wide latch plus a generic "let the assistant change your route" question was
+  // the weak half of this gate: tool results carry text nobody in this app wrote -- NOTAM
+  // bodies from a public feed, waypoint names out of an imported route file -- and once that
+  // text is in the model's context it can ask for a mutation the pilot never did. With one
+  // generic approval already given, that mutation ran silently; and even the approval itself
+  // could not be attributed, because it never said what was about to change.
+  let turnConsent = false;
+  // Sticky: once untrusted text has entered the context it stays there for the rest of the
+  // conversation, so every later mutation is asked for individually. Cleared only by Clear.
+  let contextTainted = false;
+  function markTainted() { contextTainted = true; }
+  // The gate now shows the concrete change for every mutation, including save_route -- which
+  // has always confirmed its own name. Record the approval the gate just obtained so that
+  // tool does not put up a second dialog for the same action. Single use.
+  let lastApproved = null;
+  function mutationApproved(name) {
+    if (lastApproved !== name) return false;
+    lastApproved = null;
+    return true;
+  }
+
+  function fmtPoint(p) {
+    if (p == null) return '?';
+    if (typeof p === 'string') return p;
+    if (typeof p === 'object') {
+      if (p.name) return String(p.name);
+      if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) return r1(p.lat) + ',' + r1(p.lng);
+    }
+    return String(p);
+  }
+  const currentRouteNames = () => ((typeof state !== 'undefined' && state.waypoints) || [])
+    .map(w => w.name || '(unnamed)');
+  function arrow(from, to) { return (from.length ? from.join(' → ') : '(empty)') + '\n⇒ ' + to; }
+
+  // What this call would actually do, in the pilot's terms. Never the raw JSON: the point is
+  // that an approval can be attributed to a change the pilot recognises.
+  function mutationSummary(name, args) {
+    const a = args || {};
+    const now = currentRouteNames();
+    if (name === 'set_route') {
+      const pts = Array.isArray(a.points) ? a.points.map(fmtPoint) : [];
+      return arrow(now, (pts.length ? pts.join(' → ') : '(empty)') +
+        '  (' + pts.length + ' point' + (pts.length === 1 ? '' : 's') + ')');
+    }
+    if (name === 'reverse_route') return arrow(now, now.slice().reverse().join(' → '));
+    if (name === 'apply_route_template') {
+      return t('assistantMutTemplate', 'Replace the route with template') + ' "' +
+        fmtPoint(a.name || a.template || a.id) + '"\n' + arrow(now, '…');
+    }
+    if (name === 'plan_corridor') {
+      return t('assistantMutCorridor', 'Replace the route with a corridor route') + ' ' +
+        fmtPoint(a.from) + ' → ' + fmtPoint(a.to) + '\n' + arrow(now, '…');
+    }
+    if (name === 'set_leg') {
+      const legs = (typeof state !== 'undefined' && state.legs) || [];
+      const i = (a.leg | 0) - 1;
+      const leg = legs[i];
+      const from = now[i] || ('leg ' + a.leg), to = now[i + 1] || '';
+      const bits = [];
+      if (Number.isFinite(a.altitudeFt)) {
+        bits.push('altitude ' + (leg && Number.isFinite(leg.inboundAltitude) ? leg.inboundAltitude : '—') +
+          ' → ' + a.altitudeFt + ' ft');
+      }
+      if (Number.isFinite(a.speedKt)) {
+        bits.push('speed ' + (leg && leg.flightSpeed > 0 ? leg.flightSpeed : '—') +
+          ' → ' + a.speedKt + ' kt');
+      }
+      return 'Leg ' + a.leg + (to ? ' (' + from + ' → ' + to + ')' : '') + ':\n' +
+        (bits.length ? bits.join('\n') : '(no change)');
+    }
+    if (name === 'save_route') {
+      return t('assistantMutSave', 'Save the current route to the library as') + ' "' +
+        fmtPoint(a.name) + '"';
+    }
+    // An unknown mutating tool: show the arguments rather than approving a blank cheque.
+    let js = '';
+    try { js = JSON.stringify(a); } catch (e) { js = '(unserializable arguments)'; }
+    return name + ' ' + js.slice(0, 300);
+  }
+
+  function confirmMutation(name, args) {
+    const head = t('assistantConfirmChange', 'The assistant wants to change your route:');
+    const tail = contextTainted
+      // The pilot has to be able to tell this case apart: the request may have come from text
+      // in a NOTAM or an imported file rather than from anything they asked for.
+      ? '\n\n' + t('assistantTaintedWarning',
+        'Note: this conversation has read text from outside NavAid (NOTAMs or an imported ' +
+        'route). Approve only if this is the change you asked for.')
+      : '\n\n' + t('assistantUndoHint', 'You can undo it.');
     let ok = false;
-    try { ok = !!confirmAction(ask); } catch (e) { ok = false; }
-    stateToolsAllowed = ok;
+    try { ok = !!confirmAction(head + '\n\n' + mutationSummary(name, args) + tail); }
+    catch (e) { ok = false; }
+    return ok;
+  }
+
+  // Ask for THIS change unless the pilot already approved a change in this same turn and
+  // nothing untrusted has been read. Approving one edit in a turn the pilot themselves
+  // started is enough for the rest of that turn -- a five-leg altitude change should not be
+  // five prompts -- but it expires with the turn, and taint disables it entirely.
+  function allowMutation(name, args) {
+    if (turnConsent && !contextTainted) { lastApproved = null; return true; }
+    const ok = confirmMutation(name, args);
+    if (ok) {
+      lastApproved = name;
+      if (!contextTainted) turnConsent = true;
+    }
     return ok;
   }
   // One place where a tool is chosen, gated and run — the loop calls this, and so
   // does the test seam below, so what is tested is the path that actually runs.
+  // Read tools whose result carries text this app did not author: NOTAM free text straight
+  // from the public feed, and route/waypoint names that may have come from an imported file.
+  const EXTERNAL_TEXT_TOOLS = new Set(['get_notams', 'describe_route', 'get_weather']);
+
   async function runToolGated(name, args) {
     const tool = TOOLS.find(x => x.name === name);
     // Anything that is not read-only needs consent. Refusals come back as a tool
@@ -691,11 +796,15 @@
     // Fails CLOSED on a missing tier: the earlier `tool.tier &&` let a tool declared
     // without one skip the gate. Every tool carries a tier today, so this guards the
     // next one added rather than closing a live hole.
-    if (tool && tool.tier !== 'read' && !allowStateTools()) {
-      return { error: 'declined: the pilot has not allowed route changes in this session' };
+    if (tool && tool.tier !== 'read' && !allowMutation(name, args)) {
+      return { error: 'declined: the pilot did not approve this change' };
     }
-    try { return tool ? await tool.run(args || {}) : { error: 'unknown tool ' + name }; }
-    catch (e) { return { error: String((e && e.message) || e) }; }
+    try {
+      const out = tool ? await tool.run(args || {}) : { error: 'unknown tool ' + name };
+      // Read tools that return text from outside NavAid taint the context from here on.
+      if (tool && tool.tier === 'read' && EXTERNAL_TEXT_TOOLS.has(name)) markTainted();
+      return out;
+    } catch (e) { return { error: String((e && e.message) || e) }; }
   }
 
   async function runAgent(userText) {
@@ -706,6 +815,8 @@
     // the next send appends a second consecutive user turn → Anthropic/OpenAI
     // 400 "roles must alternate", wedging the chat until Clear.
     const historyBase = messages.length;
+    // A new turn is a new authorisation: consent never carries from one message to the next.
+    turnConsent = false;
     messages.push({ role: 'user', parts: [{ text: userText }] });
     renderUser(userText);
     setBusy(true);
@@ -744,6 +855,9 @@
   function resetChat() {
     if (busy) return;   // don't wipe history mid-turn — it would corrupt the in-flight request
     messages = [];
+    // The untrusted text went with the history, so the taint goes too.
+    contextTainted = false;
+    turnConsent = false;
     if (logEl) logEl.innerHTML = '';
   }
 
@@ -979,7 +1093,12 @@
     reset: resetChat,
     _tools: TOOLS,                 // raw tools — BYPASS the tier gate
     _runTool: runToolGated,        // the gated path the agent loop uses
-    _resetConsent: () => { stateToolsAllowed = false; },
+    _resetConsent: () => { turnConsent = false; contextTainted = false; lastApproved = null; },
+    // What a fresh user message does to consent, without going through a provider round-trip.
+    _newTurn: () => { turnConsent = false; lastApproved = null; },
+    _reset: resetChat,
+    _isTainted: () => contextTainted,
+    _summarise: mutationSummary,
     _resolvePoint: resolvePoint,
     _corridorPath: corridorPath,
     _setProvider: (fn) => { providerSend = fn || geminiSend; },

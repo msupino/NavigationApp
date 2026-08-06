@@ -475,8 +475,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   toolbar section records the flown path from the device GPS (live own-ship
   dot + breadcrumb trail on the map). On Stop it auto-saves a timestamped
   `kind:'gps'` saved-route entry containing simplified waypoints plus the raw
-  `track[]` breadcrumb, carried by the existing Drive sync. Requires HTTPS;
-  backgrounded phones may leave gaps (no wake-lock).
+  `track[]` breadcrumb, carried by the existing Drive sync. Requires HTTPS.
+  Recording takes a **screen wake lock** while it runs (`gpsAcquireWakeLock()`
+  in `gps.js`), releases it on Stop, and re-acquires it when the page becomes
+  visible again — browsers drop the sentinel while the tab is hidden, so a
+  backgrounded browser tab can still leave gaps. The native app uses background
+  geolocation instead, which is a separate capability.
 
 ## Persistence (`localStorage` + `sessionStorage`, all keyed `navaid.*`)
 
@@ -573,8 +577,9 @@ as a machine-readable registry.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
-- `navaid.profileVS` — vertical-profile climb/descent rate input for timing and
-  TOC/TOD ramp distance.
+- `navaid.profileVS` — vertical-profile climb rate input, used for timing and
+  the TOC ramp distance. (The profile draws a departure TOC only; there is no
+  TOD — see the vertical-profile entry above.)
 - `navaid.ai.provider` — active AI-assistant LLM provider id (`gemini` |
   `anthropic` | `openrouter` | `deepseek`; default `gemini`; `assistant.js`).
 - `navaid.ai.key.<provider>` — the user's own API key per provider (BYOK).
