@@ -2139,6 +2139,38 @@ function navAssetBase(dir) {
   return u.href;
 }
 
+// The reference VOR was set from four places -- the toolbar picker, the VOR inspector's
+// "use as reference" button, and two selects in the flight plan -- each with its own copy of
+// "assign, persist, sync the other select, redraw". They drifted: only some reset the
+// inspector-only override, and none dealt with the coverage ring's first precedence, so
+// clearing the reference from a selected station's own inspector left its ring on the map
+// until the inspector was closed. One setter now owns the whole transition.
+var vorRingSuppressIdent = null;   // station the pilot un-referenced while it was selected
+
+function setReferenceVor(ident) {
+  const next = ident || null;
+  window.vorRef = next;
+  try {
+    if (next) localStorage.setItem('navaid.vorRef', next);
+    else localStorage.removeItem('navaid.vorRef');
+  } catch (e) { /* storage unavailable */ }
+  // An explicit reference choice ends any inspector-only override.
+  if (typeof resetInspectorVorRef === 'function') resetInspectorVorRef();
+  // The ring rings the SELECTED station first, which is what a pilot asks for by tapping
+  // one. But clearing the reference on that same station is the pilot saying "not this one",
+  // so its selection ring goes too -- otherwise the button appears to do nothing.
+  const selIdent = (typeof state !== 'undefined' && state.selected &&
+    state.selected.type === 'vor' && typeof vors !== 'undefined' && vors[state.selected.index])
+    ? vors[state.selected.index].ident : null;
+  window.vorRingSuppressIdent = (!next && selIdent) ? selIdent : null;
+  // Keep every picker showing the same answer.
+  for (const id of ['vor-ref-select', 'fp-vor-select']) {
+    const el = document.getElementById(id);
+    if (el) el.value = next || '';
+  }
+  return next;
+}
+
 function navLangPosKey(base) {
   const lang = (document.documentElement && document.documentElement.lang === 'he') ? 'he' : 'en';
   return base + '.' + lang;

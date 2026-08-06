@@ -5,6 +5,18 @@
 // old station until the inspector was closed, which is when the override is reset.
 const { test, expect } = require('./_setup');
 
+// The ring's precedence, as drawVors() applies it: selected station (unless the pilot
+// cleared the reference on that very station), else the inspector-only override, else the
+// global reference.
+const RING2 = `(() => {
+  let sel = (state.selected && state.selected.type === 'vor' && vors[state.selected.index])
+    ? vors[state.selected.index].ident : null;
+  if (sel && typeof vorRingSuppressIdent === 'string' && vorRingSuppressIdent === sel) sel = null;
+  const ident = sel || (typeof inspectorVorRef === 'string' && inspectorVorRef) || vorRef;
+  const v = ident ? vors.find(x => x.ident === ident) : null;
+  return { ident: ident || null, rings: !!(v && v.coverageNm > 0) };
+})()`;
+
 async function boot(page) {
   await page.addInitScript(() => {
     try {
@@ -92,4 +104,73 @@ test('the inspector VOR selector repaints the map', async ({ page }) => {
   // The ring is canvas ink: without a repaint it kept showing the previous station until
   // some unrelated redraw happened to run.
   expect(r.afterPick.draws).toBeGreaterThan(0);
+});
+
+// --- the reported case: clearing the reference from the station's own inspector ----------
+test('tapping "Reference VOR (tap to clear)" removes the ring immediately', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(() => {
+    const btn = () => Array.from(document.querySelectorAll('#insp-body button.insp-btn'))
+      .find(b => /reference/i.test(b.textContent));
+    state.selected = { type: 'vor', index: vors.findIndex(v => v.ident === 'NAT') };
+    showInspector(); draw();
+    const tapped = ${RING2};
+    btn().click();                                  // "Use as reference VOR"
+    const asRef = Object.assign(${RING2}, { vorRef: vorRef });
+    btn().click();                                  // "✓ Reference VOR (tap to clear)"
+    const cleared = Object.assign(${RING2}, { vorRef: vorRef, suppress: vorRingSuppressIdent });
+    return { tapped, asRef, cleared };
+  })()`);
+  expect(r.tapped.rings).toBe(true);
+  expect(r.asRef.vorRef).toBe('NAT');
+  // The ring used to survive this: vorRef went null but the station was still SELECTED, and
+  // the selection is the ring's first precedence — so it only vanished when the inspector
+  // was closed, which is exactly what was reported.
+  expect(r.cleared.vorRef).toBeNull();
+  expect(r.cleared.ident).toBeNull();
+  expect(r.cleared.rings).toBe(false);
+  expect(r.cleared.suppress).toBe('NAT');
+});
+
+test('the suppression is per station, and ends when a reference is set again', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(() => {
+    const btn = () => Array.from(document.querySelectorAll('#insp-body button.insp-btn'))
+      .find(b => /reference/i.test(b.textContent));
+    state.selected = { type: 'vor', index: vors.findIndex(v => v.ident === 'NAT') };
+    showInspector(); draw();
+    btn().click(); btn().click();                   // set, then clear on NAT
+    state.selected = { type: 'vor', index: vors.findIndex(v => v.ident === 'BGN') };
+    showInspector(); draw();
+    const other = ${RING2};                         // a different station still rings
+    btn().click();                                  // make BGN the reference
+    const bgn = Object.assign(${RING2}, { suppress: vorRingSuppressIdent, vorRef: vorRef });
+    return { other, bgn };
+  })()`);
+  // Tapping any other station must still ring it — that is the behaviour the suppression
+  // must not break.
+  expect(r.other.ident).toBe('BGN');
+  expect(r.other.rings).toBe(true);
+  expect(r.bgn.vorRef).toBe('BGN');
+  expect(r.bgn.suppress).toBeNull();
+  expect(r.bgn.rings).toBe(true);
+});
+
+test('every path that changes the reference goes through one setter', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => ({ hasSetter: typeof setReferenceVor === 'function' }));
+  expect(r.hasSetter).toBe(true);
+  const fs = require('fs'); const path = require('path');
+  const app = f => fs.readFileSync(path.join(__dirname, '..', 'docs', 'app', f), 'utf8');
+  // Four places used to assign window.vorRef with their own copy of persist/sync/redraw, and
+  // they had drifted — only some reset the inspector override, none handled the ring. The one
+  // remaining direct assignment is ui.js's BOOT restore from localStorage, which must not go
+  // through the setter: it would re-persist what it just read and suppress a ring for a
+  // station the pilot has not touched.
+  const direct = f => (app(f).match(/window\.vorRef\s*=/g) || []).length;
+  expect(direct('interact.js'), 'interact.js assigns the reference directly').toBe(0);
+  expect(direct('io.js'), 'io.js assigns the reference directly').toBe(0);
+  expect(direct('ui.js'), 'ui.js should only have the boot restore').toBe(1);
+  expect(app('ui.js')).toMatch(/if \(ref\) window\.vorRef = ref;/);
+  expect(app('core.js')).toContain('function setReferenceVor');
 });

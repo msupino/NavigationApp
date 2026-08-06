@@ -2480,11 +2480,7 @@ function showFlightPlan() {
     vorFreqSpan.textContent = cur ? (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(cur) : cur.freq) + ' MHz' : '';
   }
   vorSel.onchange = () => {
-    window.vorRef = vorSel.value || null;
-    try {
-      if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
-      else localStorage.removeItem('navaid.vorRef');
-    } catch (e) { /* */ }
+    setReferenceVor(vorSel.value);
     const vs = document.getElementById('vor-ref-select');
     if (vs) vs.value = vorRef || '';
     fillFpVorSelect();
@@ -3908,11 +3904,7 @@ function showExportModal() {
     loadVors().then(() => { fillExportVorSelect(); draw(); });
   }
   vorSel.onchange = function () {
-    window.vorRef = vorSel.value || null;
-    try {
-      if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
-      else localStorage.removeItem('navaid.vorRef');
-    } catch (e) { /* */ }
+    setReferenceVor(vorSel.value);
     const tbVor = document.getElementById('vor-ref-select');   // keep the toolbar in sync
     if (tbVor) tbVor.value = vorRef || '';
     draw();

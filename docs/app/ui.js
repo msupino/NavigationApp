@@ -4720,16 +4720,7 @@ if (vorCb) {
 }
 if (vorRefSelect) {
   vorRefSelect.onchange = e => {
-    window.vorRef = e.target.value || null;
-    try {
-      if (vorRef) localStorage.setItem(VOR_REF_KEY, vorRef);
-      else localStorage.removeItem(VOR_REF_KEY);
-    } catch (err) { /* */ }
-    // Picking (or clearing) the reference is an explicit statement about which station
-    // matters, so the inspector-only override does not outlive it. Removing the reference
-    // used to leave the old station's coverage ring on the map until the inspector was
-    // closed, because the ring falls back through inspectorVorRef first.
-    if (typeof resetInspectorVorRef === 'function') resetInspectorVorRef();
+    setReferenceVor(e.target.value);
     draw();
     refreshInspectorIfVisible();
     if (typeof showCenterCoord === 'function') showCenterCoord();

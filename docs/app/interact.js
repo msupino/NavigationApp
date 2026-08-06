@@ -2584,13 +2584,9 @@ function showInspector() {
     useBtn.textContent = isRef ? (S.vorRefActive || '✓ Reference VOR (tap to clear)')
                                : (S.vorUseRef || 'Use as reference VOR');
     useBtn.onclick = () => {
-      window.vorRef = isRef ? null : v.ident;
-      try {
-        if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
-        else localStorage.removeItem('navaid.vorRef');
-      } catch (e) { /* */ }
-      const vs = document.getElementById('vor-ref-select');
-      if (vs) vs.value = vorRef || '';
+      // setReferenceVor also drops this station's SELECTION ring when clearing, which is why
+      // "tap to clear" used to look like it did nothing until the inspector was closed.
+      setReferenceVor(isRef ? null : v.ident);
       if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
       draw(); showInspector();
     };
