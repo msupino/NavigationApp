@@ -410,6 +410,13 @@ jobs:
             "$SHA"*) echo "Preview matches HEAD" ;;
             *) echo "::error::Built preview ($SHA) is not HEAD ($HEAD_SHA)"; exit 1 ;;
           esac
+          # Serve the preview WITHOUT its storage shim. The suite seeds localStorage from
+          # page.addInitScript, which runs before any page script -- so with the shim
+          # active every seeded key (open toolbar sections, feature flags) is namespaced
+          # away, the app boots without the controls the tests click, and the whole run
+          # times out. The shim is a deployment property of a published preview, and it is
+          # covered on its own by tests/preview-store-isolation.spec.js.
+          sed -i '/<script src="pr-store.js"><\/script>/d' "$PREVIEW/index.html" 2>/dev/null || true
           python3 -m http.server 8000 --directory _site >/tmp/http.log 2>&1 &
           SRV=$!
           trap 'kill $SRV 2>/dev/null || true' EXIT

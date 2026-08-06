@@ -88,6 +88,17 @@ test.describe('workflow trust and integrity gates', () => {
     expect(assemble).not.toContain('pr-store.js');
   });
 
+  test('the deployed-site suite runs against a preview with the shim stripped', () => {
+    const workflow = read('.github/workflows/deploy.yml');
+    // The suite seeds localStorage from page.addInitScript, which runs BEFORE any page
+    // script -- so with the shim active every seeded key is namespaced away, the app boots
+    // without the controls the tests click, and the whole run times out (observed: 171
+    // passed, 1533 did not run). The shim is a property of the PUBLISHED preview and is
+    // covered on its own by tests/preview-store-isolation.spec.js.
+    const serve = workflow.slice(workflow.indexOf('Serve published site locally'));
+    expect(serve).toMatch(/sed -i '\/<script src="pr-store\.js">/);
+  });
+
   test('the storage shim exists and is inert until a prefix is substituted', () => {
     const shim = read('.github/preview/pr-store.js');
     expect(shim).toContain('__PR_PREFIX__');
