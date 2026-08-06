@@ -1270,6 +1270,10 @@ function appendVorRadialRow(body, lat, lng) {
   sel.onchange = () => {
     window.inspectorVorRef = sel.value || '';
     render();
+    // The published-coverage ring is canvas ink keyed on this override, so changing it
+    // has to repaint. Without this the ring kept showing the previous station until
+    // something else happened to redraw.
+    if (typeof draw === 'function') draw();
   };
   controls.append(sel, val);
   row.append(label, controls);
