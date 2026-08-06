@@ -185,7 +185,7 @@ jobs:
         # parallel since the per-PR work is independent.
         run: |
           cd m
-          mkdir -p ../site/pr ../site/branch
+          mkdir -p ../site/pr
           # A branch name is ATTACKER-CONTROLLED text: git accepts refs containing $( ),
           # quotes and semicolons. It is read as data here (NUL-delimited, never expanded
           # into command text), validated with git check-ref-format, and passed to the
@@ -259,10 +259,7 @@ jobs:
             # cleanup used to delete the live app's offline shell just by being visited.
             rm -f "$STAGING/sw.js"
             mv "$STAGING" "../site/pr/$NUM"
-            # Branch names contain slashes (feat/foo), so create the parent first.
-            mkdir -p "$(dirname "../site/branch/$BRANCH")"
-            cp -rl "../site/pr/$NUM" "../site/branch/$BRANCH"
-            echo "  -> /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
+            echo "  -> /pr/$NUM/ ($SHA)"
           }
           # Sequential and in-process: no `bash -c` program is built from the data, so
           # nothing in a branch name can be parsed as shell. (The previous xargs -I{}
@@ -326,12 +323,11 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
+        # NOTE: actions/deploy-pages@v4 declares a `timeout` input but does not honour it --
+        # a run with `timeout: 1800000` logged that value and still aborted after 115 status
+        # polls (~606 s), i.e. the 600000 default. So the only way to keep inside its ceiling
+        # is to make the deployment FASTER, which is what the artifact trim above does.
         uses: actions/deploy-pages@v4
-        with:
-          # ...and wait long enough to sit behind another deployment instead of failing.
-          # Queueing is normal now that every open PR publishes; a 10-minute ceiling was
-          # shorter than the queue on a busy afternoon.
-          timeout: 1800000        # 30 min (action default: 600000)
 
       - name: Create PR deployment
         if: github.event_name == 'pull_request' && github.event.action != 'closed'

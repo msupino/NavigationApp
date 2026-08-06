@@ -116,6 +116,24 @@ test.describe('workflow trust and integrity gates', () => {
     expect(deploy).toMatch(/const CACHE = 'navaid-\$\{SHA\}'/);              // service-worker cache
   });
 
+  test('a preview is published once, and the artifact stays deployable', () => {
+    const workflow = read('.github/workflows/deploy.yml');
+    // Each preview used to be copied to BOTH /pr/<n>/ and /branch/<name>/, so every open PR
+    // added ~29 MB (docs minus the 126 MB byop plate set) to one Pages artifact. Five PRs
+    // put it near 300 MB and Pages sat in deployment_in_progress past the action's ceiling,
+    // failing unrelated PRs and the promo. Nothing links /branch/ anyway: the comment and
+    // the deployment record both point at /pr/<n>/.
+    expect(workflow).not.toContain('site/branch');
+    expect(workflow).toMatch(/-> \/pr\/\$NUM\//);
+    // And the ceiling itself is not configurable: the action logs a `timeout` input and
+    // ignores it (measured -- 1800000 in, aborted at ~606 s, the 600000 default), so this
+    // has to stay a payload problem rather than a config one. Asserted on the PARSED step,
+    // not on a text window: the note explaining this contains the literal value.
+    const doc = YAML.parse(workflow);
+    const step = doc.jobs.deploy.steps.find(x => String(x.uses || '').includes('deploy-pages'));
+    expect(step.with && step.with.timeout).toBeUndefined();
+  });
+
   test('Pages deploys queue per PR instead of piling up on one group', () => {
     const doc = YAML.parse(read('.github/workflows/deploy.yml'));
     const c = doc.jobs.deploy.concurrency;
@@ -128,9 +146,7 @@ test.describe('workflow trust and integrity gates', () => {
     // Production publishes must never be cancelled by a preview: they are in their own
     // group, and cancel-in-progress is false for anything that is not a pull request.
     expect(String(c.group)).not.toBe('pages');
-    // ...and the wait has to survive sitting behind another deployment.
-    const step = doc.jobs.deploy.steps.find(x => String(x.uses || '').includes('deploy-pages'));
-    expect(Number(step.with.timeout)).toBeGreaterThan(600000);
+    // (No timeout assertion: the action ignores that input -- see the artifact test above.)
   });
 
   test('no PR metadata is ever interpolated into shell source', () => {
