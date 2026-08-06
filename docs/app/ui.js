@@ -7089,12 +7089,19 @@ const NavWxOpacity = (function () {
       ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
     }
   }
+  // Cropping a SIGWX panel is asynchronous (image decode + canvas), and the pilot can
+  // change the valid time while one is in flight. Without a generation token a slower crop
+  // of the OLD chart lands after the new one and paints stale weather under the new label
+  // -- the same class of defect as the simulator's ended-session poll.
+  let sigwxGen = 0;
   function updateLayer() {
+    const gen = ++sigwxGen;
     if (!cb.checked || !manifest) { removeLayers(); return; }
     const t = currentTime();
     if (!t) { removeLayers(); return; }
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     cropPanel(url, CROP_MAP, true).then(data => {
+      if (gen !== sigwxGen) return;                 // a newer selection won
       if (!cb.checked) { removeLayers(); return; }
       place('map', data, boundsFrom(BOUNDS_MAP, 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale'), NavWxOpacity.value());
       applyRotation();
@@ -7102,13 +7109,13 @@ const NavWxOpacity = (function () {
     const tblOp = off('sigwxTblOpacity') || 0.92;
     const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
     cropPanel(url, CROP_TABLE, false).then(data => {
-      if (!cb.checked) return;
+      if (gen !== sigwxGen || !cb.checked) return;
       place('table', data, tblBounds, tblOp);
     }).catch(() => { /* table optional */ });
     // Title header: full-width strip shrunk to the table's width, parked just
     // above the table (height keeps the strip's aspect at that width).
     cropPanel(url, CROP_HEADER, false).then(data => {
-      if (!cb.checked) return;
+      if (gen !== sigwxGen || !cb.checked) return;
       const w = tblBounds[0][1], e = tblBounds[1][1], nT = tblBounds[1][0];
       const midLat = (tblBounds[0][0] + nT) / 2;
       const hLat = (e - w) * Math.cos(midLat * Math.PI / 180) * HEADER_ASPECT;

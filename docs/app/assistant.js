@@ -770,16 +770,24 @@
     return ok;
   }
 
-  // Ask for THIS change unless the pilot already approved a change in this same turn and
-  // nothing untrusted has been read. Approving one edit in a turn the pilot themselves
-  // started is enough for the rest of that turn -- a five-leg altitude change should not be
-  // five prompts -- but it expires with the turn, and taint disables it entirely.
+  // A model turn can contain several tool calls, and the approval the pilot gave was for a
+  // change they were SHOWN. Letting it cover any later tool in the same turn meant an
+  // approved set_route could silently authorise a different set_leg or reverse_route. What
+  // the approval now covers is that change, repeated: the same tool with the same
+  // arguments (a retry, or the model re-issuing an identical call) runs without asking
+  // again, and anything materially different is confirmed on its own terms. Taint still
+  // disables the allowance entirely.
+  function signature(name, args) {
+    try { return name + ' ' + JSON.stringify(args || {}); } catch (e) { return name + ' ?'; }
+  }
+  const approvedThisTurn = new Set();
   function allowMutation(name, args) {
-    if (turnConsent && !contextTainted) { lastApproved = null; return true; }
+    const sig = signature(name, args);
+    if (!contextTainted && approvedThisTurn.has(sig)) { lastApproved = null; return true; }
     const ok = confirmMutation(name, args);
     if (ok) {
       lastApproved = name;
-      if (!contextTainted) turnConsent = true;
+      if (!contextTainted) { turnConsent = true; approvedThisTurn.add(sig); }
     }
     return ok;
   }
@@ -817,6 +825,7 @@
     const historyBase = messages.length;
     // A new turn is a new authorisation: consent never carries from one message to the next.
     turnConsent = false;
+    approvedThisTurn.clear();
     messages.push({ role: 'user', parts: [{ text: userText }] });
     renderUser(userText);
     setBusy(true);
@@ -858,6 +867,7 @@
     // The untrusted text went with the history, so the taint goes too.
     contextTainted = false;
     turnConsent = false;
+    approvedThisTurn.clear();
     if (logEl) logEl.innerHTML = '';
   }
 
@@ -1093,9 +1103,11 @@
     reset: resetChat,
     _tools: TOOLS,                 // raw tools — BYPASS the tier gate
     _runTool: runToolGated,        // the gated path the agent loop uses
-    _resetConsent: () => { turnConsent = false; contextTainted = false; lastApproved = null; },
+    _resetConsent: () => {
+      turnConsent = false; contextTainted = false; lastApproved = null; approvedThisTurn.clear();
+    },
     // What a fresh user message does to consent, without going through a provider round-trip.
-    _newTurn: () => { turnConsent = false; lastApproved = null; },
+    _newTurn: () => { turnConsent = false; lastApproved = null; approvedThisTurn.clear(); },
     _reset: resetChat,
     _isTainted: () => contextTainted,
     _summarise: mutationSummary,

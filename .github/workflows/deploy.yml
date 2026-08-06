@@ -186,15 +186,19 @@ jobs:
         run: |
           cd m
           mkdir -p ../site/pr ../site/branch
-          REFS=$(gh pr list --state open --json number,headRefName,baseRefName,isCrossRepository \
-            --jq '.[] | select((.baseRefName == "main" or .baseRefName == "dev") and .isCrossRepository == false) | "\(.number)\t\(.headRefName)"')
-          if [ -z "$REFS" ]; then
+          # A branch name is ATTACKER-CONTROLLED text: git accepts refs containing $( ),
+          # quotes and semicolons. It is read as data here (NUL-delimited, never expanded
+          # into command text), validated with git check-ref-format, and passed to the
+          # worker as positional parameters. A branch called
+          # 'feat/x$(printf${IFS}PWNED)' previously executed inside this job -- which
+          # assembles the PRODUCTION tree that the next job publishes with pages: write.
+          gh pr list --state open --json number,headRefName,baseRefName,isCrossRepository \
+            --jq '.[] | select((.baseRefName == "main" or .baseRefName == "dev") and .isCrossRepository == false) | "\(.number)\t\(.headRefName)"' \
+            | tr '\n' '\0' > /tmp/refs.nul
+          if [ ! -s /tmp/refs.nul ]; then
             echo "No open same-repo PRs."
             exit 0
           fi
-          BRANCHES=$(printf '%s\n' "$REFS" | cut -f2)
-          # shellcheck disable=SC2086
-          git fetch origin --depth 1 -q $BRANCHES 2>/dev/null || true
 
           rewrite_cache_busts() {
             ROOT=$1
@@ -232,12 +236,11 @@ jobs:
             # without this an unreviewed branch reads the pilot's saved routes, their
             # Drive/BYOK tokens and every setting from the live app, and can overwrite them.
             # Injected only here, so dev and production are untouched.
-            # Take the shim from the branch being previewed when it has one, else from
-            # main. Only the checkouts of main (m/) and dev (d/) exist on disk here, so a
-            # branch's own copy has to come out of git rather than off the filesystem.
-            if ! git show "origin/$BRANCH:.github/preview/pr-store.js" > "$STAGING/pr-store.js" 2>/dev/null; then
-              cp .github/preview/pr-store.js "$STAGING/pr-store.js" 2>/dev/null || true
-            fi
+            # ALWAYS from this checkout of main, never from the branch being previewed: a
+            # branch could otherwise ship a no-op or an exfiltrating "shim" and the build
+            # would publish it. (This narrows what a preview can do by accident; it is not
+            # a security boundary -- see the trust note in .ai/navaid-dev.md.)
+            cp .github/preview/pr-store.js "$STAGING/pr-store.js" 2>/dev/null || true
             if [ ! -s "$STAGING/pr-store.js" ]; then
               # No isolation available => do not publish this preview at all. Serving it
               # would give an unreviewed branch the live app's storage on the same origin.
@@ -252,18 +255,32 @@ jobs:
             # No byop copy under previews -- io.js plateBase() resolves plates against the
             # shared root copy at runtime.
             rm -rf "$STAGING/byop"
+            # ...and no service worker: Cache Storage is per ORIGIN, so a preview worker's
+            # cleanup used to delete the live app's offline shell just by being visited.
+            rm -f "$STAGING/sw.js"
             mv "$STAGING" "../site/pr/$NUM"
             # Branch names contain slashes (feat/foo), so create the parent first.
             mkdir -p "$(dirname "../site/branch/$BRANCH")"
             cp -rl "../site/pr/$NUM" "../site/branch/$BRANCH"
             echo "  -> /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
           }
-          # build_preview runs in xargs-spawned subshells and CALLS rewrite_cache_busts, so
-          # that function must be exported too -- otherwise the rewrite silently no-ops and
-          # previews ship raw source (version: '1.0', ?v= literals, stale SW CACHE name).
-          export -f build_preview rewrite_cache_busts
-
-          printf '%s\n' "$REFS" | xargs -P 4 -I{} bash -c 'IFS=$'"'"'\t'"'"' read -r n b <<< "{}"; build_preview "$n" "$b"'
+          # Sequential and in-process: no `bash -c` program is built from the data, so
+          # nothing in a branch name can be parsed as shell. (The previous xargs -I{}
+          # form substituted the line INTO the command text, where bash re-parsed it.)
+          while IFS= read -r -d '' line; do
+            NUM=${line%%	*}
+            BRANCH=${line#*	}
+            case "$NUM" in
+              ''|*[!0-9]*) echo "::warning::skipping PR entry with a non-numeric number"; continue ;;
+            esac
+            if ! git check-ref-format "refs/heads/$BRANCH" 2>/dev/null; then
+              echo "::warning::skipping PR #$NUM: '$BRANCH' is not a well-formed ref name"
+              continue
+            fi
+            # Fetch per branch, as data -- never as an expanded option list.
+            git fetch origin --depth 1 -q -- "$BRANCH" 2>/dev/null || true
+            build_preview "$NUM" "$BRANCH"
+          done < /tmp/refs.nul
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload artifact
@@ -342,7 +359,7 @@ jobs:
           # the same PR could show different builds after a rebase.
           URL="https://navaid.supino.org/pr/${PR}/"
           SHORT="${SHA:0:7}"
-          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`\n\n<sub>Not indexed, and rebuilt on every push. Shares an origin with the live app, so it can see the same saved routes and settings.</sub>' "$URL" "$URL" "$SHORT")
+          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`\n\n<sub>⚠️ Unreviewed branch code on the production origin. It gets its own storage namespace and no service worker, but that is not a sandbox — a same-origin frame can still reach the live app'"'"'s saved routes, settings and BYOK/Drive credentials. Open it as you would run this branch locally. Not indexed; rebuilt on every push.</sub>' "$URL" "$URL" "$SHORT")
           # Update the existing bot comment rather than adding one per push.
           EXISTING=$(gh api "repos/${REPO}/issues/${PR}/comments" \
             --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("### 🚀 Preview deployed")))] | .[0].id // empty')
@@ -417,6 +434,11 @@ jobs:
           # times out. The shim is a deployment property of a published preview, and it is
           # covered on its own by tests/preview-store-isolation.spec.js.
           sed -i '/<script src="pr-store.js"><\/script>/d' "$PREVIEW/index.html" 2>/dev/null || true
+          # ...and put sw.js back for the same reason. A PUBLISHED preview deliberately has
+          # none (Cache Storage is per origin, so its worker's cleanup would delete the live
+          # app's offline shell), but this job exists to verify the PR's app build, and part
+          # of that build is the service worker -- offline-tiles.spec.js reads its source.
+          cp docs/sw.js "$PREVIEW/sw.js" 2>/dev/null || true
           python3 -m http.server 8000 --directory _site >/tmp/http.log 2>&1 &
           SRV=$!
           trap 'kill $SRV 2>/dev/null || true' EXIT

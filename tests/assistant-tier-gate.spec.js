@@ -46,26 +46,36 @@ test('a declined prompt leaves the route untouched and tells the model why', asy
   expect(String(out.res && out.res.error)).toMatch(/declined/);  // model is told
 });
 
-test('consent covers the rest of ONE turn, not the session', async ({ page }) => {
+test('consent covers the change that was shown, not whatever comes next', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(async () => {
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
-    state.legs = []; syncLegs(); draw();
-    let asked = 0;
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 100; l.inboundAltitude = 3000; });
+    draw();
+    const asked = [];
     NavAid.assistant._resetConsent();
-    NavAid.assistant._setConfirm(() => { asked++; return true; });
-    const first = await NavAid.assistant._runTool('reverse_route', {});
-    const second = await NavAid.assistant._runTool('reverse_route', {});
-    const inTurn = asked;
-    // What a new user message does. Approval must not survive it: the pilot approved a
-    // change they were shown, not a standing permission for whatever comes next.
+    NavAid.assistant._setConfirm(m => { asked.push(String(m)); return true; });
+    // The same call repeated (a retry, or the model re-issuing it) is the change the pilot
+    // already saw, so it runs without asking twice.
+    await NavAid.assistant._runTool('reverse_route', {});
+    await NavAid.assistant._runTool('reverse_route', {});
+    const afterRepeat = asked.length;
+    // A materially DIFFERENT mutation in the same turn was silently authorised before:
+    // an approved set_route could carry a set_leg nobody was shown.
+    await NavAid.assistant._runTool('set_leg', { leg: 1, altitudeFt: 4500 });
+    const afterDifferent = asked.length;
     NavAid.assistant._newTurn();
     await NavAid.assistant._runTool('reverse_route', {});
-    return { inTurn, afterNewTurn: asked };
+    return { afterRepeat, afterDifferent, afterNewTurn: asked.length, asked };
   });
-  // Still not once per call inside a turn — a five-leg altitude change is not five prompts.
-  expect(out.inTurn).toBe(1);
-  expect(out.afterNewTurn).toBe(2);
+  expect(out.afterRepeat).toBe(1);              // identical repeat: still one prompt
+  expect(out.afterDifferent).toBe(2);           // a different change asks on its own terms
+  // (the two reverses above leave the altitudes swapped, so assert the NEW value and the
+  // leg it names rather than a specific before-value)
+  expect(out.asked[1]).toMatch(/4500 ft/);
+  expect(out.asked[1]).toMatch(/Leg 1/);
+  expect(out.afterNewTurn).toBe(3);             // ...and nothing survives the turn boundary
 });
 
 test('the prompt names the concrete change, not just "change your route"', async ({ page }) => {
