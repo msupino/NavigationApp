@@ -525,7 +525,6 @@ window.S = {
   tbWindFieldTime: 'זמן',
   windFieldLoading: 'טוען שדה רוח…',
   windFieldErr: 'שדה הרוח אינו זמין',
-  windFieldNorthUpOnly: 'שדה הרוח מוצג רק בכיוון צפון — סובבו את המפה ל-0°',
   // עוזר AI (assistant.js)
   assistantTitle: 'עוזר תכנון טיסה',
   assistantSettings: 'הגדרות',
