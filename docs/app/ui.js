@@ -3083,9 +3083,46 @@ if (windDepartSlider) {
     }
   }
 
+  // leaflet-velocity scales particle speed by mapArea^0.4, where mapArea comes from
+  // map.getBounds() -- the SW/NE corners. On a rotated map that box is the axis-aligned
+  // bounding box of a rotated viewport, so it grows with the bearing even though the visible
+  // area has not changed: measured on this map, 0.1216 deg² at 0°, 0.2814 at 45°, back to
+  // 0.1216 at 90°. That is a 1.40x speed factor at 45°, i.e. the particles animate ~40% too
+  // fast at intermediate bearings and correctly at the right angles. Direction and position
+  // are unaffected, and the colour ramp reads real m/s from the data, so nothing a pilot
+  // reads is wrong -- but the animation lies about how hard the wind is blowing.
+  //
+  // Patched here rather than by vendoring the library: it is one method, and the CDN copy
+  // stays pinned with its SRI hash. _startWindy is what hands the extent over, so an
+  // override with a bearing-independent extent is the whole fix.
+  let velocityPatched = false;
+  function patchVelocityScale() {
+    if (velocityPatched) return;
+    const proto = (typeof L !== 'undefined' && L.VelocityLayer && L.VelocityLayer.prototype) || null;
+    if (!proto || typeof proto._startWindy !== 'function') return;   // library shape changed
+    proto._startWindy = function () {
+      const map = this._map;
+      const size = map.getSize();
+      const zoom = map.getZoom();
+      // The viewport as if UNROTATED: project/unproject are CRS-level and carry no bearing,
+      // so a box built in projected pixels around the centre has the same geographic size at
+      // every bearing. Taking spans along the screen axes instead does NOT work -- at 90° the
+      // screen x-axis runs north-south, the lng span collapses to ~0, and the particles stop
+      // (measured: screen magnitude 12.66 at 0° against 0.01 at 90°).
+      const c = map.project(map.getCenter(), zoom);
+      const sw = map.unproject(c.add(L.point(-size.x / 2, size.y / 2)), zoom);
+      const ne = map.unproject(c.add(L.point(size.x / 2, -size.y / 2)), zoom);
+      this._windy.start(
+        [[0, 0], [size.x, size.y]], size.x, size.y,
+        [[sw.lng, sw.lat], [ne.lng, ne.lat]]);
+    };
+    velocityPatched = true;
+  }
+
   // Create (or recreate) the velocity layer from the current store + bearing.
   function buildLayer() {
     if (!store) return;
+    patchVelocityScale();
     if (layer) { map.removeLayer(layer); layer = null; }
     layer = L.velocityLayer({
       displayValues: false,
