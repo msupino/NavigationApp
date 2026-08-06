@@ -123,3 +123,63 @@ test('sessionStorage is namespaced too', async ({ context }) => {
   await preview.goto('?lang=en&nogist');
   expect(await preview.evaluate(() => sessionStorage.getItem('navaid.fpOpen'))).toBeNull();
 });
+
+// --- what the shim does NOT do -------------------------------------------------------
+// The review demonstrated (and this reproduces) that a same-origin JavaScript wrapper is
+// not a browser security boundary. These are here so nobody reads the tests above as a
+// claim of isolation from hostile code: the shim keeps an ORDINARY preview from stepping
+// on live data; it cannot stop a preview that goes looking.
+// Injected the way the WORKFLOW does it — an inline <script> in the preview's own
+// index.html. page.addInitScript() would be wrong here: Playwright runs init scripts in
+// every frame, including a blank iframe, which a real <script> tag does not.
+async function serveAsPreview(page, num) {
+  await page.route('**/*', async route => {
+    if (route.request().resourceType() !== 'document') return route.fallback();
+    const res = await route.fetch();
+    const html = (await res.text()).replace('<head>',
+      '<head><script>' + asPreview(num) + '</script>');
+    await route.fulfill({ status: 200, contentType: 'text/html', body: html });
+  });
+}
+
+test('a clean same-origin realm still reaches the real store — the shim is not a sandbox',
+  async ({ page, context }) => {
+    const live = await context.newPage();
+    await live.goto('?lang=en&nogist');
+    await live.evaluate(() => localStorage.setItem('navaid.ai.key.anthropic', 'REAL-SECRET'));
+
+    // The suite's own fixture registers a page.route; ours has to be registered after it
+    // to win, which is why this uses the fixture page rather than a bare context page.
+    const preview = page;
+    await serveAsPreview(preview, 999);
+    await preview.goto('?lang=en&nogist');
+    const r = await preview.evaluate(() => {
+      const shielded = localStorage.getItem('navaid.ai.key.anthropic');
+      const f = document.createElement('iframe');
+      document.body.appendChild(f);
+      const viaIframe = f.contentWindow.localStorage.getItem('navaid.ai.key.anthropic');
+      f.remove();
+      return { shielded, viaIframe, prefix: window.__navPreviewStorePrefix };
+    });
+    expect(r.prefix).toBe('pr-999.');       // the shim really did install
+    expect(r.shielded).toBeNull();          // ...and hides the value from the page itself
+    // ...while an iframe's untouched realm reads it anyway. Documented, not fixed: fixing
+    // it means a separate origin. Serving unreviewed branch code here is a deliberate,
+    // accepted trade — see the preview trust note in .ai/navaid-dev.md.
+    expect(r.viaIframe).toBe('REAL-SECRET');
+  });
+
+test('the shim refuses to register a service worker', async ({ context }) => {
+  const preview = await context.newPage();
+  await preview.addInitScript(asPreview(123));
+  await preview.goto('?lang=en&nogist');
+  const r = await preview.evaluate(async () => {
+    try {
+      await navigator.serviceWorker.register('sw.js');
+      return 'registered';
+    } catch (e) { return String(e.message || e); }
+  });
+  // Cache Storage is per ORIGIN: a preview worker's activate cleanup used to delete the
+  // live app's offline shell just by being visited.
+  expect(r).toMatch(/disabled in PR previews/);
+});

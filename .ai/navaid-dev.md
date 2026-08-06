@@ -12,8 +12,19 @@ carries the static web app source only.
 
 - **Live (production):** https://navaid.supino.org/
 - **Live (staging):** https://navaid.supino.org/staging/
-- **Pull-request verification:** built as an Actions artifact and served only
-  on localhost during E2E; unreviewed code is not deployed under the live origin.
+- **Pull-request previews:** every open same-repository PR is published at
+  `https://navaid.supino.org/pr/<n>/` (and `/branch/<name>/`), linked from a bot
+  comment and a `View deployment` record. Fork PRs are never published.
+  **Trust model — read before opening one:** a preview is unreviewed branch code
+  on the PRODUCTION origin. It is given its own `localStorage`/`sessionStorage`
+  namespace (`.github/preview/pr-store.js`, taken only from the base branch) and
+  is refused a service worker, which keeps an ordinary preview from stepping on
+  live data or deleting the offline shell. That is **not** a security boundary:
+  a same-origin iframe reaches the real store, which
+  `tests/preview-store-isolation.spec.js` demonstrates on purpose. Treat opening
+  a preview as running that branch's code against your saved routes, settings and
+  BYOK/Drive credentials. The robust fix is a separate origin; hosting them here
+  is a deliberate, accepted trade.
 - **Repo:** https://github.com/msupino/NavigationApp (fork of liorbenhorin/NavigationApp)
 
 ## AI Docs

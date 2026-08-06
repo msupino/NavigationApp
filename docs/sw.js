@@ -64,13 +64,46 @@ async function cachedAppShell(request) {
   return null;
 }
 
-self.addEventListener('install', () => self.skipWaiting());
+// Cache Storage is per ORIGIN, not per service-worker scope. The activate cleanup used to
+// delete every navaid-* cache except its own, so a worker registered under /pr/<n>/ or
+// /staging/ wiped the PRODUCTION app-shell cache: merely opening a preview left a pilot
+// without the offline shell until they next loaded the live app online. Each worker now
+// stamps its own scope into its cache and deletes only caches carrying that same stamp.
+const SCOPE = String((self.registration && self.registration.scope) || '/');
+const SCOPE_KEY = '__navaid_owner__';
+
+async function stampOwner() {
+  try {
+    const cache = await caches.open(CACHE);
+    await cache.put(SCOPE_KEY, new Response(SCOPE));
+  } catch (e) { /* storage unavailable: cleanup below simply keeps everything */ }
+}
+
+async function ownedByThisScope(name) {
+  try {
+    const cache = await caches.open(name);
+    const marked = await cache.match(SCOPE_KEY);
+    if (!marked) return false;          // unmarked = another deployment, or pre-stamp: keep
+    return (await marked.text()) === SCOPE;
+  } catch (e) { return false; }
+}
+
+self.addEventListener('install', e => {
+  self.skipWaiting();
+  e.waitUntil(stampOwner());
+});
 
 self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys()
-      .then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== TILE_CACHE).map(k => caches.delete(k))))
-      .then(() => self.clients.claim()));
+  e.waitUntil((async () => {
+    await stampOwner();
+    const ks = await caches.keys();
+    for (const k of ks) {
+      if (k === CACHE || k === TILE_CACHE) continue;
+      // Only this deployment's own superseded caches.
+      if (await ownedByThisScope(k)) await caches.delete(k);
+    }
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', e => {

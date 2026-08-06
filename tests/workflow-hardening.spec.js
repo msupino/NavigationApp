@@ -99,6 +99,52 @@ test.describe('workflow trust and integrity gates', () => {
     expect(serve).toMatch(/sed -i '\/<script src="pr-store\.js">/);
   });
 
+  test('no PR metadata is ever interpolated into shell source', () => {
+    const workflow = read('.github/workflows/deploy.yml');
+    // A branch name is attacker-controlled and git accepts $( ) inside a ref, so
+    // 'feat/x$(printf${IFS}PWNED)' executed in the job that assembles the PRODUCTION tree
+    // and hands it to a `pages: write` deploy. Verified by running the old xargs -I{}
+    // pattern with that value.
+    expect(workflow).not.toMatch(/xargs[^\n]*bash -c/);
+    expect(workflow).not.toMatch(/read -r n b <<< "\{\}"/);
+    // Read as NUL-delimited data, checked, and passed as positional parameters.
+    expect(workflow).toContain("tr '\\n' '\\0'");
+    expect(workflow).toMatch(/while IFS= read -r -d ''/);
+    expect(workflow).toContain('git check-ref-format');
+    expect(workflow).toMatch(/build_preview "\$NUM" "\$BRANCH"/);
+    // The branch list must not be expanded as fetch options either.
+    expect(workflow).not.toMatch(/git fetch origin --depth 1 -q \$BRANCHES/);
+    expect(workflow).toMatch(/git fetch origin --depth 1 -q -- "\$BRANCH"/);
+  });
+
+  test('a preview takes its shim from the base branch and ships no service worker', () => {
+    const workflow = read('.github/workflows/deploy.yml');
+    // The branch being previewed used to be allowed to supply its own "isolation" file --
+    // any non-empty no-op passed the presence check.
+    expect(workflow).not.toMatch(/git show "origin\/\$BRANCH:\.github\/preview\/pr-store\.js"/);
+    expect(workflow).toMatch(/cp \.github\/preview\/pr-store\.js/);
+    // Cache Storage is per ORIGIN: a preview worker's cleanup deleted the live app's
+    // offline shell just by being visited.
+    expect(workflow).toMatch(/rm -f "\$STAGING\/sw\.js"/);
+  });
+
+  test('the service worker only deletes caches its own scope owns', () => {
+    const sw = read('docs/sw.js');
+    // The old cleanup deleted every navaid-* cache that was not its own, across scopes.
+    expect(sw).not.toMatch(/ks\.filter\(k => k !== CACHE && k !== TILE_CACHE\)/);
+    expect(sw).toContain('__navaid_owner__');
+    expect(sw).toContain('ownedByThisScope');
+  });
+
+  test('the handbook states the real preview trust model', () => {
+    const doc = read('.ai/navaid-dev.md');
+    // It claimed PR code is never deployed under the live origin, which stopped being
+    // true the moment previews came back.
+    expect(doc).not.toMatch(/unreviewed code is not deployed under the live origin/);
+    expect(doc).toMatch(/not\*\* a security boundary|not a security boundary/);
+    expect(doc).toContain('/pr/<n>/');
+  });
+
   test('the storage shim exists and is inert until a prefix is substituted', () => {
     const shim = read('.github/preview/pr-store.js');
     expect(shim).toContain('__PR_PREFIX__');
