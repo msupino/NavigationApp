@@ -147,22 +147,26 @@ test('wind field renders in a non-rotating pane', async ({ page }) => {
   expect(r.canvasRendered).toBe(true);
 });
 
-test('a rotated map hides the wind field and shows a north-up note; it returns at 0°', async ({ page }) => {
+// Deliberately replaces "a rotated map hides the wind field and shows a north-up note".
+// That test encoded a workaround, not a requirement: the field was withheld above 0° bearing
+// on the belief that leaflet-velocity bakes an unplaceable north-up grid. It does not — its
+// per-pixel inversion and its u/v→screen Jacobian both go through the rotation-aware map
+// projection; it simply never rebuilds on rotation, so the field went stale. It is rebuilt
+// now, and the direction assertions live in tests/windfield-rotation.spec.js.
+test('a rotated map keeps the wind field, with no north-up note', async ({ page }) => {
   await boot(page);
   await loadWind(page);
   const canvas = page.locator('.leaflet-windfield-pane canvas');
   await expect(canvas).toHaveCount(1, { timeout: 10000 });
-  // leaflet-velocity bakes a north-up screen field, so on a rotated map it can't
-  // be placed — the fallback removes the field and shows a note instead.
   await page.evaluate(() => map.setBearing(45));
-  await expect(canvas).toHaveCount(0);
-  const note = page.locator('#windfield-status');
-  await expect(note).toBeVisible();
-  await expect(note).toHaveText(/north-up/i);
-  // Back to north → the field returns and the note clears.
+  await page.waitForTimeout(600);            // debounced rebuild
+  // The field survives the rotation instead of being torn down...
+  await expect(canvas).toHaveCount(1);
+  // ...and nothing apologises for a limitation that no longer exists.
+  await expect(page.locator('#windfield-status')).toBeHidden();
   await page.evaluate(() => map.setBearing(0));
-  await expect(canvas).toHaveCount(1, { timeout: 10000 });
-  await expect(note).toBeHidden();
+  await page.waitForTimeout(600);
+  await expect(canvas).toHaveCount(1);
 });
 
 test('a north-up pan keeps the wind field (no spurious removal)', async ({ page }) => {

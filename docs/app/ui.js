@@ -3115,23 +3115,32 @@ if (windDepartSlider) {
     if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = 'none'; }
   }
 
-  // leaflet-velocity bakes its particle field into a north-up screen grid at
-  // build time, so on a rotated map (leaflet-rotate) it renders offset off the
-  // viewport — the field can't be re-placed for a non-zero bearing. Rather than
-  // show a broken field, only display it north-up: when the map is rotated
-  // (bearing != 0) hide the field and show a note; it reappears automatically at
-  // 0°. 'rotate' fires continuously during a dial drag → coalesce per frame.
-  const isRotated = () => ((map.getBearing ? map.getBearing() : 0) || 0) !== 0;
+  // The field follows map rotation, and the reason it used not to is worth recording,
+  // because the previous fix here was to refuse to draw it at all above 0° bearing.
+  //
+  // leaflet-velocity's maths IS rotation-aware: it inverts each screen pixel with
+  // map.containerPointToLatLng and builds its u/v -> screen Jacobian by calling
+  // map.latLngToContainerPoint, both of which account for bearing under leaflet-rotate.
+  // What it lacks is a REBUILD trigger: its getEvents() covers resize and moveend, plus
+  // dragend/zoomstart/zoomend, and nothing for rotate -- those events postdate the library.
+  // So after a rotation the field kept the columns it computed at the old bearing: stale,
+  // not misplaced. Measured at bearing 90 with a uniform 270° wind, the field still pushed
+  // particles +x on screen; after a restart it pushed +y, i.e. it had rotated with the map.
+  //
+  // (The two-corner viewport box the library derives is genuinely wrong at a bearing, but it
+  // only feeds mapArea -> velocityScale, i.e. particle SPEED. Coverage and direction are
+  // unaffected, so it is not what broke this.)
+  function restartField() {
+    if (!layer) return;
+    if (typeof layer._clearAndRestart === 'function') { layer._clearAndRestart(); return; }
+    // Older/other builds of the library: rebuild the layer outright.
+    removeLayer();
+    buildLayer();
+    applyTimeLabel();
+  }
   function applyRotationState() {
     if (!cb.checked || !store) return;
-    if (isRotated()) {
-      if (layer) removeLayer();
-      if (statusEl) {
-        statusEl.classList.remove('windfield-loading');
-        statusEl.style.display = '';
-        statusEl.textContent = (window.S && S.windFieldNorthUpOnly) || 'Wind field shows north-up only — rotate the map to 0°';
-      }
-    } else if (!layer) {
+    if (!layer) {
       buildLayer();
       applyTimeLabel();
       if (statusEl) { statusEl.textContent = ''; statusEl.style.display = 'none'; }
@@ -3143,10 +3152,20 @@ if (windDepartSlider) {
     rotStatePending = true;
     requestAnimationFrame(() => { rotStatePending = false; applyRotationState(); });
   }
+  // Debounced, and bound to BOTH events: 'rotate' fires continuously through a dial drag
+  // (rebuilding the particle field per frame would stall the map), while a programmatic
+  // map.setBearing() fires 'rotate' and NO 'rotateend' at all -- so listening only for the
+  // end event misses every rotation that does not come from the dial.
+  let rotSettle = null;
+  function onRotateSettle() {
+    if (!cb.checked || !layer) return;
+    clearTimeout(rotSettle);
+    rotSettle = setTimeout(restartField, 150);
+  }
   map.on('moveend', onWindViewChange);
   map.on('zoomend', onWindViewChange);
-  map.on('rotate', onWindViewChange);
-  map.on('rotateend', onWindViewChange);
+  map.on('rotate', onRotateSettle);
+  map.on('rotateend', onRotateSettle);
 
   // leaflet-velocity draws into a canvas in the overlay pane; set its element
   // opacity so the field can be dialled down against the chart base.

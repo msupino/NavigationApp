@@ -1161,7 +1161,6 @@ window.S = Object.assign({
   tbWindFieldTime: 'Time',
   windFieldLoading: 'Loading wind field…',
   windFieldErr: 'Wind field unavailable',
-  windFieldNorthUpOnly: 'Wind field shows north-up only — rotate the map to 0°',
   // AI assistant (assistant.js)
   assistantTitle: 'Flight plan assistant',
   assistantSettings: 'Settings',
