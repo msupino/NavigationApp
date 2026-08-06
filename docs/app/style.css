@@ -546,13 +546,41 @@ html[dir="rtl"] .tb-section.open .tb-section-head::after { transform: rotate(-90
   align-items: center;
   justify-content: flex-start;
   column-gap: 6px;
-  max-width: min(96vw, 300px);
+  /* Sized to the CONTROLS, not to the links: at 300px the closed menu still reached most
+     of the way across a phone and covered the Zulu clock. The links wrap underneath. */
+  width: max-content;
+  max-width: min(96vw, 232px);
+  padding: 4px 6px;
 }
+/* In Hebrew the clock mirrors to the LEFT while the toolbar stayed left too, so the closed
+   menu sat on top of it. Mirror the toolbar as well, the way the rest of the RTL layout
+   does -- clock on one side, menu on the other, in both languages. A dragged position
+   (inline style) still wins. */
+html[dir="rtl"] #toolbar.collapsed {
+  left: auto;
+  right: 12px;
+}
+/* The remaining height was the 44px touch minimums stacked with their own padding, on a
+   panel that is closed. Keep the targets comfortable but stop them padding each other. */
+#toolbar.collapsed > #toolbar-toggle {
+  min-height: 40px;
+  padding: 2px 12px;
+}
+#toolbar.collapsed > #toolbar-handle { padding: 0 6px 2px; }
+#toolbar.collapsed > #footer-links {
+  padding: 0 4px 2px;
+  font-size: 12px;
+}
+#toolbar.collapsed > #footer-links > * { padding-top: 2px; padding-bottom: 2px; }
 #toolbar.collapsed > #footer-links {
   flex: 0 1 100%;          /* own row, below the controls */
   margin-top: 0;
   padding-top: 2px;
   flex-wrap: wrap;
+  /* ...and it may wrap to two short lines rather than forcing the panel to the width of
+     both links on one line, which is what stretched a closed menu across the screen. */
+  row-gap: 0;
+  column-gap: 10px;
 }
 /* The separator under the language picker belongs to the expanded stack; on one row it
    would draw a rule through the middle of the controls. */

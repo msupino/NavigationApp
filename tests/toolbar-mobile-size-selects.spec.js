@@ -158,3 +158,43 @@ test('the chevron is drawn in the theme\'s ink, both ways', async ({ page }) => 
   // rendered with no arrow at all.
   expect(inks.dark.stroke).not.toBe(inks.light.stroke);
 });
+
+test('the closed menu does not cover the Zulu clock, in either language', async ({ page }) => {
+  for (const lang of ['en', 'he']) {
+    await page.goto('?lang=' + lang + '&nogist');
+    await page.waitForFunction(() => !!document.getElementById('toolbar') &&
+      !!document.getElementById('zulu-clock'));
+    const r = await page.evaluate(() => {
+      const tb = document.getElementById('toolbar');
+      if (!tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
+      const a = tb.getBoundingClientRect(), c = document.getElementById('zulu-clock').getBoundingClientRect();
+      return { overlap: !(c.right <= a.left || c.left >= a.right || c.bottom <= a.top || c.top >= a.bottom),
+        panel: { x: Math.round(a.left), w: Math.round(a.width), h: Math.round(a.height) },
+        clock: { x: Math.round(c.left), w: Math.round(c.width) },
+        viewportW: Math.round(innerWidth) };
+    });
+    // In Hebrew the clock mirrors to the left, but the toolbar did not — so the closed
+    // menu sat directly on top of it and the pilot could not read Zulu time at all.
+    expect(r.overlap, 'closed menu covers the clock in ' + lang +
+      ' (panel ' + JSON.stringify(r.panel) + ', clock ' + JSON.stringify(r.clock) + ')').toBe(false);
+    // ...and it is sized to its controls rather than stretching most of the way across.
+    expect(r.panel.w).toBeLessThanOrEqual(240);
+    expect(r.panel.h).toBeLessThan(130);
+  }
+});
+
+test('the closed menu keeps finger-sized targets', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!document.getElementById('toolbar'));
+  const taps = await page.evaluate(() => {
+    const tb = document.getElementById('toolbar');
+    if (!tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
+    return ['toolbar-toggle', 'lang-toggle'].map(id => {
+      const b = document.getElementById(id).getBoundingClientRect();
+      return { id, h: Math.round(b.height) };
+    });
+  });
+  // Shrinking the panel must not come out of the tap targets — that is the line between
+  // decluttering and making the menu unusable in the air.
+  for (const t of taps) expect(t.h, t.id).toBeGreaterThanOrEqual(40);
+});
