@@ -39,6 +39,7 @@ function walkPngs(dir, out = []) {
   return out;
 }
 
+export { reportStatus };
 export function finalizeImsManifests(rootDir, pwxCandidateFile, sigwxCandidateFile) {
   const has = png => existsSync(join(rootDir, png));
   const pwxFile = join(rootDir, 'ims/pwx.json');
@@ -83,9 +84,29 @@ export function finalizeImsManifests(rootDir, pwxCandidateFile, sigwxCandidateFi
   return { pwx, sigwx, pruned };
 }
 
+// A category that keeps its last-good manifest has NOT advanced, and every run that does so
+// used to exit 0 with nothing in the annotations panel. That is how SIGWX sat frozen for ~9 h
+// behind unbroken green runs (#1429): the only detector was the staleness monitor, which lags
+// by hours. Preserving is the right OUTCOME and a visible one.
+function reportStatus(result) {
+  for (const [name, r] of [['PWX', result.pwx], ['SIGWX', result.sigwx]]) {
+    if (r && r.status === 'preserved') {
+      console.error('::warning::' + name + ' kept its last-good manifest (' + r.actual + '/' +
+        r.expected + ' charts converted); the feed has not advanced.');
+    }
+  }
+  const bothStuck = result.pwx && result.sigwx &&
+    result.pwx.status === 'preserved' && result.sigwx.status === 'preserved';
+  if (bothStuck) {
+    console.error('::error::Neither chart category advanced; nothing new was published.');
+  }
+  return bothStuck;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [, , rootDir = 'ims', pwxCandidate = '/tmp/pwx.candidate.json',
     sigwxCandidate = '/tmp/sigwx.candidate.json'] = process.argv;
   const result = finalizeImsManifests(rootDir, pwxCandidate, sigwxCandidate);
   console.error(JSON.stringify(result));
+  if (reportStatus(result)) process.exitCode = 1;
 }
