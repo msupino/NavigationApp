@@ -104,14 +104,18 @@ test('every scheduled publisher declares its token scope and a concurrency group
 // --- a missing CDN script must be visible ------------------------------------------
 test('a blocked CDN dependency shows an error instead of a blank chart', async ({ page }) => {
   // Exactly the first-load condition where the service worker has nothing cached yet.
-  await page.route(/unpkg\.com\/leaflet@1\.9\.4/, r => r.abort());
+  // Anchored at the scheme and host: an unanchored /unpkg\.com/ also matches a URL that
+  // merely CONTAINS that text (https://evil.example/unpkg.com/leaflet@1.9.4/...), so the
+  // matcher would block more than the dependency it names.
+  await page.route(/^https:\/\/unpkg\.com\/leaflet@1\.9\.4\//, r => r.abort());
   const consoleErrors = [];
   page.on('pageerror', e => consoleErrors.push(String(e.message)));
   await page.goto('?lang=en&nogist');
   const alert = page.locator('#boot-error');
   await expect(alert).toBeVisible();
   await expect(alert).toContainText(/could not load/i);
-  await expect(alert).toContainText(/unpkg\.com/);
+  // A plain substring, not a URL pattern -- this asserts the message names the host.
+  await expect(alert).toContainText('unpkg.com');
   // The toolbar used to render completely over an empty grey map with nothing said.
   expect(await alert.getAttribute('role')).toBe('alert');
 });
