@@ -4185,10 +4185,10 @@ map.on('resize', () => { resizeOverlay(); scheduleDraw(); });
 // --- view fitting ----------------------------------------------------
 function fitView() {
   if (state.waypoints.length === 0) {
-    map.setView([32.0, 34.9], 9);
+    map.setView([tune('defaultViewLat'), tune('defaultViewLng')], tune('fitRouteEmptyZoom'));
     return;
   }
   const b = L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng]));
   // Clamp maxZoom so two close waypoints don't snap to a tight, useless view.
-  map.fitBounds(b, { padding: [70, 70], maxZoom: 11 });
+  map.fitBounds(b, fitOpts('fitRoutePaddingPx', 'fitRouteMaxZoom'));
 }

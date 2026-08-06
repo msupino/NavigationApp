@@ -474,8 +474,12 @@ function highlightTrack(id) {
     .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng))
     .map(p => [p.lat, p.lng]);
   if (typeof map !== 'undefined' && ll.length) {
-    if (ll.length === 1) map.setView(ll[0], Math.max(map.getZoom(), 12), { animate: true });
-    else map.fitBounds(L.latLngBounds(ll), { padding: [60, 60], maxZoom: 13, animate: true });
+    if (ll.length === 1) {
+      map.setView(ll[0], Math.max(map.getZoom(), tune('fitTrackPointZoom')), { animate: true });
+    } else {
+      map.fitBounds(L.latLngBounds(ll),
+        fitOpts('fitTrackPaddingPx', 'fitTrackMaxZoom', { animate: true }));
+    }
   }
   _trackHighlightId = id;
   _trackHighlightUntil = Date.now() + TRACK_HIGHLIGHT_MS;

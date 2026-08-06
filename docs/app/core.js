@@ -277,6 +277,27 @@ NavAid.tuningDefaults = {
     label: 'Google Earth tour: height for a leg with no altitude (ft AGL)' },
   defaultViewZoom: { value: 11, min: 8, max: 14, step: 0.5, label: 'First-run map zoom' },
   touchRotateGesture: { value: 0, min: 0, max: 1, step: 1, label: 'Two-finger rotate gesture (0/1)' },
+  // --- Map fit ---------------------------------------------------------------
+  // Every "frame the map on X" call used to carry its own hardcoded padding and maxZoom,
+  // so the two a pilot actually notices -- the route auto-fit and ⌖ Fit to screen -- did
+  // not even agree with each other (80px vs 70px). One tunable pair per THING being
+  // framed, since a NOTAM area, a GPS track and a two-waypoint leg genuinely want
+  // different framing; the point-zoom values are the fallback when there is a single
+  // point and nothing to fit.
+  fitRoutePaddingPx: { value: 70, min: 0, max: 200, step: 5, label: 'Fit route: padding (px)' },
+  fitRouteMaxZoom: { value: 11, min: 6, max: 18, step: 0.5, label: 'Fit route: max zoom' },
+  fitRouteEmptyZoom: { value: 9, min: 6, max: 14, step: 0.5, label: 'Fit route: zoom with no route' },
+  fitNotamPaddingPx: { value: 80, min: 0, max: 200, step: 5, label: 'Fit NOTAM: padding (px)' },
+  fitNotamMaxZoom: { value: 11, min: 6, max: 18, step: 0.5, label: 'Fit NOTAM: max zoom' },
+  fitNotamPointZoom: { value: 10, min: 6, max: 18, step: 0.5, label: 'Fit NOTAM: single-point zoom floor' },
+  fitTrackPaddingPx: { value: 60, min: 0, max: 200, step: 5, label: 'Fit GPS track: padding (px)' },
+  fitTrackMaxZoom: { value: 13, min: 6, max: 18, step: 0.5, label: 'Fit GPS track: max zoom' },
+  fitTrackPointZoom: { value: 12, min: 6, max: 18, step: 0.5, label: 'Fit GPS track: single-point zoom floor' },
+  fitAltPairPaddingPx: { value: 80, min: 0, max: 200, step: 5, label: 'Fit altitude pair: padding (px)' },
+  fitAltPairMaxZoom: { value: 12, min: 6, max: 18, step: 0.5, label: 'Fit altitude pair: max zoom' },
+  fitAreaPaddingPx: { value: 40, min: 0, max: 200, step: 5, label: 'Fit LSA area: padding (px)' },
+  fitAreaMaxZoom: { value: 12, min: 6, max: 18, step: 0.5, label: 'Fit LSA area: max zoom' },
+  fitBoxPaddingPx: { value: 30, min: 0, max: 200, step: 5, label: 'Fit metre-box: padding (px)' },
   defaultViewLat: { value: 32.1, min: 29, max: 34, step: 0.05, label: 'First-run map centre latitude' },
   defaultViewLng: { value: 34.95, min: 33, max: 36.5, step: 0.05, label: 'First-run map centre longitude' },
   hitLegLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Leg label hit min' },
@@ -529,7 +550,6 @@ NavAid.tuningGroups = [
     'fplEveOpenMin', 'fplWindowBeforeMin', 'fplWindowAfterVfrMin', 'fplEetRoundMin',
     'fplSignatureInk'] },
   { name: 'Google Earth tour', keys: ['kmlTourSecPerFlightMin', 'kmlTourLegMinSec', 'kmlTourLegMaxSec', 'kmlTourMinSegSec', 'kmlUnsetLegAglFt'] },
-  { name: 'First-run view', keys: ['defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Gestures', keys: ['touchRotateGesture'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
@@ -546,10 +566,31 @@ NavAid.tuningGroups = [
   // sliders are live menu controls; their defaults live here.
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
+  // Includes the former 'First-run view' group: the first-run centre/zoom and the
+  // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
+  // in front of them.
+  { name: 'Map fit', keys: ['fitRoutePaddingPx', 'fitRouteMaxZoom', 'fitRouteEmptyZoom',
+    'fitNotamPaddingPx', 'fitNotamMaxZoom', 'fitNotamPointZoom',
+    'fitTrackPaddingPx', 'fitTrackMaxZoom', 'fitTrackPointZoom',
+    'fitAltPairPaddingPx', 'fitAltPairMaxZoom',
+    'fitAreaPaddingPx', 'fitAreaMaxZoom', 'fitBoxPaddingPx',
+    'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
   { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
+// Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
+// map on X" call goes through this instead of carrying its own literals.
+function fitOpts(padKey, zoomKey, extra) {
+  const pad = Math.max(0, Math.round(tune(padKey)));
+  const o = Object.assign({ padding: [pad, pad] }, extra || {});
+  if (zoomKey) {
+    const mz = tune(zoomKey);
+    if (mz > 0) o.maxZoom = mz;
+  }
+  return o;
+}
+
 function tune(key) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
   if (!spec) return 0;
