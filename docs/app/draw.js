@@ -1963,8 +1963,7 @@ function drawVors(force) {
   // ...unless the pilot cleared the reference on that very station (setReferenceVor): the
   // selection ring is an answer to "what does this one cover", and clearing is the pilot
   // saying they are done with it. Any other station still rings on selection.
-  if (selectedStation && typeof vorRingSuppressIdent === 'string' &&
-      vorRingSuppressIdent === selectedStation) {
+  if (typeof vorRingSuppressed === 'function' && vorRingSuppressed(selectedStation)) {
     selectedStation = null;
   }
   const selIdent = selectedStation ||
@@ -2965,7 +2964,13 @@ function drawLegs() {
     octx.stroke();
     octx.lineCap = 'butt';
 
-    if (showDrift) drawDriftLines(sa, sb);
+    // The toolbar toggle governs drift lines globally; a leg may additionally opt out of its
+    // own, which is what the inspector's "Hide drift lines" sets. Nothing else about the leg
+    // changes -- including the kite's offset, which keeps its usual drift-derived position so
+    // that hiding the cone does not make the kite jump.
+    if (showDrift && !(typeof legDriftHidden === 'function' && legDriftHidden(leg))) {
+      drawDriftLines(sa, sb);
+    }
 
     const { dist, brg } = geo(A, B);
     const durH = legKiteTimeH(i, legProfile);

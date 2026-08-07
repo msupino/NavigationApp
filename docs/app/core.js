@@ -862,6 +862,10 @@ window.S = Object.assign({
   showLegKite: '◉ Show kite',
   hideLegKiteTitle: "Hide this leg's heading / time / altitude kite, both directions. The leg, its other markers and the flight plan are unchanged — click the leg line to bring the kite back.",
   showLegKiteTitle: "Draw this leg's heading / time / altitude kite again",
+  hideLegDrift: '⊘ Hide drift lines',          // inspector leg button — hide this leg's drift cone
+  showLegDrift: '◉ Show drift lines',
+  hideLegDriftTitle: "Hide this leg's dashed drift lines. The leg, its kite and the flight plan are unchanged — click the leg line to bring them back.",
+  showLegDriftTitle: "Draw this leg's dashed drift lines again",
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
@@ -2149,6 +2153,16 @@ function legKiteHidden(leg) {
   return !!(leg && leg.hideKite);
 }
 
+// ...and the same for the leg's DRIFT LINES -- the dashed pair fanning out at the tuned
+// drift angle. Same reasoning as the kite: on a busy chart several legs' cones overlap into
+// noise, and the pilot wants that leg's cone gone without losing the leg. The global drift
+// toggle still governs everything (this can only hide a cone the toolbar is already
+// drawing), the kite keeps its usual offset so hiding the cone does not shift it, and the
+// flight plan and every computed value are untouched.
+function legDriftHidden(leg) {
+  return !!(leg && leg.hideDrift);
+}
+
 // A PR preview may SHARE a big static asset directory with the deployed root instead of
 // carrying its own copy: every preview used to ship ~12 MB of chart-overlay imagery it had
 // not changed, and with several PRs open that pushed one Pages artifact near 300 MB, past
@@ -2209,6 +2223,20 @@ function setReferenceVor(ident) {
     if (el) el.value = next || '';
   }
   return next;
+}
+
+// Is the selected station's ring suppressed? Answering also EXPIRES the suppression, which
+// is the whole point: it is scoped to the one selection the pilot cleared the reference on,
+// not to the ident for the rest of the session. Without the expiry, NAT -> clear -> select
+// BGN -> select NAT again left NAT permanently un-ringable, because the value was only ever
+// reset by setting another non-empty reference. Selection moving anywhere else (or nowhere)
+// ends it. Called from draw(), so "the selection changed" needs no hook on all ~50 sites
+// that assign state.selected.
+function vorRingSuppressed(selectedIdent) {
+  if (typeof vorRingSuppressIdent !== 'string' || !vorRingSuppressIdent) return false;
+  if (selectedIdent && selectedIdent === vorRingSuppressIdent) return true;
+  window.vorRingSuppressIdent = null;             // selection left the station -- expired
+  return false;
 }
 
 function navLangPosKey(base) {

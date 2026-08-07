@@ -2173,6 +2173,7 @@ document.getElementById('reverse').onclick = () => {
       // dropping hideKite made a deliberately decluttered leg redraw its kite.
       ...(l.vorRef ? { vorRef: l.vorRef } : {}),
       ...(l.hideKite ? { hideKite: 1 } : {}),
+      ...(l.hideDrift ? { hideDrift: 1 } : {}),
       // Reversing is not a speed edit, so the pins travel -- but they travel WITH the
       // speeds, which swap above when the return path is shown. With it hidden both
       // directions take the forward speed, so both take the forward pin.
@@ -3036,9 +3037,10 @@ if (windDepartSlider) {
     busy = true;
     // Loading banner while the (slow) grid request is in flight.
     if (statusEl) { statusEl.style.display = ''; statusEl.classList.add('windfield-loading'); statusEl.textContent = S.windFieldLoading || 'Loading wind field…'; }
+    // Outside the try: this request's identity, which the catch below also has to check.
+    const lv = level();
     try {
       const g = gridPoints();
-      const lv = level();
       // Fetch a few forecast days of hourly samples so the slider can scrub
       // forward from the current hour (tunable horizon).
       const url = 'https://api.open-meteo.com/v1/forecast' +
@@ -3060,6 +3062,13 @@ if (windDepartSlider) {
         di[k] = (h && h['wind_direction_' + lv + 'hPa']) || [];
       }
       if (!times.length) throw new Error('no data');
+      // The altitude may have moved while this was in flight, and the queue that normally
+      // catches that has a hole: the altitude handler returns early when the box is off, and
+      // the enable handler starts nothing while busy. So off -> change altitude -> back on
+      // (all before this settles) used to COMMIT the old level's data and render it under
+      // the new altitude label, with nothing left to correct it. The captured level is the
+      // request's identity: if it is no longer the selected one, this response is not ours.
+      if (lv !== level()) { if (cb.checked) refetchPending = true; return; }
       store = { g, times, sp, di, baseIdx: nearestHourIndex(times) };
       if (timeSlider) { timeSlider.value = '0'; }
       // The fetch is async — if the user turned the field off meanwhile, cache
@@ -3069,6 +3078,10 @@ if (windDepartSlider) {
       applyTimeLabel();
       applyRotationState();   // builds the field north-up, or shows the rotated-map note
     } catch (e) {
+      // A SUPERSEDED request's failure is not this field's failure: letting it report would
+      // untoggle a field the pilot has just re-enabled at another altitude, and hide the
+      // controls under it. Leave the live request to speak for itself.
+      if (lv !== level() && cb.checked) { refetchPending = true; return; }
       // Fetch failed → unavailable: show the error, hide the sliders, untoggle.
       if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
       cb.checked = false;
@@ -3267,7 +3280,11 @@ if (windDepartSlider) {
     showControls(cb.checked);
     // Auto-fetch on enable; addLayer() shows a "Loading wind…" banner while the
     // (slow) grid request is in flight.
-    if (cb.checked) { if (!busy) addLayer(); } else removeLayer();
+    // Re-enabling while an older request is still in flight has to QUEUE, not no-op: the
+    // altitude may have changed while the box was off, and that handler deliberately does
+    // nothing when it is off. Without this, whatever the old request returns is what gets
+    // rendered, however stale the level.
+    if (cb.checked) { if (busy) refetchPending = true; else addLayer(); } else removeLayer();
   };
   if (cb.checked && !busy) addLayer();
   NavAid.refreshWindField = () => { if (cb.checked && !busy) addLayer(); };
@@ -7162,7 +7179,14 @@ const NavWxOpacity = (function () {
       if (!cb.checked) { removeLayers(); return; }
       place('map', data, boundsFrom(BOUNDS_MAP, 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale'), NavWxOpacity.value());
       applyRotation();
-    }).catch(() => removeLayers());
+    }).catch(() => {
+      // Guarded exactly like the success path above. Without the generation check an OLD
+      // request rejecting late (slow decode, transient CORS) tore down the overlay a NEWER
+      // selection had already placed: the chart went blank while the checkbox stayed on and
+      // #wx-time still read the new time, so nothing on screen said the weather was gone.
+      if (gen !== sigwxGen || !cb.checked) return;
+      removeLayers();
+    });
     const tblOp = off('sigwxTblOpacity') || 0.92;
     const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
     cropPanel(url, CROP_TABLE, false).then(data => {

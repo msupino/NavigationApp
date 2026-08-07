@@ -2493,6 +2493,28 @@ function showInspector() {
       showInspector();          // relabel the button to what it now does
     };
     body.appendChild(hideBtn);
+    // Same again for this leg's drift lines. Separate control rather than a mode on the kite
+    // button: a pilot decluttering a busy area wants one or the other, not both together.
+    const driftBtn = document.createElement('button');
+    driftBtn.className = 'insp-btn';
+    const driftOff = typeof legDriftHidden === 'function' && legDriftHidden(leg);
+    driftBtn.textContent = driftOff
+      ? (S.showLegDrift || 'Show drift lines')
+      : (S.hideLegDrift || 'Hide drift lines');
+    driftBtn.title = driftOff
+      ? (S.showLegDriftTitle || "Draw this leg's dashed drift lines again")
+      : (S.hideLegDriftTitle ||
+         "Hide this leg's dashed drift lines. The leg, its kite and the plan are unchanged.");
+    driftBtn.setAttribute('aria-label', driftBtn.title);
+    driftBtn.setAttribute('aria-pressed', driftOff ? 'true' : 'false');
+    driftBtn.onclick = () => {
+      if (legDriftHidden(leg)) delete leg.hideDrift;
+      else leg.hideDrift = 1;
+      if (typeof persist === 'function') persist();
+      draw();
+      showInspector();          // relabel the button to what it now does
+    };
+    body.appendChild(driftBtn);
     // Add an identification/report-point oval on this leg (draggable along it,
     // auto time from the leg start). CAAI נקי הזדהות.
     const addRp = document.createElement('button');
