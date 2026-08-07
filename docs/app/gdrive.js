@@ -355,7 +355,10 @@ const GDRIVE_SETTINGS_KEYS = [
     'endurance', 'persons', 'kind', 'replyTo',
     'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
   // AI assistant: active provider, per-provider API key, per-provider model.
-  // navaid.ai.baseUrl excluded — decides where data is sent (see aisEmail note).
+  // navaid.ai.baseUrl.<provider> excluded — decides where data is sent (see aisEmail note).
+  // Per PROVIDER now, and still device-local: a synced proxy URL would carry a synced key to
+  // a host the other device never agreed to. This allowlist is exact-match, so the new
+  // per-provider keys are excluded by construction; that is deliberate, not an oversight.
   // navaid.ai.panelPos/Size excluded — device-local geometry.
   'navaid.ai.provider',
   'navaid.ai.key.gemini',      'navaid.ai.model.gemini',

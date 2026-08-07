@@ -2961,6 +2961,7 @@ if (windDepartSlider) {
   let layer = null;
   let busy = false;
   let refetchPending = false;   // an altitude change arrived mid-fetch → refetch after
+  let enableGen = 0;            // bumped on every toggle: a request belongs to one switch-on
   let store = null;     // { g, times, sp[k][], di[k][], baseIdx } — all 48 fetched hours
 
   function gridPoints() {
@@ -3038,7 +3039,14 @@ if (windDepartSlider) {
     // Loading banner while the (slow) grid request is in flight.
     if (statusEl) { statusEl.style.display = ''; statusEl.classList.add('windfield-loading'); statusEl.textContent = S.windFieldLoading || 'Loading wind field…'; }
     // Outside the try: this request's identity, which the catch below also has to check.
+    // The LEVEL alone is not enough. Off then on at the SAME altitude leaves an obsolete
+    // request whose level still matches, so its failure untoggled the control the pilot had
+    // just re-enabled and `finally` then dropped the queued retry (`cb.checked` was false by
+    // then) -- one request, box off, "unavailable", nothing retrying. The enable lifetime is
+    // the missing half: a request belongs to the switch-on that started it.
     const lv = level();
+    const gen = enableGen;
+    const mine = () => gen === enableGen && lv === level();
     try {
       const g = gridPoints();
       // Fetch a few forecast days of hourly samples so the slider can scrub
@@ -3068,7 +3076,7 @@ if (windDepartSlider) {
       // (all before this settles) used to COMMIT the old level's data and render it under
       // the new altitude label, with nothing left to correct it. The captured level is the
       // request's identity: if it is no longer the selected one, this response is not ours.
-      if (lv !== level()) { if (cb.checked) refetchPending = true; return; }
+      if (!mine()) { if (cb.checked) refetchPending = true; return; }
       store = { g, times, sp, di, baseIdx: nearestHourIndex(times) };
       if (timeSlider) { timeSlider.value = '0'; }
       // The fetch is async — if the user turned the field off meanwhile, cache
@@ -3081,7 +3089,7 @@ if (windDepartSlider) {
       // A SUPERSEDED request's failure is not this field's failure: letting it report would
       // untoggle a field the pilot has just re-enabled at another altitude, and hide the
       // controls under it. Leave the live request to speak for itself.
-      if (lv !== level() && cb.checked) { refetchPending = true; return; }
+      if (!mine()) { if (cb.checked) refetchPending = true; return; }
       // Fetch failed → unavailable: show the error, hide the sliders, untoggle.
       if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
       cb.checked = false;
@@ -3276,6 +3284,7 @@ if (windDepartSlider) {
   try { if (lsGet(KEY) === '1') cb.checked = true; } catch (e) { /* */ }
   showControls(cb.checked);
   cb.onchange = () => {
+    enableGen++;                // this switch-on (or off) supersedes any request in flight
     try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* */ }
     showControls(cb.checked);
     // Auto-fetch on enable; addLayer() shows a "Loading wind…" banner while the

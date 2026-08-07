@@ -100,7 +100,7 @@ const NOT_A_SYNCED_SETTING = [
   // navaid.ai.panelSize is device-local geometry (panelPos is caught by /Pos$/).
   // navaid.ai.key.*/model.* base strings (with trailing '.') are composed at
   // runtime; the full per-provider literals are in the allowlist instead.
-  [/^navaid\.ai\.baseUrl$/,      'endpoint URL — decides where data is sent; must not be settable via sync'],
+  [/^navaid\.ai\.baseUrl(\.|$)/,  'endpoint URL, now per provider — decides where data is sent; must not be settable via sync'],
   [/^navaid\.ai\.panelSize$/,    'assistant panel dimensions, per device'],
   [/^navaid\.ai\.(key|model)\.$/,'composed-key base string — per-provider literals are in the allowlist'],
   [/^navaid\.fpl\.aisEmail$/,    'the address the flight plan is filed to — a synced blob must not be able to redirect it'],

@@ -67,12 +67,21 @@ export function sigmetPublishable({ sigOk }) {
 // reads as healthy. A field can legitimately go quiet, so the bar is a share rather than all of
 // them -- below it, last-good survives untouched.
 export const WX_MIN_COVERAGE = 0.6;
-export function wxPublishable({ metarsOk, tafsOk, stations, requested }) {
-  if (!metarsOk || !tafsOk) return false;
+// Publishability is measured against what this feed NORMALLY carries -- the last-good file --
+// not against the requested id list. Measuring against the request froze the feed the moment
+// it shipped: IDS asks for 13 Israeli stations, but only five (LLBG, LLER, LLHA, LLHZ, LLIB)
+// ever file METAR/TAF with AWC; the rest are military or small fields that never do. 60% of 13
+// is 8, which is unreachable in normal operation, so every run after the gate went live
+// skipped the publish and wx.json sat frozen for hours while the workflow reported success.
+// The baseline keeps the property the gate was added for -- a sudden collapse (5 -> 1, or one
+// endpoint erroring) still withholds -- without demanding coverage the world does not supply.
+export function wxPublishable({ metarsOk, tafsOk, stations, baseline }) {
+  if (!metarsOk || !tafsOk) return false;      // a half-answered pair is never publishable
   const have = Object.keys(stations || {}).length;
-  const want = Array.isArray(requested) ? requested.length : 0;
-  if (!want) return have > 0;
-  return have >= Math.max(1, Math.ceil(want * WX_MIN_COVERAGE));
+  if (have < 1) return false;
+  const base = Number.isFinite(baseline) ? baseline : 0;
+  if (base < 1) return true;                   // nothing to compare against yet
+  return have >= Math.max(1, Math.ceil(base * WX_MIN_COVERAGE));
 }
 
 async function fetchJson(url, fetchImpl) {
@@ -81,7 +90,7 @@ async function fetchJson(url, fetchImpl) {
   return r.json();
 }
 
-export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch,
+export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch, prevUrl = null,
   write = writeFileSync, log = console.log, warn = console.error } = {}) {
   // Assign only what has been validated. The inline original did `x = await api(...)` and
   // THEN checked Array.isArray, so a 200 carrying a JSON object (an error envelope, a quota
@@ -112,6 +121,16 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch,
     tafsOk = true;
   } catch (e) { warn(e.message); }
   const stations = collectStations(metars, tafs);
+  // How many stations the live feed already carries. Fetched, not assumed: if it cannot be
+  // read (first run, branch missing, network) the baseline is 0 and any non-empty result
+  // publishes -- the same behaviour this script had before the gate existed.
+  let baseline = 0;
+  if (prevUrl) {
+    try {
+      const prev = await fetchJson(prevUrl, fetchImpl);
+      baseline = Object.keys((prev && prev.stations) || {}).length;
+    } catch (e) { warn('last-good wx.json unreadable (' + e.message + '); publishing on any data'); }
+  }
 
   const result = { sigmet: 'skipped', wx: 'skipped', sigmets: sigmets.length,
     stations: Object.keys(stations).length };
@@ -124,7 +143,7 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch,
   } else {
     warn('::error::SIGMET publish skipped; preserving last-good branch.');
   }
-  if (wxPublishable({ metarsOk, tafsOk, stations, requested: ids })) {
+  if (wxPublishable({ metarsOk, tafsOk, stations, baseline })) {
     write('wx/wx.json', JSON.stringify({
       generatedAt: new Date().toISOString(), source: 'NOAA AWC', stations,
     }));
@@ -135,8 +154,8 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch,
     // be a green check with an empty annotations panel -- indistinguishable in the Actions list
     // from a successful one -- so a frozen feed was only ever caught by the staleness monitor
     // hours later (#1429).
-    warn('::error::WX publish skipped (' + Object.keys(stations).length + '/' +
-      (ids || []).length + ' stations); preserving last-good branch.');
+    warn('::error::WX publish skipped (' + Object.keys(stations).length +
+      ' stations, last good ' + baseline + '); preserving last-good branch.');
   }
   if (result.sigmet === 'skipped' && result.wx === 'skipped') {
     process.exitCode = 1;
@@ -150,5 +169,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     firs: split(process.env.FIRS),
     ids: split(process.env.IDS),
     bbox: { s: 28, n: 35, w: 32, e: 38 },
+    // The live feed, used only as the coverage baseline. Overridable so the workflow can
+    // point at a fork's branch; unset simply means "publish whatever we got".
+    prevUrl: process.env.PREV_WX_URL ||
+      'https://raw.githubusercontent.com/msupino/NavigationApp/wx-data/wx.json',
   });
 }

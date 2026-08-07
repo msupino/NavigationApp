@@ -440,11 +440,12 @@ test('DeepSeek adapter: uses api.deepseek.com and a proxy base URL override', as
   await page.route(/^https:\/\/api\.deepseek\.com\//, route => { hitDefault = true; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply()) }); });
   await page.route(/^https:\/\/my-proxy\.test\//, route => { hitProxy = true; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply()) }); });
   // Default base.
-  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'deepseek'); localStorage.setItem('navaid.ai.key.deepseek', 'k'); localStorage.removeItem('navaid.ai.baseUrl'); });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'deepseek'); localStorage.setItem('navaid.ai.key.deepseek', 'k'); localStorage.removeItem('navaid.ai.baseUrl.deepseek'); });
   await page.evaluate(() => NavAid.assistant.send('hi'));
   await expect.poll(() => hitDefault).toBe(true);
-  // Proxy override.
-  await page.evaluate(() => { localStorage.setItem('navaid.ai.baseUrl', 'https://my-proxy.test/v1'); NavAid.assistant.reset(); });
+  // Proxy override — stored against THIS provider, so it cannot follow the pilot to another
+  // one and post that provider's key to this host.
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.baseUrl.deepseek', 'https://my-proxy.test/v1'); NavAid.assistant.reset(); });
   await page.evaluate(() => NavAid.assistant.send('hi again'));
   await expect.poll(() => hitProxy).toBe(true);
 });
