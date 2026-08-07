@@ -144,6 +144,43 @@ So expansion fills in only what lies **between two consecutive drawn waypoints**
 published segments. The pilot's picks (`ARENA`, `APOLN`, `SUPER`) are what select the
 corridor.
 
+### What the AIP requires
+
+AIP א'-11 §3.ב splits filing in the same way this app already does:
+
+- §3.ב.1 `תוכנית טיסה בנתיבים` — by **phone** or email to `ais@iaa.gov.il`, following the
+  annex א' sample
+- §3.ב.2 `תוכנית לטיסת מרחב` — email only to `fpl@iaa.gov.il`, following annex ב'
+
+The "list every point overflown" clause (§3.ב.2(ב): `פירוט כל הנקודות ... כגון ישובים,
+צמתים ו נ.צ. ברשת WGS-84`) belongs to the **cross-country** branch, where there are no named
+reporting points to refer to.
+
+For a routes plan the governing text is the annex א' sample, and it enumerates the whole
+chain — 17 reporting points for a Rosh Pina → Megiddo flight — with the legend:
+
+> נתיב טיסה — יוזן לפי קודים נקודות הדיווח באנגלית כפי שמופיעות בגב מפות הנתיבים
+
+*Entered as the reporting-point codes in English as they appear on the back of the route
+charts.* So expansion is not merely a convenience: it is what the AIP's own example does,
+and the authoritative list of codes is the back of the published route charts.
+
+That the plan can also be filed by phone (§3.ב.1), where a pilot plainly does not recite
+seventeen codes, is why expansion must remain **offered and reviewable** rather than forced.
+
+### Our data does not yet cover the published network
+
+Measured against the annex א' sample route: **13 of its 17 reporting points exist in none of
+our datasets** (`cvfr` 172 points, `heli` 209, `lsa` 167). Missing: `SHLVM REUTE LAPID MCZVA
+SSOMR YARHV ZNYMN ELYAU MEYAL BSARS GSHML PRHNA ARRAA`. None of the sample's consecutive
+pairs is adjacent in our graph.
+
+Coverage is good where it has been worked — the graph reproduces a real filed sortie in the
+centre exactly — and thin elsewhere (the north, and `LLER→SAMAR` in the south).
+
+**Completing the dataset from the back of the published route charts is a separate task**,
+and this feature is of limited use without it.
+
 ### Degrading honestly
 
 Our graph has gaps: `LLER→SAMAR` exists in the published network but not in our dataset.
