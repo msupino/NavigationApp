@@ -251,6 +251,17 @@ jobs:
             sed -i "s/__PR_PREFIX__/pr-${NUM}./" "$STAGING/pr-store.js"
             # First script in <head>, before anything reads storage.
             sed -i '0,/<head>/s//<head>\n  <script src="pr-store.js"><\/script>/' "$STAGING/index.html" 2>/dev/null || true
+            # ...and PROVE it landed. The sed above matches literal lowercase "<head>": a
+            # branch whose head tag is "<HEAD>", carries attributes, or is missing entirely
+            # sails through `|| true` and gets published with NO shim at all -- an ordinary
+            # preview then reads and writes the live app's storage, which is the exact thing
+            # the copy-from-main hardening above was for. Verify the assembled artifact, not
+            # the intent, and refuse the preview if the shim is not the first script.
+            if ! grep -q '<script src="pr-store.js"></script>' "$STAGING/index.html"; then
+              echo "::warning::PR #$NUM: could not inject pr-store.js into its index.html (unusual <head>?); skipping its preview"
+              rm -rf "$STAGING"
+              return
+            fi
             rewrite_cache_busts "$STAGING" "$SHA"
             # No byop copy under previews -- io.js plateBase() resolves plates against the
             # shared root copy at runtime.
@@ -264,11 +275,22 @@ jobs:
             SHARED=""
             for d in circuit-img training-img cvfr-img heli-img commfail-img; do
               [ -d "$STAGING/$d" ] || continue
-              if git diff --quiet "origin/main...origin/$BRANCH" -- "docs/$d" 2>/dev/null; then
+              # TWO dots, comparing the two tips' trees directly. Triple-dot needs a merge
+              # base, and there is none: production is a shallow actions/checkout and each
+              # preview branch is fetched --depth 1, so `A...B` exited 128 ("no merge base")
+              # for EVERY set -- read as "branch modified it", so the ~12 MB saving this
+              # block exists for never actually happened. Tip-vs-tip is also the question we
+              # mean: are these bytes identical to the ones already at the deployed root?
+              # `git diff` exits 0 same / 1 differs / >1 error, and an ERROR must not be read
+              # as "identical" -- that would drop images the preview still needs.
+              rc=0; git diff --quiet origin/main origin/"$BRANCH" -- "docs/$d" || rc=$?
+              if [ "$rc" = "0" ]; then
                 rm -rf "$STAGING/$d"
                 SHARED="$SHARED\"$d\","
-              else
+              elif [ "$rc" = "1" ]; then
                 echo "  keeps its own $d (branch modified it)"
+              else
+                echo "::warning::git diff failed (rc=$rc) for docs/$d on PR #$NUM; keeping the preview's own copy"
               fi
             done
             if [ -n "$SHARED" ]; then
@@ -276,6 +298,15 @@ jobs:
               # before any overlay loader runs.
               printf 'window.__navPreviewSharedDirs=[%s];\n' "${SHARED%,}" > "$STAGING/preview-shared.js"
               sed -i '0,/<head>/s//<head>\n  <script src="preview-shared.js"><\/script>/' "$STAGING/index.html" 2>/dev/null || true
+              # Fail closed here too, and this one is not optional: the directories are
+              # ALREADY deleted, so a preview published without this tag resolves its overlay
+              # images against its own missing copies and 404s instead of falling back to the
+              # deployed root.
+              if ! grep -q '<script src="preview-shared.js"></script>' "$STAGING/index.html"; then
+                echo "::warning::PR #$NUM: could not inject preview-shared.js after dropping shared image sets; skipping its preview"
+                rm -rf "$STAGING"
+                return
+              fi
             fi
             # ...and no service worker: Cache Storage is per ORIGIN, so a preview worker's
             # cleanup used to delete the live app's offline shell just by being visited.

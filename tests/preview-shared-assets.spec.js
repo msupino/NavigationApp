@@ -86,7 +86,12 @@ test('the build omits a set only when the branch has not touched it', () => {
     path.join(__dirname, '..', '.github', 'workflows', 'deploy.yml'), 'utf8');
   // The saving is only ever taken where there is nothing to see: a branch that edits an
   // overlay keeps its own copy, so its preview shows the change it is there to show.
-  expect(wf).toMatch(/git diff --quiet "origin\/main\.\.\.origin\/\$BRANCH" -- "docs\/\$d"/);
+  // TWO dots. This assertion used to pin the triple-dot form, which is why the dedup could
+  // be dead in production while this test stayed green: `A...B` needs a merge base, and the
+  // shallow production checkout plus each branch's --depth 1 fetch means there is none, so
+  // every set exited 128 and was read as "modified". See tests/review-9899de7.spec.js.
+  expect(wf).toMatch(/git diff --quiet origin\/main origin\/"\$BRANCH" -- "docs\/\$d"/);
+  expect(wf).not.toMatch(/origin\/main\.\.\.origin\/\$BRANCH/);
   expect(wf).toMatch(/rm -rf "\$STAGING\/\$d"/);
   expect(wf).toMatch(/keeps its own \$d \(branch modified it\)/);
   // ...and the page is told what it does not carry, before any overlay loader runs.

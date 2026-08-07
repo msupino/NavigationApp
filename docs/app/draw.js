@@ -1963,8 +1963,7 @@ function drawVors(force) {
   // ...unless the pilot cleared the reference on that very station (setReferenceVor): the
   // selection ring is an answer to "what does this one cover", and clearing is the pilot
   // saying they are done with it. Any other station still rings on selection.
-  if (selectedStation && typeof vorRingSuppressIdent === 'string' &&
-      vorRingSuppressIdent === selectedStation) {
+  if (typeof vorRingSuppressed === 'function' && vorRingSuppressed(selectedStation)) {
     selectedStation = null;
   }
   const selIdent = selectedStation ||
