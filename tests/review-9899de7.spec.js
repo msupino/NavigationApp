@@ -153,11 +153,14 @@ test('a request from an older altitude is not rendered under the new label', asy
   // off -> change altitude -> on, all before the first request settles: the altitude handler
   // returns early while unchecked, and the enable handler no-opped while busy, so the old
   // level's data was committed under the new label with nothing left to correct it.
-  expect(block, 'no level check before committing store').toMatch(/lv !== level\(\)/);
+  // Identity is the level AND the enable lifetime — level alone left the same-altitude
+  // off/on case broken (see tests/review-83b93d3.spec.js).
+  expect(block, 'no supersession check before committing store').toMatch(/!mine\(\)/);
+  expect(block).toMatch(/const mine = \(\) => gen === enableGen && lv === level\(\)/);
   expect(block).toMatch(/store = \{ g, times, sp, di/);
-  expect(block.indexOf('lv !== level()')).toBeLessThan(block.indexOf('store = { g, times'));
+  expect(block.indexOf('!mine()')).toBeLessThan(block.indexOf('store = { g, times'));
   // Re-enabling mid-flight has to queue rather than do nothing.
-  const onchange = src.slice(src.indexOf('cb.onchange = () => {', i), src.indexOf('cb.onchange = () => {', i) + 700);
+  const onchange = src.slice(src.indexOf('cb.onchange = () => {', i), src.indexOf('cb.onchange = () => {', i) + 1400);
   expect(onchange).toMatch(/busy\)\s*refetchPending = true/);
 });
 
@@ -184,7 +187,10 @@ test('a preview is refused when its isolation shim cannot be injected', () => {
   // tag, or no head at all sailed through `|| true` and was published with NO shim — the
   // ordinary preview then read and wrote the live app's storage, which is exactly what
   // copying the shim from main was meant to prevent.
-  expect(y).toMatch(/if ! grep -q '<script src="pr-store\.js"><\/script>' "\$STAGING\/index\.html"; then/);
+  // Presence was not enough: a branch could plant the tag itself. The gate now keys on a
+  // marker it strips first, and rejects anything executable before the shim — see
+  // tests/review-83b93d3.spec.js.
+  expect(y).toMatch(/navaid-pr-store-injected/);
   expect(y).toMatch(/could not inject pr-store\.js/);
   // ...and the shared-image tag, where a miss is worse: the directories are already gone, so
   // the preview 404s its overlays instead of falling back to the deployed root.

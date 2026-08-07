@@ -14,24 +14,34 @@ async function feeds() {
   return import('../scripts/build-aviation-feeds.mjs');
 }
 
-test('a truncated station list is not published as fresh weather', async () => {
+test('a collapsed station list is not published as fresh weather', async () => {
   const { wxPublishable, WX_MIN_COVERAGE } = await feeds();
-  const requested = ['LLBG', 'LLHA', 'LLOV', 'LLER', 'LLES', 'LLEK', 'LLIB', 'LLMG',
-    'LLNV', 'LLRD', 'LLRM', 'LLBS', 'LLHZ'];                       // the workflow's fixed 13
-  const stations = n => Object.fromEntries(requested.slice(0, n).map(id => [id, {}]));
-  const ok = (n) => wxPublishable({ metarsOk: true, tafsOk: true, stations: stations(n), requested });
-  // One station out of thirteen is a truncated response, not the weather: publishing it blanked
-  // METAR and TAF for the other twelve under a current generatedAt, which the staleness monitor
-  // reads as healthy.
-  expect(ok(1)).toBe(false);
-  expect(ok(3)).toBe(false);
-  // A field can legitimately go quiet, so the bar is a share rather than all thirteen.
-  const need = Math.ceil(requested.length * WX_MIN_COVERAGE);
-  expect(ok(need - 1)).toBe(false);
-  expect(ok(need)).toBe(true);
-  expect(ok(requested.length)).toBe(true);
-  // Without a requested list (a caller that does not pass one) any station still publishes.
+  const ids = ['LLBG', 'LLER', 'LLHA', 'LLHZ', 'LLIB'];
+  const stations = n => Object.fromEntries(ids.slice(0, n).map(id => [id, {}]));
+  // Coverage is judged against what the feed NORMALLY carries -- the last-good file -- not
+  // against the workflow's requested id list. Judging against the request froze the feed the
+  // moment the gate shipped: IDS asks for 13 Israeli stations, but only these five ever file
+  // METAR/TAF with AWC, so the 60% bar (8 of 13) was unreachable and every run skipped.
+  const ok = (n, baseline) => wxPublishable({ metarsOk: true, tafsOk: true,
+    stations: stations(n), baseline });
+  // A collapse against the established baseline is still withheld: one station out of a
+  // normal five is a truncated response, not the weather, and publishing it would blank the
+  // rest under a current generatedAt that the staleness monitor reads as healthy.
+  expect(ok(1, 5)).toBe(false);
+  const need = Math.ceil(5 * WX_MIN_COVERAGE);
+  expect(ok(need - 1, 5)).toBe(false);
+  expect(ok(need, 5)).toBe(true);
+  // The normal day: exactly what the feed has always carried, published.
+  expect(ok(5, 5)).toBe(true);
+  // A half-answered pair is never publishable, whatever the coverage.
+  expect(wxPublishable({ metarsOk: false, tafsOk: true, stations: stations(5), baseline: 5 })).toBe(false);
+  expect(wxPublishable({ metarsOk: true, tafsOk: false, stations: stations(5), baseline: 5 })).toBe(false);
+  // No baseline yet (first run, unreadable branch) -> any data publishes, as before the gate.
   expect(wxPublishable({ metarsOk: true, tafsOk: true, stations: stations(1) })).toBe(true);
+  expect(wxPublishable({ metarsOk: true, tafsOk: true, stations: {}, baseline: 0 })).toBe(false);
+  // The gate must never demand more than the world supplies: the live five-station reality
+  // has to clear a bar computed from itself.
+  expect(ok(5, 5)).toBe(true);
 });
 
 test('a feed that publishes nothing exits non-zero', async () => {

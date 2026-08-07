@@ -14,14 +14,34 @@
 (function () {
   const NS = (window.NavAid = window.NavAid || {});
   const PROV = 'navaid.ai.provider';                   // active provider id
-  const BASEURL = 'navaid.ai.baseUrl';                 // OpenAI-compatible base URL override
+  const BASEURL = 'navaid.ai.baseUrl';                 // LEGACY single override -- migrated below
   const DEFAULT_PROVIDER = 'gemini';
   // key/model are stored PER provider so switching keeps each provider's setup.
   const keyKey = p => 'navaid.ai.key.' + p;
   const modelKey = p => 'navaid.ai.model.' + p;
+  // ...and so is the proxy Base URL, for the same reason and a sharper one. It used to be a
+  // single global: configure a proxy for DeepSeek, later switch to OpenRouter and save an
+  // OpenRouter key, and the next request posted THAT key and the whole conversation to the
+  // DeepSeek proxy. Two independent reviews reproduced it -- the second captured
+  // `Authorization: Bearer OPENROUTER-SECRET` arriving at the DeepSeek proxy URL. A
+  // credential must never outlive the destination it was chosen for.
+  const baseKey = p => 'navaid.ai.baseUrl.' + p;
 
   const S = window.S || {};
   const t = (k, fb) => (S && S[k]) || fb;
+
+  // Drop the legacy global override. It is NOT migrated onto the active provider, which was
+  // my first instinct and is wrong for the very case this fixes: a pilot who set the proxy
+  // for DeepSeek and has since switched to OpenRouter would have had OpenRouter silently
+  // inherit the DeepSeek proxy -- the leak, carried across the upgrade. The stored value
+  // does not record which provider it belonged to, and a guess here sends a credential to a
+  // host the pilot never chose for it. Re-entering a proxy URL costs a moment; that does not.
+  function migrateLegacyBaseUrl() {
+    try {
+      if (localStorage.getItem(BASEURL) === null) return;
+      localStorage.removeItem(BASEURL);
+    } catch (e) { /* storage unavailable */ }
+  }
 
   function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function setLs(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { /* */ } }
@@ -592,7 +612,7 @@
   async function openAiCompatSend(messages) {
     const p = activeProvider();
     const key = keyOrThrow(), model = modelFor(p);
-    const base = (ls(BASEURL) || PROVIDERS[p].base).replace(/\/+$/, '');
+    const base = (ls(baseKey(p)) || PROVIDERS[p].base).replace(/\/+$/, '');
     const body = {
       model, messages: toOpenAI(messages),
       tools: TOOLS.map(x => ({ type: 'function', function: { name: x.name, description: x.description, parameters: x.parameters } })),
@@ -994,7 +1014,7 @@
     }
     const keyIn = el('input', 'assistant-field'); keyIn.type = 'password'; keyIn.placeholder = t('assistantKeyPlaceholder', 'API key');
     const modelIn = el('input', 'assistant-field'); modelIn.type = 'text'; modelIn.placeholder = t('assistantModelPlaceholder', 'model');
-    const baseIn = el('input', 'assistant-field'); baseIn.type = 'text'; baseIn.placeholder = t('assistantBaseUrlPlaceholder', 'Base URL (optional proxy)'); baseIn.value = ls(BASEURL) || '';
+    const baseIn = el('input', 'assistant-field'); baseIn.type = 'text'; baseIn.placeholder = t('assistantBaseUrlPlaceholder', 'Base URL (optional proxy)'); baseIn.value = '';
     const help = el('div', 'assistant-help');
     const link = el('a', null, ''); link.target = '_blank'; link.rel = 'noopener'; help.appendChild(link);
     const note = el('div', 'assistant-help assistant-note');
@@ -1002,7 +1022,13 @@
     // Reflect the selected provider's stored key/model + help link + notes.
     function syncProvider(id, loadStored) {
       const P = PROVIDERS[id];
-      if (loadStored) { keyIn.value = ls(keyKey(id)) || ''; modelIn.value = ls(modelKey(id)) || ''; }
+      // The Base URL reloads with the provider exactly like the key and model do; leaving a
+      // stale one in the form is how the wrong-endpoint bug reached the user in the first place.
+      if (loadStored) {
+        keyIn.value = ls(keyKey(id)) || '';
+        modelIn.value = ls(modelKey(id)) || '';
+        baseIn.value = ls(baseKey(id)) || '';
+      }
       modelIn.placeholder = P.model;
       link.textContent = t('assistantGetKey', 'Get an API key') + ' — ' + P.label;
       link.href = P.keyUrl;
@@ -1022,7 +1048,7 @@
       setLs(PROV, id);
       setLs(keyKey(id), keyIn.value.trim() || null);
       setLs(modelKey(id), modelIn.value.trim() || null);
-      if (PROVIDERS[id].openaiCompat) setLs(BASEURL, baseIn.value.trim() || null);
+      if (PROVIDERS[id].openaiCompat) setLs(baseKey(id), baseIn.value.trim() || null);
       box.classList.add('hidden');
       toast(t('assistantKeySaved', 'Settings saved'));
     };
@@ -1117,6 +1143,9 @@
     _setConfirm: (fn) => { confirmAction = fn || confirmAction; },
     _messages: () => messages,
   };
+
+  // Retire the legacy single Base URL before anything can read it or send to it.
+  migrateLegacyBaseUrl();
 
   // Build the FAB on load so it's discoverable; the panel stays hidden.
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);

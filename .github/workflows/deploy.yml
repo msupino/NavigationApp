@@ -249,16 +249,31 @@ jobs:
               return
             fi
             sed -i "s/__PR_PREFIX__/pr-${NUM}./" "$STAGING/pr-store.js"
-            # First script in <head>, before anything reads storage.
-            sed -i '0,/<head>/s//<head>\n  <script src="pr-store.js"><\/script>/' "$STAGING/index.html" 2>/dev/null || true
-            # ...and PROVE it landed. The sed above matches literal lowercase "<head>": a
-            # branch whose head tag is "<HEAD>", carries attributes, or is missing entirely
-            # sails through `|| true` and gets published with NO shim at all -- an ordinary
-            # preview then reads and writes the live app's storage, which is the exact thing
-            # the copy-from-main hardening above was for. Verify the assembled artifact, not
-            # the intent, and refuse the preview if the shim is not the first script.
-            if ! grep -q '<script src="pr-store.js"></script>' "$STAGING/index.html"; then
-              echo "::warning::PR #$NUM: could not inject pr-store.js into its index.html (unusual <head>?); skipping its preview"
+            # Insert the shim as the very first thing inside the head element, whatever the
+            # branch's head tag looks like: any case, with or without attributes. Perl rather
+            # than sed because this has to be one case-insensitive match on the real tag.
+            # The marker is what the check below keys on -- a branch cannot fake it, because
+            # anything it planted in its own HTML is stripped first.
+            perl -0pi -e 's/<!--\s*navaid-pr-store-injected\s*-->//gi' "$STAGING/index.html"
+            perl -0pi -e 's/(<head\b[^>]*>)/$1\n  <!-- navaid-pr-store-injected -->\n  <script src="pr-store.js"><\/script>/i' \
+              "$STAGING/index.html"
+            # PROVE the injection happened AND that the shim runs before any branch-owned
+            # executable element. Checking only that the tag appears somewhere is not enough:
+            # a branch shipping
+            #     <HEAD><script src="evil.js"></script><script src="pr-store.js"></script>
+            # passed a presence grep while the lowercase-only sed had done nothing and the
+            # shim was NOT first -- evil.js touched the live origin's storage before the
+            # wrapper existed. So: our marker must be present, and no <script>/<iframe>/
+            # <object>/<embed>/<link rel=import> may precede it.
+            if ! grep -qi '<!-- navaid-pr-store-injected -->' "$STAGING/index.html"; then
+              echo "::warning::PR #$NUM: could not inject pr-store.js into its index.html (no <head>?); skipping its preview"
+              rm -rf "$STAGING"
+              return
+            fi
+            BEFORE=$(awk 'BEGIN{IGNORECASE=1} /navaid-pr-store-injected/{exit} {print}' "$STAGING/index.html" \
+              | grep -ciE '<(script|iframe|object|embed)\b|<link[^>]+rel=["'"'"']?import' || true)
+            if [ "${BEFORE:-0}" != "0" ]; then
+              echo "::warning::PR #$NUM: $BEFORE executable element(s) precede the storage shim; skipping its preview"
               rm -rf "$STAGING"
               return
             fi
