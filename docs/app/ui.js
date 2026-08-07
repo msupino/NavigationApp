@@ -2173,6 +2173,7 @@ document.getElementById('reverse').onclick = () => {
       // dropping hideKite made a deliberately decluttered leg redraw its kite.
       ...(l.vorRef ? { vorRef: l.vorRef } : {}),
       ...(l.hideKite ? { hideKite: 1 } : {}),
+      ...(l.hideDrift ? { hideDrift: 1 } : {}),
       // Reversing is not a speed edit, so the pins travel -- but they travel WITH the
       // speeds, which swap above when the return path is shown. With it hidden both
       // directions take the forward speed, so both take the forward pin.

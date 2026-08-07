@@ -862,6 +862,10 @@ window.S = Object.assign({
   showLegKite: '◉ Show kite',
   hideLegKiteTitle: "Hide this leg's heading / time / altitude kite, both directions. The leg, its other markers and the flight plan are unchanged — click the leg line to bring the kite back.",
   showLegKiteTitle: "Draw this leg's heading / time / altitude kite again",
+  hideLegDrift: '⊘ Hide drift lines',          // inspector leg button — hide this leg's drift cone
+  showLegDrift: '◉ Show drift lines',
+  hideLegDriftTitle: "Hide this leg's dashed drift lines. The leg, its kite and the flight plan are unchanged — click the leg line to bring them back.",
+  showLegDriftTitle: "Draw this leg's dashed drift lines again",
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
@@ -2147,6 +2151,16 @@ const pad3 = n => String(n).padStart(3, '0');
 // from the leg inspector.
 function legKiteHidden(leg) {
   return !!(leg && leg.hideKite);
+}
+
+// ...and the same for the leg's DRIFT LINES -- the dashed pair fanning out at the tuned
+// drift angle. Same reasoning as the kite: on a busy chart several legs' cones overlap into
+// noise, and the pilot wants that leg's cone gone without losing the leg. The global drift
+// toggle still governs everything (this can only hide a cone the toolbar is already
+// drawing), the kite keeps its usual offset so hiding the cone does not shift it, and the
+// flight plan and every computed value are untouched.
+function legDriftHidden(leg) {
+  return !!(leg && leg.hideDrift);
 }
 
 // A PR preview may SHARE a big static asset directory with the deployed root instead of
