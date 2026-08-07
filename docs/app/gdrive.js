@@ -287,10 +287,13 @@ function gdriveSync() {
 // the route library (different merge rule) and OFF by default.
 //
 // EXPLICIT allowlist — new or sensitive keys never sync by accident. Excluded
-// on purpose: API tokens (navaid.ai.key.*), device-local panel geometry
-// (*Pos), toolbar section state (navaid.sec.*), local-tile flags, and the
-// in-progress working route (navaid.route, which the route library already
-// covers).
+// on purpose: navaid.ai.baseUrl (decides where data is sent — a synced blob
+// must not be able to redirect it), device-local panel geometry (*Pos,
+// navaid.ai.panelSize), toolbar section state (navaid.sec.*), local-tile
+// flags, and the in-progress working route (navaid.route, which the route
+// library already covers).
+// navaid.ai.provider, navaid.ai.key.*, and navaid.ai.model.* ARE synced —
+// enter the key once and it follows you across devices.
 const GDRIVE_SETTINGS_FILE = 'navaid-settings.json';
 const GDRIVE_SETTINGS_KEYS = [
   // base layer + page setup
@@ -351,6 +354,14 @@ const GDRIVE_SETTINGS_KEYS = [
   ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
     'endurance', 'persons', 'kind', 'replyTo',
     'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
+  // AI assistant: active provider, per-provider API key, per-provider model.
+  // navaid.ai.baseUrl excluded — decides where data is sent (see aisEmail note).
+  // navaid.ai.panelPos/Size excluded — device-local geometry.
+  'navaid.ai.provider',
+  'navaid.ai.key.gemini',      'navaid.ai.model.gemini',
+  'navaid.ai.key.anthropic',   'navaid.ai.model.anthropic',
+  'navaid.ai.key.openrouter',  'navaid.ai.model.openrouter',
+  'navaid.ai.key.deepseek',    'navaid.ai.model.deepseek',
 ];
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
 const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';

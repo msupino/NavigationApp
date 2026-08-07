@@ -51,6 +51,12 @@ function composedBases() {
   for (const [name, base] of names) {
     if (new RegExp(name + "\\s*\\+\\s*'\\.").test(src)) out.push(base + '.');
   }
+  // Also accept keys whose base appears as a literal string ending in '.' —
+  // covers arrow-function composers like `const keyKey = p => 'navaid.ai.key.' + p`
+  // where the pattern above does not match because there is no simple assignment.
+  for (const m of src.matchAll(/'(navaid\.[A-Za-z0-9.]+\.)'/g)) {
+    if (!out.includes(m[1])) out.push(m[1]);
+  }
   return out;
 }
 
@@ -90,8 +96,13 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.tracks\./,          'which recorded tracks are drawn locally'],
   [/^navaid\.plateAirfield$/,     'last plate viewed, per device'],
   [/^navaid\.windField(Alt|Opacity)$/, 'transient overlay state'],
-  // Secrets, and anything that decides WHERE data is sent: never leave the device.
-  [/^navaid\.ai\./,              'API keys and assistant endpoint — never synced'],
+  // navaid.ai.baseUrl decides where data is sent — same rule as aisEmail.
+  // navaid.ai.panelSize is device-local geometry (panelPos is caught by /Pos$/).
+  // navaid.ai.key.*/model.* base strings (with trailing '.') are composed at
+  // runtime; the full per-provider literals are in the allowlist instead.
+  [/^navaid\.ai\.baseUrl$/,      'endpoint URL — decides where data is sent; must not be settable via sync'],
+  [/^navaid\.ai\.panelSize$/,    'assistant panel dimensions, per device'],
+  [/^navaid\.ai\.(key|model)\.$/,'composed-key base string — per-provider literals are in the allowlist'],
   [/^navaid\.fpl\.aisEmail$/,    'the address the flight plan is filed to — a synced blob must not be able to redirect it'],
   // Covered by another mechanism.
   [/^navaid\.route$/,            'the working route; the library covers saved ones'],
@@ -145,9 +156,12 @@ function allKeyLiterals() {
   return [...out];
 }
 
-test('the allowlist still refuses secrets and panel geometry', () => {
+test('the allowlist contains AI keys but excludes baseUrl and panel geometry', () => {
   const keys = allowlist();
-  expect(keys.some(k => k.startsWith('navaid.ai.key'))).toBe(false);
+  expect(keys).toContain('navaid.ai.provider');
+  expect(keys).toContain('navaid.ai.key.anthropic');
+  expect(keys).toContain('navaid.ai.model.anthropic');
+  expect(keys).not.toContain('navaid.ai.baseUrl');
   expect(keys.some(k => /Pos$/.test(k))).toBe(false);
   expect(keys).toContain('navaid.layer');
 });
