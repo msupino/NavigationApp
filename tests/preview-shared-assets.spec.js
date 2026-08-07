@@ -20,16 +20,30 @@ async function boot(page, sharedDirs) {
     typeof circuitImgBase === 'function');
 }
 
-test('without a shared list, every set resolves to the document\'s own copy', async ({ page }) => {
+test('a set the document carries resolves to its own copy', async ({ page }) => {
   await boot(page, null);
   const r = await page.evaluate(dirs => {
     const out = {};
     for (const d of dirs) out[d] = navAssetBase(d);
-    return { out, base: document.baseURI };
+    // Whatever the PAGE declares -- nothing on production/staging and under `npx playwright
+    // test` locally, but a real published preview injects preview-shared.js before any app
+    // script, so this list is non-empty exactly there.
+    return { out, base: document.baseURI, shared: window.__navPreviewSharedDirs || [] };
   }, DIRS);
-  // This is production/staging behaviour and must not change: each set sits beside the app.
-  for (const d of DIRS) {
-    expect(r.out[d]).toBe(new URL(d + '/', r.base).href);
+  // Production/staging behaviour, and what this test has always been about: a set the
+  // document actually carries sits beside the app.
+  const own = DIRS.filter(d => !r.shared.includes(d));
+  expect(own.length, 'a preview that shares every set proves nothing here').toBeGreaterThan(0);
+  for (const d of own) {
+    expect(r.out[d], d).toBe(new URL(d + '/', r.base).href);
+  }
+  // ...and under e2e-deployed, where the build really has dropped sets, those resolve to the
+  // deployed root instead. This test used to assume the list was always empty, which held
+  // only because the dedup never fired: `origin/main...origin/$BRANCH` exited 128 under the
+  // shallow checkout, so every preview shipped every set. It fires now.
+  for (const d of r.shared) {
+    expect(r.out[d], d + ' is shared but resolved locally').not.toBe(new URL(d + '/', r.base).href);
+    expect(r.out[d], d).toMatch(new RegExp(d + '/$'));
   }
 });
 
