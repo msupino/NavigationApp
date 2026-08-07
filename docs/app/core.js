@@ -1166,6 +1166,20 @@ window.S = Object.assign({
     return 'This route lands at ' + list.join(', ') + ' on the way, so it is not a single '
       + 'flight plan \u2014 file the first leg to ' + list[0] + ', then a plan onward from there.';
   },
+  errFplJoinGapPlain: 'The return route does not start where this route ends, so the two '
+    + 'are not one flight.',
+  errFplJoinGap: function(o) {
+    const from = (o && o.from) || '?', to = (o && o.to) || '?';
+    return 'This route ends at ' + from + ' but the return route starts at ' + to
+      + ' \u2014 they are not one flight. Pick the return that turns back from ' + from
+      + ', or file the two separately.';
+  },
+  errFplReturnNeedRoute: 'The chosen return route has fewer than two waypoints.',
+  fplReturnRoute: 'Return route',
+  fplReturnNone: '\u2014 none (one-way plan) \u2014',
+  fplReturnRouteTip: 'For an out-and-back: the saved route flown home. It must start where '
+    + 'this route ends. Both routes keep their own nav log and exports \u2014 they are joined '
+    + 'only in the filed plan.',
   errFplEobt: 'Enter a valid date and departure time.',
   errFplEndurance: 'Pick how much fuel is on board.',
   errFplLatinOnly: 'Write the pilot name and license in Latin letters — the flight-plan message cannot carry Hebrew.',

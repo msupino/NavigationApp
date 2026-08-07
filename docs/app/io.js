@@ -1261,8 +1261,13 @@ function fplAirfieldName(af, fallbackCode) {
   return named || fallbackCode || '';
 }
 // Known airfields strictly between the endpoints. Returns their names for the message.
-function fplMidRouteAirfields() {
-  const wps = state.waypoints || [];
+// Fields landed at ON THE WAY. Takes the sequence to judge, because a plan may compose an
+// outbound with a saved return: the join itself can be a field, and reading the DRAWN route
+// would miss it -- the field would sit last in the outbound, look like a destination, and
+// the landing would be filed as one flight. AIP א'-11 and the filing desk both require a
+// separate plan per leg.
+function fplMidRouteAirfields(seq) {
+  const wps = Array.isArray(seq) ? seq : (state.waypoints || []);
   if (wps.length < 3) return [];
   const out = [];
   for (let i = 1; i < wps.length - 1; i++) {
@@ -1286,12 +1291,49 @@ function fplLandingSite() {
   return { code: ref.code, label: fplAirfieldName(ref.af, ref.code),
     controlled: !!(ref.af.clearance || ref.af.atis) };
 }
+// Flight time of a SERIALIZED route (a saved library entry's `data`), in hours. Same rule
+// routeProfile() uses for the live route -- distance over speed, leg by leg -- so a filed
+// EET cannot disagree with what the nav log shows for that same route.
+function fplRouteTimeH(data) {
+  const wps = (data && data.waypoints) || [];
+  const legs = (data && data.legs) || [];
+  let h = 0;
+  for (let i = 0; i < wps.length - 1; i++) {
+    const a = wps[i], b = wps[i + 1];
+    if (!a || !b || typeof geo !== 'function') continue;
+    const { dist } = geo(a, b);
+    const speed = Number((legs[i] && legs[i].flightSpeed) || 0);
+    if (dist > 0 && speed > 0) h += dist / speed;
+  }
+  return h;
+}
+
 function buildIcaoFpl(profile, opts) {
   const p = profile || {};
   const o = opts || {};
-  const wps = state.waypoints || [];
+  // The drawn route, plus -- for a U-turn sortie -- the saved return route the pilot
+  // picked. Outbound and return are separate NavAid routes so each keeps its own nav log
+  // and exports; they are joined ONLY here, to describe one flight in field 15. Nothing
+  // below mutates state.waypoints.
+  const outWps = state.waypoints || [];
+  const retData = o.returnRouteData || null;
+  const retWps = (retData && Array.isArray(retData.waypoints)) ? retData.waypoints : [];
   const errs = [];
-  if (wps.length < 2) return { errs: ['errFplNeedRoute'] };
+  if (outWps.length < 2) return { errs: ['errFplNeedRoute'] };
+  if (retData && retWps.length < 2) return { errs: ['errFplReturnNeedRoute'] };
+  let wps = outWps;
+  if (retWps.length) {
+    // The join must be a turnaround: the return starts where the outbound ended. Two
+    // routes that do not meet are not one flight, and filing them as one would describe a
+    // path never flown -- refused, the same way an intermediate landing is.
+    const last = outWps[outWps.length - 1], first = retWps[0];
+    const joined = typeof sameMapPoint === 'function' && sameMapPoint(last, first);
+    if (!joined) {
+      return { errs: [{ code: 'errFplJoinGap',
+        from: (last && last.name) || '?', to: (first && first.name) || '?' }] };
+    }
+    wps = outWps.concat(retWps.slice(1));      // the turn point appears once
+  }
 
   // A plan is normally filed field-to-field. When an end is not a known aerodrome the
   // pilot is warned but not blocked: ICAO's own answer is ZZZZ in field 13/16 with the
@@ -1320,7 +1362,7 @@ function buildIcaoFpl(profile, opts) {
 
   // One plan describes one flight, field to field: a field in the middle is a landing,
   // and a landing means a second plan.
-  const midFields = fplMidRouteAirfields();
+  const midFields = fplMidRouteAirfields(wps);
   if (midFields.length) errs.push({ code: 'errFplMidAirfield', names: midFields.slice() });
 
   const legs = state.legs || [];
@@ -1333,7 +1375,12 @@ function buildIcaoFpl(profile, opts) {
   const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
   // Filed to the next whole 5 minutes: nobody files 00:33, and rounding UP never
   // understates the time the plan is held open for.
-  const rawEetH = prof && prof.totalTimeH > 0 ? prof.totalTimeH : 0;
+  let rawEetH = prof && prof.totalTimeH > 0 ? prof.totalTimeH : 0;
+  if (retWps.length) {
+    // The return's own time, from its saved legs and speeds -- not a doubling of the
+    // outbound, which is exactly the mistake showReturn's mirror makes.
+    rawEetH += fplRouteTimeH(retData);
+  }
   const grid = FPL_EET_ROUND_MIN();
   const eetH = rawEetH > 0 ? Math.ceil(rawEetH * 60 / grid) * grid / 60 : 0;
   if (!(eetH > 0)) errs.push('errFplNoEet');
@@ -8059,6 +8106,46 @@ function showFplDialog() {
     fplSetBidiText(latinHint, S.fplLatinHint || '');
     body.append(latinHint, row(S.fplCell || 'Mobile', cell), replyRow);
 
+    // A U-turn sortie is two NavAid routes: the drawn outbound, and a saved return. They
+    // stay separate so each keeps its own nav log and exports; picking one here joins them
+    // for field 15 only. Blank = today's behaviour, byte for byte.
+    const retSel = document.createElement('select');
+    retSel.className = 'fpl-field';
+    retSel.id = 'fpl-return-route';
+    const retNone = document.createElement('option');
+    retNone.value = '';
+    retNone.textContent = S.fplReturnNone || '— none (one-way plan) —';
+    retSel.appendChild(retNone);
+    for (const e of (typeof loadRouteLibrary === 'function' ? loadRouteLibrary() : [])) {
+      if (!e || e.deleted || !e.data) continue;
+      const opt = document.createElement('option');
+      opt.value = e.id;
+      opt.textContent = e.name || e.id;
+      retSel.appendChild(opt);
+    }
+    const retRow = row(S.fplReturnRoute || 'Return route', retSel);
+    retRow.title = fplIsolate(S.fplReturnRouteTip ||
+      'For an out-and-back: the saved route flown home. It must start where this route ends.');
+    // What the two routes add up to, shown before filing rather than after.
+    const retPreview = document.createElement('div');
+    retPreview.className = 'fpl-hint fpl-return-preview';
+    retPreview.id = 'fpl-return-preview';
+    retPreview.hidden = true;
+    const returnRouteData = () => {
+      if (!retSel.value || typeof loadRouteLibrary !== 'function') return null;
+      const e = loadRouteLibrary().find(x => x && x.id === retSel.value && !x.deleted);
+      return (e && e.data) || null;
+    };
+    retSel.onchange = () => {
+      const d = returnRouteData();
+      if (!d) { retPreview.hidden = true; return; }
+      const names = (state.waypoints || []).concat((d.waypoints || []).slice(1))
+        .map(w => (typeof fplRoutePoint === 'function' && fplRoutePoint(w)) || (w && w.name) || '?');
+      retPreview.hidden = false;
+      fplSetBidiText(retPreview, names.join(' '));
+    };
+    body.append(retRow, retPreview);
+
     // Advanced: the ICAO letters and where the plan is filed. Right by default.
     const adv = document.createElement('details');
     adv.className = 'fpl-advanced';
@@ -8149,7 +8236,8 @@ function showFplDialog() {
         showFplXcForm({ dateLocal: state1.date, timeLocal: state1.time });
         return;
       }
-      const res = buildIcaoFpl(profile, { dateLocal: state1.date, timeLocal: state1.time });
+      const res = buildIcaoFpl(profile, { dateLocal: state1.date, timeLocal: state1.time,
+        returnRouteData: returnRouteData() });
       if (res.errs) {
         showFieldErrors(errBox, res.errs, fieldEls);
         return;
