@@ -188,3 +188,20 @@ test('a genuine collapse still withholds the feed', async () => {
   expect(res.wx).toBe('skipped');
   expect(wrote).not.toContain('wx/wx.json');
 });
+
+test('the shim stays first after every injection, checked on the assembled document', () => {
+  const y = wf();
+  // The published preview for this very PR came out as
+  //     <head><script src="preview-shared.js"></script><!-- marker --><script src="pr-store.js">
+  // because the shared-dirs injection ran AFTER the placement check and inserted at <head>.
+  // Workflow-generated, so nothing was exploitable — but it broke the invariant the check
+  // exists to hold, and re-running that check on the published file would have refused it.
+  expect(y, 'preview-shared.js still injected at <head>')
+    .not.toMatch(/0,\/<head>\/s\/\/<head>\\n\s*<script src="preview-shared\.js">/);
+  // It now goes after the shim...
+  expect(y).toMatch(/s\/\(<script src="pr-store\\\.js"><\\\/script>\)\/\$1/);
+  // ...and placement is re-verified on the finished document, after every head injection.
+  expect(y).toMatch(/precede the storage shim in the assembled preview/);
+  const checks = y.match(/precede the storage shim/g) || [];
+  expect(checks.length).toBeGreaterThanOrEqual(2);
+});

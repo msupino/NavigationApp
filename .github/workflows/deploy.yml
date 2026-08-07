@@ -312,7 +312,13 @@ jobs:
               # Tell the page which directories it does not carry. First script in <head>,
               # before any overlay loader runs.
               printf 'window.__navPreviewSharedDirs=[%s];\n' "${SHARED%,}" > "$STAGING/preview-shared.js"
-              sed -i '0,/<head>/s//<head>\n  <script src="preview-shared.js"><\/script>/' "$STAGING/index.html" 2>/dev/null || true
+              # AFTER the storage shim, not after <head>. Inserting at the head put this
+              # script ahead of pr-store.js in the published preview -- harmless in itself
+              # (this file is generated here, not by the branch) but it broke the very
+              # invariant the check above enforces, and re-running that check on the
+              # published document would refuse the preview. The shim runs first, always.
+              perl -0pi -e 's/(<script src="pr-store\.js"><\/script>)/$1\n  <script src="preview-shared.js"><\/script>/' \
+                "$STAGING/index.html"
               # Fail closed here too, and this one is not optional: the directories are
               # ALREADY deleted, so a preview published without this tag resolves its overlay
               # images against its own missing copies and 404s instead of falling back to the
@@ -322,6 +328,17 @@ jobs:
                 rm -rf "$STAGING"
                 return
               fi
+            fi
+            # Re-check placement on the FINISHED document. The earlier check ran before this
+            # block existed and so could not see what it added -- which is exactly how
+            # preview-shared.js came to sit ahead of the shim in a published preview. Verify
+            # what is actually shipped, after every injection that touches the head.
+            FINAL=$(awk 'BEGIN{IGNORECASE=1} /navaid-pr-store-injected/{exit} {print}' "$STAGING/index.html" \
+              | grep -ciE '<(script|iframe|object|embed)\b|<link[^>]+rel=["'"'"']?import' || true)
+            if [ "${FINAL:-0}" != "0" ]; then
+              echo "::warning::PR #$NUM: $FINAL executable element(s) precede the storage shim in the assembled preview; skipping it"
+              rm -rf "$STAGING"
+              return
             fi
             # ...and no service worker: Cache Storage is per ORIGIN, so a preview worker's
             # cleanup used to delete the live app's offline shell just by being visited.
