@@ -2211,6 +2211,20 @@ function setReferenceVor(ident) {
   return next;
 }
 
+// Is the selected station's ring suppressed? Answering also EXPIRES the suppression, which
+// is the whole point: it is scoped to the one selection the pilot cleared the reference on,
+// not to the ident for the rest of the session. Without the expiry, NAT -> clear -> select
+// BGN -> select NAT again left NAT permanently un-ringable, because the value was only ever
+// reset by setting another non-empty reference. Selection moving anywhere else (or nowhere)
+// ends it. Called from draw(), so "the selection changed" needs no hook on all ~50 sites
+// that assign state.selected.
+function vorRingSuppressed(selectedIdent) {
+  if (typeof vorRingSuppressIdent !== 'string' || !vorRingSuppressIdent) return false;
+  if (selectedIdent && selectedIdent === vorRingSuppressIdent) return true;
+  window.vorRingSuppressIdent = null;             // selection left the station -- expired
+  return false;
+}
+
 function navLangPosKey(base) {
   const lang = (document.documentElement && document.documentElement.lang === 'he') ? 'he' : 'en';
   return base + '.' + lang;
