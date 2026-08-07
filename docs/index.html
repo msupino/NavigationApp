@@ -862,7 +862,22 @@
       // fully-drawn toolbar over a blank grey chart: every menu present and styled, the console
       // full of "L is not defined", and nothing on screen to say the app was not working. A
       // pilot would reasonably read that as "no chart data here".
+      // Not every script is load-bearing. leaflet-velocity only draws the animated wind
+      // field: if it fails, that one overlay is unavailable and everything else -- chart,
+      // route, plan, plates -- works. Treating it like Leaflet meant a blocked CDN for an
+      // optional animation blacked out the whole app behind a "could not load a required
+      // component" overlay, which is worse than the blank chart the overlay was added to fix.
+      var OPTIONAL = /leaflet-velocity/;
+      function loadFailedOptional(src) {
+        window.__navOptionalScriptFailed = window.__navOptionalScriptFailed || [];
+        window.__navOptionalScriptFailed.push(String(src));
+        // ui.js reads this to disable the wind-field toggle with a note beside it.
+        try {
+          window.dispatchEvent(new CustomEvent('navaid:optional-script-failed', { detail: String(src) }));
+        } catch (e) { /* older WebView */ }
+      }
       function loadFailed(src) {
+        if (OPTIONAL.test(String(src))) { loadFailedOptional(src); return; }
         var seen = document.getElementById('boot-error');
         if (!seen) {
           seen = document.createElement('div');
