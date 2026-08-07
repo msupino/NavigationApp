@@ -61,8 +61,18 @@ export function collectStations(metars, tafs) {
 export function sigmetPublishable({ sigOk }) {
   return !!sigOk;
 }
-export function wxPublishable({ metarsOk, tafsOk, stations }) {
-  return !!metarsOk && !!tafsOk && Object.keys(stations || {}).length > 0;
+// Coverage, not merely non-emptiness. The workflow asks for a FIXED list of Israeli fields,
+// so a 200 carrying one station is a truncated response, not the weather: publishing it blanked
+// METAR and TAF for the other twelve under a fresh generatedAt, which the staleness monitor
+// reads as healthy. A field can legitimately go quiet, so the bar is a share rather than all of
+// them -- below it, last-good survives untouched.
+export const WX_MIN_COVERAGE = 0.6;
+export function wxPublishable({ metarsOk, tafsOk, stations, requested }) {
+  if (!metarsOk || !tafsOk) return false;
+  const have = Object.keys(stations || {}).length;
+  const want = Array.isArray(requested) ? requested.length : 0;
+  if (!want) return have > 0;
+  return have >= Math.max(1, Math.ceil(want * WX_MIN_COVERAGE));
 }
 
 async function fetchJson(url, fetchImpl) {
@@ -112,16 +122,24 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch,
     log('SIGMETs:', sigmets.length);
     result.sigmet = 'published';
   } else {
-    warn('SIGMET publish skipped; preserving last-good branch.');
+    warn('::error::SIGMET publish skipped; preserving last-good branch.');
   }
-  if (wxPublishable({ metarsOk, tafsOk, stations })) {
+  if (wxPublishable({ metarsOk, tafsOk, stations, requested: ids })) {
     write('wx/wx.json', JSON.stringify({
       generatedAt: new Date().toISOString(), source: 'NOAA AWC', stations,
     }));
     log('WX stations:', Object.keys(stations).length);
     result.wx = 'published';
   } else {
-    warn('WX publish skipped; preserving last-good branch.');
+    // ::error:: and a non-zero exit, not a bare log line. A run that published nothing used to
+    // be a green check with an empty annotations panel -- indistinguishable in the Actions list
+    // from a successful one -- so a frozen feed was only ever caught by the staleness monitor
+    // hours later (#1429).
+    warn('::error::WX publish skipped (' + Object.keys(stations).length + '/' +
+      (ids || []).length + ' stations); preserving last-good branch.');
+  }
+  if (result.sigmet === 'skipped' && result.wx === 'skipped') {
+    process.exitCode = 1;
   }
   return result;
 }

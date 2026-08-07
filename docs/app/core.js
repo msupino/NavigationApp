@@ -277,6 +277,27 @@ NavAid.tuningDefaults = {
     label: 'Google Earth tour: height for a leg with no altitude (ft AGL)' },
   defaultViewZoom: { value: 11, min: 8, max: 14, step: 0.5, label: 'First-run map zoom' },
   touchRotateGesture: { value: 0, min: 0, max: 1, step: 1, label: 'Two-finger rotate gesture (0/1)' },
+  // --- Map fit ---------------------------------------------------------------
+  // Every "frame the map on X" call used to carry its own hardcoded padding and maxZoom,
+  // so the two a pilot actually notices -- the route auto-fit and ⌖ Fit to screen -- did
+  // not even agree with each other (80px vs 70px). One tunable pair per THING being
+  // framed, since a NOTAM area, a GPS track and a two-waypoint leg genuinely want
+  // different framing; the point-zoom values are the fallback when there is a single
+  // point and nothing to fit.
+  fitRoutePaddingPx: { value: 70, min: 0, max: 200, step: 5, label: 'Fit route: padding (px)' },
+  fitRouteMaxZoom: { value: 11, min: 6, max: 18, step: 0.5, label: 'Fit route: max zoom' },
+  fitRouteEmptyZoom: { value: 9, min: 6, max: 14, step: 0.5, label: 'Fit route: zoom with no route' },
+  fitNotamPaddingPx: { value: 80, min: 0, max: 200, step: 5, label: 'Fit NOTAM: padding (px)' },
+  fitNotamMaxZoom: { value: 11, min: 6, max: 18, step: 0.5, label: 'Fit NOTAM: max zoom' },
+  fitNotamPointZoom: { value: 10, min: 6, max: 18, step: 0.5, label: 'Fit NOTAM: single-point zoom floor' },
+  fitTrackPaddingPx: { value: 60, min: 0, max: 200, step: 5, label: 'Fit GPS track: padding (px)' },
+  fitTrackMaxZoom: { value: 13, min: 6, max: 18, step: 0.5, label: 'Fit GPS track: max zoom' },
+  fitTrackPointZoom: { value: 12, min: 6, max: 18, step: 0.5, label: 'Fit GPS track: single-point zoom floor' },
+  fitAltPairPaddingPx: { value: 80, min: 0, max: 200, step: 5, label: 'Fit altitude pair: padding (px)' },
+  fitAltPairMaxZoom: { value: 12, min: 6, max: 18, step: 0.5, label: 'Fit altitude pair: max zoom' },
+  fitAreaPaddingPx: { value: 40, min: 0, max: 200, step: 5, label: 'Fit LSA area: padding (px)' },
+  fitAreaMaxZoom: { value: 12, min: 6, max: 18, step: 0.5, label: 'Fit LSA area: max zoom' },
+  fitBoxPaddingPx: { value: 30, min: 0, max: 200, step: 5, label: 'Fit metre-box: padding (px)' },
   defaultViewLat: { value: 32.1, min: 29, max: 34, step: 0.05, label: 'First-run map centre latitude' },
   defaultViewLng: { value: 34.95, min: 33, max: 36.5, step: 0.05, label: 'First-run map centre longitude' },
   hitLegLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Leg label hit min' },
@@ -529,7 +550,6 @@ NavAid.tuningGroups = [
     'fplEveOpenMin', 'fplWindowBeforeMin', 'fplWindowAfterVfrMin', 'fplEetRoundMin',
     'fplSignatureInk'] },
   { name: 'Google Earth tour', keys: ['kmlTourSecPerFlightMin', 'kmlTourLegMinSec', 'kmlTourLegMaxSec', 'kmlTourMinSegSec', 'kmlUnsetLegAglFt'] },
-  { name: 'First-run view', keys: ['defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Gestures', keys: ['touchRotateGesture'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
@@ -546,10 +566,31 @@ NavAid.tuningGroups = [
   // sliders are live menu controls; their defaults live here.
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
+  // Includes the former 'First-run view' group: the first-run centre/zoom and the
+  // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
+  // in front of them.
+  { name: 'Map fit', keys: ['fitRoutePaddingPx', 'fitRouteMaxZoom', 'fitRouteEmptyZoom',
+    'fitNotamPaddingPx', 'fitNotamMaxZoom', 'fitNotamPointZoom',
+    'fitTrackPaddingPx', 'fitTrackMaxZoom', 'fitTrackPointZoom',
+    'fitAltPairPaddingPx', 'fitAltPairMaxZoom',
+    'fitAreaPaddingPx', 'fitAreaMaxZoom', 'fitBoxPaddingPx',
+    'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
   { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
+// Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
+// map on X" call goes through this instead of carrying its own literals.
+function fitOpts(padKey, zoomKey, extra) {
+  const pad = Math.max(0, Math.round(tune(padKey)));
+  const o = Object.assign({ padding: [pad, pad] }, extra || {});
+  if (zoomKey) {
+    const mz = tune(zoomKey);
+    if (mz > 0) o.maxZoom = mz;
+  }
+  return o;
+}
+
 function tune(key) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
   if (!spec) return 0;
@@ -1161,7 +1202,6 @@ window.S = Object.assign({
   tbWindFieldTime: 'Time',
   windFieldLoading: 'Loading wind field…',
   windFieldErr: 'Wind field unavailable',
-  windFieldNorthUpOnly: 'Wind field shows north-up only — rotate the map to 0°',
   // AI assistant (assistant.js)
   assistantTitle: 'Flight plan assistant',
   assistantSettings: 'Settings',
@@ -2107,6 +2147,68 @@ const pad3 = n => String(n).padStart(3, '0');
 // from the leg inspector.
 function legKiteHidden(leg) {
   return !!(leg && leg.hideKite);
+}
+
+// A PR preview may SHARE a big static asset directory with the deployed root instead of
+// carrying its own copy: every preview used to ship ~12 MB of chart-overlay imagery it had
+// not changed, and with several PRs open that pushed one Pages artifact near 300 MB, past
+// what Pages can publish inside the deploy action's (non-configurable) ceiling.
+//
+// The build omits a directory only when the branch has not touched it, and lists what it
+// omitted in window.__navPreviewSharedDirs. So a branch that DOES edit an overlay still
+// previews its own images -- the saving is only ever taken where there is nothing to see.
+//
+// Filesystem links cannot do this job: actions/upload-pages-artifact packs with
+// `tar --dereference --hard-dereference`, which turns both soft and hard links back into
+// full copies, and Pages does not serve through symlinks either. Hence a URL-level
+// indirection, the same trick plateBase() uses for the byop plate set.
+function navPreviewSharesDir(dir) {
+  const shared = (typeof window !== 'undefined' && window.__navPreviewSharedDirs) || null;
+  return !!(shared && shared.indexOf(dir) >= 0);
+}
+
+// Base URL for a static asset directory: this document's own copy, unless the build told us
+// this preview shares the root's.
+function navAssetBase(dir) {
+  const here = new URL(dir + '/', document.baseURI).href;
+  if (!navPreviewSharesDir(dir)) return here;
+  // Strip the preview suffix exactly as plateBase() does -- `branch/.+` so a branch name
+  // containing a slash strips fully.
+  const u = new URL(here);
+  u.pathname = u.pathname.replace(/[^/]*\/$/, '').replace(/(staging|pr\/[^/]+|branch\/.+)\/$/, '') + dir + '/';
+  return u.href;
+}
+
+// The reference VOR was set from four places -- the toolbar picker, the VOR inspector's
+// "use as reference" button, and two selects in the flight plan -- each with its own copy of
+// "assign, persist, sync the other select, redraw". They drifted: only some reset the
+// inspector-only override, and none dealt with the coverage ring's first precedence, so
+// clearing the reference from a selected station's own inspector left its ring on the map
+// until the inspector was closed. One setter now owns the whole transition.
+var vorRingSuppressIdent = null;   // station the pilot un-referenced while it was selected
+
+function setReferenceVor(ident) {
+  const next = ident || null;
+  window.vorRef = next;
+  try {
+    if (next) localStorage.setItem('navaid.vorRef', next);
+    else localStorage.removeItem('navaid.vorRef');
+  } catch (e) { /* storage unavailable */ }
+  // An explicit reference choice ends any inspector-only override.
+  if (typeof resetInspectorVorRef === 'function') resetInspectorVorRef();
+  // The ring rings the SELECTED station first, which is what a pilot asks for by tapping
+  // one. But clearing the reference on that same station is the pilot saying "not this one",
+  // so its selection ring goes too -- otherwise the button appears to do nothing.
+  const selIdent = (typeof state !== 'undefined' && state.selected &&
+    state.selected.type === 'vor' && typeof vors !== 'undefined' && vors[state.selected.index])
+    ? vors[state.selected.index].ident : null;
+  window.vorRingSuppressIdent = (!next && selIdent) ? selIdent : null;
+  // Keep every picker showing the same answer.
+  for (const id of ['vor-ref-select', 'fp-vor-select']) {
+    const el = document.getElementById(id);
+    if (el) el.value = next || '';
+  }
+  return next;
 }
 
 function navLangPosKey(base) {

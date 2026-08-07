@@ -97,6 +97,102 @@ test.describe('workflow trust and integrity gates', () => {
     // covered on its own by tests/preview-store-isolation.spec.js.
     const serve = workflow.slice(workflow.indexOf('Serve published site locally'));
     expect(serve).toMatch(/sed -i '\/<script src="pr-store\.js">/);
+    // Same reasoning for sw.js: the published preview has none on purpose, but this job
+    // verifies the PR's build and the suite reads the worker's source.
+    expect(serve).toMatch(/cp docs\/sw\.js "\$PREVIEW\/sw\.js"/);
+  });
+
+  test('the source cache-bust is a placeholder that Deploy rewrites', () => {
+    const html = read('docs/index.html');
+    const values = [...new Set([...html.matchAll(/\?v=([A-Za-z0-9]+)/g)].map(m => m[1]))];
+    // One value, and specifically the placeholder: a hand-bumped number here was the one
+    // line EVERY pull request touched, so any two PRs conflicted by construction and each
+    // merge invalidated the rest. The real cache-bust is the published commit's SHA.
+    expect(values).toEqual(['src']);
+    const deploy = read('.github/workflows/deploy.yml');
+    // ...which only holds if Deploy actually substitutes it, everywhere it appears.
+    expect(deploy).toMatch(/s\/\\\?v=\[A-Za-z0-9\]\+\/\?v=\$\{SHA\}\/g/);
+    expect(deploy).toMatch(/version: '\(\[0-9\]\+\\\.\[0-9\]\+\)/);   // core.js version string
+    expect(deploy).toMatch(/const CACHE = 'navaid-\$\{SHA\}'/);              // service-worker cache
+  });
+
+  test('a preview is published once, and the artifact stays deployable', () => {
+    const workflow = read('.github/workflows/deploy.yml');
+    // Each preview used to be copied to BOTH /pr/<n>/ and /branch/<name>/, so every open PR
+    // added ~29 MB (docs minus the 126 MB byop plate set) to one Pages artifact. Five PRs
+    // put it near 300 MB and Pages sat in deployment_in_progress past the action's ceiling,
+    // failing unrelated PRs and the promo. Nothing links /branch/ anyway: the comment and
+    // the deployment record both point at /pr/<n>/.
+    expect(workflow).not.toContain('site/branch');
+    expect(workflow).toMatch(/-> \/pr\/\$NUM\//);
+    // And the ceiling itself is not configurable: the action logs a `timeout` input and
+    // ignores it (measured -- 1800000 in, aborted at ~606 s, the 600000 default), so this
+    // has to stay a payload problem rather than a config one. Asserted on the PARSED step,
+    // not on a text window: the note explaining this contains the literal value.
+    const doc = YAML.parse(workflow);
+    const step = doc.jobs.deploy.steps.find(x => String(x.uses || '').includes('deploy-pages'));
+    expect(step.with && step.with.timeout).toBeUndefined();
+  });
+
+  test('Pages deploys queue per PR instead of piling up on one group', () => {
+    const doc = YAML.parse(read('.github/workflows/deploy.yml'));
+    const c = doc.jobs.deploy.concurrency;
+    // One shared 'pages' group meant every open PR's whole-site publish queued behind every
+    // other, until actions/deploy-pages hit its 10-minute wait and failed -- blocking
+    // unrelated PRs and the promo. A PR's deploys now supersede only THAT PR's.
+    expect(String(c.group)).toMatch(/pages-pr-\{0\}/);
+    expect(String(c.group)).toMatch(/pages-prod/);
+    expect(String(c['cancel-in-progress'])).toMatch(/github\.event_name == 'pull_request'/);
+    // Production publishes must never be cancelled by a preview: they are in their own
+    // group, and cancel-in-progress is false for anything that is not a pull request.
+    expect(String(c.group)).not.toBe('pages');
+    // (No timeout assertion: the action ignores that input -- see the artifact test above.)
+  });
+
+  test('no PR metadata is ever interpolated into shell source', () => {
+    const workflow = read('.github/workflows/deploy.yml');
+    // A branch name is attacker-controlled and git accepts $( ) inside a ref, so
+    // 'feat/x$(printf${IFS}PWNED)' executed in the job that assembles the PRODUCTION tree
+    // and hands it to a `pages: write` deploy. Verified by running the old xargs -I{}
+    // pattern with that value.
+    expect(workflow).not.toMatch(/xargs[^\n]*bash -c/);
+    expect(workflow).not.toMatch(/read -r n b <<< "\{\}"/);
+    // Read as NUL-delimited data, checked, and passed as positional parameters.
+    expect(workflow).toContain("tr '\\n' '\\0'");
+    expect(workflow).toMatch(/while IFS= read -r -d ''/);
+    expect(workflow).toContain('git check-ref-format');
+    expect(workflow).toMatch(/build_preview "\$NUM" "\$BRANCH"/);
+    // The branch list must not be expanded as fetch options either.
+    expect(workflow).not.toMatch(/git fetch origin --depth 1 -q \$BRANCHES/);
+    expect(workflow).toMatch(/git fetch origin --depth 1 -q -- "\$BRANCH"/);
+  });
+
+  test('a preview takes its shim from the base branch and ships no service worker', () => {
+    const workflow = read('.github/workflows/deploy.yml');
+    // The branch being previewed used to be allowed to supply its own "isolation" file --
+    // any non-empty no-op passed the presence check.
+    expect(workflow).not.toMatch(/git show "origin\/\$BRANCH:\.github\/preview\/pr-store\.js"/);
+    expect(workflow).toMatch(/cp \.github\/preview\/pr-store\.js/);
+    // Cache Storage is per ORIGIN: a preview worker's cleanup deleted the live app's
+    // offline shell just by being visited.
+    expect(workflow).toMatch(/rm -f "\$STAGING\/sw\.js"/);
+  });
+
+  test('the service worker only deletes caches its own scope owns', () => {
+    const sw = read('docs/sw.js');
+    // The old cleanup deleted every navaid-* cache that was not its own, across scopes.
+    expect(sw).not.toMatch(/ks\.filter\(k => k !== CACHE && k !== TILE_CACHE\)/);
+    expect(sw).toContain('__navaid_owner__');
+    expect(sw).toContain('ownedByThisScope');
+  });
+
+  test('the handbook states the real preview trust model', () => {
+    const doc = read('.ai/navaid-dev.md');
+    // It claimed PR code is never deployed under the live origin, which stopped being
+    // true the moment previews came back.
+    expect(doc).not.toMatch(/unreviewed code is not deployed under the live origin/);
+    expect(doc).toMatch(/not\*\* a security boundary|not a security boundary/);
+    expect(doc).toContain('/pr/<n>/');
   });
 
   test('the storage shim exists and is inert until a prefix is substituted', () => {

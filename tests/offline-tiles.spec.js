@@ -86,7 +86,13 @@ test('sw.js exempts the tile cache from activate cleanup and serves tiles cache-
   // environment-dependent): the activate filter must keep TILE_CACHE, and the
   // fetch handler must branch on the tile host BEFORE the cacheable() bailout.
   const sw = await page.evaluate(() => fetch('sw.js').then(r => r.text()));
-  expect(sw).toMatch(/k !== CACHE && k !== TILE_CACHE/);
+  // The exemption survived a rewrite of the cleanup: it used to delete every navaid-*
+  // cache that was not its own, which crossed service-worker scopes and let a preview or
+  // staging worker wipe the PRODUCTION app-shell cache (Cache Storage is per origin).
+  // Cleanup is now scope-owned; the tile bucket is still skipped outright, which is what
+  // this test is really about -- a 100+ MB user download must never be collateral.
+  expect(sw).toMatch(/if \(k === CACHE \|\| k === TILE_CACHE\) continue;/);
+  expect(sw).toContain('ownedByThisScope');
   expect(sw).toMatch(/TILE_HOST = 'flight-maps\.com'/);
   const tileBranch = sw.indexOf('url.host === TILE_HOST');
   const cacheableBail = sw.indexOf('if (!cacheable(url)) return');

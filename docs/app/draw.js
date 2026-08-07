@@ -861,8 +861,12 @@ function flashNotam(id) {
   // Frame the map on the NOTAM so the highlight is actually in view.
   const pts = notamLatLngs(n);
   if (typeof map !== 'undefined' && map && pts.length) {
-    if (pts.length === 1) map.setView(pts[0], Math.max(map.getZoom(), 10), { animate: true });
-    else map.fitBounds(L.latLngBounds(pts), { padding: [80, 80], maxZoom: 11, animate: true });
+    if (pts.length === 1) {
+      map.setView(pts[0], Math.max(map.getZoom(), tune('fitNotamPointZoom')), { animate: true });
+    } else {
+      map.fitBounds(L.latLngBounds(pts),
+        fitOpts('fitNotamPaddingPx', 'fitNotamMaxZoom', { animate: true }));
+    }
   }
   notamFlashId = id;
   notamFlashStart = performance.now();
@@ -1954,8 +1958,15 @@ function drawVors(force) {
   // Selecting a station on the map rings it immediately — that is what a pilot is
   // asking when they tap it. The inspector-only override and the global reference
   // VOR also ring, in that order of precedence.
-  const selectedStation = (state.selected && state.selected.type === 'vor' &&
+  let selectedStation = (state.selected && state.selected.type === 'vor' &&
     vors[state.selected.index]) ? vors[state.selected.index].ident : null;
+  // ...unless the pilot cleared the reference on that very station (setReferenceVor): the
+  // selection ring is an answer to "what does this one cover", and clearing is the pilot
+  // saying they are done with it. Any other station still rings on selection.
+  if (selectedStation && typeof vorRingSuppressIdent === 'string' &&
+      vorRingSuppressIdent === selectedStation) {
+    selectedStation = null;
+  }
   const selIdent = selectedStation ||
     (typeof inspectorVorRef === 'string' && inspectorVorRef) || vorRef;
   const selV = selIdent ? vors.find(v => v.ident === selIdent) : null;

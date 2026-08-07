@@ -1270,6 +1270,10 @@ function appendVorRadialRow(body, lat, lng) {
   sel.onchange = () => {
     window.inspectorVorRef = sel.value || '';
     render();
+    // The published-coverage ring is canvas ink keyed on this override, so changing it
+    // has to repaint. Without this the ring kept showing the previous station until
+    // something else happened to redraw.
+    if (typeof draw === 'function') draw();
   };
   controls.append(sel, val);
   row.append(label, controls);
@@ -2580,13 +2584,9 @@ function showInspector() {
     useBtn.textContent = isRef ? (S.vorRefActive || '✓ Reference VOR (tap to clear)')
                                : (S.vorUseRef || 'Use as reference VOR');
     useBtn.onclick = () => {
-      window.vorRef = isRef ? null : v.ident;
-      try {
-        if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
-        else localStorage.removeItem('navaid.vorRef');
-      } catch (e) { /* */ }
-      const vs = document.getElementById('vor-ref-select');
-      if (vs) vs.value = vorRef || '';
+      // setReferenceVor also drops this station's SELECTION ring when clearing, which is why
+      // "tap to clear" used to look like it did nothing until the inspector was closed.
+      setReferenceVor(isRef ? null : v.ident);
       if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
       draw(); showInspector();
     };
@@ -4185,10 +4185,10 @@ map.on('resize', () => { resizeOverlay(); scheduleDraw(); });
 // --- view fitting ----------------------------------------------------
 function fitView() {
   if (state.waypoints.length === 0) {
-    map.setView([32.0, 34.9], 9);
+    map.setView([tune('defaultViewLat'), tune('defaultViewLng')], tune('fitRouteEmptyZoom'));
     return;
   }
   const b = L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng]));
   // Clamp maxZoom so two close waypoints don't snap to a tight, useless view.
-  map.fitBounds(b, { padding: [70, 70], maxZoom: 11 });
+  map.fitBounds(b, fitOpts('fitRoutePaddingPx', 'fitRouteMaxZoom'));
 }

@@ -12,8 +12,19 @@ carries the static web app source only.
 
 - **Live (production):** https://navaid.supino.org/
 - **Live (staging):** https://navaid.supino.org/staging/
-- **Pull-request verification:** built as an Actions artifact and served only
-  on localhost during E2E; unreviewed code is not deployed under the live origin.
+- **Pull-request previews:** every open same-repository PR is published at
+  `https://navaid.supino.org/pr/<n>/` (and `/branch/<name>/`), linked from a bot
+  comment and a `View deployment` record. Fork PRs are never published.
+  **Trust model — read before opening one:** a preview is unreviewed branch code
+  on the PRODUCTION origin. It is given its own `localStorage`/`sessionStorage`
+  namespace (`.github/preview/pr-store.js`, taken only from the base branch) and
+  is refused a service worker, which keeps an ordinary preview from stepping on
+  live data or deleting the offline shell. That is **not** a security boundary:
+  a same-origin iframe reaches the real store, which
+  `tests/preview-store-isolation.spec.js` demonstrates on purpose. Treat opening
+  a preview as running that branch's code against your saved routes, settings and
+  BYOK/Drive credentials. The robust fix is a separate origin; hosting them here
+  is a deliberate, accepted trade.
 - **Repo:** https://github.com/msupino/NavigationApp (fork of liorbenhorin/NavigationApp)
 
 ## AI Docs
@@ -63,10 +74,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `index.html` — page, toolbar, Leaflet + the ordered app scripts. Title
   is "NavAid"; `favicon.svg` is a small plane glyph and a Web App Manifest is
   embedded. Mutable analytics scripts are intentionally absent. Assets carry
-  `?v=N` query strings; cache-bust is now **rewritten automatically by
+  `?v=src` query strings; cache-bust is **rewritten automatically by
   `.github/workflows/deploy.yml`** to `?v=<short-sha>` at upload time,
-  so the in-source value is just a static placeholder and doesn't need
-  bumping per commit. CI lint still
+  so the in-source value is a fixed placeholder that must NOT be bumped —
+  changing it per pull request only makes every PR conflict with every other
+  on that line. CI lint still
   enforces that every `?v=` in the file agrees so authors don't
   accidentally leave one stale.
 - `app/` — the app source. Plain scripts load in order and share one global

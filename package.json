@@ -2,7 +2,7 @@
   "name": "navaid-tests",
   "version": "1.0.0",
   "private": true,
-  "description": "Playwright e2e tests for NavAid (browser flight planner). The app itself is plain HTML/JS under docs/ — this package exists only for test tooling.",
+  "description": "Playwright e2e tests for NavAid (browser flight planner). The app itself is plain HTML/JS under docs/ \u2014 this package exists only for test tooling.",
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
@@ -13,6 +13,7 @@
   "devDependencies": {
     "@cspell/dict-he": "^4.0.5",
     "@playwright/test": "^1.49.0",
-    "cspell": "^10.0.0"
+    "cspell": "^10.0.0",
+    "yaml": "^2.5.0"
   }
 }

@@ -77,6 +77,26 @@
     } catch (e) { /* locked down: leave it alone rather than half-isolating */ }
   });
 
+  // A preview must not register a service worker. Cache Storage is per ORIGIN, so a
+  // preview worker's activate cleanup used to delete the live app's offline shell -- and a
+  // preview has no use for offline anyway. (sw.js is also removed from the published
+  // preview, so a direct request 404s.)
+  try {
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.register = function () {
+        return Promise.reject(new Error('service workers are disabled in PR previews'));
+      };
+      // Anything registered under this scope by an earlier visit goes too.
+      if (navigator.serviceWorker.getRegistrations) {
+        navigator.serviceWorker.getRegistrations().then(function (rs) {
+          for (var i = 0; i < rs.length; i++) {
+            if (String(rs[i].scope).indexOf(location.origin + '/pr/') === 0) rs[i].unregister();
+          }
+        }).catch(function () {});
+      }
+    }
+  } catch (e) { /* no service worker support */ }
+
   // Visible in the console, and something the preview's own tests can assert on.
   window.__navPreviewStorePrefix = PREFIX;
 })();

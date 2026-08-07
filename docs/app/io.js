@@ -2300,7 +2300,7 @@ function fitPageFrame() {
     [center.lat - degLat, center.lng - degLng],
     [center.lat + degLat, center.lng + degLng]
   );
-  map.fitBounds(bounds, { padding: [30, 30] });
+  map.fitBounds(bounds, fitOpts('fitBoxPaddingPx', null));
 }
 
 // --- flight plan table -----------------------------------------------
@@ -2480,11 +2480,7 @@ function showFlightPlan() {
     vorFreqSpan.textContent = cur ? (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(cur) : cur.freq) + ' MHz' : '';
   }
   vorSel.onchange = () => {
-    window.vorRef = vorSel.value || null;
-    try {
-      if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
-      else localStorage.removeItem('navaid.vorRef');
-    } catch (e) { /* */ }
+    setReferenceVor(vorSel.value);
     const vs = document.getElementById('vor-ref-select');
     if (vs) vs.value = vorRef || '';
     fillFpVorSelect();
@@ -3908,11 +3904,7 @@ function showExportModal() {
     loadVors().then(() => { fillExportVorSelect(); draw(); });
   }
   vorSel.onchange = function () {
-    window.vorRef = vorSel.value || null;
-    try {
-      if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
-      else localStorage.removeItem('navaid.vorRef');
-    } catch (e) { /* */ }
+    setReferenceVor(vorSel.value);
     const tbVor = document.getElementById('vor-ref-select');   // keep the toolbar in sync
     if (tbVor) tbVor.value = vorRef || '';
     draw();
@@ -6223,7 +6215,7 @@ async function focusAltitudePairSegment(segment, closeModal, keepFocusVisible, f
   }
   if (typeof closeModal === 'function') closeModal();
   const bounds = L.latLngBounds([[from.lat, from.lng], [to.lat, to.lng]]);
-  map.fitBounds(bounds, { padding: [80, 80], maxZoom: 12, animate: false });
+  map.fitBounds(bounds, fitOpts('fitAltPairPaddingPx', 'fitAltPairMaxZoom', { animate: false }));
   showAltitudePairFocus(from, to, keepFocusVisible, focusSource);
   return true;
 }

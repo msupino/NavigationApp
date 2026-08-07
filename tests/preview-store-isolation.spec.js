@@ -19,7 +19,9 @@ test('a preview cannot read or overwrite the live app\'s storage', async ({ cont
   await live.waitForFunction(() => typeof state !== 'undefined');
   await live.evaluate(() => {
     localStorage.setItem('navaid.ai.key.anthropic', 'REAL-SECRET');
-    localStorage.setItem('navaid.route', 'REAL-ROUTE');
+    // NOT navaid.route: the app owns that key and writeRoute() REMOVES it while the route
+    // is empty, so a debounced write in the live page raced this assertion in CI.
+    localStorage.setItem('navaid.testonly.value', 'REAL-VALUE');
   });
 
   // A preview of PR #999, same origin, different path.
@@ -30,7 +32,7 @@ test('a preview cannot read or overwrite the live app\'s storage', async ({ cont
   const seen = await preview.evaluate(() => ({
     prefix: window.__navPreviewStorePrefix,
     key: localStorage.getItem('navaid.ai.key.anthropic'),
-    route: localStorage.getItem('navaid.route'),
+    route: localStorage.getItem('navaid.testonly.value'),
   }));
   expect(seen.prefix).toBe('pr-999.');
   // The whole point: the pilot's key and route are invisible to the preview.
@@ -38,18 +40,18 @@ test('a preview cannot read or overwrite the live app\'s storage', async ({ cont
   expect(seen.route).toBeNull();
 
   await preview.evaluate(() => {
-    localStorage.setItem('navaid.route', 'PREVIEW-ROUTE');
+    localStorage.setItem('navaid.testonly.value', 'PREVIEW-VALUE');
     localStorage.setItem('navaid.ai.key.anthropic', 'PREVIEW-KEY');
   });
 
   const after = await live.evaluate(() => ({
     key: localStorage.getItem('navaid.ai.key.anthropic'),
-    route: localStorage.getItem('navaid.route'),
-    prefixed: localStorage.getItem('pr-999.navaid.route'),
+    route: localStorage.getItem('navaid.testonly.value'),
+    prefixed: localStorage.getItem('pr-999.navaid.testonly.value'),
   }));
   expect(after.key).toBe('REAL-SECRET');       // untouched
-  expect(after.route).toBe('REAL-ROUTE');
-  expect(after.prefixed).toBe('PREVIEW-ROUTE'); // ...it went to its own namespace
+  expect(after.route).toBe('REAL-VALUE');
+  expect(after.prefixed).toBe('PREVIEW-VALUE'); // ...it went to its own namespace
 });
 
 test('a preview clearing its storage does not wipe the pilot\'s', async ({ context }) => {
@@ -122,4 +124,52 @@ test('sessionStorage is namespaced too', async ({ context }) => {
   await preview.addInitScript(asPreview(7));
   await preview.goto('?lang=en&nogist');
   expect(await preview.evaluate(() => sessionStorage.getItem('navaid.fpOpen'))).toBeNull();
+});
+
+// --- what the shim does NOT do -------------------------------------------------------
+// The review demonstrated (and this reproduces) that a same-origin JavaScript wrapper is
+// not a browser security boundary. These are here so nobody reads the tests above as a
+// claim of isolation from hostile code: the shim keeps an ORDINARY preview from stepping
+// on live data; it cannot stop a preview that goes looking.
+test('a clean same-origin realm still reaches the real store — the shim is not a sandbox',
+  async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof state !== 'undefined');
+    // Run the REAL shim source in the loaded page, which is what the injected <script>
+    // does. Deliberately not page.addInitScript: that runs in every frame, including the
+    // blank iframe below, so it would test a stricter world than production and pass for
+    // the wrong reason. Deliberately not request interception either: that raced the
+    // suite's own fixture route in CI.
+    const r = await page.evaluate((shimSrc) => {
+      localStorage.setItem('navaid.ai.key.anthropic', 'REAL-SECRET');
+      // eslint-disable-next-line no-new-func
+      new Function(shimSrc)();
+      const shielded = localStorage.getItem('navaid.ai.key.anthropic');
+      const f = document.createElement('iframe');
+      document.body.appendChild(f);
+      const viaIframe = f.contentWindow.localStorage.getItem('navaid.ai.key.anthropic');
+      f.remove();
+      return { prefix: window.__navPreviewStorePrefix, shielded, viaIframe };
+    }, asPreview(999));
+    expect(r.prefix).toBe('pr-999.');       // the shim really did install
+    expect(r.shielded).toBeNull();          // ...and hides the value from the page itself
+    // ...while an iframe's untouched realm reads it anyway. Documented, not fixed: fixing
+    // it means a separate origin. Serving unreviewed branch code here is a deliberate,
+    // accepted trade — see the preview trust note in .ai/navaid-dev.md.
+    expect(r.viaIframe).toBe('REAL-SECRET');
+  });
+
+test('the shim refuses to register a service worker', async ({ context }) => {
+  const preview = await context.newPage();
+  await preview.addInitScript(asPreview(123));
+  await preview.goto('?lang=en&nogist');
+  const r = await preview.evaluate(async () => {
+    try {
+      await navigator.serviceWorker.register('sw.js');
+      return 'registered';
+    } catch (e) { return String(e.message || e); }
+  });
+  // Cache Storage is per ORIGIN: a preview worker's activate cleanup used to delete the
+  // live app's offline shell just by being visited.
+  expect(r).toMatch(/disabled in PR previews/);
 });
