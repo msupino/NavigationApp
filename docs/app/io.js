@@ -326,7 +326,7 @@ function _appendKeyCombo(parent, keys) {
 
 // --- schema validation ----------------------------------------------
 // Strict validation of every documented field on route JSON (file import
-// + localStorage restore) and on cvfr-nav-waypoints.json. A typo like
+// + localStorage restore) and on the nav-waypoints projection of the route graph. A typo like
 // `flghtSpeed` used to silently default; now it surfaces an alert that
 // names the offending field path so the JSON author can find it. Extra /
 // unknown fields at any level are silently allowed for forward-compat
@@ -615,7 +615,7 @@ function validateVors(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/data/cvfr-comm-change.json — { version, source?,
+// Strict schema for the comm-change shape projected from cvfr-route-graph.json — { version, source?,
 // callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, alternate?,
 // secondaryAlternate?, atis?, atisDeparture?, ground?, groundWest?,
 // groundEast?, clearance?, appPrimary?, appSecondary?, tmaPrimary?,
@@ -709,7 +709,7 @@ function validateCommChange(d) {
   return errs.length ? errs.join('; ') : null;
 }
 
-// Strict schema for docs/data/cvfr-leg-altitude.json — a reference table of
+// Strict schema for the leg-altitude shape projected from cvfr-route-graph.json — a reference table of
 // green CVFR route-segment altitude pairs. Unknown metadata keys are allowed;
 // the map behavior needs from/to + integer/null altitude fields, plus the
 // optional directionPool must mirror those pairs when present.

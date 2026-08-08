@@ -20,7 +20,6 @@ const graph = () => {
   }
   return { nodes, edges };
 };
-const builder = () => import(path.join(ROOT, 'scripts', 'build-route-graph.mjs'));
 const LAYERS = ['cvfr', 'heli', 'lsa'];
 
 test('every layer keeps its own edges, and none of them cross', () => {
@@ -145,45 +144,30 @@ test('cross-referenced codes are labelled, and conflicts keep both', () => {
   for (const n of conflicted) expect(n.code).not.toBe(n.codeAlt);
 });
 
-test('the CVFR sub-graph still says what the CVFR data says', async () => {
-  // The migration in the follow-up must not be able to change behaviour silently, so the
-  // per-layer view has to agree with the source it came from, segment for segment.
-  const g = graph();
-  const src = JSON.parse(fs.readFileSync(
-    path.join(ROOT, 'docs', 'data', 'cvfr-leg-altitude.json'), 'utf8'));
+test('the shipped graph still says what the retired CVFR table said', () => {
+  // The per-layer files it was built from are gone, so the baseline is the last commit that
+  // had them -- the same one scripts/legacy-from-graph.mjs proves equivalence against. This
+  // is what stops a later edit to the graph from quietly dropping a published segment.
+  const { execFileSync } = require('child_process');
+  const src = JSON.parse(execFileSync('git',
+    ['show', 'e3cd65e:docs/data/cvfr-leg-altitude.json'],
+    { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
   const segs = src.segments || src;
   const pairs = new Set();
-  for (const [from, es] of Object.entries(g.edges.cvfr)) for (const e of es) pairs.add(from + '>' + e.to);
+  for (const [from, es] of Object.entries(graph().edges.cvfr)) for (const e of es) pairs.add(from + '>' + e.to);
   let found = 0;
-  for (const s of segs) {
-    if (!s.from || !s.to) continue;
-    if (pairs.has(s.from + '>' + s.to) || pairs.has(s.to + '>' + s.from)) found++;
+  for (const s2 of segs) {
+    if (!s2.from || !s2.to) continue;
+    if (pairs.has(s2.from + '>' + s2.to) || pairs.has(s2.to + '>' + s2.from)) found++;
   }
   expect(found).toBe(segs.length);
 });
 
-test('the checked-in graph matches what the builder produces', async () => {
-  const { buildRouteGraph } = await builder();
-  const read = f => JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'data', f), 'utf8'));
-  const rows = (d, ...ks) => {
-    if (Array.isArray(d)) return d;
-    for (const k of ks) if (Array.isArray(d && d[k])) return d[k];
-    return [];
-  };
-  const waypoints = {}, segments = {}, commChange = {};
-  for (const lay of LAYERS) {
-    waypoints[lay] = rows(read(`${lay}-nav-waypoints.json`), 'waypoints', 'points');
-    segments[lay] = rows(read(`${lay}-leg-altitude.json`), 'segments');
-    commChange[lay] = rows(read(`${lay}-comm-change.json`), 'points', 'changes');
-  }
-  // Without the code reference the build must still succeed -- it is an optional input, and
-  // the artifact must be reproducible from the repo alone.
-  const fresh = buildRouteGraph({ waypoints, segments, commChange,
-    airfields: rows(read('airfields.json'), 'airfields'), codeRef: [] });
-  expect(fresh.counts.unresolvedSegments).toBe(0);
-  expect(fresh.counts.commChangePoints).toBe(52);
-  // Every node in the committed graph exists in a codeRef-free build (the codes differ, the
-  // topology does not).
-  expect(Object.keys(fresh.nodes).length).toBeGreaterThanOrEqual(
-    Object.keys(graph().nodes).length - 5);
+test('every field the app reads is still reproducible from the graph', () => {
+  // The proof that made deleting the source files safe, run on every CI pass rather than
+  // once by hand: the loaders keep receiving the shapes they validate, field for field.
+  const { execFileSync } = require('child_process');
+  const out = execFileSync('node', ['scripts/legacy-from-graph.mjs'],
+    { cwd: ROOT, encoding: 'utf8' });
+  expect(out).toContain('equivalent');
 });

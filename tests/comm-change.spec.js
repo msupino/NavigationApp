@@ -87,13 +87,7 @@ function expectedKnownFreqPointRow(point, catalog) {
 // MUST be called before `boot(page)` (i.e. before any page.goto) so the
 // stub is registered before the app's first fetch.
 async function installCommChangeFixture(page, fixture = FIXTURE) {
-  await page.route('**/cvfr-comm-change.json*', route => {
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(fixture),
-    });
-  });
+  await stubGraph(page, { commChange: fixture.points, callSigns: fixture.callSigns });
 }
 
 async function boot(page) {
@@ -302,7 +296,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
   });
 
   test('known-freq-points.md mirrors every comm-change point row from JSON', async () => {
-    const comm = JSON.parse(fs.readFileSync('docs/data/cvfr-comm-change.json', 'utf8'));
+    const comm = require('./_layerData').commChange('cvfr');
     const md = fs.readFileSync('known-freq-points.md', 'utf8');
     const actual = md.split('\n').filter(line => /^\| (?:[A-Z]{5}|LL[A-Z0-9]{2}) \|/.test(line));
     const expected = comm.points.map(point => expectedKnownFreqPointRow(point, comm.callSigns));
@@ -310,7 +304,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
   });
 
   test('route template comm-change call signs have route-context hints', async () => {
-    const comm = JSON.parse(fs.readFileSync('docs/data/cvfr-comm-change.json', 'utf8'));
+    const comm = require('./_layerData').commChange('cvfr');
     const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
     const byName = new Map((comm.points || []).map(point => [point.name, point]));
     const missing = [];

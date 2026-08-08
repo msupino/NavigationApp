@@ -143,14 +143,36 @@ things). Conflicts are recorded, not silently overwritten: ours wins, theirs is 
 
 ## Retiring the source files
 
-Not in this change. 68 references across seven app files still read
-`*-nav-waypoints.json`, `*-leg-altitude.json` and `*-comm-change.json` (draw.js 21, core.js
-14, io.js 11, ui.js 9, interact.js 9, plus assistant and editor). The graph is also
-**derived** today — those files are its inputs and `--check` regenerates it, so deleting
-them would make the graph canonical and unrebuildable.
+Done, in this change. The nine per-layer files are deleted and the graph is now the source
+rather than a derived artifact.
 
-Order: migrate consumers to the graph a layer at a time, then retire the sources and the
-builder in a final change once nothing reads them.
+What made that safe was not confidence, it was a proof. `scripts/legacy-from-graph.mjs`
+rebuilds each legacy shape from the graph and compares it field for field with the real
+file; while any field failed to reproduce, the file could not be deleted. It went
+654 → 400 → 163 → 2 → 0 problems as the graph grew the fields it had been dropping
+(`nameByLayer`, `reportByLayer`, `posByLayer`, `commByLayer`, `callSignsByLayer`, per-layer
+provenance, and the 44-entry `callSigns` dictionary). The baseline is now read from git at
+the last commit that had the files, so the proof still runs after the deletion — otherwise
+the evidence would have disappeared together with the thing it was about.
+
+The 68 call sites were not migrated one by one. `_fetchLayerDataRaw()` in `draw.js` is the
+single funnel every loader already went through, so the projection sits there: the loaders,
+their validators and all 68 call sites still receive exactly the shapes they validate. The
+projection is `docs/app/route-graph-shapes.js` — one implementation, shared by the app, the
+proof and the tests, so the app cannot drift from what the proof checked.
+
+Consequences worth stating plainly:
+
+- **`scripts/build-route-graph.mjs` and `scripts/sync-leg-altitude-directions.js` are
+  deleted.** Their inputs no longer exist. A chart update is now an edit to the graph, not
+  an edit to a source file plus a rebuild.
+- **One fetch per layer instead of three.** `S.navWpUrl`, `S.commChangeUrl` and
+  `S.legAltitudeUrl` collapse into `S.routeGraphUrl`.
+- **`airfields.json` stays.** It carries `runways`, `plates`, `atis`, `clearance`,
+  `elev_ft` and the four overlay bindings, none of which the graph holds, plus four
+  airfields (`KKDEM`, `LLES`, `LLEV`, `LLAR`) that appear in no graph file.
+- **`directionPool` is no longer stored.** It was always derivable from the segments, and
+  the loader already fell back to deriving it.
 
 ## What this does not change
 

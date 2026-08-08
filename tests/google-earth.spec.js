@@ -5,7 +5,7 @@
 const { test, expect } = require('./_setup');
 const { arp, LLHZ, LLHA } = require('./_airfieldArp');
 const AIRFIELDS = require('../docs/data/airfields.json').airfields;
-const NAV_WAYPOINTS = require('../docs/data/cvfr-nav-waypoints.json').waypoints;
+const NAV_WAYPOINTS = require('./_layerData').waypointRows('cvfr');
 const LLMZ = arp('LLMZ');
 
 const NAV_EN = new Map(NAV_WAYPOINTS.map(w => [w.name, w.en]));

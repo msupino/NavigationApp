@@ -9,12 +9,14 @@ const { test, expect } = require('./_setup');
 // guarding is structural: endpoints resolve to real waypoint ids, the
 // null↔oneWay pairing is valid, statuses are in range, and directionPool stays
 // derivable from segments.
-const ALTITUDE_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-leg-altitude.json');
-const NAV_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
+// Both datasets are projected from cvfr-route-graph.json now; the shapes are unchanged.
+const { legAltitude, navWaypoints } = require('./_layerData');
+const ALTITUDE_PATH = 'leg-altitude';
+const NAV_PATH = 'nav-waypoints';
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
 
 function readJson(file) {
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
+  return file === ALTITUDE_PATH ? legAltitude('cvfr') : navWaypoints('cvfr');
 }
 
 function directionPoolFromSegments(segments) {

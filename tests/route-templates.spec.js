@@ -5,7 +5,7 @@ const path = require('path');
 
 const TEMPLATES_PATH = path.join(__dirname, '..', 'docs', 'data', 'route-templates.json');
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
-const NAV_WP_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
+const { navWaypoints } = require('./_layerData');
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -92,7 +92,7 @@ test.describe('route templates', () => {
   test('dataset templates reference known points and keep altitude data shared', async () => {
     const data = readJson(TEMPLATES_PATH);
     const airfields = readJson(AIRFIELDS_PATH).airfields;
-    const navWp = readJson(NAV_WP_PATH).waypoints;
+    const navWp = navWaypoints('cvfr').waypoints;
     const known = new Set([
       ...airfields.map(p => p.name),
       ...navWp.map(p => p.name),

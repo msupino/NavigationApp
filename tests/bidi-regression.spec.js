@@ -3,6 +3,7 @@
 // places where browser bidi heuristics have previously reordered codes,
 // coordinates, dates, and units in confusing ways.
 const { test, expect } = require('./_setup');
+const { stubGraph } = require('./_layerData');
 const { clickToolbarControl, hideToolbarMenus } = require('./_toolbar');
 
 const ALTITUDE_FIXTURE = {
@@ -60,16 +61,9 @@ async function boot(page, lang = 'he', init = {}) {
 }
 
 async function installBidiFixtures(page) {
-  await page.route('**/cvfr-leg-altitude.json*', route => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify(ALTITUDE_FIXTURE),
-  }));
-  await page.route('**/cvfr-comm-change.json*', route => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify(COMM_CHANGE_FIXTURE),
-  }));
+  // Both fixtures ride in one graph: the datasets are no longer separate files.
+  await stubGraph(page, { segments: ALTITUDE_FIXTURE.segments,
+    commChange: COMM_CHANGE_FIXTURE.points, callSigns: COMM_CHANGE_FIXTURE.callSigns });
 }
 
 async function cssSnapshot(locator) {

@@ -683,12 +683,12 @@ var magVar = -5;                       // signed offset added to true heading
 // (full locale or just navWpUrl). Object.assign merges: defaults first,
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
-  navWpUrl: 'data/cvfr-nav-waypoints.json?v=9',  // resolved relative to index.html (docs/)
+  // One graph per layer replaces the nav-waypoints / comm-change / leg-altitude files;
+  // the ?v= cache-busts all three kinds, which now come from the same file.
+  routeGraphUrl: 'data/cvfr-route-graph.json?v=1',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=33',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
-  commChangeUrl: 'data/cvfr-comm-change.json?v=2', // CVFR comm-change reporting points (issue #399)
-  legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1', // CVFR green-route leg altitude table
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
   vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations (#404 follow-up)
 
@@ -1733,10 +1733,10 @@ var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // O(1) lookup, value is the raw point entry
                             // `{commChange, callSigns, from, to, note, ...}`.
 var commChangeCallSigns = {}; // Frequency catalog keyed by call-sign id
-                              // (loaded from cvfr-comm-change.json `callSigns`).
+                              // (the route graph's `callSigns` dictionary).
 var legAltitudeMap = null; // null = not loaded yet (or last fetch failed —
                                 // retry on next call); {} or populated =
-                                // cvfr-leg-altitude.json segments keyed as
+                                // the route graph's segments keyed as
                                 // `FROM-TO` for automatic fresh-leg altitudes.
 var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
@@ -3630,7 +3630,7 @@ function legAllowsReturn(i) {
   const leg = state.legs[i];
   return !(leg && (leg._legAltitudeOutboundBlocked || leg._legAltitudeOneWay));
 }
-// The charted altitude for a leg as loaded from cvfr-leg-altitude.json — read from
+// The charted altitude for a leg, from the route graph's edges — read from
 // the pristine ORIGIN map, never the live (route-editable) lookup. The leg
 // inspector uses this for its default / reset-to-charted value so a hand-edited
 // altitude elsewhere doesn't redefine what "charted" means in the inspector.

@@ -2,7 +2,7 @@
 const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 const { clickToolbarControl, hideToolbarMenus, showToolbarControl } = require('./_toolbar');
-const NAV_WAYPOINTS = require('../docs/data/cvfr-nav-waypoints.json').waypoints;
+const NAV_WAYPOINTS = require('./_layerData').waypointRows('cvfr');
 
 const NAV_EN = new Map(NAV_WAYPOINTS.map(w => [w.name, w.en]));
 function displayName(code) {

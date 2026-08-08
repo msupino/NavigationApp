@@ -3,6 +3,7 @@
 // Users can set local call-sign frequencies there, and the overrides should
 // use the same navaid.commFreqOverrides store as the inspector editor.
 const { test, expect } = require('./_setup');
+const { stubGraph } = require('./_layerData');
 const { clickToolbarControl, hideToolbarMenus } = require('./_toolbar');
 
 const DEROR = { lat: 32.25722, lng: 34.89111, name: 'DEROR' };
@@ -66,19 +67,12 @@ const ALTITUDE_FIXTURE = {
 };
 
 async function installCommChangeFixture(page) {
-  await page.route('**/cvfr-comm-change.json*', route => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify(FIXTURE),
-  }));
+  // The two fixtures share one file now, so stubGraph accumulates rather than replaces.
+  await stubGraph(page, { commChange: FIXTURE.points, callSigns: FIXTURE.callSigns });
 }
 
 async function installAltitudeFixture(page) {
-  await page.route('**/cvfr-leg-altitude.json*', route => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify(ALTITUDE_FIXTURE),
-  }));
+  await stubGraph(page, { segments: ALTITUDE_FIXTURE.segments });
 }
 
 async function boot(page, lang = 'en') {

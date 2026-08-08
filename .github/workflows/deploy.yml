@@ -94,7 +94,7 @@ jobs:
       - name: JSON validation
         run: |
           set -e
-          for f in docs/manifest.json docs/data/cvfr-nav-waypoints.json; do
+          for f in docs/manifest.json docs/data/cvfr-route-graph.json; do
             echo "validating $f"
             node -e "JSON.parse(require('fs').readFileSync('$f','utf8'));"
           done
