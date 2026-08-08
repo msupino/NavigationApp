@@ -122,7 +122,9 @@ test('with no return route the plan is exactly what it was before', async ({ pag
   // and it stays in field 15, which is the pre-existing documented behaviour.
   expect(route).toBe('-N0100VFR SFAIM HTZUK NAGID');
   expect(res.text).toContain('(FPL-4XDAZ-VG');
-  expect(res.text).toContain('-LLHZ0805');
+  // EOBT is UTC derived from a LOCAL clock time, so the digits depend on the runner's
+  // timezone: 11:05 local is 0805Z here and 1105Z on a UTC CI box. Assert the shape.
+  expect(res.text).toMatch(/^-LLHZ\d{4}$/m);
 });
 
 test('the modal offers the saved routes, and previews what will be filed', async ({ page }) => {
