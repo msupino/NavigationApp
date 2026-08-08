@@ -2243,14 +2243,16 @@ function defaultSavedRouteName() {
     if (a && b) {
       // Hebrew names the direction in WORDS. An arrow between a Hebrew name and a Latin
       // code is a bidi neutral: the browser reorders it, so "LLHZ ← צומת אשדוד" and
-      // "צומת אשדוד ← LLHZ" render nearly alike and an out-and-back pair became
+      // "צומת אשדוד ← LLHZ" render nearly alike, and an out-and-back pair became
       // impossible to tell apart in the saved-route list -- which now also feeds the
       // flight-plan return picker, where choosing the wrong direction files the wrong
-      // route. Each endpoint is isolated so a Latin code cannot pull the surrounding
-      // text around it either.
-      const iso = (t) => (typeof fplIsolate === 'function' ? fplIsolate(t) : t);
-      return he ? ('\u05de\u05be' + iso(a) + ' \u05d0\u05dc ' + iso(b))   // "מ־<a> אל <b>"
-                : (iso(a) + ' \u2192 ' + iso(b));
+      // route. Words carry the direction without depending on how the arrow lands.
+      //
+      // No isolate characters here: this string is DATA. It goes into the editable name
+      // field, is stored, and is synced -- U+2068/2069 in it would be invisible junk the
+      // pilot cannot see or delete. Isolation is applied where the name is RENDERED.
+      return he ? ('\u05de\u05be' + a + ' \u05d0\u05dc ' + b)   // "מ־<a> אל <b>"
+                : (a + ' \u2192 ' + b);
     }
     if (a || b) return a || b;
   }

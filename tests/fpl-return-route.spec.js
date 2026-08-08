@@ -177,9 +177,10 @@ test('an out-and-back pair is distinguishable in Hebrew', async ({ page }) => {
   expect(r.nameOut).not.toContain('←');
   // ...and the two directions are plainly different strings.
   expect(r.nameOut).not.toBe(r.nameBack);
-  // Each endpoint is isolated so a Latin code cannot drag the text around it.
-  expect(r.nameOut).toContain('⁨');
-  expect(r.nameOut).toContain('⁩');
+  // ...and the NAME carries no isolate characters: it is data the pilot can edit, store
+  // and sync. Isolation is applied when it is rendered, not baked into the value.
+  expect(r.nameOut).not.toContain('⁨');
+  expect(r.nameOut).not.toContain('⁩');
 });
 
 // --- filing-time expansion ----------------------------------------------------------------
