@@ -184,10 +184,8 @@ test('an out-and-back pair is distinguishable in Hebrew', async ({ page }) => {
 
 // --- filing-time expansion ----------------------------------------------------------------
 // The pilot draws sparsely; the plan names every published reporting point on the way, per
-// the AIP א'-11 annex א' sample. Real coordinates, so the graph match is by position.
-const G = JSON.parse(require('fs').readFileSync(
-  require('path').join(__dirname, '..', 'docs', 'data', 'cvfr-route-graph.json'), 'utf8'));
-const at = n => ({ name: n, lat: G.nodes[n].lat, lng: G.nodes[n].lng });
+// the AIP א'-11 annex א' sample. Coordinates come from PTS above (the real published ones),
+// so the graph match is by position exactly as it is in the app.
 
 test('a sparsely drawn route files every reporting point on the way', async ({ page }) => {
   await boot(page);
