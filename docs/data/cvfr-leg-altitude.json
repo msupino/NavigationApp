@@ -238,6 +238,15 @@
   },
   {
    "from": "AMNON",
+   "to": "HULAT",
+   "distanceNm": 8.9,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Amnon to Hulata. Distance computed from our own coordinates; altitudes not read from the chart yet."
+  },
+  {
+   "from": "AMNON",
    "to": "LLIB",
    "distanceNm": 4.5,
    "inboundAltitude": 2500,
@@ -766,6 +775,15 @@
    "source": "cvfr-map airway adjacency"
   },
   {
+   "from": "BOREN",
+   "to": "LLBO",
+   "distanceNm": 4.3,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Beit Oren into Habonim. Distance computed from our own coordinates; altitudes not read from the chart yet."
+  },
+  {
    "from": "BOVED",
    "to": "NAGID",
    "distanceNm": 2,
@@ -791,6 +809,15 @@
    "outboundAltitude": 3000,
    "status": "candidate",
    "source": "cvfr-map airway adjacency"
+  },
+  {
+   "from": "BRORA",
+   "to": "LLER",
+   "distanceNm": 1.5,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Brora into Eilat-Ramon; a second source names this link at 1.6 nm. Distance computed from our own coordinates. Altitudes not read from the chart yet -- two nulls with status=unknown is this schema's placeholder, not a claim that the corridor is closed or one-way."
   },
   {
    "from": "BRORA",
@@ -1014,6 +1041,15 @@
   },
   {
    "from": "DUMIM",
+   "to": "MIHMS",
+   "distanceNm": 3.0,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Kfar Adumim to Maale Michmash. Distance computed from our own coordinates; altitudes not read from the chart yet."
+  },
+  {
+   "from": "DUMIM",
    "to": "SHAHR",
    "distanceNm": 9.2,
    "inboundAltitude": 4000,
@@ -1084,6 +1120,15 @@
    }
   },
   {
+   "from": "EITAN",
+   "to": "TIRAT",
+   "distanceNm": 4.3,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Neve Eitan to Tirat Zvi, Beit Shean valley. Distance computed from our own coordinates; altitudes not read from the chart yet."
+  },
+  {
    "from": "EMMEK",
    "to": "LLRD",
    "distanceNm": 3.8,
@@ -1102,6 +1147,15 @@
    "outboundAltitude": 4000,
    "status": "candidate",
    "source": "maintainer correction"
+  },
+  {
+   "from": "ENGDI",
+   "to": "MMORR",
+   "distanceNm": 12.7,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Ein Gedi to Mor, on the published Herzliya-Eilat route. Distance computed from our own coordinates. Altitudes not read from the chart yet -- two nulls with status=unknown is this schema's placeholder, not a claim that the corridor is closed or one-way."
   },
   {
    "from": "ENGDI",
@@ -1205,12 +1259,30 @@
   },
   {
    "from": "GALIM",
+   "to": "KRYON",
+   "distanceNm": 5.4,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Bat Galim to Kiryon, Haifa bay. Distance computed from our own coordinates; altitudes not read from the chart yet."
+  },
+  {
+   "from": "GALIM",
    "to": "LLHA",
    "distanceNm": 3.7,
    "inboundAltitude": 1500,
    "outboundAltitude": 2000,
    "status": "candidate",
    "source": "cvfr-map airway adjacency"
+  },
+  {
+   "from": "GILAM",
+   "to": "GALIM",
+   "distanceNm": 7.7,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Gilam to Bat Galim. Distance computed from our own coordinates; altitudes not read from the chart yet."
   },
   {
    "from": "GILAM",
@@ -1418,6 +1490,15 @@
     "maxGap": 11,
     "samples": 90
    }
+  },
+  {
+   "from": "HAZVA",
+   "to": "ZOFAR",
+   "distanceNm": 13.1,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Hatzeva to Tzofar, up the Arava, on the same route. Distance computed from our own coordinates. Altitudes not read from the chart yet -- two nulls with status=unknown is this schema's placeholder, not a claim that the corridor is closed or one-way."
   },
   {
    "from": "HODYA",
@@ -1747,6 +1828,15 @@
    }
   },
   {
+   "from": "LLBO",
+   "to": "FRDIS",
+   "distanceNm": 3.6,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Habonim to Fureidis junction. Distance computed from our own coordinates; altitudes not read from the chart yet."
+  },
+  {
    "from": "LLBS",
    "to": "LLHB",
    "distanceNm": 4.4,
@@ -1886,6 +1976,15 @@
    "outboundAltitude": 3500,
    "status": "candidate",
    "source": "cvfr-map airway adjacency"
+  },
+  {
+   "from": "LLMZ",
+   "to": "ZOHAR",
+   "distanceNm": 10.7,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Masada to Neve Zohar -- the leg flown when the route LANDS at Masada, distinct from the ENGDI-MMORR-ZOHAR overflight. Distance computed from our own coordinates; altitudes not read from the chart yet."
   },
   {
    "from": "LLOV",
@@ -2461,6 +2560,15 @@
    "source": "cvfr-map airway adjacency",
    "armyAirway": true,
    "onAtcApproval": true
+  },
+  {
+   "from": "SAMAR",
+   "to": "LLER",
+   "distanceNm": 6.3,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Samar into Eilat-Ramon; a second source names this link at 6.2 nm. Distance computed from our own coordinates. Altitudes not read from the chart yet -- two nulls with status=unknown is this schema's placeholder, not a claim that the corridor is closed or one-way."
   },
   {
    "from": "SAMAR",

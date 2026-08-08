@@ -1183,6 +1183,15 @@
    "kind": "airfield",
    "layers": []
   },
+  "LLER": {
+   "code": "LLER",
+   "he": "אילן ואסף רמון",
+   "en": "Eilat / Ilan & Asaf Ramon",
+   "lat": 29.72722,
+   "lng": 35.01417,
+   "kind": "airfield",
+   "layers": []
+  },
   "LLEY": {
    "code": "LLEY",
    "codeSource": "cross-referenced",
@@ -2809,6 +2818,14 @@
     "status": "reviewed"
    },
    {
+    "to": "GALIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 5.44,
+    "chartDistanceNm": 5.4,
+    "status": "unknown"
+   },
+   {
     "to": "LLHA",
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
@@ -3375,11 +3392,45 @@
     "status": "candidate"
    },
    {
+    "to": "HULAT",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 8.87,
+    "chartDistanceNm": 8.9,
+    "status": "unknown"
+   },
+   {
     "to": "LLIB",
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
     "distanceNm": 4.51,
     "chartDistanceNm": 4.5,
+    "status": "candidate"
+   }
+  ],
+  "HULAT": [
+   {
+    "to": "AMNON",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 8.87,
+    "chartDistanceNm": 8.9,
+    "status": "unknown"
+   },
+   {
+    "to": "BASAN",
+    "inboundAltitude": 2500,
+    "outboundAltitude": 3000,
+    "distanceNm": 6.17,
+    "chartDistanceNm": 6.2,
+    "status": "candidate"
+   },
+   {
+    "to": "LLIB",
+    "inboundAltitude": 3000,
+    "outboundAltitude": 2500,
+    "distanceNm": 4.8,
+    "chartDistanceNm": 4.8,
     "status": "candidate"
    }
   ],
@@ -3427,6 +3478,14 @@
     "distanceNm": 2.91,
     "chartDistanceNm": 2.9,
     "status": "reviewed"
+   },
+   {
+    "to": "MIHMS",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.04,
+    "chartDistanceNm": 3,
+    "status": "unknown"
    },
    {
     "to": "SHAHR",
@@ -3585,6 +3644,14 @@
     "distanceNm": 9.63,
     "chartDistanceNm": 9.3,
     "status": "candidate"
+   },
+   {
+    "to": "ZOFAR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 13.08,
+    "chartDistanceNm": 13.1,
+    "status": "unknown"
    }
   ],
   "ZAFIT": [
@@ -3621,6 +3688,14 @@
     "distanceNm": 7.57,
     "chartDistanceNm": 7.6,
     "status": "candidate"
+   },
+   {
+    "to": "LLMZ",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 10.74,
+    "chartDistanceNm": 10.7,
+    "status": "unknown"
    },
    {
     "to": "MMORR",
@@ -3692,6 +3767,14 @@
     "distanceNm": 15.1,
     "chartDistanceNm": 15.1,
     "status": "candidate"
+   },
+   {
+    "to": "EITAN",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.28,
+    "chartDistanceNm": 4.3,
+    "status": "unknown"
    },
    {
     "to": "KOYAR",
@@ -3798,6 +3881,14 @@
     "distanceNm": 13.79,
     "chartDistanceNm": 13.8,
     "status": "candidate"
+   },
+   {
+    "to": "ZOHAR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 10.74,
+    "chartDistanceNm": 10.7,
+    "status": "unknown"
    }
   ],
   "LLNV": [
@@ -3836,6 +3927,14 @@
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
+   },
+   {
+    "to": "ENGDI",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 12.66,
+    "chartDistanceNm": 12.7,
+    "status": "unknown"
    },
    {
     "to": "LLMZ",
@@ -4312,24 +4411,6 @@
     "status": "candidate"
    }
   ],
-  "HULAT": [
-   {
-    "to": "BASAN",
-    "inboundAltitude": 2500,
-    "outboundAltitude": 3000,
-    "distanceNm": 6.17,
-    "chartDistanceNm": 6.2,
-    "status": "candidate"
-   },
-   {
-    "to": "LLIB",
-    "inboundAltitude": 3000,
-    "outboundAltitude": 2500,
-    "distanceNm": 4.8,
-    "chartDistanceNm": 4.8,
-    "status": "candidate"
-   }
-  ],
   "LLKS": [
    {
     "to": "BASAN",
@@ -4447,6 +4528,14 @@
     "distanceNm": 9.21,
     "chartDistanceNm": 9.2,
     "status": "candidate"
+   },
+   {
+    "to": "LLER",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.45,
+    "chartDistanceNm": 1.5,
+    "status": "unknown"
    },
    {
     "to": "SAMAR",
@@ -4830,6 +4919,14 @@
     "status": "candidate"
    },
    {
+    "to": "HAZVA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 13.08,
+    "chartDistanceNm": 13.1,
+    "status": "unknown"
+   },
+   {
     "to": "HRGVS",
     "inboundAltitude": 4500,
     "outboundAltitude": 3500,
@@ -5021,6 +5118,14 @@
     "distanceNm": 2.92,
     "chartDistanceNm": 2.9,
     "status": "candidate"
+   },
+   {
+    "to": "LLBO",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.32,
+    "chartDistanceNm": 4.3,
+    "status": "unknown"
    }
   ],
   "FRDIS": [
@@ -5047,6 +5152,14 @@
     "distanceNm": 11.42,
     "chartDistanceNm": 11.4,
     "status": "candidate"
+   },
+   {
+    "to": "LLBO",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.55,
+    "chartDistanceNm": 3.6,
+    "status": "unknown"
    },
    {
     "to": "SDTYM",
@@ -5079,6 +5192,32 @@
     "to": "LLBO",
     "inboundAltitude": 1500,
     "outboundAltitude": 1000,
+    "distanceNm": 6.24,
+    "chartDistanceNm": 6.2,
+    "status": "candidate"
+   }
+  ],
+  "LLBO": [
+   {
+    "to": "BOREN",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.32,
+    "chartDistanceNm": 4.3,
+    "status": "unknown"
+   },
+   {
+    "to": "FRDIS",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.55,
+    "chartDistanceNm": 3.6,
+    "status": "unknown"
+   },
+   {
+    "to": "HOTRM",
+    "inboundAltitude": 1000,
+    "outboundAltitude": 1500,
     "distanceNm": 6.24,
     "chartDistanceNm": 6.2,
     "status": "candidate"
@@ -5228,6 +5367,24 @@
     "status": "candidate"
    }
   ],
+  "LLER": [
+   {
+    "to": "BRORA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.45,
+    "chartDistanceNm": 1.5,
+    "status": "unknown"
+   },
+   {
+    "to": "SAMAR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 6.3,
+    "chartDistanceNm": 6.3,
+    "status": "unknown"
+   }
+  ],
   "SAMAR": [
    {
     "to": "BRORA",
@@ -5236,6 +5393,14 @@
     "distanceNm": 7.58,
     "chartDistanceNm": 7.6,
     "status": "reviewed"
+   },
+   {
+    "to": "LLER",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 6.3,
+    "chartDistanceNm": 6.3,
+    "status": "unknown"
    },
    {
     "to": "LLOV",
@@ -5595,6 +5760,22 @@
     "status": "candidate"
    },
    {
+    "to": "GILAM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.73,
+    "chartDistanceNm": 7.7,
+    "status": "unknown"
+   },
+   {
+    "to": "KRYON",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 5.44,
+    "chartDistanceNm": 5.4,
+    "status": "unknown"
+   },
+   {
     "to": "LLHA",
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
@@ -5725,6 +5906,24 @@
     "status": "candidate"
    }
   ],
+  "MIHMS": [
+   {
+    "to": "DUMIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.04,
+    "chartDistanceNm": 3,
+    "status": "unknown"
+   },
+   {
+    "to": "SHAHR",
+    "inboundAltitude": 4000,
+    "outboundAltitude": 3500,
+    "distanceNm": 6.2,
+    "chartDistanceNm": 6.2,
+    "status": "candidate"
+   }
+  ],
   "YRIHO": [
    {
     "to": "ALMOG",
@@ -5810,6 +6009,14 @@
     "distanceNm": 6.14,
     "chartDistanceNm": 6.1,
     "status": "candidate"
+   },
+   {
+    "to": "TIRAT",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.28,
+    "chartDistanceNm": 4.3,
+    "status": "unknown"
    }
   ],
   "LLRD": [
@@ -5865,6 +6072,14 @@
     "distanceNm": 8.11,
     "chartDistanceNm": 8.1,
     "status": "candidate"
+   },
+   {
+    "to": "MMORR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 12.66,
+    "chartDistanceNm": 12.7,
+    "status": "unknown"
    },
    {
     "to": "SHALM",
@@ -5935,6 +6150,14 @@
     "distanceNm": 0.96,
     "chartDistanceNm": 1,
     "status": "candidate"
+   },
+   {
+    "to": "GALIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.73,
+    "chartDistanceNm": 7.7,
+    "status": "unknown"
    },
    {
     "to": "LLHA",
@@ -6255,16 +6478,6 @@
     "outboundAltitude": 3000,
     "distanceNm": 2.22,
     "chartDistanceNm": 2.2,
-    "status": "candidate"
-   }
-  ],
-  "LLBO": [
-   {
-    "to": "HOTRM",
-    "inboundAltitude": 1000,
-    "outboundAltitude": 1500,
-    "distanceNm": 6.24,
-    "chartDistanceNm": 6.2,
     "status": "candidate"
    }
   ],
@@ -6881,16 +7094,6 @@
     "distanceNm": 14.08,
     "chartDistanceNm": 14.1,
     "status": "reviewed"
-   }
-  ],
-  "MIHMS": [
-   {
-    "to": "SHAHR",
-    "inboundAltitude": 4000,
-    "outboundAltitude": 3500,
-    "distanceNm": 6.2,
-    "chartDistanceNm": 6.2,
-    "status": "candidate"
    }
   ],
   "MINGV": [
