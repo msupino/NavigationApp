@@ -885,6 +885,46 @@ function scheduleSaveView() {
 map.on('moveend zoomend rotate', scheduleSaveView);
 refreshDial();
 
+// Flash the point a search just flew to. Landing at a new place with nothing marked leaves
+// the pilot hunting for which of several nearby symbols was the hit -- so ring it, briefly,
+// then let it go. Deliberately NOT a permanent marker: it is an answer to "where is it",
+// not a change to the route.
+//
+// Its own pane so it sits above the chart without joining the rotate pane (the ring is a
+// screen-space annotation; rotating it would skew the circle).
+let _searchFlashEl = null;
+let _searchFlashTimer = null;
+function flashMapPoint(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  const ms = (typeof tune === 'function') ? Number(tune('searchFlashMs')) : 3500;
+  if (!(ms > 0)) return;                       // 0 turns it off
+  const px = (typeof tune === 'function') ? Number(tune('searchFlashRadiusPx')) || 26 : 26;
+  clearSearchFlash();
+  if (!map.getPane('searchflash')) {
+    map.createPane('searchflash');
+    const pane = map.getPane('searchflash');
+    pane.style.zIndex = 640;                   // above the route overlay, below controls
+    pane.style.pointerEvents = 'none';         // never steals a click from the map
+  }
+  const icon = L.divIcon({
+    className: 'search-flash',
+    html: '<span class="search-flash-ring"></span>',
+    iconSize: [px * 2, px * 2],
+    iconAnchor: [px, px],
+  });
+  _searchFlashEl = L.marker([lat, lng], { icon, pane: 'searchflash',
+    interactive: false, keyboard: false }).addTo(map);
+  _searchFlashEl.getElement().style.setProperty('--flash-size', px * 2 + 'px');
+  _searchFlashEl.getElement().style.setProperty('--flash-ms', ms + 'ms');
+  _searchFlashTimer = setTimeout(clearSearchFlash, ms);
+}
+function clearSearchFlash() {
+  if (_searchFlashTimer) { clearTimeout(_searchFlashTimer); _searchFlashTimer = null; }
+  if (_searchFlashEl) { map.removeLayer(_searchFlashEl); _searchFlashEl = null; }
+}
+window.flashMapPoint = flashMapPoint;
+window.clearSearchFlash = clearSearchFlash;
+
 // --- nav-waypoint search --------------------------------------------
 const wpSearch = document.getElementById('wp-search');
 const wpResults = document.getElementById('wp-search-results');
@@ -1831,6 +1871,7 @@ function runSearch() {
         // Route building works on named route points; a station is a place to look
         // at, so just fly the map there and leave the typed route untouched.
         map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
+        flashMapPoint(w.lat, w.lng);
         closeSearch();
         return;
       }
@@ -1846,6 +1887,7 @@ function runSearch() {
         return;
       }
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
+      flashMapPoint(w.lat, w.lng);
       wpSearch.value = primary;
       closeSearch();
     };

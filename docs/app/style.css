@@ -5593,3 +5593,42 @@ body.theme-light #toolbar .navtoggle select {
 html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   background-position: left 6px center;
 }
+
+/* The ring a search leaves on its result: expands once, fades, gone. It is an answer to
+   "where is it", not a marker -- so it never blocks a click and never outlives its welcome.
+   Two rings offset in time read as a pulse without needing JS per frame. */
+.search-flash { pointer-events: none; }
+.search-flash-ring,
+.search-flash-ring::after {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #f5a623;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+  animation: search-flash-pulse var(--flash-ms, 3500ms) ease-out 1 both;
+}
+.search-flash-ring::after {
+  content: '';
+  animation-delay: calc(var(--flash-ms, 3500ms) / 6);
+}
+body.theme-light .search-flash-ring,
+body.theme-light .search-flash-ring::after {
+  border-color: #c8760a;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .6);
+}
+@keyframes search-flash-pulse {
+  0%   { transform: scale(.25); opacity: 0; }
+  12%  { transform: scale(.45); opacity: 1; }
+  70%  { transform: scale(1);   opacity: .55; }
+  100% { transform: scale(1.1); opacity: 0; }
+}
+/* A pilot who has asked for less motion gets a plain ring that simply fades. */
+@media (prefers-reduced-motion: reduce) {
+  .search-flash-ring, .search-flash-ring::after {
+    animation: search-flash-fade var(--flash-ms, 3500ms) linear 1 both;
+  }
+  @keyframes search-flash-fade {
+    0%, 70% { opacity: 1; }
+    100%    { opacity: 0; }
+  }
+}
