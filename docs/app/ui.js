@@ -885,6 +885,66 @@ function scheduleSaveView() {
 map.on('moveend zoomend rotate', scheduleSaveView);
 refreshDial();
 
+// Flash the point a search just flew to. Landing at a new place with nothing marked leaves
+// the pilot hunting for which of several nearby symbols was the hit -- so ring it, briefly,
+// then let it go. Deliberately NOT a permanent marker: it is an answer to "where is it",
+// not a change to the route.
+//
+// Its own pane so it sits above the chart without joining the rotate pane (the ring is a
+// screen-space annotation; rotating it would skew the circle).
+let _searchFlashEl = null;
+let _searchFlashTimer = null;
+function flashMapPoint(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  const ms = (typeof tune === 'function') ? Number(tune('searchFlashMs')) : 3500;
+  if (!(ms > 0)) return;                       // 0 turns it off
+  const px = (typeof tune === 'function') ? Number(tune('searchFlashRadiusPx')) || 26 : 26;
+  clearSearchFlash();
+  if (!map.getPane('searchflash')) {
+    map.createPane('searchflash');
+    const pane = map.getPane('searchflash');
+    pane.style.zIndex = 640;                   // above the route overlay, below controls
+    pane.style.pointerEvents = 'none';         // never steals a click from the map
+  }
+  const icon = L.divIcon({
+    className: 'search-flash',
+    html: '<span class="search-flash-ring"></span>',
+    iconSize: [px * 2, px * 2],
+    iconAnchor: [px, px],
+  });
+  _searchFlashEl = L.marker([lat, lng], { icon, pane: 'searchflash',
+    interactive: false, keyboard: false }).addTo(map);
+  // Every knob the CSS reads comes from the tune registry, so the gist (or ?tune=1) can
+  // change how loud this is without a release. Colour is a hex string; the fill is derived
+  // from it so the two can never disagree.
+  const T = (k, fb) => { const v = (typeof tune === 'function') ? tune(k) : undefined;
+    return (v === undefined || v === null || v === '') ? fb : v; };
+  const hex = String(T('searchFlashColor', '#ffb020')).trim();
+  // The fill is derived from the ring colour so the two cannot disagree. A malformed value
+  // from the gist falls back rather than producing an invalid rgba() that would drop the
+  // fill silently.
+  const rgb = /^#?[0-9a-f]{6}$/i.test(hex)
+    ? hex.replace('#', '').match(/../g).map(h => parseInt(h, 16)).join(', ')
+    : '255, 176, 32';
+  const el = _searchFlashEl.getElement();
+  el.style.setProperty('--flash-size', px * 2 + 'px');
+  el.style.setProperty('--flash-ms', ms + 'ms');
+  el.style.setProperty('--flash-color', hex);
+  el.style.setProperty('--flash-rgb', rgb);
+  el.style.setProperty('--flash-width', (Number(T('searchFlashWidthPx', 2)) || 2) + 'px');
+  el.style.setProperty('--flash-fill', String(T('searchFlashFillAlpha', 0.10)));
+  const pulses = Math.max(0, Math.round(Number(T('searchFlashPulses', 2))));
+  el.style.setProperty('--flash-pulses', String(pulses));
+  if (!pulses) el.classList.add('search-flash-nopulse');
+  _searchFlashTimer = setTimeout(clearSearchFlash, ms);
+}
+function clearSearchFlash() {
+  if (_searchFlashTimer) { clearTimeout(_searchFlashTimer); _searchFlashTimer = null; }
+  if (_searchFlashEl) { map.removeLayer(_searchFlashEl); _searchFlashEl = null; }
+}
+window.flashMapPoint = flashMapPoint;
+window.clearSearchFlash = clearSearchFlash;
+
 // --- nav-waypoint search --------------------------------------------
 const wpSearch = document.getElementById('wp-search');
 const wpResults = document.getElementById('wp-search-results');
@@ -1831,6 +1891,7 @@ function runSearch() {
         // Route building works on named route points; a station is a place to look
         // at, so just fly the map there and leave the typed route untouched.
         map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
+        flashMapPoint(w.lat, w.lng);
         closeSearch();
         return;
       }
@@ -1846,6 +1907,7 @@ function runSearch() {
         return;
       }
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
+      flashMapPoint(w.lat, w.lng);
       wpSearch.value = primary;
       closeSearch();
     };
