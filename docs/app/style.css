@@ -5593,3 +5593,60 @@ body.theme-light #toolbar .navtoggle select {
 html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   background-position: left 6px center;
 }
+
+/* The ring a search leaves on its result. A single expanding ring read as a passing
+   artefact -- it is brightest when smallest and gone by the time the eye arrives. So: a
+   held ring that stays plainly visible for most of the duration, a translucent disc to
+   catch the eye against a busy chart, and pulses that repeat rather than fire once. */
+.search-flash { pointer-events: none; }
+
+/* The steady part: visible the whole time, then fades at the end. */
+.search-flash-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
+  background: rgba(var(--flash-rgb, 255, 176, 32), var(--flash-fill, .10));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .45),
+              0 0 8px 1px rgba(var(--flash-rgb, 255, 176, 32), .35);
+  animation: search-flash-hold var(--flash-ms, 3500ms) ease-out 1 both;
+}
+/* ...and the moving part: three expanding pulses off the same centre. */
+.search-flash-ring::before,
+.search-flash-ring::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
+  animation: search-flash-pulse calc(var(--flash-ms, 3500ms) / 2.5) ease-out
+             var(--flash-pulses, 2) both;
+}
+.search-flash-ring::after { animation-delay: calc(var(--flash-ms, 3500ms) / 5); }
+
+/* Light theme keeps the tuned colour; only the outline flips, so a colour set in the tune
+   menu is honoured in both themes rather than silently overridden in one. */
+body.theme-light .search-flash-ring {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .8),
+              0 0 8px 1px rgba(var(--flash-rgb, 210, 105, 10), .3);
+}
+/* Pulses off: the steady ring alone. */
+.search-flash-nopulse .search-flash-ring::before,
+.search-flash-nopulse .search-flash-ring::after { display: none; }
+
+@keyframes search-flash-hold {
+  0%   { transform: scale(.6); opacity: 0; }
+  8%   { transform: scale(1);  opacity: 1; }
+  75%  { transform: scale(1);  opacity: 1; }
+  100% { transform: scale(1);  opacity: 0; }
+}
+@keyframes search-flash-pulse {
+  0%   { transform: scale(1);   opacity: .7; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+/* A pilot who has asked for less motion gets the steady ring only -- still obvious, no
+   expanding pulses. */
+@media (prefers-reduced-motion: reduce) {
+  .search-flash-ring::before, .search-flash-ring::after { display: none; }
+  .search-flash-ring { animation: search-flash-hold var(--flash-ms, 3500ms) linear 1 both; }
+}
