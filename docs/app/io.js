@@ -1261,8 +1261,13 @@ function fplAirfieldName(af, fallbackCode) {
   return named || fallbackCode || '';
 }
 // Known airfields strictly between the endpoints. Returns their names for the message.
-function fplMidRouteAirfields() {
-  const wps = state.waypoints || [];
+// Fields landed at ON THE WAY. Takes the sequence to judge, because a plan may compose an
+// outbound with a saved return: the join itself can be a field, and reading the DRAWN route
+// would miss it -- the field would sit last in the outbound, look like a destination, and
+// the landing would be filed as one flight. AIP א'-11 and the filing desk both require a
+// separate plan per leg.
+function fplMidRouteAirfields(seq) {
+  const wps = Array.isArray(seq) ? seq : (state.waypoints || []);
   if (wps.length < 3) return [];
   const out = [];
   for (let i = 1; i < wps.length - 1; i++) {
@@ -1286,12 +1291,180 @@ function fplLandingSite() {
   return { code: ref.code, label: fplAirfieldName(ref.af, ref.code),
     controlled: !!(ref.af.clearance || ref.af.atis) };
 }
+// Great-circle length of a waypoint sequence, in nautical miles.
+function fplSequenceNm(seq) {
+  let t = 0;
+  for (let i = 0; i < (seq || []).length - 1; i++) {
+    if (typeof geo !== 'function') break;
+    const { dist } = geo(seq[i], seq[i + 1]);
+    if (dist > 0) t += dist;
+  }
+  return t;
+}
+
+// Flight time of a SERIALIZED route (a saved library entry's `data`), in hours. Same rule
+// routeProfile() uses for the live route -- distance over speed, leg by leg -- so a filed
+// EET cannot disagree with what the nav log shows for that same route.
+function fplRouteTimeH(data) {
+  const wps = (data && data.waypoints) || [];
+  const legs = (data && data.legs) || [];
+  let h = 0;
+  for (let i = 0; i < wps.length - 1; i++) {
+    const a = wps[i], b = wps[i + 1];
+    if (!a || !b || typeof geo !== 'function') continue;
+    const { dist } = geo(a, b);
+    const speed = Number((legs[i] && legs[i].flightSpeed) || 0);
+    if (dist > 0 && speed > 0) h += dist / speed;
+  }
+  return h;
+}
+
+// --- filing-time route expansion ---------------------------------------------------
+// A filed routes plan names the reporting-point codes "as they appear on the back of the
+// route charts" (AIP א'-11, annex א' legend) -- so it lists every published point on the
+// way, not only the ones the pilot clicked. The pilot draws sparsely; the plan fills in.
+//
+// Expansion runs BETWEEN consecutive drawn waypoints, never end to end. Measured on this
+// graph, the cheapest path from LLHZ to NAGID goes inland and skips APOLN/ARENA/SUPER --
+// the coastal corridor the pilot actually flew. The picks are what choose the corridor.
+let _fplRouteGraph = null;
+async function fplLoadRouteGraph() {
+  if (_fplRouteGraph !== null) return _fplRouteGraph;
+  try {
+    const r = await fetch('data/cvfr-route-graph.json');
+    if (!r.ok) throw new Error(String(r.status));
+    const g = await r.json();
+    _fplRouteGraph = (g && g.nodes && g.edges) ? g : false;
+  } catch (e) {
+    _fplRouteGraph = false;          // no graph: file exactly what was drawn
+  }
+  return _fplRouteGraph;
+}
+
+// The graph point a waypoint sits on, or null. Matched by position, not by name: a pilot
+// may rename a waypoint, and the published code is what field 15 must carry.
+function fplGraphPointAt(graph, wp) {
+  if (!graph || !wp || !Number.isFinite(wp.lat) || !Number.isFinite(wp.lng)) return null;
+  const eps = (typeof SAME_REFERENCE_POINT_DEG === 'number') ? SAME_REFERENCE_POINT_DEG : 0.0008;
+  let best = null, bestD = Infinity;
+  for (const [name, n] of Object.entries(graph.nodes)) {
+    const d = Math.abs(n.lat - wp.lat) + Math.abs(n.lng - wp.lng);
+    if (d < bestD) { bestD = d; best = name; }
+  }
+  return (best && bestD <= eps * 2) ? best : null;
+}
+
+// The chain of published segments between two graph points, one-way segments honoured.
+//
+// NOT the shortest by distance. A filed plan names every reporting point on the way, and the
+// graph holds both a direct SFAIM->RIDNG segment and the finer SFAIM->APOLN->ARENA->HTZUK->
+// RIDNG chain along the same track. Shortest-distance takes the direct one and files four
+// fewer points than the pilot flies; measured against a real filed plan the two tracks differ
+// by 0.2 nm out of 23.6. So: among chains within FPL_CHAIN_SLACK of the shortest, take the
+// one naming the MOST points.
+//
+// Bounded Bellman-Ford by hop count, because that terminates. A relaxation that reopened
+// nodes to chase a longer-but-finer path did not.
+const FPL_CHAIN_SLACK = 1.06;
+const FPL_CHAIN_MAX_HOPS = 30;
+function fplGraphChain(graph, from, to) {
+  if (!graph || !from || !to) return null;
+  if (from === to) return [from];
+  const D = [], P = [];
+  for (let k = 0; k <= FPL_CHAIN_MAX_HOPS; k++) { D.push(new Map()); P.push(new Map()); }
+  D[0].set(from, 0);
+  for (let k = 0; k < FPL_CHAIN_MAX_HOPS; k++) {
+    for (const [n, d] of D[k]) {
+      for (const e of graph.edges[n] || []) {
+        if (e.blocked) continue;               // one-way, against the flow
+        const nd = d + (Number.isFinite(e.distanceNm) ? e.distanceNm : 1);
+        if (!D[k + 1].has(e.to) || nd < D[k + 1].get(e.to)) {
+          D[k + 1].set(e.to, nd);
+          P[k + 1].set(e.to, n);
+        }
+      }
+    }
+  }
+  let best = Infinity;
+  for (let k = 1; k <= FPL_CHAIN_MAX_HOPS; k++) if (D[k].has(to)) best = Math.min(best, D[k].get(to));
+  if (!Number.isFinite(best)) return null;
+  // Longest chain within the slack -- but it must be a SIMPLE path. Bellman-Ford by hop
+  // count is free to revisit, and "more hops" then rewards bouncing: LLBS->LLHZ came out as
+  // "... LLEK NAGID YAVNE NAGID BOVED ...", a detour to YAVNE and straight back, and
+  // LLHA->LLBS repeated ARENA and HTZUK. A filed route that visits a point twice for no
+  // reason is not the route anyone flies. Walk k downwards and take the first chain that
+  // visits nothing twice.
+  const build = (k) => {
+    const out = [to];
+    let cur = to;
+    for (let i = k; i > 0; i--) {
+      cur = P[i].get(cur);
+      if (cur === undefined) return null;
+      out.unshift(cur);
+    }
+    return out;
+  };
+  for (let k = FPL_CHAIN_MAX_HOPS; k >= 1; k--) {
+    if (!D[k].has(to) || D[k].get(to) > best * FPL_CHAIN_SLACK) continue;
+    const path = build(k);
+    if (!path || path[0] !== from) continue;
+    if (new Set(path).size === path.length) return path;      // simple: no point twice
+  }
+  return null;
+}
+
+// Expand a drawn sequence to the published points between each consecutive pair.
+// Returns { points, unresolved } -- `unresolved` names the pairs the graph could not
+// bridge, so the pilot is told rather than quietly filing a shorter route. A pair that
+// cannot be resolved contributes nothing extra: the drawn points always survive.
+function fplExpandRoute(graph, wps) {
+  const out = [];
+  const unresolved = [];
+  for (let i = 0; i < wps.length; i++) {
+    const wp = wps[i];
+    if (i === 0) { out.push(wp); continue; }
+    const a = fplGraphPointAt(graph, wps[i - 1]);
+    const b = fplGraphPointAt(graph, wp);
+    const chain = (a && b) ? fplGraphChain(graph, a, b) : null;
+    if (chain && chain.length > 2) {
+      for (const name of chain.slice(1, -1)) {
+        const n = graph.nodes[name];
+        out.push({ lat: n.lat, lng: n.lng, name, _fplExpanded: 1 });
+      }
+    } else if (a && b && !chain) {
+      unresolved.push([a, b]);
+    }
+    out.push(wp);
+  }
+  return { points: out, unresolved };
+}
+
 function buildIcaoFpl(profile, opts) {
   const p = profile || {};
   const o = opts || {};
-  const wps = state.waypoints || [];
+  // The drawn route, plus -- for a U-turn sortie -- the saved return route the pilot
+  // picked. Outbound and return are separate NavAid routes so each keeps its own nav log
+  // and exports; they are joined ONLY here, to describe one flight in field 15. Nothing
+  // below mutates state.waypoints.
+  const outWps = state.waypoints || [];
+  const retData = o.returnRouteData || null;
+  const retWps = (retData && Array.isArray(retData.waypoints)) ? retData.waypoints : [];
   const errs = [];
-  if (wps.length < 2) return { errs: ['errFplNeedRoute'] };
+  if (outWps.length < 2) return { errs: ['errFplNeedRoute'] };
+  if (retData && retWps.length < 2) return { errs: ['errFplReturnNeedRoute'] };
+  let wps = outWps;
+  if (retWps.length) {
+    // The join must be a turnaround: the return starts where the outbound ended. Two
+    // routes that do not meet are not one flight, and filing them as one would describe a
+    // path never flown -- refused, the same way an intermediate landing is.
+    const last = outWps[outWps.length - 1], first = retWps[0];
+    const joined = typeof sameMapPoint === 'function' && sameMapPoint(last, first);
+    if (!joined) {
+      return { errs: [{ code: 'errFplJoinGap',
+        from: (last && last.name) || '?', to: (first && first.name) || '?' }] };
+    }
+    wps = outWps.concat(retWps.slice(1));      // the turn point appears once
+  }
 
   // A plan is normally filed field-to-field. When an end is not a known aerodrome the
   // pilot is warned but not blocked: ICAO's own answer is ZZZZ in field 13/16 with the
@@ -1305,6 +1478,23 @@ function buildIcaoFpl(profile, opts) {
   const destIcao = fplAerodrome(lastWp);
   const destPlain = destIcao ? '' : (fplRoutePoint(lastWp) || '');
   if (!destIcao && !destPlain) errs.push('errFplDestUnnamed');
+
+  // Fill in the published reporting points between the drawn ones, when asked. The drawn
+  // points always survive; expansion only ADDS what lies between them, so a pilot who drew
+  // sparsely files the chain the AIP's own sample shows.
+  let expandedUnresolved = [];
+  let expandedExtraNm = 0;
+  if (o.routeGraph) {
+    const drawnNm = fplSequenceNm(wps);
+    const ex = fplExpandRoute(o.routeGraph, wps);
+    wps = ex.points;
+    expandedUnresolved = ex.unresolved;
+    // The expanded chain follows the published corridor, which is LONGER than the straight
+    // line between the pilot's picks -- 44.8 nm against 39.2 on a real sortie. Filing the
+    // expanded route with the drawn route's time understates the EET by five minutes, and
+    // the plan is held open for a flight shorter than the one it describes.
+    expandedExtraNm = Math.max(0, fplSequenceNm(wps) - drawnNm);
+  }
 
   // Field 15 lists what is flown BETWEEN the two end fields. An end that is filed as
   // ZZZZ is still a point on the route, so it stays in the list.
@@ -1320,7 +1510,7 @@ function buildIcaoFpl(profile, opts) {
 
   // One plan describes one flight, field to field: a field in the middle is a landing,
   // and a landing means a second plan.
-  const midFields = fplMidRouteAirfields();
+  const midFields = fplMidRouteAirfields(wps);
   if (midFields.length) errs.push({ code: 'errFplMidAirfield', names: midFields.slice() });
 
   const legs = state.legs || [];
@@ -1333,7 +1523,16 @@ function buildIcaoFpl(profile, opts) {
   const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
   // Filed to the next whole 5 minutes: nobody files 00:33, and rounding UP never
   // understates the time the plan is held open for.
-  const rawEetH = prof && prof.totalTimeH > 0 ? prof.totalTimeH : 0;
+  let rawEetH = prof && prof.totalTimeH > 0 ? prof.totalTimeH : 0;
+  if (retWps.length) {
+    // The return's own time, from its saved legs and speeds -- not a doubling of the
+    // outbound, which is exactly the mistake showReturn's mirror makes.
+    rawEetH += fplRouteTimeH(retData);
+  }
+  // ...and the extra corridor distance the expansion added, flown at the speed field 15
+  // declares. Without this the filed EET is the straight-line time for a route that names
+  // the long way round.
+  if (expandedExtraNm > 0 && speedKt > 0) rawEetH += expandedExtraNm / speedKt;
   const grid = FPL_EET_ROUND_MIN();
   const eetH = rawEetH > 0 ? Math.ceil(rawEetH * 60 / grid) * grid / 60 : 0;
   if (!(eetH > 0)) errs.push('errFplNoEet');
@@ -1387,6 +1586,12 @@ function buildIcaoFpl(profile, opts) {
   const nowRef = o.now instanceof Date ? o.now : new Date();
   if (opens && nowRef.getTime() < opens.getTime()) warns.push('warnFplEarly');
   if (mixedSpeed) warns.push('warnFplMixedSpeed');
+  // The graph could not bridge a pair, so those published points are missing from field 15.
+  // Said out loud: the alternative is a plan that silently names fewer points than flown.
+  if (expandedUnresolved.length) {
+    warns.push({ code: 'warnFplExpandGap',
+      pairs: expandedUnresolved.map(p => p[0] + '\u2192' + p[1]) });
+  }
 
   const f18 = ['DOF/' + utc.dof];
   if (!depIcao) f18.push('DEP/' + depPlain);
@@ -1410,6 +1615,7 @@ function buildIcaoFpl(profile, opts) {
   ].join('\n');
   return {
     text, dep: depIcao || depPlain, dest: destIcao || destPlain, eet: fplHhmm(eetH),
+    expandedPoints: pts.slice(), expandedUnresolved,
     eetMinutes: Math.round(eetH * 60), mixedSpeed, warns,
     opensAt: fplEarliestFiling(utc.when),
     to: toAddr,
@@ -2089,11 +2295,22 @@ function defaultSavedRouteName() {
     };
     const a = nm(wps[0]);
     const b = nm(wps[wps.length - 1]);
-    // Point the arrow the reading direction: LTR "first → last", RTL (Hebrew
-    // reads right-to-left, so the destination sits on the left) "first ← last".
     const he = (typeof currentUiLang === 'function')
       ? currentUiLang() === 'he' : (window.__navLang === 'he');
-    if (a && b) return a + (he ? ' ← ' : ' → ') + b;
+    if (a && b) {
+      // Hebrew names the direction in WORDS. An arrow between a Hebrew name and a Latin
+      // code is a bidi neutral: the browser reorders it, so "LLHZ ← צומת אשדוד" and
+      // "צומת אשדוד ← LLHZ" render nearly alike, and an out-and-back pair became
+      // impossible to tell apart in the saved-route list -- which now also feeds the
+      // flight-plan return picker, where choosing the wrong direction files the wrong
+      // route. Words carry the direction without depending on how the arrow lands.
+      //
+      // No isolate characters here: this string is DATA. It goes into the editable name
+      // field, is stored, and is synced -- U+2068/2069 in it would be invisible junk the
+      // pilot cannot see or delete. Isolation is applied where the name is RENDERED.
+      return he ? ('\u05de\u05be' + a + ' \u05d0\u05dc ' + b)   // "מ־<a> אל <b>"
+                : (a + ' \u2192 ' + b);
+    }
     if (a || b) return a || b;
   }
   const d = new Date();
@@ -8059,15 +8276,247 @@ function showFplDialog() {
     fplSetBidiText(latinHint, S.fplLatinHint || '');
     body.append(latinHint, row(S.fplCell || 'Mobile', cell), replyRow);
 
+    // A U-turn sortie is two NavAid routes: the drawn outbound, and a saved return. They
+    // stay separate so each keeps its own nav log and exports; picking one here joins them
+    // for field 15 only. Blank = today's behaviour, byte for byte.
+    const retSel = document.createElement('select');
+    retSel.className = 'fpl-field';
+    retSel.id = 'fpl-return-route';
+    const retNone = document.createElement('option');
+    retNone.value = '';
+    retNone.textContent = S.fplReturnNone || '— none (one-way plan) —';
+    retSel.appendChild(retNone);
+    for (const e of (typeof loadRouteLibrary === 'function' ? loadRouteLibrary() : [])) {
+      if (!e || e.deleted || !e.data) continue;
+      // Only routes that can actually BE the return: one that starts where this route ends.
+      // Anything else is refused at Continue with errFplJoinGap, so listing it is offering
+      // a choice that cannot work -- better to answer the question before it is asked.
+      const rw = e.data.waypoints || [];
+      const here = state.waypoints || [];
+      const last = here[here.length - 1];
+      if (rw.length < 2 || !last ||
+          !(typeof sameMapPoint === 'function' && sameMapPoint(rw[0], last))) continue;
+      // ...and not the route being filed. A LOOP starts where it ends, so it passes the
+      // test above and would fly the whole sortie twice.
+      //
+      // Identity is the WAYPOINTS, not the tracked library id: currentRouteLibraryId is set
+      // by saving and is not cleared when the route is replaced, so after saving a return
+      // and then building the outbound it still points at the return -- and using it hid a
+      // perfectly valid candidate. It also misses the same route saved twice under two
+      // names, which comparing waypoints catches.
+      if (rw.length === here.length &&
+          rw.every((w, i) => sameMapPoint(w, here[i]))) continue;
+      const opt = document.createElement('option');
+      opt.value = e.id;
+      // The name plus the route's own endpoints. Picking the wrong direction here files
+      // the wrong route, and a name whose arrow sits between a Hebrew name and a Latin
+      // code reorders under bidi -- so the endpoints are stated from the data, isolated,
+      // and always first-to-last. (rw is the candidate's waypoints, from the filter above.)
+      const endName = (w) => {
+        const raw = (w && w.name) || '';
+        return ((raw && typeof navName === 'function') ? navName(raw) : raw).toString().trim();
+      };
+      const from = endName(rw[0]), to = endName(rw[rw.length - 1]);
+      const nm = (e.name || e.id);
+      // Only spell the endpoints out when the NAME does not already carry them. An
+      // auto-named route reads "מ־LLHZ אל צומת אשדוד" -- appending "(LLHZ → צומת אשדוד)"
+      // said the same thing twice, and did it with the very arrow whose direction is
+      // ambiguous in RTL. A renamed route ("morning nav ex") still gets the endpoints.
+      // Raw codes count too: "בדיקה BAZRA DEROR" already names its endpoints.
+      const rawOf = (w) => ((w && w.name) || '').toString().trim();
+      const hasEnd = (w, disp) => {
+        const r = rawOf(w);
+        return !!((r && nm.includes(r)) || (disp && nm.includes(disp)));
+      };
+      const named = from && to && hasEnd(rw[0], from) && hasEnd(rw[rw.length - 1], to);
+      const label = (from && to && !named) ? (nm + '  (' + from + ' \u2192 ' + to + ')') : nm;
+      // Strip any isolates the name already carries before adding our own: an auto-named
+      // route arrives pre-isolated, and wrapping it again nested them ("מ־⁨⁨LLHZ⁩⁩").
+      const bare = label.replace(/[\u2068\u2069]/g, '');
+      opt.textContent = (typeof fplIsolate === 'function') ? fplIsolate(bare) : bare;
+      retSel.appendChild(opt);
+    }
+    // A route that ENDS at a field cannot take a return: joining another route there is a
+    // landing, and a landing means a separate plan per leg (AIP א'-11; the filing desk says
+    // the same). Offering the picker would invite a plan that gets rejected, so it is
+    // disabled with the reason rather than left to fail at Continue.
+    const endsAtField = (() => {
+      const wps = state.waypoints || [];
+      const last = wps[wps.length - 1];
+      return !!(last && typeof fplAerodrome === 'function' && fplAerodrome(last));
+    })();
+    if (endsAtField) {
+      retSel.disabled = true;
+      retSel.value = '';
+    }
+    const retRow = row(S.fplReturnRoute || 'Return route', retSel);
+    if (endsAtField) retRow.classList.add('fpl-row-disabled');
+    retRow.title = fplIsolate(S.fplReturnRouteTip ||
+      'For an out-and-back: the saved route flown home. It must start where this route ends.');
+    // Fill in the published points between the drawn ones. On by default because that is
+    // what the AIP's annex א' sample shows, and reviewable because a routes plan may also be
+    // filed by phone (§3.ב.1), where nobody recites seventeen codes.
+    const expandCb = document.createElement('input');
+    expandCb.type = 'checkbox';
+    expandCb.id = 'fpl-expand-points';
+    expandCb.checked = true;
+    const expandLbl = document.createElement('label');
+    expandLbl.className = 'fpl-check';
+    expandLbl.htmlFor = expandCb.id;
+    expandLbl.append(expandCb, document.createTextNode(' ' +
+      (S.fplExpandPoints || 'Name every reporting point on the way')));
+
+    // What the two routes add up to, shown before filing rather than after.
+    const retPreview = document.createElement('div');
+    retPreview.className = 'fpl-hint fpl-return-preview';
+    retPreview.id = 'fpl-return-preview';
+    retPreview.hidden = true;
+    const returnRouteData = () => {
+      if (!retSel.value || typeof loadRouteLibrary !== 'function') return null;
+      const e = loadRouteLibrary().find(x => x && x.id === retSel.value && !x.deleted);
+      return (e && e.data) || null;
+    };
+    // The preview runs the SAME expansion the plan will, so what is shown is what is filed.
+    const refreshPreview = async () => {
+      const d = returnRouteData();
+      let seq = (state.waypoints || []).slice();
+      if (d) seq = seq.concat((d.waypoints || []).slice(1));
+      if (!d && !expandCb.checked) { retPreview.hidden = true; return; }
+      let note = '';
+      if (expandCb.checked) {
+        const graph = await fplLoadRouteGraph();
+        if (graph) {
+          const ex = fplExpandRoute(graph, seq);
+          seq = ex.points;
+          if (ex.unresolved.length) {
+            note = '  ' + (S.fplExpandGapShort || '(no published chain for: ') +
+              ex.unresolved.map(p => p[0] + '\u2192' + p[1]).join(', ') + ')';
+          }
+        }
+      }
+      const names = seq.map(w =>
+        (typeof fplRoutePoint === 'function' && fplRoutePoint(w)) || (w && w.name) || '?');
+      retPreview.hidden = false;
+      fplSetBidiText(retPreview, names.join(' ') + note);
+    };
+    retSel.onchange = refreshPreview;
+    expandCb.onchange = refreshPreview;
+    setTimeout(refreshPreview, 0);          // show the drawn route expanded straight away
+    body.append(retRow, expandLbl, retPreview);
+    if (endsAtField) {
+      const why = document.createElement('div');
+      why.className = 'fpl-hint';
+      fplSetBidiText(why, S.fplReturnAtFieldHint ||
+        'This route lands at a field, so it is one plan on its own — a return from there is a separate plan.');
+      body.append(why);
+    }
+
     // Advanced: the ICAO letters and where the plan is filed. Right by default.
     const adv = document.createElement('details');
     adv.className = 'fpl-advanced';
     const sum = document.createElement('summary');
     sum.textContent = S.fplAdvanced || 'Advanced';
     adv.appendChild(sum);
-    const wake = input(profile.wake || 'L', 'text', { maxlength: '1' });
-    const equip = input(profile.equip || 'S', 'text', { maxlength: '20' });
-    const surv = input(profile.surv || 'C', 'text', { maxlength: '20' });
+    // Field 9/10 have FIXED vocabularies, so free text here only ever produces a plan the
+    // AIS parser rejects. The controls offer what exists; the stored value stays the same
+    // letter string, so nothing downstream changes.
+    const wake = document.createElement('select');
+    wake.className = 'fpl-field';
+    wake.id = 'fpl-wake';
+    for (const [v, label] of [['L', 'L'], ['M', 'M'], ['H', 'H'], ['J', 'J']]) {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = label + ' \u2014 ' + (S['fplWake_' + v] || v);
+      wake.appendChild(o);
+    }
+    wake.value = /^[LMHJ]$/.test(String(profile.wake || '').toUpperCase())
+      ? String(profile.wake).toUpperCase() : 'L';
+
+    // A letter set, not one choice: field 10 carries several. Letters the pilot already has
+    // that are not offered here are KEPT -- an equipment string is the pilot's declaration,
+    // and a control that quietly dropped 'Y' or 'R' would file a different aircraft.
+    const letterGroup = (id, current, options, exclusive) => {
+      // A disclosure, not a wall of checkboxes: closed it reads like a field showing the
+      // letters that will be filed, and it opens only when the pilot wants to change them.
+      const wrap = document.createElement('details');
+      wrap.className = 'fpl-letters';
+      wrap.id = id;
+      const sum = document.createElement('summary');
+      sum.className = 'fpl-letters-sum';
+      wrap.appendChild(sum);
+      const have = new Set(String(current || '').toUpperCase().replace(/[^A-Z0-9]/g, ''));
+      const known = new Set(options.map(o => o[0]));
+      const extra = [...have].filter(c => !known.has(c));
+      const boxes = [];
+      for (const [letter, label] of options) {
+        const lab = document.createElement('label');
+        lab.className = 'fpl-check';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = letter;
+        cb.checked = have.has(letter);
+        cb.onchange = () => {
+          // "None" cannot be combined with equipment that exists.
+          if (exclusive && cb.value === exclusive && cb.checked) {
+            for (const b of boxes) if (b !== cb) b.checked = false;
+          } else if (exclusive && cb.checked) {
+            const none = boxes.find(b => b.value === exclusive);
+            if (none) none.checked = false;
+          }
+          refresh();
+        };
+        boxes.push(cb);
+        lab.append(cb, document.createTextNode(' ' + letter + ' \u2014 ' + label));
+        wrap.appendChild(lab);
+      }
+      wrap.__value = () => {
+        const picked = boxes.filter(b => b.checked).map(b => b.value);
+        return [...new Set(picked.concat(extra))].sort().join('');
+      };
+      const labelOf = new Map(options);
+      const refresh = () => {
+        const v = wrap.__value();
+        // The letters, then what they mean -- the value is what gets filed, so it leads.
+        const names = [...v].map(c => labelOf.get(c)).filter(Boolean);
+        sum.textContent = v ? (v + (names.length ? '  \u2014 ' + names.join(', ') : ''))
+                            : (S.fplLettersNone || 'nothing selected');
+      };
+      refresh();
+      if (extra.length) {
+        const note = document.createElement('div');
+        note.className = 'fpl-hint';
+        note.textContent = (S.fplLettersKept || 'Also filed, from your profile:') + ' ' + extra.join('');
+        wrap.appendChild(note);
+      }
+      return wrap;
+    };
+
+    // A letter set needs the full width; the narrow value column a text input sits in wraps
+    // every label onto its own line.
+    const rowWide = (label, el) => {
+      const r = row(label, el);
+      r.classList.add('fpl-row-letters');
+      return r;
+    };
+    const equip = letterGroup('fpl-equip', profile.equip || 'S', [
+      ['S', S.fplEquipS || 'standard (VHF, VOR, ILS)'],
+      ['G', S.fplEquipG || 'GNSS'],
+      ['D', S.fplEquipD || 'DME'],
+      ['F', S.fplEquipF || 'ADF'],
+      ['O', S.fplEquipO || 'VOR'],
+      ['V', S.fplEquipV || 'VHF RTF'],
+      ['Y', S.fplEquipY || '8.33 kHz radio'],
+      ['R', S.fplEquipR || 'PBN approved'],
+      ['N', S.fplEquipN || 'none'],
+    ], 'N');
+    const surv = letterGroup('fpl-surv', profile.surv || 'C', [
+      ['A', S.fplSurvA || 'transponder Mode A'],
+      ['C', S.fplSurvC || 'Mode A and C'],
+      ['S', S.fplSurvS || 'Mode S, altitude and ident'],
+      ['E', S.fplSurvE || 'Mode S, altitude, ident and ADS-B'],
+      ['L', S.fplSurvL || 'Mode S with ADS-B and ADS-C'],
+      ['N', S.fplSurvN || 'none'],
+    ], 'N');
     // The published address for this flight type IS the value, not a hint: it comes
     // from AIP א'-11 §3.ב, so it should be what gets used unless the pilot changes it.
     const aisEmail = input(profile.aisEmail || fplFileTo(kind.value), 'email');
@@ -8084,8 +8533,8 @@ function showFplDialog() {
     // to anyone who has not filed a plan by hand before.
     const advRows = [
       [row(S.fplWake || 'Wake category', wake), S.fplWakeTip],
-      [row(S.fplEquip || 'Equipment', equip), S.fplEquipTip],
-      [row(S.fplSurv || 'Transponder', surv), S.fplSurvTip],
+      [rowWide(S.fplEquip || 'Equipment', equip), S.fplEquipTip],
+      [rowWide(S.fplSurv || 'Transponder', surv), S.fplSurvTip],
       [row(S.fplAisEmail || 'File to', aisEmail), S.fplAisEmailTip],
     ];
     for (const [rowEl, tip] of advRows) {
@@ -8112,10 +8561,10 @@ function showFplDialog() {
     next.id = 'fpl-next';
     next.className = 'fpl-primary';
     next.textContent = S.fplNext || 'Continue';
-    next.onclick = () => {
+    next.onclick = async () => {
       Object.assign(profile, {
         reg: reg.value.trim(), type: type.value.trim(), wake: wake.value.trim(),
-        equip: equip.value.trim(), surv: surv.value.trim(), pic: pic.value.trim(),
+        equip: equip.__value(), surv: surv.__value(), pic: pic.value.trim(),
         license: license.value.trim(), cell: cell.value.trim(), endurance: endurance.value,
         replyTo: replyTo.value.trim(),
         persons: persons.value, kind: kind.value, aisEmail: aisEmail.value.trim(),
@@ -8149,7 +8598,9 @@ function showFplDialog() {
         showFplXcForm({ dateLocal: state1.date, timeLocal: state1.time });
         return;
       }
-      const res = buildIcaoFpl(profile, { dateLocal: state1.date, timeLocal: state1.time });
+      const res = buildIcaoFpl(profile, { dateLocal: state1.date, timeLocal: state1.time,
+        returnRouteData: returnRouteData(),
+        routeGraph: expandCb.checked ? await fplLoadRouteGraph() : null });
       if (res.errs) {
         showFieldErrors(errBox, res.errs, fieldEls);
         return;

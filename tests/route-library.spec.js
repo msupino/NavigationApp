@@ -122,6 +122,9 @@ test.describe('Route library', () => {
     const name = row.locator('.route-library-row-name');
     const meta = row.locator('.route-library-row-meta');
     await expect(name).toHaveText('בדיקה BAZRA DEROR');
+    // This name already carries both endpoints (as codes), so the meta line does not
+    // repeat them. Routes whose name does NOT identify them get "from → to · " prepended
+    // here in an LTR line -- see tests/fpl-return-route.spec.js.
     await expect(meta).toHaveText('2 WP · 2026-06-15');
 
     const bidi = await row.evaluate(el => {

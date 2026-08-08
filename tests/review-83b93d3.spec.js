@@ -42,11 +42,20 @@ test('an off/on at the same altitude retries instead of reporting the old failur
 test('a genuine failure of the live request still reports', async ({ page }) => {
   // The generation guard must not swallow real failures — that would trade one silent wrong
   // state for another.
-  await page.route(OM_RE, r => r.abort());
+  let aborted = 0;
+  await page.route(OM_RE, r => { aborted++; return r.abort(); });
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => !!document.getElementById('windfield-cb'));
-  await page.locator('#windfield-cb').check();
+  // Set + dispatch rather than locator.check(): the abort fails so fast that the error
+  // handler unchecks the box before check() can verify its own click, and Playwright then
+  // reports "Clicking the checkbox did not change its state" -- a test artefact of correct
+  // app behaviour. Every other wind-field spec drives it this way for the same reason.
+  await page.evaluate(() => {
+    const cb = document.getElementById('windfield-cb');
+    cb.checked = true; cb.dispatchEvent(new Event('change'));
+  });
+  await expect.poll(() => aborted, { timeout: 15000 }).toBeGreaterThan(0);
   await expect(page.locator('#windfield-status')).toContainText(/unavailable|failed/i, { timeout: 10000 });
   await expect(page.locator('#windfield-cb')).not.toBeChecked();
 });
