@@ -86,3 +86,47 @@ test('the flash is tunable, and listed in the Search group', () => {
   expect(group).toContain('searchFlashMs');
   expect(group).toContain('searchFlashRadiusPx');
 });
+
+test('every knob is a tunable the CSS actually reads', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const real = window.tune;
+    window.tune = (k) => ({
+      searchFlashMs: 4000, searchFlashRadiusPx: 40, searchFlashColor: '#22aaff',
+      searchFlashWidthPx: 5, searchFlashFillAlpha: 0.4, searchFlashPulses: 4,
+    })[k] ?? real(k);
+    flashMapPoint(32.18, 34.83);
+    window.tune = real;
+    const el = document.querySelector('.search-flash');
+    const ring = el.querySelector('.search-flash-ring');
+    const cs = getComputedStyle(ring);
+    return { box: el.getBoundingClientRect().width, width: cs.borderTopWidth,
+      colour: cs.borderTopColor, fill: cs.backgroundColor,
+      pulses: getComputedStyle(ring, '::before').animationIterationCount };
+  });
+  // Appearance was hardcoded CSS; a value in the tune menu that changes nothing is worse
+  // than no value at all, so each one is asserted to reach the rendered ring.
+  expect(r.box).toBe(80);                       // radius 40 -> 80px box
+  expect(r.width).toBe('5px');
+  expect(r.colour).toBe('rgb(34, 170, 255)');
+  expect(r.fill).toBe('rgba(34, 170, 255, 0.4)');
+  expect(r.pulses).toBe('4');
+});
+
+test('zero pulses leaves a steady ring, not an invisible one', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const real = window.tune;
+    window.tune = (k) => (k === 'searchFlashPulses' ? 0 : real(k));
+    flashMapPoint(32.18, 34.83);
+    window.tune = real;
+    const el = document.querySelector('.search-flash');
+    const ring = el.querySelector('.search-flash-ring');
+    return { nopulse: el.classList.contains('search-flash-nopulse'),
+      before: getComputedStyle(ring, '::before').display,
+      ringShown: getComputedStyle(ring).borderTopWidth };
+  });
+  expect(r.nopulse).toBe(true);
+  expect(r.before).toBe('none');
+  expect(r.ringShown).not.toBe('0px');          // the ring itself stays
+});

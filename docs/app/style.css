@@ -5605,9 +5605,10 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2px solid #ffb020;
-  background: rgba(255, 176, 32, .10);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .45), 0 0 8px 1px rgba(255, 176, 32, .35);
+  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
+  background: rgba(var(--flash-rgb, 255, 176, 32), var(--flash-fill, .10));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .45),
+              0 0 8px 1px rgba(var(--flash-rgb, 255, 176, 32), .35);
   animation: search-flash-hold var(--flash-ms, 3500ms) ease-out 1 both;
 }
 /* ...and the moving part: three expanding pulses off the same centre. */
@@ -5617,18 +5618,21 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: 2px solid #ffb020;
-  animation: search-flash-pulse calc(var(--flash-ms, 3500ms) / 2.5) ease-out 2 both;
+  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
+  animation: search-flash-pulse calc(var(--flash-ms, 3500ms) / 2.5) ease-out
+             var(--flash-pulses, 2) both;
 }
 .search-flash-ring::after { animation-delay: calc(var(--flash-ms, 3500ms) / 5); }
 
+/* Light theme keeps the tuned colour; only the outline flips, so a colour set in the tune
+   menu is honoured in both themes rather than silently overridden in one. */
 body.theme-light .search-flash-ring {
-  border-color: #d2690a;
-  background: rgba(210, 105, 10, .10);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .8), 0 0 8px 1px rgba(210, 105, 10, .3);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .8),
+              0 0 8px 1px rgba(var(--flash-rgb, 210, 105, 10), .3);
 }
-body.theme-light .search-flash-ring::before,
-body.theme-light .search-flash-ring::after { border-color: #d2690a; }
+/* Pulses off: the steady ring alone. */
+.search-flash-nopulse .search-flash-ring::before,
+.search-flash-nopulse .search-flash-ring::after { display: none; }
 
 @keyframes search-flash-hold {
   0%   { transform: scale(.6); opacity: 0; }

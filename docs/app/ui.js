@@ -914,8 +914,25 @@ function flashMapPoint(lat, lng) {
   });
   _searchFlashEl = L.marker([lat, lng], { icon, pane: 'searchflash',
     interactive: false, keyboard: false }).addTo(map);
-  _searchFlashEl.getElement().style.setProperty('--flash-size', px * 2 + 'px');
-  _searchFlashEl.getElement().style.setProperty('--flash-ms', ms + 'ms');
+  // Every knob the CSS reads comes from the tune registry, so the gist (or ?tune=1) can
+  // change how loud this is without a release. Colour is a hex string; the fill is derived
+  // from it so the two can never disagree.
+  const T = (k, fb) => { const v = (typeof tune === 'function') ? tune(k) : undefined;
+    return (v === undefined || v === null || v === '') ? fb : v; };
+  const hex = String(T('searchFlashColor', '#ffb020'));
+  const rgb = /^#?([0-9a-f]{6})$/i.test(hex.replace('#', '#'))
+    ? hex.replace('#', '').match(/../g).map(h => parseInt(h, 16)).join(', ')
+    : '255, 176, 32';
+  const el = _searchFlashEl.getElement();
+  el.style.setProperty('--flash-size', px * 2 + 'px');
+  el.style.setProperty('--flash-ms', ms + 'ms');
+  el.style.setProperty('--flash-color', hex);
+  el.style.setProperty('--flash-rgb', rgb);
+  el.style.setProperty('--flash-width', (Number(T('searchFlashWidthPx', 2)) || 2) + 'px');
+  el.style.setProperty('--flash-fill', String(T('searchFlashFillAlpha', 0.10)));
+  const pulses = Math.max(0, Math.round(Number(T('searchFlashPulses', 2))));
+  el.style.setProperty('--flash-pulses', String(pulses));
+  if (!pulses) el.classList.add('search-flash-nopulse');
   _searchFlashTimer = setTimeout(clearSearchFlash, ms);
 }
 function clearSearchFlash() {
