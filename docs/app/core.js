@@ -1069,6 +1069,7 @@ window.S = Object.assign({
   fplWake_H: 'heavy, 136 t and above',
   fplWake_J: 'super',
   fplLettersKept: 'Also filed, from your profile:',
+  fplLettersNone: 'nothing selected',
   fplEquipS: 'standard (VHF, VOR, ILS)',
   fplEquipG: 'GNSS',
   fplEquipD: 'DME',
