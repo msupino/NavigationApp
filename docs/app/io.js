@@ -8246,7 +8246,13 @@ function showFplDialog() {
       // auto-named route reads "מ־LLHZ אל צומת אשדוד" -- appending "(LLHZ → צומת אשדוד)"
       // said the same thing twice, and did it with the very arrow whose direction is
       // ambiguous in RTL. A renamed route ("morning nav ex") still gets the endpoints.
-      const named = from && to && nm.includes(from) && nm.includes(to);
+      // Raw codes count too: "בדיקה BAZRA DEROR" already names its endpoints.
+      const rawOf = (w) => ((w && w.name) || '').toString().trim();
+      const hasEnd = (w, disp) => {
+        const r = rawOf(w);
+        return !!((r && nm.includes(r)) || (disp && nm.includes(disp)));
+      };
+      const named = from && to && hasEnd(rw[0], from) && hasEnd(rw[rw.length - 1], to);
       const label = (from && to && !named) ? (nm + '  (' + from + ' \u2192 ' + to + ')') : nm;
       // Strip any isolates the name already carries before adding our own: an auto-named
       // route arrives pre-isolated, and wrapping it again nested them ("מ־⁨⁨LLHZ⁩⁩").

@@ -1491,8 +1491,16 @@ function showRouteLibraryModal(focusSave) {
         // ...but only when the NAME does not already carry them, or the row says the same
         // thing twice. Auto-named routes state the direction in words; a renamed one
         // ("morning nav ex") still needs the endpoints spelled out.
+        // "Already named" counts the RAW codes as well as the localised names: a route
+        // called "בדיקה BAZRA DEROR" identifies its endpoints perfectly well, and
+        // appending "בצרה → בני דרור" to it says the same thing a second time.
+        const rawName = (w) => ((w && w.name) || '').toString().trim();
+        const has = (w, disp) => {
+          const r = rawName(w);
+          return !!((r && entry.name.includes(r)) || (disp && entry.name.includes(disp)));
+        };
         const named = from && to && entry.name &&
-          entry.name.includes(from) && entry.name.includes(to);
+          has(rw[0], from) && has(rw[rw.length - 1], to);
         const ends = (from && to && !named) ? from + ' → ' + to + ' · ' : '';
         meta.textContent = ends + wpN + ' WP' + (when ? ' · ' + when : '');
       }

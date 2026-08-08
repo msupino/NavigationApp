@@ -122,12 +122,10 @@ test.describe('Route library', () => {
     const name = row.locator('.route-library-row-name');
     const meta = row.locator('.route-library-row-meta');
     await expect(name).toHaveText('בדיקה BAZRA DEROR');
-    // The meta line now leads with the route's OWN endpoints, derived from its waypoints
-    // rather than from its name. A name with an arrow between a Hebrew name and a Latin
-    // code reorders under bidi, so an out-and-back pair read almost identically in this
-    // list -- and the same list feeds the flight-plan return picker, where picking the
-    // wrong direction files the wrong route. This line is dir=ltr and always first-to-last.
-    await expect(meta).toHaveText('בצרה → בני דרור · 2 WP · 2026-06-15');
+    // This name already carries both endpoints (as codes), so the meta line does not
+    // repeat them. Routes whose name does NOT identify them get "from → to · " prepended
+    // here in an LTR line -- see tests/fpl-return-route.spec.js.
+    await expect(meta).toHaveText('2 WP · 2026-06-15');
 
     const bidi = await row.evaluate(el => {
       const nameEl = el.querySelector('.route-library-row-name');
