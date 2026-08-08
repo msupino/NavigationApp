@@ -1308,6 +1308,91 @@ function fplRouteTimeH(data) {
   return h;
 }
 
+// --- filing-time route expansion ---------------------------------------------------
+// A filed routes plan names the reporting-point codes "as they appear on the back of the
+// route charts" (AIP א'-11, annex א' legend) -- so it lists every published point on the
+// way, not only the ones the pilot clicked. The pilot draws sparsely; the plan fills in.
+//
+// Expansion runs BETWEEN consecutive drawn waypoints, never end to end. Measured on this
+// graph, the cheapest path from LLHZ to NAGID goes inland and skips APOLN/ARENA/SUPER --
+// the coastal corridor the pilot actually flew. The picks are what choose the corridor.
+let _fplRouteGraph = null;
+async function fplLoadRouteGraph() {
+  if (_fplRouteGraph !== null) return _fplRouteGraph;
+  try {
+    const r = await fetch('data/cvfr-route-graph.json');
+    if (!r.ok) throw new Error(String(r.status));
+    const g = await r.json();
+    _fplRouteGraph = (g && g.nodes && g.edges) ? g : false;
+  } catch (e) {
+    _fplRouteGraph = false;          // no graph: file exactly what was drawn
+  }
+  return _fplRouteGraph;
+}
+
+// The graph point a waypoint sits on, or null. Matched by position, not by name: a pilot
+// may rename a waypoint, and the published code is what field 15 must carry.
+function fplGraphPointAt(graph, wp) {
+  if (!graph || !wp || !Number.isFinite(wp.lat) || !Number.isFinite(wp.lng)) return null;
+  const eps = (typeof SAME_REFERENCE_POINT_DEG === 'number') ? SAME_REFERENCE_POINT_DEG : 0.0008;
+  let best = null, bestD = Infinity;
+  for (const [name, n] of Object.entries(graph.nodes)) {
+    const d = Math.abs(n.lat - wp.lat) + Math.abs(n.lng - wp.lng);
+    if (d < bestD) { bestD = d; best = name; }
+  }
+  return (best && bestD <= eps * 2) ? best : null;
+}
+
+// Shortest chain of published segments between two graph points, one-way segments honoured.
+function fplGraphChain(graph, from, to) {
+  if (!graph || !from || !to) return null;
+  if (from === to) return [from];
+  const dist = new Map([[from, 0]]);
+  const prev = new Map();
+  const done = new Set();
+  for (;;) {
+    let cur = null, best = Infinity;
+    for (const [n, d] of dist) if (!done.has(n) && d < best) { best = d; cur = n; }
+    if (cur === null) return null;
+    if (cur === to) break;
+    done.add(cur);
+    for (const e of graph.edges[cur] || []) {
+      if (e.blocked) continue;                 // one-way, against the flow
+      const d = best + (Number.isFinite(e.distanceNm) ? e.distanceNm : 1);
+      if (d < (dist.get(e.to) ?? Infinity)) { dist.set(e.to, d); prev.set(e.to, cur); }
+    }
+  }
+  const out = [to];
+  while (out[0] !== from) out.unshift(prev.get(out[0]));
+  return out;
+}
+
+// Expand a drawn sequence to the published points between each consecutive pair.
+// Returns { points, unresolved } -- `unresolved` names the pairs the graph could not
+// bridge, so the pilot is told rather than quietly filing a shorter route. A pair that
+// cannot be resolved contributes nothing extra: the drawn points always survive.
+function fplExpandRoute(graph, wps) {
+  const out = [];
+  const unresolved = [];
+  for (let i = 0; i < wps.length; i++) {
+    const wp = wps[i];
+    if (i === 0) { out.push(wp); continue; }
+    const a = fplGraphPointAt(graph, wps[i - 1]);
+    const b = fplGraphPointAt(graph, wp);
+    const chain = (a && b) ? fplGraphChain(graph, a, b) : null;
+    if (chain && chain.length > 2) {
+      for (const name of chain.slice(1, -1)) {
+        const n = graph.nodes[name];
+        out.push({ lat: n.lat, lng: n.lng, name, _fplExpanded: 1 });
+      }
+    } else if (a && b && !chain) {
+      unresolved.push([a, b]);
+    }
+    out.push(wp);
+  }
+  return { points: out, unresolved };
+}
+
 function buildIcaoFpl(profile, opts) {
   const p = profile || {};
   const o = opts || {};
@@ -1347,6 +1432,16 @@ function buildIcaoFpl(profile, opts) {
   const destIcao = fplAerodrome(lastWp);
   const destPlain = destIcao ? '' : (fplRoutePoint(lastWp) || '');
   if (!destIcao && !destPlain) errs.push('errFplDestUnnamed');
+
+  // Fill in the published reporting points between the drawn ones, when asked. The drawn
+  // points always survive; expansion only ADDS what lies between them, so a pilot who drew
+  // sparsely files the chain the AIP's own sample shows.
+  let expandedUnresolved = [];
+  if (o.routeGraph) {
+    const ex = fplExpandRoute(o.routeGraph, wps);
+    wps = ex.points;
+    expandedUnresolved = ex.unresolved;
+  }
 
   // Field 15 lists what is flown BETWEEN the two end fields. An end that is filed as
   // ZZZZ is still a point on the route, so it stays in the list.
@@ -1434,6 +1529,12 @@ function buildIcaoFpl(profile, opts) {
   const nowRef = o.now instanceof Date ? o.now : new Date();
   if (opens && nowRef.getTime() < opens.getTime()) warns.push('warnFplEarly');
   if (mixedSpeed) warns.push('warnFplMixedSpeed');
+  // The graph could not bridge a pair, so those published points are missing from field 15.
+  // Said out loud: the alternative is a plan that silently names fewer points than flown.
+  if (expandedUnresolved.length) {
+    warns.push({ code: 'warnFplExpandGap',
+      pairs: expandedUnresolved.map(p => p[0] + '\u2192' + p[1]) });
+  }
 
   const f18 = ['DOF/' + utc.dof];
   if (!depIcao) f18.push('DEP/' + depPlain);
@@ -1457,6 +1558,7 @@ function buildIcaoFpl(profile, opts) {
   ].join('\n');
   return {
     text, dep: depIcao || depPlain, dest: destIcao || destPlain, eet: fplHhmm(eetH),
+    expandedPoints: pts.slice(), expandedUnresolved,
     eetMinutes: Math.round(eetH * 60), mixedSpeed, warns,
     opensAt: fplEarliestFiling(utc.when),
     to: toAddr,
@@ -2136,11 +2238,20 @@ function defaultSavedRouteName() {
     };
     const a = nm(wps[0]);
     const b = nm(wps[wps.length - 1]);
-    // Point the arrow the reading direction: LTR "first → last", RTL (Hebrew
-    // reads right-to-left, so the destination sits on the left) "first ← last".
     const he = (typeof currentUiLang === 'function')
       ? currentUiLang() === 'he' : (window.__navLang === 'he');
-    if (a && b) return a + (he ? ' ← ' : ' → ') + b;
+    if (a && b) {
+      // Hebrew names the direction in WORDS. An arrow between a Hebrew name and a Latin
+      // code is a bidi neutral: the browser reorders it, so "LLHZ ← צומת אשדוד" and
+      // "צומת אשדוד ← LLHZ" render nearly alike and an out-and-back pair became
+      // impossible to tell apart in the saved-route list -- which now also feeds the
+      // flight-plan return picker, where choosing the wrong direction files the wrong
+      // route. Each endpoint is isolated so a Latin code cannot pull the surrounding
+      // text around it either.
+      const iso = (t) => (typeof fplIsolate === 'function' ? fplIsolate(t) : t);
+      return he ? ('\u05de' + iso(a) + ' \u05d0\u05dc ' + iso(b))   // "מ<a> אל <b>"
+                : (iso(a) + ' \u2192 ' + iso(b));
+    }
     if (a || b) return a || b;
   }
   const d = new Date();
@@ -8120,12 +8231,50 @@ function showFplDialog() {
       if (!e || e.deleted || !e.data) continue;
       const opt = document.createElement('option');
       opt.value = e.id;
-      opt.textContent = e.name || e.id;
+      // The name plus the route's own endpoints. Picking the wrong direction here files
+      // the wrong route, and a name whose arrow sits between a Hebrew name and a Latin
+      // code reorders under bidi -- so the endpoints are stated from the data, isolated,
+      // and always first-to-last.
+      const rw = (e.data && e.data.waypoints) || [];
+      const endName = (w) => {
+        const raw = (w && w.name) || '';
+        return ((raw && typeof navName === 'function') ? navName(raw) : raw).toString().trim();
+      };
+      const from = endName(rw[0]), to = endName(rw[rw.length - 1]);
+      const label = (e.name || e.id) + (from && to ? '  (' + from + ' \u2192 ' + to + ')' : '');
+      opt.textContent = (typeof fplIsolate === 'function') ? fplIsolate(label) : label;
       retSel.appendChild(opt);
     }
+    // A route that ENDS at a field cannot take a return: joining another route there is a
+    // landing, and a landing means a separate plan per leg (AIP א'-11; the filing desk says
+    // the same). Offering the picker would invite a plan that gets rejected, so it is
+    // disabled with the reason rather than left to fail at Continue.
+    const endsAtField = (() => {
+      const wps = state.waypoints || [];
+      const last = wps[wps.length - 1];
+      return !!(last && typeof fplAerodrome === 'function' && fplAerodrome(last));
+    })();
+    if (endsAtField) {
+      retSel.disabled = true;
+      retSel.value = '';
+    }
     const retRow = row(S.fplReturnRoute || 'Return route', retSel);
+    if (endsAtField) retRow.classList.add('fpl-row-disabled');
     retRow.title = fplIsolate(S.fplReturnRouteTip ||
       'For an out-and-back: the saved route flown home. It must start where this route ends.');
+    // Fill in the published points between the drawn ones. On by default because that is
+    // what the AIP's annex א' sample shows, and reviewable because a routes plan may also be
+    // filed by phone (§3.ב.1), where nobody recites seventeen codes.
+    const expandCb = document.createElement('input');
+    expandCb.type = 'checkbox';
+    expandCb.id = 'fpl-expand-points';
+    expandCb.checked = true;
+    const expandLbl = document.createElement('label');
+    expandLbl.className = 'fpl-check';
+    expandLbl.htmlFor = expandCb.id;
+    expandLbl.append(expandCb, document.createTextNode(' ' +
+      (S.fplExpandPoints || 'Name every reporting point on the way')));
+
     // What the two routes add up to, shown before filing rather than after.
     const retPreview = document.createElement('div');
     retPreview.className = 'fpl-hint fpl-return-preview';
@@ -8136,15 +8285,40 @@ function showFplDialog() {
       const e = loadRouteLibrary().find(x => x && x.id === retSel.value && !x.deleted);
       return (e && e.data) || null;
     };
-    retSel.onchange = () => {
+    // The preview runs the SAME expansion the plan will, so what is shown is what is filed.
+    const refreshPreview = async () => {
       const d = returnRouteData();
-      if (!d) { retPreview.hidden = true; return; }
-      const names = (state.waypoints || []).concat((d.waypoints || []).slice(1))
-        .map(w => (typeof fplRoutePoint === 'function' && fplRoutePoint(w)) || (w && w.name) || '?');
+      let seq = (state.waypoints || []).slice();
+      if (d) seq = seq.concat((d.waypoints || []).slice(1));
+      if (!d && !expandCb.checked) { retPreview.hidden = true; return; }
+      let note = '';
+      if (expandCb.checked) {
+        const graph = await fplLoadRouteGraph();
+        if (graph) {
+          const ex = fplExpandRoute(graph, seq);
+          seq = ex.points;
+          if (ex.unresolved.length) {
+            note = '  ' + (S.fplExpandGapShort || '(no published chain for: ') +
+              ex.unresolved.map(p => p[0] + '\u2192' + p[1]).join(', ') + ')';
+          }
+        }
+      }
+      const names = seq.map(w =>
+        (typeof fplRoutePoint === 'function' && fplRoutePoint(w)) || (w && w.name) || '?');
       retPreview.hidden = false;
-      fplSetBidiText(retPreview, names.join(' '));
+      fplSetBidiText(retPreview, names.join(' ') + note);
     };
-    body.append(retRow, retPreview);
+    retSel.onchange = refreshPreview;
+    expandCb.onchange = refreshPreview;
+    setTimeout(refreshPreview, 0);          // show the drawn route expanded straight away
+    body.append(retRow, expandLbl, retPreview);
+    if (endsAtField) {
+      const why = document.createElement('div');
+      why.className = 'fpl-hint';
+      fplSetBidiText(why, S.fplReturnAtFieldHint ||
+        'This route lands at a field, so it is one plan on its own — a return from there is a separate plan.');
+      body.append(why);
+    }
 
     // Advanced: the ICAO letters and where the plan is filed. Right by default.
     const adv = document.createElement('details');
@@ -8199,7 +8373,7 @@ function showFplDialog() {
     next.id = 'fpl-next';
     next.className = 'fpl-primary';
     next.textContent = S.fplNext || 'Continue';
-    next.onclick = () => {
+    next.onclick = async () => {
       Object.assign(profile, {
         reg: reg.value.trim(), type: type.value.trim(), wake: wake.value.trim(),
         equip: equip.value.trim(), surv: surv.value.trim(), pic: pic.value.trim(),
@@ -8237,7 +8411,8 @@ function showFplDialog() {
         return;
       }
       const res = buildIcaoFpl(profile, { dateLocal: state1.date, timeLocal: state1.time,
-        returnRouteData: returnRouteData() });
+        returnRouteData: returnRouteData(),
+        routeGraph: expandCb.checked ? await fplLoadRouteGraph() : null });
       if (res.errs) {
         showFieldErrors(errBox, res.errs, fieldEls);
         return;

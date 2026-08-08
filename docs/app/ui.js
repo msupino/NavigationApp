@@ -1477,7 +1477,19 @@ function showRouteLibraryModal(focusSave) {
         const nm2 = typeof trackDistanceNm === 'function' ? trackDistanceNm(pts) : 0;
         meta.textContent = pts.length + ' pts · ' + nm2.toFixed(1) + ' NM' + (when ? ' · ' + when : '');
       } else {
-        meta.textContent = wpN + ' WP' + (when ? ' · ' + when : '');
+        // Endpoints in the LTR meta line, derived from the route itself rather than from
+        // its name. A name typed (or generated) with an arrow between a Hebrew name and a
+        // Latin code reorders under bidi, so an out-and-back pair reads almost identically
+        // -- "LLHZ ← צומת אשדוד" against "צומת אשדוד ← LLHZ". This line always reads
+        // first-to-last, whatever the name says, and it fixes routes saved before that.
+        const rw = (entry.data && entry.data.waypoints) || [];
+        const endName = (w) => {
+          const raw = (w && w.name) || '';
+          return ((raw && typeof navName === 'function') ? navName(raw) : raw).toString().trim();
+        };
+        const from = endName(rw[0]), to = endName(rw[rw.length - 1]);
+        const ends = (from && to) ? from + ' → ' + to + ' · ' : '';
+        meta.textContent = ends + wpN + ' WP' + (when ? ' · ' + when : '');
       }
       main.append(nm, meta);
       // GPS tracks toggle a map overlay; routes replace the working route.

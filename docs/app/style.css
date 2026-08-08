@@ -5062,6 +5062,11 @@ body.theme-light .xc-input { color-scheme: light; }
 .fpl-time-box { width: 100%; }
 .fpl-reg-box .fpl-reg-input,
 .fpl-time-box input { flex: 1 1 auto; }
+/* A return route cannot be joined at a field -- that is a landing, and a landing is a
+   separate plan per leg. The row is dimmed with the reason beside it rather than removed,
+   so the control does not appear and disappear as the route changes. */
+.fpl-row-disabled { opacity: .55; }
+.fpl-row-disabled select { cursor: not-allowed; }
 .fpl-hint,
 .fpl-derived {
   font-size: 12px;

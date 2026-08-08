@@ -1177,6 +1177,17 @@ window.S = Object.assign({
   errFplReturnNeedRoute: 'The chosen return route has fewer than two waypoints.',
   fplReturnRoute: 'Return route',
   fplReturnNone: '\u2014 none (one-way plan) \u2014',
+  fplExpandPoints: 'Name every reporting point on the way',
+  fplExpandGapShort: '(no published chain for: ',
+  warnFplExpandGapPlain: 'Some stretches have no published chain in the route data, so '
+    + 'their reporting points are not named.',
+  warnFplExpandGap: function(o) {
+    const pairs = (o && o.pairs) || [];
+    return 'No published chain for ' + pairs.join(', ') + ' \u2014 the plan names the points '
+      + 'you drew for those stretches, not every reporting point on the way.';
+  },
+  fplReturnAtFieldHint: 'This route lands at a field, so it is one plan on its own \u2014 a '
+    + 'return from there is a separate plan.',
   fplReturnRouteTip: 'For an out-and-back: the saved route flown home. It must start where '
     + 'this route ends. Both routes keep their own nav log and exports \u2014 they are joined '
     + 'only in the filed plan.',
