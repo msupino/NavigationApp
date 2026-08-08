@@ -1388,15 +1388,29 @@ function fplGraphChain(graph, from, to) {
   let best = Infinity;
   for (let k = 1; k <= FPL_CHAIN_MAX_HOPS; k++) if (D[k].has(to)) best = Math.min(best, D[k].get(to));
   if (!Number.isFinite(best)) return null;
-  let pick = -1;
-  for (let k = 1; k <= FPL_CHAIN_MAX_HOPS; k++) {
-    if (D[k].has(to) && D[k].get(to) <= best * FPL_CHAIN_SLACK) pick = k;
+  // Longest chain within the slack -- but it must be a SIMPLE path. Bellman-Ford by hop
+  // count is free to revisit, and "more hops" then rewards bouncing: LLBS->LLHZ came out as
+  // "... LLEK NAGID YAVNE NAGID BOVED ...", a detour to YAVNE and straight back, and
+  // LLHA->LLBS repeated ARENA and HTZUK. A filed route that visits a point twice for no
+  // reason is not the route anyone flies. Walk k downwards and take the first chain that
+  // visits nothing twice.
+  const build = (k) => {
+    const out = [to];
+    let cur = to;
+    for (let i = k; i > 0; i--) {
+      cur = P[i].get(cur);
+      if (cur === undefined) return null;
+      out.unshift(cur);
+    }
+    return out;
+  };
+  for (let k = FPL_CHAIN_MAX_HOPS; k >= 1; k--) {
+    if (!D[k].has(to) || D[k].get(to) > best * FPL_CHAIN_SLACK) continue;
+    const path = build(k);
+    if (!path || path[0] !== from) continue;
+    if (new Set(path).size === path.length) return path;      // simple: no point twice
   }
-  if (pick < 1) return null;
-  const out = [to];
-  let cur = to;
-  for (let k = pick; k > 0; k--) { cur = P[k].get(cur); out.unshift(cur); }
-  return out;
+  return null;
 }
 
 // Expand a drawn sequence to the published points between each consecutive pair.

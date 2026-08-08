@@ -423,3 +423,22 @@ test('two picks reproduce a real filed plan, route and EET', async ({ page }) =>
   expect(r.eet).toBe('0030');
   expect(r.errs).toBeUndefined();
 });
+
+test('an expanded chain never visits the same point twice', async ({ page }) => {
+  await boot(page);
+  // "More points within the slack" rewards bouncing unless the path must be simple:
+  // LLBS->LLHZ came out as "... LLEK NAGID YAVNE NAGID BOVED ...", a detour to YAVNE and
+  // straight back, and LLHA->LLBS repeated ARENA and HTZUK. Nobody flies that.
+  const r = await page.evaluate(async () => {
+    const graph = await fplLoadRouteGraph();
+    const pairs = [['LLHZ', 'LLBS'], ['LLBS', 'LLHZ'], ['LLHA', 'LLBS'], ['LLHZ', 'NAGID']];
+    return pairs.map(([a, b]) => {
+      const c = fplGraphChain(graph, a, b);
+      return { a, b, len: c ? c.length : 0, simple: c ? new Set(c).size === c.length : null };
+    });
+  });
+  for (const x of r) {
+    expect(x.len, `${x.a}->${x.b} has no chain`).toBeGreaterThan(1);
+    expect(x.simple, `${x.a}->${x.b} visits a point twice`).toBe(true);
+  }
+});
