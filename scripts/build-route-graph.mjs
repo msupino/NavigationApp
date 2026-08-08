@@ -22,7 +22,7 @@ import { dirname, join } from 'node:path';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA = join(HERE, '..', 'docs', 'data');
-const OUT = join(DATA, 'route-graph.json');
+const OUT = lay => join(DATA, lay + '-route-graph.json');
 const LAYERS = ['cvfr', 'heli', 'lsa'];
 
 // Two points within this MAY be the same point -- the merge also has to agree on identity
@@ -230,6 +230,20 @@ export function buildRouteGraph(input) {
     edges[lay] = e;
   }
 
+  // One SELF-CONTAINED file per layer. Sharing a node between layers is a modelling fact,
+  // but shipping one merged file would mean every consumer loads all three networks and
+  // could route across them by accident. A per-layer file cannot: the other layers' edges
+  // are not in it. A node used by two layers appears in both files, identically.
+  const perLayer = {};
+  for (const lay of LAYERS) {
+    const used = new Set(Object.keys(edges[lay]));
+    for (const es of Object.values(edges[lay])) for (const e of es) used.add(e.to);
+    for (const n of nodes) if (n.layers.has(lay)) used.add(idOf.get(n));
+    const ns = {};
+    for (const id of [...used].sort()) if (out[id]) ns[id] = out[id];
+    perLayer[lay] = { layer: lay, nodes: ns, edges: edges[lay] };
+  }
+
   const counts = {
     nodes: Object.keys(out).length,
     sourceRows: LAYERS.reduce((n, l) => n + (waypoints[l] || []).length, 0) + (airfields || []).length,
@@ -243,8 +257,9 @@ export function buildRouteGraph(input) {
     unresolvedSegments: unresolved.length,
     idCollisions: collisions.length,
     mergedByCode: merged.length,
+    perLayerNodes: Object.fromEntries(LAYERS.map(l => [l, Object.keys(perLayer[l].nodes).length])),
   };
-  return { counts, conflicts, collisions, unresolved, commUnmatched, nodes: out, edges };
+  return { counts, conflicts, collisions, unresolved, commUnmatched, nodes: out, edges, perLayer };
 }
 
 function loadAll(codeRefPath) {
@@ -266,16 +281,21 @@ function loadAll(codeRefPath) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const ci = process.argv.indexOf('--codes');
   const graph = buildRouteGraph(loadAll(ci > -1 ? process.argv[ci + 1] : null));
-  const body = JSON.stringify({ nodes: graph.nodes, edges: graph.edges }, null, 1);
+  const bodies = Object.fromEntries(LAYERS.map(l =>
+    [l, JSON.stringify(graph.perLayer[l], null, 1)]));
   if (process.argv.includes('--check')) {
-    let cur = null;
-    try { cur = readFileSync(OUT, 'utf8'); } catch (e) { /* missing */ }
-    const stale = !cur || JSON.stringify(JSON.parse(cur), null, 1) !== body;
-    console.log(stale ? 'route-graph.json is STALE — re-run without --check' : 'up to date');
-    process.exitCode = stale ? 1 : 0;
+    let stale = [];
+    for (const l of LAYERS) {
+      let cur = null;
+      try { cur = readFileSync(OUT(l), 'utf8'); } catch (e) { /* missing */ }
+      if (!cur || JSON.stringify(JSON.parse(cur), null, 1) !== bodies[l]) stale.push(l);
+    }
+    console.log(stale.length
+      ? stale.map(l => l + '-route-graph.json').join(', ') + ' STALE — re-run without --check'
+      : 'up to date');
+    process.exitCode = stale.length ? 1 : 0;
   } else {
-    writeFileSync(OUT, body + '\n');
-    console.log('wrote', OUT);
+    for (const l of LAYERS) { writeFileSync(OUT(l), bodies[l] + '\n'); console.log('wrote', OUT(l)); }
     console.log(JSON.stringify(graph.counts, null, 1));
     if (graph.conflicts.length) console.log('code conflicts:', graph.conflicts);
     if (graph.unresolved.length) console.log('unresolved segments:', graph.unresolved.slice(0, 10));

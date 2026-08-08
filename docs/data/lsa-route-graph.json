@@ -1,0 +1,3710 @@
+{
+ "layer": "lsa",
+ "nodes": {
+  "AAKKO": {
+   "code": "AAKKO",
+   "he": "עכו",
+   "en": "Akko",
+   "lat": 32.91861,
+   "lng": 35.09639,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "HAIFA"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "AHIUD": {
+   "code": "AHIUD",
+   "he": "אחיהוד",
+   "en": "Ahihud",
+   "lat": 32.91194,
+   "lng": 35.18111,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ALLON": {
+   "code": "ALLON",
+   "he": "אלון",
+   "en": "Alon",
+   "lat": 32.04139,
+   "lng": 35.36667,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ALMOG": {
+   "code": "ALMOG",
+   "he": "אלמוג",
+   "en": "Almog",
+   "lat": 31.78972,
+   "lng": 35.45639,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "AMIOZ": {
+   "code": "AMIOZ",
+   "he": "עמיעוז",
+   "en": "Ami'oz",
+   "lat": 31.25667,
+   "lng": 34.40278,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ARAVA": {
+   "code": "ARAVA",
+   "he": "צומת הערבה",
+   "en": "Arava Junction",
+   "lat": 30.98944,
+   "lng": 35.30917,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ARGMN": {
+   "code": "ARGMN",
+   "he": "ארגמן",
+   "en": "Argaman",
+   "lat": 32.17306,
+   "lng": 35.5325,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ARRAA": {
+   "code": "ARRAA",
+   "codeSource": "cross-referenced",
+   "he": "ערה",
+   "lat": 32.49789,
+   "lng": 35.06596,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "ARRAD": {
+   "code": "ARRAD",
+   "he": "צומת ערד",
+   "en": "Arad Junction",
+   "lat": 31.25444,
+   "lng": 35.20972,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_SOUTH",
+    "HAGAV_NORTH",
+    "NEGEV"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "AYLON": {
+   "code": "AYLON",
+   "he": "איילון",
+   "en": "Ayalon",
+   "lat": 31.87167,
+   "lng": 34.94361,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "BEN_GURION",
+    "TEL_NOF"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "BASAN": {
+   "code": "BASAN",
+   "he": "להבות הבשן",
+   "en": "Lehavot HaBashan",
+   "lat": 33.14611,
+   "lng": 35.63806,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "KIRYAT_SHMONA",
+    "PLUTO_EAST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "BKAMA": {
+   "code": "BKAMA",
+   "he": "בית קמה",
+   "en": "Beit Kama",
+   "lat": 31.44167,
+   "lng": 34.76556,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "BMNUH": {
+   "code": "BMNUH",
+   "he": "באר מנוחה",
+   "en": "Be'er Menuha",
+   "lat": 30.30333,
+   "lng": 35.13417,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "BOKER": {
+   "code": "BOKER",
+   "he": "שדה בוקר",
+   "en": "Sde Boker",
+   "lat": 30.875,
+   "lng": 34.78583,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMON",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "BOREN": {
+   "code": "BOREN",
+   "he": "בית אורן",
+   "en": "Beit Oren",
+   "lat": 32.71444,
+   "lng": 34.97083,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "BOVED": {
+   "code": "BOVED",
+   "he": "בית עובד",
+   "en": "Beit Oved",
+   "lat": 31.92028,
+   "lng": 34.77,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "BRORA": {
+   "code": "BRORA",
+   "he": "באר אורה",
+   "en": "Be'er Ora",
+   "lat": 29.70806,
+   "lng": 34.99722,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "BSEMS": {
+   "code": "BSEMS",
+   "he": "בית שמש",
+   "en": "Beit Shemesh",
+   "lat": 31.75472,
+   "lng": 34.98139,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "DALIA": {
+   "code": "DALIA",
+   "he": "דליה",
+   "en": "Dalia",
+   "lat": 32.59694,
+   "lng": 35.08333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMAT_DAVID",
+    "PLUTO_WEST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "DAROM": {
+   "code": "DAROM",
+   "he": "מחלף דרום",
+   "en": "Darom Interchange",
+   "lat": 32.79611,
+   "lng": 34.94333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAIFA",
+    "PLUTO_WEST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "DESHE": {
+   "code": "DESHE",
+   "he": "כרי דשא",
+   "en": "Karei Deshe",
+   "lat": 32.87,
+   "lng": 35.5325,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "ROSH_PINA",
+    "PLUTO_EAST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "DIMON": {
+   "code": "DIMON",
+   "he": "דימונה",
+   "en": "Dimona",
+   "lat": 31.06778,
+   "lng": 35.00583,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "NEGEV",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "DOORS": {
+   "code": "DOORS",
+   "codeSource": "cross-referenced",
+   "he": "דור",
+   "lat": 32.6067,
+   "lng": 34.9118,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "DUMIM": {
+   "code": "DUMIM",
+   "he": "כפר אדומים",
+   "en": "Kfar Adumim",
+   "lat": 31.80389,
+   "lng": 35.32472,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "EILAT": {
+   "code": "EILAT",
+   "he": "אילת",
+   "en": "Eilat",
+   "lat": 29.55833,
+   "lng": 34.95889,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "EIRON": {
+   "code": "EIRON",
+   "he": "עירון",
+   "en": "Eiron",
+   "lat": 32.48083,
+   "lng": 35.02444,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "ELYAU": {
+   "code": "ELYAU",
+   "codeSource": "cross-referenced",
+   "he": "ניר אליהו",
+   "lat": 32.1913,
+   "lng": 34.95644,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ENGDI": {
+   "code": "ENGDI",
+   "he": "עין גדי",
+   "en": "Ein Gedi",
+   "lat": 31.46417,
+   "lng": 35.39472,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ENGEV": {
+   "code": "ENGEV",
+   "codeSource": "cross-referenced",
+   "he": "עין גב",
+   "lat": 32.78226,
+   "lng": 35.64016,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ENHRD": {
+   "code": "ENHRD",
+   "codeSource": "cross-referenced",
+   "he": "עין חרוד",
+   "lat": 32.55405,
+   "lng": 35.38284,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ESTOL": {
+   "code": "ESTOL",
+   "he": "אשתאול",
+   "en": "Eshtaol",
+   "lat": 31.77944,
+   "lng": 35.01139,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "ETZEM": {
+   "code": "ETZEM",
+   "codeSource": "cross-referenced",
+   "he": "עצם",
+   "lat": 31.0894,
+   "lng": 34.99317,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "FAZEL": {
+   "code": "FAZEL",
+   "he": "צומת פצאל",
+   "en": "Petzael Junction",
+   "lat": 32.04806,
+   "lng": 35.46306,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "FRDIS": {
+   "code": "FRDIS",
+   "he": "צומת פורדיס",
+   "en": "Fureidis Junction",
+   "lat": 32.59194,
+   "lng": 34.94639,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "GEFEN": {
+   "code": "GEFEN",
+   "codeSource": "cross-referenced",
+   "he": "גפן",
+   "lat": 31.7416,
+   "lng": 34.87026,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "GILAM": {
+   "code": "GILAM",
+   "he": "גילעם",
+   "en": "Gil'am",
+   "lat": 32.82139,
+   "lng": 35.1325,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAIFA",
+    "PLUTO_EAST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "GILAT": {
+   "code": "GILAT",
+   "he": "גילת",
+   "en": "Gilat",
+   "lat": 31.33722,
+   "lng": 34.65306,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "GOMME": {
+   "code": "GOMME",
+   "codeSource": "cross-referenced",
+   "he": "צומת גומא",
+   "lat": 33.16854,
+   "lng": 35.57001,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "GOVRN": {
+   "code": "GOVRN",
+   "he": "בית גוברין",
+   "en": "Beit Guvrin",
+   "lat": 31.60611,
+   "lng": 34.89278,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "GSHML": {
+   "code": "GSHML",
+   "codeSource": "cross-referenced",
+   "he": "גן שמואל",
+   "lat": 32.4467,
+   "lng": 34.95673,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "HADRA": {
+   "code": "HADRA",
+   "he": "חדרה",
+   "en": "Hadera",
+   "lat": 32.46472,
+   "lng": 34.91222,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HAONN": {
+   "code": "HAONN",
+   "codeSource": "cross-referenced",
+   "he": "האון",
+   "lat": 32.72673,
+   "lng": 35.62657,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "HASID": {
+   "code": "HASID",
+   "he": "כפר חסידים",
+   "en": "Kfar Hasidim",
+   "lat": 32.74667,
+   "lng": 35.07778,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "PLUTO_WEST",
+    "RAMAT_DAVID",
+    "HAIFA"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HATRU": {
+   "code": "HATRU",
+   "he": "צומת חתרורים",
+   "en": "Hatrurim Junction",
+   "lat": 31.21889,
+   "lng": 35.24833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "NEGEV"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HAZVA": {
+   "code": "HAZVA",
+   "he": "חצבה",
+   "en": "Hatzeva",
+   "lat": 30.77333,
+   "lng": 35.23639,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HGSRM": {
+   "code": "HGSRM",
+   "codeSource": "cross-referenced",
+   "he": "הגושרים",
+   "lat": 33.22266,
+   "lng": 35.6315,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "HOMMA": {
+   "code": "HOMMA",
+   "codeSource": "cross-referenced",
+   "he": "הר חומה",
+   "lat": 31.72755,
+   "lng": 35.22048,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "HORON": {
+   "code": "HORON",
+   "codeSource": "cross-referenced",
+   "he": "מבוא חורון",
+   "lat": 31.84857,
+   "lng": 35.02888,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "HOTRM": {
+   "code": "HOTRM",
+   "he": "החותרים",
+   "en": "Hahotrim",
+   "lat": 32.75389,
+   "lng": 34.93694,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HOVAV": {
+   "code": "HOVAV",
+   "he": "רמת חובב",
+   "en": "Ramat Hovav",
+   "lat": 31.13556,
+   "lng": 34.805,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "NEGEV",
+    "HAGAV_NORTH",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "HRGVS": {
+   "code": "HRGVS",
+   "he": "הר גבס",
+   "en": "Mount Geves",
+   "lat": 30.62278,
+   "lng": 34.95,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HTIVA": {
+   "code": "HTIVA",
+   "codeSource": "cross-referenced",
+   "he": "חטיבת הנגב",
+   "lat": 31.26036,
+   "lng": 34.83387,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "IANES": {
+   "code": "IANES",
+   "codeSource": "cross-referenced",
+   "he": "א״ת נס ציונה",
+   "lat": 31.91924,
+   "lng": 34.79439,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "IKKEA": {
+   "code": "IKKEA",
+   "he": "איקאה",
+   "en": "IKEA",
+   "lat": 31.95139,
+   "lng": 34.77028,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "KENED": {
+   "code": "KENED",
+   "codeSource": "cross-referenced",
+   "he": "יד קנדי",
+   "lat": 31.74808,
+   "lng": 35.13594,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "KKANA": {
+   "code": "KKANA",
+   "codeSource": "cross-referenced",
+   "he": "כפר כנא",
+   "lat": 32.75812,
+   "lng": 35.34611,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "KNFHA": {
+   "code": "KNFHA",
+   "codeSource": "cross-referenced",
+   "he": "כלא נפחא",
+   "lat": 30.72738,
+   "lng": 34.77551,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "KTORA": {
+   "code": "KTORA",
+   "he": "צומת קטורה",
+   "en": "Ketura Junction",
+   "lat": 29.98944,
+   "lng": 35.07639,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_SOUTH",
+    "RAMON"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "KUVSH": {
+   "code": "KUVSH",
+   "he": "כובשים",
+   "en": "Kovshim",
+   "lat": 31.25861,
+   "lng": 34.76361,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "LAPID": {
+   "code": "LAPID",
+   "codeSource": "cross-referenced",
+   "he": "לפיד",
+   "lat": 31.91433,
+   "lng": 35.02621,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "LTRUN": {
+   "code": "LTRUN",
+   "he": "לטרון",
+   "en": "Latrun",
+   "lat": 31.83861,
+   "lng": 34.98667,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "MACHZ": {
+   "code": "MACHZ",
+   "codeSource": "cross-referenced",
+   "he": "מחלף מאחז",
+   "lat": 31.51141,
+   "lng": 34.7832,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "MCZVA": {
+   "code": "MCZVA",
+   "codeSource": "cross-referenced",
+   "he": "מחצבה",
+   "lat": 31.97226,
+   "lng": 35.033,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "MEHOL": {
+   "code": "MEHOL",
+   "he": "משולש חולית",
+   "en": "Holit Triangle",
+   "lat": 31.96083,
+   "lng": 34.76417,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "MESAR": {
+   "code": "MESAR",
+   "he": "מעלה מישר",
+   "en": "Ma'ale Meishar",
+   "lat": 30.50167,
+   "lng": 34.94361,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "MEYAL": {
+   "code": "MEYAL",
+   "codeSource": "cross-referenced",
+   "he": "מחלף אייל",
+   "lat": 32.2067,
+   "lng": 34.96365,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "MHOLA": {
+   "code": "MHOLA",
+   "codeSource": "cross-referenced",
+   "he": "מחולה",
+   "lat": 32.365,
+   "lng": 35.51689,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "MIGDL": {
+   "code": "MIGDL",
+   "codeSource": "cross-referenced",
+   "he": "מגדל",
+   "lat": 32.83551,
+   "lng": 35.51077,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "MINGV": {
+   "code": "MINGV",
+   "he": "משמר הנגב",
+   "en": "Mishmar HaNegev",
+   "lat": 31.36889,
+   "lng": 34.71278,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "MKGAT": {
+   "code": "MKGAT",
+   "codeSource": "cross-referenced",
+   "he": "מחלף קרית גם",
+   "lat": 31.59842,
+   "lng": 34.81258,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "MOVIL": {
+   "code": "MOVIL",
+   "he": "המוביל",
+   "en": "Hamovil",
+   "lat": 32.75917,
+   "lng": 35.23333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMAT_DAVID",
+    "PLUTO_EAST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "MRHVA": {
+   "code": "MRHVA",
+   "codeSource": "cross-referenced",
+   "he": "מרחביה",
+   "lat": 32.59629,
+   "lng": 35.31349,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "MYTAR": {
+   "code": "MYTAR",
+   "he": "מיתר",
+   "en": "Meitar",
+   "lat": 31.31472,
+   "lng": 34.93806,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NAAMA": {
+   "code": "NAAMA",
+   "he": "נעמה",
+   "en": "Naama",
+   "lat": 31.90861,
+   "lng": 35.4625,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "NAHEM": {
+   "code": "NAHEM",
+   "he": "כפר מנחם",
+   "en": "Kfar Menahem",
+   "lat": 31.74528,
+   "lng": 34.82222,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NASIH": {
+   "code": "NASIH",
+   "he": "אשל הנשיא",
+   "en": "Eshel HaNasi",
+   "lat": 31.33028,
+   "lng": 34.69833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NBSOR": {
+   "code": "NBSOR",
+   "codeSource": "cross-referenced",
+   "he": "נחל בשור",
+   "lat": 31.27326,
+   "lng": 34.49251,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "NCITY": {
+   "code": "NCITY",
+   "he": "צפון העיר",
+   "en": "North City",
+   "lat": 31.2875,
+   "lng": 34.79139,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH",
+    "KEDEM"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NCSHN": {
+   "code": "NCSHN",
+   "he": "צומת נחשון",
+   "en": "Nachshon Junction",
+   "lat": 31.81556,
+   "lng": 34.91694,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NEGEV": {
+   "code": "NEGEV",
+   "he": "צומת הנגב",
+   "en": "Negev Junction",
+   "lat": 31.06611,
+   "lng": 34.83806,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NIRYA": {
+   "code": "NIRYA",
+   "codeSource": "cross-referenced",
+   "he": "ניר יפה",
+   "lat": 32.56533,
+   "lng": 35.2486,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "NITZA": {
+   "code": "NITZA",
+   "he": "ניצן",
+   "en": "Nitzan",
+   "lat": 31.72417,
+   "lng": 34.57056,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NMASD": {
+   "code": "NMASD",
+   "he": "נמל אשדוד",
+   "en": "Ashdod Port",
+   "lat": 31.83333,
+   "lng": 34.62528,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PALMACHIM",
+    "HAGAV_NORTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "NMASD#2": {
+   "code": "NMASD",
+   "codeAlt": "NMADD",
+   "he": "נמל אשדוד",
+   "lat": 31.81412,
+   "lng": 34.63123,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "NSHRM": {
+   "code": "NSHRM",
+   "he": "מחלף נשרים",
+   "en": "Nesharim Interchange",
+   "lat": 31.90917,
+   "lng": 34.89167,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "BEN_GURION"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NTAIM": {
+   "code": "NTAIM",
+   "he": "נטעים",
+   "en": "Netaim",
+   "lat": 31.94361,
+   "lng": 34.78083,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "BEN_GURION",
+    "PALMACHIM",
+    "TEL_NOF"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "OFKIM": {
+   "code": "OFKIM",
+   "he": "אופקים",
+   "en": "Ofakim",
+   "lat": 31.32222,
+   "lng": 34.61889,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "OHLIM": {
+   "code": "OHLIM",
+   "he": "אוהלים",
+   "en": "Ohalim",
+   "lat": 31.19111,
+   "lng": 34.80472,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "OLGAH": {
+   "code": "OLGAH",
+   "he": "אולגה",
+   "en": "Olga",
+   "lat": 32.43139,
+   "lng": 34.86583,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ORAKV": {
+   "code": "ORAKV",
+   "codeSource": "cross-referenced",
+   "he": "אור עקיבא",
+   "lat": 32.50687,
+   "lng": 34.92966,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "OVDAT": {
+   "code": "OVDAT",
+   "he": "חורבות עבדת",
+   "en": "Ovdat Ruins",
+   "lat": 30.80278,
+   "lng": 34.79333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "PELEG": {
+   "code": "PELEG",
+   "he": "פלג",
+   "en": "Peleg",
+   "lat": 32.33,
+   "lng": 34.83722,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "PRHNA": {
+   "code": "PRHNA",
+   "codeSource": "cross-referenced",
+   "he": "פרדס חנה",
+   "lat": 32.47184,
+   "lng": 34.97265,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "REUTE": {
+   "code": "REUTE",
+   "codeSource": "cross-referenced",
+   "he": "רעות",
+   "lat": 31.87599,
+   "lng": 35.02329,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "RSNIM": {
+   "code": "RSNIM",
+   "codeSource": "cross-referenced",
+   "he": "ראשונים",
+   "lat": 31.94867,
+   "lng": 34.80331,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "RUHOT": {
+   "code": "RUHOT",
+   "he": "צומת הרוחות",
+   "en": "Ruhot Junction",
+   "lat": 30.66,
+   "lng": 34.80889,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMON",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SAMAR": {
+   "code": "SAMAR",
+   "he": "סמר",
+   "en": "Samar",
+   "lat": 29.83139,
+   "lng": 35.02861,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "OVDA"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SDTYM": {
+   "code": "SDTYM",
+   "he": "שדות ים",
+   "en": "Sdot Yam",
+   "lat": 32.49667,
+   "lng": 34.885,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "SELZR": {
+   "code": "SELZR",
+   "codeSource": "cross-referenced",
+   "he": "שדה אליעזר",
+   "lat": 33.04351,
+   "lng": 35.57058,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "SFAIM": {
+   "code": "SFAIM",
+   "he": "שפיים",
+   "en": "Shefayim",
+   "lat": 32.21056,
+   "lng": 34.80722,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_WEST"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "SFAIM#2": {
+   "code": "SFAIM",
+   "he": "שפיים",
+   "lat": 32.21774,
+   "lng": 34.81018,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "SHAHR": {
+   "code": "SHAHR",
+   "he": "כוכב השחר",
+   "en": "Kokhav HaShahar",
+   "lat": 31.9575,
+   "lng": 35.33694,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SHALM": {
+   "code": "SHALM",
+   "he": "מצפה שלם",
+   "en": "Mitzpe Shalem",
+   "lat": 31.55861,
+   "lng": 35.4025,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SHARG": {
+   "code": "SHARG",
+   "he": "שער הגיא",
+   "en": "Sha'ar HaGai",
+   "lat": 31.81972,
+   "lng": 35.02111,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SHEFC": {
+   "code": "SHEFC",
+   "codeSource": "cross-referenced",
+   "he": "שפך",
+   "lat": 31.93847,
+   "lng": 34.70581,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "SHLVM": {
+   "code": "SHLVM",
+   "codeSource": "cross-referenced",
+   "he": "שעלבים",
+   "lat": 31.87041,
+   "lng": 34.98322,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "SIRNI": {
+   "code": "SIRNI",
+   "he": "נצר סירני",
+   "en": "Netzer Sireni",
+   "lat": 31.92806,
+   "lng": 34.83,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SITIM": {
+   "code": "SITIM",
+   "he": "שיטים",
+   "en": "Shitim",
+   "lat": 30.17583,
+   "lng": 35.01444,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SIZFN": {
+   "code": "SIZFN",
+   "he": "שזפון",
+   "en": "Shizafon",
+   "lat": 30.0475,
+   "lng": 35.01444,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "OVDA",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SMRAT": {
+   "code": "SMRAT",
+   "he": "שמרת",
+   "en": "Shomrat",
+   "lat": 32.95167,
+   "lng": 35.09,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SOKET": {
+   "code": "SOKET",
+   "he": "צומת שוקת",
+   "en": "Shoket Junction",
+   "lat": 31.3075,
+   "lng": 34.90111,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "NEGEV",
+    "HAGAV_NORTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SOREK": {
+   "code": "SOREK",
+   "codeSource": "cross-referenced",
+   "he": "שורק",
+   "lat": 31.94109,
+   "lng": 34.75096,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "SORES": {
+   "code": "SORES",
+   "he": "שורש",
+   "en": "Shoresh",
+   "lat": 31.79972,
+   "lng": 35.07611,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "TEL_NOF"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SSOMR": {
+   "code": "SSOMR",
+   "codeSource": "cross-referenced",
+   "he": "שער שומרון",
+   "lat": 32.10454,
+   "lng": 34.99586,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "SUPER": {
+   "code": "SUPER",
+   "he": "סופרלנד",
+   "en": "Superland",
+   "lat": 31.97639,
+   "lng": 34.74167,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "TARAD": {
+   "code": "TARAD",
+   "he": "תל ערד",
+   "en": "Tel Arad",
+   "lat": 31.2775,
+   "lng": 35.12556,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "TAVOR": {
+   "code": "TAVOR",
+   "he": "כפר תבור",
+   "en": "Kfar Tavor",
+   "lat": 32.69028,
+   "lng": 35.42,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "TIRAT": {
+   "code": "TIRAT",
+   "he": "טירת צבי",
+   "en": "Tirat Tzvi",
+   "lat": 32.42444,
+   "lng": 35.52667,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "TLLIM": {
+   "code": "TLLIM",
+   "he": "טללים",
+   "en": "Tlalim",
+   "lat": 30.99056,
+   "lng": 34.76222,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "TYONA": {
+   "code": "TYONA",
+   "he": "תל יונה",
+   "en": "Tel Yona",
+   "lat": 32.00472,
+   "lng": 34.72722,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_WEST",
+    "PALMACHIM"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "TZHOT": {
+   "code": "TZHOT",
+   "he": "צלחות",
+   "en": "Tzelahot",
+   "lat": 31.30778,
+   "lng": 34.52972,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "TZUBA": {
+   "code": "TZUBA",
+   "codeSource": "cross-referenced",
+   "he": "צובה",
+   "lat": 31.77677,
+   "lng": 35.12089,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "VINGT": {
+   "code": "VINGT",
+   "he": "וינגייט",
+   "en": "Wingate",
+   "lat": 32.25556,
+   "lng": 34.81694,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "YAHEL": {
+   "code": "YAHEL",
+   "he": "יהל",
+   "en": "Yahel",
+   "lat": 30.08222,
+   "lng": 35.13333,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "YARHV": {
+   "code": "YARHV",
+   "codeSource": "cross-referenced",
+   "he": "ירחיב",
+   "lat": 32.14812,
+   "lng": 34.9711,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "YASIF": {
+   "code": "YASIF",
+   "codeSource": "cross-referenced",
+   "he": "צומת יאסיף",
+   "lat": 32.91132,
+   "lng": 35.15658,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "YOTVT": {
+   "code": "YOTVT",
+   "he": "יטבתה",
+   "en": "Yotvata",
+   "lat": 29.90083,
+   "lng": 35.06722,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "YRUHM": {
+   "code": "YRUHM",
+   "he": "ירוחם",
+   "en": "Yeruham",
+   "lat": 30.98972,
+   "lng": 34.91083,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZADAM": {
+   "code": "ZADAM",
+   "codeSource": "cross-referenced",
+   "he": "צומת אדם",
+   "lat": 32.12503,
+   "lng": 35.50987,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZAMID": {
+   "code": "ZAMID",
+   "codeSource": "cross-referenced",
+   "he": "צומת עמיעד",
+   "lat": 32.91319,
+   "lng": 35.54257,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZASHD": {
+   "code": "ZASHD",
+   "he": "צומת אשדוד",
+   "en": "Ashdod Junction",
+   "lat": 31.82611,
+   "lng": 34.70833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PALMACHIM"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZBRCH": {
+   "code": "ZBRCH",
+   "codeSource": "cross-referenced",
+   "he": "צ. ברכיה",
+   "lat": 31.66478,
+   "lng": 34.60659,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZBTMS": {
+   "code": "ZBTMS",
+   "codeSource": "cross-referenced",
+   "he": "צומת בית המכס",
+   "lat": 33.01035,
+   "lng": 35.65084,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZBTZD": {
+   "code": "ZBTZD",
+   "codeSource": "cross-referenced",
+   "he": "צומת בית צידה",
+   "lat": 32.9028,
+   "lng": 35.63385,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZEMAH": {
+   "code": "ZEMAH",
+   "codeSource": "cross-referenced",
+   "he": "צמח",
+   "lat": 32.70324,
+   "lng": 35.58712,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZGLNI": {
+   "code": "ZGLNI",
+   "codeSource": "cross-referenced",
+   "he": "צומת גולני",
+   "lat": 32.77429,
+   "lng": 35.40791,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZGOAL": {
+   "code": "ZGOAL",
+   "he": "גורל",
+   "en": "Goral",
+   "lat": 31.31278,
+   "lng": 34.78778,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "ZHRYA": {
+   "code": "ZHRYA",
+   "he": "זכריה",
+   "en": "Zecharia",
+   "lat": 31.69972,
+   "lng": 34.945,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZKADR": {
+   "code": "ZKADR",
+   "codeSource": "cross-referenced",
+   "he": "צומת קדרים",
+   "lat": 32.90871,
+   "lng": 35.47387,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZKOCH": {
+   "code": "ZKOCH",
+   "codeSource": "cross-referenced",
+   "he": "צומת כח",
+   "lat": 33.12455,
+   "lng": 35.57087,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZLHAV": {
+   "code": "ZLHAV",
+   "he": "צומת להבים",
+   "en": "Lehavim Junction",
+   "lat": 31.3725,
+   "lng": 34.79333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "ZMGID": {
+   "code": "ZMGID",
+   "he": "צומת מגידו",
+   "en": "Megiddo Junction",
+   "lat": 32.57278,
+   "lng": 35.19111,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "PLUTO_WEST",
+    "MEGIDDO"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZNYMN": {
+   "code": "ZNYMN",
+   "codeSource": "cross-referenced",
+   "he": "צומת נווה ימין",
+   "lat": 32.17125,
+   "lng": 34.95712,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZOFAR": {
+   "code": "ZOFAR",
+   "he": "צופר",
+   "en": "Tzofar",
+   "lat": 30.55972,
+   "lng": 35.18667,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZOHAR": {
+   "code": "ZOHAR",
+   "he": "נווה זוהר",
+   "en": "Neve Zohar",
+   "lat": 31.15083,
+   "lng": 35.3725,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZPLGT": {
+   "code": "ZPLGT",
+   "codeSource": "cross-referenced",
+   "he": "צומת פלוגות",
+   "lat": 31.62415,
+   "lng": 34.75697,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZUKIM": {
+   "code": "ZUKIM",
+   "he": "עינות צוקים",
+   "en": "Einot Tzukim",
+   "lat": 31.71611,
+   "lng": 35.44972,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZZHOR": {
+   "code": "ZZHOR",
+   "he": "צומת ציחור",
+   "en": "Tzihor Junction",
+   "lat": 30.27667,
+   "lng": 35.02,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "he:אליקים": {
+   "he": "אליקים",
+   "lat": 32.63504,
+   "lng": 35.06458,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "he:אפעה#2": {
+   "he": "אפעה",
+   "lat": 31.14105,
+   "lng": 35.21288,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:בנטל": {
+   "he": "בנטל",
+   "lat": 33.1501,
+   "lng": 35.78801,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "he:בראון": {
+   "he": "בראון",
+   "lat": 32.23749,
+   "lng": 35.17065,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:בת-שלמה": {
+   "he": "בת שלמה",
+   "lat": 32.59744,
+   "lng": 35.00484,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "he:יצהר-מזרח": {
+   "he": "יצהר מזרח",
+   "lat": 32.16539,
+   "lng": 35.26485,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:יצהר-מערב": {
+   "he": "יצהר מערב",
+   "lat": 32.19251,
+   "lng": 35.1891,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:כור": {
+   "he": "כור",
+   "lat": 32.25078,
+   "lng": 35.08656,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:כפר-כמא": {
+   "he": "כפר כמא",
+   "lat": 32.71798,
+   "lng": 35.44464,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:כרם-מהר״ל": {
+   "he": "כרם מהר״ל",
+   "lat": 32.63909,
+   "lng": 34.97738,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:מכורה": {
+   "he": "מכורה",
+   "lat": 32.14483,
+   "lng": 35.42362,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:מרסבא": {
+   "he": "מרסבא",
+   "lat": 31.70373,
+   "lng": 35.33154,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:ניצנים": {
+   "he": "ניצנים",
+   "lat": 31.71195,
+   "lng": 34.62831,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:נפח": {
+   "he": "נפח",
+   "lat": 33.05655,
+   "lng": 35.73484,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "he:סכר": {
+   "he": "סכר",
+   "lat": 31.08813,
+   "lng": 34.93549,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:עזריאל": {
+   "he": "עזריאל",
+   "lat": 32.25125,
+   "lng": 34.97984,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:צאלים": {
+   "he": "צאלים",
+   "lat": 31.20522,
+   "lng": 34.51082,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:צומת-אביטל": {
+   "he": "צומת אביטל",
+   "lat": 33.08747,
+   "lng": 35.78631,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "he:צומת-מסעדה": {
+   "he": "צומת מסעדה",
+   "lat": 33.23258,
+   "lng": 35.75185,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli",
+    "lsa"
+   ]
+  },
+  "he:צומת-קדומים": {
+   "he": "צומת קדומים",
+   "lat": 32.21417,
+   "lng": 35.17638,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  },
+  "he:שניר": {
+   "he": "שניר",
+   "lat": 33.23565,
+   "lng": 35.67449,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "lsa"
+   ]
+  }
+ },
+ "edges": {
+  "AAKKO": [
+   {
+    "to": "AHIUD",
+    "inboundAltitude": 1300,
+    "outboundAltitude": 1300,
+    "distanceNm": 4.29,
+    "chartDistanceNm": 4.3,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "SMRAT",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 2.01,
+    "chartDistanceNm": 2,
+    "status": "ocr-candidate"
+   }
+  ],
+  "AHIUD": [
+   {
+    "to": "AAKKO",
+    "inboundAltitude": 1300,
+    "outboundAltitude": 1300,
+    "distanceNm": 4.29,
+    "chartDistanceNm": 4.3,
+    "status": "ocr-candidate"
+   }
+  ],
+  "ARAVA": [
+   {
+    "to": "HAZVA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 13.51,
+    "chartDistanceNm": 13.5,
+    "status": "unknown"
+   },
+   {
+    "to": "ZOHAR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 10.22,
+    "chartDistanceNm": 10.2,
+    "status": "unknown"
+   }
+  ],
+  "HAZVA": [
+   {
+    "to": "ARAVA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 13.51,
+    "chartDistanceNm": 13.5,
+    "status": "unknown"
+   }
+  ],
+  "ZOHAR": [
+   {
+    "to": "ARAVA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 10.22,
+    "chartDistanceNm": 10.2,
+    "status": "unknown"
+   },
+   {
+    "to": "HATRU",
+    "inboundAltitude": 2600,
+    "outboundAltitude": 2600,
+    "distanceNm": 7.57,
+    "chartDistanceNm": 7.6,
+    "status": "ocr-candidate"
+   }
+  ],
+  "ARRAD": [
+   {
+    "to": "HATRU",
+    "inboundAltitude": 2300,
+    "outboundAltitude": 2300,
+    "distanceNm": 2.91,
+    "chartDistanceNm": 2.9,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "TARAD",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.54,
+    "chartDistanceNm": 4.5,
+    "status": "unknown"
+   }
+  ],
+  "TARAD": [
+   {
+    "to": "ARRAD",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.54,
+    "chartDistanceNm": 4.5,
+    "status": "unknown"
+   },
+   {
+    "to": "MYTAR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 9.88,
+    "chartDistanceNm": 9.9,
+    "status": "unknown"
+   }
+  ],
+  "BMNUH": [
+   {
+    "to": "YAHEL",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 13.28,
+    "chartDistanceNm": 13.3,
+    "status": "unknown"
+   },
+   {
+    "to": "ZOFAR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 15.63,
+    "chartDistanceNm": 15.6,
+    "status": "unknown"
+   },
+   {
+    "to": "ZZHOR",
+    "inboundAltitude": 1400,
+    "outboundAltitude": 1400,
+    "distanceNm": 6.13,
+    "chartDistanceNm": 6.1,
+    "status": "ocr-candidate"
+   }
+  ],
+  "YAHEL": [
+   {
+    "to": "BMNUH",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 13.28,
+    "chartDistanceNm": 13.3,
+    "status": "unknown"
+   },
+   {
+    "to": "KTORA",
+    "inboundAltitude": 1700,
+    "outboundAltitude": 1700,
+    "distanceNm": 6.31,
+    "chartDistanceNm": 6.3,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "SIZFN",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 6.52,
+    "chartDistanceNm": 6.5,
+    "status": "unknown"
+   }
+  ],
+  "BOKER": [
+   {
+    "to": "OVDAT",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.35,
+    "chartDistanceNm": 4.4,
+    "status": "unknown"
+   },
+   {
+    "to": "TLLIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.04,
+    "chartDistanceNm": 7,
+    "status": "unknown"
+   },
+   {
+    "to": "YRUHM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 9.43,
+    "chartDistanceNm": 9.4,
+    "status": "unknown"
+   }
+  ],
+  "OVDAT": [
+   {
+    "to": "BOKER",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.35,
+    "chartDistanceNm": 4.4,
+    "status": "unknown"
+   },
+   {
+    "to": "RUHOT",
+    "inboundAltitude": 3500,
+    "outboundAltitude": 3500,
+    "distanceNm": 8.61,
+    "chartDistanceNm": 8.6,
+    "status": "ocr-candidate"
+   }
+  ],
+  "DUMIM": [
+   {
+    "to": "SHAHR",
+    "inboundAltitude": 3000,
+    "outboundAltitude": 3000,
+    "distanceNm": 9.24,
+    "chartDistanceNm": 9.2,
+    "status": "ocr-candidate"
+   }
+  ],
+  "SHAHR": [
+   {
+    "to": "ALLON",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 5.26,
+    "chartDistanceNm": 5.3,
+    "status": "unknown"
+   },
+   {
+    "to": "DUMIM",
+    "inboundAltitude": 3000,
+    "outboundAltitude": 3000,
+    "distanceNm": 9.24,
+    "chartDistanceNm": 9.2,
+    "status": "ocr-candidate"
+   }
+  ],
+  "EIRON": [
+   {
+    "to": "HADRA",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "SDTYM",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 7.13,
+    "chartDistanceNm": 7.1,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "ZMGID",
+    "inboundAltitude": 2000,
+    "outboundAltitude": 2000,
+    "distanceNm": 10.08,
+    "chartDistanceNm": 10.1,
+    "status": "ocr-candidate"
+   }
+  ],
+  "HADRA": [
+   {
+    "to": "DALIA",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 11.75,
+    "chartDistanceNm": 11.7,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "EIRON",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "FRDIS",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.83,
+    "chartDistanceNm": 7.8,
+    "status": "unknown"
+   },
+   {
+    "to": "OLGAH",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.09,
+    "chartDistanceNm": 3.1,
+    "status": "unknown"
+   }
+  ],
+  "SDTYM": [
+   {
+    "to": "EIRON",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 7.13,
+    "chartDistanceNm": 7.1,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "FRDIS",
+    "inboundAltitude": 400,
+    "outboundAltitude": 400,
+    "distanceNm": 6.51,
+    "chartDistanceNm": 6.5,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "OLGAH",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.04,
+    "chartDistanceNm": 4,
+    "status": "unknown"
+   }
+  ],
+  "ENGDI": [
+   {
+    "to": "SHALM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 5.68,
+    "chartDistanceNm": 5.7,
+    "status": "unknown"
+   }
+  ],
+  "SHALM": [
+   {
+    "to": "ENGDI",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 5.68,
+    "chartDistanceNm": 5.7,
+    "status": "unknown"
+   },
+   {
+    "to": "ZUKIM",
+    "inboundAltitude": 800,
+    "outboundAltitude": 800,
+    "distanceNm": 9.76,
+    "chartDistanceNm": 9.8,
+    "status": "ocr-candidate"
+   }
+  ],
+  "FAZEL": [
+   {
+    "to": "ALLON",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.92,
+    "chartDistanceNm": 4.9,
+    "status": "unknown"
+   },
+   {
+    "to": "ARGMN",
+    "inboundAltitude": 500,
+    "outboundAltitude": 500,
+    "distanceNm": 8.29,
+    "chartDistanceNm": 8.3,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "NAAMA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 8.37,
+    "chartDistanceNm": 8.4,
+    "status": "unknown"
+   }
+  ],
+  "NAAMA": [
+   {
+    "to": "ALMOG",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.15,
+    "chartDistanceNm": 7.1,
+    "status": "unknown"
+   },
+   {
+    "to": "FAZEL",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 8.37,
+    "chartDistanceNm": 8.4,
+    "status": "unknown"
+   }
+  ],
+  "FRDIS": [
+   {
+    "to": "BOREN",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.46,
+    "chartDistanceNm": 7.5,
+    "status": "unknown"
+   },
+   {
+    "to": "HADRA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.83,
+    "chartDistanceNm": 7.8,
+    "status": "unknown"
+   },
+   {
+    "to": "HASID",
+    "inboundAltitude": 2200,
+    "outboundAltitude": 2200,
+    "distanceNm": 11.42,
+    "chartDistanceNm": 11.4,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "SDTYM",
+    "inboundAltitude": 400,
+    "outboundAltitude": 400,
+    "distanceNm": 6.51,
+    "chartDistanceNm": 6.5,
+    "status": "ocr-candidate"
+   }
+  ],
+  "HATRU": [
+   {
+    "to": "ARRAD",
+    "inboundAltitude": 2300,
+    "outboundAltitude": 2300,
+    "distanceNm": 2.91,
+    "chartDistanceNm": 2.9,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "ZOHAR",
+    "inboundAltitude": 2600,
+    "outboundAltitude": 2600,
+    "distanceNm": 7.57,
+    "chartDistanceNm": 7.6,
+    "status": "ocr-candidate"
+   }
+  ],
+  "KTORA": [
+   {
+    "to": "YAHEL",
+    "inboundAltitude": 1700,
+    "outboundAltitude": 1700,
+    "distanceNm": 6.31,
+    "chartDistanceNm": 6.3,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "YOTVT",
+    "inboundAltitude": 1000,
+    "outboundAltitude": 1000,
+    "distanceNm": 5.34,
+    "chartDistanceNm": 5.3,
+    "status": "ocr-candidate"
+   }
+  ],
+  "KUVSH": [
+   {
+    "to": "NCITY",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.25,
+    "chartDistanceNm": 2.2,
+    "status": "unknown"
+   }
+  ],
+  "NCITY": [
+   {
+    "to": "KUVSH",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.25,
+    "chartDistanceNm": 2.2,
+    "status": "unknown"
+   },
+   {
+    "to": "ZGOAL",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.53,
+    "chartDistanceNm": 1.5,
+    "status": "unknown"
+   }
+  ],
+  "MEHOL": [
+   {
+    "to": "NTAIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.34,
+    "chartDistanceNm": 1.3,
+    "status": "unknown"
+   }
+  ],
+  "NTAIM": [
+   {
+    "to": "BOVED",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.51,
+    "chartDistanceNm": 1.5,
+    "status": "unknown"
+   },
+   {
+    "to": "MEHOL",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.34,
+    "chartDistanceNm": 1.3,
+    "status": "unknown"
+   },
+   {
+    "to": "SIRNI",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.67,
+    "chartDistanceNm": 2.7,
+    "status": "unknown"
+   },
+   {
+    "to": "SUPER",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.8,
+    "chartDistanceNm": 2.8,
+    "status": "unknown"
+   },
+   {
+    "to": "TYONA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.57,
+    "chartDistanceNm": 4.6,
+    "status": "unknown"
+   }
+  ],
+  "MINGV": [
+   {
+    "to": "NASIH",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.43,
+    "chartDistanceNm": 2.4,
+    "status": "unknown"
+   }
+  ],
+  "NASIH": [
+   {
+    "to": "MINGV",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.43,
+    "chartDistanceNm": 2.4,
+    "status": "unknown"
+   }
+  ],
+  "MYTAR": [
+   {
+    "to": "SOKET",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.94,
+    "chartDistanceNm": 1.9,
+    "status": "unknown"
+   },
+   {
+    "to": "TARAD",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 9.88,
+    "chartDistanceNm": 9.9,
+    "status": "unknown"
+   }
+  ],
+  "SOKET": [
+   {
+    "to": "HOVAV",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 11.44,
+    "chartDistanceNm": 11.4,
+    "status": "unknown"
+   },
+   {
+    "to": "MYTAR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.94,
+    "chartDistanceNm": 1.9,
+    "status": "unknown"
+   }
+  ],
+  "ZGOAL": [
+   {
+    "to": "NCITY",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.53,
+    "chartDistanceNm": 1.5,
+    "status": "unknown"
+   },
+   {
+    "to": "ZLHAV",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.6,
+    "chartDistanceNm": 3.6,
+    "status": "unknown"
+   }
+  ],
+  "ZLHAV": [
+   {
+    "to": "BKAMA",
+    "inboundAltitude": 1700,
+    "outboundAltitude": 1700,
+    "distanceNm": 4.39,
+    "chartDistanceNm": 4.4,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "ZGOAL",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.6,
+    "chartDistanceNm": 3.6,
+    "status": "unknown"
+   }
+  ],
+  "SUPER": [
+   {
+    "to": "NTAIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.8,
+    "chartDistanceNm": 2.8,
+    "status": "unknown"
+   },
+   {
+    "to": "TYONA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.85,
+    "chartDistanceNm": 1.9,
+    "status": "unknown"
+   }
+  ],
+  "OLGAH": [
+   {
+    "to": "HADRA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.09,
+    "chartDistanceNm": 3.1,
+    "status": "unknown"
+   },
+   {
+    "to": "PELEG",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 6.26,
+    "chartDistanceNm": 6.3,
+    "status": "unknown"
+   },
+   {
+    "to": "SDTYM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.04,
+    "chartDistanceNm": 4,
+    "status": "unknown"
+   }
+  ],
+  "PELEG": [
+   {
+    "to": "OLGAH",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 6.26,
+    "chartDistanceNm": 6.3,
+    "status": "unknown"
+   },
+   {
+    "to": "VINGT",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.59,
+    "chartDistanceNm": 4.6,
+    "status": "unknown"
+   }
+  ],
+  "RUHOT": [
+   {
+    "to": "MESAR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 11.78,
+    "chartDistanceNm": 11.8,
+    "status": "unknown"
+   },
+   {
+    "to": "OVDAT",
+    "inboundAltitude": 3500,
+    "outboundAltitude": 3500,
+    "distanceNm": 8.61,
+    "chartDistanceNm": 8.6,
+    "status": "ocr-candidate"
+   }
+  ],
+  "VINGT": [
+   {
+    "to": "PELEG",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.59,
+    "chartDistanceNm": 4.6,
+    "status": "unknown"
+   },
+   {
+    "to": "SFAIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.75,
+    "chartDistanceNm": 2.7,
+    "status": "unknown"
+   }
+  ],
+  "ZUKIM": [
+   {
+    "to": "ALMOG",
+    "inboundAltitude": 500,
+    "outboundAltitude": 500,
+    "distanceNm": 4.43,
+    "chartDistanceNm": 4.4,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "SHALM",
+    "inboundAltitude": 800,
+    "outboundAltitude": 800,
+    "distanceNm": 9.76,
+    "chartDistanceNm": 9.8,
+    "status": "ocr-candidate"
+   }
+  ],
+  "BRORA": [
+   {
+    "to": "EILAT",
+    "inboundAltitude": 500,
+    "outboundAltitude": 500,
+    "distanceNm": 9.21,
+    "chartDistanceNm": 9.2,
+    "status": "ocr-candidate"
+   }
+  ],
+  "EILAT": [
+   {
+    "to": "BRORA",
+    "inboundAltitude": 500,
+    "outboundAltitude": 500,
+    "distanceNm": 9.21,
+    "chartDistanceNm": 9.2,
+    "status": "ocr-candidate"
+   }
+  ],
+  "SIZFN": [
+   {
+    "to": "YAHEL",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 6.52,
+    "chartDistanceNm": 6.5,
+    "status": "unknown"
+   }
+  ],
+  "ZZHOR": [
+   {
+    "to": "BMNUH",
+    "inboundAltitude": 1400,
+    "outboundAltitude": 1400,
+    "distanceNm": 6.13,
+    "chartDistanceNm": 6.1,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "MESAR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 14.08,
+    "chartDistanceNm": 14.1,
+    "status": "unknown"
+   }
+  ],
+  "YOTVT": [
+   {
+    "to": "KTORA",
+    "inboundAltitude": 1000,
+    "outboundAltitude": 1000,
+    "distanceNm": 5.34,
+    "chartDistanceNm": 5.3,
+    "status": "ocr-candidate"
+   }
+  ],
+  "ZOFAR": [
+   {
+    "to": "BMNUH",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 15.63,
+    "chartDistanceNm": 15.6,
+    "status": "unknown"
+   }
+  ],
+  "HOVAV": [
+   {
+    "to": "NEGEV",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.5,
+    "chartDistanceNm": 4.5,
+    "status": "unknown"
+   },
+   {
+    "to": "OHLIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
+    "status": "unknown"
+   },
+   {
+    "to": "SOKET",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 11.44,
+    "chartDistanceNm": 11.4,
+    "status": "unknown"
+   }
+  ],
+  "NEGEV": [
+   {
+    "to": "HOVAV",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.5,
+    "chartDistanceNm": 4.5,
+    "status": "unknown"
+   },
+   {
+    "to": "TLLIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 5.98,
+    "chartDistanceNm": 6,
+    "status": "unknown"
+   }
+  ],
+  "TLLIM": [
+   {
+    "to": "BOKER",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.04,
+    "chartDistanceNm": 7,
+    "status": "unknown"
+   },
+   {
+    "to": "NEGEV",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 5.98,
+    "chartDistanceNm": 6,
+    "status": "unknown"
+   }
+  ],
+  "YRUHM": [
+   {
+    "to": "BOKER",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 9.43,
+    "chartDistanceNm": 9.4,
+    "status": "unknown"
+   },
+   {
+    "to": "DIMON",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 6.77,
+    "chartDistanceNm": 6.8,
+    "status": "unknown"
+   }
+  ],
+  "DIMON": [
+   {
+    "to": "YRUHM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 6.77,
+    "chartDistanceNm": 6.8,
+    "status": "unknown"
+   }
+  ],
+  "MESAR": [
+   {
+    "to": "RUHOT",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 11.78,
+    "chartDistanceNm": 11.8,
+    "status": "unknown"
+   },
+   {
+    "to": "ZZHOR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 14.08,
+    "chartDistanceNm": 14.1,
+    "status": "unknown"
+   }
+  ],
+  "OHLIM": [
+   {
+    "to": "HOVAV",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
+    "status": "unknown"
+   }
+  ],
+  "BKAMA": [
+   {
+    "to": "ZLHAV",
+    "inboundAltitude": 1700,
+    "outboundAltitude": 1700,
+    "distanceNm": 4.39,
+    "chartDistanceNm": 4.4,
+    "status": "ocr-candidate"
+   }
+  ],
+  "ALMOG": [
+   {
+    "to": "NAAMA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.15,
+    "chartDistanceNm": 7.1,
+    "status": "unknown"
+   },
+   {
+    "to": "ZUKIM",
+    "inboundAltitude": 500,
+    "outboundAltitude": 500,
+    "distanceNm": 4.43,
+    "chartDistanceNm": 4.4,
+    "status": "ocr-candidate"
+   }
+  ],
+  "ARGMN": [
+   {
+    "to": "FAZEL",
+    "inboundAltitude": 500,
+    "outboundAltitude": 500,
+    "distanceNm": 8.29,
+    "chartDistanceNm": 8.3,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "TIRAT",
+    "inboundAltitude": 800,
+    "outboundAltitude": 800,
+    "distanceNm": 15.1,
+    "chartDistanceNm": 15.1,
+    "status": "ocr-candidate"
+   }
+  ],
+  "ALLON": [
+   {
+    "to": "FAZEL",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.92,
+    "chartDistanceNm": 4.9,
+    "status": "unknown"
+   },
+   {
+    "to": "SHAHR",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 5.26,
+    "chartDistanceNm": 5.3,
+    "status": "unknown"
+   }
+  ],
+  "TIRAT": [
+   {
+    "to": "ARGMN",
+    "inboundAltitude": 800,
+    "outboundAltitude": 800,
+    "distanceNm": 15.1,
+    "chartDistanceNm": 15.1,
+    "status": "ocr-candidate"
+   }
+  ],
+  "HASID": [
+   {
+    "to": "FRDIS",
+    "inboundAltitude": 2200,
+    "outboundAltitude": 2200,
+    "distanceNm": 11.42,
+    "chartDistanceNm": 11.4,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "MOVIL",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.89,
+    "chartDistanceNm": 7.9,
+    "status": "unknown"
+   }
+  ],
+  "MOVIL": [
+   {
+    "to": "HASID",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.89,
+    "chartDistanceNm": 7.9,
+    "status": "unknown"
+   }
+  ],
+  "SMRAT": [
+   {
+    "to": "AAKKO",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 2.01,
+    "chartDistanceNm": 2,
+    "status": "ocr-candidate"
+   }
+  ],
+  "DAROM": [
+   {
+    "to": "HOTRM",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 2.56,
+    "chartDistanceNm": 2.6,
+    "status": "ocr-candidate"
+   }
+  ],
+  "HOTRM": [
+   {
+    "to": "BOREN",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.92,
+    "chartDistanceNm": 2.9,
+    "status": "unknown"
+   },
+   {
+    "to": "DAROM",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 2.56,
+    "chartDistanceNm": 2.6,
+    "status": "ocr-candidate"
+   }
+  ],
+  "BOREN": [
+   {
+    "to": "FRDIS",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.46,
+    "chartDistanceNm": 7.5,
+    "status": "unknown"
+   },
+   {
+    "to": "HOTRM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.92,
+    "chartDistanceNm": 2.9,
+    "status": "unknown"
+   }
+  ],
+  "DALIA": [
+   {
+    "to": "HADRA",
+    "inboundAltitude": 700,
+    "outboundAltitude": 700,
+    "distanceNm": 11.75,
+    "chartDistanceNm": 11.7,
+    "status": "ocr-candidate"
+   }
+  ],
+  "ZMGID": [
+   {
+    "to": "EIRON",
+    "inboundAltitude": 2000,
+    "outboundAltitude": 2000,
+    "distanceNm": 10.08,
+    "chartDistanceNm": 10.1,
+    "status": "ocr-candidate"
+   }
+  ],
+  "SFAIM": [
+   {
+    "to": "VINGT",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.75,
+    "chartDistanceNm": 2.7,
+    "status": "unknown"
+   }
+  ],
+  "TYONA": [
+   {
+    "to": "NMASD",
+    "inboundAltitude": 1700,
+    "outboundAltitude": 400,
+    "distanceNm": 11.53,
+    "chartDistanceNm": 11.5,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "NTAIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.57,
+    "chartDistanceNm": 4.6,
+    "status": "unknown"
+   },
+   {
+    "to": "SUPER",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.85,
+    "chartDistanceNm": 1.9,
+    "status": "unknown"
+   }
+  ],
+  "SIRNI": [
+   {
+    "to": "NSHRM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
+    "status": "unknown"
+   },
+   {
+    "to": "NTAIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.67,
+    "chartDistanceNm": 2.7,
+    "status": "unknown"
+   }
+  ],
+  "NSHRM": [
+   {
+    "to": "AYLON",
+    "inboundAltitude": 1200,
+    "outboundAltitude": 800,
+    "distanceNm": 3.48,
+    "chartDistanceNm": 3.5,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "NCSHN",
+    "inboundAltitude": 800,
+    "outboundAltitude": 800,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "SIRNI",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
+    "status": "unknown"
+   }
+  ],
+  "AYLON": [
+   {
+    "to": "LTRUN",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.96,
+    "chartDistanceNm": 3,
+    "status": "unknown"
+   },
+   {
+    "to": "NSHRM",
+    "inboundAltitude": 800,
+    "outboundAltitude": 1200,
+    "distanceNm": 3.48,
+    "chartDistanceNm": 3.5,
+    "status": "ocr-candidate"
+   }
+  ],
+  "LTRUN": [
+   {
+    "to": "AYLON",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.96,
+    "chartDistanceNm": 3,
+    "status": "unknown"
+   },
+   {
+    "to": "BSEMS",
+    "inboundAltitude": 1700,
+    "outboundAltitude": 2200,
+    "distanceNm": 5.04,
+    "chartDistanceNm": 5,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "SHARG",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.09,
+    "chartDistanceNm": 2.1,
+    "status": "unknown"
+   }
+  ],
+  "SHARG": [
+   {
+    "to": "LTRUN",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 2.09,
+    "chartDistanceNm": 2.1,
+    "status": "unknown"
+   }
+  ],
+  "BSEMS": [
+   {
+    "to": "LTRUN",
+    "inboundAltitude": 2200,
+    "outboundAltitude": 1700,
+    "distanceNm": 5.04,
+    "chartDistanceNm": 5,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "NCSHN",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.92,
+    "chartDistanceNm": 4.9,
+    "status": "unknown"
+   },
+   {
+    "to": "ZHRYA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.79,
+    "chartDistanceNm": 3.8,
+    "status": "unknown"
+   }
+  ],
+  "NCSHN": [
+   {
+    "to": "BSEMS",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.92,
+    "chartDistanceNm": 4.9,
+    "status": "unknown"
+   },
+   {
+    "to": "NSHRM",
+    "inboundAltitude": 800,
+    "outboundAltitude": 800,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
+    "status": "ocr-candidate"
+   }
+  ],
+  "ZHRYA": [
+   {
+    "to": "BSEMS",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 3.79,
+    "chartDistanceNm": 3.8,
+    "status": "unknown"
+   }
+  ],
+  "BOVED": [
+   {
+    "to": "NTAIM",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 1.51,
+    "chartDistanceNm": 1.5,
+    "status": "unknown"
+   }
+  ],
+  "NMASD": [
+   {
+    "to": "NITZA",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.12,
+    "chartDistanceNm": 7.1,
+    "status": "unknown"
+   },
+   {
+    "to": "TYONA",
+    "inboundAltitude": 400,
+    "outboundAltitude": 1700,
+    "distanceNm": 11.53,
+    "chartDistanceNm": 11.5,
+    "status": "ocr-candidate"
+   },
+   {
+    "to": "ZASHD",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.26,
+    "chartDistanceNm": 4.3,
+    "status": "unknown"
+   }
+  ],
+  "ZASHD": [
+   {
+    "to": "NMASD",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 4.26,
+    "chartDistanceNm": 4.3,
+    "status": "unknown"
+   }
+  ],
+  "NITZA": [
+   {
+    "to": "NMASD",
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "distanceNm": 7.12,
+    "chartDistanceNm": 7.1,
+    "status": "unknown"
+   }
+  ]
+ }
+}

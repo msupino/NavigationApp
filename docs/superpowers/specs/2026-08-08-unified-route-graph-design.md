@@ -38,25 +38,41 @@ Three representations of one thing.
 
 ## Design
 
-One file, `docs/data/route-graph.json`:
+**One self-contained file per layer**: `docs/data/{cvfr,heli,lsa}-route-graph.json`. Sharing
+a node between layers is a modelling fact, but shipping one merged file would make every
+consumer load all three networks and allow routing across them by accident. A per-layer file
+cannot: the other layers' edges are not in it. A node used by two layers appears in both
+files, identically — 573 node entries for 339 distinct points, which is the price of that
+guarantee. Sizes: cvfr 135 KB, heli 77 KB, lsa 66 KB.
+
+Each file:
 
 ```
+layer: "cvfr" | "heli" | "lsa"
 nodes: {
   <id>: { code, he, en, lat, lng, kind, report, commChange, callSigns[], layers[],
           codeSource }
 }
-edges: {
-  cvfr: { <id>: [{ to, inboundAltitude, outboundAltitude, oneWay?, blocked?, chartDistanceNm?, status }] },
-  heli: { ... },
-  lsa:  { ... }
-}
+edges: { <id>: [{ to, inboundAltitude, outboundAltitude, distanceNm,
+                  chartDistanceNm?, oneWay?, blocked?, status }] }
 ```
 
 ### Nodes are deduplicated by position
 
-Points within **0.1 nm** are one node. That threshold is safe here: the closest distinct
-pair in the current data is well outside it, and the cross-layer matches observed cluster
-at 0.01-0.16 nm with the same Hebrew name on both sides.
+Points within **0.25 nm** are one node **when their identity agrees** — same code, same
+Hebrew name, or one side lacking what the other has. Distance alone is not enough: it would
+eventually fuse two genuinely different published points. 0.1 nm was tried first and was too
+tight, leaving 74 same-named pairs split between 0.10 and 0.20 nm — the same junction
+digitised twice from different charts.
+
+A second pass merges on a **shared code**, which is stronger evidence than a spelling:
+`צ. ברכיה` and `צומת ברכיה` are one junction 0.10 nm apart that the name check refused, and
+both cross-referenced to `ZBRCH`.
+
+Result: **339 nodes from 575 rows**, 157 shared by more than one layer. Four id collisions
+remain — genuinely distinct points wanting the same id — and are suffixed and recorded
+rather than dropped. An earlier build dropped them silently: 414 merged points came out as
+335 nodes because `out[id]` overwrote.
 
 `id` is the code where one exists, else a stable slug of the Hebrew name. `layers` records
 which networks the point belongs to, so a point can be shared without being duplicated.
@@ -109,17 +125,33 @@ does not carry, and **2 conflict** — `HATRU`/`TZHTR` (צומת חתרורים)
 things). Conflicts are recorded, not silently overwritten: ours wins, theirs is kept in
 `codeAlt` for the audit.
 
+## Retiring the source files
+
+Not in this change. 68 references across seven app files still read
+`*-nav-waypoints.json`, `*-leg-altitude.json` and `*-comm-change.json` (draw.js 21, core.js
+14, io.js 11, ui.js 9, interact.js 9, plus assistant and editor). The graph is also
+**derived** today — those files are its inputs and `--check` regenerates it, so deleting
+them would make the graph canonical and unrebuildable.
+
+Order: migrate consumers to the graph a layer at a time, then retire the sources and the
+builder in a final change once nothing reads them.
+
 ## What this does not change
 
 - No behaviour change to filing, drawing or the nav log in this change.
-- `cvfr-route-graph.json` (#1478) stays until a follow-up migrates its consumers.
+- **`cvfr-route-graph.json` is replaced, not added to.** PR #1478 introduced a file of that
+  name with a different schema (`{ nodes, edges }`, one layer, stored distance). This change
+  rewrites it to the per-layer schema above. Whichever lands second has to be rebased onto
+  the first, and #1478's `fplExpandRoute()` must be pointed at the new shape — it reads
+  `graph.edges[from]` and `e.distanceNm`, both of which still exist, plus `e.blocked`, which
+  also still exists. The migration is small but it is not automatic.
 - The per-layer source files remain the inputs; this is a derived, regenerable artifact
   with a `--check` mode, like `build-cvfr-route-graph.mjs`.
 
 ## Testing
 
-1. Node count and dedup: 414 distinct nodes from 575 rows; every shared point carries all
-   its layers.
+1. Node count and dedup: 339 nodes from 575 rows; no two nodes on the same spot unless they
+   genuinely disagree on identity; every shared point carries all its layers.
 2. No edge crosses layers; every edge's endpoints exist as nodes.
 3. Reverse-edge symmetry with inbound/outbound swapped.
 4. Comm-change points land on nodes with their call signs.

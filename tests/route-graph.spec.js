@@ -8,14 +8,33 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const graph = () => JSON.parse(
-  fs.readFileSync(path.join(ROOT, 'docs', 'data', 'route-graph.json'), 'utf8'));
+// One self-contained file per layer: a consumer physically cannot route across layers.
+const layerGraph = (lay) => JSON.parse(
+  fs.readFileSync(path.join(ROOT, 'docs', 'data', lay + '-route-graph.json'), 'utf8'));
+const graph = () => {
+  const nodes = {}, edges = {};
+  for (const l of ['cvfr', 'heli', 'lsa']) {
+    const g = layerGraph(l);
+    Object.assign(nodes, g.nodes);
+    edges[l] = g.edges;
+  }
+  return { nodes, edges };
+};
 const builder = () => import(path.join(ROOT, 'scripts', 'build-route-graph.mjs'));
 const LAYERS = ['cvfr', 'heli', 'lsa'];
 
 test('every layer keeps its own edges, and none of them cross', () => {
   const g = graph();
   expect(Object.keys(g.edges).sort()).toEqual([...LAYERS].sort());
+  // Each file names its layer and carries only that layer's edges -- the guarantee is
+  // structural, not a convention a caller has to remember.
+  for (const lay of LAYERS) {
+    const one = layerGraph(lay);
+    expect(one.layer).toBe(lay);
+    for (const es of Object.values(one.edges)) {
+      for (const e of es) expect(one.nodes[e.to], e.to + ' missing from ' + lay + ' file').toBeTruthy();
+    }
+  }
   // The hard rule: a CVFR flight expanded through a heli corridor would file a route it is
   // not cleared for, and it would look plausible. There is no merged edge list, and every
   // endpoint of every edge exists as a node.

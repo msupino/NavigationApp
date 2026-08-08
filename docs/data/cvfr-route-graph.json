@@ -1,2524 +1,4254 @@
 {
- "source": "cvfr-leg-altitude.json + cvfr-nav-waypoints.json + airfields.json",
- "counts": {
-  "nodes": 199,
-  "routePoints": 188,
-  "segments": 269,
-  "directedEdges": 538,
-  "positionless": 0,
-  "droppedSegments": 0
- },
- "positionless": [],
+ "layer": "cvfr",
  "nodes": {
-  "ZLHAV": {
-   "lat": 31.3725,
-   "lng": 34.79333,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZMGID": {
-   "lat": 32.57278,
-   "lng": 35.19111,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZMGEN": {
-   "lat": 31.29389,
-   "lng": 34.43222,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "NCSHN": {
-   "lat": 31.81556,
-   "lng": 34.91694,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ARRAD": {
-   "lat": 31.25444,
-   "lng": 35.20972,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "FRDIS": {
-   "lat": 32.59194,
-   "lng": 34.94639,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "FAZEL": {
-   "lat": 32.04806,
-   "lng": 35.46306,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ZZHOR": {
-   "lat": 30.27667,
-   "lng": 35.02,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ZAFIT": {
-   "lat": 31.0425,
-   "lng": 35.19972,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "KTORA": {
-   "lat": 29.98944,
-   "lng": 35.07639,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SOKET": {
-   "lat": 31.3075,
-   "lng": 34.90111,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZOFAR": {
-   "lat": 30.55972,
-   "lng": 35.18667,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "TZHOT": {
-   "lat": 31.30778,
-   "lng": 34.52972,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ZALMN": {
-   "lat": 32.85333,
-   "lng": 35.41167,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "NCITY": {
-   "lat": 31.2875,
-   "lng": 34.79139,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "KNTRY": {
-   "lat": 32.14083,
-   "lng": 34.80139,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "KRYON": {
-   "lat": 32.84333,
-   "lng": 35.08889,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "CLORE": {
-   "lat": 32.05306,
-   "lng": 34.73583,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "REVAH": {
-   "lat": 31.64444,
-   "lng": 34.73028,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ROKCH": {
-   "lat": 32.1025,
-   "lng": 34.80361,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "RIDNG": {
-   "lat": 32.11028,
-   "lng": 34.7625,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "HOVAV": {
-   "lat": 31.13556,
-   "lng": 34.805,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZRANA": {
-   "lat": 32.17722,
-   "lng": 34.88778,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "RANNO": {
-   "lat": 32.19083,
-   "lng": 34.88833,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SZION": {
-   "lat": 32.97944,
-   "lng": 35.09333,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "SEGEV": {
-   "lat": 32.86111,
-   "lng": 35.2625,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "BOKER": {
-   "lat": 30.875,
-   "lng": 34.78583,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SDTYM": {
-   "lat": 32.49667,
-   "lng": 34.885,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SDROT": {
-   "lat": 31.50667,
-   "lng": 34.58556,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SOVAL": {
-   "lat": 31.41139,
-   "lng": 34.74639,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SORES": {
-   "lat": 31.79972,
-   "lng": 35.07611,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SIZFN": {
-   "lat": 30.0475,
-   "lng": 35.01444,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SHRUT": {
-   "lat": 29.90778,
-   "lng": 35.00333,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SITIM": {
-   "lat": 30.17583,
-   "lng": 35.01444,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "SMRAT": {
-   "lat": 32.95167,
-   "lng": 35.09,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "SHARG": {
-   "lat": 31.81972,
-   "lng": 35.02111,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "SFAIM": {
-   "lat": 32.21056,
-   "lng": 34.80722,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ASKLN": {
-   "lat": 31.66639,
-   "lng": 34.53917,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "TYONA": {
-   "lat": 32.00472,
-   "lng": 34.72722,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "TARAD": {
-   "lat": 31.2775,
-   "lng": 35.12556,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "YRIHO": {
-   "lat": 31.81944,
-   "lng": 35.3875,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SHALM": {
-   "lat": 31.55861,
-   "lng": 35.4025,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "MEHOL": {
-   "lat": 31.96083,
-   "lng": 34.76417,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "MINGV": {
-   "lat": 31.36889,
-   "lng": 34.71278,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "EMMEK": {
-   "lat": 32.615,
-   "lng": 35.14167,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "MESEK": {
-   "lat": 31.26472,
-   "lng": 34.69972,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "METAH": {
-   "lat": 31.22556,
-   "lng": 34.755,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "EITAN": {
-   "lat": 32.49556,
-   "lng": 35.53361,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZOHAR": {
-   "lat": 31.15083,
-   "lng": 35.3725,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "NAHLA": {
-   "lat": 31.65639,
-   "lng": 34.80917,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "NTAIM": {
-   "lat": 31.94361,
-   "lng": 34.78083,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "NITZA": {
-   "lat": 31.72417,
-   "lng": 34.57056,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "NMASD": {
-   "lat": 31.83333,
-   "lng": 34.62528,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "NOAAM": {
-   "lat": 31.57139,
-   "lng": 34.77583,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "NAAMA": {
-   "lat": 31.90861,
-   "lng": 35.4625,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "SIRNI": {
-   "lat": 31.92806,
-   "lng": 34.83,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "NTVOT": {
-   "lat": 31.42917,
-   "lng": 34.59917,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "SUPER": {
-   "lat": 31.97639,
-   "lng": 34.74167,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SIGAL": {
-   "lat": 31.195,
-   "lng": 34.29278,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SAMAR": {
-   "lat": 29.83139,
-   "lng": 35.02861,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SAHAR": {
-   "lat": 32.29583,
-   "lng": 34.75278,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "OMMER": {
-   "lat": 31.27472,
-   "lng": 34.82833,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "AZOOZ": {
-   "lat": 30.8,
-   "lng": 34.47028,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ENGDI": {
-   "lat": 31.46417,
-   "lng": 35.39472,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZURIM": {
-   "lat": 31.70167,
-   "lng": 34.715,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZUKIM": {
-   "lat": 31.71611,
-   "lng": 35.44972,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "EIRON": {
-   "lat": 32.48083,
-   "lng": 35.02444,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
   "AAKKO": {
+   "code": "AAKKO",
+   "he": "עכו",
+   "en": "Akko",
    "lat": 32.91861,
    "lng": 35.09639,
    "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "AMIOZ": {
-   "lat": 31.25667,
-   "lng": 34.40278,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ANATA": {
-   "lat": 31.82111,
-   "lng": 35.27139,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "AFULA": {
-   "lat": 32.60361,
-   "lng": 35.28194,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "PELEG": {
-   "lat": 32.33,
-   "lng": 34.83722,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "PARDS": {
-   "lat": 32.10278,
-   "lng": 34.84778,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZDAFA": {
-   "lat": 31.78167,
-   "lng": 34.59972,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZASHD": {
-   "lat": 31.82611,
-   "lng": 34.70833,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "NEGEV": {
-   "lat": 31.06611,
-   "lng": 34.83806,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ARAVA": {
-   "lat": 30.98944,
-   "lng": 35.30917,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "RUHOT": {
-   "lat": 30.66,
-   "lng": 34.80889,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "SHARO": {
-   "lat": 32.32306,
-   "lng": 34.90389,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "HATRU": {
-   "lat": 31.21889,
-   "lng": 35.24833,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "ZYAAR": {
-   "lat": 32.40972,
-   "lng": 34.90361,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "KANOT": {
-   "lat": 31.80417,
-   "lng": 34.76333,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "BEREC": {
-   "lat": 29.79306,
-   "lng": 34.91028,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "HRGVS": {
-   "lat": 30.62278,
-   "lng": 34.95,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "VINGT": {
-   "lat": 32.25556,
-   "lng": 34.81694,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ZHRYA": {
-   "lat": 31.69972,
-   "lng": 34.945,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "HADRA": {
-   "lat": 32.46472,
-   "lng": 34.91222,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "HOLOT": {
-   "lat": 30.99417,
-   "lng": 34.36028,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "HULAT": {
-   "lat": 33.04361,
-   "lng": 35.62944,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "OVDAT": {
-   "lat": 30.80278,
-   "lng": 34.79333,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "HAZVA": {
-   "lat": 30.77333,
-   "lng": 35.23639,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "TIRAT": {
-   "lat": 32.42444,
-   "lng": 35.52667,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "TLLIM": {
-   "lat": 30.99056,
-   "lng": 34.76222,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "YAVNE": {
-   "lat": 31.87194,
-   "lng": 34.75694,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "YAHEL": {
-   "lat": 30.08222,
-   "lng": 35.13333,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "YOTVT": {
-   "lat": 29.90083,
-   "lng": 35.06722,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "YASDD": {
-   "lat": 31.81028,
-   "lng": 34.45639,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "YAHOL": {
-   "lat": 32.0225,
-   "lng": 34.46056,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "YAPAL": {
-   "lat": 31.915,
-   "lng": 34.45833,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "YASFA": {
-   "lat": 32.21861,
-   "lng": 34.62472,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "YRUHM": {
-   "lat": 30.98972,
-   "lng": 34.91083,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "YATED": {
-   "lat": 31.20472,
-   "lng": 34.33444,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "KUVSH": {
-   "lat": 31.25861,
-   "lng": 34.76361,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "KOYAR": {
-   "lat": 32.5975,
-   "lng": 35.54361,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "SHAHR": {
-   "lat": 31.9575,
-   "lng": 35.33694,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "DUMIM": {
-   "lat": 31.80389,
-   "lng": 35.32472,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "NAGID": {
-   "lat": 31.88972,
-   "lng": 34.75583,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "HASID": {
-   "lat": 32.74667,
-   "lng": 35.07778,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "HAROV": {
-   "lat": 32.75917,
-   "lng": 35.66833,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "NAHEM": {
-   "lat": 31.74528,
-   "lng": 34.82222,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "TAVOR": {
-   "lat": 32.69028,
-   "lng": 35.42,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "DESHE": {
-   "lat": 32.87,
-   "lng": 35.5325,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "LAHAV": {
-   "lat": 31.3825,
-   "lng": 34.82694,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "BASAN": {
-   "lat": 33.14611,
-   "lng": 35.63806,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "LTRUN": {
-   "lat": 31.83861,
-   "lng": 34.98667,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "LIAAD": {
-   "lat": 31.95833,
-   "lng": 34.515,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "MMORR": {
-   "lat": 31.25444,
-   "lng": 35.36833,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "NIZAN": {
-   "lat": 30.75444,
-   "lng": 34.565,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "DAROM": {
-   "lat": 32.79611,
-   "lng": 34.94333,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "HAREL": {
-   "lat": 31.79861,
-   "lng": 35.14611,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "NSHRM": {
-   "lat": 31.90917,
-   "lng": 34.89167,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "MRISN": {
-   "lat": 31.97694,
-   "lng": 34.79194,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "MYTAR": {
-   "lat": 31.31472,
-   "lng": 34.93806,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "MESAR": {
-   "lat": 30.50167,
-   "lng": 34.94361,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "MIHMS": {
-   "lat": 31.85444,
-   "lng": 35.32944,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "MZDOT": {
-   "lat": 31.35639,
-   "lng": 35.1075,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "EVLYM": {
-   "lat": 32.82389,
-   "lng": 35.15139,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "OHLIM": {
-   "lat": 31.19111,
-   "lng": 34.80472,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "OLGAH": {
-   "lat": 32.43139,
-   "lng": 34.86583,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "OFKIM": {
-   "lat": 31.32222,
-   "lng": 34.61889,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "AHIUD": {
-   "lat": 32.91194,
-   "lng": 35.18111,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "AYLON": {
-   "lat": 31.87167,
-   "lng": 34.94361,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "EILAT": {
-   "lat": 29.55833,
-   "lng": 34.95889,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "IKKEA": {
-   "lat": 31.95139,
-   "lng": 34.77028,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ALUMT": {
-   "lat": 32.71417,
-   "lng": 35.54639,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ALLON": {
-   "lat": 32.04139,
-   "lng": 35.36667,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "ALMOG": {
-   "lat": 31.78972,
-   "lng": 35.45639,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "AMNON": {
-   "lat": 32.90556,
-   "lng": 35.56667,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "OSNAT": {
-   "lat": 31.83278,
-   "lng": 34.52333,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "APOLN": {
-   "lat": 32.19111,
-   "lng": 34.79722,
-   "kind": "waypoint",
-   "report": "onRequest"
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "HAIFA"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
   "AFFEK": {
+   "code": "AFFEK",
+   "he": "אפק",
+   "en": "Afek",
    "lat": 32.84028,
    "lng": 35.12778,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
   },
-  "ARGMN": {
-   "lat": 32.17306,
-   "lng": 35.5325,
+  "AFULA": {
+   "code": "AFULA",
+   "he": "צומת עפולה",
+   "en": "Afula Junction",
+   "lat": 32.60361,
+   "lng": 35.28194,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "RAMAT_DAVID",
+    "MEGIDDO"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "AHIUD": {
+   "code": "AHIUD",
+   "he": "אחיהוד",
+   "en": "Ahihud",
+   "lat": 32.91194,
+   "lng": 35.18111,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ALLON": {
+   "code": "ALLON",
+   "he": "אלון",
+   "en": "Alon",
+   "lat": 32.04139,
+   "lng": 35.36667,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ALMOG": {
+   "code": "ALMOG",
+   "he": "אלמוג",
+   "en": "Almog",
+   "lat": 31.78972,
+   "lng": 35.45639,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ALUMT": {
+   "code": "ALUMT",
+   "he": "אלומות",
+   "en": "Alumot",
+   "lat": 32.71417,
+   "lng": 35.54639,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "AMIOZ": {
+   "code": "AMIOZ",
+   "he": "עמיעוז",
+   "en": "Ami'oz",
+   "lat": 31.25667,
+   "lng": 34.40278,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "AMNON": {
+   "code": "AMNON",
+   "he": "אמנון",
+   "en": "Amnon",
+   "lat": 32.90556,
+   "lng": 35.56667,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ANATA": {
+   "code": "ANATA",
+   "he": "ענאתא",
+   "en": "Anata",
+   "lat": 31.82111,
+   "lng": 35.27139,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "APOLN": {
+   "code": "APOLN",
+   "he": "אפולוניה",
+   "en": "Apollonia",
+   "lat": 32.19111,
+   "lng": 34.79722,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ARAVA": {
+   "code": "ARAVA",
+   "he": "צומת הערבה",
+   "en": "Arava Junction",
+   "lat": 30.98944,
+   "lng": 35.30917,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
   "ARENA": {
+   "code": "ARENA",
+   "he": "ארנה",
+   "en": "Arena",
    "lat": 32.16472,
    "lng": 34.78556,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
   },
-  "NASIH": {
-   "lat": 31.33028,
-   "lng": 34.69833,
+  "ARGMN": {
+   "code": "ARGMN",
+   "he": "ארגמן",
+   "en": "Argaman",
+   "lat": 32.17306,
+   "lng": 35.5325,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "ESTOL": {
-   "lat": 31.77944,
-   "lng": 35.01139,
+  "ARRAD": {
+   "code": "ARRAD",
+   "he": "צומת ערד",
+   "en": "Arad Junction",
+   "lat": 31.25444,
+   "lng": 35.20972,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_SOUTH",
+    "HAGAV_NORTH",
+    "NEGEV"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "BRORA": {
-   "lat": 29.70806,
-   "lng": 34.99722,
+  "ASKLN": {
+   "code": "ASKLN",
+   "he": "תל אשקלון",
+   "en": "Tel Ashkelon",
+   "lat": 31.66639,
+   "lng": 34.53917,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
   },
-  "BMNUH": {
-   "lat": 30.30333,
-   "lng": 35.13417,
+  "AYLON": {
+   "code": "AYLON",
+   "he": "איילון",
+   "en": "Ayalon",
+   "lat": 31.87167,
+   "lng": 34.94361,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "BEN_GURION",
+    "TEL_NOF"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "BOREN": {
-   "lat": 32.71444,
-   "lng": 34.97083,
+  "AZOOZ": {
+   "code": "AZOOZ",
+   "he": "עזוז",
+   "en": "Ezuz",
+   "lat": 30.8,
+   "lng": 34.47028,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
   },
-  "GOVRN": {
-   "lat": 31.60611,
-   "lng": 34.89278,
+  "BASAN": {
+   "code": "BASAN",
+   "he": "להבות הבשן",
+   "en": "Lehavot HaBashan",
+   "lat": 33.14611,
+   "lng": 35.63806,
    "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "HNINA": {
-   "lat": 31.83028,
-   "lng": 35.2075,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "BOVED": {
-   "lat": 31.92028,
-   "lng": 34.77,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "BEZRA": {
-   "lat": 31.74139,
-   "lng": 34.64583,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "BKAMA": {
-   "lat": 31.44167,
-   "lng": 34.76556,
-   "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "BSEMS": {
-   "lat": 31.75472,
-   "lng": 34.98139,
-   "kind": "waypoint",
-   "report": "onRequest"
-  },
-  "DEROR": {
-   "lat": 32.25722,
-   "lng": 34.89111,
-   "kind": "waypoint",
-   "report": "mandatory"
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "KIRYAT_SHMONA",
+    "PLUTO_EAST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
   "BAZRA": {
+   "code": "BAZRA",
+   "he": "בצרה",
+   "en": "Batzra",
    "lat": 32.21861,
    "lng": 34.8825,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "BEREC": {
+   "code": "BEREC",
+   "he": "הר ברך",
+   "en": "Mount Berekh",
+   "lat": 29.79306,
+   "lng": 34.91028,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMON",
+    "OVDA"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "BEZRA": {
+   "code": "BEZRA",
+   "he": "בית עזרא",
+   "en": "Beit Ezra",
+   "lat": 31.74139,
+   "lng": 34.64583,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
   },
   "BHAIL": {
+   "code": "BHAIL",
+   "he": "ברור חיל",
+   "en": "Bror Hayil",
    "lat": 31.55778,
    "lng": 34.6325,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
   },
-  "GALIM": {
-   "lat": 32.84111,
-   "lng": 34.98111,
+  "BKAMA": {
+   "code": "BKAMA",
+   "he": "בית קמה",
+   "en": "Beit Kama",
+   "lat": 31.44167,
+   "lng": 34.76556,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "GVARM": {
-   "lat": 31.59333,
-   "lng": 34.61028,
+  "BMNUH": {
+   "code": "BMNUH",
+   "he": "באר מנוחה",
+   "en": "Be'er Menuha",
+   "lat": 30.30333,
+   "lng": 35.13417,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "ZGOAL": {
-   "lat": 31.31278,
-   "lng": 34.78778,
+  "BOKER": {
+   "code": "BOKER",
+   "he": "שדה בוקר",
+   "en": "Sde Boker",
+   "lat": 30.875,
+   "lng": 34.78583,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMON",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
   },
-  "GILAM": {
-   "lat": 32.82139,
-   "lng": 35.1325,
+  "BOREN": {
+   "code": "BOREN",
+   "he": "בית אורן",
+   "en": "Beit Oren",
+   "lat": 32.71444,
+   "lng": 34.97083,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "GILAT": {
-   "lat": 31.33722,
-   "lng": 34.65306,
+  "BOVED": {
+   "code": "BOVED",
+   "he": "בית עובד",
+   "en": "Beit Oved",
+   "lat": 31.92028,
+   "lng": 34.77,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "GNYAM": {
-   "lat": 32.15028,
-   "lng": 34.89417,
+  "BRORA": {
+   "code": "BRORA",
+   "he": "באר אורה",
+   "en": "Be'er Ora",
+   "lat": 29.70806,
+   "lng": 34.99722,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "DUGIT": {
-   "lat": 32.8525,
-   "lng": 35.05167,
+  "BSEMS": {
+   "code": "BSEMS",
+   "he": "בית שמש",
+   "en": "Beit Shemesh",
+   "lat": 31.75472,
+   "lng": 34.98139,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "DIMON": {
-   "lat": 31.06778,
-   "lng": 35.00583,
+  "CLORE": {
+   "code": "CLORE",
+   "he": "קלור",
+   "en": "Clore",
+   "lat": 32.05306,
+   "lng": 34.73583,
    "kind": "waypoint",
-   "report": "mandatory"
-  },
-  "DEENA": {
-   "lat": 32.02389,
-   "lng": 34.64056,
-   "kind": "waypoint",
-   "report": "mandatory"
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
   },
   "DALIA": {
+   "code": "DALIA",
+   "he": "דליה",
+   "en": "Dalia",
    "lat": 32.59694,
    "lng": 35.08333,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMAT_DAVID",
+    "PLUTO_WEST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "DAROM": {
+   "code": "DAROM",
+   "he": "מחלף דרום",
+   "en": "Darom Interchange",
+   "lat": 32.79611,
+   "lng": 34.94333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAIFA",
+    "PLUTO_WEST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "DEENA": {
+   "code": "DEENA",
+   "he": "דינה",
+   "en": "Deena",
+   "lat": 32.02389,
+   "lng": 34.64056,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "DEROR": {
+   "code": "DEROR",
+   "he": "בני דרור",
+   "en": "Bnei Dror",
+   "lat": 32.25722,
+   "lng": 34.89111,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HERZLIYA",
+    "PLUTO_WEST"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "DESHE": {
+   "code": "DESHE",
+   "he": "כרי דשא",
+   "en": "Karei Deshe",
+   "lat": 32.87,
+   "lng": 35.5325,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "ROSH_PINA",
+    "PLUTO_EAST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "DIMON": {
+   "code": "DIMON",
+   "he": "דימונה",
+   "en": "Dimona",
+   "lat": 31.06778,
+   "lng": 35.00583,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "NEGEV",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "DUGIT": {
+   "code": "DUGIT",
+   "he": "דוגית",
+   "en": "Dugit",
+   "lat": 32.8525,
+   "lng": 35.05167,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "DUMIM": {
+   "code": "DUMIM",
+   "he": "כפר אדומים",
+   "en": "Kfar Adumim",
+   "lat": 31.80389,
+   "lng": 35.32472,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "EILAT": {
+   "code": "EILAT",
+   "he": "אילת",
+   "en": "Eilat",
+   "lat": 29.55833,
+   "lng": 34.95889,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "EIRON": {
+   "code": "EIRON",
+   "he": "עירון",
+   "en": "Eiron",
+   "lat": 32.48083,
+   "lng": 35.02444,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "EITAN": {
+   "code": "EITAN",
+   "he": "נווה איתן",
+   "en": "Neve Eitan",
+   "lat": 32.49556,
+   "lng": 35.53361,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "EMMEK": {
+   "code": "EMMEK",
+   "he": "משמר העמק",
+   "en": "Mishmar HaEmek",
+   "lat": 32.615,
+   "lng": 35.14167,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ENGDI": {
+   "code": "ENGDI",
+   "he": "עין גדי",
+   "en": "Ein Gedi",
+   "lat": 31.46417,
+   "lng": 35.39472,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ESTOL": {
+   "code": "ESTOL",
+   "he": "אשתאול",
+   "en": "Eshtaol",
+   "lat": 31.77944,
+   "lng": 35.01139,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "EVLYM": {
+   "code": "EVLYM",
+   "he": "אבליים",
+   "en": "Evlayim",
+   "lat": 32.82389,
+   "lng": 35.15139,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "FAZEL": {
+   "code": "FAZEL",
+   "he": "צומת פצאל",
+   "en": "Petzael Junction",
+   "lat": 32.04806,
+   "lng": 35.46306,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "FRDIS": {
+   "code": "FRDIS",
+   "he": "צומת פורדיס",
+   "en": "Fureidis Junction",
+   "lat": 32.59194,
+   "lng": 34.94639,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "GALIM": {
+   "code": "GALIM",
+   "he": "בת גלים",
+   "en": "Bat Galim",
+   "lat": 32.84111,
+   "lng": 34.98111,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "GILAM": {
+   "code": "GILAM",
+   "he": "גילעם",
+   "en": "Gil'am",
+   "lat": 32.82139,
+   "lng": 35.1325,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAIFA",
+    "PLUTO_EAST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "GILAT": {
+   "code": "GILAT",
+   "he": "גילת",
+   "en": "Gilat",
+   "lat": 31.33722,
+   "lng": 34.65306,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "GNYAM": {
+   "code": "GNYAM",
+   "he": "גני עם",
+   "en": "Ganei Am",
+   "lat": 32.15028,
+   "lng": 34.89417,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HERZLIYA",
+    "BEN_GURION"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "GOVRN": {
+   "code": "GOVRN",
+   "he": "בית גוברין",
+   "en": "Beit Guvrin",
+   "lat": 31.60611,
+   "lng": 34.89278,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "GVARM": {
+   "code": "GVARM",
+   "he": "גברעם",
+   "en": "Gevar'am",
+   "lat": 31.59333,
+   "lng": 34.61028,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "GVULT": {
+   "code": "GVULT",
+   "codeAlt": "LLGV",
+   "he": "גבולות",
+   "en": "Gvulot",
+   "lat": 31.2275,
+   "lng": 34.46028,
+   "kind": "airfield",
+   "layers": []
+  },
+  "HADRA": {
+   "code": "HADRA",
+   "he": "חדרה",
+   "en": "Hadera",
+   "lat": 32.46472,
+   "lng": 34.91222,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HAREL": {
+   "code": "HAREL",
+   "he": "מחלף הראל",
+   "en": "Harel Interchange",
+   "lat": 31.79861,
+   "lng": 35.14611,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "HAROV": {
+   "code": "HAROV",
+   "he": "כפר חרוב",
+   "en": "Kfar Haruv",
+   "lat": 32.75917,
+   "lng": 35.66833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "PIK"
+   ],
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "HASID": {
+   "code": "HASID",
+   "he": "כפר חסידים",
+   "en": "Kfar Hasidim",
+   "lat": 32.74667,
+   "lng": 35.07778,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "PLUTO_WEST",
+    "RAMAT_DAVID",
+    "HAIFA"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HATRU": {
+   "code": "HATRU",
+   "he": "צומת חתרורים",
+   "en": "Hatrurim Junction",
+   "lat": 31.21889,
+   "lng": 35.24833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "NEGEV"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HAZVA": {
+   "code": "HAZVA",
+   "he": "חצבה",
+   "en": "Hatzeva",
+   "lat": 30.77333,
+   "lng": 35.23639,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "HNINA": {
+   "code": "HNINA",
+   "he": "בית חנינא",
+   "en": "Beit Hanina",
+   "lat": 31.83028,
+   "lng": 35.2075,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
   },
   "HODYA": {
+   "code": "HODYA",
+   "he": "הודיה",
+   "en": "Hodiya",
    "lat": 31.68278,
    "lng": 34.6525,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "onRequest",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH",
+    "HATZOR"
+   ],
+   "layers": [
+    "cvfr"
+   ]
   },
-  "ZOREA": {
-   "lat": 32.64806,
-   "lng": 35.11889,
+  "HOLOT": {
+   "code": "HOLOT",
+   "he": "חולות",
+   "en": "Holot",
+   "lat": 30.99417,
+   "lng": 34.36028,
    "kind": "waypoint",
-   "report": "onRequest"
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
   },
   "HOTRM": {
+   "code": "HOTRM",
+   "he": "החותרים",
+   "en": "Hahotrim",
    "lat": 32.75389,
    "lng": 34.93694,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
-  "MOVIL": {
-   "lat": 32.75917,
-   "lng": 35.23333,
+  "HOVAV": {
+   "code": "HOVAV",
+   "he": "רמת חובב",
+   "en": "Ramat Hovav",
+   "lat": 31.13556,
+   "lng": 34.805,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "NEGEV",
+    "HAGAV_NORTH",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "HRGVS": {
+   "code": "HRGVS",
+   "he": "הר גבס",
+   "en": "Mount Geves",
+   "lat": 30.62278,
+   "lng": 34.95,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   },
   "HTZUK": {
+   "code": "HTZUK",
+   "he": "הצוק",
+   "en": "Hatzuk",
    "lat": 32.14556,
    "lng": 34.77833,
    "kind": "waypoint",
-   "report": "mandatory"
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
   },
-  "GVULT": {
-   "lat": 31.2275,
-   "lng": 34.46028,
-   "kind": "airfield"
+  "HULAT": {
+   "code": "HULAT",
+   "he": "חולתה",
+   "en": "Hulata",
+   "lat": 33.04361,
+   "lng": 35.62944,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "ROSH_PINA"
+   ],
+   "layers": [
+    "cvfr"
+   ]
   },
-  "KKDEM": {
-   "lat": 31.26278,
-   "lng": 34.65028,
-   "kind": "airfield"
+  "IKKEA": {
+   "code": "IKKEA",
+   "he": "איקאה",
+   "en": "IKEA",
+   "lat": 31.95139,
+   "lng": 34.77028,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "KANOT": {
+   "code": "KANOT",
+   "he": "צומת כנות",
+   "en": "Kanot Junction",
+   "lat": 31.80417,
+   "lng": 34.76333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "KNTRY": {
+   "code": "KNTRY",
+   "he": "קאנטרי קלאב",
+   "en": "Country Club",
+   "lat": 32.14083,
+   "lng": 34.80139,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HERZLIYA"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "KOYAR": {
+   "code": "KOYAR",
+   "he": "כוכב הירדן",
+   "en": "Kokhav HaYarden",
+   "lat": 32.5975,
+   "lng": 35.54361,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "KRYON": {
+   "code": "KRYON",
+   "he": "קיריון",
+   "en": "Kiryon",
+   "lat": 32.84333,
+   "lng": 35.08889,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "KTORA": {
+   "code": "KTORA",
+   "he": "צומת קטורה",
+   "en": "Ketura Junction",
+   "lat": 29.98944,
+   "lng": 35.07639,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_SOUTH",
+    "RAMON"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "KUVSH": {
+   "code": "KUVSH",
+   "he": "כובשים",
+   "en": "Kovshim",
+   "lat": 31.25861,
+   "lng": 34.76361,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "LAHAV": {
+   "code": "LAHAV",
+   "he": "להב",
+   "en": "Lahav",
+   "lat": 31.3825,
+   "lng": 34.82694,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "LIAAD": {
+   "code": "LIAAD",
+   "he": "ליעד",
+   "en": "Li'ad",
+   "lat": 31.95833,
+   "lng": 34.515,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_WEST",
+    "HAGAV_NORTH"
+   ],
+   "layers": [
+    "cvfr"
+   ]
   },
   "LLBG": {
+   "code": "LLBG",
+   "he": "בן גוריון",
+   "en": "Tel Aviv / Ben Gurion",
    "lat": 32.00944,
    "lng": 34.88556,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLBO": {
+   "code": "LLBO",
+   "he": "הבונים",
+   "en": "Habonim",
    "lat": 32.65,
    "lng": 34.93278,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLBS": {
+   "code": "LLBS",
+   "he": "תימן",
+   "en": "Beer Sheva / Teyman",
    "lat": 31.28694,
    "lng": 34.72278,
-   "kind": "airfield"
+   "kind": "airfield",
+   "commChange": true,
+   "callSigns": [
+    "TEYMAN"
+   ],
+   "layers": []
   },
   "LLEK": {
+   "code": "LLEK",
+   "he": "תל נוף",
+   "en": "Tel Nof",
    "lat": 31.83667,
    "lng": 34.81889,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLER": {
+   "code": "LLER",
+   "he": "אילן ואסף רמון",
+   "en": "Eilat / Ilan & Asaf Ramon",
    "lat": 29.72722,
    "lng": 35.01417,
-   "kind": "airfield"
-  },
-  "LLES": {
-   "lat": 32.44139,
-   "lng": 35.00333,
-   "kind": "airfield"
-  },
-  "LLEV": {
-   "lat": 32.265,
-   "lng": 34.95167,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLEY": {
-   "lat": 30.62167,
-   "lng": 35.20306,
-   "kind": "airfield"
+   "code": "LLEY",
+   "codeSource": "cross-referenced",
+   "he": "עין יהב",
+   "lat": 30.61546,
+   "lng": 35.20363,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "heli"
+   ]
   },
   "LLFK": {
+   "code": "LLFK",
+   "he": "פיק",
+   "en": "Fiq (Golan)",
    "lat": 32.78528,
    "lng": 35.71722,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLHA": {
+   "code": "LLHA",
+   "he": "חיפה",
+   "en": "Haifa",
    "lat": 32.80833,
    "lng": 35.04278,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLHB": {
+   "code": "LLHB",
+   "he": "חצרים",
+   "en": "Hatzerim",
    "lat": 31.24333,
    "lng": 34.655,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLHS": {
+   "code": "LLHS",
+   "he": "חצור",
+   "en": "Hatzor",
    "lat": 31.75778,
    "lng": 34.72306,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLHZ": {
+   "code": "LLHZ",
+   "he": "הרצליה",
+   "en": "Herzliya",
    "lat": 32.17944,
    "lng": 34.83444,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLIB": {
+   "code": "LLIB",
+   "he": "ראש פינה",
+   "en": "Rosh Pina / Mahanayim",
    "lat": 32.98056,
    "lng": 35.57083,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLKS": {
+   "code": "LLKS",
+   "he": "קרית שמונה",
+   "en": "Kiryat Shmona",
    "lat": 33.21417,
    "lng": 35.59417,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLKZ": {
-   "lat": 30.85889,
-   "lng": 34.44361,
-   "kind": "airfield"
+   "code": "LLKZ",
+   "he": "מנחת קציעות",
+   "en": "Ktziot",
+   "lat": 30.85773,
+   "lng": 34.44283,
+   "kind": "airfield",
+   "report": "onRequest",
+   "layers": [
+    "heli"
+   ]
   },
   "LLMG": {
+   "code": "LLMG",
+   "he": "מגידו",
+   "en": "Megiddo",
    "lat": 32.59722,
    "lng": 35.23472,
-   "kind": "airfield"
-  },
-  "LLNV": {
-   "lat": 31.21333,
-   "lng": 35.01833,
-   "kind": "airfield"
-  },
-  "LLOV": {
-   "lat": 29.935,
-   "lng": 34.94083,
-   "kind": "airfield"
-  },
-  "LLPL": {
-   "lat": 31.89833,
-   "lng": 34.69,
-   "kind": "airfield"
-  },
-  "LLRD": {
-   "lat": 32.66861,
-   "lng": 35.18333,
-   "kind": "airfield"
-  },
-  "LLRM": {
-   "lat": 30.775,
-   "lng": 34.66667,
-   "kind": "airfield"
-  },
-  "LLRS": {
-   "lat": 31.9675,
-   "lng": 34.75361,
-   "kind": "airfield"
+   "kind": "airfield",
+   "layers": []
   },
   "LLMZ": {
+   "code": "LLMZ",
+   "he": "מצדה",
+   "en": "Bar Yehuda (Masada)",
    "lat": 31.32917,
    "lng": 35.38833,
-   "kind": "airfield"
+   "kind": "airfield",
+   "commChange": true,
+   "callSigns": [
+    "MASADA"
+   ],
+   "layers": []
   },
-  "LLAR": {
-   "lat": 31.22972,
-   "lng": 35.18972,
-   "kind": "airfield"
+  "LLNV": {
+   "code": "LLNV",
+   "he": "נבטים",
+   "en": "Nevatim",
+   "lat": 31.21333,
+   "lng": 35.01833,
+   "kind": "airfield",
+   "layers": []
+  },
+  "LLOV": {
+   "code": "LLOV",
+   "he": "עובדה",
+   "en": "Ovda",
+   "lat": 29.935,
+   "lng": 34.94083,
+   "kind": "airfield",
+   "layers": []
+  },
+  "LLPL": {
+   "code": "LLPL",
+   "he": "פלמחים",
+   "en": "Palmachim",
+   "lat": 31.89833,
+   "lng": 34.69,
+   "kind": "airfield",
+   "layers": []
+  },
+  "LLRD": {
+   "code": "LLRD",
+   "he": "רמת דוד",
+   "en": "Ramat David",
+   "lat": 32.66861,
+   "lng": 35.18333,
+   "kind": "airfield",
+   "layers": []
+  },
+  "LLRM": {
+   "code": "LLRM",
+   "he": "רמון",
+   "en": "Ramon",
+   "lat": 30.775,
+   "lng": 34.66667,
+   "kind": "airfield",
+   "layers": []
+  },
+  "LLRS": {
+   "code": "LLRS",
+   "he": "ראשון לציון",
+   "en": "Rishon LeZion",
+   "lat": 31.9675,
+   "lng": 34.75361,
+   "kind": "airfield",
+   "layers": []
+  },
+  "LTRUN": {
+   "code": "LTRUN",
+   "he": "לטרון",
+   "en": "Latrun",
+   "lat": 31.83861,
+   "lng": 34.98667,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "MEHOL": {
+   "code": "MEHOL",
+   "he": "משולש חולית",
+   "en": "Holit Triangle",
+   "lat": 31.96083,
+   "lng": 34.76417,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "MESAR": {
+   "code": "MESAR",
+   "he": "מעלה מישר",
+   "en": "Ma'ale Meishar",
+   "lat": 30.50167,
+   "lng": 34.94361,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "MESEK": {
+   "code": "MESEK",
+   "he": "משק",
+   "en": "Meshek",
+   "lat": 31.26472,
+   "lng": 34.69972,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "METAH": {
+   "code": "METAH",
+   "he": "מתח",
+   "en": "Metah",
+   "lat": 31.22556,
+   "lng": 34.755,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "MIHMS": {
+   "code": "MIHMS",
+   "he": "מעלה מכמש",
+   "en": "Ma'ale Mikhmas",
+   "lat": 31.85444,
+   "lng": 35.32944,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "MINGV": {
+   "code": "MINGV",
+   "he": "משמר הנגב",
+   "en": "Mishmar HaNegev",
+   "lat": 31.36889,
+   "lng": 34.71278,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "MMORR": {
+   "code": "MMORR",
+   "he": "מור",
+   "en": "Mor",
+   "lat": 31.25444,
+   "lng": 35.36833,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "MOVIL": {
+   "code": "MOVIL",
+   "he": "המוביל",
+   "en": "Hamovil",
+   "lat": 32.75917,
+   "lng": 35.23333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMAT_DAVID",
+    "PLUTO_EAST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "MRISN": {
+   "code": "MRISN",
+   "he": "מחלף ראשון",
+   "en": "Rishon Interchange",
+   "lat": 31.97694,
+   "lng": 34.79194,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "MYTAR": {
+   "code": "MYTAR",
+   "he": "מיתר",
+   "en": "Meitar",
+   "lat": 31.31472,
+   "lng": 34.93806,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "MZDOT": {
+   "code": "MZDOT",
+   "he": "מצודות",
+   "en": "Metzudot",
+   "lat": 31.35639,
+   "lng": 35.1075,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "NAAMA": {
+   "code": "NAAMA",
+   "he": "נעמה",
+   "en": "Naama",
+   "lat": 31.90861,
+   "lng": 35.4625,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "NAGID": {
+   "code": "NAGID",
+   "he": "כפר הנגיד",
+   "en": "Kfar HaNagid",
+   "lat": 31.88972,
+   "lng": 34.75583,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "NAHEM": {
+   "code": "NAHEM",
+   "he": "כפר מנחם",
+   "en": "Kfar Menahem",
+   "lat": 31.74528,
+   "lng": 34.82222,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NAHLA": {
+   "code": "NAHLA",
+   "he": "נחלה",
+   "en": "Nahala",
+   "lat": 31.65639,
+   "lng": 34.80917,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "NASIH": {
+   "code": "NASIH",
+   "he": "אשל הנשיא",
+   "en": "Eshel HaNasi",
+   "lat": 31.33028,
+   "lng": 34.69833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NCITY": {
+   "code": "NCITY",
+   "he": "צפון העיר",
+   "en": "North City",
+   "lat": 31.2875,
+   "lng": 34.79139,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH",
+    "KEDEM"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NCSHN": {
+   "code": "NCSHN",
+   "he": "צומת נחשון",
+   "en": "Nachshon Junction",
+   "lat": 31.81556,
+   "lng": 34.91694,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NEGEV": {
+   "code": "NEGEV",
+   "he": "צומת הנגב",
+   "en": "Negev Junction",
+   "lat": 31.06611,
+   "lng": 34.83806,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NITZA": {
+   "code": "NITZA",
+   "he": "ניצן",
+   "en": "Nitzan",
+   "lat": 31.72417,
+   "lng": 34.57056,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NIZAN": {
+   "code": "NIZAN",
+   "he": "מזלג ניצנה",
+   "en": "Nitzana Fork",
+   "lat": 30.75444,
+   "lng": 34.565,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMON",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "NMASD": {
+   "code": "NMASD",
+   "he": "נמל אשדוד",
+   "en": "Ashdod Port",
+   "lat": 31.83333,
+   "lng": 34.62528,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PALMACHIM",
+    "HAGAV_NORTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "NOAAM": {
+   "code": "NOAAM",
+   "he": "נעם",
+   "en": "No'am",
+   "lat": 31.57139,
+   "lng": 34.77583,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH",
+    "TEL_NOF"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "NSHRM": {
+   "code": "NSHRM",
+   "he": "מחלף נשרים",
+   "en": "Nesharim Interchange",
+   "lat": 31.90917,
+   "lng": 34.89167,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "BEN_GURION"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NTAIM": {
+   "code": "NTAIM",
+   "he": "נטעים",
+   "en": "Netaim",
+   "lat": 31.94361,
+   "lng": 34.78083,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "BEN_GURION",
+    "PALMACHIM",
+    "TEL_NOF"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "NTVOT": {
+   "code": "NTVOT",
+   "he": "נתיבות",
+   "en": "Netivot",
+   "lat": 31.42917,
+   "lng": 34.59917,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "OFKIM": {
+   "code": "OFKIM",
+   "he": "אופקים",
+   "en": "Ofakim",
+   "lat": 31.32222,
+   "lng": 34.61889,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "OHLIM": {
+   "code": "OHLIM",
+   "he": "אוהלים",
+   "en": "Ohalim",
+   "lat": 31.19111,
+   "lng": 34.80472,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "OLGAH": {
+   "code": "OLGAH",
+   "he": "אולגה",
+   "en": "Olga",
+   "lat": 32.43139,
+   "lng": 34.86583,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "OMMER": {
+   "code": "OMMER",
+   "he": "עומר",
+   "en": "Omer",
+   "lat": 31.27472,
+   "lng": 34.82833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "OSNAT": {
+   "code": "OSNAT",
+   "he": "אסנת",
+   "en": "Osnat",
+   "lat": 31.83278,
+   "lng": 34.52333,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "OVDAT": {
+   "code": "OVDAT",
+   "he": "חורבות עבדת",
+   "en": "Ovdat Ruins",
+   "lat": 30.80278,
+   "lng": 34.79333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "PARDS": {
+   "code": "PARDS",
+   "he": "פרדס",
+   "en": "Pardes",
+   "lat": 32.10278,
+   "lng": 34.84778,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "BEN_GURION",
+    "PLUTO_WEST"
+   ],
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "PELEG": {
+   "code": "PELEG",
+   "he": "פלג",
+   "en": "Peleg",
+   "lat": 32.33,
+   "lng": 34.83722,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "RANNO": {
+   "code": "RANNO",
+   "he": "רעננה צפון",
+   "en": "Ra'anana North",
+   "lat": 32.19083,
+   "lng": 34.88833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "REVAH": {
+   "code": "REVAH",
+   "he": "רווחה",
+   "en": "Revaha",
+   "lat": 31.64444,
+   "lng": 34.73028,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "RIDNG": {
+   "code": "RIDNG",
+   "he": "רידינג",
+   "en": "Riding",
+   "lat": 32.11028,
+   "lng": 34.7625,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "ROKCH": {
+   "code": "ROKCH",
+   "he": "רוקח",
+   "en": "Rokach",
+   "lat": 32.1025,
+   "lng": 34.80361,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "RUHOT": {
+   "code": "RUHOT",
+   "he": "צומת הרוחות",
+   "en": "Ruhot Junction",
+   "lat": 30.66,
+   "lng": 34.80889,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMON",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SAHAR": {
+   "code": "SAHAR",
+   "he": "סער",
+   "en": "Sa'ar",
+   "lat": 32.29583,
+   "lng": 34.75278,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "SAMAR": {
+   "code": "SAMAR",
+   "he": "סמר",
+   "en": "Samar",
+   "lat": 29.83139,
+   "lng": 35.02861,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "OVDA"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SDROT": {
+   "code": "SDROT",
+   "he": "שדרות",
+   "en": "Sderot",
+   "lat": 31.50667,
+   "lng": 34.58556,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH",
+    "KEDEM"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "SDTYM": {
+   "code": "SDTYM",
+   "he": "שדות ים",
+   "en": "Sdot Yam",
+   "lat": 32.49667,
+   "lng": 34.885,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "SEGEV": {
+   "code": "SEGEV",
+   "he": "שגב",
+   "en": "Segev",
+   "lat": 32.86111,
+   "lng": 35.2625,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "SFAIM": {
+   "code": "SFAIM",
+   "he": "שפיים",
+   "en": "Shefayim",
+   "lat": 32.21056,
+   "lng": 34.80722,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_WEST"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "SHAHR": {
+   "code": "SHAHR",
+   "he": "כוכב השחר",
+   "en": "Kokhav HaShahar",
+   "lat": 31.9575,
+   "lng": 35.33694,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SHALM": {
+   "code": "SHALM",
+   "he": "מצפה שלם",
+   "en": "Mitzpe Shalem",
+   "lat": 31.55861,
+   "lng": 35.4025,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SHARG": {
+   "code": "SHARG",
+   "he": "שער הגיא",
+   "en": "Sha'ar HaGai",
+   "lat": 31.81972,
+   "lng": 35.02111,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SHARO": {
+   "code": "SHARO",
+   "he": "צומת השרון",
+   "en": "Sharon Junction",
+   "lat": 32.32306,
+   "lng": 34.90389,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "SHRUT": {
+   "code": "SHRUT",
+   "he": "שחרות",
+   "en": "Shaharut",
+   "lat": 29.90778,
+   "lng": 35.00333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "RAMON",
+    "OVDA"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "SIGAL": {
+   "code": "SIGAL",
+   "he": "סיגל",
+   "en": "Sigal",
+   "lat": 31.195,
+   "lng": 34.29278,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "SIRNI": {
+   "code": "SIRNI",
+   "he": "נצר סירני",
+   "en": "Netzer Sireni",
+   "lat": 31.92806,
+   "lng": 34.83,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SITIM": {
+   "code": "SITIM",
+   "he": "שיטים",
+   "en": "Shitim",
+   "lat": 30.17583,
+   "lng": 35.01444,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SIZFN": {
+   "code": "SIZFN",
+   "he": "שזפון",
+   "en": "Shizafon",
+   "lat": 30.0475,
+   "lng": 35.01444,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "OVDA",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SMRAT": {
+   "code": "SMRAT",
+   "he": "שמרת",
+   "en": "Shomrat",
+   "lat": 32.95167,
+   "lng": 35.09,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SOKET": {
+   "code": "SOKET",
+   "he": "צומת שוקת",
+   "en": "Shoket Junction",
+   "lat": 31.3075,
+   "lng": 34.90111,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "NEGEV",
+    "HAGAV_NORTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SORES": {
+   "code": "SORES",
+   "he": "שורש",
+   "en": "Shoresh",
+   "lat": 31.79972,
+   "lng": 35.07611,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "TEL_NOF"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SOVAL": {
+   "code": "SOVAL",
+   "he": "שובל",
+   "en": "Shoval",
+   "lat": 31.41139,
+   "lng": 34.74639,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH",
+    "KEDEM"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "SUPER": {
+   "code": "SUPER",
+   "he": "סופרלנד",
+   "en": "Superland",
+   "lat": 31.97639,
+   "lng": 34.74167,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "SZION": {
+   "code": "SZION",
+   "he": "שבי ציון",
+   "en": "Shavei Tzion",
+   "lat": 32.97944,
+   "lng": 35.09333,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "TARAD": {
+   "code": "TARAD",
+   "he": "תל ערד",
+   "en": "Tel Arad",
+   "lat": 31.2775,
+   "lng": 35.12556,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "TAVOR": {
+   "code": "TAVOR",
+   "he": "כפר תבור",
+   "en": "Kfar Tavor",
+   "lat": 32.69028,
+   "lng": 35.42,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "TIRAT": {
+   "code": "TIRAT",
+   "he": "טירת צבי",
+   "en": "Tirat Tzvi",
+   "lat": 32.42444,
+   "lng": 35.52667,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "TLLIM": {
+   "code": "TLLIM",
+   "he": "טללים",
+   "en": "Tlalim",
+   "lat": 30.99056,
+   "lng": 34.76222,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "TYONA": {
+   "code": "TYONA",
+   "he": "תל יונה",
+   "en": "Tel Yona",
+   "lat": 32.00472,
+   "lng": 34.72722,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_WEST",
+    "PALMACHIM"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "TZHOT": {
+   "code": "TZHOT",
+   "he": "צלחות",
+   "en": "Tzelahot",
+   "lat": 31.30778,
+   "lng": 34.52972,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "VINGT": {
+   "code": "VINGT",
+   "he": "וינגייט",
+   "en": "Wingate",
+   "lat": 32.25556,
+   "lng": 34.81694,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "YAHEL": {
+   "code": "YAHEL",
+   "he": "יהל",
+   "en": "Yahel",
+   "lat": 30.08222,
+   "lng": 35.13333,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "YAHOL": {
+   "code": "YAHOL",
+   "he": "ים חולון",
+   "en": "Holon Sea",
+   "lat": 32.0225,
+   "lng": 34.46056,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "YAPAL": {
+   "code": "YAPAL",
+   "he": "ים פלמחים",
+   "en": "Palmachim Sea",
+   "lat": 31.915,
+   "lng": 34.45833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_WEST",
+    "HAGAV_NORTH"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "YASDD": {
+   "code": "YASDD",
+   "he": "ים אשדוד",
+   "en": "Ashdod Sea",
+   "lat": 31.81028,
+   "lng": 34.45639,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "YASFA": {
+   "code": "YASFA",
+   "he": "ים שפיים",
+   "en": "Shefayim Sea",
+   "lat": 32.21861,
+   "lng": 34.62472,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "YATED": {
+   "code": "YATED",
+   "he": "יתד",
+   "en": "Yated",
+   "lat": 31.20472,
+   "lng": 34.33444,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "YAVNE": {
+   "code": "YAVNE",
+   "he": "יבנה מזרח",
+   "en": "East Yavne",
+   "lat": 31.87194,
+   "lng": 34.75694,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "YOTVT": {
+   "code": "YOTVT",
+   "he": "יטבתה",
+   "en": "Yotvata",
+   "lat": 29.90083,
+   "lng": 35.06722,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "YRIHO": {
+   "code": "YRIHO",
+   "he": "מצפה יריחו",
+   "en": "Mitzpe Yericho",
+   "lat": 31.81944,
+   "lng": 35.3875,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "YRUHM": {
+   "code": "YRUHM",
+   "he": "ירוחם",
+   "en": "Yeruham",
+   "lat": 30.98972,
+   "lng": 34.91083,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZAFIT": {
+   "code": "ZAFIT",
+   "he": "צומת צפית",
+   "en": "Tzafit Junction",
+   "lat": 31.0425,
+   "lng": 35.19972,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli"
+   ]
+  },
+  "ZALMN": {
+   "code": "ZALMN",
+   "he": "צלמון",
+   "en": "Tzalmon",
+   "lat": 32.85333,
+   "lng": 35.41167,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ZASHD": {
+   "code": "ZASHD",
+   "he": "צומת אשדוד",
+   "en": "Ashdod Junction",
+   "lat": 31.82611,
+   "lng": 34.70833,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PALMACHIM"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZDAFA": {
+   "code": "ZDAFA",
+   "he": "צדפה",
+   "en": "Tzidfa",
+   "lat": 31.78167,
+   "lng": 34.59972,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH",
+    "HATZOR"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ZGOAL": {
+   "code": "ZGOAL",
+   "he": "גורל",
+   "en": "Goral",
+   "lat": 31.31278,
+   "lng": 34.78778,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "ZHRYA": {
+   "code": "ZHRYA",
+   "he": "זכריה",
+   "en": "Zecharia",
+   "lat": 31.69972,
+   "lng": 34.945,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZLHAV": {
+   "code": "ZLHAV",
+   "he": "צומת להבים",
+   "en": "Lehavim Junction",
+   "lat": 31.3725,
+   "lng": 34.79333,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "lsa"
+   ]
+  },
+  "ZMGEN": {
+   "code": "ZMGEN",
+   "he": "צומת מגן",
+   "en": "Magen Junction",
+   "lat": 31.29389,
+   "lng": 34.43222,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH",
+    "KEDEM"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ZMGID": {
+   "code": "ZMGID",
+   "he": "צומת מגידו",
+   "en": "Megiddo Junction",
+   "lat": 32.57278,
+   "lng": 35.19111,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "PLUTO_WEST",
+    "MEGIDDO"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZOFAR": {
+   "code": "ZOFAR",
+   "he": "צופר",
+   "en": "Tzofar",
+   "lat": 30.55972,
+   "lng": 35.18667,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZOHAR": {
+   "code": "ZOHAR",
+   "he": "נווה זוהר",
+   "en": "Neve Zohar",
+   "lat": 31.15083,
+   "lng": 35.3725,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZOREA": {
+   "code": "ZOREA",
+   "he": "הזורע",
+   "en": "Hazorea",
+   "lat": 32.64806,
+   "lng": 35.11889,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ZRANA": {
+   "code": "ZRANA",
+   "he": "רעננה מרכז",
+   "en": "Ra'anana Center",
+   "lat": 32.17722,
+   "lng": 34.88778,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ZUKIM": {
+   "code": "ZUKIM",
+   "he": "עינות צוקים",
+   "en": "Einot Tzukim",
+   "lat": 31.71611,
+   "lng": 35.44972,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "PLUTO_EAST",
+    "HAGAV_SOUTH"
+   ],
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
+  },
+  "ZURIM": {
+   "code": "ZURIM",
+   "he": "עין צורים",
+   "en": "Ein Tzurim",
+   "lat": 31.70167,
+   "lng": 34.715,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "commChange": true,
+   "callSigns": [
+    "HAGAV_NORTH"
+   ],
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ZYAAR": {
+   "code": "ZYAAR",
+   "he": "צומת יער",
+   "en": "Ya'ar Junction",
+   "lat": 32.40972,
+   "lng": 34.90361,
+   "kind": "waypoint",
+   "report": "mandatory",
+   "layers": [
+    "cvfr"
+   ]
+  },
+  "ZZHOR": {
+   "code": "ZZHOR",
+   "he": "צומת ציחור",
+   "en": "Tzihor Junction",
+   "lat": 30.27667,
+   "lng": 35.02,
+   "kind": "waypoint",
+   "report": "onRequest",
+   "layers": [
+    "cvfr",
+    "heli",
+    "lsa"
+   ]
   }
  },
  "edges": {
   "AAKKO": [
    {
     "to": "AHIUD",
-    "distanceNm": 4.3,
     "inboundAltitude": null,
     "outboundAltitude": 2000,
+    "distanceNm": 4.29,
+    "chartDistanceNm": 4.3,
     "oneWay": true,
     "status": "candidate"
    },
    {
     "to": "DUGIT",
-    "distanceNm": 4.6,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 4.56,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    },
    {
     "to": "KRYON",
-    "distanceNm": 4.5,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 4.54,
+    "chartDistanceNm": 4.5,
     "status": "reviewed"
    },
    {
     "to": "SMRAT",
-    "distanceNm": 2,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 2.01,
+    "chartDistanceNm": 2,
     "status": "reviewed"
    }
   ],
   "AHIUD": [
    {
     "to": "AAKKO",
-    "distanceNm": 4.3,
     "inboundAltitude": 2000,
     "outboundAltitude": null,
+    "distanceNm": 4.29,
+    "chartDistanceNm": 4.3,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "EVLYM",
-    "distanceNm": 5.5,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 5.49,
+    "chartDistanceNm": 5.5,
     "status": "reviewed"
    }
   ],
   "DUGIT": [
    {
     "to": "AAKKO",
-    "distanceNm": 4.6,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 4.56,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    },
    {
     "to": "LLHA",
-    "distanceNm": 2.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 2.69,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    }
   ],
   "KRYON": [
    {
     "to": "AAKKO",
-    "distanceNm": 4.5,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 4.54,
+    "chartDistanceNm": 4.5,
     "status": "reviewed"
    },
    {
     "to": "GALIM",
-    "distanceNm": 5.4,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 5.44,
+    "chartDistanceNm": 5.4,
     "status": "unknown"
    },
    {
     "to": "LLHA",
-    "distanceNm": 3.1,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 3.13,
+    "chartDistanceNm": 3.1,
     "status": "candidate"
    }
   ],
   "SMRAT": [
    {
     "to": "AAKKO",
-    "distanceNm": 2,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 2.01,
+    "chartDistanceNm": 2,
     "status": "reviewed"
    },
    {
     "to": "SZION",
-    "distanceNm": 1.7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 1.68,
+    "chartDistanceNm": 1.7,
     "status": "reviewed"
    }
   ],
   "AFFEK": [
    {
     "to": "LLHA",
-    "distanceNm": 4.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 4.7,
+    "chartDistanceNm": 4.7,
     "status": "candidate"
    }
   ],
   "LLHA": [
    {
     "to": "AFFEK",
-    "distanceNm": 4.7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 4.7,
+    "chartDistanceNm": 4.7,
     "status": "candidate"
    },
    {
     "to": "DUGIT",
-    "distanceNm": 2.7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 2.69,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    },
    {
     "to": "GALIM",
-    "distanceNm": 3.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 3.68,
+    "chartDistanceNm": 3.7,
     "status": "candidate"
    },
    {
     "to": "GILAM",
-    "distanceNm": 4.6,
     "inboundAltitude": 1500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.59,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    },
    {
     "to": "HASID",
-    "distanceNm": 4.1,
     "inboundAltitude": 1500,
     "outboundAltitude": 2500,
+    "distanceNm": 4.1,
+    "chartDistanceNm": 4.1,
     "status": "reviewed"
    },
    {
     "to": "KRYON",
-    "distanceNm": 3.1,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 3.13,
+    "chartDistanceNm": 3.1,
     "status": "candidate"
    }
   ],
   "AFULA": [
    {
     "to": "LLMG",
-    "distanceNm": 2.4,
     "inboundAltitude": 1500,
     "outboundAltitude": 1000,
+    "distanceNm": 2.42,
+    "chartDistanceNm": 2.4,
     "status": "candidate"
    },
    {
     "to": "TAVOR",
-    "distanceNm": 8.7,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 8.71,
+    "chartDistanceNm": 8.7,
     "status": "candidate"
    },
    {
     "to": "ZMGID",
-    "distanceNm": 5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 4.95,
+    "chartDistanceNm": 5,
     "status": "candidate"
    }
   ],
   "LLMG": [
    {
     "to": "AFULA",
-    "distanceNm": 2.4,
     "inboundAltitude": 1000,
     "outboundAltitude": 1500,
+    "distanceNm": 2.42,
+    "chartDistanceNm": 2.4,
     "status": "candidate"
    },
    {
     "to": "ZMGID",
-    "distanceNm": 2.7,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 2.65,
+    "chartDistanceNm": 2.7,
     "status": "unknown"
    }
   ],
   "TAVOR": [
    {
     "to": "AFULA",
-    "distanceNm": 8.7,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 8.71,
+    "chartDistanceNm": 8.7,
     "status": "candidate"
    },
    {
     "to": "ALUMT",
-    "distanceNm": 6.5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.54,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    },
    {
     "to": "DESHE",
-    "distanceNm": 12.2,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 12.19,
+    "chartDistanceNm": 12.2,
     "status": "candidate"
    }
   ],
   "ZMGID": [
    {
     "to": "AFULA",
-    "distanceNm": 5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.95,
+    "chartDistanceNm": 5,
     "status": "candidate"
    },
    {
     "to": "EIRON",
-    "distanceNm": 10.1,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 10.08,
+    "chartDistanceNm": 10.1,
     "status": "candidate"
    },
    {
     "to": "LLMG",
-    "distanceNm": 2.7,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 2.65,
+    "chartDistanceNm": 2.7,
     "status": "unknown"
    },
    {
     "to": "LLRD",
-    "distanceNm": 5.8,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
     "status": "reviewed"
    }
   ],
   "EVLYM": [
    {
     "to": "AHIUD",
-    "distanceNm": 5.5,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 5.49,
+    "chartDistanceNm": 5.5,
     "status": "reviewed"
    },
    {
     "to": "GILAM",
-    "distanceNm": 1,
     "inboundAltitude": 3000,
     "outboundAltitude": 1500,
+    "distanceNm": 0.96,
+    "chartDistanceNm": 1,
     "status": "candidate"
    },
    {
     "to": "HASID",
-    "distanceNm": 5.9,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 5.94,
+    "chartDistanceNm": 5.9,
     "status": "candidate"
    },
    {
     "to": "SEGEV",
-    "distanceNm": 6,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.03,
+    "chartDistanceNm": 6,
     "status": "candidate"
    }
   ],
   "ALLON": [
    {
     "to": "FAZEL",
-    "distanceNm": 4.9,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.92,
+    "chartDistanceNm": 4.9,
     "status": "candidate"
    },
    {
     "to": "SHAHR",
-    "distanceNm": 5.3,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 5.26,
+    "chartDistanceNm": 5.3,
     "status": "candidate"
    }
   ],
   "FAZEL": [
    {
     "to": "ALLON",
-    "distanceNm": 4.9,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 4.92,
+    "chartDistanceNm": 4.9,
     "status": "candidate"
    },
    {
     "to": "ARGMN",
-    "distanceNm": 8.3,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 8.29,
+    "chartDistanceNm": 8.3,
     "status": "candidate"
    },
    {
     "to": "NAAMA",
-    "distanceNm": 8.4,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 8.37,
+    "chartDistanceNm": 8.4,
     "status": "candidate"
    }
   ],
   "SHAHR": [
    {
     "to": "ALLON",
-    "distanceNm": 5.3,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 5.26,
+    "chartDistanceNm": 5.3,
     "status": "candidate"
    },
    {
     "to": "DUMIM",
-    "distanceNm": 9.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 9.24,
+    "chartDistanceNm": 9.2,
     "status": "candidate"
    },
    {
     "to": "MIHMS",
-    "distanceNm": 6.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 6.2,
+    "chartDistanceNm": 6.2,
     "status": "candidate"
    }
   ],
   "ALMOG": [
    {
     "to": "NAAMA",
-    "distanceNm": 7.1,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 7.15,
+    "chartDistanceNm": 7.1,
     "status": "candidate"
    },
    {
     "to": "YRIHO",
-    "distanceNm": 3.9,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 3.94,
+    "chartDistanceNm": 3.9,
     "status": "candidate"
    },
    {
     "to": "ZUKIM",
-    "distanceNm": 4.4,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 4.43,
+    "chartDistanceNm": 4.4,
     "status": "candidate"
    }
   ],
   "NAAMA": [
    {
     "to": "ALMOG",
-    "distanceNm": 7.1,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 7.15,
+    "chartDistanceNm": 7.1,
     "status": "candidate"
    },
    {
     "to": "FAZEL",
-    "distanceNm": 8.4,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 8.37,
+    "chartDistanceNm": 8.4,
     "status": "candidate"
    }
   ],
   "ZUKIM": [
    {
     "to": "ALMOG",
-    "distanceNm": 4.4,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.43,
+    "chartDistanceNm": 4.4,
     "status": "candidate"
    },
    {
     "to": "SHALM",
-    "distanceNm": 9.8,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 9.76,
+    "chartDistanceNm": 9.8,
     "status": "candidate"
    }
   ],
   "ALUMT": [
    {
     "to": "DESHE",
-    "distanceNm": 9.4,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 9.38,
+    "chartDistanceNm": 9.4,
     "status": "candidate"
    },
    {
     "to": "HAROV",
-    "distanceNm": 6.7,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.73,
+    "chartDistanceNm": 6.7,
     "status": "candidate"
    },
    {
     "to": "KOYAR",
-    "distanceNm": 7,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 7.01,
+    "chartDistanceNm": 7,
     "status": "candidate"
    },
    {
     "to": "TAVOR",
-    "distanceNm": 6.5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.54,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    }
   ],
   "DESHE": [
    {
     "to": "ALUMT",
-    "distanceNm": 9.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 9.38,
+    "chartDistanceNm": 9.4,
     "status": "candidate"
    },
    {
     "to": "AMNON",
-    "distanceNm": 2.7,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 2.74,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    },
    {
     "to": "TAVOR",
-    "distanceNm": 12.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 12.19,
+    "chartDistanceNm": 12.2,
     "status": "candidate"
    },
    {
     "to": "ZALMN",
-    "distanceNm": 6.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.18,
+    "chartDistanceNm": 6.2,
     "status": "reviewed"
    }
   ],
   "HAROV": [
    {
     "to": "ALUMT",
-    "distanceNm": 6.7,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.73,
+    "chartDistanceNm": 6.7,
     "status": "candidate"
    },
    {
     "to": "LLFK",
-    "distanceNm": 2.9,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 2.92,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    }
   ],
   "KOYAR": [
    {
     "to": "ALUMT",
-    "distanceNm": 7,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 7.01,
+    "chartDistanceNm": 7,
     "status": "candidate"
    },
    {
     "to": "EITAN",
-    "distanceNm": 6.1,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 6.14,
+    "chartDistanceNm": 6.1,
     "status": "candidate"
    },
    {
     "to": "TIRAT",
-    "distanceNm": 10.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 10.43,
+    "chartDistanceNm": 10.4,
     "status": "candidate"
    }
   ],
   "AMIOZ": [
    {
     "to": "GVULT",
-    "distanceNm": 3.4,
     "inboundAltitude": 2000,
     "outboundAltitude": 2500,
+    "distanceNm": 3.43,
+    "chartDistanceNm": 3.4,
     "status": "candidate"
    },
    {
     "to": "YATED",
-    "distanceNm": 4.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 2500,
+    "distanceNm": 4.69,
+    "chartDistanceNm": 4.7,
     "status": "candidate"
    },
    {
     "to": "ZMGEN",
-    "distanceNm": 2.7,
     "inboundAltitude": 2500,
     "outboundAltitude": 2000,
+    "distanceNm": 2.7,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    }
   ],
   "GVULT": [
    {
     "to": "AMIOZ",
-    "distanceNm": 3.4,
     "inboundAltitude": 2500,
     "outboundAltitude": 2000,
+    "distanceNm": 3.43,
+    "chartDistanceNm": 3.4,
     "status": "candidate"
    },
    {
     "to": "YATED",
-    "distanceNm": 6.6,
     "inboundAltitude": 2500,
     "outboundAltitude": 2000,
+    "distanceNm": 6.6,
+    "chartDistanceNm": 6.6,
     "status": "candidate"
    }
   ],
   "YATED": [
    {
     "to": "AMIOZ",
-    "distanceNm": 4.7,
     "inboundAltitude": 2500,
     "outboundAltitude": 2000,
+    "distanceNm": 4.69,
+    "chartDistanceNm": 4.7,
     "status": "candidate"
    },
    {
     "to": "GVULT",
-    "distanceNm": 6.6,
     "inboundAltitude": 2000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.6,
+    "chartDistanceNm": 6.6,
     "status": "candidate"
    },
    {
     "to": "SIGAL",
-    "distanceNm": 2.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 2.22,
+    "chartDistanceNm": 2.2,
     "status": "candidate"
    }
   ],
   "ZMGEN": [
    {
     "to": "AMIOZ",
-    "distanceNm": 2.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 2500,
+    "distanceNm": 2.7,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    },
    {
     "to": "TZHOT",
-    "distanceNm": 5.1,
     "inboundAltitude": 2000,
     "outboundAltitude": 2000,
+    "distanceNm": 5.07,
+    "chartDistanceNm": 5.1,
     "status": "candidate"
    }
   ],
   "AMNON": [
    {
     "to": "DESHE",
-    "distanceNm": 2.7,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 2.74,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    },
    {
     "to": "HULAT",
-    "distanceNm": 8.9,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 8.87,
+    "chartDistanceNm": 8.9,
     "status": "unknown"
    },
    {
     "to": "LLIB",
-    "distanceNm": 4.5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.51,
+    "chartDistanceNm": 4.5,
     "status": "candidate"
    }
   ],
   "HULAT": [
    {
     "to": "AMNON",
-    "distanceNm": 8.9,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 8.87,
+    "chartDistanceNm": 8.9,
     "status": "unknown"
    },
    {
     "to": "BASAN",
-    "distanceNm": 6.2,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.17,
+    "chartDistanceNm": 6.2,
     "status": "candidate"
    },
    {
     "to": "LLIB",
-    "distanceNm": 4.8,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 4.8,
+    "chartDistanceNm": 4.8,
     "status": "candidate"
    }
   ],
   "LLIB": [
    {
     "to": "AMNON",
-    "distanceNm": 4.5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 4.51,
+    "chartDistanceNm": 4.5,
     "status": "candidate"
    },
    {
     "to": "HULAT",
-    "distanceNm": 4.8,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.8,
+    "chartDistanceNm": 4.8,
     "status": "candidate"
    }
   ],
   "ANATA": [
    {
     "to": "DUMIM",
-    "distanceNm": 2.9,
     "inboundAltitude": 4500,
     "outboundAltitude": 5000,
+    "distanceNm": 2.91,
+    "chartDistanceNm": 2.9,
     "status": "reviewed"
    },
    {
     "to": "HNINA",
-    "distanceNm": 3.3,
     "inboundAltitude": 5000,
     "outboundAltitude": 4500,
+    "distanceNm": 3.31,
+    "chartDistanceNm": 3.3,
     "status": "reviewed"
    }
   ],
   "DUMIM": [
    {
     "to": "ANATA",
-    "distanceNm": 2.9,
     "inboundAltitude": 5000,
     "outboundAltitude": 4500,
+    "distanceNm": 2.91,
+    "chartDistanceNm": 2.9,
     "status": "reviewed"
    },
    {
     "to": "MIHMS",
-    "distanceNm": 3,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 3.04,
+    "chartDistanceNm": 3,
     "status": "unknown"
    },
    {
     "to": "SHAHR",
-    "distanceNm": 9.2,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 9.24,
+    "chartDistanceNm": 9.2,
     "status": "candidate"
    },
    {
     "to": "YRIHO",
-    "distanceNm": 3.3,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    }
   ],
   "HNINA": [
    {
     "to": "ANATA",
-    "distanceNm": 3.3,
     "inboundAltitude": 4500,
     "outboundAltitude": 5000,
+    "distanceNm": 3.31,
+    "chartDistanceNm": 3.3,
     "status": "reviewed"
    },
    {
     "to": "HAREL",
-    "distanceNm": 3.7,
     "inboundAltitude": 5000,
     "outboundAltitude": 4500,
+    "distanceNm": 3.66,
+    "chartDistanceNm": 3.7,
     "status": "candidate"
    }
   ],
   "APOLN": [
    {
     "to": "ARENA",
-    "distanceNm": 1.7,
     "inboundAltitude": 800,
     "outboundAltitude": 1600,
+    "distanceNm": 1.69,
+    "chartDistanceNm": 1.7,
     "status": "reviewed"
    },
    {
     "to": "SFAIM",
-    "distanceNm": 1.3,
     "inboundAltitude": 1600,
     "outboundAltitude": 800,
+    "distanceNm": 1.27,
+    "chartDistanceNm": 1.3,
     "status": "reviewed"
    }
   ],
   "ARENA": [
    {
     "to": "APOLN",
-    "distanceNm": 1.7,
     "inboundAltitude": 1600,
     "outboundAltitude": 800,
+    "distanceNm": 1.69,
+    "chartDistanceNm": 1.7,
     "status": "reviewed"
    },
    {
     "to": "HTZUK",
-    "distanceNm": 1.2,
     "inboundAltitude": 800,
     "outboundAltitude": 1600,
+    "distanceNm": 1.21,
+    "chartDistanceNm": 1.2,
     "status": "reviewed"
    }
   ],
   "SFAIM": [
    {
     "to": "APOLN",
-    "distanceNm": 1.3,
     "inboundAltitude": 800,
     "outboundAltitude": 1600,
+    "distanceNm": 1.27,
+    "chartDistanceNm": 1.3,
     "status": "reviewed"
    },
    {
     "to": "HTZUK",
-    "distanceNm": 4.2,
     "inboundAltitude": 800,
     "outboundAltitude": 1600,
+    "distanceNm": 4.17,
+    "chartDistanceNm": 4.2,
     "status": "candidate"
    },
    {
     "to": "LLHZ",
-    "distanceNm": 2.3,
     "inboundAltitude": null,
     "outboundAltitude": 1200,
+    "distanceNm": 2.32,
+    "chartDistanceNm": 2.3,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "RIDNG",
-    "distanceNm": 6.4,
     "inboundAltitude": 800,
     "outboundAltitude": 1600,
+    "distanceNm": 6.44,
+    "chartDistanceNm": 6.4,
     "status": "candidate"
    },
    {
     "to": "VINGT",
-    "distanceNm": 2.7,
     "inboundAltitude": 1600,
     "outboundAltitude": 800,
+    "distanceNm": 2.75,
+    "chartDistanceNm": 2.7,
     "status": "reviewed"
    }
   ],
   "ARAVA": [
    {
     "to": "HAZVA",
-    "distanceNm": 13.5,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 13.51,
+    "chartDistanceNm": 13.5,
     "status": "candidate"
    },
    {
     "to": "ZAFIT",
-    "distanceNm": 6.5,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 6.47,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    },
    {
     "to": "ZOHAR",
-    "distanceNm": 10.2,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 10.22,
+    "chartDistanceNm": 10.2,
     "status": "candidate"
    }
   ],
   "HAZVA": [
    {
     "to": "ARAVA",
-    "distanceNm": 13.5,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 13.51,
+    "chartDistanceNm": 13.5,
     "status": "candidate"
    },
    {
     "to": "LLEY",
-    "distanceNm": 9.3,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 9.63,
+    "chartDistanceNm": 9.3,
     "status": "candidate"
    },
    {
     "to": "ZOFAR",
-    "distanceNm": 13.1,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 13.08,
+    "chartDistanceNm": 13.1,
     "status": "unknown"
    }
   ],
   "ZAFIT": [
    {
     "to": "ARAVA",
-    "distanceNm": 6.5,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 6.47,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    },
    {
     "to": "DIMON",
-    "distanceNm": 10.1,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 10.09,
+    "chartDistanceNm": 10.1,
     "status": "candidate"
    }
   ],
   "ZOHAR": [
    {
     "to": "ARAVA",
-    "distanceNm": 10.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 10.22,
+    "chartDistanceNm": 10.2,
     "status": "candidate"
    },
    {
     "to": "HATRU",
-    "distanceNm": 7.6,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 7.57,
+    "chartDistanceNm": 7.6,
     "status": "candidate"
    },
    {
     "to": "LLMZ",
-    "distanceNm": 10.7,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 10.74,
+    "chartDistanceNm": 10.7,
     "status": "unknown"
    },
    {
     "to": "MMORR",
-    "distanceNm": 6.2,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 6.22,
+    "chartDistanceNm": 6.2,
     "status": "reviewed"
    }
   ],
   "HTZUK": [
    {
     "to": "ARENA",
-    "distanceNm": 1.2,
     "inboundAltitude": 1600,
     "outboundAltitude": 800,
+    "distanceNm": 1.21,
+    "chartDistanceNm": 1.2,
     "status": "reviewed"
    },
    {
     "to": "KNTRY",
-    "distanceNm": 1.2,
     "inboundAltitude": 1200,
     "outboundAltitude": null,
+    "distanceNm": 1.21,
+    "chartDistanceNm": 1.2,
     "oneWay": true,
     "status": "reviewed"
    },
    {
     "to": "RIDNG",
-    "distanceNm": 2.3,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 2.27,
+    "chartDistanceNm": 2.3,
     "status": "reviewed"
    },
    {
     "to": "SFAIM",
-    "distanceNm": 4.2,
     "inboundAltitude": 1600,
     "outboundAltitude": 800,
+    "distanceNm": 4.17,
+    "chartDistanceNm": 4.2,
     "status": "candidate"
    }
   ],
   "ARGMN": [
    {
     "to": "FAZEL",
-    "distanceNm": 8.3,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 8.29,
+    "chartDistanceNm": 8.3,
     "status": "candidate"
    },
    {
     "to": "TIRAT",
-    "distanceNm": 15.1,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 15.1,
+    "chartDistanceNm": 15.1,
     "status": "candidate"
    }
   ],
   "TIRAT": [
    {
     "to": "ARGMN",
-    "distanceNm": 15.1,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 15.1,
+    "chartDistanceNm": 15.1,
     "status": "candidate"
    },
    {
     "to": "EITAN",
-    "distanceNm": 4.3,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 4.28,
+    "chartDistanceNm": 4.3,
     "status": "unknown"
    },
    {
     "to": "KOYAR",
-    "distanceNm": 10.4,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 10.43,
+    "chartDistanceNm": 10.4,
     "status": "candidate"
    }
   ],
   "ARRAD": [
    {
     "to": "HATRU",
-    "distanceNm": 2.9,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 2.91,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    },
    {
     "to": "LLMZ",
-    "distanceNm": 10.2,
     "inboundAltitude": 4000,
     "outboundAltitude": null,
+    "distanceNm": 10.2,
+    "chartDistanceNm": 10.2,
     "oneWay": true,
     "status": "candidate"
    },
    {
     "to": "LLNV",
-    "distanceNm": 10.1,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 10.13,
+    "chartDistanceNm": 10.1,
     "status": "candidate"
    },
    {
     "to": "MMORR",
-    "distanceNm": 8.1,
     "inboundAltitude": null,
     "outboundAltitude": 4000,
+    "distanceNm": 8.14,
+    "chartDistanceNm": 8.1,
     "oneWay": true,
     "status": "candidate"
    },
    {
     "to": "TARAD",
-    "distanceNm": 4.5,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.54,
+    "chartDistanceNm": 4.5,
     "status": "candidate"
    }
   ],
   "HATRU": [
    {
     "to": "ARRAD",
-    "distanceNm": 2.9,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 2.91,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    },
    {
     "to": "ZOHAR",
-    "distanceNm": 7.6,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 7.57,
+    "chartDistanceNm": 7.6,
     "status": "candidate"
    }
   ],
   "LLMZ": [
    {
     "to": "ARRAD",
-    "distanceNm": 10.2,
     "inboundAltitude": null,
     "outboundAltitude": 4000,
+    "distanceNm": 10.2,
+    "chartDistanceNm": 10.2,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "ENGDI",
-    "distanceNm": 8.1,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 8.11,
+    "chartDistanceNm": 8.1,
     "status": "candidate"
    },
    {
     "to": "MMORR",
-    "distanceNm": 4.6,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 4.6,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    },
    {
     "to": "SHALM",
-    "distanceNm": 13.8,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 13.79,
+    "chartDistanceNm": 13.8,
     "status": "candidate"
    },
    {
     "to": "ZOHAR",
-    "distanceNm": 10.7,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 10.74,
+    "chartDistanceNm": 10.7,
     "status": "unknown"
    }
   ],
   "LLNV": [
    {
     "to": "ARRAD",
-    "distanceNm": 10.1,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 10.13,
+    "chartDistanceNm": 10.1,
     "status": "candidate"
    },
    {
     "to": "DIMON",
-    "distanceNm": 8.8,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 8.76,
+    "chartDistanceNm": 8.8,
     "status": "candidate"
    },
    {
     "to": "HOVAV",
-    "distanceNm": 11.9,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 11.91,
+    "chartDistanceNm": 11.9,
     "status": "candidate"
    }
   ],
   "MMORR": [
    {
     "to": "ARRAD",
-    "distanceNm": 8.1,
     "inboundAltitude": 4000,
     "outboundAltitude": null,
+    "distanceNm": 8.14,
+    "chartDistanceNm": 8.1,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "ENGDI",
-    "distanceNm": 12.7,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 12.66,
+    "chartDistanceNm": 12.7,
     "status": "unknown"
    },
    {
     "to": "LLMZ",
-    "distanceNm": 4.6,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.6,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    },
    {
     "to": "ZOHAR",
-    "distanceNm": 6.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 6.22,
+    "chartDistanceNm": 6.2,
     "status": "reviewed"
    }
   ],
   "TARAD": [
    {
     "to": "ARRAD",
-    "distanceNm": 4.5,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 4.54,
+    "chartDistanceNm": 4.5,
     "status": "candidate"
    },
    {
     "to": "MYTAR",
-    "distanceNm": 9.9,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 9.88,
+    "chartDistanceNm": 9.9,
     "status": "candidate"
    }
   ],
   "ASKLN": [
    {
     "to": "GVARM",
-    "distanceNm": 5.7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 5.7,
+    "chartDistanceNm": 5.7,
     "status": "reviewed"
    },
    {
     "to": "NITZA",
-    "distanceNm": 3.8,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 3.82,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    },
    {
     "to": "OSNAT",
-    "distanceNm": 10,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 10.02,
+    "chartDistanceNm": 10,
     "status": "candidate"
    },
    {
     "to": "YASDD",
-    "distanceNm": 9.6,
     "inboundAltitude": 1000,
     "outboundAltitude": 500,
+    "distanceNm": 9.62,
+    "chartDistanceNm": 9.6,
     "status": "candidate"
    }
   ],
   "GVARM": [
    {
     "to": "ASKLN",
-    "distanceNm": 5.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 5.7,
+    "chartDistanceNm": 5.7,
     "status": "reviewed"
    },
    {
     "to": "BHAIL",
-    "distanceNm": 2.4,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 2.42,
+    "chartDistanceNm": 2.4,
     "status": "reviewed"
    },
    {
     "to": "NTVOT",
-    "distanceNm": 9.9,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 9.87,
+    "chartDistanceNm": 9.9,
     "status": "candidate"
    },
    {
     "to": "SDROT",
-    "distanceNm": 5.4,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 5.35,
+    "chartDistanceNm": 5.4,
     "status": "candidate"
    }
   ],
   "NITZA": [
    {
     "to": "ASKLN",
-    "distanceNm": 3.8,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 3.82,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    },
    {
     "to": "HODYA",
-    "distanceNm": 4.9,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 4.87,
+    "chartDistanceNm": 4.9,
     "status": "reviewed"
    },
    {
     "to": "NMASD",
-    "distanceNm": 7.1,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 7.12,
+    "chartDistanceNm": 7.1,
     "status": "candidate"
    },
    {
     "to": "OSNAT",
-    "distanceNm": 7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 6.95,
+    "chartDistanceNm": 7,
     "status": "reviewed"
    },
    {
     "to": "ZDAFA",
-    "distanceNm": 3.8,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 3.76,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    }
   ],
   "OSNAT": [
    {
     "to": "ASKLN",
-    "distanceNm": 10,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 10.02,
+    "chartDistanceNm": 10,
     "status": "candidate"
    },
    {
     "to": "LIAAD",
-    "distanceNm": 7.6,
     "inboundAltitude": 1500,
     "outboundAltitude": 1000,
+    "distanceNm": 7.55,
+    "chartDistanceNm": 7.6,
     "status": "candidate"
    },
    {
     "to": "NITZA",
-    "distanceNm": 7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 6.95,
+    "chartDistanceNm": 7,
     "status": "reviewed"
    },
    {
     "to": "ZDAFA",
-    "distanceNm": 5,
     "inboundAltitude": 2000,
     "outboundAltitude": 1600,
+    "distanceNm": 4.96,
+    "chartDistanceNm": 5,
     "status": "reviewed"
    }
   ],
   "YASDD": [
    {
     "to": "ASKLN",
-    "distanceNm": 9.6,
     "inboundAltitude": 500,
     "outboundAltitude": 1000,
+    "distanceNm": 9.62,
+    "chartDistanceNm": 9.6,
     "status": "candidate"
    },
    {
     "to": "YAPAL",
-    "distanceNm": 6.3,
     "inboundAltitude": 1000,
     "outboundAltitude": 500,
+    "distanceNm": 6.29,
+    "chartDistanceNm": 6.3,
     "status": "candidate"
    }
   ],
   "AYLON": [
    {
     "to": "LLBG",
-    "distanceNm": 8.8,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 8.78,
+    "chartDistanceNm": 8.8,
     "status": "reviewed"
    },
    {
     "to": "LLEK",
-    "distanceNm": 6.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 6.7,
+    "chartDistanceNm": 6.7,
     "status": "candidate"
    },
    {
     "to": "LTRUN",
-    "distanceNm": 3,
     "inboundAltitude": 1200,
     "outboundAltitude": 1600,
+    "distanceNm": 2.96,
+    "chartDistanceNm": 3,
     "status": "candidate"
    },
    {
     "to": "NSHRM",
-    "distanceNm": 3.5,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 3.48,
+    "chartDistanceNm": 3.5,
     "status": "candidate"
    }
   ],
   "LLBG": [
    {
     "to": "AYLON",
-    "distanceNm": 8.8,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 8.78,
+    "chartDistanceNm": 8.8,
     "status": "reviewed"
    },
    {
     "to": "MRISN",
-    "distanceNm": 5.2,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 5.15,
+    "chartDistanceNm": 5.2,
     "status": "candidate"
    },
    {
     "to": "NSHRM",
-    "distanceNm": 6,
     "inboundAltitude": 1200,
     "outboundAltitude": 2000,
+    "distanceNm": 6.03,
+    "chartDistanceNm": 6,
     "status": "candidate"
    },
    {
     "to": "PARDS",
-    "distanceNm": 5.9,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 5.92,
+    "chartDistanceNm": 5.9,
     "status": "candidate"
    }
   ],
   "LLEK": [
    {
     "to": "AYLON",
-    "distanceNm": 6.7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 6.7,
+    "chartDistanceNm": 6.7,
     "status": "candidate"
    },
    {
     "to": "KANOT",
-    "distanceNm": 3.4,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 3.44,
+    "chartDistanceNm": 3.4,
     "status": "candidate"
    },
    {
     "to": "NAGID",
-    "distanceNm": 4.5,
     "inboundAltitude": 1200,
     "outboundAltitude": null,
+    "distanceNm": 4.53,
+    "chartDistanceNm": 4.5,
     "oneWay": true,
     "status": "candidate"
    },
    {
     "to": "NAHEM",
-    "distanceNm": 5.5,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 5.49,
+    "chartDistanceNm": 5.5,
     "status": "candidate"
    },
    {
     "to": "NSHRM",
-    "distanceNm": 5.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 5.72,
+    "chartDistanceNm": 5.7,
     "status": "reviewed"
    },
    {
     "to": "NTAIM",
-    "distanceNm": 6.7,
     "inboundAltitude": null,
     "outboundAltitude": 800,
+    "distanceNm": 6.71,
+    "chartDistanceNm": 6.7,
     "oneWay": true,
     "status": "candidate"
    }
@@ -2526,213 +4256,240 @@
   "LTRUN": [
    {
     "to": "AYLON",
-    "distanceNm": 3,
     "inboundAltitude": 1600,
     "outboundAltitude": 1200,
+    "distanceNm": 2.96,
+    "chartDistanceNm": 3,
     "status": "candidate"
    },
    {
     "to": "BSEMS",
-    "distanceNm": 5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.04,
+    "chartDistanceNm": 5,
     "status": "candidate"
    },
    {
     "to": "ESTOL",
-    "distanceNm": 3.8,
     "inboundAltitude": 1200,
     "outboundAltitude": 2200,
+    "distanceNm": 3.77,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    },
    {
     "to": "SHARG",
-    "distanceNm": 2.1,
     "inboundAltitude": 1800,
     "outboundAltitude": 2300,
+    "distanceNm": 2.09,
+    "chartDistanceNm": 2.1,
     "status": "candidate"
    }
   ],
   "NSHRM": [
    {
     "to": "AYLON",
-    "distanceNm": 3.5,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 3.48,
+    "chartDistanceNm": 3.5,
     "status": "candidate"
    },
    {
     "to": "LLBG",
-    "distanceNm": 6,
     "inboundAltitude": 2000,
     "outboundAltitude": 1200,
+    "distanceNm": 6.03,
+    "chartDistanceNm": 6,
     "status": "candidate"
    },
    {
     "to": "LLEK",
-    "distanceNm": 5.7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 5.72,
+    "chartDistanceNm": 5.7,
     "status": "reviewed"
    },
    {
     "to": "NCSHN",
-    "distanceNm": 5.8,
     "inboundAltitude": 1600,
     "outboundAltitude": null,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
     "oneWay": true,
     "blocked": true,
     "status": "reviewed"
    },
    {
     "to": "SIRNI",
-    "distanceNm": 3.3,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    }
   ],
   "AZOOZ": [
    {
     "to": "LLKZ",
-    "distanceNm": 3.8,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 3.74,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    },
    {
     "to": "NIZAN",
-    "distanceNm": 5.6,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 5.6,
+    "chartDistanceNm": 5.6,
     "status": "candidate"
    }
   ],
   "LLKZ": [
    {
     "to": "AZOOZ",
-    "distanceNm": 3.8,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 3.74,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    },
    {
     "to": "HOLOT",
-    "distanceNm": 9.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 9.23,
+    "chartDistanceNm": 9.2,
     "status": "candidate"
    },
    {
     "to": "TLLIM",
-    "distanceNm": 18.2,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 18.28,
+    "chartDistanceNm": 18.2,
     "status": "candidate"
    }
   ],
   "NIZAN": [
    {
     "to": "AZOOZ",
-    "distanceNm": 5.6,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.6,
+    "chartDistanceNm": 5.6,
     "status": "candidate"
    },
    {
     "to": "LLRM",
-    "distanceNm": 5.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 5.39,
+    "chartDistanceNm": 5.4,
     "status": "reviewed"
    }
   ],
   "BASAN": [
    {
     "to": "HULAT",
-    "distanceNm": 6.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.17,
+    "chartDistanceNm": 6.2,
     "status": "candidate"
    },
    {
     "to": "LLKS",
-    "distanceNm": 4.5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.64,
+    "chartDistanceNm": 4.5,
     "status": "candidate"
    }
   ],
   "LLKS": [
    {
     "to": "BASAN",
-    "distanceNm": 4.5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 4.64,
+    "chartDistanceNm": 4.5,
     "status": "candidate"
    }
   ],
   "BAZRA": [
    {
     "to": "DEROR",
-    "distanceNm": 2.4,
     "inboundAltitude": 800,
     "outboundAltitude": 2000,
+    "distanceNm": 2.36,
+    "chartDistanceNm": 2.4,
     "status": "reviewed"
    },
    {
     "to": "LLHZ",
-    "distanceNm": 3.4,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 3.39,
+    "chartDistanceNm": 3.4,
     "status": "candidate"
    }
   ],
   "DEROR": [
    {
     "to": "BAZRA",
-    "distanceNm": 2.4,
     "inboundAltitude": 2000,
     "outboundAltitude": 800,
+    "distanceNm": 2.36,
+    "chartDistanceNm": 2.4,
     "status": "reviewed"
    },
    {
     "to": "SHARO",
-    "distanceNm": 4,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 4.01,
+    "chartDistanceNm": 4,
     "status": "reviewed"
    }
   ],
   "LLHZ": [
    {
     "to": "BAZRA",
-    "distanceNm": 3.4,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 3.39,
+    "chartDistanceNm": 3.4,
     "status": "candidate"
    },
    {
     "to": "GNYAM",
-    "distanceNm": 3.5,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 3.5,
+    "chartDistanceNm": 3.5,
     "status": "candidate"
    },
    {
     "to": "KNTRY",
-    "distanceNm": 2.9,
     "inboundAltitude": null,
     "outboundAltitude": 1200,
+    "distanceNm": 2.86,
+    "chartDistanceNm": 2.9,
     "oneWay": true,
     "blocked": true,
     "status": "reviewed"
    },
    {
     "to": "SFAIM",
-    "distanceNm": 2.3,
     "inboundAltitude": 1200,
     "outboundAltitude": null,
+    "distanceNm": 2.32,
+    "chartDistanceNm": 2.3,
     "oneWay": true,
     "status": "candidate"
    }
@@ -2740,115 +4497,130 @@
   "BEREC": [
    {
     "to": "BRORA",
-    "distanceNm": 6.8,
     "inboundAltitude": 4000,
     "outboundAltitude": 4500,
+    "distanceNm": 6.83,
+    "chartDistanceNm": 6.8,
     "status": "candidate"
    },
    {
     "to": "LLOV",
-    "distanceNm": 8.7,
     "inboundAltitude": 4500,
     "outboundAltitude": 4000,
+    "distanceNm": 8.67,
+    "chartDistanceNm": 8.7,
     "status": "reviewed"
    }
   ],
   "BRORA": [
    {
     "to": "BEREC",
-    "distanceNm": 6.8,
     "inboundAltitude": 4500,
     "outboundAltitude": 4000,
+    "distanceNm": 6.83,
+    "chartDistanceNm": 6.8,
     "status": "candidate"
    },
    {
     "to": "EILAT",
-    "distanceNm": 9.2,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 9.21,
+    "chartDistanceNm": 9.2,
     "status": "candidate"
    },
    {
     "to": "LLER",
-    "distanceNm": 1.5,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 1.45,
+    "chartDistanceNm": 1.5,
     "status": "unknown"
    },
    {
     "to": "SAMAR",
-    "distanceNm": 7.6,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 7.58,
+    "chartDistanceNm": 7.6,
     "status": "reviewed"
    }
   ],
   "LLOV": [
    {
     "to": "BEREC",
-    "distanceNm": 8.7,
     "inboundAltitude": 4000,
     "outboundAltitude": 4500,
+    "distanceNm": 8.67,
+    "chartDistanceNm": 8.7,
     "status": "reviewed"
    },
    {
     "to": "SAMAR",
-    "distanceNm": 7.7,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 7.72,
+    "chartDistanceNm": 7.7,
     "status": "reviewed"
    },
    {
     "to": "SHRUT",
-    "distanceNm": 3.6,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 3.64,
+    "chartDistanceNm": 3.6,
     "status": "reviewed"
    },
    {
     "to": "SIZFN",
-    "distanceNm": 7.8,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 7.76,
+    "chartDistanceNm": 7.8,
     "status": "candidate"
    }
   ],
   "BEZRA": [
    {
     "to": "LLHS",
-    "distanceNm": 4.1,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 4.06,
+    "chartDistanceNm": 4.1,
     "status": "candidate"
    },
    {
     "to": "ZDAFA",
-    "distanceNm": 3.4,
     "inboundAltitude": 1600,
     "outboundAltitude": 2000,
+    "distanceNm": 3.37,
+    "chartDistanceNm": 3.4,
     "status": "reviewed"
    }
   ],
   "LLHS": [
    {
     "to": "BEZRA",
-    "distanceNm": 4.1,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 4.06,
+    "chartDistanceNm": 4.1,
     "status": "candidate"
    },
    {
     "to": "KANOT",
-    "distanceNm": 3.5,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 3.46,
+    "chartDistanceNm": 3.5,
     "status": "reviewed"
    },
    {
     "to": "ZASHD",
-    "distanceNm": 4.2,
     "inboundAltitude": 1200,
     "outboundAltitude": null,
+    "distanceNm": 4.17,
+    "chartDistanceNm": 4.2,
     "oneWay": true,
     "status": "reviewed"
    }
@@ -2856,357 +4628,404 @@
   "ZDAFA": [
    {
     "to": "BEZRA",
-    "distanceNm": 3.4,
     "inboundAltitude": 2000,
     "outboundAltitude": 1600,
+    "distanceNm": 3.37,
+    "chartDistanceNm": 3.4,
     "status": "reviewed"
    },
    {
     "to": "NITZA",
-    "distanceNm": 3.8,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 3.76,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    },
    {
     "to": "NMASD",
-    "distanceNm": 3.4,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 3.36,
+    "chartDistanceNm": 3.4,
     "status": "candidate"
    },
    {
     "to": "OSNAT",
-    "distanceNm": 5,
     "inboundAltitude": 1600,
     "outboundAltitude": 2000,
+    "distanceNm": 4.96,
+    "chartDistanceNm": 5,
     "status": "reviewed"
    }
   ],
   "BHAIL": [
    {
     "to": "BKAMA",
-    "distanceNm": 9.7,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 9.75,
+    "chartDistanceNm": 9.7,
     "status": "reviewed"
    },
    {
     "to": "GVARM",
-    "distanceNm": 2.4,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 2.42,
+    "chartDistanceNm": 2.4,
     "status": "reviewed"
    }
   ],
   "BKAMA": [
    {
     "to": "BHAIL",
-    "distanceNm": 9.7,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 9.75,
+    "chartDistanceNm": 9.7,
     "status": "reviewed"
    },
    {
     "to": "LAHAV",
-    "distanceNm": 4.7,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.74,
+    "chartDistanceNm": 4.7,
     "status": "candidate"
    },
    {
     "to": "NOAAM",
-    "distanceNm": 7.8,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 7.81,
+    "chartDistanceNm": 7.8,
     "status": "candidate"
    },
    {
     "to": "NTVOT",
-    "distanceNm": 8.6,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 8.56,
+    "chartDistanceNm": 8.6,
     "status": "candidate"
    },
    {
     "to": "SOVAL",
-    "distanceNm": 2.1,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 2.07,
+    "chartDistanceNm": 2.1,
     "status": "reviewed"
    },
    {
     "to": "ZLHAV",
-    "distanceNm": 4.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.39,
+    "chartDistanceNm": 4.4,
     "status": "candidate"
    }
   ],
   "LAHAV": [
    {
     "to": "BKAMA",
-    "distanceNm": 4.7,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.74,
+    "chartDistanceNm": 4.7,
     "status": "candidate"
    },
    {
     "to": "SOKET",
-    "distanceNm": 5.9,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 5.89,
+    "chartDistanceNm": 5.9,
     "status": "candidate"
    }
   ],
   "NOAAM": [
    {
     "to": "BKAMA",
-    "distanceNm": 7.8,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 7.81,
+    "chartDistanceNm": 7.8,
     "status": "candidate"
    },
    {
     "to": "GOVRN",
-    "distanceNm": 6.3,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.33,
+    "chartDistanceNm": 6.3,
     "status": "candidate"
    },
    {
     "to": "NAHLA",
-    "distanceNm": 5.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 5.38,
+    "chartDistanceNm": 5.4,
     "status": "candidate"
    },
    {
     "to": "REVAH",
-    "distanceNm": 5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 4.97,
+    "chartDistanceNm": 5,
     "status": "reviewed"
    }
   ],
   "NTVOT": [
    {
     "to": "BKAMA",
-    "distanceNm": 8.6,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 8.56,
+    "chartDistanceNm": 8.6,
     "status": "candidate"
    },
    {
     "to": "GVARM",
-    "distanceNm": 9.9,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 9.87,
+    "chartDistanceNm": 9.9,
     "status": "candidate"
    },
    {
     "to": "OFKIM",
-    "distanceNm": 6.5,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 6.5,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    },
    {
     "to": "SDROT",
-    "distanceNm": 4.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 4.71,
+    "chartDistanceNm": 4.7,
     "status": "candidate"
    }
   ],
   "SOVAL": [
    {
     "to": "BKAMA",
-    "distanceNm": 2.1,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 2.07,
+    "chartDistanceNm": 2.1,
     "status": "reviewed"
    },
    {
     "to": "MINGV",
-    "distanceNm": 3.1,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 3.08,
+    "chartDistanceNm": 3.1,
     "status": "reviewed"
    },
    {
     "to": "NASIH",
-    "distanceNm": 5.5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.46,
+    "chartDistanceNm": 5.5,
     "status": "candidate"
    }
   ],
   "ZLHAV": [
    {
     "to": "BKAMA",
-    "distanceNm": 4.4,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.39,
+    "chartDistanceNm": 4.4,
     "status": "candidate"
    },
    {
     "to": "ZGOAL",
-    "distanceNm": 3.6,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 3.6,
+    "chartDistanceNm": 3.6,
     "status": "candidate"
    }
   ],
   "BMNUH": [
    {
     "to": "YAHEL",
-    "distanceNm": 13.3,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 13.28,
+    "chartDistanceNm": 13.3,
     "status": "candidate"
    },
    {
     "to": "ZOFAR",
-    "distanceNm": 15.6,
     "inboundAltitude": 4000,
     "outboundAltitude": 2500,
+    "distanceNm": 15.63,
+    "chartDistanceNm": 15.6,
     "status": "candidate"
    },
    {
     "to": "ZZHOR",
-    "distanceNm": 6.1,
     "inboundAltitude": 4000,
     "outboundAltitude": 3000,
+    "distanceNm": 6.13,
+    "chartDistanceNm": 6.1,
     "status": "candidate"
    }
   ],
   "YAHEL": [
    {
     "to": "BMNUH",
-    "distanceNm": 13.3,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 13.28,
+    "chartDistanceNm": 13.3,
     "status": "candidate"
    },
    {
     "to": "KTORA",
-    "distanceNm": 6.3,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.31,
+    "chartDistanceNm": 6.3,
     "status": "candidate"
    },
    {
     "to": "SIZFN",
-    "distanceNm": 6.5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.52,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    }
   ],
   "ZOFAR": [
    {
     "to": "BMNUH",
-    "distanceNm": 15.6,
     "inboundAltitude": 2500,
     "outboundAltitude": 4000,
+    "distanceNm": 15.63,
+    "chartDistanceNm": 15.6,
     "status": "candidate"
    },
    {
     "to": "HAZVA",
-    "distanceNm": 13.1,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 13.08,
+    "chartDistanceNm": 13.1,
     "status": "unknown"
    },
    {
     "to": "HRGVS",
-    "distanceNm": 12.8,
     "inboundAltitude": 4500,
     "outboundAltitude": 3500,
+    "distanceNm": 12.8,
+    "chartDistanceNm": 12.8,
     "status": "reviewed"
    },
    {
     "to": "LLEY",
-    "distanceNm": 3.8,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 3.46,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    }
   ],
   "ZZHOR": [
    {
     "to": "BMNUH",
-    "distanceNm": 6.1,
     "inboundAltitude": 3000,
     "outboundAltitude": 4000,
+    "distanceNm": 6.13,
+    "chartDistanceNm": 6.1,
     "status": "candidate"
    },
    {
     "to": "MESAR",
-    "distanceNm": 14.1,
     "inboundAltitude": 4000,
     "outboundAltitude": 3000,
+    "distanceNm": 14.08,
+    "chartDistanceNm": 14.1,
     "status": "reviewed"
    },
    {
     "to": "SITIM",
-    "distanceNm": 6.1,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 6.06,
+    "chartDistanceNm": 6.1,
     "status": "candidate"
    }
   ],
   "BOKER": [
    {
     "to": "LLRM",
-    "distanceNm": 8.6,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 8.59,
+    "chartDistanceNm": 8.6,
     "status": "candidate"
    },
    {
     "to": "OVDAT",
-    "distanceNm": 4.4,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 4.35,
+    "chartDistanceNm": 4.4,
     "status": "candidate"
    },
    {
     "to": "TLLIM",
-    "distanceNm": 7,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 7.04,
+    "chartDistanceNm": 7,
     "status": "candidate"
    },
    {
     "to": "YRUHM",
-    "distanceNm": 9.4,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 9.43,
+    "chartDistanceNm": 9.4,
     "status": "reviewed"
    }
   ],
   "LLRM": [
    {
     "to": "BOKER",
-    "distanceNm": 8.6,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 8.59,
+    "chartDistanceNm": 8.6,
     "status": "candidate"
    },
    {
     "to": "NIZAN",
-    "distanceNm": 5.4,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.39,
+    "chartDistanceNm": 5.4,
     "status": "reviewed"
    },
    {
     "to": "OVDAT",
-    "distanceNm": 6.7,
     "inboundAltitude": 4000,
     "outboundAltitude": null,
+    "distanceNm": 6.74,
+    "chartDistanceNm": 6.7,
     "oneWay": true,
     "status": "reviewed"
    }
@@ -3214,124 +5033,140 @@
   "OVDAT": [
    {
     "to": "BOKER",
-    "distanceNm": 4.4,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.35,
+    "chartDistanceNm": 4.4,
     "status": "candidate"
    },
    {
     "to": "LLRM",
-    "distanceNm": 6.7,
     "inboundAltitude": null,
     "outboundAltitude": 4000,
+    "distanceNm": 6.74,
+    "chartDistanceNm": 6.7,
     "oneWay": true,
     "blocked": true,
     "status": "reviewed"
    },
    {
     "to": "RUHOT",
-    "distanceNm": 8.6,
     "inboundAltitude": 4000,
     "outboundAltitude": 4500,
+    "distanceNm": 8.61,
+    "chartDistanceNm": 8.6,
     "status": "candidate"
    }
   ],
   "TLLIM": [
    {
     "to": "BOKER",
-    "distanceNm": 7,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 7.04,
+    "chartDistanceNm": 7,
     "status": "candidate"
    },
    {
     "to": "LLKZ",
-    "distanceNm": 18.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 18.28,
+    "chartDistanceNm": 18.2,
     "status": "candidate"
    },
    {
     "to": "NEGEV",
-    "distanceNm": 6,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 5.98,
+    "chartDistanceNm": 6,
     "status": "candidate"
    }
   ],
   "YRUHM": [
    {
     "to": "BOKER",
-    "distanceNm": 9.4,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 9.43,
+    "chartDistanceNm": 9.4,
     "status": "reviewed"
    },
    {
     "to": "DIMON",
-    "distanceNm": 6.8,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 6.77,
+    "chartDistanceNm": 6.8,
     "status": "candidate"
    }
   ],
   "BOREN": [
    {
     "to": "FRDIS",
-    "distanceNm": 7.5,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 7.46,
+    "chartDistanceNm": 7.5,
     "status": "candidate"
    },
    {
     "to": "HOTRM",
-    "distanceNm": 2.9,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 2.92,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    },
    {
     "to": "LLBO",
-    "distanceNm": 4.3,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 4.32,
+    "chartDistanceNm": 4.3,
     "status": "unknown"
    }
   ],
   "FRDIS": [
    {
     "to": "BOREN",
-    "distanceNm": 7.5,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 7.46,
+    "chartDistanceNm": 7.5,
     "status": "candidate"
    },
    {
     "to": "HADRA",
-    "distanceNm": 7.8,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 7.83,
+    "chartDistanceNm": 7.8,
     "status": "candidate"
    },
    {
     "to": "HASID",
-    "distanceNm": 11.4,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 11.42,
+    "chartDistanceNm": 11.4,
     "status": "candidate"
    },
    {
     "to": "LLBO",
-    "distanceNm": 3.6,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 3.55,
+    "chartDistanceNm": 3.6,
     "status": "unknown"
    },
    {
     "to": "SDTYM",
-    "distanceNm": 6.5,
     "inboundAltitude": 3000,
     "outboundAltitude": null,
+    "distanceNm": 6.51,
+    "chartDistanceNm": 6.5,
     "oneWay": true,
     "status": "reviewed"
    }
@@ -3339,289 +5174,326 @@
   "HOTRM": [
    {
     "to": "BOREN",
-    "distanceNm": 2.9,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 2.92,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    },
    {
     "to": "DAROM",
-    "distanceNm": 2.6,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 2.56,
+    "chartDistanceNm": 2.6,
     "status": "reviewed"
    },
    {
     "to": "LLBO",
-    "distanceNm": 6.2,
     "inboundAltitude": 1500,
     "outboundAltitude": 1000,
+    "distanceNm": 6.24,
+    "chartDistanceNm": 6.2,
     "status": "candidate"
    }
   ],
   "LLBO": [
    {
     "to": "BOREN",
-    "distanceNm": 4.3,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 4.32,
+    "chartDistanceNm": 4.3,
     "status": "unknown"
    },
    {
     "to": "FRDIS",
-    "distanceNm": 3.6,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 3.55,
+    "chartDistanceNm": 3.6,
     "status": "unknown"
    },
    {
     "to": "HOTRM",
-    "distanceNm": 6.2,
     "inboundAltitude": 1000,
     "outboundAltitude": 1500,
+    "distanceNm": 6.24,
+    "chartDistanceNm": 6.2,
     "status": "candidate"
    }
   ],
   "BOVED": [
    {
     "to": "NAGID",
-    "distanceNm": 2,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 1.97,
+    "chartDistanceNm": 2,
     "status": "candidate"
    },
    {
     "to": "NTAIM",
-    "distanceNm": 1.5,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 1.51,
+    "chartDistanceNm": 1.5,
     "status": "candidate"
    }
   ],
   "NAGID": [
    {
     "to": "BOVED",
-    "distanceNm": 2,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 1.97,
+    "chartDistanceNm": 2,
     "status": "candidate"
    },
    {
     "to": "LLEK",
-    "distanceNm": 4.5,
     "inboundAltitude": null,
     "outboundAltitude": 1200,
+    "distanceNm": 4.53,
+    "chartDistanceNm": 4.5,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "LLPL",
-    "distanceNm": 3.4,
     "inboundAltitude": null,
     "outboundAltitude": 800,
+    "distanceNm": 3.4,
+    "chartDistanceNm": 3.4,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "YAVNE",
-    "distanceNm": 1.1,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 1.07,
+    "chartDistanceNm": 1.1,
     "status": "candidate"
    }
   ],
   "NTAIM": [
    {
     "to": "BOVED",
-    "distanceNm": 1.5,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 1.51,
+    "chartDistanceNm": 1.5,
     "status": "candidate"
    },
    {
     "to": "LLEK",
-    "distanceNm": 6.7,
     "inboundAltitude": 800,
     "outboundAltitude": null,
+    "distanceNm": 6.71,
+    "chartDistanceNm": 6.7,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "LLPL",
-    "distanceNm": 5.4,
     "inboundAltitude": 800,
     "outboundAltitude": null,
+    "distanceNm": 5.37,
+    "chartDistanceNm": 5.4,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "LLRS",
-    "distanceNm": 2,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 2,
+    "chartDistanceNm": 2,
     "status": "candidate"
    },
    {
     "to": "MEHOL",
-    "distanceNm": 1.3,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 1.34,
+    "chartDistanceNm": 1.3,
     "status": "candidate"
    },
    {
     "to": "MRISN",
-    "distanceNm": 2.1,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 2.08,
+    "chartDistanceNm": 2.1,
     "status": "reviewed"
    },
    {
     "to": "SIRNI",
-    "distanceNm": 2.7,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 2.67,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    },
    {
     "to": "SUPER",
-    "distanceNm": 2.8,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 2.8,
+    "chartDistanceNm": 2.8,
     "status": "candidate"
    },
    {
     "to": "TYONA",
-    "distanceNm": 4.6,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 4.57,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    }
   ],
   "EILAT": [
    {
     "to": "BRORA",
-    "distanceNm": 9.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 9.21,
+    "chartDistanceNm": 9.2,
     "status": "candidate"
    }
   ],
   "LLER": [
    {
     "to": "BRORA",
-    "distanceNm": 1.5,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 1.45,
+    "chartDistanceNm": 1.5,
     "status": "unknown"
    },
    {
     "to": "SAMAR",
-    "distanceNm": 6.3,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 6.3,
+    "chartDistanceNm": 6.3,
     "status": "unknown"
    }
   ],
   "SAMAR": [
    {
     "to": "BRORA",
-    "distanceNm": 7.6,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 7.58,
+    "chartDistanceNm": 7.6,
     "status": "reviewed"
    },
    {
     "to": "LLER",
-    "distanceNm": 6.3,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 6.3,
+    "chartDistanceNm": 6.3,
     "status": "unknown"
    },
    {
     "to": "LLOV",
-    "distanceNm": 7.7,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 7.72,
+    "chartDistanceNm": 7.7,
     "status": "reviewed"
    },
    {
     "to": "YOTVT",
-    "distanceNm": 4.6,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 4.63,
+    "chartDistanceNm": 4.6,
     "status": "reviewed"
    }
   ],
   "BSEMS": [
    {
     "to": "ESTOL",
-    "distanceNm": 2.1,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 2.13,
+    "chartDistanceNm": 2.1,
     "status": "candidate"
    },
    {
     "to": "LTRUN",
-    "distanceNm": 5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 5.04,
+    "chartDistanceNm": 5,
     "status": "candidate"
    },
    {
     "to": "NCSHN",
-    "distanceNm": 4.9,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 4.92,
+    "chartDistanceNm": 4.9,
     "status": "candidate"
    },
    {
     "to": "ZHRYA",
-    "distanceNm": 3.8,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 3.79,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    }
   ],
   "ESTOL": [
    {
     "to": "BSEMS",
-    "distanceNm": 2.1,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 2.13,
+    "chartDistanceNm": 2.1,
     "status": "candidate"
    },
    {
     "to": "LTRUN",
-    "distanceNm": 3.8,
     "inboundAltitude": 2200,
     "outboundAltitude": 1200,
+    "distanceNm": 3.77,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    },
    {
     "to": "SORES",
-    "distanceNm": 3.5,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 3.52,
+    "chartDistanceNm": 3.5,
     "status": "candidate"
    }
   ],
   "NCSHN": [
    {
     "to": "BSEMS",
-    "distanceNm": 4.9,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.92,
+    "chartDistanceNm": 4.9,
     "status": "candidate"
    },
    {
     "to": "NSHRM",
-    "distanceNm": 5.8,
     "inboundAltitude": null,
     "outboundAltitude": 1600,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
     "oneWay": true,
     "status": "reviewed"
    }
@@ -3629,123 +5501,139 @@
   "ZHRYA": [
    {
     "to": "BSEMS",
-    "distanceNm": 3.8,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 3.79,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    },
    {
     "to": "GOVRN",
-    "distanceNm": 6.2,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.22,
+    "chartDistanceNm": 6.2,
     "status": "candidate"
    }
   ],
   "CLORE": [
    {
     "to": "RIDNG",
-    "distanceNm": 3.7,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 3.69,
+    "chartDistanceNm": 3.7,
     "status": "reviewed"
    },
    {
     "to": "TYONA",
-    "distanceNm": 2.9,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 2.94,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    }
   ],
   "RIDNG": [
    {
     "to": "CLORE",
-    "distanceNm": 3.7,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 3.69,
+    "chartDistanceNm": 3.7,
     "status": "reviewed"
    },
    {
     "to": "DEENA",
-    "distanceNm": 8.1,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 8.09,
+    "chartDistanceNm": 8.1,
     "status": "candidate"
    },
    {
     "to": "HTZUK",
-    "distanceNm": 2.3,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 2.27,
+    "chartDistanceNm": 2.3,
     "status": "reviewed"
    },
    {
     "to": "ROKCH",
-    "distanceNm": 2.1,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 2.14,
+    "chartDistanceNm": 2.1,
     "status": "candidate"
    },
    {
     "to": "SFAIM",
-    "distanceNm": 6.4,
     "inboundAltitude": 1600,
     "outboundAltitude": 800,
+    "distanceNm": 6.44,
+    "chartDistanceNm": 6.4,
     "status": "candidate"
    }
   ],
   "TYONA": [
    {
     "to": "CLORE",
-    "distanceNm": 2.9,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 2.94,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    },
    {
     "to": "NMASD",
-    "distanceNm": 11.5,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 11.53,
+    "chartDistanceNm": 11.5,
     "status": "candidate"
    },
    {
     "to": "NTAIM",
-    "distanceNm": 4.6,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 4.57,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    },
    {
     "to": "SUPER",
-    "distanceNm": 1.9,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 1.85,
+    "chartDistanceNm": 1.9,
     "status": "candidate"
    }
   ],
   "DALIA": [
    {
     "to": "EMMEK",
-    "distanceNm": 3.1,
     "inboundAltitude": 1500,
     "outboundAltitude": null,
+    "distanceNm": 3.14,
+    "chartDistanceNm": 3.1,
     "oneWay": true,
     "status": "candidate"
    },
    {
     "to": "HADRA",
-    "distanceNm": 11.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 11.75,
+    "chartDistanceNm": 11.7,
     "status": "candidate"
    },
    {
     "to": "ZOREA",
-    "distanceNm": 3.6,
     "inboundAltitude": null,
     "outboundAltitude": 2000,
+    "distanceNm": 3.56,
+    "chartDistanceNm": 3.6,
     "oneWay": true,
     "status": "candidate"
    }
@@ -3753,18 +5641,20 @@
   "EMMEK": [
    {
     "to": "DALIA",
-    "distanceNm": 3.1,
     "inboundAltitude": null,
     "outboundAltitude": 1500,
+    "distanceNm": 3.14,
+    "chartDistanceNm": 3.1,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "LLRD",
-    "distanceNm": 3.8,
     "inboundAltitude": 1500,
     "outboundAltitude": null,
+    "distanceNm": 3.85,
+    "chartDistanceNm": 3.8,
     "oneWay": true,
     "status": "reviewed"
    }
@@ -3772,63 +5662,71 @@
   "HADRA": [
    {
     "to": "DALIA",
-    "distanceNm": 11.7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 11.75,
+    "chartDistanceNm": 11.7,
     "status": "candidate"
    },
    {
     "to": "EIRON",
-    "distanceNm": 5.8,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
     "status": "candidate"
    },
    {
     "to": "FRDIS",
-    "distanceNm": 7.8,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 7.83,
+    "chartDistanceNm": 7.8,
     "status": "candidate"
    },
    {
     "to": "OLGAH",
-    "distanceNm": 3.1,
     "inboundAltitude": null,
     "outboundAltitude": 1500,
+    "distanceNm": 3.09,
+    "chartDistanceNm": 3.1,
     "oneWay": true,
     "status": "candidate"
    },
    {
     "to": "SHARO",
-    "distanceNm": 8.5,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 8.52,
+    "chartDistanceNm": 8.5,
     "status": "candidate"
    },
    {
     "to": "ZYAAR",
-    "distanceNm": 3.3,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 3.33,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    }
   ],
   "ZOREA": [
    {
     "to": "DALIA",
-    "distanceNm": 3.6,
     "inboundAltitude": 2000,
     "outboundAltitude": null,
+    "distanceNm": 3.56,
+    "chartDistanceNm": 3.6,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "LLRD",
-    "distanceNm": 3.5,
     "inboundAltitude": null,
     "outboundAltitude": 2000,
+    "distanceNm": 3.48,
+    "chartDistanceNm": 3.5,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
@@ -3837,237 +5735,267 @@
   "DAROM": [
    {
     "to": "GALIM",
-    "distanceNm": 3.3,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 3.31,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    },
    {
     "to": "HOTRM",
-    "distanceNm": 2.6,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 2.56,
+    "chartDistanceNm": 2.6,
     "status": "reviewed"
    }
   ],
   "GALIM": [
    {
     "to": "DAROM",
-    "distanceNm": 3.3,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 3.31,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    },
    {
     "to": "GILAM",
-    "distanceNm": 7.7,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 7.73,
+    "chartDistanceNm": 7.7,
     "status": "unknown"
    },
    {
     "to": "KRYON",
-    "distanceNm": 5.4,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 5.44,
+    "chartDistanceNm": 5.4,
     "status": "unknown"
    },
    {
     "to": "LLHA",
-    "distanceNm": 3.7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 3.68,
+    "chartDistanceNm": 3.7,
     "status": "candidate"
    }
   ],
   "DEENA": [
    {
     "to": "LIAAD",
-    "distanceNm": 7.5,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 7.51,
+    "chartDistanceNm": 7.5,
     "status": "candidate"
    },
    {
     "to": "RIDNG",
-    "distanceNm": 8.1,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 8.09,
+    "chartDistanceNm": 8.1,
     "status": "candidate"
    }
   ],
   "LIAAD": [
    {
     "to": "DEENA",
-    "distanceNm": 7.5,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 7.51,
+    "chartDistanceNm": 7.5,
     "status": "candidate"
    },
    {
     "to": "OSNAT",
-    "distanceNm": 7.6,
     "inboundAltitude": 1000,
     "outboundAltitude": 1500,
+    "distanceNm": 7.55,
+    "chartDistanceNm": 7.6,
     "status": "candidate"
    },
    {
     "to": "YASFA",
-    "distanceNm": 16.6,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 16.59,
+    "chartDistanceNm": 16.6,
     "status": "reviewed"
    }
   ],
   "SHARO": [
    {
     "to": "DEROR",
-    "distanceNm": 4,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 4.01,
+    "chartDistanceNm": 4,
     "status": "reviewed"
    },
    {
     "to": "HADRA",
-    "distanceNm": 8.5,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 8.52,
+    "chartDistanceNm": 8.5,
     "status": "candidate"
    },
    {
     "to": "ZYAAR",
-    "distanceNm": 5.2,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 5.2,
+    "chartDistanceNm": 5.2,
     "status": "reviewed"
    }
   ],
   "ZALMN": [
    {
     "to": "DESHE",
-    "distanceNm": 6.2,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.18,
+    "chartDistanceNm": 6.2,
     "status": "reviewed"
    },
    {
     "to": "MOVIL",
-    "distanceNm": 10.6,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 10.63,
+    "chartDistanceNm": 10.6,
     "status": "candidate"
    },
    {
     "to": "SEGEV",
-    "distanceNm": 7.5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 7.54,
+    "chartDistanceNm": 7.5,
     "status": "candidate"
    }
   ],
   "DIMON": [
    {
     "to": "LLNV",
-    "distanceNm": 8.8,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 8.76,
+    "chartDistanceNm": 8.8,
     "status": "candidate"
    },
    {
     "to": "YRUHM",
-    "distanceNm": 6.8,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 6.77,
+    "chartDistanceNm": 6.8,
     "status": "candidate"
    },
    {
     "to": "ZAFIT",
-    "distanceNm": 10.1,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 10.09,
+    "chartDistanceNm": 10.1,
     "status": "candidate"
    }
   ],
   "MIHMS": [
    {
     "to": "DUMIM",
-    "distanceNm": 3,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 3.04,
+    "chartDistanceNm": 3,
     "status": "unknown"
    },
    {
     "to": "SHAHR",
-    "distanceNm": 6.2,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 6.2,
+    "chartDistanceNm": 6.2,
     "status": "candidate"
    }
   ],
   "YRIHO": [
    {
     "to": "ALMOG",
-    "distanceNm": 3.9,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 3.94,
+    "chartDistanceNm": 3.9,
     "status": "candidate"
    },
    {
     "to": "DUMIM",
-    "distanceNm": 3.3,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    }
   ],
   "EIRON": [
    {
     "to": "HADRA",
-    "distanceNm": 5.8,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
     "status": "candidate"
    },
    {
     "to": "SDTYM",
-    "distanceNm": 7.1,
     "inboundAltitude": 3000,
     "outboundAltitude": null,
+    "distanceNm": 7.13,
+    "chartDistanceNm": 7.1,
     "oneWay": true,
     "status": "reviewed"
    },
    {
     "to": "ZMGID",
-    "distanceNm": 10.1,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 10.08,
+    "chartDistanceNm": 10.1,
     "status": "candidate"
    }
   ],
   "SDTYM": [
    {
     "to": "EIRON",
-    "distanceNm": 7.1,
     "inboundAltitude": null,
     "outboundAltitude": 3000,
+    "distanceNm": 7.13,
+    "chartDistanceNm": 7.1,
     "oneWay": true,
     "blocked": true,
     "status": "reviewed"
    },
    {
     "to": "FRDIS",
-    "distanceNm": 6.5,
     "inboundAltitude": null,
     "outboundAltitude": 3000,
+    "distanceNm": 6.51,
+    "chartDistanceNm": 6.5,
     "oneWay": true,
     "blocked": true,
     "status": "reviewed"
    },
    {
     "to": "OLGAH",
-    "distanceNm": 4,
     "inboundAltitude": 800,
     "outboundAltitude": null,
+    "distanceNm": 4.04,
+    "chartDistanceNm": 4,
     "oneWay": true,
     "blocked": true,
     "status": "reviewed"
@@ -4076,55 +6004,62 @@
   "EITAN": [
    {
     "to": "KOYAR",
-    "distanceNm": 6.1,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.14,
+    "chartDistanceNm": 6.1,
     "status": "candidate"
    },
    {
     "to": "TIRAT",
-    "distanceNm": 4.3,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 4.28,
+    "chartDistanceNm": 4.3,
     "status": "unknown"
    }
   ],
   "LLRD": [
    {
     "to": "EMMEK",
-    "distanceNm": 3.8,
     "inboundAltitude": null,
     "outboundAltitude": 1500,
+    "distanceNm": 3.85,
+    "chartDistanceNm": 3.8,
     "oneWay": true,
     "blocked": true,
     "status": "reviewed"
    },
    {
     "to": "HASID",
-    "distanceNm": 7.1,
     "inboundAltitude": 2500,
     "outboundAltitude": 1500,
+    "distanceNm": 7.1,
+    "chartDistanceNm": 7.1,
     "status": "candidate"
    },
    {
     "to": "MOVIL",
-    "distanceNm": 6,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6,
+    "chartDistanceNm": 6,
     "status": "candidate"
    },
    {
     "to": "ZMGID",
-    "distanceNm": 5.8,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 5.77,
+    "chartDistanceNm": 5.8,
     "status": "reviewed"
    },
    {
     "to": "ZOREA",
-    "distanceNm": 3.5,
     "inboundAltitude": 2000,
     "outboundAltitude": null,
+    "distanceNm": 3.48,
+    "chartDistanceNm": 3.5,
     "oneWay": true,
     "status": "candidate"
    }
@@ -4132,241 +6067,272 @@
   "ENGDI": [
    {
     "to": "LLMZ",
-    "distanceNm": 8.1,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 8.11,
+    "chartDistanceNm": 8.1,
     "status": "candidate"
    },
    {
     "to": "MMORR",
-    "distanceNm": 12.7,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 12.66,
+    "chartDistanceNm": 12.7,
     "status": "unknown"
    },
    {
     "to": "SHALM",
-    "distanceNm": 5.7,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 5.68,
+    "chartDistanceNm": 5.7,
     "status": "candidate"
    }
   ],
   "SHALM": [
    {
     "to": "ENGDI",
-    "distanceNm": 5.7,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 5.68,
+    "chartDistanceNm": 5.7,
     "status": "candidate"
    },
    {
     "to": "LLMZ",
-    "distanceNm": 13.8,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 13.79,
+    "chartDistanceNm": 13.8,
     "status": "candidate"
    },
    {
     "to": "ZUKIM",
-    "distanceNm": 9.8,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 9.76,
+    "chartDistanceNm": 9.8,
     "status": "candidate"
    }
   ],
   "SORES": [
    {
     "to": "ESTOL",
-    "distanceNm": 3.5,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 3.52,
+    "chartDistanceNm": 3.5,
     "status": "candidate"
    },
    {
     "to": "HAREL",
-    "distanceNm": 3.6,
     "inboundAltitude": 4500,
     "outboundAltitude": 5000,
+    "distanceNm": 3.57,
+    "chartDistanceNm": 3.6,
     "status": "candidate"
    },
    {
     "to": "SHARG",
-    "distanceNm": 3.1,
     "inboundAltitude": 3300,
     "outboundAltitude": 2800,
+    "distanceNm": 3.05,
+    "chartDistanceNm": 3.1,
     "status": "candidate"
    }
   ],
   "GILAM": [
    {
     "to": "EVLYM",
-    "distanceNm": 1,
     "inboundAltitude": 1500,
     "outboundAltitude": 3000,
+    "distanceNm": 0.96,
+    "chartDistanceNm": 1,
     "status": "candidate"
    },
    {
     "to": "GALIM",
-    "distanceNm": 7.7,
     "inboundAltitude": null,
     "outboundAltitude": null,
+    "distanceNm": 7.73,
+    "chartDistanceNm": 7.7,
     "status": "unknown"
    },
    {
     "to": "LLHA",
-    "distanceNm": 4.6,
     "inboundAltitude": 3000,
     "outboundAltitude": 1500,
+    "distanceNm": 4.59,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    }
   ],
   "HASID": [
    {
     "to": "EVLYM",
-    "distanceNm": 5.9,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.94,
+    "chartDistanceNm": 5.9,
     "status": "candidate"
    },
    {
     "to": "FRDIS",
-    "distanceNm": 11.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 11.42,
+    "chartDistanceNm": 11.4,
     "status": "candidate"
    },
    {
     "to": "LLHA",
-    "distanceNm": 4.1,
     "inboundAltitude": 2500,
     "outboundAltitude": 1500,
+    "distanceNm": 4.1,
+    "chartDistanceNm": 4.1,
     "status": "reviewed"
    },
    {
     "to": "LLRD",
-    "distanceNm": 7.1,
     "inboundAltitude": 1500,
     "outboundAltitude": 2500,
+    "distanceNm": 7.1,
+    "chartDistanceNm": 7.1,
     "status": "candidate"
    },
    {
     "to": "MOVIL",
-    "distanceNm": 7.9,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 7.89,
+    "chartDistanceNm": 7.9,
     "status": "candidate"
    }
   ],
   "SEGEV": [
    {
     "to": "EVLYM",
-    "distanceNm": 6,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.03,
+    "chartDistanceNm": 6,
     "status": "candidate"
    },
    {
     "to": "ZALMN",
-    "distanceNm": 7.5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 7.54,
+    "chartDistanceNm": 7.5,
     "status": "candidate"
    }
   ],
   "GNYAM": [
    {
     "to": "LLHZ",
-    "distanceNm": 3.5,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 3.5,
+    "chartDistanceNm": 3.5,
     "status": "candidate"
    },
    {
     "to": "PARDS",
-    "distanceNm": 3.7,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 3.7,
+    "chartDistanceNm": 3.7,
     "status": "candidate"
    }
   ],
   "PARDS": [
    {
     "to": "GNYAM",
-    "distanceNm": 3.7,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 3.7,
+    "chartDistanceNm": 3.7,
     "status": "candidate"
    },
    {
     "to": "LLBG",
-    "distanceNm": 5.9,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 5.92,
+    "chartDistanceNm": 5.9,
     "status": "candidate"
    },
    {
     "to": "ROKCH",
-    "distanceNm": 2.2,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 2.25,
+    "chartDistanceNm": 2.2,
     "status": "candidate"
    }
   ],
   "GOVRN": [
    {
     "to": "NOAAM",
-    "distanceNm": 6.3,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.33,
+    "chartDistanceNm": 6.3,
     "status": "candidate"
    },
    {
     "to": "ZHRYA",
-    "distanceNm": 6.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.22,
+    "chartDistanceNm": 6.2,
     "status": "candidate"
    }
   ],
   "SDROT": [
    {
     "to": "GVARM",
-    "distanceNm": 5.4,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 5.35,
+    "chartDistanceNm": 5.4,
     "status": "candidate"
    },
    {
     "to": "NTVOT",
-    "distanceNm": 4.7,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 4.71,
+    "chartDistanceNm": 4.7,
     "status": "candidate"
    }
   ],
   "OLGAH": [
    {
     "to": "HADRA",
-    "distanceNm": 3.1,
     "inboundAltitude": 1500,
     "outboundAltitude": null,
+    "distanceNm": 3.09,
+    "chartDistanceNm": 3.1,
     "oneWay": true,
     "blocked": true,
     "status": "candidate"
    },
    {
     "to": "PELEG",
-    "distanceNm": 6.3,
     "inboundAltitude": 800,
     "outboundAltitude": 1500,
+    "distanceNm": 6.26,
+    "chartDistanceNm": 6.3,
     "status": "candidate"
    },
    {
     "to": "SDTYM",
-    "distanceNm": 4,
     "inboundAltitude": null,
     "outboundAltitude": 800,
+    "distanceNm": 4.04,
+    "chartDistanceNm": 4,
     "oneWay": true,
     "status": "reviewed"
    }
@@ -4374,277 +6340,312 @@
   "HAREL": [
    {
     "to": "HNINA",
-    "distanceNm": 3.7,
     "inboundAltitude": 4500,
     "outboundAltitude": 5000,
+    "distanceNm": 3.66,
+    "chartDistanceNm": 3.7,
     "status": "candidate"
    },
    {
     "to": "SORES",
-    "distanceNm": 3.6,
     "inboundAltitude": 5000,
     "outboundAltitude": 4500,
+    "distanceNm": 3.57,
+    "chartDistanceNm": 3.6,
     "status": "candidate"
    }
   ],
   "LLFK": [
    {
     "to": "HAROV",
-    "distanceNm": 2.9,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 2.92,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    }
   ],
   "MOVIL": [
    {
     "to": "HASID",
-    "distanceNm": 7.9,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 7.89,
+    "chartDistanceNm": 7.9,
     "status": "candidate"
    },
    {
     "to": "LLRD",
-    "distanceNm": 6,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6,
+    "chartDistanceNm": 6,
     "status": "candidate"
    },
    {
     "to": "ZALMN",
-    "distanceNm": 10.6,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 10.63,
+    "chartDistanceNm": 10.6,
     "status": "candidate"
    }
   ],
   "LLEY": [
    {
     "to": "HAZVA",
-    "distanceNm": 9.3,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 9.63,
+    "chartDistanceNm": 9.3,
     "status": "candidate"
    },
    {
     "to": "ZOFAR",
-    "distanceNm": 3.8,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 3.46,
+    "chartDistanceNm": 3.8,
     "status": "candidate"
    }
   ],
   "HODYA": [
    {
     "to": "NITZA",
-    "distanceNm": 4.9,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 4.87,
+    "chartDistanceNm": 4.9,
     "status": "reviewed"
    },
    {
     "to": "REVAH",
-    "distanceNm": 4.6,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 4.59,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    }
   ],
   "REVAH": [
    {
     "to": "HODYA",
-    "distanceNm": 4.6,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 4.59,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    },
    {
     "to": "NOAAM",
-    "distanceNm": 5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.97,
+    "chartDistanceNm": 5,
     "status": "reviewed"
    }
   ],
   "HOLOT": [
    {
     "to": "LLKZ",
-    "distanceNm": 9.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 9.23,
+    "chartDistanceNm": 9.2,
     "status": "candidate"
    },
    {
     "to": "SIGAL",
-    "distanceNm": 12.5,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 12.55,
+    "chartDistanceNm": 12.5,
     "status": "reviewed"
    }
   ],
   "SIGAL": [
    {
     "to": "HOLOT",
-    "distanceNm": 12.5,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 12.55,
+    "chartDistanceNm": 12.5,
     "status": "reviewed"
    },
    {
     "to": "YATED",
-    "distanceNm": 2.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 2.22,
+    "chartDistanceNm": 2.2,
     "status": "candidate"
    }
   ],
   "HOVAV": [
    {
     "to": "LLNV",
-    "distanceNm": 11.9,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 11.91,
+    "chartDistanceNm": 11.9,
     "status": "candidate"
    },
    {
     "to": "NEGEV",
-    "distanceNm": 4.5,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.5,
+    "chartDistanceNm": 4.5,
     "status": "candidate"
    },
    {
     "to": "OHLIM",
-    "distanceNm": 3.3,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    },
    {
     "to": "SOKET",
-    "distanceNm": 11.4,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 11.44,
+    "chartDistanceNm": 11.4,
     "status": "candidate"
    }
   ],
   "NEGEV": [
    {
     "to": "HOVAV",
-    "distanceNm": 4.5,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.5,
+    "chartDistanceNm": 4.5,
     "status": "candidate"
    },
    {
     "to": "TLLIM",
-    "distanceNm": 6,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 5.98,
+    "chartDistanceNm": 6,
     "status": "candidate"
    }
   ],
   "OHLIM": [
    {
     "to": "HOVAV",
-    "distanceNm": 3.3,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    },
    {
     "to": "OMMER",
-    "distanceNm": 5.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.16,
+    "chartDistanceNm": 5.2,
     "status": "candidate"
    }
   ],
   "SOKET": [
    {
     "to": "HOVAV",
-    "distanceNm": 11.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 11.44,
+    "chartDistanceNm": 11.4,
     "status": "candidate"
    },
    {
     "to": "LAHAV",
-    "distanceNm": 5.9,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.89,
+    "chartDistanceNm": 5.9,
     "status": "candidate"
    },
    {
     "to": "MYTAR",
-    "distanceNm": 1.9,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 1.94,
+    "chartDistanceNm": 1.9,
     "status": "candidate"
    },
    {
     "to": "OMMER",
-    "distanceNm": 4.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 4.22,
+    "chartDistanceNm": 4.2,
     "status": "candidate"
    }
   ],
   "HRGVS": [
    {
     "to": "RUHOT",
-    "distanceNm": 7.6,
     "inboundAltitude": 4500,
     "outboundAltitude": 4000,
+    "distanceNm": 7.62,
+    "chartDistanceNm": 7.6,
     "status": "candidate"
    },
    {
     "to": "ZOFAR",
-    "distanceNm": 12.8,
     "inboundAltitude": 3500,
     "outboundAltitude": 4500,
+    "distanceNm": 12.8,
+    "chartDistanceNm": 12.8,
     "status": "reviewed"
    }
   ],
   "RUHOT": [
    {
     "to": "HRGVS",
-    "distanceNm": 7.6,
     "inboundAltitude": 4000,
     "outboundAltitude": 4500,
+    "distanceNm": 7.62,
+    "chartDistanceNm": 7.6,
     "status": "candidate"
    },
    {
     "to": "MESAR",
-    "distanceNm": 11.8,
     "inboundAltitude": 3500,
     "outboundAltitude": 4500,
+    "distanceNm": 11.78,
+    "chartDistanceNm": 11.8,
     "status": "reviewed"
    },
    {
     "to": "OVDAT",
-    "distanceNm": 8.6,
     "inboundAltitude": 4500,
     "outboundAltitude": 4000,
+    "distanceNm": 8.61,
+    "chartDistanceNm": 8.6,
     "status": "candidate"
    }
   ],
   "KNTRY": [
    {
     "to": "HTZUK",
-    "distanceNm": 1.2,
     "inboundAltitude": null,
     "outboundAltitude": 1200,
+    "distanceNm": 1.21,
+    "chartDistanceNm": 1.2,
     "oneWay": true,
     "blocked": true,
     "status": "reviewed"
    },
    {
     "to": "LLHZ",
-    "distanceNm": 2.9,
     "inboundAltitude": 1200,
     "outboundAltitude": null,
+    "distanceNm": 2.86,
+    "chartDistanceNm": 2.9,
     "oneWay": true,
     "status": "reviewed"
    }
@@ -4652,354 +6653,399 @@
   "IKKEA": [
    {
     "to": "LLRS",
-    "distanceNm": 1.3,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 1.29,
+    "chartDistanceNm": 1.3,
     "status": "candidate"
    }
   ],
   "LLRS": [
    {
     "to": "IKKEA",
-    "distanceNm": 1.3,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 1.29,
+    "chartDistanceNm": 1.3,
     "status": "candidate"
    },
    {
     "to": "NTAIM",
-    "distanceNm": 2,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 2,
+    "chartDistanceNm": 2,
     "status": "candidate"
    }
   ],
   "KANOT": [
    {
     "to": "LLEK",
-    "distanceNm": 3.4,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 3.44,
+    "chartDistanceNm": 3.4,
     "status": "candidate"
    },
    {
     "to": "LLHS",
-    "distanceNm": 3.5,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 3.46,
+    "chartDistanceNm": 3.5,
     "status": "reviewed"
    }
   ],
   "KTORA": [
    {
     "to": "YAHEL",
-    "distanceNm": 6.3,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.31,
+    "chartDistanceNm": 6.3,
     "status": "candidate"
    },
    {
     "to": "YOTVT",
-    "distanceNm": 5.3,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.34,
+    "chartDistanceNm": 5.3,
     "status": "candidate"
    }
   ],
   "YOTVT": [
    {
     "to": "KTORA",
-    "distanceNm": 5.3,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 5.34,
+    "chartDistanceNm": 5.3,
     "status": "candidate"
    },
    {
     "to": "SAMAR",
-    "distanceNm": 4.6,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.63,
+    "chartDistanceNm": 4.6,
     "status": "reviewed"
    },
    {
     "to": "SHRUT",
-    "distanceNm": 3.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 3.35,
+    "chartDistanceNm": 3.4,
     "status": "reviewed"
    }
   ],
   "KUVSH": [
    {
     "to": "LLBS",
-    "distanceNm": 2.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 2500,
+    "distanceNm": 2.7,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    },
    {
     "to": "NCITY",
-    "distanceNm": 2.2,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 2.25,
+    "chartDistanceNm": 2.2,
     "status": "candidate"
    }
   ],
   "LLBS": [
    {
     "to": "KUVSH",
-    "distanceNm": 2.7,
     "inboundAltitude": 2500,
     "outboundAltitude": 2000,
+    "distanceNm": 2.7,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    },
    {
     "to": "LLHB",
-    "distanceNm": 4.4,
     "inboundAltitude": 2000,
     "outboundAltitude": 2000,
+    "distanceNm": 4.35,
+    "chartDistanceNm": 4.4,
     "status": "candidate"
    },
    {
     "to": "NASIH",
-    "distanceNm": 2.9,
     "inboundAltitude": 3000,
     "outboundAltitude": 2000,
+    "distanceNm": 2.89,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    }
   ],
   "NCITY": [
    {
     "to": "KUVSH",
-    "distanceNm": 2.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 2.25,
+    "chartDistanceNm": 2.2,
     "status": "candidate"
    },
    {
     "to": "OMMER",
-    "distanceNm": 2,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 2.04,
+    "chartDistanceNm": 2,
     "status": "candidate"
    },
    {
     "to": "ZGOAL",
-    "distanceNm": 1.5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 1.53,
+    "chartDistanceNm": 1.5,
     "status": "candidate"
    }
   ],
   "YASFA": [
    {
     "to": "LIAAD",
-    "distanceNm": 16.6,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 16.59,
+    "chartDistanceNm": 16.6,
     "status": "reviewed"
    },
    {
     "to": "SAHAR",
-    "distanceNm": 8,
     "inboundAltitude": 1000,
     "outboundAltitude": 500,
+    "distanceNm": 7.99,
+    "chartDistanceNm": 8,
     "status": "candidate"
    },
    {
     "to": "YAHOL",
-    "distanceNm": 14.4,
     "inboundAltitude": 500,
     "outboundAltitude": 1000,
+    "distanceNm": 14.43,
+    "chartDistanceNm": 14.4,
     "status": "candidate"
    }
   ],
   "MRISN": [
    {
     "to": "LLBG",
-    "distanceNm": 5.2,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 5.15,
+    "chartDistanceNm": 5.2,
     "status": "candidate"
    },
    {
     "to": "NTAIM",
-    "distanceNm": 2.1,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 2.08,
+    "chartDistanceNm": 2.1,
     "status": "reviewed"
    }
   ],
   "LLHB": [
    {
     "to": "LLBS",
-    "distanceNm": 4.4,
     "inboundAltitude": 2000,
     "outboundAltitude": 2000,
+    "distanceNm": 4.35,
+    "chartDistanceNm": 4.4,
     "status": "candidate"
    },
    {
     "to": "NASIH",
-    "distanceNm": 5.7,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.67,
+    "chartDistanceNm": 5.7,
     "status": "candidate"
    },
    {
     "to": "OFKIM",
-    "distanceNm": 5.1,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 5.09,
+    "chartDistanceNm": 5.1,
     "status": "candidate"
    },
    {
     "to": "TZHOT",
-    "distanceNm": 7.5,
     "inboundAltitude": 2000,
     "outboundAltitude": 2000,
+    "distanceNm": 7.5,
+    "chartDistanceNm": 7.5,
     "status": "candidate"
    }
   ],
   "NASIH": [
    {
     "to": "LLBS",
-    "distanceNm": 2.9,
     "inboundAltitude": 2000,
     "outboundAltitude": 3000,
+    "distanceNm": 2.89,
+    "chartDistanceNm": 2.9,
     "status": "candidate"
    },
    {
     "to": "LLHB",
-    "distanceNm": 5.7,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 5.67,
+    "chartDistanceNm": 5.7,
     "status": "candidate"
    },
    {
     "to": "MINGV",
-    "distanceNm": 2.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 2.43,
+    "chartDistanceNm": 2.4,
     "status": "candidate"
    },
    {
     "to": "SOVAL",
-    "distanceNm": 5.5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 5.46,
+    "chartDistanceNm": 5.5,
     "status": "candidate"
    }
   ],
   "NAHEM": [
    {
     "to": "LLEK",
-    "distanceNm": 5.5,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 5.49,
+    "chartDistanceNm": 5.5,
     "status": "candidate"
    },
    {
     "to": "NAHLA",
-    "distanceNm": 5.4,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.38,
+    "chartDistanceNm": 5.4,
     "status": "candidate"
    }
   ],
   "OFKIM": [
    {
     "to": "LLHB",
-    "distanceNm": 5.1,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 5.09,
+    "chartDistanceNm": 5.1,
     "status": "candidate"
    },
    {
     "to": "NTVOT",
-    "distanceNm": 6.5,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 6.5,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    }
   ],
   "ZASHD": [
    {
     "to": "LLHS",
-    "distanceNm": 4.2,
     "inboundAltitude": null,
     "outboundAltitude": 1200,
+    "distanceNm": 4.17,
+    "chartDistanceNm": 4.2,
     "oneWay": true,
     "blocked": true,
     "status": "reviewed"
    },
    {
     "to": "NMASD",
-    "distanceNm": 4.3,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 4.26,
+    "chartDistanceNm": 4.3,
     "status": "candidate"
    },
    {
     "to": "YAVNE",
-    "distanceNm": 3.7,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 3.7,
+    "chartDistanceNm": 3.7,
     "status": "candidate"
    }
   ],
   "SHRUT": [
    {
     "to": "LLOV",
-    "distanceNm": 3.6,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 3.64,
+    "chartDistanceNm": 3.6,
     "status": "reviewed"
    },
    {
     "to": "YOTVT",
-    "distanceNm": 3.4,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 3.35,
+    "chartDistanceNm": 3.4,
     "status": "reviewed"
    }
   ],
   "SIZFN": [
    {
     "to": "LLOV",
-    "distanceNm": 7.8,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 7.76,
+    "chartDistanceNm": 7.8,
     "status": "candidate"
    },
    {
     "to": "SITIM",
-    "distanceNm": 7.7,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 7.7,
+    "chartDistanceNm": 7.7,
     "status": "candidate"
    },
    {
     "to": "YAHEL",
-    "distanceNm": 6.5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 6.52,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    }
   ],
   "LLPL": [
    {
     "to": "NAGID",
-    "distanceNm": 3.4,
     "inboundAltitude": 800,
     "outboundAltitude": null,
+    "distanceNm": 3.4,
+    "chartDistanceNm": 3.4,
     "oneWay": true,
     "status": "candidate"
    },
    {
     "to": "NTAIM",
-    "distanceNm": 5.4,
     "inboundAltitude": null,
     "outboundAltitude": 800,
+    "distanceNm": 5.37,
+    "chartDistanceNm": 5.4,
     "oneWay": true,
     "status": "candidate"
    }
@@ -5007,380 +7053,428 @@
   "SHARG": [
    {
     "to": "LTRUN",
-    "distanceNm": 2.1,
     "inboundAltitude": 2300,
     "outboundAltitude": 1800,
+    "distanceNm": 2.09,
+    "chartDistanceNm": 2.1,
     "status": "candidate"
    },
    {
     "to": "SORES",
-    "distanceNm": 3.1,
     "inboundAltitude": 2800,
     "outboundAltitude": 3300,
+    "distanceNm": 3.05,
+    "chartDistanceNm": 3.1,
     "status": "candidate"
    }
   ],
   "MEHOL": [
    {
     "to": "NTAIM",
-    "distanceNm": 1.3,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 1.34,
+    "chartDistanceNm": 1.3,
     "status": "candidate"
    }
   ],
   "MESAR": [
    {
     "to": "RUHOT",
-    "distanceNm": 11.8,
     "inboundAltitude": 4500,
     "outboundAltitude": 3500,
+    "distanceNm": 11.78,
+    "chartDistanceNm": 11.8,
     "status": "reviewed"
    },
    {
     "to": "ZZHOR",
-    "distanceNm": 14.1,
     "inboundAltitude": 3000,
     "outboundAltitude": 4000,
+    "distanceNm": 14.08,
+    "chartDistanceNm": 14.1,
     "status": "reviewed"
    }
   ],
   "MINGV": [
    {
     "to": "NASIH",
-    "distanceNm": 2.4,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 2.43,
+    "chartDistanceNm": 2.4,
     "status": "candidate"
    },
    {
     "to": "SOVAL",
-    "distanceNm": 3.1,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 3.08,
+    "chartDistanceNm": 3.1,
     "status": "reviewed"
    }
   ],
   "MYTAR": [
    {
     "to": "SOKET",
-    "distanceNm": 1.9,
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
+    "distanceNm": 1.94,
+    "chartDistanceNm": 1.9,
     "status": "candidate"
    },
    {
     "to": "TARAD",
-    "distanceNm": 9.9,
     "inboundAltitude": 3500,
     "outboundAltitude": 4000,
+    "distanceNm": 9.88,
+    "chartDistanceNm": 9.9,
     "status": "candidate"
    }
   ],
   "YAVNE": [
    {
     "to": "NAGID",
-    "distanceNm": 1.1,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 1.07,
+    "chartDistanceNm": 1.1,
     "status": "candidate"
    },
    {
     "to": "ZASHD",
-    "distanceNm": 3.7,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 3.7,
+    "chartDistanceNm": 3.7,
     "status": "candidate"
    }
   ],
   "NAHLA": [
    {
     "to": "NAHEM",
-    "distanceNm": 5.4,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 5.38,
+    "chartDistanceNm": 5.4,
     "status": "candidate"
    },
    {
     "to": "NOAAM",
-    "distanceNm": 5.4,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "distanceNm": 5.38,
+    "chartDistanceNm": 5.4,
     "status": "candidate"
    }
   ],
   "OMMER": [
    {
     "to": "NCITY",
-    "distanceNm": 2,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 2.04,
+    "chartDistanceNm": 2,
     "status": "candidate"
    },
    {
     "to": "OHLIM",
-    "distanceNm": 5.2,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 5.16,
+    "chartDistanceNm": 5.2,
     "status": "candidate"
    },
    {
     "to": "SOKET",
-    "distanceNm": 4.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 4.22,
+    "chartDistanceNm": 4.2,
     "status": "candidate"
    },
    {
     "to": "ZGOAL",
-    "distanceNm": 3.1,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 3.09,
+    "chartDistanceNm": 3.1,
     "status": "candidate"
    }
   ],
   "ZGOAL": [
    {
     "to": "NCITY",
-    "distanceNm": 1.5,
     "inboundAltitude": 3000,
     "outboundAltitude": 2500,
+    "distanceNm": 1.53,
+    "chartDistanceNm": 1.5,
     "status": "candidate"
    },
    {
     "to": "OMMER",
-    "distanceNm": 3.1,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 3.09,
+    "chartDistanceNm": 3.1,
     "status": "candidate"
    },
    {
     "to": "ZLHAV",
-    "distanceNm": 3.6,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 3.6,
+    "chartDistanceNm": 3.6,
     "status": "candidate"
    }
   ],
   "NMASD": [
    {
     "to": "NITZA",
-    "distanceNm": 7.1,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 7.12,
+    "chartDistanceNm": 7.1,
     "status": "candidate"
    },
    {
     "to": "TYONA",
-    "distanceNm": 11.5,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 11.53,
+    "chartDistanceNm": 11.5,
     "status": "candidate"
    },
    {
     "to": "ZASHD",
-    "distanceNm": 4.3,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 4.26,
+    "chartDistanceNm": 4.3,
     "status": "candidate"
    },
    {
     "to": "ZDAFA",
-    "distanceNm": 3.4,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 3.36,
+    "chartDistanceNm": 3.4,
     "status": "candidate"
    }
   ],
   "SIRNI": [
    {
     "to": "NSHRM",
-    "distanceNm": 3.3,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 3.34,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    },
    {
     "to": "NTAIM",
-    "distanceNm": 2.7,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 2.67,
+    "chartDistanceNm": 2.7,
     "status": "candidate"
    }
   ],
   "SUPER": [
    {
     "to": "NTAIM",
-    "distanceNm": 2.8,
     "inboundAltitude": 800,
     "outboundAltitude": 1200,
+    "distanceNm": 2.8,
+    "chartDistanceNm": 2.8,
     "status": "candidate"
    },
    {
     "to": "TYONA",
-    "distanceNm": 1.9,
     "inboundAltitude": 1200,
     "outboundAltitude": 800,
+    "distanceNm": 1.85,
+    "chartDistanceNm": 1.9,
     "status": "candidate"
    }
   ],
   "PELEG": [
    {
     "to": "OLGAH",
-    "distanceNm": 6.3,
     "inboundAltitude": 1500,
     "outboundAltitude": 800,
+    "distanceNm": 6.26,
+    "chartDistanceNm": 6.3,
     "status": "candidate"
    },
    {
     "to": "SAHAR",
-    "distanceNm": 4.8,
     "inboundAltitude": 500,
     "outboundAltitude": 1000,
+    "distanceNm": 4.75,
+    "chartDistanceNm": 4.8,
     "status": "candidate"
    },
    {
     "to": "VINGT",
-    "distanceNm": 4.6,
     "inboundAltitude": 800,
     "outboundAltitude": 1500,
+    "distanceNm": 4.59,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    }
   ],
   "ROKCH": [
    {
     "to": "PARDS",
-    "distanceNm": 2.2,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 2.25,
+    "chartDistanceNm": 2.2,
     "status": "candidate"
    },
    {
     "to": "RIDNG",
-    "distanceNm": 2.1,
     "inboundAltitude": 1200,
     "outboundAltitude": 1200,
+    "distanceNm": 2.14,
+    "chartDistanceNm": 2.1,
     "status": "candidate"
    }
   ],
   "SAHAR": [
    {
     "to": "PELEG",
-    "distanceNm": 4.8,
     "inboundAltitude": 1000,
     "outboundAltitude": 500,
+    "distanceNm": 4.75,
+    "chartDistanceNm": 4.8,
     "status": "candidate"
    },
    {
     "to": "YASFA",
-    "distanceNm": 8,
     "inboundAltitude": 500,
     "outboundAltitude": 1000,
+    "distanceNm": 7.99,
+    "chartDistanceNm": 8,
     "status": "candidate"
    }
   ],
   "VINGT": [
    {
     "to": "PELEG",
-    "distanceNm": 4.6,
     "inboundAltitude": 1500,
     "outboundAltitude": 800,
+    "distanceNm": 4.59,
+    "chartDistanceNm": 4.6,
     "status": "candidate"
    },
    {
     "to": "SFAIM",
-    "distanceNm": 2.7,
     "inboundAltitude": 800,
     "outboundAltitude": 1600,
+    "distanceNm": 2.75,
+    "chartDistanceNm": 2.7,
     "status": "reviewed"
    }
   ],
   "ZYAAR": [
    {
     "to": "HADRA",
-    "distanceNm": 3.3,
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
+    "distanceNm": 3.33,
+    "chartDistanceNm": 3.3,
     "status": "candidate"
    },
    {
     "to": "SHARO",
-    "distanceNm": 5.2,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 5.2,
+    "chartDistanceNm": 5.2,
     "status": "reviewed"
    }
   ],
   "SITIM": [
    {
     "to": "SIZFN",
-    "distanceNm": 7.7,
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
+    "distanceNm": 7.7,
+    "chartDistanceNm": 7.7,
     "status": "candidate"
    },
    {
     "to": "ZZHOR",
-    "distanceNm": 6.1,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
+    "distanceNm": 6.06,
+    "chartDistanceNm": 6.1,
     "status": "candidate"
    }
   ],
   "SZION": [
    {
     "to": "SMRAT",
-    "distanceNm": 1.7,
     "inboundAltitude": 2000,
     "outboundAltitude": 1500,
+    "distanceNm": 1.68,
+    "chartDistanceNm": 1.7,
     "status": "reviewed"
    }
   ],
   "TZHOT": [
    {
     "to": "LLHB",
-    "distanceNm": 7.5,
     "inboundAltitude": 2000,
     "outboundAltitude": 2000,
+    "distanceNm": 7.5,
+    "chartDistanceNm": 7.5,
     "status": "candidate"
    },
    {
     "to": "ZMGEN",
-    "distanceNm": 5.1,
     "inboundAltitude": 2000,
     "outboundAltitude": 2000,
+    "distanceNm": 5.07,
+    "chartDistanceNm": 5.1,
     "status": "candidate"
    }
   ],
   "YAHOL": [
    {
     "to": "YAPAL",
-    "distanceNm": 6.5,
     "inboundAltitude": 500,
     "outboundAltitude": 1000,
+    "distanceNm": 6.46,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    },
    {
     "to": "YASFA",
-    "distanceNm": 14.4,
     "inboundAltitude": 1000,
     "outboundAltitude": 500,
+    "distanceNm": 14.43,
+    "chartDistanceNm": 14.4,
     "status": "candidate"
    }
   ],
   "YAPAL": [
    {
     "to": "YAHOL",
-    "distanceNm": 6.5,
     "inboundAltitude": 1000,
     "outboundAltitude": 500,
+    "distanceNm": 6.46,
+    "chartDistanceNm": 6.5,
     "status": "candidate"
    },
    {
     "to": "YASDD",
-    "distanceNm": 6.3,
     "inboundAltitude": 500,
     "outboundAltitude": 1000,
+    "distanceNm": 6.29,
+    "chartDistanceNm": 6.3,
     "status": "candidate"
    }
   ]
