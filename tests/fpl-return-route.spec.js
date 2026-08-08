@@ -265,15 +265,17 @@ test('the picker never says the same thing twice', async ({ page }) => {
   });
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => typeof syncLegs === 'function' && typeof showFlightPlan === 'function');
-  const labels = await page.evaluate(({ back }) => {
-    state.waypoints = back.map(w => ({ ...w })); syncLegs();
+  const labels = await page.evaluate(({ out, back }) => {
+    // The picker only offers routes that start where the current one ENDS, so the saved
+    // candidates here are outbound-shaped and the loaded route is the return.
+    state.waypoints = out.map(w => ({ ...w })); syncLegs();
     routeLibrarySaveCurrent();                       // auto-named: direction in words
     routeLibrarySaveCurrent('תרגיל בוקר');            // renamed: no endpoints in the name
     state.waypoints = back.map(w => ({ ...w })); syncLegs();
     showFlightPlan(); document.getElementById('fpl-open').click();
     return Array.from(document.querySelectorAll('#fpl-return-route option'))
       .map(o => o.textContent);
-  }, { back: BACK });
+  }, { out: OUT, back: BACK });
   const auto = labels.find(t => t.includes('אל'));
   const renamed = labels.find(t => t.includes('תרגיל בוקר'));
   // The auto-named one carries no parenthetical: the name already says it.
@@ -282,4 +284,37 @@ test('the picker never says the same thing twice', async ({ page }) => {
   expect(auto).not.toContain('(');
   // ...while a renamed route still gets its endpoints, because nothing else states them.
   expect(renamed).toContain('→');
+});
+
+test('a loop route is not offered as its own return', async ({ page }) => {
+  await boot(page);
+  // A LOOP starts where it ends, so it passes the join filter -- this is the one case the
+  // filter cannot catch, and filing it would fly the whole sortie twice.
+  const LOOP = OUT.concat([{ ...OUT[0] }]);
+  const r = await page.evaluate(({ loop, back }) => {
+    state.waypoints = loop.map(w => ({ ...w })); syncLegs();
+    routeLibrarySaveCurrent('The loop');
+    state.waypoints = back.map(w => ({ ...w })); syncLegs();
+    routeLibrarySaveCurrent('Ends at LLHZ too');
+    state.waypoints = loop.map(w => ({ ...w })); syncLegs();
+    showFlightPlan(); document.getElementById('fpl-open').click();
+    return Array.from(document.querySelectorAll('#fpl-return-route option')).map(o => o.textContent);
+  }, { loop: LOOP, back: BACK });
+  expect(r.some(t => /The loop/.test(t))).toBe(false);
+});
+
+test('a route saved twice under different names is still not offered to itself', async ({ page }) => {
+  await boot(page);
+  const options = await page.evaluate(({ out }) => {
+    state.waypoints = out.map(w => ({ ...w })); syncLegs();
+    routeLibrarySaveCurrent('Copy A');
+    routeLibrarySaveCurrent('Copy B');        // same waypoints, a second entry
+    state.waypoints = out.map(w => ({ ...w })); syncLegs();
+    showFlightPlan(); document.getElementById('fpl-open').click();
+    return Array.from(document.querySelectorAll('#fpl-return-route option')).map(o => o.textContent);
+  }, { out: OUT });
+  // The tracked id only knows about one of them; the waypoints are what make them the same
+  // flight.
+  expect(options.some(t => /Copy A/.test(t))).toBe(false);
+  expect(options.some(t => /Copy B/.test(t))).toBe(false);
 });

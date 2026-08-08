@@ -8231,13 +8231,30 @@ function showFplDialog() {
     retSel.appendChild(retNone);
     for (const e of (typeof loadRouteLibrary === 'function' ? loadRouteLibrary() : [])) {
       if (!e || e.deleted || !e.data) continue;
+      // Only routes that can actually BE the return: one that starts where this route ends.
+      // Anything else is refused at Continue with errFplJoinGap, so listing it is offering
+      // a choice that cannot work -- better to answer the question before it is asked.
+      const rw = e.data.waypoints || [];
+      const here = state.waypoints || [];
+      const last = here[here.length - 1];
+      if (rw.length < 2 || !last ||
+          !(typeof sameMapPoint === 'function' && sameMapPoint(rw[0], last))) continue;
+      // ...and not the route being filed. A LOOP starts where it ends, so it passes the
+      // test above and would fly the whole sortie twice.
+      //
+      // Identity is the WAYPOINTS, not the tracked library id: currentRouteLibraryId is set
+      // by saving and is not cleared when the route is replaced, so after saving a return
+      // and then building the outbound it still points at the return -- and using it hid a
+      // perfectly valid candidate. It also misses the same route saved twice under two
+      // names, which comparing waypoints catches.
+      if (rw.length === here.length &&
+          rw.every((w, i) => sameMapPoint(w, here[i]))) continue;
       const opt = document.createElement('option');
       opt.value = e.id;
       // The name plus the route's own endpoints. Picking the wrong direction here files
       // the wrong route, and a name whose arrow sits between a Hebrew name and a Latin
       // code reorders under bidi -- so the endpoints are stated from the data, isolated,
-      // and always first-to-last.
-      const rw = (e.data && e.data.waypoints) || [];
+      // and always first-to-last. (rw is the candidate's waypoints, from the filter above.)
       const endName = (w) => {
         const raw = (w && w.name) || '';
         return ((raw && typeof navName === 'function') ? navName(raw) : raw).toString().trim();
