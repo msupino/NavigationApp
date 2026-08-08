@@ -123,7 +123,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
     expect(dialogs).toBe(0);              // no confirm on an unsaved route
   });
 
-  test('Hebrew suggests the name with a left arrow (first ← last)', async ({ page }) => {
+  test('Hebrew suggests the name with the direction in words', async ({ page }) => {
     await boot(page, 'he');
     page.on('dialog', d => d.accept());
     await page.evaluate(() => {
@@ -134,8 +134,12 @@ test.describe('Edit-header Save / Load route buttons', () => {
       state.legs = []; syncLegs(); draw();
     });
     await page.locator('#tool-save-route').click();
+    // Was "שפיים ← צומת אשדוד". The arrow is a bidi neutral: with a Latin code at one end
+    // it gets reordered, so an out-and-back pair read almost identically in the saved-route
+    // list -- and that list now also chooses which direction gets FILED. Words say it the
+    // same way whichever side the endpoints fall on.
     await expect(page.locator('.route-library-modal .route-library-name'))
-      .toHaveValue('שפיים ← צומת אשדוד');
+      .toHaveValue('מ־שפיים אל צומת אשדוד');
   });
 
   test('Save on a loaded route overwrites the same entry after a warning', async ({ page }) => {

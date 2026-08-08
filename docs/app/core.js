@@ -1064,6 +1064,27 @@ window.S = Object.assign({
   fplWake: 'Turbulence category',
   fplEquip: 'Equipment',
   fplSurv: 'Transponder',
+  fplWake_L: 'light, up to 7 t',
+  fplWake_M: 'medium, 7 to 136 t',
+  fplWake_H: 'heavy, 136 t and above',
+  fplWake_J: 'super',
+  fplLettersKept: 'Also filed, from your profile:',
+  fplLettersNone: 'nothing selected',
+  fplEquipS: 'standard (VHF, VOR, ILS)',
+  fplEquipG: 'GNSS',
+  fplEquipD: 'DME',
+  fplEquipF: 'ADF',
+  fplEquipO: 'VOR',
+  fplEquipV: 'VHF RTF',
+  fplEquipY: '8.33 kHz radio',
+  fplEquipR: 'PBN approved',
+  fplEquipN: 'none',
+  fplSurvA: 'transponder Mode A',
+  fplSurvC: 'Mode A and C',
+  fplSurvS: 'Mode S, altitude and ident',
+  fplSurvE: 'Mode S, altitude, ident and ADS-B',
+  fplSurvL: 'Mode S with ADS-B and ADS-C',
+  fplSurvN: 'none',
   fplWakeTip: 'ICAO wake-turbulence category: L = light (up to 7 t), M = medium, H = heavy.',
   fplEquipTip: 'Radio and navigation equipment. S = standard (VHF, VOR, ILS). Append letters for extras, e.g. SG adds GNSS.',
   fplSurvTip: 'Surveillance equipment. C = transponder Mode A and C, S = Mode S, N = none.',
@@ -1166,6 +1187,31 @@ window.S = Object.assign({
     return 'This route lands at ' + list.join(', ') + ' on the way, so it is not a single '
       + 'flight plan \u2014 file the first leg to ' + list[0] + ', then a plan onward from there.';
   },
+  errFplJoinGapPlain: 'The return route does not start where this route ends, so the two '
+    + 'are not one flight.',
+  errFplJoinGap: function(o) {
+    const from = (o && o.from) || '?', to = (o && o.to) || '?';
+    return 'This route ends at ' + from + ' but the return route starts at ' + to
+      + ' \u2014 they are not one flight. Pick the return that turns back from ' + from
+      + ', or file the two separately.';
+  },
+  errFplReturnNeedRoute: 'The chosen return route has fewer than two waypoints.',
+  fplReturnRoute: 'Return route',
+  fplReturnNone: '\u2014 none (one-way plan) \u2014',
+  fplExpandPoints: 'Name every reporting point on the way',
+  fplExpandGapShort: '(no published chain for: ',
+  warnFplExpandGapPlain: 'Some stretches have no published chain in the route data, so '
+    + 'their reporting points are not named.',
+  warnFplExpandGap: function(o) {
+    const pairs = (o && o.pairs) || [];
+    return 'No published chain for ' + pairs.join(', ') + ' \u2014 the plan names the points '
+      + 'you drew for those stretches, not every reporting point on the way.';
+  },
+  fplReturnAtFieldHint: 'This route lands at a field, so it is one plan on its own \u2014 a '
+    + 'return from there is a separate plan.',
+  fplReturnRouteTip: 'For an out-and-back: the saved route flown home. It must start where '
+    + 'this route ends. Both routes keep their own nav log and exports \u2014 they are joined '
+    + 'only in the filed plan.',
   errFplEobt: 'Enter a valid date and departure time.',
   errFplEndurance: 'Pick how much fuel is on board.',
   errFplLatinOnly: 'Write the pilot name and license in Latin letters — the flight-plan message cannot carry Hebrew.',

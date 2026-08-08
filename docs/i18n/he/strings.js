@@ -390,6 +390,27 @@ window.S = {
   fplWake: 'קטגוריית מערבולת',
   fplEquip: 'מכשור',
   fplSurv: 'משדר מכ"ם',
+  fplWake_L: 'קל, עד 7 טון',
+  fplWake_M: 'בינוני, 7 עד 136 טון',
+  fplWake_H: 'כבד, 136 טון ומעלה',
+  fplWake_J: 'על-כבד',
+  fplLettersKept: 'מוגש גם, מהפרופיל שלכם:',
+  fplLettersNone: 'לא נבחר דבר',
+  fplEquipS: 'תקני (VHF, VOR, ILS)',
+  fplEquipG: 'ניווט לוויני (GNSS)',
+  fplEquipD: 'מד טווח (DME)',
+  fplEquipF: 'מצפן רדיו (ADF)',
+  fplEquipO: 'משואת VOR',
+  fplEquipV: 'קשר VHF',
+  fplEquipY: 'מרווח 8.33 קילוהרץ',
+  fplEquipR: 'מאושר PBN',
+  fplEquipN: 'ללא',
+  fplSurvA: 'משדר Mode A',
+  fplSurvC: 'Mode A ו-C',
+  fplSurvS: 'Mode S עם גובה וזיהוי',
+  fplSurvE: 'Mode S עם גובה, זיהוי ו-ADS-B',
+  fplSurvL: 'Mode S עם ADS-B ו-ADS-C',
+  fplSurvN: 'ללא',
   fplWakeTip: 'קטגוריית מערבולת לפי ICAO: L קלה (עד 7 טון), M בינונית, H כבדה.',
   fplEquipTip: 'ציוד קשר וניווט. S = תקני (VHF, VOR, ILS). מוסיפים אותיות לתוספות, למשל SG עבור GNSS.',
   fplSurvTip: 'ציוד זיהוי. C = משדר מכ"ם מוד A ו־C, S = מוד S, N = אין.',
@@ -488,6 +509,25 @@ window.S = {
     return 'המסלול נוחת ב' + list.join(', ') + ' בדרך, ולכן אינו תוכנית טיסה אחת — '
       + 'הגישו תוכנית עד ' + list[0] + ', ואחריה תוכנית נוספת להמשך.';
   },
+  errFplJoinGapPlain: 'מסלול החזרה אינו מתחיל במקום שבו מסתיים מסלול זה, ולכן אין מדובר בטיסה אחת.',
+  errFplJoinGap: function(o) {
+    const from = (o && o.from) || '?', to = (o && o.to) || '?';
+    return 'המסלול מסתיים ב-' + from + ' ואילו מסלול החזרה מתחיל ב-' + to +
+      ' — אין מדובר בטיסה אחת. בחרו את מסלול החזרה שחוזר מ-' + from + ', או הגישו שתי תוכניות נפרדות.';
+  },
+  errFplReturnNeedRoute: 'במסלול החזרה שנבחר יש פחות משתי נקודות דרך.',
+  fplReturnRoute: 'מסלול חזרה',
+  fplReturnNone: '— ללא (תוכנית בכיוון אחד) —',
+  fplExpandPoints: 'לציין כל נקודת דיווח בדרך',
+  fplExpandGapShort: '(אין נתיב מפורסם עבור: ',
+  warnFplExpandGapPlain: 'לחלק מהקטעים אין נתיב מפורסם בנתוני המסלול, ולכן נקודות הדיווח שלהם אינן מצוינות.',
+  warnFplExpandGap: function(o) {
+    const pairs = (o && o.pairs) || [];
+    return 'אין נתיב מפורסם עבור ' + pairs.join(', ') +
+      ' — התוכנית מציינת את הנקודות שסימנתם בקטעים אלה, ולא כל נקודת דיווח בדרך.';
+  },
+  fplReturnAtFieldHint: 'המסלול נוחת בשדה, ולכן הוא תוכנית טיסה בפני עצמה — טיסת חזרה משם היא תוכנית נפרדת.',
+  fplReturnRouteTip: 'לטיסת הלוך ושוב: המסלול השמור שבו חוזרים. עליו להתחיל במקום שבו מסתיים מסלול זה. לכל מסלול נשארים יומן הניווט והייצוא שלו — הם מחוברים רק בתוכנית המוגשת.',
   errFplEobt: 'הזן תאריך ושעת המראה תקפים.',
   errFplEndurance: 'בחר את כמות הדלק בכלי הטיס.',
   errFplLatinOnly: 'רשום את שם הטייס ומספר הרישיון באותיות לטיניות — הודעת תוכנית הטיסה אינה יכולה לשאת עברית.',
