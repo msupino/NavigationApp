@@ -70,7 +70,7 @@ NavAid.tuningDefaults = {
   searchMaxVor: { value: 3, min: 0, max: 20, step: 1, label: 'Search: max VOR stations' },
   searchFlashMs: { value: 3500, min: 0, max: 15000, step: 250,
     label: 'Search: how long the result flashes (ms, 0 = off)' },
-  searchFlashRadiusPx: { value: 26, min: 8, max: 80, step: 2,
+  searchFlashRadiusPx: { value: 30, min: 8, max: 80, step: 2,
     label: 'Search: flash ring size (px)' },
   searchMaxAirfields: { value: 6, min: 0, max: 20, step: 1, label: 'Search: max airfields' },
   searchMaxNavWp: { value: 12, min: 0, max: 40, step: 1, label: 'Search: max nav waypoints' },

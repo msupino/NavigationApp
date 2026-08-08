@@ -5594,41 +5594,55 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   background-position: left 6px center;
 }
 
-/* The ring a search leaves on its result: expands once, fades, gone. It is an answer to
-   "where is it", not a marker -- so it never blocks a click and never outlives its welcome.
-   Two rings offset in time read as a pulse without needing JS per frame. */
+/* The ring a search leaves on its result. A single expanding ring read as a passing
+   artefact -- it is brightest when smallest and gone by the time the eye arrives. So: a
+   held ring that stays plainly visible for most of the duration, a translucent disc to
+   catch the eye against a busy chart, and pulses that repeat rather than fire once. */
 .search-flash { pointer-events: none; }
-.search-flash-ring,
-.search-flash-ring::after {
+
+/* The steady part: visible the whole time, then fades at the end. */
+.search-flash-ring {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2px solid #f5a623;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
-  animation: search-flash-pulse var(--flash-ms, 3500ms) ease-out 1 both;
+  border: 2px solid #ffb020;
+  background: rgba(255, 176, 32, .10);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .45), 0 0 8px 1px rgba(255, 176, 32, .35);
+  animation: search-flash-hold var(--flash-ms, 3500ms) ease-out 1 both;
 }
+/* ...and the moving part: three expanding pulses off the same centre. */
+.search-flash-ring::before,
 .search-flash-ring::after {
   content: '';
-  animation-delay: calc(var(--flash-ms, 3500ms) / 6);
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid #ffb020;
+  animation: search-flash-pulse calc(var(--flash-ms, 3500ms) / 2.5) ease-out 2 both;
 }
-body.theme-light .search-flash-ring,
-body.theme-light .search-flash-ring::after {
-  border-color: #c8760a;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .6);
+.search-flash-ring::after { animation-delay: calc(var(--flash-ms, 3500ms) / 5); }
+
+body.theme-light .search-flash-ring {
+  border-color: #d2690a;
+  background: rgba(210, 105, 10, .10);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .8), 0 0 8px 1px rgba(210, 105, 10, .3);
+}
+body.theme-light .search-flash-ring::before,
+body.theme-light .search-flash-ring::after { border-color: #d2690a; }
+
+@keyframes search-flash-hold {
+  0%   { transform: scale(.6); opacity: 0; }
+  8%   { transform: scale(1);  opacity: 1; }
+  75%  { transform: scale(1);  opacity: 1; }
+  100% { transform: scale(1);  opacity: 0; }
 }
 @keyframes search-flash-pulse {
-  0%   { transform: scale(.25); opacity: 0; }
-  12%  { transform: scale(.45); opacity: 1; }
-  70%  { transform: scale(1);   opacity: .55; }
-  100% { transform: scale(1.1); opacity: 0; }
+  0%   { transform: scale(1);   opacity: .7; }
+  100% { transform: scale(1.7); opacity: 0; }
 }
-/* A pilot who has asked for less motion gets a plain ring that simply fades. */
+/* A pilot who has asked for less motion gets the steady ring only -- still obvious, no
+   expanding pulses. */
 @media (prefers-reduced-motion: reduce) {
-  .search-flash-ring, .search-flash-ring::after {
-    animation: search-flash-fade var(--flash-ms, 3500ms) linear 1 both;
-  }
-  @keyframes search-flash-fade {
-    0%, 70% { opacity: 1; }
-    100%    { opacity: 0; }
-  }
+  .search-flash-ring::before, .search-flash-ring::after { display: none; }
+  .search-flash-ring { animation: search-flash-hold var(--flash-ms, 3500ms) linear 1 both; }
 }
