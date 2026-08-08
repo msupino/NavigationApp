@@ -5065,6 +5065,36 @@ body.theme-light .xc-input { color-scheme: light; }
 /* A return route cannot be joined at a field -- that is a landing, and a landing is a
    separate plan per leg. The row is dimmed with the reason beside it rather than removed,
    so the control does not appear and disappear as the route changes. */
+/* Field 10 is a letter SET, so its control is a list of checkboxes rather than a text box
+   the pilot has to spell correctly. */
+/* Field 10 is a letter SET, so its control is a disclosure listing what exists rather than a
+   text box the pilot has to spell correctly. Colours follow the other FPL fields: dark is the
+   base, light is the override below -- a hardcoded white background showed up as a white box
+   in dark mode. */
+details.fpl-letters {
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #201d1d;
+  border: 1px solid #3a3636;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+details.fpl-letters > summary { cursor: pointer; font-weight: 400; }
+details.fpl-letters[open] > summary { margin-bottom: 6px; }
+/* One per line: a wrapped row of checkboxes is unreadable, and these are read as a list. */
+details.fpl-letters .fpl-check {
+  display: flex; align-items: center; gap: 6px;
+  font-weight: 400; padding: 1px 0;
+}
+details.fpl-letters .fpl-check input { width: 15px; height: 15px; margin: 0; flex: 0 0 auto; }
+body.theme-light details.fpl-letters {
+  color: #1c1a1a;
+  background: #fff;
+  border-color: #c9c4c4;
+}
+/* The letter groups need the whole row, not the narrow value column a text input sits in. */
+.fpl-row-letters { display: block; }
+.fpl-row-letters > label, .fpl-row-letters > span:first-child { display: block; margin-bottom: 4px; }
 .fpl-row-disabled { opacity: .55; }
 .fpl-row-disabled select { cursor: not-allowed; }
 .fpl-hint,

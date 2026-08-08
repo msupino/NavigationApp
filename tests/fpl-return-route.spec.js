@@ -251,8 +251,13 @@ test('expansion honours one-way corridors', async ({ page }) => {
     };
   });
   // Herzliya's corridors are one-way: out via SFAIM, home via KNTRY. A mirror would file a
-  // corridor flown against its published direction.
-  expect(r.out).toEqual(['LLHZ', 'SFAIM', 'HTZUK']);
+  // corridor flown against its published direction. The outbound now also names the coastal
+  // points between them -- a filed plan lists every reporting point on the way, so the chain
+  // is the finest decomposition of the track, not the fewest hops.
+  expect(r.out[0]).toBe('LLHZ');
+  expect(r.out[1]).toBe('SFAIM');
+  expect(r.out[r.out.length - 1]).toBe('HTZUK');
+  expect(r.out).toContain('APOLN');
   expect(r.back).toEqual(['HTZUK', 'KNTRY', 'LLHZ']);
 });
 
@@ -317,4 +322,104 @@ test('a route saved twice under different names is still not offered to itself',
   // flight.
   expect(options.some(t => /Copy A/.test(t))).toBe(false);
   expect(options.some(t => /Copy B/.test(t))).toBe(false);
+});
+
+// --- field 9/10 have fixed vocabularies ---------------------------------------------------
+test('wake, equipment and transponder are chosen, not typed', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(({ out }) => {
+    state.waypoints = out.map(w => ({ ...w })); syncLegs();
+    showFlightPlan(); document.getElementById('fpl-open').click();
+    document.querySelector('.fpl-advanced').open = true;
+  }, { out: OUT });
+  // A select for the one-of category...
+  const wake = page.locator('#fpl-wake');
+  await expect(wake).toBeVisible();
+  expect(await wake.evaluate(el => el.tagName)).toBe('SELECT');
+  expect(await wake.locator('option').allTextContents()).toEqual(
+    expect.arrayContaining([expect.stringContaining('L —')]));
+  // ...and checkbox sets for the letter fields, because field 10 carries several. They live
+  // in a disclosure that reads as a field until opened -- a wall of checkboxes in a form row
+  // is unreadable.
+  const equip = page.locator('#fpl-equip');
+  expect(await equip.evaluate(el => el.tagName)).toBe('DETAILS');
+  await expect(equip.locator('summary')).toContainText('S');        // shows what will be filed
+  await equip.evaluate(el => { el.open = true; });
+  await expect(equip.locator('input[type=checkbox]').first()).toBeVisible();
+  const surv = page.locator('#fpl-surv');
+  await surv.evaluate(el => { el.open = true; });
+  await expect(surv.locator('input[type=checkbox]').first()).toBeVisible();
+});
+
+test('picking equipment produces a sorted letter string', async ({ page }) => {
+  await boot(page);
+  const v = await page.evaluate(({ out }) => {
+    state.waypoints = out.map(w => ({ ...w })); syncLegs();
+    showFlightPlan(); document.getElementById('fpl-open').click();
+    const g = document.getElementById('fpl-equip');
+    for (const cb of g.querySelectorAll('input[type=checkbox]')) cb.checked = false;
+    for (const l of ['G', 'S', 'D']) {
+      const cb = [...g.querySelectorAll('input')].find(x => x.value === l);
+      cb.checked = true; cb.dispatchEvent(new Event('change'));
+    }
+    return g.__value();
+  }, { out: OUT });
+  expect(v).toBe('DGS');            // alphabetical, which is how field 10 is written
+});
+
+test('"none" cannot be combined with equipment that exists', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(({ out }) => {
+    state.waypoints = out.map(w => ({ ...w })); syncLegs();
+    showFlightPlan(); document.getElementById('fpl-open').click();
+    const g = document.getElementById('fpl-surv');
+    const pick = (l) => { const cb=[...g.querySelectorAll('input')].find(x=>x.value===l);
+      cb.checked = true; cb.dispatchEvent(new Event('change')); };
+    pick('C'); pick('N');            // N clears the rest...
+    const afterNone = g.__value();
+    pick('S');                       // ...and choosing equipment clears N
+    return { afterNone, afterS: g.__value() };
+  }, { out: OUT });
+  expect(r.afterNone).toBe('N');
+  expect(r.afterS).toBe('S');
+});
+
+test('letters the pilot already has are kept, not silently dropped', async ({ page }) => {
+  await boot(page);
+  const v = await page.evaluate(({ out }) => {
+    state.waypoints = out.map(w => ({ ...w })); syncLegs();
+    // 'W' (RVSM) is not offered in the common set; an equipment string is the pilot's
+    // declaration, and a control that dropped it would file a different aircraft.
+    localStorage.setItem('navaid.fpl.equip', 'SW');   // one key per field, not one blob
+    showFlightPlan(); document.getElementById('fpl-open').click();
+    const g = document.getElementById('fpl-equip');
+    return g ? g.__value() : null;
+  }, { out: OUT });
+  expect(v).toContain('W');          // kept
+  expect(v).toContain('S');          // ...alongside what the checkboxes know
+});
+
+test('two picks reproduce a real filed plan, route and EET', async ({ page }) => {
+  await boot(page);
+  // The 4XDAZ sortie as actually filed through flp.co.il on 2026-08-07. The pilot picks
+  // only the turn point; the corridor and its reporting points come from the graph.
+  const r = await page.evaluate(async ({ profile }) => {
+    const at = n => ({ name: n, lat: window.__pts[n].lat, lng: window.__pts[n].lng });
+    state.waypoints = [at('NAGID'), at('LLHZ')]; syncLegs();
+    for (const l of state.legs) l.flightSpeed = 100;
+    const retData = JSON.parse(JSON.stringify(serializeRoute()));
+    state.waypoints = [at('LLHZ'), at('NAGID')]; syncLegs();
+    for (const l of state.legs) l.flightSpeed = 100;
+    const graph = await fplLoadRouteGraph();
+    return buildIcaoFpl(profile, { dateLocal: '2026-08-07', timeLocal: '11:05',
+      returnRouteData: retData, routeGraph: graph, now: new Date('2026-08-07T05:00:00Z') });
+  }, { profile: PROFILE });
+  const route = r.text.split('\n').find(l => l.startsWith('-N'));
+  expect(route).toBe('-N0100VFR SFAIM APOLN ARENA HTZUK RIDNG CLORE TYONA SUPER NTAIM ' +
+    'BOVED NAGID BOVED NTAIM SUPER TYONA CLORE RIDNG HTZUK KNTRY');
+  // The EET must cover the CORRIDOR, not the straight line between the picks: the expanded
+  // chain is 44.8 nm against 39.2 drawn, which is the difference between filing 0030 and
+  // 0025 -- a plan held open for a shorter flight than it describes.
+  expect(r.eet).toBe('0030');
+  expect(r.errs).toBeUndefined();
 });

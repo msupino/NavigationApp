@@ -1291,6 +1291,17 @@ function fplLandingSite() {
   return { code: ref.code, label: fplAirfieldName(ref.af, ref.code),
     controlled: !!(ref.af.clearance || ref.af.atis) };
 }
+// Great-circle length of a waypoint sequence, in nautical miles.
+function fplSequenceNm(seq) {
+  let t = 0;
+  for (let i = 0; i < (seq || []).length - 1; i++) {
+    if (typeof geo !== 'function') break;
+    const { dist } = geo(seq[i], seq[i + 1]);
+    if (dist > 0) t += dist;
+  }
+  return t;
+}
+
 // Flight time of a SERIALIZED route (a saved library entry's `data`), in hours. Same rule
 // routeProfile() uses for the live route -- distance over speed, leg by leg -- so a filed
 // EET cannot disagree with what the nav log shows for that same route.
@@ -1343,27 +1354,48 @@ function fplGraphPointAt(graph, wp) {
   return (best && bestD <= eps * 2) ? best : null;
 }
 
-// Shortest chain of published segments between two graph points, one-way segments honoured.
+// The chain of published segments between two graph points, one-way segments honoured.
+//
+// NOT the shortest by distance. A filed plan names every reporting point on the way, and the
+// graph holds both a direct SFAIM->RIDNG segment and the finer SFAIM->APOLN->ARENA->HTZUK->
+// RIDNG chain along the same track. Shortest-distance takes the direct one and files four
+// fewer points than the pilot flies; measured against a real filed plan the two tracks differ
+// by 0.2 nm out of 23.6. So: among chains within FPL_CHAIN_SLACK of the shortest, take the
+// one naming the MOST points.
+//
+// Bounded Bellman-Ford by hop count, because that terminates. A relaxation that reopened
+// nodes to chase a longer-but-finer path did not.
+const FPL_CHAIN_SLACK = 1.06;
+const FPL_CHAIN_MAX_HOPS = 30;
 function fplGraphChain(graph, from, to) {
   if (!graph || !from || !to) return null;
   if (from === to) return [from];
-  const dist = new Map([[from, 0]]);
-  const prev = new Map();
-  const done = new Set();
-  for (;;) {
-    let cur = null, best = Infinity;
-    for (const [n, d] of dist) if (!done.has(n) && d < best) { best = d; cur = n; }
-    if (cur === null) return null;
-    if (cur === to) break;
-    done.add(cur);
-    for (const e of graph.edges[cur] || []) {
-      if (e.blocked) continue;                 // one-way, against the flow
-      const d = best + (Number.isFinite(e.distanceNm) ? e.distanceNm : 1);
-      if (d < (dist.get(e.to) ?? Infinity)) { dist.set(e.to, d); prev.set(e.to, cur); }
+  const D = [], P = [];
+  for (let k = 0; k <= FPL_CHAIN_MAX_HOPS; k++) { D.push(new Map()); P.push(new Map()); }
+  D[0].set(from, 0);
+  for (let k = 0; k < FPL_CHAIN_MAX_HOPS; k++) {
+    for (const [n, d] of D[k]) {
+      for (const e of graph.edges[n] || []) {
+        if (e.blocked) continue;               // one-way, against the flow
+        const nd = d + (Number.isFinite(e.distanceNm) ? e.distanceNm : 1);
+        if (!D[k + 1].has(e.to) || nd < D[k + 1].get(e.to)) {
+          D[k + 1].set(e.to, nd);
+          P[k + 1].set(e.to, n);
+        }
+      }
     }
   }
+  let best = Infinity;
+  for (let k = 1; k <= FPL_CHAIN_MAX_HOPS; k++) if (D[k].has(to)) best = Math.min(best, D[k].get(to));
+  if (!Number.isFinite(best)) return null;
+  let pick = -1;
+  for (let k = 1; k <= FPL_CHAIN_MAX_HOPS; k++) {
+    if (D[k].has(to) && D[k].get(to) <= best * FPL_CHAIN_SLACK) pick = k;
+  }
+  if (pick < 1) return null;
   const out = [to];
-  while (out[0] !== from) out.unshift(prev.get(out[0]));
+  let cur = to;
+  for (let k = pick; k > 0; k--) { cur = P[k].get(cur); out.unshift(cur); }
   return out;
 }
 
@@ -1437,10 +1469,17 @@ function buildIcaoFpl(profile, opts) {
   // points always survive; expansion only ADDS what lies between them, so a pilot who drew
   // sparsely files the chain the AIP's own sample shows.
   let expandedUnresolved = [];
+  let expandedExtraNm = 0;
   if (o.routeGraph) {
+    const drawnNm = fplSequenceNm(wps);
     const ex = fplExpandRoute(o.routeGraph, wps);
     wps = ex.points;
     expandedUnresolved = ex.unresolved;
+    // The expanded chain follows the published corridor, which is LONGER than the straight
+    // line between the pilot's picks -- 44.8 nm against 39.2 on a real sortie. Filing the
+    // expanded route with the drawn route's time understates the EET by five minutes, and
+    // the plan is held open for a flight shorter than the one it describes.
+    expandedExtraNm = Math.max(0, fplSequenceNm(wps) - drawnNm);
   }
 
   // Field 15 lists what is flown BETWEEN the two end fields. An end that is filed as
@@ -1476,6 +1515,10 @@ function buildIcaoFpl(profile, opts) {
     // outbound, which is exactly the mistake showReturn's mirror makes.
     rawEetH += fplRouteTimeH(retData);
   }
+  // ...and the extra corridor distance the expansion added, flown at the speed field 15
+  // declares. Without this the filed EET is the straight-line time for a route that names
+  // the long way round.
+  if (expandedExtraNm > 0 && speedKt > 0) rawEetH += expandedExtraNm / speedKt;
   const grid = FPL_EET_ROUND_MIN();
   const eetH = rawEetH > 0 ? Math.ceil(rawEetH * 60 / grid) * grid / 60 : 0;
   if (!(eetH > 0)) errs.push('errFplNoEet');
@@ -8360,9 +8403,106 @@ function showFplDialog() {
     const sum = document.createElement('summary');
     sum.textContent = S.fplAdvanced || 'Advanced';
     adv.appendChild(sum);
-    const wake = input(profile.wake || 'L', 'text', { maxlength: '1' });
-    const equip = input(profile.equip || 'S', 'text', { maxlength: '20' });
-    const surv = input(profile.surv || 'C', 'text', { maxlength: '20' });
+    // Field 9/10 have FIXED vocabularies, so free text here only ever produces a plan the
+    // AIS parser rejects. The controls offer what exists; the stored value stays the same
+    // letter string, so nothing downstream changes.
+    const wake = document.createElement('select');
+    wake.className = 'fpl-field';
+    wake.id = 'fpl-wake';
+    for (const [v, label] of [['L', 'L'], ['M', 'M'], ['H', 'H'], ['J', 'J']]) {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = label + ' \u2014 ' + (S['fplWake_' + v] || v);
+      wake.appendChild(o);
+    }
+    wake.value = /^[LMHJ]$/.test(String(profile.wake || '').toUpperCase())
+      ? String(profile.wake).toUpperCase() : 'L';
+
+    // A letter set, not one choice: field 10 carries several. Letters the pilot already has
+    // that are not offered here are KEPT -- an equipment string is the pilot's declaration,
+    // and a control that quietly dropped 'Y' or 'R' would file a different aircraft.
+    const letterGroup = (id, current, options, exclusive) => {
+      // A disclosure, not a wall of checkboxes: closed it reads like a field showing the
+      // letters that will be filed, and it opens only when the pilot wants to change them.
+      const wrap = document.createElement('details');
+      wrap.className = 'fpl-letters';
+      wrap.id = id;
+      const sum = document.createElement('summary');
+      sum.className = 'fpl-letters-sum';
+      wrap.appendChild(sum);
+      const have = new Set(String(current || '').toUpperCase().replace(/[^A-Z0-9]/g, ''));
+      const known = new Set(options.map(o => o[0]));
+      const extra = [...have].filter(c => !known.has(c));
+      const boxes = [];
+      for (const [letter, label] of options) {
+        const lab = document.createElement('label');
+        lab.className = 'fpl-check';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = letter;
+        cb.checked = have.has(letter);
+        cb.onchange = () => {
+          // "None" cannot be combined with equipment that exists.
+          if (exclusive && cb.value === exclusive && cb.checked) {
+            for (const b of boxes) if (b !== cb) b.checked = false;
+          } else if (exclusive && cb.checked) {
+            const none = boxes.find(b => b.value === exclusive);
+            if (none) none.checked = false;
+          }
+          refresh();
+        };
+        boxes.push(cb);
+        lab.append(cb, document.createTextNode(' ' + letter + ' \u2014 ' + label));
+        wrap.appendChild(lab);
+      }
+      wrap.__value = () => {
+        const picked = boxes.filter(b => b.checked).map(b => b.value);
+        return [...new Set(picked.concat(extra))].sort().join('');
+      };
+      const labelOf = new Map(options);
+      const refresh = () => {
+        const v = wrap.__value();
+        // The letters, then what they mean -- the value is what gets filed, so it leads.
+        const names = [...v].map(c => labelOf.get(c)).filter(Boolean);
+        sum.textContent = v ? (v + (names.length ? '  \u2014 ' + names.join(', ') : ''))
+                            : (S.fplLettersNone || 'nothing selected');
+      };
+      refresh();
+      if (extra.length) {
+        const note = document.createElement('div');
+        note.className = 'fpl-hint';
+        note.textContent = (S.fplLettersKept || 'Also filed, from your profile:') + ' ' + extra.join('');
+        wrap.appendChild(note);
+      }
+      return wrap;
+    };
+
+    // A letter set needs the full width; the narrow value column a text input sits in wraps
+    // every label onto its own line.
+    const rowWide = (label, el) => {
+      const r = row(label, el);
+      r.classList.add('fpl-row-letters');
+      return r;
+    };
+    const equip = letterGroup('fpl-equip', profile.equip || 'S', [
+      ['S', S.fplEquipS || 'standard (VHF, VOR, ILS)'],
+      ['G', S.fplEquipG || 'GNSS'],
+      ['D', S.fplEquipD || 'DME'],
+      ['F', S.fplEquipF || 'ADF'],
+      ['O', S.fplEquipO || 'VOR'],
+      ['V', S.fplEquipV || 'VHF RTF'],
+      ['Y', S.fplEquipY || '8.33 kHz radio'],
+      ['R', S.fplEquipR || 'PBN approved'],
+      ['N', S.fplEquipN || 'none'],
+    ], 'N');
+    const surv = letterGroup('fpl-surv', profile.surv || 'C', [
+      ['A', S.fplSurvA || 'transponder Mode A'],
+      ['C', S.fplSurvC || 'Mode A and C'],
+      ['S', S.fplSurvS || 'Mode S, altitude and ident'],
+      ['E', S.fplSurvE || 'Mode S, altitude, ident and ADS-B'],
+      ['L', S.fplSurvL || 'Mode S with ADS-B and ADS-C'],
+      ['N', S.fplSurvN || 'none'],
+    ], 'N');
     // The published address for this flight type IS the value, not a hint: it comes
     // from AIP א'-11 §3.ב, so it should be what gets used unless the pilot changes it.
     const aisEmail = input(profile.aisEmail || fplFileTo(kind.value), 'email');
@@ -8379,8 +8519,8 @@ function showFplDialog() {
     // to anyone who has not filed a plan by hand before.
     const advRows = [
       [row(S.fplWake || 'Wake category', wake), S.fplWakeTip],
-      [row(S.fplEquip || 'Equipment', equip), S.fplEquipTip],
-      [row(S.fplSurv || 'Transponder', surv), S.fplSurvTip],
+      [rowWide(S.fplEquip || 'Equipment', equip), S.fplEquipTip],
+      [rowWide(S.fplSurv || 'Transponder', surv), S.fplSurvTip],
       [row(S.fplAisEmail || 'File to', aisEmail), S.fplAisEmailTip],
     ];
     for (const [rowEl, tip] of advRows) {
@@ -8410,7 +8550,7 @@ function showFplDialog() {
     next.onclick = async () => {
       Object.assign(profile, {
         reg: reg.value.trim(), type: type.value.trim(), wake: wake.value.trim(),
-        equip: equip.value.trim(), surv: surv.value.trim(), pic: pic.value.trim(),
+        equip: equip.__value(), surv: surv.__value(), pic: pic.value.trim(),
         license: license.value.trim(), cell: cell.value.trim(), endurance: endurance.value,
         replyTo: replyTo.value.trim(),
         persons: persons.value, kind: kind.value, aisEmail: aisEmail.value.trim(),
