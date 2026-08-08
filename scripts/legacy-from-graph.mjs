@@ -31,20 +31,9 @@ export const { navWaypointsFromGraph, legAltitudeFromGraph, commChangeFromGraph 
   require_(join(HERE, '..', 'docs', 'app', 'route-graph-shapes.js'));
 
 // --- verification ------------------------------------------------------------------------
-// Compares against the real files. Only the fields the app READS are compared: the source
-// files also carry commentary keys (_NOTE, _TODO) which are notes to a maintainer, not data.
-function sortSegs(a) {
-  return [...a].sort((x, y) => (x.from + x.to).localeCompare(y.from + y.to));
-}
-function diffCount(a, b, keys) {
-  let n = 0;
-  for (const k of keys) {
-    const av = a[k], bv = b[k];
-    if (JSON.stringify(av) !== JSON.stringify(bv)) n++;
-  }
-  return n;
-}
-
+// Compares against the retired files, read from git at BASELINE. Only the fields the app
+// READS are compared: those files also carried commentary keys (_NOTE, _TODO), which are
+// notes to a maintainer, not data.
 export function verify() {
   const problems = [];
   for (const lay of LAYERS) {
