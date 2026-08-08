@@ -130,3 +130,24 @@ test('zero pulses leaves a steady ring, not an invisible one', async ({ page }) 
   expect(r.before).toBe('none');
   expect(r.ringShown).not.toBe('0px');          // the ring itself stays
 });
+
+test('a malformed colour falls back instead of breaking the fill', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const real = window.tune;
+    const out = {};
+    for (const [label, v] of [['bad', 'not-a-colour'], ['noHash', 'ffb020'], ['spaced', ' #22aaff ']]) {
+      window.tune = (k) => (k === 'searchFlashColor' ? v : real(k));
+      flashMapPoint(32.18, 34.83);
+      const ring = document.querySelector('.search-flash-ring');
+      out[label] = getComputedStyle(ring).backgroundColor;
+    }
+    window.tune = real;
+    return out;
+  });
+  // An invalid value must not produce an invalid rgba() -- that drops the fill with no
+  // error, which looks like "the tunable does nothing".
+  expect(r.bad).toBe('rgba(255, 176, 32, 0.1)');
+  expect(r.noHash).toBe('rgba(255, 176, 32, 0.1)');    // '#' optional
+  expect(r.spaced).toBe('rgba(34, 170, 255, 0.1)');    // surrounding space tolerated
+});

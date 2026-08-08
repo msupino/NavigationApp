@@ -919,8 +919,11 @@ function flashMapPoint(lat, lng) {
   // from it so the two can never disagree.
   const T = (k, fb) => { const v = (typeof tune === 'function') ? tune(k) : undefined;
     return (v === undefined || v === null || v === '') ? fb : v; };
-  const hex = String(T('searchFlashColor', '#ffb020'));
-  const rgb = /^#?([0-9a-f]{6})$/i.test(hex.replace('#', '#'))
+  const hex = String(T('searchFlashColor', '#ffb020')).trim();
+  // The fill is derived from the ring colour so the two cannot disagree. A malformed value
+  // from the gist falls back rather than producing an invalid rgba() that would drop the
+  // fill silently.
+  const rgb = /^#?[0-9a-f]{6}$/i.test(hex)
     ? hex.replace('#', '').match(/../g).map(h => parseInt(h, 16)).join(', ')
     : '255, 176, 32';
   const el = _searchFlashEl.getElement();
