@@ -1041,6 +1041,15 @@
   },
   {
    "from": "DUMIM",
+   "to": "MIHMS",
+   "distanceNm": 3.0,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Kfar Adumim to Maale Michmash. Distance computed from our own coordinates; altitudes not read from the chart yet."
+  },
+  {
+   "from": "DUMIM",
    "to": "SHAHR",
    "distanceNm": 9.2,
    "inboundAltitude": 4000,
@@ -1109,6 +1118,15 @@
     "maxGap": 12,
     "samples": 88
    }
+  },
+  {
+   "from": "EITAN",
+   "to": "TIRAT",
+   "distanceNm": 4.3,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Neve Eitan to Tirat Zvi, Beit Shean valley. Distance computed from our own coordinates; altitudes not read from the chart yet."
   },
   {
    "from": "EMMEK",
@@ -1238,6 +1256,15 @@
     "maxGap": 12,
     "samples": 90
    }
+  },
+  {
+   "from": "GALIM",
+   "to": "KRYON",
+   "distanceNm": 5.4,
+   "inboundAltitude": null,
+   "outboundAltitude": null,
+   "status": "unknown",
+   "source": "missing link on a published route: Bat Galim to Kiryon, Haifa bay. Distance computed from our own coordinates; altitudes not read from the chart yet."
   },
   {
    "from": "GALIM",

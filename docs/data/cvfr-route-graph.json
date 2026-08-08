@@ -3,8 +3,8 @@
  "counts": {
   "nodes": 199,
   "routePoints": 188,
-  "segments": 266,
-  "directedEdges": 532,
+  "segments": 269,
+  "directedEdges": 538,
   "positionless": 0,
   "droppedSegments": 0
  },
@@ -1253,6 +1253,13 @@
     "status": "reviewed"
    },
    {
+    "to": "GALIM",
+    "distanceNm": 5.4,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
     "to": "LLHA",
     "distanceNm": 3.1,
     "inboundAltitude": 2000,
@@ -1832,6 +1839,13 @@
     "status": "reviewed"
    },
    {
+    "to": "MIHMS",
+    "distanceNm": 3,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
     "to": "SHAHR",
     "distanceNm": 9.2,
     "inboundAltitude": 4000,
@@ -2079,6 +2093,13 @@
     "inboundAltitude": 3000,
     "outboundAltitude": 3500,
     "status": "candidate"
+   },
+   {
+    "to": "EITAN",
+    "distanceNm": 4.3,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
    },
    {
     "to": "KOYAR",
@@ -3845,6 +3866,13 @@
     "status": "unknown"
    },
    {
+    "to": "KRYON",
+    "distanceNm": 5.4,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
     "to": "LLHA",
     "distanceNm": 3.7,
     "inboundAltitude": 1500,
@@ -3960,6 +3988,22 @@
     "status": "candidate"
    }
   ],
+  "MIHMS": [
+   {
+    "to": "DUMIM",
+    "distanceNm": 3,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
+    "to": "SHAHR",
+    "distanceNm": 6.2,
+    "inboundAltitude": 4000,
+    "outboundAltitude": 3500,
+    "status": "candidate"
+   }
+  ],
   "YRIHO": [
    {
     "to": "ALMOG",
@@ -4036,6 +4080,13 @@
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
     "status": "candidate"
+   },
+   {
+    "to": "TIRAT",
+    "distanceNm": 4.3,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
    }
   ],
   "LLRD": [
@@ -4992,15 +5043,6 @@
     "inboundAltitude": 3000,
     "outboundAltitude": 4000,
     "status": "reviewed"
-   }
-  ],
-  "MIHMS": [
-   {
-    "to": "SHAHR",
-    "distanceNm": 6.2,
-    "inboundAltitude": 4000,
-    "outboundAltitude": 3500,
-    "status": "candidate"
    }
   ],
   "MINGV": [
