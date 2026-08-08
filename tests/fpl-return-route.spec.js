@@ -442,3 +442,28 @@ test('an expanded chain never visits the same point twice', async ({ page }) => 
     expect(x.simple, `${x.a}->${x.b} visits a point twice`).toBe(true);
   }
 });
+
+test('the published Herzliya to Eilat-Ramon route is complete', async ({ page }) => {
+  await boot(page);
+  // Every reporting point of the published route, as flown:
+  // הרצליה שפיים אפולוניה ארנה הצוק רידינג קלור תל יונה סופרלנד נטעים נצר סירני מחלף נשרים
+  // אילון לטרון שער הגיא שורש מחלף הראל בית חנינא ענאתא כפר אדומים מצפה יריחו אלמוג
+  // עינות צוקים מצפה שלם עין גדי מור נווה זוהר צומת הערבה חצבה צופר באר מנוחה יהל
+  // צומת קטורה יטבתה סמר אילת-רמון
+  const missing = await page.evaluate(async () => {
+    const graph = await fplLoadRouteGraph();
+    const seq = ['LLHZ','SFAIM','APOLN','ARENA','HTZUK','RIDNG','CLORE','TYONA','SUPER','NTAIM',
+      'SIRNI','NSHRM','AYLON','LTRUN','SHARG','SORES','HAREL','HNINA','ANATA','DUMIM','YRIHO',
+      'ALMOG','ZUKIM','SHALM','ENGDI','MMORR','ZOHAR','ARAVA','HAZVA','ZOFAR','BMNUH','YAHEL',
+      'KTORA','YOTVT','SAMAR','LLER'];
+    const out = [];
+    for (let i = 0; i < seq.length - 1; i++) {
+      const es = graph.edges[seq[i]] || [];
+      if (!es.some(e => e.to === seq[i + 1])) out.push(seq[i] + '->' + seq[i + 1]);
+    }
+    return out;
+  });
+  // Three of these were missing until now: ENGDI->MMORR, HAZVA->ZOFAR and SAMAR->LLER.
+  // Eilat-Ramon was unreachable for want of the last hop, not for want of a corridor.
+  expect(missing).toEqual([]);
+});

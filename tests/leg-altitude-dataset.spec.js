@@ -65,7 +65,10 @@ test.describe('cvfr-leg-altitude.json scaffold', () => {
       expect(idSet.has(segment.from)).toBe(true);   // catches a typo'd id that would never match at runtime
       expect(idSet.has(segment.to)).toBe(true);
       expect(segment.from).not.toBe(segment.to);
-      expect(segment.status).toMatch(/^(candidate|reviewed)$/);
+      // 'unknown' is the documented placeholder for a link whose altitudes have not been
+      // read off the chart yet: the file's own schema defines it, io.js validateLegAltitudes
+      // enforces it (two nulls), and core.js normalizeLegAltitudePairSegment produces it.
+      expect(segment.status).toMatch(/^(candidate|reviewed|unknown)$/);
       expect(Object.prototype.hasOwnProperty.call(segment, 'inboundAltitude')).toBe(true);
       expect(Object.prototype.hasOwnProperty.call(segment, 'outboundAltitude')).toBe(true);
       if (Object.prototype.hasOwnProperty.call(segment, 'oneWay')) {
@@ -83,6 +86,9 @@ test.describe('cvfr-leg-altitude.json scaffold', () => {
       const nullKeys = ['inboundAltitude', 'outboundAltitude'].filter(key => segment[key] === null);
       if (nullKeys.length === 0) return [];
       if (segment.oneWay === true && nullKeys.length === 1) return [];
+      // Two nulls + status=unknown: the row exists, its altitudes are not read yet. Distinct
+      // from a single null, which says that DIRECTION is not allowed.
+      if (segment.status === 'unknown' && nullKeys.length === 2 && segment.oneWay !== true) return [];
       return [`${segment.from}-${segment.to}.${nullKeys.join('+')}`];
     });
     expect(invalidNulls).toEqual([]);
