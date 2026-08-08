@@ -16,7 +16,9 @@ const NAV_PATH = 'nav-waypoints';
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
 
 function readJson(file) {
-  return file === ALTITUDE_PATH ? legAltitude('cvfr') : navWaypoints('cvfr');
+  if (file === ALTITUDE_PATH) return legAltitude('cvfr');
+  if (file === NAV_PATH) return navWaypoints('cvfr');
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
 function directionPoolFromSegments(segments) {
@@ -51,7 +53,10 @@ test.describe('cvfr-leg-altitude.json scaffold', () => {
     expect(data.version).toBe(1);
     expect(Object.prototype.hasOwnProperty.call(data, 'points')).toBe(false);
     expect(Array.isArray(data.segments)).toBe(true);
-    expect(Array.isArray(data.directionPool)).toBe(true);
+    // directionPool is no longer carried: it was always derivable from the segments, and a
+    // stored copy is one more thing that can drift. The loader derives it; the test below
+    // checks the derivation itself.
+    expect(Object.prototype.hasOwnProperty.call(data, 'directionPool')).toBe(false);
     expect(data.sourceCharts.map(c => c.id)).toEqual(['north', 'south']);
   });
 
@@ -96,11 +101,16 @@ test.describe('cvfr-leg-altitude.json scaffold', () => {
     expect(invalidNulls).toEqual([]);
   });
 
-  test('directionPool is derivable from segments (no drift)', () => {
+  test('the pool the app derives at runtime is the one the segments imply', async ({ page }) => {
+    // Drift used to be possible because the pool was ALSO stored. It is not any more, so the
+    // check moved to the derivation: what legAltitudeDirectionsFromSegments() builds in the
+    // running app must be what the segments say, entry for entry.
     const data = readJson(ALTITUDE_PATH);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof legAltitudeDirectionsFromSegments === 'function');
+    const actual = await page.evaluate(
+      segs => legAltitudeDirectionsFromSegments(segs), data.segments);
     const toKey = dir => [dir.from, dir.to, dir.altitude, dir.segment, dir.field].join('|');
-    const expectedKeys = directionPoolFromSegments(data.segments).map(toKey).sort();
-    const actualKeys = data.directionPool.map(toKey).sort();
-    expect(actualKeys).toEqual(expectedKeys);
+    expect(actual.map(toKey).sort()).toEqual(directionPoolFromSegments(data.segments).map(toKey).sort());
   });
 });

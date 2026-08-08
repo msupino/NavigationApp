@@ -238,9 +238,7 @@ const CC_FIXTURE = {
 };
 
 async function bootWithCC(page) {
-  // `base: 'real'` because this spec also loads the real nav waypoints.
-  await stubGraph(page, { base: 'real', commChange: CC_FIXTURE.points,
-    callSigns: CC_FIXTURE.callSigns });
+  await stubGraph(page, { commChange: CC_FIXTURE.points, callSigns: CC_FIXTURE.callSigns });
   await page.goto('?lang=en');
   await page.waitForFunction(() =>
     typeof state !== 'undefined' && typeof map !== 'undefined' && typeof setMode === 'function');

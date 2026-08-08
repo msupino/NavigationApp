@@ -11,11 +11,22 @@ const ROOT = path.join(__dirname, '..');
 // One self-contained file per layer: a consumer physically cannot route across layers.
 const layerGraph = (lay) => JSON.parse(
   fs.readFileSync(path.join(ROOT, 'docs', 'data', lay + '-route-graph.json'), 'utf8'));
+// A merged view for the cross-layer checks. A shared point appears in several files with
+// that layer's own spelling, and only the layer that carries it flags things like
+// commChange -- so this UNIONS the copies instead of letting the last file overwrite the
+// rest, which silently dropped 32 of the 52 comm-change points. Anything positional is
+// checked per file, against that file's own nodes.
 const graph = () => {
   const nodes = {}, edges = {};
   for (const l of ['cvfr', 'heli', 'lsa']) {
     const g = layerGraph(l);
-    Object.assign(nodes, g.nodes);
+    for (const [id, n] of Object.entries(g.nodes)) {
+      const prev = nodes[id];
+      nodes[id] = prev ? { ...prev, ...n, commChange: prev.commChange || n.commChange,
+        callSigns: prev.callSigns || n.callSigns } : { ...n };
+      if (!nodes[id].commChange) delete nodes[id].commChange;
+      if (!nodes[id].callSigns) delete nodes[id].callSigns;
+    }
     edges[l] = g.edges;
   }
   return { nodes, edges };
@@ -71,11 +82,14 @@ test('routing distance is computed; the chart figure rides along as an annotatio
   };
   let checked = 0;
   for (const lay of LAYERS) {
+    // That layer's OWN nodes: a shared point can sit at a slightly different charted
+    // position in another layer's file, and the weight belongs to this file's geometry.
+    const own = layerGraph(lay).nodes;
     for (const [from, es] of Object.entries(g.edges[lay])) {
       for (const e of es) {
         // The stored figure is the derived one rounded to 0.1; the weight has to come from
         // the coordinates or it imports that rounding into every route total.
-        expect(e.distanceNm).toBeCloseTo(gc(g.nodes[from], g.nodes[e.to]), 1);
+        expect(e.distanceNm).toBeCloseTo(gc(own[from], own[e.to]), 1);
         if (e.chartDistanceNm !== undefined) {
           expect(Math.abs(e.chartDistanceNm - e.distanceNm)).toBeLessThan(0.6);
           checked++;

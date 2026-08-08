@@ -161,6 +161,29 @@ their validators and all 68 call sites still receive exactly the shapes they val
 projection is `docs/app/route-graph-shapes.js` — one implementation, shared by the app, the
 proof and the tests, so the app cannot drift from what the proof checked.
 
+### What the strengthened proof caught
+
+The first version of the proof compared comm-change by **count only**. The count was right
+and the data was gone: `routeHints` on 20 CVFR points — which tell the app which station to
+call in the direction actually being flown — were never carried into the graph, and nothing
+noticed. Comparing every key of every row, for all three kinds, found three real losses:
+
+1. **`routeHints`, and the comm-change file's own provenance keys.** Now on the node and in
+   `commMeta`.
+2. **Per-layer spellings.** `צ. ברכיה` and `צומת ברכיה` are one junction 0.10 nm apart,
+   merged on their shared code `ZBRCH` — but each layer's file spells it its own way, and
+   the merge had picked one spelling for everybody.
+3. **The published point order**, which `known-freq-points.md` mirrors row for row. Node
+   order in the graph is by id and says nothing about it.
+
+Separately, the per-layer distance check found that **298 heli and LSA edges stored the
+chart figure as the routing weight** instead of the computed one — up to 0.33 nm off. The
+weight is now computed from that layer's own coordinates, as the design says, with the
+chart figure kept only as the displayed annotation.
+
+The lesson is the one worth keeping: a check that compares a hand-picked list of fields, or
+a count, reports success for exactly the data it does not look at.
+
 Consequences worth stating plainly:
 
 - **`scripts/build-route-graph.mjs` and `scripts/sync-leg-altitude-directions.js` are

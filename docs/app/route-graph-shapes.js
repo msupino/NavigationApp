@@ -30,12 +30,16 @@
       // records which waypoint files held it, so that -- not its kind -- decides membership.
       if (!Array.isArray(n.layers) || n.layers.indexOf(layer) < 0) continue;
       const row = { lat: n.lat, lng: n.lng, name: n.name || n.code || n.he };
-      if (layer === 'cvfr') {
-        if (n.en) row.en = n.en;
-        if (n.he) row.he = n.he;
-      } else if (n.he) {
-        row.he = n.he;
-      }
+      // `en` for every layer, not just CVFR. 93 LSA and 105 heli points are the same
+      // published point as a CVFR one and already carry its English name; dropping it here
+      // is why an English session showed them in Hebrew.
+      //
+      // Where no English NAME exists, the code stands in -- it is what the back of the route
+      // charts prints for that point, so a pilot reads back something real. A transliterated
+      // Hebrew name would read better and would be invented, which on a reporting point is
+      // the wrong trade. Points with neither stay Hebrew.
+      if (n.en || n.code) row.en = n.en || n.code;
+      if (n.he) row.he = n.he;
       if (n.report) row.report = n.report;
       out.push(row);
     }
@@ -86,11 +90,41 @@
       if (!n.commChange) continue;
       const row = { name: n.name || n.code || n.he, commChange: true };
       if (n.callSigns) row.callSigns = n.callSigns;
+      // routeHints match the waypoints adjacent to the point to a call sign, so the app can
+      // tell which station to call in the direction actually being flown. They are per
+      // point, and 20 CVFR points carry them.
+      if (n.routeHints) row.routeHints = n.routeHints;
+      if (n.note) row.note = n.note;
+      if (n.source) row.source = n.source;
+      // Legacy per-point frequency labels. No shipped point carries them any more (the
+      // call-sign dictionary replaced them), but the shape still allows them.
+      if (n.from) row.from = n.from;
+      if (n.to) row.to = n.to;
       points.push(row);
     }
-    points.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    // The published order, which known-freq-points.md mirrors row for row. Anything the
+    // order does not mention keeps a stable alphabetical tail.
+    const order = (graph.commMeta && graph.commMeta.pointOrder) || [];
+    const rank = {};
+    order.forEach((nm, i) => { rank[nm] = i; });
+    points.sort((a, b) => {
+      const ra = rank[a.name], rb = rank[b.name];
+      if (ra !== undefined && rb !== undefined) return ra - rb;
+      if (ra !== undefined) return -1;
+      if (rb !== undefined) return 1;
+      return String(a.name).localeCompare(String(b.name));
+    });
     const out = {};
-    if (graph.callSigns) out.callSigns = graph.callSigns;
+    // The retired file's own provenance keys (version, source, the _NOTE commentary a
+    // maintainer reads) ride along, so the shape is the one the validator documents.
+    if (graph.commMeta) {
+      for (const k of Object.keys(graph.commMeta)) {
+        if (k !== 'pointOrder') out[k] = graph.commMeta[k];   // pointOrder is not part of the shape
+      }
+    }
+    // Always present, even empty: heli and lsa list no comm-change points at all, and their
+    // loaders still read the dictionary.
+    out.callSigns = graph.callSigns || {};
     out.points = points;
     return out;
   }

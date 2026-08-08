@@ -46,11 +46,14 @@ export function verify() {
     for (const w of srcRows) {
       const g = byName.get(w.name);
       if (!g) { problems.push(`${lay} waypoint missing from graph: ${w.name}`); continue; }
-      if (w.report && g.report !== w.report) {
-        problems.push(`${lay} ${w.name}: report ${w.report} -> ${g.report}`);
-      }
-      if (Math.abs(g.lat - w.lat) > 1e-4 || Math.abs(g.lng - w.lng) > 1e-4) {
-        problems.push(`${lay} ${w.name}: position moved`);
+      // Every key the row carried, not a chosen few -- a hand-picked list is how a field
+      // goes missing while the check stays green.
+      for (const k of Object.keys(w)) {
+        if (k === 'lat' || k === 'lng') {
+          if (Math.abs(g[k] - w[k]) > 1e-4) problems.push(`${lay} ${w.name}: ${k} moved`);
+        } else if (JSON.stringify(g[k]) !== JSON.stringify(w[k])) {
+          problems.push(`${lay} ${w.name}.${k}: ${JSON.stringify(w[k])} -> ${JSON.stringify(g[k])}`);
+        }
       }
     }
     // Compare by the UNDIRECTED pair, not by position in a sorted list: a regenerated row
@@ -72,8 +75,8 @@ export function verify() {
         ? { ...b, from: b.to, to: b.from,
             inboundAltitude: b.outboundAltitude, outboundAltitude: b.inboundAltitude }
         : b;
-      const keys = ['from', 'to', 'distanceNm', 'inboundAltitude', 'outboundAltitude',
-        'oneWay', 'status', 'source', 'armyAirway', 'onAtcApproval'];
+      // Every key the source row had, plus the ones the projection emits.
+      const keys = [...new Set([...Object.keys(a), ...Object.keys(norm)])];
       // `oneWay: false` and an absent oneWay are the same statement; the sources use both.
       const same = (k) => {
         if (k === 'oneWay') return !!a[k] === !!norm[k];
@@ -85,10 +88,32 @@ export function verify() {
           bad.map(k => `(${k}: ${JSON.stringify(a[k])} -> ${JSON.stringify(norm[k])})`).join(' '));
       }
     }
-    const srcCc = (readOld(`${lay}-comm-change.json`).points) || [];
-    const gotCc = commChangeFromGraph(graph).points;
+    // Field for field, not by count. Comparing only the count is how `routeHints` on 20
+    // CVFR points survived this check while the projection dropped them: the count was
+    // right and the data was gone.
+    const srcCcFile = readOld(`${lay}-comm-change.json`);
+    const srcCc = srcCcFile.points || [];
+    const gotCcFile = commChangeFromGraph(graph);
+    const gotCc = gotCcFile.points;
     if (srcCc.length !== gotCc.length) {
       problems.push(`${lay} comm-change points ${srcCc.length} -> ${gotCc.length}`);
+    }
+    const gotByName = new Map(gotCc.map(p => [p.name, p]));
+    for (const a of srcCc) {
+      const b = gotByName.get(a.name);
+      if (!b) { problems.push(`${lay} comm-change point missing: ${a.name}`); continue; }
+      for (const k of Object.keys(a)) {
+        if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) {
+          problems.push(`${lay} comm-change ${a.name}.${k} differs`);
+        }
+      }
+    }
+    // ...and the file-level keys, which carry the call-sign dictionary and the provenance.
+    for (const k of Object.keys(srcCcFile)) {
+      if (k === 'points') continue;
+      if (JSON.stringify(srcCcFile[k]) !== JSON.stringify(gotCcFile[k])) {
+        problems.push(`${lay} comm-change root.${k} differs`);
+      }
     }
   }
   return problems;

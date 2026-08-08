@@ -23,6 +23,7 @@
 // this frame) so the tests can assert visibility without snapshotting overlay
 // canvas pixels — see draw.js drawNavWaypoints.
 const { test, expect } = require('./_setup');
+const { stubGraph, commChange: shippedCommChange } = require('./_layerData');
 const fs = require('fs');
 
 // TYONA reporting point — coords lifted from docs/data/cvfr-nav-waypoints.json.
@@ -296,7 +297,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
   });
 
   test('known-freq-points.md mirrors every comm-change point row from JSON', async () => {
-    const comm = require('./_layerData').commChange('cvfr');
+    const comm = shippedCommChange('cvfr');
     const md = fs.readFileSync('known-freq-points.md', 'utf8');
     const actual = md.split('\n').filter(line => /^\| (?:[A-Z]{5}|LL[A-Z0-9]{2}) \|/.test(line));
     const expected = comm.points.map(point => expectedKnownFreqPointRow(point, comm.callSigns));
@@ -304,7 +305,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
   });
 
   test('route template comm-change call signs have route-context hints', async () => {
-    const comm = require('./_layerData').commChange('cvfr');
+    const comm = shippedCommChange('cvfr');
     const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
     const byName = new Map((comm.points || []).map(point => [point.name, point]));
     const missing = [];
