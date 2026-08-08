@@ -254,3 +254,31 @@ test('expansion honours one-way corridors', async ({ page }) => {
   expect(r.out).toEqual(['LLHZ', 'SFAIM', 'HTZUK']);
   expect(r.back).toEqual(['HTZUK', 'KNTRY', 'LLHZ']);
 });
+
+test('the picker never says the same thing twice', async ({ page }) => {
+  // Reported: an option read "מ־LLHZ אל צומת אשדוד (LLHZ → צומת אשדוד)" — the name states
+  // the direction in words, and the parenthetical repeated it with the very arrow whose
+  // rendered direction is ambiguous in RTL.
+  await page.addInitScript(() => {
+    try { for (const s of ['build', 'view', 'display']) localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
+  });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof syncLegs === 'function' && typeof showFlightPlan === 'function');
+  const labels = await page.evaluate(({ back }) => {
+    state.waypoints = back.map(w => ({ ...w })); syncLegs();
+    routeLibrarySaveCurrent();                       // auto-named: direction in words
+    routeLibrarySaveCurrent('תרגיל בוקר');            // renamed: no endpoints in the name
+    state.waypoints = back.map(w => ({ ...w })); syncLegs();
+    showFlightPlan(); document.getElementById('fpl-open').click();
+    return Array.from(document.querySelectorAll('#fpl-return-route option'))
+      .map(o => o.textContent);
+  }, { back: BACK });
+  const auto = labels.find(t => t.includes('אל'));
+  const renamed = labels.find(t => t.includes('תרגיל בוקר'));
+  // The auto-named one carries no parenthetical: the name already says it.
+  expect(auto).toBeTruthy();
+  expect(auto).not.toContain('→');
+  expect(auto).not.toContain('(');
+  // ...while a renamed route still gets its endpoints, because nothing else states them.
+  expect(renamed).toContain('→');
+});

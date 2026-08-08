@@ -2249,7 +2249,7 @@ function defaultSavedRouteName() {
       // route. Each endpoint is isolated so a Latin code cannot pull the surrounding
       // text around it either.
       const iso = (t) => (typeof fplIsolate === 'function' ? fplIsolate(t) : t);
-      return he ? ('\u05de' + iso(a) + ' \u05d0\u05dc ' + iso(b))   // "מ<a> אל <b>"
+      return he ? ('\u05de\u05be' + iso(a) + ' \u05d0\u05dc ' + iso(b))   // "מ־<a> אל <b>"
                 : (iso(a) + ' \u2192 ' + iso(b));
     }
     if (a || b) return a || b;
@@ -8241,8 +8241,17 @@ function showFplDialog() {
         return ((raw && typeof navName === 'function') ? navName(raw) : raw).toString().trim();
       };
       const from = endName(rw[0]), to = endName(rw[rw.length - 1]);
-      const label = (e.name || e.id) + (from && to ? '  (' + from + ' \u2192 ' + to + ')' : '');
-      opt.textContent = (typeof fplIsolate === 'function') ? fplIsolate(label) : label;
+      const nm = (e.name || e.id);
+      // Only spell the endpoints out when the NAME does not already carry them. An
+      // auto-named route reads "מ־LLHZ אל צומת אשדוד" -- appending "(LLHZ → צומת אשדוד)"
+      // said the same thing twice, and did it with the very arrow whose direction is
+      // ambiguous in RTL. A renamed route ("morning nav ex") still gets the endpoints.
+      const named = from && to && nm.includes(from) && nm.includes(to);
+      const label = (from && to && !named) ? (nm + '  (' + from + ' \u2192 ' + to + ')') : nm;
+      // Strip any isolates the name already carries before adding our own: an auto-named
+      // route arrives pre-isolated, and wrapping it again nested them ("מ־⁨⁨LLHZ⁩⁩").
+      const bare = label.replace(/[\u2068\u2069]/g, '');
+      opt.textContent = (typeof fplIsolate === 'function') ? fplIsolate(bare) : bare;
       retSel.appendChild(opt);
     }
     // A route that ENDS at a field cannot take a return: joining another route there is a

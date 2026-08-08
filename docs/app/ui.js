@@ -1488,7 +1488,12 @@ function showRouteLibraryModal(focusSave) {
           return ((raw && typeof navName === 'function') ? navName(raw) : raw).toString().trim();
         };
         const from = endName(rw[0]), to = endName(rw[rw.length - 1]);
-        const ends = (from && to) ? from + ' → ' + to + ' · ' : '';
+        // ...but only when the NAME does not already carry them, or the row says the same
+        // thing twice. Auto-named routes state the direction in words; a renamed one
+        // ("morning nav ex") still needs the endpoints spelled out.
+        const named = from && to && entry.name &&
+          entry.name.includes(from) && entry.name.includes(to);
+        const ends = (from && to && !named) ? from + ' → ' + to + ' · ' : '';
         meta.textContent = ends + wpN + ' WP' + (when ? ' · ' + when : '');
       }
       main.append(nm, meta);
