@@ -114,6 +114,22 @@ rather than guessed. Observed: **58 of 79** LSA and **38 of 105** heli resolve
 unambiguously, with the Hebrew names matching exactly on both sides, which independently
 corroborates the position match.
 
+### Their adjacency asymmetry is NOT direction data
+
+Worth recording, because it looks like a signal and is not one. Of 895 directed pairs in the
+secondary source, 850 are symmetric and **45 list only one direction**. Thirteen of those 45
+are segments we carry, and we independently mark 8 of them one-way — which reads like
+corroboration.
+
+It is not. The five remaining cases (`KUVSH→LLBS`, `LLBG→PARDS`, `SMRAT→SZION`,
+`OVDAT→RUHOT`, `AFFEK→LLHA`) were checked against the live site by the maintainer and are
+**all bidirectional**. The asymmetry is an incomplete reverse entry in their extraction, not
+a one-way corridor.
+
+So one-way flags must come from the charts, never from an absent reverse edge. A direction
+flag is the one field that *forbids* flying something: a wrong one either refuses a legal
+route or, worse, stays silent about a corridor that may not be entered.
+
 Each such node carries `codeSource: "cross-referenced"`. The authoritative source is the
 back of the published route charts, as AIP א'-11 annex א' states; these codes are a
 convenience pending a chart audit, and the field makes that auditable rather than
