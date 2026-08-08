@@ -3,8 +3,8 @@
  "counts": {
   "nodes": 199,
   "routePoints": 188,
-  "segments": 261,
-  "directedEdges": 522,
+  "segments": 266,
+  "directedEdges": 532,
   "positionless": 0,
   "droppedSegments": 0
  },
@@ -1754,10 +1754,40 @@
     "status": "candidate"
    },
    {
+    "to": "HULAT",
+    "distanceNm": 8.9,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
     "to": "LLIB",
     "distanceNm": 4.5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
+    "status": "candidate"
+   }
+  ],
+  "HULAT": [
+   {
+    "to": "AMNON",
+    "distanceNm": 8.9,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
+    "to": "BASAN",
+    "distanceNm": 6.2,
+    "inboundAltitude": 2500,
+    "outboundAltitude": 3000,
+    "status": "candidate"
+   },
+   {
+    "to": "LLIB",
+    "distanceNm": 4.8,
+    "inboundAltitude": 3000,
+    "outboundAltitude": 2500,
     "status": "candidate"
    }
   ],
@@ -1981,6 +2011,13 @@
     "status": "candidate"
    },
    {
+    "to": "LLMZ",
+    "distanceNm": 10.7,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
     "to": "MMORR",
     "distanceNm": 6.2,
     "inboundAltitude": 4000,
@@ -2136,6 +2173,13 @@
     "inboundAltitude": 4000,
     "outboundAltitude": 3500,
     "status": "candidate"
+   },
+   {
+    "to": "ZOHAR",
+    "distanceNm": 10.7,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
    }
   ],
   "LLNV": [
@@ -2595,22 +2639,6 @@
     "distanceNm": 4.5,
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
-    "status": "candidate"
-   }
-  ],
-  "HULAT": [
-   {
-    "to": "BASAN",
-    "distanceNm": 6.2,
-    "inboundAltitude": 2500,
-    "outboundAltitude": 3000,
-    "status": "candidate"
-   },
-   {
-    "to": "LLIB",
-    "distanceNm": 4.8,
-    "inboundAltitude": 3000,
-    "outboundAltitude": 2500,
     "status": "candidate"
    }
   ],
@@ -3240,6 +3268,13 @@
     "inboundAltitude": 1500,
     "outboundAltitude": 2000,
     "status": "candidate"
+   },
+   {
+    "to": "LLBO",
+    "distanceNm": 4.3,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
    }
   ],
   "FRDIS": [
@@ -3263,6 +3298,13 @@
     "inboundAltitude": 2500,
     "outboundAltitude": 3000,
     "status": "candidate"
+   },
+   {
+    "to": "LLBO",
+    "distanceNm": 3.6,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
    },
    {
     "to": "SDTYM",
@@ -3293,6 +3335,29 @@
     "distanceNm": 6.2,
     "inboundAltitude": 1500,
     "outboundAltitude": 1000,
+    "status": "candidate"
+   }
+  ],
+  "LLBO": [
+   {
+    "to": "BOREN",
+    "distanceNm": 4.3,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
+    "to": "FRDIS",
+    "distanceNm": 3.6,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
+    "to": "HOTRM",
+    "distanceNm": 6.2,
+    "inboundAltitude": 1000,
+    "outboundAltitude": 1500,
     "status": "candidate"
    }
   ],
@@ -3773,6 +3838,13 @@
     "status": "candidate"
    },
    {
+    "to": "GILAM",
+    "distanceNm": 7.7,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
     "to": "LLHA",
     "distanceNm": 3.7,
     "inboundAltitude": 1500,
@@ -4084,6 +4156,13 @@
     "status": "candidate"
    },
    {
+    "to": "GALIM",
+    "distanceNm": 7.7,
+    "inboundAltitude": null,
+    "outboundAltitude": null,
+    "status": "unknown"
+   },
+   {
     "to": "LLHA",
     "distanceNm": 4.6,
     "inboundAltitude": 3000,
@@ -4366,15 +4445,6 @@
     "distanceNm": 2.2,
     "inboundAltitude": 3500,
     "outboundAltitude": 3000,
-    "status": "candidate"
-   }
-  ],
-  "LLBO": [
-   {
-    "to": "HOTRM",
-    "distanceNm": 6.2,
-    "inboundAltitude": 1000,
-    "outboundAltitude": 1500,
     "status": "candidate"
    }
   ],

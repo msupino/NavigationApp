@@ -467,3 +467,40 @@ test('the published Herzliya to Eilat-Ramon route is complete', async ({ page })
   // Eilat-Ramon was unreachable for want of the last hop, not for want of a corridor.
   expect(missing).toEqual([]);
 });
+
+test('every link in the national CVFR traversal is present', async ({ page }) => {
+  await boot(page);
+  // A full traversal of the published Israeli CVFR routes, north to south and back: 105
+  // distinct points, 157 links. Codes resolved from our own datasets by Hebrew name -- ten
+  // links were missing when this was first run, five for the Eilat route (ENGDI-MMORR,
+  // HAZVA-ZOFAR, SAMAR-LLER, BRORA-LLER, ZMGID-LLMG) and five more here (AMNON-HULAT,
+  // GILAM-GALIM, BOREN-LLBO, LLBO-FRDIS, LLMZ-ZOHAR). Mitzpe Ramon (LLMR) is deliberately
+  // absent: we hold no data for that airstrip.
+  const missing = await page.evaluate(async () => {
+    const graph = await fplLoadRouteGraph();
+    const seq = [
+      'LLKS','BASAN','HULAT','LLIB','AMNON','DESHE','ZALMN','SEGEV','EVLYM','AHIUD','AAKKO',
+      'SMRAT','AAKKO','KRYON','LLHA','GILAM','EVLYM','SEGEV','ZALMN','DESHE','AMNON','HULAT',
+      'BASAN','LLKS','BASAN','HULAT','AMNON','DESHE','ZALMN','SEGEV','EVLYM','GILAM','GALIM',
+      'DAROM','HOTRM','BOREN','LLBO','FRDIS','HADRA','EIRON','ZMGID','LLMG','ZMGID','EIRON',
+      'HADRA','ZYAAR','SHARO','DEROR','BAZRA','LLHZ','GNYAM','PARDS','LLBG','MRISN','NTAIM',
+      'BOVED','NAGID','YAVNE','ZASHD','NMASD','ZDAFA','NITZA','HODYA','REVAH','NOAAM','BKAMA',
+      'SOVAL','MINGV','NASIH','LLBS','KUVSH','NCITY','OMMER','SOKET','MYTAR','TARAD','ARRAD',
+      'LLMZ','ENGDI','SHALM','ZUKIM','ALMOG','YRIHO','DUMIM','ANATA','HNINA','HAREL','SORES',
+      'SHARG','LTRUN','AYLON','NSHRM','SIRNI','NTAIM','SUPER','TYONA','CLORE','RIDNG','HTZUK',
+      'KNTRY','LLHZ','SFAIM','APOLN','ARENA','HTZUK','RIDNG','CLORE','TYONA','SUPER','NTAIM',
+      'BOVED','NAGID','YAVNE','ZASHD','NMASD','ZDAFA','NITZA','HODYA','REVAH','NOAAM','BKAMA',
+      'ZLHAV','ZGOAL','NCITY','OMMER','OHLIM','HOVAV','NEGEV','TLLIM','BOKER','OVDAT','RUHOT',
+      'HRGVS','ZOFAR','LLEY','HAZVA','ARAVA','ZOHAR','MMORR','LLMZ','ZOHAR','ARAVA',
+      'HAZVA','ZOFAR','BMNUH','YAHEL','KTORA','YOTVT','SAMAR','LLER','SAMAR','YOTVT','KTORA',
+      'YAHEL','BMNUH','ZOFAR','HRGVS','RUHOT'];
+    const out = [];
+    for (let i = 0; i < seq.length - 1; i++) {
+      const a = seq[i], b = seq[i + 1];
+      if (a === b) continue;
+      if (!(graph.edges[a] || []).some(e => e.to === b)) out.push(a + '->' + b);
+    }
+    return [...new Set(out)];
+  });
+  expect(missing).toEqual([]);
+});
