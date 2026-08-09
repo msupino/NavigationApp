@@ -2337,6 +2337,7 @@ document.getElementById('reverse').onclick = () => {
       // dropping hideKite made a deliberately decluttered leg redraw its kite.
       ...(l.vorRef ? { vorRef: l.vorRef } : {}),
       ...(l.hideKite ? { hideKite: 1 } : {}),
+      ...(l.showKite ? { showKite: 1 } : {}),
       ...(l.hideDrift ? { hideDrift: 1 } : {}),
       ...(l.showDrift ? { showDrift: 1 } : {}),
       // Reversing is not a speed edit, so the pins travel -- but they travel WITH the
@@ -6599,6 +6600,8 @@ if (isNativeCapacitorShell() && !isNativeLocalOrigin()) {
 // Preload the terrain grid so MSA / terrain-clearance (#673) is ready when a
 // leg inspector opens. No-op (coverage:false) until a real DEM is bundled.
 if (typeof loadTerrain === "function") loadTerrain();
+// CTR boundary points: the route clock starts there, not at the field.
+if (typeof loadCtrBoundaries === "function") loadCtrBoundaries();
 
 // Pull optional remote tuning overrides (gist) over the baked-in defaults, then
 // repaint so they take effect. Silent fallback to defaults if the fetch fails.

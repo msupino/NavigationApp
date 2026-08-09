@@ -2495,7 +2495,12 @@ function showInspector() {
     // and the line stays selectable, which is how this button is reached again to restore it.
     const hideBtn = document.createElement('button');
     hideBtn.className = 'insp-btn';
-    const kiteOff = typeof legKiteHidden === 'function' && legKiteHidden(leg);
+    // Effective state, like the drift button below: a leg inside the departure CTR hides
+    // its kite by default, and this button is how it comes back (leg.showKite).
+    const kiteIdx = state.selected.index;
+    const kiteOff = typeof legKiteVisible === 'function'
+      ? !legKiteVisible(kiteIdx, leg)
+      : (typeof legKiteHidden === 'function' && legKiteHidden(leg));
     hideBtn.textContent = kiteOff
       ? (S.showLegKite || 'Show kite')
       : (S.hideLegKite || 'Hide kite');
@@ -2506,8 +2511,9 @@ function showInspector() {
     hideBtn.setAttribute('aria-label', hideBtn.title);
     hideBtn.setAttribute('aria-pressed', kiteOff ? 'true' : 'false');
     hideBtn.onclick = () => {
-      if (legKiteHidden(leg)) delete leg.hideKite;
-      else leg.hideKite = 1;
+      const inCtr = typeof legInsideCtr === 'function' && legInsideCtr(kiteIdx);
+      if (kiteOff) { delete leg.hideKite; if (inCtr) leg.showKite = 1; }
+      else { delete leg.showKite; if (!inCtr) leg.hideKite = 1; }
       if (typeof persist === 'function') persist();
       draw();
       showInspector();          // relabel the button to what it now does
@@ -2521,7 +2527,7 @@ function showInspector() {
     // global toggle off, "Show drift lines" turns this one leg's cone on (showDrift) --
     // it used to clear a hide flag nothing was reading, a click that changed nothing.
     const driftOff = typeof legDriftVisible === 'function'
-      ? !legDriftVisible(leg, window.showDrift)
+      ? !legDriftVisible(leg, window.showDrift, state.selected.index)
       : (typeof legDriftHidden === 'function' && legDriftHidden(leg));
     driftBtn.textContent = driftOff
       ? (S.showLegDrift || 'Show drift lines')
@@ -2533,12 +2539,15 @@ function showInspector() {
     driftBtn.setAttribute('aria-label', driftBtn.title);
     driftBtn.setAttribute('aria-pressed', driftOff ? 'true' : 'false');
     driftBtn.onclick = () => {
+      const dIdx = state.selected.index;
+      const dInCtr = typeof legInsideCtr === 'function' && legInsideCtr(dIdx);
       if (driftOff) {
         delete leg.hideDrift;
-        if (!window.showDrift) leg.showDrift = 1;   // global off: this leg opts in
+        // Global off, or default-off inside the CTR: this leg opts in explicitly.
+        if (!window.showDrift || dInCtr) leg.showDrift = 1;
       } else {
         delete leg.showDrift;
-        if (window.showDrift) leg.hideDrift = 1;    // global on: this leg opts out
+        if (window.showDrift && !dInCtr) leg.hideDrift = 1;
       }
       if (typeof persist === 'function') persist();
       draw();

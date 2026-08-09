@@ -2246,6 +2246,110 @@ const pad3 = n => String(n).padStart(3, '0');
 function legKiteHidden(leg) {
   return !!(leg && leg.hideKite);
 }
+// CTR boundary points per airfield (docs/data/ctr-boundaries.json), lazily loaded. The
+// climb-out from a field to its CTR boundary is flown on the field's procedure, not on the
+// route's stopwatch -- pilots start counting at the boundary point. An airfield not listed
+// behaves as before: the clock starts at the field.
+var ctrBoundaries = null;          // null = not loaded; {} or populated once fetched
+async function loadCtrBoundaries() {
+  if (ctrBoundaries !== null) return ctrBoundaries;
+  try {
+    // Cache-bust with the same marker the datasets use; deploy rewrites it in core.js.
+    const ver = (typeof _verOf === 'function') ? _verOf(S.routeGraphUrl) : '2';
+    const r = await fetch('data/ctr-boundaries.json?v=' + ver);
+    const d = r.ok ? await r.json() : null;
+    const map = (d && d.airfields && typeof d.airfields === 'object') ? d.airfields : {};
+    const up = (arr) => (Array.isArray(arr) ? arr : [])
+      .map(p => String(p || '').trim().toUpperCase()).filter(Boolean);
+    const out = {};
+    for (const [icao, v] of Object.entries(map)) {
+      // v1 shipped a bare array of boundary points; v2 splits inside/boundary. Both read.
+      out[String(icao).toUpperCase()] = Array.isArray(v)
+        ? { clockStartsAt: up(v), inside: [] }
+        : { clockStartsAt: up(v && v.clockStartsAt), inside: up(v && v.inside) };
+    }
+    ctrBoundaries = out;
+  } catch (e) {
+    ctrBoundaries = {};             // absent or unreadable: every clock starts at the field
+  }
+  if (typeof scheduleDraw === 'function') scheduleDraw();
+  return ctrBoundaries;
+}
+// Most "inside the CTR" points are already implied by the route graph: they are the
+// reporting points the published corridor passes through between the field and its exit
+// point. Deriving them means the hand-written list only has to carry what no corridor
+// traverses (Haifa's KRYON and AFFEK), and it self-corrects as the graph grows -- LLIB's
+// AMNON and Haifa's GALIM were both missing from the hand list and both fall out of this.
+var _ctrDerivePromise = null;
+async function ctrDeriveInsideFromGraph() {
+  if (!ctrBoundaries || typeof fplGraphChain !== 'function') return;
+  let graph = null;
+  try {
+    graph = (typeof fplLoadRouteGraph === 'function') ? await fplLoadRouteGraph() : null;
+  } catch (e) { graph = null; }
+  if (!graph) return;
+  for (const rec of Object.values(ctrBoundaries)) {
+    rec._derived = [];
+  }
+  for (const [icao, rec] of Object.entries(ctrBoundaries)) {
+    if (!graph.nodes || !graph.nodes[icao]) continue;
+    const found = new Set();
+    for (const exit of rec.clockStartsAt || []) {
+      if (!graph.nodes[exit]) continue;
+      let chain = null;
+      try { chain = fplGraphChain(graph, icao, exit, {}); } catch (e) { chain = null; }
+      if (!chain) continue;
+      for (const n of chain.slice(1, -1)) found.add(n);
+    }
+    rec._derived = [...found];
+  }
+  if (typeof scheduleDraw === 'function') scheduleDraw();
+}
+// Every point inside a field's CTR: the hand-written list plus what the corridors imply.
+// The derivation needs the route graph -- 236 KB that most sessions never open -- so it is
+// kicked off on FIRST USE (a route touching a listed field) rather than at boot, where it
+// added a fetch and a parse to every startup. Until it lands, the hand-written list stands
+// on its own; the derived points appear on the next repaint.
+function ctrInsidePoints(rec) {
+  if (!rec) return [];
+  if (!_ctrDerivePromise && typeof fplGraphChain === 'function') {
+    _ctrDerivePromise = ctrDeriveInsideFromGraph();
+  }
+  return (rec.inside || []).concat(rec._derived || []);
+}
+// Every name that belongs to a field's CTR: the field itself, the points inside it (listed
+// or inherited from the corridors), and its exit points -- the exit is still inside, the
+// clock starts on the leg LEAVING it.
+function ctrNameSet(icao) {
+  const rec = icao && ctrBoundaries && ctrBoundaries[icao];
+  if (!rec) return null;
+  const set = new Set([icao]);
+  for (const n of ctrInsidePoints(rec)) set.add(n);
+  for (const n of (rec.clockStartsAt || [])) set.add(n);
+  return set;
+}
+function ctrFieldSetAt(idx) {
+  if (ctrBoundaries === null) { loadCtrBoundaries(); return null; }
+  const wp = state.waypoints[idx];
+  const nm = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
+  return nm ? ctrNameSet(nm) : null;
+}
+// Is leg i flown inside a CTR? Purely by NAME: both of its endpoints have to belong to the
+// same field's CTR -- the departure field's on the way out, the destination's on the way
+// in. Nothing is inferred from a leg's position in the route: a first leg to a point the
+// CTR does not name is ordinary route time, and so is a last leg from one.
+function legInsideCtr(i) {
+  if (!state || !Array.isArray(state.waypoints)) return false;
+  const a = state.waypoints[i], b = state.waypoints[i + 1];
+  if (!a || !b) return false;
+  const na = (a.name || '').toString().trim().toUpperCase();
+  const nb = (b.name || '').toString().trim().toUpperCase();
+  if (!na || !nb) return false;
+  const dep = ctrFieldSetAt(0);
+  if (dep && dep.has(na) && dep.has(nb)) return true;
+  const arr = ctrFieldSetAt(state.waypoints.length - 1);
+  return !!(arr && arr.has(na) && arr.has(nb));
+}
 
 // ...and the same for the leg's DRIFT LINES -- the dashed pair fanning out at the tuned
 // drift angle. Same reasoning as the kite: on a busy chart several legs' cones overlap into
@@ -2261,10 +2365,22 @@ function legDriftHidden(leg) {
 // one leg's cone back on an otherwise clean map). The global used to be a hard ceiling,
 // which made the inspector's "Show drift lines" button a no-op whenever the toolbar toggle
 // was off -- a control that does nothing teaches the pilot it is broken.
-function legDriftVisible(leg, globalOn) {
+function legDriftVisible(leg, globalOn, i) {
   if (leg && leg.hideDrift) return false;
   if (leg && leg.showDrift) return true;
+  // Inside the departure field's CTR the leg is flown on the field's procedure: its drift
+  // cone is noise over the busiest part of the chart, so it is off unless asked for.
+  if (Number.isInteger(i) && typeof legInsideCtr === 'function' && legInsideCtr(i)) {
+    return false;
+  }
   return !!globalOn;
+}
+// Effective nav-kite visibility, same rules: an explicit hide wins, an explicit show wins
+// next, and a leg inside the departure CTR is hidden by default.
+function legKiteVisible(i, leg) {
+  if (leg && leg.hideKite) return false;
+  if (leg && leg.showKite) return true;
+  return !(typeof legInsideCtr === 'function' && legInsideCtr(i));
 }
 
 // A PR preview may SHARE a big static asset directory with the deployed root instead of
