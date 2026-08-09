@@ -243,7 +243,9 @@ test('the data census matches what the maintainer last signed off', () => {
   const expected = {
     cvfr: { layerNodes: 172, segments: 269, commChange: 52, unknown: 6 },
     heli: { layerNodes: 209, segments: 85, commChange: 0, unknown: 38 },
-    lsa: { layerNodes: 167, segments: 75, commChange: 0, unknown: 15 },
+    // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
+    // from the second capture (#1485) -- the first census update under the new mechanism.
+    lsa: { layerNodes: 176, segments: 87, commChange: 0, unknown: 27 },
   };
   const got = {};
   for (const lay of LAYERS) {
