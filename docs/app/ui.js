@@ -1898,7 +1898,7 @@ function runSearch() {
       const nm = areaLabel(w);
       if (nm && nm !== primary) bits.push(nm);
       if (Number.isFinite(w.lowFt) && Number.isFinite(w.highFt)) bits.push(w.lowFt + '-' + w.highFt + ' ft');
-      if (w.openFromHour != null) bits.push(String(w.openFromHour).padStart(2, '0') + ':00\u2192');
+      if (w.active === 'weekend') bits.push(S.bubbleWeekendTag || 'weekend');
       alt = bits.join(' \u00b7 ');
     } else if (h.kind === 'af') {
       primary = w.name;                  // ICAO is always shown first

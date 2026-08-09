@@ -1360,9 +1360,6 @@ async function loadAreas() {
       // the data — absent means 'always'.
       .map(a => ({ coords: a.coords, name: a.name || '', en: a.en || '', he: a.he || '',
         icao: a.icao || '', lowFt: a.lowFt, highFt: a.highFt,
-        // Weekday opening hour (local): 12:00/14:00 bubbles are afternoon-only on
-        // weekdays, open all day on the weekend. Absent = no gate.
-        openFromHour: Number.isFinite(a.openFromHour) ? a.openFromHour : null,
         active: a.active === 'weekend' ? 'weekend' : 'always' }));
     if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
     areas = mapped;
@@ -1409,10 +1406,7 @@ function drawAreas() {
     }
     octx.closePath();
     const hl = a === window.__lsaHighlight;   // chart "locate" highlight
-    // The chart's tan class: active on the weekend (and holidays) only. The 12:00/14:00
-    // weekday-opening hours a secondary source lists for exactly these bubbles contradict
-    // the chart class, so the chart wins here and the hour is an inspector note.
-    const wknd = a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12);
+    const wknd = a.active === 'weekend';      // the chart legend's tan class
     // Official legend colours: always = green outline + pale-green fill (in force
     // every day); weekend = black outline + tan fill (Fri–Sat only). The locate
     // highlight overrides both with amber.
@@ -1460,9 +1454,7 @@ function drawAreas() {
       if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) {
         bits.push(a.lowFt + '-' + a.highFt + ' ' + (S.unitFeet || 'ft'));
       }
-      if (a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12)) {
-        bits.push(S.bubbleWeekendTag || 'weekend');
-      }
+      if (a.active === 'weekend') bits.push(S.bubbleWeekendTag || 'weekend');
       if (bits.length) {
         const gap = Math.round((namePx + metaPx) / 3.2);
         halo({ t: nm, y: s.y - gap });

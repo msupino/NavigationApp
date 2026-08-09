@@ -25,12 +25,12 @@ test('the dataset carries codes, bands and gates', async ({ page }) => {
     count: areas.length,
     coded: areas.filter(a => a.icao).length,
     banded: areas.filter(a => Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)).length,
-    gated: areas.filter(a => a.openFromHour != null).length,
+    weekend: areas.filter(a => a.active === 'weekend').length,
   }));
   expect(d.count).toBe(37);
   expect(d.coded).toBe(37);
   expect(d.banded).toBe(37);
-  expect(d.gated).toBeGreaterThan(25);
+  expect(d.weekend).toBe(10);           // the chart legend's tan class
 });
 
 test('clicking inside a bubble opens its inspector with band and gate', async ({ page }) => {
@@ -74,7 +74,7 @@ test('a bubble is searchable by code, and the hit opens the inspector', async ({
 test('an ungated bubble says open all day, and a route waypoint still wins the click', async ({ page }) => {
   await bootLsa(page);
   const r = await page.evaluate(() => {
-    const a = areas.find(x => x.openFromHour == null);
+    const a = areas.find(x => x.active !== 'weekend');
     return a && a.icao;
   });
   await page.fill('#wp-search', r);
