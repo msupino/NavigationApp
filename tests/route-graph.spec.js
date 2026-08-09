@@ -154,6 +154,55 @@ test('every CVFR node carries the labels its validator requires', () => {
   expect(bad).toEqual([]);
 });
 
+test('a shared node keeps one identity across the files that carry it', () => {
+  // A point shared by layers ships as a copy in each layer's file. The copies are
+  // deliberately NOT identical -- each file carries its own chart's position, spelling and
+  // reporting class -- but the IDENTITY must be one: the code a plan files, what kind of
+  // thing it is, and the layers list that says the copies exist at all. Nothing but this
+  // test enforces that: the graph is hand-maintained, and an edit that lands in one file
+  // and misses a twin would otherwise ship silently.
+  const files = {};
+  for (const l of LAYERS) files[l] = layerGraph(l).nodes;
+  const where = {};
+  for (const [l, ns] of Object.entries(files)) {
+    for (const id of Object.keys(ns)) (where[id] = where[id] || []).push(l);
+  }
+  const R = 3440.065, rad = Math.PI / 180;
+  const gc = (a, b) => {
+    const h = Math.sin((b.lat - a.lat) * rad / 2) ** 2 +
+      Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin((b.lng - a.lng) * rad / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+  const problems = [];
+  for (const [id, ls] of Object.entries(where)) {
+    if (ls.length < 2) continue;
+    const first = files[ls[0]][id];
+    for (const l of ls.slice(1)) {
+      const other = files[l][id];
+      for (const k of ['code', 'codeSource', 'kind']) {
+        if (JSON.stringify(first[k]) !== JSON.stringify(other[k])) {
+          problems.push(`${id}.${k}: ${ls[0]}=${JSON.stringify(first[k])} vs ${l}=${JSON.stringify(other[k])}`);
+        }
+      }
+      if (JSON.stringify([...(first.layers || [])].sort()) !==
+          JSON.stringify([...(other.layers || [])].sort())) {
+        problems.push(`${id}.layers: ${ls[0]} and ${l} disagree`);
+      }
+      // Per-layer positions may differ (each chart digitised its own), but only within the
+      // merge radius that made them one node in the first place.
+      if (gc(first, other) > 0.25) {
+        problems.push(`${id}: copies ${gc(first, other).toFixed(2)} nm apart`);
+      }
+    }
+    // ...and the layers list must match reality: every file it names carries the node.
+    const claimed = [...new Set((files[ls[0]][id].layers || []))].filter(l => LAYERS.includes(l));
+    for (const l of claimed) {
+      if (!files[l] || !files[l][id]) problems.push(`${id}.layers names ${l}, which lacks the node`);
+    }
+  }
+  expect(problems).toEqual([]);
+});
+
 test('airfields are tagged, because a landing mid-route needs its own plan', () => {
   // Carried over from the retired cvfr-route-graph.spec.js: the app resolves mid-route
   // airfields against airfields.json, but the graph's own tagging is the data audit that
@@ -181,30 +230,55 @@ test('cross-referenced codes are labelled, and conflicts keep both', () => {
   for (const n of conflicted) expect(n.code).not.toBe(n.codeAlt);
 });
 
-test('the shipped graph still says what the retired CVFR table said', () => {
-  // The per-layer files it was built from are gone, so the baseline is the last commit that
-  // had them -- the same one scripts/legacy-from-graph.mjs proves equivalence against. This
-  // is what stops a later edit to the graph from quietly dropping a published segment.
-  const { execFileSync } = require('child_process');
-  const src = JSON.parse(execFileSync('git',
-    ['show', 'e3cd65e:docs/data/cvfr-leg-altitude.json'],
-    { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
-  const segs = src.segments || src;
-  const pairs = new Set();
-  for (const [from, es] of Object.entries(graph().edges.cvfr)) for (const e of es) pairs.add(from + '>' + e.to);
-  let found = 0;
-  for (const s2 of segs) {
-    if (!s2.from || !s2.to) continue;
-    if (pairs.has(s2.from + '>' + s2.to) || pairs.has(s2.to + '>' + s2.from)) found++;
+test('the data census matches what the maintainer last signed off', () => {
+  // The graph is the source of truth and is edited by hand. These pins replace the old
+  // equivalence proof against the retired per-layer files: that proof guarded the
+  // MIGRATION, and once the data started growing past the baseline every legitimate edit
+  // joined an exception ledger. Instead, an edit now has to touch ONE line here -- which
+  // is the point: an accidental deletion or duplication fails this test, a deliberate
+  // change updates the census in the same diff a reviewer reads.
+  const expected = {
+    cvfr: { layerNodes: 172, segments: 269, commChange: 52, unknown: 6 },
+    heli: { layerNodes: 209, segments: 85, commChange: 0, unknown: 38 },
+    lsa: { layerNodes: 167, segments: 75, commChange: 0, unknown: 15 },
+  };
+  const got = {};
+  for (const lay of LAYERS) {
+    const g = layerGraph(lay);
+    const seen = new Set();
+    let unknown = 0;
+    for (const [f, es] of Object.entries(g.edges)) {
+      for (const e of es) {
+        if (e.blocked) continue;
+        const k = [f, e.to].sort().join('|');
+        if (seen.has(k)) continue;
+        seen.add(k);
+        if (e.status === 'unknown') unknown++;
+      }
+    }
+    got[lay] = {
+      layerNodes: Object.values(g.nodes).filter(n => n.layers.includes(lay)).length,
+      segments: seen.size,
+      commChange: Object.values(g.nodes).filter(n => n.commChange).length,
+      unknown,
+    };
   }
-  expect(found).toBe(segs.length);
+  expect(got).toEqual(expected);
 });
 
-test('every field the app reads is still reproducible from the graph', () => {
-  // The proof that made deleting the source files safe, run on every CI pass rather than
-  // once by hand: the loaders keep receiving the shapes they validate, field for field.
-  const { execFileSync } = require('child_process');
-  const out = execFileSync('node', ['scripts/legacy-from-graph.mjs'],
-    { cwd: ROOT, encoding: 'utf8' });
-  expect(out).toContain('equivalent');
+test('the safety-critical rows read exactly what the chart says', () => {
+  // Spot pins on the rows where a silent change misleads a pilot: a one-way corridor flown
+  // backwards, or a charted altitude drifting. The census above catches bulk accidents;
+  // these catch a surgical one.
+  const g = layerGraph('cvfr');
+  const edge = (a, b) => (g.edges[a] || []).find(e => e.to === b);
+  // HTZUK -> Country Club: 1200, one-way; the reverse is synthesised and blocked.
+  expect(edge('HTZUK', 'KNTRY')).toMatchObject({ inboundAltitude: 1200, oneWay: true });
+  expect(edge('HTZUK', 'KNTRY').outboundAltitude).toBeNull();
+  expect(edge('KNTRY', 'HTZUK').blocked).toBe(true);
+  // Herzliya's one-way departure corridor: out via SFAIM at 1200, never back.
+  expect(edge('LLHZ', 'SFAIM')).toMatchObject({ inboundAltitude: 1200, oneWay: true });
+  // A comm-change node keeps its call signs.
+  expect(g.nodes.BASAN.commChange).toBe(true);
+  expect(g.nodes.BASAN.callSigns).toContain('PLUTO_EAST');
 });

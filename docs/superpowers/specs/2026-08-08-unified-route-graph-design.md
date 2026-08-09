@@ -182,6 +182,24 @@ one-way flags (OLGAH→HADRA, AHIUD→AAKKO — it flies both), two altitudes
 (MNSZN, RSNIM, SOREK), and marks 57 corridors inactive — a corridor-availability dimension
 we do not model. Direction flags come from charts only, as ever.
 
+### The equivalence proof is retired
+
+`scripts/legacy-from-graph.mjs` and its baseline are gone. The proof guarded the
+MIGRATION — while any field of the retired files failed to reproduce from the graph, they
+could not be deleted — and it did that job (654 → 0 problems). But its baseline was frozen
+at the deletion commit, so once the data started growing (cross-referenced altitudes, new
+points, airstrips), every legitimate edit joined an ever-longer exception ledger, and the
+check decayed into ceremony. Worse, the baseline first lived in a squash-orphaned commit
+that CI could not even reach.
+
+What replaces it is self-referential: a **census pin** (nodes / segments / comm points /
+unknowns per layer, one line to update in the same diff a reviewer reads), **spot pins**
+on the safety-critical rows (the one-way corridors, a charted altitude, a comm node's call
+signs), the **cross-file identity guard** for shared nodes, and the structural invariants
+(reverse symmetry, endpoint existence, dedup-with-identity). An accidental deletion fails
+the census; a surgical edit fails a spot pin or the identity guard; a deliberate change
+updates one visible line.
+
 ### The LSA table, cross-checked the same way
 
 The same secondary source carries the LSA network with per-direction altitudes and a time
