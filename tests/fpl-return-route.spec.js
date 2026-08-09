@@ -504,3 +504,40 @@ test('every link in the national CVFR traversal is present', async ({ page }) =>
   });
   expect(missing).toEqual([]);
 });
+
+test('picking a return route restores the landing acknowledgement', async ({ page }) => {
+  // The drawn route ends at the turnaround, so fplLandingSite() used to see no airfield
+  // and the "I coordinated the landing" checkbox vanished from exactly the flights that
+  // DO land at one -- the out-and-backs. With a return picked, the plan lands at the
+  // return route's final point, and the acknowledgement must gate filing again.
+  await boot(page);
+  await page.evaluate(({ back }) => {
+    state.waypoints = back.map(w => ({ ...w }));
+    syncLegs();
+    routeLibrarySaveCurrent('Return via KNTRY');
+    state.waypoints = [];
+    syncLegs();
+  }, { back: BACK });
+  await page.evaluate(({ out }) => {
+    state.waypoints = out.map(w => ({ ...w }));
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  }, { out: OUT });
+  const sel = page.locator('#fpl-return-route');
+  await expect(sel).toBeVisible({ timeout: 5000 });
+  await sel.selectOption({ index: 1 });
+  await page.evaluate(() => document.getElementById('fpl-next').click());
+  await expect(page.locator('#fpl-text')).toBeVisible({ timeout: 5000 });
+  // The third acknowledgement is back, and it names the HOME field the plan lands at.
+  const ack = page.locator('#fpl-ack-landing');
+  await expect(ack).toHaveCount(1);
+  const label = await ack.locator('..').textContent();
+  expect(label).toMatch(/Herzliya|הרצליה/);
+});
