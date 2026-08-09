@@ -1,6 +1,6 @@
 # Known Frequency Points
 
-This CVFR summary mirrors `points[]` in `docs/data/cvfr-comm-change.json`.
+This CVFR summary mirrors `points[]` in `the comm-change projection of docs/data/cvfr-route-graph.json`.
 LSA and helicopter data live in their correspondingly prefixed files. Rows
 marked `TBD` are comm-change points that do not have `points[].callSigns`
 assigned yet.

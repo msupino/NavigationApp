@@ -23,6 +23,7 @@
 // this frame) so the tests can assert visibility without snapshotting overlay
 // canvas pixels — see draw.js drawNavWaypoints.
 const { test, expect } = require('./_setup');
+const { stubGraph, commChange: shippedCommChange } = require('./_layerData');
 const fs = require('fs');
 
 // TYONA reporting point — coords lifted from docs/data/cvfr-nav-waypoints.json.
@@ -82,18 +83,11 @@ function expectedKnownFreqPointRow(point, catalog) {
   return `| ${point.name} | ${callSigns} | ${frequencies} |`;
 }
 
-// Install a route handler for the cvfr-comm-change.json request. Matches the
-// shipped URL pattern `cvfr-comm-change.json?v=...` regardless of query string.
-// MUST be called before `boot(page)` (i.e. before any page.goto) so the
+// Install the comm-change fixture into the stubbed route graph (one file serves all three
+// dataset kinds now). MUST be called before `boot(page)` (i.e. before any page.goto) so the
 // stub is registered before the app's first fetch.
 async function installCommChangeFixture(page, fixture = FIXTURE) {
-  await page.route('**/cvfr-comm-change.json*', route => {
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(fixture),
-    });
-  });
+  await stubGraph(page, { commChange: fixture.points, callSigns: fixture.callSigns });
 }
 
 async function boot(page) {
@@ -302,7 +296,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
   });
 
   test('known-freq-points.md mirrors every comm-change point row from JSON', async () => {
-    const comm = JSON.parse(fs.readFileSync('docs/data/cvfr-comm-change.json', 'utf8'));
+    const comm = shippedCommChange('cvfr');
     const md = fs.readFileSync('known-freq-points.md', 'utf8');
     const actual = md.split('\n').filter(line => /^\| (?:[A-Z]{5}|LL[A-Z0-9]{2}) \|/.test(line));
     const expected = comm.points.map(point => expectedKnownFreqPointRow(point, comm.callSigns));
@@ -310,7 +304,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
   });
 
   test('route template comm-change call signs have route-context hints', async () => {
-    const comm = JSON.parse(fs.readFileSync('docs/data/cvfr-comm-change.json', 'utf8'));
+    const comm = shippedCommChange('cvfr');
     const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
     const byName = new Map((comm.points || []).map(point => [point.name, point]));
     const missing = [];
@@ -467,6 +461,37 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     const labelText = await page.locator(
       'label[data-i18n-title="tbShowCommChangeTitle"]').textContent();
     expect(labelText).toMatch(/הצג\/הוסף שינויי תדר/);
+  });
+});
+
+test.describe('shared-file failure recovery', () => {
+  // The service worker starts controlling fetches mid-boot (clients.claim), and SW-issued
+  // requests bypass page.route -- the abort below must keep applying to every attempt.
+  test.use({ serviceWorkers: 'block' });
+  test('a dropped graph fetch leaves comm-change retryable, and the retry heals it', async ({ page }) => {
+    // All three dataset kinds ride one graph file now. The old per-kind policy committed
+    // {} on any failure ("no retry storms") -- with a shared file that meant one dropped
+    // request killed the rings and the altitude table for the whole session while the
+    // waypoints quietly recovered on the next draw. A fetch failure must stay retryable.
+    let fail = true;
+    await page.route('**/cvfr-route-graph.json*', route =>
+      fail ? route.abort() : route.fallback());
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof loadCommChange === 'function');
+    const first = await page.evaluate(async () => ({
+      cc: await loadCommChange(), la: await loadLegAltitudes(),
+      committed: { cc: window.commChangeMap, la: window.legAltitudeMap },
+    }));
+    expect(first.cc).toEqual({});                 // degraded answer for this draw...
+    expect(first.committed.cc).toBeNull();        // ...but nothing frozen for the session
+    expect(first.committed.la).toBeNull();
+    fail = false;
+    const healed = await page.evaluate(async () => ({
+      cc: Object.keys((await loadCommChange()) || {}).length,
+      la: Object.keys((await loadLegAltitudes()) || {}).length,
+    }));
+    expect(healed.cc).toBe(52);                   // the shipped comm-change points
+    expect(healed.la).toBeGreaterThan(200);       // the altitude table came back too
   });
 });
 

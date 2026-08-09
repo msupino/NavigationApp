@@ -91,7 +91,22 @@ async function setNamedRoute(page, from, to) {
 }
 
 test.describe('leg-altitude map wiring', () => {
-  test('map-added known green-route leg uses leg altitudes', async ({ page }) => {
+  test('the segment key is orientation-free', async ({ page }) => {
+  // The graph stores a segment in whichever direction it walks first, so ~30% of rows come
+  // out reversed from one build to the next. The key being canonical is what lets every
+  // consumer do ONE lookup: a directional key here once meant a single-orientation lookup
+  // silently missed those rows -- no error, just legs with no charted altitude.
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof legAltitudeKey === 'function');
+  const r = await page.evaluate(() => ({
+    same: legAltitudeKey('KNTRY', 'HTZUK') === legAltitudeKey('HTZUK', 'KNTRY'),
+    trimmed: legAltitudeKey(' HTZUK ', 'KNTRY') === legAltitudeKey('KNTRY', 'HTZUK'),
+  }));
+  expect(r.same).toBe(true);
+  expect(r.trimmed).toBe(true);
+});
+
+test('map-added known green-route leg uses leg altitudes', async ({ page }) => {
     await boot(page);
 
     const result = await clickRoute(page, 'DESHE', 'ZALMN');

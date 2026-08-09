@@ -10,7 +10,7 @@ NavAid is a static web app deployed via GitHub Pages from a workflow.
 - `mobile/` — Capacitor workspace for native iOS / Android packaging.
   Its tiny `shell/` web payload opens `https://navaid.supino.org` through
   Capacitor (`webDir: "shell"`); native tooling stays out of the static app.
-- `docs/data/cvfr-nav-waypoints.json` — 172 Israeli CVFR reporting points
+- `the nav-waypoints projection of docs/data/cvfr-route-graph.json` — 172 Israeli CVFR reporting points
  (`{name, en, he, lat, lng, report}`); shipped, lazily fetched by the "Show/pin
  navigation waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
  reference table (page 113, 2025 edition) — see `.ai/navaid-dev.md` for refresh

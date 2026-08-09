@@ -2384,7 +2384,7 @@ function showInspector() {
       body.appendChild(textRow(S.legDirection || 'Direction',
         pad3(toMagnetic(geo(_dirA, _dirB).brg)) + '°'));
     }
-    // Reset-to-known: the charted altitude from cvfr-leg-altitude.json. Read from
+    // Reset-to-known: the charted altitude from the route graph. Read from
     // the pristine ORIGIN map (legAltitudeOriginForLeg), not the live lookup —
     // a hand-edited altitude must not redefine the inspector's "charted"
     // default / revert target. Undefined (no entry / unknown direction) means

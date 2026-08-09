@@ -1,0 +1,3865 @@
+{
+  "layer": "lsa",
+  "version": 1,
+  "source": "Leg altitudes auto-extracted (EasyOCR) from the LSA-Low-Altitude raster chart yellow tags. status=ocr-candidate = UNVERIFIED; a single OCR value is mirrored to both directions. status=unknown = no value read. Verify against the chart before relying.",
+  "schema": {
+    "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/data/cvfr-nav-waypoints.json or docs/data/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence."
+  },
+  "nodes": {
+    "AAKKO": {
+      "code": "AAKKO",
+      "he": "עכו",
+      "en": "Akko",
+      "lat": 32.91637,
+      "lng": 35.09567,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "AAKKO",
+      "report": "onRequest"
+    },
+    "AHIUD": {
+      "code": "AHIUD",
+      "he": "אחיהוד",
+      "en": "Ahihud",
+      "lat": 32.91043,
+      "lng": 35.18026,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "AHIUD",
+      "report": "onRequest"
+    },
+    "ALLON": {
+      "code": "ALLON",
+      "he": "אלון",
+      "en": "Alon",
+      "lat": 32.03951,
+      "lng": 35.36705,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ALLON",
+      "report": "onRequest"
+    },
+    "ALMOG": {
+      "code": "ALMOG",
+      "he": "אלמוג",
+      "en": "Almog",
+      "lat": 31.78796,
+      "lng": 35.45687,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ALMOG",
+      "report": "onRequest"
+    },
+    "AMIOZ": {
+      "code": "AMIOZ",
+      "he": "עמיעוז",
+      "en": "Ami'oz",
+      "lat": 31.25514,
+      "lng": 34.40337,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "AMIOZ",
+      "report": "onRequest"
+    },
+    "ARAVA": {
+      "code": "ARAVA",
+      "he": "צומת הערבה",
+      "en": "Arava Junction",
+      "lat": 30.99027,
+      "lng": 35.30903,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ARAVA",
+      "report": "onRequest"
+    },
+    "ARGMN": {
+      "code": "ARGMN",
+      "he": "ארגמן",
+      "en": "Argaman",
+      "lat": 32.17168,
+      "lng": 35.53281,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ARGMN",
+      "report": "onRequest"
+    },
+    "ARRAA": {
+      "code": "ARRAA",
+      "codeSource": "cross-referenced",
+      "he": "ערה",
+      "lat": 32.49789,
+      "lng": 35.06596,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "ערה",
+      "report": "onRequest"
+    },
+    "ARRAD": {
+      "code": "ARRAD",
+      "he": "צומת ערד",
+      "en": "Arad Junction",
+      "lat": 31.25407,
+      "lng": 35.21068,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ARRAD",
+      "report": "onRequest"
+    },
+    "AYLON": {
+      "code": "AYLON",
+      "he": "איילון",
+      "en": "Ayalon",
+      "lat": 31.8698,
+      "lng": 34.94245,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "AYLON",
+      "report": "onRequest"
+    },
+    "BASAN": {
+      "code": "BASAN",
+      "he": "להבות הבשן",
+      "en": "Lehavot HaBashan",
+      "lat": 33.14359,
+      "lng": 35.63798,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "BASAN",
+      "report": "onRequest"
+    },
+    "BKAMA": {
+      "code": "BKAMA",
+      "he": "בית קמה",
+      "en": "Beit Kama",
+      "lat": 31.43956,
+      "lng": 34.76596,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "BKAMA",
+      "report": "onRequest"
+    },
+    "BMNUH": {
+      "code": "BMNUH",
+      "he": "באר מנוחה",
+      "en": "Be'er Menuha",
+      "lat": 30.30243,
+      "lng": 35.13433,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "BMNUH",
+      "report": "onRequest"
+    },
+    "BOKER": {
+      "code": "BOKER",
+      "he": "שדה בוקר",
+      "en": "Sde Boker",
+      "lat": 30.87324,
+      "lng": 34.78563,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "BOKER",
+      "report": "onRequest"
+    },
+    "BOREN": {
+      "code": "BOREN",
+      "he": "בית אורן",
+      "en": "Beit Oren",
+      "lat": 32.71191,
+      "lng": 34.97154,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "BOREN",
+      "report": "onRequest"
+    },
+    "BOVED": {
+      "code": "BOVED",
+      "he": "בית עובד",
+      "en": "Beit Oved",
+      "lat": 31.91866,
+      "lng": 34.76933,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "BOVED",
+      "report": "onRequest"
+    },
+    "BRORA": {
+      "code": "BRORA",
+      "he": "באר אורה",
+      "en": "Be'er Ora",
+      "lat": 29.70703,
+      "lng": 34.99755,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "BRORA",
+      "report": "onRequest"
+    },
+    "BSEMS": {
+      "code": "BSEMS",
+      "he": "בית שמש",
+      "en": "Beit Shemesh",
+      "lat": 31.75324,
+      "lng": 34.9813,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "BSEMS",
+      "report": "onRequest"
+    },
+    "DALIA": {
+      "code": "DALIA",
+      "he": "דליה",
+      "en": "Dalia",
+      "lat": 32.59484,
+      "lng": 35.08244,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "DALIA",
+      "report": "onRequest"
+    },
+    "DAROM": {
+      "code": "DAROM",
+      "he": "מחלף דרום",
+      "en": "Darom Interchange",
+      "lat": 32.79334,
+      "lng": 34.94167,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "DAROM",
+      "report": "onRequest"
+    },
+    "DESHE": {
+      "code": "DESHE",
+      "he": "כרי דשא",
+      "en": "Karei Deshe",
+      "lat": 32.86777,
+      "lng": 35.53281,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "כרי דשא",
+      "report": "onRequest"
+    },
+    "DIMON": {
+      "code": "DIMON",
+      "he": "דימונה",
+      "en": "Dimona",
+      "lat": 31.06587,
+      "lng": 35.00553,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "DIMON",
+      "report": "onRequest"
+    },
+    "DOORS": {
+      "code": "DOORS",
+      "codeSource": "cross-referenced",
+      "he": "דור",
+      "lat": 32.6067,
+      "lng": 34.9118,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "דור",
+      "report": "onRequest"
+    },
+    "DUMIM": {
+      "code": "DUMIM",
+      "he": "כפר אדומים",
+      "en": "Kfar Adumim",
+      "lat": 31.80184,
+      "lng": 35.32459,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "DUMIM",
+      "report": "onRequest"
+    },
+    "EILAT": {
+      "code": "EILAT",
+      "he": "אילת",
+      "en": "Eilat",
+      "lat": 29.55833,
+      "lng": 34.95918,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "EILAT",
+      "report": "onRequest"
+    },
+    "EIRON": {
+      "code": "EIRON",
+      "he": "עירון",
+      "en": "Eiron",
+      "lat": 32.47908,
+      "lng": 35.02491,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "EIRON",
+      "report": "onRequest"
+    },
+    "ELYAU": {
+      "code": "ELYAU",
+      "codeSource": "cross-referenced",
+      "he": "ניר אליהו",
+      "lat": 32.18965,
+      "lng": 34.95509,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "ניר אליהו",
+      "report": "onRequest"
+    },
+    "ENGDI": {
+      "code": "ENGDI",
+      "he": "עין גדי",
+      "en": "Ein Gedi",
+      "lat": 31.46639,
+      "lng": 35.39767,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ENGDI",
+      "report": "onRequest"
+    },
+    "ENGEV": {
+      "code": "ENGEV",
+      "codeSource": "cross-referenced",
+      "he": "עין גב",
+      "lat": 32.78035,
+      "lng": 35.63896,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "עין גב",
+      "report": "onRequest"
+    },
+    "ENHRD": {
+      "code": "ENHRD",
+      "codeSource": "cross-referenced",
+      "he": "עין חרוד",
+      "lat": 32.55283,
+      "lng": 35.38148,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "עין חרוד",
+      "report": "onRequest"
+    },
+    "ESTOL": {
+      "code": "ESTOL",
+      "he": "אשתאול",
+      "en": "Eshtaol",
+      "lat": 31.77721,
+      "lng": 35.01137,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "אשתאול",
+      "report": "onRequest"
+    },
+    "ETZEM": {
+      "code": "ETZEM",
+      "codeSource": "cross-referenced",
+      "he": "עצם",
+      "lat": 31.08845,
+      "lng": 34.99343,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "עצם",
+      "report": "onRequest"
+    },
+    "FAZEL": {
+      "code": "FAZEL",
+      "he": "צומת פצאל",
+      "en": "Petzael Junction",
+      "lat": 32.04694,
+      "lng": 35.46343,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "FAZEL",
+      "report": "onRequest"
+    },
+    "FRDIS": {
+      "code": "FRDIS",
+      "he": "צומת פורדיס",
+      "en": "Fureidis Junction",
+      "lat": 32.58963,
+      "lng": 34.94511,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "FRDIS",
+      "report": "onRequest"
+    },
+    "GEFEN": {
+      "code": "GEFEN",
+      "codeSource": "cross-referenced",
+      "he": "גפן",
+      "lat": 31.7423,
+      "lng": 34.87059,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "גפן",
+      "report": "onRequest"
+    },
+    "GILAM": {
+      "code": "GILAM",
+      "he": "גילעם",
+      "en": "Gil'am",
+      "lat": 32.81873,
+      "lng": 35.13187,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "GILAM",
+      "report": "onRequest"
+    },
+    "GILAT": {
+      "code": "GILAT",
+      "he": "גילת",
+      "en": "Gilat",
+      "lat": 31.33604,
+      "lng": 34.65294,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "GILAT",
+      "report": "onRequest"
+    },
+    "GOMME": {
+      "code": "GOMME",
+      "codeSource": "cross-referenced",
+      "he": "צומת גומא",
+      "lat": 33.16636,
+      "lng": 35.56976,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת גומא",
+      "report": "onRequest",
+      "en": "Gome Junction",
+      "enSource": "cross-referenced"
+    },
+    "GOVRN": {
+      "code": "GOVRN",
+      "he": "בית גוברין",
+      "en": "Beit Guvrin",
+      "lat": 31.60454,
+      "lng": 34.89263,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "בית גוברין",
+      "report": "onRequest"
+    },
+    "GSHML": {
+      "code": "GSHML",
+      "codeSource": "cross-referenced",
+      "he": "גן שמואל",
+      "lat": 32.4467,
+      "lng": 34.95673,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "גן שמואל",
+      "report": "onRequest"
+    },
+    "HADRA": {
+      "code": "HADRA",
+      "he": "חדרה",
+      "en": "Hadera",
+      "lat": 32.46186,
+      "lng": 34.91059,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "HADRA",
+      "report": "onRequest"
+    },
+    "HAONN": {
+      "code": "HAONN",
+      "codeSource": "cross-referenced",
+      "he": "האון",
+      "lat": 32.72606,
+      "lng": 35.62523,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "האון",
+      "report": "onRequest"
+    },
+    "HASID": {
+      "code": "HASID",
+      "he": "כפר חסידים",
+      "en": "Kfar Hasidim",
+      "lat": 32.74455,
+      "lng": 35.07729,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "HASID",
+      "report": "onRequest"
+    },
+    "HATRU": {
+      "code": "HATRU",
+      "he": "צומת חתרורים",
+      "en": "Hatrurim Junction",
+      "lat": 31.21776,
+      "lng": 35.24742,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "HATRU",
+      "report": "onRequest"
+    },
+    "HAZVA": {
+      "code": "HAZVA",
+      "he": "חצבה",
+      "en": "Hatzeva",
+      "lat": 30.77109,
+      "lng": 35.23571,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "HAZVA",
+      "report": "onRequest"
+    },
+    "HGSRM": {
+      "code": "HGSRM",
+      "codeSource": "cross-referenced",
+      "he": "הגושרים",
+      "lat": 33.22121,
+      "lng": 35.63094,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "הגושרים",
+      "report": "onRequest",
+      "en": "HaGoshrim Interchange",
+      "enSource": "cross-referenced"
+    },
+    "HOMMA": {
+      "code": "HOMMA",
+      "codeSource": "cross-referenced",
+      "he": "הר חומה",
+      "lat": 31.72755,
+      "lng": 35.22048,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "הר חומה",
+      "report": "onRequest"
+    },
+    "HORON": {
+      "code": "HORON",
+      "codeSource": "cross-referenced",
+      "he": "מבוא חורון",
+      "lat": 31.84857,
+      "lng": 35.02888,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "מבוא חורון",
+      "report": "onRequest"
+    },
+    "HOTRM": {
+      "code": "HOTRM",
+      "he": "החותרים",
+      "en": "Hahotrim",
+      "lat": 32.75321,
+      "lng": 34.93721,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "HOTRM",
+      "report": "onRequest"
+    },
+    "HOVAV": {
+      "code": "HOVAV",
+      "he": "רמת חובב",
+      "en": "Ramat Hovav",
+      "lat": 31.13392,
+      "lng": 34.80403,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "HOVAV",
+      "report": "onRequest"
+    },
+    "HRGVS": {
+      "code": "HRGVS",
+      "he": "הר גבס",
+      "en": "Mount Geves",
+      "lat": 30.62148,
+      "lng": 34.94988,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "הר גבס",
+      "report": "onRequest"
+    },
+    "HTIVA": {
+      "code": "HTIVA",
+      "codeSource": "cross-referenced",
+      "he": "חטיבת הנגב",
+      "lat": 31.26008,
+      "lng": 34.83209,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "חטיבת הנגב",
+      "report": "onRequest"
+    },
+    "IANES": {
+      "code": "IANES",
+      "codeSource": "cross-referenced",
+      "he": "א״ת נס ציונה",
+      "lat": 31.91895,
+      "lng": 34.79404,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "א״ת נס ציונה",
+      "report": "onRequest"
+    },
+    "IKKEA": {
+      "code": "IKKEA",
+      "he": "איקאה",
+      "en": "IKEA",
+      "lat": 31.94896,
+      "lng": 34.7707,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "IKKEA",
+      "report": "onRequest"
+    },
+    "KENED": {
+      "code": "KENED",
+      "codeSource": "cross-referenced",
+      "he": "יד קנדי",
+      "lat": 31.74808,
+      "lng": 35.13594,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "יד קנדי",
+      "report": "onRequest"
+    },
+    "KKANA": {
+      "code": "KKANA",
+      "codeSource": "cross-referenced",
+      "he": "כפר כנא",
+      "lat": 32.75812,
+      "lng": 35.34611,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "כפר כנא",
+      "report": "onRequest"
+    },
+    "KNFHA": {
+      "code": "KNFHA",
+      "codeSource": "cross-referenced",
+      "he": "כלא נפחא",
+      "lat": 30.72602,
+      "lng": 34.77435,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "כלא נפחא",
+      "report": "onRequest"
+    },
+    "KTORA": {
+      "code": "KTORA",
+      "he": "צומת קטורה",
+      "en": "Ketura Junction",
+      "lat": 29.9882,
+      "lng": 35.07676,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "KTORA",
+      "report": "onRequest"
+    },
+    "KUVSH": {
+      "code": "KUVSH",
+      "he": "כובשים",
+      "en": "Kovshim",
+      "lat": 31.25712,
+      "lng": 34.76396,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "KUVSH",
+      "report": "onRequest"
+    },
+    "LAPID": {
+      "code": "LAPID",
+      "codeSource": "cross-referenced",
+      "he": "לפיד",
+      "lat": 31.91433,
+      "lng": 35.02621,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "לפיד",
+      "report": "onRequest"
+    },
+    "LTRUN": {
+      "code": "LTRUN",
+      "he": "לטרון",
+      "en": "Latrun",
+      "lat": 31.83619,
+      "lng": 34.98639,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "LTRUN",
+      "report": "onRequest"
+    },
+    "MACHZ": {
+      "code": "MACHZ",
+      "codeSource": "cross-referenced",
+      "he": "מחלף מאחז",
+      "lat": 31.51141,
+      "lng": 34.7832,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "מחלף מאחז",
+      "report": "onRequest",
+      "en": "Ma'ahaz Interchange",
+      "enSource": "cross-referenced"
+    },
+    "MCZVA": {
+      "code": "MCZVA",
+      "codeSource": "cross-referenced",
+      "he": "מחצבה",
+      "lat": 31.97159,
+      "lng": 35.03252,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "מחצבה",
+      "report": "onRequest"
+    },
+    "MEHOL": {
+      "code": "MEHOL",
+      "he": "משולש חולית",
+      "en": "Holit Triangle",
+      "lat": 31.96003,
+      "lng": 34.76383,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "MEHOL",
+      "report": "onRequest"
+    },
+    "MESAR": {
+      "code": "MESAR",
+      "he": "מעלה מישר",
+      "en": "Ma'ale Meishar",
+      "lat": 30.49998,
+      "lng": 34.94366,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "MESAR",
+      "report": "onRequest"
+    },
+    "MEYAL": {
+      "code": "MEYAL",
+      "codeSource": "cross-referenced",
+      "he": "מחלף אייל",
+      "lat": 32.2045,
+      "lng": 34.96244,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "מחלף אייל",
+      "report": "onRequest",
+      "en": "Eyal Interchange",
+      "enSource": "cross-referenced"
+    },
+    "MHOLA": {
+      "code": "MHOLA",
+      "codeSource": "cross-referenced",
+      "he": "מחולה",
+      "lat": 32.365,
+      "lng": 35.51689,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "מחולה",
+      "report": "onRequest"
+    },
+    "MIGDL": {
+      "code": "MIGDL",
+      "codeSource": "cross-referenced",
+      "he": "מגדל",
+      "lat": 32.8345,
+      "lng": 35.50872,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "מגדל",
+      "report": "onRequest"
+    },
+    "MINGV": {
+      "code": "MINGV",
+      "he": "משמר הנגב",
+      "en": "Mishmar HaNegev",
+      "lat": 31.36712,
+      "lng": 34.71286,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "MINGV",
+      "report": "onRequest"
+    },
+    "MKGAT": {
+      "code": "MKGAT",
+      "codeSource": "cross-referenced",
+      "he": "מחלף קרית גם",
+      "lat": 31.59891,
+      "lng": 34.8116,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "מחלף קרית גם",
+      "report": "onRequest"
+    },
+    "MOVIL": {
+      "code": "MOVIL",
+      "he": "המוביל",
+      "en": "Hamovil",
+      "lat": 32.75754,
+      "lng": 35.2335,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "MOVIL",
+      "report": "onRequest"
+    },
+    "MRHVA": {
+      "code": "MRHVA",
+      "codeSource": "cross-referenced",
+      "he": "מרחביה",
+      "lat": 32.59491,
+      "lng": 35.31249,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "מרחביה",
+      "report": "onRequest"
+    },
+    "MYTAR": {
+      "code": "MYTAR",
+      "he": "מיתר",
+      "en": "Meitar",
+      "lat": 31.31548,
+      "lng": 34.93876,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "MYTAR",
+      "report": "onRequest"
+    },
+    "NAAMA": {
+      "code": "NAAMA",
+      "he": "נעמה",
+      "en": "Naama",
+      "lat": 31.90553,
+      "lng": 35.46259,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "NAAMA",
+      "report": "onRequest"
+    },
+    "NAHEM": {
+      "code": "NAHEM",
+      "he": "כפר מנחם",
+      "en": "Kfar Menahem",
+      "lat": 31.74313,
+      "lng": 34.8201,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "NAHEM",
+      "report": "onRequest"
+    },
+    "NASIH": {
+      "code": "NASIH",
+      "he": "אשל הנשיא",
+      "en": "Eshel HaNasi",
+      "lat": 31.32959,
+      "lng": 34.69894,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "NASIH",
+      "report": "onRequest"
+    },
+    "NBSOR": {
+      "code": "NBSOR",
+      "codeSource": "cross-referenced",
+      "he": "נחל בשור",
+      "lat": 31.27326,
+      "lng": 34.49251,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "נחל בשור",
+      "report": "onRequest"
+    },
+    "NCITY": {
+      "code": "NCITY",
+      "he": "צפון העיר",
+      "en": "North City",
+      "lat": 31.28617,
+      "lng": 34.79117,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "NCITY",
+      "report": "onRequest"
+    },
+    "NCSHN": {
+      "code": "NCSHN",
+      "he": "צומת נחשון",
+      "en": "Nachshon Junction",
+      "lat": 31.8133,
+      "lng": 34.91648,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "NCSHN",
+      "report": "onRequest"
+    },
+    "NEGEV": {
+      "code": "NEGEV",
+      "he": "צומת הנגב",
+      "en": "Negev Junction",
+      "lat": 31.06294,
+      "lng": 34.83758,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "NEGEV",
+      "report": "onRequest"
+    },
+    "NIRYA": {
+      "code": "NIRYA",
+      "codeSource": "cross-referenced",
+      "he": "ניר יפה",
+      "lat": 32.56475,
+      "lng": 35.24929,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "ניר יפה",
+      "report": "onRequest"
+    },
+    "NITZA": {
+      "code": "NITZA",
+      "he": "ניצן",
+      "en": "Nitzan",
+      "lat": 31.72248,
+      "lng": 34.57175,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "NITZA",
+      "report": "onRequest"
+    },
+    "NMASD": {
+      "code": "NMASD",
+      "he": "נמל אשדוד",
+      "en": "Ashdod Port",
+      "lat": 31.83333,
+      "lng": 34.62528,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli"
+      ],
+      "report": "onRequest",
+      "name": "NMASD"
+    },
+    "NMASD#2": {
+      "code": "NMASD",
+      "codeAlt": "NMADD",
+      "he": "נמל אשדוד",
+      "lat": 31.81412,
+      "lng": 34.63123,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "NMASD",
+      "report": "onRequest"
+    },
+    "NSHRM": {
+      "code": "NSHRM",
+      "he": "מחלף נשרים",
+      "en": "Nesharim Interchange",
+      "lat": 31.90904,
+      "lng": 34.89361,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "NSHRM",
+      "report": "onRequest"
+    },
+    "NTAIM": {
+      "code": "NTAIM",
+      "he": "נטעים",
+      "en": "Netaim",
+      "lat": 31.94371,
+      "lng": 34.78134,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "NTAIM",
+      "report": "onRequest"
+    },
+    "OFKIM": {
+      "code": "OFKIM",
+      "he": "אופקים",
+      "en": "Ofakim",
+      "lat": 31.32018,
+      "lng": 34.61909,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "OFKIM",
+      "report": "onRequest"
+    },
+    "OHLIM": {
+      "code": "OHLIM",
+      "he": "אוהלים",
+      "en": "Ohalim",
+      "lat": 31.19021,
+      "lng": 34.8038,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "OHLIM",
+      "report": "onRequest"
+    },
+    "OLGAH": {
+      "code": "OLGAH",
+      "he": "אולגה",
+      "en": "Olga",
+      "lat": 32.42878,
+      "lng": 34.86527,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "OLGAH",
+      "report": "onRequest"
+    },
+    "ORAKV": {
+      "code": "ORAKV",
+      "codeSource": "cross-referenced",
+      "he": "אור עקיבא",
+      "lat": 32.506,
+      "lng": 34.92966,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "אור עקיבא",
+      "report": "onRequest"
+    },
+    "OVDAT": {
+      "code": "OVDAT",
+      "he": "חורבות עבדת",
+      "en": "Ovdat Ruins",
+      "lat": 30.80029,
+      "lng": 34.7934,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "OVDAT",
+      "report": "onRequest"
+    },
+    "PELEG": {
+      "code": "PELEG",
+      "he": "פלג",
+      "en": "Peleg",
+      "lat": 32.3281,
+      "lng": 34.8371,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "PELEG",
+      "report": "onRequest"
+    },
+    "PRHNA": {
+      "code": "PRHNA",
+      "codeSource": "cross-referenced",
+      "he": "פרדס חנה",
+      "lat": 32.47184,
+      "lng": 34.97265,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "פרדס חנה",
+      "report": "onRequest"
+    },
+    "REUTE": {
+      "code": "REUTE",
+      "codeSource": "cross-referenced",
+      "he": "רעות",
+      "lat": 31.87599,
+      "lng": 35.02329,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "רעות",
+      "report": "onRequest"
+    },
+    "RSNIM": {
+      "code": "RSNIM",
+      "codeSource": "cross-referenced",
+      "he": "ראשונים",
+      "lat": 31.94896,
+      "lng": 34.80297,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "ראשונים",
+      "report": "onRequest",
+      "en": "Rishonim",
+      "enSource": "cross-referenced"
+    },
+    "RUHOT": {
+      "code": "RUHOT",
+      "he": "צומת הרוחות",
+      "en": "Ruhot Junction",
+      "lat": 30.65977,
+      "lng": 34.80881,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "RUHOT",
+      "report": "onRequest"
+    },
+    "SAMAR": {
+      "code": "SAMAR",
+      "he": "סמר",
+      "en": "Samar",
+      "lat": 29.82859,
+      "lng": 35.02981,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "סמר",
+      "report": "onRequest"
+    },
+    "SDTYM": {
+      "code": "SDTYM",
+      "he": "שדות ים",
+      "en": "Sdot Yam",
+      "lat": 32.49492,
+      "lng": 34.88568,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "SDTYM",
+      "report": "onRequest"
+    },
+    "SELZR": {
+      "code": "SELZR",
+      "codeSource": "cross-referenced",
+      "he": "שדה אליעזר",
+      "lat": 33.04351,
+      "lng": 35.57058,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "שדה אליעזר",
+      "report": "onRequest"
+    },
+    "SFAIM": {
+      "code": "SFAIM",
+      "he": "שפיים",
+      "en": "Shefayim",
+      "lat": 32.21056,
+      "lng": 34.80722,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr"
+      ],
+      "report": "onRequest",
+      "name": "SFAIM"
+    },
+    "SFAIM#2": {
+      "code": "SFAIM",
+      "he": "שפיים",
+      "lat": 32.21593,
+      "lng": 34.81039,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "SFAIM",
+      "report": "onRequest"
+    },
+    "SHAHR": {
+      "code": "SHAHR",
+      "he": "כוכב השחר",
+      "en": "Kokhav HaShahar",
+      "lat": 31.95542,
+      "lng": 35.33643,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "SHAHR",
+      "report": "onRequest"
+    },
+    "SHALM": {
+      "code": "SHALM",
+      "he": "מצפה שלם",
+      "en": "Mitzpe Shalem",
+      "lat": 31.55549,
+      "lng": 35.40134,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "SHALM",
+      "report": "onRequest"
+    },
+    "SHARG": {
+      "code": "SHARG",
+      "he": "שער הגיא",
+      "en": "Sha'ar HaGai",
+      "lat": 31.81763,
+      "lng": 35.0199,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "SHARG",
+      "report": "onRequest"
+    },
+    "SHEFC": {
+      "code": "SHEFC",
+      "codeSource": "cross-referenced",
+      "he": "שפך",
+      "lat": 31.93964,
+      "lng": 34.70461,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "שפך",
+      "report": "onRequest"
+    },
+    "SHLVM": {
+      "code": "SHLVM",
+      "codeSource": "cross-referenced",
+      "he": "שעלבים",
+      "lat": 31.87041,
+      "lng": 34.98322,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "שעלבים",
+      "report": "onRequest"
+    },
+    "SIRNI": {
+      "code": "SIRNI",
+      "he": "נצר סירני",
+      "en": "Netzer Sireni",
+      "lat": 31.9274,
+      "lng": 34.83078,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "SIRNI",
+      "report": "onRequest"
+    },
+    "SITIM": {
+      "code": "SITIM",
+      "he": "שיטים",
+      "en": "Shitim",
+      "lat": 30.17368,
+      "lng": 35.01307,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "שיטים",
+      "report": "onRequest"
+    },
+    "SIZFN": {
+      "code": "SIZFN",
+      "he": "שזפון",
+      "en": "Shizafon",
+      "lat": 30.04583,
+      "lng": 35.01348,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "SIZFN",
+      "report": "onRequest"
+    },
+    "SMRAT": {
+      "code": "SMRAT",
+      "he": "שמרת",
+      "en": "Shomrat",
+      "lat": 32.95029,
+      "lng": 35.08918,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "SMRAT",
+      "report": "onRequest"
+    },
+    "SOKET": {
+      "code": "SOKET",
+      "he": "צומת שוקת",
+      "en": "Shoket Junction",
+      "lat": 31.30641,
+      "lng": 34.9012,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "SOKET",
+      "report": "onRequest"
+    },
+    "SOREK": {
+      "code": "SOREK",
+      "codeSource": "cross-referenced",
+      "he": "שורק",
+      "lat": 31.94109,
+      "lng": 34.75096,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "שורק",
+      "report": "onRequest"
+    },
+    "SORES": {
+      "code": "SORES",
+      "he": "שורש",
+      "en": "Shoresh",
+      "lat": 31.79663,
+      "lng": 35.07554,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "שורש",
+      "report": "onRequest"
+    },
+    "SSOMR": {
+      "code": "SSOMR",
+      "codeSource": "cross-referenced",
+      "he": "שער שומרון",
+      "lat": 32.10454,
+      "lng": 34.99586,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "שער שומרון",
+      "report": "onRequest",
+      "en": "Sha'ar Shomron",
+      "enSource": "cross-referenced"
+    },
+    "SUPER": {
+      "code": "SUPER",
+      "he": "סופרלנד",
+      "en": "Superland",
+      "lat": 31.97459,
+      "lng": 34.74117,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "SUPER",
+      "report": "onRequest"
+    },
+    "TARAD": {
+      "code": "TARAD",
+      "he": "תל ערד",
+      "en": "Tel Arad",
+      "lat": 31.27675,
+      "lng": 35.12494,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "TARAD",
+      "report": "onRequest"
+    },
+    "TAVOR": {
+      "code": "TAVOR",
+      "he": "כפר תבור",
+      "en": "Kfar Tavor",
+      "lat": 32.68938,
+      "lng": 35.41786,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "TAVOR",
+      "report": "onRequest"
+    },
+    "TIRAT": {
+      "code": "TIRAT",
+      "he": "טירת צבי",
+      "en": "Tirat Tzvi",
+      "lat": 32.42223,
+      "lng": 35.52587,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "TIRAT",
+      "report": "onRequest"
+    },
+    "TLLIM": {
+      "code": "TLLIM",
+      "he": "טללים",
+      "en": "Tlalim",
+      "lat": 30.98938,
+      "lng": 34.76246,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "TLLIM",
+      "report": "onRequest"
+    },
+    "TYONA": {
+      "code": "TYONA",
+      "he": "תל יונה",
+      "en": "Tel Yona",
+      "lat": 32.00429,
+      "lng": 34.72607,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "TYONA",
+      "report": "onRequest"
+    },
+    "TZHOT": {
+      "code": "TZHOT",
+      "he": "צלחות",
+      "en": "Tzelahot",
+      "lat": 31.30641,
+      "lng": 34.52925,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "TZHOT",
+      "report": "onRequest"
+    },
+    "TZUBA": {
+      "code": "TZUBA",
+      "codeSource": "cross-referenced",
+      "he": "צובה",
+      "lat": 31.77677,
+      "lng": 35.12089,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "צובה",
+      "report": "onRequest"
+    },
+    "VINGT": {
+      "code": "VINGT",
+      "he": "וינגייט",
+      "en": "Wingate",
+      "lat": 32.25412,
+      "lng": 34.8167,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "VINGT",
+      "report": "onRequest"
+    },
+    "YAHEL": {
+      "code": "YAHEL",
+      "he": "יהל",
+      "en": "Yahel",
+      "lat": 30.0794,
+      "lng": 35.1327,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "YAHEL",
+      "report": "onRequest"
+    },
+    "YARHV": {
+      "code": "YARHV",
+      "codeSource": "cross-referenced",
+      "he": "ירחיב",
+      "lat": 32.14812,
+      "lng": 34.9711,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "ירחיב",
+      "report": "onRequest"
+    },
+    "YASIF": {
+      "code": "YASIF",
+      "codeSource": "cross-referenced",
+      "he": "צומת יאסיף",
+      "lat": 32.91132,
+      "lng": 35.15658,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "צומת יאסיף",
+      "report": "onRequest"
+    },
+    "YOTVT": {
+      "code": "YOTVT",
+      "he": "יטבתה",
+      "en": "Yotvata",
+      "lat": 29.89834,
+      "lng": 35.06655,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "YOTVT",
+      "report": "onRequest"
+    },
+    "YRUHM": {
+      "code": "YRUHM",
+      "he": "ירוחם",
+      "en": "Yeruham",
+      "lat": 30.98944,
+      "lng": 34.91089,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "YRUHM",
+      "report": "onRequest"
+    },
+    "ZADAM": {
+      "code": "ZADAM",
+      "codeSource": "cross-referenced",
+      "he": "צומת אדם",
+      "lat": 32.12328,
+      "lng": 35.50851,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת אדם",
+      "report": "onRequest",
+      "en": "Adam Junction",
+      "enSource": "cross-referenced"
+    },
+    "ZAMID": {
+      "code": "ZAMID",
+      "codeSource": "cross-referenced",
+      "he": "צומת עמיעד",
+      "lat": 32.90995,
+      "lng": 35.54186,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת עמיעד",
+      "report": "onRequest",
+      "en": "Amiad junction",
+      "enSource": "cross-referenced"
+    },
+    "ZASHD": {
+      "code": "ZASHD",
+      "he": "צומת אשדוד",
+      "en": "Ashdod Junction",
+      "lat": 31.82423,
+      "lng": 34.70746,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ZASHD",
+      "report": "onRequest"
+    },
+    "ZBRCH": {
+      "code": "ZBRCH",
+      "codeSource": "cross-referenced",
+      "he": "צומת ברכיה",
+      "lat": 31.66444,
+      "lng": 34.60477,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת ברכיה",
+      "report": "onRequest",
+      "en": "Berekhya Junction",
+      "enSource": "cross-referenced"
+    },
+    "ZBTMS": {
+      "code": "ZBTMS",
+      "codeSource": "cross-referenced",
+      "he": "צומת בית המכס",
+      "lat": 33.00938,
+      "lng": 35.64969,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת בית המכס",
+      "report": "onRequest",
+      "en": "Bet HaMekhes Junction",
+      "enSource": "cross-referenced"
+    },
+    "ZBTZD": {
+      "code": "ZBTZD",
+      "codeSource": "cross-referenced",
+      "he": "צומת בית צידה",
+      "lat": 32.90134,
+      "lng": 35.63265,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת בית צידה",
+      "report": "onRequest",
+      "en": "Bethsaida Junction",
+      "enSource": "cross-referenced"
+    },
+    "ZEMAH": {
+      "code": "ZEMAH",
+      "codeSource": "cross-referenced",
+      "he": "צמח",
+      "lat": 32.70151,
+      "lng": 35.58403,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צמח",
+      "report": "onRequest",
+      "en": "Zemach Junction",
+      "enSource": "cross-referenced"
+    },
+    "ZGLNI": {
+      "code": "ZGLNI",
+      "codeSource": "cross-referenced",
+      "he": "צומת גולני",
+      "lat": 32.77308,
+      "lng": 35.40665,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת גולני",
+      "report": "onRequest",
+      "en": "Golani Interchange",
+      "enSource": "cross-referenced"
+    },
+    "ZGOAL": {
+      "code": "ZGOAL",
+      "he": "גורל",
+      "en": "Goral",
+      "lat": 31.31066,
+      "lng": 34.78792,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "ZGOAL",
+      "report": "onRequest"
+    },
+    "ZHRYA": {
+      "code": "ZHRYA",
+      "he": "זכריה",
+      "en": "Zecharia",
+      "lat": 31.69873,
+      "lng": 34.9444,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ZHRYA",
+      "report": "onRequest"
+    },
+    "ZKADR": {
+      "code": "ZKADR",
+      "codeSource": "cross-referenced",
+      "he": "צומת קדרים",
+      "lat": 32.90692,
+      "lng": 35.47271,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת קדרים",
+      "report": "onRequest"
+    },
+    "ZKOCH": {
+      "code": "ZKOCH",
+      "codeSource": "cross-referenced",
+      "he": "צומת כח",
+      "lat": 33.12382,
+      "lng": 35.56856,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת כח",
+      "report": "onRequest"
+    },
+    "ZLHAV": {
+      "code": "ZLHAV",
+      "he": "צומת להבים",
+      "en": "Lehavim Junction",
+      "lat": 31.37197,
+      "lng": 34.793,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "lsa"
+      ],
+      "name": "ZLHAV",
+      "report": "onRequest"
+    },
+    "ZMGID": {
+      "code": "ZMGID",
+      "he": "צומת מגידו",
+      "en": "Megiddo Junction",
+      "lat": 32.57083,
+      "lng": 35.19161,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ZMGID",
+      "report": "onRequest"
+    },
+    "ZNYMN": {
+      "code": "ZNYMN",
+      "codeSource": "cross-referenced",
+      "he": "צומת נווה ימין",
+      "lat": 32.1695,
+      "lng": 34.95751,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת נווה ימין",
+      "report": "onRequest",
+      "en": "Neva Yamin Junction",
+      "enSource": "cross-referenced"
+    },
+    "ZOFAR": {
+      "code": "ZOFAR",
+      "he": "צופר",
+      "en": "Tzofar",
+      "lat": 30.5591,
+      "lng": 35.18575,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ZOFAR",
+      "report": "onRequest"
+    },
+    "ZOHAR": {
+      "code": "ZOHAR",
+      "he": "נווה זוהר",
+      "en": "Neve Zohar",
+      "lat": 31.14995,
+      "lng": 35.37225,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ZOHAR",
+      "report": "onRequest"
+    },
+    "ZPLGT": {
+      "code": "ZPLGT",
+      "codeSource": "cross-referenced",
+      "he": "צומת פלוגות",
+      "lat": 31.6231,
+      "lng": 34.75552,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת פלוגות",
+      "report": "onRequest",
+      "en": "Plugot Junction",
+      "enSource": "cross-referenced"
+    },
+    "ZUKIM": {
+      "code": "ZUKIM",
+      "he": "עינות צוקים",
+      "en": "Einot Tzukim",
+      "lat": 31.7147,
+      "lng": 35.44993,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ZUKIM",
+      "report": "onRequest"
+    },
+    "ZZHOR": {
+      "code": "ZZHOR",
+      "he": "צומת ציחור",
+      "en": "Tzihor Junction",
+      "lat": 30.27669,
+      "lng": 35.02042,
+      "kind": "waypoint",
+      "layers": [
+        "cvfr",
+        "heli",
+        "lsa"
+      ],
+      "name": "ZZHOR",
+      "report": "onRequest"
+    },
+    "he:אליקים": {
+      "he": "אליקים",
+      "lat": 32.63475,
+      "lng": 35.0639,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "אליקים",
+      "report": "onRequest",
+      "en": "Elyakim Interchange",
+      "enSource": "cross-referenced"
+    },
+    "he:אפעה#2": {
+      "he": "אפעה",
+      "lat": 31.14105,
+      "lng": 35.21288,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "אפעה",
+      "report": "onRequest"
+    },
+    "he:בנטל": {
+      "he": "בנטל",
+      "lat": 33.14746,
+      "lng": 35.78704,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "בנטל",
+      "report": "onRequest"
+    },
+    "he:בראון": {
+      "he": "בראון",
+      "lat": 32.23749,
+      "lng": 35.17065,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "בראון",
+      "report": "onRequest"
+    },
+    "he:בת-שלמה": {
+      "he": "בת שלמה",
+      "lat": 32.59629,
+      "lng": 35.00416,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "בת שלמה",
+      "report": "onRequest",
+      "en": "Bat Shlomo Interchange",
+      "enSource": "cross-referenced"
+    },
+    "he:יצהר-מזרח": {
+      "he": "יצהר מזרח",
+      "lat": 32.16539,
+      "lng": 35.26485,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "יצהר מזרח",
+      "report": "onRequest"
+    },
+    "he:יצהר-מערב": {
+      "he": "יצהר מערב",
+      "lat": 32.19251,
+      "lng": 35.1891,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "יצהר מערב",
+      "report": "onRequest"
+    },
+    "he:כור": {
+      "he": "כור",
+      "lat": 32.25078,
+      "lng": 35.08656,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "כור",
+      "report": "onRequest"
+    },
+    "he:כפר-כמא": {
+      "he": "כפר כמא",
+      "lat": 32.71798,
+      "lng": 35.44464,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "כפר כמא",
+      "report": "onRequest"
+    },
+    "he:כרם-מהר״ל": {
+      "he": "כרם מהר״ל",
+      "lat": 32.63909,
+      "lng": 34.97738,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "כרם מהר״ל",
+      "report": "onRequest"
+    },
+    "he:מכורה": {
+      "he": "מכורה",
+      "lat": 32.14483,
+      "lng": 35.42362,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "מכורה",
+      "report": "onRequest"
+    },
+    "he:מרסבא": {
+      "he": "מרסבא",
+      "lat": 31.70373,
+      "lng": 35.33154,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "מרסבא",
+      "report": "onRequest"
+    },
+    "he:ניצנים": {
+      "he": "ניצנים",
+      "lat": 31.71195,
+      "lng": 34.62831,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "ניצנים",
+      "report": "onRequest"
+    },
+    "he:נפח": {
+      "he": "נפח",
+      "lat": 33.05516,
+      "lng": 35.73409,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "נפח",
+      "report": "onRequest"
+    },
+    "he:סכר": {
+      "he": "סכר",
+      "lat": 31.08813,
+      "lng": 34.93549,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "סכר",
+      "report": "onRequest"
+    },
+    "he:עזריאל": {
+      "he": "עזריאל",
+      "lat": 32.25125,
+      "lng": 34.97984,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "עזריאל",
+      "report": "onRequest"
+    },
+    "he:צאלים": {
+      "he": "צאלים",
+      "lat": 31.20522,
+      "lng": 34.51082,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "צאלים",
+      "report": "onRequest"
+    },
+    "he:צומת-אביטל": {
+      "he": "צומת אביטל",
+      "lat": 33.08526,
+      "lng": 35.78595,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת אביטל",
+      "report": "onRequest"
+    },
+    "he:צומת-מסעדה": {
+      "he": "צומת מסעדה",
+      "lat": 33.23055,
+      "lng": 35.75062,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "צומת מסעדה",
+      "report": "onRequest",
+      "en": "Mas'ade Junction",
+      "enSource": "cross-referenced"
+    },
+    "he:צומת-קדומים": {
+      "he": "צומת קדומים",
+      "lat": 32.21417,
+      "lng": 35.17638,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "צומת קדומים",
+      "report": "onRequest"
+    },
+    "he:שניר": {
+      "he": "שניר",
+      "lat": 33.23565,
+      "lng": 35.67449,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "שניר",
+      "report": "onRequest"
+    }
+  },
+  "edges": {
+    "AAKKO": [
+      {
+        "to": "AHIUD",
+        "inboundAltitude": 1300,
+        "outboundAltitude": 1300,
+        "distanceNm": 4.28,
+        "chartDistanceNm": 4.3,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "SMRAT",
+        "inboundAltitude": 700,
+        "outboundAltitude": 400,
+        "distanceNm": 2.06,
+        "chartDistanceNm": 2,
+        "status": "reviewed",
+        "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right."
+      }
+    ],
+    "AHIUD": [
+      {
+        "to": "AAKKO",
+        "inboundAltitude": 1300,
+        "outboundAltitude": 1300,
+        "distanceNm": 4.28,
+        "chartDistanceNm": 4.3,
+        "status": "ocr-candidate"
+      }
+    ],
+    "ARAVA": [
+      {
+        "to": "HAZVA",
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
+        "distanceNm": 13.69,
+        "chartDistanceNm": 13.5,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "ZOHAR",
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
+        "distanceNm": 10.12,
+        "chartDistanceNm": 10.2,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "HAZVA": [
+      {
+        "to": "ARAVA",
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
+        "distanceNm": 13.69,
+        "chartDistanceNm": 13.5,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "ZOHAR": [
+      {
+        "to": "ARAVA",
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
+        "distanceNm": 10.12,
+        "chartDistanceNm": 10.2,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "HATRU",
+        "inboundAltitude": 2600,
+        "outboundAltitude": 2600,
+        "distanceNm": 7.6,
+        "chartDistanceNm": 7.6,
+        "status": "ocr-candidate"
+      }
+    ],
+    "ARRAD": [
+      {
+        "to": "HATRU",
+        "inboundAltitude": 2300,
+        "outboundAltitude": 2300,
+        "distanceNm": 2.88,
+        "chartDistanceNm": 2.9,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "TARAD",
+        "inboundAltitude": 2600,
+        "outboundAltitude": 2300,
+        "distanceNm": 4.61,
+        "chartDistanceNm": 4.5,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "TARAD": [
+      {
+        "to": "ARRAD",
+        "inboundAltitude": 2300,
+        "outboundAltitude": 2600,
+        "distanceNm": 4.61,
+        "chartDistanceNm": 4.5,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "MYTAR",
+        "inboundAltitude": 2500,
+        "outboundAltitude": 2200,
+        "distanceNm": 9.83,
+        "chartDistanceNm": 9.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "BMNUH": [
+      {
+        "to": "YAHEL",
+        "inboundAltitude": 1400,
+        "outboundAltitude": 1700,
+        "distanceNm": 13.39,
+        "chartDistanceNm": 13.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "ZOFAR",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 1400,
+        "distanceNm": 15.64,
+        "chartDistanceNm": 15.6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "ZZHOR",
+        "inboundAltitude": 1400,
+        "outboundAltitude": 1700,
+        "distanceNm": 6.1,
+        "chartDistanceNm": 6.1,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "YAHEL": [
+      {
+        "to": "BMNUH",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 1400,
+        "distanceNm": 13.39,
+        "chartDistanceNm": 13.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "KTORA",
+        "inboundAltitude": 1400,
+        "outboundAltitude": 1700,
+        "distanceNm": 6.2,
+        "chartDistanceNm": 6.3,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      },
+      {
+        "to": "SIZFN",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 6.51,
+        "chartDistanceNm": 6.5,
+        "status": "unknown"
+      }
+    ],
+    "BOKER": [
+      {
+        "to": "OVDAT",
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
+        "distanceNm": 4.4,
+        "chartDistanceNm": 4.4,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "TLLIM",
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
+        "distanceNm": 7.07,
+        "chartDistanceNm": 7,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "YRUHM",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 9.5,
+        "chartDistanceNm": 9.4,
+        "status": "unknown"
+      }
+    ],
+    "OVDAT": [
+      {
+        "to": "BOKER",
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
+        "distanceNm": 4.4,
+        "chartDistanceNm": 4.4,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "RUHOT",
+        "inboundAltitude": 3500,
+        "outboundAltitude": 3500,
+        "distanceNm": 8.47,
+        "chartDistanceNm": 8.6,
+        "status": "ocr-candidate"
+      }
+    ],
+    "DUMIM": [
+      {
+        "to": "SHAHR",
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
+        "distanceNm": 9.24,
+        "chartDistanceNm": 9.2,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "SHAHR": [
+      {
+        "to": "ALLON",
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
+        "distanceNm": 5.28,
+        "chartDistanceNm": 5.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "DUMIM",
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
+        "distanceNm": 9.24,
+        "chartDistanceNm": 9.2,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "EIRON": [
+      {
+        "to": "HADRA",
+        "inboundAltitude": 700,
+        "outboundAltitude": 700,
+        "distanceNm": 5.88,
+        "chartDistanceNm": 5.8,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "SDTYM",
+        "inboundAltitude": 700,
+        "outboundAltitude": 700,
+        "distanceNm": 7.12,
+        "chartDistanceNm": 7.1,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "ZMGID",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 2000,
+        "distanceNm": 10.08,
+        "chartDistanceNm": 10.1,
+        "status": "ocr-candidate"
+      }
+    ],
+    "HADRA": [
+      {
+        "to": "DALIA",
+        "inboundAltitude": 700,
+        "outboundAltitude": 700,
+        "distanceNm": 11.81,
+        "chartDistanceNm": 11.7,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "EIRON",
+        "inboundAltitude": 700,
+        "outboundAltitude": 700,
+        "distanceNm": 5.88,
+        "chartDistanceNm": 5.8,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "FRDIS",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 7.87,
+        "chartDistanceNm": 7.8,
+        "status": "unknown"
+      },
+      {
+        "to": "OLGAH",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 3.04,
+        "chartDistanceNm": 3.1,
+        "status": "unknown"
+      }
+    ],
+    "SDTYM": [
+      {
+        "to": "EIRON",
+        "inboundAltitude": 700,
+        "outboundAltitude": 700,
+        "distanceNm": 7.12,
+        "chartDistanceNm": 7.1,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "FRDIS",
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
+        "distanceNm": 6.43,
+        "chartDistanceNm": 6.5,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "OLGAH",
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
+        "distanceNm": 4.1,
+        "chartDistanceNm": 4,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "ENGDI": [
+      {
+        "to": "SHALM",
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
+        "distanceNm": 5.35,
+        "chartDistanceNm": 5.7,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "SHALM": [
+      {
+        "to": "ENGDI",
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
+        "distanceNm": 5.35,
+        "chartDistanceNm": 5.7,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "ZUKIM",
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
+        "distanceNm": 9.88,
+        "chartDistanceNm": 9.8,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "FAZEL": [
+      {
+        "to": "ALLON",
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
+        "distanceNm": 4.93,
+        "chartDistanceNm": 4.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "ARGMN",
+        "inboundAltitude": 500,
+        "outboundAltitude": 500,
+        "distanceNm": 8.28,
+        "chartDistanceNm": 8.3,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "NAAMA",
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
+        "distanceNm": 8.49,
+        "chartDistanceNm": 8.4,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+      }
+    ],
+    "NAAMA": [
+      {
+        "to": "ALMOG",
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
+        "distanceNm": 7.06,
+        "chartDistanceNm": 7.1,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+      },
+      {
+        "to": "FAZEL",
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
+        "distanceNm": 8.49,
+        "chartDistanceNm": 8.4,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+      }
+    ],
+    "FRDIS": [
+      {
+        "to": "BOREN",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 7.46,
+        "chartDistanceNm": 7.5,
+        "status": "unknown"
+      },
+      {
+        "to": "HADRA",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 7.87,
+        "chartDistanceNm": 7.8,
+        "status": "unknown"
+      },
+      {
+        "to": "HASID",
+        "inboundAltitude": 2200,
+        "outboundAltitude": 2200,
+        "distanceNm": 11.45,
+        "chartDistanceNm": 11.4,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "SDTYM",
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
+        "distanceNm": 6.43,
+        "chartDistanceNm": 6.5,
+        "status": "ocr-candidate"
+      }
+    ],
+    "HATRU": [
+      {
+        "to": "ARRAD",
+        "inboundAltitude": 2300,
+        "outboundAltitude": 2300,
+        "distanceNm": 2.88,
+        "chartDistanceNm": 2.9,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "ZOHAR",
+        "inboundAltitude": 2600,
+        "outboundAltitude": 2600,
+        "distanceNm": 7.6,
+        "chartDistanceNm": 7.6,
+        "status": "ocr-candidate"
+      }
+    ],
+    "KTORA": [
+      {
+        "to": "YAHEL",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 1400,
+        "distanceNm": 6.2,
+        "chartDistanceNm": 6.3,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      },
+      {
+        "to": "YOTVT",
+        "inboundAltitude": 1000,
+        "outboundAltitude": 1700,
+        "distanceNm": 5.42,
+        "chartDistanceNm": 5.3,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "KUVSH": [
+      {
+        "to": "NCITY",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 2000,
+        "distanceNm": 2.23,
+        "chartDistanceNm": 2.2,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "NCITY": [
+      {
+        "to": "KUVSH",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 2000,
+        "distanceNm": 2.23,
+        "chartDistanceNm": 2.2,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "ZGOAL",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 1.48,
+        "chartDistanceNm": 1.5,
+        "status": "unknown"
+      }
+    ],
+    "MEHOL": [
+      {
+        "to": "NTAIM",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 1.33,
+        "chartDistanceNm": 1.3,
+        "status": "unknown"
+      }
+    ],
+    "NTAIM": [
+      {
+        "to": "BOVED",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 1.62,
+        "chartDistanceNm": 1.5,
+        "status": "unknown"
+      },
+      {
+        "to": "MEHOL",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 1.33,
+        "chartDistanceNm": 1.3,
+        "status": "unknown"
+      },
+      {
+        "to": "SIRNI",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 2.7,
+        "chartDistanceNm": 2.7,
+        "status": "unknown"
+      },
+      {
+        "to": "SUPER",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 2.76,
+        "chartDistanceNm": 2.8,
+        "status": "unknown"
+      },
+      {
+        "to": "TYONA",
+        "inboundAltitude": 1200,
+        "outboundAltitude": 800,
+        "distanceNm": 4.6,
+        "chartDistanceNm": 4.6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+      }
+    ],
+    "MINGV": [
+      {
+        "to": "NASIH",
+        "inboundAltitude": 1200,
+        "outboundAltitude": 1500,
+        "distanceNm": 2.36,
+        "chartDistanceNm": 2.4,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "NASIH": [
+      {
+        "to": "MINGV",
+        "inboundAltitude": 1500,
+        "outboundAltitude": 1200,
+        "distanceNm": 2.36,
+        "chartDistanceNm": 2.4,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "MYTAR": [
+      {
+        "to": "SOKET",
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2500,
+        "distanceNm": 2,
+        "chartDistanceNm": 1.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "TARAD",
+        "inboundAltitude": 2200,
+        "outboundAltitude": 2500,
+        "distanceNm": 9.83,
+        "chartDistanceNm": 9.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "SOKET": [
+      {
+        "to": "HOVAV",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 11.5,
+        "chartDistanceNm": 11.4,
+        "status": "unknown"
+      },
+      {
+        "to": "MYTAR",
+        "inboundAltitude": 2500,
+        "outboundAltitude": 3000,
+        "distanceNm": 2,
+        "chartDistanceNm": 1.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "ZGOAL": [
+      {
+        "to": "NCITY",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 1.48,
+        "chartDistanceNm": 1.5,
+        "status": "unknown"
+      },
+      {
+        "to": "ZLHAV",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
+        "distanceNm": 3.69,
+        "chartDistanceNm": 3.6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "ZLHAV": [
+      {
+        "to": "BKAMA",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
+        "distanceNm": 4.29,
+        "chartDistanceNm": 4.4,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      },
+      {
+        "to": "ZGOAL",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
+        "distanceNm": 3.69,
+        "chartDistanceNm": 3.6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "SUPER": [
+      {
+        "to": "NTAIM",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 2.76,
+        "chartDistanceNm": 2.8,
+        "status": "unknown"
+      },
+      {
+        "to": "TYONA",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 1.94,
+        "chartDistanceNm": 1.9,
+        "status": "unknown"
+      }
+    ],
+    "OLGAH": [
+      {
+        "to": "HADRA",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 3.04,
+        "chartDistanceNm": 3.1,
+        "status": "unknown"
+      },
+      {
+        "to": "PELEG",
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
+        "distanceNm": 6.21,
+        "chartDistanceNm": 6.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "SDTYM",
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
+        "distanceNm": 4.1,
+        "chartDistanceNm": 4,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "PELEG": [
+      {
+        "to": "OLGAH",
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
+        "distanceNm": 6.21,
+        "chartDistanceNm": 6.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "VINGT",
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
+        "distanceNm": 4.56,
+        "chartDistanceNm": 4.6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "RUHOT": [
+      {
+        "to": "MESAR",
+        "inboundAltitude": 3200,
+        "outboundAltitude": 3500,
+        "distanceNm": 11.86,
+        "chartDistanceNm": 11.8,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "OVDAT",
+        "inboundAltitude": 3500,
+        "outboundAltitude": 3500,
+        "distanceNm": 8.47,
+        "chartDistanceNm": 8.6,
+        "status": "ocr-candidate"
+      }
+    ],
+    "VINGT": [
+      {
+        "to": "PELEG",
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
+        "distanceNm": 4.56,
+        "chartDistanceNm": 4.6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "SFAIM",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 2.66,
+        "chartDistanceNm": 2.7,
+        "status": "unknown"
+      }
+    ],
+    "ZUKIM": [
+      {
+        "to": "ALMOG",
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
+        "distanceNm": 4.41,
+        "chartDistanceNm": 4.4,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      },
+      {
+        "to": "SHALM",
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
+        "distanceNm": 9.88,
+        "chartDistanceNm": 9.8,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "BRORA": [
+      {
+        "to": "EILAT",
+        "inboundAltitude": 500,
+        "outboundAltitude": 500,
+        "distanceNm": 9.15,
+        "chartDistanceNm": 9.2,
+        "status": "ocr-candidate"
+      }
+    ],
+    "EILAT": [
+      {
+        "to": "BRORA",
+        "inboundAltitude": 500,
+        "outboundAltitude": 500,
+        "distanceNm": 9.15,
+        "chartDistanceNm": 9.2,
+        "status": "ocr-candidate"
+      }
+    ],
+    "SIZFN": [
+      {
+        "to": "YAHEL",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 6.51,
+        "chartDistanceNm": 6.5,
+        "status": "unknown"
+      }
+    ],
+    "ZZHOR": [
+      {
+        "to": "BMNUH",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 1400,
+        "distanceNm": 6.1,
+        "chartDistanceNm": 6.1,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      },
+      {
+        "to": "MESAR",
+        "inboundAltitude": 2500,
+        "outboundAltitude": 2200,
+        "distanceNm": 13.98,
+        "chartDistanceNm": 14.1,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "YOTVT": [
+      {
+        "to": "KTORA",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 1000,
+        "distanceNm": 5.42,
+        "chartDistanceNm": 5.3,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "ZOFAR": [
+      {
+        "to": "BMNUH",
+        "inboundAltitude": 1400,
+        "outboundAltitude": 1700,
+        "distanceNm": 15.64,
+        "chartDistanceNm": 15.6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "HOVAV": [
+      {
+        "to": "NEGEV",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
+        "distanceNm": 4.6,
+        "chartDistanceNm": 4.5,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "OHLIM",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
+        "distanceNm": 3.38,
+        "chartDistanceNm": 3.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "SOKET",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 11.5,
+        "chartDistanceNm": 11.4,
+        "status": "unknown"
+      }
+    ],
+    "NEGEV": [
+      {
+        "to": "HOVAV",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
+        "distanceNm": 4.6,
+        "chartDistanceNm": 4.5,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "TLLIM",
+        "inboundAltitude": 2200,
+        "outboundAltitude": 2500,
+        "distanceNm": 5.87,
+        "chartDistanceNm": 6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "TLLIM": [
+      {
+        "to": "BOKER",
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
+        "distanceNm": 7.07,
+        "chartDistanceNm": 7,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "NEGEV",
+        "inboundAltitude": 2500,
+        "outboundAltitude": 2200,
+        "distanceNm": 5.87,
+        "chartDistanceNm": 6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "YRUHM": [
+      {
+        "to": "BOKER",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 9.5,
+        "chartDistanceNm": 9.4,
+        "status": "unknown"
+      },
+      {
+        "to": "DIMON",
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
+        "distanceNm": 6.69,
+        "chartDistanceNm": 6.8,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "DIMON": [
+      {
+        "to": "YRUHM",
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
+        "distanceNm": 6.69,
+        "chartDistanceNm": 6.8,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "MESAR": [
+      {
+        "to": "RUHOT",
+        "inboundAltitude": 3500,
+        "outboundAltitude": 3200,
+        "distanceNm": 11.86,
+        "chartDistanceNm": 11.8,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "ZZHOR",
+        "inboundAltitude": 2200,
+        "outboundAltitude": 2500,
+        "distanceNm": 13.98,
+        "chartDistanceNm": 14.1,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "OHLIM": [
+      {
+        "to": "HOVAV",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
+        "distanceNm": 3.38,
+        "chartDistanceNm": 3.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "BKAMA": [
+      {
+        "to": "ZLHAV",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
+        "distanceNm": 4.29,
+        "chartDistanceNm": 4.4,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "ALMOG": [
+      {
+        "to": "NAAMA",
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
+        "distanceNm": 7.06,
+        "chartDistanceNm": 7.1,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+      },
+      {
+        "to": "ZUKIM",
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
+        "distanceNm": 4.41,
+        "chartDistanceNm": 4.4,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "ARGMN": [
+      {
+        "to": "FAZEL",
+        "inboundAltitude": 500,
+        "outboundAltitude": 500,
+        "distanceNm": 8.28,
+        "chartDistanceNm": 8.3,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "TIRAT",
+        "inboundAltitude": 800,
+        "outboundAltitude": 800,
+        "distanceNm": 15.05,
+        "chartDistanceNm": 15.1,
+        "status": "ocr-candidate"
+      }
+    ],
+    "ALLON": [
+      {
+        "to": "FAZEL",
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
+        "distanceNm": 4.93,
+        "chartDistanceNm": 4.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "SHAHR",
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
+        "distanceNm": 5.28,
+        "chartDistanceNm": 5.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "TIRAT": [
+      {
+        "to": "ARGMN",
+        "inboundAltitude": 800,
+        "outboundAltitude": 800,
+        "distanceNm": 15.05,
+        "chartDistanceNm": 15.1,
+        "status": "ocr-candidate"
+      }
+    ],
+    "HASID": [
+      {
+        "to": "FRDIS",
+        "inboundAltitude": 2200,
+        "outboundAltitude": 2200,
+        "distanceNm": 11.45,
+        "chartDistanceNm": 11.4,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "MOVIL",
+        "inboundAltitude": 1000,
+        "outboundAltitude": 2200,
+        "distanceNm": 7.93,
+        "chartDistanceNm": 7.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+      }
+    ],
+    "MOVIL": [
+      {
+        "to": "HASID",
+        "inboundAltitude": 2200,
+        "outboundAltitude": 1000,
+        "distanceNm": 7.93,
+        "chartDistanceNm": 7.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+      }
+    ],
+    "SMRAT": [
+      {
+        "to": "AAKKO",
+        "inboundAltitude": 400,
+        "outboundAltitude": 700,
+        "distanceNm": 2.06,
+        "chartDistanceNm": 2,
+        "status": "reviewed",
+        "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right."
+      }
+    ],
+    "DAROM": [
+      {
+        "to": "HOTRM",
+        "inboundAltitude": 400,
+        "outboundAltitude": 700,
+        "distanceNm": 2.42,
+        "chartDistanceNm": 2.6,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "HOTRM": [
+      {
+        "to": "BOREN",
+        "inboundAltitude": 400,
+        "outboundAltitude": 700,
+        "distanceNm": 3.03,
+        "chartDistanceNm": 2.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "DAROM",
+        "inboundAltitude": 700,
+        "outboundAltitude": 400,
+        "distanceNm": 2.42,
+        "chartDistanceNm": 2.6,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "BOREN": [
+      {
+        "to": "FRDIS",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 7.46,
+        "chartDistanceNm": 7.5,
+        "status": "unknown"
+      },
+      {
+        "to": "HOTRM",
+        "inboundAltitude": 700,
+        "outboundAltitude": 400,
+        "distanceNm": 3.03,
+        "chartDistanceNm": 2.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "DALIA": [
+      {
+        "to": "HADRA",
+        "inboundAltitude": 700,
+        "outboundAltitude": 700,
+        "distanceNm": 11.81,
+        "chartDistanceNm": 11.7,
+        "status": "ocr-candidate"
+      }
+    ],
+    "ZMGID": [
+      {
+        "to": "EIRON",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 2000,
+        "distanceNm": 10.08,
+        "chartDistanceNm": 10.1,
+        "status": "ocr-candidate"
+      }
+    ],
+    "SFAIM": [
+      {
+        "to": "VINGT",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 2.66,
+        "chartDistanceNm": 2.7,
+        "status": "unknown"
+      }
+    ],
+    "TYONA": [
+      {
+        "to": "NMASD",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 400,
+        "distanceNm": 11.48,
+        "chartDistanceNm": 11.5,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "NTAIM",
+        "inboundAltitude": 800,
+        "outboundAltitude": 1200,
+        "distanceNm": 4.6,
+        "chartDistanceNm": 4.6,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+      },
+      {
+        "to": "SUPER",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 1.94,
+        "chartDistanceNm": 1.9,
+        "status": "unknown"
+      }
+    ],
+    "SIRNI": [
+      {
+        "to": "NSHRM",
+        "inboundAltitude": 800,
+        "outboundAltitude": 1200,
+        "distanceNm": 3.39,
+        "chartDistanceNm": 3.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "NTAIM",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 2.7,
+        "chartDistanceNm": 2.7,
+        "status": "unknown"
+      }
+    ],
+    "NSHRM": [
+      {
+        "to": "AYLON",
+        "inboundAltitude": 800,
+        "outboundAltitude": 1200,
+        "distanceNm": 3.43,
+        "chartDistanceNm": 3.5,
+        "status": "reviewed",
+        "source": "Direction dispute resolved by the maintainer (Aug 2026): 1200 toward NSHRM, 800 toward AYLON. Our OCR had the mirror image; a secondary source agreed with this resolution."
+      },
+      {
+        "to": "NCSHN",
+        "inboundAltitude": 800,
+        "outboundAltitude": 1200,
+        "distanceNm": 5.87,
+        "chartDistanceNm": 5.8,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      },
+      {
+        "to": "SIRNI",
+        "inboundAltitude": 1200,
+        "outboundAltitude": 800,
+        "distanceNm": 3.39,
+        "chartDistanceNm": 3.3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "AYLON": [
+      {
+        "to": "LTRUN",
+        "inboundAltitude": 1200,
+        "outboundAltitude": 1600,
+        "distanceNm": 3.02,
+        "chartDistanceNm": 3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "NSHRM",
+        "inboundAltitude": 1200,
+        "outboundAltitude": 800,
+        "distanceNm": 3.43,
+        "chartDistanceNm": 3.5,
+        "status": "reviewed",
+        "source": "Direction dispute resolved by the maintainer (Aug 2026): 1200 toward NSHRM, 800 toward AYLON. Our OCR had the mirror image; a secondary source agreed with this resolution."
+      }
+    ],
+    "LTRUN": [
+      {
+        "to": "AYLON",
+        "inboundAltitude": 1600,
+        "outboundAltitude": 1200,
+        "distanceNm": 3.02,
+        "chartDistanceNm": 3,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "BSEMS",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2200,
+        "distanceNm": 4.99,
+        "chartDistanceNm": 5,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "SHARG",
+        "inboundAltitude": 1800,
+        "outboundAltitude": 2300,
+        "distanceNm": 2.04,
+        "chartDistanceNm": 2.1,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "SHARG": [
+      {
+        "to": "LTRUN",
+        "inboundAltitude": 2300,
+        "outboundAltitude": 1800,
+        "distanceNm": 2.04,
+        "chartDistanceNm": 2.1,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "BSEMS": [
+      {
+        "to": "LTRUN",
+        "inboundAltitude": 2200,
+        "outboundAltitude": 1700,
+        "distanceNm": 4.99,
+        "chartDistanceNm": 5,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "NCSHN",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
+        "distanceNm": 4.89,
+        "chartDistanceNm": 4.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "ZHRYA",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
+        "distanceNm": 3.78,
+        "chartDistanceNm": 3.8,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "NCSHN": [
+      {
+        "to": "BSEMS",
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
+        "distanceNm": 4.89,
+        "chartDistanceNm": 4.9,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "NSHRM",
+        "inboundAltitude": 1200,
+        "outboundAltitude": 800,
+        "distanceNm": 5.87,
+        "chartDistanceNm": 5.8,
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      }
+    ],
+    "ZHRYA": [
+      {
+        "to": "BSEMS",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
+        "distanceNm": 3.78,
+        "chartDistanceNm": 3.8,
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      }
+    ],
+    "BOVED": [
+      {
+        "to": "NTAIM",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 1.62,
+        "chartDistanceNm": 1.5,
+        "status": "unknown"
+      }
+    ],
+    "NMASD": [
+      {
+        "to": "NITZA",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 7.19,
+        "chartDistanceNm": 7.1,
+        "status": "unknown"
+      },
+      {
+        "to": "TYONA",
+        "inboundAltitude": 400,
+        "outboundAltitude": 1700,
+        "distanceNm": 11.48,
+        "chartDistanceNm": 11.5,
+        "status": "ocr-candidate"
+      },
+      {
+        "to": "ZASHD",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 4.23,
+        "chartDistanceNm": 4.3,
+        "status": "unknown"
+      }
+    ],
+    "ZASHD": [
+      {
+        "to": "NMASD",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 4.23,
+        "chartDistanceNm": 4.3,
+        "status": "unknown"
+      }
+    ],
+    "NITZA": [
+      {
+        "to": "NMASD",
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "distanceNm": 7.19,
+        "chartDistanceNm": 7.1,
+        "status": "unknown"
+      }
+    ]
+  },
+  "commMeta": {
+    "version": 1,
+    "source": "LSA (Low-Altitude) frequency-change / comm-transfer points. Empty for now — to be populated from the LSA-Low-Altitude chart.",
+    "pointOrder": []
+  }
+}

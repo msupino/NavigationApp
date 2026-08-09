@@ -13,6 +13,7 @@
 // Reuses the comm-change fixture pattern (page.route stub) so the tests don't
 // depend on the shipped dataset's contents.
 const { test, expect } = require('./_setup');
+const { stubGraph } = require('./_layerData');
 const { hideToolbarMenus } = require('./_toolbar');
 
 const TYONA = { lat: 32.00472, lng: 34.72722, name: 'TYONA' };
@@ -49,9 +50,7 @@ const FIXTURE = {
 };
 
 async function installCommChangeFixture(page, fixture = FIXTURE) {
-  await page.route('**/cvfr-comm-change.json*', route => route.fulfill({
-    status: 200, contentType: 'application/json', body: JSON.stringify(fixture),
-  }));
+  await stubGraph(page, { commChange: fixture.points, callSigns: fixture.callSigns });
 }
 
 async function boot(page, lang = 'en') {

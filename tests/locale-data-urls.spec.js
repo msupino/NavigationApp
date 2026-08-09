@@ -27,8 +27,8 @@ test('both locales resolve the same dataset URLs at runtime', async ({ page }) =
     await page.goto(`?lang=${lang}`);
     await page.waitForFunction(() => typeof S !== 'undefined' && !!S.vorUrl);
     return page.evaluate(() => ({
-      navWp: S.navWpUrl, airfields: S.airfieldsUrl, commChange: S.commChangeUrl,
-      legAltitude: S.legAltitudeUrl, routeTemplates: S.routeTemplatesUrl, vor: S.vorUrl,
+      routeGraph: S.routeGraphUrl, airfields: S.airfieldsUrl,
+      routeTemplates: S.routeTemplatesUrl, vor: S.vorUrl,
     }));
   };
   const en = await read('en');

@@ -1145,7 +1145,8 @@ function notamBadgeNotamsAt(latlng) {
 window.notamBadgeNotamsAt = notamBadgeNotamsAt;
 
 // --- nav-waypoint reference overlay ---------------------------------
-// Lazy-loads docs/data/cvfr-nav-waypoints.json on first activation. Format:
+// Lazy-loads the nav-waypoints projection of docs/data/cvfr-route-graph.json on first
+// activation. Format:
 // { waypoints:[{ name, en, he, lat, lng }] } — 172 published reporting
 // points sourced from the IAA CVFR chart page 113 (2025 edition); see
 // issue #406. Validated strictly by validateNavWaypoints() (issue
@@ -1191,9 +1192,8 @@ function layerLabelForPrefix(pfx) {
 }
 // Map a data kind to its canonical cvfr URL (carries the ?v cache-bust).
 const _CVFR_DATA_URL = {
-  'nav-waypoints': () => S.navWpUrl,
-  'comm-change': () => S.commChangeUrl,
-  'leg-altitude': () => S.legAltitudeUrl,
+  // nav-waypoints, comm-change and leg-altitude have no file: they are projected from
+  // <layer>-route-graph.json above, and never reach this map.
   // No cvfr-areas.json exists (areas are lsa/heli-only) — this entry is only a
   // version carrier: _verOf() reads its ?v= to cache-bust data/<layer>-areas.json.
   // Bump ?v= whenever an *-areas.json changes. The cvfr fallback fetch never
@@ -1235,7 +1235,37 @@ function fetchLayerData(kind) {
   _layerFetchMemo[kind] = { gen, promise };
   return promise;
 }
+// The three per-layer datasets now live in one file each: <layer>-route-graph.json, which
+// is fetched here and projected back into the shapes the loaders validate. The projection
+// itself lives in app/route-graph-shapes.js, shared with the equivalence proof
+// (scripts/legacy-from-graph.mjs) so the app cannot drift from what that proof checked.
+const _graphMemo = {};
+function routeGraphData(prefix) {
+  if (!_graphMemo[prefix]) {
+    const url = 'data/' + prefix + '-route-graph.json?v=' + _verOf(S.routeGraphUrl);
+    _graphMemo[prefix] = fetch(url)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .catch(e => { delete _graphMemo[prefix]; throw e; });
+  }
+  return _graphMemo[prefix];
+}
+
 async function _fetchLayerDataRaw(kind) {
+  // typeof-guarded: if app/route-graph-shapes.js failed to load, the graph-served kinds
+  // fail at their own fetch below (404 on the retired URLs), but 'areas' and any future
+  // file-backed kind stay alive instead of every call dying on a ReferenceError.
+  if (typeof ROUTE_GRAPH_KINDS !== 'undefined' && ROUTE_GRAPH_KINDS[kind]) {
+    // Same fall-back rule as the files had: the active layer's graph, else cvfr's.
+    const pfx0 = layerDataPrefix();
+    const order = pfx0 === 'cvfr' ? ['cvfr'] : [pfx0, 'cvfr'];
+    let lastErr = null;
+    for (const prefix of order) {
+      try {
+        return { data: routeShapeFromGraph(kind, await routeGraphData(prefix), prefix), prefix };
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error('no route graph for ' + kind);
+  }
   const cvfrUrl = (_CVFR_DATA_URL[kind] || (() => 'data/cvfr-' + kind + '.json'))();
   const v = _verOf(cvfrUrl);
   const pfx = layerDataPrefix();
@@ -1406,7 +1436,7 @@ function drawAreas() {
   octx.restore();
 }
 
-// Lazy-loads docs/data/cvfr-comm-change.json — { callSigns:{...},
+// Lazy-loads the comm-change projection of docs/data/cvfr-route-graph.json — { callSigns:{...},
 // points:[{name, commChange, callSigns, routeHints, note, source}] }.
 // Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
 // + inspector badge. On 404 or schema error we install an EMPTY map ({})
@@ -1437,16 +1467,19 @@ async function loadCommChange() {
     commChangeMap = m;
     return commChangeMap;
   } catch (e) {
+    // A FETCH failure is left retryable (state stays null): all three kinds now ride one
+    // graph file, so the next draw's loadNavWaypoints() refetches it anyway and a success
+    // there is a success for this kind too. Committing {} here is how one dropped request
+    // used to kill the rings and the altitude table for the whole session while the
+    // waypoints quietly recovered. Schema errors above still commit {} -- bad data does
+    // not get better by asking again. No retry storm: concurrent callers join the shared
+    // in-flight fetch via the memo.
     console.warn('Failed to load comm-change dataset:', e);
-    if (gen === _layerGen) {
-      commChangeCallSigns = {};
-      commChangeMap = {};                  // graceful degrade — no rings, no retry
-    }
-    return commChangeMap;
+    return {};
   }
 }
 
-// Lazy-loads docs/data/cvfr-leg-altitude.json — { segments:[{from,to,
+// Lazy-loads the leg-altitude projection of docs/data/cvfr-route-graph.json — { segments:[{from,to,
 // inboundAltitude,outboundAltitude,status,oneWay,...}], directionPool:[...] }.
 // The app uses it only as a reference table for freshly-created legs;
 // saved/imported route JSON stays authoritative for existing leg values.
@@ -1504,9 +1537,11 @@ async function loadLegAltitudes() {
     legAltitudeMapPrefix = prefix;
     return legAltitudeMap;
   } catch (e) {
+    // Same fetch-failure policy as loadCommChange, for the same reason: the kinds share
+    // one file now, so leaving the state null lets the next shared fetch repopulate the
+    // altitude table instead of freezing it empty for the session.
     console.warn('Failed to load leg-altitude dataset:', e);
-    if (gen === _layerGen) resetLegAltitudeState(layerDataPrefix());
-    return legAltitudeMap;
+    return {};
   }
 }
 

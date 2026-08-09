@@ -7,6 +7,7 @@
 // Guards: suppressed while typing in an input/textarea, and (for A/N/C)
 // while a modal backdrop is open.
 const { test, expect } = require('./_setup');
+const { stubGraph } = require('./_layerData');
 
 async function boot(page, lang = 'en') {
   await page.goto('?lang=' + lang);
@@ -237,9 +238,7 @@ const CC_FIXTURE = {
 };
 
 async function bootWithCC(page) {
-  await page.route('**/cvfr-comm-change.json*', route => route.fulfill({
-    status: 200, contentType: 'application/json', body: JSON.stringify(CC_FIXTURE),
-  }));
+  await stubGraph(page, { commChange: CC_FIXTURE.points, callSigns: CC_FIXTURE.callSigns });
   await page.goto('?lang=en');
   await page.waitForFunction(() =>
     typeof state !== 'undefined' && typeof map !== 'undefined' && typeof setMode === 'function');

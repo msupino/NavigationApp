@@ -57,10 +57,10 @@ test.describe('#304 — deploy sed bumps every cache-bust marker', () => {
     run(`s|(data/[A-Za-z0-9_-]+\\.json)\\?v=[A-Za-z0-9]+|\\1?v=${SHA}|g`, file);
     const out = fs.readFileSync(file, 'utf8');
     expect(out).toMatch(new RegExp(`version: '1\\.0-${SHA}'`));
-    expect(out).toMatch(new RegExp(`data/cvfr-nav-waypoints\\.json\\?v=${SHA}`));
+    // One route-graph file per layer replaced the nav-waypoints / comm-change /
+    // leg-altitude trio, so its ?v= is the one that has to be rewritten for all three.
+    expect(out).toMatch(new RegExp(`data/cvfr-route-graph\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/airfields\\.json\\?v=${SHA}`));
-    expect(out).toMatch(new RegExp(`data/cvfr-comm-change\\.json\\?v=${SHA}`));
-    expect(out).toMatch(new RegExp(`data/cvfr-leg-altitude\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/route-templates\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/vor\\.json\\?v=${SHA}`));
     fs.unlinkSync(file);

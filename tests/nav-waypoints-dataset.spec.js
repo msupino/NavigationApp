@@ -25,10 +25,11 @@ const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
-const JSON_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
+// The dataset is projected from cvfr-route-graph.json now; the shape is unchanged.
+const { navWaypoints } = require('./_layerData');
 
 function loadData() {
-  return JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
+  return navWaypoints('cvfr');
 }
 
 test.describe('#406 / #410 — cvfr-nav-waypoints.json (chart-sourced)', () => {

@@ -55,8 +55,8 @@ test('a blocked inbound kite is not hit-testable (no invisible clickable kite)',
 test('HTZUK→KNTRY (Country Club) is 1200 one-way; reverse blocked', async ({ page }) => {
   await boot(page);
   const seg = await page.evaluate(async () => {
-    const d = await (await fetch('data/cvfr-leg-altitude.json?cb=' + Date.now(), { cache: 'no-store' })).json();
-    return d.segments.find(s => s.from === 'HTZUK' && s.to === 'KNTRY');
+    const g = await (await fetch('data/cvfr-route-graph.json?cb=' + Date.now(), { cache: 'no-store' })).json();
+    return legAltitudeFromGraph(g).segments.find(s => s.from === 'HTZUK' && s.to === 'KNTRY');
   });
   expect(seg.inboundAltitude).toBe(1200);   // HTZUK → Country Club
   expect(seg.outboundAltitude).toBeNull();   // reverse blocked
