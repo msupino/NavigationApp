@@ -67,10 +67,12 @@ NavAid.tuningDefaults = {
   vorRangeRingSteps: { value: 96, min: 12, max: 256, step: 4, label: 'VOR range ring smoothness (segments)' },
   vorRangeRingLabelGapPx: { value: 3, min: 0, max: 20, step: 1, label: 'VOR range ring label gap' },
   searchMaxResults: { value: 12, min: 3, max: 40, step: 1, label: 'Search: total results' },
-  // Which base layers the picker offers, gist-controlled: 1 = offered, 0 = hidden. CVFR is
-  // not on the list -- it is the fallback layer everything else degrades to, so the app
-  // never lets it be configured away. All ship offered; pulling one (e.g. Helicopters,
-  // whose chart and dataset are the thinnest) is a gist edit, not a build.
+  // Which base layers the picker offers, gist-controlled booleans: true = offered,
+  // false = hidden from the picker, the satellite modal and the mosaic. CVFR is not on
+  // the list -- it is the fallback layer everything else degrades to, so the app never
+  // lets it be configured away. All ship offered; pulling one (e.g. Helicopters, whose
+  // chart and dataset are the thinnest) is a gist edit, not a build:
+  //   "layerEnabledHelicopters": false
   layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
   layerEnabledHelicopters: { value: true, type: 'bool', label: 'Offer the Helicopters layer' },
   layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
