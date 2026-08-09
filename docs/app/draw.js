@@ -1359,6 +1359,10 @@ async function loadAreas() {
       // (Fri–Sat); everything else defaults to 'always'. Field is optional in
       // the data — absent means 'always'.
       .map(a => ({ coords: a.coords, name: a.name || '', en: a.en || '', he: a.he || '',
+        icao: a.icao || '', lowFt: a.lowFt, highFt: a.highFt,
+        // Weekday opening hour (local): 12:00/14:00 bubbles are afternoon-only on
+        // weekdays, open all day on the weekend. Absent = no gate.
+        openFromHour: Number.isFinite(a.openFromHour) ? a.openFromHour : null,
         active: a.active === 'weekend' ? 'weekend' : 'always' }));
     if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
     areas = mapped;
@@ -1405,7 +1409,10 @@ function drawAreas() {
     }
     octx.closePath();
     const hl = a === window.__lsaHighlight;   // chart "locate" highlight
-    const wknd = a.active === 'weekend';
+    // The chart's tan class: active on the weekend (and holidays) only. The 12:00/14:00
+    // weekday-opening hours a secondary source lists for exactly these bubbles contradict
+    // the chart class, so the chart wins here and the hour is an inspector note.
+    const wknd = a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12);
     // Official legend colours: always = green outline + pale-green fill (in force
     // every day); weekend = black outline + tan fill (Fri–Sat only). The locate
     // highlight overrides both with amber.
@@ -1416,24 +1423,79 @@ function drawAreas() {
     octx.fill();
     octx.stroke();
   }
-  // Names, at each bubble's centroid (zoomed in enough to be readable).
-  const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('vorLabelMinZoom') : 8);
+  // Names, at each bubble's centroid. Hidden below zoom 10, the same threshold the
+  // nav-waypoint names use -- the country-wide view stays a map, not a label cloud. Own
+  // font tunables: a bubble label competes with a busy chart underneath, so it runs larger
+  // than the VOR labels it used to borrow from.
+  const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('lsaLabelMinZoom') : 10);
   if (showLabels) {
+    // The tuned sizes are the size AT ZOOM 10 (the natural bubble-viewing zoom); the label
+    // then breathes with the map -- gently, 1.3x per zoom step and clamped, not the 2x the
+    // markers use, which would make text unreadable two steps out and comical two steps in.
+    const zScale = Math.min(2, Math.max(0.55, Math.pow(1.3, map.getZoom() - 10)));
+    const namePx = Math.round((typeof tune === 'function' ? tune('lsaLabelFontPx') : 15) * zScale);
+    const metaPx = Math.round((typeof tune === 'function' ? tune('lsaMetaFontPx') : 12) * zScale);
+    const nameFont = 'bold ' + namePx + 'px sans-serif';
+    const metaFont = 'bold ' + metaPx + 'px sans-serif';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.font = 'bold ' + (typeof tune === 'function' ? tune('vorLabelFontPx') : 12) + 'px sans-serif';
+    octx.font = nameFont;
     for (const a of areas) {
       const nm = areaLabel(a);
       if (!nm) continue;
       const s = proj(areaCentroid(a.coords));
-      octx.lineWidth = tune('overlayLabelHaloWidthPx');
-      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
-      octx.strokeText(nm, s.x, s.y);
-      octx.fillStyle = tune('lsaLabelColor');        // neutral: reads over green + tan fills
-      octx.fillText(nm, s.x, s.y);
+      const halo = txt => {
+        octx.lineWidth = tune('overlayLabelHaloWidthPx');
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+        octx.strokeText(txt.t, s.x, txt.y);
+        octx.fillStyle = tune('lsaLabelColor');      // neutral: reads over green + tan fills
+        octx.fillText(txt.t, s.x, txt.y);
+      };
+      // Second line: the altitude band and the chart's availability class -- the two facts
+      // a pilot needs before planning through the bubble. The label states what the CHART
+      // says (weekend-only for the tan class); the secondary source's weekday hour is an
+      // inspector note, not a map fact.
+      const bits = [];
+      if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) bits.push(a.lowFt + '-' + a.highFt + ' ft');
+      if (a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12)) {
+        bits.push(S.bubbleWeekendTag || 'weekend');
+      }
+      if (bits.length) {
+        const gap = Math.round((namePx + metaPx) / 3.2);
+        halo({ t: nm, y: s.y - gap });
+        octx.font = metaFont;                 // bold too: the band is why the label exists
+        halo({ t: bits.join('  '), y: s.y + gap });
+        octx.font = nameFont;
+      } else {
+        halo({ t: nm, y: s.y });
+      }
     }
   }
   octx.restore();
+}
+
+// LSA bubbles under a map point -- ray-cast in screen space, like the NOTAM areas.
+// Smallest bubble first, so a click inside nested/overlapping bubbles offers the one the
+// pilot is most likely pointing at before the one that covers half the map.
+function lsaAreasAtLatLng(latlng) {
+  if (!showLsaBubbles || !Array.isArray(areas) || !areas.length || !latlng) return [];
+  const pt = proj(latlng);
+  const out = [];
+  for (let i = 0; i < areas.length; i++) {
+    const a = areas[i];
+    if (!Array.isArray(a.coords) || a.coords.length < 3) continue;
+    const poly = a.coords.map(c => proj({ lat: c[0], lng: c[1] }));
+    if (notamPointInPoly(pt, poly)) {
+      let area2 = 0;
+      for (let j = 0; j < poly.length; j++) {
+        const q = poly[(j + 1) % poly.length];
+        area2 += poly[j].x * q.y - q.x * poly[j].y;
+      }
+      out.push({ index: i, size: Math.abs(area2) });
+    }
+  }
+  out.sort((x, y) => x.size - y.size);
+  return out.map(h => h.index);
 }
 
 // Lazy-loads the comm-change projection of docs/data/cvfr-route-graph.json — { callSigns:{...},

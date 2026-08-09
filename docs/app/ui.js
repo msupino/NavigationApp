@@ -1827,6 +1827,11 @@ function runSearch() {
     kind: 'wp', cap: tune('searchMaxNavWp'), items: navWP, routable: true,
     match: w => hit(w.name, q) || hit(w.en, q) || hitHe(w.he),
   });
+  if (typeof areas !== 'undefined' && has(areas)) src.push({  // LSA bubbles (searchable by code or name)
+    kind: 'bubble', cap: tune('searchMaxBubbles'),
+    items: areas.map((a, i) => ({ ...a, _areaIndex: i })), routable: false,
+    match: a => hit(a.icao, q) || hit(a.en, q) || hit(a.name, q) || hitHe(a.he) || hitHe(a.name),
+  });
   if (has(state.waypoints)) src.push({                        // the user's own route
     kind: 'routewp', cap: tune('searchMaxRouteWp'), items: state.waypoints, routable: false,
     match: w => hit(w.name, q) || hitHe(w.he),
@@ -1873,6 +1878,14 @@ function runSearch() {
       if (w.type) bits.push(w.type);
       if (w.coverageNm) bits.push(w.coverageNm + ' NM');
       alt = bits.join(' \u00b7 ');
+    } else if (h.kind === 'bubble') {
+      primary = w.icao || areaLabel(w);
+      const bits = [];
+      const nm = areaLabel(w);
+      if (nm && nm !== primary) bits.push(nm);
+      if (Number.isFinite(w.lowFt) && Number.isFinite(w.highFt)) bits.push(w.lowFt + '-' + w.highFt + ' ft');
+      if (w.openFromHour != null) bits.push(String(w.openFromHour).padStart(2, '0') + ':00\u2192');
+      alt = bits.join(' \u00b7 ');
     } else if (h.kind === 'af') {
       primary = w.name;                  // ICAO is always shown first
       alt = (w[afField] || w.en || '');
@@ -1887,6 +1900,18 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      if (h.kind === 'bubble') {
+        // Fly to the bubble, select it and open its inspector -- a polygon has no single
+        // point, so the centroid is where the ring lands.
+        const c = areaCentroid(w.coords);
+        map.setView([c.lat, c.lng], Math.max(map.getZoom(), 10));
+        flashMapPoint(c.lat, c.lng);
+        state.selected = { type: 'lsaArea', index: w._areaIndex };
+        if (typeof showInspector === 'function') showInspector();
+        draw();
+        closeSearch();
+        return;
+      }
       if (multi && !h.src.routable) {
         // Route building works on named route points; a station is a place to look
         // at, so just fly the map there and leave the typed route untouched.
