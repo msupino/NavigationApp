@@ -182,13 +182,14 @@ test('cross-referenced codes are labelled, and conflicts keep both', () => {
 });
 
 test('the shipped graph still says what the retired CVFR table said', () => {
-  // The per-layer files it was built from are gone, so the baseline is the last commit that
-  // had them -- the same one scripts/legacy-from-graph.mjs proves equivalence against. This
-  // is what stops a later edit to the graph from quietly dropping a published segment.
-  const { execFileSync } = require('child_process');
-  const src = JSON.parse(execFileSync('git',
-    ['show', 'e3cd65e:docs/data/cvfr-leg-altitude.json'],
-    { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+  // The per-layer files it was built from are gone, so the baseline is a checked-in
+  // snapshot (tests/fixtures/retired-datasets) -- the same one legacy-from-graph.mjs proves
+  // equivalence against. It used to come from `git show` at the pre-deletion commit, which
+  // worked locally (worktrees share the object store) and failed in CI: the commit was
+  // squash-merged, so a checkout of dev cannot reach it. This is what stops a later edit
+  // to the graph from quietly dropping a published segment.
+  const src = JSON.parse(fs.readFileSync(
+    path.join(ROOT, 'tests', 'fixtures', 'retired-datasets', 'cvfr-leg-altitude.json'), 'utf8'));
   const segs = src.segments || src;
   const pairs = new Set();
   for (const [from, es] of Object.entries(graph().edges.cvfr)) for (const e of es) pairs.add(from + '>' + e.to);

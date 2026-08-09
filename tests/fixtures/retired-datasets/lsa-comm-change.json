@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "source": "LSA (Low-Altitude) frequency-change / comm-transfer points. Empty for now — to be populated from the LSA-Low-Altitude chart.",
+  "callSigns": {},
+  "points": []
+}

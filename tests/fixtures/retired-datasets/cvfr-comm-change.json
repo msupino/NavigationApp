@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "source": "Comm-change reporting points populated from maintainer visual inspection of the printed IAA CVFR chart symbology ('נקודת מעבר קשר' — comm-transfer point legend), 2026-05-31, with a full waypoint tile audit follow-up on 2026-06-17. Call-sign frequency options are enriched from the maintainer-provided AirMapRadioFrequencies PDF generated 2026-06-06; assign available options per waypoint in points[].callSigns. Earlier desk-research sources (Israel eAIP 2025-10-02, PAMAT edition 1/24) did not yield OCR-extractable per-point data — see _NOTE.",
+  "_definition": "Each entry marks a CVFR reporting point where pilots are expected to switch ATC frequencies because the point sits on (or at) a sector / CTR / TMA boundary. The chart annotation may be on the boundary line itself rather than directly at the point — the dataset records the *point of change*, not the chart-text position.",
+  "_NOTE": "Reporting-type (חובה / דרישה — mandatory vs. on-request) is NOT comm-change and is tracked separately (PR #405). The points below come from maintainer inspection of the printed IAA CVFR chart's 'נקודת מעבר קשר' symbology, which supersedes the earlier citation bar that left this file empty. Points are matched to cvfr-nav-waypoints.json by 5-letter ICAO `name` only — never by Hebrew text.",
+  "_frequencySource": "AirMapRadioFrequencies PDF, generated 2026-06-06",
+  "_frequencySourceFile": "AirMapRadioFrequencies (1).pdf",
+  "_militaryFrequencySource": "Maintainer-provided military unit / call-sign table, 2026-06-01",
+  "_callSignsUsage": "Root callSigns is the reusable frequency catalog. Add call-sign ids to a comm-change waypoint's points[].callSigns array to expose those choices in the frequency-callout inspector. Optional points[].routeHints entries map route context to a call-sign id from that same point's callSigns array: before/after are adjacent route waypoint names around the comm-change point, and callSign is the suggested frequency owner. Labels/frequencies are derived from the catalog. The first id becomes the default; the frequency remains editable on the note.",
+  "_TODO": [
+    "Assign points[].callSigns per comm-change waypoint as each point is confirmed against the chart.",
+    "Attach a public-document citation (IAA AIP supplement / PAMAT chapter B-03 page) per point where one exists, in the per-entry `source` field.",
+    "Reporting-type data (mandatory / on-request) is tracked separately on the feat/reporting-required branch (PR #405) — DO NOT conflate the two datasets."
+  ],
+  "callSigns": {
+    "AZAM": { "label": "Azam", "he": "אז\"מ", "primary": "123.70", "secondary": "123.45", "source": "legacy 02/2014 frequency table; not present in AirMapRadioFrequencies PDF" },
+    "EILAT": { "label": "Eilat / Ramon", "he": "אילת-רמון", "primary": "119.00", "secondary": "122.00", "alternate": "125.60", "secondaryAlternate": "129.40", "ground": "121.70", "atis": "132.55", "phone": "08-9553666", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "BEN_GURION": { "label": "Ben Gurion", "he": "בן גוריון", "primary": "134.60", "secondary": "132.10", "atis": "132.50", "atisDeparture": "132.80", "groundWest": "121.75", "groundEast": "121.95", "clearance": "121.55", "appPrimary": "120.50", "appSecondary": "131.10", "tmaPrimary": "119.50", "tmaSecondary": "133.60", "phone": "03-9758666", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "HERZLIYA": { "label": "Herzliya", "he": "הרצליה", "primary": "125.60", "secondary": "129.40", "alternate": "122.20", "secondaryAlternate": "118.55", "clearance": "121.70", "phone": "09-9719554", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "HAGAV": { "label": "Hagav", "he": "חגב", "primary": "132.70", "secondary": "133.45", "source": "legacy 02/2014 frequency table; not present in AirMapRadioFrequencies PDF" },
+    "HAGAV_NORTH": { "label": "Hagav North", "he": "חגב צפוני", "unit": "יב\"א 509", "primary": "128.35", "secondary": "129.25", "phone": "076-8834330", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "HAGAV_SOUTH": { "label": "Hagav South", "he": "חגב דרומי", "unit": "יב\"א 509", "primary": "121.15", "secondary": "122.90", "phone": "076-8834330", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "SHANON": { "label": "Shanon", "he": "שנון", "unit": "יב\"א 509", "primary": "122.90", "source": "maintainer military frequency table 2026-06-01" },
+    "HAIFA": { "label": "Haifa", "he": "חיפה", "primary": "133.00", "secondary": "127.80", "atis": "135.40", "phone": "04-8476120", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "HATZOR": { "label": "Hatzor", "he": "חצור", "unit": "חצור", "primary": "133.20", "phone": "073-3485024", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "MEGIDDO": { "label": "Megiddo", "he": "מגידו", "primary": "124.40", "secondary": "128.20", "phone": "08-6104488", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "MASADA": { "label": "Masada", "he": "מצדה", "primary": "122.55", "phone": "08-6688811", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "NEVATIM": { "label": "Nevatim", "he": "נבטים", "primary": "129.30", "secondary": "127.80", "phone": "08-6501402", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "NEGEV": { "label": "Negev", "he": "נגב", "unit": "נבטים", "primary": "132.40", "atis": "119.20", "phone": "08-6823080", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "OVDA": { "label": "Ovda", "he": "עובדה", "unit": "עובדה", "primary": "129.90", "phone": "08-6359966", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "ARAD": { "label": "Arad", "he": "ערד", "primary": "120.75", "phone": "050-8877840", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "PIK": { "label": "Pik", "he": "פיק", "primary": "122.55", "phone": "04-6763353", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "PLUTO": { "label": "Pluto", "he": "פלוטו", "primary": "118.40", "secondary": "119.25", "source": "legacy 02/2014 frequency table; split into Pluto West/East in AirMapRadioFrequencies PDF" },
+    "PLUTO_WEST": { "label": "Pluto West", "he": "פלוטו מערב", "unit": "יב\"א 506", "primary": "118.40", "secondary": "119.15", "phone": "04-6926211", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "PLUTO_EAST": { "label": "Pluto East", "he": "פלוטו מזרח", "unit": "יב\"א 506", "primary": "123.85", "secondary": "134.65", "phone": "04-6926239", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "LIBA": { "label": "Liba", "he": "ליבה", "unit": "יב\"א 506", "primary": "132.85", "source": "maintainer military frequency table 2026-06-01" },
+    "TEL_NOF_CIRCUIT": { "label": "Tel Nof Circuit", "he": "הקפה תל נוף", "unit": "תל נוף", "primary": "128.15", "source": "maintainer military frequency table 2026-06-01" },
+    "HELICOPTER_AREAS": { "label": "Helicopter Areas", "he": "אזורי מסוקים", "unit": "יב\"א 506", "primary": "112.05", "source": "maintainer military frequency table 2026-06-01" },
+    "PALMACHIM": { "label": "Palmachim", "he": "פלמחים", "unit": "פלמחים", "primary": "135.55", "secondary": "118.25", "atis": "126.10", "phone": "03-9432929", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "KEDEM": { "label": "Kedem", "he": "קדם", "primary": "134.70", "secondary": "118.35", "phone": "08-9907913", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "KEDEM_GENERAL": { "label": "Kedem General Aviation", "he": "קדם - תעופה כללית", "unit": "קדם", "primary": "134.70", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "KEDEM_SPORT": { "label": "Kedem Sport Aviation", "he": "קדם - תעופה ספורטיבית", "unit": "קדם", "primary": "118.35", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "KIRYAT_SHMONA": { "label": "Kiryat Shmona", "he": "קריית שמונה", "primary": "126.90", "phone": "04-6943646", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "ROSH_PINA": { "label": "Rosh Pina", "he": "ראש פינה", "primary": "118.45", "secondary": "119.65", "atis": "132.45", "phone": "04-6136210", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "RISHON_LEZION": { "label": "Rishon LeZion", "he": "ראשון לציון", "primary": "126.90", "secondary": "120.00", "phone": "052-5040014", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "RAMON": { "label": "Ramon", "he": "רמון", "unit": "רמון", "primary": "124.60", "phone": "08-6505906", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "RAMAT_DAVID": { "label": "Ramat David", "he": "רמת דוד", "unit": "רמת דוד", "primary": "130.50", "secondary": "119.80", "phone": "04-6092960", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "HATZERIM_NORTH": { "label": "Hatzerim North", "he": "חצרים צפון", "unit": "חצרים", "primary": "125.35", "phone": "08-9907900", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "HATZERIM_SOUTH": { "label": "Hatzerim South", "he": "חצרים דרום", "unit": "חצרים", "primary": "130.80", "phone": "08-9907900", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "SDE_DOV": { "label": "Sde Dov", "he": "שדה דב", "primary": "134.95", "source": "legacy 02/2014 frequency table; not present in AirMapRadioFrequencies PDF" },
+    "TEYMAN": { "label": "Teyman", "he": "תימן", "primary": "122.50", "phone": "08-6434810", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "TEL_NOF": { "label": "Tel Nof", "he": "תל-נוף", "primary": "129.05", "secondary": "134.30", "phone": "073-3636954", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "HABONIM": { "label": "Habonim", "he": "הבונים", "primary": "129.15", "phone": "04-6391068", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "EIN_VERED": { "label": "Ein Vered", "he": "עין ורד", "primary": "123.70", "phone": "050-5365946", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "EIN_YAHAV": { "label": "Ein Yahav", "he": "עין יהב", "primary": "122.10", "phone": "03-5080005", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "TEL_AVIV_CONTROL": { "label": "Tel Aviv Control", "he": "פיקוח ת\"א", "primary": "121.40", "secondary": "122.15", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "SOUTH_CONTROL": { "label": "South Control", "he": "פיקוח דרום", "primary": "120.90", "secondary": "134.875", "phone": "08-6833222", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "TLV_ID": { "label": "TLV ID", "he": "TLV ID", "primary": "124.30", "secondary": "135.025", "source": "AirMapRadioFrequencies PDF 2026-06-06" },
+    "TLV_DEP": { "label": "TLV dep", "he": "TLV dep", "primary": "122.95", "source": "AirMapRadioFrequencies PDF 2026-06-06" }
+  },
+  "points": [
+    { "name": "BASAN", "commChange": true, "callSigns": ["KIRYAT_SHMONA", "PLUTO_EAST"] },
+    { "name": "HULAT", "commChange": true, "callSigns": ["PLUTO_EAST", "ROSH_PINA"] },
+    { "name": "DESHE", "commChange": true, "callSigns": ["ROSH_PINA", "PLUTO_EAST"], "routeHints": [
+      { "before": "TAVOR", "after": "AMNON", "callSign": "ROSH_PINA" },
+      { "before": "AMNON", "after": "TAVOR", "callSign": "PLUTO_EAST" },
+      { "before": "ZALMN", "after": "AMNON", "callSign": "ROSH_PINA" },
+      { "before": "AMNON", "after": "ZALMN", "callSign": "PLUTO_EAST" }
+    ] },
+    { "name": "HAROV", "commChange": true, "callSigns": ["PLUTO_EAST", "PIK"] },
+    { "name": "AAKKO", "commChange": true, "callSigns": ["PLUTO_EAST", "HAIFA"] },
+    { "name": "GILAM", "commChange": true, "callSigns": ["HAIFA", "PLUTO_EAST"], "routeHints": [
+      { "before": "LLHA", "after": "EVLYM", "callSign": "PLUTO_EAST" },
+      { "before": "EVLYM", "after": "LLHA", "callSign": "HAIFA" }
+    ] },
+    { "name": "MOVIL", "commChange": true, "callSigns": ["RAMAT_DAVID", "PLUTO_EAST"] },
+    { "name": "HASID", "commChange": true, "callSigns": ["PLUTO_EAST", "PLUTO_WEST", "RAMAT_DAVID", "HAIFA"] },
+    { "name": "DAROM", "commChange": true, "callSigns": ["HAIFA", "PLUTO_WEST"], "routeHints": [
+      { "before": "HOTRM", "after": "GALIM", "callSign": "HAIFA" },
+      { "before": "GALIM", "after": "HOTRM", "callSign": "PLUTO_WEST" }
+    ] },
+    { "name": "AFULA", "commChange": true, "callSigns": ["PLUTO_EAST", "RAMAT_DAVID", "MEGIDDO"], "routeHints": [
+      { "before": "LLMG", "after": "TAVOR", "callSign": "PLUTO_EAST" },
+      { "before": "TAVOR", "after": "LLMG", "callSign": "MEGIDDO" },
+      { "before": "ZMGID", "after": "TAVOR", "callSign": "PLUTO_EAST" }
+    ] },
+    { "name": "ZMGID", "commChange": true, "callSigns": ["PLUTO_EAST", "PLUTO_WEST", "MEGIDDO"], "routeHints": [
+      { "before": "EIRON", "after": "AFULA", "callSign": "PLUTO_EAST" },
+      { "before": "AFULA", "after": "EIRON", "callSign": "PLUTO_WEST" },
+      { "before": "EIRON", "after": "LLMG", "callSign": "MEGIDDO" },
+      { "before": "LLMG", "after": "EIRON", "callSign": "PLUTO_WEST" }
+    ] },
+    { "name": "DALIA", "commChange": true, "callSigns": ["RAMAT_DAVID", "PLUTO_WEST"] },
+    { "name": "DEROR", "commChange": true, "callSigns": ["HERZLIYA", "PLUTO_WEST"], "routeHints": [
+      { "before": "BAZRA", "after": "SHARO", "callSign": "PLUTO_WEST" },
+      { "before": "SHARO", "after": "BAZRA", "callSign": "HERZLIYA" }
+    ] },
+    { "name": "SFAIM", "commChange": true, "callSigns": ["PLUTO_WEST"], "routeHints": [
+      { "before": "LLHZ", "after": "RIDNG", "callSign": "PLUTO_WEST" },
+      { "before": "LLHZ", "after": "HTZUK", "callSign": "PLUTO_WEST" }
+    ] },
+    { "name": "GNYAM", "commChange": true, "callSigns": ["HERZLIYA", "BEN_GURION"] },
+    { "name": "KNTRY", "commChange": true, "callSigns": ["HERZLIYA"], "routeHints": [
+      { "before": "HTZUK", "after": "LLHZ", "callSign": "HERZLIYA" }
+    ] },
+    { "name": "PARDS", "commChange": true, "callSigns": ["BEN_GURION", "PLUTO_WEST"] },
+    { "name": "TYONA", "commChange": true, "callSigns": ["PLUTO_WEST", "PALMACHIM"], "routeHints": [
+      { "before": "CLORE", "after": "NTAIM", "callSign": "PALMACHIM" },
+      { "before": "NTAIM", "after": "CLORE", "callSign": "PLUTO_WEST" }
+    ] },
+    { "name": "LIAAD", "commChange": true, "callSigns": ["PLUTO_WEST", "HAGAV_NORTH"] },
+    { "name": "YAPAL", "commChange": true, "callSigns": ["PLUTO_WEST", "HAGAV_NORTH"] },
+    { "name": "NTAIM", "commChange": true, "callSigns": ["BEN_GURION", "PALMACHIM", "TEL_NOF"], "routeHints": [
+      { "before": "TYONA", "after": "SIRNI", "callSign": "TEL_NOF" },
+      { "before": "TYONA", "after": "BOVED", "callSign": "TEL_NOF" },
+      { "before": "SIRNI", "after": "TYONA", "callSign": "TEL_NOF" }
+    ] },
+    { "name": "NSHRM", "commChange": true, "callSigns": ["BEN_GURION"] },
+    { "name": "AYLON", "commChange": true, "callSigns": ["BEN_GURION", "TEL_NOF"], "routeHints": [
+      { "before": "LTRUN", "after": "NSHRM", "callSign": "TEL_NOF" }
+    ] },
+    { "name": "SORES", "commChange": true, "callSigns": ["PLUTO_EAST", "TEL_NOF"], "routeHints": [
+      { "before": "SHARG", "after": "HAREL", "callSign": "PLUTO_EAST" },
+      { "before": "HAREL", "after": "SHARG", "callSign": "PLUTO_EAST" }
+    ] },
+    { "name": "ZUKIM", "commChange": true, "callSigns": ["PLUTO_EAST", "HAGAV_SOUTH"], "routeHints": [
+      { "before": "ALMOG", "after": "SHALM", "callSign": "HAGAV_SOUTH" },
+      { "before": "SHALM", "after": "ALMOG", "callSign": "PLUTO_EAST" }
+    ] },
+    { "name": "ZASHD", "commChange": true, "callSigns": ["PALMACHIM"], "routeHints": [
+      { "before": "NMASD", "after": "YAVNE", "callSign": "PALMACHIM" }
+    ] },
+    { "name": "NMASD", "commChange": true, "callSigns": ["PALMACHIM", "HAGAV_NORTH"], "routeHints": [
+      { "before": "ZASHD", "after": "NITZA", "callSign": "HAGAV_NORTH" },
+      { "before": "NITZA", "after": "ZASHD", "callSign": "PALMACHIM" }
+    ] },
+    { "name": "ZDAFA", "commChange": true, "callSigns": ["HAGAV_NORTH", "HATZOR"] },
+    { "name": "HODYA", "commChange": true, "callSigns": ["HAGAV_NORTH", "HATZOR"], "routeHints": [
+      { "before": "REVAH", "after": "NITZA", "callSign": "HAGAV_NORTH" }
+    ] },
+    { "name": "ZURIM", "commChange": true, "callSigns": ["HAGAV_NORTH"] },
+    { "name": "NOAAM", "commChange": true, "callSigns": ["HAGAV_NORTH", "TEL_NOF"], "routeHints": [
+      { "before": "BKAMA", "after": "REVAH", "callSign": "HAGAV_NORTH" }
+    ] },
+    { "name": "SDROT", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"] },
+    { "name": "SOVAL", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"], "routeHints": [
+      { "before": "BKAMA", "after": "MINGV", "callSign": "KEDEM" },
+      { "before": "MINGV", "after": "BKAMA", "callSign": "HAGAV_NORTH" }
+    ] },
+    { "name": "ZMGEN", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"] },
+    { "name": "SIGAL", "commChange": true, "callSigns": ["HAGAV_NORTH", "HAGAV_SOUTH"] },
+    { "name": "NCITY", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"] },
+    { "name": "SOKET", "commChange": true, "callSigns": ["NEGEV", "HAGAV_NORTH"] },
+    { "name": "ARRAD", "commChange": true, "callSigns": ["HAGAV_SOUTH", "HAGAV_NORTH", "NEGEV"] },
+    { "name": "HATRU", "commChange": true, "callSigns": ["NEGEV"] },
+    { "name": "HOVAV", "commChange": true, "callSigns": ["NEGEV", "HAGAV_NORTH", "HAGAV_SOUTH"] },
+    { "name": "KTORA", "commChange": true, "callSigns": ["HAGAV_SOUTH", "RAMON"] },
+    { "name": "SHRUT", "commChange": true, "callSigns": ["RAMON", "OVDA"] },
+    { "name": "SAMAR", "commChange": true, "callSigns": ["OVDA"] },
+    { "name": "BEREC", "commChange": true, "callSigns": ["RAMON", "OVDA"] },
+    { "name": "SIZFN", "commChange": true, "callSigns": ["OVDA", "HAGAV_SOUTH"] },
+    { "name": "RUHOT", "commChange": true, "callSigns": ["RAMON", "HAGAV_SOUTH"] },
+    { "name": "NIZAN", "commChange": true, "callSigns": ["RAMON", "HAGAV_SOUTH"] },
+    { "name": "OVDAT", "commChange": true, "callSigns": ["HAGAV_SOUTH"] },
+    { "name": "BOKER", "commChange": true, "callSigns": ["RAMON", "HAGAV_SOUTH"] },
+    { "name": "DIMON", "commChange": true, "callSigns": ["NEGEV", "HAGAV_SOUTH"] },
+    { "name": "LLBS", "commChange": true, "callSigns": ["TEYMAN"], "routeHints": [
+      { "before": "NASIH", "callSign": "TEYMAN" },
+      { "after": "NASIH", "callSign": "TEYMAN" }
+    ] },
+    { "name": "LLMZ", "commChange": true, "callSigns": ["MASADA"], "routeHints": [
+      { "before": "ENGDI", "callSign": "MASADA" },
+      { "after": "ENGDI", "callSign": "MASADA" }
+    ] }
+  ]
+}

@@ -1,0 +1,1400 @@
+{
+  "_comment": "Israel helicopter-route reporting points, hand-digitized via the editor tool (?editor=1, Helicopters layer). All on-request. name=code or Hebrew label; he=Hebrew where present. WGS-84.",
+  "source": "hand-digitized (editor tool) on Israel-Helicopters chart",
+  "grid": "WGS-84",
+  "count": 209,
+  "points": [
+    {
+      "lat": 33.07594,
+      "lng": 35.1153,
+      "report": "onRequest",
+      "name": "מצת"
+    },
+    {
+      "lat": 33.12455,
+      "lng": 35.57087,
+      "report": "onRequest",
+      "name": "צומת כח",
+      "he": "צומת כח"
+    },
+    {
+      "lat": 33.14558,
+      "lng": 35.63872,
+      "report": "onRequest",
+      "name": "BASAN",
+      "he": "להבות הבשן"
+    },
+    {
+      "lat": 33.16854,
+      "lng": 35.57001,
+      "report": "onRequest",
+      "name": "צומת גומא",
+      "he": "צומת גומא"
+    },
+    {
+      "lat": 33.22266,
+      "lng": 35.6315,
+      "report": "onRequest",
+      "name": "הגושרים",
+      "he": "הגושרים"
+    },
+    {
+      "lat": 33.23258,
+      "lng": 35.75185,
+      "report": "onRequest",
+      "name": "צומת מסעדה",
+      "he": "צומת מסעדה"
+    },
+    {
+      "lat": 33.1501,
+      "lng": 35.78801,
+      "report": "onRequest",
+      "name": "בנטל",
+      "he": "בנטל"
+    },
+    {
+      "lat": 33.08747,
+      "lng": 35.78631,
+      "report": "onRequest",
+      "name": "צומת אביטל",
+      "he": "צומת אביטל"
+    },
+    {
+      "lat": 33.05655,
+      "lng": 35.73484,
+      "report": "onRequest",
+      "name": "נפח",
+      "he": "נפח"
+    },
+    {
+      "lat": 33.01035,
+      "lng": 35.65084,
+      "report": "onRequest",
+      "name": "צומת בית המכס",
+      "he": "צומת בית המכס"
+    },
+    {
+      "lat": 32.75878,
+      "lng": 35.66954,
+      "report": "onRequest",
+      "name": "HAROV",
+      "he": "כפר חרוב"
+    },
+    {
+      "lat": 32.9028,
+      "lng": 35.63385,
+      "report": "onRequest",
+      "name": "צומת בית צידה",
+      "he": "צומת בית צידה"
+    },
+    {
+      "lat": 32.78226,
+      "lng": 35.64016,
+      "report": "onRequest",
+      "name": "עין גב",
+      "he": "עין גב"
+    },
+    {
+      "lat": 32.72673,
+      "lng": 35.62657,
+      "report": "onRequest",
+      "name": "האון",
+      "he": "האון"
+    },
+    {
+      "lat": 32.83551,
+      "lng": 35.51077,
+      "report": "onRequest",
+      "name": "מגדל",
+      "he": "מגדל"
+    },
+    {
+      "lat": 32.86937,
+      "lng": 35.5331,
+      "report": "onRequest",
+      "name": "DESHE",
+      "he": "כרי דשא"
+    },
+    {
+      "lat": 32.91319,
+      "lng": 35.54257,
+      "report": "onRequest",
+      "name": "צומת עמיעד",
+      "he": "צומת עמיעד"
+    },
+    {
+      "lat": 32.98796,
+      "lng": 35.48382,
+      "report": "onRequest",
+      "name": "עין זיתים"
+    },
+    {
+      "lat": 32.90871,
+      "lng": 35.47387,
+      "report": "onRequest",
+      "name": "צומת קדרים",
+      "he": "צומת קדרים"
+    },
+    {
+      "lat": 32.92685,
+      "lng": 35.40565,
+      "report": "onRequest",
+      "name": "צ. חנניה"
+    },
+    {
+      "lat": 32.92318,
+      "lng": 35.30005,
+      "report": "onRequest",
+      "name": "כרמיאל"
+    },
+    {
+      "lat": 32.91116,
+      "lng": 35.18206,
+      "report": "onRequest",
+      "name": "AHIUD",
+      "he": "אחיהוד"
+    },
+    {
+      "lat": 32.91788,
+      "lng": 35.09685,
+      "report": "onRequest",
+      "name": "AAKKO",
+      "he": "עכו"
+    },
+    {
+      "lat": 32.95089,
+      "lng": 35.09006,
+      "report": "onRequest",
+      "name": "SMRAT",
+      "he": "שמרת"
+    },
+    {
+      "lat": 32.979,
+      "lng": 35.09345,
+      "report": "onRequest",
+      "name": "SZION",
+      "he": "שבי ציון"
+    },
+    {
+      "lat": 32.84367,
+      "lng": 35.08957,
+      "report": "onRequest",
+      "name": "KRYON",
+      "he": "קיריון"
+    },
+    {
+      "lat": 32.82082,
+      "lng": 35.13302,
+      "report": "onRequest",
+      "name": "GILAM",
+      "he": "גילעם"
+    },
+    {
+      "lat": 32.82348,
+      "lng": 35.15075,
+      "report": "onRequest",
+      "name": "EVLYM",
+      "he": "אבליים"
+    },
+    {
+      "lat": 32.8402,
+      "lng": 34.9813,
+      "report": "onRequest",
+      "name": "GALIM",
+      "he": "בת גלים"
+    },
+    {
+      "lat": 32.85264,
+      "lng": 35.05146,
+      "report": "onRequest",
+      "name": "DUGIT",
+      "he": "דוגית"
+    },
+    {
+      "lat": 32.79593,
+      "lng": 34.94305,
+      "report": "onRequest",
+      "name": "DAROM",
+      "he": "מחלף דרום"
+    },
+    {
+      "lat": 32.7535,
+      "lng": 34.93721,
+      "report": "onRequest",
+      "name": "HOTRM",
+      "he": "החותרים"
+    },
+    {
+      "lat": 32.72924,
+      "lng": 34.93378,
+      "report": "onRequest",
+      "name": "עתלית"
+    },
+    {
+      "lat": 32.71278,
+      "lng": 34.97017,
+      "report": "onRequest",
+      "name": "BOREN",
+      "he": "בית אורן"
+    },
+    {
+      "lat": 32.74541,
+      "lng": 35.07763,
+      "report": "onRequest",
+      "name": "HASID",
+      "he": "כפר חסידים"
+    },
+    {
+      "lat": 32.75841,
+      "lng": 35.23453,
+      "report": "onRequest",
+      "name": "MOVIL",
+      "he": "המוביל"
+    },
+    {
+      "lat": 32.77429,
+      "lng": 35.40791,
+      "report": "onRequest",
+      "name": "צומת גולני",
+      "he": "צומת גולני"
+    },
+    {
+      "lat": 32.68938,
+      "lng": 35.42061,
+      "report": "onRequest",
+      "name": "TAVOR",
+      "he": "כפר תבור"
+    },
+    {
+      "lat": 32.70324,
+      "lng": 35.58712,
+      "report": "onRequest",
+      "name": "צמח",
+      "he": "צמח"
+    },
+    {
+      "lat": 32.6547,
+      "lng": 35.5624,
+      "report": "onRequest",
+      "name": "מנחמיה"
+    },
+    {
+      "lat": 32.59716,
+      "lng": 35.54455,
+      "report": "onRequest",
+      "name": "KOYAR",
+      "he": "כוכב הירדן"
+    },
+    {
+      "lat": 32.59629,
+      "lng": 35.31349,
+      "report": "onRequest",
+      "name": "מרחביה",
+      "he": "מרחביה"
+    },
+    {
+      "lat": 32.56533,
+      "lng": 35.2486,
+      "report": "onRequest",
+      "name": "ניר יפה",
+      "he": "ניר יפה"
+    },
+    {
+      "lat": 32.57228,
+      "lng": 35.19024,
+      "report": "onRequest",
+      "name": "ZMGID",
+      "he": "צומת מגידו"
+    },
+    {
+      "lat": 32.59571,
+      "lng": 35.08312,
+      "report": "onRequest",
+      "name": "DALIA",
+      "he": "דליה"
+    },
+    {
+      "lat": 32.63504,
+      "lng": 35.06458,
+      "report": "onRequest",
+      "name": "אליקים",
+      "he": "אליקים"
+    },
+    {
+      "lat": 32.66626,
+      "lng": 35.11677,
+      "report": "onRequest",
+      "name": "יקנעם"
+    },
+    {
+      "lat": 32.65961,
+      "lng": 35.29495,
+      "report": "onRequest",
+      "name": "צ. עדשים"
+    },
+    {
+      "lat": 32.59744,
+      "lng": 35.00484,
+      "report": "onRequest",
+      "name": "בת שלמה",
+      "he": "בת שלמה"
+    },
+    {
+      "lat": 32.59195,
+      "lng": 34.94648,
+      "report": "onRequest",
+      "name": "FRDIS",
+      "he": "צומת פורדיס"
+    },
+    {
+      "lat": 32.50687,
+      "lng": 34.92966,
+      "report": "onRequest",
+      "name": "אור עקיבא",
+      "he": "אור עקיבא"
+    },
+    {
+      "lat": 32.46401,
+      "lng": 34.91283,
+      "report": "onRequest",
+      "name": "HADRA",
+      "he": "חדרה"
+    },
+    {
+      "lat": 32.4304,
+      "lng": 34.8658,
+      "report": "onRequest",
+      "name": "OLGAH",
+      "he": "אולגה"
+    },
+    {
+      "lat": 32.48399,
+      "lng": 35.03368,
+      "report": "onRequest",
+      "name": "עירון"
+    },
+    {
+      "lat": 32.55405,
+      "lng": 35.38284,
+      "report": "onRequest",
+      "name": "עין חרוד",
+      "he": "עין חרוד"
+    },
+    {
+      "lat": 32.51381,
+      "lng": 35.49511,
+      "report": "onRequest",
+      "name": "בית שאן"
+    },
+    {
+      "lat": 32.42431,
+      "lng": 35.52773,
+      "report": "onRequest",
+      "name": "TIRAT",
+      "he": "טירת צבי"
+    },
+    {
+      "lat": 32.31151,
+      "lng": 35.01274,
+      "report": "onRequest",
+      "name": "מ. ניצני עוז"
+    },
+    {
+      "lat": 32.32892,
+      "lng": 34.83696,
+      "report": "onRequest",
+      "name": "PELEG",
+      "he": "פלג"
+    },
+    {
+      "lat": 32.25491,
+      "lng": 34.81808,
+      "report": "onRequest",
+      "name": "VINGT",
+      "he": "וינגייט"
+    },
+    {
+      "lat": 32.23458,
+      "lng": 34.98047,
+      "report": "onRequest",
+      "name": "טירה"
+    },
+    {
+      "lat": 32.21774,
+      "lng": 34.81018,
+      "report": "onRequest",
+      "name": "SFAIM",
+      "he": "שפיים"
+    },
+    {
+      "lat": 32.1913,
+      "lng": 34.95644,
+      "report": "onRequest",
+      "name": "ניר אליהו",
+      "he": "ניר אליהו"
+    },
+    {
+      "lat": 32.17125,
+      "lng": 34.95712,
+      "report": "onRequest",
+      "name": "צומת נווה ימין",
+      "he": "צומת נווה ימין"
+    },
+    {
+      "lat": 32.16428,
+      "lng": 34.7858,
+      "report": "onRequest",
+      "name": "ARENA",
+      "he": "ארנה"
+    },
+    {
+      "lat": 32.13841,
+      "lng": 34.82151,
+      "report": "onRequest",
+      "name": "גלילות מזרח"
+    },
+    {
+      "lat": 32.14509,
+      "lng": 34.77791,
+      "report": "onRequest",
+      "name": "HTZUK",
+      "he": "הצוק"
+    },
+    {
+      "lat": 32.2067,
+      "lng": 34.96365,
+      "report": "onRequest",
+      "name": "מחלף אייל",
+      "he": "מחלף אייל"
+    },
+    {
+      "lat": 32.09527,
+      "lng": 34.93325,
+      "report": "onRequest",
+      "name": "ראש העין"
+    },
+    {
+      "lat": 32.07849,
+      "lng": 34.93407,
+      "report": "onRequest",
+      "name": "עינת"
+    },
+    {
+      "lat": 32.10846,
+      "lng": 34.76246,
+      "report": "onRequest",
+      "name": "RIDNG",
+      "he": "רידינג"
+    },
+    {
+      "lat": 32.10177,
+      "lng": 34.80263,
+      "report": "onRequest",
+      "name": "ROKCH",
+      "he": "רוקח"
+    },
+    {
+      "lat": 32.1009,
+      "lng": 34.84795,
+      "report": "onRequest",
+      "name": "PARDS",
+      "he": "פרדס"
+    },
+    {
+      "lat": 32.05261,
+      "lng": 34.73602,
+      "report": "onRequest",
+      "name": "CLORE",
+      "he": "קלור"
+    },
+    {
+      "lat": 32.00313,
+      "lng": 34.72744,
+      "report": "onRequest",
+      "name": "TYONA",
+      "he": "תל יונה"
+    },
+    {
+      "lat": 32.04097,
+      "lng": 35.36739,
+      "report": "onRequest",
+      "name": "ALLON",
+      "he": "אלון"
+    },
+    {
+      "lat": 32.04766,
+      "lng": 35.46455,
+      "report": "onRequest",
+      "name": "FAZEL",
+      "he": "צומת פצאל"
+    },
+    {
+      "lat": 32.12503,
+      "lng": 35.50987,
+      "report": "onRequest",
+      "name": "צומת אדם",
+      "he": "צומת אדם"
+    },
+    {
+      "lat": 32.17242,
+      "lng": 35.53322,
+      "report": "onRequest",
+      "name": "ARGMN",
+      "he": "ארגמן"
+    },
+    {
+      "lat": 31.95741,
+      "lng": 35.33718,
+      "report": "onRequest",
+      "name": "SHAHR",
+      "he": "כוכב השחר"
+    },
+    {
+      "lat": 31.97226,
+      "lng": 35.033,
+      "report": "onRequest",
+      "name": "מחצבה",
+      "he": "מחצבה"
+    },
+    {
+      "lat": 31.97575,
+      "lng": 34.79267,
+      "report": "onRequest",
+      "name": "MRISN",
+      "he": "מחלף ראשון"
+    },
+    {
+      "lat": 31.94867,
+      "lng": 34.80331,
+      "report": "onRequest",
+      "name": "ראשונים",
+      "he": "ראשונים"
+    },
+    {
+      "lat": 31.93818,
+      "lng": 34.81533,
+      "report": "onRequest",
+      "name": "מ. נס ציונה"
+    },
+    {
+      "lat": 31.97575,
+      "lng": 34.74152,
+      "report": "onRequest",
+      "name": "SUPER",
+      "he": "סופרלנד"
+    },
+    {
+      "lat": 31.95915,
+      "lng": 34.76383,
+      "report": "onRequest",
+      "name": "MEHOL",
+      "he": "משולש חולית"
+    },
+    {
+      "lat": 31.95041,
+      "lng": 34.7707,
+      "report": "onRequest",
+      "name": "IKKEA",
+      "he": "איקאה"
+    },
+    {
+      "lat": 31.91924,
+      "lng": 34.79439,
+      "report": "onRequest",
+      "name": "א״ת נס ציונה",
+      "he": "א״ת נס ציונה"
+    },
+    {
+      "lat": 31.9204,
+      "lng": 34.77036,
+      "report": "onRequest",
+      "name": "BOVED",
+      "he": "בית עובד"
+    },
+    {
+      "lat": 31.88951,
+      "lng": 34.75628,
+      "report": "onRequest",
+      "name": "NAGID",
+      "he": "כפר הנגיד"
+    },
+    {
+      "lat": 31.93847,
+      "lng": 34.70581,
+      "report": "onRequest",
+      "name": "שפך"
+    },
+    {
+      "lat": 31.90846,
+      "lng": 34.89189,
+      "report": "onRequest",
+      "name": "NSHRM",
+      "he": "מחלף נשרים"
+    },
+    {
+      "lat": 31.92711,
+      "lng": 34.83078,
+      "report": "onRequest",
+      "name": "SIRNI",
+      "he": "נצר סירני"
+    },
+    {
+      "lat": 31.94342,
+      "lng": 34.78203,
+      "report": "onRequest",
+      "name": "NTAIM",
+      "he": "נטעים"
+    },
+    {
+      "lat": 31.87114,
+      "lng": 34.94339,
+      "report": "onRequest",
+      "name": "AYLON",
+      "he": "איילון"
+    },
+    {
+      "lat": 31.8379,
+      "lng": 34.98699,
+      "report": "onRequest",
+      "name": "LTRUN",
+      "he": "לטרון"
+    },
+    {
+      "lat": 31.81865,
+      "lng": 35.02132,
+      "report": "onRequest",
+      "name": "SHARG",
+      "he": "שער הגיא"
+    },
+    {
+      "lat": 31.81456,
+      "lng": 34.9173,
+      "report": "onRequest",
+      "name": "NCSHN",
+      "he": "צומת נחשון"
+    },
+    {
+      "lat": 31.79822,
+      "lng": 35.0766,
+      "report": "onRequest",
+      "name": "SORES",
+      "he": "שורש"
+    },
+    {
+      "lat": 31.79881,
+      "lng": 35.14664,
+      "report": "onRequest",
+      "name": "HAREL",
+      "he": "מחלף הראל"
+    },
+    {
+      "lat": 31.82944,
+      "lng": 35.20809,
+      "report": "onRequest",
+      "name": "HNINA",
+      "he": "בית חנינא"
+    },
+    {
+      "lat": 31.80289,
+      "lng": 35.32585,
+      "report": "onRequest",
+      "name": "DUMIM",
+      "he": "כפר אדומים"
+    },
+    {
+      "lat": 31.78859,
+      "lng": 35.457,
+      "report": "onRequest",
+      "name": "ALMOG",
+      "he": "אלמוג"
+    },
+    {
+      "lat": 31.71619,
+      "lng": 35.45013,
+      "report": "onRequest",
+      "name": "ZUKIM",
+      "he": "עינות צוקים"
+    },
+    {
+      "lat": 31.68874,
+      "lng": 35.00244,
+      "report": "onRequest",
+      "name": "עציונה"
+    },
+    {
+      "lat": 31.69984,
+      "lng": 34.94614,
+      "report": "onRequest",
+      "name": "ZHRYA",
+      "he": "זכריה"
+    },
+    {
+      "lat": 31.75386,
+      "lng": 34.9815,
+      "report": "onRequest",
+      "name": "BSEMS",
+      "he": "בית שמש"
+    },
+    {
+      "lat": 31.7416,
+      "lng": 34.87026,
+      "report": "onRequest",
+      "name": "גפן",
+      "he": "גפן"
+    },
+    {
+      "lat": 31.74393,
+      "lng": 34.82185,
+      "report": "onRequest",
+      "name": "NAHEM",
+      "he": "כפר מנחם"
+    },
+    {
+      "lat": 31.80348,
+      "lng": 34.76452,
+      "report": "onRequest",
+      "name": "KANOT",
+      "he": "צומת כנות"
+    },
+    {
+      "lat": 31.82507,
+      "lng": 34.70856,
+      "report": "onRequest",
+      "name": "ZASHD",
+      "he": "צומת אשדוד"
+    },
+    {
+      "lat": 31.83236,
+      "lng": 34.62547,
+      "report": "onRequest",
+      "name": "NMASD",
+      "he": "נמל אשדוד"
+    },
+    {
+      "lat": 31.72349,
+      "lng": 34.57054,
+      "report": "onRequest",
+      "name": "NITZA",
+      "he": "ניצן"
+    },
+    {
+      "lat": 31.66478,
+      "lng": 34.60659,
+      "report": "onRequest",
+      "name": "צ. ברכיה"
+    },
+    {
+      "lat": 31.65367,
+      "lng": 34.66255,
+      "report": "onRequest",
+      "name": "צ. גבעתי"
+    },
+    {
+      "lat": 31.62415,
+      "lng": 34.75697,
+      "report": "onRequest",
+      "name": "צומת פלוגות",
+      "he": "צומת פלוגות"
+    },
+    {
+      "lat": 31.59842,
+      "lng": 34.81258,
+      "report": "onRequest",
+      "name": "מחלף קרית גם",
+      "he": "מחלף קרית גם"
+    },
+    {
+      "lat": 31.60515,
+      "lng": 34.89292,
+      "report": "onRequest",
+      "name": "GOVRN",
+      "he": "בית גוברין"
+    },
+    {
+      "lat": 31.59754,
+      "lng": 35.228,
+      "report": "onRequest",
+      "name": "מעלה עמוס"
+    },
+    {
+      "lat": 31.51007,
+      "lng": 35.33821,
+      "report": "onRequest",
+      "name": "ארנון"
+    },
+    {
+      "lat": 31.55864,
+      "lng": 35.40344,
+      "report": "onRequest",
+      "name": "SHALM",
+      "he": "מצפה שלם"
+    },
+    {
+      "lat": 31.46645,
+      "lng": 35.39726,
+      "report": "onRequest",
+      "name": "ENGDI",
+      "he": "עין גדי"
+    },
+    {
+      "lat": 31.34748,
+      "lng": 35.28088,
+      "report": "onRequest",
+      "name": "צפירה"
+    },
+    {
+      "lat": 31.43189,
+      "lng": 35.17891,
+      "report": "onRequest",
+      "name": "כרמל"
+    },
+    {
+      "lat": 31.3551,
+      "lng": 35.10784,
+      "report": "onRequest",
+      "name": "MZDOT",
+      "he": "מצודות"
+    },
+    {
+      "lat": 31.3381,
+      "lng": 35.03265,
+      "report": "onRequest",
+      "name": "הית היערן"
+    },
+    {
+      "lat": 31.31346,
+      "lng": 34.93927,
+      "report": "onRequest",
+      "name": "MYTAR",
+      "he": "מיתר"
+    },
+    {
+      "lat": 31.30642,
+      "lng": 34.90082,
+      "report": "onRequest",
+      "name": "SOKET",
+      "he": "צומת שוקת"
+    },
+    {
+      "lat": 31.28794,
+      "lng": 34.93206,
+      "report": "onRequest",
+      "name": "חורא"
+    },
+    {
+      "lat": 31.32813,
+      "lng": 34.87507,
+      "report": "onRequest",
+      "name": "צ. לקיה"
+    },
+    {
+      "lat": 31.34367,
+      "lng": 34.81396,
+      "report": "onRequest",
+      "name": "באר פחר"
+    },
+    {
+      "lat": 31.35745,
+      "lng": 34.75662,
+      "report": "onRequest",
+      "name": "גבעות בר"
+    },
+    {
+      "lat": 31.35774,
+      "lng": 34.70821,
+      "report": "onRequest",
+      "name": "משמר הנגב"
+    },
+    {
+      "lat": 31.33663,
+      "lng": 34.65363,
+      "report": "onRequest",
+      "name": "GILAT",
+      "he": "גילת"
+    },
+    {
+      "lat": 31.32901,
+      "lng": 34.63165,
+      "report": "onRequest",
+      "name": "בטוחה"
+    },
+    {
+      "lat": 31.32989,
+      "lng": 34.69826,
+      "report": "onRequest",
+      "name": "NASIH",
+      "he": "אשל הנשיא"
+    },
+    {
+      "lat": 31.31933,
+      "lng": 34.60659,
+      "report": "onRequest",
+      "name": "מרחבים"
+    },
+    {
+      "lat": 31.31786,
+      "lng": 34.54994,
+      "report": "onRequest",
+      "name": "פטיש"
+    },
+    {
+      "lat": 31.31551,
+      "lng": 34.52625,
+      "report": "onRequest",
+      "name": "אורים"
+    },
+    {
+      "lat": 31.3117,
+      "lng": 34.43871,
+      "report": "onRequest",
+      "name": "צ. מעון"
+    },
+    {
+      "lat": 31.42808,
+      "lng": 34.59972,
+      "report": "onRequest",
+      "name": "NTVOT",
+      "he": "נתיבות"
+    },
+    {
+      "lat": 31.38149,
+      "lng": 34.61689,
+      "report": "onRequest",
+      "name": "תדהר"
+    },
+    {
+      "lat": 31.44067,
+      "lng": 34.76589,
+      "report": "onRequest",
+      "name": "BKAMA",
+      "he": "בית קמה"
+    },
+    {
+      "lat": 31.25566,
+      "lng": 34.40369,
+      "report": "onRequest",
+      "name": "AMIOZ",
+      "he": "עמיעוז"
+    },
+    {
+      "lat": 31.2034,
+      "lng": 34.33468,
+      "report": "onRequest",
+      "name": "YATED",
+      "he": "יתד"
+    },
+    {
+      "lat": 31.21104,
+      "lng": 34.53106,
+      "report": "onRequest",
+      "name": "צאלים"
+    },
+    {
+      "lat": 31.28237,
+      "lng": 34.54411,
+      "report": "onRequest",
+      "name": "מערבית"
+    },
+    {
+      "lat": 31.27268,
+      "lng": 34.64367,
+      "report": "onRequest",
+      "name": "צוקים"
+    },
+    {
+      "lat": 31.12144,
+      "lng": 34.64195,
+      "report": "onRequest",
+      "name": "גשר אירי"
+    },
+    {
+      "lat": 31.19048,
+      "lng": 34.80503,
+      "report": "onRequest",
+      "name": "OHLIM",
+      "he": "אוהלים"
+    },
+    {
+      "lat": 31.22484,
+      "lng": 34.82975,
+      "report": "onRequest",
+      "name": "עמק שרה"
+    },
+    {
+      "lat": 31.26036,
+      "lng": 34.83387,
+      "report": "onRequest",
+      "name": "חטיבת הנגב",
+      "he": "חטיבת הנגב"
+    },
+    {
+      "lat": 31.26359,
+      "lng": 34.75044,
+      "report": "onRequest",
+      "name": "כובשים"
+    },
+    {
+      "lat": 31.22484,
+      "lng": 34.75491,
+      "report": "onRequest",
+      "name": "METAH",
+      "he": "מתח"
+    },
+    {
+      "lat": 31.28765,
+      "lng": 34.79164,
+      "report": "onRequest",
+      "name": "NCITY",
+      "he": "צפון העיר"
+    },
+    {
+      "lat": 31.20781,
+      "lng": 34.90974,
+      "report": "onRequest",
+      "name": "נחל נבטים"
+    },
+    {
+      "lat": 31.25537,
+      "lng": 35.12672,
+      "report": "onRequest",
+      "name": "צ. תל ערד"
+    },
+    {
+      "lat": 31.25449,
+      "lng": 35.21049,
+      "report": "onRequest",
+      "name": "ARRAD",
+      "he": "צומת ערד"
+    },
+    {
+      "lat": 31.2762,
+      "lng": 35.22766,
+      "report": "onRequest",
+      "name": "הר כידוד"
+    },
+    {
+      "lat": 31.14965,
+      "lng": 35.37392,
+      "report": "onRequest",
+      "name": "ZOHAR",
+      "he": "נווה זוהר"
+    },
+    {
+      "lat": 31.21897,
+      "lng": 35.24826,
+      "report": "onRequest",
+      "name": "HATRU",
+      "he": "צומת חתרורים"
+    },
+    {
+      "lat": 31.08558,
+      "lng": 35.20535,
+      "report": "onRequest",
+      "name": "רותם"
+    },
+    {
+      "lat": 30.9885,
+      "lng": 35.31006,
+      "report": "onRequest",
+      "name": "ARAVA",
+      "he": "צומת הערבה"
+    },
+    {
+      "lat": 31.04176,
+      "lng": 35.2002,
+      "report": "onRequest",
+      "name": "ZAFIT",
+      "he": "צומת צפית"
+    },
+    {
+      "lat": 31.1185,
+      "lng": 35.13908,
+      "report": "onRequest",
+      "name": "אפעה"
+    },
+    {
+      "lat": 31.06705,
+      "lng": 35.0069,
+      "report": "onRequest",
+      "name": "DIMON",
+      "he": "דימונה"
+    },
+    {
+      "lat": 31.0894,
+      "lng": 34.99317,
+      "report": "onRequest",
+      "name": "עצם",
+      "he": "עצם"
+    },
+    {
+      "lat": 31.06529,
+      "lng": 34.83799,
+      "report": "onRequest",
+      "name": "NEGEV",
+      "he": "צומת הנגב"
+    },
+    {
+      "lat": 30.89221,
+      "lng": 34.42223,
+      "report": "onRequest",
+      "name": "ניצנה"
+    },
+    {
+      "lat": 30.94405,
+      "lng": 34.59595,
+      "report": "onRequest",
+      "name": "צ. שבטה"
+    },
+    {
+      "lat": 30.99085,
+      "lng": 34.7628,
+      "report": "onRequest",
+      "name": "TLLIM",
+      "he": "טללים"
+    },
+    {
+      "lat": 30.9885,
+      "lng": 34.91146,
+      "report": "onRequest",
+      "name": "YRUHM",
+      "he": "ירוחם"
+    },
+    {
+      "lat": 30.97025,
+      "lng": 34.97223,
+      "report": "onRequest",
+      "name": "אבנון"
+    },
+    {
+      "lat": 30.92343,
+      "lng": 35.1408,
+      "report": "onRequest",
+      "name": "מעלה עקרבים"
+    },
+    {
+      "lat": 30.77252,
+      "lng": 35.23727,
+      "report": "onRequest",
+      "name": "HAZVA",
+      "he": "חצבה"
+    },
+    {
+      "lat": 30.82,
+      "lng": 34.91592,
+      "report": "onRequest",
+      "name": "נחל נחש"
+    },
+    {
+      "lat": 30.7911,
+      "lng": 34.76898,
+      "report": "onRequest",
+      "name": "בורות רמליה"
+    },
+    {
+      "lat": 30.85449,
+      "lng": 34.7707,
+      "report": "onRequest",
+      "name": "צ. מדרשה"
+    },
+    {
+      "lat": 30.74685,
+      "lng": 34.4981,
+      "report": "onRequest",
+      "name": "בארותיים"
+    },
+    {
+      "lat": 30.79906,
+      "lng": 34.47098,
+      "report": "onRequest",
+      "name": "AZOOZ",
+      "he": "עזוז"
+    },
+    {
+      "lat": 30.85773,
+      "lng": 34.44283,
+      "report": "onRequest",
+      "name": "מנחת קציעות"
+    },
+    {
+      "lat": 30.68516,
+      "lng": 34.56196,
+      "report": "onRequest",
+      "name": "הר חמרן"
+    },
+    {
+      "lat": 30.66331,
+      "lng": 34.53449,
+      "report": "onRequest",
+      "name": "חורשה"
+    },
+    {
+      "lat": 30.72738,
+      "lng": 34.77551,
+      "report": "onRequest",
+      "name": "כלא נפחא"
+    },
+    {
+      "lat": 30.61546,
+      "lng": 35.20363,
+      "report": "onRequest",
+      "name": "עין יהב"
+    },
+    {
+      "lat": 30.5596,
+      "lng": 35.18681,
+      "report": "onRequest",
+      "name": "ZOFAR",
+      "he": "צופר"
+    },
+    {
+      "lat": 30.62196,
+      "lng": 34.9506,
+      "report": "onRequest",
+      "name": "HRGVS",
+      "he": "הר גבס"
+    },
+    {
+      "lat": 30.65947,
+      "lng": 34.80949,
+      "report": "onRequest",
+      "name": "RUHOT",
+      "he": "צומת הרוחות"
+    },
+    {
+      "lat": 30.62137,
+      "lng": 34.54342,
+      "report": "onRequest",
+      "name": "מצפור"
+    },
+    {
+      "lat": 30.50164,
+      "lng": 34.59183,
+      "report": "onRequest",
+      "name": "הר רומם"
+    },
+    {
+      "lat": 30.50105,
+      "lng": 34.94339,
+      "report": "onRequest",
+      "name": "MESAR",
+      "he": "מעלה מישר"
+    },
+    {
+      "lat": 30.30176,
+      "lng": 35.13462,
+      "report": "onRequest",
+      "name": "BMNUH",
+      "he": "באר מנוחה"
+    },
+    {
+      "lat": 30.27686,
+      "lng": 35.02167,
+      "report": "onRequest",
+      "name": "ZZHOR",
+      "he": "צומת ציחור"
+    },
+    {
+      "lat": 30.28812,
+      "lng": 34.6756,
+      "report": "onRequest",
+      "name": "דלעת"
+    },
+    {
+      "lat": 30.38531,
+      "lng": 34.63749,
+      "report": "onRequest",
+      "name": "בקעת חיסון"
+    },
+    {
+      "lat": 30.05156,
+      "lng": 34.76452,
+      "report": "onRequest",
+      "name": "פחמי"
+    },
+    {
+      "lat": 29.98081,
+      "lng": 34.7937,
+      "report": "onRequest",
+      "name": "אנדרטה"
+    },
+    {
+      "lat": 29.78762,
+      "lng": 34.87026,
+      "report": "onRequest",
+      "name": "בטמים"
+    },
+    {
+      "lat": 29.55882,
+      "lng": 34.95918,
+      "report": "onRequest",
+      "name": "EILAT",
+      "he": "אילת"
+    },
+    {
+      "lat": 29.70774,
+      "lng": 34.99729,
+      "report": "onRequest",
+      "name": "BRORA",
+      "he": "באר אורה"
+    },
+    {
+      "lat": 29.83082,
+      "lng": 35.02888,
+      "report": "onRequest",
+      "name": "SAMAR",
+      "he": "סמר"
+    },
+    {
+      "lat": 29.98884,
+      "lng": 35.07626,
+      "report": "onRequest",
+      "name": "KTORA",
+      "he": "צומת קטורה"
+    },
+    {
+      "lat": 30.08128,
+      "lng": 35.13428,
+      "report": "onRequest",
+      "name": "YAHEL",
+      "he": "יהל"
+    },
+    {
+      "lat": 30.04651,
+      "lng": 35.01583,
+      "report": "onRequest",
+      "name": "SIZFN",
+      "he": "שזפון"
+    },
+    {
+      "lat": 30.17481,
+      "lng": 35.01514,
+      "report": "onRequest",
+      "name": "SITIM",
+      "he": "שיטים"
+    },
+    {
+      "lat": 32.11515,
+      "lng": 34.92651,
+      "report": "onRequest",
+      "name": "קסם מערב"
+    },
+    {
+      "lat": 31.26417,
+      "lng": 34.69997,
+      "report": "onRequest",
+      "name": "משק"
+    },
+    {
+      "lat": 31.29208,
+      "lng": 34.66218,
+      "report": "onRequest",
+      "name": "מאגר"
+    },
+    {
+      "lat": 31.29633,
+      "lng": 34.60768,
+      "report": "onRequest",
+      "name": "עץ"
+    }
+  ]
+}

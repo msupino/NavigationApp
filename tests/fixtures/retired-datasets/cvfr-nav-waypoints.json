@@ -1,0 +1,1381 @@
+{
+  "_reportType": "Per-waypoint CVFR reporting class from the IAA chart 'סוג דיווח' column: 'mandatory' = חובה, 'onRequest' = דרישה. Transcribed from the full published chart waypoint table (codes, coordinates, and reporting class). The chart's ARP rows are airfields and live in airfields.json.",
+  "waypoints": [
+    {
+      "name": "ZLHAV",
+      "en": "Lehavim Junction",
+      "he": "צומת להבים",
+      "lat": 31.3725,
+      "lng": 34.79333,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZMGID",
+      "en": "Megiddo Junction",
+      "he": "צומת מגידו",
+      "lat": 32.57278,
+      "lng": 35.19111,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZMGEN",
+      "en": "Magen Junction",
+      "he": "צומת מגן",
+      "lat": 31.29389,
+      "lng": 34.43222,
+      "report": "mandatory"
+    },
+    {
+      "name": "NCSHN",
+      "en": "Nachshon Junction",
+      "he": "צומת נחשון",
+      "lat": 31.81556,
+      "lng": 34.91694,
+      "report": "mandatory"
+    },
+    {
+      "name": "ARRAD",
+      "en": "Arad Junction",
+      "he": "צומת ערד",
+      "lat": 31.25444,
+      "lng": 35.20972,
+      "report": "mandatory"
+    },
+    {
+      "name": "FRDIS",
+      "en": "Fureidis Junction",
+      "he": "צומת פורדיס",
+      "lat": 32.59194,
+      "lng": 34.94639,
+      "report": "onRequest"
+    },
+    {
+      "name": "FAZEL",
+      "en": "Petzael Junction",
+      "he": "צומת פצאל",
+      "lat": 32.04806,
+      "lng": 35.46306,
+      "report": "onRequest"
+    },
+    {
+      "name": "ZZHOR",
+      "en": "Tzihor Junction",
+      "he": "צומת ציחור",
+      "lat": 30.27667,
+      "lng": 35.02,
+      "report": "onRequest"
+    },
+    {
+      "name": "ZAFIT",
+      "en": "Tzafit Junction",
+      "he": "צומת צפית",
+      "lat": 31.0425,
+      "lng": 35.19972,
+      "report": "onRequest"
+    },
+    {
+      "name": "KTORA",
+      "en": "Ketura Junction",
+      "he": "צומת קטורה",
+      "lat": 29.98944,
+      "lng": 35.07639,
+      "report": "mandatory"
+    },
+    {
+      "name": "SOKET",
+      "en": "Shoket Junction",
+      "he": "צומת שוקת",
+      "lat": 31.3075,
+      "lng": 34.90111,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZOFAR",
+      "en": "Tzofar",
+      "he": "צופר",
+      "lat": 30.55972,
+      "lng": 35.18667,
+      "report": "mandatory"
+    },
+    {
+      "name": "TZHOT",
+      "en": "Tzelahot",
+      "he": "צלחות",
+      "lat": 31.30778,
+      "lng": 34.52972,
+      "report": "onRequest"
+    },
+    {
+      "name": "ZALMN",
+      "en": "Tzalmon",
+      "he": "צלמון",
+      "lat": 32.85333,
+      "lng": 35.41167,
+      "report": "onRequest"
+    },
+    {
+      "name": "NCITY",
+      "en": "North City",
+      "he": "צפון העיר",
+      "lat": 31.2875,
+      "lng": 34.79139,
+      "report": "mandatory"
+    },
+    {
+      "name": "KNTRY",
+      "en": "Country Club",
+      "he": "קאנטרי קלאב",
+      "lat": 32.14083,
+      "lng": 34.80139,
+      "report": "mandatory"
+    },
+    {
+      "name": "KRYON",
+      "en": "Kiryon",
+      "he": "קיריון",
+      "lat": 32.84333,
+      "lng": 35.08889,
+      "report": "mandatory"
+    },
+    {
+      "name": "CLORE",
+      "en": "Clore",
+      "he": "קלור",
+      "lat": 32.05306,
+      "lng": 34.73583,
+      "report": "onRequest"
+    },
+    {
+      "name": "REVAH",
+      "en": "Revaha",
+      "he": "רווחה",
+      "lat": 31.64444,
+      "lng": 34.73028,
+      "report": "onRequest"
+    },
+    {
+      "name": "ROKCH",
+      "en": "Rokach",
+      "he": "רוקח",
+      "lat": 32.1025,
+      "lng": 34.80361,
+      "report": "onRequest"
+    },
+    {
+      "name": "RIDNG",
+      "en": "Riding",
+      "he": "רידינג",
+      "lat": 32.11028,
+      "lng": 34.7625,
+      "report": "onRequest"
+    },
+    {
+      "name": "HOVAV",
+      "en": "Ramat Hovav",
+      "he": "רמת חובב",
+      "lat": 31.13556,
+      "lng": 34.805,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZRANA",
+      "en": "Ra'anana Center",
+      "he": "רעננה מרכז",
+      "lat": 32.17722,
+      "lng": 34.88778,
+      "report": "mandatory"
+    },
+    {
+      "name": "RANNO",
+      "en": "Ra'anana North",
+      "he": "רעננה צפון",
+      "lat": 32.19083,
+      "lng": 34.88833,
+      "report": "mandatory"
+    },
+    {
+      "name": "SZION",
+      "en": "Shavei Tzion",
+      "he": "שבי ציון",
+      "lat": 32.97944,
+      "lng": 35.09333,
+      "report": "onRequest"
+    },
+    {
+      "name": "SEGEV",
+      "en": "Segev",
+      "he": "שגב",
+      "lat": 32.86111,
+      "lng": 35.2625,
+      "report": "onRequest"
+    },
+    {
+      "name": "BOKER",
+      "en": "Sde Boker",
+      "he": "שדה בוקר",
+      "lat": 30.875,
+      "lng": 34.78583,
+      "report": "mandatory"
+    },
+    {
+      "name": "SDTYM",
+      "en": "Sdot Yam",
+      "he": "שדות ים",
+      "lat": 32.49667,
+      "lng": 34.885,
+      "report": "mandatory"
+    },
+    {
+      "name": "SDROT",
+      "en": "Sderot",
+      "he": "שדרות",
+      "lat": 31.50667,
+      "lng": 34.58556,
+      "report": "mandatory"
+    },
+    {
+      "name": "SOVAL",
+      "en": "Shoval",
+      "he": "שובל",
+      "lat": 31.41139,
+      "lng": 34.74639,
+      "report": "mandatory"
+    },
+    {
+      "name": "SORES",
+      "en": "Shoresh",
+      "he": "שורש",
+      "lat": 31.79972,
+      "lng": 35.07611,
+      "report": "mandatory"
+    },
+    {
+      "name": "SIZFN",
+      "en": "Shizafon",
+      "he": "שזפון",
+      "lat": 30.0475,
+      "lng": 35.01444,
+      "report": "mandatory"
+    },
+    {
+      "name": "SHRUT",
+      "en": "Shaharut",
+      "he": "שחרות",
+      "lat": 29.90778,
+      "lng": 35.00333,
+      "report": "mandatory"
+    },
+    {
+      "name": "SITIM",
+      "en": "Shitim",
+      "he": "שיטים",
+      "lat": 30.17583,
+      "lng": 35.01444,
+      "report": "onRequest"
+    },
+    {
+      "name": "SMRAT",
+      "en": "Shomrat",
+      "he": "שמרת",
+      "lat": 32.95167,
+      "lng": 35.09,
+      "report": "onRequest"
+    },
+    {
+      "name": "SHARG",
+      "en": "Sha'ar HaGai",
+      "he": "שער הגיא",
+      "lat": 31.81972,
+      "lng": 35.02111,
+      "report": "onRequest"
+    },
+    {
+      "name": "SFAIM",
+      "en": "Shefayim",
+      "he": "שפיים",
+      "lat": 32.21056,
+      "lng": 34.80722,
+      "report": "mandatory"
+    },
+    {
+      "name": "ASKLN",
+      "en": "Tel Ashkelon",
+      "he": "תל אשקלון",
+      "lat": 31.66639,
+      "lng": 34.53917,
+      "report": "onRequest"
+    },
+    {
+      "name": "TYONA",
+      "en": "Tel Yona",
+      "he": "תל יונה",
+      "lat": 32.00472,
+      "lng": 34.72722,
+      "report": "mandatory"
+    },
+    {
+      "name": "TARAD",
+      "en": "Tel Arad",
+      "he": "תל ערד",
+      "lat": 31.2775,
+      "lng": 35.12556,
+      "report": "onRequest"
+    },
+    {
+      "name": "YRIHO",
+      "en": "Mitzpe Yericho",
+      "he": "מצפה יריחו",
+      "lat": 31.81944,
+      "lng": 35.3875,
+      "report": "mandatory"
+    },
+    {
+      "name": "SHALM",
+      "en": "Mitzpe Shalem",
+      "he": "מצפה שלם",
+      "lat": 31.55861,
+      "lng": 35.4025,
+      "report": "onRequest"
+    },
+    {
+      "name": "MEHOL",
+      "en": "Holit Triangle",
+      "he": "משולש חולית",
+      "lat": 31.96083,
+      "lng": 34.76417,
+      "report": "mandatory"
+    },
+    {
+      "name": "MINGV",
+      "en": "Mishmar HaNegev",
+      "he": "משמר הנגב",
+      "lat": 31.36889,
+      "lng": 34.71278,
+      "report": "onRequest"
+    },
+    {
+      "name": "EMMEK",
+      "en": "Mishmar HaEmek",
+      "he": "משמר העמק",
+      "lat": 32.615,
+      "lng": 35.14167,
+      "report": "onRequest"
+    },
+    {
+      "name": "MESEK",
+      "en": "Meshek",
+      "he": "משק",
+      "lat": 31.26472,
+      "lng": 34.69972,
+      "report": "mandatory"
+    },
+    {
+      "name": "METAH",
+      "en": "Metah",
+      "he": "מתח",
+      "lat": 31.22556,
+      "lng": 34.755,
+      "report": "mandatory"
+    },
+    {
+      "name": "EITAN",
+      "en": "Neve Eitan",
+      "he": "נווה איתן",
+      "lat": 32.49556,
+      "lng": 35.53361,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZOHAR",
+      "en": "Neve Zohar",
+      "he": "נווה זוהר",
+      "lat": 31.15083,
+      "lng": 35.3725,
+      "report": "mandatory"
+    },
+    {
+      "name": "NAHLA",
+      "en": "Nahala",
+      "he": "נחלה",
+      "lat": 31.65639,
+      "lng": 34.80917,
+      "report": "onRequest"
+    },
+    {
+      "name": "NTAIM",
+      "en": "Netaim",
+      "he": "נטעים",
+      "lat": 31.94361,
+      "lng": 34.78083,
+      "report": "mandatory"
+    },
+    {
+      "name": "NITZA",
+      "en": "Nitzan",
+      "he": "ניצן",
+      "lat": 31.72417,
+      "lng": 34.57056,
+      "report": "mandatory"
+    },
+    {
+      "name": "NMASD",
+      "en": "Ashdod Port",
+      "he": "נמל אשדוד",
+      "lat": 31.83333,
+      "lng": 34.62528,
+      "report": "mandatory"
+    },
+    {
+      "name": "NOAAM",
+      "en": "No'am",
+      "he": "נעם",
+      "lat": 31.57139,
+      "lng": 34.77583,
+      "report": "mandatory"
+    },
+    {
+      "name": "NAAMA",
+      "en": "Naama",
+      "he": "נעמה",
+      "lat": 31.90861,
+      "lng": 35.4625,
+      "report": "onRequest"
+    },
+    {
+      "name": "SIRNI",
+      "en": "Netzer Sireni",
+      "he": "נצר סירני",
+      "lat": 31.92806,
+      "lng": 34.83,
+      "report": "onRequest"
+    },
+    {
+      "name": "NTVOT",
+      "en": "Netivot",
+      "he": "נתיבות",
+      "lat": 31.42917,
+      "lng": 34.59917,
+      "report": "onRequest"
+    },
+    {
+      "name": "SUPER",
+      "en": "Superland",
+      "he": "סופרלנד",
+      "lat": 31.97639,
+      "lng": 34.74167,
+      "report": "mandatory"
+    },
+    {
+      "name": "SIGAL",
+      "en": "Sigal",
+      "he": "סיגל",
+      "lat": 31.195,
+      "lng": 34.29278,
+      "report": "mandatory"
+    },
+    {
+      "name": "SAMAR",
+      "en": "Samar",
+      "he": "סמר",
+      "lat": 29.83139,
+      "lng": 35.02861,
+      "report": "mandatory"
+    },
+    {
+      "name": "SAHAR",
+      "en": "Sa'ar",
+      "he": "סער",
+      "lat": 32.29583,
+      "lng": 34.75278,
+      "report": "onRequest"
+    },
+    {
+      "name": "OMMER",
+      "en": "Omer",
+      "he": "עומר",
+      "lat": 31.27472,
+      "lng": 34.82833,
+      "report": "mandatory"
+    },
+    {
+      "name": "AZOOZ",
+      "en": "Ezuz",
+      "he": "עזוז",
+      "lat": 30.8,
+      "lng": 34.47028,
+      "report": "onRequest"
+    },
+    {
+      "name": "ENGDI",
+      "en": "Ein Gedi",
+      "he": "עין גדי",
+      "lat": 31.46417,
+      "lng": 35.39472,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZURIM",
+      "en": "Ein Tzurim",
+      "he": "עין צורים",
+      "lat": 31.70167,
+      "lng": 34.715,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZUKIM",
+      "en": "Einot Tzukim",
+      "he": "עינות צוקים",
+      "lat": 31.71611,
+      "lng": 35.44972,
+      "report": "mandatory"
+    },
+    {
+      "name": "EIRON",
+      "en": "Eiron",
+      "he": "עירון",
+      "lat": 32.48083,
+      "lng": 35.02444,
+      "report": "onRequest"
+    },
+    {
+      "name": "AAKKO",
+      "en": "Akko",
+      "he": "עכו",
+      "lat": 32.91861,
+      "lng": 35.09639,
+      "report": "mandatory"
+    },
+    {
+      "name": "AMIOZ",
+      "en": "Ami'oz",
+      "he": "עמיעוז",
+      "lat": 31.25667,
+      "lng": 34.40278,
+      "report": "onRequest"
+    },
+    {
+      "name": "ANATA",
+      "en": "Anata",
+      "he": "ענאתא",
+      "lat": 31.82111,
+      "lng": 35.27139,
+      "report": "mandatory"
+    },
+    {
+      "name": "AFULA",
+      "en": "Afula Junction",
+      "he": "צומת עפולה",
+      "lat": 32.60361,
+      "lng": 35.28194,
+      "report": "mandatory"
+    },
+    {
+      "name": "PELEG",
+      "en": "Peleg",
+      "he": "פלג",
+      "lat": 32.33,
+      "lng": 34.83722,
+      "report": "onRequest"
+    },
+    {
+      "name": "PARDS",
+      "en": "Pardes",
+      "he": "פרדס",
+      "lat": 32.10278,
+      "lng": 34.84778,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZDAFA",
+      "en": "Tzidfa",
+      "he": "צדפה",
+      "lat": 31.78167,
+      "lng": 34.59972,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZASHD",
+      "en": "Ashdod Junction",
+      "he": "צומת אשדוד",
+      "lat": 31.82611,
+      "lng": 34.70833,
+      "report": "mandatory"
+    },
+    {
+      "name": "NEGEV",
+      "en": "Negev Junction",
+      "he": "צומת הנגב",
+      "lat": 31.06611,
+      "lng": 34.83806,
+      "report": "onRequest"
+    },
+    {
+      "name": "ARAVA",
+      "en": "Arava Junction",
+      "he": "צומת הערבה",
+      "lat": 30.98944,
+      "lng": 35.30917,
+      "report": "onRequest"
+    },
+    {
+      "name": "RUHOT",
+      "en": "Ruhot Junction",
+      "he": "צומת הרוחות",
+      "lat": 30.66,
+      "lng": 34.80889,
+      "report": "mandatory"
+    },
+    {
+      "name": "SHARO",
+      "en": "Sharon Junction",
+      "he": "צומת השרון",
+      "lat": 32.32306,
+      "lng": 34.90389,
+      "report": "onRequest"
+    },
+    {
+      "name": "HATRU",
+      "en": "Hatrurim Junction",
+      "he": "צומת חתרורים",
+      "lat": 31.21889,
+      "lng": 35.24833,
+      "report": "mandatory"
+    },
+    {
+      "name": "ZYAAR",
+      "en": "Ya'ar Junction",
+      "he": "צומת יער",
+      "lat": 32.40972,
+      "lng": 34.90361,
+      "report": "mandatory"
+    },
+    {
+      "name": "KANOT",
+      "en": "Kanot Junction",
+      "he": "צומת כנות",
+      "lat": 31.80417,
+      "lng": 34.76333,
+      "report": "mandatory"
+    },
+    {
+      "name": "BEREC",
+      "en": "Mount Berekh",
+      "he": "הר ברך",
+      "lat": 29.79306,
+      "lng": 34.91028,
+      "report": "mandatory"
+    },
+    {
+      "name": "HRGVS",
+      "en": "Mount Geves",
+      "he": "הר גבס",
+      "lat": 30.62278,
+      "lng": 34.95,
+      "report": "onRequest"
+    },
+    {
+      "name": "VINGT",
+      "en": "Wingate",
+      "he": "וינגייט",
+      "lat": 32.25556,
+      "lng": 34.81694,
+      "report": "onRequest"
+    },
+    {
+      "name": "ZHRYA",
+      "en": "Zecharia",
+      "he": "זכריה",
+      "lat": 31.69972,
+      "lng": 34.945,
+      "report": "onRequest"
+    },
+    {
+      "name": "HADRA",
+      "en": "Hadera",
+      "he": "חדרה",
+      "lat": 32.46472,
+      "lng": 34.91222,
+      "report": "mandatory"
+    },
+    {
+      "name": "HOLOT",
+      "en": "Holot",
+      "he": "חולות",
+      "lat": 30.99417,
+      "lng": 34.36028,
+      "report": "onRequest"
+    },
+    {
+      "name": "HULAT",
+      "en": "Hulata",
+      "he": "חולתה",
+      "lat": 33.04361,
+      "lng": 35.62944,
+      "report": "mandatory"
+    },
+    {
+      "name": "OVDAT",
+      "en": "Ovdat Ruins",
+      "he": "חורבות עבדת",
+      "lat": 30.80278,
+      "lng": 34.79333,
+      "report": "mandatory"
+    },
+    {
+      "name": "HAZVA",
+      "en": "Hatzeva",
+      "he": "חצבה",
+      "lat": 30.77333,
+      "lng": 35.23639,
+      "report": "onRequest"
+    },
+    {
+      "name": "TIRAT",
+      "en": "Tirat Tzvi",
+      "he": "טירת צבי",
+      "lat": 32.42444,
+      "lng": 35.52667,
+      "report": "onRequest"
+    },
+    {
+      "name": "TLLIM",
+      "en": "Tlalim",
+      "he": "טללים",
+      "lat": 30.99056,
+      "lng": 34.76222,
+      "report": "onRequest"
+    },
+    {
+      "name": "YAVNE",
+      "en": "East Yavne",
+      "he": "יבנה מזרח",
+      "lat": 31.87194,
+      "lng": 34.75694,
+      "report": "onRequest"
+    },
+    {
+      "name": "YAHEL",
+      "en": "Yahel",
+      "he": "יהל",
+      "lat": 30.08222,
+      "lng": 35.13333,
+      "report": "onRequest"
+    },
+    {
+      "name": "YOTVT",
+      "en": "Yotvata",
+      "he": "יטבתה",
+      "lat": 29.90083,
+      "lng": 35.06722,
+      "report": "onRequest"
+    },
+    {
+      "name": "YASDD",
+      "en": "Ashdod Sea",
+      "he": "ים אשדוד",
+      "lat": 31.81028,
+      "lng": 34.45639,
+      "report": "onRequest"
+    },
+    {
+      "name": "YAHOL",
+      "en": "Holon Sea",
+      "he": "ים חולון",
+      "lat": 32.0225,
+      "lng": 34.46056,
+      "report": "onRequest"
+    },
+    {
+      "name": "YAPAL",
+      "en": "Palmachim Sea",
+      "he": "ים פלמחים",
+      "lat": 31.915,
+      "lng": 34.45833,
+      "report": "mandatory"
+    },
+    {
+      "name": "YASFA",
+      "en": "Shefayim Sea",
+      "he": "ים שפיים",
+      "lat": 32.21861,
+      "lng": 34.62472,
+      "report": "onRequest"
+    },
+    {
+      "name": "YRUHM",
+      "en": "Yeruham",
+      "he": "ירוחם",
+      "lat": 30.98972,
+      "lng": 34.91083,
+      "report": "onRequest"
+    },
+    {
+      "name": "YATED",
+      "en": "Yated",
+      "he": "יתד",
+      "lat": 31.20472,
+      "lng": 34.33444,
+      "report": "onRequest"
+    },
+    {
+      "name": "KUVSH",
+      "en": "Kovshim",
+      "he": "כובשים",
+      "lat": 31.25861,
+      "lng": 34.76361,
+      "report": "mandatory"
+    },
+    {
+      "name": "KOYAR",
+      "en": "Kokhav HaYarden",
+      "he": "כוכב הירדן",
+      "lat": 32.5975,
+      "lng": 35.54361,
+      "report": "onRequest"
+    },
+    {
+      "name": "SHAHR",
+      "en": "Kokhav HaShahar",
+      "he": "כוכב השחר",
+      "lat": 31.9575,
+      "lng": 35.33694,
+      "report": "onRequest"
+    },
+    {
+      "name": "DUMIM",
+      "en": "Kfar Adumim",
+      "he": "כפר אדומים",
+      "lat": 31.80389,
+      "lng": 35.32472,
+      "report": "onRequest"
+    },
+    {
+      "name": "NAGID",
+      "en": "Kfar HaNagid",
+      "he": "כפר הנגיד",
+      "lat": 31.88972,
+      "lng": 34.75583,
+      "report": "onRequest"
+    },
+    {
+      "name": "HASID",
+      "en": "Kfar Hasidim",
+      "he": "כפר חסידים",
+      "lat": 32.74667,
+      "lng": 35.07778,
+      "report": "mandatory"
+    },
+    {
+      "name": "HAROV",
+      "en": "Kfar Haruv",
+      "he": "כפר חרוב",
+      "lat": 32.75917,
+      "lng": 35.66833,
+      "report": "mandatory"
+    },
+    {
+      "name": "NAHEM",
+      "en": "Kfar Menahem",
+      "he": "כפר מנחם",
+      "lat": 31.74528,
+      "lng": 34.82222,
+      "report": "onRequest"
+    },
+    {
+      "name": "TAVOR",
+      "en": "Kfar Tavor",
+      "he": "כפר תבור",
+      "lat": 32.69028,
+      "lng": 35.42,
+      "report": "onRequest"
+    },
+    {
+      "name": "DESHE",
+      "en": "Karei Deshe",
+      "he": "כרי דשא",
+      "lat": 32.87,
+      "lng": 35.5325,
+      "report": "mandatory"
+    },
+    {
+      "name": "LAHAV",
+      "en": "Lahav",
+      "he": "להב",
+      "lat": 31.3825,
+      "lng": 34.82694,
+      "report": "onRequest"
+    },
+    {
+      "name": "BASAN",
+      "en": "Lehavot HaBashan",
+      "he": "להבות הבשן",
+      "lat": 33.14611,
+      "lng": 35.63806,
+      "report": "mandatory"
+    },
+    {
+      "name": "LTRUN",
+      "en": "Latrun",
+      "he": "לטרון",
+      "lat": 31.83861,
+      "lng": 34.98667,
+      "report": "onRequest"
+    },
+    {
+      "name": "LIAAD",
+      "en": "Li'ad",
+      "he": "ליעד",
+      "lat": 31.95833,
+      "lng": 34.515,
+      "report": "mandatory"
+    },
+    {
+      "name": "MMORR",
+      "en": "Mor",
+      "he": "מור",
+      "lat": 31.25444,
+      "lng": 35.36833,
+      "report": "onRequest"
+    },
+    {
+      "name": "NIZAN",
+      "en": "Nitzana Fork",
+      "he": "מזלג ניצנה",
+      "lat": 30.75444,
+      "lng": 34.565,
+      "report": "mandatory"
+    },
+    {
+      "name": "DAROM",
+      "en": "Darom Interchange",
+      "he": "מחלף דרום",
+      "lat": 32.79611,
+      "lng": 34.94333,
+      "report": "mandatory"
+    },
+    {
+      "name": "HAREL",
+      "en": "Harel Interchange",
+      "he": "מחלף הראל",
+      "lat": 31.79861,
+      "lng": 35.14611,
+      "report": "onRequest"
+    },
+    {
+      "name": "NSHRM",
+      "en": "Nesharim Interchange",
+      "he": "מחלף נשרים",
+      "lat": 31.90917,
+      "lng": 34.89167,
+      "report": "mandatory"
+    },
+    {
+      "name": "MRISN",
+      "en": "Rishon Interchange",
+      "he": "מחלף ראשון",
+      "lat": 31.97694,
+      "lng": 34.79194,
+      "report": "onRequest"
+    },
+    {
+      "name": "MYTAR",
+      "en": "Meitar",
+      "he": "מיתר",
+      "lat": 31.31472,
+      "lng": 34.93806,
+      "report": "mandatory"
+    },
+    {
+      "name": "MESAR",
+      "en": "Ma'ale Meishar",
+      "he": "מעלה מישר",
+      "lat": 30.50167,
+      "lng": 34.94361,
+      "report": "onRequest"
+    },
+    {
+      "name": "MIHMS",
+      "en": "Ma'ale Mikhmas",
+      "he": "מעלה מכמש",
+      "lat": 31.85444,
+      "lng": 35.32944,
+      "report": "mandatory"
+    },
+    {
+      "name": "MZDOT",
+      "en": "Metzudot",
+      "he": "מצודות",
+      "lat": 31.35639,
+      "lng": 35.1075,
+      "report": "mandatory"
+    },
+    {
+      "name": "EVLYM",
+      "en": "Evlayim",
+      "he": "אבליים",
+      "lat": 32.82389,
+      "lng": 35.15139,
+      "report": "onRequest"
+    },
+    {
+      "name": "OHLIM",
+      "en": "Ohalim",
+      "he": "אוהלים",
+      "lat": 31.19111,
+      "lng": 34.80472,
+      "report": "mandatory"
+    },
+    {
+      "name": "OLGAH",
+      "en": "Olga",
+      "he": "אולגה",
+      "lat": 32.43139,
+      "lng": 34.86583,
+      "report": "mandatory"
+    },
+    {
+      "name": "OFKIM",
+      "en": "Ofakim",
+      "he": "אופקים",
+      "lat": 31.32222,
+      "lng": 34.61889,
+      "report": "onRequest"
+    },
+    {
+      "name": "AHIUD",
+      "en": "Ahihud",
+      "he": "אחיהוד",
+      "lat": 32.91194,
+      "lng": 35.18111,
+      "report": "onRequest"
+    },
+    {
+      "name": "AYLON",
+      "en": "Ayalon",
+      "he": "איילון",
+      "lat": 31.87167,
+      "lng": 34.94361,
+      "report": "mandatory"
+    },
+    {
+      "name": "EILAT",
+      "en": "Eilat",
+      "he": "אילת",
+      "lat": 29.55833,
+      "lng": 34.95889,
+      "report": "onRequest"
+    },
+    {
+      "name": "IKKEA",
+      "en": "IKEA",
+      "he": "איקאה",
+      "lat": 31.95139,
+      "lng": 34.77028,
+      "report": "onRequest"
+    },
+    {
+      "name": "ALUMT",
+      "en": "Alumot",
+      "he": "אלומות",
+      "lat": 32.71417,
+      "lng": 35.54639,
+      "report": "onRequest"
+    },
+    {
+      "name": "ALLON",
+      "en": "Alon",
+      "he": "אלון",
+      "lat": 32.04139,
+      "lng": 35.36667,
+      "report": "onRequest"
+    },
+    {
+      "name": "ALMOG",
+      "en": "Almog",
+      "he": "אלמוג",
+      "lat": 31.78972,
+      "lng": 35.45639,
+      "report": "onRequest"
+    },
+    {
+      "name": "AMNON",
+      "en": "Amnon",
+      "he": "אמנון",
+      "lat": 32.90556,
+      "lng": 35.56667,
+      "report": "onRequest"
+    },
+    {
+      "name": "OSNAT",
+      "en": "Osnat",
+      "he": "אסנת",
+      "lat": 31.83278,
+      "lng": 34.52333,
+      "report": "onRequest"
+    },
+    {
+      "name": "APOLN",
+      "en": "Apollonia",
+      "he": "אפולוניה",
+      "lat": 32.19111,
+      "lng": 34.79722,
+      "report": "onRequest"
+    },
+    {
+      "name": "AFFEK",
+      "en": "Afek",
+      "he": "אפק",
+      "lat": 32.84028,
+      "lng": 35.12778,
+      "report": "mandatory"
+    },
+    {
+      "name": "ARGMN",
+      "en": "Argaman",
+      "he": "ארגמן",
+      "lat": 32.17306,
+      "lng": 35.5325,
+      "report": "onRequest"
+    },
+    {
+      "name": "ARENA",
+      "en": "Arena",
+      "he": "ארנה",
+      "lat": 32.16472,
+      "lng": 34.78556,
+      "report": "onRequest"
+    },
+    {
+      "name": "NASIH",
+      "en": "Eshel HaNasi",
+      "he": "אשל הנשיא",
+      "lat": 31.33028,
+      "lng": 34.69833,
+      "report": "mandatory"
+    },
+    {
+      "name": "ESTOL",
+      "en": "Eshtaol",
+      "he": "אשתאול",
+      "lat": 31.77944,
+      "lng": 35.01139,
+      "report": "onRequest"
+    },
+    {
+      "name": "BRORA",
+      "en": "Be'er Ora",
+      "he": "באר אורה",
+      "lat": 29.70806,
+      "lng": 34.99722,
+      "report": "onRequest"
+    },
+    {
+      "name": "BMNUH",
+      "en": "Be'er Menuha",
+      "he": "באר מנוחה",
+      "lat": 30.30333,
+      "lng": 35.13417,
+      "report": "onRequest"
+    },
+    {
+      "name": "BOREN",
+      "en": "Beit Oren",
+      "he": "בית אורן",
+      "lat": 32.71444,
+      "lng": 34.97083,
+      "report": "onRequest"
+    },
+    {
+      "name": "GOVRN",
+      "en": "Beit Guvrin",
+      "he": "בית גוברין",
+      "lat": 31.60611,
+      "lng": 34.89278,
+      "report": "onRequest"
+    },
+    {
+      "name": "HNINA",
+      "en": "Beit Hanina",
+      "he": "בית חנינא",
+      "lat": 31.83028,
+      "lng": 35.2075,
+      "report": "mandatory"
+    },
+    {
+      "name": "BOVED",
+      "en": "Beit Oved",
+      "he": "בית עובד",
+      "lat": 31.92028,
+      "lng": 34.77,
+      "report": "onRequest"
+    },
+    {
+      "name": "BEZRA",
+      "en": "Beit Ezra",
+      "he": "בית עזרא",
+      "lat": 31.74139,
+      "lng": 34.64583,
+      "report": "mandatory"
+    },
+    {
+      "name": "BKAMA",
+      "en": "Beit Kama",
+      "he": "בית קמה",
+      "lat": 31.44167,
+      "lng": 34.76556,
+      "report": "mandatory"
+    },
+    {
+      "name": "BSEMS",
+      "en": "Beit Shemesh",
+      "he": "בית שמש",
+      "lat": 31.75472,
+      "lng": 34.98139,
+      "report": "onRequest"
+    },
+    {
+      "name": "DEROR",
+      "en": "Bnei Dror",
+      "he": "בני דרור",
+      "lat": 32.25722,
+      "lng": 34.89111,
+      "report": "mandatory"
+    },
+    {
+      "name": "BAZRA",
+      "en": "Batzra",
+      "he": "בצרה",
+      "lat": 32.21861,
+      "lng": 34.8825,
+      "report": "mandatory"
+    },
+    {
+      "name": "BHAIL",
+      "en": "Bror Hayil",
+      "he": "ברור חיל",
+      "lat": 31.55778,
+      "lng": 34.6325,
+      "report": "onRequest"
+    },
+    {
+      "name": "GALIM",
+      "en": "Bat Galim",
+      "he": "בת גלים",
+      "lat": 32.84111,
+      "lng": 34.98111,
+      "report": "mandatory"
+    },
+    {
+      "name": "GVARM",
+      "en": "Gevar'am",
+      "he": "גברעם",
+      "lat": 31.59333,
+      "lng": 34.61028,
+      "report": "onRequest"
+    },
+    {
+      "name": "ZGOAL",
+      "en": "Goral",
+      "he": "גורל",
+      "lat": 31.31278,
+      "lng": 34.78778,
+      "report": "mandatory"
+    },
+    {
+      "name": "GILAM",
+      "en": "Gil'am",
+      "he": "גילעם",
+      "lat": 32.82139,
+      "lng": 35.1325,
+      "report": "mandatory"
+    },
+    {
+      "name": "GILAT",
+      "en": "Gilat",
+      "he": "גילת",
+      "lat": 31.33722,
+      "lng": 34.65306,
+      "report": "mandatory"
+    },
+    {
+      "name": "GNYAM",
+      "en": "Ganei Am",
+      "he": "גני עם",
+      "lat": 32.15028,
+      "lng": 34.89417,
+      "report": "mandatory"
+    },
+    {
+      "name": "DUGIT",
+      "en": "Dugit",
+      "he": "דוגית",
+      "lat": 32.8525,
+      "lng": 35.05167,
+      "report": "mandatory"
+    },
+    {
+      "name": "DIMON",
+      "en": "Dimona",
+      "he": "דימונה",
+      "lat": 31.06778,
+      "lng": 35.00583,
+      "report": "mandatory"
+    },
+    {
+      "name": "DEENA",
+      "en": "Deena",
+      "he": "דינה",
+      "lat": 32.02389,
+      "lng": 34.64056,
+      "report": "mandatory"
+    },
+    {
+      "name": "DALIA",
+      "en": "Dalia",
+      "he": "דליה",
+      "lat": 32.59694,
+      "lng": 35.08333,
+      "report": "mandatory"
+    },
+    {
+      "name": "HODYA",
+      "en": "Hodiya",
+      "he": "הודיה",
+      "lat": 31.68278,
+      "lng": 34.6525,
+      "report": "onRequest"
+    },
+    {
+      "name": "ZOREA",
+      "en": "Hazorea",
+      "he": "הזורע",
+      "lat": 32.64806,
+      "lng": 35.11889,
+      "report": "onRequest"
+    },
+    {
+      "name": "HOTRM",
+      "en": "Hahotrim",
+      "he": "החותרים",
+      "lat": 32.75389,
+      "lng": 34.93694,
+      "report": "mandatory"
+    },
+    {
+      "name": "MOVIL",
+      "en": "Hamovil",
+      "he": "המוביל",
+      "lat": 32.75917,
+      "lng": 35.23333,
+      "report": "mandatory"
+    },
+    {
+      "name": "HTZUK",
+      "en": "Hatzuk",
+      "he": "הצוק",
+      "lat": 32.14556,
+      "lng": 34.77833,
+      "report": "mandatory"
+    }
+  ]
+}

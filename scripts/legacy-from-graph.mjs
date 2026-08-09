@@ -6,7 +6,6 @@
 // field that nothing was lost on the way into the graph. If a field cannot be reproduced,
 // the source file cannot be deleted -- that is the whole test.
 import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
@@ -15,13 +14,13 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA = join(HERE, '..', 'docs', 'data');
 const LAYERS = ['cvfr', 'heli', 'lsa'];
 const read = f => JSON.parse(readFileSync(join(DATA, f), 'utf8'));
-// The source files are retired, so the baseline for the proof is the last commit that had
-// them. Reading it from git keeps the proof runnable after the deletion -- otherwise the
-// evidence for "nothing was lost" disappears together with the thing it was about.
-const BASELINE = 'e3cd65e';
+// The source files are retired, so the baseline for the proof is a checked-in snapshot of
+// them (tests/fixtures/retired-datasets). It used to be read from git at the last commit
+// that had the files -- but that commit was squash-merged, so it is reachable only through
+// the feature branch ref: CI's checkout of dev does not have it, and once the branch is
+// deleted it can be garbage-collected. Evidence has to live in the tree it defends.
 const readOld = (f) => JSON.parse(
-  execFileSync('git', ['show', `${BASELINE}:docs/data/${f}`],
-    { cwd: join(HERE, '..'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+  readFileSync(join(HERE, '..', 'tests', 'fixtures', 'retired-datasets', f), 'utf8'));
 
 // The projection itself lives in the app, so the app and this proof cannot diverge:
 // docs/app/route-graph-shapes.js is the single implementation, loaded here through its
