@@ -1,47 +1,83 @@
 {
-  "version": 1,
-  "source": "CTR boundary reporting points, per airfield, given by the maintainer (2026-08). These are the points where the route clock starts on departure: the climb-out from the field to the boundary is flown on the field's procedure, not on the route's stopwatch, so it is excluded from the cumulative time. Not a published dataset and not an airspace boundary -- a list of the points a pilot actually starts counting from.",
-  "_note": "Add an airfield by listing its boundary reporting points. An airfield absent from this list behaves exactly as before: the clock starts at the field.",
+  "version": 2,
+  "source": "CTR data per airfield, given by the maintainer (2026-08). `inside` lists the reporting points that are still INSIDE the field's CTR; `clockStartsAt` names the boundary points a route typically leaves through. The clock starts at the first waypoint that is not inside: the stretch from the field to the boundary is flown on the field's procedure, not on the route's stopwatch.",
+  "_note": "A field absent from this list behaves as before -- the clock starts at the field. A listed field with no `inside` points still excludes its first leg: leaving a CTR takes one leg at minimum.",
   "airfields": {
-    "LLHZ": [
-      "BAZRA",
-      "SFAIM",
-      "GNYAM"
-    ],
-    "LLHA": [
-      "DAROM",
-      "HASID",
-      "EVLYM"
-    ],
-    "LLKS": [
-      "BASAN"
-    ],
-    "LLIB": [
-      "HULAT",
-      "DESHE"
-    ],
-    "LLFK": [
-      "HAROV"
-    ],
-    "LLMG": [
-      "ZMGID",
-      "AFULA"
-    ],
-    "LLBG": [
-      "PARDS",
-      "NTAIM",
-      "NSHRM"
-    ],
-    "LLBS": [
-      "NASIH",
-      "KUVSH"
-    ],
-    "LLMZ": [
-      "ENGDI",
-      "MMORR"
-    ],
-    "LLER": [
-      "YOTVT"
-    ]
+    "LLHZ": {
+      "clockStartsAt": [
+        "BAZRA",
+        "SFAIM",
+        "GNYAM"
+      ],
+      "inside": []
+    },
+    "LLHA": {
+      "clockStartsAt": [
+        "DAROM",
+        "HASID",
+        "EVLYM"
+      ],
+      "inside": [
+        "KRYON",
+        "AFFEK",
+        "GILAM"
+      ]
+    },
+    "LLKS": {
+      "clockStartsAt": [
+        "BASAN"
+      ],
+      "inside": []
+    },
+    "LLIB": {
+      "clockStartsAt": [
+        "HULAT",
+        "DESHE"
+      ],
+      "inside": [
+        "AMNON"
+      ]
+    },
+    "LLFK": {
+      "clockStartsAt": [
+        "HAROV"
+      ],
+      "inside": []
+    },
+    "LLMG": {
+      "clockStartsAt": [
+        "ZMGID",
+        "AFULA"
+      ],
+      "inside": []
+    },
+    "LLBG": {
+      "clockStartsAt": [
+        "PARDS",
+        "NTAIM",
+        "NSHRM"
+      ],
+      "inside": []
+    },
+    "LLBS": {
+      "clockStartsAt": [
+        "NASIH",
+        "KUVSH"
+      ],
+      "inside": []
+    },
+    "LLMZ": {
+      "clockStartsAt": [
+        "ENGDI",
+        "MMORR"
+      ],
+      "inside": []
+    },
+    "LLER": {
+      "clockStartsAt": [
+        "YOTVT"
+      ],
+      "inside": []
+    }
   }
 }

@@ -37,9 +37,11 @@ test('every listed field and boundary point exists in the datasets', async ({ pa
   await boot(page);
   const bad = await page.evaluate((data) => {
     const out = [];
-    for (const [icao, pts] of Object.entries(data.airfields)) {
+    for (const [icao, rec] of Object.entries(data.airfields)) {
       if (!airfieldByIcao(icao)) out.push('field ' + icao);
-      for (const p of pts) if (!navWP.some(w => w.name === p)) out.push(icao + ' -> ' + p);
+      for (const p of [...(rec.clockStartsAt || []), ...(rec.inside || [])]) {
+        if (!navWP.some(w => w.name === p)) out.push(icao + ' -> ' + p);
+      }
     }
     return out;
   }, DATA);
@@ -86,12 +88,26 @@ test('a field with no boundary list is untouched, and so is a route that starts 
   expect(await page.evaluate(() => ctrClockStartIndex())).toBe(0);
 });
 
-test('a route that never reaches its boundary point keeps the old behaviour', async ({ page }) => {
+test('leaving a listed field always costs one leg, boundary point named or not', async ({ page }) => {
   await boot(page);
-  // Leaves LLHZ but flies to a point that is not one of its boundary points.
+  // KNTRY is not one of LLHZ's named boundary points and not inside its CTR either: the
+  // clock still starts there, because leaving the CTR is what starts the count.
   await route(page, ['LLHZ', 'KNTRY', 'HTZUK']);
-  expect(await page.evaluate(() => ctrClockStartIndex())).toBe(0);
-  expect(await page.evaluate(() => legBeforeCtrClock(0))).toBe(false);
+  expect(await page.evaluate(() => ctrClockStartIndex())).toBe(1);
+  expect(await page.evaluate(() => legBeforeCtrClock(0))).toBe(true);
+  // LLIB -> AMNON: AMNON is INSIDE the CTR, so the clock has not started by then either.
+  await route(page, ['LLIB', 'AMNON', 'TAVOR']);
+  expect(await page.evaluate(() => ctrClockStartIndex())).toBe(2);
+  expect(await page.evaluate(() => [0, 1].map(i => legBeforeCtrClock(i)))).toEqual([true, true]);
+});
+
+test('LLHA keeps the count off through KRYON, AFFEK and GILAM', async ({ page }) => {
+  await boot(page);
+  // All three are inside Haifa's CTR: the clock starts at DAROM, the first point outside.
+  await route(page, ['LLHA', 'KRYON', 'GILAM', 'DAROM', 'HOTRM']);
+  expect(await page.evaluate(() => ctrClockStartIndex())).toBe(3);
+  expect(await page.evaluate(() => [0, 1, 2, 3].map(i => legBeforeCtrClock(i))))
+    .toEqual([true, true, true, false]);
 });
 
 test('inside the CTR the kite and the drift cone are off by default', async ({ page }) => {

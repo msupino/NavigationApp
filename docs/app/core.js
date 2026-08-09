@@ -2242,13 +2242,17 @@ var ctrBoundaries = null;          // null = not loaded; {} or populated once fe
 async function loadCtrBoundaries() {
   if (ctrBoundaries !== null) return ctrBoundaries;
   try {
-    const r = await fetch('data/ctr-boundaries.json?v=' + (S.ctrBoundariesVer || '1'));
+    const r = await fetch('data/ctr-boundaries.json?v=' + (S.ctrBoundariesVer || '2'));
     const d = r.ok ? await r.json() : null;
     const map = (d && d.airfields && typeof d.airfields === 'object') ? d.airfields : {};
+    const up = (arr) => (Array.isArray(arr) ? arr : [])
+      .map(p => String(p || '').trim().toUpperCase()).filter(Boolean);
     const out = {};
-    for (const [icao, pts] of Object.entries(map)) {
-      if (!Array.isArray(pts)) continue;
-      out[String(icao).toUpperCase()] = pts.map(p => String(p || '').trim().toUpperCase()).filter(Boolean);
+    for (const [icao, v] of Object.entries(map)) {
+      // v1 shipped a bare array of boundary points; v2 splits inside/boundary. Both read.
+      out[String(icao).toUpperCase()] = Array.isArray(v)
+        ? { clockStartsAt: up(v), inside: [] }
+        : { clockStartsAt: up(v && v.clockStartsAt), inside: up(v && v.inside) };
     }
     ctrBoundaries = out;
   } catch (e) {
@@ -2257,22 +2261,26 @@ async function loadCtrBoundaries() {
   if (typeof scheduleDraw === 'function') scheduleDraw();
   return ctrBoundaries;
 }
-// Index of the waypoint where the route clock starts: the first CTR boundary point of the
-// DEPARTURE field. 0 when the route does not leave a listed field, or when it never reaches
-// one of its boundary points -- in both cases the clock starts at the first waypoint, which
-// is the behaviour that shipped before this.
+// Index of the waypoint where the route clock starts: walking out from the departure
+// field, every point still INSIDE its CTR is skipped, and the clock starts at the first
+// one that is not -- normally a named boundary point, but any point outside works, because
+// leaving the CTR is what starts the count. A listed field always excludes at least its
+// first leg: you cannot be outside the CTR at the field itself. A field that is not listed
+// returns 0 and behaves exactly as it did before this existed.
 function ctrClockStartIndex() {
   if (!state || !Array.isArray(state.waypoints) || state.waypoints.length < 2) return 0;
   if (ctrBoundaries === null) { loadCtrBoundaries(); return 0; }
   const first = state.waypoints[0];
   const icao = (first && first.name) ? String(first.name).trim().toUpperCase() : '';
-  const pts = icao && ctrBoundaries[icao];
-  if (!pts || !pts.length) return 0;
+  const rec = icao && ctrBoundaries[icao];
+  if (!rec) return 0;
+  const inside = rec.inside || [];
   for (let i = 1; i < state.waypoints.length; i++) {
     const nm = (state.waypoints[i].name || '').toString().trim().toUpperCase();
-    if (pts.includes(nm)) return i;
+    if (!inside.includes(nm)) return i;
   }
-  return 0;
+  // Every point named is inside the CTR: the whole drawn route is within it.
+  return state.waypoints.length - 1;
 }
 // Does leg i happen before the clock starts? Those legs add nothing to the cumulative time
 // and show no cumulative kite; everything else about them is unchanged.
