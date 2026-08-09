@@ -207,7 +207,7 @@ window.S = {
   errInvalidVors: function(msg) { return 'נתוני VOR לא תקינים: ' + msg; },
   tbShowVor: 'הצג תחנות VOR',
   tbShowVorTitle: 'הצג תחנות VOR/DME ובחר תחנת ייחוס לרדיאל/DME',
-  tbShowLsa: 'הצג בועות LSA',
+  tbShowLsa: 'הצגת בועות גובה נמוך',
   tbShowLsaTitle: 'הצג אזורי מרחב אווירי LSA (בועות) — בשכבת גובה נמוך',
   vorRefLabel: 'תחנת ייחוס',
   vorRefNone: '— ללא —',
