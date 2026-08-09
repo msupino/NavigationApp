@@ -1376,6 +1376,31 @@ async function fplLoadRouteGraph() {
 // may rename a waypoint, and the published code is what field 15 must carry.
 function fplGraphPointAt(graph, wp) {
   if (!graph || !wp || !Number.isFinite(wp.lat) || !Number.isFinite(wp.lng)) return null;
+  // By NAME first: waypoint names are the graph's own ids/codes, and a route saved against
+  // an older chart digitisation can sit further from today's node than any position
+  // tolerance -- which used to make expansion silently skip the leg (same failure the
+  // return-route join had). The half-mile sanity cap keeps a stale name from resolving
+  // across real distance.
+  const raw = (wp.name ? String(wp.name).trim() : '');
+  if (raw) {
+    const canon = (typeof canonicalNavWaypointName === 'function')
+      ? String(canonicalNavWaypointName(raw) || raw) : raw;
+    const up = canon.toUpperCase();
+    let hit = graph.nodes[up] ? up : null;
+    if (!hit) {
+      for (const [name, n] of Object.entries(graph.nodes)) {
+        if ((n.code && n.code.toUpperCase() === up) || n.he === canon ||
+            (n.en && n.en.toUpperCase() === up)) { hit = name; break; }
+      }
+    }
+    if (hit) {
+      const n = graph.nodes[hit];
+      if (typeof geo === 'function') {
+        const { dist } = geo(wp, n);
+        if (Number.isFinite(dist) && dist <= 0.5) return hit;
+      }
+    }
+  }
   const eps = (typeof SAME_REFERENCE_POINT_DEG === 'number') ? SAME_REFERENCE_POINT_DEG : 0.0008;
   let best = null, bestD = Infinity;
   for (const [name, n] of Object.entries(graph.nodes)) {

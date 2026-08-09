@@ -583,4 +583,20 @@ test('a return route saved with an older chart position still joins by name', as
   });
   expect(res.errs).toBeUndefined();
   expect(res.text).toContain('SFAIM HTZUK NAGID HTZUK KNTRY');
+  // ...and EXPANSION still resolves the displaced points: the graph lookup goes by name
+  // first (within the same half-mile allowance), so the filed plan names every reporting
+  // point on the way even when the save predates the current chart digitisation.
+  const res2 = await page.evaluate(async () => {
+    const e = loadRouteLibrary().find(x => x && !x.deleted);
+    return buildIcaoFpl({ reg: '4XDAZ', type: 'C172', pic: 'A PILOT', license: '1',
+      cell: '0500000000', endurance: '0300', persons: 2, replyTo: 'p@e.com',
+      wake: 'L', equip: 'S', surv: 'C' },
+      { dateLocal: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        timeLocal: '10:00', returnRouteData: e.data,
+        routeGraph: await fplLoadRouteGraph() });
+  });
+  expect(res2.errs).toBeUndefined();
+  const route2 = res2.text.split('\n').find(l => l.startsWith('-N'));
+  // The displaced NAGID leg still expands through the corridor points around it.
+  expect(route2.split(' ').length).toBeGreaterThan('SFAIM HTZUK NAGID HTZUK KNTRY'.split(' ').length);
 });
