@@ -236,17 +236,24 @@ test('polygon naming sets active type — weekend exported, always omitted', asy
   });
   await page.click('#ed-load');
   await page.waitForFunction(() => JSON.parse(document.getElementById('ed-json').value).length >= 26);
-  // loaded bubbles default to 'always' → the field is omitted from the export.
-  expect(await page.evaluate(() => JSON.parse(document.getElementById('ed-json').value).some(o => 'active' in o))).toBe(false);
-  // click one polygon (editor polys use fillOpacity 0.12) → the 4 prompts set it weekend.
+  // 'always' is the default — omitted from export; 'weekend' bubbles carry the field.
+  // The data now ships some weekend-only bubbles, so we count what is already there
+  // and assert only that no 'always' bubble leaks the field.
+  expect(await page.evaluate(() =>
+    JSON.parse(document.getElementById('ed-json').value).every(o => !('active' in o) || o.active === 'weekend')
+  )).toBe(true);
+  const initialWeekend = await page.evaluate(() =>
+    JSON.parse(document.getElementById('ed-json').value).filter(o => 'active' in o).length);
+  // click one 'always' polygon (green fill = '#4caf50') → the 4 prompts set it weekend.
   await page.evaluate(async () => {
-    let poly = null; map.eachLayer(l => { if (!poly && l instanceof L.Polygon && l.options.fillOpacity === 0.12) poly = l; });
+    let poly = null;
+    map.eachLayer(l => { if (!poly && l instanceof L.Polygon && l.options.fillColor === '#4caf50') poly = l; });
     poly.fire('click', {});
     await new Promise(r => setTimeout(r, 60));
   });
   const out = await page.evaluate(() => JSON.parse(document.getElementById('ed-json').value));
-  expect(out.some(o => o.active === 'weekend')).toBe(true);     // named one is weekend
-  expect(out.filter(o => o.active === 'weekend').length).toBe(1);
+  expect(out.some(o => o.active === 'weekend')).toBe(true);           // named one is weekend
+  expect(out.filter(o => 'active' in o).length).toBe(initialWeekend + 1); // exactly one more
 });
 
 test('Load known (polygon mode) refuses on a layer with no areas file (CVFR)', async ({ page }) => {
