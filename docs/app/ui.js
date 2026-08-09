@@ -210,6 +210,14 @@ function applyNotamPrefForLayer() {
 
 function reloadLayerDatasets() {
   _layerGen++;               // invalidate any in-flight fetch from the previous layer
+  // A selection backed by a per-layer dataset does not survive the switch: the bubble is
+  // not on the new layer at all, and a nav-waypoint index would silently point at a
+  // DIFFERENT layer's point once navWP repopulates. Close the inspector rather than let it
+  // show either stale or wrong data. (Airfields and VORs are layer-independent and keep.)
+  if (state.selected && (state.selected.type === 'lsaArea' || state.selected.type === 'navwp')) {
+    state.selected = null;
+    if (typeof showInspector === 'function') showInspector();
+  }
   navWP = null;
   commChangeMap = null;
   commChangeCallSigns = {};

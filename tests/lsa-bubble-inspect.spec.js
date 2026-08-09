@@ -100,3 +100,31 @@ test('an ungated bubble says open all day, and a route waypoint still wins the c
   const sel = await page.evaluate(() => state.selected && state.selected.type);
   expect(sel).toBe('wp');
 });
+
+test('switching layers closes a bubble or nav-waypoint inspector', async ({ page }) => {
+  // The bubble does not exist on the CVFR layer, and a nav-waypoint INDEX would point at a
+  // different layer's point once the list repopulates -- the inspector used to stay open
+  // over both, showing stale or wrong data.
+  await bootLsa(page);
+  await page.evaluate(() => { state.selected = { type: 'lsaArea', index: 0 }; showInspector(); });
+  await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
+  await page.evaluate(() => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['CVFR']);
+    reloadLayerDatasets();
+  });
+  await expect(page.locator('#inspector')).toHaveClass(/hidden/);
+  expect(await page.evaluate(() => state.selected)).toBeNull();
+  // Same for a nav-waypoint selection going the other way.
+  await page.evaluate(async () => {
+    await loadNavWaypoints();
+    state.selected = { type: 'navwp', index: 0 }; showInspector();
+  });
+  await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
+  await page.evaluate(() => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['Low Alt']);
+    reloadLayerDatasets();
+  });
+  await expect(page.locator('#inspector')).toHaveClass(/hidden/);
+});
