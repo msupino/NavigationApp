@@ -1811,6 +1811,10 @@ test('a signature keeps its aspect, so the ink is not stretched', async ({ page 
 });
 
 test('a dialog label never paints over its own field', async ({ page }) => {
+  // Three full boots (one per viewport width) in one test: on a loaded CI runner that
+  // overruns the 15 s default and the timeout reads like a layout regression. The work is
+  // real, so give it the budget rather than trimming the coverage.
+  test.slow();
   for (const width of [280, 320, 375]) {
     await page.setViewportSize({ width, height: 812 });
     await boot(page);
