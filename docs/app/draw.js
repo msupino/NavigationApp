@@ -1457,6 +1457,30 @@ function drawAreas() {
   octx.restore();
 }
 
+// LSA bubbles under a map point -- ray-cast in screen space, like the NOTAM areas.
+// Smallest bubble first, so a click inside nested/overlapping bubbles offers the one the
+// pilot is most likely pointing at before the one that covers half the map.
+function lsaAreasAtLatLng(latlng) {
+  if (!showLsaBubbles || !Array.isArray(areas) || !areas.length || !latlng) return [];
+  const pt = proj(latlng);
+  const out = [];
+  for (let i = 0; i < areas.length; i++) {
+    const a = areas[i];
+    if (!Array.isArray(a.coords) || a.coords.length < 3) continue;
+    const poly = a.coords.map(c => proj({ lat: c[0], lng: c[1] }));
+    if (notamPointInPoly(pt, poly)) {
+      let area2 = 0;
+      for (let j = 0; j < poly.length; j++) {
+        const q = poly[(j + 1) % poly.length];
+        area2 += poly[j].x * q.y - q.x * poly[j].y;
+      }
+      out.push({ index: i, size: Math.abs(area2) });
+    }
+  }
+  out.sort((x, y) => x.size - y.size);
+  return out.map(h => h.index);
+}
+
 // Lazy-loads the comm-change projection of docs/data/cvfr-route-graph.json — { callSigns:{...},
 // points:[{name, commChange, callSigns, routeHints, note, source}] }.
 // Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
