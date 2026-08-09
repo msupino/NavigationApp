@@ -1,7 +1,7 @@
 // @ts-check
 // Base layers can be pulled from (or restored to) the shipped app through the gist: each
 // non-CVFR layer hangs on a layerEnabled* tunable. All ship offered; the maintainer pulls
-// one with a gist edit (layerEnabled<Name>: 0), not a build.
+// one with a gist edit (layerEnabled<Name>: false), not a build.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -27,8 +27,8 @@ test('every layer is offered by default', async ({ page }) => {
 test('the gist can pull layers', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
-    setTune('layerEnabledHelicopters', 0);
-    setTune('layerEnabledOpenStreetMap', 0);
+    setTune('layerEnabledHelicopters', false);
+    setTune('layerEnabledOpenStreetMap', false);
     rebuildLayerPicker();                       // what the post-gist hook calls
   });
   const names = await pickerNames(page);
@@ -43,10 +43,10 @@ test('pulling the ACTIVE layer lands the map on CVFR, datasets and all', async (
     sel.value = 'Low Alt';
     sel.onchange();
   });
-  await page.evaluate(() => { setTune('layerEnabledLowAlt', 0); rebuildLayerPicker(); });
+  await page.evaluate(() => { setTune('layerEnabledLowAlt', false); rebuildLayerPicker(); });
   const active = await page.evaluate(() => currentLayerName());
   expect(active).toBe('CVFR');
-  await page.evaluate(() => { setTune('layerEnabledLowAlt', 1); });   // restore for other tests
+  await page.evaluate(() => { setTune('layerEnabledLowAlt', true); });   // restore for other tests
 });
 
 test('a saved layer that the gist pulled does not resurrect from localStorage', async ({ page }) => {
@@ -60,7 +60,7 @@ test('a saved layer that the gist pulled does not resurrect from localStorage', 
   });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof layers !== 'undefined' && typeof rebuildLayerPicker === 'function');
-  await page.evaluate(() => { setTune('layerEnabledHelicopters', 0); rebuildLayerPicker(); });
+  await page.evaluate(() => { setTune('layerEnabledHelicopters', false); rebuildLayerPicker(); });
   expect(await page.evaluate(() => currentLayerName())).toBe('CVFR');
 });
 

@@ -71,11 +71,11 @@ NavAid.tuningDefaults = {
   // not on the list -- it is the fallback layer everything else degrades to, so the app
   // never lets it be configured away. All ship offered; pulling one (e.g. Helicopters,
   // whose chart and dataset are the thinnest) is a gist edit, not a build.
-  layerEnabledLowAlt: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the Low Alt layer' },
-  layerEnabledHelicopters: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the Helicopters layer' },
-  layerEnabledNavigation: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the Navigation layer' },
-  layerEnabledSatellite: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the Satellite layer' },
-  layerEnabledOpenStreetMap: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the OpenStreetMap layer' },
+  layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
+  layerEnabledHelicopters: { value: true, type: 'bool', label: 'Offer the Helicopters layer' },
+  layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
+  layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
+  layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
   searchMaxVor: { value: 3, min: 0, max: 20, step: 1, label: 'Search: max VOR stations' },
   searchMaxBubbles: { value: 12, min: 0, max: 20, step: 1, label: 'Search: max LSA bubbles' },
   searchFlashMs: { value: 3500, min: 0, max: 15000, step: 250,
@@ -3007,7 +3007,8 @@ function layerOffered(name) {
   if (name === 'CVFR') return true;
   const key = 'layerEnabled' + String(name || '').replace(/\s+/g, '');
   if (typeof NavAid === 'undefined' || !NavAid.tuningDefaults || !NavAid.tuningDefaults[key]) return true;
-  return Number(tune(key)) !== 0;
+  // Bool tunable: the gist writes true/false, exactly as it reads.
+  return tune(key) !== false && tune(key) !== 0;
 }
 
 const LAYER_KEY = 'navaid.layer';
