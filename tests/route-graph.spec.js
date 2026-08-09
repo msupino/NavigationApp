@@ -154,6 +154,55 @@ test('every CVFR node carries the labels its validator requires', () => {
   expect(bad).toEqual([]);
 });
 
+test('a shared node keeps one identity across the files that carry it', () => {
+  // A point shared by layers ships as a copy in each layer's file. The copies are
+  // deliberately NOT identical -- each file carries its own chart's position, spelling and
+  // reporting class -- but the IDENTITY must be one: the code a plan files, what kind of
+  // thing it is, and the layers list that says the copies exist at all. Nothing but this
+  // test enforces that: the graph is hand-maintained, and an edit that lands in one file
+  // and misses a twin would otherwise ship silently.
+  const files = {};
+  for (const l of LAYERS) files[l] = layerGraph(l).nodes;
+  const where = {};
+  for (const [l, ns] of Object.entries(files)) {
+    for (const id of Object.keys(ns)) (where[id] = where[id] || []).push(l);
+  }
+  const R = 3440.065, rad = Math.PI / 180;
+  const gc = (a, b) => {
+    const h = Math.sin((b.lat - a.lat) * rad / 2) ** 2 +
+      Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin((b.lng - a.lng) * rad / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+  const problems = [];
+  for (const [id, ls] of Object.entries(where)) {
+    if (ls.length < 2) continue;
+    const first = files[ls[0]][id];
+    for (const l of ls.slice(1)) {
+      const other = files[l][id];
+      for (const k of ['code', 'codeSource', 'kind']) {
+        if (JSON.stringify(first[k]) !== JSON.stringify(other[k])) {
+          problems.push(`${id}.${k}: ${ls[0]}=${JSON.stringify(first[k])} vs ${l}=${JSON.stringify(other[k])}`);
+        }
+      }
+      if (JSON.stringify([...(first.layers || [])].sort()) !==
+          JSON.stringify([...(other.layers || [])].sort())) {
+        problems.push(`${id}.layers: ${ls[0]} and ${l} disagree`);
+      }
+      // Per-layer positions may differ (each chart digitised its own), but only within the
+      // merge radius that made them one node in the first place.
+      if (gc(first, other) > 0.25) {
+        problems.push(`${id}: copies ${gc(first, other).toFixed(2)} nm apart`);
+      }
+    }
+    // ...and the layers list must match reality: every file it names carries the node.
+    const claimed = [...new Set((files[ls[0]][id].layers || []))].filter(l => LAYERS.includes(l));
+    for (const l of claimed) {
+      if (!files[l] || !files[l][id]) problems.push(`${id}.layers names ${l}, which lacks the node`);
+    }
+  }
+  expect(problems).toEqual([]);
+});
+
 test('airfields are tagged, because a landing mid-route needs its own plan', () => {
   // Carried over from the retired cvfr-route-graph.spec.js: the app resolves mid-route
   // airfields against airfields.json, but the graph's own tagging is the data audit that
