@@ -251,8 +251,10 @@ test.describe('Cumulative-time kite', () => {
     const dragPts = await page.evaluate(() => {
       window.showCumTime = true;
       draw();
-      const c = cumLabelCenter(0);
-      const frame = cumLabelDragFrame(0, false);
+      // Leg 0 is inside the departure CTR and has no cum kite: drag the first one that does.
+      const li = ctrClockStartIndex();
+      const c = cumLabelCenter(li);
+      const frame = cumLabelDragFrame(li, false);
       const r = mapEl.getBoundingClientRect();
       const vx = c.x - frame.anchor.x;
       const vy = c.y - frame.anchor.y;
@@ -268,16 +270,17 @@ test.describe('Cumulative-time kite', () => {
         start: { x: r.left + c.x + 8, y: r.top + c.y },
         target: { x: r.left + target.x, y: r.top + target.y },
         expected: target,
-        inBefore: JSON.stringify(state.legs[0].inLabel),
+        li,
+        inBefore: JSON.stringify(state.legs[li].inLabel),
       };
     });
     await page.mouse.move(dragPts.start.x, dragPts.start.y);
     await page.mouse.down();
     await page.mouse.move(dragPts.target.x, dragPts.target.y);
     await page.mouse.up();
-    const out = await page.evaluate(expected => {
-      const c = cumLabelCenter(0);
-      const frame = cumLabelDragFrame(0, false);
+    const out = await page.evaluate(({ expected, li }) => {
+      const c = cumLabelCenter(li);
+      const frame = cumLabelDragFrame(li, false);
       const drawn = [];
       const real = window.drawCumTimeArrow;
       window.drawCumTimeArrow = function (cx, cy, ang) {
@@ -292,13 +295,13 @@ test.describe('Cumulative-time kite', () => {
         Math.cos(rendered.ang - expectedAngle));
       return {
         center: c,
-        label: state.legs[0].cumLabel,
-        inAfter: JSON.stringify(state.legs[0].inLabel),
+        label: state.legs[li].cumLabel,
+        inAfter: JSON.stringify(state.legs[li].inLabel),
         distancePx: Math.hypot(c.x - expected.x, c.y - expected.y),
         radialPx: Math.hypot(c.x - frame.anchor.x, c.y - frame.anchor.y),
         angleDelta,
       };
-    }, dragPts.expected);
+    }, { expected: dragPts.expected, li: dragPts.li });
     expect(out.distancePx).toBeLessThan(2);
     expect(out.radialPx).toBeGreaterThan(10);
     expect(out.angleDelta).toBeCloseTo(0, 6);
@@ -341,9 +344,11 @@ test.describe('Cumulative-time kite', () => {
       window.showCumTime = true; n = 0; draw(); const on = n;
       window.showCumTime = false; n = 0; draw(); const off = n;
       window.drawCumTimeArrow = real;
-      return { on, off, legs: state.legs.length };
+      return { on, off, legs: state.legs.length, ctrClockStart: ctrClockStartIndex() };
     });
-    expect(counts.on).toBe(counts.legs);   // one inbound cum kite per leg
+    // One inbound cum kite per leg EXCEPT the legs inside the departure CTR: this route
+    // leaves LLHZ, whose first leg is flown on the field's procedure.
+    expect(counts.on).toBe(counts.legs - counts.ctrClockStart);
     expect(counts.off).toBe(0);
   });
 
@@ -362,6 +367,8 @@ test.describe('Cumulative-time kite', () => {
       const expected = [];
       let cum = 0;
       for (let i = 0; i < state.legs.length; i++) {
+        // Legs inside the departure CTR contribute nothing and show nothing.
+        if (legBeforeCtrClock(i)) continue;
         const { dist } = geo(state.waypoints[i], state.waypoints[i + 1]);
         const sp = state.legs[i].flightSpeed;
         cum += sp > 0 ? dist / sp : 0;
@@ -383,10 +390,12 @@ test.describe('Cumulative-time kite', () => {
       window.showReturn = false; n = 0; draw(); const oneWay = n;
       window.showReturn = true; n = 0; draw(); const both = n;
       window.drawCumTimeArrow = real;
-      return { oneWay, both, legs: state.legs.length };
+      return { oneWay, both, legs: state.legs.length, ctrClockStart: ctrClockStartIndex() };
     });
-    expect(counts.oneWay).toBe(counts.legs);
-    expect(counts.both).toBe(counts.legs * 2);
+    // Inbound skips the CTR legs; the RETURN kites are unaffected -- flying home, the leg
+    // into the field is an arrival, not a departure.
+    expect(counts.oneWay).toBe(counts.legs - counts.ctrClockStart);
+    expect(counts.both).toBe((counts.legs - counts.ctrClockStart) + counts.legs);
   });
 
   test('the return cum kite is independently hit-testable and draggable', async ({ page }) => {
