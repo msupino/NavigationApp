@@ -1163,8 +1163,12 @@ const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 // which is what actually gets the pilot the thread.
 function fplMailtoUrl(res, opts) {
   const o = opts || {};
+  // Departure time in the subject, as the filing services themselves do ("FPL - date -
+  // 11:05 - 4XDAZ"): the desk and the pilot's sent folder can tell the morning plan from
+  // the afternoon one without opening either. Local clock time, matching what was typed.
+  const dep = String(o.depTimeLocal || '').trim();
   const subject = 'FPL ' + (o.reg ? fplRegistration(o.reg) + ' ' : '') +
-    res.dep + '-' + res.dest + ' ' + res.dof;
+    res.dep + '-' + res.dest + ' ' + res.dof + (dep ? ' ' + dep : '');
   const q = ['subject=' + encodeURIComponent(subject),
     'body=' + encodeURIComponent(res.text)];
   const reply = String(o.replyTo || '').trim();
@@ -8823,6 +8827,7 @@ function showFplDialog() {
       location.href = fplMailtoUrl(res, {
         reg: profileForSubject.reg,
         replyTo: profileForSubject.replyTo,
+        depTimeLocal: state1.time,
       });
       // A machine with no mail client registered (or webmail that never registered a
       // handler) drops mailto: on the floor with no error of any kind. There is nothing
@@ -9381,7 +9386,8 @@ function showFplXcForm(opts) {
     const to = mailTo;
     const reply = String(profile.replyTo || '').trim();
     const subject = 'FPL ' + fplRegistration(profile.reg) + ' ' +
-      (fields.dest ? fields.dest.value.trim() : '') + ' ' + (dateInput.value || '');
+      (fields.dest ? fields.dest.value.trim() : '') + ' ' + (dateInput.value || '') +
+      (depLocal ? ' ' + depLocal : '');
     const q = ['subject=' + encodeURIComponent(subject),
       'body=' + encodeURIComponent(S.xcMailBody || '')];
     if (reply && FPL_EMAIL_RE.test(reply)) {

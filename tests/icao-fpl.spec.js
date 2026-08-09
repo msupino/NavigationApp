@@ -2175,3 +2175,19 @@ test('every error and warning code has text in both languages', async ({ page })
     expect(missing, 'missing in ' + lang).toEqual([]);
   }
 });
+
+test('the mail subject carries the departure time', async ({ page }) => {
+  // "FPL 4XHLH LLHZ-LLES 090826 10:30" -- the filing desk and the pilot's own sent folder
+  // can tell the morning plan from the afternoon one without opening either.
+  await boot(page);
+  await route(page);
+  const res = await build(page);
+  const url = await page.evaluate(([r, o]) => fplMailtoUrl(r, o),
+    [res, { reg: 'HLH', depTimeLocal: '10:30' }]);
+  const subject = decodeURIComponent(url.match(/subject=([^&]+)/)[1]);
+  expect(subject).toMatch(/^FPL 4XHLH LLHZ-\S+ \d{6} 10:30$/);
+  // Without a time, the subject is exactly what it was before.
+  const plain = await page.evaluate(([r, o]) => fplMailtoUrl(r, o), [res, { reg: 'HLH' }]);
+  const s2 = decodeURIComponent(plain.match(/subject=([^&]+)/)[1]);
+  expect(s2).toMatch(/^FPL 4XHLH LLHZ-\S+ \d{6}$/);
+});
