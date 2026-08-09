@@ -1428,8 +1428,14 @@ function drawAreas() {
   // labels it used to borrow from.
   const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('lsaLabelMinZoom') : 8);
   if (showLabels) {
-    const nameFont = 'bold ' + (typeof tune === 'function' ? tune('lsaLabelFontPx') : 15) + 'px sans-serif';
-    const metaFont = 'bold ' + (typeof tune === 'function' ? tune('lsaMetaFontPx') : 12) + 'px sans-serif';
+    // The tuned sizes are the size AT ZOOM 10 (the natural bubble-viewing zoom); the label
+    // then breathes with the map -- gently, 1.3x per zoom step and clamped, not the 2x the
+    // markers use, which would make text unreadable two steps out and comical two steps in.
+    const zScale = Math.min(2, Math.max(0.55, Math.pow(1.3, map.getZoom() - 10)));
+    const namePx = Math.round((typeof tune === 'function' ? tune('lsaLabelFontPx') : 15) * zScale);
+    const metaPx = Math.round((typeof tune === 'function' ? tune('lsaMetaFontPx') : 12) * zScale);
+    const nameFont = 'bold ' + namePx + 'px sans-serif';
+    const metaFont = 'bold ' + metaPx + 'px sans-serif';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
     octx.font = nameFont;
@@ -1454,7 +1460,7 @@ function drawAreas() {
         bits.push(S.bubbleWeekendTag || 'weekend');
       }
       if (bits.length) {
-        const gap = Math.round((tune('lsaLabelFontPx') + tune('lsaMetaFontPx')) / 3.2);
+        const gap = Math.round((namePx + metaPx) / 3.2);
         halo({ t: nm, y: s.y - gap });
         octx.font = metaFont;                 // bold too: the band is why the label exists
         halo({ t: bits.join('  '), y: s.y + gap });
