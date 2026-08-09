@@ -725,3 +725,33 @@ test('when every chain is gated shut, expansion falls back and warns', async ({ 
   expect(r.names).toEqual(['AAA', 'BBB', 'CCC']);
   expect(r.usedClosed).toBe(true);
 });
+
+test('a live route-closure NOTAM reroutes the expansion', async ({ page }) => {
+  // The NOTAM pipeline already parses "RTE CLSD BTN X-Y" chains for the map; expansion now
+  // honours them for the departure time. Close SFAIM-APOLN by NOTAM: the 4XDAZ outbound
+  // must leave via another published corridor instead of the standard SFAIM chain -- and
+  // with no NOTAM, the standard chain is back.
+  await boot(page);
+  const r = await page.evaluate(async ({ profile }) => {
+    const mk = async () => {
+      state.waypoints = ['LLHZ', 'ARENA', 'SUPER', 'NAGID'].map(n => ({ ...window.__pts[n], name: n }));
+      syncLegs();
+      for (const l of state.legs) l.flightSpeed = 100;
+      const res = buildIcaoFpl(profile, { dateLocal: '2026-08-11', timeLocal: '08:00',
+        routeGraph: await fplLoadRouteGraph(), now: new Date('2026-08-11T05:00:00') });
+      return res.text && res.text.split('\n').find(l => l.startsWith('-N'));
+    };
+    const before = await mk();
+    window.notams = [{ id: 'A0001/26',
+      text: 'RTE CLSD BTN SFAIM-APOLN DLY 0500-1400',
+      start: '2026-08-01T00:00:00Z', end: '2026-09-01T00:00:00Z' }];
+    const closed = await mk();
+    window.notams = [];
+    const after = await mk();
+    return { before, closed, after };
+  }, { profile: PROFILE });
+  expect(r.before).toBe('-N0100VFR SFAIM APOLN ARENA HTZUK RIDNG CLORE TYONA SUPER NTAIM BOVED NAGID');
+  expect(r.closed).not.toContain('SFAIM APOLN');    // the closed pair is not flown
+  expect(r.closed).toMatch(/^-N0100VFR /);          // ...but a plan still files
+  expect(r.after).toBe(r.before);                   // NOTAM gone, standard chain back
+});

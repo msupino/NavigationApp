@@ -2776,6 +2776,17 @@ document.getElementById('drift-cb').onchange = e => {
   try { localStorage.setItem(DRIFT_KEY, showDrift ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
+const AUTOROUTE_KEY = 'navaid.autoRoute';
+try {
+  const ar = lsGet(AUTOROUTE_KEY);
+  if (ar !== null) window.autoRouteCorridors = ar === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('autoroute-cb').checked = autoRouteCorridors;
+document.getElementById('autoroute-cb').onchange = e => {
+  window.autoRouteCorridors = e.target.checked;
+  try { localStorage.setItem(AUTOROUTE_KEY, autoRouteCorridors ? '1' : '0'); } catch (err) { /* */ }
+};
+
 // When the user toggles an overlay ON, snap existing waypoints whose name
 // is empty, auto-snapped, or a sequence label (WP N / locale prefix) to the
 // nearest airfield / nav-WP. Preserves user-typed names. Priority matches

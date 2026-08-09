@@ -3809,9 +3809,30 @@ map.on('click', e => {
     if (tail && sameMapPoint(tail, r)) {
       return;
     }
+    const tail0 = state.waypoints[state.waypoints.length - 1];
     state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
     syncLegs();
     if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
+    // Auto-route: splice the published corridor between the old tail and the new point.
+    // Async by nature (the graph loads lazily); the direct leg shows first and the
+    // corridor points slot in when the chain resolves -- one draw, one undo state.
+    if (tail0 && typeof autoRouteChain === 'function') {
+      const addedAt = state.waypoints.length - 1;
+      const newWp = state.waypoints[addedAt];
+      autoRouteChain(tail0, newWp).then(mid => {
+        if (!mid || !mid.length) return;
+        // The route may have changed under the await -- only splice if the pair is intact.
+        const idx = state.waypoints.indexOf(newWp);
+        if (idx < 1 || state.waypoints[idx - 1] !== tail0) return;
+        state.waypoints.splice(idx, 0, ...mid);
+        syncLegs();
+        if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+        if (state.selected && state.selected.type === 'wp') {
+          state.selected = { type: 'wp', index: state.waypoints.indexOf(newWp) };
+        }
+        draw();
+      }).catch(() => {});
+    }
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     // On phones the inspector is a near-full-screen panel that blankets the
     // map, so auto-opening it after every add-mode tap hides the chart while

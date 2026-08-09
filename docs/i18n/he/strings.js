@@ -707,6 +707,8 @@ window.S = {
   tbShowMidLegTitle: 'הצג מרחק באמצע כל קטע',
   tbHighlightDiff: 'הדגש הפרש גובה/מהירות',
   tbHighlightDiffTitle: 'הדגש קטעים עם הפרש גובה או מהירות',
+  tbAutoRoute: 'ניתוב אוטומטי בנתיבים',
+  tbAutoRouteTitle: 'הוספת נקודת דיווח ממשיכה את המסלול לאורך הנתיב המפורסם מהנקודה הקודמת (CVFR). נתיבים סגורים לא ייבחרו.',
   tbShowDrift: 'הצג קווי סחיפה',
   tbShowDriftTitle: 'הצג קווי ייחוס סחיפה של 10 מעלות בקצה כל קטע',
   tbShowAirfields: 'הצג/נעץ שדות תעופה',

@@ -1428,6 +1428,8 @@ window.S = Object.assign({
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
   tbLimitLegKites: 'Keep kites inside leg',
   tbLimitLegKitesTitle: 'Limit dragged leg markers to the space between the leg waypoints',
+  tbAutoRoute: 'Auto-route via corridors',
+  tbAutoRouteTitle: 'Adding a reporting point follows the published corridor from the previous point (CVFR). Closed corridors are avoided.',
   tbShowDrift: 'Show drift lines',
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
@@ -1748,7 +1750,11 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // populated = last fetch resolved successfully.
 var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
-var showLsaBubbles = true;  // LSA airspace bubbles overlay (Low Alt layer; default on)
+var showLsaBubbles = true;
+// Auto-route on the MAP: adding a reporting point extends the route along the published
+// corridor between it and the previous point, instead of a straight line. CVFR only for
+// now (the maintainer's scope); filing-time expansion stays independent of this.
+var autoRouteCorridors = true;  // LSA airspace bubbles overlay (Low Alt layer; default on)
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
 var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref
