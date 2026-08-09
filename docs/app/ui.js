@@ -1058,6 +1058,28 @@ async function buildRouteFromQuery(raw) {
   hideSearchOverlay();
   showInspector();
   fitView();
+  // Auto-route applies to a search-built route too: typing "LLHZ RIDNG" is the same
+  // request as tapping the two points, and it would be strange for one to fill in the
+  // reporting points between them and the other not to. Each gap is filled in turn, and
+  // the fill is skipped if the route changed under the await.
+  if (typeof autoRouteChain === 'function' && window.autoRouteCorridors) {
+    (async () => {
+      const built = state.waypoints;
+      for (let i = built.length - 1; i > 0; i--) {
+        if (state.waypoints !== built) return;              // route replaced meanwhile
+        const prev = built[i - 1], next = built[i];
+        const mid = await autoRouteChain(prev, next);
+        if (!mid || !mid.length || state.waypoints !== built) continue;
+        const at = state.waypoints.indexOf(next);
+        if (at < 1 || state.waypoints[at - 1] !== prev) continue;
+        state.waypoints.splice(at, 0, ...mid);
+      }
+      syncLegs();
+      if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+      draw();
+      fitView();
+    })().catch(() => {});
+  }
   draw();
   return true;
 }

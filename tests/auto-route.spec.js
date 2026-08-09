@@ -167,3 +167,24 @@ test('the shipped default is gist-flippable, like every other toggle', async ({ 
   });
   expect(on).toEqual({ checked: true, flag: true });
 });
+
+test('a search-built route fills in the reporting points too', async ({ page }) => {
+  // Typing "LLHZ RIDNG" into the search is the same request as tapping the two points;
+  // one filling in the corridor and the other not would be arbitrary.
+  await boot(page);                                   // boot() opts in
+  await page.fill('#wp-search', 'LLHZ RIDNG');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => state.waypoints.length > 2, { timeout: 8000 });
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name)))
+    .toEqual(['LLHZ', 'SFAIM', 'APOLN', 'ARENA', 'HTZUK', 'RIDNG']);
+});
+
+test('with the toggle off, a search-built route stays exactly as typed', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { window.autoRouteCorridors = false; });
+  await page.fill('#wp-search', 'LLHZ RIDNG');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => state.waypoints.length === 2, { timeout: 8000 });
+  await page.waitForTimeout(1200);                    // nothing arrives late
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['LLHZ', 'RIDNG']);
+});
