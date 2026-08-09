@@ -6038,6 +6038,22 @@ function createTuningPanel() {
       const name = document.createElement('span');
       name.className = 'tune-label';
       name.textContent = spec.label || key;
+      // The registry key is what a gist edit needs, and nothing showed it: hover the label
+      // for the key, click it to copy the key to the clipboard (with a brief confirmation
+      // in place of the label, so the copy is felt without a toast layer).
+      name.title = key;
+      name.style.cursor = 'copy';
+      name.addEventListener('click', ev => {
+        ev.preventDefault();          // the row is a <label>; don't toggle the control
+        const done = () => {
+          const orig = name.textContent;
+          name.textContent = key + ' ✓ copied';
+          setTimeout(() => { name.textContent = orig; }, 1200);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(key).then(done, done);
+        } else { done(); }
+      });
 
       const reset = document.createElement('button');
       reset.type = 'button';
