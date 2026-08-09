@@ -1163,8 +1163,12 @@ const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 // which is what actually gets the pilot the thread.
 function fplMailtoUrl(res, opts) {
   const o = opts || {};
+  // Departure time in the subject, as the filing services themselves do ("FPL - date -
+  // 11:05 - 4XDAZ"): the desk and the pilot's sent folder can tell the morning plan from
+  // the afternoon one without opening either. Local clock time, matching what was typed.
+  const dep = String(o.depTimeLocal || '').trim();
   const subject = 'FPL ' + (o.reg ? fplRegistration(o.reg) + ' ' : '') +
-    res.dep + '-' + res.dest + ' ' + res.dof;
+    res.dep + '-' + res.dest + ' ' + res.dof + (dep ? ' ' + dep : '');
   const q = ['subject=' + encodeURIComponent(subject),
     'body=' + encodeURIComponent(res.text)];
   const reply = String(o.replyTo || '').trim();
@@ -1221,6 +1225,31 @@ function fplHhmm(hours) {
 }
 // A waypoint is an aerodrome only if it resolves in the airfield dataset; anything
 // else (a reporting point, a free "NAME=lat,lng") is not a legal field 13/16 code.
+// Are two waypoints the same reporting point for JOINING purposes? Position within the
+// snap tolerance, or the same canonical NAME within half a mile. The name clause is what
+// lets a route saved years ago still join today's: the chart datasets have been
+// re-digitised since, so the same published point can sit more than the 22 m tolerance
+// from where an old save (or a Drive-synced copy of one) put it -- ZASHD is still ZASHD,
+// the chart moved under it. The half-mile cap is what keeps the clause about
+// re-digitisation drift and nothing else: the filed EET and distances compute from the
+// COORDINATES, so a same-named point genuinely far away would file geometry that
+// disagrees with its own names.
+function fplSameJoinPoint(a, b) {
+  if (typeof sameMapPoint === 'function' && sameMapPoint(a, b)) return true;
+  const nm = (w) => {
+    const raw = (w && w.name) ? String(w.name).trim() : '';
+    if (!raw) return '';
+    return (typeof canonicalNavWaypointName === 'function')
+      ? String(canonicalNavWaypointName(raw) || raw).toUpperCase()
+      : raw.toUpperCase();
+  };
+  const na = nm(a), nb = nm(b);
+  if (!na || na !== nb) return false;
+  if (typeof geo !== 'function') return false;
+  const { dist } = geo(a, b);
+  return Number.isFinite(dist) && dist <= 0.5;
+}
+
 function fplAerodromeRef(wp) {
   const code = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
   if (!code) return null;
@@ -1351,6 +1380,31 @@ async function fplLoadRouteGraph() {
 // may rename a waypoint, and the published code is what field 15 must carry.
 function fplGraphPointAt(graph, wp) {
   if (!graph || !wp || !Number.isFinite(wp.lat) || !Number.isFinite(wp.lng)) return null;
+  // By NAME first: waypoint names are the graph's own ids/codes, and a route saved against
+  // an older chart digitisation can sit further from today's node than any position
+  // tolerance -- which used to make expansion silently skip the leg (same failure the
+  // return-route join had). The half-mile sanity cap keeps a stale name from resolving
+  // across real distance.
+  const raw = (wp.name ? String(wp.name).trim() : '');
+  if (raw) {
+    const canon = (typeof canonicalNavWaypointName === 'function')
+      ? String(canonicalNavWaypointName(raw) || raw) : raw;
+    const up = canon.toUpperCase();
+    let hit = graph.nodes[up] ? up : null;
+    if (!hit) {
+      for (const [name, n] of Object.entries(graph.nodes)) {
+        if ((n.code && n.code.toUpperCase() === up) || n.he === canon ||
+            (n.en && n.en.toUpperCase() === up)) { hit = name; break; }
+      }
+    }
+    if (hit) {
+      const n = graph.nodes[hit];
+      if (typeof geo === 'function') {
+        const { dist } = geo(wp, n);
+        if (Number.isFinite(dist) && dist <= 0.5) return hit;
+      }
+    }
+  }
   const eps = (typeof SAME_REFERENCE_POINT_DEG === 'number') ? SAME_REFERENCE_POINT_DEG : 0.0008;
   let best = null, bestD = Infinity;
   for (const [name, n] of Object.entries(graph.nodes)) {
@@ -1376,6 +1430,17 @@ const FPL_CHAIN_MAX_HOPS = 30;
 function fplGraphChain(graph, from, to) {
   if (!graph || !from || !to) return null;
   if (from === to) return [from];
+  // An airfield or airstrip is a place the graph can route TO, never THROUGH: passing one
+  // inserts a landing into the filed plan, which then refuses itself as two flights
+  // (errFplMidAirfield). LLHZ->LLHA expanded through FRDIS->LLBO->BOREN -- the Habonim
+  // join segments exist for flights that END there, and "most points within slack"
+  // happily took the detour. Endpoints stay usable: a leg may of course start or end at
+  // a field.
+  const landable = (name) => {
+    if (name === from || name === to) return false;
+    const n = graph.nodes && graph.nodes[name];
+    return !!(n && (n.kind === 'airfield' || n.kind === 'airstrip'));
+  };
   const D = [], P = [];
   for (let k = 0; k <= FPL_CHAIN_MAX_HOPS; k++) { D.push(new Map()); P.push(new Map()); }
   D[0].set(from, 0);
@@ -1383,6 +1448,7 @@ function fplGraphChain(graph, from, to) {
     for (const [n, d] of D[k]) {
       for (const e of graph.edges[n] || []) {
         if (e.blocked) continue;               // one-way, against the flow
+        if (landable(e.to)) continue;          // route to a field, never through one
         const nd = d + (Number.isFinite(e.distanceNm) ? e.distanceNm : 1);
         if (!D[k + 1].has(e.to) || nd < D[k + 1].get(e.to)) {
           D[k + 1].set(e.to, nd);
@@ -1464,7 +1530,7 @@ function buildIcaoFpl(profile, opts) {
     // routes that do not meet are not one flight, and filing them as one would describe a
     // path never flown -- refused, the same way an intermediate landing is.
     const last = outWps[outWps.length - 1], first = retWps[0];
-    const joined = typeof sameMapPoint === 'function' && sameMapPoint(last, first);
+    const joined = fplSameJoinPoint(last, first);
     if (!joined) {
       return { errs: [{ code: 'errFplJoinGap',
         from: (last && last.name) || '?', to: (first && first.name) || '?' }] };
@@ -8311,8 +8377,7 @@ function showFplDialog() {
       const rw = e.data.waypoints || [];
       const here = state.waypoints || [];
       const last = here[here.length - 1];
-      if (rw.length < 2 || !last ||
-          !(typeof sameMapPoint === 'function' && sameMapPoint(rw[0], last))) continue;
+      if (rw.length < 2 || !last || !fplSameJoinPoint(rw[0], last)) continue;
       // ...and not the route being filed. A LOOP starts where it ends, so it passes the
       // test above and would fly the whole sortie twice.
       //
@@ -8322,7 +8387,7 @@ function showFplDialog() {
       // perfectly valid candidate. It also misses the same route saved twice under two
       // names, which comparing waypoints catches.
       if (rw.length === here.length &&
-          rw.every((w, i) => sameMapPoint(w, here[i]))) continue;
+          rw.every((w, i) => fplSameJoinPoint(w, here[i]))) continue;
       const opt = document.createElement('option');
       opt.value = e.id;
       // The name plus the route's own endpoints. Picking the wrong direction here files
@@ -8774,6 +8839,7 @@ function showFplDialog() {
       location.href = fplMailtoUrl(res, {
         reg: profileForSubject.reg,
         replyTo: profileForSubject.replyTo,
+        depTimeLocal: state1.time,
       });
       // A machine with no mail client registered (or webmail that never registered a
       // handler) drops mailto: on the floor with no error of any kind. There is nothing
@@ -9332,7 +9398,8 @@ function showFplXcForm(opts) {
     const to = mailTo;
     const reply = String(profile.replyTo || '').trim();
     const subject = 'FPL ' + fplRegistration(profile.reg) + ' ' +
-      (fields.dest ? fields.dest.value.trim() : '') + ' ' + (dateInput.value || '');
+      (fields.dest ? fields.dest.value.trim() : '') + ' ' + (dateInput.value || '') +
+      (depLocal ? ' ' + depLocal : '');
     const q = ['subject=' + encodeURIComponent(subject),
       'body=' + encodeURIComponent(S.xcMailBody || '')];
     if (reply && FPL_EMAIL_RE.test(reply)) {
