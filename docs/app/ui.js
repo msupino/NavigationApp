@@ -149,18 +149,32 @@ const layerSelect = document.getElementById('layer-select');
 // '---' is a non-selectable divider. Any layer not listed is appended after.
 const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', '---',
                      'Navigation', 'Satellite', 'OpenStreetMap'];
-const orderedLayerNames = [
-  ...LAYER_ORDER.filter(n => n === '---' || layers[n]),
-  ...Object.keys(layers).filter(n => !LAYER_ORDER.includes(n)),
+const orderedLayerNames = () => [
+  ...LAYER_ORDER.filter(n => n === '---' || (layers[n] && layerOffered(n))),
+  ...Object.keys(layers).filter(n => !LAYER_ORDER.includes(n) && layerOffered(n)),
 ];
-for (const name of orderedLayerNames) {
-  const opt = document.createElement('option');
-  if (name === '---') { opt.disabled = true; opt.textContent = '──────────'; layerSelect.appendChild(opt); continue; }
-  opt.value = name;
-  opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
-  if (map.hasLayer(layers[name])) opt.selected = true;
-  layerSelect.appendChild(opt);
+// (Re)build the picker from the OFFERED layers. Runs at boot and again after the gist
+// lands, because the gist is what turns layers on and off -- a chart pulled from service
+// disappears from here without a build, and the map falls back to CVFR if it was active.
+function rebuildLayerPicker() {
+  const current = layerSelect.value;
+  layerSelect.textContent = '';
+  for (const name of orderedLayerNames()) {
+    const opt = document.createElement('option');
+    if (name === '---') { opt.disabled = true; opt.textContent = '──────────'; layerSelect.appendChild(opt); continue; }
+    opt.value = name;
+    opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
+    if (map.hasLayer(layers[name])) opt.selected = true;
+    layerSelect.appendChild(opt);
+  }
+  const active = (typeof currentLayerName === 'function') ? currentLayerName() : current;
+  if (active && !layerOffered(active)) {
+    // The active layer just got pulled: land on CVFR, datasets and all.
+    layerSelect.value = 'CVFR';
+    layerSelect.onchange && layerSelect.onchange();
+  }
 }
+rebuildLayerPicker();
 layerSelect.onchange = () => {
   for (const name in layers) {
     if (name !== layerSelect.value && map.hasLayer(layers[name])) {
@@ -6543,6 +6557,8 @@ if (typeof loadRemoteConfig === "function") {
     // Gist may have flipped a default-layer-visibility bool — reconcile the
     // toolbar checkboxes for any toggle the user hasn't explicitly set.
     if (NavAid && typeof NavAid.applyDefaultVisibility === "function") NavAid.applyDefaultVisibility();
+    // The gist may have turned base layers on or off -- rebuild the picker to match.
+    if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
     if (typeof scheduleDraw === "function") scheduleDraw();
     // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
     // so alignment + opacity can be tuned from the gist without a redeploy.

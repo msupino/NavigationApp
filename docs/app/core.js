@@ -67,6 +67,17 @@ NavAid.tuningDefaults = {
   vorRangeRingSteps: { value: 96, min: 12, max: 256, step: 4, label: 'VOR range ring smoothness (segments)' },
   vorRangeRingLabelGapPx: { value: 3, min: 0, max: 20, step: 1, label: 'VOR range ring label gap' },
   searchMaxResults: { value: 12, min: 3, max: 40, step: 1, label: 'Search: total results' },
+  // Which base layers the picker offers, gist-controlled booleans: true = offered,
+  // false = hidden from the picker, the satellite modal and the mosaic. CVFR is not on
+  // the list -- it is the fallback layer everything else degrades to, so the app never
+  // lets it be configured away. All ship offered; pulling one (e.g. Helicopters, whose
+  // chart and dataset are the thinnest) is a gist edit, not a build:
+  //   "layerEnabledHelicopters": false
+  layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
+  layerEnabledHelicopters: { value: true, type: 'bool', label: 'Offer the Helicopters layer' },
+  layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
+  layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
+  layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
   searchMaxVor: { value: 3, min: 0, max: 20, step: 1, label: 'Search: max VOR stations' },
   searchMaxBubbles: { value: 12, min: 0, max: 20, step: 1, label: 'Search: max LSA bubbles' },
   searchFlashMs: { value: 3500, min: 0, max: 15000, step: 250,
@@ -537,6 +548,8 @@ NavAid.tuningGroups = [
   { name: 'Overlay labels + flash', keys: ['overlayLabelHaloWidthPx', 'liveHeadingTickHaloColor', 'liveHeadingTickHaloAlpha', 'liveHeadingTickHaloWidthPx', 'notamFlashColor', 'notamBadgeTextColor', 'notamBadgeFontPx'] },
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
+  { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters',
+    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
@@ -2989,6 +3002,17 @@ const layers = {
       attribution: '© OpenStreetMap contributors' }),
 };
 
+// Is a base layer offered at all? CVFR always is -- it is the fallback everything else
+// degrades to. The rest hang on gist-controlled tunables, so a layer can be pulled from
+// (or restored to) the shipped app without a build.
+function layerOffered(name) {
+  if (name === 'CVFR') return true;
+  const key = 'layerEnabled' + String(name || '').replace(/\s+/g, '');
+  if (typeof NavAid === 'undefined' || !NavAid.tuningDefaults || !NavAid.tuningDefaults[key]) return true;
+  // Bool tunable: the gist writes true/false, exactly as it reads.
+  return tune(key) !== false && tune(key) !== 0;
+}
+
 const LAYER_KEY = 'navaid.layer';
 let initialLayer = layers.CVFR;
 try {
@@ -2996,7 +3020,9 @@ try {
   if (saved === 'OSM') { saved = 'OpenStreetMap'; localStorage.setItem(LAYER_KEY, saved); }
   if (saved === 'Nav') { saved = 'Navigation'; localStorage.setItem(LAYER_KEY, saved); }
   if (saved === 'Heli') { saved = 'Helicopters'; localStorage.setItem(LAYER_KEY, saved); }
-  if (saved && layers[saved]) initialLayer = layers[saved];
+  // A saved layer that is no longer offered falls back to CVFR rather than resurrecting a
+  // hidden chart from localStorage.
+  if (saved && layers[saved] && layerOffered(saved)) initialLayer = layers[saved];
 } catch (e) { /* storage unavailable */ }
 
 // First-run view. z9 fitted the whole country but drew the CVFR chart at 0.13× --
