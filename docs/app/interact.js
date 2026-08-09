@@ -2654,12 +2654,19 @@ function showInspector() {
     if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) {
       body.appendChild(textRow(S.bubbleAltBand || 'Altitude band', a.lowFt + '-' + a.highFt + ' ft'));
     }
-    // The weekday gate is the fact that changes a plan: an afternoon bubble is closed
-    // exactly when a weekday morning flight would cross it. Weekends it is open all day.
-    body.appendChild(textRow(S.bubbleOpenFrom || 'Weekday opening',
-      a.openFromHour != null
-        ? String(a.openFromHour).padStart(2, '0') + ':00' + ' ' + (S.bubbleWeekendAllDay || '(weekend: all day)')
-        : (S.bubbleOpenAll || 'Open all day')));
+    // Availability, as the CHART states it: the tan class is active weekends and holidays
+    // only. A secondary source lists weekday opening hours (12:00/14:00) for exactly these
+    // bubbles -- that contradicts the chart class, so it rides as a caveated note rather
+    // than the primary statement.
+    const wkndOnly = a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12);
+    body.appendChild(textRow(S.bubbleActive || 'Active',
+      wkndOnly ? (S.bubbleWeekendOnly || 'Weekends & holidays only')
+               : (S.bubbleOpenAll || 'Open all day')));
+    if (wkndOnly && a.openFromHour != null) {
+      body.appendChild(textRow(S.bubbleSecondaryNote || 'Unverified',
+        (S.bubbleWeekdayHint || 'A secondary source lists weekday opening from') + ' ' +
+        String(a.openFromHour).padStart(2, '0') + ':00'));
+    }
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
     if (!nw) {

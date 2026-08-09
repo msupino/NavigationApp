@@ -52,7 +52,10 @@ test('clicking inside a bubble opens its inspector with band and gate', async ({
   await expect(page.locator('#insp-title')).toHaveValue(/BOORN/);
   const body = page.locator('#insp-body');
   await expect(body).toContainText('0-2100 ft');
-  await expect(body).toContainText('12:00');       // the weekday gate
+  // The chart's tan class is the primary statement; the source's weekday hour is a
+  // caveated note underneath it.
+  await expect(body).toContainText('Weekends & holidays only');
+  await expect(body).toContainText('12:00');
 });
 
 test('a bubble is searchable by code, and the hit opens the inspector', async ({ page }) => {

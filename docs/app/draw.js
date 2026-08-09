@@ -1409,8 +1409,9 @@ function drawAreas() {
     }
     octx.closePath();
     const hl = a === window.__lsaHighlight;   // chart "locate" highlight
-    // A weekday-gated bubble (opens 12:00/14:00) is drawn like the weekend class: not in
-    // force when a weekday pilot is likeliest to look at it.
+    // The chart's tan class: active on the weekend (and holidays) only. The 12:00/14:00
+    // weekday-opening hours a secondary source lists for exactly these bubbles contradict
+    // the chart class, so the chart wins here and the hour is an inspector note.
     const wknd = a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12);
     // Official legend colours: always = green outline + pale-green fill (in force
     // every day); weekend = black outline + tan fill (Fri–Sat only). The locate
@@ -1443,11 +1444,15 @@ function drawAreas() {
         octx.fillStyle = tune('lsaLabelColor');      // neutral: reads over green + tan fills
         octx.fillText(txt.t, s.x, txt.y);
       };
-      // Second line: the altitude band and, when gated, the weekday opening hour --
-      // the two facts a pilot needs before planning through the bubble.
+      // Second line: the altitude band and the chart's availability class -- the two facts
+      // a pilot needs before planning through the bubble. The label states what the CHART
+      // says (weekend-only for the tan class); the secondary source's weekday hour is an
+      // inspector note, not a map fact.
       const bits = [];
       if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) bits.push(a.lowFt + '-' + a.highFt + ' ft');
-      if (a.openFromHour != null) bits.push(String(a.openFromHour).padStart(2, '0') + ':00→');
+      if (a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12)) {
+        bits.push(S.bubbleWeekendTag || 'weekend');
+      }
       if (bits.length) {
         const gap = Math.round((tune('lsaLabelFontPx') + tune('lsaMetaFontPx')) / 3.2);
         halo({ t: nm, y: s.y - gap });
