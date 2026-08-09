@@ -93,3 +93,62 @@ test('a route that never reaches its boundary point keeps the old behaviour', as
   expect(await page.evaluate(() => ctrClockStartIndex())).toBe(0);
   expect(await page.evaluate(() => legBeforeCtrClock(0))).toBe(false);
 });
+
+test('inside the CTR the kite and the drift cone are off by default', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'SFAIM', 'HTZUK']);
+  const r = await page.evaluate(() => ({
+    kite0: legKiteVisible(0, state.legs[0]),
+    kite1: legKiteVisible(1, state.legs[1]),
+    drift0: legDriftVisible(state.legs[0], true, 0),
+    drift1: legDriftVisible(state.legs[1], true, 1),
+  }));
+  expect(r).toEqual({ kite0: false, kite1: true, drift0: false, drift1: true });
+});
+
+test('the inspector brings both back, and the choice round-trips', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'SFAIM', 'HTZUK']);
+  await page.evaluate(() => { state.selected = { type: 'leg', index: 0 }; showInspector(); });
+  const kiteBtn = page.locator('#insp-body .insp-btn', { hasText: /kite/i }).first();
+  const driftBtn = page.locator('#insp-body .insp-btn', { hasText: /drift/i }).first();
+  await expect(kiteBtn).toContainText(/Show kite/);
+  await expect(driftBtn).toContainText(/Show drift/);
+  await kiteBtn.click();
+  await driftBtn.click();
+  const on = await page.evaluate(() => ({
+    kite: legKiteVisible(0, state.legs[0]),
+    drift: legDriftVisible(state.legs[0], true, 0),
+    saved: serializeRoute().legs[0],
+  }));
+  expect(on.kite).toBe(true);
+  expect(on.drift).toBe(true);
+  expect(on.saved.showKite).toBe(1);
+  expect(on.saved.showDrift).toBe(1);
+});
+
+test('the plan shows --- for a CTR leg and leaves it out of the totals', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'SFAIM', 'HTZUK']);
+  const r = await page.evaluate(() => {
+    showFlightPlan();
+    const cell = (row, key) => {
+      const el = row.querySelector('[data-fp-col="' + key + '"]');
+      return el ? el.textContent.trim() : null;
+    };
+    const rows = [...document.querySelectorAll('tbody tr')].filter(tr => cell(tr, 'time'));
+    const foot = [...document.querySelectorAll('tfoot tr')].find(tr => cell(tr, 'time'));
+    const { dist } = geo(state.waypoints[1], state.waypoints[2]);
+    return {
+      leg0: { time: cell(rows[0], 'time'), cum: cell(rows[0], 'cumTime') },
+      leg1time: cell(rows[1], 'time'),
+      total: cell(foot, 'time'),
+      expected: toHMS(dist / state.legs[1].flightSpeed),
+    };
+  });
+  // The CTR leg reads --- in both time columns...
+  expect(r.leg0).toEqual({ time: '---', cum: '---' });
+  // ...and the total is the second leg alone: the CTR leg contributes nothing.
+  expect(r.leg1time).toBe(r.expected);
+  expect(r.total).toBe(r.expected);
+});

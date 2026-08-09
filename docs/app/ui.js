@@ -2307,6 +2307,7 @@ document.getElementById('reverse').onclick = () => {
       // dropping hideKite made a deliberately decluttered leg redraw its kite.
       ...(l.vorRef ? { vorRef: l.vorRef } : {}),
       ...(l.hideKite ? { hideKite: 1 } : {}),
+      ...(l.showKite ? { showKite: 1 } : {}),
       ...(l.hideDrift ? { hideDrift: 1 } : {}),
       ...(l.showDrift ? { showDrift: 1 } : {}),
       // Reversing is not a speed edit, so the pins travel -- but they travel WITH the

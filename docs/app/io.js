@@ -504,7 +504,7 @@ function validateRoute(d) {
       }
       // Written only as the literal 1, so anything else -- "false", 0, "" -- is a file
       // saying something the app cannot honestly interpret.
-      for (const k of ['hideKite', 'hideDrift', 'showDrift', 'speedAuto', 'retSpeedAuto']) {
+      for (const k of ['hideKite', 'showKite', 'hideDrift', 'showDrift', 'speedAuto', 'retSpeedAuto']) {
         if (!Object.prototype.hasOwnProperty.call(l, k)) continue;
         if (l[k] !== 1) errs.push(p + '.' + k + ': expected 1, got ' + JSON.stringify(l[k]));
       }
@@ -1007,6 +1007,7 @@ function serializeRoute() {
       // Whether the pilot hid this leg's nav kite. Same class of state as the dragged
       // label offsets beside it: their own decision about how the chart should read.
       ...(l.hideKite ? { hideKite: 1 } : {}),
+      ...(l.showKite ? { showKite: 1 } : {}),
       ...(l.hideDrift ? { hideDrift: 1 } : {}),
       ...(l.showDrift ? { showDrift: 1 } : {}),
       ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
@@ -2262,6 +2263,7 @@ function applyRouteData(d) {
                                : { a: 0, _default: 1, _m: 1 },
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
     ...(l.hideKite ? { hideKite: 1 } : {}),
+      ...(l.showKite ? { showKite: 1 } : {}),
     ...(l.hideDrift ? { hideDrift: 1 } : {}),
       ...(l.showDrift ? { showDrift: 1 } : {}),
     // Absent = pinned, so a route written before these existed (or by hand) keeps
@@ -3328,9 +3330,14 @@ function showFlightPlan() {
       }
       const dur = prof && prof.legs[i] ? prof.legs[i].timeH
         : (state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0);
+      // A leg inside the departure field's CTR is flown on the field's procedure, not on
+      // the route's clock (see ctr-boundaries.json): it shows no time and contributes
+      // none -- to the leg column, the cumulative column or the totals. Distance and fuel
+      // are still real and still counted; only the clock starts at the boundary.
+      const preClock = typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(i);
       td += dist;
-      th += dur;
-      timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+      if (!preClock) th += dur;
+      timeCells[i].textContent = preClock ? '---' : (dur > 0 ? toHMS(dur) : '--');
       if (ac) {
         const fuel = prof && prof.legs[i] ? prof.legs[i].fuel : dur * ac.gph;
         tf += fuel;
@@ -3341,7 +3348,7 @@ function showFlightPlan() {
         fuelCells[i].textContent = '--';
         fuelCells[i].title = '';
       }
-      cumTimeCells[i].textContent = th > 0 ? toHMS(th) : '--';
+      cumTimeCells[i].textContent = preClock ? '---' : (th > 0 ? toHMS(th) : '--');
       cumFuelCells[i].textContent = ac ? tf.toFixed(1) : '--';
       cumFuelCells[i].title = '';
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
@@ -5528,6 +5535,7 @@ function restoreRoute() {
                                : { a: 0, _default: 1, _m: 1 },
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
     ...(l.hideKite ? { hideKite: 1 } : {}),
+      ...(l.showKite ? { showKite: 1 } : {}),
     ...(l.hideDrift ? { hideDrift: 1 } : {}),
       ...(l.showDrift ? { showDrift: 1 } : {}),
     // Reloading the tab is not a speed edit, so a leg still tracking the default

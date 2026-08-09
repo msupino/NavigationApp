@@ -3060,7 +3060,7 @@ function drawLegs() {
     // on a busy chart, or show one cone on an otherwise clean map). Nothing else about the
     // leg changes -- including the kite's offset, which keeps its usual drift-derived
     // position so that hiding the cone does not make the kite jump.
-    if (typeof legDriftVisible === 'function' ? legDriftVisible(leg, showDrift)
+    if (typeof legDriftVisible === 'function' ? legDriftVisible(leg, showDrift, i)
         : (showDrift && !leg.hideDrift)) {
       drawDriftLines(sa, sb);
     }
@@ -3076,7 +3076,9 @@ function drawLegs() {
     // The pilot can hide this leg's nav kite (both directions). Everything else the leg
     // draws is unaffected -- this is about an unreadable pile of kites in a busy area, not
     // about hiding the leg.
-    const kiteOff = typeof legKiteHidden === 'function' && legKiteHidden(leg);
+    const kiteOff = typeof legKiteVisible === 'function'
+      ? !legKiteVisible(i, leg)
+      : (typeof legKiteHidden === 'function' && legKiteHidden(leg));
 
     drawMinuteMarkers(sa, sb, durH);
 

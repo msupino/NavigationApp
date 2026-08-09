@@ -2294,10 +2294,22 @@ function legDriftHidden(leg) {
 // one leg's cone back on an otherwise clean map). The global used to be a hard ceiling,
 // which made the inspector's "Show drift lines" button a no-op whenever the toolbar toggle
 // was off -- a control that does nothing teaches the pilot it is broken.
-function legDriftVisible(leg, globalOn) {
+function legDriftVisible(leg, globalOn, i) {
   if (leg && leg.hideDrift) return false;
   if (leg && leg.showDrift) return true;
+  // Inside the departure field's CTR the leg is flown on the field's procedure: its drift
+  // cone is noise over the busiest part of the chart, so it is off unless asked for.
+  if (Number.isInteger(i) && typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(i)) {
+    return false;
+  }
   return !!globalOn;
+}
+// Effective nav-kite visibility, same rules: an explicit hide wins, an explicit show wins
+// next, and a leg inside the departure CTR is hidden by default.
+function legKiteVisible(i, leg) {
+  if (leg && leg.hideKite) return false;
+  if (leg && leg.showKite) return true;
+  return !(typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(i));
 }
 
 // A PR preview may SHARE a big static asset directory with the deployed root instead of
