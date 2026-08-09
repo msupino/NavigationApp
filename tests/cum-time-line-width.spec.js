@@ -5,11 +5,15 @@ const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 const { hideToolbarMenus } = require('./_toolbar');
 
+// Plain waypoints at the same coordinates the airfields sit on: this suite is about kite
+// geometry and the sliders, and a route BETWEEN FIELDS would now have both of its legs
+// inside a CTR (no cum kite, no drift cone) -- which is the CTR rule working, and tested in
+// ctr-clock.spec.js, but it would leave nothing here to measure.
 const ROUTE = {
   waypoints: [
-    { lat: LLHZ.lat, lng: LLHZ.lng, name: 'LLHZ' },
+    { lat: LLHZ.lat, lng: LLHZ.lng, name: 'START' },
     { lat: 32.45, lng: 34.9, name: 'A' },
-    { lat: LLHA.lat, lng: LLHA.lng, name: 'LLHA' },
+    { lat: LLHA.lat, lng: LLHA.lng, name: 'END' },
   ],
 };
 
@@ -252,7 +256,7 @@ test.describe('Cumulative-time kite', () => {
       window.showCumTime = true;
       draw();
       // Leg 0 is inside the departure CTR and has no cum kite: drag the first one that does.
-      const li = ctrClockStartIndex();
+      const li = state.legs.findIndex((_, i) => !legInsideCtr(i));
       const c = cumLabelCenter(li);
       const frame = cumLabelDragFrame(li, false);
       const r = mapEl.getBoundingClientRect();
@@ -344,7 +348,7 @@ test.describe('Cumulative-time kite', () => {
       window.showCumTime = true; n = 0; draw(); const on = n;
       window.showCumTime = false; n = 0; draw(); const off = n;
       window.drawCumTimeArrow = real;
-      return { on, off, legs: state.legs.length, ctrClockStart: ctrClockStartIndex() };
+      return { on, off, legs: state.legs.length, ctrClockStart: state.legs.filter((_, i) => legInsideCtr(i)).length };
     });
     // One inbound cum kite per leg EXCEPT the legs inside the departure CTR: this route
     // leaves LLHZ, whose first leg is flown on the field's procedure.
@@ -368,7 +372,7 @@ test.describe('Cumulative-time kite', () => {
       let cum = 0;
       for (let i = 0; i < state.legs.length; i++) {
         // Legs inside the departure CTR contribute nothing and show nothing.
-        if (legBeforeCtrClock(i)) continue;
+        if (legInsideCtr(i)) continue;
         const { dist } = geo(state.waypoints[i], state.waypoints[i + 1]);
         const sp = state.legs[i].flightSpeed;
         cum += sp > 0 ? dist / sp : 0;
@@ -390,7 +394,7 @@ test.describe('Cumulative-time kite', () => {
       window.showReturn = false; n = 0; draw(); const oneWay = n;
       window.showReturn = true; n = 0; draw(); const both = n;
       window.drawCumTimeArrow = real;
-      return { oneWay, both, legs: state.legs.length, ctrClockStart: ctrClockStartIndex() };
+      return { oneWay, both, legs: state.legs.length, ctrClockStart: state.legs.filter((_, i) => legInsideCtr(i)).length };
     });
     // Inbound skips the CTR legs; the RETURN kites are unaffected -- flying home, the leg
     // into the field is an arrival, not a departure.

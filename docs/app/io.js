@@ -3455,7 +3455,7 @@ function showFlightPlan() {
       // the route's clock (see ctr-boundaries.json): it shows no time and contributes
       // none -- to the leg column, the cumulative column or the totals. Distance and fuel
       // are still real and still counted; only the clock starts at the boundary.
-      const preClock = typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(i);
+      const preClock = typeof legInsideCtr === 'function' && legInsideCtr(i);
       td += dist;
       if (!preClock) th += dur;
       timeCells[i].textContent = preClock ? '---' : (dur > 0 ? toHMS(dur) : '--');

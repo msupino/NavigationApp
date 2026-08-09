@@ -3114,7 +3114,7 @@ function drawLegs() {
     // Legs inside the departure field's CTR are flown on the field's procedure, not on the
     // route's stopwatch: the clock starts at the boundary reporting point (see
     // ctr-boundaries.json). Those legs add nothing and show no cumulative kite.
-    const preClock = typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(i);
+    const preClock = typeof legInsideCtr === 'function' && legInsideCtr(i);
     if (!preClock) cumInH += durH;
     const cumInStr = (!preClock && cumInH > 0) ? toHMS(cumInH) : '--';
 

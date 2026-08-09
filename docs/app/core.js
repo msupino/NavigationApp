@@ -2308,31 +2308,38 @@ function ctrInsidePoints(rec) {
   if (!rec) return [];
   return (rec.inside || []).concat(rec._derived || []);
 }
-// Index of the waypoint where the route clock starts: walking out from the departure
-// field, every point still INSIDE its CTR is skipped, and the clock starts at the first
-// one that is not -- normally a named boundary point, but any point outside works, because
-// leaving the CTR is what starts the count. A listed field always excludes at least its
-// first leg: you cannot be outside the CTR at the field itself. A field that is not listed
-// returns 0 and behaves exactly as it did before this existed.
-function ctrClockStartIndex() {
-  if (!state || !Array.isArray(state.waypoints) || state.waypoints.length < 2) return 0;
-  if (ctrBoundaries === null) { loadCtrBoundaries(); return 0; }
-  const first = state.waypoints[0];
-  const icao = (first && first.name) ? String(first.name).trim().toUpperCase() : '';
-  const rec = icao && ctrBoundaries[icao];
-  if (!rec) return 0;
-  const inside = ctrInsidePoints(rec);
-  for (let i = 1; i < state.waypoints.length; i++) {
-    const nm = (state.waypoints[i].name || '').toString().trim().toUpperCase();
-    if (!inside.includes(nm)) return i;
-  }
-  // Every point named is inside the CTR: the whole drawn route is within it.
-  return state.waypoints.length - 1;
+// Every name that belongs to a field's CTR: the field itself, the points inside it (listed
+// or inherited from the corridors), and its exit points -- the exit is still inside, the
+// clock starts on the leg LEAVING it.
+function ctrNameSet(icao) {
+  const rec = icao && ctrBoundaries && ctrBoundaries[icao];
+  if (!rec) return null;
+  const set = new Set([icao]);
+  for (const n of ctrInsidePoints(rec)) set.add(n);
+  for (const n of (rec.clockStartsAt || [])) set.add(n);
+  return set;
 }
-// Does leg i happen before the clock starts? Those legs add nothing to the cumulative time
-// and show no cumulative kite; everything else about them is unchanged.
-function legBeforeCtrClock(i) {
-  return i < ctrClockStartIndex();
+function ctrFieldSetAt(idx) {
+  if (ctrBoundaries === null) { loadCtrBoundaries(); return null; }
+  const wp = state.waypoints[idx];
+  const nm = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
+  return nm ? ctrNameSet(nm) : null;
+}
+// Is leg i flown inside a CTR? Purely by NAME: both of its endpoints have to belong to the
+// same field's CTR -- the departure field's on the way out, the destination's on the way
+// in. Nothing is inferred from a leg's position in the route: a first leg to a point the
+// CTR does not name is ordinary route time, and so is a last leg from one.
+function legInsideCtr(i) {
+  if (!state || !Array.isArray(state.waypoints)) return false;
+  const a = state.waypoints[i], b = state.waypoints[i + 1];
+  if (!a || !b) return false;
+  const na = (a.name || '').toString().trim().toUpperCase();
+  const nb = (b.name || '').toString().trim().toUpperCase();
+  if (!na || !nb) return false;
+  const dep = ctrFieldSetAt(0);
+  if (dep && dep.has(na) && dep.has(nb)) return true;
+  const arr = ctrFieldSetAt(state.waypoints.length - 1);
+  return !!(arr && arr.has(na) && arr.has(nb));
 }
 
 // ...and the same for the leg's DRIFT LINES -- the dashed pair fanning out at the tuned
@@ -2354,7 +2361,7 @@ function legDriftVisible(leg, globalOn, i) {
   if (leg && leg.showDrift) return true;
   // Inside the departure field's CTR the leg is flown on the field's procedure: its drift
   // cone is noise over the busiest part of the chart, so it is off unless asked for.
-  if (Number.isInteger(i) && typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(i)) {
+  if (Number.isInteger(i) && typeof legInsideCtr === 'function' && legInsideCtr(i)) {
     return false;
   }
   return !!globalOn;
@@ -2364,7 +2371,7 @@ function legDriftVisible(leg, globalOn, i) {
 function legKiteVisible(i, leg) {
   if (leg && leg.hideKite) return false;
   if (leg && leg.showKite) return true;
-  return !(typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(i));
+  return !(typeof legInsideCtr === 'function' && legInsideCtr(i));
 }
 
 // A PR preview may SHARE a big static asset directory with the deployed root instead of

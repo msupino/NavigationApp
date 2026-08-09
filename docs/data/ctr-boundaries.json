@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "source": "CTR data per airfield, given by the maintainer (2026-08). `clockStartsAt` names the CTR exit points: the clock starts on the leg LEAVING one, so the leg arriving at it is still inside. `inside` lists points inside the CTR that no published corridor traverses -- everything the corridors DO traverse between the field and an exit is derived from the route graph at load time and does not need listing here.",
-  "_note": "A field absent from this list behaves as before -- the clock starts at the field. A listed field always excludes at least its first leg: you cannot be outside the CTR at the field itself.",
+  "source": "CTR data per airfield, given by the maintainer (2026-08). A leg is flown inside a CTR when BOTH of its endpoints are named here for the same field: the field itself, `inside` (points within the CTR that no published corridor traverses -- the rest are inherited from the route graph), or `clockStartsAt` (the exit points, still inside: the clock starts on the leg LEAVING one). Nothing is inferred from a leg's position in the route.",
+  "_note": "A field absent from this list behaves as before -- every leg is route time. Adding a field is two lists of reporting-point codes.",
   "airfields": {
     "LLHZ": {
       "clockStartsAt": [

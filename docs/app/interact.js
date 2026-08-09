@@ -2511,7 +2511,7 @@ function showInspector() {
     hideBtn.setAttribute('aria-label', hideBtn.title);
     hideBtn.setAttribute('aria-pressed', kiteOff ? 'true' : 'false');
     hideBtn.onclick = () => {
-      const inCtr = typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(kiteIdx);
+      const inCtr = typeof legInsideCtr === 'function' && legInsideCtr(kiteIdx);
       if (kiteOff) { delete leg.hideKite; if (inCtr) leg.showKite = 1; }
       else { delete leg.showKite; if (!inCtr) leg.hideKite = 1; }
       if (typeof persist === 'function') persist();
@@ -2540,7 +2540,7 @@ function showInspector() {
     driftBtn.setAttribute('aria-pressed', driftOff ? 'true' : 'false');
     driftBtn.onclick = () => {
       const dIdx = state.selected.index;
-      const dInCtr = typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(dIdx);
+      const dInCtr = typeof legInsideCtr === 'function' && legInsideCtr(dIdx);
       if (driftOff) {
         delete leg.hideDrift;
         // Global off, or default-off inside the CTR: this leg opts in explicitly.
