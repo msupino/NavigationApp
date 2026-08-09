@@ -1456,7 +1456,10 @@ function drawAreas() {
       // says (weekend-only for the tan class); the secondary source's weekday hour is an
       // inspector note, not a map fact.
       const bits = [];
-      if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) bits.push(a.lowFt + '-' + a.highFt + ' ft');
+      // Unit localised: 'ft' reads as a stray Latin token on the Hebrew chart -- 'רגל'.
+      if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) {
+        bits.push(a.lowFt + '-' + a.highFt + ' ' + (S.unitFeet || 'ft'));
+      }
       if (a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12)) {
         bits.push(S.bubbleWeekendTag || 'weekend');
       }
