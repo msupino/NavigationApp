@@ -92,10 +92,14 @@ test('a field with no CTR data, and a route between plain points, are untouched'
 
 test('points inside the CTR are inherited from the corridors, not just listed', async ({ page }) => {
   await boot(page);
-  const derived = await page.evaluate(async () => {
-    await loadCtrBoundaries();
-    await fplLoadRouteGraph();
-    await new Promise(r => setTimeout(r, 300));      // derivation is async
+  // The derivation is kicked off by first USE, not at boot: a route that touches a listed
+  // field is what starts it, and the answer lands a repaint later.
+  await route(page, ['LLHZ', 'SFAIM', 'HTZUK']);
+  await page.evaluate(() => legInsideCtr(0));
+  await page.waitForFunction(
+    () => ctrBoundaries && ctrBoundaries.LLHA && (ctrBoundaries.LLHA._derived || []).length > 0,
+    { timeout: 8000 });
+  const derived = await page.evaluate(() => {
     const pick = (i) => (ctrBoundaries[i] && ctrBoundaries[i]._derived) || [];
     return { LLHA: pick('LLHA').sort(), LLIB: pick('LLIB') };
   });

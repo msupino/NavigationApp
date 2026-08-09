@@ -2272,7 +2272,6 @@ async function loadCtrBoundaries() {
   } catch (e) {
     ctrBoundaries = {};             // absent or unreadable: every clock starts at the field
   }
-  ctrDeriveInsideFromGraph();       // fills in what the corridors already imply
   if (typeof scheduleDraw === 'function') scheduleDraw();
   return ctrBoundaries;
 }
@@ -2281,6 +2280,7 @@ async function loadCtrBoundaries() {
 // point. Deriving them means the hand-written list only has to carry what no corridor
 // traverses (Haifa's KRYON and AFFEK), and it self-corrects as the graph grows -- LLIB's
 // AMNON and Haifa's GALIM were both missing from the hand list and both fall out of this.
+var _ctrDerivePromise = null;
 async function ctrDeriveInsideFromGraph() {
   if (!ctrBoundaries || typeof fplGraphChain !== 'function') return;
   let graph = null;
@@ -2306,8 +2306,15 @@ async function ctrDeriveInsideFromGraph() {
   if (typeof scheduleDraw === 'function') scheduleDraw();
 }
 // Every point inside a field's CTR: the hand-written list plus what the corridors imply.
+// The derivation needs the route graph -- 236 KB that most sessions never open -- so it is
+// kicked off on FIRST USE (a route touching a listed field) rather than at boot, where it
+// added a fetch and a parse to every startup. Until it lands, the hand-written list stands
+// on its own; the derived points appear on the next repaint.
 function ctrInsidePoints(rec) {
   if (!rec) return [];
+  if (!_ctrDerivePromise && typeof fplGraphChain === 'function') {
+    _ctrDerivePromise = ctrDeriveInsideFromGraph();
+  }
   return (rec.inside || []).concat(rec._derived || []);
 }
 // Every name that belongs to a field's CTR: the field itself, the points inside it (listed
