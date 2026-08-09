@@ -1422,12 +1422,16 @@ function drawAreas() {
     octx.fill();
     octx.stroke();
   }
-  // Names, at each bubble's centroid (zoomed in enough to be readable).
-  const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('vorLabelMinZoom') : 8);
+  // Names, at each bubble's centroid (zoomed in enough to be readable). Own font tunables:
+  // a bubble label competes with a busy chart underneath, so it runs larger than the VOR
+  // labels it used to borrow from.
+  const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('lsaLabelMinZoom') : 8);
   if (showLabels) {
+    const nameFont = 'bold ' + (typeof tune === 'function' ? tune('lsaLabelFontPx') : 15) + 'px sans-serif';
+    const metaFont = 'bold ' + (typeof tune === 'function' ? tune('lsaMetaFontPx') : 12) + 'px sans-serif';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.font = 'bold ' + (typeof tune === 'function' ? tune('vorLabelFontPx') : 12) + 'px sans-serif';
+    octx.font = nameFont;
     for (const a of areas) {
       const nm = areaLabel(a);
       if (!nm) continue;
@@ -1445,10 +1449,11 @@ function drawAreas() {
       if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) bits.push(a.lowFt + '-' + a.highFt + ' ft');
       if (a.openFromHour != null) bits.push(String(a.openFromHour).padStart(2, '0') + ':00→');
       if (bits.length) {
-        halo({ t: nm, y: s.y - 7 });
-        octx.font = (typeof tune === 'function' ? tune('vorLabelFontPx') - 2 : 10) + 'px sans-serif';
-        halo({ t: bits.join('  '), y: s.y + 7 });
-        octx.font = 'bold ' + (typeof tune === 'function' ? tune('vorLabelFontPx') : 12) + 'px sans-serif';
+        const gap = Math.round((tune('lsaLabelFontPx') + tune('lsaMetaFontPx')) / 3.2);
+        halo({ t: nm, y: s.y - gap });
+        octx.font = metaFont;                 // bold too: the band is why the label exists
+        halo({ t: bits.join('  '), y: s.y + gap });
+        octx.font = nameFont;
       } else {
         halo({ t: nm, y: s.y });
       }
