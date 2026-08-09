@@ -69,10 +69,10 @@ NavAid.tuningDefaults = {
   searchMaxResults: { value: 12, min: 3, max: 40, step: 1, label: 'Search: total results' },
   // Which base layers the picker offers, gist-controlled: 1 = offered, 0 = hidden. CVFR is
   // not on the list -- it is the fallback layer everything else degrades to, so the app
-  // never lets it be configured away. Helicopters ships hidden: the chart is not good
-  // enough yet, and its dataset is the thinnest (38 links with no read altitude).
+  // never lets it be configured away. All ship offered; pulling one (e.g. Helicopters,
+  // whose chart and dataset are the thinnest) is a gist edit, not a build.
   layerEnabledLowAlt: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the Low Alt layer' },
-  layerEnabledHelicopters: { value: 0, min: 0, max: 1, step: 1, label: 'Offer the Helicopters layer' },
+  layerEnabledHelicopters: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the Helicopters layer' },
   layerEnabledNavigation: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the Navigation layer' },
   layerEnabledSatellite: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the Satellite layer' },
   layerEnabledOpenStreetMap: { value: 1, min: 0, max: 1, step: 1, label: 'Offer the OpenStreetMap layer' },
