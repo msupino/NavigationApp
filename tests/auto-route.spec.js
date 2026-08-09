@@ -28,6 +28,19 @@ test('LLHA to LLHZ follows the open corridor, not a direct line', async ({ page 
     'HADRA', 'ZYAAR', 'SHARO', 'DEROR', 'BAZRA']);
 });
 
+test('LLHZ to LLHA is the same corridor flown the other way', async ({ page }) => {
+  await boot(page);
+  const names = await page.evaluate(async () => {
+    const ha = airfieldByIcao('LLHA'), hz = airfieldByIcao('LLHZ');
+    const mid = await autoRouteChain(
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: ha.lat, lng: ha.lng, name: 'LLHA' });
+    return mid && mid.map(w => w.name);
+  });
+  expect(names).toEqual(['BAZRA', 'DEROR', 'SHARO', 'ZYAAR', 'HADRA',
+    'FRDIS', 'BOREN', 'HOTRM', 'DAROM', 'GALIM']);
+});
+
 test('a map tap in add mode splices the corridor as real waypoints', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
