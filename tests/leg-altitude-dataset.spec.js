@@ -29,7 +29,8 @@ function directionPoolFromSegments(segments) {
         from: segment.from,
         to: segment.to,
         altitude: segment.inboundAltitude,
-        segment: `${segment.from}-${segment.to}`,
+        // Canonical, matching legAltitudeKey: same key whichever way the row is stored.
+        segment: [segment.from, segment.to].sort().join('-'),
         field: 'inboundAltitude',
       });
     }
@@ -38,7 +39,7 @@ function directionPoolFromSegments(segments) {
         from: segment.to,
         to: segment.from,
         altitude: segment.outboundAltitude,
-        segment: `${segment.from}-${segment.to}`,
+        segment: [segment.from, segment.to].sort().join('-'),
         field: 'outboundAltitude',
       });
     }

@@ -3214,8 +3214,15 @@ function syncLegs() {
   if (typeof onRouteChangedForPlates === 'function') onRouteChangedForPlates();
 }
 
+// Canonical -- the same key whichever way the leg is flown. The graph stores a segment in
+// whichever direction it walks first, so ~30% of rows come out reversed from one build to
+// the next; a directional key made every lookup probe both orientations, and a future
+// single-orientation lookup would have silently missed those rows. Orientation is decided
+// where it matters: by comparing the leg's `from` with the row's own `from`.
 function legAltitudeKey(from, to) {
-  return String(from || '').trim() + '-' + String(to || '').trim();
+  const a = String(from || '').trim();
+  const b = String(to || '').trim();
+  return a <= b ? a + '-' + b : b + '-' + a;
 }
 function legAltitudeDirectionsFromSegments(segments) {
   const out = [];
@@ -3440,14 +3447,10 @@ function legAltitudeForLeg(i) {
       outboundBlocked,
     };
   };
-  const direct = legAltitudeMap[legAltitudeKey(from, to)];
-  if (direct) {
-    const match = resolveSegment(direct, false);
-    if (match) return match;
-  }
-  const reverse = legAltitudeMap[legAltitudeKey(to, from)];
-  if (reverse) {
-    const match = resolveSegment(reverse, true);
+  const row = legAltitudeMap[legAltitudeKey(from, to)];
+  if (row) {
+    // Reversed when the leg is flown against the row's stored direction.
+    const match = resolveSegment(row, row.from !== from);
     if (match) return match;
   }
   const directDistanceNm = geo(state.waypoints[i], state.waypoints[i + 1]).dist;
@@ -3470,14 +3473,9 @@ function legAltitudePairMatchForLeg(i) {
   const from = legAltitudePointAtWaypoint(state.waypoints[i]);
   const to = legAltitudePointAtWaypoint(state.waypoints[i + 1]);
   if (!from || !to || from === to) return null;
-  const directKey = legAltitudeKey(from, to);
-  if (legAltitudeMap[directKey]) {
-    return { key: directKey, segment: legAltitudeMap[directKey], reverse: false };
-  }
-  const reverseKey = legAltitudeKey(to, from);
-  if (legAltitudeMap[reverseKey]) {
-    return { key: reverseKey, segment: legAltitudeMap[reverseKey], reverse: true };
-  }
+  const key = legAltitudeKey(from, to);
+  const segment = legAltitudeMap[key];
+  if (segment) return { key, segment, reverse: segment.from !== from };
   return null;
 }
 function rawLegAltitudeSegment(key) {
@@ -3657,9 +3655,7 @@ function legAltitudeOriginForLeg(i) {
     if (!Number.isFinite(inboundAltitude) && !Number.isFinite(outboundAltitude)) return null;
     return { inboundAltitude, outboundAltitude };
   };
-  const direct = legAltitudeOriginMap[legAltitudeKey(from, to)];
-  if (direct) { const m = resolve(direct, false); if (m) return m; }
-  const reverse = legAltitudeOriginMap[legAltitudeKey(to, from)];
-  if (reverse) { const m = resolve(reverse, true); if (m) return m; }
+  const row = legAltitudeOriginMap[legAltitudeKey(from, to)];
+  if (row) { const m = resolve(row, row.from !== from); if (m) return m; }
   return null;
 }

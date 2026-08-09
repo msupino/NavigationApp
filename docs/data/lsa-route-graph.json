@@ -561,7 +561,9 @@
         "lsa"
       ],
       "name": "צומת גומא",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Gome Junction",
+      "enSource": "cross-referenced"
     },
     "GOVRN": {
       "code": "GOVRN",
@@ -677,7 +679,9 @@
         "lsa"
       ],
       "name": "הגושרים",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "HaGoshrim Interchange",
+      "enSource": "cross-referenced"
     },
     "HOMMA": {
       "code": "HOMMA",
@@ -900,7 +904,9 @@
         "lsa"
       ],
       "name": "מחלף מאחז",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Ma'ahaz Interchange",
+      "enSource": "cross-referenced"
     },
     "MCZVA": {
       "code": "MCZVA",
@@ -958,7 +964,9 @@
         "lsa"
       ],
       "name": "מחלף אייל",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Eyal Interchange",
+      "enSource": "cross-referenced"
     },
     "MHOLA": {
       "code": "MHOLA",
@@ -1372,7 +1380,9 @@
         "lsa"
       ],
       "name": "ראשונים",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Rishonim",
+      "enSource": "cross-referenced"
     },
     "RUHOT": {
       "code": "RUHOT",
@@ -1643,7 +1653,9 @@
         "lsa"
       ],
       "name": "שער שומרון",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Sha'ar Shomron",
+      "enSource": "cross-referenced"
     },
     "SUPER": {
       "code": "SUPER",
@@ -1858,7 +1870,9 @@
         "lsa"
       ],
       "name": "צומת אדם",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Adam Junction",
+      "enSource": "cross-referenced"
     },
     "ZAMID": {
       "code": "ZAMID",
@@ -1872,7 +1886,9 @@
         "lsa"
       ],
       "name": "צומת עמיעד",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Amiad junction",
+      "enSource": "cross-referenced"
     },
     "ZASHD": {
       "code": "ZASHD",
@@ -1901,7 +1917,9 @@
         "lsa"
       ],
       "name": "צומת ברכיה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Berekhya Junction",
+      "enSource": "cross-referenced"
     },
     "ZBTMS": {
       "code": "ZBTMS",
@@ -1915,7 +1933,9 @@
         "lsa"
       ],
       "name": "צומת בית המכס",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Bet HaMekhes Junction",
+      "enSource": "cross-referenced"
     },
     "ZBTZD": {
       "code": "ZBTZD",
@@ -1929,7 +1949,9 @@
         "lsa"
       ],
       "name": "צומת בית צידה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Bethsaida Junction",
+      "enSource": "cross-referenced"
     },
     "ZEMAH": {
       "code": "ZEMAH",
@@ -1943,7 +1965,9 @@
         "lsa"
       ],
       "name": "צמח",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Zemach Junction",
+      "enSource": "cross-referenced"
     },
     "ZGLNI": {
       "code": "ZGLNI",
@@ -1957,7 +1981,9 @@
         "lsa"
       ],
       "name": "צומת גולני",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Golani Interchange",
+      "enSource": "cross-referenced"
     },
     "ZGOAL": {
       "code": "ZGOAL",
@@ -2057,7 +2083,9 @@
         "lsa"
       ],
       "name": "צומת נווה ימין",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Neva Yamin Junction",
+      "enSource": "cross-referenced"
     },
     "ZOFAR": {
       "code": "ZOFAR",
@@ -2101,7 +2129,9 @@
         "lsa"
       ],
       "name": "צומת פלוגות",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Plugot Junction",
+      "enSource": "cross-referenced"
     },
     "ZUKIM": {
       "code": "ZUKIM",
@@ -2143,7 +2173,9 @@
         "lsa"
       ],
       "name": "אליקים",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Elyakim Interchange",
+      "enSource": "cross-referenced"
     },
     "he:אפעה#2": {
       "he": "אפעה",
@@ -2189,7 +2221,9 @@
         "lsa"
       ],
       "name": "בת שלמה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Bat Shlomo Interchange",
+      "enSource": "cross-referenced"
     },
     "he:יצהר-מזרח": {
       "he": "יצהר מזרח",
@@ -2346,7 +2380,9 @@
         "lsa"
       ],
       "name": "צומת מסעדה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Mas'ade Junction",
+      "enSource": "cross-referenced"
     },
     "he:צומת-קדומים": {
       "he": "צומת קדומים",
@@ -2384,10 +2420,11 @@
       {
         "to": "SMRAT",
         "inboundAltitude": 700,
-        "outboundAltitude": 700,
+        "outboundAltitude": 400,
         "distanceNm": 2.06,
         "chartDistanceNm": 2,
-        "status": "ocr-candidate"
+        "status": "reviewed",
+        "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right."
       }
     ],
     "AHIUD": [
@@ -2403,39 +2440,43 @@
     "ARAVA": [
       {
         "to": "HAZVA",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
         "distanceNm": 13.69,
         "chartDistanceNm": 13.5,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "ZOHAR",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
         "distanceNm": 10.12,
         "chartDistanceNm": 10.2,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "HAZVA": [
       {
         "to": "ARAVA",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
         "distanceNm": 13.69,
         "chartDistanceNm": 13.5,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "ZOHAR": [
       {
         "to": "ARAVA",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
         "distanceNm": 10.12,
         "chartDistanceNm": 10.2,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "HATRU",
@@ -2457,73 +2498,81 @@
       },
       {
         "to": "TARAD",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2600,
+        "outboundAltitude": 2300,
         "distanceNm": 4.61,
         "chartDistanceNm": 4.5,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "TARAD": [
       {
         "to": "ARRAD",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2300,
+        "outboundAltitude": 2600,
         "distanceNm": 4.61,
         "chartDistanceNm": 4.5,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "MYTAR",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2500,
+        "outboundAltitude": 2200,
         "distanceNm": 9.83,
         "chartDistanceNm": 9.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "BMNUH": [
       {
         "to": "YAHEL",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1400,
+        "outboundAltitude": 1700,
         "distanceNm": 13.39,
         "chartDistanceNm": 13.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "ZOFAR",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1700,
+        "outboundAltitude": 1400,
         "distanceNm": 15.64,
         "chartDistanceNm": 15.6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "ZZHOR",
         "inboundAltitude": 1400,
-        "outboundAltitude": 1400,
+        "outboundAltitude": 1700,
         "distanceNm": 6.1,
         "chartDistanceNm": 6.1,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "YAHEL": [
       {
         "to": "BMNUH",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1700,
+        "outboundAltitude": 1400,
         "distanceNm": 13.39,
         "chartDistanceNm": 13.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "KTORA",
-        "inboundAltitude": 1700,
+        "inboundAltitude": 1400,
         "outboundAltitude": 1700,
         "distanceNm": 6.2,
         "chartDistanceNm": 6.3,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       },
       {
         "to": "SIZFN",
@@ -2537,19 +2586,21 @@
     "BOKER": [
       {
         "to": "OVDAT",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
         "distanceNm": 4.4,
         "chartDistanceNm": 4.4,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "TLLIM",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
         "distanceNm": 7.07,
         "chartDistanceNm": 7,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "YRUHM",
@@ -2563,11 +2614,12 @@
     "OVDAT": [
       {
         "to": "BOKER",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
         "distanceNm": 4.4,
         "chartDistanceNm": 4.4,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "RUHOT",
@@ -2582,28 +2634,31 @@
       {
         "to": "SHAHR",
         "inboundAltitude": 3000,
-        "outboundAltitude": 3000,
+        "outboundAltitude": 2700,
         "distanceNm": 9.24,
         "chartDistanceNm": 9.2,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "SHAHR": [
       {
         "to": "ALLON",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
         "distanceNm": 5.28,
         "chartDistanceNm": 5.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "DUMIM",
-        "inboundAltitude": 3000,
+        "inboundAltitude": 2700,
         "outboundAltitude": 3000,
         "distanceNm": 9.24,
         "chartDistanceNm": 9.2,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "EIRON": [
@@ -2685,49 +2740,54 @@
       },
       {
         "to": "OLGAH",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
         "distanceNm": 4.1,
         "chartDistanceNm": 4,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "ENGDI": [
       {
         "to": "SHALM",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
         "distanceNm": 5.35,
         "chartDistanceNm": 5.7,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "SHALM": [
       {
         "to": "ENGDI",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
         "distanceNm": 5.35,
         "chartDistanceNm": 5.7,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "ZUKIM",
         "inboundAltitude": 800,
-        "outboundAltitude": 800,
+        "outboundAltitude": 500,
         "distanceNm": 9.88,
         "chartDistanceNm": 9.8,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "FAZEL": [
       {
         "to": "ALLON",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
         "distanceNm": 4.93,
         "chartDistanceNm": 4.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "ARGMN",
@@ -2739,29 +2799,32 @@
       },
       {
         "to": "NAAMA",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
         "distanceNm": 8.49,
         "chartDistanceNm": 8.4,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
       }
     ],
     "NAAMA": [
       {
         "to": "ALMOG",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 500,
+        "outboundAltitude": 800,
         "distanceNm": 7.06,
         "chartDistanceNm": 7.1,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
       },
       {
         "to": "FAZEL",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
         "distanceNm": 8.49,
         "chartDistanceNm": 8.4,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
       }
     ],
     "FRDIS": [
@@ -2820,38 +2883,42 @@
       {
         "to": "YAHEL",
         "inboundAltitude": 1700,
-        "outboundAltitude": 1700,
+        "outboundAltitude": 1400,
         "distanceNm": 6.2,
         "chartDistanceNm": 6.3,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       },
       {
         "to": "YOTVT",
         "inboundAltitude": 1000,
-        "outboundAltitude": 1000,
+        "outboundAltitude": 1700,
         "distanceNm": 5.42,
         "chartDistanceNm": 5.3,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "KUVSH": [
       {
         "to": "NCITY",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2000,
+        "outboundAltitude": 2000,
         "distanceNm": 2.23,
         "chartDistanceNm": 2.2,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "NCITY": [
       {
         "to": "KUVSH",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2000,
+        "outboundAltitude": 2000,
         "distanceNm": 2.23,
         "chartDistanceNm": 2.2,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "ZGOAL",
@@ -2907,49 +2974,54 @@
       },
       {
         "to": "TYONA",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1200,
+        "outboundAltitude": 800,
         "distanceNm": 4.6,
         "chartDistanceNm": 4.6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
       }
     ],
     "MINGV": [
       {
         "to": "NASIH",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1200,
+        "outboundAltitude": 1500,
         "distanceNm": 2.36,
         "chartDistanceNm": 2.4,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "NASIH": [
       {
         "to": "MINGV",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1500,
+        "outboundAltitude": 1200,
         "distanceNm": 2.36,
         "chartDistanceNm": 2.4,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "MYTAR": [
       {
         "to": "SOKET",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2500,
         "distanceNm": 2,
         "chartDistanceNm": 1.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "TARAD",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2200,
+        "outboundAltitude": 2500,
         "distanceNm": 9.83,
         "chartDistanceNm": 9.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "SOKET": [
@@ -2963,11 +3035,12 @@
       },
       {
         "to": "MYTAR",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2500,
+        "outboundAltitude": 3000,
         "distanceNm": 2,
         "chartDistanceNm": 1.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "ZGOAL": [
@@ -2981,29 +3054,32 @@
       },
       {
         "to": "ZLHAV",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
         "distanceNm": 3.69,
         "chartDistanceNm": 3.6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "ZLHAV": [
       {
         "to": "BKAMA",
-        "inboundAltitude": 1700,
+        "inboundAltitude": 2000,
         "outboundAltitude": 1700,
         "distanceNm": 4.29,
         "chartDistanceNm": 4.4,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       },
       {
         "to": "ZGOAL",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
         "distanceNm": 3.69,
         "chartDistanceNm": 3.6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "SUPER": [
@@ -3035,47 +3111,52 @@
       },
       {
         "to": "PELEG",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
         "distanceNm": 6.21,
         "chartDistanceNm": 6.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "SDTYM",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
         "distanceNm": 4.1,
         "chartDistanceNm": 4,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "PELEG": [
       {
         "to": "OLGAH",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
         "distanceNm": 6.21,
         "chartDistanceNm": 6.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "VINGT",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
         "distanceNm": 4.56,
         "chartDistanceNm": 4.6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "RUHOT": [
       {
         "to": "MESAR",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 3200,
+        "outboundAltitude": 3500,
         "distanceNm": 11.86,
         "chartDistanceNm": 11.8,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "OVDAT",
@@ -3089,11 +3170,12 @@
     "VINGT": [
       {
         "to": "PELEG",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 400,
+        "outboundAltitude": 400,
         "distanceNm": 4.56,
         "chartDistanceNm": 4.6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "SFAIM",
@@ -3107,19 +3189,21 @@
     "ZUKIM": [
       {
         "to": "ALMOG",
-        "inboundAltitude": 500,
+        "inboundAltitude": 800,
         "outboundAltitude": 500,
         "distanceNm": 4.41,
         "chartDistanceNm": 4.4,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       },
       {
         "to": "SHALM",
-        "inboundAltitude": 800,
+        "inboundAltitude": 500,
         "outboundAltitude": 800,
         "distanceNm": 9.88,
         "chartDistanceNm": 9.8,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "BRORA": [
@@ -3155,57 +3239,63 @@
     "ZZHOR": [
       {
         "to": "BMNUH",
-        "inboundAltitude": 1400,
+        "inboundAltitude": 1700,
         "outboundAltitude": 1400,
         "distanceNm": 6.1,
         "chartDistanceNm": 6.1,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       },
       {
         "to": "MESAR",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2500,
+        "outboundAltitude": 2200,
         "distanceNm": 13.98,
         "chartDistanceNm": 14.1,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "YOTVT": [
       {
         "to": "KTORA",
-        "inboundAltitude": 1000,
+        "inboundAltitude": 1700,
         "outboundAltitude": 1000,
         "distanceNm": 5.42,
         "chartDistanceNm": 5.3,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "ZOFAR": [
       {
         "to": "BMNUH",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1400,
+        "outboundAltitude": 1700,
         "distanceNm": 15.64,
         "chartDistanceNm": 15.6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "HOVAV": [
       {
         "to": "NEGEV",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
         "distanceNm": 4.6,
         "chartDistanceNm": 4.5,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "OHLIM",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
         "distanceNm": 3.38,
         "chartDistanceNm": 3.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "SOKET",
@@ -3219,37 +3309,41 @@
     "NEGEV": [
       {
         "to": "HOVAV",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
         "distanceNm": 4.6,
         "chartDistanceNm": 4.5,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "TLLIM",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2200,
+        "outboundAltitude": 2500,
         "distanceNm": 5.87,
         "chartDistanceNm": 6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "TLLIM": [
       {
         "to": "BOKER",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
         "distanceNm": 7.07,
         "chartDistanceNm": 7,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "NEGEV",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2500,
+        "outboundAltitude": 2200,
         "distanceNm": 5.87,
         "chartDistanceNm": 6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "YRUHM": [
@@ -3263,77 +3357,85 @@
       },
       {
         "to": "DIMON",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
         "distanceNm": 6.69,
         "chartDistanceNm": 6.8,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "DIMON": [
       {
         "to": "YRUHM",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
         "distanceNm": 6.69,
         "chartDistanceNm": 6.8,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "MESAR": [
       {
         "to": "RUHOT",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 3500,
+        "outboundAltitude": 3200,
         "distanceNm": 11.86,
         "chartDistanceNm": 11.8,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "ZZHOR",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2200,
+        "outboundAltitude": 2500,
         "distanceNm": 13.98,
         "chartDistanceNm": 14.1,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "OHLIM": [
       {
         "to": "HOVAV",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
         "distanceNm": 3.38,
         "chartDistanceNm": 3.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "BKAMA": [
       {
         "to": "ZLHAV",
         "inboundAltitude": 1700,
-        "outboundAltitude": 1700,
+        "outboundAltitude": 2000,
         "distanceNm": 4.29,
         "chartDistanceNm": 4.4,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "ALMOG": [
       {
         "to": "NAAMA",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 800,
+        "outboundAltitude": 500,
         "distanceNm": 7.06,
         "chartDistanceNm": 7.1,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
       },
       {
         "to": "ZUKIM",
         "inboundAltitude": 500,
-        "outboundAltitude": 500,
+        "outboundAltitude": 800,
         "distanceNm": 4.41,
         "chartDistanceNm": 4.4,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "ARGMN": [
@@ -3357,19 +3459,21 @@
     "ALLON": [
       {
         "to": "FAZEL",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2700,
         "distanceNm": 4.93,
         "chartDistanceNm": 4.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "SHAHR",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2700,
+        "outboundAltitude": 3000,
         "distanceNm": 5.28,
         "chartDistanceNm": 5.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "TIRAT": [
@@ -3393,59 +3497,65 @@
       },
       {
         "to": "MOVIL",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1000,
+        "outboundAltitude": 2200,
         "distanceNm": 7.93,
         "chartDistanceNm": 7.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
       }
     ],
     "MOVIL": [
       {
         "to": "HASID",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2200,
+        "outboundAltitude": 1000,
         "distanceNm": 7.93,
         "chartDistanceNm": 7.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
       }
     ],
     "SMRAT": [
       {
         "to": "AAKKO",
-        "inboundAltitude": 700,
+        "inboundAltitude": 400,
         "outboundAltitude": 700,
         "distanceNm": 2.06,
         "chartDistanceNm": 2,
-        "status": "ocr-candidate"
+        "status": "reviewed",
+        "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right."
       }
     ],
     "DAROM": [
       {
         "to": "HOTRM",
-        "inboundAltitude": 700,
+        "inboundAltitude": 400,
         "outboundAltitude": 700,
         "distanceNm": 2.42,
         "chartDistanceNm": 2.6,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "HOTRM": [
       {
         "to": "BOREN",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 400,
+        "outboundAltitude": 700,
         "distanceNm": 3.03,
         "chartDistanceNm": 2.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "DAROM",
         "inboundAltitude": 700,
-        "outboundAltitude": 700,
+        "outboundAltitude": 400,
         "distanceNm": 2.42,
         "chartDistanceNm": 2.6,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "BOREN": [
@@ -3459,11 +3569,12 @@
       },
       {
         "to": "HOTRM",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 700,
+        "outboundAltitude": 400,
         "distanceNm": 3.03,
         "chartDistanceNm": 2.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "DALIA": [
@@ -3507,11 +3618,12 @@
       },
       {
         "to": "NTAIM",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 800,
+        "outboundAltitude": 1200,
         "distanceNm": 4.6,
         "chartDistanceNm": 4.6,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
       },
       {
         "to": "SUPER",
@@ -3525,11 +3637,12 @@
     "SIRNI": [
       {
         "to": "NSHRM",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 800,
+        "outboundAltitude": 1200,
         "distanceNm": 3.39,
         "chartDistanceNm": 3.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "NTAIM",
@@ -3543,55 +3656,61 @@
     "NSHRM": [
       {
         "to": "AYLON",
-        "inboundAltitude": 1200,
-        "outboundAltitude": 800,
+        "inboundAltitude": 800,
+        "outboundAltitude": 1200,
         "distanceNm": 3.43,
         "chartDistanceNm": 3.5,
-        "status": "ocr-candidate"
+        "status": "reviewed",
+        "source": "Direction dispute resolved by the maintainer (Aug 2026): 1200 toward NSHRM, 800 toward AYLON. Our OCR had the mirror image; a secondary source agreed with this resolution."
       },
       {
         "to": "NCSHN",
         "inboundAltitude": 800,
-        "outboundAltitude": 800,
+        "outboundAltitude": 1200,
         "distanceNm": 5.87,
         "chartDistanceNm": 5.8,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       },
       {
         "to": "SIRNI",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1200,
+        "outboundAltitude": 800,
         "distanceNm": 3.39,
         "chartDistanceNm": 3.3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "AYLON": [
       {
         "to": "LTRUN",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1200,
+        "outboundAltitude": 1600,
         "distanceNm": 3.02,
         "chartDistanceNm": 3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "NSHRM",
-        "inboundAltitude": 800,
-        "outboundAltitude": 1200,
+        "inboundAltitude": 1200,
+        "outboundAltitude": 800,
         "distanceNm": 3.43,
         "chartDistanceNm": 3.5,
-        "status": "ocr-candidate"
+        "status": "reviewed",
+        "source": "Direction dispute resolved by the maintainer (Aug 2026): 1200 toward NSHRM, 800 toward AYLON. Our OCR had the mirror image; a secondary source agreed with this resolution."
       }
     ],
     "LTRUN": [
       {
         "to": "AYLON",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1600,
+        "outboundAltitude": 1200,
         "distanceNm": 3.02,
         "chartDistanceNm": 3,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "BSEMS",
@@ -3603,21 +3722,23 @@
       },
       {
         "to": "SHARG",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1800,
+        "outboundAltitude": 2300,
         "distanceNm": 2.04,
         "chartDistanceNm": 2.1,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "SHARG": [
       {
         "to": "LTRUN",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2300,
+        "outboundAltitude": 1800,
         "distanceNm": 2.04,
         "chartDistanceNm": 2.1,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "BSEMS": [
@@ -3631,47 +3752,52 @@
       },
       {
         "to": "NCSHN",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
         "distanceNm": 4.89,
         "chartDistanceNm": 4.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "ZHRYA",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
         "distanceNm": 3.78,
         "chartDistanceNm": 3.8,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "NCSHN": [
       {
         "to": "BSEMS",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 1700,
+        "outboundAltitude": 2000,
         "distanceNm": 4.89,
         "chartDistanceNm": 4.9,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
         "to": "NSHRM",
-        "inboundAltitude": 800,
+        "inboundAltitude": 1200,
         "outboundAltitude": 800,
         "distanceNm": 5.87,
         "chartDistanceNm": 5.8,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
       }
     ],
     "ZHRYA": [
       {
         "to": "BSEMS",
-        "inboundAltitude": null,
-        "outboundAltitude": null,
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1700,
         "distanceNm": 3.78,
         "chartDistanceNm": 3.8,
-        "status": "unknown"
+        "status": "candidate",
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       }
     ],
     "BOVED": [

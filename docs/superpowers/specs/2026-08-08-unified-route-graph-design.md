@@ -161,6 +161,60 @@ their validators and all 68 call sites still receive exactly the shapes they val
 projection is `docs/app/route-graph-shapes.js` — one implementation, shared by the app, the
 proof and the tests, so the app cannot drift from what the proof checked.
 
+### Altitudes cross-referenced for seven of the thirteen unknowns
+
+A secondary source's route network (extracted Aug 2026) was cross-checked against ours:
+**136 of its 139 CVFR points match ours by code AND position with zero disagreements**, and
+281 directed edges agree exactly on altitude. That mutual agreement is what qualifies it as
+an altitude source for links we could not read off a chart.
+
+Seven `status:"unknown"` pairs took its per-direction altitudes and moved to
+`status:"candidate"`, with the provenance in `source` (KRYON↔GALIM, GALIM↔GILAM,
+AMNON↔HULAT, DUMIM↔MIHMS, HAZVA↔ZOFAR, TIRAT↔EITAN, MMORR↔ENGDI). Six pairs remain
+unknown: five airfield joins the source carries as `alt 0` (its circuit-join convention,
+not a published altitude) and ZOHAR↔LLMZ, which no source speaks to.
+
+The equivalence proof now carries an explicit `INTENTIONAL_EDITS` list: each post-migration
+edit is named with its reason, reported in the output, and anything NOT on the list still
+fails the proof. Recorded for the audit, not folded in: the source disputes two of our
+one-way flags (OLGAH→HADRA, AHIUD→AAKKO — it flies both), two altitudes
+(ALUMT→DESHE 3000 vs 3500, YOTVT→SHRUT 2500 vs 3000), carries three points we do not
+(MNSZN, RSNIM, SOREK), and marks 57 corridors inactive — a corridor-availability dimension
+we do not model. Direction flags come from charts only, as ever.
+
+### The LSA table, cross-checked the same way
+
+The same secondary source carries the LSA network with per-direction altitudes and a time
+dimension (weekday / weekend-only / time-restricted point sets) that we do not model.
+Cross-check: 166 of its 221 points match ours with zero position conflicts (the 55
+unmatched are mostly its "bubble" anchors, a concept we carry as area polygons).
+
+What it showed about our own data: the LSA OCR pass read **one altitude per segment and
+applied it to both directions**, but the routes use per-direction altitudes (a ±300 ft
+direction split). In 11 of 13 comparable pairs, our single value matched exactly one of
+their two directions -- the other direction of ours was a copy, not a reading.
+
+Taken: **34 unknown pairs filled** (4 of them the source marks inactive, noted in
+`source`), and **9 symmetric OCR rows split into per-direction values**, keeping our OCR
+value on the direction it matched. AAKKO↔SMRAT — flagged as a conflict (our OCR 700 both
+ways, the source 400 both ways) — was resolved by the maintainer as a direction split:
+700 toward SMRAT, 400 toward AAKKO; both sources had captured one direction each. AYLON↔NSHRM — the mirror-image direction dispute —
+was likewise resolved by the maintainer: 1200 toward NSHRM, 800 toward AYLON; our OCR had
+it flipped, the source had it right. Left alone, for the chart audit: the 15 pairs the
+source does not carry. The heli table's 38 unknowns remain: the source has no
+heli network.
+
+### The segment key is canonical now
+
+The graph stores a segment in whichever direction it walks first, so ~30% of leg-altitude
+rows project out reversed (altitudes swapped with them — same fact from the other end).
+Every consumer used to handle that by probing `legAltitudeKey` in both orientations, which
+worked but left a trap: a future single-orientation lookup would silently miss those rows.
+`legAltitudeKey` now sorts its endpoints — one canonical key, one lookup — and orientation
+is decided where it matters, by comparing the leg's `from` with the row's own `from`.
+Old saved routes carrying a directional `_legAltitudeKey` heal on first repaint: the key
+mismatch marks the auto leg changed once and the canonical key is stored.
+
 ### What the strengthened proof caught
 
 The first version of the proof compared comm-change by **count only**. The count was right

@@ -6210,12 +6210,21 @@ function altitudePairSegmentsForChart() {
 }
 
 function altitudePairsDataForCopy() {
-  const data = (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments))
+  const live = (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments))
     ? legAltitudeDataset
     : { version: 1, segments: altitudePairSegmentsForChart() };
-  for (const segment of data.segments || []) normalizeAltitudePairSegment(segment);
-  syncLegAltitudeDatasetDirectionPool(data);
-  return data;
+  for (const segment of live.segments || []) normalizeAltitudePairSegment(segment);
+  // A CLONE in exactly the shape the app ships: the copy exists so a maintainer can diff
+  // it against the leg-altitude projection of the route graph and fold edits back in.
+  // directionPool is not part of that shape any more (always derived, never stored), and
+  // the old version also mutated the live dataset just to build its own output.
+  const out = {};
+  for (const k of ['version', 'source', 'sourceCharts', 'schema']) {
+    if (live[k] !== undefined) out[k] = live[k];
+  }
+  out.segments = (live.segments || []).map(segment => ({ ...segment }));
+  out.segments.sort((a, b) => (a.from + a.to).localeCompare(b.from + b.to));
+  return out;
 }
 
 function altitudePairsJsonForCopy() {

@@ -243,6 +243,9 @@ test.describe('Charts modal — frequency catalog table', () => {
       status: 'candidate',
     });
     expect(copiedDeror).not.toHaveProperty('oneWay');
+    // The copy is the shape the app ships -- segments only. directionPool is derived, not
+    // stored, and a copy carrying it could not be diffed against the shipped projection.
+    expect(copied).not.toHaveProperty('directionPool');
 
     await desheReset.click();
     await expect(desheInputs.nth(0)).toHaveValue('3000');

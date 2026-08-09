@@ -34,8 +34,39 @@ export const { navWaypointsFromGraph, legAltitudeFromGraph, commChangeFromGraph 
 // Compares against the retired files, read from git at BASELINE. Only the fields the app
 // READS are compared: those files also carried commentary keys (_NOTE, _TODO), which are
 // notes to a maintainer, not data.
+// The graph is the source now, so it is allowed to move on from the baseline -- but only
+// where a human meant it to. Each entry names the undirected pair and the reason; any
+// divergence NOT listed here is still a proof failure. This keeps the proof strict about
+// accidents while letting the data live.
+const INTENTIONAL_EDITS = {
+  // Altitudes cross-referenced from a secondary source (Aug 2026) for links that were
+  // status=unknown -- routable but with no published altitude read yet. status moved
+  // unknown -> candidate; the chart read is still owed.
+  'AMNON|HULAT': 'altitudes cross-referenced, pending chart read',
+  'DUMIM|MIHMS': 'altitudes cross-referenced, pending chart read',
+  'EITAN|TIRAT': 'altitudes cross-referenced, pending chart read',
+  'ENGDI|MMORR': 'altitudes cross-referenced, pending chart read',
+  'GALIM|KRYON': 'altitudes cross-referenced, pending chart read',
+  'GALIM|GILAM': 'altitudes cross-referenced, pending chart read',
+  'HAZVA|ZOFAR': 'altitudes cross-referenced, pending chart read',
+  // AAKKO<->SMRAT: the flagged conflict (our OCR 700 both ways, the secondary source 400
+  // both ways) resolved by the maintainer as a direction split: 700 toward SMRAT, 400
+  // toward AAKKO. status=reviewed.
+  'AAKKO|SMRAT': 'direction split resolved by the maintainer',
+  // AYLON<->NSHRM: the mirror-image direction dispute resolved by the maintainer: 1200
+  // toward NSHRM, 800 toward AYLON. Our OCR had it flipped; the secondary source agreed
+  // with the resolution. status=reviewed.
+  'AYLON|NSHRM': 'direction dispute resolved by the maintainer',
+  // LSA: 34 unknown links filled the same way, and 9 symmetric OCR rows split into
+  // per-direction values (the single OCR value matched one direction exactly; the other
+  // direction was a copy, not a reading). The pair list lives in the graph's own `source`
+  // strings; keyed here by the shared marker so the list does not have to be repeated.
+  __lsaBySource: 'cross-referenced from a secondary source (Aug 2026)',
+};
+
 export function verify() {
   const problems = [];
+  const intentional = [];
   for (const lay of LAYERS) {
     const graph = read(`${lay}-route-graph.json`);
     const srcWp = readOld(`${lay}-nav-waypoints.json`);
@@ -83,6 +114,20 @@ export function verify() {
         return JSON.stringify(a[k]) === JSON.stringify(norm[k]);
       };
       const bad = keys.filter(k => !same(k));
+      // An edit is intentional when the pair is listed, or when the graph row itself says
+      // its altitudes came from the cross-reference -- that marker is only ever written by
+      // a deliberate data edit, never by the migration.
+      const marked = norm.source && norm.source.includes(INTENTIONAL_EDITS.__lsaBySource) &&
+        bad.every(k => ['inboundAltitude', 'outboundAltitude', 'status', 'source'].includes(k));
+      if (bad.length && marked) {
+        intentional.push(`${lay} ${a.from}<->${a.to}: cross-referenced altitudes`);
+        continue;
+      }
+      if (bad.length && INTENTIONAL_EDITS[[a.from, a.to].sort().join('|')]) {
+        intentional.push(`${lay} ${a.from}<->${a.to}: ` +
+          INTENTIONAL_EDITS[[a.from, a.to].sort().join('|')]);
+        continue;
+      }
       if (bad.length) {
         problems.push(`${lay} ${a.from}->${a.to}: ${bad.join(', ')} differ ` +
           bad.map(k => `(${k}: ${JSON.stringify(a[k])} -> ${JSON.stringify(norm[k])})`).join(' '));
@@ -116,15 +161,19 @@ export function verify() {
       }
     }
   }
-  return problems;
+  return { problems, intentional };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const problems = verify();
+  const { problems, intentional } = verify();
   if (problems.length) {
     console.log(`NOT equivalent — ${problems.length} problem(s):`);
     for (const p of problems.slice(0, 40)) console.log('  ' + p);
     process.exitCode = 1;
+  } else if (intentional.length) {
+    console.log('equivalent, except ' + intentional.length +
+      ' intentional edit(s) the graph made after the migration:');
+    for (const p of intentional) console.log('  ' + p);
   } else {
     console.log('equivalent: every field the app reads is reproducible from the graph');
   }

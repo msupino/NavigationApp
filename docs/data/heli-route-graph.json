@@ -590,7 +590,9 @@
         "lsa"
       ],
       "name": "צומת גומא",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Gome Junction",
+      "enSource": "cross-referenced"
     },
     "GOVRN": {
       "code": "GOVRN",
@@ -721,7 +723,9 @@
         "lsa"
       ],
       "name": "הגושרים",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "HaGoshrim Interchange",
+      "enSource": "cross-referenced"
     },
     "HNINA": {
       "code": "HNINA",
@@ -1020,7 +1024,9 @@
         "lsa"
       ],
       "name": "מחלף אייל",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Eyal Interchange",
+      "enSource": "cross-referenced"
     },
     "MIGDL": {
       "code": "MIGDL",
@@ -1061,7 +1067,9 @@
         "heli"
       ],
       "name": "מ. נס ציונה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Nes Tsiyona Interchange",
+      "enSource": "cross-referenced"
     },
     "MOVIL": {
       "code": "MOVIL",
@@ -1424,7 +1432,9 @@
         "lsa"
       ],
       "name": "ראשונים",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Rishonim",
+      "enSource": "cross-referenced"
     },
     "RUHOT": {
       "code": "RUHOT",
@@ -1791,7 +1801,9 @@
         "lsa"
       ],
       "name": "צומת אדם",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Adam Junction",
+      "enSource": "cross-referenced"
     },
     "ZAFIT": {
       "code": "ZAFIT",
@@ -1819,7 +1831,9 @@
         "lsa"
       ],
       "name": "צומת עמיעד",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Amiad junction",
+      "enSource": "cross-referenced"
     },
     "ZASHD": {
       "code": "ZASHD",
@@ -1848,7 +1862,9 @@
         "lsa"
       ],
       "name": "צ. ברכיה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Berekhya Junction",
+      "enSource": "cross-referenced"
     },
     "ZBTMS": {
       "code": "ZBTMS",
@@ -1862,7 +1878,9 @@
         "lsa"
       ],
       "name": "צומת בית המכס",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Bet HaMekhes Junction",
+      "enSource": "cross-referenced"
     },
     "ZBTZD": {
       "code": "ZBTZD",
@@ -1876,7 +1894,9 @@
         "lsa"
       ],
       "name": "צומת בית צידה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Bethsaida Junction",
+      "enSource": "cross-referenced"
     },
     "ZELIM": {
       "code": "ZELIM",
@@ -1889,7 +1909,9 @@
         "heli"
       ],
       "name": "צאלים",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Tse'elim Junction",
+      "enSource": "cross-referenced"
     },
     "ZEMAH": {
       "code": "ZEMAH",
@@ -1903,7 +1925,9 @@
         "lsa"
       ],
       "name": "צמח",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Zemach Junction",
+      "enSource": "cross-referenced"
     },
     "ZETIM": {
       "code": "ZETIM",
@@ -1916,7 +1940,9 @@
         "heli"
       ],
       "name": "עין זיתים",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "En Zetim Junction",
+      "enSource": "cross-referenced"
     },
     "ZGLNI": {
       "code": "ZGLNI",
@@ -1930,7 +1956,9 @@
         "lsa"
       ],
       "name": "צומת גולני",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Golani Interchange",
+      "enSource": "cross-referenced"
     },
     "ZHRYA": {
       "code": "ZHRYA",
@@ -2002,7 +2030,9 @@
         "lsa"
       ],
       "name": "צומת נווה ימין",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Neva Yamin Junction",
+      "enSource": "cross-referenced"
     },
     "ZOFAR": {
       "code": "ZOFAR",
@@ -2046,7 +2076,9 @@
         "lsa"
       ],
       "name": "צומת פלוגות",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Plugot Junction",
+      "enSource": "cross-referenced"
     },
     "ZSARA": {
       "code": "ZSARA",
@@ -2111,7 +2143,9 @@
         "heli"
       ],
       "name": "אורים",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Urim Junction",
+      "enSource": "cross-referenced"
     },
     "he:אליקים": {
       "he": "אליקים",
@@ -2123,7 +2157,9 @@
         "lsa"
       ],
       "name": "אליקים",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Elyakim Interchange",
+      "enSource": "cross-referenced"
     },
     "he:אנדרטה": {
       "he": "אנדרטה",
@@ -2246,7 +2282,9 @@
         "lsa"
       ],
       "name": "בת שלמה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Bat Shlomo Interchange",
+      "enSource": "cross-referenced"
     },
     "he:גבעות-בר": {
       "he": "גבעות בר",
@@ -2367,7 +2405,9 @@
         "heli"
       ],
       "name": "טירה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Tira Junction",
+      "enSource": "cross-referenced"
     },
     "he:יקנעם": {
       "he": "יקנעם",
@@ -2400,7 +2440,9 @@
         "heli"
       ],
       "name": "כרמיאל",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Karmi'el Junction",
+      "enSource": "cross-referenced"
     },
     "he:כרמל": {
       "he": "כרמל",
@@ -2422,7 +2464,9 @@
         "heli"
       ],
       "name": "מ. ניצני עוז",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Nizanei Oz",
+      "enSource": "cross-referenced"
     },
     "he:מאגר": {
       "he": "מאגר",
@@ -2588,7 +2632,9 @@
         "heli"
       ],
       "name": "עירון",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Iron interchange",
+      "enSource": "cross-referenced"
     },
     "he:עץ": {
       "he": "עץ",
@@ -2610,7 +2656,9 @@
         "heli"
       ],
       "name": "עציונה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Etsyona Junction",
+      "enSource": "cross-referenced"
     },
     "he:עתלית": {
       "he": "עתלית",
@@ -2654,7 +2702,9 @@
         "heli"
       ],
       "name": "צ. גבעתי",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Giv'ati Junction",
+      "enSource": "cross-referenced"
     },
     "he:צ.-חנניה": {
       "he": "צ. חנניה",
@@ -2665,7 +2715,9 @@
         "heli"
       ],
       "name": "צ. חנניה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Hananya Junction",
+      "enSource": "cross-referenced"
     },
     "he:צ.-לקיה": {
       "he": "צ. לקיה",
@@ -2698,7 +2750,9 @@
         "heli"
       ],
       "name": "צ. מעון",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Maon Junction",
+      "enSource": "cross-referenced"
     },
     "he:צ.-עדשים": {
       "he": "צ. עדשים",
@@ -2731,7 +2785,9 @@
         "heli"
       ],
       "name": "צ. תל ערד",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Tel Arad Junction",
+      "enSource": "cross-referenced"
     },
     "he:צומת-אביטל": {
       "he": "צומת אביטל",
@@ -2755,7 +2811,9 @@
         "lsa"
       ],
       "name": "צומת מסעדה",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Mas'ade Junction",
+      "enSource": "cross-referenced"
     },
     "he:צוקים": {
       "he": "צוקים",
@@ -2799,7 +2857,9 @@
         "heli"
       ],
       "name": "ראש העין",
-      "report": "onRequest"
+      "report": "onRequest",
+      "en": "Rosh Ha'Ayin Junction",
+      "enSource": "cross-referenced"
     },
     "he:רותם": {
       "he": "רותם",
