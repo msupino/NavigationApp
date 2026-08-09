@@ -1423,10 +1423,11 @@ function drawAreas() {
     octx.fill();
     octx.stroke();
   }
-  // Names, at each bubble's centroid (zoomed in enough to be readable). Own font tunables:
-  // a bubble label competes with a busy chart underneath, so it runs larger than the VOR
-  // labels it used to borrow from.
-  const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('lsaLabelMinZoom') : 8);
+  // Names, at each bubble's centroid. Hidden below zoom 10, the same threshold the
+  // nav-waypoint names use -- the country-wide view stays a map, not a label cloud. Own
+  // font tunables: a bubble label competes with a busy chart underneath, so it runs larger
+  // than the VOR labels it used to borrow from.
+  const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('lsaLabelMinZoom') : 10);
   if (showLabels) {
     // The tuned sizes are the size AT ZOOM 10 (the natural bubble-viewing zoom); the label
     // then breathes with the map -- gently, 1.3x per zoom step and clamped, not the 2x the

@@ -377,7 +377,7 @@ NavAid.tuningDefaults = {
   lsaLineWidthPx: { value: 2, min: 0.25, max: 10, step: 0.25, label: 'LSA bubble outline width' },
   lsaLabelFontPx: { value: 15, min: 8, max: 28, step: 1, label: 'LSA bubble name font size (px)' },
   lsaMetaFontPx: { value: 12, min: 6, max: 22, step: 1, label: 'LSA bubble alt/hours font size (px)' },
-  lsaLabelMinZoom: { value: 8, min: 5, max: 14, step: 1, label: 'LSA bubble labels visible from zoom' },
+  lsaLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'LSA bubble labels visible from zoom' },
   lsaHighlightWidthPx: { value: 4, min: 0.5, max: 12, step: 0.5, label: 'LSA bubble highlight width' },
   notamColor: { value: '#c026d3', type: 'color', label: 'NOTAM area color' },
   notamFillAlpha: { value: 0.14, min: 0, max: 1, step: 0.02, label: 'NOTAM area fill alpha' },
@@ -450,7 +450,7 @@ NavAid.tuningDefaults = {
   profileYPadPx: { value: 34, min: 8, max: 80, step: 1, label: 'Vertical profile side padding' },
   airfieldLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'Airfield label min zoom' },
   navWpLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'Nav-waypoint label min zoom' },
-  vorLabelMinZoom: { value: 8, min: 5, max: 16, step: 1, label: 'VOR label min zoom' },
+  vorLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'VOR label min zoom' },
   windDir: { value: 0, min: 0, max: 360, step: 5, label: 'Default wind direction (°true FROM)' },
   windSpeed: { value: 0, min: 0, max: 200, step: 1, label: 'Default wind speed (kt; 0 = calm)' },
 
