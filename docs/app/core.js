@@ -917,6 +917,7 @@ window.S = Object.assign({
   tbSigmet: '⚠ SIGMET',
   chooseLsaBubble: 'LSA bubble',
   bubbleAltBand: 'Altitude band',
+  unitFeet: 'ft',
   bubbleActive: 'Active',
   bubbleWeekendOnly: 'Weekends & holidays only',
   bubbleWeekendTag: 'weekend',
