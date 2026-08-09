@@ -14,7 +14,6 @@ const shapes = require('../docs/app/route-graph-shapes.js');
 
 const DATA = path.join(__dirname, '..', 'docs', 'data');
 // One request goes out per layer now, so one glob covers all three kinds.
-const ROUTE_GRAPH_GLOB = '**/cvfr-route-graph.json*';
 const graphGlob = (layer) => `**/${layer}-route-graph.json*`;
 
 const _cache = {};
@@ -169,4 +168,4 @@ function _merged(acc) {
 }
 
 module.exports = { routeGraph, navWaypoints, legAltitude, commChange, waypointRows,
-  graphFixture, stubGraph, ROUTE_GRAPH_GLOB, graphGlob };
+  graphFixture, stubGraph, graphGlob };

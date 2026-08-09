@@ -1,7 +1,7 @@
 # Known Frequencies
 
 This CVFR summary mirrors the reusable `callSigns` catalog in
-`docs/data/cvfr-comm-change.json`. LSA and helicopter data live in their
+`the comm-change projection of docs/data/cvfr-route-graph.json`. LSA and helicopter data live in their
 correspondingly prefixed files.
 The first table lists call signs currently referenced by `points[].callSigns`.
 The second table keeps catalog frequencies that are not assigned to any

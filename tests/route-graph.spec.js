@@ -142,6 +142,29 @@ test('comm change lives on the node, with its call signs', () => {
   expect(g.nodes.BASAN.callSigns).toContain('PLUTO_EAST');
 });
 
+test('every CVFR node carries the labels its validator requires', () => {
+  // validateNavWaypoints treats en and he as required strings on the cvfr prefix. The old
+  // file made that invariant visible in every row; in a hand-edited graph it is implicit,
+  // and one node added without a Hebrew label would alert on every draw. Pin it here.
+  const g = layerGraph('cvfr');
+  const bad = Object.entries(g.nodes)
+    .filter(([, n]) => n.layers.includes('cvfr'))
+    .filter(([, n]) => !(n.en || n.code) || !n.he)
+    .map(([id]) => id);
+  expect(bad).toEqual([]);
+});
+
+test('airfields are tagged, because a landing mid-route needs its own plan', () => {
+  // Carried over from the retired cvfr-route-graph.spec.js: the app resolves mid-route
+  // airfields against airfields.json, but the graph's own tagging is the data audit that
+  // catches a published field slipping in as a plain waypoint.
+  const g = graph();
+  expect(g.nodes.LLHZ.kind).toBe('airfield');
+  expect(g.nodes.KNTRY.kind).toBe('waypoint');
+  const kinds = new Set(Object.values(g.nodes).map(n => n.kind));
+  expect([...kinds].sort()).toEqual(['airfield', 'waypoint']);
+});
+
 test('cross-referenced codes are labelled, and conflicts keep both', () => {
   const g = graph();
   const xref = Object.values(g.nodes).filter(n => n.codeSource === 'cross-referenced');

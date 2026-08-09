@@ -1331,9 +1331,10 @@ let _fplRouteGraph = null;
 async function fplLoadRouteGraph() {
   if (_fplRouteGraph !== null) return _fplRouteGraph;
   try {
-    const r = await fetch('data/cvfr-route-graph.json');
-    if (!r.ok) throw new Error(String(r.status));
-    const g = await r.json();
+    // Through draw.js's memoized loader, not a second fetch: that one carries the ?v=
+    // cache-bust, so the corridor expansion and the map cannot disagree about which
+    // graph they are reading after a deploy.
+    const g = await routeGraphData('cvfr');
     _fplRouteGraph = (g && g.nodes && g.edges) ? g : false;
   } catch (e) {
     _fplRouteGraph = false;          // no graph: file exactly what was drawn

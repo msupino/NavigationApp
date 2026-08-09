@@ -1251,7 +1251,10 @@ function routeGraphData(prefix) {
 }
 
 async function _fetchLayerDataRaw(kind) {
-  if (ROUTE_GRAPH_KINDS[kind]) {
+  // typeof-guarded: if app/route-graph-shapes.js failed to load, the graph-served kinds
+  // fail at their own fetch below (404 on the retired URLs), but 'areas' and any future
+  // file-backed kind stay alive instead of every call dying on a ReferenceError.
+  if (typeof ROUTE_GRAPH_KINDS !== 'undefined' && ROUTE_GRAPH_KINDS[kind]) {
     // Same fall-back rule as the files had: the active layer's graph, else cvfr's.
     const pfx0 = layerDataPrefix();
     const order = pfx0 === 'cvfr' ? ['cvfr'] : [pfx0, 'cvfr'];
@@ -1464,12 +1467,15 @@ async function loadCommChange() {
     commChangeMap = m;
     return commChangeMap;
   } catch (e) {
+    // A FETCH failure is left retryable (state stays null): all three kinds now ride one
+    // graph file, so the next draw's loadNavWaypoints() refetches it anyway and a success
+    // there is a success for this kind too. Committing {} here is how one dropped request
+    // used to kill the rings and the altitude table for the whole session while the
+    // waypoints quietly recovered. Schema errors above still commit {} -- bad data does
+    // not get better by asking again. No retry storm: concurrent callers join the shared
+    // in-flight fetch via the memo.
     console.warn('Failed to load comm-change dataset:', e);
-    if (gen === _layerGen) {
-      commChangeCallSigns = {};
-      commChangeMap = {};                  // graceful degrade — no rings, no retry
-    }
-    return commChangeMap;
+    return {};
   }
 }
 
@@ -1531,9 +1537,11 @@ async function loadLegAltitudes() {
     legAltitudeMapPrefix = prefix;
     return legAltitudeMap;
   } catch (e) {
+    // Same fetch-failure policy as loadCommChange, for the same reason: the kinds share
+    // one file now, so leaving the state null lets the next shared fetch repopulate the
+    // altitude table instead of freezing it empty for the session.
     console.warn('Failed to load leg-altitude dataset:', e);
-    if (gen === _layerGen) resetLegAltitudeState(layerDataPrefix());
-    return legAltitudeMap;
+    return {};
   }
 }
 
