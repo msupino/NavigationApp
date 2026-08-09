@@ -67,7 +67,19 @@ NavAid.tuningDefaults = {
   vorRangeRingSteps: { value: 96, min: 12, max: 256, step: 4, label: 'VOR range ring smoothness (segments)' },
   vorRangeRingLabelGapPx: { value: 3, min: 0, max: 20, step: 1, label: 'VOR range ring label gap' },
   searchMaxResults: { value: 12, min: 3, max: 40, step: 1, label: 'Search: total results' },
+  // Which base layers the picker offers, gist-controlled booleans: true = offered,
+  // false = hidden from the picker, the satellite modal and the mosaic. CVFR is not on
+  // the list -- it is the fallback layer everything else degrades to, so the app never
+  // lets it be configured away. All ship offered; pulling one (e.g. Helicopters, whose
+  // chart and dataset are the thinnest) is a gist edit, not a build:
+  //   "layerEnabledHelicopters": false
+  layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
+  layerEnabledHelicopters: { value: true, type: 'bool', label: 'Offer the Helicopters layer' },
+  layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
+  layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
+  layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
   searchMaxVor: { value: 3, min: 0, max: 20, step: 1, label: 'Search: max VOR stations' },
+  searchMaxBubbles: { value: 12, min: 0, max: 20, step: 1, label: 'Search: max LSA bubbles' },
   searchFlashMs: { value: 3500, min: 0, max: 15000, step: 250,
     label: 'Search: how long the result flashes (ms, 0 = off)' },
   searchFlashRadiusPx: { value: 30, min: 8, max: 80, step: 2,
@@ -374,6 +386,9 @@ NavAid.tuningDefaults = {
   sigmetDashOffPx: { value: 5, min: 0, max: 60, step: 1, label: 'SIGMET dash gap' },
   sigmetLabelFontPx: { value: 12, min: 6, max: 32, step: 1, label: 'SIGMET label font' },
   lsaLineWidthPx: { value: 2, min: 0.25, max: 10, step: 0.25, label: 'LSA bubble outline width' },
+  lsaLabelFontPx: { value: 15, min: 8, max: 28, step: 1, label: 'LSA bubble name font size (px)' },
+  lsaMetaFontPx: { value: 12, min: 6, max: 22, step: 1, label: 'LSA bubble alt/hours font size (px)' },
+  lsaLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'LSA bubble labels visible from zoom' },
   lsaHighlightWidthPx: { value: 4, min: 0.5, max: 12, step: 0.5, label: 'LSA bubble highlight width' },
   notamColor: { value: '#c026d3', type: 'color', label: 'NOTAM area color' },
   notamFillAlpha: { value: 0.14, min: 0, max: 1, step: 0.02, label: 'NOTAM area fill alpha' },
@@ -446,7 +461,7 @@ NavAid.tuningDefaults = {
   profileYPadPx: { value: 34, min: 8, max: 80, step: 1, label: 'Vertical profile side padding' },
   airfieldLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'Airfield label min zoom' },
   navWpLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'Nav-waypoint label min zoom' },
-  vorLabelMinZoom: { value: 8, min: 5, max: 16, step: 1, label: 'VOR label min zoom' },
+  vorLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'VOR label min zoom' },
   windDir: { value: 0, min: 0, max: 360, step: 5, label: 'Default wind direction (°true FROM)' },
   windSpeed: { value: 0, min: 0, max: 200, step: 1, label: 'Default wind speed (kt; 0 = calm)' },
 
@@ -533,7 +548,9 @@ NavAid.tuningGroups = [
   { name: 'Overlay labels + flash', keys: ['overlayLabelHaloWidthPx', 'liveHeadingTickHaloColor', 'liveHeadingTickHaloAlpha', 'liveHeadingTickHaloWidthPx', 'notamFlashColor', 'notamBadgeTextColor', 'notamBadgeFontPx'] },
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
-  { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
+  { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters',
+    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap'] },
+  { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
   { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
@@ -570,7 +587,7 @@ NavAid.tuningGroups = [
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
   { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
-  { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx'] },
+  { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
@@ -898,6 +915,12 @@ window.S = Object.assign({
   tbShowWind: 'Show per-leg wind effect',
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
   tbSigmet: '⚠ SIGMET',
+  chooseLsaBubble: 'LSA bubble',
+  bubbleAltBand: 'Altitude band',
+  bubbleActive: 'Active',
+  bubbleWeekendOnly: 'Weekends & holidays only',
+  bubbleWeekendTag: 'weekend',
+  bubbleOpenAll: 'Open all day',
   tbSigmetTitle: 'Active international SIGMET hazard areas for the Israel region (source: NOAA AWC)',
   tbShowNotam: 'Show NOTAMs',
   tbShowNotamTitle: 'Overlay active NOTAM areas for the Israel FIR (LLLL). Click “NOTAM list” for the full texts. Planning aid only.',
@@ -2220,6 +2243,16 @@ function legKiteHidden(leg) {
 function legDriftHidden(leg) {
   return !!(leg && leg.hideDrift);
 }
+// Effective visibility of one leg's drift cone. The per-leg override is symmetric now:
+// hideDrift beats a global ON (declutter one leg), and showDrift beats a global OFF (bring
+// one leg's cone back on an otherwise clean map). The global used to be a hard ceiling,
+// which made the inspector's "Show drift lines" button a no-op whenever the toolbar toggle
+// was off -- a control that does nothing teaches the pilot it is broken.
+function legDriftVisible(leg, globalOn) {
+  if (leg && leg.hideDrift) return false;
+  if (leg && leg.showDrift) return true;
+  return !!globalOn;
+}
 
 // A PR preview may SHARE a big static asset directory with the deployed root instead of
 // carrying its own copy: every preview used to ship ~12 MB of chart-overlay imagery it had
@@ -2979,6 +3012,17 @@ const layers = {
       attribution: '© OpenStreetMap contributors' }),
 };
 
+// Is a base layer offered at all? CVFR always is -- it is the fallback everything else
+// degrades to. The rest hang on gist-controlled tunables, so a layer can be pulled from
+// (or restored to) the shipped app without a build.
+function layerOffered(name) {
+  if (name === 'CVFR') return true;
+  const key = 'layerEnabled' + String(name || '').replace(/\s+/g, '');
+  if (typeof NavAid === 'undefined' || !NavAid.tuningDefaults || !NavAid.tuningDefaults[key]) return true;
+  // Bool tunable: the gist writes true/false, exactly as it reads.
+  return tune(key) !== false && tune(key) !== 0;
+}
+
 const LAYER_KEY = 'navaid.layer';
 let initialLayer = layers.CVFR;
 try {
@@ -2986,7 +3030,9 @@ try {
   if (saved === 'OSM') { saved = 'OpenStreetMap'; localStorage.setItem(LAYER_KEY, saved); }
   if (saved === 'Nav') { saved = 'Navigation'; localStorage.setItem(LAYER_KEY, saved); }
   if (saved === 'Heli') { saved = 'Helicopters'; localStorage.setItem(LAYER_KEY, saved); }
-  if (saved && layers[saved]) initialLayer = layers[saved];
+  // A saved layer that is no longer offered falls back to CVFR rather than resurrecting a
+  // hidden chart from localStorage.
+  if (saved && layers[saved] && layerOffered(saved)) initialLayer = layers[saved];
 } catch (e) { /* storage unavailable */ }
 
 // First-run view. z9 fitted the whole country but drew the CVFR chart at 0.13× --

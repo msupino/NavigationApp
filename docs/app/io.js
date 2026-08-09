@@ -504,7 +504,7 @@ function validateRoute(d) {
       }
       // Written only as the literal 1, so anything else -- "false", 0, "" -- is a file
       // saying something the app cannot honestly interpret.
-      for (const k of ['hideKite', 'hideDrift', 'speedAuto', 'retSpeedAuto']) {
+      for (const k of ['hideKite', 'hideDrift', 'showDrift', 'speedAuto', 'retSpeedAuto']) {
         if (!Object.prototype.hasOwnProperty.call(l, k)) continue;
         if (l[k] !== 1) errs.push(p + '.' + k + ': expected 1, got ' + JSON.stringify(l[k]));
       }
@@ -1008,6 +1008,7 @@ function serializeRoute() {
       // label offsets beside it: their own decision about how the chart should read.
       ...(l.hideKite ? { hideKite: 1 } : {}),
       ...(l.hideDrift ? { hideDrift: 1 } : {}),
+      ...(l.showDrift ? { showDrift: 1 } : {}),
       ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
     })),
     notes: state.notes.map(n => ({
@@ -1279,10 +1280,14 @@ function fplMidRouteAirfields(seq) {
   }
   return out;
 }
-function fplLandingSite() {
+// `lastWp` overrides the drawn route's endpoint: with a return route selected, the plan
+// LANDS at the return route's final point (the home field), while state.waypoints still
+// ends at the turnaround -- which is how the landing acknowledgement used to vanish from
+// exactly the flights that end at an airfield.
+function fplLandingSite(lastWp) {
   const wps = state.waypoints || [];
   if (wps.length < 2) return null;
-  const ref = fplAerodromeRef(wps[wps.length - 1]);
+  const ref = fplAerodromeRef(lastWp || wps[wps.length - 1]);
   if (!ref) return null;
   // A published clearance or ATIS frequency is a PROXY for a controlled field, not a
   // declaration of one: the six fields that publish one get the א׳-11 §2.ח tower wording,
@@ -2192,6 +2197,7 @@ function applyRouteData(d) {
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
     ...(l.hideKite ? { hideKite: 1 } : {}),
     ...(l.hideDrift ? { hideDrift: 1 } : {}),
+      ...(l.showDrift ? { showDrift: 1 } : {}),
     // Absent = pinned, so a route written before these existed (or by hand) keeps
     // the explicit speeds it names instead of drifting with the local default.
     ...(l.speedAuto ? { _legSpeedAuto: 1 } : {}),
@@ -5457,6 +5463,7 @@ function restoreRoute() {
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
     ...(l.hideKite ? { hideKite: 1 } : {}),
     ...(l.hideDrift ? { hideDrift: 1 } : {}),
+      ...(l.showDrift ? { showDrift: 1 } : {}),
     // Reloading the tab is not a speed edit, so a leg still tracking the default
     // keeps tracking it -- otherwise one refresh would freeze the whole route.
     ...(l._legSpeedAuto ? { _legSpeedAuto: 1 } : {}),
@@ -8608,14 +8615,15 @@ function showFplDialog() {
         showFplXcForm({ dateLocal: state1.date, timeLocal: state1.time });
         return;
       }
+      const retData = returnRouteData();
       const res = buildIcaoFpl(profile, { dateLocal: state1.date, timeLocal: state1.time,
-        returnRouteData: returnRouteData(),
+        returnRouteData: retData,
         routeGraph: expandCb.checked ? await fplLoadRouteGraph() : null });
       if (res.errs) {
         showFieldErrors(errBox, res.errs, fieldEls);
         return;
       }
-      renderReview(res);
+      renderReview(res, retData);
     };
     const cancel = document.createElement('button');
     cancel.type = 'button';
@@ -8626,7 +8634,10 @@ function showFplDialog() {
     body.appendChild(btns);
   }
 
-  function renderReview(res) {
+  // `retData` is the selected return route's serialized data (or null): renderReview is a
+  // sibling of the form function, so the picker's closure is not in scope here, and the
+  // landing acknowledgement has to be told where the flight actually ends.
+  function renderReview(res, retData) {
     const profileForSubject = profile;
     body.textContent = '';
     const head = document.createElement('div');
@@ -8675,7 +8686,9 @@ function showFplDialog() {
     // Third box when the flight lands at a site we can name. Controlled fields get the
     // tower wording (א׳-11 §2.ח: coordinated with the tower, continuous radio contact);
     // everywhere else it is the site's operator, as the filing page words it.
-    const landing = wantAcks ? fplLandingSite() : null;
+    const retLast = retData && Array.isArray(retData.waypoints) && retData.waypoints.length
+      ? retData.waypoints[retData.waypoints.length - 1] : null;
+    const landing = wantAcks ? fplLandingSite(retLast) : null;
     if (landing) {
       // English literal fallbacks, as every other string in this file has: a submission
       // gate labelled with its own DOM id would ask the pilot to confirm something they

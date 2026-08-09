@@ -2163,20 +2163,6 @@
       "name": "ZZHOR",
       "report": "onRequest"
     },
-    "he:אליקים": {
-      "he": "אליקים",
-      "lat": 32.63475,
-      "lng": 35.0639,
-      "kind": "waypoint",
-      "layers": [
-        "heli",
-        "lsa"
-      ],
-      "name": "אליקים",
-      "report": "onRequest",
-      "en": "Elyakim Interchange",
-      "enSource": "cross-referenced"
-    },
     "he:אפעה#2": {
       "he": "אפעה",
       "lat": 31.14105,
@@ -2210,20 +2196,6 @@
       ],
       "name": "בראון",
       "report": "onRequest"
-    },
-    "he:בת-שלמה": {
-      "he": "בת שלמה",
-      "lat": 32.59629,
-      "lng": 35.00416,
-      "kind": "waypoint",
-      "layers": [
-        "heli",
-        "lsa"
-      ],
-      "name": "בת שלמה",
-      "report": "onRequest",
-      "en": "Bat Shlomo Interchange",
-      "enSource": "cross-referenced"
     },
     "he:יצהר-מזרח": {
       "he": "יצהר מזרח",
@@ -2269,17 +2241,6 @@
       "name": "כפר כמא",
       "report": "onRequest"
     },
-    "he:כרם-מהר״ל": {
-      "he": "כרם מהר״ל",
-      "lat": 32.63909,
-      "lng": 34.97738,
-      "kind": "waypoint",
-      "layers": [
-        "lsa"
-      ],
-      "name": "כרם מהר״ל",
-      "report": "onRequest"
-    },
     "he:מכורה": {
       "he": "מכורה",
       "lat": 32.14483,
@@ -2300,17 +2261,6 @@
         "lsa"
       ],
       "name": "מרסבא",
-      "report": "onRequest"
-    },
-    "he:ניצנים": {
-      "he": "ניצנים",
-      "lat": 31.71195,
-      "lng": 34.62831,
-      "kind": "waypoint",
-      "layers": [
-        "lsa"
-      ],
-      "name": "ניצנים",
       "report": "onRequest"
     },
     "he:נפח": {
@@ -2405,6 +2355,163 @@
       ],
       "name": "שניר",
       "report": "onRequest"
+    },
+    "ELYKM": {
+      "he": "אליקים",
+      "lat": 32.63475,
+      "lng": 35.0639,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "אליקים",
+      "report": "onRequest",
+      "en": "Elyakim Interchange",
+      "enSource": "cross-referenced",
+      "code": "ELYKM",
+      "codeSource": "cross-referenced"
+    },
+    "BTSLM": {
+      "he": "בת שלמה",
+      "lat": 32.59629,
+      "lng": 35.00416,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "בת שלמה",
+      "report": "onRequest",
+      "en": "Bat Shlomo Interchange",
+      "enSource": "cross-referenced",
+      "code": "BTSLM",
+      "codeSource": "cross-referenced"
+    },
+    "CNHRL": {
+      "he": "כרם מהר״ל",
+      "lat": 32.63909,
+      "lng": 34.97738,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "כרם מהר״ל",
+      "report": "onRequest",
+      "code": "CNHRL",
+      "codeSource": "cross-referenced"
+    },
+    "NIZNM": {
+      "he": "ניצנים",
+      "lat": 31.71195,
+      "lng": 34.62831,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "name": "ניצנים",
+      "report": "onRequest",
+      "code": "NIZNM",
+      "codeSource": "cross-referenced"
+    },
+    "TAALL": {
+      "code": "TAALL",
+      "he": "צומת טל אל",
+      "lat": 32.931886,
+      "lng": 35.16029,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "codeSource": "cross-referenced"
+    },
+    "MACHR": {
+      "code": "MACHR",
+      "he": "מאכר",
+      "lat": 32.93645308096028,
+      "lng": 35.15599710303871,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "codeSource": "cross-referenced"
+    },
+    "LLUR": {
+      "code": "LLUR",
+      "he": "מנחת אורים",
+      "lat": 31.269407,
+      "lng": 34.537416,
+      "kind": "airstrip",
+      "layers": [
+        "lsa"
+      ],
+      "codeSource": "cross-referenced"
+    },
+    "LLHF": {
+      "code": "LLHF",
+      "he": "מנחת אליעז",
+      "lat": 32.535478,
+      "lng": 35.433929,
+      "kind": "airstrip",
+      "layers": [
+        "lsa"
+      ],
+      "codeSource": "cross-referenced"
+    },
+    "LLNN": {
+      "code": "LLNN",
+      "he": "מנחת נען",
+      "lat": 31.884102,
+      "lng": 34.886591,
+      "kind": "airstrip",
+      "layers": [
+        "lsa"
+      ],
+      "codeSource": "cross-referenced"
+    },
+    "LLSS": {
+      "code": "LLSS",
+      "he": "מנחת סעד",
+      "lat": 31.471282,
+      "lng": 34.559426,
+      "kind": "airstrip",
+      "layers": [
+        "lsa"
+      ],
+      "codeSource": "cross-referenced"
+    },
+    "LLRU": {
+      "code": "LLRU",
+      "he": "מנחת רוחמה",
+      "lat": 31.462616,
+      "lng": 34.720945,
+      "kind": "airstrip",
+      "layers": [
+        "lsa"
+      ],
+      "codeSource": "cross-referenced"
+    },
+    "LLSO": {
+      "code": "LLSO",
+      "he": "מנחת שמרת",
+      "lat": 32.94477259732884,
+      "lng": 35.1040195063099,
+      "kind": "airstrip",
+      "layers": [
+        "lsa"
+      ],
+      "codeSource": "cross-referenced"
+    },
+    "GORAL": {
+      "code": "GORAL",
+      "he": "גורל",
+      "lat": 31.32420345039221,
+      "lng": 34.78721356777545,
+      "kind": "waypoint",
+      "layers": [
+        "lsa"
+      ],
+      "codeSource": "cross-referenced"
     }
   },
   "edges": {
@@ -2425,6 +2532,14 @@
         "chartDistanceNm": 2,
         "status": "reviewed",
         "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right."
+      },
+      {
+        "to": "LLSO",
+        "distanceNm": 1.76,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
       }
     ],
     "AHIUD": [
@@ -2927,6 +3042,14 @@
         "distanceNm": 1.48,
         "chartDistanceNm": 1.5,
         "status": "unknown"
+      },
+      {
+        "to": "GORAL",
+        "distanceNm": 2.29,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed."
       }
     ],
     "MEHOL": [
@@ -3080,6 +3203,14 @@
         "chartDistanceNm": 3.6,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "GORAL",
+        "distanceNm": 2.88,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed."
       }
     ],
     "SUPER": [
@@ -3416,6 +3547,14 @@
         "chartDistanceNm": 4.4,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      },
+      {
+        "to": "LLRU",
+        "distanceNm": 2.69,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
       }
     ],
     "ALMOG": [
@@ -3525,6 +3664,14 @@
         "chartDistanceNm": 2,
         "status": "reviewed",
         "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right."
+      },
+      {
+        "to": "LLSO",
+        "distanceNm": 0.82,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
       }
     ],
     "DAROM": [
@@ -3680,6 +3827,14 @@
         "chartDistanceNm": 3.3,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+      },
+      {
+        "to": "LLNN",
+        "distanceNm": 1.54,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
       }
     ],
     "AYLON": [
@@ -3787,6 +3942,14 @@
         "chartDistanceNm": 5.8,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+      },
+      {
+        "to": "LLNN",
+        "distanceNm": 4.52,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
       }
     ],
     "ZHRYA": [
@@ -3854,6 +4017,166 @@
         "distanceNm": 7.19,
         "chartDistanceNm": 7.1,
         "status": "unknown"
+      }
+    ],
+    "TAALL": [
+      {
+        "to": "MACHR",
+        "distanceNm": 0.35,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "published link on the weekday point list cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      },
+      {
+        "to": "YASIF",
+        "distanceNm": 1.25,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "published link on the weekday point list cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "MACHR": [
+      {
+        "to": "TAALL",
+        "distanceNm": 0.35,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "published link on the weekday point list cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "YASIF": [
+      {
+        "to": "TAALL",
+        "distanceNm": 1.25,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "published link on the weekday point list cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "LLUR": [
+      {
+        "to": "TZHOT",
+        "distanceNm": 2.26,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "TZHOT": [
+      {
+        "to": "LLUR",
+        "distanceNm": 2.26,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "LLHF": [
+      {
+        "to": "ENHRD",
+        "distanceNm": 2.85,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "ENHRD": [
+      {
+        "to": "LLHF",
+        "distanceNm": 2.85,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "LLNN": [
+      {
+        "to": "NSHRM",
+        "distanceNm": 1.54,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      },
+      {
+        "to": "NCSHN",
+        "distanceNm": 4.52,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "LLRU": [
+      {
+        "to": "BKAMA",
+        "distanceNm": 2.69,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      },
+      {
+        "to": "MACHZ",
+        "distanceNm": 4.33,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "MACHZ": [
+      {
+        "to": "LLRU",
+        "distanceNm": 4.33,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "LLSO": [
+      {
+        "to": "AAKKO",
+        "distanceNm": 1.76,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      },
+      {
+        "to": "SMRAT",
+        "distanceNm": 0.82,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+      }
+    ],
+    "GORAL": [
+      {
+        "to": "NCITY",
+        "distanceNm": 2.29,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed."
+      },
+      {
+        "to": "ZLHAV",
+        "distanceNm": 2.88,
+        "inboundAltitude": null,
+        "outboundAltitude": null,
+        "status": "unknown",
+        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed."
       }
     ]
   },

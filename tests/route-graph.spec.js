@@ -210,8 +210,11 @@ test('airfields are tagged, because a landing mid-route needs its own plan', () 
   const g = graph();
   expect(g.nodes.LLHZ.kind).toBe('airfield');
   expect(g.nodes.KNTRY.kind).toBe('waypoint');
+  // 'airstrip': an LSA-only landing ground carried as a routable point -- it is not an
+  // airfields.json field (no runways/plates/ATIS there) and not a plain reporting point.
   const kinds = new Set(Object.values(g.nodes).map(n => n.kind));
-  expect([...kinds].sort()).toEqual(['airfield', 'waypoint']);
+  expect([...kinds].sort()).toEqual(['airfield', 'airstrip', 'waypoint']);
+  expect(g.nodes.LLNN.kind).toBe('airstrip');
 });
 
 test('cross-referenced codes are labelled, and conflicts keep both', () => {
@@ -240,7 +243,9 @@ test('the data census matches what the maintainer last signed off', () => {
   const expected = {
     cvfr: { layerNodes: 172, segments: 269, commChange: 52, unknown: 6 },
     heli: { layerNodes: 209, segments: 85, commChange: 0, unknown: 38 },
-    lsa: { layerNodes: 167, segments: 75, commChange: 0, unknown: 15 },
+    // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
+    // from the second capture (#1485) -- the first census update under the new mechanism.
+    lsa: { layerNodes: 176, segments: 87, commChange: 0, unknown: 27 },
   };
   const got = {};
   for (const lay of LAYERS) {

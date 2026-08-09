@@ -112,6 +112,7 @@ function inspectorSelectionDataReady(sel) {
   if (sel.type === 'navwp') return Array.isArray(navWP);
   if (sel.type === 'airfield') return Array.isArray(airfields);
   if (sel.type === 'vor') return Array.isArray(vors);
+  if (sel.type === 'lsaArea') return Array.isArray(areas);
   return true;
 }
 
@@ -142,6 +143,9 @@ function normalizeInspectorSelection(sel) {
   }
   if (sel.type === 'vor') {
     return Array.isArray(vors) && index < vors.length ? { type: 'vor', index } : null;
+  }
+  if (sel.type === 'lsaArea') {
+    return Array.isArray(areas) && index < areas.length ? { type: 'lsaArea', index } : null;
   }
   return null;
 }
@@ -443,6 +447,14 @@ function dedupePointCandidates(candidates) {
   return out;
 }
 function pointChoiceText(c) {
+  if (c.type === 'lsaArea') {
+    const a = (typeof areas !== 'undefined' && areas && areas[c.index]) || {};
+    const bits = [];
+    if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) bits.push(a.lowFt + '-' + a.highFt + ' ft');
+    if (a.openFromHour != null) bits.push(String(a.openFromHour).padStart(2, '0') + ':00\u2192');
+    return { primary: areaLabel(a) || a.icao || (S.chooseLsaBubble || 'LSA bubble'),
+      meta: (S.chooseLsaBubble || 'LSA bubble') + (bits.length ? ' \u00b7 ' + bits.join('  ') : '') };
+  }
   if (c.type === 'notam') {
     const n = c.notam || {};
     return {
@@ -1609,6 +1621,7 @@ function satelliteModalLayers() {
   const out = {};
   if (typeof layers !== 'object' || !layers) return out;
   for (const nm in layers) {
+    if (typeof layerOffered === 'function' && !layerOffered(nm)) continue;
     const src = layers[nm];
     if (src && src._url) {
       const opts = Object.assign({}, src.options);
@@ -1913,7 +1926,9 @@ function showRouteMosaicModal() {
   body.className = 'route-mosaic-body';
 
   // Toolbar: layer picker (CVFR / Satellite / …) + Print.
-  const names = (typeof layers !== 'undefined') ? Object.keys(layers) : ['Satellite'];
+  const names = (typeof layers !== 'undefined')
+    ? Object.keys(layers).filter(n => typeof layerOffered !== 'function' || layerOffered(n))
+    : ['Satellite'];
   const bar = document.createElement('div');
   bar.className = 'route-mosaic-bar';
   const sel = document.createElement('select');
@@ -2497,7 +2512,12 @@ function showInspector() {
     // button: a pilot decluttering a busy area wants one or the other, not both together.
     const driftBtn = document.createElement('button');
     driftBtn.className = 'insp-btn';
-    const driftOff = typeof legDriftHidden === 'function' && legDriftHidden(leg);
+    // Label from the EFFECTIVE state, so the button always does what it says: with the
+    // global toggle off, "Show drift lines" turns this one leg's cone on (showDrift) --
+    // it used to clear a hide flag nothing was reading, a click that changed nothing.
+    const driftOff = typeof legDriftVisible === 'function'
+      ? !legDriftVisible(leg, window.showDrift)
+      : (typeof legDriftHidden === 'function' && legDriftHidden(leg));
     driftBtn.textContent = driftOff
       ? (S.showLegDrift || 'Show drift lines')
       : (S.hideLegDrift || 'Hide drift lines');
@@ -2508,8 +2528,13 @@ function showInspector() {
     driftBtn.setAttribute('aria-label', driftBtn.title);
     driftBtn.setAttribute('aria-pressed', driftOff ? 'true' : 'false');
     driftBtn.onclick = () => {
-      if (legDriftHidden(leg)) delete leg.hideDrift;
-      else leg.hideDrift = 1;
+      if (driftOff) {
+        delete leg.hideDrift;
+        if (!window.showDrift) leg.showDrift = 1;   // global off: this leg opts in
+      } else {
+        delete leg.showDrift;
+        if (window.showDrift) leg.hideDrift = 1;    // global on: this leg opts out
+      }
       if (typeof persist === 'function') persist();
       draw();
       showInspector();          // relabel the button to what it now does
@@ -2626,6 +2651,29 @@ function showInspector() {
     appendPointCoordinateRows(body, af);
     appendAirfieldDetailRows(body, af, title.value);
     appendAddToRouteButton(body, af);
+  } else if (state.selected.type === 'lsaArea') {
+    const a = (typeof areas !== 'undefined' && areas) ? areas[state.selected.index] : null;
+    if (!a) {
+      state.selected = null;
+      insp.classList.add('hidden');
+      clearStoredInspectorSelection();
+      return;
+    }
+    // "CODE / localized name", like the other read-only inspectors. The English label of
+    // most bubbles IS the code, so fall back to the Hebrew name rather than repeating it.
+    const bubbleName = areaLabel(a) !== (a.icao || '') ? areaLabel(a) : (a.he || '');
+    title.value = codeTitle(a.icao || '', bubbleName);
+    title.placeholder = ''; title.readOnly = true; title.oninput = null;
+    if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) {
+      body.appendChild(textRow(S.bubbleAltBand || 'Altitude band', a.lowFt + '-' + a.highFt + ' ft'));
+    }
+    // Availability, as the CHART's legend states it and nothing else: the tan class is
+    // active weekends and holidays only. (openFromHour still classifies the bubble, but a
+    // secondary source's hours are not shown -- the legend is the authority here.)
+    const wkndOnly = a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12);
+    body.appendChild(textRow(S.bubbleActive || 'Active',
+      wkndOnly ? (S.bubbleWeekendOnly || 'Weekends & holidays only')
+               : (S.bubbleOpenAll || 'Open all day')));
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
     if (!nw) {
@@ -3448,7 +3496,11 @@ map.on('mousedown', e => {
   // click opens its text.
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(e.latlng).map(n => ({ type: 'notam', notam: n })) : [];
-  const ovAll = ovHits.concat(notamHits);
+  // LSA bubbles are clickable like NOTAM areas -- last in the chooser, because a bubble
+  // covers a lot of map and everything drawn on top of it should win the plain click.
+  const bubbleHits = (includeOverlayChoices && typeof lsaAreasAtLatLng === 'function')
+    ? lsaAreasAtLatLng(e.latlng).map(i => ({ type: 'lsaArea', index: i })) : [];
+  const ovAll = ovHits.concat(notamHits, bubbleHits);
   // Already-selected item wins: if the press is on the item whose inspector is
   // open, drag it rather than surfacing the chooser for an overlapping item.
   if (includeOverlayChoices && grabSelected(p.x, p.y, e.latlng)) {
@@ -3999,7 +4051,9 @@ mapEl.addEventListener('touchstart', e => {
   // NOTAM areas/lines/badges as overlay choices (see the mousedown handler).
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(n => ({ type: 'notam', notam: n })) : [];
-  const ovAll = ovHits.concat(notamHits);
+  const bubbleHits = (includeOverlayChoices && typeof lsaAreasAtLatLng === 'function')
+    ? lsaAreasAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(i => ({ type: 'lsaArea', index: i })) : [];
+  const ovAll = ovHits.concat(notamHits, bubbleHits);
   // Airport count-badge wins over a waypoint on the same field (see mousedown).
   if (includeOverlayChoices && typeof notamBadgeNotamsAt === 'function') {
     const badge = notamBadgeNotamsAt(map.containerPointToLatLng([p.x, p.y]));

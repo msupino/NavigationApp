@@ -149,18 +149,32 @@ const layerSelect = document.getElementById('layer-select');
 // '---' is a non-selectable divider. Any layer not listed is appended after.
 const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', '---',
                      'Navigation', 'Satellite', 'OpenStreetMap'];
-const orderedLayerNames = [
-  ...LAYER_ORDER.filter(n => n === '---' || layers[n]),
-  ...Object.keys(layers).filter(n => !LAYER_ORDER.includes(n)),
+const orderedLayerNames = () => [
+  ...LAYER_ORDER.filter(n => n === '---' || (layers[n] && layerOffered(n))),
+  ...Object.keys(layers).filter(n => !LAYER_ORDER.includes(n) && layerOffered(n)),
 ];
-for (const name of orderedLayerNames) {
-  const opt = document.createElement('option');
-  if (name === '---') { opt.disabled = true; opt.textContent = '──────────'; layerSelect.appendChild(opt); continue; }
-  opt.value = name;
-  opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
-  if (map.hasLayer(layers[name])) opt.selected = true;
-  layerSelect.appendChild(opt);
+// (Re)build the picker from the OFFERED layers. Runs at boot and again after the gist
+// lands, because the gist is what turns layers on and off -- a chart pulled from service
+// disappears from here without a build, and the map falls back to CVFR if it was active.
+function rebuildLayerPicker() {
+  const current = layerSelect.value;
+  layerSelect.textContent = '';
+  for (const name of orderedLayerNames()) {
+    const opt = document.createElement('option');
+    if (name === '---') { opt.disabled = true; opt.textContent = '──────────'; layerSelect.appendChild(opt); continue; }
+    opt.value = name;
+    opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
+    if (map.hasLayer(layers[name])) opt.selected = true;
+    layerSelect.appendChild(opt);
+  }
+  const active = (typeof currentLayerName === 'function') ? currentLayerName() : current;
+  if (active && !layerOffered(active)) {
+    // The active layer just got pulled: land on CVFR, datasets and all.
+    layerSelect.value = 'CVFR';
+    layerSelect.onchange && layerSelect.onchange();
+  }
 }
+rebuildLayerPicker();
 layerSelect.onchange = () => {
   for (const name in layers) {
     if (name !== layerSelect.value && map.hasLayer(layers[name])) {
@@ -1827,6 +1841,11 @@ function runSearch() {
     kind: 'wp', cap: tune('searchMaxNavWp'), items: navWP, routable: true,
     match: w => hit(w.name, q) || hit(w.en, q) || hitHe(w.he),
   });
+  if (typeof areas !== 'undefined' && has(areas)) src.push({  // LSA bubbles (searchable by code or name)
+    kind: 'bubble', cap: tune('searchMaxBubbles'),
+    items: areas.map((a, i) => ({ ...a, _areaIndex: i })), routable: false,
+    match: a => hit(a.icao, q) || hit(a.en, q) || hit(a.name, q) || hitHe(a.he) || hitHe(a.name),
+  });
   if (has(state.waypoints)) src.push({                        // the user's own route
     kind: 'routewp', cap: tune('searchMaxRouteWp'), items: state.waypoints, routable: false,
     match: w => hit(w.name, q) || hitHe(w.he),
@@ -1873,6 +1892,14 @@ function runSearch() {
       if (w.type) bits.push(w.type);
       if (w.coverageNm) bits.push(w.coverageNm + ' NM');
       alt = bits.join(' \u00b7 ');
+    } else if (h.kind === 'bubble') {
+      primary = w.icao || areaLabel(w);
+      const bits = [];
+      const nm = areaLabel(w);
+      if (nm && nm !== primary) bits.push(nm);
+      if (Number.isFinite(w.lowFt) && Number.isFinite(w.highFt)) bits.push(w.lowFt + '-' + w.highFt + ' ft');
+      if (w.openFromHour != null) bits.push(String(w.openFromHour).padStart(2, '0') + ':00\u2192');
+      alt = bits.join(' \u00b7 ');
     } else if (h.kind === 'af') {
       primary = w.name;                  // ICAO is always shown first
       alt = (w[afField] || w.en || '');
@@ -1887,6 +1914,18 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      if (h.kind === 'bubble') {
+        // Fly to the bubble, select it and open its inspector -- a polygon has no single
+        // point, so the centroid is where the ring lands.
+        const c = areaCentroid(w.coords);
+        map.setView([c.lat, c.lng], Math.max(map.getZoom(), 10));
+        flashMapPoint(c.lat, c.lng);
+        state.selected = { type: 'lsaArea', index: w._areaIndex };
+        if (typeof showInspector === 'function') showInspector();
+        draw();
+        closeSearch();
+        return;
+      }
       if (multi && !h.src.routable) {
         // Route building works on named route points; a station is a place to look
         // at, so just fly the map there and leave the typed route untouched.
@@ -2261,6 +2300,7 @@ document.getElementById('reverse').onclick = () => {
       ...(l.vorRef ? { vorRef: l.vorRef } : {}),
       ...(l.hideKite ? { hideKite: 1 } : {}),
       ...(l.hideDrift ? { hideDrift: 1 } : {}),
+      ...(l.showDrift ? { showDrift: 1 } : {}),
       // Reversing is not a speed edit, so the pins travel -- but they travel WITH the
       // speeds, which swap above when the return path is shown. With it hidden both
       // directions take the forward speed, so both take the forward pin.
@@ -6518,6 +6558,8 @@ if (typeof loadRemoteConfig === "function") {
     // Gist may have flipped a default-layer-visibility bool — reconcile the
     // toolbar checkboxes for any toggle the user hasn't explicitly set.
     if (NavAid && typeof NavAid.applyDefaultVisibility === "function") NavAid.applyDefaultVisibility();
+    // The gist may have turned base layers on or off -- rebuild the picker to match.
+    if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
     if (typeof scheduleDraw === "function") scheduleDraw();
     // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
     // so alignment + opacity can be tuned from the gist without a redeploy.
