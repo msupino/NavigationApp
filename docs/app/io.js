@@ -1221,6 +1221,31 @@ function fplHhmm(hours) {
 }
 // A waypoint is an aerodrome only if it resolves in the airfield dataset; anything
 // else (a reporting point, a free "NAME=lat,lng") is not a legal field 13/16 code.
+// Are two waypoints the same reporting point for JOINING purposes? Position within the
+// snap tolerance, or the same canonical NAME within half a mile. The name clause is what
+// lets a route saved years ago still join today's: the chart datasets have been
+// re-digitised since, so the same published point can sit more than the 22 m tolerance
+// from where an old save (or a Drive-synced copy of one) put it -- ZASHD is still ZASHD,
+// the chart moved under it. The half-mile cap is what keeps the clause about
+// re-digitisation drift and nothing else: the filed EET and distances compute from the
+// COORDINATES, so a same-named point genuinely far away would file geometry that
+// disagrees with its own names.
+function fplSameJoinPoint(a, b) {
+  if (typeof sameMapPoint === 'function' && sameMapPoint(a, b)) return true;
+  const nm = (w) => {
+    const raw = (w && w.name) ? String(w.name).trim() : '';
+    if (!raw) return '';
+    return (typeof canonicalNavWaypointName === 'function')
+      ? String(canonicalNavWaypointName(raw) || raw).toUpperCase()
+      : raw.toUpperCase();
+  };
+  const na = nm(a), nb = nm(b);
+  if (!na || na !== nb) return false;
+  if (typeof geo !== 'function') return false;
+  const { dist } = geo(a, b);
+  return Number.isFinite(dist) && dist <= 0.5;
+}
+
 function fplAerodromeRef(wp) {
   const code = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
   if (!code) return null;
@@ -1464,7 +1489,7 @@ function buildIcaoFpl(profile, opts) {
     // routes that do not meet are not one flight, and filing them as one would describe a
     // path never flown -- refused, the same way an intermediate landing is.
     const last = outWps[outWps.length - 1], first = retWps[0];
-    const joined = typeof sameMapPoint === 'function' && sameMapPoint(last, first);
+    const joined = fplSameJoinPoint(last, first);
     if (!joined) {
       return { errs: [{ code: 'errFplJoinGap',
         from: (last && last.name) || '?', to: (first && first.name) || '?' }] };
@@ -8311,8 +8336,7 @@ function showFplDialog() {
       const rw = e.data.waypoints || [];
       const here = state.waypoints || [];
       const last = here[here.length - 1];
-      if (rw.length < 2 || !last ||
-          !(typeof sameMapPoint === 'function' && sameMapPoint(rw[0], last))) continue;
+      if (rw.length < 2 || !last || !fplSameJoinPoint(rw[0], last)) continue;
       // ...and not the route being filed. A LOOP starts where it ends, so it passes the
       // test above and would fly the whole sortie twice.
       //
@@ -8322,7 +8346,7 @@ function showFplDialog() {
       // perfectly valid candidate. It also misses the same route saved twice under two
       // names, which comparing waypoints catches.
       if (rw.length === here.length &&
-          rw.every((w, i) => sameMapPoint(w, here[i]))) continue;
+          rw.every((w, i) => fplSameJoinPoint(w, here[i]))) continue;
       const opt = document.createElement('option');
       opt.value = e.id;
       // The name plus the route's own endpoints. Picking the wrong direction here files

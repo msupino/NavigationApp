@@ -96,7 +96,9 @@ test('a return that does not start where the route ends is refused', async ({ pa
   const { res } = await plan(page, OUT, elsewhere);
   const codes = (res.errs || []).map(e => (typeof e === 'string' ? e : e.code));
   // Two routes that do not meet are not one flight. Refused rather than filed with a
-  // warning, exactly as an intermediate landing is refused.
+  // warning, exactly as an intermediate landing is refused. The join point here carries
+  // the SAME NAME as the route end but sits ~30 nm away -- name identity joins only
+  // within the half-mile re-digitisation allowance, never across real distance.
   expect(codes).toContain('errFplJoinGap');
   expect(res.text).toBeUndefined();
 });
@@ -540,4 +542,45 @@ test('picking a return route restores the landing acknowledgement', async ({ pag
   await expect(ack).toHaveCount(1);
   const label = await ack.locator('..').textContent();
   expect(label).toMatch(/Herzliya|הרצליה/);
+});
+
+test('a return route saved with an older chart position still joins by name', async ({ page }) => {
+  // The chart datasets have been re-digitised since old saves: the same published point can
+  // sit more than the 22 m position tolerance from where a Drive-synced route put it. The
+  // picker and the join validator both accept name identity -- ZASHD is still ZASHD.
+  await boot(page);
+  await page.evaluate(({ back }) => {
+    // The saved return's first point is ZASHD, displaced ~80 m from where the outbound's
+    // ZASHD sits -- a stale digitization, not a different place.
+    const stale = back.map(w => ({ ...w }));
+    stale[0] = { ...stale[0], lat: stale[0].lat + 0.0007 };
+    state.waypoints = stale;
+    syncLegs();
+    routeLibrarySaveCurrent('Old return via KNTRY');
+    state.waypoints = [];
+    syncLegs();
+  }, { back: BACK });
+  await page.evaluate(({ out }) => {
+    state.waypoints = out.map(w => ({ ...w }));
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 90;
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  }, { out: OUT });
+  const sel = page.locator('#fpl-return-route');
+  await expect(sel).toBeVisible({ timeout: 5000 });
+  // The displaced-but-same-named route is offered...
+  await expect(sel.locator('option')).toHaveCount(2);
+  await sel.selectOption({ index: 1 });
+  // ...and the build accepts the join instead of refusing with errFplJoinGap.
+  const res = await page.evaluate(() => {
+    const e = loadRouteLibrary().find(x => x && !x.deleted);
+    return buildIcaoFpl({ reg: '4XDAZ', type: 'C172', pic: 'A PILOT', license: '1',
+      cell: '0500000000', endurance: '0300', persons: 2, replyTo: 'p@e.com',
+      wake: 'L', equip: 'S', surv: 'C' },
+      { dateLocal: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        timeLocal: '10:00', returnRouteData: e.data, routeGraph: null });
+  });
+  expect(res.errs).toBeUndefined();
+  expect(res.text).toContain('SFAIM HTZUK NAGID HTZUK KNTRY');
 });
