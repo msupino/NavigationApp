@@ -101,6 +101,16 @@ test('leaving a listed field always costs one leg, boundary point named or not',
   expect(await page.evaluate(() => [0, 1].map(i => legBeforeCtrClock(i)))).toEqual([true, true]);
 });
 
+test('the exit point itself is still inside: the clock starts on the leg leaving it', async ({ page }) => {
+  // LLHA -> GALIM -> DAROM: GALIM is inside the CTR and DAROM is the EXIT, so the leg
+  // arriving at DAROM is still flown inside it. Counting starts on the leg that leaves.
+  await boot(page);
+  await route(page, ['LLHA', 'GALIM', 'DAROM', 'HOTRM']);
+  expect(await page.evaluate(() => ctrClockStartIndex())).toBe(2);
+  expect(await page.evaluate(() => [0, 1, 2].map(i => legBeforeCtrClock(i))))
+    .toEqual([true, true, false]);
+});
+
 test('LLHA keeps the count off through KRYON, AFFEK and GILAM', async ({ page }) => {
   await boot(page);
   // All three are inside Haifa's CTR: the clock starts at DAROM, the first point outside.
