@@ -2234,6 +2234,51 @@ const pad3 = n => String(n).padStart(3, '0');
 function legKiteHidden(leg) {
   return !!(leg && leg.hideKite);
 }
+// CTR boundary points per airfield (docs/data/ctr-boundaries.json), lazily loaded. The
+// climb-out from a field to its CTR boundary is flown on the field's procedure, not on the
+// route's stopwatch -- pilots start counting at the boundary point. An airfield not listed
+// behaves as before: the clock starts at the field.
+var ctrBoundaries = null;          // null = not loaded; {} or populated once fetched
+async function loadCtrBoundaries() {
+  if (ctrBoundaries !== null) return ctrBoundaries;
+  try {
+    const r = await fetch('data/ctr-boundaries.json?v=' + (S.ctrBoundariesVer || '1'));
+    const d = r.ok ? await r.json() : null;
+    const map = (d && d.airfields && typeof d.airfields === 'object') ? d.airfields : {};
+    const out = {};
+    for (const [icao, pts] of Object.entries(map)) {
+      if (!Array.isArray(pts)) continue;
+      out[String(icao).toUpperCase()] = pts.map(p => String(p || '').trim().toUpperCase()).filter(Boolean);
+    }
+    ctrBoundaries = out;
+  } catch (e) {
+    ctrBoundaries = {};             // absent or unreadable: every clock starts at the field
+  }
+  if (typeof scheduleDraw === 'function') scheduleDraw();
+  return ctrBoundaries;
+}
+// Index of the waypoint where the route clock starts: the first CTR boundary point of the
+// DEPARTURE field. 0 when the route does not leave a listed field, or when it never reaches
+// one of its boundary points -- in both cases the clock starts at the first waypoint, which
+// is the behaviour that shipped before this.
+function ctrClockStartIndex() {
+  if (!state || !Array.isArray(state.waypoints) || state.waypoints.length < 2) return 0;
+  if (ctrBoundaries === null) { loadCtrBoundaries(); return 0; }
+  const first = state.waypoints[0];
+  const icao = (first && first.name) ? String(first.name).trim().toUpperCase() : '';
+  const pts = icao && ctrBoundaries[icao];
+  if (!pts || !pts.length) return 0;
+  for (let i = 1; i < state.waypoints.length; i++) {
+    const nm = (state.waypoints[i].name || '').toString().trim().toUpperCase();
+    if (pts.includes(nm)) return i;
+  }
+  return 0;
+}
+// Does leg i happen before the clock starts? Those legs add nothing to the cumulative time
+// and show no cumulative kite; everything else about them is unchanged.
+function legBeforeCtrClock(i) {
+  return i < ctrClockStartIndex();
+}
 
 // ...and the same for the leg's DRIFT LINES -- the dashed pair fanning out at the tuned
 // drift angle. Same reasoning as the kite: on a busy chart several legs' cones overlap into

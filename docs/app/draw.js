@@ -3109,8 +3109,12 @@ function drawLegs() {
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
     const inAlong  = (inP.a  || 0) * zoomScale;
     const outAlong = (outP.a || 0) * zoomScale;
-    cumInH += durH;
-    const cumInStr = cumInH > 0 ? toHMS(cumInH) : '--';
+    // Legs inside the departure field's CTR are flown on the field's procedure, not on the
+    // route's stopwatch: the clock starts at the boundary reporting point (see
+    // ctr-boundaries.json). Those legs add nothing and show no cumulative kite.
+    const preClock = typeof legBeforeCtrClock === 'function' && legBeforeCtrClock(i);
+    if (!preClock) cumInH += durH;
+    const cumInStr = (!preClock && cumInH > 0) ? toHMS(cumInH) : '--';
 
     // A blocked inbound direction (one-way leg flown the disallowed way) has no
     // valid altitude to show — skip its nav kite entirely (the return kite is
@@ -3124,7 +3128,7 @@ function drawLegs() {
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
     const defCum = { a: 0, _default: 1, _m: 1 };
-    if (showCumTime) {
+    if (showCumTime && !preClock) {
       const cumP = leg.cumLabel || defCum;
       const cumPerp  = cumP._default ? cumPerpDef : (cumP.p || 0) * zoomScale;
       const cumAlong = (cumP.a || 0) * zoomScale;

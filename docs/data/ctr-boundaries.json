@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "source": "CTR boundary reporting points, per airfield, given by the maintainer (2026-08). These are the points where the route clock starts on departure: the climb-out from the field to the boundary is flown on the field's procedure, not on the route's stopwatch, so it is excluded from the cumulative time. Not a published dataset and not an airspace boundary -- a list of the points a pilot actually starts counting from.",
+  "_note": "Add an airfield by listing its boundary reporting points. An airfield absent from this list behaves exactly as before: the clock starts at the field.",
+  "airfields": {
+    "LLHZ": [
+      "BAZRA",
+      "SFAIM",
+      "GNYAM"
+    ],
+    "LLHA": [
+      "DAROM",
+      "HASID",
+      "EVLYM"
+    ],
+    "LLKS": [
+      "BASAN"
+    ],
+    "LLIB": [
+      "HULAT",
+      "DESHE"
+    ],
+    "LLFK": [
+      "HAROV"
+    ],
+    "LLMG": [
+      "ZMGID",
+      "AFULA"
+    ],
+    "LLBG": [
+      "PARDS",
+      "NTAIM",
+      "NSHRM"
+    ],
+    "LLBS": [
+      "NASIH",
+      "KUVSH"
+    ],
+    "LLMZ": [
+      "ENGDI",
+      "MMORR"
+    ],
+    "LLER": [
+      "YOTVT"
+    ]
+  }
+}
