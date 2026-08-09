@@ -1750,11 +1750,13 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // populated = last fetch resolved successfully.
 var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
-var showLsaBubbles = true;
+var showLsaBubbles = true;  // LSA airspace bubbles overlay (Low Alt layer; default on)
 // Auto-route on the MAP: adding a reporting point extends the route along the published
 // corridor between it and the previous point, instead of a straight line. CVFR only for
 // now (the maintainer's scope); filing-time expansion stays independent of this.
-var autoRouteCorridors = true;  // LSA airspace bubbles overlay (Low Alt layer; default on)
+// Ships OFF: it changes what the pilot's own route CONTAINS, not how it is drawn, so it
+// is opt-in from View/Set rather than something a route inherits by surprise.
+var autoRouteCorridors = false;
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
 var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref

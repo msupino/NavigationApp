@@ -10,7 +10,12 @@ async function boot(page) {
   });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof autoRouteChain === 'function' && typeof airfieldByIcao === 'function');
-  await page.evaluate(async () => { await loadAirfields(); await loadNavWaypoints(); });
+  // Ships OFF (it changes what the route contains): every test here opts in first, and the
+  // default-off behaviour has its own test below.
+  await page.evaluate(async () => {
+    window.autoRouteCorridors = true;
+    await loadAirfields(); await loadNavWaypoints();
+  });
 }
 
 test('LLHA to LLHZ follows the open corridor, not a direct line', async ({ page }) => {
@@ -103,7 +108,21 @@ test('an unnamed tap near a reporting point still routes', async ({ page }) => {
   expect(names).toEqual(['SFAIM', 'APOLN', 'ARENA', 'HTZUK']);
 });
 
-test('the toggle turns it off, and off means a direct line', async ({ page }) => {
+test('it ships off: the shipped default draws a direct line', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { for (const s of ['build', 'view', 'display']) localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof autoRouteChain === 'function');
+  const off = await page.evaluate(() => ({
+    flag: window.autoRouteCorridors,
+    checkbox: document.getElementById('autoroute-cb').checked,
+  }));
+  expect(off.flag).toBe(false);
+  expect(off.checkbox).toBe(false);
+});
+
+test('the toggle turns it off again after opting in', async ({ page }) => {
   await boot(page);
   const names = await page.evaluate(async () => {
     window.autoRouteCorridors = false;
