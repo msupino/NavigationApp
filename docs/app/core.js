@@ -2254,7 +2254,9 @@ var ctrBoundaries = null;          // null = not loaded; {} or populated once fe
 async function loadCtrBoundaries() {
   if (ctrBoundaries !== null) return ctrBoundaries;
   try {
-    const r = await fetch('data/ctr-boundaries.json?v=' + (S.ctrBoundariesVer || '2'));
+    // Cache-bust with the same marker the datasets use; deploy rewrites it in core.js.
+    const ver = (typeof _verOf === 'function') ? _verOf(S.routeGraphUrl) : '2';
+    const r = await fetch('data/ctr-boundaries.json?v=' + ver);
     const d = r.ok ? await r.json() : null;
     const map = (d && d.airfields && typeof d.airfields === 'object') ? d.airfields : {};
     const up = (arr) => (Array.isArray(arr) ? arr : [])

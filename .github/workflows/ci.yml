@@ -142,8 +142,11 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     # Cold or slow Playwright browser setup can take 6+ minutes before the
-    # suite starts; keep enough headroom for the full local e2e run.
-    timeout-minutes: 20
+    # suite starts; keep enough headroom for the full local e2e run. The cap
+    # has to lead the suite's growth: at ~1900 tests a run is ~18 min, and a
+    # SIGINT at the cap surfaces as a pile of bogus failures that read like a
+    # regression (see the same note on e2e-deployed in deploy.yml).
+    timeout-minutes: 30
     needs: lint
     steps:
       - name: Checkout
