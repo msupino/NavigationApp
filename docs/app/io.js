@@ -1562,8 +1562,23 @@ async function autoRouteChain(prev, next) {
   }
   const graph = _autoRouteGraph;
   if (!graph) return null;
-  const a = fplGraphPointAt(graph, prev);
-  const b = fplGraphPointAt(graph, next);
+  // Position-tolerant on the map side: a tap only gets a NAME when it lands within the 18 px
+  // snap radius, so requiring one (as filing-time expansion does, where every point came
+  // from a named pick) meant a slightly-off tap silently produced no corridor at all.
+  // Half a mile is the same allowance the filing join uses.
+  const near = (wp) => {
+    const byName = fplGraphPointAt(graph, wp);
+    if (byName) return byName;
+    let best = null, bestD = Infinity;
+    for (const [name, n] of Object.entries(graph.nodes)) {
+      if (typeof geo !== 'function') break;
+      const { dist } = geo(wp, n);
+      if (Number.isFinite(dist) && dist < bestD) { bestD = dist; best = name; }
+    }
+    return (best && bestD <= 0.5) ? best : null;
+  };
+  const a = near(prev);
+  const b = near(next);
   if (!a || !b || a === b) return null;
   let chain = fplGraphChain(graph, a, b, {});
   if (!chain) chain = fplGraphChain(graph, a, b, { ignoreAvailability: true });

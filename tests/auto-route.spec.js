@@ -66,6 +66,43 @@ test('a map tap in add mode splices the corridor as real waypoints', async ({ pa
   expect(await page.evaluate(() => state.waypoints.length)).toBe(5);
 });
 
+test('every add path splices the corridor, not just the map tap', async ({ page }) => {
+  // A pilot who adds a point with the inspector's "Add to route" button expects the same
+  // route a tap would have drawn -- the corridor splice used to hang off the map-tap path
+  // alone, so adding by button (or extend-through) drew a straight line.
+  await boot(page);
+  const names = await page.evaluate(async () => {
+    const hz = airfieldByIcao('LLHZ');
+    state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ' }];
+    syncLegs();
+    // Select RIDNG's nav-waypoint and press its "Add to route" button, as a pilot would.
+    await loadNavWaypoints();
+    const i = navWP.findIndex(w => w.name === 'RIDNG');
+    state.selected = { type: 'navwp', index: i };
+    showInspector();
+    document.getElementById('insp-add-to-route').click();
+    await new Promise(r => setTimeout(r, 1200));
+    return state.waypoints.map(w => w.name);
+  });
+  expect(names).toEqual(['LLHZ', 'SFAIM', 'APOLN', 'ARENA', 'HTZUK', 'RIDNG']);
+});
+
+test('an unnamed tap near a reporting point still routes', async ({ page }) => {
+  // A tap only gets a NAME within the 18 px snap radius; auto-route resolves by position
+  // (half a mile) too, or a slightly-off tap silently produced no corridor.
+  await boot(page);
+  const names = await page.evaluate(async () => {
+    const hz = airfieldByIcao('LLHZ');
+    await loadNavWaypoints();
+    const ridng = navWP.find(w => w.name === 'RIDNG');
+    const mid = await autoRouteChain(
+      { lat: hz.lat, lng: hz.lng, name: '' },                       // unnamed
+      { lat: ridng.lat + 0.002, lng: ridng.lng, name: '' });        // unnamed, ~0.12 nm off
+    return mid && mid.map(w => w.name);
+  });
+  expect(names).toEqual(['SFAIM', 'APOLN', 'ARENA', 'HTZUK']);
+});
+
 test('the toggle turns it off, and off means a direct line', async ({ page }) => {
   await boot(page);
   const names = await page.evaluate(async () => {
