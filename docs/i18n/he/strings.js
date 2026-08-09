@@ -220,8 +220,6 @@ window.S = {
   bubbleWeekendOnly: 'סופי שבוע וחגים בלבד',
   bubbleWeekendTag: 'סופ"ש',
   bubbleOpenAll: 'פתוחה כל היום',
-  bubbleSecondaryNote: 'לא מאומת',
-  bubbleWeekdayHint: 'מקור משני מציין פתיחה בימי חול מ-',
   tbSigmetTitle: 'אזורי מפגע SIGMET פעילים עבור אזור ישראל (מקור: NOAA AWC)',
   tbShowNotam: 'הצג NOTAM',
   tbShowNotamTitle: 'הצג אזורי NOTAM פעילים עבור FIR ישראל (LLLL). לחץ על "רשימת NOTAM" לטקסט המלא. אמצעי תכנון בלבד.',
