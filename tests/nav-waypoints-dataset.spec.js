@@ -22,8 +22,6 @@
 // purely against the parsed JSON content — no browser interaction.
 
 const { test, expect } = require('./_setup');
-const fs = require('fs');
-const path = require('path');
 
 // The dataset is projected from cvfr-route-graph.json now; the shape is unchanged.
 const { navWaypoints } = require('./_layerData');
