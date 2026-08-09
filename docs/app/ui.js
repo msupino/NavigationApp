@@ -970,8 +970,15 @@ window.clearSearchFlash = clearSearchFlash;
 // --- nav-waypoint search --------------------------------------------
 const wpSearch = document.getElementById('wp-search');
 const wpResults = document.getElementById('wp-search-results');
+// The panel only outranks the toolbar while the dropdown is open (see style.css).
+function syncSearchResultsStacking() {
+  const ov = document.getElementById('search-overlay');
+  const res = document.getElementById('wp-search-results');
+  if (ov && res) ov.classList.toggle('has-results', !res.classList.contains('hidden'));
+}
 function closeSearch() {
   wpResults.classList.add('hidden');
+  syncSearchResultsStacking();
   wpResults.innerHTML = '';
 }
 // The two-line "type space-separated codes" tip teaches the search once and then
@@ -1983,6 +1990,7 @@ function runSearch() {
     wpResults.appendChild(item);
   }
   wpResults.classList.remove('hidden');
+  syncSearchResultsStacking();
 }
 wpSearch.addEventListener('input', runSearch);
 wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });

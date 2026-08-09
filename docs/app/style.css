@@ -3814,11 +3814,7 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
-  /* Above the toolbar in BOTH its stacking tiers: desktop puts the toolbar at 1100, but
-     the narrow-viewport rules raise it to 2330/2340 -- which silently covered the search
-     dropdown whenever an open section grew tall enough to reach it. Below the modals
-     (2400): a dialog on top of search should stay on top. */
-  z-index: 2350;
+  z-index: 1500;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3831,6 +3827,12 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
   width: min(420px, 90vw);
 }
 #search-overlay.hidden { display: none; }
+/* Only WHILE the dropdown is open does the panel outrank the toolbar. The toolbar reaches
+   z 2330/2340 on narrow viewports, which silently covered the results whenever an open
+   section grew tall enough to reach them; raising the panel permanently was worse -- its
+   own hint text then sat over the toolbar and ate clicks meant for the button that opens
+   it. Below the modals (2400): a dialog over the search stays on top. */
+#search-overlay.has-results { z-index: 2350; }
 #search-overlay #wp-search {
   flex: 1;
   font: inherit;
