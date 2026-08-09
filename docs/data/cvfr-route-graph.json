@@ -3543,7 +3543,8 @@
         "chartDistanceNm": 4.6,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "KRYON",
@@ -3561,7 +3562,8 @@
         "distanceNm": 2.01,
         "chartDistanceNm": 2,
         "status": "reviewed",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       }
     ],
     "AHIUD": [
@@ -3599,7 +3601,8 @@
         "chartDistanceNm": 4.6,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "LLHA",
@@ -3609,7 +3612,8 @@
         "chartDistanceNm": 2.7,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       }
     ],
     "KRYON": [
@@ -3817,7 +3821,8 @@
         "chartDistanceNm": 6.5,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "DESHE",
@@ -3900,7 +3905,8 @@
         "chartDistanceNm": 5.9,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "SEGEV",
@@ -3924,7 +3930,8 @@
         "distanceNm": 4.92,
         "chartDistanceNm": 4.9,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       },
       {
         "to": "SHAHR",
@@ -3933,7 +3940,8 @@
         "distanceNm": 5.26,
         "chartDistanceNm": 5.3,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       }
     ],
     "FAZEL": [
@@ -3944,7 +3952,8 @@
         "distanceNm": 4.92,
         "chartDistanceNm": 4.9,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       },
       {
         "to": "ARGMN",
@@ -3966,7 +3975,9 @@
           "greenScore": 0.867,
           "maxGap": 7,
           "samples": 90
-        }
+        },
+        "closedHint": true,
+        "openFromHourHint": 6
       }
     ],
     "SHAHR": [
@@ -3977,7 +3988,8 @@
         "distanceNm": 5.26,
         "chartDistanceNm": 5.3,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       },
       {
         "to": "DUMIM",
@@ -3990,7 +4002,8 @@
           "greenScore": 0.667,
           "maxGap": 20,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 6
       },
       {
         "to": "MIHMS",
@@ -4014,7 +4027,9 @@
         "distanceNm": 7.15,
         "chartDistanceNm": 7.1,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       },
       {
         "to": "YRIHO",
@@ -4032,7 +4047,8 @@
         "distanceNm": 4.43,
         "chartDistanceNm": 4.4,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       }
     ],
     "NAAMA": [
@@ -4043,7 +4059,9 @@
         "distanceNm": 7.15,
         "chartDistanceNm": 7.1,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       },
       {
         "to": "FAZEL",
@@ -4056,7 +4074,9 @@
           "greenScore": 0.867,
           "maxGap": 7,
           "samples": 90
-        }
+        },
+        "closedHint": true,
+        "openFromHourHint": 6
       }
     ],
     "ZUKIM": [
@@ -4067,7 +4087,8 @@
         "distanceNm": 4.43,
         "chartDistanceNm": 4.4,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       },
       {
         "to": "SHALM",
@@ -4080,7 +4101,8 @@
           "greenScore": 0.867,
           "maxGap": 6,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 6
       }
     ],
     "ALUMT": [
@@ -4105,7 +4127,8 @@
         "chartDistanceNm": 6.7,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "KOYAR",
@@ -4128,7 +4151,8 @@
         "chartDistanceNm": 6.5,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       }
     ],
     "DESHE": [
@@ -4194,7 +4218,8 @@
         "chartDistanceNm": 6.7,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "LLFK",
@@ -4204,7 +4229,8 @@
         "chartDistanceNm": 2.9,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       }
     ],
     "KOYAR": [
@@ -4502,7 +4528,8 @@
           "greenScore": 0.667,
           "maxGap": 20,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 6
       },
       {
         "to": "YRIHO",
@@ -4643,7 +4670,8 @@
           "greenScore": 0.922,
           "maxGap": 7,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "ZAFIT",
@@ -4667,7 +4695,8 @@
           "greenScore": 0.856,
           "maxGap": 9,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       }
     ],
     "HAZVA": [
@@ -4682,7 +4711,8 @@
           "greenScore": 0.922,
           "maxGap": 7,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "LLEY",
@@ -4695,7 +4725,8 @@
           "greenScore": 0.856,
           "maxGap": 11,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "ZOFAR",
@@ -4704,7 +4735,8 @@
         "distanceNm": 13.08,
         "chartDistanceNm": 13.1,
         "status": "candidate",
-        "source": "missing link on a published route: Hatzeva to Tzofar, up the Arava, on the same route. Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "missing link on a published route: Hatzeva to Tzofar, up the Arava, on the same route. Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "ZAFIT": [
@@ -4743,7 +4775,8 @@
           "greenScore": 0.856,
           "maxGap": 9,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "HATRU",
@@ -4765,7 +4798,8 @@
         "distanceNm": 10.74,
         "chartDistanceNm": 10.7,
         "status": "unknown",
-        "source": "missing link on a published route: Masada to Neve Zohar -- the leg flown when the route LANDS at Masada, distinct from the ENGDI-MMORR-ZOHAR overflight. Distance computed from our own coordinates; altitudes not read from the chart yet."
+        "source": "missing link on a published route: Masada to Neve Zohar -- the leg flown when the route LANDS at Masada, distinct from the ENGDI-MMORR-ZOHAR overflight. Distance computed from our own coordinates; altitudes not read from the chart yet.",
+        "openFromHourHint": 5
       },
       {
         "to": "MMORR",
@@ -4936,7 +4970,8 @@
           "greenScore": 0.719,
           "maxGap": 11,
           "samples": 64
-        }
+        },
+        "openFromHourHint": 5
       }
     ],
     "HATRU": [
@@ -5109,7 +5144,8 @@
           "greenScore": 0.719,
           "maxGap": 11,
           "samples": 64
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "MYTAR",
@@ -5122,7 +5158,8 @@
           "greenScore": 0.844,
           "maxGap": 8,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       }
     ],
     "ASKLN": [
@@ -5134,7 +5171,8 @@
         "chartDistanceNm": 5.7,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "NITZA",
@@ -5144,7 +5182,8 @@
         "chartDistanceNm": 3.8,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "OSNAT",
@@ -5178,7 +5217,8 @@
         "chartDistanceNm": 5.7,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "BHAIL",
@@ -5188,7 +5228,8 @@
         "chartDistanceNm": 2.4,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "NTVOT",
@@ -5222,7 +5263,8 @@
         "chartDistanceNm": 3.8,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "HODYA",
@@ -5342,7 +5384,8 @@
         "chartDistanceNm": 8.8,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "LLEK",
@@ -5500,7 +5543,8 @@
         "distanceNm": 5.04,
         "chartDistanceNm": 5,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "ESTOL",
@@ -5509,7 +5553,8 @@
         "distanceNm": 3.77,
         "chartDistanceNm": 3.8,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "SHARG",
@@ -5539,7 +5584,8 @@
         "chartDistanceNm": 6,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "LLEK",
@@ -5562,7 +5608,10 @@
         "blocked": true,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6,
+        "weekdayClosedHint": true
       },
       {
         "to": "SIRNI",
@@ -5819,7 +5868,9 @@
         "distanceNm": 9.21,
         "chartDistanceNm": 9.2,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 5
       },
       {
         "to": "LLER",
@@ -5841,7 +5892,8 @@
           "greenScore": 0.778,
           "maxGap": 10,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       }
     ],
     "LLOV": [
@@ -5995,7 +6047,8 @@
         "chartDistanceNm": 9.7,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "GVARM",
@@ -6005,7 +6058,8 @@
         "chartDistanceNm": 2.4,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       }
     ],
     "BKAMA": [
@@ -6017,7 +6071,8 @@
         "chartDistanceNm": 9.7,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "LAHAV",
@@ -6241,7 +6296,8 @@
         "distanceNm": 4.39,
         "chartDistanceNm": 4.4,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "ZGOAL",
@@ -6250,7 +6306,8 @@
         "distanceNm": 3.6,
         "chartDistanceNm": 3.6,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       }
     ],
     "BMNUH": [
@@ -6265,7 +6322,8 @@
           "greenScore": 0.933,
           "maxGap": 6,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "ZOFAR",
@@ -6274,7 +6332,8 @@
         "distanceNm": 15.63,
         "chartDistanceNm": 15.6,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "ZZHOR",
@@ -6284,7 +6343,9 @@
         "chartDistanceNm": 6.1,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 5
       }
     ],
     "YAHEL": [
@@ -6299,7 +6360,8 @@
           "greenScore": 0.933,
           "maxGap": 6,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "KTORA",
@@ -6312,7 +6374,8 @@
           "greenScore": 0.682,
           "maxGap": 10,
           "samples": 88
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "SIZFN",
@@ -6323,7 +6386,8 @@
         "status": "candidate",
         "armyAirway": true,
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       }
     ],
     "ZOFAR": [
@@ -6334,7 +6398,8 @@
         "distanceNm": 15.63,
         "chartDistanceNm": 15.6,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "HAZVA",
@@ -6343,7 +6408,8 @@
         "distanceNm": 13.08,
         "chartDistanceNm": 13.1,
         "status": "candidate",
-        "source": "missing link on a published route: Hatzeva to Tzofar, up the Arava, on the same route. Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "missing link on a published route: Hatzeva to Tzofar, up the Arava, on the same route. Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "HRGVS",
@@ -6356,7 +6422,8 @@
           "greenScore": 0.889,
           "maxGap": 9,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "LLEY",
@@ -6364,7 +6431,8 @@
         "outboundAltitude": 3500,
         "distanceNm": 3.46,
         "chartDistanceNm": 3.8,
-        "status": "candidate"
+        "status": "candidate",
+        "openFromHourHint": 5
       }
     ],
     "ZZHOR": [
@@ -6376,7 +6444,9 @@
         "chartDistanceNm": 6.1,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 5
       },
       {
         "to": "MESAR",
@@ -6386,7 +6456,9 @@
         "chartDistanceNm": 14.1,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 5
       },
       {
         "to": "SITIM",
@@ -6397,7 +6469,9 @@
         "status": "candidate",
         "armyAirway": true,
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       }
     ],
     "BOKER": [
@@ -6417,7 +6491,8 @@
         "outboundAltitude": 4000,
         "distanceNm": 4.35,
         "chartDistanceNm": 4.4,
-        "status": "candidate"
+        "status": "candidate",
+        "openFromHourHint": 5
       },
       {
         "to": "TLLIM",
@@ -6426,7 +6501,8 @@
         "distanceNm": 7.04,
         "chartDistanceNm": 7,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "YRUHM",
@@ -6479,7 +6555,8 @@
         "outboundAltitude": 3500,
         "distanceNm": 4.35,
         "chartDistanceNm": 4.4,
-        "status": "candidate"
+        "status": "candidate",
+        "openFromHourHint": 5
       },
       {
         "to": "LLRM",
@@ -6515,7 +6592,8 @@
         "distanceNm": 7.04,
         "chartDistanceNm": 7,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "LLKZ",
@@ -6533,7 +6611,8 @@
         "distanceNm": 5.98,
         "chartDistanceNm": 6,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       }
     ],
     "YRUHM": [
@@ -6553,7 +6632,8 @@
         "distanceNm": 6.77,
         "chartDistanceNm": 6.8,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       }
     ],
     "BOREN": [
@@ -6616,7 +6696,8 @@
         "chartDistanceNm": 11.4,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "LLBO",
@@ -6844,7 +6925,8 @@
         "distanceNm": 2.67,
         "chartDistanceNm": 2.7,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "SUPER",
@@ -6866,7 +6948,8 @@
         "distanceNm": 4.57,
         "chartDistanceNm": 4.6,
         "status": "candidate",
-        "source": "route template correction"
+        "source": "route template correction",
+        "closedHint": true
       }
     ],
     "EILAT": [
@@ -6877,7 +6960,9 @@
         "distanceNm": 9.21,
         "chartDistanceNm": 9.2,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 5
       }
     ],
     "LLER": [
@@ -6912,7 +6997,8 @@
           "greenScore": 0.778,
           "maxGap": 10,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "LLER",
@@ -6921,7 +7007,8 @@
         "distanceNm": 6.3,
         "chartDistanceNm": 6.3,
         "status": "unknown",
-        "source": "missing link on a published route: Samar into Eilat-Ramon; a second source names this link at 6.2 nm. Distance computed from our own coordinates. Altitudes not read from the chart yet -- two nulls with status=unknown is this schema's placeholder, not a claim that the corridor is closed or one-way."
+        "source": "missing link on a published route: Samar into Eilat-Ramon; a second source names this link at 6.2 nm. Distance computed from our own coordinates. Altitudes not read from the chart yet -- two nulls with status=unknown is this schema's placeholder, not a claim that the corridor is closed or one-way.",
+        "openFromHourHint": 5
       },
       {
         "to": "LLOV",
@@ -6940,7 +7027,8 @@
         "distanceNm": 4.63,
         "chartDistanceNm": 4.6,
         "status": "reviewed",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       }
     ],
     "BSEMS": [
@@ -6960,7 +7048,8 @@
         "distanceNm": 5.04,
         "chartDistanceNm": 5,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "NCSHN",
@@ -6970,7 +7059,8 @@
         "chartDistanceNm": 4.9,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "ZHRYA",
@@ -6999,7 +7089,9 @@
         "distanceNm": 3.77,
         "chartDistanceNm": 3.8,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       },
       {
         "to": "SORES",
@@ -7020,7 +7112,8 @@
         "chartDistanceNm": 4.9,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "NSHRM",
@@ -7031,7 +7124,10 @@
         "oneWay": true,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6,
+        "weekdayClosedHint": true
       }
     ],
     "ZHRYA": [
@@ -7153,7 +7249,8 @@
         "chartDistanceNm": 11.5,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "NTAIM",
@@ -7162,7 +7259,8 @@
         "distanceNm": 4.57,
         "chartDistanceNm": 4.6,
         "status": "candidate",
-        "source": "route template correction"
+        "source": "route template correction",
+        "closedHint": true
       },
       {
         "to": "SUPER",
@@ -7501,7 +7599,8 @@
         "chartDistanceNm": 10.6,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "SEGEV",
@@ -7535,7 +7634,8 @@
         "distanceNm": 6.77,
         "chartDistanceNm": 6.8,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       },
       {
         "to": "ZAFIT",
@@ -7675,7 +7775,8 @@
           "greenScore": 0.793,
           "maxGap": 12,
           "samples": 58
-        }
+        },
+        "openFromHourHint": 6
       }
     ],
     "EITAN": [
@@ -7767,7 +7868,8 @@
         "distanceNm": 8.11,
         "chartDistanceNm": 8.1,
         "status": "candidate",
-        "source": "maintainer correction"
+        "source": "maintainer correction",
+        "openFromHourHint": 6
       },
       {
         "to": "MMORR",
@@ -7789,7 +7891,8 @@
           "greenScore": 0.637,
           "maxGap": 13,
           "samples": 80
-        }
+        },
+        "openFromHourHint": 6
       }
     ],
     "SHALM": [
@@ -7804,7 +7907,8 @@
           "greenScore": 0.637,
           "maxGap": 13,
           "samples": 80
-        }
+        },
+        "openFromHourHint": 6
       },
       {
         "to": "LLMZ",
@@ -7826,7 +7930,8 @@
           "greenScore": 0.867,
           "maxGap": 6,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 6
       }
     ],
     "SORES": [
@@ -7837,7 +7942,9 @@
         "distanceNm": 3.52,
         "chartDistanceNm": 3.5,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       },
       {
         "to": "HAREL",
@@ -7855,7 +7962,8 @@
         "distanceNm": 3.05,
         "chartDistanceNm": 3.1,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       }
     ],
     "GILAM": [
@@ -7896,7 +8004,8 @@
         "chartDistanceNm": 5.9,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "FRDIS",
@@ -7906,7 +8015,8 @@
         "chartDistanceNm": 11.4,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "LLHA",
@@ -7916,7 +8026,8 @@
         "chartDistanceNm": 4.1,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "LLRD",
@@ -7937,7 +8048,9 @@
         "chartDistanceNm": 7.9,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       }
     ],
     "SEGEV": [
@@ -8046,7 +8159,8 @@
           "greenScore": 0.67,
           "maxGap": 10,
           "samples": 88
-        }
+        },
+        "openFromHourHint": 6
       }
     ],
     "SDROT": [
@@ -8096,7 +8210,8 @@
           "greenScore": 0.674,
           "maxGap": 11,
           "samples": 89
-        }
+        },
+        "openFromHourHint": 6
       },
       {
         "to": "SDTYM",
@@ -8110,7 +8225,8 @@
           "greenScore": 0.793,
           "maxGap": 12,
           "samples": 58
-        }
+        },
+        "openFromHourHint": 6
       }
     ],
     "HAREL": [
@@ -8154,7 +8270,9 @@
         "chartDistanceNm": 7.9,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       },
       {
         "to": "LLRD",
@@ -8174,7 +8292,8 @@
         "chartDistanceNm": 10.6,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       }
     ],
     "LLEY": [
@@ -8307,7 +8426,8 @@
         "distanceNm": 4.5,
         "chartDistanceNm": 4.5,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "OHLIM",
@@ -8316,7 +8436,8 @@
         "distanceNm": 3.34,
         "chartDistanceNm": 3.3,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "SOKET",
@@ -8336,7 +8457,8 @@
         "distanceNm": 4.5,
         "chartDistanceNm": 4.5,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "TLLIM",
@@ -8345,7 +8467,8 @@
         "distanceNm": 5.98,
         "chartDistanceNm": 6,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       }
     ],
     "OHLIM": [
@@ -8356,7 +8479,8 @@
         "distanceNm": 3.34,
         "chartDistanceNm": 3.3,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "OMMER",
@@ -8402,7 +8526,8 @@
           "greenScore": 0.852,
           "maxGap": 3,
           "samples": 27
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "OMMER",
@@ -8426,7 +8551,8 @@
           "greenScore": 0.756,
           "maxGap": 10,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "ZOFAR",
@@ -8439,7 +8565,8 @@
           "greenScore": 0.889,
           "maxGap": 9,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       }
     ],
     "RUHOT": [
@@ -8454,7 +8581,8 @@
           "greenScore": 0.756,
           "maxGap": 10,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "MESAR",
@@ -8464,7 +8592,9 @@
         "chartDistanceNm": 11.8,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 5
       },
       {
         "to": "OVDAT",
@@ -8586,7 +8716,8 @@
           "greenScore": 0.682,
           "maxGap": 10,
           "samples": 88
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "YOTVT",
@@ -8595,7 +8726,8 @@
         "distanceNm": 5.34,
         "chartDistanceNm": 5.3,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       }
     ],
     "YOTVT": [
@@ -8606,7 +8738,8 @@
         "distanceNm": 5.34,
         "chartDistanceNm": 5.3,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "SAMAR",
@@ -8615,7 +8748,8 @@
         "distanceNm": 4.63,
         "chartDistanceNm": 4.6,
         "status": "reviewed",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       },
       {
         "to": "SHRUT",
@@ -8643,7 +8777,8 @@
           "greenScore": 0.816,
           "maxGap": 7,
           "samples": 38
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "NCITY",
@@ -8656,7 +8791,8 @@
           "greenScore": 0.742,
           "maxGap": 7,
           "samples": 31
-        }
+        },
+        "openFromHourHint": 5
       }
     ],
     "LLBS": [
@@ -8706,7 +8842,8 @@
           "greenScore": 0.742,
           "maxGap": 7,
           "samples": 31
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "OMMER",
@@ -9012,7 +9149,9 @@
         "status": "candidate",
         "armyAirway": true,
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       },
       {
         "to": "YAHEL",
@@ -9023,7 +9162,8 @@
         "status": "candidate",
         "armyAirway": true,
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       }
     ],
     "LLPL": [
@@ -9067,7 +9207,8 @@
         "distanceNm": 3.05,
         "chartDistanceNm": 3.1,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 6
       }
     ],
     "MEHOL": [
@@ -9094,7 +9235,9 @@
         "chartDistanceNm": 11.8,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 5
       },
       {
         "to": "ZZHOR",
@@ -9104,7 +9247,9 @@
         "chartDistanceNm": 14.1,
         "status": "reviewed",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 5
       }
     ],
     "MINGV": [
@@ -9143,7 +9288,8 @@
           "greenScore": 0.852,
           "maxGap": 3,
           "samples": 27
-        }
+        },
+        "openFromHourHint": 5
       },
       {
         "to": "TARAD",
@@ -9156,7 +9302,8 @@
           "greenScore": 0.844,
           "maxGap": 8,
           "samples": 90
-        }
+        },
+        "openFromHourHint": 5
       }
     ],
     "YAVNE": [
@@ -9277,7 +9424,8 @@
         "distanceNm": 3.6,
         "chartDistanceNm": 3.6,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "openFromHourHint": 5
       }
     ],
     "NMASD": [
@@ -9298,7 +9446,8 @@
         "chartDistanceNm": 11.5,
         "status": "candidate",
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true
       },
       {
         "to": "ZASHD",
@@ -9375,7 +9524,8 @@
           "greenScore": 0.674,
           "maxGap": 11,
           "samples": 89
-        }
+        },
+        "openFromHourHint": 6
       },
       {
         "to": "SAHAR",
@@ -9399,7 +9549,8 @@
           "greenScore": 0.631,
           "maxGap": 9,
           "samples": 65
-        }
+        },
+        "openFromHourHint": 6
       }
     ],
     "ROKCH": [
@@ -9458,7 +9609,8 @@
           "greenScore": 0.631,
           "maxGap": 9,
           "samples": 65
-        }
+        },
+        "openFromHourHint": 6
       },
       {
         "to": "SFAIM",
@@ -9498,7 +9650,9 @@
         "status": "candidate",
         "armyAirway": true,
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       },
       {
         "to": "ZZHOR",
@@ -9509,7 +9663,9 @@
         "status": "candidate",
         "armyAirway": true,
         "onAtcApproval": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "closedHint": true,
+        "openFromHourHint": 6
       }
     ],
     "SZION": [

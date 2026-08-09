@@ -1200,6 +1200,7 @@ window.S = Object.assign({
   warnFplDepNotAerodrome: 'The route does not start at a known airfield — it is filed as ZZZZ with the point named in field 18, and will probably be declined. A plan is normally filed field to field.',
   warnFplDestNotAerodrome: 'The route does not end at a known airfield — it is filed as ZZZZ with the point named in field 18, and will probably be declined. A plan is normally filed field to field.',
   warnFplEarly: 'Too early to file: a departure at or before 17:00 is filed from 18:00 the day before, a later one on the day of the flight.',
+  warnFplClosedCorridor: 'A corridor on this route may be closed or time-gated at the chosen departure time (secondary source) — no open alternative was published, so it is filed anyway. Verify with the NOTAMs.',
   warnFplLead: 'Less than 60 minutes to departure — a routes plan is filed at least 60 min ahead, or phoned in.',
   warnFplMixedSpeed: 'The legs are not all at one speed; the first leg\'s speed is filed as cruise TAS.',
   errFplNeedRoute: 'Draw a route first — a flight plan needs a departure and a destination.',
