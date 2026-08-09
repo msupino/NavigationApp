@@ -210,8 +210,11 @@ test('airfields are tagged, because a landing mid-route needs its own plan', () 
   const g = graph();
   expect(g.nodes.LLHZ.kind).toBe('airfield');
   expect(g.nodes.KNTRY.kind).toBe('waypoint');
+  // 'airstrip': an LSA-only landing ground carried as a routable point -- it is not an
+  // airfields.json field (no runways/plates/ATIS there) and not a plain reporting point.
   const kinds = new Set(Object.values(g.nodes).map(n => n.kind));
-  expect([...kinds].sort()).toEqual(['airfield', 'waypoint']);
+  expect([...kinds].sort()).toEqual(['airfield', 'airstrip', 'waypoint']);
+  expect(g.nodes.LLNN.kind).toBe('airstrip');
 });
 
 test('cross-referenced codes are labelled, and conflicts keep both', () => {
