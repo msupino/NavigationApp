@@ -504,7 +504,7 @@ function validateRoute(d) {
       }
       // Written only as the literal 1, so anything else -- "false", 0, "" -- is a file
       // saying something the app cannot honestly interpret.
-      for (const k of ['hideKite', 'hideDrift', 'speedAuto', 'retSpeedAuto']) {
+      for (const k of ['hideKite', 'hideDrift', 'showDrift', 'speedAuto', 'retSpeedAuto']) {
         if (!Object.prototype.hasOwnProperty.call(l, k)) continue;
         if (l[k] !== 1) errs.push(p + '.' + k + ': expected 1, got ' + JSON.stringify(l[k]));
       }
@@ -1008,6 +1008,7 @@ function serializeRoute() {
       // label offsets beside it: their own decision about how the chart should read.
       ...(l.hideKite ? { hideKite: 1 } : {}),
       ...(l.hideDrift ? { hideDrift: 1 } : {}),
+      ...(l.showDrift ? { showDrift: 1 } : {}),
       ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
     })),
     notes: state.notes.map(n => ({
@@ -2192,6 +2193,7 @@ function applyRouteData(d) {
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
     ...(l.hideKite ? { hideKite: 1 } : {}),
     ...(l.hideDrift ? { hideDrift: 1 } : {}),
+      ...(l.showDrift ? { showDrift: 1 } : {}),
     // Absent = pinned, so a route written before these existed (or by hand) keeps
     // the explicit speeds it names instead of drifting with the local default.
     ...(l.speedAuto ? { _legSpeedAuto: 1 } : {}),
@@ -5457,6 +5459,7 @@ function restoreRoute() {
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
     ...(l.hideKite ? { hideKite: 1 } : {}),
     ...(l.hideDrift ? { hideDrift: 1 } : {}),
+      ...(l.showDrift ? { showDrift: 1 } : {}),
     // Reloading the tab is not a speed edit, so a leg still tracking the default
     // keeps tracking it -- otherwise one refresh would freeze the whole route.
     ...(l._legSpeedAuto ? { _legSpeedAuto: 1 } : {}),

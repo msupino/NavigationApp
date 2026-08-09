@@ -2509,7 +2509,12 @@ function showInspector() {
     // button: a pilot decluttering a busy area wants one or the other, not both together.
     const driftBtn = document.createElement('button');
     driftBtn.className = 'insp-btn';
-    const driftOff = typeof legDriftHidden === 'function' && legDriftHidden(leg);
+    // Label from the EFFECTIVE state, so the button always does what it says: with the
+    // global toggle off, "Show drift lines" turns this one leg's cone on (showDrift) --
+    // it used to clear a hide flag nothing was reading, a click that changed nothing.
+    const driftOff = typeof legDriftVisible === 'function'
+      ? !legDriftVisible(leg, window.showDrift)
+      : (typeof legDriftHidden === 'function' && legDriftHidden(leg));
     driftBtn.textContent = driftOff
       ? (S.showLegDrift || 'Show drift lines')
       : (S.hideLegDrift || 'Hide drift lines');
@@ -2520,8 +2525,13 @@ function showInspector() {
     driftBtn.setAttribute('aria-label', driftBtn.title);
     driftBtn.setAttribute('aria-pressed', driftOff ? 'true' : 'false');
     driftBtn.onclick = () => {
-      if (legDriftHidden(leg)) delete leg.hideDrift;
-      else leg.hideDrift = 1;
+      if (driftOff) {
+        delete leg.hideDrift;
+        if (!window.showDrift) leg.showDrift = 1;   // global off: this leg opts in
+      } else {
+        delete leg.showDrift;
+        if (window.showDrift) leg.hideDrift = 1;    // global on: this leg opts out
+      }
       if (typeof persist === 'function') persist();
       draw();
       showInspector();          // relabel the button to what it now does

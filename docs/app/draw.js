@@ -3061,11 +3061,12 @@ function drawLegs() {
     octx.stroke();
     octx.lineCap = 'butt';
 
-    // The toolbar toggle governs drift lines globally; a leg may additionally opt out of its
-    // own, which is what the inspector's "Hide drift lines" sets. Nothing else about the leg
-    // changes -- including the kite's offset, which keeps its usual drift-derived position so
-    // that hiding the cone does not make the kite jump.
-    if (showDrift && !(typeof legDriftHidden === 'function' && legDriftHidden(leg))) {
+    // The toolbar toggle sets the default; a leg can override it EITHER way (hide one cone
+    // on a busy chart, or show one cone on an otherwise clean map). Nothing else about the
+    // leg changes -- including the kite's offset, which keeps its usual drift-derived
+    // position so that hiding the cone does not make the kite jump.
+    if (typeof legDriftVisible === 'function' ? legDriftVisible(leg, showDrift)
+        : (showDrift && !leg.hideDrift)) {
       drawDriftLines(sa, sb);
     }
 
