@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "source": "CTR data per airfield, given by the maintainer (2026-08). `inside` lists the reporting points that are still INSIDE the field's CTR; `clockStartsAt` names the boundary points a route typically leaves through. The clock starts at the first waypoint that is not inside: the stretch from the field to the boundary is flown on the field's procedure, not on the route's stopwatch.",
-  "_note": "A field absent from this list behaves as before -- the clock starts at the field. A listed field with no `inside` points still excludes its first leg: leaving a CTR takes one leg at minimum.",
+  "source": "CTR data per airfield, given by the maintainer (2026-08). `clockStartsAt` names the CTR exit points: the clock starts on the leg LEAVING one, so the leg arriving at it is still inside. `inside` lists points inside the CTR that no published corridor traverses -- everything the corridors DO traverse between the field and an exit is derived from the route graph at load time and does not need listing here.",
+  "_note": "A field absent from this list behaves as before -- the clock starts at the field. A listed field always excludes at least its first leg: you cannot be outside the CTR at the field itself.",
   "airfields": {
     "LLHZ": {
       "clockStartsAt": [
@@ -19,9 +19,7 @@
       ],
       "inside": [
         "KRYON",
-        "AFFEK",
-        "GILAM",
-        "GALIM"
+        "AFFEK"
       ]
     },
     "LLKS": {
@@ -35,9 +33,7 @@
         "HULAT",
         "DESHE"
       ],
-      "inside": [
-        "AMNON"
-      ]
+      "inside": []
     },
     "LLFK": {
       "clockStartsAt": [

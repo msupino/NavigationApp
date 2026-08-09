@@ -178,3 +178,24 @@ test('the plan shows --- for a CTR leg and leaves it out of the totals', async (
   expect(r.leg1time).toBe(r.expected);
   expect(r.total).toBe(r.expected);
 });
+
+test('points inside the CTR are inherited from the corridors, not just listed', async ({ page }) => {
+  await boot(page);
+  // The published corridor from LLHA to its exits passes GALIM and GILAM; from LLIB it
+  // passes AMNON; from LLBG, MRISN. None of that has to be written down twice.
+  const derived = await page.evaluate(async () => {
+    await loadCtrBoundaries();
+    await fplLoadRouteGraph();
+    await new Promise(r => setTimeout(r, 300));      // derivation is async
+    const pick = (i) => (ctrBoundaries[i] && ctrBoundaries[i]._derived) || [];
+    return { LLHA: pick('LLHA').sort(), LLIB: pick('LLIB'), LLBG: pick('LLBG') };
+  });
+  // The two the maintainer reported by hand, both derived without being listed:
+  expect(derived.LLHA).toEqual(['GALIM', 'GILAM']);
+  expect(derived.LLIB).toEqual(['AMNON']);
+  // ...and a point nobody listed, on a field that is rare in CVFR practice: the derivation
+  // is only as good as the graph there, which is why it is a HINT layered under the
+  // hand-written list rather than a replacement for it.
+  await route(page, ['LLIB', 'AMNON', 'TAVOR']);
+  expect(await page.evaluate(() => ctrClockStartIndex())).toBe(2);
+});

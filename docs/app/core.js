@@ -2270,8 +2270,43 @@ async function loadCtrBoundaries() {
   } catch (e) {
     ctrBoundaries = {};             // absent or unreadable: every clock starts at the field
   }
+  ctrDeriveInsideFromGraph();       // fills in what the corridors already imply
   if (typeof scheduleDraw === 'function') scheduleDraw();
   return ctrBoundaries;
+}
+// Most "inside the CTR" points are already implied by the route graph: they are the
+// reporting points the published corridor passes through between the field and its exit
+// point. Deriving them means the hand-written list only has to carry what no corridor
+// traverses (Haifa's KRYON and AFFEK), and it self-corrects as the graph grows -- LLIB's
+// AMNON and Haifa's GALIM were both missing from the hand list and both fall out of this.
+async function ctrDeriveInsideFromGraph() {
+  if (!ctrBoundaries || typeof fplGraphChain !== 'function') return;
+  let graph = null;
+  try {
+    graph = (typeof fplLoadRouteGraph === 'function') ? await fplLoadRouteGraph() : null;
+  } catch (e) { graph = null; }
+  if (!graph) return;
+  for (const rec of Object.values(ctrBoundaries)) {
+    rec._derived = [];
+  }
+  for (const [icao, rec] of Object.entries(ctrBoundaries)) {
+    if (!graph.nodes || !graph.nodes[icao]) continue;
+    const found = new Set();
+    for (const exit of rec.clockStartsAt || []) {
+      if (!graph.nodes[exit]) continue;
+      let chain = null;
+      try { chain = fplGraphChain(graph, icao, exit, {}); } catch (e) { chain = null; }
+      if (!chain) continue;
+      for (const n of chain.slice(1, -1)) found.add(n);
+    }
+    rec._derived = [...found];
+  }
+  if (typeof scheduleDraw === 'function') scheduleDraw();
+}
+// Every point inside a field's CTR: the hand-written list plus what the corridors imply.
+function ctrInsidePoints(rec) {
+  if (!rec) return [];
+  return (rec.inside || []).concat(rec._derived || []);
 }
 // Index of the waypoint where the route clock starts: walking out from the departure
 // field, every point still INSIDE its CTR is skipped, and the clock starts at the first
@@ -2286,7 +2321,7 @@ function ctrClockStartIndex() {
   const icao = (first && first.name) ? String(first.name).trim().toUpperCase() : '';
   const rec = icao && ctrBoundaries[icao];
   if (!rec) return 0;
-  const inside = rec.inside || [];
+  const inside = ctrInsidePoints(rec);
   for (let i = 1; i < state.waypoints.length; i++) {
     const nm = (state.waypoints[i].name || '').toString().trim().toUpperCase();
     if (!inside.includes(nm)) return i;
