@@ -2147,20 +2147,6 @@
       "en": "Urim Junction",
       "enSource": "cross-referenced"
     },
-    "he:אליקים": {
-      "he": "אליקים",
-      "lat": 32.63504,
-      "lng": 35.06458,
-      "kind": "waypoint",
-      "layers": [
-        "heli",
-        "lsa"
-      ],
-      "name": "אליקים",
-      "report": "onRequest",
-      "en": "Elyakim Interchange",
-      "enSource": "cross-referenced"
-    },
     "he:אנדרטה": {
       "he": "אנדרטה",
       "lat": 29.98081,
@@ -2271,20 +2257,6 @@
       ],
       "name": "בקעת חיסון",
       "report": "onRequest"
-    },
-    "he:בת-שלמה": {
-      "he": "בת שלמה",
-      "lat": 32.59744,
-      "lng": 35.00484,
-      "kind": "waypoint",
-      "layers": [
-        "heli",
-        "lsa"
-      ],
-      "name": "בת שלמה",
-      "report": "onRequest",
-      "en": "Bat Shlomo Interchange",
-      "enSource": "cross-referenced"
     },
     "he:גבעות-בר": {
       "he": "גבעות בר",
@@ -2882,6 +2854,38 @@
       ],
       "name": "תדהר",
       "report": "onRequest"
+    },
+    "ELYKM": {
+      "he": "אליקים",
+      "lat": 32.63504,
+      "lng": 35.06458,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "אליקים",
+      "report": "onRequest",
+      "en": "Elyakim Interchange",
+      "enSource": "cross-referenced",
+      "code": "ELYKM",
+      "codeSource": "cross-referenced"
+    },
+    "BTSLM": {
+      "he": "בת שלמה",
+      "lat": 32.59744,
+      "lng": 35.00484,
+      "kind": "waypoint",
+      "layers": [
+        "heli",
+        "lsa"
+      ],
+      "name": "בת שלמה",
+      "report": "onRequest",
+      "en": "Bat Shlomo Interchange",
+      "enSource": "cross-referenced",
+      "code": "BTSLM",
+      "codeSource": "cross-referenced"
     }
   },
   "edges": {
