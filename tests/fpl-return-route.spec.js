@@ -600,3 +600,30 @@ test('a return route saved with an older chart position still joins by name', as
   // The displaced NAGID leg still expands through the corridor points around it.
   expect(route2.split(' ').length).toBeGreaterThan('SFAIM HTZUK NAGID HTZUK KNTRY'.split(' ').length);
 });
+
+test('the full out-and-back files every reporting point on the way, both directions', async ({ page }) => {
+  // The complete sortie as the filing service sends it: outbound expanded through the
+  // corridor, the SAVED return picked in the modal, its leg expanded too, one plan. This is
+  // the exact chain for the LLHZ out-and-back turned at NAGID -- out via SFAIM, home via
+  // KNTRY, every reporting point named in the direction flown.
+  await boot(page);
+  const r = await page.evaluate(async ({ profile }) => {
+    // The return, saved first -- NAGID home via KNTRY, as a pilot would keep it.
+    state.waypoints = ['NAGID', 'HTZUK', 'KNTRY', 'LLHZ'].map(n => ({ ...window.__pts[n], name: n }));
+    syncLegs();
+    routeLibrarySaveCurrent('home via KNTRY');
+    // The outbound, drawn coarse: four taps.
+    state.waypoints = ['LLHZ', 'SFAIM', 'HTZUK', 'NAGID'].map(n => ({ ...window.__pts[n], name: n }));
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 100;
+    const ret = loadRouteLibrary().find(e => e && !e.deleted && e.name === 'home via KNTRY');
+    const graph = await fplLoadRouteGraph();
+    const res = buildIcaoFpl(profile, { dateLocal: '2026-08-07', timeLocal: '11:05',
+      returnRouteData: ret.data, routeGraph: graph, now: new Date('2026-08-07T05:00:00Z') });
+    return { res };
+  }, { profile: PROFILE });
+  expect(r.res.errs).toBeUndefined();
+  const route = r.res.text.split('\n').find(l => l.startsWith('-N'));
+  expect(route).toBe('-N0100VFR SFAIM APOLN ARENA HTZUK RIDNG CLORE TYONA SUPER NTAIM BOVED NAGID' +
+    ' BOVED NTAIM SUPER TYONA CLORE RIDNG HTZUK KNTRY');
+});
