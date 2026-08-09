@@ -1359,6 +1359,10 @@ async function loadAreas() {
       // (Fri–Sat); everything else defaults to 'always'. Field is optional in
       // the data — absent means 'always'.
       .map(a => ({ coords: a.coords, name: a.name || '', en: a.en || '', he: a.he || '',
+        icao: a.icao || '', lowFt: a.lowFt, highFt: a.highFt,
+        // Weekday opening hour (local): 12:00/14:00 bubbles are afternoon-only on
+        // weekdays, open all day on the weekend. Absent = no gate.
+        openFromHour: Number.isFinite(a.openFromHour) ? a.openFromHour : null,
         active: a.active === 'weekend' ? 'weekend' : 'always' }));
     if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
     areas = mapped;
@@ -1405,7 +1409,9 @@ function drawAreas() {
     }
     octx.closePath();
     const hl = a === window.__lsaHighlight;   // chart "locate" highlight
-    const wknd = a.active === 'weekend';
+    // A weekday-gated bubble (opens 12:00/14:00) is drawn like the weekend class: not in
+    // force when a weekday pilot is likeliest to look at it.
+    const wknd = a.active === 'weekend' || (a.openFromHour != null && a.openFromHour >= 12);
     // Official legend colours: always = green outline + pale-green fill (in force
     // every day); weekend = black outline + tan fill (Fri–Sat only). The locate
     // highlight overrides both with amber.
@@ -1426,11 +1432,26 @@ function drawAreas() {
       const nm = areaLabel(a);
       if (!nm) continue;
       const s = proj(areaCentroid(a.coords));
-      octx.lineWidth = tune('overlayLabelHaloWidthPx');
-      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
-      octx.strokeText(nm, s.x, s.y);
-      octx.fillStyle = tune('lsaLabelColor');        // neutral: reads over green + tan fills
-      octx.fillText(nm, s.x, s.y);
+      const halo = txt => {
+        octx.lineWidth = tune('overlayLabelHaloWidthPx');
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+        octx.strokeText(txt.t, s.x, txt.y);
+        octx.fillStyle = tune('lsaLabelColor');      // neutral: reads over green + tan fills
+        octx.fillText(txt.t, s.x, txt.y);
+      };
+      // Second line: the altitude band and, when gated, the weekday opening hour --
+      // the two facts a pilot needs before planning through the bubble.
+      const bits = [];
+      if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) bits.push(a.lowFt + '-' + a.highFt + ' ft');
+      if (a.openFromHour != null) bits.push(String(a.openFromHour).padStart(2, '0') + ':00→');
+      if (bits.length) {
+        halo({ t: nm, y: s.y - 7 });
+        octx.font = (typeof tune === 'function' ? tune('vorLabelFontPx') - 2 : 10) + 'px sans-serif';
+        halo({ t: bits.join('  '), y: s.y + 7 });
+        octx.font = 'bold ' + (typeof tune === 'function' ? tune('vorLabelFontPx') : 12) + 'px sans-serif';
+      } else {
+        halo({ t: nm, y: s.y });
+      }
     }
   }
   octx.restore();
