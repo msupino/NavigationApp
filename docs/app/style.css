@@ -3827,6 +3827,12 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
   width: min(420px, 90vw);
 }
 #search-overlay.hidden { display: none; }
+/* Only WHILE the dropdown is open does the panel outrank the toolbar. The toolbar reaches
+   z 2330/2340 on narrow viewports, which silently covered the results whenever an open
+   section grew tall enough to reach them; raising the panel permanently was worse -- its
+   own hint text then sat over the toolbar and ate clicks meant for the button that opens
+   it. Below the modals (2400): a dialog over the search stays on top. */
+#search-overlay.has-results { z-index: 2350; }
 #search-overlay #wp-search {
   flex: 1;
   font: inherit;

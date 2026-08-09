@@ -970,8 +970,15 @@ window.clearSearchFlash = clearSearchFlash;
 // --- nav-waypoint search --------------------------------------------
 const wpSearch = document.getElementById('wp-search');
 const wpResults = document.getElementById('wp-search-results');
+// The panel only outranks the toolbar while the dropdown is open (see style.css).
+function syncSearchResultsStacking() {
+  const ov = document.getElementById('search-overlay');
+  const res = document.getElementById('wp-search-results');
+  if (ov && res) ov.classList.toggle('has-results', !res.classList.contains('hidden'));
+}
 function closeSearch() {
   wpResults.classList.add('hidden');
+  syncSearchResultsStacking();
   wpResults.innerHTML = '';
 }
 // The two-line "type space-separated codes" tip teaches the search once and then
@@ -1058,6 +1065,28 @@ async function buildRouteFromQuery(raw) {
   hideSearchOverlay();
   showInspector();
   fitView();
+  // Auto-route applies to a search-built route too: typing "LLHZ RIDNG" is the same
+  // request as tapping the two points, and it would be strange for one to fill in the
+  // reporting points between them and the other not to. Each gap is filled in turn, and
+  // the fill is skipped if the route changed under the await.
+  if (typeof autoRouteChain === 'function' && window.autoRouteCorridors) {
+    (async () => {
+      const built = state.waypoints;
+      for (let i = built.length - 1; i > 0; i--) {
+        if (state.waypoints !== built) return;              // route replaced meanwhile
+        const prev = built[i - 1], next = built[i];
+        const mid = await autoRouteChain(prev, next);
+        if (!mid || !mid.length || state.waypoints !== built) continue;
+        const at = state.waypoints.indexOf(next);
+        if (at < 1 || state.waypoints[at - 1] !== prev) continue;
+        state.waypoints.splice(at, 0, ...mid);
+      }
+      syncLegs();
+      if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+      draw();
+      fitView();
+    })().catch(() => {});
+  }
   draw();
   return true;
 }
@@ -1961,6 +1990,7 @@ function runSearch() {
     wpResults.appendChild(item);
   }
   wpResults.classList.remove('hidden');
+  syncSearchResultsStacking();
 }
 wpSearch.addEventListener('input', runSearch);
 wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });
@@ -2777,6 +2807,17 @@ document.getElementById('drift-cb').onchange = e => {
   try { localStorage.setItem(DRIFT_KEY, showDrift ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
+const AUTOROUTE_KEY = 'navaid.autoRoute';
+try {
+  const ar = lsGet(AUTOROUTE_KEY);
+  if (ar !== null) window.autoRouteCorridors = ar === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('autoroute-cb').checked = autoRouteCorridors;
+document.getElementById('autoroute-cb').onchange = e => {
+  window.autoRouteCorridors = e.target.checked;
+  try { localStorage.setItem(AUTOROUTE_KEY, autoRouteCorridors ? '1' : '0'); } catch (err) { /* */ }
+};
+
 // When the user toggles an overlay ON, snap existing waypoints whose name
 // is empty, auto-snapped, or a sequence label (WP N / locale prefix) to the
 // nearest airfield / nav-WP. Preserves user-typed names. Priority matches
@@ -7437,6 +7478,7 @@ NavAid.defaultVisibilityMap = [
   ['ims-pwx-cb', 'navaid.imsPwx', 'defaultImsPwx'],
   ['sigwx-ov-cb', 'navaid.sigwxOv', 'defaultSigwxOv'],
   ['lsa-cb', 'navaid.showLsaBubbles', 'defaultShowLsaBubbles'],
+  ['autoroute-cb', 'navaid.autoRoute', 'defaultAutoRoute'],
   ['circuit-cb', 'navaid.showCircuit', 'defaultShowCircuit'],
   ['training-cb', 'navaid.showTraining', 'defaultShowTraining'],
   ['cvfr-cb', 'navaid.showCvfr', 'defaultShowCvfr'],
