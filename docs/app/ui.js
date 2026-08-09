@@ -1898,7 +1898,7 @@ function runSearch() {
       const nm = areaLabel(w);
       if (nm && nm !== primary) bits.push(nm);
       if (Number.isFinite(w.lowFt) && Number.isFinite(w.highFt)) bits.push(w.lowFt + '-' + w.highFt + ' ft');
-      if (w.openFromHour != null) bits.push(String(w.openFromHour).padStart(2, '0') + ':00\u2192');
+      if (w.active === 'weekend') bits.push(S.bubbleWeekendTag || 'weekend');
       alt = bits.join(' \u00b7 ');
     } else if (h.kind === 'af') {
       primary = w.name;                  // ICAO is always shown first
@@ -6038,6 +6038,22 @@ function createTuningPanel() {
       const name = document.createElement('span');
       name.className = 'tune-label';
       name.textContent = spec.label || key;
+      // The registry key is what a gist edit needs, and nothing showed it: hover the label
+      // for the key, click it to copy the key to the clipboard (with a brief confirmation
+      // in place of the label, so the copy is felt without a toast layer).
+      name.title = key;
+      name.style.cursor = 'copy';
+      name.addEventListener('click', ev => {
+        ev.preventDefault();          // the row is a <label>; don't toggle the control
+        const done = () => {
+          const orig = name.textContent;
+          name.textContent = key + ' ✓ copied';
+          setTimeout(() => { name.textContent = orig; }, 1200);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(key).then(done, done);
+        } else { done(); }
+      });
 
       const reset = document.createElement('button');
       reset.type = 'button';

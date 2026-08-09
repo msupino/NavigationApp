@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "source": "LSA bubble areas cross-referenced from a secondary source (Aug 2026): polygons, altitude bands (ft), and weekday opening hours. Replaces 26 unlabelled polygons; the chart remains the authority.",
+  "source": "LSA bubble areas: polygons, altitude bands (ft) and the chart legend’s availability class (active: \"weekend\" = weekends and holidays only; absent = in force daily). The tan/green split follows the published chart legend; a secondary source’s per-bubble opening hours were deliberately dropped — the legend is the authority.",
   "areas": [
     {
       "name": "בועת אורן",
@@ -63,10 +63,10 @@
       ],
       "lowFt": 0,
       "highFt": 2100,
-      "openFromHour": 12,
       "points": [
         "OREN"
-      ]
+      ],
+      "active": "weekend"
     },
     {
       "name": "בועת אלמוג",
@@ -105,7 +105,6 @@
       ],
       "lowFt": 0,
       "highFt": 3000,
-      "openFromHour": 6,
       "points": [
         "ALMOG"
       ]
@@ -259,10 +258,10 @@
       ],
       "lowFt": 0,
       "highFt": 1700,
-      "openFromHour": 14,
       "points": [
         "BEER-SHEVA"
-      ]
+      ],
+      "active": "weekend"
     },
     {
       "name": "בועת גוברין דרום",
@@ -429,7 +428,6 @@
       ],
       "lowFt": 0,
       "highFt": 2000,
-      "openFromHour": 6,
       "points": [
         "GOVRIN-DROMIT",
         "GOVRIN-DAROM"
@@ -480,7 +478,6 @@
       ],
       "lowFt": 0,
       "highFt": 1500,
-      "openFromHour": 6,
       "points": [
         "GOVRIN-ZFONIT",
         "GOVRIN-ZAFON",
@@ -560,7 +557,6 @@
       ],
       "lowFt": 0,
       "highFt": 2000,
-      "openFromHour": 6,
       "points": [
         "HAHULA"
       ]
@@ -904,7 +900,6 @@
       ],
       "lowFt": 0,
       "highFt": 1000,
-      "openFromHour": 6,
       "points": [
         "SHARON-ZAFON",
         "SHARON-TZAFON",
@@ -1144,10 +1139,10 @@
       ],
       "lowFt": 0,
       "highFt": 2000,
-      "openFromHour": 12,
       "points": [
         "ZOHAR"
-      ]
+      ],
+      "active": "weekend"
     },
     {
       "name": "בועת חרוד",
@@ -1250,7 +1245,6 @@
       ],
       "lowFt": 0,
       "highFt": 1500,
-      "openFromHour": 6,
       "points": [
         "HAROD"
       ]
@@ -1480,7 +1474,6 @@
       ],
       "lowFt": 0,
       "highFt": 4000,
-      "openFromHour": 6,
       "points": [
         "HARIF"
       ]
@@ -1586,10 +1579,10 @@
       ],
       "lowFt": 0,
       "highFt": 3000,
-      "openFromHour": 12,
       "points": [
         "YAM-HAMELACH"
-      ]
+      ],
+      "active": "weekend"
     },
     {
       "name": "בועת ירוחם",
@@ -1804,7 +1797,6 @@
       ],
       "lowFt": 0,
       "highFt": 2500,
-      "openFromHour": 6,
       "points": [
         "YERUHAM",
         "YERUCHAM"
@@ -1951,7 +1943,6 @@
       ],
       "lowFt": 0,
       "highFt": 2000,
-      "openFromHour": 6,
       "points": [
         "KINERET"
       ]
@@ -2093,7 +2084,6 @@
       ],
       "lowFt": 0,
       "highFt": 4000,
-      "openFromHour": 6,
       "points": [
         "KARMIEL"
       ]
@@ -2211,10 +2201,10 @@
       ],
       "lowFt": 0,
       "highFt": 2000,
-      "openFromHour": 14,
       "points": [
         "LEHAVIM"
-      ]
+      ],
+      "active": "weekend"
     },
     {
       "name": "בועת מגידו א' מזרח",
@@ -2280,8 +2270,7 @@
         ]
       ],
       "lowFt": 0,
-      "highFt": 2000,
-      "openFromHour": 6
+      "highFt": 2000
     },
     {
       "name": "בועת מגידו א' מערב",
@@ -2445,8 +2434,7 @@
         ]
       ],
       "lowFt": 0,
-      "highFt": 2000,
-      "openFromHour": 6
+      "highFt": 2000
     },
     {
       "name": "בועת מגידו ב' מערב",
@@ -2571,10 +2559,10 @@
       ],
       "lowFt": 0,
       "highFt": 3000,
-      "openFromHour": 14,
       "points": [
         "MEITAR"
-      ]
+      ],
+      "active": "weekend"
     },
     {
       "name": "בועת נטופה",
@@ -2697,7 +2685,6 @@
       ],
       "lowFt": 0,
       "highFt": 2000,
-      "openFromHour": 6,
       "points": [
         "NETOFA"
       ]
@@ -2779,10 +2766,10 @@
       ],
       "lowFt": 0,
       "highFt": 400,
-      "openFromHour": 12,
       "points": [
         "NIZANIM"
-      ]
+      ],
+      "active": "weekend"
     },
     {
       "name": "בועת נעמה",
@@ -2889,7 +2876,6 @@
       ],
       "lowFt": 0,
       "highFt": 2500,
-      "openFromHour": 6,
       "points": [
         "NAAMA"
       ]
@@ -3691,7 +3677,6 @@
       ],
       "lowFt": 0,
       "highFt": 3000,
-      "openFromHour": 6,
       "points": [
         "EIN-GEDI"
       ]
@@ -3773,7 +3758,6 @@
       ],
       "lowFt": 0,
       "highFt": 2000,
-      "openFromHour": 6,
       "points": [
         "ARRA",
         "ARA"
@@ -4020,7 +4004,6 @@
       ],
       "lowFt": 0,
       "highFt": 2500,
-      "openFromHour": 6,
       "points": [
         "FARAN",
         "PARAN"
@@ -4163,7 +4146,6 @@
       ],
       "lowFt": 0,
       "highFt": 2500,
-      "openFromHour": 6,
       "points": [
         "ZNIFIM",
         "TZNIFIM"
@@ -4262,7 +4244,6 @@
       ],
       "lowFt": 0,
       "highFt": 4000,
-      "openFromHour": 6,
       "points": [
         "KZIOT",
         "KTZIOT",
@@ -4362,7 +4343,6 @@
       ],
       "lowFt": 0,
       "highFt": 4000,
-      "openFromHour": 6,
       "points": [
         "RAMAT-HAGOLAN"
       ]
@@ -4580,7 +4560,6 @@
       ],
       "lowFt": 0,
       "highFt": 2000,
-      "openFromHour": 6,
       "points": [
         "SHIVTA"
       ]
@@ -4674,10 +4653,10 @@
       ],
       "lowFt": 0,
       "highFt": 1500,
-      "openFromHour": 14,
       "points": [
         "SDEROT-DAROM"
-      ]
+      ],
+      "active": "weekend"
     },
     {
       "name": "בועת שדרות צפון",
@@ -4808,11 +4787,11 @@
       ],
       "lowFt": 0,
       "highFt": 1000,
-      "openFromHour": 12,
       "points": [
         "SDEROT-ZAFON",
         "SDEROT-TZAFON"
-      ]
+      ],
+      "active": "weekend"
     },
     {
       "name": "בועת שיטים",
@@ -4899,7 +4878,6 @@
       ],
       "lowFt": 0,
       "highFt": 2500,
-      "openFromHour": 6,
       "points": [
         "SHITIM"
       ]
@@ -4965,10 +4943,10 @@
       ],
       "lowFt": 0,
       "highFt": 3000,
-      "openFromHour": 12,
       "points": [
         "SHALEM"
-      ]
+      ],
+      "active": "weekend"
     }
   ]
 }
