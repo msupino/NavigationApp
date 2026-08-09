@@ -1430,6 +1430,17 @@ const FPL_CHAIN_MAX_HOPS = 30;
 function fplGraphChain(graph, from, to) {
   if (!graph || !from || !to) return null;
   if (from === to) return [from];
+  // An airfield or airstrip is a place the graph can route TO, never THROUGH: passing one
+  // inserts a landing into the filed plan, which then refuses itself as two flights
+  // (errFplMidAirfield). LLHZ->LLHA expanded through FRDIS->LLBO->BOREN -- the Habonim
+  // join segments exist for flights that END there, and "most points within slack"
+  // happily took the detour. Endpoints stay usable: a leg may of course start or end at
+  // a field.
+  const landable = (name) => {
+    if (name === from || name === to) return false;
+    const n = graph.nodes && graph.nodes[name];
+    return !!(n && (n.kind === 'airfield' || n.kind === 'airstrip'));
+  };
   const D = [], P = [];
   for (let k = 0; k <= FPL_CHAIN_MAX_HOPS; k++) { D.push(new Map()); P.push(new Map()); }
   D[0].set(from, 0);
@@ -1437,6 +1448,7 @@ function fplGraphChain(graph, from, to) {
     for (const [n, d] of D[k]) {
       for (const e of graph.edges[n] || []) {
         if (e.blocked) continue;               // one-way, against the flow
+        if (landable(e.to)) continue;          // route to a field, never through one
         const nd = d + (Number.isFinite(e.distanceNm) ? e.distanceNm : 1);
         if (!D[k + 1].has(e.to) || nd < D[k + 1].get(e.to)) {
           D[k + 1].set(e.to, nd);

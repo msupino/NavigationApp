@@ -627,3 +627,32 @@ test('the full out-and-back files every reporting point on the way, both directi
   expect(route).toBe('-N0100VFR SFAIM APOLN ARENA HTZUK RIDNG CLORE TYONA SUPER NTAIM BOVED NAGID' +
     ' BOVED NTAIM SUPER TYONA CLORE RIDNG HTZUK KNTRY');
 });
+
+test('expansion never routes THROUGH an airfield', async ({ page }) => {
+  // LLHZ->LLHA expanded through FRDIS->LLBO->BOREN: the Habonim join segments exist for
+  // flights that END there, and "most points within slack" took the detour -- inserting a
+  // landing that the plan then refused as two flights. A field is a place expansion may
+  // route TO, never through.
+  await boot(page);
+  const r = await page.evaluate(async ({ profile }) => {
+    await loadAirfields();
+    const hz = airfieldByIcao('LLHZ'), ha = airfieldByIcao('LLHA');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: ha.lat, lng: ha.lng, name: 'LLHA' },
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 100;
+    const res = buildIcaoFpl(profile, { dateLocal: '2026-08-07', timeLocal: '11:05',
+      routeGraph: await fplLoadRouteGraph(), now: new Date('2026-08-07T05:00:00Z') });
+    return { errs: res.errs && res.errs.map(e => e.code || e),
+      route: res.text && res.text.split('\n').find(l => l.startsWith('-N')) };
+  }, { profile: PROFILE });
+  // The plan builds -- no errFplMidAirfield -- and names no airfield between the ends.
+  expect(r.errs).toBeUndefined();
+  expect(r.route).toBeTruthy();
+  const mids = r.route.replace('-N0100VFR ', '').split(' ');
+  const fields = await page.evaluate(names =>
+    names.filter(n => typeof airfieldByIcao === 'function' && airfieldByIcao(n)), mids);
+  expect(fields).toEqual([]);
+});
