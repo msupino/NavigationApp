@@ -1621,6 +1621,7 @@ function satelliteModalLayers() {
   const out = {};
   if (typeof layers !== 'object' || !layers) return out;
   for (const nm in layers) {
+    if (typeof layerOffered === 'function' && !layerOffered(nm)) continue;
     const src = layers[nm];
     if (src && src._url) {
       const opts = Object.assign({}, src.options);
@@ -1925,7 +1926,9 @@ function showRouteMosaicModal() {
   body.className = 'route-mosaic-body';
 
   // Toolbar: layer picker (CVFR / Satellite / …) + Print.
-  const names = (typeof layers !== 'undefined') ? Object.keys(layers) : ['Satellite'];
+  const names = (typeof layers !== 'undefined')
+    ? Object.keys(layers).filter(n => typeof layerOffered !== 'function' || layerOffered(n))
+    : ['Satellite'];
   const bar = document.createElement('div');
   bar.className = 'route-mosaic-bar';
   const sel = document.createElement('select');
