@@ -326,7 +326,7 @@ function _appendKeyCombo(parent, keys) {
 
 // --- schema validation ----------------------------------------------
 // Strict validation of every documented field on route JSON (file import
-// + localStorage restore) and on cvfr-nav-waypoints.json. A typo like
+// + localStorage restore) and on the nav-waypoints projection of the route graph. A typo like
 // `flghtSpeed` used to silently default; now it surfaces an alert that
 // names the offending field path so the JSON author can find it. Extra /
 // unknown fields at any level are silently allowed for forward-compat
@@ -615,7 +615,7 @@ function validateVors(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/data/cvfr-comm-change.json — { version, source?,
+// Strict schema for the comm-change shape projected from cvfr-route-graph.json — { version, source?,
 // callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, alternate?,
 // secondaryAlternate?, atis?, atisDeparture?, ground?, groundWest?,
 // groundEast?, clearance?, appPrimary?, appSecondary?, tmaPrimary?,
@@ -709,7 +709,7 @@ function validateCommChange(d) {
   return errs.length ? errs.join('; ') : null;
 }
 
-// Strict schema for docs/data/cvfr-leg-altitude.json — a reference table of
+// Strict schema for the leg-altitude shape projected from cvfr-route-graph.json — a reference table of
 // green CVFR route-segment altitude pairs. Unknown metadata keys are allowed;
 // the map behavior needs from/to + integer/null altitude fields, plus the
 // optional directionPool must mirror those pairs when present.
@@ -1331,9 +1331,10 @@ let _fplRouteGraph = null;
 async function fplLoadRouteGraph() {
   if (_fplRouteGraph !== null) return _fplRouteGraph;
   try {
-    const r = await fetch('data/cvfr-route-graph.json');
-    if (!r.ok) throw new Error(String(r.status));
-    const g = await r.json();
+    // Through draw.js's memoized loader, not a second fetch: that one carries the ?v=
+    // cache-bust, so the corridor expansion and the map cannot disagree about which
+    // graph they are reading after a deploy.
+    const g = await routeGraphData('cvfr');
     _fplRouteGraph = (g && g.nodes && g.edges) ? g : false;
   } catch (e) {
     _fplRouteGraph = false;          // no graph: file exactly what was drawn
@@ -6209,12 +6210,21 @@ function altitudePairSegmentsForChart() {
 }
 
 function altitudePairsDataForCopy() {
-  const data = (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments))
+  const live = (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments))
     ? legAltitudeDataset
     : { version: 1, segments: altitudePairSegmentsForChart() };
-  for (const segment of data.segments || []) normalizeAltitudePairSegment(segment);
-  syncLegAltitudeDatasetDirectionPool(data);
-  return data;
+  for (const segment of live.segments || []) normalizeAltitudePairSegment(segment);
+  // A CLONE in exactly the shape the app ships: the copy exists so a maintainer can diff
+  // it against the leg-altitude projection of the route graph and fold edits back in.
+  // directionPool is not part of that shape any more (always derived, never stored), and
+  // the old version also mutated the live dataset just to build its own output.
+  const out = {};
+  for (const k of ['version', 'source', 'sourceCharts', 'schema']) {
+    if (live[k] !== undefined) out[k] = live[k];
+  }
+  out.segments = (live.segments || []).map(segment => ({ ...segment }));
+  out.segments.sort((a, b) => (a.from + a.to).localeCompare(b.from + b.to));
+  return out;
 }
 
 function altitudePairsJsonForCopy() {

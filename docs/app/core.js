@@ -695,12 +695,12 @@ var magVar = -5;                       // signed offset added to true heading
 // (full locale or just navWpUrl). Object.assign merges: defaults first,
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
-  navWpUrl: 'data/cvfr-nav-waypoints.json?v=9',  // resolved relative to index.html (docs/)
+  // One graph per layer replaces the nav-waypoints / comm-change / leg-altitude files;
+  // the ?v= cache-busts all three kinds, which now come from the same file.
+  routeGraphUrl: 'data/cvfr-route-graph.json?v=1',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=33',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
-  commChangeUrl: 'data/cvfr-comm-change.json?v=2', // CVFR comm-change reporting points (issue #399)
-  legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1', // CVFR green-route leg altitude table
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
   vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations (#404 follow-up)
 
@@ -1745,10 +1745,10 @@ var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // O(1) lookup, value is the raw point entry
                             // `{commChange, callSigns, from, to, note, ...}`.
 var commChangeCallSigns = {}; // Frequency catalog keyed by call-sign id
-                              // (loaded from cvfr-comm-change.json `callSigns`).
+                              // (the route graph's `callSigns` dictionary).
 var legAltitudeMap = null; // null = not loaded yet (or last fetch failed —
                                 // retry on next call); {} or populated =
-                                // cvfr-leg-altitude.json segments keyed as
+                                // the route graph's segments keyed as
                                 // `FROM-TO` for automatic fresh-leg altitudes.
 var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
@@ -3214,8 +3214,15 @@ function syncLegs() {
   if (typeof onRouteChangedForPlates === 'function') onRouteChangedForPlates();
 }
 
+// Canonical -- the same key whichever way the leg is flown. The graph stores a segment in
+// whichever direction it walks first, so ~30% of rows come out reversed from one build to
+// the next; a directional key made every lookup probe both orientations, and a future
+// single-orientation lookup would have silently missed those rows. Orientation is decided
+// where it matters: by comparing the leg's `from` with the row's own `from`.
 function legAltitudeKey(from, to) {
-  return String(from || '').trim() + '-' + String(to || '').trim();
+  const a = String(from || '').trim();
+  const b = String(to || '').trim();
+  return a <= b ? a + '-' + b : b + '-' + a;
 }
 function legAltitudeDirectionsFromSegments(segments) {
   const out = [];
@@ -3440,14 +3447,10 @@ function legAltitudeForLeg(i) {
       outboundBlocked,
     };
   };
-  const direct = legAltitudeMap[legAltitudeKey(from, to)];
-  if (direct) {
-    const match = resolveSegment(direct, false);
-    if (match) return match;
-  }
-  const reverse = legAltitudeMap[legAltitudeKey(to, from)];
-  if (reverse) {
-    const match = resolveSegment(reverse, true);
+  const row = legAltitudeMap[legAltitudeKey(from, to)];
+  if (row) {
+    // Reversed when the leg is flown against the row's stored direction.
+    const match = resolveSegment(row, row.from !== from);
     if (match) return match;
   }
   const directDistanceNm = geo(state.waypoints[i], state.waypoints[i + 1]).dist;
@@ -3470,14 +3473,9 @@ function legAltitudePairMatchForLeg(i) {
   const from = legAltitudePointAtWaypoint(state.waypoints[i]);
   const to = legAltitudePointAtWaypoint(state.waypoints[i + 1]);
   if (!from || !to || from === to) return null;
-  const directKey = legAltitudeKey(from, to);
-  if (legAltitudeMap[directKey]) {
-    return { key: directKey, segment: legAltitudeMap[directKey], reverse: false };
-  }
-  const reverseKey = legAltitudeKey(to, from);
-  if (legAltitudeMap[reverseKey]) {
-    return { key: reverseKey, segment: legAltitudeMap[reverseKey], reverse: true };
-  }
+  const key = legAltitudeKey(from, to);
+  const segment = legAltitudeMap[key];
+  if (segment) return { key, segment, reverse: segment.from !== from };
   return null;
 }
 function rawLegAltitudeSegment(key) {
@@ -3642,7 +3640,7 @@ function legAllowsReturn(i) {
   const leg = state.legs[i];
   return !(leg && (leg._legAltitudeOutboundBlocked || leg._legAltitudeOneWay));
 }
-// The charted altitude for a leg as loaded from cvfr-leg-altitude.json — read from
+// The charted altitude for a leg, from the route graph's edges — read from
 // the pristine ORIGIN map, never the live (route-editable) lookup. The leg
 // inspector uses this for its default / reset-to-charted value so a hand-edited
 // altitude elsewhere doesn't redefine what "charted" means in the inspector.
@@ -3657,9 +3655,7 @@ function legAltitudeOriginForLeg(i) {
     if (!Number.isFinite(inboundAltitude) && !Number.isFinite(outboundAltitude)) return null;
     return { inboundAltitude, outboundAltitude };
   };
-  const direct = legAltitudeOriginMap[legAltitudeKey(from, to)];
-  if (direct) { const m = resolve(direct, false); if (m) return m; }
-  const reverse = legAltitudeOriginMap[legAltitudeKey(to, from)];
-  if (reverse) { const m = resolve(reverse, true); if (m) return m; }
+  const row = legAltitudeOriginMap[legAltitudeKey(from, to)];
+  if (row) { const m = resolve(row, row.from !== from); if (m) return m; }
   return null;
 }

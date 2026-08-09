@@ -79,9 +79,9 @@
   async function segmentsData() {
     if (_segCache) return _segCache;
     try {
-      const url = (S && S.legAltitudeUrl) || 'data/cvfr-leg-altitude.json';
-      const r = await fetch(url);
-      const j = await r.json();
+      // Always the CVFR network, whatever layer is displayed: routing a CVFR flight
+      // through a heli corridor would file a route it is not cleared for.
+      const j = legAltitudeFromGraph(await routeGraphData('cvfr'));
       _segCache = Array.isArray(j.segments) ? j.segments : [];
     } catch (e) { _segCache = []; }
     return _segCache;

@@ -1,6 +1,7 @@
 // @ts-check
 // Regression coverage for the CVFR altitude-pair table direction columns.
 const { test, expect } = require('./_setup');
+const { stubGraph } = require('./_layerData');
 
 const ALTITUDE_FIXTURE = {
   version: 1,
@@ -25,11 +26,7 @@ const ALTITUDE_FIXTURE = {
 };
 
 async function installAltitudeFixture(page) {
-  await page.route('**/cvfr-leg-altitude.json*', route => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify(ALTITUDE_FIXTURE),
-  }));
+  await stubGraph(page, { segments: ALTITUDE_FIXTURE.segments });
 }
 
 async function boot(page, lang) {

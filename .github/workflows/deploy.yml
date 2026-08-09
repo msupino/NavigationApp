@@ -94,7 +94,7 @@ jobs:
       - name: JSON validation
         run: |
           set -e
-          for f in docs/manifest.json docs/data/cvfr-nav-waypoints.json; do
+          for f in docs/manifest.json docs/data/cvfr-route-graph.json; do
             echo "validating $f"
             node -e "JSON.parse(require('fs').readFileSync('$f','utf8'));"
           done
@@ -489,6 +489,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
           persist-credentials: false
+      - name: Fetch the retired-dataset baseline
+        # The route-graph suite proves the shipped graph still reproduces every field of the
+        # per-layer files that were deleted, reading them from the last commit that had
+        # them. A shallow clone does not carry it, so fetch that one commit rather than
+        # deepening the whole history.
+        run: git fetch --no-tags --depth=1 origin e3cd65e20b40894e264fbd66e8a5990ce2bde177
       - uses: actions/setup-node@v4
         with:
           node-version: 22
