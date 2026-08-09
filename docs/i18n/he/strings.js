@@ -216,6 +216,7 @@ window.S = {
   tbSigmet: '⚠ SIGMET',
   chooseLsaBubble: 'בועת אולטרה-קל',
   bubbleAltBand: 'טווח גבהים',
+  unitFeet: 'רגל',
   bubbleActive: 'פעילות',
   bubbleWeekendOnly: 'סופי שבוע וחגים בלבד',
   bubbleWeekendTag: 'סופ"ש',

@@ -450,7 +450,7 @@ function pointChoiceText(c) {
   if (c.type === 'lsaArea') {
     const a = (typeof areas !== 'undefined' && areas && areas[c.index]) || {};
     const bits = [];
-    if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) bits.push(a.lowFt + '-' + a.highFt + ' ft');
+    if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) bits.push(a.lowFt + '-' + a.highFt + ' ' + (S.unitFeet || 'ft'));
     if (a.openFromHour != null) bits.push(String(a.openFromHour).padStart(2, '0') + ':00\u2192');
     return { primary: areaLabel(a) || a.icao || (S.chooseLsaBubble || 'LSA bubble'),
       meta: (S.chooseLsaBubble || 'LSA bubble') + (bits.length ? ' \u00b7 ' + bits.join('  ') : '') };
@@ -2665,7 +2665,7 @@ function showInspector() {
     title.value = codeTitle(a.icao || '', bubbleName);
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     if (Number.isFinite(a.lowFt) && Number.isFinite(a.highFt)) {
-      body.appendChild(textRow(S.bubbleAltBand || 'Altitude band', a.lowFt + '-' + a.highFt + ' ft'));
+      body.appendChild(textRow(S.bubbleAltBand || 'Altitude band', a.lowFt + '-' + a.highFt + ' ' + (S.unitFeet || 'ft')));
     }
     // Availability, as the CHART's legend states it and nothing else: the tan class is
     // active weekends and holidays only. (openFromHour still classifies the bubble, but a
