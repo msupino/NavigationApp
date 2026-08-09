@@ -2531,7 +2531,8 @@
         "distanceNm": 2.06,
         "chartDistanceNm": 2,
         "status": "reviewed",
-        "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right."
+        "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right.",
+        "closedHint": true
       },
       {
         "to": "LLSO",
@@ -2539,7 +2540,8 @@
         "inboundAltitude": null,
         "outboundAltitude": null,
         "status": "unknown",
-        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed.",
+        "openFromHourHint": 6
       }
     ],
     "AHIUD": [
@@ -2560,7 +2562,8 @@
         "distanceNm": 13.69,
         "chartDistanceNm": 13.5,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "ZOHAR",
@@ -2569,7 +2572,8 @@
         "distanceNm": 10.12,
         "chartDistanceNm": 10.2,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "HAZVA": [
@@ -2580,7 +2584,8 @@
         "distanceNm": 13.69,
         "chartDistanceNm": 13.5,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "ZOHAR": [
@@ -2591,7 +2596,8 @@
         "distanceNm": 10.12,
         "chartDistanceNm": 10.2,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "HATRU",
@@ -2618,7 +2624,8 @@
         "distanceNm": 4.61,
         "chartDistanceNm": 4.5,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "TARAD": [
@@ -2629,7 +2636,8 @@
         "distanceNm": 4.61,
         "chartDistanceNm": 4.5,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "MYTAR",
@@ -2638,7 +2646,8 @@
         "distanceNm": 9.83,
         "chartDistanceNm": 9.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "BMNUH": [
@@ -2649,7 +2658,8 @@
         "distanceNm": 13.39,
         "chartDistanceNm": 13.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "ZOFAR",
@@ -2658,7 +2668,8 @@
         "distanceNm": 15.64,
         "chartDistanceNm": 15.6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "ZZHOR",
@@ -2667,7 +2678,9 @@
         "distanceNm": 6.1,
         "chartDistanceNm": 6.1,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "closedHint": true,
+        "openFromHourHint": 5
       }
     ],
     "YAHEL": [
@@ -2678,7 +2691,8 @@
         "distanceNm": 13.39,
         "chartDistanceNm": 13.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "KTORA",
@@ -2687,7 +2701,8 @@
         "distanceNm": 6.2,
         "chartDistanceNm": 6.3,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 5
       },
       {
         "to": "SIZFN",
@@ -2695,7 +2710,8 @@
         "outboundAltitude": null,
         "distanceNm": 6.51,
         "chartDistanceNm": 6.5,
-        "status": "unknown"
+        "status": "unknown",
+        "closedHint": true
       }
     ],
     "BOKER": [
@@ -2706,7 +2722,8 @@
         "distanceNm": 4.4,
         "chartDistanceNm": 4.4,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "TLLIM",
@@ -2715,7 +2732,8 @@
         "distanceNm": 7.07,
         "chartDistanceNm": 7,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "YRUHM",
@@ -2734,7 +2752,8 @@
         "distanceNm": 4.4,
         "chartDistanceNm": 4.4,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "RUHOT",
@@ -2753,7 +2772,8 @@
         "distanceNm": 9.24,
         "chartDistanceNm": 9.2,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 6
       }
     ],
     "SHAHR": [
@@ -2764,7 +2784,8 @@
         "distanceNm": 5.28,
         "chartDistanceNm": 5.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       },
       {
         "to": "DUMIM",
@@ -2773,7 +2794,8 @@
         "distanceNm": 9.24,
         "chartDistanceNm": 9.2,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 6
       }
     ],
     "EIRON": [
@@ -2860,7 +2882,8 @@
         "distanceNm": 4.1,
         "chartDistanceNm": 4,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       }
     ],
     "ENGDI": [
@@ -2871,7 +2894,8 @@
         "distanceNm": 5.35,
         "chartDistanceNm": 5.7,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       }
     ],
     "SHALM": [
@@ -2882,7 +2906,8 @@
         "distanceNm": 5.35,
         "chartDistanceNm": 5.7,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       },
       {
         "to": "ZUKIM",
@@ -2891,7 +2916,8 @@
         "distanceNm": 9.88,
         "chartDistanceNm": 9.8,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 6
       }
     ],
     "FAZEL": [
@@ -2902,7 +2928,8 @@
         "distanceNm": 4.93,
         "chartDistanceNm": 4.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       },
       {
         "to": "ARGMN",
@@ -2919,7 +2946,9 @@
         "distanceNm": 8.49,
         "chartDistanceNm": 8.4,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
+        "closedHint": true,
+        "openFromHourHint": 6
       }
     ],
     "NAAMA": [
@@ -2930,7 +2959,9 @@
         "distanceNm": 7.06,
         "chartDistanceNm": 7.1,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
+        "closedHint": true,
+        "openFromHourHint": 6
       },
       {
         "to": "FAZEL",
@@ -2939,7 +2970,9 @@
         "distanceNm": 8.49,
         "chartDistanceNm": 8.4,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
+        "closedHint": true,
+        "openFromHourHint": 6
       }
     ],
     "FRDIS": [
@@ -2965,7 +2998,8 @@
         "outboundAltitude": 2200,
         "distanceNm": 11.45,
         "chartDistanceNm": 11.4,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "closedHint": true
       },
       {
         "to": "SDTYM",
@@ -3002,7 +3036,8 @@
         "distanceNm": 6.2,
         "chartDistanceNm": 6.3,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 5
       },
       {
         "to": "YOTVT",
@@ -3011,7 +3046,8 @@
         "distanceNm": 5.42,
         "chartDistanceNm": 5.3,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 5
       }
     ],
     "KUVSH": [
@@ -3022,7 +3058,8 @@
         "distanceNm": 2.23,
         "chartDistanceNm": 2.2,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "NCITY": [
@@ -3033,7 +3070,8 @@
         "distanceNm": 2.23,
         "chartDistanceNm": 2.2,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "ZGOAL",
@@ -3085,7 +3123,8 @@
         "outboundAltitude": null,
         "distanceNm": 2.7,
         "chartDistanceNm": 2.7,
-        "status": "unknown"
+        "status": "unknown",
+        "closedHint": true
       },
       {
         "to": "SUPER",
@@ -3102,7 +3141,8 @@
         "distanceNm": 4.6,
         "chartDistanceNm": 4.6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
+        "closedHint": true
       }
     ],
     "MINGV": [
@@ -3135,7 +3175,8 @@
         "distanceNm": 2,
         "chartDistanceNm": 1.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "TARAD",
@@ -3144,7 +3185,8 @@
         "distanceNm": 9.83,
         "chartDistanceNm": 9.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "SOKET": [
@@ -3163,7 +3205,8 @@
         "distanceNm": 2,
         "chartDistanceNm": 1.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "ZGOAL": [
@@ -3182,7 +3225,8 @@
         "distanceNm": 3.69,
         "chartDistanceNm": 3.6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "ZLHAV": [
@@ -3193,7 +3237,8 @@
         "distanceNm": 4.29,
         "chartDistanceNm": 4.4,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 5
       },
       {
         "to": "ZGOAL",
@@ -3202,7 +3247,8 @@
         "distanceNm": 3.69,
         "chartDistanceNm": 3.6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "GORAL",
@@ -3247,7 +3293,8 @@
         "distanceNm": 6.21,
         "chartDistanceNm": 6.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       },
       {
         "to": "SDTYM",
@@ -3256,7 +3303,8 @@
         "distanceNm": 4.1,
         "chartDistanceNm": 4,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       }
     ],
     "PELEG": [
@@ -3267,7 +3315,8 @@
         "distanceNm": 6.21,
         "chartDistanceNm": 6.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       },
       {
         "to": "VINGT",
@@ -3276,7 +3325,8 @@
         "distanceNm": 4.56,
         "chartDistanceNm": 4.6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       }
     ],
     "RUHOT": [
@@ -3287,7 +3337,9 @@
         "distanceNm": 11.86,
         "chartDistanceNm": 11.8,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "closedHint": true,
+        "openFromHourHint": 5
       },
       {
         "to": "OVDAT",
@@ -3306,7 +3358,8 @@
         "distanceNm": 4.56,
         "chartDistanceNm": 4.6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       },
       {
         "to": "SFAIM",
@@ -3325,7 +3378,8 @@
         "distanceNm": 4.41,
         "chartDistanceNm": 4.4,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 6
       },
       {
         "to": "SHALM",
@@ -3334,7 +3388,8 @@
         "distanceNm": 9.88,
         "chartDistanceNm": 9.8,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 6
       }
     ],
     "BRORA": [
@@ -3344,7 +3399,9 @@
         "outboundAltitude": 500,
         "distanceNm": 9.15,
         "chartDistanceNm": 9.2,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "closedHint": true,
+        "openFromHourHint": 5
       }
     ],
     "EILAT": [
@@ -3354,7 +3411,9 @@
         "outboundAltitude": 500,
         "distanceNm": 9.15,
         "chartDistanceNm": 9.2,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "closedHint": true,
+        "openFromHourHint": 5
       }
     ],
     "SIZFN": [
@@ -3364,7 +3423,8 @@
         "outboundAltitude": null,
         "distanceNm": 6.51,
         "chartDistanceNm": 6.5,
-        "status": "unknown"
+        "status": "unknown",
+        "closedHint": true
       }
     ],
     "ZZHOR": [
@@ -3375,7 +3435,9 @@
         "distanceNm": 6.1,
         "chartDistanceNm": 6.1,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "closedHint": true,
+        "openFromHourHint": 5
       },
       {
         "to": "MESAR",
@@ -3384,7 +3446,9 @@
         "distanceNm": 13.98,
         "chartDistanceNm": 14.1,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "closedHint": true,
+        "openFromHourHint": 5
       }
     ],
     "YOTVT": [
@@ -3395,7 +3459,8 @@
         "distanceNm": 5.42,
         "chartDistanceNm": 5.3,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 5
       }
     ],
     "ZOFAR": [
@@ -3406,7 +3471,8 @@
         "distanceNm": 15.64,
         "chartDistanceNm": 15.6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "HOVAV": [
@@ -3417,7 +3483,8 @@
         "distanceNm": 4.6,
         "chartDistanceNm": 4.5,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "OHLIM",
@@ -3426,7 +3493,8 @@
         "distanceNm": 3.38,
         "chartDistanceNm": 3.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "SOKET",
@@ -3445,7 +3513,8 @@
         "distanceNm": 4.6,
         "chartDistanceNm": 4.5,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "TLLIM",
@@ -3454,7 +3523,8 @@
         "distanceNm": 5.87,
         "chartDistanceNm": 6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "TLLIM": [
@@ -3465,7 +3535,8 @@
         "distanceNm": 7.07,
         "chartDistanceNm": 7,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       },
       {
         "to": "NEGEV",
@@ -3474,7 +3545,8 @@
         "distanceNm": 5.87,
         "chartDistanceNm": 6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "YRUHM": [
@@ -3493,7 +3565,8 @@
         "distanceNm": 6.69,
         "chartDistanceNm": 6.8,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       }
     ],
     "DIMON": [
@@ -3504,7 +3577,8 @@
         "distanceNm": 6.69,
         "chartDistanceNm": 6.8,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       }
     ],
     "MESAR": [
@@ -3515,7 +3589,9 @@
         "distanceNm": 11.86,
         "chartDistanceNm": 11.8,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "closedHint": true,
+        "openFromHourHint": 5
       },
       {
         "to": "ZZHOR",
@@ -3524,7 +3600,9 @@
         "distanceNm": 13.98,
         "chartDistanceNm": 14.1,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "closedHint": true,
+        "openFromHourHint": 5
       }
     ],
     "OHLIM": [
@@ -3535,7 +3613,8 @@
         "distanceNm": 3.38,
         "chartDistanceNm": 3.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 5
       }
     ],
     "BKAMA": [
@@ -3565,7 +3644,9 @@
         "distanceNm": 7.06,
         "chartDistanceNm": 7.1,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
+        "closedHint": true,
+        "openFromHourHint": 6
       },
       {
         "to": "ZUKIM",
@@ -3574,7 +3655,8 @@
         "distanceNm": 4.41,
         "chartDistanceNm": 4.4,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "openFromHourHint": 6
       }
     ],
     "ARGMN": [
@@ -3603,7 +3685,8 @@
         "distanceNm": 4.93,
         "chartDistanceNm": 4.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       },
       {
         "to": "SHAHR",
@@ -3612,7 +3695,8 @@
         "distanceNm": 5.28,
         "chartDistanceNm": 5.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "openFromHourHint": 6
       }
     ],
     "TIRAT": [
@@ -3632,7 +3716,8 @@
         "outboundAltitude": 2200,
         "distanceNm": 11.45,
         "chartDistanceNm": 11.4,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "closedHint": true
       },
       {
         "to": "MOVIL",
@@ -3641,7 +3726,9 @@
         "distanceNm": 7.93,
         "chartDistanceNm": 7.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
+        "closedHint": true,
+        "openFromHourHint": 6
       }
     ],
     "MOVIL": [
@@ -3652,7 +3739,9 @@
         "distanceNm": 7.93,
         "chartDistanceNm": 7.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
+        "closedHint": true,
+        "openFromHourHint": 6
       }
     ],
     "SMRAT": [
@@ -3761,7 +3850,8 @@
         "outboundAltitude": 400,
         "distanceNm": 11.48,
         "chartDistanceNm": 11.5,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "closedHint": true
       },
       {
         "to": "NTAIM",
@@ -3770,7 +3860,8 @@
         "distanceNm": 4.6,
         "chartDistanceNm": 4.6,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
+        "closedHint": true
       },
       {
         "to": "SUPER",
@@ -3817,7 +3908,10 @@
         "distanceNm": 5.87,
         "chartDistanceNm": 5.8,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "closedHint": true,
+        "openFromHourHint": 6,
+        "weekdayClosedHint": true
       },
       {
         "to": "SIRNI",
@@ -3873,7 +3967,8 @@
         "outboundAltitude": 2200,
         "distanceNm": 4.99,
         "chartDistanceNm": 5,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "closedHint": true
       },
       {
         "to": "SHARG",
@@ -3903,7 +3998,8 @@
         "outboundAltitude": 1700,
         "distanceNm": 4.99,
         "chartDistanceNm": 5,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "closedHint": true
       },
       {
         "to": "NCSHN",
@@ -3912,7 +4008,8 @@
         "distanceNm": 4.89,
         "chartDistanceNm": 4.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "closedHint": true
       },
       {
         "to": "ZHRYA",
@@ -3932,7 +4029,8 @@
         "distanceNm": 4.89,
         "chartDistanceNm": 4.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "closedHint": true
       },
       {
         "to": "NSHRM",
@@ -3941,7 +4039,10 @@
         "distanceNm": 5.87,
         "chartDistanceNm": 5.8,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "closedHint": true,
+        "openFromHourHint": 6,
+        "weekdayClosedHint": true
       },
       {
         "to": "LLNN",
@@ -3988,7 +4089,8 @@
         "outboundAltitude": 1700,
         "distanceNm": 11.48,
         "chartDistanceNm": 11.5,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "closedHint": true
       },
       {
         "to": "ZASHD",
@@ -4074,7 +4176,8 @@
         "inboundAltitude": null,
         "outboundAltitude": null,
         "status": "unknown",
-        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed.",
+        "openFromHourHint": 6
       }
     ],
     "LLHF": [

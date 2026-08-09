@@ -527,6 +527,9 @@ NavAid.tuningDefaults = {
   defaultImsPwx: { value: false, type: 'bool', label: 'Default: show IMS PWX overlay' },
   defaultSigwxOv: { value: false, type: 'bool', label: 'Default: show SIGWX overlay' },
   defaultShowLsaBubbles: { value: true, type: 'bool', label: 'Default: show LSA' },
+  // Ships off: auto-route changes what the pilot's route CONTAINS. Gist-flippable like
+  // every other shipped default, for a fleet that wants it on from the first boot.
+  defaultAutoRoute: { value: false, type: 'bool', label: 'Default: auto-route through waypoints' },
   defaultShowCircuit: { value: false, type: 'bool', label: 'Default: show circuit plates' },
   defaultShowTraining: { value: false, type: 'bool', label: 'Default: show training plates' },
   defaultShowCvfr: { value: false, type: 'bool', label: 'Default: show CVFR plates' },
@@ -606,7 +609,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1200,6 +1203,7 @@ window.S = Object.assign({
   warnFplDepNotAerodrome: 'The route does not start at a known airfield — it is filed as ZZZZ with the point named in field 18, and will probably be declined. A plan is normally filed field to field.',
   warnFplDestNotAerodrome: 'The route does not end at a known airfield — it is filed as ZZZZ with the point named in field 18, and will probably be declined. A plan is normally filed field to field.',
   warnFplEarly: 'Too early to file: a departure at or before 17:00 is filed from 18:00 the day before, a later one on the day of the flight.',
+  warnFplClosedCorridor: 'A corridor on this route may be closed or time-gated at the chosen departure time (secondary source) — no open alternative was published, so it is filed anyway. Verify with the NOTAMs.',
   warnFplLead: 'Less than 60 minutes to departure — a routes plan is filed at least 60 min ahead, or phoned in.',
   warnFplMixedSpeed: 'The legs are not all at one speed; the first leg\'s speed is filed as cruise TAS.',
   errFplNeedRoute: 'Draw a route first — a flight plan needs a departure and a destination.',
@@ -1427,6 +1431,8 @@ window.S = Object.assign({
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
   tbLimitLegKites: 'Keep kites inside leg',
   tbLimitLegKitesTitle: 'Limit dragged leg markers to the space between the leg waypoints',
+  tbAutoRoute: 'Auto-route through waypoints',
+  tbAutoRouteTitle: 'Adding a point fills in the published reporting points between it and the previous one (CVFR). Closed routes are avoided.',
   tbShowDrift: 'Show drift lines',
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
@@ -1748,6 +1754,12 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
 var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
 var showLsaBubbles = true;  // LSA airspace bubbles overlay (Low Alt layer; default on)
+// Auto-route on the MAP: adding a reporting point extends the route along the published
+// corridor between it and the previous point, instead of a straight line. CVFR only for
+// now (the maintainer's scope); filing-time expansion stays independent of this.
+// Ships OFF: it changes what the pilot's own route CONTAINS, not how it is drawn, so it
+// is opt-in from View/Set rather than something a route inherits by surprise.
+var autoRouteCorridors = false;
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
 var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref

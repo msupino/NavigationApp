@@ -1189,11 +1189,15 @@ function appendAddToRouteButton(body, pt) {
   btn.disabled = !!already;
   btn.onclick = () => {
     if (already) return;
+    const prevTail = state.waypoints[state.waypoints.length - 1];
     state.waypoints.push({ lat: r5(pt.lat), lng: r5(pt.lng), name: pt.name || '' });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     draw();
     showInspector();
+    // Same corridor treatment as a map tap: adding by button must not produce a different
+    // route from adding by tap.
+    if (prevTail) autoRouteSpliceAfterAdd(prevTail, state.waypoints[state.waypoints.length - 1]);
   };
   body.appendChild(btn);
 }
@@ -3437,6 +3441,28 @@ function coincidentWaypointIndices(hits) {
 // its inspector: that is how a loop is drawn, by pressing the point you want to come back to.
 // Only a press without movement -- a drag still repositions the waypoint, so you can nudge the
 // point you just placed without leaving the mode. Returns true when it consumed the release.
+// Splice the published corridor between the route's previous point and a just-added one.
+// Every add path goes through here -- the map tap, the inspector's "Add to route", and
+// extend-through -- because a pilot who adds a point by button expects the same route a
+// tap would have drawn. Async (the graph loads lazily) and self-cancelling: if the route
+// changed under the await, nothing is spliced.
+function autoRouteSpliceAfterAdd(prevWp, newWp) {
+  if (!prevWp || !newWp || typeof autoRouteChain !== 'function') return;
+  autoRouteChain(prevWp, newWp).then(mid => {
+    if (!mid || !mid.length) return;
+    const idx = state.waypoints.indexOf(newWp);
+    if (idx < 1 || state.waypoints[idx - 1] !== prevWp) return;
+    state.waypoints.splice(idx, 0, ...mid);
+    syncLegs();
+    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+    if (state.selected && state.selected.type === 'wp') {
+      state.selected = { type: 'wp', index: state.waypoints.indexOf(newWp) };
+    }
+    draw();
+    if (typeof showInspector === 'function' && state.selected) showInspector();
+  }).catch(() => {});
+}
+
 function addModeExtendThroughWaypoint(i) {
   if (state.mode !== 'add') return false;
   const src = state.waypoints[i];
@@ -3450,6 +3476,7 @@ function addModeExtendThroughWaypoint(i) {
   if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   state.selected = { type: 'wp', index: state.waypoints.length - 1 };
   draw();
+  if (tail) autoRouteSpliceAfterAdd(tail, state.waypoints[state.waypoints.length - 1]);
   return true;
 }
 
@@ -3809,9 +3836,14 @@ map.on('click', e => {
     if (tail && sameMapPoint(tail, r)) {
       return;
     }
+    const tail0 = state.waypoints[state.waypoints.length - 1];
     state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
     syncLegs();
     if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
+    // Auto-route: splice the published corridor between the old tail and the new point.
+    // Async by nature (the graph loads lazily); the direct leg shows first and the
+    // corridor points slot in when the chain resolves -- one draw, one undo state.
+    if (tail0) autoRouteSpliceAfterAdd(tail0, state.waypoints[state.waypoints.length - 1]);
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     // On phones the inspector is a near-full-screen panel that blankets the
     // map, so auto-opening it after every add-mode tap hides the chart while

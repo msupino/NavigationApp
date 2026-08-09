@@ -1427,9 +1427,60 @@ function fplGraphPointAt(graph, wp) {
 // nodes to chase a longer-but-finer path did not.
 const FPL_CHAIN_SLACK = 1.06;
 const FPL_CHAIN_MAX_HOPS = 30;
-function fplGraphChain(graph, from, to) {
+// Is this edge open for a departure at `when` (a local Date, or null = assume open)?
+// Availability HINTS from a secondary source steer the choice among published corridors:
+// closedHint marks a corridor their live data had shut, openFromHourHint is a weekday
+// opening hour (weekends are open all day; Israel weekend = Fri/Sat), weekdayClosedHint
+// closes a corridor on weekdays entirely. Hints never remove a segment -- when honouring
+// them leaves no chain at all, expansion falls back to the full graph and the plan carries
+// a warning instead of silently failing.
+// Adjacent fix pairs closed by ROUTE-CLOSURE NOTAMs active at `when` -- the live layer on
+// top of the static hints. The NOTAM pipeline already parses these for the map (CLSD
+// chains like "RTE ... BTN NEGEV-HOVAV"); here the same chains gate expansion, by NAME,
+// against the graph's codes. Sorted-pair keys, so direction does not matter: a closed
+// corridor is closed both ways unless the NOTAM says otherwise, which none do today.
+const FPL_NOTAM_CHAIN = /\b([A-Z][A-Z0-9]{2,4}(?:-[A-Z][A-Z0-9]{2,4})+)\b/g;
+function fplNotamClosedPairs(when) {
+  const out = new Set();
+  const list = (typeof notams !== 'undefined' && Array.isArray(notams)) ? notams : [];
+  for (const n of list) {
+    if (!n || !n.text) continue;
+    if (typeof notamActive === 'function' && when && !notamActive(n, when)) continue;
+    const txt = String(n.text);
+    if (!/\bRTE\b|\bROUTE\b|\bAWY\b|\bAIRWAY\b/.test(txt)) continue;
+    if (!/\bCLSD\b|\bCLOSED\b/.test(txt)) continue;
+    const divIdx = txt.search(/DIVERT|RE-?ROUTE/i);
+    let m;
+    FPL_NOTAM_CHAIN.lastIndex = 0;
+    while ((m = FPL_NOTAM_CHAIN.exec(txt))) {
+      if (divIdx >= 0 && m.index >= divIdx) continue;   // the diversion is the OPEN part
+      const names = m[1].split('-');
+      for (let i = 1; i < names.length; i++) {
+        out.add([names[i - 1], names[i]].sort().join('|'));
+      }
+    }
+  }
+  return out;
+}
+
+function fplEdgeOpen(e, when) {
+  if (!when) return !e.closedHint;
+  if (e.closedHint) return false;
+  const wd = when.getDay();                       // 0=Sun .. 6=Sat, local
+  const weekend = (wd === 5 || wd === 6);
+  if (weekend) return true;
+  if (e.weekdayClosedHint) return false;
+  if (Number.isFinite(e.openFromHourHint)) {
+    const hour = when.getHours() + when.getMinutes() / 60;
+    if (hour < e.openFromHourHint) return false;
+  }
+  return true;
+}
+
+function fplGraphChain(graph, from, to, opts) {
   if (!graph || !from || !to) return null;
   if (from === to) return [from];
+  const o = opts || {};
   // An airfield or airstrip is a place the graph can route TO, never THROUGH: passing one
   // inserts a landing into the filed plan, which then refuses itself as two flights
   // (errFplMidAirfield). LLHZ->LLHA expanded through FRDIS->LLBO->BOREN -- the Habonim
@@ -1449,6 +1500,9 @@ function fplGraphChain(graph, from, to) {
       for (const e of graph.edges[n] || []) {
         if (e.blocked) continue;               // one-way, against the flow
         if (landable(e.to)) continue;          // route to a field, never through one
+        if (!o.ignoreAvailability && !fplEdgeOpen(e, o.when || null)) continue;
+        if (!o.ignoreAvailability && o.notamClosed &&
+            o.notamClosed.has([n, e.to].sort().join('|'))) continue;
         const nd = d + (Number.isFinite(e.distanceNm) ? e.distanceNm : 1);
         if (!D[k + 1].has(e.to) || nd < D[k + 1].get(e.to)) {
           D[k + 1].set(e.to, nd);
@@ -1489,15 +1543,73 @@ function fplGraphChain(graph, from, to) {
 // Returns { points, unresolved } -- `unresolved` names the pairs the graph could not
 // bridge, so the pilot is told rather than quietly filing a shorter route. A pair that
 // cannot be resolved contributes nothing extra: the drawn points always survive.
-function fplExpandRoute(graph, wps) {
+// Map-side auto-route: the corridor chain to splice between the route's tail and a newly
+// added point, as REAL waypoints. CVFR only (the maintainer's scope), and only when both
+// ends resolve to graph points -- a tap in open country still draws the direct line.
+// Closed corridors are avoided the same way filing-time expansion avoids them; no clock
+// here, so weekday gates do not apply (drawing is not filing).
+// The inserted points are ordinary waypoints (tagged _autoRouted for provenance): deleting
+// one deletes that point only, exactly like any other waypoint -- no hidden re-route.
+var _autoRouteGraph = null;
+async function autoRouteChain(prev, next) {
+  if (!window.autoRouteCorridors) return null;
+  if (typeof layerDataPrefix === 'function' && layerDataPrefix() !== 'cvfr') return null;
+  if (!prev || !next) return null;
+  if (!_autoRouteGraph) {
+    _autoRouteGraph = (typeof routeGraphData === 'function')
+      ? await routeGraphData('cvfr').catch(() => null)
+      : await fplLoadRouteGraph();
+  }
+  const graph = _autoRouteGraph;
+  if (!graph) return null;
+  // Position-tolerant on the map side: a tap only gets a NAME when it lands within the 18 px
+  // snap radius, so requiring one (as filing-time expansion does, where every point came
+  // from a named pick) meant a slightly-off tap silently produced no corridor at all.
+  // Half a mile is the same allowance the filing join uses.
+  const near = (wp) => {
+    const byName = fplGraphPointAt(graph, wp);
+    if (byName) return byName;
+    let best = null, bestD = Infinity;
+    for (const [name, n] of Object.entries(graph.nodes)) {
+      if (typeof geo !== 'function') break;
+      const { dist } = geo(wp, n);
+      if (Number.isFinite(dist) && dist < bestD) { bestD = dist; best = name; }
+    }
+    return (best && bestD <= 0.5) ? best : null;
+  };
+  const a = near(prev);
+  const b = near(next);
+  if (!a || !b || a === b) return null;
+  let chain = fplGraphChain(graph, a, b, {});
+  if (!chain) chain = fplGraphChain(graph, a, b, { ignoreAvailability: true });
+  if (!chain || chain.length <= 2) return null;
+  return chain.slice(1, -1).map(name => {
+    const n = graph.nodes[name];
+    return { lat: r5(n.lat), lng: r5(n.lng), name, _autoRouted: 1 };
+  });
+}
+
+function fplExpandRoute(graph, wps, opts) {
+  const o = opts || {};
   const out = [];
   const unresolved = [];
+  let usedClosed = false;
   for (let i = 0; i < wps.length; i++) {
     const wp = wps[i];
     if (i === 0) { out.push(wp); continue; }
     const a = fplGraphPointAt(graph, wps[i - 1]);
     const b = fplGraphPointAt(graph, wp);
-    const chain = (a && b) ? fplGraphChain(graph, a, b) : null;
+    // First over the corridors open at departure time; if that leaves no chain, over the
+    // whole graph -- the hints steer the choice, they never make a published route
+    // unfileable. The fallback is reported so the pilot knows to check the corridor.
+    const notamClosed = (typeof fplNotamClosedPairs === 'function')
+      ? fplNotamClosedPairs(o.when || new Date()) : null;
+    let chain = (a && b)
+      ? fplGraphChain(graph, a, b, { when: o.when || null, notamClosed }) : null;
+    if (!chain && a && b) {
+      chain = fplGraphChain(graph, a, b, { ignoreAvailability: true });
+      if (chain) usedClosed = true;
+    }
     if (chain && chain.length > 2) {
       for (const name of chain.slice(1, -1)) {
         const n = graph.nodes[name];
@@ -1508,7 +1620,7 @@ function fplExpandRoute(graph, wps) {
     }
     out.push(wp);
   }
-  return { points: out, unresolved };
+  return { points: out, unresolved , usedClosed };
 }
 
 function buildIcaoFpl(profile, opts) {
@@ -1558,9 +1670,15 @@ function buildIcaoFpl(profile, opts) {
   let expandedExtraNm = 0;
   if (o.routeGraph) {
     const drawnNm = fplSequenceNm(wps);
-    const ex = fplExpandRoute(o.routeGraph, wps);
+    // The departure moment decides which corridors count as open (weekday gates,
+    // weekend-only corridors): expansion for a Tuesday 08:00 departure must not choose a
+    // corridor that opens at 12:00.
+    const when = (o.dateLocal && o.timeLocal) ? new Date(o.dateLocal + 'T' + o.timeLocal) : null;
+    const ex = fplExpandRoute(o.routeGraph, wps,
+      { when: (when && !isNaN(when.getTime())) ? when : null });
     wps = ex.points;
     expandedUnresolved = ex.unresolved;
+    var expansionUsedClosed = ex.usedClosed;   // pushed onto warns below, once it exists
     // The expanded chain follows the published corridor, which is LONGER than the straight
     // line between the pilot's picks -- 44.8 nm against 39.2 on a real sortie. Filing the
     // expanded route with the drawn route's time understates the EET by five minutes, and
@@ -1644,6 +1762,9 @@ function buildIcaoFpl(profile, opts) {
 
   // Warnings never block: the pilot may be phoning it in, or filing for tomorrow.
   const warns = [];
+  if (typeof expansionUsedClosed !== 'undefined' && expansionUsedClosed) {
+    warns.push('warnFplClosedCorridor');
+  }
   const lead = fplLeadMinutes(utc.when, o.now);
   if (lead !== null && lead < FPL_MIN_LEAD_MIN()) warns.push('warnFplLead');
   // A cross-country (מרחב) plan is filed on the AIP's own tabular form (א'-11
@@ -8468,7 +8589,9 @@ function showFplDialog() {
       if (expandCb.checked) {
         const graph = await fplLoadRouteGraph();
         if (graph) {
-          const ex = fplExpandRoute(graph, seq);
+          const when = (state1.date && state1.time) ? new Date(state1.date + 'T' + state1.time) : null;
+          const ex = fplExpandRoute(graph, seq,
+            { when: (when && !isNaN(when.getTime())) ? when : null });
           seq = ex.points;
           if (ex.unresolved.length) {
             note = '  ' + (S.fplExpandGapShort || '(no published chain for: ') +

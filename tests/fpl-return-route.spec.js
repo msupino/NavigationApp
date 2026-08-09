@@ -656,3 +656,102 @@ test('expansion never routes THROUGH an airfield', async ({ page }) => {
     names.filter(n => typeof airfieldByIcao === 'function' && airfieldByIcao(n)), mids);
   expect(fields).toEqual([]);
 });
+
+test('expansion prefers corridors that are open at the departure time', async ({ page }) => {
+  // LLHZ->LLHA: the inland FRDIS->HASID corridor carries closedHint (the secondary
+  // source's live data had it shut), so the coastal chain -- the one a pilot actually
+  // flies -- becomes the shortest OPEN path and wins, weekday and weekend alike.
+  await boot(page);
+  const r = await page.evaluate(async ({ profile }) => {
+    await loadAirfields();
+    const hz = airfieldByIcao('LLHZ'), ha = airfieldByIcao('LLHA');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: ha.lat, lng: ha.lng, name: 'LLHA' },
+    ];
+    syncLegs();
+    for (const l of state.legs) l.flightSpeed = 100;
+    const res = buildIcaoFpl(profile, { dateLocal: '2026-08-11', timeLocal: '08:00',
+      routeGraph: await fplLoadRouteGraph(), now: new Date('2026-08-11T05:00:00') });
+    return { route: res.text && res.text.split('\n').find(l => l.startsWith('-N')),
+      warns: res.warns };
+  }, { profile: PROFILE });
+  expect(r.route).toBe('-N0100VFR BAZRA DEROR SHARO ZYAAR HADRA FRDIS BOREN HOTRM DAROM GALIM');
+  expect(r.warns || []).not.toContain('warnFplClosedCorridor');
+});
+
+test('the availability rules: closures, weekday gates, weekends', async ({ page }) => {
+  await boot(page);
+  const t = await page.evaluate(() => {
+    const tue8 = new Date('2026-08-11T08:00');    // Tuesday morning
+    const tue13 = new Date('2026-08-11T13:00');   // Tuesday afternoon
+    const sat8 = new Date('2026-08-15T08:00');    // Saturday morning
+    return [
+      fplEdgeOpen({}, tue8),                                  // plain edge: open
+      fplEdgeOpen({ closedHint: true }, tue8),                // closed is closed
+      fplEdgeOpen({ closedHint: true }, sat8),                // ...even on the weekend
+      fplEdgeOpen({ openFromHourHint: 12 }, tue8),            // gated, before opening
+      fplEdgeOpen({ openFromHourHint: 12 }, tue13),           // gated, after opening
+      fplEdgeOpen({ openFromHourHint: 12 }, sat8),            // weekend: open all day
+      fplEdgeOpen({ weekdayClosedHint: true }, tue8),         // weekday-closed
+      fplEdgeOpen({ weekdayClosedHint: true }, sat8),         // ...open on the weekend
+      fplEdgeOpen({ openFromHourHint: 12 }, null),            // no clock: gates need one
+      fplEdgeOpen({ closedHint: true }, null),                // no clock: closures still bite
+    ];
+  });
+  expect(t).toEqual([true, false, false, false, true, true, false, true, true, false]);
+});
+
+test('when every chain is gated shut, expansion falls back and warns', async ({ page }) => {
+  // A hint must never make a published route unfileable: the only corridor between A and C
+  // is closed, so the plan files through it anyway and says so.
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const graph = { nodes: {
+      AAA: { lat: 32.0, lng: 34.8, kind: 'waypoint', layers: ['cvfr'] },
+      BBB: { lat: 32.1, lng: 34.85, kind: 'waypoint', layers: ['cvfr'] },
+      CCC: { lat: 32.2, lng: 34.9, kind: 'waypoint', layers: ['cvfr'] },
+    }, edges: {
+      AAA: [{ to: 'BBB', distanceNm: 7, inboundAltitude: 1000, outboundAltitude: 1000, closedHint: true }],
+      BBB: [{ to: 'CCC', distanceNm: 7, inboundAltitude: 1000, outboundAltitude: 1000, closedHint: true },
+            { to: 'AAA', distanceNm: 7, inboundAltitude: 1000, outboundAltitude: 1000, closedHint: true }],
+      CCC: [{ to: 'BBB', distanceNm: 7, inboundAltitude: 1000, outboundAltitude: 1000, closedHint: true }],
+    } };
+    const ex = fplExpandRoute(graph,
+      [{ lat: 32.0, lng: 34.8, name: 'AAA' }, { lat: 32.2, lng: 34.9, name: 'CCC' }],
+      { when: new Date('2026-08-11T08:00') });
+    return { names: ex.points.map(w => w.name), usedClosed: ex.usedClosed };
+  });
+  expect(r.names).toEqual(['AAA', 'BBB', 'CCC']);
+  expect(r.usedClosed).toBe(true);
+});
+
+test('a live route-closure NOTAM reroutes the expansion', async ({ page }) => {
+  // The NOTAM pipeline already parses "RTE CLSD BTN X-Y" chains for the map; expansion now
+  // honours them for the departure time. Close SFAIM-APOLN by NOTAM: the 4XDAZ outbound
+  // must leave via another published corridor instead of the standard SFAIM chain -- and
+  // with no NOTAM, the standard chain is back.
+  await boot(page);
+  const r = await page.evaluate(async ({ profile }) => {
+    const mk = async () => {
+      state.waypoints = ['LLHZ', 'ARENA', 'SUPER', 'NAGID'].map(n => ({ ...window.__pts[n], name: n }));
+      syncLegs();
+      for (const l of state.legs) l.flightSpeed = 100;
+      const res = buildIcaoFpl(profile, { dateLocal: '2026-08-11', timeLocal: '08:00',
+        routeGraph: await fplLoadRouteGraph(), now: new Date('2026-08-11T05:00:00') });
+      return res.text && res.text.split('\n').find(l => l.startsWith('-N'));
+    };
+    const before = await mk();
+    window.notams = [{ id: 'A0001/26',
+      text: 'RTE CLSD BTN SFAIM-APOLN DLY 0500-1400',
+      start: '2026-08-01T00:00:00Z', end: '2026-09-01T00:00:00Z' }];
+    const closed = await mk();
+    window.notams = [];
+    const after = await mk();
+    return { before, closed, after };
+  }, { profile: PROFILE });
+  expect(r.before).toBe('-N0100VFR SFAIM APOLN ARENA HTZUK RIDNG CLORE TYONA SUPER NTAIM BOVED NAGID');
+  expect(r.closed).not.toContain('SFAIM APOLN');    // the closed pair is not flown
+  expect(r.closed).toMatch(/^-N0100VFR /);          // ...but a plan still files
+  expect(r.after).toBe(r.before);                   // NOTAM gone, standard chain back
+});
