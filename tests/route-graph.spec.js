@@ -230,31 +230,55 @@ test('cross-referenced codes are labelled, and conflicts keep both', () => {
   for (const n of conflicted) expect(n.code).not.toBe(n.codeAlt);
 });
 
-test('the shipped graph still says what the retired CVFR table said', () => {
-  // The per-layer files it was built from are gone, so the baseline is a checked-in
-  // snapshot (tests/fixtures/retired-datasets) -- the same one legacy-from-graph.mjs proves
-  // equivalence against. It used to come from `git show` at the pre-deletion commit, which
-  // worked locally (worktrees share the object store) and failed in CI: the commit was
-  // squash-merged, so a checkout of dev cannot reach it. This is what stops a later edit
-  // to the graph from quietly dropping a published segment.
-  const src = JSON.parse(fs.readFileSync(
-    path.join(ROOT, 'tests', 'fixtures', 'retired-datasets', 'cvfr-leg-altitude.json'), 'utf8'));
-  const segs = src.segments || src;
-  const pairs = new Set();
-  for (const [from, es] of Object.entries(graph().edges.cvfr)) for (const e of es) pairs.add(from + '>' + e.to);
-  let found = 0;
-  for (const s2 of segs) {
-    if (!s2.from || !s2.to) continue;
-    if (pairs.has(s2.from + '>' + s2.to) || pairs.has(s2.to + '>' + s2.from)) found++;
+test('the data census matches what the maintainer last signed off', () => {
+  // The graph is the source of truth and is edited by hand. These pins replace the old
+  // equivalence proof against the retired per-layer files: that proof guarded the
+  // MIGRATION, and once the data started growing past the baseline every legitimate edit
+  // joined an exception ledger. Instead, an edit now has to touch ONE line here -- which
+  // is the point: an accidental deletion or duplication fails this test, a deliberate
+  // change updates the census in the same diff a reviewer reads.
+  const expected = {
+    cvfr: { layerNodes: 172, segments: 269, commChange: 52, unknown: 6 },
+    heli: { layerNodes: 209, segments: 85, commChange: 0, unknown: 38 },
+    lsa: { layerNodes: 167, segments: 75, commChange: 0, unknown: 15 },
+  };
+  const got = {};
+  for (const lay of LAYERS) {
+    const g = layerGraph(lay);
+    const seen = new Set();
+    let unknown = 0;
+    for (const [f, es] of Object.entries(g.edges)) {
+      for (const e of es) {
+        if (e.blocked) continue;
+        const k = [f, e.to].sort().join('|');
+        if (seen.has(k)) continue;
+        seen.add(k);
+        if (e.status === 'unknown') unknown++;
+      }
+    }
+    got[lay] = {
+      layerNodes: Object.values(g.nodes).filter(n => n.layers.includes(lay)).length,
+      segments: seen.size,
+      commChange: Object.values(g.nodes).filter(n => n.commChange).length,
+      unknown,
+    };
   }
-  expect(found).toBe(segs.length);
+  expect(got).toEqual(expected);
 });
 
-test('every field the app reads is still reproducible from the graph', () => {
-  // The proof that made deleting the source files safe, run on every CI pass rather than
-  // once by hand: the loaders keep receiving the shapes they validate, field for field.
-  const { execFileSync } = require('child_process');
-  const out = execFileSync('node', ['scripts/legacy-from-graph.mjs'],
-    { cwd: ROOT, encoding: 'utf8' });
-  expect(out).toContain('equivalent');
+test('the safety-critical rows read exactly what the chart says', () => {
+  // Spot pins on the rows where a silent change misleads a pilot: a one-way corridor flown
+  // backwards, or a charted altitude drifting. The census above catches bulk accidents;
+  // these catch a surgical one.
+  const g = layerGraph('cvfr');
+  const edge = (a, b) => (g.edges[a] || []).find(e => e.to === b);
+  // HTZUK -> Country Club: 1200, one-way; the reverse is synthesised and blocked.
+  expect(edge('HTZUK', 'KNTRY')).toMatchObject({ inboundAltitude: 1200, oneWay: true });
+  expect(edge('HTZUK', 'KNTRY').outboundAltitude).toBeNull();
+  expect(edge('KNTRY', 'HTZUK').blocked).toBe(true);
+  // Herzliya's one-way departure corridor: out via SFAIM at 1200, never back.
+  expect(edge('LLHZ', 'SFAIM')).toMatchObject({ inboundAltitude: 1200, oneWay: true });
+  // A comm-change node keeps its call signs.
+  expect(g.nodes.BASAN.commChange).toBe(true);
+  expect(g.nodes.BASAN.callSigns).toContain('PLUTO_EAST');
 });
