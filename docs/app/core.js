@@ -527,6 +527,9 @@ NavAid.tuningDefaults = {
   defaultImsPwx: { value: false, type: 'bool', label: 'Default: show IMS PWX overlay' },
   defaultSigwxOv: { value: false, type: 'bool', label: 'Default: show SIGWX overlay' },
   defaultShowLsaBubbles: { value: true, type: 'bool', label: 'Default: show LSA' },
+  // Ships off: auto-route changes what the pilot's route CONTAINS. Gist-flippable like
+  // every other shipped default, for a fleet that wants it on from the first boot.
+  defaultAutoRoute: { value: false, type: 'bool', label: 'Default: auto-route through waypoints' },
   defaultShowCircuit: { value: false, type: 'bool', label: 'Default: show circuit plates' },
   defaultShowTraining: { value: false, type: 'bool', label: 'Default: show training plates' },
   defaultShowCvfr: { value: false, type: 'bool', label: 'Default: show CVFR plates' },
@@ -606,7 +609,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.

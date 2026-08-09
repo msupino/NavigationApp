@@ -7445,6 +7445,7 @@ NavAid.defaultVisibilityMap = [
   ['ims-pwx-cb', 'navaid.imsPwx', 'defaultImsPwx'],
   ['sigwx-ov-cb', 'navaid.sigwxOv', 'defaultSigwxOv'],
   ['lsa-cb', 'navaid.showLsaBubbles', 'defaultShowLsaBubbles'],
+  ['autoroute-cb', 'navaid.autoRoute', 'defaultAutoRoute'],
   ['circuit-cb', 'navaid.showCircuit', 'defaultShowCircuit'],
   ['training-cb', 'navaid.showTraining', 'defaultShowTraining'],
   ['cvfr-cb', 'navaid.showCvfr', 'defaultShowCvfr'],

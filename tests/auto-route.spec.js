@@ -149,3 +149,21 @@ test('off the CVFR layer it stays out of the way', async ({ page }) => {
   });
   expect(mid).toBeNull();
 });
+
+test('the shipped default is gist-flippable, like every other toggle', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { for (const s of ['build', 'view', 'display']) localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof tune === 'function' && !!document.getElementById('autoroute-cb'));
+  // Off out of the box...
+  expect(await page.evaluate(() => tune('defaultAutoRoute'))).toBe(false);
+  expect(await page.evaluate(() => document.getElementById('autoroute-cb').checked)).toBe(false);
+  // ...and a gist that sets defaultAutoRoute turns it on for a pilot who never chose.
+  const on = await page.evaluate(() => {
+    setTune('defaultAutoRoute', true);
+    NavAid.applyDefaultVisibility();
+    return { checked: document.getElementById('autoroute-cb').checked, flag: window.autoRouteCorridors };
+  });
+  expect(on).toEqual({ checked: true, flag: true });
+});
