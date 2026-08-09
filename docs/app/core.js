@@ -2243,6 +2243,16 @@ function legKiteHidden(leg) {
 function legDriftHidden(leg) {
   return !!(leg && leg.hideDrift);
 }
+// Effective visibility of one leg's drift cone. The per-leg override is symmetric now:
+// hideDrift beats a global ON (declutter one leg), and showDrift beats a global OFF (bring
+// one leg's cone back on an otherwise clean map). The global used to be a hard ceiling,
+// which made the inspector's "Show drift lines" button a no-op whenever the toolbar toggle
+// was off -- a control that does nothing teaches the pilot it is broken.
+function legDriftVisible(leg, globalOn) {
+  if (leg && leg.hideDrift) return false;
+  if (leg && leg.showDrift) return true;
+  return !!globalOn;
+}
 
 // A PR preview may SHARE a big static asset directory with the deployed root instead of
 // carrying its own copy: every preview used to ship ~12 MB of chart-overlay imagery it had
