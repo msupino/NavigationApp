@@ -2703,12 +2703,18 @@ function expandNotamAbbr(s) {
   // abbreviations. Only table entries are replaced, so identifiers of any length pass.
   out = out.replace(/\b[A-Z]{2,13}\b/g, m => NOTAM_ABBR[m] || m);
   // MAY is the one token the table cannot carry: modal verb in prose, month in dates.
-  // A digit on either side marks the date use ("15 MAY 2027", "MAY 2027"); everything
-  // else is the modal and reads lowercase like the rest.
-  out = out.replace(/\bMAY\b/g, (m, i) => {
-    const before = out.slice(Math.max(0, i - 4), i);
-    const after = out.slice(i + 3, i + 8);
-    return (/\d\s*$/.test(before) || /^\s*\d/.test(after)) ? m : 'may';
+  // A real day-of-month or year marks the date use ("15 MAY 2027", "MAY 2027");
+  // everything else is the modal and reads lowercase like the rest.
+  //
+  // The day check is not just "a digit before MAY": RWY and FREQ numbers routinely sit
+  // right before it ("RWY 09/27 MAY BE CLOSED", "FREQ 118.3 MAY CHANGE") and read as a
+  // 1-2 digit day at a glance. `prec` is the character immediately before the would-be
+  // day -- a digit/'.'/'/' there means the number is the tail of something else (a
+  // runway pair, a frequency), not a standalone day. Only a day with a clean boundary
+  // in front of it counts.
+  out = out.replace(/([\d./])?(\d{1,2}\s+)?\bMAY\b(\s+\d{4}\b)?/g, (m, prec, day, year) => {
+    const isDate = (day && !prec) || year;
+    return isDate ? m : (prec || '') + (day || '') + 'may';
   });
   // Sentence-case what the lowercase mapping produced: a sentence that begins with an
   // expanded word ("an area at...") gets its capital back. Only at the start of the
