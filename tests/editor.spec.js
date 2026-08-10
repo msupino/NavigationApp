@@ -333,3 +333,26 @@ test('Load known refuses to import when the base layer changes mid-fetch', async
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
   expect(stored).toBe(0);      // nothing imported under the wrong layer tag
 });
+
+test('the round-trip preserves fields the editor does not edit (icao, altitudes, points)', async ({ page }) => {
+  // The documented workflow pastes the exported JSON back over data/<layer>-areas.json,
+  // so any field the export drops is erased from the dataset -- icao (NOTAM matching,
+  // search), lowFt/highFt (the inspector's altitude band), points, aliases.
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof layers !== 'undefined');
+  page.on('dialog', d => d.accept());
+  await page.evaluate(() => {
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers['Low Alt']);
+    document.querySelector('input[name=ed-m][value=polygon]').click();
+  });
+  await page.click('#ed-load');
+  await page.waitForFunction(() => JSON.parse(document.getElementById('ed-json').value).length >= 26);
+  const out = await page.evaluate(() => JSON.parse(document.getElementById('ed-json').value));
+  const coded = out.filter(o => o.icao);
+  expect(coded.length).toBeGreaterThanOrEqual(26);          // every bubble keeps its code
+  expect(out.some(o => Number.isFinite(o.lowFt) && Number.isFinite(o.highFt))).toBe(true);
+  expect(out.some(o => Array.isArray(o.points) && o.points.length)).toBe(true);
+});

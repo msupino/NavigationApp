@@ -309,14 +309,29 @@ function gpsErrMsg(err) {
 // Per-watch error handlers: an error on one mode must not tear down the other
 // (a transient live-watch error used to also kill — and discard — an active
 // recording).
+//
+// Only a PERMISSION error tears a watch down. The web watch is registered with
+// timeout: GPS_STALE_MS, so watchPosition reports TIMEOUT (code 3) after any
+// 20-second fix gap — phone in the flight bag, brief dropout — and keeps
+// watching afterwards. Tearing down there discarded a whole flight's recording
+// over one quiet spell; the stale-fix indicator already shows the gap.
+function gpsErrFatal(err) {
+  const c = err && err.code;
+  // No code at all = not a GeolocationPositionError -- a synchronous registration
+  // throw (native plugin API mismatch). That watch never started; tear down.
+  if (c === undefined || c === null) return true;
+  return c === 1 || c === 'NOT_AUTHORIZED';   // web PERMISSION_DENIED / native plugin
+}
 function onGpsRecError(err) {
   if (!gpsRecording) return;
+  if (!gpsErrFatal(err)) return;              // transient: the watch keeps trying
   stopGpsRecording();
   resetGpsFooterBtn('gps-record', S.tbGpsRecord, '⏺');
   alert(gpsErrMsg(err));
 }
 function onGpsLiveError(err) {
   if (!gpsLiveOn) return;
+  if (!gpsErrFatal(err)) return;
   stopLiveLocation();
   resetGpsFooterBtn('gps-live', S.tbGpsLive, '📍');
   alert(gpsErrMsg(err));
