@@ -58,13 +58,25 @@ test('a leg between the field and its exit point is inside the CTR', async ({ pa
 
 test('membership is by name: a point the CTR does not name is ordinary route time', async ({ page }) => {
   await boot(page);
-  // KNTRY is neither an exit point of LLHZ nor inside its CTR, so the leg to it counts --
-  // nothing is assumed from it being the first leg.
-  await route(page, ['LLHZ', 'KNTRY', 'HTZUK']);
-  expect(await page.evaluate(() => [0, 1].map(i => legInsideCtr(i)))).toEqual([false, false]);
-  // ...and the same on arrival.
+  // KNTRY belongs to HERZLIYA's boundary, not Haifa's: arriving at LLHA through it is
+  // ordinary route time the whole way.
   await route(page, ['HTZUK', 'KNTRY', 'LLHA']);
   expect(await page.evaluate(() => [0, 1].map(i => legInsideCtr(i)))).toEqual([false, false]);
+});
+
+test('the arrival boundary works like the departure one: KNTRY into LLHZ is inside', async ({ page }) => {
+  await boot(page);
+  // Home via the one-way KNTRY corridor: HTZUK -> KNTRY still counts (HTZUK is outside),
+  // KNTRY -> LLHZ is flown inside the CTR -- no kite, no cumulative time.
+  await route(page, ['HTZUK', 'KNTRY', 'LLHZ']);
+  const r = await page.evaluate(() => ({
+    inside: [0, 1].map(i => legInsideCtr(i)),
+    kite1: legKiteVisible(1, state.legs[1]),
+    drift1: legDriftVisible(state.legs[1], true, 1),
+  }));
+  expect(r.inside).toEqual([false, true]);
+  expect(r.kite1).toBe(false);
+  expect(r.drift1).toBe(false);
 });
 
 test('the exit point is inside: the clock starts on the leg that leaves it', async ({ page }) => {
@@ -154,10 +166,52 @@ test('an out-and-back is quiet at both ends and counted in the middle', async ({
     return { inside: state.legs.map((_, i) => legInsideCtr(i)),
       times: rows.map(tr => cell(tr, 'time')), total: cell(foot, 'time') };
   });
-  // Out through SFAIM and home through KNTRY: KNTRY is not in Herzliya's CTR, so only the
-  // first leg is quiet -- the last one counts, exactly as the names say.
-  expect(r.inside).toEqual([true, false, false, false]);
+  // Out through SFAIM, home through KNTRY -- both boundary points, so the first and last
+  // legs are quiet and the middle of the sortie is what the clock measures.
+  expect(r.inside).toEqual([true, false, false, true]);
   expect(r.times[0]).toBe('---');
-  expect(r.times[3]).not.toBe('---');
+  expect(r.times[3]).toBe('---');
   expect(r.total).not.toBe('--');
+});
+
+test('deleting a middle waypoint recomputes the cumulative column correctly', async ({ page }) => {
+  // The maintainer's check: a mid-route deletion merges two legs into one -- the later
+  // cumulative times must be the running totals of the NEW legs, not stale cells from the
+  // old indices, and the CTR gating must re-evaluate against the new route.
+  await boot(page);
+  await route(page, ['LLHZ', 'SFAIM', 'HTZUK', 'NAGID']);
+  const read = () => page.evaluate(() => {
+    showFlightPlan();
+    const cell = (row, k) => {
+      const el = row.querySelector('[data-fp-col="' + k + '"]');
+      return el ? el.textContent.trim() : null;
+    };
+    const rows = [...document.querySelectorAll('tbody tr')].filter(tr => cell(tr, 'time'));
+    // Expected running totals from the same primitives the renderer uses.
+    let cum = 0;
+    const expected = [];
+    for (let i = 0; i < state.legs.length; i++) {
+      if (legInsideCtr(i)) { expected.push('---'); continue; }
+      const { dist } = geo(state.waypoints[i], state.waypoints[i + 1]);
+      cum += dist / state.legs[i].flightSpeed;
+      expected.push(toHMS(cum));
+    }
+    return { got: rows.map(tr => cell(tr, 'cumTime')), expected,
+      names: state.waypoints.map(w => w.name) };
+  });
+  const before = await read();
+  expect(before.got).toEqual(before.expected);
+  // Delete HTZUK from the middle via the plan table's own delete control: the row's
+  // button removes the leg's END waypoint, so row 1 (SFAIM -> HTZUK) is the one.
+  await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('tbody tr')]
+      .filter(tr => tr.querySelector('.fp-del button'));
+    rows[1].querySelector('.fp-del button').click();
+  });
+  await page.waitForFunction(() => state.waypoints.length === 3);
+  const after = await read();
+  expect(after.names).toEqual(['LLHZ', 'SFAIM', 'NAGID']);
+  expect(after.got).toEqual(after.expected);
+  expect(after.got[0]).toBe('---');               // CTR leg still gated on the new route
+  expect(after.got[1]).not.toBe(before.got[2]);   // recomputed, not carried over
 });

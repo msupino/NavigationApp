@@ -1,13 +1,14 @@
 {
   "version": 2,
-  "source": "CTR data per airfield, given by the maintainer (2026-08). A leg is flown inside a CTR when BOTH of its endpoints are named here for the same field: the field itself, `inside` (points within the CTR that no published corridor traverses -- the rest are inherited from the route graph), or `clockStartsAt` (the exit points, still inside: the clock starts on the leg LEAVING one). Nothing is inferred from a leg's position in the route.",
+  "source": "CTR data per airfield, given by the maintainer (2026-08). A leg is flown inside a CTR when BOTH of its endpoints are named here for the same field: the field itself, `inside` (points within the CTR that no published corridor traverses -- the rest are inherited from the route graph), or `clockStartsAt` (the boundary points, still inside: the clock starts on the leg LEAVING one outbound, and stops on the leg ARRIVING at one inbound -- Herzliya's KNTRY is arrival-side only, since its corridor is one-way). Nothing is inferred from a leg's position in the route.",
   "_note": "A field absent from this list behaves as before -- every leg is route time. Adding a field is two lists of reporting-point codes.",
   "airfields": {
     "LLHZ": {
       "clockStartsAt": [
         "BAZRA",
         "SFAIM",
-        "GNYAM"
+        "GNYAM",
+        "KNTRY"
       ],
       "inside": []
     },

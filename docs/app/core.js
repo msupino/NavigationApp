@@ -2251,8 +2251,14 @@ function legKiteHidden(leg) {
 // route's stopwatch -- pilots start counting at the boundary point. An airfield not listed
 // behaves as before: the clock starts at the field.
 var ctrBoundaries = null;          // null = not loaded; {} or populated once fetched
+var _ctrBoundariesLoad = null;     // in-flight memo: the draw loop asks several times a frame
 async function loadCtrBoundaries() {
   if (ctrBoundaries !== null) return ctrBoundaries;
+  if (_ctrBoundariesLoad) return _ctrBoundariesLoad;
+  _ctrBoundariesLoad = _loadCtrBoundariesNow();
+  return _ctrBoundariesLoad;
+}
+async function _loadCtrBoundariesNow() {
   try {
     // Cache-bust with the same marker the datasets use; deploy rewrites it in core.js.
     const ver = (typeof _verOf === 'function') ? _verOf(S.routeGraphUrl) : '2';
@@ -2287,7 +2293,7 @@ async function ctrDeriveInsideFromGraph() {
   try {
     graph = (typeof fplLoadRouteGraph === 'function') ? await fplLoadRouteGraph() : null;
   } catch (e) { graph = null; }
-  if (!graph) return;
+  if (!graph) return false;
   for (const rec of Object.values(ctrBoundaries)) {
     rec._derived = [];
   }
@@ -2296,14 +2302,22 @@ async function ctrDeriveInsideFromGraph() {
     const found = new Set();
     for (const exit of rec.clockStartsAt || []) {
       if (!graph.nodes[exit]) continue;
-      let chain = null;
-      try { chain = fplGraphChain(graph, icao, exit, {}); } catch (e) { chain = null; }
+      // Both directions, keep the SHORTER: a one-way boundary point (Herzliya's KNTRY,
+      // arrival only) makes the other direction wrap the whole corridor loop, and taking
+      // its intermediates would mark half the coastal route as "inside the CTR" -- which
+      // is exactly what happened. The genuine field<->boundary hop is the short one.
+      let a = null, b = null;
+      try { a = fplGraphChain(graph, icao, exit, {}); } catch (e) { a = null; }
+      try { b = fplGraphChain(graph, exit, icao, {}); } catch (e) { b = null; }
+      const chain = (a && b) ? (a.length <= b.length ? a : b) : (a || b);
       if (!chain) continue;
       for (const n of chain.slice(1, -1)) found.add(n);
     }
     rec._derived = [...found];
   }
+  _ctrLegMemo = { sig: null, inside: null };   // derived points may change the answer
   if (typeof scheduleDraw === 'function') scheduleDraw();
+  return true;
 }
 // Every point inside a field's CTR: the hand-written list plus what the corridors imply.
 // The derivation needs the route graph -- 236 KB that most sessions never open -- so it is
@@ -2313,7 +2327,11 @@ async function ctrDeriveInsideFromGraph() {
 function ctrInsidePoints(rec) {
   if (!rec) return [];
   if (!_ctrDerivePromise && typeof fplGraphChain === 'function') {
-    _ctrDerivePromise = ctrDeriveInsideFromGraph();
+    // Retryable: a failed graph fetch (offline start) must not disable derivation for the
+    // whole session -- the hand list works meanwhile, and the next use tries again.
+    _ctrDerivePromise = ctrDeriveInsideFromGraph().then(ok => {
+      if (ok === false) _ctrDerivePromise = null;
+    });
   }
   return (rec.inside || []).concat(rec._derived || []);
 }
@@ -2334,21 +2352,45 @@ function ctrFieldSetAt(idx) {
   const nm = (wp && wp.name) ? String(wp.name).trim().toUpperCase() : '';
   return nm ? ctrNameSet(nm) : null;
 }
-// Is leg i flown inside a CTR? Purely by NAME: both of its endpoints have to belong to the
-// same field's CTR -- the departure field's on the way out, the destination's on the way
-// in. Nothing is inferred from a leg's position in the route: a first leg to a point the
-// CTR does not name is ordinary route time, and so is a last leg from one.
+// Is leg i flown inside a CTR? By NAME, and CONTIGUOUSLY with the field: the prefix of
+// legs from the departure field while every waypoint stays in its CTR's name set, and the
+// suffix into the destination field likewise. Contiguity is the CTR's physical reality --
+// a mid-route leg that happens to run between two of the departure field's boundary
+// points (SFAIM -> BAZRA on a coastal transit long after exit) is ordinary route time,
+// and without this it silently vanished from the clock and the totals.
+// Memoised per route signature: three callers per leg per draw frame were rebuilding the
+// name sets from scratch each time.
+var _ctrLegMemo = { sig: null, inside: null };
+function _ctrRouteSig() {
+  const wps = (state && state.waypoints) || [];
+  let sig = wps.length + ':';
+  for (const w of wps) sig += (w.name || '') + '|';
+  return sig;
+}
 function legInsideCtr(i) {
-  if (!state || !Array.isArray(state.waypoints)) return false;
-  const a = state.waypoints[i], b = state.waypoints[i + 1];
-  if (!a || !b) return false;
-  const na = (a.name || '').toString().trim().toUpperCase();
-  const nb = (b.name || '').toString().trim().toUpperCase();
-  if (!na || !nb) return false;
-  const dep = ctrFieldSetAt(0);
-  if (dep && dep.has(na) && dep.has(nb)) return true;
-  const arr = ctrFieldSetAt(state.waypoints.length - 1);
-  return !!(arr && arr.has(na) && arr.has(nb));
+  if (!state || !Array.isArray(state.waypoints) || state.waypoints.length < 2) return false;
+  const sig = _ctrRouteSig();
+  if (_ctrLegMemo.sig !== sig) {
+    const n = state.waypoints.length;
+    const inside = new Array(Math.max(0, n - 1)).fill(false);
+    const nameAt = (k) => (state.waypoints[k].name || '').toString().trim().toUpperCase();
+    const dep = ctrFieldSetAt(0);
+    if (dep) {
+      for (let k = 0; k + 1 < n; k++) {
+        if (dep.has(nameAt(k)) && dep.has(nameAt(k + 1))) inside[k] = true;
+        else break;                                    // contiguity: stop at the first exit
+      }
+    }
+    const arr = ctrFieldSetAt(n - 1);
+    if (arr) {
+      for (let k = n - 2; k >= 0; k--) {
+        if (arr.has(nameAt(k)) && arr.has(nameAt(k + 1))) inside[k] = true;
+        else break;
+      }
+    }
+    _ctrLegMemo = { sig, inside };
+  }
+  return !!_ctrLegMemo.inside[i];
 }
 
 // ...and the same for the leg's DRIFT LINES -- the dashed pair fanning out at the tuned
