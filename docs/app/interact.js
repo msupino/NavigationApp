@@ -3461,11 +3461,20 @@ function autoRouteSpliceAfterAdd(prevWp, newWp) {
     if (!mid || !mid.length) return;
     const idx = state.waypoints.indexOf(newWp);
     if (idx < 1 || state.waypoints[idx - 1] !== prevWp) return;
+    // Capture what is selected BEFORE the indices shift, and re-point that -- not newWp.
+    // Blindly re-selecting the added point hijacked whatever the pilot selected during the
+    // await and yanked the inspector onto it; and a leg selection past the insertion point
+    // silently showed a different leg's data once the indices moved.
+    const sel = state.selected;
+    const selWp = (sel && sel.type === 'wp') ? state.waypoints[sel.index] : null;
     state.waypoints.splice(idx, 0, ...mid);
     syncLegs();
     if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
-    if (state.selected && state.selected.type === 'wp') {
-      state.selected = { type: 'wp', index: state.waypoints.indexOf(newWp) };
+    if (selWp) {
+      const at = state.waypoints.indexOf(selWp);
+      if (at >= 0) state.selected = { type: 'wp', index: at };
+    } else if (sel && sel.type === 'leg' && sel.index >= idx) {
+      state.selected = { type: 'leg', index: sel.index + mid.length };
     }
     draw();
     if (typeof showInspector === 'function' && state.selected) showInspector();

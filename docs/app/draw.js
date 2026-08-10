@@ -1368,6 +1368,10 @@ async function loadAreas() {
   }
   if (areas && areas.length) scheduleDraw();
   if (typeof refreshLsaListBtn === 'function') refreshLsaListBtn();
+  // A stored bubble selection waits for this dataset: every other loader retries the
+  // pending restore, and this one not doing so left the bubble inspector permanently
+  // unrestored whenever areas settled last.
+  if (typeof retryPendingInspectorSelection === 'function') retryPendingInspectorSelection();
   return areas;
 }
 // Localized display name for an LSA bubble (Hebrew label on the he layer, else
@@ -3026,8 +3030,10 @@ function drawLegs() {
       if (!Aj || !Bj) continue;
       const gj = geo(Aj, Bj);
       const dur = state.legs[j].outboundSpeed > 0 ? gj.dist / state.legs[j].outboundSpeed : 0;
-      cumOut += dur;
-      cumOutArr[j] = cumOut > 0 ? toHMS(cumOut) : '--';
+      // CTR legs stay off the return clock too, mirroring the outbound cum chain.
+      const jPre = typeof legInsideCtr === 'function' && legInsideCtr(j);
+      if (!jPre) cumOut += dur;
+      cumOutArr[j] = jPre ? '---' : (cumOut > 0 ? toHMS(cumOut) : '--');
     }
   }
 
@@ -3921,10 +3927,22 @@ function drawInfo() {
   if (prof) {
     totalDist = prof.totalDist;
     totalH = prof.totalTimeH;
+    // The pill must agree with the plan table, which keeps CTR legs off the clock. The
+    // profile's own total stays untouched -- it feeds the FILED EET, and the filed time is
+    // the whole flight, procedure legs included.
+    if (typeof legInsideCtr === 'function' && Array.isArray(prof.legs)) {
+      for (let i = 0; i < prof.legs.length; i++) {
+        if (legInsideCtr(i) && prof.legs[i] && Number.isFinite(prof.legs[i].timeH)) {
+          totalH -= prof.legs[i].timeH;
+        }
+      }
+      if (totalH < 0) totalH = 0;
+    }
   } else {
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;   // legs can transiently outnumber waypoints-1 mid-edit; guard like the sibling loops
+      if (typeof legInsideCtr === 'function' && legInsideCtr(i)) { totalDist += geo(A, B).dist; continue; }
       const g = geo(A, B);
       totalDist += g.dist;
       if (state.legs[i].flightSpeed > 0) totalH += g.dist / state.legs[i].flightSpeed;
@@ -4079,7 +4097,13 @@ function routeInkRects() {
     // push the fit onto a larger sheet than the export needs. Mirror drawLegs()'s gates:
     // a hidden kite, a blocked one-way inbound, and the return direction.
     const legI = (state.legs || [])[i];
-    const kiteOff = typeof legKiteHidden === 'function' && legKiteHidden(legI);
+    // The EFFECTIVE gates, same as drawLegs: legKiteVisible covers both the explicit
+    // hide/show flags and the CTR default, and a CTR leg draws no cum kite -- ink that is
+    // never painted must not grow the fitted page or fire the clipping warning.
+    const kiteOff = typeof legKiteVisible === 'function'
+      ? !legKiteVisible(i, legI)
+      : (typeof legKiteHidden === 'function' && legKiteHidden(legI));
+    const preClock = typeof legInsideCtr === 'function' && legInsideCtr(i);
     const inBlocked = typeof legAltitudeIsBlocked === 'function' &&
       legAltitudeIsBlocked(legI, 'inboundAltitude');
     if (typeof legLabelCenter === 'function' && !kiteOff) {
@@ -4089,7 +4113,7 @@ function routeInkRects() {
         pushRotated(legLabelCenter(i, 'out'), A.x, A.y, halfL, halfW);
       }
     }
-    if (cum && typeof showCumTime !== 'undefined' && showCumTime) {
+    if (cum && typeof showCumTime !== 'undefined' && showCumTime && !preClock) {
       if (typeof cumLabelCenter === 'function') pushRotated(cumLabelCenter(i), B.x, B.y, cum.halfL, cum.halfW);
       if (typeof showReturn !== 'undefined' && showReturn && typeof cumLabelRetCenter === 'function') {
         pushRotated(cumLabelRetCenter(i), A.x, A.y, cum.halfL, cum.halfW);
@@ -4221,7 +4245,11 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
     let fuel = ac ? dur * ac.gph : 0;
     if (i === 0 && taxiFuel) fuel += taxiFuel;
-    totTime += dur; totFuel += fuel;
+    // The printed kneeboard must say what the on-screen plan says: CTR legs read --- and
+    // stay out of the running clock. Fuel is real either way.
+    const cardPre = typeof legInsideCtr === 'function' && legInsideCtr(i);
+    if (!cardPre) totTime += dur;
+    totFuel += fuel;
     const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
     const rd = vorCells(B, legs[i]);
     rows.push({ num: i + 1, from: waypointDisplayLabel(A, i),
@@ -4231,8 +4259,8 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
       // Guard non-finite (unknown) altitude like the kite + flight-plan modal do,
       // so the PNG plan card shows the unknown-label instead of the literal "NaN".
       alt: formatAltitudeValue(legs[i].inboundAltitude, legs[i], 'inboundAltitude'),
-      time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel,
-      cumTime: totTime > 0 ? toHMS(totTime) : '--',
+      time: cardPre ? '---' : (dur > 0 ? toHMS(dur) : '--'), fuel: fLabel,
+      cumTime: cardPre ? '---' : (totTime > 0 ? toHMS(totTime) : '--'),
       cumFuel: ac ? totFuel.toFixed(1) : '--',
       radial: rd[0], dme: rd[1] });
   }

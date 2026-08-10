@@ -1076,7 +1076,8 @@ async function buildRouteFromQuery(raw) {
         if (state.waypoints !== built) return;              // route replaced meanwhile
         const prev = built[i - 1], next = built[i];
         const mid = await autoRouteChain(prev, next);
-        if (!mid || !mid.length || state.waypoints !== built) continue;
+        if (state.waypoints !== built) return;   // route replaced mid-await: not ours any more
+        if (!mid || !mid.length) continue;
         const at = state.waypoints.indexOf(next);
         if (at < 1 || state.waypoints[at - 1] !== prev) continue;
         state.waypoints.splice(at, 0, ...mid);
@@ -1878,7 +1879,8 @@ function runSearch() {
     kind: 'wp', cap: tune('searchMaxNavWp'), items: navWP, routable: true,
     match: w => hit(w.name, q) || hit(w.en, q) || hitHe(w.he),
   });
-  if (typeof areas !== 'undefined' && has(areas)) src.push({  // LSA bubbles (searchable by code or name)
+  if (typeof areas !== 'undefined' && has(areas) &&
+      typeof showLsaBubbles !== 'undefined' && showLsaBubbles) src.push({  // LSA bubbles (searchable by code or name; gated on the toggle like the map click, or search selects an unpainted polygon)
     kind: 'bubble', cap: tune('searchMaxBubbles'),
     items: areas.map((a, i) => ({ ...a, _areaIndex: i })), routable: false,
     match: a => hit(a.icao, q) || hit(a.en, q) || hit(a.name, q) || hitHe(a.he) || hitHe(a.name),
@@ -1934,7 +1936,7 @@ function runSearch() {
       const bits = [];
       const nm = areaLabel(w);
       if (nm && nm !== primary) bits.push(nm);
-      if (Number.isFinite(w.lowFt) && Number.isFinite(w.highFt)) bits.push(w.lowFt + '-' + w.highFt + ' ft');
+      if (Number.isFinite(w.lowFt) && Number.isFinite(w.highFt)) bits.push(w.lowFt + '-' + w.highFt + ' ' + (S.unitFeet || 'ft'));
       if (w.active === 'weekend') bits.push(S.bubbleWeekendTag || 'weekend');
       alt = bits.join(' \u00b7 ');
     } else if (h.kind === 'af') {
