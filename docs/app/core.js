@@ -85,7 +85,7 @@ NavAid.tuningDefaults = {
     label: 'Search: how long the result flashes (ms, 0 = off)' },
   searchFlashRadiusPx: { value: 30, min: 8, max: 80, step: 2,
     label: 'Search: flash ring size (px)' },
-  searchFlashColor: { value: '#ffb020', label: 'Search: flash ring colour' },
+  searchFlashColor: { value: '#ffb020', type: 'color', label: 'Search: flash ring colour' },
   searchFlashWidthPx: { value: 2, min: 1, max: 8, step: 1,
     label: 'Search: flash ring thickness (px)' },
   searchFlashFillAlpha: { value: 0.10, min: 0, max: 0.6, step: 0.02,
@@ -2280,6 +2280,9 @@ async function _loadCtrBoundariesNow() {
   } catch (e) {
     ctrBoundaries = {};             // absent or unreadable: every clock starts at the field
   }
+  // A route drawn before this fetch landed was memoised against a null boundary set --
+  // without this reset the repaint below hits that stale "no CTR anywhere" memo forever.
+  _ctrLegMemo = { sig: null, inside: null };
   if (typeof scheduleDraw === 'function') scheduleDraw();
   return ctrBoundaries;
 }
@@ -2328,14 +2331,23 @@ async function ctrDeriveInsideFromGraph() {
 // on its own; the derived points appear on the next repaint.
 function ctrInsidePoints(rec) {
   if (!rec) return [];
-  if (!_ctrDerivePromise && typeof fplGraphChain === 'function') {
-    // Retryable: a failed graph fetch (offline start) must not disable derivation for the
-    // whole session -- the hand list works meanwhile, and the next use tries again.
-    _ctrDerivePromise = ctrDeriveInsideFromGraph().then(ok => {
-      if (ok === false) _ctrDerivePromise = null;
-    });
-  }
+  _ctrKickDerive();
   return (rec.inside || []).concat(rec._derived || []);
+}
+// Retryable: a failed graph fetch (offline start) must not disable derivation for the
+// whole session -- the hand list works meanwhile, and a later use tries again. The retry
+// is time-gated: legInsideCtr calls this on every frame of a CTR-touching route, and
+// re-fetching a dead network per frame would spin.
+var _ctrDeriveNextTry = 0;
+function _ctrKickDerive() {
+  if (_ctrDerivePromise || typeof fplGraphChain !== 'function') return;
+  if (Date.now() < _ctrDeriveNextTry) return;
+  _ctrDerivePromise = ctrDeriveInsideFromGraph().then(ok => {
+    if (ok !== true) {
+      _ctrDerivePromise = null;
+      _ctrDeriveNextTry = Date.now() + 30000;
+    }
+  });
 }
 // Every name that belongs to a field's CTR: the field itself, the points inside it (listed
 // or inherited from the corridors), and its exit points -- the exit is still inside, the
@@ -2390,8 +2402,12 @@ function legInsideCtr(i) {
         else break;
       }
     }
-    _ctrLegMemo = { sig, inside };
+    _ctrLegMemo = { sig, inside, touchesCtr: !!(dep || arr) };
   }
+  // The memo hides ctrInsidePoints (the derivation trigger) from later frames, so a
+  // derivation that failed once (offline start) would never retry while the route sits
+  // unchanged. Kick it here on CTR-touching routes; it self-throttles.
+  if (_ctrLegMemo.touchesCtr) _ctrKickDerive();
   return !!_ctrLegMemo.inside[i];
 }
 

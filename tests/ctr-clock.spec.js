@@ -215,3 +215,46 @@ test('deleting a middle waypoint recomputes the cumulative column correctly', as
   expect(after.got[0]).toBe('---');               // CTR leg still gated on the new route
   expect(after.got[1]).not.toBe(before.got[2]);   // recomputed, not carried over
 });
+
+test('a boundaries fetch that lands after the first paint still gates the route', async ({ page }) => {
+  // A restored route can draw before data/ctr-boundaries.json resolves. That first
+  // paint memoises "no CTR anywhere"; the load completing must invalidate the memo,
+  // or the plan shows full time for the whole session.
+  let release;
+  const held = new Promise(r => { release = r; });
+  await page.route('**/ctr-boundaries.json*', async r => { await held; r.continue(); });
+  await page.addInitScript(() => {
+    try { for (const s of ['build', 'view', 'display']) localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof legInsideCtr === 'function');
+  await page.evaluate(async () => { await loadAirfields(); await loadNavWaypoints(); });
+  await route(page, ['LLHZ', 'SFAIM', 'HTZUK']);
+  // The fetch is still held: the CTR leg reads as ordinary route time, memo built.
+  expect(await page.evaluate(() => legInsideCtr(0))).toBe(false);
+  release();
+  await page.waitForFunction(() => legInsideCtr(0) === true, { timeout: 8000 });
+});
+
+test('a failed graph fetch does not disable derivation for the session', async ({ page }) => {
+  await boot(page);
+  // First attempt fails: stub the graph loader to the transient-failure shape an
+  // offline start produces. (A network-level abort is defeated by the service worker's
+  // cache, which serves the graph without ever hitting page.route.)
+  await page.evaluate(() => {
+    window._testOrigFplLoad = fplLoadRouteGraph;
+    fplLoadRouteGraph = async () => false;
+  });
+  await route(page, ['LLIB', 'AMNON', 'TAVOR']);      // AMNON is derived-only inside
+  await page.evaluate(() => legInsideCtr(0));         // kicks the derivation, which fails
+  await page.waitForFunction(() => _ctrDerivePromise === null, { timeout: 8000 });
+  expect(await page.evaluate(() => legInsideCtr(0))).toBe(false);
+  // Connectivity returns. The route is unchanged -- the memoised gate itself must
+  // re-kick the derivation (time-gated; the test collapses the backoff).
+  await page.evaluate(() => {
+    fplLoadRouteGraph = window._testOrigFplLoad;
+    _ctrDeriveNextTry = 0;
+    legInsideCtr(0);
+  });
+  await page.waitForFunction(() => legInsideCtr(0) === true, { timeout: 8000 });
+});
