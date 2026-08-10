@@ -6095,12 +6095,17 @@ function createTuningPanel() {
       // in place of the label, so the copy is felt without a toast layer).
       name.title = key;
       name.style.cursor = 'copy';
+      // The restore target is the ORIGINAL label, captured once: capturing it inside the
+      // handler let a double click within the toast window capture "✓ copied" as the
+      // label and stick it permanently.
+      const origLabel = name.textContent;
+      let copyTimer = 0;
       name.addEventListener('click', ev => {
         ev.preventDefault();          // the row is a <label>; don't toggle the control
         const done = () => {
-          const orig = name.textContent;
           name.textContent = key + ' ✓ copied';
-          setTimeout(() => { name.textContent = orig; }, 1200);
+          clearTimeout(copyTimer);
+          copyTimer = setTimeout(() => { name.textContent = origLabel; }, 1200);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(key).then(done, done);
