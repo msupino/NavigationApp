@@ -826,11 +826,29 @@ function notamMappable(n) {
   if (!n) return false;
   if (n.geom) return true;
   if (Array.isArray(n._routeLines) && n._routeLines.length) return true;
+  if (notamBubbleAreas(n).length) return true;
   if (n.icao && Array.isArray(airfields)) {
     const af = airfieldByIcao(n.icao);
     if (af && Number.isFinite(af.lat) && Number.isFinite(af.lng)) return true;
   }
   return false;
+}
+// Bubble-closure NOTAMs ("ULTRALIGHT BUBBLE CLSD HAHULA (BHULA), KARMIEL (BKRML)") carry
+// no coordinates -- the bubble code IS the geometry. Resolve the codes named in the text
+// against the loaded areas dataset so these NOTAMs get a map presence on the LSA chart.
+// Resolved fresh per call, not cached on the NOTAM: `areas` swaps on layer change and
+// loads late, and 37 substring tests per NOTAM are nothing.
+function notamBubbleAreas(n) {
+  if (!n || !Array.isArray(areas) || !areas.length) return [];
+  const txt = String(n.text || '').toUpperCase();
+  if (!txt) return [];
+  const out = [];
+  for (const a of areas) {
+    const code = String(a.icao || '').toUpperCase();
+    if (!/^[A-Z0-9]{3,7}$/.test(code)) continue;
+    if (new RegExp('\\b' + code + '\\b').test(txt)) out.push(a);
+  }
+  return out;
 }
 // Collect a NOTAM's map points (polygon/line/circle perimeter, route lines, or
 // its airport) so the view can be framed on it.
@@ -843,6 +861,7 @@ function notamLatLngs(n) {
   else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
            Number.isFinite(g.radiusNm)) notamCirclePoints(g.lat, g.lng, g.radiusNm).forEach(c => push(c[0], c[1]));
   if (Array.isArray(n && n._routeLines)) n._routeLines.forEach(rl => (rl.coords || []).forEach(c => push(c[0], c[1])));
+  notamBubbleAreas(n).forEach(a => a.coords.forEach(c => push(c[0], c[1])));
   if (!out.length && n && n.icao && Array.isArray(airfields)) {
     const af = airfieldByIcao(n.icao);
     if (af) push(af.lat, af.lng);
@@ -926,6 +945,41 @@ function drawNotams() {
         octx.strokeText(n.id, mid.x, mid.y - 6);
         octx.fillStyle = rl.kind === 'diverted' ? divCol : col;
         octx.fillText(n.id, mid.x, mid.y - 6);
+      }
+    }
+    // Bubble closures: hatch the named bubble(s) in NOTAM colour over the LSA chart.
+    // The bubble outline itself stays with drawAreas; this is the closure marker.
+    for (const a of notamBubbleAreas(n)) {
+      const pts = a.coords
+        .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      if (pts.length < 3) continue;
+      octx.beginPath();
+      octx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
+      octx.closePath();
+      octx.fillStyle = colorWithAlpha(col, tune('notamFillAlpha'));
+      octx.fill();
+      octx.setLineDash([6, 4]);
+      octx.lineWidth = tune('notamLineWidthPx');
+      octx.strokeStyle = col;
+      octx.stroke();
+      octx.setLineDash([]);
+      if (flashId && n.id === flashId) {
+        octx.lineWidth = tune('notamLineWidthPx') + 5;
+        octx.strokeStyle = colorWithAlpha(flashCol, flashPulse);
+        octx.stroke();
+      }
+      if (n.id) {
+        const c = areaCentroid(a.coords);
+        const p = proj({ lat: c.lat, lng: c.lng });
+        octx.font = 'bold 11px sans-serif';
+        octx.textAlign = 'center';
+        octx.lineWidth = 3;
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+        octx.strokeText(n.id, p.x, p.y - 14);
+        octx.fillStyle = col;
+        octx.fillText(n.id, p.x, p.y - 14);
       }
     }
     const g = n && n.geom;

@@ -256,6 +256,7 @@ window.S = {
   notamDecoded: 'מפוענח',
   notamFilterLabel: 'סינון NOTAM לפי שדה תעופה',
   notamFilterAll: 'הכול',
+  notamSearchPh: 'חיפוש בטקסט ה-NOTAM…',
   notamFilterGlobal: 'כללי (FIR)',
   notamShowOnMap: 'הצג על המפה',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },

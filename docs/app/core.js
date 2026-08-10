@@ -958,6 +958,7 @@ window.S = Object.assign({
   notamDecoded: 'Decoded',
   notamFilterLabel: 'Filter NOTAMs by airfield',
   notamFilterAll: 'All',
+  notamSearchPh: 'Search NOTAM text…',
   notamFilterGlobal: 'Global (FIR)',
   notamShowOnMap: 'Show on map',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },

@@ -3717,15 +3717,26 @@ function showNotamModal(only) {
   // (global); anything else is aerodrome-specific. Build a dropdown of the
   // codes present so the list can be narrowed to one airfield (or globals).
   let filterIcao = '';
+  let filterText = '';
   const codes = Array.from(new Set(
     shown.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
   const list = document.createElement('div');
   list.className = 'notam-list';
+  // Freetext match: id, ICAO, raw and decoded text -- whichever the pilot is
+  // reading. Decoded once per NOTAM, cached; the filter runs per keystroke.
+  const notamHay = (n) => {
+    if (!n._hay) {
+      const dec = (typeof decodeNotam === 'function') ? decodeNotam(n) : '';
+      n._hay = (n.id + ' ' + (n.icao || '') + ' ' + (n.text || '') + ' ' + dec).toUpperCase();
+    }
+    return n._hay;
+  };
   const renderList = () => {
     list.textContent = '';
-    const subset = filterIcao
-      ? shown.filter(n => String(n.icao || '').toUpperCase() === filterIcao)
-      : shown;
+    const q = filterText.trim().toUpperCase();
+    const subset = shown.filter(n =>
+      (!filterIcao || String(n.icao || '').toUpperCase() === filterIcao) &&
+      (!q || notamHay(n).indexOf(q) !== -1));
     updateTitle(subset);
     if (!subset.length) {
       const e = document.createElement('div');
@@ -3768,9 +3779,19 @@ function showNotamModal(only) {
       list.appendChild(it);
     }
   };
-  if (codes.length > 1) {
+  {
+    // Freetext search sits with the airfield dropdown; it renders even for a
+    // single-airfield feed (the dropdown alone used to gate the whole row).
     const fw = document.createElement('div');
     fw.className = 'notam-filter';
+    const find = document.createElement('input');
+    find.type = 'search';
+    find.className = 'notam-find'; find.dir = 'auto';
+    find.placeholder = S.notamSearchPh || 'Search NOTAM text…';
+    find.setAttribute('aria-label', find.placeholder);
+    find.addEventListener('input', () => { filterText = find.value; renderList(); });
+    fw.appendChild(find);
+    if (codes.length > 1) {
     const sel = document.createElement('select');
     sel.className = 'notam-filter-sel'; sel.dir = 'ltr';
     sel.setAttribute('aria-label', S.notamFilterLabel || 'Filter NOTAMs by airfield');
@@ -3791,6 +3812,7 @@ function showNotamModal(only) {
     }
     sel.onchange = () => { filterIcao = sel.value; renderList(); };
     fw.appendChild(sel);
+    }
     box.appendChild(fw);
   }
   rawBtn.onclick = () => {
