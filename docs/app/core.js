@@ -2343,10 +2343,8 @@ function _ctrKickDerive() {
   if (_ctrDerivePromise || typeof fplGraphChain !== 'function') return;
   if (Date.now() < _ctrDeriveNextTry) return;
   _ctrDerivePromise = ctrDeriveInsideFromGraph().then(ok => {
-    if (ok !== true) {
-      _ctrDerivePromise = null;
-      _ctrDeriveNextTry = Date.now() + 30000;
-    }
+    _ctrDerivePromise = null;           // always clear so a later chart reload can re-derive
+    if (ok !== true) _ctrDeriveNextTry = Date.now() + 30000;
   });
 }
 // Every name that belongs to a field's CTR: the field itself, the points inside it (listed
@@ -2614,9 +2612,9 @@ const NOTAM_COND = {            // Q-code letters 4-5 (condition/status)
   XX: 'plain language (see text)',
 };
 const NOTAM_ABBR = {
-  // ACT: this feed uses it as the noun ("FIREFIGHTING ACT WILL TAKE PLACE",
-  // "UAS/UAV ACT", "GLD ACT AVBL"), not the adjective.
-  ACFT: 'aircraft', ACT: 'activity', ADZ: 'advised', AGL: 'above ground level',
+  // ACT: ICAO Doc 8400 defines it as the adjective "active" — the most common
+  // usage in this feed ("METZADA ACT FM 8000FT", "LZ ACT", "GLD ACT AVBL").
+  ACFT: 'aircraft', ACT: 'active', ADZ: 'advised', AGL: 'above ground level',
   ALT: 'altitude', AMSL: 'above mean sea level', APCH: 'approach', APRX: 'approximately',
   ARP: 'aerodrome reference point', ATC: 'air traffic control', AUTH: 'authorized',
   AVBL: 'available', AWY: 'airway', BLW: 'below', BTN: 'between', CTC: 'contact',
@@ -2717,7 +2715,19 @@ function expandNotamAbbr(s) {
   // the modal ("15 may"). Splitting into two alternatives keeps the day's digits and
   // its boundary check from ever competing over the same character.
   out = out.replace(/(?:(?:^|[^\d./])(\d{1,2})\s+MAY\b(?:\s+\d{4}\b)?|\bMAY\b(\s+\d{4}\b)?)/g,
-    (m, day, bareYear) => (day || bareYear) ? m : 'may');
+    (m, day, bareYear, offset, str) => {
+      if (bareYear) return m;           // "MAY 2027" — definitely a month name
+      if (day) {
+        // A 1–2 digit number whose natural separator matched (not "/" or ".") precedes
+        // MAY. That's usually a date day, but "RWY 27 MAY BE CLSD" puts a runway
+        // number there. Distinguish by what immediately follows MAY: a bare infinitive
+        // (BE, NOT, …) signals the modal verb even when a digit precedes it.
+        const tail = str.slice(offset + m.length);
+        if (/^\s+(?:BE|NOT)\b/i.test(tail)) return m.replace('MAY', 'may');
+        return m;                       // digit before + no modal marker → month name
+      }
+      return 'may';                     // bare MAY with no context → modal verb
+    });
   // Sentence-case what the lowercase mapping produced: a sentence that begins with an
   // expanded word ("an area at...") gets its capital back. Only at the start of the
   // text or after a sentence ender -- the feed hard-wraps mid-sentence, so a bare
