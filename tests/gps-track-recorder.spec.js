@@ -521,3 +521,31 @@ test('recording holds a screen wake lock, releases on stop, re-arms on visibilit
   expect(counts.req).toBe(2);   // initial + re-arm
   expect(counts.rel).toBe(2);   // OS drop + stop
 });
+
+test('a 20-second fix gap (watch TIMEOUT) does not kill the recording', async ({ page }) => {
+  // The watch registers with timeout: GPS_STALE_MS, so watchPosition reports code 3
+  // after any quiet spell and keeps watching. Tearing down there discarded the whole
+  // flown track over one dropout; only PERMISSION_DENIED may do that.
+  await page.addInitScript(() => {
+    navigator.geolocation.watchPosition = (onPos, onErr) => {
+      setTimeout(() => onPos({ coords: { latitude: 32, longitude: 34.9, accuracy: 5,
+        altitude: 100, speed: 40, heading: 90 }, timestamp: Date.now() }), 20);
+      setTimeout(() => onErr({ code: 3, message: 'Timeout expired' }), 60);   // TIMEOUT
+      setTimeout(() => onPos({ coords: { latitude: 32.01, longitude: 34.91, accuracy: 5,
+        altitude: 100, speed: 40, heading: 90 }, timestamp: Date.now() }), 120);
+      return 1;
+    };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+  let alerted = false;
+  page.on('dialog', d => { alerted = true; d.dismiss().catch(() => {}); });
+  await page.locator('#gps-record').click();
+  await page.waitForFunction(() => gpsTrack.length >= 2);   // a fix landed AFTER the timeout
+  expect(await page.evaluate(() => gpsRecording)).toBe(true);
+  expect(alerted).toBe(false);                              // no scary teardown alert
+  // ...and a real permission revocation still tears down.
+  await page.evaluate(() => onGpsRecError({ code: 1, message: 'denied' }));
+  expect(await page.evaluate(() => gpsRecording)).toBe(false);
+});
