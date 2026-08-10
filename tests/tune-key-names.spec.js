@@ -40,3 +40,28 @@ test('the find box matches by key name, not only by label', async ({ page }) => 
   const visible = page.locator('.tune-row:visible', { has: page.locator('#tune-lsaLabelFontPx-number') });
   await expect(visible).toHaveCount(1);
 });
+
+test('a double click within the toast window still restores the real label', async ({ page, context }) => {
+  // The restore target used to be captured per click, so the second click of a rapid
+  // pair captured "✓ copied" as the label and stuck it permanently.
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await bootTune(page);
+  const row = page.locator('.tune-row', { has: page.locator('#tune-vorLabelMinZoom-number') });
+  const label = row.locator('.tune-label');
+  await label.click();
+  await label.click();
+  await expect(label).toContainText('✓ copied');
+  await expect(label).not.toContainText('copied', { timeout: 4000 });
+  await expect(label).not.toHaveText('');
+});
+
+test('a colour knob is gist-editable: searchFlashColor accepts a hex override', async ({ page }) => {
+  // The spec shipped without type:'color', so setTune's numeric branch silently
+  // rejected every override -- from the gist and from the panel alike.
+  await bootTune(page);
+  const r = await page.evaluate(() => {
+    setTune('searchFlashColor', '#FF0000');
+    return tune('searchFlashColor');
+  });
+  expect(r).toBe('#ff0000');
+});

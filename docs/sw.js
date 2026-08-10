@@ -9,13 +9,22 @@ const TILE_HOST = 'flight-maps.com';
 // SW only proxies them when a pack actually exists — otherwise the fetch
 // handler returns without respondWith and the browser's native network path
 // handles the tile with zero SW overhead (issue-388 magnifier perf).
-let tilePackReady = false;
+// Tri-state: null = unknown (the caches.has probe is in flight), else true/false.
+// The SW is terminated when idle, so every cold start re-runs the probe -- and a
+// pan's burst of tile requests can arrive BEFORE it resolves. Treating unknown as
+// "no pack" sent that burst to the network, which offline means blank tiles
+// despite a downloaded pack. Unknown now takes the proxied path and awaits the
+// probe; the zero-overhead native path still applies once the flag settles false.
+let tilePackReady = null;
 function refreshTilePackFlag() {
   // Drop any memoized cache handle: a delete+re-download replaces the underlying
   // Cache, so a handle opened before the change would match() against the old
   // (now detached) bucket and miss every freshly-downloaded tile.
   self._tileCachePromise = null;
-  return caches.has(TILE_CACHE).then(h => { tilePackReady = h; }, () => {});
+  tilePackReady = null;
+  self._tilePackProbe = caches.has(TILE_CACHE)
+    .then(h => { tilePackReady = h; return h; }, () => { tilePackReady = false; return false; });
+  return self._tilePackProbe;
 }
 refreshTilePackFlag();
 self.addEventListener('message', e => {
@@ -123,9 +132,11 @@ self.addEventListener('fetch', e => {
   // dozens per frame burst) and a caches.open() per request measurably slows
   // tile-heavy interactions (magnifier pan perf test).
   if (url.host === TILE_HOST && url.pathname.indexOf('/tiles/') === 0) {
-    if (!tilePackReady) return;   // no pack downloaded -> native network path, zero SW overhead
-    if (!self._tileCachePromise) self._tileCachePromise = caches.open(TILE_CACHE);
+    if (tilePackReady === false) return;   // known no pack -> native network path, zero SW overhead
     e.respondWith((async () => {
+      if (tilePackReady === null) { try { await self._tilePackProbe; } catch (err) {} }
+      if (!tilePackReady) return fetch(e.request);
+      if (!self._tileCachePromise) self._tileCachePromise = caches.open(TILE_CACHE);
       try {
         const cache = await self._tileCachePromise;
         const hit = await cache.match(e.request.url);
