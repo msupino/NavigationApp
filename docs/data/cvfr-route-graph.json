@@ -7958,9 +7958,7 @@
         "distanceNm": 3.52,
         "chartDistanceNm": 3.5,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency",
-        "closedHint": true,
-        "openFromHourHint": 6
+        "source": "cvfr-map airway adjacency"
       },
       {
         "to": "HAREL",

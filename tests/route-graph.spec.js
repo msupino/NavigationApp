@@ -296,3 +296,33 @@ test('the safety-critical rows read exactly what the chart says', () => {
   expect(g.nodes.BASAN.commChange).toBe(true);
   expect(g.nodes.BASAN.callSigns).toContain('PLUTO_EAST');
 });
+
+test('a corridor is not open one way and shut the other', () => {
+  // Availability hints describe the CORRIDOR (a secondary source said it was shut, or that
+  // it opens at 05:00), not a direction of travel -- but fplEdgeOpen reads them off the
+  // directed edge, so an import that tagged only one direction leaves a segment routable
+  // one way and refused the other. ESTOL <-> SORES was exactly that: no hints outbound,
+  // closedHint + openFromHourHint:6 on the reverse, so the leg vanished in one direction.
+  //
+  // 14 more pairs still disagree. They are LISTED, not asserted away: each needs the chart
+  // or the source checked, and pinning a guessed answer here would be worse than the gap.
+  // This test holds the line at the one pair confirmed, and fails if it regresses.
+  const g = graph();
+  const FLAGS = ['closedHint', 'weekdayClosedHint', 'onAtcApproval', 'armyAirway',
+                 'openFromHourHint'];
+  const asym = [];
+  const seen = new Set();
+  for (const [from, es] of Object.entries(g.edges.cvfr)) {
+    for (const e of es) {
+      const k = [from, e.to].sort().join('|');
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const rev = (g.edges.cvfr[e.to] || []).find(x => x.to === from);
+      if (!rev) continue;
+      if (FLAGS.some(f => String(e[f] || false) !== String(rev[f] || false))) asym.push(k);
+    }
+  }
+  expect(asym).not.toContain('ESTOL|SORES');
+  // The known backlog. Shrinking this is progress; growing it is a new import bug.
+  expect(asym.length).toBeLessThanOrEqual(14);
+});
