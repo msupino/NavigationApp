@@ -512,6 +512,12 @@ window.S = {
   errFplReplyToRequired: 'הזן את הדואל שלך — האישור חוזר אליו.',
   errFplReplyToInvalid: 'כתובת הדואל אינה תקפה.',
   errFplProfileList: function(list) { return 'חסר עדיין: ' + list + '.'; },
+  errFplAtcApprovalLegPlain: 'קטע במסלול זה טעון אישור פיקוח בזמן אמת, ולכן לא ניתן להגישו כמסלול מתוכנן.',
+  errFplAtcApprovalLeg: function(names) {
+    const list = Array.isArray(names) ? names : [names];
+    return 'המסלול עובר דרך ' + list.join(', ') + ', קטע שהפיקוח פותח רק בזמן אמת \u2014 תוכנית '
+      + 'המציינת אותו לא תתקבל. יש לנתב סביבו, או להשאיר את הקטע ולבקש אותו באוויר במקום להגישו.';
+  },
   errFplMidAirfieldPlain: 'המסלול נוחת בשדה תעופה בדרך, ולכן אינו תוכנית טיסה אחת: הגישו אותו בקטעים.',
   errFplMidAirfield: function(names) {
     const list = Array.isArray(names) ? names : [names];

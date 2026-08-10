@@ -1220,6 +1220,14 @@ window.S = Object.assign({
   errFplReplyToInvalid: 'That email address is not valid.',
   errFplProfileList: function(list) { return 'Still needed: ' + list + '.'; },
   // Used when the list of fields is unavailable -- a message must never be a function.
+  errFplAtcApprovalLegPlain: 'A leg of this route may only be flown when control clears it '
+    + 'in real time, so it cannot be filed as a planned route.',
+  errFplAtcApprovalLeg: function(names) {
+    const list = Array.isArray(names) ? names : [names];
+    return 'This route is flown down ' + list.join(', ') + ', which control opens only in '
+      + 'real time \u2014 a plan naming it is not accepted. Route around it, or keep the leg '
+      + 'and request it in the air instead of filing it.';
+  },
   errFplMidAirfieldPlain: 'This route lands at an airfield on the way, so it is not a single '
     + 'flight plan: file it in legs.',
   errFplMidAirfield: function(names) {

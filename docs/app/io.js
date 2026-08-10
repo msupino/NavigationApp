@@ -1647,6 +1647,26 @@ function fplExpandRoute(graph, wps, opts) {
   return { points: out, unresolved , usedClosed };
 }
 
+// The consecutive pairs of a finished route that no plan may name: the two points are
+// joined by a published segment, and that segment is an army airway or opens only on a
+// real-time ATC clearance. Returned as "A-B" labels for the message.
+//
+// Only a DIRECT segment counts. Two points with no edge between them are an ordinary
+// stretch the graph could not chain (already reported as warnFplExpandGap), and two points
+// joined by some longer way round are flown that way -- neither is this.
+function fplUnfilableLegs(graph, wps) {
+  const out = [];
+  if (!graph || !graph.edges || !Array.isArray(wps)) return out;
+  for (let i = 1; i < wps.length; i++) {
+    const a = fplGraphPointAt(graph, wps[i - 1]);
+    const b = fplGraphPointAt(graph, wps[i]);
+    if (!a || !b || a === b) continue;
+    const e = (graph.edges[a] || []).find(x => x.to === b && !x.blocked);
+    if (e && (e.armyAirway || e.onAtcApproval)) out.push(a + '–' + b);
+  }
+  return out;
+}
+
 function buildIcaoFpl(profile, opts) {
   const p = profile || {};
   const o = opts || {};
@@ -1709,6 +1729,15 @@ function buildIcaoFpl(profile, opts) {
     // the plan is held open for a flight shorter than the one it describes.
     expandedExtraNm = Math.max(0, fplSequenceNm(wps) - drawnNm);
   }
+
+  // A leg the authority will not accept is a REFUSAL, not a warning. Expansion already
+  // refuses to route onto an army airway or an ATC-approval corridor, but the pilot can
+  // draw straight down one -- which is legitimate on the map, and is what "you can still
+  // place the point yourself" means. Filing it is the part that cannot work: the plan
+  // names a segment that only a real-time clearance opens, so it comes back rejected.
+  // Refusing here means finding out at the desk instead of in the air.
+  const atcLegs = fplUnfilableLegs(o.routeGraph, wps);
+  if (atcLegs.length) errs.push({ code: 'errFplAtcApprovalLeg', names: atcLegs });
 
   // Field 15 lists what is flown BETWEEN the two end fields. An end that is filed as
   // ZZZZ is still a point on the route, so it stays in the list.
@@ -8149,11 +8178,29 @@ function fplDefaultWhen(now) {
   };
 }
 function fplErrText(code) {
-  const key = String(code).split(':')[0];
+  // Producers push 'code', 'code:field', or { code, ...payload }. The object form used to
+  // fall straight through String(), so a warning carrying data rendered as the literal
+  // "[object Object]" -- the error list had a normaliser for exactly this and the warning
+  // list never got one.
+  const obj = (code && typeof code === 'object') ? code : null;
+  const key = obj ? String(obj.code || '') : String(code).split(':')[0];
+  if (!key) return '';
   const text = window.S && S[key];
-  // Some entries are functions of their payload (errFplMidAirfield, errFplProfileList). One
-  // reached here without its payload and rendered its own source into the dialog, so a
-  // function is never text: fall back to the key, which at least names the problem.
+  // Some entries are functions of their payload (warnFplExpandGap, errFplMidAirfield). Call
+  // one only when the payload it wants is actually here, and never let a throw from a
+  // language table take the dialog down with it.
+  if (typeof text === 'function') {
+    if (obj) {
+      try {
+        const out = text(Array.isArray(obj.names) && obj.names.length ? obj.names : obj);
+        if (typeof out === 'string' && out) return out;
+      } catch (e) { /* fall through to the plain wording */ }
+    }
+    // No payload, or the table refused it: the neutral wording says the same thing without
+    // the specifics, and beats rendering a function's source into the dialog.
+    const plain = window.S && S[key + 'Plain'];
+    return (typeof plain === 'string' && plain) ? plain : key;
+  }
   return (typeof text === 'string' && text) ? text : key;
 }
 function showFplDialog() {
@@ -8272,6 +8319,14 @@ function showFplDialog() {
       const { key, field, names } = fplErrEntry(entry);
       if (!key) continue;               // nothing to say; never render a bare marker
       if (key === 'errFplProfile' && field) missing.push(field);
+      else if (key === 'errFplAtcApprovalLeg') {
+        const li = document.createElement('div');
+        fplSetBidiText(li, '⚠ ' + (S.errFplAtcApprovalLeg && names.length
+          ? S.errFplAtcApprovalLeg(names)
+          : (S.errFplAtcApprovalLegPlain || 'A leg of this route may only be flown when '
+            + 'control clears it in real time, so it cannot be filed as a planned route.')));
+        errBox.appendChild(li);
+      }
       else if (key === 'errFplMidAirfield') {
         const li = document.createElement('div');
         fplSetBidiText(li, '⚠ ' + (S.errFplMidAirfield && names.length

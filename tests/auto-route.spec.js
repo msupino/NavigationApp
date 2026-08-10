@@ -239,3 +239,31 @@ test('a hand-placed ATC-approval point survives filing-time expansion', async ({
   expect(names[names.length - 1]).toBe('ENGDI');
   expect(names).toContain('MZDOT');
 });
+
+test('a drawn ATC-approval leg is refused at filing, and the refusal reads as text', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    const g = await routeGraphData('cvfr');
+    const at = (n) => ({ lat: g.nodes[n].lat, lng: g.nodes[n].lng, name: n });
+    return {
+      // Drawn straight down the ATC-only corridor: legal to draw, not filable.
+      bad: fplUnfilableLegs(g, [at('ENGDI'), at('MZDOT'), at('MYTAR')]),
+      // The published way round names no such leg.
+      good: fplUnfilableLegs(g, [at('MYTAR'), at('TARAD'), at('ARRAD'), at('MMORR'), at('ENGDI')]),
+      // The [object Object] bug: a payload-carrying entry must render as a sentence.
+      rendered: fplErrText({ code: 'errFplAtcApprovalLeg', names: ['ENGDI–MZDOT'] }),
+      gapRendered: fplErrText({ code: 'warnFplExpandGap', pairs: ['A–B'] }),
+      // A payload-carrying code with no payload falls back to the neutral wording,
+      // never to a function's source.
+      noPayload: fplErrText('errFplAtcApprovalLeg'),
+    };
+  });
+  expect(out.bad).toEqual(['ENGDI–MZDOT', 'MZDOT–MYTAR']);
+  expect(out.good).toEqual([]);
+  expect(out.rendered).toContain('ENGDI–MZDOT');
+  expect(out.rendered).not.toContain('[object Object]');
+  expect(out.gapRendered).toContain('A–B');
+  expect(out.gapRendered).not.toContain('[object Object]');
+  expect(out.noPayload).not.toContain('function');
+  expect(out.noPayload).not.toBe('errFplAtcApprovalLeg');
+});
