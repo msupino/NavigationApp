@@ -844,23 +844,26 @@ function notamMappable(n) {
 var _notamBubbleGen = 0;                // bumped in loadAreas()
 const _areaRegexes = new WeakMap();     // area object → RegExp[]
 function _getAreaRegexes(a) {
-  if (!_areaRegexes.has(a)) {
+  let rxs = _areaRegexes.get(a);
+  if (!rxs) {
     const codes = [a.icao].concat(a.aliases || [])
       .map(c => String(c || '').toUpperCase())
       .filter(c => /^[A-Z0-9]{3,7}$/.test(c));
-    _areaRegexes.set(a, codes.map(c => new RegExp('\\b' + c + '\\b')));
+    rxs = codes.map(c => new RegExp('\\b' + c + '\\b'));
+    _areaRegexes.set(a, rxs);
   }
-  return _areaRegexes.get(a);
+  return rxs;
 }
 function notamBubbleAreas(n) {
   if (!n || !Array.isArray(areas) || !areas.length) return [];
   if (n._bubbleAreas && n._bubbleAreas.gen === _notamBubbleGen) return n._bubbleAreas.result;
   const txt = String(n.text || '').toUpperCase();
+  // No text, nothing scanned, nothing to memoise -- caching the empty answer would pin
+  // it until the next layer load even if the body arrives later in the session.
+  if (!txt) return [];
   const out = [];
-  if (txt) {
-    for (const a of areas) {
-      if (_getAreaRegexes(a).some(rx => rx.test(txt))) out.push(a);
-    }
+  for (const a of areas) {
+    if (_getAreaRegexes(a).some(rx => rx.test(txt))) out.push(a);
   }
   n._bubbleAreas = { gen: _notamBubbleGen, result: out };
   return out;
@@ -876,12 +879,14 @@ function notamLatLngs(n) {
   else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
            Number.isFinite(g.radiusNm)) notamCirclePoints(g.lat, g.lng, g.radiusNm).forEach(c => push(c[0], c[1]));
   if (Array.isArray(n && n._routeLines)) n._routeLines.forEach(rl => (rl.coords || []).forEach(c => push(c[0], c[1])));
-  // Bubble areas ARE the geometry for bubble-closure NOTAMs — only add them when
-  // no explicit geom or route-line coords were found (to avoid doubling a NOTAM
-  // that carries both a polygon and a matching bubble area name).
-  if (!g && !(Array.isArray(n && n._routeLines) && n._routeLines.length)) {
-    notamBubbleAreas(n).forEach(a => { if (Array.isArray(a.coords)) a.coords.forEach(c => push(c[0], c[1])); });
-  }
+  // Bubble areas, ALWAYS — drawNotams hatches every one of them regardless of what
+  // else the NOTAM carries, and the frame has to cover what is actually drawn. Adding
+  // them only when no geom exists left a NOTAM that has both a polygon and a matching
+  // bubble name framed on the polygon alone, with the hatched bubble off-viewport; it
+  // also returned NOTHING for a geom whose type none of the branches above handle.
+  // Repeating a point costs nothing here: these coords only ever feed a bounding box.
+  // notamBubbleAreas memoizes per NOTAM, so this is a cache hit on the draw path.
+  notamBubbleAreas(n).forEach(a => { if (Array.isArray(a.coords)) a.coords.forEach(c => push(c[0], c[1])); });
   if (!out.length && n && n.icao && Array.isArray(airfields)) {
     const af = airfieldByIcao(n.icao);
     if (af) push(af.lat, af.lng);
@@ -1453,7 +1458,9 @@ async function loadAreas() {
     areas = mapped;
     _notamBubbleGen++;                         // invalidate per-NOTAM bubble-match cache
   } catch (e) {
-    if (gen === _layerGen) areas = [];      // no areas file for this layer (or fetch failed)
+    // no areas file for this layer (or fetch failed) -- bump alongside, exactly as the
+    // two success paths do, so no NOTAM keeps a match list built against the old areas.
+    if (gen === _layerGen) { areas = []; _notamBubbleGen++; }
   }
   if (areas && areas.length) scheduleDraw();
   if (typeof refreshLsaListBtn === 'function') refreshLsaListBtn();

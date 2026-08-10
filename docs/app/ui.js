@@ -3757,14 +3757,19 @@ function showNotamModal(only) {
   list.className = 'notam-list';
   // Freetext match: id, ICAO, raw and decoded text -- whichever the pilot is
   // reading. Decoded once per NOTAM per modal open, cached in a modal-local Map
-  // (keyed by id) so stale expansions don't survive a SW update mid-session.
+  // so stale expansions don't survive a SW update mid-session.
+  //
+  // Keyed by the NOTAM OBJECT, not by n.id: an update cycle can publish the old and
+  // the revised entry under one id, and an id-keyed cache serves the first one's text
+  // for both -- which silently makes the revised NOTAM unmatchable by any term unique
+  // to it. The object identity is unique even when the id is not.
   const _hayCache = new Map();
   const notamHay = (n) => {
-    if (!_hayCache.has(n.id)) {
+    if (!_hayCache.has(n)) {
       const dec = (typeof decodeNotam === 'function') ? decodeNotam(n) : '';
-      _hayCache.set(n.id, (n.id + ' ' + (n.icao || '') + ' ' + (n.text || '') + ' ' + dec).toUpperCase());
+      _hayCache.set(n, ((n.id || '') + ' ' + (n.icao || '') + ' ' + (n.text || '') + ' ' + dec).toUpperCase());
     }
-    return _hayCache.get(n.id);
+    return _hayCache.get(n);
   };
   const renderList = () => {
     list.textContent = '';
