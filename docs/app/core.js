@@ -2708,14 +2708,16 @@ function expandNotamAbbr(s) {
   //
   // The day check is not just "a digit before MAY": RWY and FREQ numbers routinely sit
   // right before it ("RWY 09/27 MAY BE CLOSED", "FREQ 118.3 MAY CHANGE") and read as a
-  // 1-2 digit day at a glance. `prec` is the character immediately before the would-be
-  // day -- a digit/'.'/'/' there means the number is the tail of something else (a
-  // runway pair, a frequency), not a standalone day. Only a day with a clean boundary
-  // in front of it counts.
-  out = out.replace(/([\d./])?(\d{1,2}\s+)?\bMAY\b(\s+\d{4}\b)?/g, (m, prec, day, year) => {
-    const isDate = (day && !prec) || year;
-    return isDate ? m : (prec || '') + (day || '') + 'may';
-  });
+  // 1-2 digit day at a glance -- a real day needs a clean boundary in front of it (not
+  // the tail of a runway pair or a frequency). Two alternatives, tried in order: a
+  // clean day + MAY (always a date, whether or not a year follows), or bare MAY with
+  // an optional trailing year. A single adjacent optional-digit group doesn't work here
+  // -- for a genuine 2-digit day ("15 MAY") the group happily eats the day's own first
+  // digit as "the preceding character", so the day looks unbounded and gets misread as
+  // the modal ("15 may"). Splitting into two alternatives keeps the day's digits and
+  // its boundary check from ever competing over the same character.
+  out = out.replace(/(?:(?:^|[^\d./])(\d{1,2})\s+MAY\b(?:\s+\d{4}\b)?|\bMAY\b(\s+\d{4}\b)?)/g,
+    (m, day, bareYear) => (day || bareYear) ? m : 'may');
   // Sentence-case what the lowercase mapping produced: a sentence that begins with an
   // expanded word ("an area at...") gets its capital back. Only at the start of the
   // text or after a sentence ender -- the feed hard-wraps mid-sentence, so a bare
