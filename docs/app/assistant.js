@@ -701,7 +701,6 @@
   // text is in the model's context it can ask for a mutation the pilot never did. With one
   // generic approval already given, that mutation ran silently; and even the approval itself
   // could not be attributed, because it never said what was about to change.
-  let turnConsent = false;
   // Sticky: once untrusted text has entered the context it stays there for the rest of the
   // conversation, so every later mutation is asked for individually. Cleared only by Clear.
   let contextTainted = false;
@@ -807,7 +806,7 @@
     const ok = confirmMutation(name, args);
     if (ok) {
       lastApproved = name;
-      if (!contextTainted) { turnConsent = true; approvedThisTurn.add(sig); }
+      if (!contextTainted) approvedThisTurn.add(sig);
     }
     return ok;
   }
@@ -844,7 +843,6 @@
     // 400 "roles must alternate", wedging the chat until Clear.
     const historyBase = messages.length;
     // A new turn is a new authorisation: consent never carries from one message to the next.
-    turnConsent = false;
     approvedThisTurn.clear();
     messages.push({ role: 'user', parts: [{ text: userText }] });
     renderUser(userText);
@@ -886,7 +884,6 @@
     messages = [];
     // The untrusted text went with the history, so the taint goes too.
     contextTainted = false;
-    turnConsent = false;
     approvedThisTurn.clear();
     if (logEl) logEl.innerHTML = '';
   }
@@ -1130,10 +1127,10 @@
     _tools: TOOLS,                 // raw tools — BYPASS the tier gate
     _runTool: runToolGated,        // the gated path the agent loop uses
     _resetConsent: () => {
-      turnConsent = false; contextTainted = false; lastApproved = null; approvedThisTurn.clear();
+      contextTainted = false; lastApproved = null; approvedThisTurn.clear();
     },
     // What a fresh user message does to consent, without going through a provider round-trip.
-    _newTurn: () => { turnConsent = false; lastApproved = null; approvedThisTurn.clear(); },
+    _newTurn: () => { lastApproved = null; approvedThisTurn.clear(); },
     _reset: resetChat,
     _isTainted: () => contextTainted,
     _summarise: mutationSummary,
