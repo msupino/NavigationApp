@@ -1372,7 +1372,11 @@ async function fplLoadRouteGraph() {
     const g = await routeGraphData('cvfr');
     _fplRouteGraph = (g && g.nodes && g.edges) ? g : false;
   } catch (e) {
-    _fplRouteGraph = false;          // no graph: file exactly what was drawn
+    // Transient failure (offline start, dropped request): stay null so the NEXT call
+    // retries -- caching `false` here disabled expansion for the whole session over one
+    // blip. routeGraphData memoizes the in-flight fetch, so retries cannot storm.
+    _fplRouteGraph = null;
+    return false;                    // this call: file exactly what was drawn
   }
   return _fplRouteGraph;
 }
@@ -1581,7 +1585,12 @@ async function autoRouteChain(prev, next) {
   const a = near(prev);
   const b = near(next);
   if (!a || !b || a === b) return null;
-  let chain = fplGraphChain(graph, a, b, {});
+  // Live NOTAM closures gate the drawn route exactly as they gate the filed one -- a
+  // corridor closed right now must not be spliced in. Judged at the current clock, since
+  // drawing has no departure time.
+  const notamClosed = (typeof fplNotamClosedPairs === 'function')
+    ? fplNotamClosedPairs(new Date()) : null;
+  let chain = fplGraphChain(graph, a, b, { notamClosed });
   if (!chain) chain = fplGraphChain(graph, a, b, { ignoreAvailability: true });
   if (!chain || chain.length <= 2) return null;
   return chain.slice(1, -1).map(name => {
@@ -1595,6 +1604,10 @@ function fplExpandRoute(graph, wps, opts) {
   const out = [];
   const unresolved = [];
   let usedClosed = false;
+  // Built once per expansion, not once per leg: the set depends only on the departure
+  // time, and per-leg rebuilds also judged NOTAM activity at drifting instants.
+  const notamClosed = (typeof fplNotamClosedPairs === 'function')
+    ? fplNotamClosedPairs(o.when || new Date()) : null;
   for (let i = 0; i < wps.length; i++) {
     const wp = wps[i];
     if (i === 0) { out.push(wp); continue; }
@@ -1603,8 +1616,6 @@ function fplExpandRoute(graph, wps, opts) {
     // First over the corridors open at departure time; if that leaves no chain, over the
     // whole graph -- the hints steer the choice, they never make a published route
     // unfileable. The fallback is reported so the pilot knows to check the corridor.
-    const notamClosed = (typeof fplNotamClosedPairs === 'function')
-      ? fplNotamClosedPairs(o.when || new Date()) : null;
     let chain = (a && b)
       ? fplGraphChain(graph, a, b, { when: o.when || null, notamClosed }) : null;
     if (!chain && a && b) {
@@ -3667,9 +3678,12 @@ function showFlightPlan() {
           rDmeCells[i].textContent = rc[1];
         }
         const dur = state.legs[ri].outboundSpeed > 0 ? dist / state.legs[ri].outboundSpeed : 0;
+        // The same physical leg, flown back: the CTR gate applies to the return direction
+        // too, or the two tables disagree about the one leg (--- forward, timed backward).
+        const rPreClock = typeof legInsideCtr === 'function' && legInsideCtr(ri);
         td += dist;
-        th += dur;
-        rTimeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+        if (!rPreClock) th += dur;
+        rTimeCells[i].textContent = rPreClock ? '---' : (dur > 0 ? toHMS(dur) : '--');
         if (aircraft) {
           const fuel = dur * aircraft.gph;
           tf += fuel;
@@ -3680,7 +3694,7 @@ function showFlightPlan() {
           rFuelCells[i].textContent = '--';
           rFuelCells[i].title = '';
         }
-        rCumTimeCells[i].textContent = th > 0 ? toHMS(th) : '--';
+        rCumTimeCells[i].textContent = rPreClock ? '---' : (th > 0 ? toHMS(th) : '--');
         rCumFuelCells[i].textContent = aircraft ? tf.toFixed(1) : '--';
         rCumFuelCells[i].title = '';
         if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
@@ -8614,6 +8628,12 @@ function showFplDialog() {
     };
     retSel.onchange = refreshPreview;
     expandCb.onchange = refreshPreview;
+    // The open chain depends on the DEPARTURE TIME (weekday gates, weekend corridors), so
+    // changing it must re-run the preview -- "what is shown is what is filed" is the whole
+    // point of the preview, and it went stale the moment the pilot moved the clock.
+    // addEventListener: syncWhen already owns .onchange on both inputs.
+    dateEl.addEventListener('change', refreshPreview);
+    timeEl.addEventListener('change', refreshPreview);
     setTimeout(refreshPreview, 0);          // show the drawn route expanded straight away
     body.append(retRow, expandLbl, retPreview);
     if (endsAtField) {
