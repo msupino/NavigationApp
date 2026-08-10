@@ -2702,6 +2702,14 @@ function expandNotamAbbr(s) {
   // Up to 13 letters: the table now carries whole words (BIDIRECTIONAL) alongside the
   // abbreviations. Only table entries are replaced, so identifiers of any length pass.
   out = out.replace(/\b[A-Z]{2,13}\b/g, m => NOTAM_ABBR[m] || m);
+  // MAY is the one token the table cannot carry: modal verb in prose, month in dates.
+  // A digit on either side marks the date use ("15 MAY 2027", "MAY 2027"); everything
+  // else is the modal and reads lowercase like the rest.
+  out = out.replace(/\bMAY\b/g, (m, i) => {
+    const before = out.slice(Math.max(0, i - 4), i);
+    const after = out.slice(i + 3, i + 8);
+    return (/\d\s*$/.test(before) || /^\s*\d/.test(after)) ? m : 'may';
+  });
   // Sentence-case what the lowercase mapping produced: a sentence that begins with an
   // expanded word ("an area at...") gets its capital back. Only at the start of the
   // text or after a sentence ender -- the feed hard-wraps mid-sentence, so a bare
