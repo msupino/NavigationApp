@@ -133,6 +133,15 @@
         if (pg.en) o.en = pg.en;
         if (pg.he) o.he = pg.he;
         if (pg.active === 'weekend') o.active = 'weekend';   // 'always' is the default → omitted
+        // Fields this editor does not edit (icao, lowFt/highFt, points, aliases, ...) ride
+        // through untouched: the documented workflow pastes this JSON back over the data
+        // file, and the round-trip must not strip data the app reads.
+        for (var k in pg) {
+          if (!pg.hasOwnProperty(k)) continue;
+          if (k === 'coords' || k === 'name' || k === 'en' || k === 'he' ||
+              k === 'active' || k === 'layer' || k === 'type') continue;
+          o[k] = pg[k];
+        }
         return o;
       }), null, 2);
     }
@@ -210,7 +219,16 @@
       var d = res.data;
       var arr = Array.isArray(d) ? d : (d.areas || []);
       var loaded = arr.filter(function (a) { return a && Array.isArray(a.coords) && a.coords.length >= 3; }).map(function (a) {
-        return { coords: a.coords.map(function (c) { return [r5(c[0]), r5(c[1])]; }), layer: lyr, name: a.name || '', en: a.en || '', he: a.he || '', active: a.active === 'weekend' ? 'weekend' : 'always' };
+        // Start from the record as shipped, so fields the editor does not know about
+        // (icao, lowFt/highFt, points, aliases, ...) survive the load -> edit -> export
+        // round-trip; then normalize the fields the editor does edit.
+        var o = {};
+        for (var k in a) { if (a.hasOwnProperty(k)) o[k] = a[k]; }
+        o.coords = a.coords.map(function (c) { return [r5(c[0]), r5(c[1])]; });
+        o.layer = lyr;
+        o.name = a.name || ''; o.en = a.en || ''; o.he = a.he || '';
+        o.active = a.active === 'weekend' ? 'weekend' : 'always';
+        return o;
       });
       polys = polys.filter(function (p) { return (p.layer || '') !== lyr; }).concat(loaded);
       savePolys(); render(); redraw();
