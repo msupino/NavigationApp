@@ -4935,8 +4935,8 @@
       },
       {
         "to": "MMORR",
-        "inboundAltitude": null,
-        "outboundAltitude": 4000,
+        "inboundAltitude": 4000,
+        "outboundAltitude": null,
         "distanceNm": 8.14,
         "chartDistanceNm": 8.1,
         "oneWay": true,
@@ -4945,7 +4945,8 @@
           "greenScore": 0.822,
           "maxGap": 9,
           "samples": 90
-        }
+        },
+        "blocked": true
       },
       {
         "to": "TARAD",
@@ -5074,12 +5075,11 @@
     "MMORR": [
       {
         "to": "ARRAD",
-        "inboundAltitude": 4000,
-        "outboundAltitude": null,
+        "inboundAltitude": null,
+        "outboundAltitude": 4000,
         "distanceNm": 8.14,
         "chartDistanceNm": 8.1,
         "oneWay": true,
-        "blocked": true,
         "status": "candidate",
         "detection": {
           "greenScore": 0.822,

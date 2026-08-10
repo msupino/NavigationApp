@@ -214,9 +214,11 @@ test('an ATC-approval corridor is never auto-routed, but stays available by hand
       published: (g.edges.MZDOT || []).map(e => e.to + '@' + e.inboundAltitude).sort(),
     };
   });
-  // Auto-route takes the published corridor instead, and never names MZDOT.
+  // Auto-route takes the published corridor instead, and never names MZDOT. The chain
+  // detours via HATRU/ZOHAR because ARRAD->MMORR is the refused side of a one-way leg --
+  // the short way round exists only westbound.
   expect(out.auto).not.toContain('MZDOT');
-  expect(out.auto).toEqual(['TARAD', 'ARRAD', 'MMORR']);
+  expect(out.auto).toEqual(['TARAD', 'ARRAD', 'HATRU', 'ZOHAR', 'MMORR']);
   // No pass can produce the ATC-only hop: it is not a hint, so ignoreAvailability
   // (which exists so a hinted closure cannot make a route unfileable) must not reach it.
   expect(out.direct).toBeNull();

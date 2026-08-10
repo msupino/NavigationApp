@@ -350,3 +350,25 @@ test('CVFR corridors carry no weekday opening hour', () => {
     .reduce((n, es) => n + es.filter(e => e.openFromHourHint !== undefined).length, 0));
   expect(others).toEqual([57, 71]);
 });
+
+test('MMORR to ARRAD is flyable one way only, westbound', () => {
+  // A genuine one-way leg, 4000 ft, confirmed by the maintainer against the chart. Unlike
+  // the hint asymmetries above this direction difference is REAL, so it is pinned rather
+  // than flagged: MMORR (Mor, 35.368E) lies east of ARRAD (Arad Junction, 35.210E), and
+  // only the westbound run is published.
+  //
+  // The stored shape follows the file's one-way convention exactly: the flyable entry
+  // carries the altitude in outboundAltitude with inboundAltitude null and no `blocked`;
+  // its mirror is the same figures swapped, plus blocked:true so no pass can traverse it.
+  const g = layerGraph('cvfr');
+  const fwd = g.edges.MMORR.find(e => e.to === 'ARRAD');
+  const rev = g.edges.ARRAD.find(e => e.to === 'MMORR');
+  expect(fwd.oneWay).toBe(true);
+  expect(rev.oneWay).toBe(true);
+  expect(fwd.blocked).toBeUndefined();          // westbound: the one you may fly
+  expect(rev.blocked).toBe(true);               // eastbound: refused
+  expect(fwd.outboundAltitude).toBe(4000);
+  expect(fwd.inboundAltitude).toBeNull();
+  // Refusing a direction must not strand either end -- the way back exists, just longer.
+  expect(g.edges.ARRAD.some(e => !e.blocked && e.to === 'HATRU')).toBe(true);
+});
