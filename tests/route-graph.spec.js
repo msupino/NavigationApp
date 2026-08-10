@@ -246,7 +246,9 @@ test('the data census matches what the maintainer last signed off', () => {
     // reporting-point triangle, and no route segment either way). They stay in the file
     // as active:false rather than being deleted -- both numbers are pinned so that
     // neither a stray deletion nor a stray flip of the flag can pass unreviewed.
-    cvfr: { layerNodes: 172, activeNodes: 170, segments: 269, commChange: 52, unknown: 6 },
+    // +2 segments: MZDOT <-> MYTAR and MZDOT <-> ENGDI, 4000 ft both ways, CVFR only --
+    // published CVFR legs the graph was simply missing, which is why MZDOT had no segment.
+    cvfr: { layerNodes: 172, activeNodes: 170, segments: 271, commChange: 52, unknown: 6 },
     heli: { layerNodes: 209, activeNodes: 209, segments: 85, commChange: 0, unknown: 38 },
     // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
     // from the second capture (#1485) -- the first census update under the new mechanism.

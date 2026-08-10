@@ -16,7 +16,7 @@
   ],
   "schema": {
     "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/data/cvfr-nav-waypoints.json or docs/data/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence.",
-    "nodes": "Reporting points and airfields. layers[] records which layer waypoint files held the point. active:false marks a row the chart rebuild misread as a reporting point -- it is kept, with inactiveReason, so the coordinates and names survive and a later chart edition can flip one boolean; absent means active, so a row is a real point by default. Consumers that surface points to the pilot must skip active:false (see navWaypointsFromGraph); routing consumers need not, because an inactive row carries no segments."
+    "nodes": "Reporting points and airfields. layers[] records which layer waypoint files held the point. active:false marks a row the chart rebuild misread as a reporting point -- it is kept, with inactiveReason, so the coordinates and names survive and a later chart edition can flip one boolean; absent means active, so a row is a real point by default. Consumers that surface points to the pilot must skip active:false (see navWaypointsFromGraph); routing consumers need not, because an inactive row carries no segments. noSegmentsReason explains a point that legitimately carries no segment in this graph (a military-route reporting point, for instance) -- it is a real published point and must not be mistaken for an extraction artefact and removed."
   },
   "callSigns": {
     "AZAM": {
@@ -1249,7 +1249,8 @@
         "lsa"
       ],
       "name": "GILAT",
-      "report": "mandatory"
+      "report": "mandatory",
+      "noSegmentsReason": "published reporting point on a military route; the civil CVFR graph carries no segment through it"
     },
     "GNYAM": {
       "code": "GNYAM",
@@ -1978,7 +1979,8 @@
         "heli"
       ],
       "name": "MESEK",
-      "report": "mandatory"
+      "report": "mandatory",
+      "noSegmentsReason": "published reporting point on a military route; the civil CVFR graph carries no segment through it"
     },
     "METAH": {
       "code": "METAH",
@@ -1992,7 +1994,8 @@
         "heli"
       ],
       "name": "METAH",
-      "report": "mandatory"
+      "report": "mandatory",
+      "noSegmentsReason": "published reporting point on a military route; the civil CVFR graph carries no segment through it"
     },
     "MIHMS": {
       "code": "MIHMS",
@@ -3493,7 +3496,8 @@
       "commChange": true,
       "callSigns": [
         "HAGAV_NORTH"
-      ]
+      ],
+      "noSegmentsReason": "published reporting point on a military route; the civil CVFR graph carries no segment through it"
     },
     "ZYAAR": {
       "code": "ZYAAR",
@@ -7884,6 +7888,14 @@
         "source": "missing link on a published route: Ein Gedi to Mor, on the published Herzliya-Eilat route. Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
       },
       {
+        "to": "MZDOT",
+        "inboundAltitude": 4000,
+        "outboundAltitude": 4000,
+        "distanceNm": 16.08,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, 4000 ft both ways"
+      },
+      {
         "to": "SHALM",
         "inboundAltitude": 4000,
         "outboundAltitude": 3500,
@@ -9281,6 +9293,14 @@
     ],
     "MYTAR": [
       {
+        "to": "MZDOT",
+        "inboundAltitude": 4000,
+        "outboundAltitude": 4000,
+        "distanceNm": 9.04,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, 4000 ft both ways"
+      },
+      {
         "to": "SOKET",
         "inboundAltitude": 4000,
         "outboundAltitude": 3500,
@@ -9756,6 +9776,24 @@
         "armyAirway": true,
         "onAtcApproval": true,
         "source": "cvfr-map airway adjacency"
+      }
+    ],
+    "MZDOT": [
+      {
+        "to": "ENGDI",
+        "inboundAltitude": 4000,
+        "outboundAltitude": 4000,
+        "distanceNm": 16.08,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, 4000 ft both ways"
+      },
+      {
+        "to": "MYTAR",
+        "inboundAltitude": 4000,
+        "outboundAltitude": 4000,
+        "distanceNm": 9.04,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, 4000 ft both ways"
       }
     ]
   },

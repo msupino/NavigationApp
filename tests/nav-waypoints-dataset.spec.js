@@ -217,6 +217,34 @@ test.describe('#406 / #410 — cvfr-nav-waypoints.json (chart-sourced)', () => {
     expect(codes.has('GNYAM')).toBe(true);
   });
 
+  test('a node with no segments says why, and is never assumed to be an artefact', async () => {
+    // Seven CVFR nodes carried no route segment at all, and it is tempting to read that
+    // as one fault. It was three, and only the first is a data error:
+    //
+    //   ZRANA, RANNO            locality labels, never reporting points  -> active:false
+    //   GILAT, MESEK, METAH,    published points on MILITARY routes the
+    //   ZURIM                   civil graph does not carry               -> noSegmentsReason
+    //   MZDOT                   real CVFR legs missing from the graph    -> segments added
+    //
+    // The middle group is the trap: they look identical to the first in the data, and
+    // deleting them would remove published reporting points. Every segment-less node must
+    // therefore carry an explanation, so the next person auditing this cannot guess.
+    const { routeGraph } = require('./_layerData');
+    const g = routeGraph('cvfr');
+    const fanIn = new Set();
+    for (const es of Object.values(g.edges)) for (const e of es) fanIn.add(e.to);
+    const segmentless = Object.keys(g.nodes)
+      .filter(id => !g.edges[id] && !fanIn.has(id)).sort();
+    expect(segmentless).toEqual(['GILAT', 'MESEK', 'METAH', 'RANNO', 'ZRANA', 'ZURIM']);
+    for (const id of segmentless) {
+      const n = g.nodes[id];
+      expect(n.active === false || !!n.noSegmentsReason,
+        id + ' has no segments and does not say why').toBe(true);
+    }
+    // MZDOT is no longer among them: its published legs were added, not explained away.
+    expect(g.edges.MZDOT.map(e => e.to).sort()).toEqual(['ENGDI', 'MYTAR']);
+  });
+
   test('a node is active unless it says otherwise', async () => {
     // Fail-open by design: `active` postdates every row in the file, so a node without
     // it is a real point. A typo'd or absent flag must never silently hide a published
