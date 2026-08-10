@@ -836,21 +836,33 @@ function notamMappable(n) {
 // Bubble-closure NOTAMs ("ULTRALIGHT BUBBLE CLSD HAHULA (BHULA), KARMIEL (BKRML)") carry
 // no coordinates -- the bubble code IS the geometry. Resolve the codes named in the text
 // against the loaded areas dataset so these NOTAMs get a map presence on the LSA chart.
-// Resolved fresh per call, not cached on the NOTAM: `areas` swaps on layer change and
-// loads late, and 37 substring tests per NOTAM are nothing.
+//
+// Performance: RegExp objects are precompiled once per area (WeakMap keyed on the area
+// object, so they're collected when `areas` is replaced on layer change). The resolved
+// match list is memoised on each NOTAM via a generation counter that bumps whenever
+// `areas` loads, so each NOTAM pays the O(areas×codes) scan at most once per layer load.
+var _notamBubbleGen = 0;                // bumped in loadAreas()
+const _areaRegexes = new WeakMap();     // area object → RegExp[]
+function _getAreaRegexes(a) {
+  if (!_areaRegexes.has(a)) {
+    const codes = [a.icao].concat(a.aliases || [])
+      .map(c => String(c || '').toUpperCase())
+      .filter(c => /^[A-Z0-9]{3,7}$/.test(c));
+    _areaRegexes.set(a, codes.map(c => new RegExp('\\b' + c + '\\b')));
+  }
+  return _areaRegexes.get(a);
+}
 function notamBubbleAreas(n) {
   if (!n || !Array.isArray(areas) || !areas.length) return [];
+  if (n._bubbleAreas && n._bubbleAreas.gen === _notamBubbleGen) return n._bubbleAreas.result;
   const txt = String(n.text || '').toUpperCase();
-  if (!txt) return [];
   const out = [];
-  for (const a of areas) {
-    const codes = [a.icao].concat(a.aliases || []);
-    for (const c of codes) {
-      const code = String(c || '').toUpperCase();
-      if (!/^[A-Z0-9]{3,7}$/.test(code)) continue;
-      if (new RegExp('\\b' + code + '\\b').test(txt)) { out.push(a); break; }
+  if (txt) {
+    for (const a of areas) {
+      if (_getAreaRegexes(a).some(rx => rx.test(txt))) out.push(a);
     }
   }
+  n._bubbleAreas = { gen: _notamBubbleGen, result: out };
   return out;
 }
 // Collect a NOTAM's map points (polygon/line/circle perimeter, route lines, or
@@ -864,7 +876,12 @@ function notamLatLngs(n) {
   else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
            Number.isFinite(g.radiusNm)) notamCirclePoints(g.lat, g.lng, g.radiusNm).forEach(c => push(c[0], c[1]));
   if (Array.isArray(n && n._routeLines)) n._routeLines.forEach(rl => (rl.coords || []).forEach(c => push(c[0], c[1])));
-  notamBubbleAreas(n).forEach(a => a.coords.forEach(c => push(c[0], c[1])));
+  // Bubble areas ARE the geometry for bubble-closure NOTAMs — only add them when
+  // no explicit geom or route-line coords were found (to avoid doubling a NOTAM
+  // that carries both a polygon and a matching bubble area name).
+  if (!g && !(Array.isArray(n && n._routeLines) && n._routeLines.length)) {
+    notamBubbleAreas(n).forEach(a => { if (Array.isArray(a.coords)) a.coords.forEach(c => push(c[0], c[1])); });
+  }
   if (!out.length && n && n.icao && Array.isArray(airfields)) {
     const af = airfieldByIcao(n.icao);
     if (af) push(af.lat, af.lng);
@@ -1414,6 +1431,7 @@ async function loadAreas() {
   // cache-bust version carrier, never actually fetched).
   if (layerDataPrefix() === 'cvfr') {
     areas = [];
+    _notamBubbleGen++;
     if (typeof refreshLsaListBtn === 'function') refreshLsaListBtn();
     return areas;
   }
@@ -1433,6 +1451,7 @@ async function loadAreas() {
         active: a.active === 'weekend' ? 'weekend' : 'always' }));
     if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
     areas = mapped;
+    _notamBubbleGen++;                         // invalidate per-NOTAM bubble-match cache
   } catch (e) {
     if (gen === _layerGen) areas = [];      // no areas file for this layer (or fetch failed)
   }

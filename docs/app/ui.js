@@ -3756,13 +3756,15 @@ function showNotamModal(only) {
   const list = document.createElement('div');
   list.className = 'notam-list';
   // Freetext match: id, ICAO, raw and decoded text -- whichever the pilot is
-  // reading. Decoded once per NOTAM, cached; the filter runs per keystroke.
+  // reading. Decoded once per NOTAM per modal open, cached in a modal-local Map
+  // (keyed by id) so stale expansions don't survive a SW update mid-session.
+  const _hayCache = new Map();
   const notamHay = (n) => {
-    if (!n._hay) {
+    if (!_hayCache.has(n.id)) {
       const dec = (typeof decodeNotam === 'function') ? decodeNotam(n) : '';
-      n._hay = (n.id + ' ' + (n.icao || '') + ' ' + (n.text || '') + ' ' + dec).toUpperCase();
+      _hayCache.set(n.id, (n.id + ' ' + (n.icao || '') + ' ' + (n.text || '') + ' ' + dec).toUpperCase());
     }
-    return n._hay;
+    return _hayCache.get(n.id);
   };
   const renderList = () => {
     list.textContent = '';

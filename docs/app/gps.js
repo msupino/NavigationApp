@@ -231,7 +231,7 @@ function startLiveLocation() {
     // gpsLiveOn was already set true above, so a synchronous registration throw
     // (native plugin API mismatch) left the app believing live location was on
     // with no watch running and no error shown.
-    e._gpsRegistrationFailure = true;
+    if (e && typeof e === 'object') e._gpsRegistrationFailure = true;
     onGpsLiveError(e);
     return;
   }
@@ -405,7 +405,7 @@ function startGpsRecording() {
     // Tagged so gpsErrFatal can tell this apart from a codeless MID-watch error
     // (a running watch reporting an unrecognized native error) -- only this one,
     // where the watch never started at all, is unconditionally fatal.
-    e._gpsRegistrationFailure = true;
+    if (e && typeof e === 'object') e._gpsRegistrationFailure = true;
     onGpsRecError(e);
     return;
   }
