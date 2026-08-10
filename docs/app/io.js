@@ -1505,6 +1505,16 @@ function fplGraphChain(graph, from, to, opts) {
       for (const e of graph.edges[n] || []) {
         if (e.blocked) continue;               // one-way, against the flow
         if (landable(e.to)) continue;          // route to a field, never through one
+        // Never routable, and NOT a hint: refused by every pass, including
+        // ignoreAvailability -- that escape hatch exists so a hinted closure cannot make a
+        // published civil route unfileable, which is a different problem.
+        //   armyAirway     not available to this flight at all
+        //   onAtcApproval  opened only by a real-time clearance; a plan naming one is not
+        //                  accepted, so filing it produces a rejected plan, not a warning
+        // Auto-filling either onto a route would put a leg the pilot cannot fly, or cannot
+        // file, in front of them. Drawn points are untouched -- expansion only ever ADDS
+        // between them, so a point the pilot chose still appears in the plan.
+        if (e.armyAirway || e.onAtcApproval) continue;
         if (!o.ignoreAvailability && !fplEdgeOpen(e, o.when || null)) continue;
         if (!o.ignoreAvailability && o.notamClosed &&
             o.notamClosed.has([n, e.to].sort().join('|'))) continue;
@@ -1616,6 +1626,8 @@ function fplExpandRoute(graph, wps, opts) {
     // First over the corridors open at departure time; if that leaves no chain, over the
     // whole graph -- the hints steer the choice, they never make a published route
     // unfileable. The fallback is reported so the pilot knows to check the corridor.
+    // Army and ATC-approval segments are outside this: fplGraphChain refuses them on
+    // every pass, so neither fallback can reach for one.
     let chain = (a && b)
       ? fplGraphChain(graph, a, b, { when: o.when || null, notamClosed }) : null;
     if (!chain && a && b) {
