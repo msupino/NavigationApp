@@ -2664,7 +2664,9 @@ const NOTAM_ABBR = {
   BOUNDRAY: 'boundary', BOUNDARY: 'boundary', MAINTANING: 'maintaining',
   ISRAEL: 'Israel', LEBANON: 'Lebanon', JORDAN: 'Jordan', GAZA: 'Gaza',
   SYRIA: 'Syria', EGYPT: 'Egypt',
-  JAN: 'January', FEB: 'February', MAR: 'March', APR: 'April', MAY: 'May',
+  // No MAY: in NOTAMs it is overwhelmingly the permission modal ("PILOTS MAY CTC
+  // TWR"), and one key cannot serve both it and the month. Dates keep their MAY.
+  JAN: 'January', FEB: 'February', MAR: 'March', APR: 'April',
   JUN: 'June', JUL: 'July', AUG: 'August', SEP: 'September', OCT: 'October',
   NOV: 'November', DEC: 'December',
   AN: 'an', AT: 'at', ON: 'on', TO: 'to', UP: 'up', OF: 'of', OR: 'or', BY: 'by',
@@ -2701,8 +2703,10 @@ function expandNotamAbbr(s) {
   // abbreviations. Only table entries are replaced, so identifiers of any length pass.
   out = out.replace(/\b[A-Z]{2,13}\b/g, m => NOTAM_ABBR[m] || m);
   // Sentence-case what the lowercase mapping produced: a sentence that begins with an
-  // expanded word ("an area at...") gets its capital back.
-  return out.replace(/(^|[.!?]\s+|\n)([a-z])/g, (m, a, b) => a + b.toUpperCase());
+  // expanded word ("an area at...") gets its capital back. Only at the start of the
+  // text or after a sentence ender -- the feed hard-wraps mid-sentence, so a bare
+  // newline is NOT a sentence boundary ([.!?]\s+ already covers ".\n").
+  return out.replace(/(^|[.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase());
 }
 function decodeNotam(n) {
   if (!n || typeof n !== 'object') return '';

@@ -479,3 +479,16 @@ test('empty feed unchecks the NOTAM toggle but preserves the saved on-preference
   const pref = await page.evaluate(() => localStorage.getItem('navaid.showNotam'));
   expect(pref).toBe('1');                                          // preference NOT wiped
 });
+
+test('the decoder keeps MAY the modal and does not capitalize at feed line-wraps', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => ({
+    modal: decodeNotam({ type: '', text: 'PILOTS MAY CTC TWR ON 122.5.' }),
+    wrap: decodeNotam({ type: '', text: 'AN EXER WILL TAKE\nPLACE IN THE AREA.' }),
+    date: decodeNotam({ type: '', text: 'WEF 15 MAY 2027.' }),
+  }));
+  expect(out.modal).toContain('may contact tower');   // modal verb, lowercase mid-sentence
+  expect(out.wrap).toContain('take\nplace');          // hard wrap is not a sentence start
+  expect(out.wrap.startsWith('An exercise')).toBe(true);
+  expect(out.date).toContain('15 MAY 2027');          // dates keep their month untouched
+});
