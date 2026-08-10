@@ -131,3 +131,16 @@ test('a search hit with no map presence opens its text instead', async ({ page }
   const item = page.locator('.wp-search-item', { hasText: 'A0003/26' });
   await expect(item).toHaveCount(1);
 });
+
+test('a single-NOTAM view (map click) has no search box; the full list does', async ({ page }) => {
+  await boot(page);
+  await toLsa(page);
+  await page.evaluate(() => showNotamModal([notams[0]]));
+  await expect(page.locator('.notam-item')).toHaveCount(1);
+  await expect(page.locator('.notam-find')).toHaveCount(0);
+  await page.evaluate(() => {
+    document.querySelector('.modal-back')._navaidClose();
+    showNotamModal();
+  });
+  await expect(page.locator('.notam-find')).toHaveCount(1);
+});

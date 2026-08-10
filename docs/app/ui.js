@@ -3811,9 +3811,11 @@ function showNotamModal(only) {
       list.appendChild(it);
     }
   };
-  {
+  if (shown.length > 1) {
     // Freetext search sits with the airfield dropdown; it renders even for a
-    // single-airfield feed (the dropdown alone used to gate the whole row).
+    // single-airfield feed (the dropdown alone used to gate the whole row) --
+    // but not for a single-NOTAM view (a map click), where there is nothing
+    // to narrow.
     const fw = document.createElement('div');
     fw.className = 'notam-filter';
     const find = document.createElement('input');
