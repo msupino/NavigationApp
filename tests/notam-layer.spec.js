@@ -123,12 +123,14 @@ test('decodeNotam covers the extended Israel-FIR abbreviations and the XX condit
   }));
   expect(out.xx).toContain('Aerodrome');            // FA subject
   expect(out.xx).toContain('plain language');       // XX condition
-  expect(out.abbr).toContain('taxiway');            // TWY
-  expect(out.abbr).toContain('helicopter');         // HEL
+  // Sentence-cased since the plain-word pass: an expansion that starts a sentence
+  // gets its capital back, so these match case-insensitively.
+  expect(out.abbr).toMatch(/taxiway/i);             // TWY (sentence start → Taxiway)
+  expect(out.abbr).toMatch(/helicopter/i);          // HEL
   expect(out.abbr).toContain('flight');             // FLT
   expect(out.abbr).toContain('training');           // TRG
   expect(out.abbr).toContain('control zone');       // CTR
-  expect(out.abbr).toContain('landing');            // LDG
+  expect(out.abbr).toMatch(/landing/i);             // LDG
   // AIP citations preserved — no over-expansion of the part identifiers.
   expect(out.aip).toContain('PART ENR 5.1');
   expect(out.aip).toContain('AD-2-LLBG');
