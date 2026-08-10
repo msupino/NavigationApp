@@ -188,3 +188,82 @@ test('with the toggle off, a search-built route stays exactly as typed', async (
   await page.waitForTimeout(1200);                    // nothing arrives late
   expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['LLHZ', 'RIDNG']);
 });
+
+// ---------------------------------------------------------------------------
+// Segments the pilot may not be given by default: army airways (never available
+// to this flight) and onAtcApproval corridors (opened only by a real-time
+// clearance, and a filed plan naming one is not accepted). Neither may be
+// auto-filled -- but neither is hidden: a point the pilot places themselves is
+// always kept, because choosing it is their call to make, not the app's.
+// ---------------------------------------------------------------------------
+test('an ATC-approval corridor is never auto-routed, but stays available by hand', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    const g = await routeGraphData('cvfr');
+    const at = (n) => ({ lat: g.nodes[n].lat, lng: g.nodes[n].lng, name: n });
+    // MYTAR <-> MZDOT <-> ENGDI is the short way and is onAtcApproval both ways.
+    const auto = await autoRouteChain(at('MYTAR'), at('ENGDI'));
+    return {
+      auto: auto && auto.map(w => w.name),
+      // The direct hop the auto-router must not take, and must not be able to reach for
+      // even when nothing else bridges the pair.
+      direct: fplGraphChain(g, 'MYTAR', 'MZDOT'),
+      forced: fplGraphChain(g, 'MYTAR', 'MZDOT', { ignoreAvailability: true }),
+      // The data still says the leg exists, and at what altitude -- refusing to ROUTE it
+      // is not the same as pretending it is not published.
+      published: (g.edges.MZDOT || []).map(e => e.to + '@' + e.inboundAltitude).sort(),
+    };
+  });
+  // Auto-route takes the published corridor instead, and never names MZDOT.
+  expect(out.auto).not.toContain('MZDOT');
+  expect(out.auto).toEqual(['TARAD', 'ARRAD', 'MMORR']);
+  // No pass can produce the ATC-only hop: it is not a hint, so ignoreAvailability
+  // (which exists so a hinted closure cannot make a route unfileable) must not reach it.
+  expect(out.direct).toBeNull();
+  expect(out.forced).toBeNull();
+  // Still published, still 4000 ft both ways -- the pilot can place MZDOT by hand.
+  expect(out.published).toEqual(['ENGDI@4000', 'MYTAR@4000']);
+});
+
+test('a hand-placed ATC-approval point survives filing-time expansion', async ({ page }) => {
+  await boot(page);
+  const names = await page.evaluate(async () => {
+    const g = await routeGraphData('cvfr');
+    const at = (n) => ({ lat: g.nodes[n].lat, lng: g.nodes[n].lng, name: n });
+    // The pilot drew MZDOT deliberately. Expansion only ever ADDS between drawn
+    // points, so theirs must come out the other side untouched.
+    const ex = fplExpandRoute(g, [at('MYTAR'), at('MZDOT'), at('ENGDI')], {});
+    return ex.points.map(p => p.name);
+  });
+  expect(names[0]).toBe('MYTAR');
+  expect(names[names.length - 1]).toBe('ENGDI');
+  expect(names).toContain('MZDOT');
+});
+
+test('a drawn ATC-approval leg is refused at filing, and the refusal reads as text', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    const g = await routeGraphData('cvfr');
+    const at = (n) => ({ lat: g.nodes[n].lat, lng: g.nodes[n].lng, name: n });
+    return {
+      // Drawn straight down the ATC-only corridor: legal to draw, not filable.
+      bad: fplUnfilableLegs(g, [at('ENGDI'), at('MZDOT'), at('MYTAR')]),
+      // The published way round names no such leg.
+      good: fplUnfilableLegs(g, [at('MYTAR'), at('TARAD'), at('ARRAD'), at('MMORR'), at('ENGDI')]),
+      // The [object Object] bug: a payload-carrying entry must render as a sentence.
+      rendered: fplErrText({ code: 'errFplAtcApprovalLeg', names: ['ENGDI–MZDOT'] }),
+      gapRendered: fplErrText({ code: 'warnFplExpandGap', pairs: ['A–B'] }),
+      // A payload-carrying code with no payload falls back to the neutral wording,
+      // never to a function's source.
+      noPayload: fplErrText('errFplAtcApprovalLeg'),
+    };
+  });
+  expect(out.bad).toEqual(['ENGDI–MZDOT', 'MZDOT–MYTAR']);
+  expect(out.good).toEqual([]);
+  expect(out.rendered).toContain('ENGDI–MZDOT');
+  expect(out.rendered).not.toContain('[object Object]');
+  expect(out.gapRendered).toContain('A–B');
+  expect(out.gapRendered).not.toContain('[object Object]');
+  expect(out.noPayload).not.toContain('function');
+  expect(out.noPayload).not.toBe('errFplAtcApprovalLeg');
+});

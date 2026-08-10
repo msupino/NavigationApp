@@ -36,8 +36,12 @@ test.describe('#406 / #410 — cvfr-nav-waypoints.json (chart-sourced)', () => {
     expect(Array.isArray(d.waypoints)).toBe(true);
     // 199 chart rows: 26 ARP (filtered out, see airfields.json) + 172
     // reporting points (89 mandatory + 84 on-request, less LLMZ which
-    // moved to airfields.json as the Bar Yehuda / Masada airfield).
-    expect(d.waypoints.length).toBe(172);
+    // moved to airfields.json as the Bar Yehuda / Masada airfield),
+    // less ZRANA + RANNO -- locality labels the rebuild misread as
+    // reporting points. Those two are still IN the graph, carrying
+    // active:false; this projection is what drops them, which is why
+    // the census in route-graph.spec.js still counts 172 rows.
+    expect(d.waypoints.length).toBe(170);
   });
 
   test('every entry carries name + en + he + lat + lng', async () => {
@@ -69,11 +73,11 @@ test.describe('#406 / #410 — cvfr-nav-waypoints.json (chart-sourced)', () => {
     }
   });
 
-  test('reporting-class split matches the chart (89 mandatory / 83 on-request)', async () => {
+  test('reporting-class split matches the chart (87 mandatory / 83 on-request)', async () => {
     const d = loadData();
     const mandatory = d.waypoints.filter(w => w.report === 'mandatory').length;
     const onRequest = d.waypoints.filter(w => w.report === 'onRequest').length;
-    expect(mandatory).toBe(89);
+    expect(mandatory).toBe(87);      // was 89 before ZRANA + RANNO were dropped
     expect(onRequest).toBe(83);
   });
 
@@ -182,9 +186,81 @@ test.describe('#406 / #410 — cvfr-nav-waypoints.json (chart-sourced)', () => {
     // The reporting-required work (#405) and earlier comm-change work
     // surfaced these codes as missing from the legacy KMZ-derived JSON.
     // The chart-sourced CSV carries them all.
+    //
+    // ZRANA and RANNO were on this list too, and are deliberately off it now --
+    // see 'locality labels are not reporting points' below.
     for (const code of ['NASIH', 'ZGOAL', 'MESEK', 'METAH',
-                        'ZURIM', 'TZHOT', 'ZRANA', 'RANNO']) {
+                        'ZURIM', 'TZHOT']) {
       expect(codes.has(code)).toBe(true);
+    }
+  });
+
+  test('locality labels are not reporting points', async () => {
+    const d = loadData();
+    const codes = new Set(d.waypoints.map(w => w.name));
+    // The page-113 reference table lists town names alongside reporting points, and
+    // the chart-screenshot rebuild (#410) took two of them for mandatory points:
+    // ZRANA (רעננה מרכז, Ra'anana Center) and RANNO (רעננה צפון, Ra'anana North).
+    //
+    // On the published chart both carry only the plain locality circle. A reporting
+    // point carries the triangle -- GNYAM (גני עם, Ganei Am) sits a little south of
+    // them and has one. The data agreed: neither had a single route segment in or
+    // out, while all 83 on-request points and the other 87 mandatory ones do.
+    //
+    // They are marked active:false in the graph rather than deleted, so the chart
+    // research survives if a later edition promotes them. This asserts the projection
+    // honours the flag -- if it stopped, both would reappear in search and on the map.
+    for (const code of ['ZRANA', 'RANNO']) {
+      expect(codes.has(code), code + ' is a locality label, not a reporting point').toBe(false);
+    }
+    // The point that IS published there stays.
+    expect(codes.has('GNYAM')).toBe(true);
+  });
+
+  test('a node with no segments says why, and is never assumed to be an artefact', async () => {
+    // Seven CVFR nodes carried no route segment at all, and it is tempting to read that
+    // as one fault. It was three, and only the first is a data error:
+    //
+    //   ZRANA, RANNO            locality labels, never reporting points  -> active:false
+    //   GILAT, MESEK, METAH,    published points on MILITARY routes the
+    //   ZURIM                   civil graph does not carry               -> noSegmentsReason
+    //   MZDOT                   real CVFR legs missing from the graph    -> segments added
+    //
+    // The middle group is the trap: they look identical to the first in the data, and
+    // deleting them would remove published reporting points. Every segment-less node must
+    // therefore carry an explanation, so the next person auditing this cannot guess.
+    const { routeGraph } = require('./_layerData');
+    const g = routeGraph('cvfr');
+    const fanIn = new Set();
+    for (const es of Object.values(g.edges)) for (const e of es) fanIn.add(e.to);
+    const segmentless = Object.keys(g.nodes)
+      .filter(id => !g.edges[id] && !fanIn.has(id)).sort();
+    expect(segmentless).toEqual(['GILAT', 'MESEK', 'METAH', 'RANNO', 'ZRANA', 'ZURIM']);
+    for (const id of segmentless) {
+      const n = g.nodes[id];
+      expect(n.active === false || !!n.noSegmentsReason,
+        id + ' has no segments and does not say why').toBe(true);
+    }
+    // MZDOT is no longer among them: its published legs were added, not explained away.
+    expect(g.edges.MZDOT.map(e => e.to).sort()).toEqual(['ENGDI', 'MYTAR']);
+  });
+
+  test('a node is active unless it says otherwise', async () => {
+    // Fail-open by design: `active` postdates every row in the file, so a node without
+    // it is a real point. A typo'd or absent flag must never silently hide a published
+    // reporting point -- only an explicit `false` removes one.
+    const { routeGraph } = require('./_layerData');
+    const g = routeGraph('cvfr');
+    const inactive = Object.entries(g.nodes).filter(([, n]) => n.active === false);
+    expect(inactive.map(([id]) => id).sort()).toEqual(['RANNO', 'ZRANA']);
+    // Every inactive row explains itself, and carries no segments to route through.
+    for (const [id, n] of inactive) {
+      expect(n.inactiveReason, id + ' must say why it is inactive').toBeTruthy();
+      expect(g.edges[id], id + ' is inactive but has outbound segments').toBeFalsy();
+    }
+    // Nothing else uses a falsy-but-not-false value that `!== false` would let through.
+    for (const [id, n] of Object.entries(g.nodes)) {
+      if ('active' in n) expect(typeof n.active, id + '.active must be boolean').toBe('boolean');
     }
   });
 

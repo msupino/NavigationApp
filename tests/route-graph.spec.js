@@ -241,11 +241,18 @@ test('the data census matches what the maintainer last signed off', () => {
   // is the point: an accidental deletion or duplication fails this test, a deliberate
   // change updates the census in the same diff a reviewer reads.
   const expected = {
-    cvfr: { layerNodes: 172, segments: 269, commChange: 52, unknown: 6 },
-    heli: { layerNodes: 209, segments: 85, commChange: 0, unknown: 38 },
+    // activeNodes is 2 short of layerNodes: ZRANA and RANNO are locality labels the #410
+    // chart rebuild misread as mandatory reporting points (plain circle on the chart, no
+    // reporting-point triangle, and no route segment either way). They stay in the file
+    // as active:false rather than being deleted -- both numbers are pinned so that
+    // neither a stray deletion nor a stray flip of the flag can pass unreviewed.
+    // +2 segments: MZDOT <-> MYTAR and MZDOT <-> ENGDI, 4000 ft both ways, CVFR only --
+    // published CVFR legs the graph was simply missing, which is why MZDOT had no segment.
+    cvfr: { layerNodes: 172, activeNodes: 170, segments: 271, commChange: 52, unknown: 6 },
+    heli: { layerNodes: 209, activeNodes: 209, segments: 85, commChange: 0, unknown: 38 },
     // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
     // from the second capture (#1485) -- the first census update under the new mechanism.
-    lsa: { layerNodes: 176, segments: 87, commChange: 0, unknown: 27 },
+    lsa: { layerNodes: 176, activeNodes: 176, segments: 87, commChange: 0, unknown: 27 },
   };
   const got = {};
   for (const lay of LAYERS) {
@@ -261,8 +268,10 @@ test('the data census matches what the maintainer last signed off', () => {
         if (e.status === 'unknown') unknown++;
       }
     }
+    const inLayer = Object.values(g.nodes).filter(n => n.layers.includes(lay));
     got[lay] = {
-      layerNodes: Object.values(g.nodes).filter(n => n.layers.includes(lay)).length,
+      layerNodes: inLayer.length,
+      activeNodes: inLayer.filter(n => n.active !== false).length,
       segments: seen.size,
       commChange: Object.values(g.nodes).filter(n => n.commChange).length,
       unknown,
@@ -286,4 +295,58 @@ test('the safety-critical rows read exactly what the chart says', () => {
   // A comm-change node keeps its call signs.
   expect(g.nodes.BASAN.commChange).toBe(true);
   expect(g.nodes.BASAN.callSigns).toContain('PLUTO_EAST');
+});
+
+test('a corridor is not open one way and shut the other', () => {
+  // Availability hints describe the CORRIDOR (a secondary source said it was shut, or that
+  // it opens at 05:00), not a direction of travel -- but fplEdgeOpen reads them off the
+  // directed edge, so an import that tagged only one direction leaves a segment routable
+  // one way and refused the other. ESTOL <-> SORES was exactly that: no hints outbound,
+  // closedHint + openFromHourHint:6 on the reverse, so the leg vanished in one direction.
+  //
+  // 14 more pairs still disagree. They are LISTED, not asserted away: each needs the chart
+  // or the source checked, and pinning a guessed answer here would be worse than the gap.
+  // This test holds the line at the one pair confirmed, and fails if it regresses.
+  const g = graph();
+  const FLAGS = ['closedHint', 'weekdayClosedHint', 'onAtcApproval', 'armyAirway',
+                 'openFromHourHint'];
+  const asym = [];
+  const seen = new Set();
+  for (const [from, es] of Object.entries(g.edges.cvfr)) {
+    for (const e of es) {
+      const k = [from, e.to].sort().join('|');
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const rev = (g.edges.cvfr[e.to] || []).find(x => x.to === from);
+      if (!rev) continue;
+      if (FLAGS.some(f => String(e[f] || false) !== String(rev[f] || false))) asym.push(k);
+    }
+  }
+  expect(asym).not.toContain('ESTOL|SORES');
+  // The backlog is now the five closedHint pairs; every openFromHourHint asymmetry went
+  // when that hint was dropped from this layer (see the test below).
+  expect(asym.length).toBeLessThanOrEqual(5);
+});
+
+test('CVFR corridors carry no weekday opening hour', () => {
+  // openFromHourHint came from two secondary captures (Aug 2026), not the AIP and not the
+  // chart -- only two values exist anywhere, 05:00 and 06:00, which reads as a provider's
+  // operating-hours field. An LSA bubble plausibly has activity hours; a published CVFR
+  // green route does not, and the maintainer does not recognise the gate from the AIP.
+  //
+  // The capture bled onto CVFR through SHARED segments: 42 of the 51 CVFR pairs that
+  // carried it were also heli/lsa segments, and 7 of the 9 CVFR-only ones were also the
+  // asymmetric ones -- tagged in a single direction, clustered in the Arava/Eilat corridor.
+  // It gated morning departures on a scraped hour, so it is gone from this layer.
+  //
+  // heli and lsa keep theirs: activity hours are real there, and that data is not in doubt.
+  const g = graph();
+  const gated = [];
+  for (const [from, es] of Object.entries(g.edges.cvfr)) {
+    for (const e of es) if (e.openFromHourHint !== undefined) gated.push(from + '->' + e.to);
+  }
+  expect(gated).toEqual([]);
+  const others = ['heli', 'lsa'].map(lay => Object.values(g.edges[lay])
+    .reduce((n, es) => n + es.filter(e => e.openFromHourHint !== undefined).length, 0));
+  expect(others).toEqual([57, 71]);
 });
