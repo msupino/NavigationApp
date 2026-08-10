@@ -120,6 +120,8 @@ test('decodeNotam covers the extended Israel-FIR abbreviations and the XX condit
     abbr: decodeNotam({ type: '', text: 'TWY A CLSD. HEL FLT TRG WI CTR. LDG PROHIBITED.' }),
     // AIP part identifiers must stay literal (AD/ENR/GEN are NOT expanded).
     aip: decodeNotam({ type: '', text: 'ISRAEL AIP PART ENR 5.1 PAGE AD-2-LLBG PART GEN 3.1.' }),
+    // ACT = adjective "active" per ICAO Doc 8400 ("METZADA ACT FM 8000FT" = active from).
+    act: decodeNotam({ type: '', text: 'METZADA ACT FM 8000FT AMSL.' }),
   }));
   expect(out.xx).toContain('Aerodrome');            // FA subject
   expect(out.xx).toContain('plain language');       // XX condition
@@ -136,6 +138,9 @@ test('decodeNotam covers the extended Israel-FIR abbreviations and the XX condit
   expect(out.aip).toContain('AD-2-LLBG');
   expect(out.aip).toContain('PART GEN 3.1');
   expect(out.aip).not.toMatch(/en-route|aerodrome|general/);
+  // ACT expands to the adjective "active", not the noun "activity".
+  expect(out.act).toContain('active');
+  expect(out.act).not.toContain('activity');
 });
 
 test('clicking an airport NOTAM badge opens the (scrollable) list, not the picker', async ({ page }) => {
@@ -496,14 +501,17 @@ test('the decoder keeps MAY the modal and does not capitalize at feed line-wraps
 test('MAY next to a runway or frequency number is the modal, not misread as a day', async ({ page }) => {
   // A 1-2 digit number right before MAY looks like a day at a glance, but RWY pairs and
   // frequencies routinely sit there too -- only a day with a clean boundary in front of
-  // it (not the tail of "09/27" or "118.3") counts as a date.
+  // it (not the tail of "09/27" or "118.3") counts as a date. A single runway number
+  // ("RWY 27 MAY BE CLSD") is caught by checking whether BE/NOT follows MAY.
   await boot(page);
   const out = await page.evaluate(() => ({
     rwy: decodeNotam({ type: '', text: 'RWY 09/27 MAY BE CLOSED DUE WIP.' }),
+    rwySingle: decodeNotam({ type: '', text: 'RWY 27 MAY BE CLSD DUE WIP.' }),
     freq: decodeNotam({ type: '', text: 'FREQ 118.3 MAY CHANGE WITHOUT NOTICE.' }),
     bareMonth: decodeNotam({ type: '', text: 'TRIGGER NOTAM WEF 03 SEP 2026 MAY 2026 UPDATE.' }),
   }));
-  expect(out.rwy).toContain('09/27 may BE CLOSED');   // only MAY is in the decoder's table
+  expect(out.rwy).toContain('09/27 may BE CLOSED');   // slash keeps 27 from looking like a day
+  expect(out.rwySingle).toContain('27 may BE closed'); // BE after MAY → modal even without slash; CLSD expands
   expect(out.freq).toContain('118.3 may CHANGE');
   expect(out.bareMonth).toContain('MAY 2026');        // a bare month+year still reads as a date
 });
