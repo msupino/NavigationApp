@@ -755,3 +755,23 @@ test('a live route-closure NOTAM reroutes the expansion', async ({ page }) => {
   expect(r.closed).toMatch(/^-N0100VFR /);          // ...but a plan still files
   expect(r.after).toBe(r.before);                   // NOTAM gone, standard chain back
 });
+
+test('two miscaptured corridor closures do not force absurd detours: NTAIM-SIRNI and AAKKO-SMRAT are open', async ({ page }) => {
+  // Both edges shipped with an unconditional closedHint (no hour/weekday bound, so
+  // fplEdgeOpen refuses them at any departure time) on ONE direction only -- the
+  // reverse direction of the same physical segment carried no hint at all. Confirmed
+  // wrong against fpl.co.il's own network data (active both ways) and against the
+  // maintainer's own flown route, which crosses NTAIM->SIRNI directly. Left closed,
+  // expansion detoured 71nm through BOVED/YAVNE/ESTOL/SORES/SHARG/LTRUN/AYLON/NSHRM to
+  // reach a point 2.67nm away.
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const graph = await fplLoadRouteGraph();
+    return {
+      ntaimSirni: fplGraphChain(graph, 'NTAIM', 'SIRNI', {}),
+      aakkoSmrat: fplGraphChain(graph, 'AAKKO', 'SMRAT', {}),
+    };
+  });
+  expect(r.ntaimSirni).toEqual(['NTAIM', 'SIRNI']);
+  expect(r.aakkoSmrat).toEqual(['AAKKO', 'SMRAT']);
+});
