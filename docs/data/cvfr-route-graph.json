@@ -7893,7 +7893,8 @@
         "outboundAltitude": 4000,
         "distanceNm": 16.08,
         "status": "reviewed",
-        "source": "maintainer: published CVFR chart, 4000 ft both ways"
+        "source": "maintainer: published CVFR chart, 4000 ft both ways",
+        "onAtcApproval": true
       },
       {
         "to": "SHALM",
@@ -9298,7 +9299,8 @@
         "outboundAltitude": 4000,
         "distanceNm": 9.04,
         "status": "reviewed",
-        "source": "maintainer: published CVFR chart, 4000 ft both ways"
+        "source": "maintainer: published CVFR chart, 4000 ft both ways",
+        "onAtcApproval": true
       },
       {
         "to": "SOKET",
@@ -9785,7 +9787,8 @@
         "outboundAltitude": 4000,
         "distanceNm": 16.08,
         "status": "reviewed",
-        "source": "maintainer: published CVFR chart, 4000 ft both ways"
+        "source": "maintainer: published CVFR chart, 4000 ft both ways",
+        "onAtcApproval": true
       },
       {
         "to": "MYTAR",
@@ -9793,7 +9796,8 @@
         "outboundAltitude": 4000,
         "distanceNm": 9.04,
         "status": "reviewed",
-        "source": "maintainer: published CVFR chart, 4000 ft both ways"
+        "source": "maintainer: published CVFR chart, 4000 ft both ways",
+        "onAtcApproval": true
       }
     ]
   },
