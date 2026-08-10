@@ -15,7 +15,8 @@
     }
   ],
   "schema": {
-    "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/data/cvfr-nav-waypoints.json or docs/data/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence."
+    "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/data/cvfr-nav-waypoints.json or docs/data/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence.",
+    "nodes": "Reporting points and airfields. layers[] records which layer waypoint files held the point. active:false marks a row the chart rebuild misread as a reporting point -- it is kept, with inactiveReason, so the coordinates and names survive and a later chart edition can flip one boolean; absent means active, so a row is a real point by default. Consumers that surface points to the pilot must skip active:false (see navWaypointsFromGraph); routing consumers need not, because an inactive row carries no segments."
   },
   "callSigns": {
     "AZAM": {
@@ -2510,7 +2511,9 @@
         "cvfr"
       ],
       "name": "RANNO",
-      "report": "mandatory"
+      "report": "mandatory",
+      "active": false,
+      "inactiveReason": "locality label on the published chart (plain circle, no reporting-point triangle); no route segment either way"
     },
     "REVAH": {
       "code": "REVAH",
@@ -3439,7 +3442,9 @@
         "cvfr"
       ],
       "name": "ZRANA",
-      "report": "mandatory"
+      "report": "mandatory",
+      "active": false,
+      "inactiveReason": "locality label on the published chart (plain circle, no reporting-point triangle); no route segment either way"
     },
     "ZUKIM": {
       "code": "ZUKIM",
