@@ -586,6 +586,9 @@ test('map-added known green-route leg uses leg altitudes', async ({ page }) => {
 
   test('non-CVFR path with no leg altitude is marked unknown', async ({ page }) => {
     await boot(page);
+    // Auto-route would splice the published corridor between these two fields (that is its
+    // job); this test is about the UNKNOWN-altitude display on a direct leg, so draw one.
+    await page.evaluate(() => { window.autoRouteCorridors = false; });
 
     const result = await clickRoute(page, 'LLHZ', 'LLHA');
 
