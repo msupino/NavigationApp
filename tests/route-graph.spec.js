@@ -323,6 +323,30 @@ test('a corridor is not open one way and shut the other', () => {
     }
   }
   expect(asym).not.toContain('ESTOL|SORES');
-  // The known backlog. Shrinking this is progress; growing it is a new import bug.
-  expect(asym.length).toBeLessThanOrEqual(14);
+  // The backlog is now the five closedHint pairs; every openFromHourHint asymmetry went
+  // when that hint was dropped from this layer (see the test below).
+  expect(asym.length).toBeLessThanOrEqual(5);
+});
+
+test('CVFR corridors carry no weekday opening hour', () => {
+  // openFromHourHint came from two secondary captures (Aug 2026), not the AIP and not the
+  // chart -- only two values exist anywhere, 05:00 and 06:00, which reads as a provider's
+  // operating-hours field. An LSA bubble plausibly has activity hours; a published CVFR
+  // green route does not, and the maintainer does not recognise the gate from the AIP.
+  //
+  // The capture bled onto CVFR through SHARED segments: 42 of the 51 CVFR pairs that
+  // carried it were also heli/lsa segments, and 7 of the 9 CVFR-only ones were also the
+  // asymmetric ones -- tagged in a single direction, clustered in the Arava/Eilat corridor.
+  // It gated morning departures on a scraped hour, so it is gone from this layer.
+  //
+  // heli and lsa keep theirs: activity hours are real there, and that data is not in doubt.
+  const g = graph();
+  const gated = [];
+  for (const [from, es] of Object.entries(g.edges.cvfr)) {
+    for (const e of es) if (e.openFromHourHint !== undefined) gated.push(from + '->' + e.to);
+  }
+  expect(gated).toEqual([]);
+  const others = ['heli', 'lsa'].map(lay => Object.values(g.edges[lay])
+    .reduce((n, es) => n + es.filter(e => e.openFromHourHint !== undefined).length, 0));
+  expect(others).toEqual([57, 71]);
 });
