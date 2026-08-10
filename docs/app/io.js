@@ -5495,6 +5495,7 @@ function persist() {
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
+    if (NavAid.exporting) return;   // export started after the timer was scheduled — skip
     try {
       // center / zoom are not restored (load fits the route) — not saved.
       writeRoute();

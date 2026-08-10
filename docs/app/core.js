@@ -2283,6 +2283,7 @@ async function _loadCtrBoundariesNow() {
   // A route drawn before this fetch landed was memoised against a null boundary set --
   // without this reset the repaint below hits that stale "no CTR anywhere" memo forever.
   _ctrLegMemo = { sig: null, inside: null };
+  _ctrDerived = false;      // boundary data changed — allow one fresh re-derivation from the graph
   if (typeof scheduleDraw === 'function') scheduleDraw();
   return ctrBoundaries;
 }
@@ -2339,12 +2340,15 @@ function ctrInsidePoints(rec) {
 // is time-gated: legInsideCtr calls this on every frame of a CTR-touching route, and
 // re-fetching a dead network per frame would spin.
 var _ctrDeriveNextTry = 0;
+var _ctrDerived = false;    // true once derivation succeeds; cleared by _loadCtrBoundariesNow on reload
 function _ctrKickDerive() {
   if (_ctrDerivePromise || typeof fplGraphChain !== 'function') return;
+  if (_ctrDerived) return;            // already derived for this boundary load — wait for reload
   if (Date.now() < _ctrDeriveNextTry) return;
   _ctrDerivePromise = ctrDeriveInsideFromGraph().then(ok => {
-    _ctrDerivePromise = null;           // always clear so a later chart reload can re-derive
-    if (ok !== true) _ctrDeriveNextTry = Date.now() + 30000;
+    _ctrDerivePromise = null;         // always clear so a later chart reload can re-derive
+    if (ok === true) { _ctrDerived = true; }
+    else { _ctrDeriveNextTry = Date.now() + 30000; }
   });
 }
 // Every name that belongs to a field's CTR: the field itself, the points inside it (listed
