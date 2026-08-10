@@ -549,3 +549,70 @@ test('a 20-second fix gap (watch TIMEOUT) does not kill the recording', async ({
   await page.evaluate(() => onGpsRecError({ code: 1, message: 'denied' }));
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
 });
+
+test('a codeless MID-watch error (iOS CLError forwarded with no code) does not kill the recording', async ({ page }) => {
+  // iOS's background-geolocation plugin forwards any unrecognized CLError (e.g.
+  // .network, a transient hiccup) with no `code` at all -- the same shape a
+  // synchronous registration throw has. Only the registration throw (the watch
+  // never started) may tear down; a running watch reporting this must not.
+  await page.addInitScript(() => {
+    let watching = false;
+    navigator.geolocation.watchPosition = (onPos, onErr) => {
+      watching = true;
+      setTimeout(() => onPos({ coords: { latitude: 32, longitude: 34.9, accuracy: 5,
+        altitude: 100, speed: 40, heading: 90 }, timestamp: Date.now() }), 20);
+      setTimeout(() => { if (watching) onErr(new Error('A network error occurred.')); }, 60);
+      setTimeout(() => onPos({ coords: { latitude: 32.01, longitude: 34.91, accuracy: 5,
+        altitude: 100, speed: 40, heading: 90 }, timestamp: Date.now() }), 120);
+      return 1;
+    };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+  let alerted = false;
+  page.on('dialog', d => { alerted = true; d.dismiss().catch(() => {}); });
+  await page.locator('#gps-record').click();
+  await page.waitForFunction(() => gpsTrack.length >= 2);
+  expect(await page.evaluate(() => gpsRecording)).toBe(true);
+  expect(alerted).toBe(false);
+});
+
+test('startLiveLocation rolls back on a synchronous registration throw, same as recording', async ({ page }) => {
+  // startLiveLocation had no try/catch at all: gpsLiveOn was already set true before
+  // the throw, so a registration failure left the app believing live location was on
+  // with no watch running and no error shown.
+  await page.addInitScript(() => {
+    navigator.geolocation.watchPosition = () => { throw new Error('watch registration failed'); };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  let alerted = false;
+  page.on('dialog', d => { alerted = true; d.dismiss().catch(() => {}); });
+  await page.evaluate(() => startLiveLocation());
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
+  expect(alerted).toBe(true);
+});
+
+test('an async addWatcher rejection is a registration failure, not a transient blip', async ({ page }) => {
+  // addWatcher's own promise rejecting means no watcher was ever created (h.native
+  // stays null) -- that must tear down like the synchronous throw, not read as a
+  // codeless mid-watch error and get waved through as "transient, keep going."
+  await page.addInitScript(() => {
+    window.Capacitor = {
+      isNativePlatform: () => true,
+      Plugins: { BackgroundGeolocation: {
+        addWatcher: () => Promise.reject(new Error('native registration failed')),
+        removeWatcher: () => Promise.resolve(),
+      } },
+    };
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+  let alerted = false;
+  page.on('dialog', d => { alerted = true; d.dismiss().catch(() => {}); });
+  await page.evaluate(() => startGpsRecording());
+  await page.waitForFunction(() => gpsRecording === false, { timeout: 4000 });
+  expect(alerted).toBe(true);
+});

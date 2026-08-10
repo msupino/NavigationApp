@@ -137,7 +137,16 @@ function gpsStartWatch(onPos, onErr, title, message) {
     // or the foreground service (and its notification) would leak.
     if (h.stopped) bg.removeWatcher({ id }).catch(function () {});
     else h.native = id;
-  }).catch(function (e) { onErr(e); });
+  }).catch(function (e) {
+    // This IS a registration failure -- addWatcher's own promise rejected, so
+    // h.native never gets set and no watcher was ever created. Unlike the
+    // synchronous-throw case, this one usually carries no `.code` either, and
+    // without the tag it read exactly like a codeless MID-watch error (the
+    // iOS CLError case) and was let through as "transient, keep going" even
+    // though the watch had, in fact, never started.
+    if (e && typeof e === 'object') e._gpsRegistrationFailure = true;
+    onErr(e);
+  });
   return h;
 }
 function gpsStopWatch(h) {
@@ -214,8 +223,18 @@ function startLiveLocation() {
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
-  gpsLiveWatchId = gpsStartWatch(onLivePosition, onGpsLiveError,
-    S.gpsLiveNotifTitle || 'NavAid location', S.gpsLiveNotifText || 'Showing your position on the map');
+  try {
+    gpsLiveWatchId = gpsStartWatch(onLivePosition, onGpsLiveError,
+      S.gpsLiveNotifTitle || 'NavAid location', S.gpsLiveNotifText || 'Showing your position on the map');
+  } catch (e) {
+    // Same registration-failure handling as startGpsRecording: without this,
+    // gpsLiveOn was already set true above, so a synchronous registration throw
+    // (native plugin API mismatch) left the app believing live location was on
+    // with no watch running and no error shown.
+    e._gpsRegistrationFailure = true;
+    onGpsLiveError(e);
+    return;
+  }
   scheduleDraw();
 }
 
@@ -317,9 +336,16 @@ function gpsErrMsg(err) {
 // over one quiet spell; the stale-fix indicator already shows the gap.
 function gpsErrFatal(err) {
   const c = err && err.code;
-  // No code at all = not a GeolocationPositionError -- a synchronous registration
-  // throw (native plugin API mismatch). That watch never started; tear down.
-  if (c === undefined || c === null) return true;
+  // A registration throw (native plugin API mismatch) is tagged by its catch block
+  // below -- that watch never started, so it must tear down regardless of shape.
+  if (err && err._gpsRegistrationFailure) return true;
+  // Everything else with no code is a MID-WATCH async error, not a registration
+  // failure: iOS's background-geolocation plugin forwards any CLError it doesn't
+  // recognize (e.g. .network -- a transient GPS hiccup, the same kind of blip
+  // Android reports as a TIMEOUT code) via `call.reject(message, nil, error)`,
+  // which arrives here with no `code` at all. Treating that as fatal reintroduced
+  // the "one quiet spell discards the flight" bug on iOS specifically.
+  if (c === undefined || c === null) return false;
   return c === 1 || c === 'NOT_AUTHORIZED';   // web PERMISSION_DENIED / native plugin
 }
 function onGpsRecError(err) {
@@ -376,6 +402,10 @@ function startGpsRecording() {
     // A synchronous failure registering the watch (e.g. a native plugin API
     // mismatch on the APK) must roll the recording back — stop, reset the
     // button + dot, and surface the error — not leave a phantom "recording".
+    // Tagged so gpsErrFatal can tell this apart from a codeless MID-watch error
+    // (a running watch reporting an unrecognized native error) -- only this one,
+    // where the watch never started at all, is unconditionally fatal.
+    e._gpsRegistrationFailure = true;
     onGpsRecError(e);
     return;
   }

@@ -492,3 +492,33 @@ test('the decoder keeps MAY the modal and does not capitalize at feed line-wraps
   expect(out.wrap.startsWith('An exercise')).toBe(true);
   expect(out.date).toContain('15 MAY 2027');          // dates keep their month untouched
 });
+
+test('MAY next to a runway or frequency number is the modal, not misread as a day', async ({ page }) => {
+  // A 1-2 digit number right before MAY looks like a day at a glance, but RWY pairs and
+  // frequencies routinely sit there too -- only a day with a clean boundary in front of
+  // it (not the tail of "09/27" or "118.3") counts as a date.
+  await boot(page);
+  const out = await page.evaluate(() => ({
+    rwy: decodeNotam({ type: '', text: 'RWY 09/27 MAY BE CLOSED DUE WIP.' }),
+    freq: decodeNotam({ type: '', text: 'FREQ 118.3 MAY CHANGE WITHOUT NOTICE.' }),
+    bareMonth: decodeNotam({ type: '', text: 'TRIGGER NOTAM WEF 03 SEP 2026 MAY 2026 UPDATE.' }),
+  }));
+  expect(out.rwy).toContain('09/27 may BE CLOSED');   // only MAY is in the decoder's table
+  expect(out.freq).toContain('118.3 may CHANGE');
+  expect(out.bareMonth).toContain('MAY 2026');        // a bare month+year still reads as a date
+});
+
+test('a 2-digit day-of-month with no trailing year still reads as a date', async ({ page }) => {
+  // Round 4's fix for RWY/FREQ numbers ("15 MAY" -- prec absorbing the day's own
+  // leading digit) misread a genuine 2-digit day with nothing following it as the
+  // modal verb.
+  await boot(page);
+  const out = await page.evaluate(() => ({
+    noYear: decodeNotam({ type: '', text: 'CTC ATC 15 MAY FOR DETAILS.' }),
+    withTime: decodeNotam({ type: '', text: 'ARR NO LATER THAN 25 MAY 1400LT.' }),
+    oneDigit: decodeNotam({ type: '', text: 'CTC ATC 5 MAY FOR DETAILS.' }),
+  }));
+  expect(out.noYear).toContain('15 MAY for');    // FOR is a plain-word table entry
+  expect(out.withTime).toContain('25 MAY 1400LT');
+  expect(out.oneDigit).toContain('5 MAY for');
+});
