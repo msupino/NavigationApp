@@ -3562,8 +3562,7 @@
         "distanceNm": 2.01,
         "chartDistanceNm": 2,
         "status": "reviewed",
-        "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "source": "cvfr-map airway adjacency"
       }
     ],
     "AHIUD": [
@@ -6925,8 +6924,7 @@
         "distanceNm": 2.67,
         "chartDistanceNm": 2.7,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "source": "cvfr-map airway adjacency"
       },
       {
         "to": "SUPER",
