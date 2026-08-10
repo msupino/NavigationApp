@@ -5493,9 +5493,16 @@ function persist() {
   // step the same way it collapses into one save.
   recordUndoSnapshot(JSON.stringify(routeSnapshotForStorage()));
   if (persistTimer || quotaWarned) return;
-  persistTimer = setTimeout(() => {
+  persistTimer = setTimeout(function tick() {
+    // Export started after this timer was scheduled. Don't write (the export mutates
+    // state, and #214 is that those mutations must not reach storage) -- but don't drop
+    // the write either: RE-ARM and let the same pending timer land once the export ends.
+    // Returning outright would lose whatever the pilot changed just before exporting
+    // unless something happened to call persist() again afterwards, and clearing the
+    // handle first means every state change during a long export schedules another
+    // fires-and-skips timer. One re-armed timer covers both.
+    if (NavAid.exporting) { persistTimer = setTimeout(tick, 500); return; }
     persistTimer = null;
-    if (NavAid.exporting) return;   // export started after the timer was scheduled — skip
     try {
       // center / zoom are not restored (load fits the route) — not saved.
       writeRoute();

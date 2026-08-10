@@ -502,18 +502,36 @@ test('MAY next to a runway or frequency number is the modal, not misread as a da
   // A 1-2 digit number right before MAY looks like a day at a glance, but RWY pairs and
   // frequencies routinely sit there too -- only a day with a clean boundary in front of
   // it (not the tail of "09/27" or "118.3") counts as a date. A single runway number
-  // ("RWY 27 MAY BE CLSD") is caught by checking whether BE/NOT follows MAY.
+  // ("RWY 27 MAY BE CLSD") is caught by the facility noun in front of the number.
   await boot(page);
   const out = await page.evaluate(() => ({
     rwy: decodeNotam({ type: '', text: 'RWY 09/27 MAY BE CLOSED DUE WIP.' }),
     rwySingle: decodeNotam({ type: '', text: 'RWY 27 MAY BE CLSD DUE WIP.' }),
+    twy: decodeNotam({ type: '', text: 'TWY 3 MAY BE CLSD DUE WIP.' }),
     freq: decodeNotam({ type: '', text: 'FREQ 118.3 MAY CHANGE WITHOUT NOTICE.' }),
     bareMonth: decodeNotam({ type: '', text: 'TRIGGER NOTAM WEF 03 SEP 2026 MAY 2026 UPDATE.' }),
   }));
   expect(out.rwy).toContain('09/27 may BE CLOSED');   // slash keeps 27 from looking like a day
-  expect(out.rwySingle).toContain('27 may BE closed'); // BE after MAY → modal even without slash; CLSD expands
+  expect(out.rwySingle).toContain('27 may BE closed'); // "runway" in front → designator, not a day
+  expect(out.twy).toContain('3 may BE closed');
   expect(out.freq).toContain('118.3 may CHANGE');
   expect(out.bareMonth).toContain('MAY 2026');        // a bare month+year still reads as a date
+});
+
+test('a date keeps its month even when BE or NOT follows it', async ({ page }) => {
+  // Round 5 disambiguated "RWY 27 MAY BE CLSD" by looking for BE/NOT AFTER may. Dates take
+  // exactly the same predicates ("on the 27th of May it will not be available"), so that
+  // lowercased the month on any date phrased that way. The decision belongs BEFORE the
+  // number instead: a facility noun makes it a designator, anything else leaves it a day.
+  await boot(page);
+  const out = await page.evaluate(() => ({
+    dateNot: decodeNotam({ type: '', text: 'WEF 27 MAY NOT AVBL.' }),
+    dateBe: decodeNotam({ type: '', text: '08 MAY BE CLSD.' }),
+    rwyNot: decodeNotam({ type: '', text: 'RWY 27 MAY NOT BE AVBL.' }),
+  }));
+  expect(out.dateNot).toContain('27 MAY not');        // the 27th of May — month keeps its case
+  expect(out.dateBe).toContain('08 MAY BE');
+  expect(out.rwyNot).toContain('27 may not');         // runway 27 — still the modal (NOT expands)
 });
 
 test('a 2-digit day-of-month with no trailing year still reads as a date', async ({ page }) => {
