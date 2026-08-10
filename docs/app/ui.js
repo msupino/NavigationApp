@@ -1883,7 +1883,8 @@ function runSearch() {
       typeof showLsaBubbles !== 'undefined' && showLsaBubbles) src.push({  // LSA bubbles (searchable by code or name; gated on the toggle like the map click, or search selects an unpainted polygon)
     kind: 'bubble', cap: tune('searchMaxBubbles'),
     items: areas.map((a, i) => ({ ...a, _areaIndex: i })), routable: false,
-    match: a => hit(a.icao, q) || hit(a.en, q) || hit(a.name, q) || hitHe(a.he) || hitHe(a.name),
+    match: a => hit(a.icao, q) || hit(a.en, q) || hit(a.name, q) || hitHe(a.he) || hitHe(a.name)
+      || (a.aliases || []).some(x => hit(x, q)),
   });
   if (has(state.waypoints)) src.push({                        // the user's own route
     kind: 'routewp', cap: tune('searchMaxRouteWp'), items: state.waypoints, routable: false,
