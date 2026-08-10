@@ -718,7 +718,7 @@ var magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   // One graph per layer replaces the nav-waypoints / comm-change / leg-altitude files;
   // the ?v= cache-busts all three kinds, which now come from the same file.
-  routeGraphUrl: 'data/cvfr-route-graph.json?v=1',  // resolved relative to index.html (docs/)
+  routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=33',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
@@ -1220,6 +1220,14 @@ window.S = Object.assign({
   errFplReplyToInvalid: 'That email address is not valid.',
   errFplProfileList: function(list) { return 'Still needed: ' + list + '.'; },
   // Used when the list of fields is unavailable -- a message must never be a function.
+  errFplAtcApprovalLegPlain: 'A leg of this route may only be flown when control clears it '
+    + 'in real time, so it cannot be filed as a planned route.',
+  errFplAtcApprovalLeg: function(names) {
+    const list = Array.isArray(names) ? names : [names];
+    return 'This route is flown down ' + list.join(', ') + ', which control opens only in '
+      + 'real time \u2014 a plan naming it is not accepted. Route around it, or keep the leg '
+      + 'and request it in the air instead of filing it.';
+  },
   errFplMidAirfieldPlain: 'This route lands at an airfield on the way, so it is not a single '
     + 'flight plan: file it in legs.',
   errFplMidAirfield: function(names) {
@@ -2254,6 +2262,12 @@ function legKiteHidden(leg) {
 // behaves as before: the clock starts at the field.
 var ctrBoundaries = null;          // null = not loaded; {} or populated once fetched
 var _ctrBoundariesLoad = null;     // in-flight memo: the draw loop asks several times a frame
+// Guard state for the graph derivation below. Declared HERE, above every use: `var` hoists
+// so the old placement worked, but a bare assignment in _loadCtrBoundariesNow with no
+// declaration in sight above it reads as an accidental global to a human and to no-undef.
+var _ctrDerivePromise = null;      // in-flight derivation, or null
+var _ctrDeriveNextTry = 0;         // earliest retry after a failed derivation
+var _ctrDerived = false;           // true once derivation succeeds; cleared on a boundary reload
 async function loadCtrBoundaries() {
   if (ctrBoundaries !== null) return ctrBoundaries;
   if (_ctrBoundariesLoad) return _ctrBoundariesLoad;
@@ -2292,7 +2306,6 @@ async function _loadCtrBoundariesNow() {
 // point. Deriving them means the hand-written list only has to carry what no corridor
 // traverses (Haifa's KRYON and AFFEK), and it self-corrects as the graph grows -- LLIB's
 // AMNON and Haifa's GALIM were both missing from the hand list and both fall out of this.
-var _ctrDerivePromise = null;
 async function ctrDeriveInsideFromGraph() {
   if (!ctrBoundaries || typeof fplGraphChain !== 'function') return;
   let graph = null;
@@ -2338,9 +2351,8 @@ function ctrInsidePoints(rec) {
 // Retryable: a failed graph fetch (offline start) must not disable derivation for the
 // whole session -- the hand list works meanwhile, and a later use tries again. The retry
 // is time-gated: legInsideCtr calls this on every frame of a CTR-touching route, and
-// re-fetching a dead network per frame would spin.
-var _ctrDeriveNextTry = 0;
-var _ctrDerived = false;    // true once derivation succeeds; cleared by _loadCtrBoundariesNow on reload
+// re-fetching a dead network per frame would spin. (_ctrDeriveNextTry / _ctrDerived /
+// _ctrDerivePromise are declared with the rest of the CTR state, above loadCtrBoundaries.)
 function _ctrKickDerive() {
   if (_ctrDerivePromise || typeof fplGraphChain !== 'function') return;
   if (_ctrDerived) return;            // already derived for this boundary load — wait for reload
@@ -2695,6 +2707,12 @@ const NOTAM_ABBR = {
   ESTABLISHED: 'established', AIRCRAFT: 'aircraft', AIRSTRIP: 'airstrip',
   DEPARTING: 'departing', BIDIRECTIONAL: 'bidirectional',
 };
+// Nouns that turn a following 1-2 digit number into a DESIGNATOR rather than a
+// day-of-month ("runway 27", "taxiway 3"). Used by the MAY disambiguation below;
+// both the expanded word and the raw code are listed because the abbreviation pass
+// runs first but does not carry every one of these.
+const NOTAM_DESIGNATOR_NOUN =
+  /\b(?:runway|taxiway|route|frequency|apron|stand|helipad|helicopter|RWY|RWYS|TWY|TWYS|RTE|FREQ|VOR|NDB|ILS|GATE|BAY|PAD)\s*$/i;
 // Expand the standard abbreviations in a NOTAM body, tidying the source's
 // 3-space wrap indentation. Coordinate tokens (digits+N/E/S/W) carry no word
 // boundary around their letters, so they pass through untouched.
@@ -2722,13 +2740,22 @@ function expandNotamAbbr(s) {
     (m, day, bareYear, offset, str) => {
       if (bareYear) return m;           // "MAY 2027" — definitely a month name
       if (day) {
-        // A 1–2 digit number whose natural separator matched (not "/" or ".") precedes
-        // MAY. That's usually a date day, but "RWY 27 MAY BE CLSD" puts a runway
-        // number there. Distinguish by what immediately follows MAY: a bare infinitive
-        // (BE, NOT, …) signals the modal verb even when a digit precedes it.
-        const tail = str.slice(offset + m.length);
-        if (/^\s+(?:BE|NOT)\b/i.test(tail)) return m.replace('MAY', 'may');
-        return m;                       // digit before + no modal marker → month name
+        // A bare 1-2 digit number precedes MAY. Slashes and dots are already excluded
+        // above, so "RWY 09/27" and "FREQ 118.3" never reach here -- but a SINGLE
+        // runway ("RWY 27 MAY BE CLSD") does, and it is not a date.
+        //
+        // Decided by what comes BEFORE the number, not after MAY: a facility noun
+        // ("runway 27", "taxiway 3") makes the number a designator, so MAY is the modal.
+        // Anything else leaves it a day-of-month. Looking AFTER instead -- treating a
+        // following BE/NOT as the modal marker -- cannot work, because a date takes the
+        // same predicates ("WEF 27 MAY NOT AVBL" is the 27th of May, "08 MAY BE CLSD"
+        // likewise) and those got their month wrongly lowercased.
+        //
+        // The abbreviation pass above already ran, so the nouns are matched in their
+        // EXPANDED form; the raw codes stay listed for anything the table does not carry.
+        const before = str.slice(0, offset + m.search(/\d/));
+        if (NOTAM_DESIGNATOR_NOUN.test(before)) return m.replace('MAY', 'may');
+        return m;                       // plain day-of-month → month name
       }
       return 'may';                     // bare MAY with no context → modal verb
     });
