@@ -123,12 +123,14 @@ test('decodeNotam covers the extended Israel-FIR abbreviations and the XX condit
   }));
   expect(out.xx).toContain('Aerodrome');            // FA subject
   expect(out.xx).toContain('plain language');       // XX condition
-  expect(out.abbr).toContain('taxiway');            // TWY
-  expect(out.abbr).toContain('helicopter');         // HEL
+  // Sentence-cased since the plain-word pass: an expansion that starts a sentence
+  // gets its capital back, so these match case-insensitively.
+  expect(out.abbr).toMatch(/taxiway/i);             // TWY (sentence start → Taxiway)
+  expect(out.abbr).toMatch(/helicopter/i);          // HEL
   expect(out.abbr).toContain('flight');             // FLT
   expect(out.abbr).toContain('training');           // TRG
   expect(out.abbr).toContain('control zone');       // CTR
-  expect(out.abbr).toContain('landing');            // LDG
+  expect(out.abbr).toMatch(/landing/i);             // LDG
   // AIP citations preserved — no over-expansion of the part identifiers.
   expect(out.aip).toContain('PART ENR 5.1');
   expect(out.aip).toContain('AD-2-LLBG');
@@ -476,4 +478,17 @@ test('empty feed unchecks the NOTAM toggle but preserves the saved on-preference
   await expect(page.locator('#notam-cb')).not.toBeChecked();      // turned off in-memory
   const pref = await page.evaluate(() => localStorage.getItem('navaid.showNotam'));
   expect(pref).toBe('1');                                          // preference NOT wiped
+});
+
+test('the decoder keeps MAY the modal and does not capitalize at feed line-wraps', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => ({
+    modal: decodeNotam({ type: '', text: 'PILOTS MAY CTC TWR ON 122.5.' }),
+    wrap: decodeNotam({ type: '', text: 'AN EXER WILL TAKE\nPLACE IN THE AREA.' }),
+    date: decodeNotam({ type: '', text: 'WEF 15 MAY 2027.' }),
+  }));
+  expect(out.modal).toContain('may contact tower');   // modal verb, lowercase mid-sentence
+  expect(out.wrap).toContain('take\nplace');          // hard wrap is not a sentence start
+  expect(out.wrap.startsWith('An exercise')).toBe(true);
+  expect(out.date).toContain('15 MAY 2027');          // dates keep their month untouched
 });

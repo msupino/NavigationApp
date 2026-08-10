@@ -1883,7 +1883,8 @@ function runSearch() {
       typeof showLsaBubbles !== 'undefined' && showLsaBubbles) src.push({  // LSA bubbles (searchable by code or name; gated on the toggle like the map click, or search selects an unpainted polygon)
     kind: 'bubble', cap: tune('searchMaxBubbles'),
     items: areas.map((a, i) => ({ ...a, _areaIndex: i })), routable: false,
-    match: a => hit(a.icao, q) || hit(a.en, q) || hit(a.name, q) || hitHe(a.he) || hitHe(a.name),
+    match: a => hit(a.icao, q) || hit(a.en, q) || hit(a.name, q) || hitHe(a.he) || hitHe(a.name)
+      || (a.aliases || []).some(x => hit(x, q)),
   });
   if (has(state.waypoints)) src.push({                        // the user's own route
     kind: 'routewp', cap: tune('searchMaxRouteWp'), items: state.waypoints, routable: false,
@@ -1893,6 +1894,13 @@ function runSearch() {
     kind: 'note', cap: tune('searchMaxNotes'),
     items: state.notes.filter(n => n && (n.text || n.cc)), routable: false,
     match: n => hit(n.text, q) || hit(n.cc, q) || hitHe(n.text),
+  });
+  if (has(notams)) src.push({                                 // active NOTAMs (this chart)
+    // Not gated on the overlay toggle: the list button isn't either, and picking a
+    // mappable hit turns the overlay on, same as clicking it in the list.
+    kind: 'notam', cap: tune('searchMaxNotams'),
+    items: (typeof activeNotams === 'function') ? activeNotams() : [], routable: false,
+    match: n => hit(n.id, q) || hit(n.icao, q) || hit(n.text, q),
   });
   // #124: split the 12 slots across sources so one broad match cannot fill them all.
   const hits = [];
@@ -1939,6 +1947,15 @@ function runSearch() {
       if (Number.isFinite(w.lowFt) && Number.isFinite(w.highFt)) bits.push(w.lowFt + '-' + w.highFt + ' ' + (S.unitFeet || 'ft'));
       if (w.active === 'weekend') bits.push(S.bubbleWeekendTag || 'weekend');
       alt = bits.join(' \u00b7 ');
+    } else if (h.kind === 'notam') {
+      // "C1584/26 / LLBG · RWY 12/30 CLSD" -- the id, the field when it names one,
+      // and the head of the text, truncated like the note labels are.
+      primary = w.id;
+      const bits = [];
+      const ic = String(w.icao || '').toUpperCase();
+      if (ic && ic !== 'LLLL') bits.push(ic);
+      if (w.text) bits.push(String(w.text).slice(0, tune('searchNoteLabelChars')));
+      alt = bits.join(' · ');
     } else if (h.kind === 'af') {
       primary = w.name;                  // ICAO is always shown first
       alt = (w[afField] || w.en || '');
@@ -1953,6 +1970,22 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      if (h.kind === 'notam') {
+        closeSearch();
+        if (typeof notamMappable === 'function' && notamMappable(w)) {
+          // Same contract as clicking it in the list: overlay on if needed, then blink.
+          if (!window.showNotam) {
+            window.showNotam = true;
+            if (typeof notamPrefWrite === 'function') notamPrefWrite(true);
+            if (notamCb) notamCb.checked = true;
+          }
+          if (typeof flashNotam === 'function') flashNotam(w.id);
+          draw();
+        } else if (typeof showNotamModal === 'function') {
+          showNotamModal([w]);           // no map presence -- show the text instead
+        }
+        return;
+      }
       if (h.kind === 'bubble') {
         // Fly to the bubble, select it and open its inspector -- a polygon has no single
         // point, so the centroid is where the ring lands.
@@ -3717,15 +3750,26 @@ function showNotamModal(only) {
   // (global); anything else is aerodrome-specific. Build a dropdown of the
   // codes present so the list can be narrowed to one airfield (or globals).
   let filterIcao = '';
+  let filterText = '';
   const codes = Array.from(new Set(
     shown.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
   const list = document.createElement('div');
   list.className = 'notam-list';
+  // Freetext match: id, ICAO, raw and decoded text -- whichever the pilot is
+  // reading. Decoded once per NOTAM, cached; the filter runs per keystroke.
+  const notamHay = (n) => {
+    if (!n._hay) {
+      const dec = (typeof decodeNotam === 'function') ? decodeNotam(n) : '';
+      n._hay = (n.id + ' ' + (n.icao || '') + ' ' + (n.text || '') + ' ' + dec).toUpperCase();
+    }
+    return n._hay;
+  };
   const renderList = () => {
     list.textContent = '';
-    const subset = filterIcao
-      ? shown.filter(n => String(n.icao || '').toUpperCase() === filterIcao)
-      : shown;
+    const q = filterText.trim().toUpperCase();
+    const subset = shown.filter(n =>
+      (!filterIcao || String(n.icao || '').toUpperCase() === filterIcao) &&
+      (!q || notamHay(n).indexOf(q) !== -1));
     updateTitle(subset);
     if (!subset.length) {
       const e = document.createElement('div');
@@ -3768,9 +3812,21 @@ function showNotamModal(only) {
       list.appendChild(it);
     }
   };
-  if (codes.length > 1) {
+  if (shown.length > 1) {
+    // Freetext search sits with the airfield dropdown; it renders even for a
+    // single-airfield feed (the dropdown alone used to gate the whole row) --
+    // but not for a single-NOTAM view (a map click), where there is nothing
+    // to narrow.
     const fw = document.createElement('div');
     fw.className = 'notam-filter';
+    const find = document.createElement('input');
+    find.type = 'search';
+    find.className = 'notam-find'; find.dir = 'auto';
+    find.placeholder = S.notamSearchPh || 'Search NOTAM text…';
+    find.setAttribute('aria-label', find.placeholder);
+    find.addEventListener('input', () => { filterText = find.value; renderList(); });
+    fw.appendChild(find);
+    if (codes.length > 1) {
     const sel = document.createElement('select');
     sel.className = 'notam-filter-sel'; sel.dir = 'ltr';
     sel.setAttribute('aria-label', S.notamFilterLabel || 'Filter NOTAMs by airfield');
@@ -3791,6 +3847,7 @@ function showNotamModal(only) {
     }
     sel.onchange = () => { filterIcao = sel.value; renderList(); };
     fw.appendChild(sel);
+    }
     box.appendChild(fw);
   }
   rawBtn.onclick = () => {

@@ -80,6 +80,7 @@ NavAid.tuningDefaults = {
   layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
   searchMaxVor: { value: 3, min: 0, max: 20, step: 1, label: 'Search: max VOR stations' },
   searchMaxBubbles: { value: 12, min: 0, max: 20, step: 1, label: 'Search: max LSA bubbles' },
+  searchMaxNotams: { value: 4, min: 0, max: 20, step: 1, label: 'Search: max NOTAM results' },
   searchFlashMs: { value: 3500, min: 0, max: 15000, step: 250,
     label: 'Search: how long the result flashes (ms, 0 = off)' },
   searchFlashRadiusPx: { value: 30, min: 8, max: 80, step: 2,
@@ -553,7 +554,7 @@ NavAid.tuningGroups = [
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters',
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap'] },
-  { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
+  { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
   { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
@@ -958,6 +959,7 @@ window.S = Object.assign({
   notamDecoded: 'Decoded',
   notamFilterLabel: 'Filter NOTAMs by airfield',
   notamFilterAll: 'All',
+  notamSearchPh: 'Search NOTAM text…',
   notamFilterGlobal: 'Global (FIR)',
   notamShowOnMap: 'Show on map',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
@@ -2612,7 +2614,9 @@ const NOTAM_COND = {            // Q-code letters 4-5 (condition/status)
   XX: 'plain language (see text)',
 };
 const NOTAM_ABBR = {
-  ACFT: 'aircraft', ACT: 'active', ADZ: 'advised', AGL: 'above ground level',
+  // ACT: this feed uses it as the noun ("FIREFIGHTING ACT WILL TAKE PLACE",
+  // "UAS/UAV ACT", "GLD ACT AVBL"), not the adjective.
+  ACFT: 'aircraft', ACT: 'activity', ADZ: 'advised', AGL: 'above ground level',
   ALT: 'altitude', AMSL: 'above mean sea level', APCH: 'approach', APRX: 'approximately',
   ARP: 'aerodrome reference point', ATC: 'air traffic control', AUTH: 'authorized',
   AVBL: 'available', AWY: 'airway', BLW: 'below', BTN: 'between', CTC: 'contact',
@@ -2649,6 +2653,45 @@ const NOTAM_ABBR = {
   IDF: 'Israel Defense Forces',
   NE: 'north-east', NW: 'north-west', SE: 'south-east', SW: 'south-west',
   NB: 'northbound', SB: 'southbound', EB: 'eastbound', WB: 'westbound',
+  // Round 2, from a frequency analysis of the live feed (2026-08). Three kinds:
+  // real abbreviations that were missing, feed typos mapped to their word, and
+  // plain-English words the source shouts in caps -- mapped to lowercase so the
+  // decoded text stops mixing cases mid-sentence. Identifiers (waypoints, bubble
+  // codes, place names) are deliberately absent and stay uppercase.
+  EXER: 'exercise', SER: 'service', INT: 'intersection', TYP: 'type',
+  CTL: 'control', ADC: 'aerodrome chart', AIS: 'aeronautical information service',
+  MEDEVAC: 'medical evacuation', IDENT: 'identification',
+  BOUNDRAY: 'boundary', BOUNDARY: 'boundary', MAINTANING: 'maintaining',
+  ISRAEL: 'Israel', LEBANON: 'Lebanon', JORDAN: 'Jordan', GAZA: 'Gaza',
+  SYRIA: 'Syria', EGYPT: 'Egypt',
+  // No MAY: in NOTAMs it is overwhelmingly the permission modal ("PILOTS MAY CTC
+  // TWR"), and one key cannot serve both it and the month. Dates keep their MAY.
+  JAN: 'January', FEB: 'February', MAR: 'March', APR: 'April',
+  JUN: 'June', JUL: 'July', AUG: 'August', SEP: 'September', OCT: 'October',
+  NOV: 'November', DEC: 'December',
+  AN: 'an', AT: 'at', ON: 'on', TO: 'to', UP: 'up', OF: 'of', OR: 'or', BY: 'by',
+  IN: 'in', THE: 'the', AND: 'and', ALL: 'all', NOT: 'not', FOR: 'for',
+  TWO: 'two', WAY: 'way', VIA: 'via', DUE: 'due', WILL: 'will', TAKE: 'take',
+  PLACE: 'place', AREA: 'area', ROAD: 'road', ONLY: 'only', WITH: 'with',
+  SHALL: 'shall', RADIUS: 'radius', RADIO: 'radio', PILOT: 'pilot',
+  PHONE: 'phone', ENTRY: 'entry', EXIT: 'exit', STRIP: 'strip', STAND: 'stand',
+  ADDED: 'added', NIL: 'nil', CHART: 'chart', CHARTS: 'charts', CRANE: 'crane',
+  BALLOON: 'balloon', CAPTIVE: 'captive', ERECTED: 'erected', SPOKEN: 'spoken',
+  UPDATED: 'updated', TRIGGER: 'trigger', CLOSURE: 'closure', CONTACT: 'contact',
+  POLICE: 'police', AIR: 'air', CASE: 'case', BOARD: 'board', YEAR: 'year',
+  TIME: 'time', LOCAL: 'local', FUEL: 'fuel', OVER: 'over', MAKE: 'make',
+  NORTH: 'north', SOUTH: 'south', EAST: 'east', WEST: 'west',
+  CENTERED: 'centered', INCLUDING: 'including', PROHIBITED: 'prohibited',
+  WITHDRAWN: 'withdrawn', RESTRICTIONS: 'restrictions',
+  FIREFIGHTING: 'firefighting', AGRICULTURE: 'agriculture', DISPLAY: 'display',
+  AIRSPACE: 'airspace', AIRBORNE: 'airborne', GLIDERS: 'gliders',
+  APPROVED: 'approved', LANGUAGE: 'language', DIFFERENCES: 'differences',
+  REGULATION: 'regulation', DAYLIGHT: 'daylight', SAVING: 'saving',
+  REQUIRES: 'requires', TRANSPONDER: 'transponder', OPERATING: 'operating',
+  CIRCUIT: 'circuit', FLYPAST: 'flypast', REFUELING: 'refuelling',
+  ENGINE: 'engine', JUNCTION: 'junction', HELIPAD: 'helipad',
+  ESTABLISHED: 'established', AIRCRAFT: 'aircraft', AIRSTRIP: 'airstrip',
+  DEPARTING: 'departing', BIDIRECTIONAL: 'bidirectional',
 };
 // Expand the standard abbreviations in a NOTAM body, tidying the source's
 // 3-space wrap indentation. Coordinate tokens (digits+N/E/S/W) carry no word
@@ -2656,7 +2699,22 @@ const NOTAM_ABBR = {
 function expandNotamAbbr(s) {
   let out = String(s == null ? '' : s).replace(/\r/g, '');
   out = out.split('\n').map(l => l.trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
-  return out.replace(/\b[A-Z]{2,5}\b/g, m => NOTAM_ABBR[m] || m);
+  // Up to 13 letters: the table now carries whole words (BIDIRECTIONAL) alongside the
+  // abbreviations. Only table entries are replaced, so identifiers of any length pass.
+  out = out.replace(/\b[A-Z]{2,13}\b/g, m => NOTAM_ABBR[m] || m);
+  // MAY is the one token the table cannot carry: modal verb in prose, month in dates.
+  // A digit on either side marks the date use ("15 MAY 2027", "MAY 2027"); everything
+  // else is the modal and reads lowercase like the rest.
+  out = out.replace(/\bMAY\b/g, (m, i) => {
+    const before = out.slice(Math.max(0, i - 4), i);
+    const after = out.slice(i + 3, i + 8);
+    return (/\d\s*$/.test(before) || /^\s*\d/.test(after)) ? m : 'may';
+  });
+  // Sentence-case what the lowercase mapping produced: a sentence that begins with an
+  // expanded word ("an area at...") gets its capital back. Only at the start of the
+  // text or after a sentence ender -- the feed hard-wraps mid-sentence, so a bare
+  // newline is NOT a sentence boundary ([.!?]\s+ already covers ".\n").
+  return out.replace(/(^|[.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase());
 }
 function decodeNotam(n) {
   if (!n || typeof n !== 'object') return '';

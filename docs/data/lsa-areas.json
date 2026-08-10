@@ -2345,8 +2345,9 @@
     {
       "name": "בועת מגידו ב' מזרח",
       "he": "בועת מגידו ב' מזרח",
-      "en": "BMGEB",
-      "icao": "BMGEB",
+      "en": "BMDEB",
+      "icao": "BMDEB",
+      "aliases": ["BMGEB"],
       "coords": [
         [
           32.690352,
