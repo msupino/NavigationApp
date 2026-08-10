@@ -1894,6 +1894,13 @@ function runSearch() {
     items: state.notes.filter(n => n && (n.text || n.cc)), routable: false,
     match: n => hit(n.text, q) || hit(n.cc, q) || hitHe(n.text),
   });
+  if (has(notams)) src.push({                                 // active NOTAMs (this chart)
+    // Not gated on the overlay toggle: the list button isn't either, and picking a
+    // mappable hit turns the overlay on, same as clicking it in the list.
+    kind: 'notam', cap: tune('searchMaxNotams'),
+    items: (typeof activeNotams === 'function') ? activeNotams() : [], routable: false,
+    match: n => hit(n.id, q) || hit(n.icao, q) || hit(n.text, q),
+  });
   // #124: split the 12 slots across sources so one broad match cannot fill them all.
   const hits = [];
   const perSource = [];
@@ -1939,6 +1946,15 @@ function runSearch() {
       if (Number.isFinite(w.lowFt) && Number.isFinite(w.highFt)) bits.push(w.lowFt + '-' + w.highFt + ' ' + (S.unitFeet || 'ft'));
       if (w.active === 'weekend') bits.push(S.bubbleWeekendTag || 'weekend');
       alt = bits.join(' \u00b7 ');
+    } else if (h.kind === 'notam') {
+      // "C1584/26 / LLBG · RWY 12/30 CLSD" -- the id, the field when it names one,
+      // and the head of the text, truncated like the note labels are.
+      primary = w.id;
+      const bits = [];
+      const ic = String(w.icao || '').toUpperCase();
+      if (ic && ic !== 'LLLL') bits.push(ic);
+      if (w.text) bits.push(String(w.text).slice(0, tune('searchNoteLabelChars')));
+      alt = bits.join(' · ');
     } else if (h.kind === 'af') {
       primary = w.name;                  // ICAO is always shown first
       alt = (w[afField] || w.en || '');
@@ -1953,6 +1969,22 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      if (h.kind === 'notam') {
+        closeSearch();
+        if (typeof notamMappable === 'function' && notamMappable(w)) {
+          // Same contract as clicking it in the list: overlay on if needed, then blink.
+          if (!window.showNotam) {
+            window.showNotam = true;
+            if (typeof notamPrefWrite === 'function') notamPrefWrite(true);
+            if (notamCb) notamCb.checked = true;
+          }
+          if (typeof flashNotam === 'function') flashNotam(w.id);
+          draw();
+        } else if (typeof showNotamModal === 'function') {
+          showNotamModal([w]);           // no map presence -- show the text instead
+        }
+        return;
+      }
       if (h.kind === 'bubble') {
         // Fly to the bubble, select it and open its inspector -- a polygon has no single
         // point, so the centroid is where the ring lands.

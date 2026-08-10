@@ -84,3 +84,50 @@ test('the NOTAM list filters by freetext, over raw and decoded text alike', asyn
   await find.fill('');
   await expect(items).toHaveCount(3);
 });
+
+test('clicking inside a closed bubble hit-tests the NOTAM', async ({ page }) => {
+  await boot(page);
+  await toLsa(page);
+  const r = await page.evaluate(() => {
+    window.showNotam = true;
+    const n = notams.find(x => x.id === 'C1584/26');
+    const a = notamBubbleAreas(n)[0];
+    const c = areaCentroid(a.coords);
+    map.setView([c.lat, c.lng], 11);
+    draw();
+    return {
+      inside: notamsAtLatLng({ lat: c.lat, lng: c.lng }).map(x => x.id),
+      outside: notamsAtLatLng({ lat: 29.5, lng: 34.9 }).map(x => x.id),
+    };
+  });
+  expect(r.inside).toContain('C1584/26');
+  expect(r.outside).not.toContain('C1584/26');
+});
+
+test('the general search finds NOTAMs by id and text, and a hit flashes on the map', async ({ page }) => {
+  await boot(page);
+  await toLsa(page);
+  await page.evaluate(() => { showSearchOverlay(); });
+  const search = page.locator('#wp-search');
+  await search.fill('KARMIEL');
+  const item = page.locator('.wp-search-item', { hasText: 'C1584/26' });
+  await expect(item).toHaveCount(1);
+  await item.click();
+  // Picking a mappable NOTAM turns the overlay on and blinks it, like the list does.
+  expect(await page.evaluate(() => window.showNotam)).toBe(true);
+  expect(await page.evaluate(() => notamFlashId)).toBe('C1584/26');
+  // ...and by id too.
+  await page.evaluate(() => { showSearchOverlay(); });
+  await search.fill('A0003');
+  await expect(page.locator('.wp-search-item', { hasText: 'A0003/26' })).toHaveCount(1);
+});
+
+test('a search hit with no map presence opens its text instead', async ({ page }) => {
+  await boot(page);   // cvfr: A0002/26 (LLBG) resolves to the field badge, so use a
+  // feed-global one; on cvfr the bubble NOTAM is chart-filtered out entirely.
+  await page.evaluate(() => { showSearchOverlay(); });
+  const search = page.locator('#wp-search');
+  await search.fill('MEGIDO');
+  const item = page.locator('.wp-search-item', { hasText: 'A0003/26' });
+  await expect(item).toHaveCount(1);
+});

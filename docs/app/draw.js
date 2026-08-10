@@ -1134,6 +1134,16 @@ function notamsAtLatLng(latlng) {
       if (routeHit) break;
     }
     if (routeHit) { out.push(n); continue; }
+    // Bubble closures: the hatched bubble polygon is the NOTAM's shape on the map,
+    // so a click inside it opens the text like any drawn area.
+    let bubbleHit = false;
+    for (const a of notamBubbleAreas(n)) {
+      const bp = a.coords
+        .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      if (bp.length >= 3 && notamPointInPoly(pt, bp)) { bubbleHit = true; break; }
+    }
+    if (bubbleHit) { out.push(n); continue; }
     const g = n && n.geom;
     if (g && g.type === 'line' && Array.isArray(g.coords)) {
       const lp = g.coords
