@@ -144,3 +144,11 @@ test('a single-NOTAM view (map click) has no search box; the full list does', as
   });
   await expect(page.locator('.notam-find')).toHaveCount(1);
 });
+
+test('an alias code resolves too: the AIP prints BMDEB where the chart says BMGEB', async ({ page }) => {
+  await boot(page);
+  await toLsa(page);
+  const r = await page.evaluate(() =>
+    notamBubbleAreas({ text: 'ULTRALIGHT BUBBLE CLSD MEGIDO B EAST (BMDEB).' }).map(a => a.icao));
+  expect(r).toEqual(['BMGEB']);
+});

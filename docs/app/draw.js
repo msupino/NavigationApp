@@ -844,9 +844,12 @@ function notamBubbleAreas(n) {
   if (!txt) return [];
   const out = [];
   for (const a of areas) {
-    const code = String(a.icao || '').toUpperCase();
-    if (!/^[A-Z0-9]{3,7}$/.test(code)) continue;
-    if (new RegExp('\\b' + code + '\\b').test(txt)) out.push(a);
+    const codes = [a.icao].concat(a.aliases || []);
+    for (const c of codes) {
+      const code = String(c || '').toUpperCase();
+      if (!/^[A-Z0-9]{3,7}$/.test(code)) continue;
+      if (new RegExp('\\b' + code + '\\b').test(txt)) { out.push(a); break; }
+    }
   }
   return out;
 }
@@ -1424,6 +1427,9 @@ async function loadAreas() {
       // the data — absent means 'always'.
       .map(a => ({ coords: a.coords, name: a.name || '', en: a.en || '', he: a.he || '',
         icao: a.icao || '', lowFt: a.lowFt, highFt: a.highFt,
+        // Alternate codes other publications use for the same bubble (the AIP prints
+        // BMDEB where the chart says BMGEB) -- the NOTAM matcher honours both.
+        aliases: Array.isArray(a.aliases) ? a.aliases : [],
         active: a.active === 'weekend' ? 'weekend' : 'always' }));
     if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
     areas = mapped;
