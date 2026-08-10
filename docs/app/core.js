@@ -718,7 +718,7 @@ var magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   // One graph per layer replaces the nav-waypoints / comm-change / leg-altitude files;
   // the ?v= cache-busts all three kinds, which now come from the same file.
-  routeGraphUrl: 'data/cvfr-route-graph.json?v=1',  // resolved relative to index.html (docs/)
+  routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=33',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay

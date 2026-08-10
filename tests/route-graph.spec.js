@@ -241,11 +241,16 @@ test('the data census matches what the maintainer last signed off', () => {
   // is the point: an accidental deletion or duplication fails this test, a deliberate
   // change updates the census in the same diff a reviewer reads.
   const expected = {
-    cvfr: { layerNodes: 172, segments: 269, commChange: 52, unknown: 6 },
-    heli: { layerNodes: 209, segments: 85, commChange: 0, unknown: 38 },
+    // activeNodes is 2 short of layerNodes: ZRANA and RANNO are locality labels the #410
+    // chart rebuild misread as mandatory reporting points (plain circle on the chart, no
+    // reporting-point triangle, and no route segment either way). They stay in the file
+    // as active:false rather than being deleted -- both numbers are pinned so that
+    // neither a stray deletion nor a stray flip of the flag can pass unreviewed.
+    cvfr: { layerNodes: 172, activeNodes: 170, segments: 269, commChange: 52, unknown: 6 },
+    heli: { layerNodes: 209, activeNodes: 209, segments: 85, commChange: 0, unknown: 38 },
     // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
     // from the second capture (#1485) -- the first census update under the new mechanism.
-    lsa: { layerNodes: 176, segments: 87, commChange: 0, unknown: 27 },
+    lsa: { layerNodes: 176, activeNodes: 176, segments: 87, commChange: 0, unknown: 27 },
   };
   const got = {};
   for (const lay of LAYERS) {
@@ -261,8 +266,10 @@ test('the data census matches what the maintainer last signed off', () => {
         if (e.status === 'unknown') unknown++;
       }
     }
+    const inLayer = Object.values(g.nodes).filter(n => n.layers.includes(lay));
     got[lay] = {
-      layerNodes: Object.values(g.nodes).filter(n => n.layers.includes(lay)).length,
+      layerNodes: inLayer.length,
+      activeNodes: inLayer.filter(n => n.active !== false).length,
       segments: seen.size,
       commChange: Object.values(g.nodes).filter(n => n.commChange).length,
       unknown,

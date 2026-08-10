@@ -29,6 +29,13 @@
       // An airfield can also be a layer's reporting point (heli lists מנחת קציעות). `layers`
       // records which waypoint files held it, so that -- not its kind -- decides membership.
       if (!Array.isArray(n.layers) || n.layers.indexOf(layer) < 0) continue;
+      // `active: false` keeps a row the chart rebuild got wrong without deleting the
+      // research behind it -- the coordinates and both names stay, with the reason, so a
+      // later chart edition can flip one boolean instead of re-deriving the point. Absent
+      // means active: every node predates the field, and a row is a real point by default.
+      // Honoured HERE because this projection is the only thing that surfaces a node to the
+      // pilot; the routing consumers read edges, and an inactive node has none.
+      if (n.active === false) continue;
       const row = { lat: n.lat, lng: n.lng, name: n.name || n.code || n.he };
       // `en` for every layer, not just CVFR. 93 LSA and 105 heli points are the same
       // published point as a CVFR one and already carry its English name; dropping it here
