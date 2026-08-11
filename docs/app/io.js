@@ -1162,6 +1162,46 @@ const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 // else's inbox. RFC 6068 only blesses to/cc/bcc/subject/body, and most clients ignore a
 // reply-to parameter -- so the address is CC'd as well, which every client honours and
 // which is what actually gets the pilot the thread.
+// The plain-language preamble above the ICAO block in a filed mail. The AIS desk reads a
+// sentence; the (FPL-...) block stays exactly as ICAO defines it and is never translated --
+// its contents are codes, and a localized field 15 would not be a flight plan.
+//
+// The preamble follows the UI language: a Hebrew session names the points in Hebrew, an
+// English one in English. Names come from the datasets already in memory (nav waypoints,
+// then airfields), falling back he -> en -> code: a route line that silently skipped a
+// point it had no name for would be worse than one carrying a bare code.
+function fplPointLabel(code) {
+  const he = (typeof window !== 'undefined' && window.__navLang === 'he');
+  const pick = (o) => (he ? (o.he || o.en || o.name) : (o.en || o.name || o.he)) || code;
+  if (typeof navWP !== 'undefined' && Array.isArray(navWP)) {
+    const w = navWP.find(x => x && (x.name === code || x.en === code));
+    if (w) return pick(w);
+  }
+  if (typeof airfieldByIcao === 'function') {
+    const a = airfieldByIcao(code);
+    if (a) return pick(a);
+  }
+  return code;
+}
+// dep local clock + EET, as HH:MM. Both are already known to the caller; this only adds.
+function fplArrivalLocal(depTimeLocal, eetMinutes) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(depTimeLocal || '').trim());
+  if (!m || !Number.isFinite(eetMinutes)) return '';
+  const t = (Number(m[1]) * 60 + Number(m[2]) + eetMinutes) % (24 * 60);
+  return fplPad(Math.floor(t / 60), 2) + ':' + fplPad(t % 60, 2);
+}
+function fplMailPreamble(res, o) {
+  if (!res || !S.fplMailTitle) return '';
+  const dep = fplPointLabel(res.dep), dest = fplPointLabel(res.dest);
+  const depT = String((o && o.depTimeLocal) || '').trim();
+  const arrT = fplArrivalLocal(depT, res.eetMinutes);
+  const pts = Array.isArray(res.expandedPoints) ? res.expandedPoints.map(fplPointLabel) : [];
+  const lines = [S.fplMailTitle, ''];
+  if (depT) lines.push(S.fplMailDeparture(dep, depT), '');
+  if (pts.length) lines.push(S.fplMailRoute(pts.join(' - ')), '');
+  if (arrT) lines.push(S.fplMailArrival(dest, arrT), '');
+  return lines.join('\n') + '\n';
+}
 function fplMailtoUrl(res, opts) {
   const o = opts || {};
   // Departure time in the subject, as the filing services themselves do ("FPL - date -
@@ -1171,7 +1211,7 @@ function fplMailtoUrl(res, opts) {
   const subject = 'FPL ' + (o.reg ? fplRegistration(o.reg) + ' ' : '') +
     res.dep + '-' + res.dest + ' ' + res.dof + (dep ? ' ' + dep : '');
   const q = ['subject=' + encodeURIComponent(subject),
-    'body=' + encodeURIComponent(res.text)];
+    'body=' + encodeURIComponent(fplMailPreamble(res, o) + res.text)];
   const reply = String(o.replyTo || '').trim();
   if (reply && FPL_EMAIL_RE.test(reply)) {
     q.push('cc=' + fplMailtoAddress(reply));
