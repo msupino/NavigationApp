@@ -4659,9 +4659,14 @@ function drawGraphLegs() {
         octx.fillStyle = graphLegColor(kind);
         octx.fill();
       };
-      const inset = 0.78, back = 0.22;
-      head(p.x + (q.x - p.x) * inset, p.y + (q.y - p.y) * inset, ang);
-      if (fwdOpen && revOpen) head(p.x + (q.x - p.x) * back, p.y + (q.y - p.y) * back, ang + Math.PI);
+      // Each arrowhead sits at the end its direction STARTS from, next to that
+      // direction's altitude -- so an arrow and the figure it belongs to are read as one
+      // mark. Putting the head at the far end instead left the pair split across the leg,
+      // and on a two-way leg there was no way to tell which figure went with which arrow.
+      // The head still POINTS the way of travel; only where it sits changed.
+      const startFwd = 0.22, startRev = 0.78;
+      head(p.x + (q.x - p.x) * startFwd, p.y + (q.y - p.y) * startFwd, ang);
+      if (fwdOpen && revOpen) head(p.x + (q.x - p.x) * startRev, p.y + (q.y - p.y) * startRev, ang + Math.PI);
       if (!labels) continue;
       // The altitude of the direction being flown -- the same field the kite reads, so a
       // blank here is the dataset defect this overlay exists to make visible.
