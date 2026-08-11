@@ -4613,8 +4613,9 @@ function drawGraphLegs() {
   const zoom = map.getZoom();
   const labels = zoom >= 10;
   octx.save();
-  octx.lineWidth = 3;
-  octx.font = 'bold 11px sans-serif';
+  octx.lineWidth = 6;
+  octx.lineCap = 'round';
+  octx.font = 'bold 12px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
   const seen = new Set();
@@ -4634,7 +4635,7 @@ function drawGraphLegs() {
       const kind = flown.armyAirway ? 'army' : flown.onAtcApproval ? 'atc'
         : flown.closedHint ? 'closed' : (fwdOpen && revOpen) ? 'plain' : 'oneWay';
       octx.strokeStyle = GRAPH_LEG_COLORS[kind];
-      octx.setLineDash(kind === 'closed' ? [5, 4] : []);
+      octx.setLineDash(kind === 'closed' ? [9, 7] : []);
       octx.beginPath(); octx.moveTo(p.x, p.y); octx.lineTo(q.x, q.y); octx.stroke();
       octx.setLineDash([]);
       // Arrowheads: one per travellable direction, so a two-way leg reads <---> and a
@@ -4668,7 +4669,7 @@ function drawGraphLegs() {
       octx.strokeText(alt, mx, my - 7);
       octx.fillStyle = GRAPH_LEG_COLORS[kind];
       octx.fillText(alt, mx, my - 7);
-      octx.lineWidth = 3;
+      octx.lineWidth = 6;
     }
   }
   octx.restore();
