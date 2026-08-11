@@ -78,6 +78,10 @@ test.describe('leg-approach alert', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       // Far from BRAVO first: ETA is minutes away regardless of speed -- no alert yet.
       window.__liveCb(window.__fix(31.90, 34.0, { speedMs: 15.4 }));
       const early = window.__notifications.length;
@@ -98,6 +102,10 @@ test.describe('leg-approach alert', () => {
       syncLegs();
       state.legs[0].flightSpeed = 15;   // slow plan: ETA from ~0.5 nm out is minutes, not seconds
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       // Fast live fix (300 kt!) at the same close distance that fires in the test above at
       // the default speed -- if the fix's speed were still driving ETA, this would fire.
       window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 154 }));   // ~300 kt reported
@@ -120,6 +128,10 @@ test.describe('leg-approach alert', () => {
       syncLegs();
       state.legs[0].flightSpeed = 90;
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       // 1.6 nm out -> ETA 64 s at the plan's 90 kt: past the short-leg's 60 s -- must NOT fire.
       window.__liveCb(window.__fix(32.00667, 34.0, { speedMs: 20 }));
       const beforeShortThreshold = window.__notifications.length;
@@ -144,6 +156,10 @@ test.describe('leg-approach alert', () => {
       state.legs[1].inboundAltitude = 5000;
       state.legs[1].hideKite = 1;   // the leg being approached has its kite hidden
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
       return window.__notifications.slice();
     });
@@ -161,6 +177,10 @@ test.describe('leg-approach alert', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
       window.__liveCb(window.__fix(31.9994, 34.0, { speedMs: 15.4 }));
       window.__liveCb(window.__fix(31.9996, 34.0, { speedMs: 15.4 }));
@@ -180,6 +200,10 @@ test.describe('leg-approach alert', () => {
       ];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       // Landing exactly on BRAVO both captures it AND satisfies its own ETA<=0 condition --
       // that alert (index 0) fires here, and so does the separate TOP alert (index 1) the
       // same capture also triggers.
@@ -213,6 +237,10 @@ test.describe('leg-approach alert', () => {
       state.legs[0].inboundAltitude = 2000;   // the leg being finished -- must NOT appear
       state.legs[1].inboundAltitude = 5000;   // the leg being approached -- must appear
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
       // Expected heading via the SAME conversion the code uses -- magnetic, not the raw
       // true bearing geo() returns, so this doesn't hardcode a variation-dependent number.
@@ -242,6 +270,10 @@ test.describe('leg-approach alert', () => {
       state.legs[1].flightSpeed = 90;
       state.legs[1].wind = { dir: 0, speed: 20 };   // wind FROM due north, straight crosswind
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
       // Expected heading via the SAME two-step calculation the code (and the leg
       // inspector's own live readout in interact.js) both use: course -> windTriangle -> magnetic.
@@ -268,6 +300,10 @@ test.describe('leg-approach alert', () => {
       syncLegs();
       state.legs[0].inboundAltitude = 3000;   // the only leg, being finished, not approached
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
       return window.__notifications.slice();
     });
@@ -288,6 +324,10 @@ test.describe('leg-approach alert', () => {
       syncLegs();
       // state.legs[1].inboundAltitude left unset.
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
       const expectedHdg = pad3(toMagnetic(geo(state.waypoints[1], state.waypoints[2]).brg));
       return { notif: window.__notifications.slice(), expectedHdg };
@@ -309,6 +349,10 @@ test.describe('leg-approach alert', () => {
       syncLegs();
       state.legs[1].flightSpeed = 120;   // the plan's speed for BRAVO->CHARLIE
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       // Reported groundspeed is wildly different from the plan -- must not affect the
       // reported time at all (route plan is the only source of truth, no fixes).
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 500 }));
@@ -331,6 +375,10 @@ test.describe('leg-approach alert', () => {
       syncLegs();
       state.legs[1].flightSpeed = 0;   // no planned speed for BRAVO->CHARLIE
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
       return window.__notifications.slice();
     });
@@ -349,6 +397,10 @@ test.describe('TOP alert (overhead the waypoint)', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.02, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(32.02, 34.0, { speedMs: 15.4 }));   // lands exactly on BRAVO
       return window.__notifications.slice();
     });
@@ -364,6 +416,10 @@ test.describe('TOP alert (overhead the waypoint)', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.02, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(32.02, 34.0, { speedMs: 15.4 }));
       return window.__notifications.slice();
     });
@@ -381,6 +437,10 @@ test.describe('TOP alert (overhead the waypoint)', () => {
       ];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));   // same fix again
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
@@ -400,6 +460,8 @@ test.describe('altitude alert', () => {
       syncLegs();
       state.legs[0].inboundAltitude = 3000;
       startGpsRecording();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       // Explicit, sane speedMs on every fix -- back-to-back synthetic fixes share a
       // Date.now() millisecond often enough that the derived-speed fallback (distance /
       // elapsed time) produces an unrealistic speed and can trip the UNRELATED leg-approach
@@ -432,10 +494,102 @@ test.describe('altitude alert', () => {
       syncLegs();
       // state.legs[0].inboundAltitude left unset.
       startGpsRecording();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       window.__recCb(window.__fix(32.05, 34.0, { altM: ftToM(9000), speedMs: 20 }));   // wildly off any sane plan
       return window.__notifications.length;
     });
     expect(n).toBe(0);
+  });
+});
+
+test.describe('confirmation gate (no alerting off an unconfirmed snap)', () => {
+  // gpsSnapLegAlertsToPosition() (a fresh GPS start mid-route, a resumed session, a route
+  // loaded mid-flight) infers gpsAlertLegIndex from an along-track projection alone -- a
+  // reasonable guess, not ground truth. Requested live: "it should not start alerting
+  // until a good fix is on a known waypoint top" -- every alert type stays silent until a
+  // fix has actually landed within capture radius of a real waypoint.
+  const WPS = [
+    { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+    { lat: 32.00, lng: 34.10, name: 'BRAVO' },
+    { lat: 32.00, lng: 34.20, name: 'CHARLIE' },
+    { lat: 32.00, lng: 34.30, name: 'DELTA' },
+  ];
+
+  test('an unconfirmed snap onto a mid-route leg stays silent even with a real altitude deviation', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function' &&
+      typeof gpsSnapLegAlertsToPosition === 'function');
+    const out = await page.evaluate((wps) => {
+      state.waypoints = wps;
+      syncLegs();
+      state.legs[1].inboundAltitude = 3000;   // BRAVO->CHARLIE
+      // Starting mid-route: a fix well inside leg 1, never having touched a waypoint --
+      // exactly a fresh GPS start, a resumed session, or a mid-flight route load.
+      gpsOwn = { lat: 32.00, lng: 34.15, hdg: 90, t: Date.now() };
+      gpsSnapLegAlertsToPosition();
+      const legAfterSnap = gpsAlertLegIndex;
+      gpsLastAlt = 3300;   // 300 ft over BRAVO->CHARLIE's plan -- a real deviation
+      gpsCheckLegAlerts();
+      return { legAfterSnap, notif: window.__notifications.slice() };
+    }, WPS);
+    expect(out.legAfterSnap).toBe(1);      // snap itself is correct...
+    expect(out.notif.length).toBe(0);      // ...but nothing fires: unconfirmed
+  });
+
+  test('the first real waypoint capture confirms it, and normal alerting resumes from there', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function' &&
+      typeof gpsSnapLegAlertsToPosition === 'function');
+    const out = await page.evaluate((wps) => {
+      state.waypoints = wps;
+      syncLegs();
+      state.legs[1].inboundAltitude = 3000;   // BRAVO->CHARLIE
+      state.legs[2].inboundAltitude = 3000;   // CHARLIE->DELTA
+      gpsOwn = { lat: 32.00, lng: 34.15, hdg: 90, t: Date.now() };
+      gpsSnapLegAlertsToPosition();
+      gpsLastAlt = 3300;                      // deviated on leg 1, but still unconfirmed
+      gpsCheckLegAlerts();
+      const beforeCapture = window.__notifications.length;
+      // Fly on to CHARLIE -- captures it (within radius), confirming the pointer for real.
+      gpsOwn = { lat: 32.00, lng: 34.20, hdg: 90, t: Date.now() };
+      gpsCheckLegAlerts();
+      const legAfterCapture = gpsAlertLegIndex;
+      const afterCapture = window.__notifications.length;
+      // Now on leg 2 (CHARLIE->DELTA), confirmed -- a fresh deviation here must alert.
+      gpsLastAlt = 3300;                      // 300 ft over CHARLIE->DELTA's plan too
+      gpsCheckLegAlerts();
+      return { beforeCapture, legAfterCapture, afterCapture, notif: window.__notifications.slice() };
+    }, WPS);
+    expect(out.beforeCapture).toBe(0);        // still silent right up to the real capture
+    expect(out.legAfterCapture).toBe(2);      // pointer advanced past BRAVO->CHARLIE
+    expect(out.afterCapture).toBeGreaterThan(0);   // TOP fires now -- confirmed as of this capture
+    expect(out.notif.some((n) => n.body.includes('3300'))).toBe(true);   // and the leg-2 deviation alerts too
+  });
+
+  test('a "passed abeam without ever getting close" advance does not confirm on its own', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function' &&
+      typeof gpsSnapLegAlertsToPosition === 'function');
+    const out = await page.evaluate((wps) => {
+      state.waypoints = wps;
+      syncLegs();
+      gpsOwn = { lat: 32.00, lng: 34.15, hdg: 90, t: Date.now() };
+      gpsSnapLegAlertsToPosition();
+      // Wildly off-track, well clear of BRAVO/CHARLIE's own capture radius the whole time --
+      // still triggers the "distance now growing" advance, but never actually got close.
+      gpsOwn = { lat: 33.00, lng: 34.15, hdg: 90, t: Date.now() };
+      gpsCheckLegAlerts();
+      const legIndex = gpsAlertLegIndex;
+      gpsOwn = { lat: 34.00, lng: 34.15, hdg: 90, t: Date.now() };   // even further off and away
+      gpsCheckLegAlerts();
+      return { legIndex, legIndexAfter: gpsAlertLegIndex, notif: window.__notifications.slice() };
+    }, WPS);
+    expect(out.legIndex).toBeGreaterThanOrEqual(1);   // the pointer DID advance...
+    expect(out.notif.length).toBe(0);                 // ...but never confirmed, so silent throughout
   });
 });
 
@@ -451,6 +605,10 @@ test.describe('tracking session reset', () => {
       ];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));   // advances past BRAVO
       const midFlight = gpsAlertLegIndex;
       stopLiveLocation();
@@ -495,6 +653,10 @@ test.describe('no-route test nudge (temporary)', () => {
     const before = await page.evaluate(() => {
       state.waypoints = [];   // no route loaded
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       return window.__notifications.length;
     });
     expect(before).toBe(0);         // not answered yet -- must not have fired already
@@ -516,6 +678,10 @@ test.describe('no-route test nudge (temporary)', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       await new Promise((r) => setTimeout(r, 20));   // let the (already-granted) permission promise settle
       return window.__notifications.length;
     });
@@ -556,6 +722,10 @@ test.describe('web delivery via service worker (the Android Chrome fix)', () => 
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
     });
     await page.waitForFunction(() => window.__shown.length > 0);
@@ -579,6 +749,10 @@ test.describe('web delivery via service worker (the Android Chrome fix)', () => 
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
     });
     // stubWebNotify already neutralises navigator.serviceWorker -- this must fire right
@@ -613,6 +787,10 @@ test.describe('desktop skip (no point in web notifications on a PC)', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
       return { permRequests: window.__permRequests, notif: window.__notifications.length };
     });
@@ -647,6 +825,10 @@ test.describe('native delivery (Capacitor LocalNotifications)', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
       return { permAsked: window.__permAsked, scheduled: window.__scheduled.slice() };
     });
@@ -705,6 +887,7 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
       syncLegs();
       gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;   // testing the drift math itself, not the confirmation gate
       // Well north of the direct line, early in the leg (< half its length).
       const pos = { lat: 32.15, lng: 34.15 };
       gpsOwn = { lat: pos.lat, lng: pos.lng, hdg: 90, t: Date.now() };
@@ -734,6 +917,7 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
       syncLegs();
       gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;   // testing the drift math itself, not the confirmation gate
       // Off course but most of the way to BRAVO -- past the leg's midpoint.
       const pos = { lat: 32.15, lng: 34.85 };
       gpsOwn = { lat: pos.lat, lng: pos.lng, hdg: 90, t: Date.now() };
@@ -776,6 +960,10 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
       typeof gpsMaybeStartDriftTimer === 'function');
     const out = await page.evaluate(() => {
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       const runningAfterStart = _gpsDriftTimer !== null;
       stopLiveLocation();
       const clearedAfterStop = _gpsDriftTimer === null;
@@ -796,7 +984,13 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
       typeof startLiveLocation === 'function');
     const out = await page.evaluate(() => {
       startGpsRecording();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       const runningWithBoth = _gpsDriftTimer !== null;
       stopGpsRecording();
       const stillRunning = _gpsDriftTimer !== null;   // live location alone keeps it alive
@@ -829,6 +1023,8 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
       // _simAbort(900) also goes through this same stubbed setTimeout -- delays[0] is the
       // drift timer's; a later index would be that unrelated abort timeout instead.
       simStart();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       const simDelay = delays[0];
 
       window.setTimeout = realSetTimeout;
@@ -840,7 +1036,13 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
 });
 
 test.describe('loading a route while already tracking (applyRouteData)', () => {
-  test('snaps the leg pointer to the nearest leg of the NEW route, and checks immediately', async ({ page }) => {
+  test('snaps the leg pointer to the nearest leg of the NEW route, but does not alert until a real waypoint confirms it', async ({ page }) => {
+    // Loading a route mid-flight snaps from an inferred along-track projection, same as
+    // a fresh GPS start onto an existing route -- an educated guess, not ground truth.
+    // Alerting off it immediately used to fire the moment a route loaded (this test's own
+    // former name: "and checks immediately"); now it waits for the confirmation gate like
+    // every other start path, so a bad snap on load can't produce a false alarm before the
+    // pilot has had a chance to notice the pointer is wrong.
     await stubWebNotify(page);
     await page.goto('?lang=en');
     await page.waitForFunction(() => typeof applyRouteData === 'function' &&
@@ -860,15 +1062,15 @@ test.describe('loading a route while already tracking (applyRouteData)', () => {
       // Already tracking, and already well inside the BRAVO->CHARLIE leg -- a leg the
       // pointer (still at whatever a fresh reset would give, 0) does not know about yet.
       gpsOwn = { lat: 32.001, lng: 34.75, hdg: 90, t: Date.now() };
-      gpsLastAlt = 3200;   // 200 ft over BRAVO->CHARLIE's plan -- should alert immediately
+      gpsLastAlt = 3200;   // 200 ft over BRAVO->CHARLIE's plan -- but nothing has confirmed the snap yet
 
       applyRouteData(data);
-
       return { legIndex: gpsAlertLegIndex, notif: window.__notifications.slice() };
     });
-    expect(out.legIndex).toBe(1);         // snapped straight to the BRAVO->CHARLIE leg
-    expect(out.notif.length).toBe(1);     // fired on load, not on some later fix
-    expect(out.notif[0].body).toContain('3200');
+    expect(out.legIndex).toBe(1);        // snapped straight to the BRAVO->CHARLIE leg
+    expect(out.notif.length).toBe(0);    // but nothing fired yet -- unconfirmed (see the
+    // dedicated "confirmation gate" describe block for what happens once a real waypoint
+    // capture does confirm it).
   });
 
   test('a route loaded before any fix exists is a no-op, not a crash', async ({ page }) => {
@@ -897,6 +1099,8 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
     const n = await page.evaluate(async () => {
       state.waypoints = [];   // no route loaded
       simStart();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       await new Promise((r) => setTimeout(r, 20));   // let the (already-granted) permission promise settle
       return window.__notifications.length;
     });
@@ -917,11 +1121,17 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
+      // Not testing the confirmation gate itself here -- see the dedicated
+      // "confirmation gate" describe block for that. Every other test's fix is a
+      // manufactured scenario, not a real waypoint capture, so bypass it directly.
+      window._gpsAlertConfirmed = true;
       // Real GPS says we're far from BRAVO, low and slow -- if the sim poll below were
       // allowed through, gpsOwn/gpsLastGS/gpsLastAlt would flip to ITS numbers instead.
       window.__liveCb(window.__fix(31.90, 34.0, { speedMs: 10, altM: 100 }));
       const beforeSim = { lat: gpsOwn.lat, gs: Math.round(gpsLastGS), alt: Math.round(gpsLastAlt) };
       simStart();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       window.fetch = () => Promise.resolve({ ok: true, status: 200,
         json: async () => ({ latitude: 31.9992, longitude: 34.0, altitude: 3000, heading: 0, ias: 999 }) });
       await _simFetch();
@@ -940,6 +1150,8 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       simStart();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       // ias assumed already in kt (aviation units) -- comfortably clears the 120 s ETA
       // threshold from ~0.5 nm out at 30 kt.
       window.fetch = () => Promise.resolve({ ok: true, status: 200,
@@ -953,7 +1165,17 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
     expect(out.notif[0].body).toContain('BRAVO');
   });
 
-  test('starting the simulator resets a leg pointer left over from a previous session', async ({ page }) => {
+  test('restarting the simulator SNAPS to wherever the aircraft actually is, not a blind reset to leg 0', async ({ page }) => {
+    // Regression: simStart() used to call gpsResetLegAlerts() unconditionally -- a
+    // blind reset to leg 0 -- on every start, including reconnecting/resuming while
+    // the aircraft's real position never went anywhere (a page reload mid-flight; the
+    // user just toggling the connection). The very next poll then compared the REAL,
+    // far-along altitude against leg 0's stale planned altitude before the old
+    // "passed abeam" TOP logic had a chance to catch the pointer back up -- reported
+    // live: "it said 1500 planned 800, planned is 1500" (aircraft genuinely on a
+    // later leg; a route whose early legs planned 800 ft and later ones 1500 ft).
+    // gpsSnapLegAlertsToPosition() -- already used for the SIM_DISCONTINUITY_NM
+    // restart case below -- is the correct tool for BOTH directions of desync.
     await stubWebNotify(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof _simFetch === 'function' &&
@@ -965,18 +1187,66 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
         { lat: 32.04, lng: 34.00, name: 'CHARLIE' },
       ];
       syncLegs();
-      simStart();
+      state.legs[0].inboundAltitude = 800;
+      state.legs[1].inboundAltitude = 1500;
+      // Already established on leg 1 (BRAVO->CHARLIE), well clear of BRAVO's own
+      // capture radius, at leg 1's own planned 1500 ft -- set directly rather than
+      // flown-to via simStart()+_simFetch(), which (correctly, per the alt-check-
+      // before-TOP-advance ordering within a single tick) would flag a real deviation
+      // for a fix arriving AT BRAVO already reporting leg 1's altitude instead of
+      // leg 0's -- a different, unrelated characteristic of gpsCheckLegAlerts, not
+      // what this test is about.
+      window.gpsOwn = { lat: 32.03, lng: 34.00, hdg: 0, t: Date.now() };
+      window.gpsAlertLegIndex = 1;
+      const midFlight = { leg: gpsAlertLegIndex, notifCount: window.__notifications.length };
+      // Reconnect -- same last-known position, nothing moved (a page reload
+      // mid-flight, or just toggling the connection) -- simStart()'s own snap must
+      // use THAT position, not fire a false alarm against leg 0's stale 800 ft target.
       window.fetch = () => Promise.resolve({ ok: true, status: 200,
-        json: async () => ({ latitude: 32.02, longitude: 34.00, altitude: 2000, heading: 0, ias: 30 }) });
-      await _simFetch();
-      const midFlight = gpsAlertLegIndex;
-      simStop();
+        json: async () => ({ latitude: 32.03, longitude: 34.00, altitude: 1500, heading: 0, ias: 30 }) });
       simStart();
-      const afterRestart = gpsAlertLegIndex;
-      return { midFlight, afterRestart };
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
+      const afterRestart = { leg: gpsAlertLegIndex, notifCount: window.__notifications.length };
+      await _simFetch();   // same position/altitude as the snap -- no real movement either
+      const afterPoll = { leg: gpsAlertLegIndex, notifCount: window.__notifications.length };
+      return { midFlight, afterRestart, afterPoll, all: window.__notifications.slice() };
     });
-    expect(out.midFlight).toBe(1);
-    expect(out.afterRestart).toBe(0);
+    expect(out.midFlight.leg).toBe(1);
+    expect(out.afterRestart.leg).toBe(1);      // NOT reset to 0
+    expect(out.afterPoll.leg).toBe(1);
+    // No false "1500 ft, planned 800 ft" alarm anywhere in this sequence.
+    expect(out.all.some((n) => n.body.includes('800'))).toBe(false);
+  });
+
+  test('simStart() snaps to leg 0 when the last known position genuinely is near the route start', async ({ page }) => {
+    // The other direction of the same fix: gpsSnapLegAlertsToPosition() must still
+    // resolve to leg 0 when that is genuinely where the aircraft is (not just fall
+    // through to some other leg because a blind reset no longer runs). gpsOwn is set
+    // directly here -- what simStart() actually reads is "whatever the last known
+    // position was at reconnect time", regardless of how it got there (a real fix, a
+    // sim poll, or -- as in production -- the SIM_DISCONTINUITY_NM jump-detection
+    // logic in _simFetch already having re-snapped gpsOwn earlier in the same session
+    // after a bridge process restart; that mechanism is unchanged and tested
+    // separately below).
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof simStart === 'function' &&
+      typeof gpsCheckLegAlerts === 'function');
+    const leg = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.02, lng: 34.00, name: 'BRAVO' },
+        { lat: 32.04, lng: 34.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      window.gpsOwn = { lat: 32.001, lng: 34.00, hdg: 0, t: Date.now() };
+      window.fetch = () => new Promise(() => {});   // simStart()'s own internal poll never resolves in this test
+      simStart();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
+      return gpsAlertLegIndex;
+    });
+    expect(leg).toBe(0);
   });
 
   test('an implausible position jump (the bridge process restarting mid-session) re-snaps the leg pointer', async ({ page }) => {
@@ -994,6 +1264,8 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
       ];
       syncLegs();
       simStart();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       // Advance the pointer to leg 1 (targeting CHARLIE), same as a session that's made
       // real progress along the route.
       window.fetch = () => Promise.resolve({ ok: true, status: 200,
@@ -1026,6 +1298,8 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
       ];
       syncLegs();
       simStart();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       window.fetch = () => Promise.resolve({ ok: true, status: 200,
         json: async () => ({ latitude: 32.02, longitude: 34.00, altitude: 2000, heading: 0, ias: 30 }) });
       await _simFetch();
@@ -1063,6 +1337,8 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       simStart();
+      // See the identical comment at startLiveLocation() above.
+      window._gpsAlertConfirmed = true;
       window.fetch = () => Promise.resolve({ ok: true, status: 200,
         json: async () => ({ latitude: 31.9992, longitude: 34.0, altitude: 2000, heading: 0, ias: 30 }) });
       await _simFetch();

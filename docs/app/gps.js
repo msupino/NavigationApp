@@ -256,7 +256,18 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
-  gpsResetLegAlerts();
+  // Snap to wherever gpsOwn's last known position actually falls on the route, not a
+  // blind reset to leg 0 -- this runs on every start, including the auto-resume-after-
+  // reload path (below), where the aircraft's real position never went anywhere. A
+  // blind reset here compared the live fix against a stale, wrong leg's planned
+  // altitude the instant a resumed session's first fix arrived -- reported live: "it
+  // said 1500 planned 800, planned is 1500" (aircraft genuinely on a later leg,
+  // pointer forced back to an early one). gpsSnapLegAlertsToPosition() itself falls
+  // back to plain gpsResetLegAlerts() when there is no prior gpsOwn to project (a
+  // genuinely fresh start), so this is never worse than the old behaviour, only
+  // better when a real prior position exists.
+  if (typeof gpsSnapLegAlertsToPosition === 'function') gpsSnapLegAlertsToPosition();
+  else gpsResetLegAlerts();
   gpsMaybeStartDriftTimer();
   // TEMPORARY, test-only nudge -- remove once the watch-alert feature is validated. Lets a
   // pilot testing "Show location" alone (no route) confirm notifications are actually
@@ -784,6 +795,19 @@ var gpsAlertLegIndex = 0;         // forward-only pointer into state.legs/state.
 var _gpsAlertMinDistNm = Infinity;
 var _gpsAlertLegFired = false;    // leg-approach alert already sent for gpsAlertLegIndex
 var _gpsAlertAltDeviated = false; // currently inside an altitude-deviation episode
+// Whether gpsAlertLegIndex has ever been verified against a REAL waypoint, not just
+// inferred from geometry. gpsSnapLegAlertsToPosition() picks a leg from an along-track
+// projection alone -- a reasonable best guess on the very first fix (start mid-route,
+// resume a session, a page reload), but still a guess: an imprecise or early fix could
+// project onto the wrong leg, and every alert type (ETA, altitude, drift) reads
+// gpsAlertLegIndex as ground truth. All three stay silent until a fix has actually
+// landed within capture radius of a real waypoint -- true confirmation, not an
+// inference -- same "don't alert on a guess" rule requested live after the false
+// "planned 800 ft" alarm this fix's own snap change could otherwise still produce on
+// an unlucky first fix. Only the CAPTURE-RADIUS branch of the TOP block below counts;
+// the "passed abeam, never got close" branch advances the pointer (still needed to
+// keep tracking) but does not confirm it.
+var _gpsAlertConfirmed = false;
 
 // Called whenever tracking (re)starts, so a pointer left over from a previous flight or
 // route can't silently suppress real alerts on this one. Plain reset to leg 0 -- correct
@@ -793,6 +817,7 @@ function gpsResetLegAlerts() {
   _gpsAlertMinDistNm = Infinity;
   _gpsAlertLegFired = false;
   _gpsAlertAltDeviated = false;
+  _gpsAlertConfirmed = false;
 }
 // Along-track / cross-track projection of p onto great-circle segment a->b, in nm.
 // alongNm is distance from a toward b (negative = short of a, > leg length = past b);
@@ -861,7 +886,7 @@ function gpsCheckLegAlerts() {
   // the alert relative to the plan, matching what the leg kite itself already shows).
   const curLeg = legs[gpsAlertLegIndex];
   const planSpeed = (curLeg && curLeg.flightSpeed > 0) ? curLeg.flightSpeed : null;
-  if (!_gpsAlertLegFired && planSpeed) {
+  if (_gpsAlertConfirmed && !_gpsAlertLegFired && planSpeed) {
     // A leg shorter than the standard 2-minute lead time would otherwise fire the alert
     // essentially at the moment the leg starts (or never usefully "N minutes before" at
     // all) -- half the lead time instead, once the CURRENT leg's own planned duration is
@@ -929,7 +954,7 @@ function gpsCheckLegAlerts() {
   // as the leg's planned altitude. One-shot per deviation episode: fires once on the way
   // out past tolerance, clears once back inside it, so a second real drift fires again.
   const planned = legs[gpsAlertLegIndex].inboundAltitude;
-  if (Number.isFinite(planned) && gpsLastAlt != null) {
+  if (_gpsAlertConfirmed && Number.isFinite(planned) && gpsLastAlt != null) {
     const off = Math.abs(gpsLastAlt - planned);
     if (off >= GPS_ALT_TOLERANCE_FT) {
       if (!_gpsAlertAltDeviated) {
@@ -952,11 +977,21 @@ function gpsCheckLegAlerts() {
   // capture radius does not re-fire it, because by the next check gpsAlertLegIndex has
   // already moved on to a different `next`).
   if (dist < _gpsAlertMinDistNm) _gpsAlertMinDistNm = dist;
-  if (dist <= GPS_LEG_CAPTURE_NM || dist > _gpsAlertMinDistNm + GPS_LEG_CAPTURE_NM) {
-    // Just "TOP" -- no waypoint name. The leg-approach alert already named it seconds
-    // earlier; repeating it here only added characters to a small watch screen.
-    gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
-      (S && S.watchAlertTopBody) || 'TOP');
+  const captured = dist <= GPS_LEG_CAPTURE_NM;
+  if (captured || dist > _gpsAlertMinDistNm + GPS_LEG_CAPTURE_NM) {
+    // A genuine capture -- a fix actually landed within radius of a real waypoint --
+    // is what confirms gpsAlertLegIndex is right, not just an inferred snap. The
+    // "passed abeam without ever getting close" branch still advances the pointer
+    // (needed to keep tracking a route flown well off one waypoint), but does not
+    // confirm it -- if this is the FIRST advance since a snap, its own TOP alert
+    // (and every other alert type, gated above) stays silent too.
+    if (captured) _gpsAlertConfirmed = true;
+    if (_gpsAlertConfirmed) {
+      // Just "TOP" -- no waypoint name. The leg-approach alert already named it
+      // seconds earlier; repeating it here only added characters to a small watch screen.
+      gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
+        (S && S.watchAlertTopBody) || 'TOP');
+    }
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;
     _gpsAlertLegFired = false;
@@ -1096,6 +1131,10 @@ function _gpsAngleDiff(a, b) {
 
 function gpsCheckDrift() {
   if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
+  // Reads gpsAlertLegIndex as the reference leg to measure track error against --
+  // meaningless (or actively wrong) before a real waypoint has confirmed it, same
+  // "don't alert on a guess" rule gpsCheckLegAlerts' own three alert types follow.
+  if (!_gpsAlertConfirmed) return;
   const wps = state.waypoints || [];
   if (gpsAlertLegIndex + 1 >= wps.length) return;
   const start = wps[gpsAlertLegIndex], end = wps[gpsAlertLegIndex + 1];

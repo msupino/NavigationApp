@@ -8168,7 +8168,15 @@ function simStart() {
   _simSession++;                 // anything still in flight belongs to the previous session
   simOn = true;
   window.simAircraft = null;
-  if (typeof gpsResetLegAlerts === 'function') gpsResetLegAlerts();
+  // Snap to wherever gpsOwn's last known position actually falls on the route, not a
+  // blind reset to leg 0 -- see the identical comment at startLiveLocation() in gps.js
+  // for why: a blind reset here compared the very next poll's real altitude against a
+  // stale, wrong leg's planned altitude, the instant simStart() ran on anything other
+  // than a genuinely fresh session (reconnecting, or resuming after a reload, while
+  // the aircraft's real position never went anywhere). Falls back to the old plain
+  // reset when there is no prior gpsOwn to project.
+  if (typeof gpsSnapLegAlertsToPosition === 'function') gpsSnapLegAlertsToPosition();
+  else if (typeof gpsResetLegAlerts === 'function') gpsResetLegAlerts();
   if (typeof gpsMaybeStartDriftTimer === 'function') gpsMaybeStartDriftTimer();
   // TEMPORARY, test-only nudge -- remove alongside the identical one in gps.js's
   // startLiveLocation once the watch-alert feature is validated. The simulator only
