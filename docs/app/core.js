@@ -1112,6 +1112,9 @@ window.S = Object.assign({
   fplReg: 'Call sign',
   fplRegHint: 'Three letters is enough — 4X is added',
   fplType: 'Aircraft type',
+  // Overrides field 15's declared cruise speed for THIS filing; pre-filled with the
+  // route's own speed, so leaving it alone changes nothing.
+  fplSpeed: 'Speed (kt)',
   fplTypeOther: 'Other…',
   fplTypeFromList: '\u2630',
   fplTypeFromListTip: 'Back to the list of common types',
@@ -1206,6 +1209,9 @@ window.S = Object.assign({
   fplAckRequired: 'Confirm the checks above before submitting the plan.',
   fplAckLanding: function(site) { return 'I coordinated the landing with the operator of ' + site; },
   fplAckTower: function(site) { return 'I coordinated the landing with ' + site + ' tower, and will keep continuous radio contact'; },
+  // Shown only when the filed speed disagrees with some leg's actual speed -- an
+  // override away from a uniform route, or a route that was already flown unevenly.
+  fplAckSpeed: function(kt) { return 'The filed speed (' + kt + ' kt) does not match every leg’s actual speed'; },
   fplCustomRecipient: 'Not the published AIS address — this plan will be sent to:',
   fplCopy: 'Copy',
   fplCopied: 'Flight plan copied.',
