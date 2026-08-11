@@ -146,13 +146,16 @@ test.describe('leg-approach alert', () => {
       state.legs[1].inboundAltitude = 5000;   // the leg being approached -- must appear
       startLiveLocation();
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
-      return window.__notifications.slice();
+      // Expected heading via the SAME conversion the code uses -- magnetic, not the raw
+      // true bearing geo() returns, so this doesn't hardcode a variation-dependent number.
+      const expectedHdg = toMagnetic(geo(state.waypoints[1], state.waypoints[2]).brg);
+      return { notif: window.__notifications.slice(), expectedHdg };
     });
-    expect(out.length).toBe(1);
-    expect(out[0].body).toContain('BRAVO');
-    expect(out[0].body).toContain('5000 ft');
-    expect(out[0].body).not.toContain('2000 ft');
-    expect(out[0].body).toMatch(/hdg 9\d°/);   // due east, ~090
+    expect(out.notif.length).toBe(1);
+    expect(out.notif[0].body).toContain('BRAVO');
+    expect(out.notif[0].body).toContain('5000 ft');
+    expect(out.notif[0].body).not.toContain('2000 ft');
+    expect(out.notif[0].body).toContain('hdg ' + out.expectedHdg + '°');
   });
 
   test('omits altitude/heading on the last leg -- nothing to prep for', async ({ page }) => {
@@ -183,11 +186,12 @@ test.describe('leg-approach alert', () => {
       // state.legs[1].inboundAltitude left unset.
       startLiveLocation();
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
-      return window.__notifications.slice();
+      const expectedHdg = toMagnetic(geo(state.waypoints[1], state.waypoints[2]).brg);
+      return { notif: window.__notifications.slice(), expectedHdg };
     });
-    expect(out.length).toBe(1);
-    expect(out[0].body).not.toContain('ft');
-    expect(out[0].body).toMatch(/hdg 9\d°/);
+    expect(out.notif.length).toBe(1);
+    expect(out.notif[0].body).not.toContain('ft');
+    expect(out.notif[0].body).toContain('hdg ' + out.expectedHdg + '°');
   });
 });
 

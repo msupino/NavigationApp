@@ -828,7 +828,10 @@ function gpsCheckLegAlerts() {
         ? Math.round(nextLeg.inboundAltitude) : null;
       const afterNext = wps[gpsAlertLegIndex + 2];
       const nextLegBrg = afterNext ? geo(next, afterNext).brg : null;
-      const nextLegHdg = Number.isFinite(nextLegBrg) ? Math.round(nextLegBrg) : null;
+      // Magnetic, not true -- a heading a pilot is actually going to fly by compass, same
+      // toMagnetic() the rest of the app already uses for every other displayed heading.
+      const nextLegHdg = Number.isFinite(nextLegBrg) && typeof toMagnetic === 'function'
+        ? toMagnetic(nextLegBrg) : null;
       gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'NavAid',
         (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg)
           : ('Approaching ' + label));
