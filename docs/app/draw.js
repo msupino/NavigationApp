@@ -251,9 +251,26 @@ function drawHeadingLine(pos, hdg, gsKt) {
       times.push(null);
     }
   }
+  // Heading value at the far end of the line, past the last (10 NM) tick's own
+  // labels rather than stacked on top of them. Padded to 3 digits, same as every
+  // other heading this app displays (leg kite, next-leg watch alert, VOR radials).
+  //
+  // NOT reference-frame-corrected: `h` is TRUE for a real GPS fix (the Geolocation
+  // API's own spec) but already MAGNETIC for the simulator feed (cvfr-bridge's
+  // schema computes heading as rpos_heading_true - variation) -- this function has
+  // no way to tell which source it was called for, so the number is printed as-is.
+  // Right for live GPS, off by the local variation for a connected simulator.
+  const headEnd = { x: end.x + ux * (tick + gap), y: end.y + uy * (tick + gap) };
+  const headingLabel = (typeof pad3 === 'function' ? pad3(Math.round(((h % 360) + 360) % 360)) :
+    Math.round(h)) + '°';
+  octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
+  octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
+  octx.strokeText(headingLabel, headEnd.x, headEnd.y);
+  octx.fillStyle = tune('liveHeadingTextColor');
+  octx.fillText(headingLabel, headEnd.x, headEnd.y);
   octx.restore();
   if (typeof window !== 'undefined')
-    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(), times };
+    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(), times, headingLabel };
 }
 
 // TOC / TOD markers along the route (#672). A small dot + label at the point

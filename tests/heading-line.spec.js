@@ -25,6 +25,25 @@ test('predictor marks the line at 2 / 5 / 10 NM for the live own-ship', async ({
   expect(marks).not.toBeNull();
   expect(marks.marks).toEqual([2, 5, 10]);
   expect(marks.heading).toBe(90);
+  // Heading value at the line's far end, 3 digits like every other heading readout.
+  expect(marks.headingLabel).toBe('090°');
+});
+
+test('the end-of-line heading label pads to 3 digits and wraps 0-360', async ({ page }) => {
+  await boot(page);
+  const cases = await page.evaluate(() => {
+    const out = [];
+    for (const hdg of [4, 90, 359, -10, 370]) {
+      window.__headingLine = null;
+      window.gpsLiveOn = true;
+      window.gpsOwn = { lat: 32.1, lng: 34.9, hdg };
+      drawOwnShip(window.gpsOwn, hdg);
+      out.push(window.__headingLine.headingLabel);
+    }
+    return out;
+  });
+  // 4° -> "004°" (not "4°"); -10 and 370 both wrap into 0-360 first.
+  expect(cases).toEqual(['004°', '090°', '359°', '350°', '010°']);
 });
 
 test('also draws for the simulator own-ship', async ({ page }) => {
