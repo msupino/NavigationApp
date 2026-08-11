@@ -350,3 +350,65 @@ test('CVFR corridors carry no weekday opening hour', () => {
     .reduce((n, es) => n + es.filter(e => e.openFromHourHint !== undefined).length, 0));
   expect(others).toEqual([57, 71]);
 });
+
+test('MMORR to ARRAD is flyable one way only, westbound', () => {
+  // A genuine one-way leg, 4000 ft, confirmed by the maintainer against the chart. Unlike
+  // the hint asymmetries above this direction difference is REAL, so it is pinned rather
+  // than flagged: MMORR (Mor, 35.368E) lies east of ARRAD (Arad Junction, 35.210E), and
+  // only the westbound run is published.
+  //
+  // The stored shape follows the file's one-way convention exactly: the flyable entry
+  // carries the altitude in outboundAltitude with inboundAltitude null and no `blocked`;
+  // its mirror is the same figures swapped, plus blocked:true so no pass can traverse it.
+  const g = layerGraph('cvfr');
+  const fwd = g.edges.MMORR.find(e => e.to === 'ARRAD');
+  const rev = g.edges.ARRAD.find(e => e.to === 'MMORR');
+  expect(fwd.oneWay).toBe(true);
+  expect(rev.oneWay).toBe(true);
+  expect(fwd.blocked).toBeUndefined();          // westbound: the one you may fly
+  expect(rev.blocked).toBe(true);               // eastbound: refused
+  // The altitude of a direction lives in the entry's inboundAltitude (from -> to), which is
+  // what the leg kite reads. Putting 4000 on the OTHER field left this leg routable with no
+  // altitude, so it drew no kite -- the schema's "a single null means that direction is not
+  // allowed" and a traversable edge cannot both be true of the same entry.
+  expect(fwd.inboundAltitude).toBe(4000);
+  expect(fwd.outboundAltitude).toBeNull();
+  expect(rev.inboundAltitude).toBeNull();
+  // Refusing a direction must not strand either end -- the way back exists, just longer.
+  expect(g.edges.ARRAD.some(e => !e.blocked && e.to === 'HATRU')).toBe(true);
+});
+
+test('a one-way leg is flyable in the direction that carries its altitude', () => {
+  // `blocked` was written to the wrong entry on 7 of the 21 CVFR one-way pairs, so the
+  // direction routing allowed was the one with inboundAltitude null. Those legs routed and
+  // then drew no leg kite, because a kite reads the altitude of the direction being flown.
+  //
+  // The file's own schema settles which entry is wrong: "a single null means that direction
+  // is not allowed". An edge routing may traverse therefore cannot hold null -- the side
+  // carrying the altitude is the published direction, and only `blocked` had to move.
+  //
+  // Checked against the upstream capture (ifl-flight-maps cvfr-network.json) before the
+  // change: all three pairs it could adjudicate said the opposite of what we stored, and
+  // all three were in this same set. No counterexamples either way.
+  const g = layerGraph('cvfr');
+  const seen = new Set();
+  const offenders = [];
+  for (const [from, es] of Object.entries(g.edges)) {
+    for (const e of es) {
+      if (!e.oneWay) continue;
+      const k = [from, e.to].sort().join('|');
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const rev = (g.edges[e.to] || []).find(x => x.to === from);
+      if (!rev) continue;
+      // Exactly one side is refused -- never both, never neither.
+      expect(!!e.blocked, k + ' must block exactly one direction').not.toBe(!!rev.blocked);
+      const fly = e.blocked ? rev : e;
+      const flyFrom = e.blocked ? e.to : from;
+      const flyTo = e.blocked ? from : e.to;
+      if (!Number.isFinite(fly.inboundAltitude)) offenders.push(flyFrom + '->' + flyTo);
+    }
+  }
+  expect(seen.size).toBe(21);
+  expect(offenders).toEqual([]);
+});
