@@ -183,6 +183,35 @@ test('the closed menu does not cover the Zulu clock, in either language', async 
   }
 });
 
+test('the sim-trigger button (inside the GPS group, overflows the panel like its siblings) does not land under the Zulu clock', async ({ page }) => {
+  // Regression: the panel-vs-clock check above only compares the TOOLBAR PANEL's own
+  // box against the clock -- it can't see a CHILD that overflows past the panel's own
+  // edge, which is exactly what #sim-trigger did once it joined .footer-gps-group: the
+  // group's total content width (three items) ran past the collapsed card's own right
+  // edge (LTR) and overlapped the clock outright, rendered outside the visible card
+  // where it read as invisible/unreachable. Reported live: "the sim button on mobile
+  // is hidden, on the left of show location" (RTL mirrors the overflow direction, so
+  // there it sat flush against the panel's own left edge instead).
+  for (const lang of ['en', 'he']) {
+    await page.goto('?lang=' + lang + '&nogist');
+    await page.waitForFunction(() => !!document.getElementById('toolbar') &&
+      !!document.getElementById('zulu-clock') && !!document.getElementById('sim-trigger'));
+    const r = await page.evaluate(() => {
+      const tb = document.getElementById('toolbar');
+      if (!tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
+      const sim = document.getElementById('sim-trigger').getBoundingClientRect();
+      const c = document.getElementById('zulu-clock').getBoundingClientRect();
+      return {
+        overlap: !(c.right <= sim.left || c.left >= sim.right || c.bottom <= sim.top || c.top >= sim.bottom),
+        sim: { x: Math.round(sim.left), r: Math.round(sim.right) },
+        clock: { x: Math.round(c.left), r: Math.round(c.right) },
+      };
+    });
+    expect(r.overlap, 'sim-trigger overlaps the clock in ' + lang +
+      ' (sim ' + JSON.stringify(r.sim) + ', clock ' + JSON.stringify(r.clock) + ')').toBe(false);
+  }
+});
+
 test('the closed menu keeps finger-sized targets', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => !!document.getElementById('toolbar'));

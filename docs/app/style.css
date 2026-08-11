@@ -1794,6 +1794,16 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
      exceed the reserved width and reintroduce the reflow. */
   html[lang="he"] #toolbar > #footer-links #gps-live { min-width: 100px; }
   html[lang="en"] #toolbar > #footer-links #gps-live { min-width: 120px; }
+  /* #sim-trigger joined this group (see its own comment at .footer-link-text above) --
+     the group's default 12px gap was sized for two full-text buttons with room to
+     spare; with a third item the group's total content width ran past the collapsed
+     card's own right edge (LTR) / sat flush with zero clearance against its left edge
+     (RTL) and, worse, overlapped the Zulu clock -- rendered outside the visible card
+     and effectively unreachable, reported live as "the sim button on mobile is
+     hidden". Tightening the gap here (only at this width, where the card is actually
+     tight) is what actually buys the room back, not just satisfying a test's own
+     panel-width assertion the way nesting sim into the group alone did last time. */
+  #toolbar > #footer-links .footer-gps-group { gap: 4px; }
 }
 #toolbar .footer-link {
   display: inline-flex;
