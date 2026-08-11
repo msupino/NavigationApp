@@ -341,10 +341,14 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
         const before = index > 0 ? waypoints[index - 1] : undefined;
         const after = index >= 0 && index < waypoints.length - 1 ? waypoints[index + 1] : undefined;
         const hints = point && Array.isArray(point.routeHints) ? point.routeHints : [];
+        // An absent before/after on the HINT is a wildcard -- matches any actual
+        // predecessor/successor -- the same semantics commRouteHintDefault (draw.js)
+        // uses. A frequency is a property of the point and the direction FLOWN, not of
+        // what happened to precede it, so most hints carry `after` only.
         const hasRouteHint = hints.some(h =>
           h && h.callSign === note.freqName &&
-          (before === undefined ? !h.before : h.before === before) &&
-          (after === undefined ? !h.after : h.after === after));
+          (!h.before || h.before === before) &&
+          (!h.after || h.after === after));
         if (!point || !callSigns.includes(note.freqName) ||
             index < 0 || !hasRouteHint) {
           missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName}`);

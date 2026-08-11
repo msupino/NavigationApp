@@ -425,19 +425,12 @@
       ],
       "routeHints": [
         {
-          "before": "LLMG",
           "after": "TAVOR",
           "callSign": "PLUTO_EAST"
         },
         {
-          "before": "TAVOR",
           "after": "LLMG",
           "callSign": "MEGIDDO"
-        },
-        {
-          "before": "ZMGID",
-          "after": "TAVOR",
-          "callSign": "PLUTO_EAST"
         }
       ]
     },
@@ -652,7 +645,6 @@
       ],
       "routeHints": [
         {
-          "before": "LTRUN",
           "after": "NSHRM",
           "callSign": "TEL_NOF"
         }
@@ -913,12 +905,10 @@
       ],
       "routeHints": [
         {
-          "before": "HOTRM",
           "after": "GALIM",
           "callSign": "HAIFA"
         },
         {
-          "before": "GALIM",
           "after": "HOTRM",
           "callSign": "PLUTO_WEST"
         }
@@ -956,12 +946,10 @@
       ],
       "routeHints": [
         {
-          "before": "BAZRA",
           "after": "SHARO",
           "callSign": "PLUTO_WEST"
         },
         {
-          "before": "SHARO",
           "after": "BAZRA",
           "callSign": "HERZLIYA"
         }
@@ -988,22 +976,14 @@
       ],
       "routeHints": [
         {
-          "before": "TAVOR",
           "after": "AMNON",
           "callSign": "ROSH_PINA"
         },
         {
-          "before": "AMNON",
           "after": "TAVOR",
           "callSign": "PLUTO_EAST"
         },
         {
-          "before": "ZALMN",
-          "after": "AMNON",
-          "callSign": "ROSH_PINA"
-        },
-        {
-          "before": "AMNON",
           "after": "ZALMN",
           "callSign": "PLUTO_EAST"
         }
@@ -1221,12 +1201,10 @@
       ],
       "routeHints": [
         {
-          "before": "LLHA",
           "after": "EVLYM",
           "callSign": "PLUTO_EAST"
         },
         {
-          "before": "EVLYM",
           "after": "LLHA",
           "callSign": "HAIFA"
         }
@@ -1441,7 +1419,6 @@
       ],
       "routeHints": [
         {
-          "before": "REVAH",
           "after": "NITZA",
           "callSign": "HAGAV_NORTH"
         }
@@ -1589,7 +1566,6 @@
       ],
       "routeHints": [
         {
-          "before": "HTZUK",
           "after": "LLHZ",
           "callSign": "HERZLIYA"
         }
@@ -2270,12 +2246,10 @@
       ],
       "routeHints": [
         {
-          "before": "ZASHD",
           "after": "NITZA",
           "callSign": "HAGAV_NORTH"
         },
         {
-          "before": "NITZA",
           "after": "ZASHD",
           "callSign": "PALMACHIM"
         }
@@ -2300,7 +2274,6 @@
       ],
       "routeHints": [
         {
-          "before": "BKAMA",
           "after": "REVAH",
           "callSign": "HAGAV_NORTH"
         }
@@ -2347,17 +2320,14 @@
       ],
       "routeHints": [
         {
-          "before": "TYONA",
           "after": "SIRNI",
           "callSign": "TEL_NOF"
         },
         {
-          "before": "TYONA",
           "after": "BOVED",
           "callSign": "TEL_NOF"
         },
         {
-          "before": "SIRNI",
           "after": "TYONA",
           "callSign": "TEL_NOF"
         }
@@ -2670,12 +2640,10 @@
       ],
       "routeHints": [
         {
-          "before": "LLHZ",
           "after": "RIDNG",
           "callSign": "PLUTO_WEST"
         },
         {
-          "before": "LLHZ",
           "after": "HTZUK",
           "callSign": "PLUTO_WEST"
         }
@@ -2881,12 +2849,10 @@
       ],
       "routeHints": [
         {
-          "before": "SHARG",
           "after": "HAREL",
           "callSign": "PLUTO_EAST"
         },
         {
-          "before": "HAREL",
           "after": "SHARG",
           "callSign": "PLUTO_EAST"
         }
@@ -2911,12 +2877,10 @@
       ],
       "routeHints": [
         {
-          "before": "BKAMA",
           "after": "MINGV",
           "callSign": "KEDEM"
         },
         {
-          "before": "MINGV",
           "after": "BKAMA",
           "callSign": "HAGAV_NORTH"
         }
@@ -3031,12 +2995,10 @@
       ],
       "routeHints": [
         {
-          "before": "CLORE",
           "after": "NTAIM",
           "callSign": "PALMACHIM"
         },
         {
-          "before": "NTAIM",
           "after": "CLORE",
           "callSign": "PLUTO_WEST"
         }
@@ -3259,7 +3221,6 @@
       ],
       "routeHints": [
         {
-          "before": "NMASD",
           "after": "YAVNE",
           "callSign": "PALMACHIM"
         }
@@ -3366,24 +3327,16 @@
       ],
       "routeHints": [
         {
-          "before": "EIRON",
           "after": "AFULA",
           "callSign": "PLUTO_EAST"
         },
         {
-          "before": "AFULA",
           "after": "EIRON",
           "callSign": "PLUTO_WEST"
         },
         {
-          "before": "EIRON",
           "after": "LLMG",
           "callSign": "MEGIDDO"
-        },
-        {
-          "before": "LLMG",
-          "after": "EIRON",
-          "callSign": "PLUTO_WEST"
         }
       ]
     },
@@ -3466,12 +3419,10 @@
       ],
       "routeHints": [
         {
-          "before": "ALMOG",
           "after": "SHALM",
           "callSign": "HAGAV_SOUTH"
         },
         {
-          "before": "SHALM",
           "after": "ALMOG",
           "callSign": "PLUTO_EAST"
         }
