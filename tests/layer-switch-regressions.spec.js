@@ -201,18 +201,21 @@ test('editor "Load known" refuses layers without a known set and refuses the cvf
   await expect.poll(() => alerts.some(m => /No known waypoint set/.test(m))).toBe(true);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
   expect(stored).toBe(0);
-  // Low Alt whose own dataset failed (fetchLayerData returned the cvfr
-  // fallback): must alert, not import CVFR points tagged as Low Alt.
-  // Stub fetchLayerData directly — the service worker bypasses page.route().
+  // Low Alt whose own dataset failed to load: must alert and import nothing.
+  //
+  // Load known reads the RAW graph now (routeGraphData), which fetches ONE explicit
+  // prefix and rejects if it 404s -- it has no cvfr fallback, unlike fetchLayerData.
+  // So "cvfr points tagged as Low Alt" is not merely refused, it can no longer be
+  // produced. What is still worth asserting is the other half: a failed load must not
+  // import anything. Stub the rejection directly -- the service worker bypasses
+  // page.route().
   await page.evaluate(() => {
-    window.fetchLayerData = () => Promise.resolve({
-      data: { points: [{ lat: 32.0, lng: 34.8, name: 'X' }] }, prefix: 'cvfr',
-    });
+    window.routeGraphData = () => Promise.reject(new Error('HTTP 404'));
     for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
     map.addLayer(layers['Low Alt']);
   });
   await page.click('#ed-load');
-  await expect.poll(() => alerts.some(m => /failed to load|fallback/i.test(m))).toBe(true);
+  await expect.poll(() => alerts.some(m => /failed to load|Failed to load|fallback/i.test(m))).toBe(true);
   const stored2 = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
   expect(stored2).toBe(0);                 // CVFR points must NOT be imported as Low Alt
 });
