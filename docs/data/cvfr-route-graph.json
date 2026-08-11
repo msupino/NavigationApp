@@ -31,12 +31,10 @@
       "he": "אילת-רמון",
       "primary": "119.00",
       "secondary": "122.00",
-      "alternate": "125.60",
-      "secondaryAlternate": "129.40",
       "ground": "121.70",
       "atis": "132.55",
       "phone": "08-9553666",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "Israel AIP frequency table (read 2026-08-11): primary 119.00, secondary 122.00, taxi 121.70, ATIS 132.55. The AirMapRadioFrequencies PDF 2026-06-06 additions alternate 125.60 and secondaryAlternate 129.40 have no AIP column and are removed; 125.60 is the same temporary NOTAM frequency it had also placed on HERZLIYA primary."
     },
     "BEN_GURION": {
       "label": "Ben Gurion",
@@ -58,13 +56,11 @@
     "HERZLIYA": {
       "label": "Herzliya",
       "he": "הרצליה",
-      "primary": "125.60",
+      "primary": "122.20",
       "secondary": "129.40",
-      "alternate": "122.20",
-      "secondaryAlternate": "118.55",
       "clearance": "121.70",
       "phone": "09-9719554",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "Israel AIP frequency table (read 2026-08-11): primary 122.20, secondary 129.40, ATIS 121.70 CPT. Supersedes AirMapRadioFrequencies PDF 2026-06-06, which carried the temporary NOTAM 125.60 as primary and an alternate duplicating it."
     },
     "HAGAV": {
       "label": "Hagav",
