@@ -789,6 +789,68 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
     expect(out.afterRestart).toBe(0);
   });
 
+  test('an implausible position jump (the bridge process restarting mid-session) re-snaps the leg pointer', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof _simFetch === 'function' &&
+      typeof gpsCheckLegAlerts === 'function');
+    const out = await page.evaluate(async () => {
+      // Realistic route scale (~12-18 nm legs), so the "restart" jump back to near ALPHA
+      // is unambiguously implausible for one poll, not just barely over the threshold.
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.20, lng: 34.00, name: 'BRAVO' },
+        { lat: 32.50, lng: 34.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      simStart();
+      // Advance the pointer to leg 1 (targeting CHARLIE), same as a session that's made
+      // real progress along the route.
+      window.fetch = () => Promise.resolve({ ok: true, status: 200,
+        json: async () => ({ latitude: 32.20, longitude: 34.00, altitude: 2000, heading: 0, ias: 30 }) });
+      await _simFetch();
+      const beforeRestart = gpsAlertLegIndex;
+      // The bridge process restarts -- position snaps back near ALPHA -- WITHOUT NavAid's
+      // own simStop()/simStart() ever being called (no Disconnect/Connect click; the
+      // browser-side poll just keeps running against the same, now-reset, server).
+      window.fetch = () => Promise.resolve({ ok: true, status: 200,
+        json: async () => ({ latitude: 32.001, longitude: 34.00, altitude: 800, heading: 0, ias: 30 }) });
+      await _simFetch();
+      const afterRestart = gpsAlertLegIndex;
+      return { beforeRestart, afterRestart };
+    });
+    expect(out.beforeRestart).toBe(1);
+    expect(out.afterRestart).toBe(0);   // re-snapped to leg 0 (ALPHA->BRAVO), not stuck on leg 1
+  });
+
+  test('a normal poll-to-poll movement does NOT trigger a re-snap', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof _simFetch === 'function' &&
+      typeof gpsCheckLegAlerts === 'function');
+    const out = await page.evaluate(async () => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.02, lng: 34.00, name: 'BRAVO' },
+        { lat: 32.20, lng: 34.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      simStart();
+      window.fetch = () => Promise.resolve({ ok: true, status: 200,
+        json: async () => ({ latitude: 32.02, longitude: 34.00, altitude: 2000, heading: 0, ias: 30 }) });
+      await _simFetch();
+      const afterCapture = gpsAlertLegIndex;
+      // A normal, small poll-to-poll advance along leg 1 -- must NOT be mistaken for a
+      // restart and re-snapped back to leg 0.
+      window.fetch = () => Promise.resolve({ ok: true, status: 200,
+        json: async () => ({ latitude: 32.03, longitude: 34.00, altitude: 2000, heading: 0, ias: 30 }) });
+      await _simFetch();
+      return { afterCapture, afterSmallMove: gpsAlertLegIndex };
+    });
+    expect(out.afterCapture).toBe(1);
+    expect(out.afterSmallMove).toBe(1);
+  });
+
   test('still notifies on a desktop browser while connected to a simulator -- the "no point on PC" gate is for real flights, not this', async ({ page }) => {
     await page.addInitScript(() => {
       // Deliberately NOT stubbing userAgentData -- this is the desktop-skip gate's own

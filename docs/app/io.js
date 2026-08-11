@@ -8082,6 +8082,10 @@ function _simAbort(ms) {
 // stop/start let the OLD session's fix overwrite the new session's position.
 let _simSession = 0;
 let _simAborter = null;
+// A jump bigger than this between two consecutive 1-second polls is not a real (or
+// plausibly fast simulated) aircraft moving -- it's the bridge process having restarted
+// out from under an already-connected session. See the comment at its one use in _simFetch.
+const SIM_DISCONTINUITY_NM = 5;
 
 async function _simFetch() {
   const session = _simSession;
@@ -8117,10 +8121,24 @@ async function _simFetch() {
     // and a sim poll racing to overwrite gpsOwn/gpsLastGS/gpsLastAlt would fight over
     // which one's position the alerts react to, however briefly each one wins between fixes.
     if (typeof gpsCheckLegAlerts === 'function' && !gpsRecording && !gpsLiveOn) {
+      const prevOwn = gpsOwn;
       gpsOwn = { lat: window.simAircraft.lat, lng: window.simAircraft.lng,
         hdg: window.simAircraft.hdg, t: Date.now() };
       gpsLastGS = window.simAircraft.ias || null;
       gpsLastAlt = window.simAircraft.alt || null;
+      // The bridge process restarting mid-session (its own clock resets, position jumps
+      // back to the start of its route) never calls simStart() again -- the browser-side
+      // poll just keeps running -- so gpsResetLegAlerts() never re-fires and the pointer
+      // is left pointing at a leg the OLD session had long since passed, comparing fresh
+      // near-the-beginning fixes against it (reported live: "getting notifications about
+      // FRDIS when i am in BAZRA after restart"). An implausible jump between two
+      // consecutive 1-second polls -- far beyond anything a real aircraft (or a fast
+      // simulated one; --speed-factor still moves nm per poll, not tens of them) -- is
+      // that same signal gpsSnapLegAlertsToPosition() already knows how to recover from.
+      if (prevOwn && typeof geo === 'function' && typeof gpsSnapLegAlertsToPosition === 'function') {
+        const jumpNm = geo(prevOwn, gpsOwn).dist;
+        if (Number.isFinite(jumpNm) && jumpNm > SIM_DISCONTINUITY_NM) gpsSnapLegAlertsToPosition();
+      }
       gpsCheckLegAlerts();
     }
     if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
