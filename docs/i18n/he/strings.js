@@ -487,6 +487,7 @@ window.S = {
   fplAckRequired: 'אשר את הסעיפים שלמעלה לפני הגשת התוכנית.',
   fplAckLanding: function(site) { return 'תיאמתי את הנחיתה עם מפעיל ' + site; },
   fplAckTower: function(site) { return 'תיאמתי את הנחיתה עם מגדל ' + site + ', ואשמור על קשר רדיו רציף'; },
+  fplAckSpeed: function(kt) { return 'המהירות המוגשת (' + kt + ' קשר) אינה תואמת את המהירות בפועל בכל קטעי הטיסה'; },
   fplCustomRecipient: 'לא הכתובת המפורסמת של מודיעין טיס — התוכנית תישלח אל:',
   fplCopy: 'העתק',
   fplCopied: 'תוכנית הטיסה הועתקה.',
