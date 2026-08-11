@@ -4591,13 +4591,16 @@ function graphLegsEnabled() {
   try { return new URLSearchParams(location.search).get('graphlegs') === '1'; }
   catch (e) { return false; }
 }
-const GRAPH_LEG_COLORS = {
-  army:   '#c0392b',   // never routable
-  atc:    '#8e44ad',   // real-time clearance only
-  closed: '#e67e22',   // hinted shut
-  oneWay: '#2980b9',
-  plain:  '#16a085',
+// Class -> tuning key. The colours live in the registry (and therefore in the live gist)
+// like every other presentation value in the drawing code; nothing here is a literal.
+const GRAPH_LEG_COLOR_KEYS = {
+  army:   'graphLegArmyColor',     // never routable
+  atc:    'graphLegAtcColor',      // real-time clearance only
+  closed: 'graphLegClosedColor',   // hinted shut
+  oneWay: 'graphLegOneWayColor',
+  plain:  'graphLegPlainColor',
 };
+const graphLegColor = (kind) => tune(GRAPH_LEG_COLOR_KEYS[kind] || 'graphLegPlainColor');
 function drawGraphLegs() {
   if (!graphLegsEnabled()) return;
   const prefix = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
@@ -4611,9 +4614,9 @@ function drawGraphLegs() {
   const g = _graphLegsGraph;
   if (!g || !g.nodes || !g.edges) return;
   const zoom = map.getZoom();
-  const labels = zoom >= 10;
+  const labels = zoom >= tune('graphLegLabelMinZoom');
   octx.save();
-  octx.lineWidth = 6;
+  octx.lineWidth = tune('graphLegWidthPx');
   octx.lineCap = 'round';
   octx.font = 'bold 12px sans-serif';
   octx.textAlign = 'center';
@@ -4634,7 +4637,7 @@ function drawGraphLegs() {
       const p = proj(fwdOpen ? a : b), q = proj(fwdOpen ? b : a);
       const kind = flown.armyAirway ? 'army' : flown.onAtcApproval ? 'atc'
         : flown.closedHint ? 'closed' : (fwdOpen && revOpen) ? 'plain' : 'oneWay';
-      octx.strokeStyle = GRAPH_LEG_COLORS[kind];
+      octx.strokeStyle = graphLegColor(kind);
       octx.setLineDash(kind === 'closed' ? [9, 7] : []);
       octx.beginPath(); octx.moveTo(p.x, p.y); octx.lineTo(q.x, q.y); octx.stroke();
       octx.setLineDash([]);
@@ -4646,14 +4649,14 @@ function drawGraphLegs() {
       // apart from the segment they sit on. A solid triangle survives a busy background.
       const ang = Math.atan2(q.y - p.y, q.x - p.x);
       const head = (x, y, dir) => {
-        const s = 18, spread = 0.42;
+        const s = tune('graphLegArrowPx'), spread = 0.42;
         octx.beginPath();
         octx.moveTo(x, y);
         octx.lineTo(x - s * Math.cos(dir - spread), y - s * Math.sin(dir - spread));
         octx.lineTo(x - s * 0.62 * Math.cos(dir), y - s * 0.62 * Math.sin(dir));
         octx.lineTo(x - s * Math.cos(dir + spread), y - s * Math.sin(dir + spread));
         octx.closePath();
-        octx.fillStyle = GRAPH_LEG_COLORS[kind];
+        octx.fillStyle = graphLegColor(kind);
         octx.fill();
       };
       const inset = 0.78, back = 0.22;
@@ -4664,12 +4667,12 @@ function drawGraphLegs() {
       // blank here is the dataset defect this overlay exists to make visible.
       const alt = Number.isFinite(flown.inboundAltitude) ? String(flown.inboundAltitude) : '—';
       const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-      octx.lineWidth = 4;
-      octx.strokeStyle = 'rgba(255,255,255,0.95)';
+      octx.lineWidth = tune('overlayLabelHaloWidthPx') || 4;
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(alt, mx, my - 7);
-      octx.fillStyle = GRAPH_LEG_COLORS[kind];
+      octx.fillStyle = graphLegColor(kind);
       octx.fillText(alt, mx, my - 7);
-      octx.lineWidth = 6;
+      octx.lineWidth = tune('graphLegWidthPx');
     }
   }
   octx.restore();

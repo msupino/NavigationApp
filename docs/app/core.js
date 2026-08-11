@@ -343,6 +343,16 @@ NavAid.tuningDefaults = {
   overlayLabelHaloColor: { value: '#ffffff', type: 'color', label: 'Overlay label halo color' },
   overlayLabelHaloAlpha: { value: 0.85, min: 0, max: 1, step: 0.05, label: 'Overlay label halo alpha' },
 
+  // Graph-legs review overlay (?graphlegs=1). Presentation only -- the overlay is read
+  // against chart imagery, so line weight and the class colours are worth tuning live.
+  graphLegArmyColor:   { value: '#c0392b', type: 'color', label: 'Graph leg: army airway' },
+  graphLegAtcColor:    { value: '#8e44ad', type: 'color', label: 'Graph leg: ATC approval' },
+  graphLegClosedColor: { value: '#e67e22', type: 'color', label: 'Graph leg: hint-closed' },
+  graphLegOneWayColor: { value: '#2980b9', type: 'color', label: 'Graph leg: one-way' },
+  graphLegPlainColor:  { value: '#16a085', type: 'color', label: 'Graph leg: ordinary' },
+  graphLegWidthPx:     { value: 6, min: 1, max: 16, step: 0.5, label: 'Graph leg line width' },
+  graphLegArrowPx:     { value: 18, min: 6, max: 40, step: 1, label: 'Graph leg arrowhead size' },
+  graphLegLabelMinZoom:{ value: 10, min: 6, max: 14, step: 1, label: 'Graph leg label min zoom' },
   altPairFocusColor: { value: '#ff3030', type: 'color', label: 'Alt-pair focus line color' },
   altPairFocusWidthPx: { value: 5, min: 0.5, max: 16, step: 0.5, label: 'Alt-pair focus line width' },
   altPairFocusDashOnPx: { value: 10, min: 0, max: 40, step: 1, label: 'Alt-pair focus dash on' },
@@ -550,6 +560,9 @@ NavAid.tuningGroups = [
   { name: 'VOR range ring', keys: ['vorRangeRingColor', 'vorRangeRingAlpha', 'vorRangeRingWidthPx', 'vorRangeRingDashPx', 'vorRangeRingGapPx', 'vorRangeRingLabel', 'vorRangeRingSteps', 'vorRangeRingLabelGapPx'] },
   { name: 'Simulator status', keys: ['simStatusOkColor', 'simStatusErrColor'] },
   { name: 'Overlay labels + flash', keys: ['overlayLabelHaloWidthPx', 'liveHeadingTickHaloColor', 'liveHeadingTickHaloAlpha', 'liveHeadingTickHaloWidthPx', 'notamFlashColor', 'notamBadgeTextColor', 'notamBadgeFontPx'] },
+  { name: 'Graph legs review (?graphlegs=1)', keys: ['graphLegArmyColor', 'graphLegAtcColor',
+    'graphLegClosedColor', 'graphLegOneWayColor', 'graphLegPlainColor', 'graphLegWidthPx',
+    'graphLegArrowPx', 'graphLegLabelMinZoom'] },
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters',
