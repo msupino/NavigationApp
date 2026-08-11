@@ -1935,3 +1935,117 @@ test.describe('airfield freq change auto-seeds the main frequency', () => {
     expect(note.freq).toBe('');              // nothing to seed
   });
 });
+
+// Same-frequency suppression: crossing a SECOND comm-change point that publishes the same
+// frequency as the one already in effect is not a change to make on the radio, so no note
+// is worth seeding for it. Gated on confidence (see draw.js, seedCommChangeNotes): only
+// suppresses when the SECOND point's callout came from an explicit routeHint, never from
+// the general solver's tie-broken guess -- a real production bug (NTAIM/TYONA/SUPER, this
+// session) showed the solver can coincidentally repeat a preceding frequency when the real
+// answer differed, and suppressing on that would have hidden the note instead of just
+// showing the wrong one.
+const SUPPRESSION_FIXTURE = {
+  version: 1,
+  source: 'test fixture',
+  callSigns: {
+    X: { label: 'Xray', he: 'איקס', primary: '121.10' },
+    Y: { label: 'Yankee', he: 'וואי', primary: '128.20' },
+  },
+  points: [
+    // ALPHA has one call sign, X -- no ambiguity, no hint needed.
+    { name: 'ALPHA', commChange: true, callSigns: ['X'] },
+    // BETA has two, but a hint pins it to X specifically when heading to GAMMA --
+    // high confidence: the maintainer says X applies on this leg.
+    { name: 'BETA', commChange: true, callSigns: ['X', 'Y'],
+      routeHints: [{ after: 'GAMMA', callSign: 'X' }] },
+    // DELTA has the SAME two options as BETA but NO hint at all -- whatever it resolves
+    // to is the general solver's guess, not a verified rule.
+    { name: 'DELTA', commChange: true, callSigns: ['X', 'Y'] },
+  ],
+};
+const ALPHA = { lat: 31.50, lng: 34.90, name: 'ALPHA' };
+const BETA = { lat: 31.51, lng: 34.90, name: 'BETA' };
+const GAMMA = { lat: 31.52, lng: 34.90, name: 'GAMMA' };
+const DELTA = { lat: 31.51, lng: 34.90, name: 'DELTA' };   // same slot as BETA, different case
+const ALPHA_CENTER = ALPHA;
+
+async function bootSuppression(page, lang = 'en') {
+  await page.addInitScript(() => {
+    try {
+      if (localStorage.getItem('__test_comm_init_v1') !== '1') {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('__test_comm_init_v1', '1');
+      }
+    } catch (e) {}
+  });
+  await page.goto('?lang=' + lang);
+  await page.waitForFunction(() => typeof state !== 'undefined' &&
+    typeof window.seedCommChangeNotes === 'function');
+  await page.evaluate(() => loadNavWaypoints());
+  await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
+  await page.evaluate(() => loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+  await page.evaluate(() => loadCommChange());
+  // Waits on ALPHA, not TYONA: SUPPRESSION_FIXTURE stands alone (installCommChangeFixture's
+  // stubGraph concatenates onto whatever fixture came before it, and no default fixture is
+  // installed for these tests), so the shared boot()'s TYONA wait would hang forever here.
+  await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.ALPHA);
+  await page.evaluate(() => { window.showCommChange = true; });
+  await page.evaluate(t => map.setView([t.lat, t.lng], 12), ALPHA_CENTER);
+  await page.evaluate(() => {
+    state.waypoints = [];
+    state.legs = [];
+    state.notes = [];
+    state.commChangeSuppressions = [];
+  });
+}
+
+test.describe('same-frequency suppression', () => {
+  test('a HINTED point matching the frequency already in effect gets no note', async ({ page }) => {
+    await installCommChangeFixture(page, SUPPRESSION_FIXTURE);
+    await bootSuppression(page);
+    const out = await page.evaluate(({ a, b, c }) => {
+      state.waypoints = [a, b, c];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => n.cc);
+    }, { a: ALPHA, b: BETA, c: GAMMA });
+    // ALPHA gets a note (nothing came before it). BETA's hinted callout (X, heading to
+    // GAMMA) matches what ALPHA already put in effect -- no note for it.
+    expect(out).toEqual(['ALPHA']);
+  });
+
+  test('an UNHINTED point is never suppressed, even if its guessed frequency happens to match', async ({ page }) => {
+    await installCommChangeFixture(page, SUPPRESSION_FIXTURE);
+    await bootSuppression(page);
+    const out = await page.evaluate(({ a, d }) => {
+      state.waypoints = [a, d];
+      syncLegs();
+      seedCommChangeNotes();
+      const notes = state.notes.filter(n => n.cc);
+      return { ccs: notes.map(n => n.cc), delta: notes.find(n => n.cc === 'DELTA') };
+    }, { a: ALPHA, d: DELTA });
+    // DELTA has no routeHint, so whatever the general solver picked for it is a GUESS, not
+    // a verified rule -- even if that guess happens to equal ALPHA's X/121.10, DELTA still
+    // gets its own note. Silently hiding it would be worse than showing a possibly-wrong one.
+    expect(out.ccs).toContain('DELTA');
+    expect(out.delta).toBeTruthy();
+  });
+
+  test('a genuine frequency change is never suppressed', async ({ page }) => {
+    await installCommChangeFixture(page, SUPPRESSION_FIXTURE);
+    await bootSuppression(page);
+    // BETA heading to SORES (not GAMMA) doesn't match its routeHint's `after`, so it falls
+    // to the solver -- but even so, a DIFFERENT resulting frequency must always show.
+    const out = await page.evaluate(({ a, b }) => {
+      state.waypoints = [a, b, { lat: 31.90917, lng: 34.89167, name: 'SORES' }];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => n.cc);
+    }, { a: ALPHA, b: BETA });
+    expect(out).toContain('BETA');
+  });
+});
