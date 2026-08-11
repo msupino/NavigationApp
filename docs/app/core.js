@@ -1221,6 +1221,12 @@ window.S = Object.assign({
   // Pointer to a frequency NOTAM on an airfield. Names the NOTAM, never its frequency:
   // the published value stays what the inspector shows and the pilot reads the NOTAM.
   freqNotamNote: (ids) => 'Frequency NOTAM: ' + (Array.isArray(ids) ? ids.join(', ') : ids),
+  // Plain-language preamble above the ICAO block in a filed mail. Follows the UI
+  // language; the (FPL-...) block itself is never translated.
+  fplMailTitle: 'Flight plan on the low-level transit routes',
+  fplMailDeparture: (place, t) => 'Departure from ' + place + ' at ' + t + ' local time',
+  fplMailRoute: (list) => 'Route: ' + list,
+  fplMailArrival: (place, t) => 'Landing at ' + place + ' at ' + t,
   warnFplClosedCorridor: 'A corridor on this route may be closed or time-gated at the chosen departure time (secondary source) — no open alternative was published, so it is filed anyway. Verify with the NOTAMs.',
   warnFplLead: 'Less than 60 minutes to departure — a routes plan is filed at least 60 min ahead, or phoned in.',
   warnFplMixedSpeed: 'The legs are not all at one speed; the first leg\'s speed is filed as cruise TAS.',
