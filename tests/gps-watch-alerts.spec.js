@@ -128,6 +128,67 @@ test.describe('leg-approach alert', () => {
     expect(out.notif[0].body).toContain('BRAVO');
     expect(out.notif[1].body).toContain('CHARLIE');
   });
+
+  test('includes the NEXT leg\'s planned altitude and heading, not the leg being finished', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      // ALPHA->BRAVO->CHARLIE, due east both legs. The alert on approaching BRAVO should
+      // describe the BRAVO->CHARLIE leg (5000 ft, ~090), not the ALPHA->BRAVO leg it's
+      // still finishing (deliberately given a different altitude to prove it's not that one).
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.00, lng: 34.50, name: 'BRAVO' },
+        { lat: 32.00, lng: 35.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      state.legs[0].inboundAltitude = 2000;   // the leg being finished -- must NOT appear
+      state.legs[1].inboundAltitude = 5000;   // the leg being approached -- must appear
+      startLiveLocation();
+      window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
+      return window.__notifications.slice();
+    });
+    expect(out.length).toBe(1);
+    expect(out[0].body).toContain('BRAVO');
+    expect(out[0].body).toContain('5000 ft');
+    expect(out[0].body).not.toContain('2000 ft');
+    expect(out[0].body).toMatch(/hdg 9\d°/);   // due east, ~090
+  });
+
+  test('omits altitude/heading on the last leg -- nothing to prep for', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 34.5, name: 'BRAVO' }];
+      syncLegs();
+      state.legs[0].inboundAltitude = 3000;   // the only leg, being finished, not approached
+      startLiveLocation();
+      window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
+      return window.__notifications.slice();
+    });
+    expect(out.length).toBe(1);
+    expect(out[0].body).toBe('Approaching BRAVO');   // no trailing ", N ft, hdg N°" at all
+  });
+
+  test('omits altitude when the next leg has none entered, keeps the heading', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.00, lng: 34.50, name: 'BRAVO' },
+        { lat: 32.00, lng: 35.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      // state.legs[1].inboundAltitude left unset.
+      startLiveLocation();
+      window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
+      return window.__notifications.slice();
+    });
+    expect(out.length).toBe(1);
+    expect(out[0].body).not.toContain('ft');
+    expect(out[0].body).toMatch(/hdg 9\d°/);
+  });
 });
 
 test.describe('altitude alert', () => {

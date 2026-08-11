@@ -813,8 +813,19 @@ function gpsCheckLegAlerts() {
       _gpsAlertLegFired = true;
       const label = (typeof waypointDisplayLabel === 'function')
         ? waypointDisplayLabel(next, gpsAlertLegIndex + 1) : (next.name || '');
+      // What to fly on the leg AFTER this waypoint -- the one starting here, not the one
+      // just being finished -- so the alert doubles as prep for the turn, not just a
+      // "you're nearly there" ping. Either can be unavailable (last leg: no next leg at
+      // all; no altitude entered on it) and is simply omitted, never guessed.
+      const nextLeg = legs[gpsAlertLegIndex + 1];
+      const nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
+        ? Math.round(nextLeg.inboundAltitude) : null;
+      const afterNext = wps[gpsAlertLegIndex + 2];
+      const nextLegBrg = afterNext ? geo(next, afterNext).brg : null;
+      const nextLegHdg = Number.isFinite(nextLegBrg) ? Math.round(nextLegBrg) : null;
       gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'NavAid',
-        (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label) : ('Approaching ' + label));
+        (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg)
+          : ('Approaching ' + label));
     }
   }
 

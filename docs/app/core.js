@@ -1666,7 +1666,15 @@ window.S = Object.assign({
   // mirrored to a paired Garmin (or any) watch by the OS's own notification mirroring, same
   // channel SMS/WhatsApp use. Not shown in-app; only ever read from a notification tray.
   watchAlertLegTitle: 'NavAid — next leg',
-  watchAlertLegBody: function(wp) { return 'Approaching ' + wp; },
+  // alt/hdg describe the NEXT leg -- the one starting at `wp`, not the one ending there --
+  // so the alert doubles as prep for the turn. Either may be null (last leg; no altitude
+  // entered on the next one) and is simply left out.
+  watchAlertLegBody: function(wp, alt, hdg) {
+    let extra = '';
+    if (alt != null) extra += ', ' + alt + ' ft';
+    if (hdg != null) extra += ', hdg ' + hdg + '°';
+    return 'Approaching ' + wp + extra;
+  },
   watchAlertAltTitle: 'NavAid — altitude',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';

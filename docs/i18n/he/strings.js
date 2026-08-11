@@ -999,7 +999,12 @@ window.S = {
   gpsNoTrack: 'לא הוקלט מסלול.',
   gpsError: 'שגיאת GPS: ',
   watchAlertLegTitle: 'NavAid — קטע הבא',
-  watchAlertLegBody: function(wp) { return 'מתקרב אל ' + wp; },
+  watchAlertLegBody: function(wp, alt, hdg) {
+    let extra = '';
+    if (alt != null) extra += ', ' + alt + ' רגל';
+    if (hdg != null) extra += ', כיוון ' + hdg + '°';
+    return 'מתקרב אל ' + wp + extra;
+  },
   watchAlertAltTitle: 'NavAid — גובה',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' רגל — מתוכנן ' + planned + ' רגל';
