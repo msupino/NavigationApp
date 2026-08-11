@@ -330,6 +330,36 @@ test('a corridor is not open one way and shut the other', () => {
   expect(asym.length).toBeLessThanOrEqual(5);
 });
 
+test('CVFR corridors carry no closure hint', () => {
+  // closedHint came from the same two secondary captures (Aug 2026) as
+  // openFromHourHint -- hints, explicitly not the chart. Every one that could be
+  // checked turned out wrong:
+  //
+  //   FAZEL-NAAMA-ALMOG   an ordinary Jordan Valley route
+  //   ESTOL-LTRUN         not closed; needs a real-time clearance (now onAtcApproval)
+  //   BSEMS-LTRUN         likewise
+  //   BRORA-EILAT         an ordinary leg, and the upstream capture calls it active
+  //
+  // Nothing corroborated a single one: the capture in ifl-flight-maps-data marks
+  // 289 of 289 routes active and has no inactive entry anywhere, so it cannot be
+  // the source. The "shortcut" reading does not hold either -- only 2 of 27 pairs
+  // had a finer chain along the same track, while 4 had no alternative at all, so
+  // the hint was disconnecting pairs rather than steering past intermediate points.
+  //
+  // Removing all 49 changed the behaviour of exactly two legs: 25 of the 27 pairs
+  // were already refused by onAtcApproval or armyAirway, where a closure hint does
+  // nothing. heli and lsa keep theirs -- that data is not in question here.
+  const g = graph();
+  const hinted = [];
+  for (const [from, es] of Object.entries(g.edges.cvfr)) {
+    for (const e of es) if (e.closedHint) hinted.push(from + '->' + e.to);
+  }
+  expect(hinted).toEqual([]);
+  const others = ['heli', 'lsa'].map(lay => Object.values(g.edges[lay])
+    .reduce((n, es) => n + es.filter(e => e.closedHint).length, 0));
+  expect(others).toEqual([34, 30]);
+});
+
 test('CVFR corridors carry no weekday opening hour', () => {
   // openFromHourHint came from two secondary captures (Aug 2026), not the AIP and not the
   // chart -- only two values exist anywhere, 05:00 and 06:00, which reads as a provider's
