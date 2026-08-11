@@ -1684,7 +1684,7 @@ window.S = Object.assign({
   },
   // The overhead-the-waypoint moment -- CVFR radio phraseology's own "TOP <point>" call.
   watchAlertTopTitle: 'TOP',
-  watchAlertTopBody: function(wp) { return 'TOP ' + wp; },
+  watchAlertTopBody: 'TOP',
   watchAlertAltTitle: 'Altitude',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';

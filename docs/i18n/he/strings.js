@@ -1007,7 +1007,7 @@ window.S = {
     return 'מתקרב אל ' + wp + (parts.length ? ' — הקטע הבא: ' + parts.join(', ') : '');
   },
   watchAlertTopTitle: 'TOP',
-  watchAlertTopBody: function(wp) { return 'TOP ' + wp; },
+  watchAlertTopBody: 'TOP',
   watchAlertAltTitle: 'גובה',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' רגל — מתוכנן ' + planned + ' רגל';

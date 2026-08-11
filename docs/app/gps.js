@@ -911,10 +911,10 @@ function gpsCheckLegAlerts() {
   // already moved on to a different `next`).
   if (dist < _gpsAlertMinDistNm) _gpsAlertMinDistNm = dist;
   if (dist <= GPS_LEG_CAPTURE_NM || dist > _gpsAlertMinDistNm + GPS_LEG_CAPTURE_NM) {
-    const topLabel = (typeof waypointDisplayLabel === 'function')
-      ? waypointDisplayLabel(next, gpsAlertLegIndex + 1) : (next.name || '');
+    // Just "TOP" -- no waypoint name. The leg-approach alert already named it seconds
+    // earlier; repeating it here only added characters to a small watch screen.
     gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
-      (S && S.watchAlertTopBody) ? S.watchAlertTopBody(topLabel) : ('TOP ' + topLabel));
+      (S && S.watchAlertTopBody) || 'TOP');
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;
     _gpsAlertLegFired = false;
