@@ -709,6 +709,35 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
     expect(out.stillRunning).toBe(true);
     expect(out.clearedAtEnd).toBe(true);
   });
+
+  test('the check interval scales with a connected simulator\'s reported speed_factor', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof simStart === 'function' && typeof startLiveLocation === 'function');
+    const out = await page.evaluate(async () => {
+      const delays = [];
+      const realSetTimeout = window.setTimeout;
+      // Records the requested delay without actually scheduling anything real -- a bare id
+      // is enough for gpsMaybeStopDriftTimer's own clearTimeout(_gpsDriftTimer) not to throw.
+      window.setTimeout = (fn, ms) => { delays.push(ms); return 999; };
+
+      startLiveLocation();               // real GPS: always the standard 2-minute cadence
+      const liveDelay = delays[0];
+      stopLiveLocation();
+
+      delays.length = 0;
+      window.simSpeedFactor = 10;        // set before simStart() -- same as a poll already
+      // gpsMaybeStartDriftTimer() schedules BEFORE simStart()'s own _simFetch() call, whose
+      // _simAbort(900) also goes through this same stubbed setTimeout -- delays[0] is the
+      // drift timer's; a later index would be that unrelated abort timeout instead.
+      simStart();
+      const simDelay = delays[0];
+
+      window.setTimeout = realSetTimeout;
+      return { liveDelay, simDelay };
+    });
+    expect(out.liveDelay).toBe(120000);        // unscaled: 2 real minutes
+    expect(out.simDelay).toBe(12000);          // 120000 / 10
+  });
 });
 
 test.describe('loading a route while already tracking (applyRouteData)', () => {

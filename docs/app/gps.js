@@ -996,9 +996,29 @@ var GPS_DRIFT_CHECK_MS = 120000;
 var GPS_DRIFT_TRACK_ERROR_DEG = 10;   // fire once track-angle error reaches this
 var _gpsDriftTimer = null;
 
+// A connected simulator's own clock can run faster than real time (cvfr-bridge's
+// speed_factor field, captured onto window.simSpeedFactor in io.js's _simFetch) -- a fixed
+// REAL-TIME interval has no idea, and a 2-real-minute wait against a 10x-fast aircraft
+// checks 10x too rarely relative to how quickly it's actually covering ground. Real GPS
+// (simOn false) always uses the standard cadence -- there is no "sped up" real flight.
+function _gpsDriftIntervalMs() {
+  const sf = (typeof simOn !== 'undefined' && simOn && typeof window !== 'undefined' &&
+    Number.isFinite(window.simSpeedFactor) && window.simSpeedFactor > 0)
+    ? window.simSpeedFactor : 1;
+  return GPS_DRIFT_CHECK_MS / sf;
+}
+// setTimeout, not setInterval: re-reads the (possibly just-changed) speed factor on every
+// reschedule, so a factor that changes mid-session -- reconnecting to a differently-tuned
+// bridge, or simply disconnecting the simulator and falling back to real GPS -- takes
+// effect on the very next check instead of only once the OLD interval is torn down and
+// restarted.
+function _gpsDriftTick() {
+  gpsCheckDrift();
+  if (_gpsDriftTimer !== null) _gpsDriftTimer = setTimeout(_gpsDriftTick, _gpsDriftIntervalMs());
+}
 function gpsMaybeStartDriftTimer() {
-  if (_gpsDriftTimer) return;
-  _gpsDriftTimer = setInterval(gpsCheckDrift, GPS_DRIFT_CHECK_MS);
+  if (_gpsDriftTimer !== null) return;
+  _gpsDriftTimer = setTimeout(_gpsDriftTick, _gpsDriftIntervalMs());
 }
 // Only actually stops once NONE of the three position sources (recording, live-only,
 // connected simulator) are still running -- called from all three teardown paths, each of
@@ -1006,7 +1026,7 @@ function gpsMaybeStartDriftTimer() {
 // location still on).
 function gpsMaybeStopDriftTimer() {
   if (gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn)) return;
-  if (_gpsDriftTimer) { clearInterval(_gpsDriftTimer); _gpsDriftTimer = null; }
+  if (_gpsDriftTimer !== null) { clearTimeout(_gpsDriftTimer); _gpsDriftTimer = null; }
 }
 
 // Signed angular difference a-b, wrapped to (-180, 180].

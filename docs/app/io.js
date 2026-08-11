@@ -8107,6 +8107,13 @@ async function _simFetch() {
       hdg: d.heading || 0,
       ias: d.ias || 0,
     };
+    // How much faster than real time the reporting aircraft's own clock is running (cvfr-
+    // bridge's speed_factor field; 1 = real time, and always 1 from a real X-Plane backend).
+    // gpsCheckDrift runs on a fixed REAL-TIME interval, with no idea a connected simulator
+    // might be flying many times faster -- see gpsMaybeStartDriftTimer in gps.js, which
+    // reads this to scale its own real-time cadence to match.
+    window.simSpeedFactor = (Number.isFinite(d.speed_factor) && d.speed_factor > 0)
+      ? d.speed_factor : 1;
     _simSetStatus(true);
     // Feed the same watch-alert pipeline the real device-GPS paths do (gpsCheckLegAlerts in
     // gps.js), so flying a planned route in a connected simulator is a real way to test --
