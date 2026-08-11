@@ -238,6 +238,86 @@ test('mixed leg speeds are flagged, not silently averaged', async ({ page }) => 
   expect(res.text).toContain('-N0090VFR');   // the first leg's speed, as documented
 });
 
+test('speedOverrideKt replaces field 15\'s declared speed', async ({ page }) => {
+  await boot(page);
+  await route(page);                                      // legs all at 90 kt
+  const res = await build(page, PROFILE, { dateLocal: '2022-09-29', timeLocal: '14:00', speedOverrideKt: 100 });
+  expect(res.text).toContain('-N0100VFR');
+  expect(res.speedKt).toBe(100);
+});
+
+test('an override does not itself trigger the mixed-speed warning', async ({ page }) => {
+  // The route IS flown at one speed (90 kt on every leg) -- filing a DIFFERENT declared
+  // number is a choice about what to tell ATC, not evidence the route was flown unevenly.
+  // Comparing legs against the override instead of the route's own speed would flag this
+  // as mixed every time an override differs from it, which is not what the warning means.
+  await boot(page);
+  await route(page);
+  const res = await build(page, PROFILE, { dateLocal: '2022-09-29', timeLocal: '14:00', speedOverrideKt: 100 });
+  expect(res.mixedSpeed).toBe(false);
+  expect(res.warns).not.toContain('warnFplMixedSpeed');
+});
+
+test('a genuinely mixed-speed route is still flagged even when overridden', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { state.legs[1].flightSpeed = 120; draw(); });   // real inconsistency
+  const res = await build(page, PROFILE, { dateLocal: '2022-09-29', timeLocal: '14:00', speedOverrideKt: 100 });
+  expect(res.mixedSpeed).toBe(true);
+  expect(res.warns).toContain('warnFplMixedSpeed');
+  expect(res.text).toContain('-N0100VFR');   // the override still wins the FILED number
+});
+
+test('the dialog\'s own Speed box overrides field 15, starting pre-filled with the route\'s speed', async ({ page }) => {
+  await boot(page);
+  await route(page);                       // legs at 90 kt
+  await page.evaluate(() => {
+    for (const [k, v] of Object.entries({ reg: 'HLH', type: 'C172', pic: 'A PILOT',
+      license: '1', cell: '0500000000', persons: '2', endurance: '0500',
+      replyTo: 'pilot@example.com' })) {
+      localStorage.setItem('navaid.fpl.' + k, v);
+    }
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  // Untouched, the box already shows what would be filed without an override.
+  await expect(page.locator('#fpl-speed')).toHaveValue('90');
+  await page.fill('#fpl-speed', '110');
+  await page.locator('#fpl-next').click();
+  await expect(page.locator('#fpl-text')).toContainText('-N0110VFR');
+  // The review step's own speed line reflects the override too, not the un-overridden
+  // route speed -- res.speedKt feeds it, not a fresh read of state.legs[0].
+  await expect(page.locator('.fpl-derived')).toContainText('110');
+});
+
+test('an invalid or absent override falls back to the route\'s own speed', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  for (const bad of [0, -5, NaN, undefined]) {
+    const res = await build(page, PROFILE, { dateLocal: '2022-09-29', timeLocal: '14:00', speedOverrideKt: bad });
+    expect(res.text).toContain('-N0090VFR');
+    expect(res.speedKt).toBe(90);
+  }
+});
+
+test('the EET is NOT recomputed from an overridden speed (no corridor expansion here)', async ({ page }) => {
+  // The override changes what NUMBER is declared in field 15; it does not change the
+  // physics of the flight. rawEetH comes from the route's OWN profile (legs at their
+  // real speeds), unaffected by the override -- a pilot filing a rounder cruise number
+  // must not have that understate how long the plan is held open.
+  //
+  // The one place speedKt still feeds the EET is the corridor-EXPANSION correction term
+  // (expandedExtraNm / speedKt, when o.routeGraph is passed) -- that term estimates time
+  // for published points the drawn route did not name, so it uses the DECLARED speed by
+  // design. This test passes no routeGraph, so that term is zero either way.
+  await boot(page);
+  await route(page);
+  const natural = await build(page, PROFILE, { dateLocal: '2022-09-29', timeLocal: '14:00' });
+  const overridden = await build(page, PROFILE, { dateLocal: '2022-09-29', timeLocal: '14:00', speedOverrideKt: 180 });
+  expect(overridden.eet).toBe(natural.eet);
+  expect(overridden.eetMinutes).toBe(natural.eetMinutes);
+});
+
 // AIP א'-11 §3.ד.1 -- a routes plan is filed at least 60 min ahead.
 test('a departure less than 60 minutes out is warned about', async ({ page }) => {
   await boot(page);

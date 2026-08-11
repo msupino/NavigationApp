@@ -1797,11 +1797,21 @@ function buildIcaoFpl(profile, opts) {
   if (midFields.length) errs.push({ code: 'errFplMidAirfield', names: midFields.slice() });
 
   const legs = state.legs || [];
-  const speedKt = Math.round(Number(legs.length ? legs[0].flightSpeed : 0));
+  // The route's OWN speed -- the first leg's, same as always. Kept separate from the
+  // (possibly overridden) declared speed below so the mixed-speed check below still
+  // answers "did the pilot actually fly this route at one speed", not "does it match
+  // whatever number I chose to file" -- those are different questions, and conflating
+  // them would flag every override as a mixed-speed route even when it was flown uniformly.
+  const naturalSpeedKt = Math.round(Number(legs.length ? legs[0].flightSpeed : 0));
+  // o.speedOverrideKt: what the pilot typed in the FPL dialog's own speed box, which
+  // starts pre-filled with naturalSpeedKt and is edited directly there -- not a separate
+  // toggle, so an untouched or reset field passes the same number through unchanged.
+  const speedKt = (Number.isFinite(o.speedOverrideKt) && o.speedOverrideKt > 0)
+    ? Math.round(o.speedOverrideKt) : naturalSpeedKt;
   if (!(speedKt > 0)) errs.push('errFplNoSpeed');
   // Cruising TAS is one number in field 15; a route flown at mixed speeds has no
   // single answer, so the first leg's speed is used and the caller is told.
-  const mixedSpeed = legs.some(l => Math.round(Number(l.flightSpeed)) !== speedKt);
+  const mixedSpeed = legs.some(l => Math.round(Number(l.flightSpeed)) !== naturalSpeedKt);
 
   const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
   // Filed to the next whole 5 minutes: nobody files 00:33, and rounding UP never
@@ -1902,7 +1912,7 @@ function buildIcaoFpl(profile, opts) {
   return {
     text, dep: depIcao || depPlain, dest: destIcao || destPlain, eet: fplHhmm(eetH),
     expandedPoints: pts.slice(), expandedUnresolved,
-    eetMinutes: Math.round(eetH * 60), mixedSpeed, warns,
+    eetMinutes: Math.round(eetH * 60), mixedSpeed, speedKt, warns,
     opensAt: fplEarliestFiling(utc.when),
     to: toAddr,
     eobtUtc: utc.eobt, dof: utc.dof, lead,
@@ -8564,6 +8574,23 @@ function showFplDialog() {
     };
     body.appendChild(row(S.fplType || 'Aircraft type', typeBox));
 
+    // Cruise speed for field 15. Pre-filled with the route's OWN speed (the first leg's,
+    // same number buildIcaoFpl uses by default) so an untouched field changes nothing --
+    // this is an override, not a second place to answer a question the route already
+    // answered. Read fresh at each Build click, so it always starts from the CURRENT route
+    // unless the pilot has typed something else in the meantime.
+    //
+    // Deliberately NOT persisted like reg/pic/license: those have no natural default and
+    // exist to be remembered device-wide. This one does have a default, derived from
+    // whatever route is open, so carrying an old override into an unrelated future route
+    // would silently misstate that flight's declared speed. It only lives for this filing.
+    const naturalSpeedKt = Math.round(Number((state.legs[0] || {}).flightSpeed) || 0);
+    const speedOverride = input(naturalSpeedKt > 0 ? String(naturalSpeedKt) : '', 'number',
+      { min: '1', max: '999', step: '1', placeholder: String(naturalSpeedKt || ''),
+        'aria-label': S.fplSpeed || 'Speed (kt)' });
+    speedOverride.id = 'fpl-speed';
+    body.appendChild(row(S.fplSpeed || 'Speed (kt)', speedOverride));
+
     // Endurance in hours, not "0400".
     const endurance = document.createElement('select');
     endurance.id = 'fpl-endurance';
@@ -8947,8 +8974,12 @@ function showFplDialog() {
         return;
       }
       const retData = returnRouteData();
+      // Whatever is in the Speed box right now -- untouched, it's the route's own speed
+      // (see the field's own comment), so passing it through unconditionally changes
+      // nothing unless the pilot actually edited it.
+      const speedOverrideKt = Number(speedOverride.value);
       const res = buildIcaoFpl(profile, { dateLocal: state1.date, timeLocal: state1.time,
-        returnRouteData: retData,
+        returnRouteData: retData, speedOverrideKt,
         routeGraph: expandCb.checked ? await fplLoadRouteGraph() : null });
       if (res.errs) {
         showFieldErrors(errBox, res.errs, fieldEls);
@@ -8978,9 +9009,11 @@ function showFplDialog() {
 
     const from = document.createElement('div');
     from.className = 'fpl-derived';
-    const speedKt = Math.round(Number((state.legs[0] || {}).flightSpeed) || 0);
+    // res.speedKt is what actually landed in field 15 -- the route's own speed unless the
+    // dialog's Speed box overrode it. Reading it off res, not state.legs[0], is what makes
+    // the review reflect an override instead of silently showing the un-overridden number.
     for (const line of [
-      (S.fplSpeedRow ? S.fplSpeedRow(speedKt) : ''),
+      (S.fplSpeedRow ? S.fplSpeedRow(res.speedKt) : ''),
       (S.fplEetRow ? S.fplEetRow(res.eet, enduranceLabel(res.eetMinutes || 0)) : ''),
       (S.fplUtcRow ? S.fplUtcRow(res.dof, res.eobtUtc) : ''),
     ]) {

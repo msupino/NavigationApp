@@ -392,6 +392,7 @@ window.S = {
   fplReg: 'אות קריאה',
   fplRegHint: 'שלוש אותיות מספיקות — 4X יתווסף',
   fplType: 'סוג כלי הטיס',
+  fplSpeed: 'מהירות (קשר)',
   fplTypeOther: 'אחר…',
   fplTypeFromList: '\u2630',
   fplTypeFromListTip: 'חזרה לרשימת הסוגים הנפוצים',

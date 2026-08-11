@@ -1112,6 +1112,9 @@ window.S = Object.assign({
   fplReg: 'Call sign',
   fplRegHint: 'Three letters is enough — 4X is added',
   fplType: 'Aircraft type',
+  // Overrides field 15's declared cruise speed for THIS filing; pre-filled with the
+  // route's own speed, so leaving it alone changes nothing.
+  fplSpeed: 'Speed (kt)',
   fplTypeOther: 'Other…',
   fplTypeFromList: '\u2630',
   fplTypeFromListTip: 'Back to the list of common types',
