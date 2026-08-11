@@ -4667,9 +4667,10 @@ function drawGraphLegs() {
       // blank here is the dataset defect this overlay exists to make visible.
       // A two-way leg has TWO altitudes and they routinely differ (4000 one way, 3500 the
       // other). One label in the middle could only ever show one of them, and gave no clue
-      // which -- so each altitude is drawn at the END IT IS FLOWN TOWARDS, beside the
-      // arrowhead pointing that way. A one-way leg keeps a single label, at its permitted
-      // destination.
+      // which -- so each altitude is drawn beside the end it is flown FROM, which is where
+      // the published CVFR chart prints it. Matching the chart's own convention is the
+      // point: this overlay is read side by side with it, and a figure in the other place
+      // would have to be mentally re-mapped on every leg.
       //
       // Read off the entry for the direction concerned: inboundAltitude is always
       // "this entry's from -> to", so the p->q direction takes fwd.inboundAltitude and the
@@ -4691,11 +4692,12 @@ function drawGraphLegs() {
       const at = (t) => ({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
       const twoWay = fwdOpen && revOpen;
       if (twoWay) {
-        const a = at(0.68), b = at(0.32);
+        // p->q starts at p; q->p starts at q.
+        const a = at(0.30), b = at(0.70);
         put(a.x + nx, a.y + ny, txt(fwdEntry && fwdEntry.inboundAltitude));
         put(b.x + nx, b.y + ny, txt(revEntry && revEntry.inboundAltitude));
       } else {
-        const a = at(0.62);
+        const a = at(0.30);          // the permitted direction runs p -> q, so it starts at p
         put(a.x + nx, a.y + ny, txt(flown.inboundAltitude));
       }
     }
