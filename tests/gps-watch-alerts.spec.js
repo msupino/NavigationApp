@@ -183,6 +183,62 @@ test.describe('tracking session reset', () => {
   });
 });
 
+test.describe('no-route test nudge (temporary)', () => {
+  test('waits for the permission answer before firing -- a delayed grant is not silently dropped', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__notifications = [];
+      let resolveGrant;
+      window.__grant = new Promise((r) => { resolveGrant = r; });
+      window.__triggerGrant = () => resolveGrant();
+      class FakeNotification {
+        constructor(title, opts) { window.__notifications.push({ title, body: (opts || {}).body }); }
+      }
+      FakeNotification.permission = 'default';
+      // Mirrors a real permission prompt: resolves only once the pilot answers it, not
+      // synchronously -- the exact case that used to lose the nudge (checked immediately
+      // after asking, before the answer came back).
+      FakeNotification.requestPermission = () => window.__grant.then(() => {
+        FakeNotification.permission = 'granted';
+        return 'granted';
+      });
+      window.Notification = FakeNotification;
+      window.__liveCb = null;
+      navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+      navigator.geolocation.clearWatch = () => {};
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof startLiveLocation === 'function');
+    const before = await page.evaluate(() => {
+      state.waypoints = [];   // no route loaded
+      startLiveLocation();
+      return window.__notifications.length;
+    });
+    expect(before).toBe(0);         // not answered yet -- must not have fired already
+    await page.evaluate(() => window.__triggerGrant());
+    await page.waitForFunction(() => window.__notifications.length > 0);
+    expect(await page.evaluate(() => window.__notifications.length)).toBe(1);
+  });
+
+  test('does not fire when a route is already loaded', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.addInitScript(() => {
+      window.__liveCb = null;
+      navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+      navigator.geolocation.clearWatch = () => {};
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof startLiveLocation === 'function');
+    const n = await page.evaluate(async () => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      startLiveLocation();
+      await new Promise((r) => setTimeout(r, 20));   // let the (already-granted) permission promise settle
+      return window.__notifications.length;
+    });
+    expect(n).toBe(0);
+  });
+});
+
 test.describe('native delivery (Capacitor LocalNotifications)', () => {
   test('uses the native plugin instead of the web Notification API when running as the APK shell', async ({ page }) => {
     await page.addInitScript(installFixHelper);

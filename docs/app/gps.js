@@ -236,16 +236,19 @@ function startLiveLocation() {
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
   gpsResetLegAlerts();
-  gpsRequestNotifyPermission();
   gpsMaybeStartDriftTimer();
   // TEMPORARY, test-only nudge -- remove once the watch-alert feature is validated. Lets a
   // pilot testing "Show location" alone (no route) confirm notifications are actually
   // reaching the device/watch, and points them at loading a route for the real alerts.
-  if (!state.waypoints || state.waypoints.length < 2) {
-    gpsSendWatchAlert((S && S.watchAlertNoRouteTestTitle) || 'NavAid',
-      (S && S.watchAlertNoRouteTestBody) ||
-      'Load a route to get alerts if you drift off course or altitude.');
-  }
+  // Waits for the permission answer first: firing right after the (async) request used to
+  // read the still-'default' permission and silently drop, exactly on a first-ever grant.
+  gpsRequestNotifyPermission().then(function () {
+    if (!state.waypoints || state.waypoints.length < 2) {
+      gpsSendWatchAlert((S && S.watchAlertNoRouteTestTitle) || 'NavAid',
+        (S && S.watchAlertNoRouteTestBody) ||
+        'Load a route to get alerts if you drift off course or altitude.');
+    }
+  });
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try {
     gpsLiveWatchId = gpsStartWatch(onLivePosition, onGpsLiveError,
@@ -856,14 +859,20 @@ var _watchNotifyPermAsked = false;
 // Ask once per tracking session, not once per alert -- a denial should not re-prompt on
 // every fix. Best-effort: a silent no-op on an unsupported/denied context is the correct
 // behaviour here, not an error the pilot needs to see.
+// Returns a promise so a caller that wants to send an alert RIGHT AFTER asking (the
+// no-route test nudge below) can wait for the answer -- the browser/native permission
+// prompt is async and waits on the user, so a synchronous gpsSendWatchAlert() call right
+// after this one used to read the still-'default' permission and silently drop the very
+// first alert of a session, exactly when a pilot had just clicked Allow.
 function gpsRequestNotifyPermission() {
-  if (_watchNotifyPermAsked) return;
+  if (_watchNotifyPermAsked) return Promise.resolve();
   _watchNotifyPermAsked = true;
   const nn = _nativeNotify();
-  if (nn) { nn.requestPermissions().catch(function () {}); return; }
+  if (nn) return nn.requestPermissions().catch(function () {});
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-    Notification.requestPermission().catch(function () {});
+    return Notification.requestPermission().catch(function () {});
   }
+  return Promise.resolve();
 }
 var _watchAlertId = 1;
 function gpsSendWatchAlert(title, body) {
