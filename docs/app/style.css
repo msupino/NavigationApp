@@ -2237,8 +2237,9 @@ body.theme-light .shortcuts-help-keys kbd {
   }
 
   /* Declutter the footer in the mobile expanded menu — keep the GPS controls
-     (Start/Stop recording + Show/Hide location); hide the shortcuts, doc links,
-     and simulator here (all still available on desktop). */
+     (Start/Stop recording + Show/Hide location) AND the simulator (connecting one is
+     how the leg-approach/altitude/drift watch alerts get tested on mobile, not just a
+     desktop dev tool); hide the shortcuts and doc links here (still available on desktop). */
   #toolbar #help-trigger,
   /* ...including the ⋯ that holds them: on a phone it was an 11px-wide trigger for
      six hidden links, and it still claimed a whole flex row, leaving a ~100px empty
@@ -2249,8 +2250,7 @@ body.theme-light .shortcuts-help-keys kbd {
   #toolbar #issues-link,
   #toolbar #about-link,
   #toolbar #privacy-link,
-  #toolbar #terms-link,
-  #toolbar #sim-trigger { display: none; }
+  #toolbar #terms-link { display: none; }
 
   /* Make the Edit-header separator (between the Save/Load buttons and the
      "Edit" label) span the full head like the dividers between sections: let

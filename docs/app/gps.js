@@ -875,12 +875,18 @@ function _nativeNotify() {
   return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() &&
           C.Plugins && C.Plugins.LocalNotifications) || null;
 }
-// No point prompting for, or sending, a WEB notification on a desktop browser -- nothing
-// is going to mirror it to a watch, and there's no phone to show it on either. The APK
-// path (_nativeNotify above) is unaffected: it's definitionally a phone already. Prefers
-// the modern, non-sniffing signal (userAgentData.mobile) where Chromium exposes it; the UA
-// string is a fallback for engines that don't (Firefox, Safari).
+// No point prompting for, or sending, a WEB notification on a desktop browser during a
+// REAL flight -- nothing is going to mirror it to a watch, and there's no phone to show it
+// on either. The APK path (_nativeNotify above) is unaffected: it's definitionally a phone
+// already. Prefers the modern, non-sniffing signal (userAgentData.mobile) where Chromium
+// exposes it; the UA string is a fallback for engines that don't (Firefox, Safari).
+//
+// Exempt while connected to a flight simulator (simOn, io.js): that's either dev/testing
+// (the whole point is seeing the alert on the machine you're testing from, however it's
+// wired up) or a real home-sim setup where the desktop IS where a pilot would watch for
+// it -- neither belongs behind a "you're not on a phone" gate meant for an actual flight.
 function _gpsIsMobileDevice() {
+  if (typeof simOn !== 'undefined' && simOn) return true;
   if (typeof navigator === 'undefined') return false;
   if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
     return navigator.userAgentData.mobile;

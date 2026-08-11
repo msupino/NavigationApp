@@ -713,4 +713,35 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
     expect(out.midFlight).toBe(1);
     expect(out.afterRestart).toBe(0);
   });
+
+  test('still notifies on a desktop browser while connected to a simulator -- the "no point on PC" gate is for real flights, not this', async ({ page }) => {
+    await page.addInitScript(() => {
+      // Deliberately NOT stubbing userAgentData -- this is the desktop-skip gate's own
+      // "not mobile" case. simOn (set by simStart() below) is what must override it.
+      window.__notifications = [];
+      class FakeNotification {
+        constructor(title, opts) { window.__notifications.push({ title, body: (opts || {}).body }); }
+      }
+      FakeNotification.permission = 'granted';
+      FakeNotification.requestPermission = () => Promise.resolve('granted');
+      window.Notification = FakeNotification;
+      try {
+        Object.defineProperty(navigator, 'serviceWorker', { value: undefined, configurable: true });
+      } catch (e) { /* ignore */ }
+    });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof _simFetch === 'function' &&
+      typeof gpsCheckLegAlerts === 'function');
+    const out = await page.evaluate(async () => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      simStart();
+      window.fetch = () => Promise.resolve({ ok: true, status: 200,
+        json: async () => ({ latitude: 31.9992, longitude: 34.0, altitude: 2000, heading: 0, ias: 30 }) });
+      await _simFetch();
+      return window.__notifications.slice();
+    });
+    expect(out.length).toBe(1);
+    expect(out[0].body).toContain('BRAVO');
+  });
 });
