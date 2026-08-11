@@ -3764,6 +3764,14 @@
     ],
     "AFULA": [
       {
+        "to": "EITAN",
+        "inboundAltitude": 2500,
+        "outboundAltitude": 3000,
+        "distanceNm": 14.29,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, EITAN->AFULA 3000 / AFULA->EITAN 2500"
+      },
+      {
         "to": "LLMG",
         "inboundAltitude": 1500,
         "outboundAltitude": 1000,
@@ -7732,6 +7740,14 @@
       }
     ],
     "EITAN": [
+      {
+        "to": "AFULA",
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2500,
+        "distanceNm": 14.29,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, EITAN->AFULA 3000 / AFULA->EITAN 2500"
+      },
       {
         "to": "KOYAR",
         "inboundAltitude": 3500,

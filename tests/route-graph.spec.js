@@ -248,7 +248,9 @@ test('the data census matches what the maintainer last signed off', () => {
     // neither a stray deletion nor a stray flip of the flag can pass unreviewed.
     // +2 segments: MZDOT <-> MYTAR and MZDOT <-> ENGDI, 4000 ft both ways, CVFR only --
     // published CVFR legs the graph was simply missing, which is why MZDOT had no segment.
-    cvfr: { layerNodes: 172, activeNodes: 170, segments: 271, commChange: 52, unknown: 6 },
+    // +1 segment: EITAN <-> AFULA, 3000 eastbound / 2500 westbound. Published on the
+    // chart and missing from the graph; found with the ?graphlegs=1 review overlay.
+    cvfr: { layerNodes: 172, activeNodes: 170, segments: 272, commChange: 52, unknown: 6 },
     heli: { layerNodes: 209, activeNodes: 209, segments: 85, commChange: 0, unknown: 38 },
     // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
     // from the second capture (#1485) -- the first census update under the new mechanism.
