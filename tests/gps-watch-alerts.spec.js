@@ -666,6 +666,19 @@ test.describe('loading a route while already tracking (applyRouteData)', () => {
 });
 
 test.describe('connected-simulator path (io.js _simFetch)', () => {
+  test('nudges toward loading a route when none is loaded -- the simulator has no idea what route NavAid has', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof simStart === 'function');
+    const n = await page.evaluate(async () => {
+      state.waypoints = [];   // no route loaded
+      simStart();
+      await new Promise((r) => setTimeout(r, 20));   // let the (already-granted) permission promise settle
+      return window.__notifications.length;
+    });
+    expect(n).toBe(1);
+  });
+
   test('a poll close enough to the next waypoint fires the same alert a real GPS fix would', async ({ page }) => {
     await stubWebNotify(page);
     await page.goto('?lang=en&nogist');
