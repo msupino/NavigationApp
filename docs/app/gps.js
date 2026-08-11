@@ -828,10 +828,19 @@ function gpsCheckLegAlerts() {
         ? Math.round(nextLeg.inboundAltitude) : null;
       const afterNext = wps[gpsAlertLegIndex + 2];
       const nextLegBrg = afterNext ? geo(next, afterNext).brg : null;
-      // Magnetic, not true -- a heading a pilot is actually going to fly by compass, same
-      // toMagnetic() the rest of the app already uses for every other displayed heading.
-      const nextLegHdg = Number.isFinite(nextLegBrg) && typeof toMagnetic === 'function'
-        ? toMagnetic(nextLegBrg) : null;
+      // Magnetic AND wind-corrected -- the leg inspector's own "With wind" readout
+      // (interact.js) shows toMagnetic(windTriangle(brg, leg.flightSpeed, wind).hdgTrue),
+      // not the plain course; this reported the uncorrected course, which read off by
+      // however many degrees of WCA the leg's wind produced (reported live: leg inspector
+      // said 6°, this said 5°). windTriangle() itself returns null for calm/no-wind/an
+      // unflyable crosswind, in which case the plain course is the right answer anyway.
+      let nextLegHdg = null;
+      if (Number.isFinite(nextLegBrg) && typeof toMagnetic === 'function') {
+        const nextWind = (nextLeg && typeof legWindFor === 'function') ? legWindFor(nextLeg) : null;
+        const fx = (nextWind && typeof windTriangle === 'function' && nextLeg)
+          ? windTriangle(nextLegBrg, nextLeg.flightSpeed, nextWind) : null;
+        nextLegHdg = toMagnetic(fx ? fx.hdgTrue : nextLegBrg);
+      }
       gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'NavAid',
         (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg)
           : ('Approaching ' + label));

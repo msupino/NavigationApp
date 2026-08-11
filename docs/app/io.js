@@ -8109,7 +8109,14 @@ async function _simFetch() {
     // or use -- the leg-approach / altitude alerts without a phone. altitude/ias assumed
     // already in ft/kt (aviation units), unlike the raw Geolocation API's metres/(m/s) --
     // confirm against your actual bridge if it reports SI units instead.
-    if (typeof gpsCheckLegAlerts === 'function') {
+    //
+    // Real GPS wins if both happen to be on at once (recording or live location) -- same
+    // precedent draw.js already set for the own-ship MARKER (simAircraft only drawn when
+    // neither gpsRecording nor gpsLiveOn is active); this is that same rule applied to the
+    // alert pipeline, which the marker's own guard never covered. Without it, a real fix
+    // and a sim poll racing to overwrite gpsOwn/gpsLastGS/gpsLastAlt would fight over
+    // which one's position the alerts react to, however briefly each one wins between fixes.
+    if (typeof gpsCheckLegAlerts === 'function' && !gpsRecording && !gpsLiveOn) {
       gpsOwn = { lat: window.simAircraft.lat, lng: window.simAircraft.lng,
         hdg: window.simAircraft.hdg, t: Date.now() };
       gpsLastGS = window.simAircraft.ias || null;

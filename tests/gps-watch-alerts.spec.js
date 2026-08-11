@@ -158,6 +158,40 @@ test.describe('leg-approach alert', () => {
     expect(out.notif[0].body).toContain('hdg ' + out.expectedHdg + '°');
   });
 
+  test('the next leg\'s heading is wind-corrected, matching the leg inspector\'s own "With wind" readout', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.00, lng: 34.50, name: 'BRAVO' },
+        { lat: 32.00, lng: 35.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      // A crosswind on the BRAVO->CHARLIE leg specifically -- enough to produce a real,
+      // non-zero WCA (not just rounding noise), so a fix that silently dropped wind
+      // correction would report a heading a few degrees off, not just "wrong by 1".
+      state.legs[1].flightSpeed = 90;
+      state.legs[1].wind = { dir: 0, speed: 20 };   // wind FROM due north, straight crosswind
+      startLiveLocation();
+      window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
+      // Expected heading via the SAME two-step calculation the code (and the leg
+      // inspector's own live readout in interact.js) both use: course -> windTriangle -> magnetic.
+      const brg = geo(state.waypoints[1], state.waypoints[2]).brg;
+      const w = legWindFor(state.legs[1]);
+      const fx = windTriangle(brg, state.legs[1].flightSpeed, w);
+      const expectedHdg = toMagnetic(fx.hdgTrue);
+      const expectedPlainHdg = toMagnetic(brg);
+      return { notif: window.__notifications.slice(), expectedHdg, expectedPlainHdg };
+    });
+    expect(out.notif.length).toBe(1);
+    // Sanity: this scenario really does produce a different number than the plain
+    // course would -- otherwise the test can't tell a correct fix from a silently
+    // reverted one.
+    expect(out.expectedHdg).not.toBe(out.expectedPlainHdg);
+    expect(out.notif[0].body).toContain('hdg ' + out.expectedHdg + '°');
+  });
+
   test('omits altitude/heading on the last leg -- nothing to prep for', async ({ page }) => {
     await stubWebNotify(page);
     await bootLive(page);
@@ -677,6 +711,34 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
       return window.__notifications.length;
     });
     expect(n).toBe(1);
+  });
+
+  test('real GPS wins if live location is also on -- a sim poll must not overwrite it', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.addInitScript(installFixHelper);
+    await page.addInitScript(() => {
+      window.__liveCb = null;
+      navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+      navigator.geolocation.clearWatch = () => {};
+    });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof simStart === 'function' && typeof startLiveLocation === 'function');
+    const out = await page.evaluate(async () => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      startLiveLocation();
+      // Real GPS says we're far from BRAVO, low and slow -- if the sim poll below were
+      // allowed through, gpsOwn/gpsLastGS/gpsLastAlt would flip to ITS numbers instead.
+      window.__liveCb(window.__fix(31.90, 34.0, { speedMs: 10, altM: 100 }));
+      const beforeSim = { lat: gpsOwn.lat, gs: Math.round(gpsLastGS), alt: Math.round(gpsLastAlt) };
+      simStart();
+      window.fetch = () => Promise.resolve({ ok: true, status: 200,
+        json: async () => ({ latitude: 31.9992, longitude: 34.0, altitude: 3000, heading: 0, ias: 999 }) });
+      await _simFetch();
+      const afterSim = { lat: gpsOwn.lat, gs: Math.round(gpsLastGS), alt: Math.round(gpsLastAlt) };
+      return { beforeSim, afterSim };
+    });
+    expect(out.afterSim).toEqual(out.beforeSim);   // untouched by the sim poll
   });
 
   test('a poll close enough to the next waypoint fires the same alert a real GPS fix would', async ({ page }) => {
