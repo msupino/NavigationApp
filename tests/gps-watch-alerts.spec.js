@@ -1,5 +1,15 @@
 const { test, expect } = require('./_setup');
 
+// Playwright's default context is desktop Chromium -- _gpsIsMobileDevice() would read
+// userAgentData.mobile as false there and gate every web-notification test out. Stubbing
+// userAgentData.mobile:true is what the function checks FIRST, so this is enough regardless
+// of the real UA string.
+function installMobileDeviceStub() {
+  try {
+    Object.defineProperty(navigator, 'userAgentData', { value: { mobile: true }, configurable: true });
+  } catch (e) { /* already non-configurable in this engine -- ignore */ }
+}
+
 // Stubs the web-Notification path so gpsSendWatchAlert's fallback is observable without a
 // real permission prompt. Native (Capacitor LocalNotifications) path is covered separately.
 // Also neutralises navigator.serviceWorker: gpsSendWatchAlert routes through a service
@@ -9,6 +19,7 @@ const { test, expect } = require('./_setup');
 // every test below would see nothing fire. The service-worker path itself gets its own
 // dedicated test with its own fake registration.
 async function stubWebNotify(page) {
+  await page.addInitScript(installMobileDeviceStub);
   await page.addInitScript(() => {
     window.__notifications = [];
     class FakeNotification {
@@ -194,6 +205,7 @@ test.describe('tracking session reset', () => {
 
 test.describe('no-route test nudge (temporary)', () => {
   test('waits for the permission answer before firing -- a delayed grant is not silently dropped', async ({ page }) => {
+    await page.addInitScript(installMobileDeviceStub);
     await page.addInitScript(() => {
       window.__notifications = [];
       let resolveGrant;
@@ -254,6 +266,7 @@ test.describe('no-route test nudge (temporary)', () => {
 test.describe('web delivery via service worker (the Android Chrome fix)', () => {
   test('routes through registration.showNotification() instead of the bare constructor when a service worker is active', async ({ page }) => {
     await page.addInitScript(installFixHelper);
+    await page.addInitScript(installMobileDeviceStub);
     await page.addInitScript(() => {
       window.__shown = [];
       window.__plainConstructed = 0;
@@ -311,6 +324,40 @@ test.describe('web delivery via service worker (the Android Chrome fix)', () => 
     // stubWebNotify already neutralises navigator.serviceWorker -- this must fire right
     // away via the plain() fallback, not wait out the 800 ms safety timeout.
     expect(await page.evaluate(() => window.__notifications.length)).toBe(1);
+  });
+});
+
+test.describe('desktop skip (no point in web notifications on a PC)', () => {
+  test('does not request permission or send, on a non-mobile browser', async ({ page }) => {
+    await page.addInitScript(installFixHelper);
+    await page.addInitScript(() => {
+      // Deliberately NOT stubbing userAgentData -- Playwright's default context is
+      // desktop Chromium, which is exactly the case this gate exists for.
+      window.__notifications = [];
+      window.__permRequests = 0;
+      class FakeNotification {
+        constructor(title, opts) { window.__notifications.push({ title, body: (opts || {}).body }); }
+      }
+      FakeNotification.permission = 'default';
+      FakeNotification.requestPermission = () => { window.__permRequests++; return Promise.resolve('granted'); };
+      window.Notification = FakeNotification;
+      window.__liveCb = null;
+      navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+      navigator.geolocation.clearWatch = () => {};
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof startLiveLocation === 'function');
+    const out = await page.evaluate(() => {
+      // ETA-triggering fix AND no route loaded (would also fire the no-route nudge) --
+      // either one firing would be a leak past the desktop gate.
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      startLiveLocation();
+      window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
+      return { permRequests: window.__permRequests, notif: window.__notifications.length };
+    });
+    expect(out.permRequests).toBe(0);   // never even asked
+    expect(out.notif).toBe(0);
   });
 });
 

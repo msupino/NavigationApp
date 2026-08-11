@@ -855,6 +855,18 @@ function _nativeNotify() {
   return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() &&
           C.Plugins && C.Plugins.LocalNotifications) || null;
 }
+// No point prompting for, or sending, a WEB notification on a desktop browser -- nothing
+// is going to mirror it to a watch, and there's no phone to show it on either. The APK
+// path (_nativeNotify above) is unaffected: it's definitionally a phone already. Prefers
+// the modern, non-sniffing signal (userAgentData.mobile) where Chromium exposes it; the UA
+// string is a fallback for engines that don't (Firefox, Safari).
+function _gpsIsMobileDevice() {
+  if (typeof navigator === 'undefined') return false;
+  if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
+    return navigator.userAgentData.mobile;
+  }
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+}
 var _watchNotifyPermAsked = false;
 // Ask once per tracking session, not once per alert -- a denial should not re-prompt on
 // every fix. Best-effort: a silent no-op on an unsupported/denied context is the correct
@@ -869,6 +881,7 @@ function gpsRequestNotifyPermission() {
   _watchNotifyPermAsked = true;
   const nn = _nativeNotify();
   if (nn) return nn.requestPermissions().catch(function () {});
+  if (!_gpsIsMobileDevice()) return Promise.resolve();
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
     return Notification.requestPermission().catch(function () {});
   }
@@ -882,6 +895,7 @@ function gpsSendWatchAlert(title, body) {
       schedule: { at: new Date(Date.now() + 100) } }] }).catch(function () {});
     return;
   }
+  if (!_gpsIsMobileDevice()) return;
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   const plain = function () {
     try { new Notification(title, { body: body }); } catch (e) { /* unsupported context */ }
