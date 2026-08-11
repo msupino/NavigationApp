@@ -229,7 +229,7 @@ test.describe('route templates', () => {
         10: [1200, 800],
       },
       notes: [
-        { cc: 'DEROR', freqName: 'HERZLIYA', freq: '125.60' },
+        { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20' },
         { cc: 'ZMGID', freqName: 'PLUTO_WEST', freq: '118.40' },
         { cc: 'DESHE', freqName: 'PLUTO_EAST', freq: '123.85' },
       ],
@@ -249,7 +249,7 @@ test.describe('route templates', () => {
       },
       notes: [
         { cc: 'DAROM', freqName: 'PLUTO_WEST', freq: '118.40' },
-        { cc: 'DEROR', freqName: 'HERZLIYA', freq: '125.60' },
+        { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20' },
       ],
     },
     {
@@ -308,7 +308,7 @@ test.describe('route templates', () => {
       },
       notes: [
         { cc: 'LLBS', freqName: 'TEYMAN', freq: '122.50' },
-        { cc: 'KNTRY', freqName: 'HERZLIYA', freq: '125.60' },
+        { cc: 'KNTRY', freqName: 'HERZLIYA', freq: '122.20' },
       ],
     },
     {
@@ -327,7 +327,7 @@ test.describe('route templates', () => {
       },
       notes: [
         { cc: 'LLMZ', freqName: 'MASADA', freq: '122.55' },
-        { cc: 'KNTRY', freqName: 'HERZLIYA', freq: '125.60' },
+        { cc: 'KNTRY', freqName: 'HERZLIYA', freq: '122.20' },
       ],
     },
   ]) {

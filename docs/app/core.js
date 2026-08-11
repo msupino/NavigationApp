@@ -1218,6 +1218,9 @@ window.S = Object.assign({
   warnFplDepNotAerodrome: 'The route does not start at a known airfield — it is filed as ZZZZ with the point named in field 18, and will probably be declined. A plan is normally filed field to field.',
   warnFplDestNotAerodrome: 'The route does not end at a known airfield — it is filed as ZZZZ with the point named in field 18, and will probably be declined. A plan is normally filed field to field.',
   warnFplEarly: 'Too early to file: a departure at or before 17:00 is filed from 18:00 the day before, a later one on the day of the flight.',
+  // Pointer to a frequency NOTAM on an airfield. Names the NOTAM, never its frequency:
+  // the published value stays what the inspector shows and the pilot reads the NOTAM.
+  freqNotamNote: (ids) => 'Frequency NOTAM: ' + (Array.isArray(ids) ? ids.join(', ') : ids),
   // Plain-language preamble above the ICAO block in a filed mail. Follows the UI
   // language; the (FPL-...) block itself is never translated.
   fplMailTitle: 'Flight plan on the low-level transit routes',

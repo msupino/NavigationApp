@@ -532,7 +532,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHZ') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('125.60');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('122.20');
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
     await expect(page.locator('#insp-body .atis-row')).toContainText('None');
 
@@ -590,7 +590,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     await expect(page.locator('#insp-title')).toHaveValue(/LLHZ/);
     await expect(page.locator('#insp-title')).toHaveValue(/Herzliya/);
-    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('125.60');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('122.20');
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
     await expect(page.locator('#insp-body .atis-row')).toContainText('None');
   });
