@@ -3764,6 +3764,14 @@
     ],
     "AFULA": [
       {
+        "to": "EITAN",
+        "inboundAltitude": 2500,
+        "outboundAltitude": 3000,
+        "distanceNm": 14.29,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, EITAN->AFULA 3000 / AFULA->EITAN 2500"
+      },
+      {
         "to": "LLMG",
         "inboundAltitude": 1500,
         "outboundAltitude": 1000,
@@ -3980,8 +3988,7 @@
           "greenScore": 0.867,
           "maxGap": 7,
           "samples": 90
-        },
-        "closedHint": true
+        }
       }
     ],
     "SHAHR": [
@@ -4029,8 +4036,7 @@
         "distanceNm": 7.15,
         "chartDistanceNm": 7.1,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "source": "cvfr-map airway adjacency"
       },
       {
         "to": "YRIHO",
@@ -4059,8 +4065,7 @@
         "distanceNm": 7.15,
         "chartDistanceNm": 7.1,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "source": "cvfr-map airway adjacency"
       },
       {
         "to": "FAZEL",
@@ -4073,8 +4078,7 @@
           "greenScore": 0.867,
           "maxGap": 7,
           "samples": 90
-        },
-        "closedHint": true
+        }
       }
     ],
     "ZUKIM": [
@@ -5530,7 +5534,7 @@
         "chartDistanceNm": 5,
         "status": "candidate",
         "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "onAtcApproval": true
       },
       {
         "to": "ESTOL",
@@ -5540,7 +5544,7 @@
         "chartDistanceNm": 3.8,
         "status": "candidate",
         "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "onAtcApproval": true
       },
       {
         "to": "SHARG",
@@ -7004,7 +7008,7 @@
         "chartDistanceNm": 5,
         "status": "candidate",
         "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "onAtcApproval": true
       },
       {
         "to": "NCSHN",
@@ -7045,7 +7049,7 @@
         "chartDistanceNm": 3.8,
         "status": "candidate",
         "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "onAtcApproval": true
       },
       {
         "to": "SORES",
@@ -7732,6 +7736,14 @@
       }
     ],
     "EITAN": [
+      {
+        "to": "AFULA",
+        "inboundAltitude": 3000,
+        "outboundAltitude": 2500,
+        "distanceNm": 14.29,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, EITAN->AFULA 3000 / AFULA->EITAN 2500"
+      },
       {
         "to": "KOYAR",
         "inboundAltitude": 3500,
