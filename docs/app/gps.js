@@ -195,9 +195,10 @@ function onLivePosition(pos) {
             : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : NaN);
   const isFirst = (_gpsLivePrev === null);
   const prev = _gpsLivePrev;
-  // Groundspeed/altitude, same derivation onGpsPosition uses below: the live readout
-  // stays position-only outside a recording (gpsUpdateReadout), but gpsCheckLegAlerts()
-  // needs both regardless of which live mode is running.
+  // Groundspeed/altitude, same derivation onGpsPosition uses below -- gpsCheckLegAlerts()
+  // needs both regardless of which live mode is running, and so does the footer readout
+  // (gpsUpdateReadout, below -- used to stay position-only outside a recording, showing
+  // nothing here; reported live: "show alt like gps mode shows alt in sim mode").
   let gsMs = (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed : null;
   if (gsMs == null && prev && prev.t) {
     const dt = (t - prev.t) / 1000;
@@ -210,6 +211,7 @@ function onLivePosition(pos) {
   gpsOwn = { lat: p.lat, lng: p.lng, hdg, t };
   gpsNoteFixArrived();
   gpsCheckLegAlerts();
+  if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   scheduleDraw();
   if (typeof map !== 'undefined') {
     if (isFirst) map.setView([p.lat, p.lng], map.getZoom());
@@ -298,6 +300,9 @@ function stopLiveLocation() {
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
   gpsMaybeStopDriftTimer();
+  // Otherwise the last live speed/altitude reading sat in the readout forever -- same
+  // refresh stopGpsRecording() already does on its own stop.
+  if (!gpsRecording && typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   scheduleDraw();
 }
 
@@ -311,25 +316,41 @@ var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
-  // A stale fix is worth saying even when nothing is being recorded: the map still shows an
-  // own-ship symbol, and the pilot has no other way to tell it is frozen.
-  if (!gpsRecording) {
-    const age = gpsFixStale() ? gpsFixAgeMs() : null;
-    el.textContent = age == null ? ''
-      : ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(age / 1000) + 's';
+  if (gpsRecording) {
+    const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
+    const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+    const ss = String(secs % 60).padStart(2, '0');
+    let s = gpsTrack.length + ' pts · ' + mm + ':' + ss;
+    if (gpsLastGS != null) s += ' · ' + Math.round(gpsLastGS) + ' kt';
+    if (gpsLastAlt != null) s += ' · ' + Math.round(gpsLastAlt) + ' ft';
+    if (gpsFixStale()) {
+      s += ' · ' + ((S && S.gpsFixStale) || 'GPS fix') + ' ' +
+        Math.round(gpsFixAgeMs() / 1000) + 's';
+    }
+    el.textContent = s;
     return;
   }
-  const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
-  const mm = String(Math.floor(secs / 60)).padStart(2, '0');
-  const ss = String(secs % 60).padStart(2, '0');
-  let s = gpsTrack.length + ' pts · ' + mm + ':' + ss;
-  if (gpsLastGS != null) s += ' · ' + Math.round(gpsLastGS) + ' kt';
-  if (gpsLastAlt != null) s += ' · ' + Math.round(gpsLastAlt) + ' ft';
-  if (gpsFixStale()) {
-    s += ' · ' + ((S && S.gpsFixStale) || 'GPS fix') + ' ' +
-      Math.round(gpsFixAgeMs() / 1000) + 's';
+  // Not recording, but still a live position source (plain "show location", or a
+  // connected simulator -- see the gpsUpdateReadout() call in io.js's _simFetch) --
+  // same speed/altitude fields as a recording, just without the point-count/elapsed
+  // -time prefix that only means something while actually building a track. Used to
+  // show nothing at all outside a recording; reported live: "show alt like gps mode
+  // shows alt in sim mode".
+  if (gpsLiveOn || (typeof simOn !== 'undefined' && simOn)) {
+    const parts = [];
+    if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
+    if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
+    if (gpsFixStale()) {
+      parts.push(((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(gpsFixAgeMs() / 1000) + 's');
+    }
+    el.textContent = parts.join(' · ');
+    return;
   }
-  el.textContent = s;
+  // Nothing active: a stale leftover fix is still worth saying (the map may still show
+  // a frozen own-ship symbol with no other way to tell it stopped updating).
+  const age = gpsFixStale() ? gpsFixAgeMs() : null;
+  el.textContent = age == null ? ''
+    : ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(age / 1000) + 's';
 }
 
 function onGpsPosition(pos) {

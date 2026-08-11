@@ -8147,6 +8147,11 @@ async function _simFetch() {
         if (Number.isFinite(jumpNm) && jumpNm > SIM_DISCONTINUITY_NM) gpsSnapLegAlertsToPosition();
       }
       gpsCheckLegAlerts();
+      // Same footer readout a GPS recording/live session shows (speed, altitude) --
+      // gpsUpdateReadout() otherwise only ever ran from the real-GPS paths, so a
+      // connected simulator left #gps-readout blank the whole time. Reported live:
+      // "show alt like gps mode shows alt in sim mode".
+      if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
     }
     if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
     draw();
@@ -8198,6 +8203,13 @@ function simStop() {
   try { localStorage.setItem('navaid.simOn', '0'); } catch (e) { /* */ }
   const _el = window._simStatusEl;
   if (_el) _el.textContent = '';
+  // Otherwise the last sim speed/altitude reading sat in the footer readout forever --
+  // same "real GPS wins" guard _simFetch's own write already follows, so a real GPS
+  // session's own numbers (if one happens to also be running) are left alone.
+  if (!gpsRecording && !gpsLiveOn) {
+    gpsLastGS = null; gpsLastAlt = null;
+    if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+  }
   draw();
 }
 window.simStart = simStart;
