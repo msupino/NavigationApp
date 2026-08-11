@@ -883,7 +883,32 @@ function gpsSendWatchAlert(title, body) {
     return;
   }
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-  try { new Notification(title, { body: body }); } catch (e) { /* unsupported context */ }
+  const plain = function () {
+    try { new Notification(title, { body: body }); } catch (e) { /* unsupported context */ }
+  };
+  const sw = (typeof navigator !== 'undefined') ? navigator.serviceWorker : null;
+  if (!sw || typeof sw.ready === 'undefined') { plain(); return; }
+  // Android Chrome refuses the bare `new Notification()` constructor once a service worker
+  // is registered for the page -- throws "Illegal constructor", silently swallowed by
+  // plain()'s catch, which is exactly why this app's alerts worked on a desktop browser but
+  // never appeared on an Android one. Route through the service worker's showNotification()
+  // instead, which works everywhere. Raced against a short timeout so an environment with no
+  // ACTIVE worker (a test harness; a page that never got past `?nogist`-style early boot)
+  // still falls back promptly instead of hanging on a `.ready` that never resolves.
+  let settled = false;
+  const timeout = setTimeout(function () { if (!settled) { settled = true; plain(); } }, 800);
+  sw.ready.then(function (reg) {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeout);
+    if (reg && typeof reg.showNotification === 'function') reg.showNotification(title, { body: body }).catch(plain);
+    else plain();
+  }).catch(function () {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeout);
+    plain();
+  });
 }
 
 // --- watch alert: drifted off the leg's course line -----------------------

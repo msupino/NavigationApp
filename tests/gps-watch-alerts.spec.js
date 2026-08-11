@@ -2,6 +2,12 @@ const { test, expect } = require('./_setup');
 
 // Stubs the web-Notification path so gpsSendWatchAlert's fallback is observable without a
 // real permission prompt. Native (Capacitor LocalNotifications) path is covered separately.
+// Also neutralises navigator.serviceWorker: gpsSendWatchAlert routes through a service
+// worker's showNotification() when one is active (the Android-Chrome fix), and this app's
+// own real service worker may well be registered in the test page too -- without this, the
+// alert would go to the REAL showNotification(), invisible to window.__notifications, and
+// every test below would see nothing fire. The service-worker path itself gets its own
+// dedicated test with its own fake registration.
 async function stubWebNotify(page) {
   await page.addInitScript(() => {
     window.__notifications = [];
@@ -11,6 +17,9 @@ async function stubWebNotify(page) {
     FakeNotification.permission = 'granted';
     FakeNotification.requestPermission = () => Promise.resolve('granted');
     window.Notification = FakeNotification;
+    try {
+      Object.defineProperty(navigator, 'serviceWorker', { value: undefined, configurable: true });
+    } catch (e) { /* already non-configurable in this engine -- ignore */ }
   });
 }
 
@@ -202,6 +211,9 @@ test.describe('no-route test nudge (temporary)', () => {
         return 'granted';
       });
       window.Notification = FakeNotification;
+      try {
+        Object.defineProperty(navigator, 'serviceWorker', { value: undefined, configurable: true });
+      } catch (e) { /* ignore */ }
       window.__liveCb = null;
       navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
       navigator.geolocation.clearWatch = () => {};
@@ -236,6 +248,69 @@ test.describe('no-route test nudge (temporary)', () => {
       return window.__notifications.length;
     });
     expect(n).toBe(0);
+  });
+});
+
+test.describe('web delivery via service worker (the Android Chrome fix)', () => {
+  test('routes through registration.showNotification() instead of the bare constructor when a service worker is active', async ({ page }) => {
+    await page.addInitScript(installFixHelper);
+    await page.addInitScript(() => {
+      window.__shown = [];
+      window.__plainConstructed = 0;
+      class FakeNotification {
+        constructor() { window.__plainConstructed++; }   // must NOT be reached
+      }
+      FakeNotification.permission = 'granted';
+      FakeNotification.requestPermission = () => Promise.resolve('granted');
+      window.Notification = FakeNotification;
+      const fakeRegistration = {
+        showNotification: (title, opts) => {
+          window.__shown.push({ title, body: (opts || {}).body });
+          return Promise.resolve();
+        },
+      };
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { ready: Promise.resolve(fakeRegistration) }, configurable: true,
+      });
+      window.__liveCb = null;
+      navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+      navigator.geolocation.clearWatch = () => {};
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof startLiveLocation === 'function' &&
+      typeof gpsCheckLegAlerts === 'function');
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      startLiveLocation();
+      window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
+    });
+    await page.waitForFunction(() => window.__shown.length > 0);
+    const out = await page.evaluate(() => ({ shown: window.__shown.slice(), constructed: window.__plainConstructed }));
+    expect(out.shown.length).toBe(1);
+    expect(out.shown[0].body).toContain('BRAVO');
+    expect(out.constructed).toBe(0);   // the bare constructor was never touched
+  });
+
+  test('falls back to the bare constructor if no service worker is active (no hang)', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.addInitScript(installFixHelper);
+    await page.addInitScript(() => {
+      window.__liveCb = null;
+      navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+      navigator.geolocation.clearWatch = () => {};
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof startLiveLocation === 'function');
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      startLiveLocation();
+      window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
+    });
+    // stubWebNotify already neutralises navigator.serviceWorker -- this must fire right
+    // away via the plain() fallback, not wait out the 800 ms safety timeout.
+    expect(await page.evaluate(() => window.__notifications.length)).toBe(1);
   });
 });
 
