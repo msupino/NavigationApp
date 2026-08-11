@@ -528,6 +528,7 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
     const [driftOut, driftIn] = nums;
     expect(driftOut).toBe(out.expectedOut);
     expect(driftIn).toBe(driftOut * 2);              // classic doubled-angle intercept
+    expect(out.notif[0].body).toContain('BRAVO');    // names which waypoint it's toward
   });
 
   test('past the midpoint: reports a single correction to the next waypoint instead', async ({ page }) => {

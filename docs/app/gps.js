@@ -995,8 +995,8 @@ function gpsCheckDrift() {
     const driftOut = Math.round(Math.abs(trackErrorDeg));
     const driftIn = driftOut * 2;
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'NavAid — off course',
-      (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, driftIn)
-        : (driftOut + '° off course, ' + driftIn + '° to intercept'));
+      (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, driftIn, label)
+        : (driftOut + '° off course, ' + driftIn + '° to intercept toward ' + label));
   } else {
     // Past the midpoint: rejoining the original line buys nothing this close to the
     // waypoint -- report the correction to head direct to it instead.

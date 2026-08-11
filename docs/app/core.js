@@ -1681,9 +1681,10 @@ window.S = Object.assign({
   },
   watchAlertDriftTitle: 'NavAid — off course',
   // Before the leg's midpoint: two numbers, the classic "double the error" intercept --
-  // how far off course (driftOut), then the heading correction to converge back (driftIn).
-  watchAlertDriftBody: function(driftOut, driftIn) {
-    return driftOut + '° off course, ' + driftIn + '° to intercept';
+  // how far off course (driftOut), then the heading correction to converge back (driftIn),
+  // toward wp -- the leg's own next waypoint, so the correction has a course to name.
+  watchAlertDriftBody: function(driftOut, driftIn, wp) {
+    return driftOut + '° off course, ' + driftIn + '° to intercept toward ' + wp;
   },
   // Past the midpoint: rejoining the original line buys nothing this close to the
   // waypoint, so this reports the correction to head direct to it instead.
