@@ -1002,7 +1002,7 @@ window.S = {
   watchAlertLegBody: function(wp, alt, hdg, time) {
     const parts = [];
     if (alt != null) parts.push(alt + ' רגל');
-    if (hdg != null) parts.push('כיוון ' + hdg + '°');
+    if (hdg != null) parts.push(hdg + '°');
     if (time != null) parts.push(time);
     return 'מתקרב אל ' + wp + (parts.length ? ' — הקטע הבא: ' + parts.join(', ') : '');
   },

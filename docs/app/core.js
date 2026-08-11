@@ -1678,7 +1678,7 @@ window.S = Object.assign({
   watchAlertLegBody: function(wp, alt, hdg, time) {
     const parts = [];
     if (alt != null) parts.push(alt + ' ft');
-    if (hdg != null) parts.push('hdg ' + hdg + '°');
+    if (hdg != null) parts.push(hdg + '°');
     if (time != null) parts.push(time);
     return 'Approaching ' + wp + (parts.length ? ' — next leg: ' + parts.join(', ') : '');
   },

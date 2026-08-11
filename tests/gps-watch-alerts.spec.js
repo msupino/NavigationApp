@@ -223,7 +223,7 @@ test.describe('leg-approach alert', () => {
     expect(out.notif[0].body).toContain('BRAVO');
     expect(out.notif[0].body).toContain('5000 ft');
     expect(out.notif[0].body).not.toContain('2000 ft');
-    expect(out.notif[0].body).toContain('hdg ' + out.expectedHdg + '°');
+    expect(out.notif[0].body).toContain(out.expectedHdg + '°');
   });
 
   test('the next leg\'s heading is wind-corrected, matching the leg inspector\'s own "With wind" readout', async ({ page }) => {
@@ -257,7 +257,7 @@ test.describe('leg-approach alert', () => {
     // course would -- otherwise the test can't tell a correct fix from a silently
     // reverted one.
     expect(out.expectedHdg).not.toBe(out.expectedPlainHdg);
-    expect(out.notif[0].body).toContain('hdg ' + out.expectedHdg + '°');
+    expect(out.notif[0].body).toContain(out.expectedHdg + '°');
   });
 
   test('omits altitude/heading on the last leg -- nothing to prep for', async ({ page }) => {
@@ -294,7 +294,7 @@ test.describe('leg-approach alert', () => {
     });
     expect(out.notif.length).toBe(2);   // leg-approach (index 0) + the same capture's TOP
     expect(out.notif[0].body).not.toContain('ft');
-    expect(out.notif[0].body).toContain('hdg ' + out.expectedHdg + '°');
+    expect(out.notif[0].body).toContain(out.expectedHdg + '°');
   });
 
   test('includes the next leg\'s planned time, from the plan\'s own speed -- ignores the live fix entirely', async ({ page }) => {
@@ -336,7 +336,7 @@ test.describe('leg-approach alert', () => {
     });
     // Heading is still derivable (pure geometry, no speed needed) -- only the TIME is
     // dropped, same "omit rather than guess" rule altitude/heading already follow.
-    expect(out[0].body).toContain('hdg');
+    expect(out[0].body).toContain('°');
     expect(out[0].body).not.toMatch(/\d+:\d\d/);
   });
 });
