@@ -4665,14 +4665,39 @@ function drawGraphLegs() {
       if (!labels) continue;
       // The altitude of the direction being flown -- the same field the kite reads, so a
       // blank here is the dataset defect this overlay exists to make visible.
-      const alt = Number.isFinite(flown.inboundAltitude) ? String(flown.inboundAltitude) : '—';
-      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-      octx.lineWidth = tune('overlayLabelHaloWidthPx') || 4;
-      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
-      octx.strokeText(alt, mx, my - 7);
-      octx.fillStyle = graphLegColor(kind);
-      octx.fillText(alt, mx, my - 7);
-      octx.lineWidth = tune('graphLegWidthPx');
+      // A two-way leg has TWO altitudes and they routinely differ (4000 one way, 3500 the
+      // other). One label in the middle could only ever show one of them, and gave no clue
+      // which -- so each altitude is drawn at the END IT IS FLOWN TOWARDS, beside the
+      // arrowhead pointing that way. A one-way leg keeps a single label, at its permitted
+      // destination.
+      //
+      // Read off the entry for the direction concerned: inboundAltitude is always
+      // "this entry's from -> to", so the p->q direction takes fwd.inboundAltitude and the
+      // q->p direction takes the reverse entry's.
+      const fwdEntry = fwdOpen ? e : rev;              // the p -> q direction
+      const revEntry = fwdOpen ? rev : e;              // the q -> p direction
+      const txt = (v) => Number.isFinite(v) ? String(v) : '—';
+      const put = (x, y, label) => {
+        octx.lineWidth = tune('overlayLabelHaloWidthPx') || 4;
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+        octx.strokeText(label, x, y);
+        octx.fillStyle = graphLegColor(kind);
+        octx.fillText(label, x, y);
+        octx.lineWidth = tune('graphLegWidthPx');
+      };
+      // Sit the labels just inside the arrowheads, offset perpendicular to the leg so they
+      // clear the line itself whatever angle it runs at.
+      const nx = -Math.sin(ang) * 9, ny = Math.cos(ang) * 9;
+      const at = (t) => ({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
+      const twoWay = fwdOpen && revOpen;
+      if (twoWay) {
+        const a = at(0.68), b = at(0.32);
+        put(a.x + nx, a.y + ny, txt(fwdEntry && fwdEntry.inboundAltitude));
+        put(b.x + nx, b.y + ny, txt(revEntry && revEntry.inboundAltitude));
+      } else {
+        const a = at(0.62);
+        put(a.x + nx, a.y + ny, txt(flown.inboundAltitude));
+      }
     }
   }
   octx.restore();
