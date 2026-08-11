@@ -1489,7 +1489,10 @@ function appendAirfieldFrequencyRows(body, af) {
     btn.onclick = () => {
       // Reuse the existing paths: flash it on the map if it is drawn, else open the list.
       if (typeof flashNotam === 'function') flashNotam(freqNotams[0].id);
-      if (typeof showNotamModal === 'function') showNotamModal(freqNotams[0].id);
+      // The array of NOTAM OBJECTS, as every other caller passes -- an id string falls
+      // through and lists the whole feed, which is the opposite of a pointer. All of this
+      // field's frequency NOTAMs, not just the first: if there are two, both are the answer.
+      if (typeof showNotamModal === 'function') showNotamModal(freqNotams);
     };
     row.appendChild(btn);
     body.appendChild(row);

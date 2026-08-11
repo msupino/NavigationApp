@@ -98,3 +98,22 @@ test('no frequency NOTAM, no row', async ({ page }) => {
   });
   expect(has === false || has === 'no-such-field').toBe(true);
 });
+
+test('the pointer opens only that field\'s frequency NOTAMs, not the whole feed', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    await loadAirfields();
+    const i = airfields.findIndex(a => a.name === 'LLHZ');
+    state.selected = { type: 'airfield', index: i };
+    showInspector();
+    document.querySelector('.freq-notam-row .freq-notam-btn').click();
+    const rows = [...document.querySelectorAll('.modal.notam-modal .notam-item, .modal.notam-modal .notam-row')];
+    const txt = document.querySelector('.modal.notam-modal').textContent;
+    return { count: rows.length, txt };
+  });
+  // LLHZ's frequency NOTAM is F1/26. The crane NOTAM at the same field (F2/26) and
+  // LLBG's ATIS one (F3/26) are NOT the answer to "what is this frequency note".
+  expect(out.txt).toContain('F1/26');
+  expect(out.txt).not.toContain('F2/26');
+  expect(out.txt).not.toContain('F3/26');
+});
