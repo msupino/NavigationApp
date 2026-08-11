@@ -145,12 +145,44 @@
         return o;
       }), null, 2);
     }
-    return JSON.stringify(curPoints().map(function (p) {
-      var o = { lat: p.lat, lng: p.lng, report: p.report };
-      if (p.name) o.name = p.name;
-      if (p.he) o.he = p.he;
-      return o;
-    }), null, 2);
+    // Reporting points live in <prefix>-route-graph.json under `nodes`, keyed by name --
+    // NOT in a flat array, which is what the retired *-nav-waypoints.json files used and
+    // what this exported until now. Pasting that array back over a graph would not have
+    // been a lossy round-trip, it would have destroyed the file.
+    //
+    // Fields this editor does not edit (code, kind, layers, commChange, callSigns, active,
+    // noSegmentsReason, ...) ride through untouched, the same guarantee polygon mode has
+    // always given. `_node` carries the original record; only position and labels are
+    // overwritten from what was edited here.
+    //
+    // EDGES ARE NOT EMITTED. This tool does not draw them, so the fragment is `nodes` only
+    // and must be MERGED into the file's nodes map, never pasted over the whole graph.
+    // Unnamed points keep a placeholder key rather than being dropped. Dropping them would
+    // lose captured coordinates silently, and capture-then-name IS the workflow: you click
+    // to drop, export to check, and name afterwards. UNNAMED_n is obviously not a code, so
+    // it cannot be pasted back by accident without being noticed.
+    var out = {}, draft = 0;
+    curPoints().forEach(function (p) {
+      var id = (p.name || '').trim().toUpperCase();
+      if (!id) { draft++; id = 'UNNAMED_' + draft; }
+      var base = p._node ? JSON.parse(JSON.stringify(p._node)) : {};
+      base.lat = p.lat;
+      base.lng = p.lng;
+      if (p.report) base.report = p.report;
+      var named = !!(p.name || '').trim();
+      if (named) base.name = id;
+      if (p.he) base.he = p.he;
+      // A node the validator will accept: it requires he, and en or code. A draft gets
+      // neither -- it is not a node yet, and inventing a code would make it look like one.
+      if (named && !base.code) base.code = id;
+      if (!base.en && !base.code) base.en = id;
+      if (!base.kind) base.kind = 'waypoint';
+      var lyr = prefixForLayer(p.layer || currentLayer());
+      if (!Array.isArray(base.layers)) base.layers = [lyr];
+      else if (base.layers.indexOf(lyr) < 0) base.layers = base.layers.concat([lyr]);
+      out[id] = base;
+    });
+    return JSON.stringify({ nodes: out }, null, 2);
   }
 
   // Only chart layers have a known waypoint set worth importing into the
@@ -177,22 +209,29 @@
     // mid-fetch layer switch would import the new layer's points tagged
     // with the old layer's name.
     var expected = prefixForLayer(lyr);
-    fetchLayerData('nav-waypoints').then(function (res) {
+    // The RAW graph, not the projected waypoint view: the projection drops code, kind,
+    // layers, commChange, callSigns and the rest, and re-exporting from it would quietly
+    // strip them on paste-back. Each editor point keeps its whole source record in `_node`.
+    routeGraphData(expected).then(function (g) {
       if (currentLayer() !== lyr) {
         alert('Layer changed while loading — not importing. Try again on ' + lyr + '.');
         return;
       }
-      if (res.prefix !== expected) {
-        alert('The ' + lyr + ' waypoint set failed to load (got the ' + res.prefix +
-          ' fallback instead) — not importing. Try again.');
+      if (!g || !g.nodes) {
+        alert('The ' + lyr + ' route graph failed to load — not importing. Try again.');
         return;
       }
-      var d = res.data;
-      var arr = Array.isArray(d) ? d : (d.points || d.waypoints || []);
-      var loaded = arr.filter(function (p) { return p && isFinite(p.lat) && isFinite(p.lng); }).map(function (p) {
-        var rep = p.report === 'mandatory' ? 'mandatory' : (p.report === 'onRequest' ? 'onRequest' : curType);
-        return { lat: r5(p.lat), lng: r5(p.lng), report: rep, layer: lyr, name: p.name || '', he: p.he || '' };
-      });
+      var loaded = Object.keys(g.nodes).map(function (id) { return g.nodes[id]; })
+        .filter(function (n) {
+          return n && isFinite(n.lat) && isFinite(n.lng) &&
+            Array.isArray(n.layers) && n.layers.indexOf(expected) >= 0 &&
+            n.kind !== 'airfield' && n.kind !== 'airstrip';   // ARPs live in airfields.json
+        })
+        .map(function (n) {
+          var rep = n.report === 'mandatory' ? 'mandatory' : (n.report === 'onRequest' ? 'onRequest' : curType);
+          return { lat: r5(n.lat), lng: r5(n.lng), report: rep, layer: lyr,
+                   name: n.name || n.code || '', he: n.he || '', _node: n };
+        });
       points = points.filter(function (p) { return (p.layer || '') !== lyr; }).concat(loaded);
       savePoints(); render(); redraw();
     }).catch(function (e) { alert('Failed to load known set: ' + e); });

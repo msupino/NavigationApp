@@ -1,5 +1,11 @@
 // @ts-check
 // Hidden capture tool (?editor=1): click map to drop typed points, export JSON.
+//
+// POINT mode exports a route-graph `nodes` fragment keyed by name -- the shape of
+// <prefix>-route-graph.json, which is where reporting points live. It used to export a
+// flat array, the shape of the retired *-nav-waypoints.json files; pasting that back over
+// a graph would have destroyed it. POLYGON mode still exports an array (LSA bubbles), so
+// the two modes are asserted differently below.
 const { test, expect } = require('./_setup');
 
 test('capture panel appears only with ?editor=1', async ({ page }) => {
@@ -23,7 +29,7 @@ test('clicking the map adds typed points and exports JSON', async ({ page }) => 
     // switch type then add another
     document.querySelector('input[name=ed-t][value=mandatory]').click();
     map.fire('click', { latlng: L.latLng(32.20, 34.95) });
-    const json = JSON.parse(document.getElementById('ed-json').value);
+    const json = Object.values(JSON.parse(document.getElementById('ed-json').value).nodes || {});
     const stored = JSON.parse(localStorage.getItem('navaid.editor.points') || '[]');
     return { json, count: document.getElementById('ed-count').textContent, stored: stored.length };
   });
@@ -35,7 +41,7 @@ test('clicking the map adds typed points and exports JSON', async ({ page }) => 
   // persists across reload
   await page.reload();
   await page.waitForSelector('#editor-panel');
-  expect(await page.evaluate(() => JSON.parse(document.getElementById('ed-json').value).length)).toBe(2);
+  expect(await page.evaluate(() => Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length)).toBe(2);
 });
 
 test('captured points are scoped to the base layer they were made on', async ({ page }) => {
@@ -45,7 +51,7 @@ test('captured points are scoped to the base layer they were made on', async ({ 
   await page.waitForFunction(() => typeof layers !== 'undefined');
   const r = await page.evaluate(() => {
     const setLayer = k => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers[k]); };
-    const exported = () => JSON.parse(document.getElementById('ed-json').value).length;
+    const exported = () => Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length;
     setLayer('CVFR');
     map.fire('click', { latlng: L.latLng(32.1, 34.8) });
     map.fire('click', { latlng: L.latLng(32.2, 34.9) });
@@ -76,7 +82,7 @@ test('dragging a captured triangle updates its coordinates', async ({ page }) =>
     map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
     mk.setLatLng(L.latLng(32.15, 34.85));
     mk.fire('dragend', { target: mk });
-    return JSON.parse(document.getElementById('ed-json').value)[0];
+    return Object.values(JSON.parse(document.getElementById('ed-json').value).nodes || {})[0];
   });
   expect(p).toMatchObject({ lat: 32.15, lng: 34.85 });
 });
@@ -89,9 +95,9 @@ test('Load known fills the editor with the selected layer dataset', async ({ pag
   page.on('dialog', d => d.accept());
   await page.evaluate(() => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers['CVFR']); });
   await page.click('#ed-load');
-  await page.waitForFunction(() => JSON.parse(document.getElementById('ed-json').value).length > 100);
+  await page.waitForFunction(() => Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length > 100);
   const out = await page.evaluate(() => {
-    const j = JSON.parse(document.getElementById('ed-json').value);
+    const j = Object.values(JSON.parse(document.getElementById('ed-json').value).nodes || {});
     return { n: j.length, hasName: !!j[0].name, hasReport: !!j[0].report };
   });
   expect(out.n).toBeGreaterThan(150);    // ~172 CVFR nav-waypoints
@@ -108,9 +114,9 @@ test('undo and clear work', async ({ page }) => {
     map.fire('click', { latlng: L.latLng(32.1, 34.8) });
     map.fire('click', { latlng: L.latLng(32.2, 34.9) });
     document.getElementById('ed-undo').click();
-    const afterUndo = JSON.parse(document.getElementById('ed-json').value).length;
+    const afterUndo = Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length;
     document.getElementById('ed-clear').click();
-    const afterClear = JSON.parse(document.getElementById('ed-json').value).length;
+    const afterClear = Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length;
     return { afterUndo, afterClear };
   });
   expect(r.afterUndo).toBe(1);
@@ -174,7 +180,7 @@ test('clicking a point marker names it (applied to JSON)', async ({ page }) => {
     map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
     mk.fire('click', {});
     await new Promise(r => setTimeout(r, 30));
-    return JSON.parse(document.getElementById('ed-json').value)[0];
+    return Object.values(JSON.parse(document.getElementById('ed-json').value).nodes || {})[0];
   });
   expect(r.name).toBe('SFAIM');
 });
@@ -283,8 +289,8 @@ test('Load known works on the Helicopters layer', async ({ page }) => {
   page.on('dialog', d => { if (d.type() === 'alert') alerted = true; d.accept(); });
   await page.evaluate(() => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers['Helicopters']); });
   await page.click('#ed-load');
-  await page.waitForFunction(() => JSON.parse(document.getElementById('ed-json').value).length > 100);
-  const n = await page.evaluate(() => JSON.parse(document.getElementById('ed-json').value).length);
+  await page.waitForFunction(() => Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length > 100);
+  const n = await page.evaluate(() => Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length);
   expect(n).toBeGreaterThan(150);     // ~205 heli points
   expect(alerted).toBe(false);        // no "no known set" alert
 });
@@ -303,7 +309,7 @@ test('shift-clicking a point marker deletes it instantly (no prompt)', async ({ 
     map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
     mk.fire('click', { originalEvent: { shiftKey: true } });
     await new Promise(r => setTimeout(r, 30));
-    return JSON.parse(document.getElementById('ed-json').value).length;
+    return Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length;
   });
   expect(n).toBe(0);           // deleted
   expect(prompted).toBe(false); // without any prompt
@@ -322,10 +328,13 @@ test('Load known refuses to import when the base layer changes mid-fetch', async
     // Simulate a mid-fetch layer switch: fetchLayerData follows the active
     // layer by design, so it resolves with heli data — the guard must refuse
     // to tag those points as Low Alt.
-    window.fetchLayerData = () => {
+    // Load known reads the RAW graph now (routeGraphData), not the projected waypoint
+    // view, so the mid-fetch switch is simulated on that call instead.
+    window.routeGraphData = () => {
       for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
       map.addLayer(layers['Helicopters']);
-      return Promise.resolve({ data: { points: [{ lat: 32.0, lng: 34.8, name: 'X' }] }, prefix: 'heli' });
+      return Promise.resolve({ nodes: { X: { lat: 32.0, lng: 34.8, name: 'X', he: 'איקס',
+        code: 'X', kind: 'waypoint', layers: ['heli'], report: 'onRequest' } }, edges: {} });
     };
   });
   await page.click('#ed-load');
