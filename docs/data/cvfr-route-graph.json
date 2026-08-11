@@ -2324,7 +2324,15 @@
           "callSign": "TEL_NOF"
         },
         {
+          "after": "NSHRM",
+          "callSign": "TEL_NOF"
+        },
+        {
           "after": "BOVED",
+          "callSign": "TEL_NOF"
+        },
+        {
+          "after": "NAGID",
           "callSign": "TEL_NOF"
         },
         {

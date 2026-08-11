@@ -457,12 +457,18 @@ test.describe('comm-change auto-note (#487)', () => {
     };
     await installCommChangeFixture(page, routeFixture);
     await boot(page);
-    const out = await page.evaluate(({ tyona, ntaim, nagid }) => {
+    // A made-up name, not NAGID: NTAIM is a real graph node, and the fixture merge (see
+    // _layerData.js) leaves the REAL node's routeHints in place whenever the fixture's own
+    // NTAIM entry doesn't specify any -- the real graph now has an explicit after:NAGID hint
+    // (this session's data fix), so using the real name here would make this test assert on
+    // that hint firing instead of on the fallback mechanism it's meant to probe.
+    const thirdPoint = { lat: NAGID.lat, lng: NAGID.lng, name: 'ZZZTESTPT' };
+    const out = await page.evaluate(({ tyona, ntaim, third }) => {
       state.waypoints = [tyona, ntaim];
       state.notes = [];
       syncLegs();
       seedCommChangeNotes();
-      const beforeNagid = state.notes
+      const beforeThird = state.notes
         .filter(n => n.cc)
         .map(n => ({
           cc: n.cc,
@@ -471,10 +477,10 @@ test.describe('comm-change auto-note (#487)', () => {
           freqAuto: n.freqAuto,
         }));
 
-      state.waypoints.push(nagid);
+      state.waypoints.push(third);
       syncLegs();
       seedCommChangeNotes();
-      const afterNagid = state.notes
+      const afterThird = state.notes
         .filter(n => n.cc)
         .map(n => ({
           cc: n.cc,
@@ -483,13 +489,13 @@ test.describe('comm-change auto-note (#487)', () => {
           lines: noteLines(n),
           freqAuto: n.freqAuto,
         }));
-      return { beforeNagid, afterNagid };
-    }, { tyona: TYONA, ntaim: NTAIM, nagid: NAGID });
-    expect(out.beforeNagid).toEqual([
+      return { beforeThird, afterThird };
+    }, { tyona: TYONA, ntaim: NTAIM, third: thirdPoint });
+    expect(out.beforeThird).toEqual([
       { cc: 'TYONA', freqName: 'PALMACHIM', freq: '135.55', freqAuto: true },
       { cc: 'NTAIM', freqName: 'BEN_GURION', freq: '118.30', freqAuto: true },
     ]);
-    expect(out.afterNagid).toEqual([
+    expect(out.afterThird).toEqual([
       { cc: 'TYONA', freqName: 'PALMACHIM', freq: '135.55', lines: ['PALMACHIM', '135.55'], freqAuto: true },
       { cc: 'NTAIM', freqName: 'PALMACHIM', freq: '135.55', lines: ['PALMACHIM', '135.55'], freqAuto: true },
     ]);
@@ -1967,9 +1973,12 @@ const ALPHA = { lat: 31.50, lng: 34.90, name: 'ALPHA' };
 const BETA = { lat: 31.51, lng: 34.90, name: 'BETA' };
 const GAMMA = { lat: 31.52, lng: 34.90, name: 'GAMMA' };
 const DELTA = { lat: 31.51, lng: 34.90, name: 'DELTA' };   // same slot as BETA, different case
-const ALPHA_CENTER = ALPHA;
 
-async function bootSuppression(page, lang = 'en') {
+// Generic boot for a STANDALONE fixture: installCommChangeFixture's stubGraph
+// concatenates onto whatever fixture came before it (no default is installed for these
+// tests), so the shared boot()'s hard-wait on TYONA would hang forever here -- wait on
+// whichever point NAME the fixture actually carries instead.
+async function bootFixture(page, waitName, center, lang = 'en') {
   await page.addInitScript(() => {
     try {
       if (localStorage.getItem('__test_comm_init_v1') !== '1') {
@@ -1989,18 +1998,18 @@ async function bootSuppression(page, lang = 'en') {
   await page.evaluate(() => loadAirfields());
   await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
   await page.evaluate(() => loadCommChange());
-  // Waits on ALPHA, not TYONA: SUPPRESSION_FIXTURE stands alone (installCommChangeFixture's
-  // stubGraph concatenates onto whatever fixture came before it, and no default fixture is
-  // installed for these tests), so the shared boot()'s TYONA wait would hang forever here.
-  await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.ALPHA);
+  await page.waitForFunction(n => window.commChangeMap && window.commChangeMap[n], waitName);
   await page.evaluate(() => { window.showCommChange = true; });
-  await page.evaluate(t => map.setView([t.lat, t.lng], 12), ALPHA_CENTER);
+  await page.evaluate(t => map.setView([t.lat, t.lng], 12), center);
   await page.evaluate(() => {
     state.waypoints = [];
     state.legs = [];
     state.notes = [];
     state.commChangeSuppressions = [];
   });
+}
+async function bootSuppression(page, lang = 'en') {
+  await bootFixture(page, 'ALPHA', ALPHA, lang);
 }
 
 test.describe('same-frequency suppression', () => {
@@ -2047,5 +2056,79 @@ test.describe('same-frequency suppression', () => {
       return state.notes.filter(n => n.cc).map(n => n.cc);
     }, { a: ALPHA, b: BETA });
     expect(out).toContain('BETA');
+  });
+});
+
+// A hint's `after` sometimes misses the immediate next drawn waypoint because an extra
+// point got spliced in right after the comm-change point -- auto-route inserting a real
+// corridor stop the hint was never written to expect. The tolerance isn't a fixed hop
+// count: the hint's target can be any waypoint up to the NEXT comm-change point, however
+// many stops away that is -- past that boundary the frequency has already changed again.
+const LOOKAHEAD_FIXTURE = {
+  version: 1,
+  source: 'test fixture',
+  callSigns: { X: { label: 'Xray', he: 'איקס', primary: '121.10' },
+    Y: { label: 'Yankee', he: 'וואי', primary: '128.20' },
+    Z: { label: 'Zulu', he: 'זד', primary: '119.90' } },
+  points: [
+    // ECHO's hint says "after: GOLF" -- written assuming GOLF is the immediate next point.
+    // Y listed FIRST so the no-hint-match fallback (array-order tie-break, same mechanism
+    // documented earlier this session) defaults to Y -- distinguishing "the hint fired and
+    // gave X" from "the hint did not fire and the fallback happened to also say X".
+    { name: 'ECHO', commChange: true, callSigns: ['Y', 'X'],
+      routeHints: [{ after: 'GOLF', callSign: 'X' }] },
+    // A second comm-change point: once the route passes HOTEL, ECHO's frequency is no
+    // longer in force, so ECHO's hint must not reach past it.
+    { name: 'HOTEL', commChange: true, callSigns: ['Z'] },
+  ],
+};
+const ECHO = { lat: 31.60, lng: 34.90, name: 'ECHO' };
+const FOXTROT = { lat: 31.61, lng: 34.90, name: 'FOXTROT' };   // an inserted point -- not comm-change
+const GOLF = { lat: 31.62, lng: 34.90, name: 'GOLF' };
+const HOTEL = { lat: 31.63, lng: 34.90, name: 'HOTEL' };
+
+test.describe('a hint\'s after-target reached across the whole corridor to the next comm-change point', () => {
+  test('still matches when an extra point is spliced in right after the comm-change point', async ({ page }) => {
+    await installCommChangeFixture(page, LOOKAHEAD_FIXTURE);
+    await bootFixture(page, 'ECHO', ECHO);
+    const out = await page.evaluate(({ e, f, g }) => {
+      // ECHO -> FOXTROT -> GOLF: FOXTROT sits where the hint expected GOLF directly.
+      state.waypoints = [e, f, g];
+      syncLegs();
+      seedCommChangeNotes();
+      const note = state.notes.find(n => n.cc === 'ECHO');
+      return note ? { freqName: note.freqName, freq: note.freq } : null;
+    }, { e: ECHO, f: FOXTROT, g: GOLF });
+    expect(out).toEqual({ freqName: 'X', freq: '121.10' });
+  });
+
+  test('still matches many hops out, as long as no comm-change point comes first', async ({ page }) => {
+    await installCommChangeFixture(page, LOOKAHEAD_FIXTURE);
+    await bootFixture(page, 'ECHO', ECHO);
+    const out = await page.evaluate(({ e, g }) => {
+      // ECHO -> 4 plain waypoints -> GOLF: no fixed hop count, so this still fires.
+      const filler = [1, 2, 3, 4].map(n => ({ lat: 31.60 + n * 0.001, lng: 34.90, name: 'FILL' + n }));
+      state.waypoints = [e, ...filler, g];
+      syncLegs();
+      seedCommChangeNotes();
+      const note = state.notes.find(n => n.cc === 'ECHO');
+      return note ? { freqName: note.freqName, freq: note.freq } : null;
+    }, { e: ECHO, g: GOLF });
+    expect(out).toEqual({ freqName: 'X', freq: '121.10' });
+  });
+
+  test('does not reach past an intervening comm-change point -- that ends the corridor', async ({ page }) => {
+    await installCommChangeFixture(page, LOOKAHEAD_FIXTURE);
+    await bootFixture(page, 'ECHO', ECHO);
+    const out = await page.evaluate(({ e, h, g }) => {
+      // ECHO -> HOTEL -> GOLF: HOTEL is itself a comm-change point, so ECHO's frequency
+      // is no longer in force by the time GOLF shows up -- the hint must not fire.
+      state.waypoints = [e, h, g];
+      syncLegs();
+      seedCommChangeNotes();
+      const note = state.notes.find(n => n.cc === 'ECHO');
+      return note ? note.freqName : null;
+    }, { e: ECHO, h: HOTEL, g: GOLF });
+    expect(out).not.toBe('X');
   });
 });

@@ -2660,19 +2660,38 @@ function commRouteHintName(raw) {
 function commCallSignDefaultFromOption(opt) {
   return opt ? { freqName: opt.id, freq: opt.freq || '' } : null;
 }
+function commRouteAfterNames(entry) {
+  // Every waypoint from here to the next comm-change point (inclusive of that point, exclusive
+  // of anything past it) -- the span a call sign picked at `entry` is actually in force for.
+  // A route sometimes has extra waypoints spliced in right after a comm-change point (auto-route
+  // inserting a real corridor stop a hint's `after` was never written to expect -- NTAIM's
+  // TEL_NOF hint said "after: SIRNI" and a route drawn NTAIM->SUPER->SIRNI missed it on the
+  // immediate neighbour alone), so a fixed hop count is the wrong tolerance: the actual boundary
+  // is the next place the frequency would change again, however many stops away that is.
+  const names = [];
+  if (typeof state === 'undefined' || !Array.isArray(state.waypoints)) return names;
+  for (let i = entry.index + 1; i < state.waypoints.length; i++) {
+    const wp = state.waypoints[i];
+    const nm = canonicalNavWaypointName(wp && wp.name);
+    if (nm) names.push(nm);
+    const row = commChangeMap && wp && commChangeMap[wp.name];
+    if (row && row.commChange) break;
+  }
+  return names;
+}
 function commRouteHintDefault(entry) {
   if (!entry || !commChangeMap || typeof state === 'undefined' ||
       !Array.isArray(state.waypoints)) return null;
   const row = commChangeMap[entry.name];
   if (!row || !Array.isArray(row.routeHints) || !row.routeHints.length) return null;
   const before = commRouteContextName(entry.index - 1);
-  const after = commRouteContextName(entry.index + 1);
+  const afterNames = commRouteAfterNames(entry);
   const candidates = [];
   const seen = new Set();
   for (const hint of row.routeHints) {
     if (!hint || typeof hint !== 'object') continue;
     if (hint.before && commRouteHintName(hint.before) !== before) continue;
-    if (hint.after && commRouteHintName(hint.after) !== after) continue;
+    if (hint.after && !afterNames.includes(commRouteHintName(hint.after))) continue;
     const opt = commCallSignOptionById(entry.name, hint.callSign);
     const key = opt && commCallSignIdKey(opt.id);
     if (!opt || !key || seen.has(key)) continue;
