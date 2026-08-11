@@ -172,8 +172,16 @@ function onLivePosition(pos) {
   if (c.accuracy != null && c.accuracy > GPS_MAX_ACC_M) return;
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
   const t = pos.timestamp || Date.now();
+  // NaN, not 0, when neither the device nor a previous fix can supply a heading --
+  // 0 is a real compass value (due north) and Number.isFinite(0) is true, so a
+  // literal 0 here reads downstream as "confirmed heading: north" rather than
+  // "unknown," locking the own-ship icon AND the predictor line onto true north
+  // for as long as the device fails to report a course (stationary/taxiing GPS
+  // routinely omits it -- reported live as "the broken line in front of the
+  // plane is showing true north"). NaN correctly fails Number.isFinite() and
+  // lets drawHeadingLine's/drawOwnShip's own frozen-last-heading fallback run.
   const hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
-            : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : 0);
+            : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : NaN);
   const isFirst = (_gpsLivePrev === null);
   const prev = _gpsLivePrev;
   // Groundspeed/altitude, same derivation onGpsPosition uses below: the live readout
@@ -335,8 +343,10 @@ function onGpsPosition(pos) {
   gpsLastGS = gsMs != null ? gsMs * 1.94384 : null;            // m/s → kt
   gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null;  // m → ft
   // heading: device value when moving, else bearing from the previous point.
+  // NaN (not 0 -- see onLivePosition's identical fallback for why) when neither
+  // is available.
   let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
-            : (prev ? geo(prev, pt).brg : 0);
+            : (prev ? geo(prev, pt).brg : NaN);
   // Same fix time as the live path: a stalled RECORDING freezes the same symbol.
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t };
   gpsNoteFixArrived();

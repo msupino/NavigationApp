@@ -106,6 +106,36 @@ test('draws nothing when there has never been a valid heading', async ({ page })
   expect(none).toBeNull();
 });
 
+test('a real GPS fix with no course does not synthesize a fake 0 (north) heading', async ({ page }) => {
+  // Regression: onLivePosition/onGpsPosition (gps.js) used to fall back to the
+  // literal number 0 -- not null/NaN -- when the device reported no course AND
+  // there was no previous fix to derive a bearing from (routine on the very
+  // first fix, or any time the GPS chip omits course while stationary/taxiing).
+  // 0 passes Number.isFinite(), so downstream code read it as "confirmed
+  // heading: true north" instead of "unknown", locking both the own-ship icon
+  // and this predictor line onto north indefinitely. Reported live: "the
+  // broken line in front of the plane is showing true north".
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 21; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await boot(page);
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  const out = await page.evaluate(() => {
+    startLiveLocation();
+    window.__headingLine = null;
+    // First-ever fix: no previous point to derive a bearing from, and the
+    // device reports no course either -- genuinely unknown, not north.
+    window.__liveCb({ coords: { latitude: 32.1, longitude: 34.9, accuracy: 8,
+      heading: null, speed: null, altitude: null }, timestamp: Date.now() });
+    return { hdg: window.gpsOwn && window.gpsOwn.hdg, line: window.__headingLine };
+  });
+  expect(out.hdg).not.toBe(0);          // not a fake, confirmed-looking north
+  expect(Number.isFinite(out.hdg)).toBe(false);
+  expect(out.line).toBeNull();          // nothing to draw yet, not a line pointing north
+});
+
 test('resetHeadingPredictor clears the frozen heading so a parked restart draws nothing', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {

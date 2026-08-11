@@ -88,13 +88,18 @@ function drawOwnShip(pos, hdg) {
   // A frozen fix is drawn faded, and without the heading predictor: extrapolating a track
   // from a position that stopped updating is the one thing a stale fix must not do.
   const stale = typeof gpsFixStale === 'function' && gpsFixStale();
-  if (!stale) drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol
+  if (!stale) drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol, freezes lastOwnHeadingDeg
   const s = proj(pos);
   // Screen angle from a projected geographic offset in the heading direction,
   // so it stays correct under map rotation (map.setBearing) — same approach as
   // the wind/kite arrows. (The manual `heading − mapBearing` was only right at
   // north-up.) The silhouette's nose is up (−y) in local frame, hence +90°.
-  const to = (hdg || 0) * Math.PI / 180;
+  // Same frozen-last-heading fallback as the predictor line, not a bare `|| 0`:
+  // a missing/NaN heading is not "confirmed heading 0 (north)", and locking the
+  // icon onto true north whenever the device drops course reporting (routine
+  // while stationary/taxiing) was the actual bug, not just the line beneath it.
+  const h = Number.isFinite(hdg) ? hdg : (Number.isFinite(lastOwnHeadingDeg) ? lastOwnHeadingDeg : 0);
+  const to = h * Math.PI / 180;
   const eps = 0.02;   // ~1.2 NM; used for direction only
   const p2 = proj({
     lat: pos.lat + Math.cos(to) * eps,
