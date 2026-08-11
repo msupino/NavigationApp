@@ -262,10 +262,16 @@ function startLiveLocation() {
     onGpsLiveError(e);
     return;
   }
+  // Persisted so a full page reload (language switch's location.href, or any other) can
+  // resume it -- see the auto-reconnect block beside the #gps-live button in ui.js. Only
+  // written once the watch actually registered; onGpsLiveError's stopLiveLocation() below
+  // clears it again on a registration failure.
+  try { localStorage.setItem('navaid.gpsLiveOn', '1'); } catch (e) { /* */ }
   scheduleDraw();
 }
 
 function stopLiveLocation() {
+  try { localStorage.setItem('navaid.gpsLiveOn', '0'); } catch (e) { /* */ }
   gpsStopWatch(gpsLiveWatchId);
   gpsLiveWatchId = null;
   gpsLiveOn = false;

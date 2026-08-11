@@ -446,6 +446,43 @@ test('Show my location shows own-ship without recording or saving a track', asyn
   expect(await page.evaluate(() => gpsOwn)).toBeNull(); // own-ship cleared (no recording active)
 });
 
+test('live location survives a full page reload (e.g. switching language) -- resumes automatically', async ({ page }) => {
+  // Language switching (the lang-select control) does location.href = '?...', a real
+  // navigation -- every in-memory flag, gpsLiveOn included, is gone afterward. Without
+  // persistence this silently stopped tracking (and with it the watch alerts that depend
+  // on it) on any reload, with no sign anything had changed.
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  const btn = page.locator('#gps-live');
+  await btn.click();
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.gpsLiveOn'))).toBe('1');
+
+  // Simulate the reload: a fresh navigation, same stubs (watchPosition would otherwise be
+  // the real geolocation.watchPosition again, unrelated to whether resume itself works).
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 12; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof gpsLiveOn !== 'undefined');
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(true);         // resumed, not left off
+  await expect(btn).toHaveAttribute('aria-pressed', 'true');       // button reflects it too
+
+  // ...and stopping persists the OFF state, so the next reload does not resume it.
+  await btn.click();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.gpsLiveOn'))).toBe('0');
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof gpsLiveOn !== 'undefined');
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
+});
+
 test('stopping a recording keeps own-ship when live location is still on', async ({ page }) => {
   await page.addInitScript(() => {
     window.__recCb = null; window.__liveCb = null; let n = 0;
