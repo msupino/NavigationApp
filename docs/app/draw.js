@@ -83,12 +83,12 @@ function legKiteAlongHalfPx(sc) {
 // both the simulator aircraft and the live GPS position). Top-down airplane
 // silhouette: nose up in local frame, rotated to (heading − map bearing) so it
 // tracks correctly on a rotated map.
-function drawOwnShip(pos, hdg) {
+function drawOwnShip(pos, hdg, gsKt) {
   if (!pos) return;
   // A frozen fix is drawn faded, and without the heading predictor: extrapolating a track
   // from a position that stopped updating is the one thing a stale fix must not do.
   const stale = typeof gpsFixStale === 'function' && gpsFixStale();
-  if (!stale) drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol, freezes lastOwnHeadingDeg
+  if (!stale) drawHeadingLine(pos, hdg, gsKt);   // predictor under the aircraft symbol, freezes lastOwnHeadingDeg
   const s = proj(pos);
   // Screen angle from a projected geographic offset in the heading direction,
   // so it stays correct under map rotation (map.setBearing) — same approach as
@@ -174,7 +174,7 @@ let lastOwnHeadingDeg = null;
 // confidently at a stale course, and switching sim↔live leaks one source's
 // heading into the other.
 function resetHeadingPredictor() { lastOwnHeadingDeg = null; }
-function drawHeadingLine(pos, hdg) {
+function drawHeadingLine(pos, hdg, gsKt) {
   if (!pos) return;
   const h = Number.isFinite(hdg) ? hdg : lastOwnHeadingDeg;
   if (!Number.isFinite(h)) return;          // no heading yet — nothing to draw
@@ -208,9 +208,19 @@ function drawHeadingLine(pos, hdg) {
 
   // cross-ticks + upright labels at each range mark
   const tick = tune('liveHeadingTickPx'), gap = tune('liveHeadingLabelGapPx');
-  octx.font = 'bold ' + tune('liveHeadingLabelPx') + 'px sans-serif';
+  const labelPx = tune('liveHeadingLabelPx');
+  octx.font = 'bold ' + labelPx + 'px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
+  // Time-to-reach each mark at the current groundspeed, alongside the distance --
+  // "2 NM" alone doesn't say whether that's ten seconds or two minutes away, and a
+  // pilot glancing at the predictor line wants both without doing the division
+  // themselves. toHMS() gives M:SS (matches the leg-approach alert's own next-leg
+  // time format). Omitted, not guessed, when there is no reliable groundspeed yet
+  // (stationary/taxiing GPS, or a sim not reporting IAS) -- same "omit rather than
+  // guess" rule the watch alerts already follow.
+  const haveSpeed = Number.isFinite(gsKt) && gsKt > 0 && typeof toHMS === 'function';
+  const times = [];
   for (const nm of HEADING_LINE_MARKS_NM) {
     const m = atNm(nm);
     octx.beginPath();
@@ -226,10 +236,24 @@ function drawHeadingLine(pos, hdg) {
     octx.strokeText(label, lx, ly);
     octx.fillStyle = tune('liveHeadingTextColor');
     octx.fillText(label, lx, ly);
+    if (haveSpeed) {
+      const timeLabel = toHMS(nm / gsKt);
+      times.push(timeLabel);
+      // Second row, straight below in screen space -- readable regardless of which
+      // way the line itself runs (px/py only offset the row to the line's side).
+      const ly2 = ly + labelPx + 2;
+      octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
+      octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
+      octx.strokeText(timeLabel, lx, ly2);
+      octx.fillStyle = tune('liveHeadingTextColor');
+      octx.fillText(timeLabel, lx, ly2);
+    } else {
+      times.push(null);
+    }
   }
   octx.restore();
   if (typeof window !== 'undefined')
-    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice() };
+    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(), times };
 }
 
 // TOC / TOD markers along the route (#672). A small dot + label at the point
@@ -487,7 +511,7 @@ function draw() {
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
-  if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg);  // sim own-ship
+  if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg, simAircraft.ias);  // sim own-ship
   drawInfo();
   drawPageFrame();
   drawPlanCard();          // flight-plan card placed for PNG export (#378)

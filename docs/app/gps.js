@@ -722,7 +722,7 @@ function drawGpsTrack() {
     octx.lineCap = 'round'; octx.lineJoin = 'round'; octx.stroke(); octx.restore();
     if (typeof window !== 'undefined') window.__gpsBreadcrumbDrawn = (window.__gpsBreadcrumbDrawn || 0) + 1;
   }
-  if (gpsOwn && (gpsRecording || gpsLiveOn)) drawOwnShip(gpsOwn, gpsOwn.hdg);
+  if (gpsOwn && (gpsRecording || gpsLiveOn)) drawOwnShip(gpsOwn, gpsOwn.hdg, gpsLastGS);
 }
 
 // Stop watching without saving. (Save handled in a later task.)

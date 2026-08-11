@@ -106,6 +106,49 @@ test('draws nothing when there has never been a valid heading', async ({ page })
   expect(none).toBeNull();
 });
 
+test('marks carry a time-to-reach at the current groundspeed, M:SS format', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    window.__headingLine = null;
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 60);   // 60 kt: 2 NM = 2:00, 5 NM = 5:00, 10 NM = 10:00
+    return window.__headingLine;
+  });
+  expect(out.times).toEqual(['2:00', '5:00', '10:00']);
+});
+
+test('omits the time (not a guess) when there is no reliable groundspeed', async ({ page }) => {
+  await boot(page);
+  const noSpeed = await page.evaluate(() => {
+    window.__headingLine = null;
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg);   // no 3rd arg -- stationary/taxiing GPS
+    return window.__headingLine.times;
+  });
+  expect(noSpeed).toEqual([null, null, null]);
+  const zeroSpeed = await page.evaluate(() => {
+    window.__headingLine = null;
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 0);   // 0 kt is not a divide-by-zero guess either
+    return window.__headingLine.times;
+  });
+  expect(zeroSpeed).toEqual([null, null, null]);
+});
+
+test('the simulator own-ship gets a time-to-reach from its own IAS', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    window.__headingLine = null;
+    window.simOn = true;
+    window.simAircraft = { lat: 32.1, lng: 34.9, hdg: 270, ias: 120 };
+    drawOwnShip(window.simAircraft, window.simAircraft.hdg, window.simAircraft.ias);
+    return window.__headingLine.times;
+  });
+  // 120 kt: 2 NM = 1:00, 5 NM = 2:30, 10 NM = 5:00
+  expect(out).toEqual(['1:00', '2:30', '5:00']);
+});
+
 test('a real GPS fix with no course does not synthesize a fake 0 (north) heading', async ({ page }) => {
   // Regression: onLivePosition/onGpsPosition (gps.js) used to fall back to the
   // literal number 0 -- not null/NaN -- when the device reported no course AND
