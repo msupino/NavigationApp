@@ -248,7 +248,9 @@ test('the data census matches what the maintainer last signed off', () => {
     // neither a stray deletion nor a stray flip of the flag can pass unreviewed.
     // +2 segments: MZDOT <-> MYTAR and MZDOT <-> ENGDI, 4000 ft both ways, CVFR only --
     // published CVFR legs the graph was simply missing, which is why MZDOT had no segment.
-    cvfr: { layerNodes: 172, activeNodes: 170, segments: 271, commChange: 52, unknown: 6 },
+    // +1 segment: EITAN <-> AFULA, 3000 eastbound / 2500 westbound. Published on the
+    // chart and missing from the graph; found with the ?graphlegs=1 review overlay.
+    cvfr: { layerNodes: 172, activeNodes: 170, segments: 272, commChange: 52, unknown: 6 },
     heli: { layerNodes: 209, activeNodes: 209, segments: 85, commChange: 0, unknown: 38 },
     // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
     // from the second capture (#1485) -- the first census update under the new mechanism.
@@ -326,6 +328,36 @@ test('a corridor is not open one way and shut the other', () => {
   // The backlog is now the five closedHint pairs; every openFromHourHint asymmetry went
   // when that hint was dropped from this layer (see the test below).
   expect(asym.length).toBeLessThanOrEqual(5);
+});
+
+test('CVFR corridors carry no closure hint', () => {
+  // closedHint came from the same two secondary captures (Aug 2026) as
+  // openFromHourHint -- hints, explicitly not the chart. Every one that could be
+  // checked turned out wrong:
+  //
+  //   FAZEL-NAAMA-ALMOG   an ordinary Jordan Valley route
+  //   ESTOL-LTRUN         not closed; needs a real-time clearance (now onAtcApproval)
+  //   BSEMS-LTRUN         likewise
+  //   BRORA-EILAT         an ordinary leg, and the upstream capture calls it active
+  //
+  // Nothing corroborated a single one: the capture in ifl-flight-maps-data marks
+  // 289 of 289 routes active and has no inactive entry anywhere, so it cannot be
+  // the source. The "shortcut" reading does not hold either -- only 2 of 27 pairs
+  // had a finer chain along the same track, while 4 had no alternative at all, so
+  // the hint was disconnecting pairs rather than steering past intermediate points.
+  //
+  // Removing all 49 changed the behaviour of exactly two legs: 25 of the 27 pairs
+  // were already refused by onAtcApproval or armyAirway, where a closure hint does
+  // nothing. heli and lsa keep theirs -- that data is not in question here.
+  const g = graph();
+  const hinted = [];
+  for (const [from, es] of Object.entries(g.edges.cvfr)) {
+    for (const e of es) if (e.closedHint) hinted.push(from + '->' + e.to);
+  }
+  expect(hinted).toEqual([]);
+  const others = ['heli', 'lsa'].map(lay => Object.values(g.edges[lay])
+    .reduce((n, es) => n + es.filter(e => e.closedHint).length, 0));
+  expect(others).toEqual([34, 30]);
 });
 
 test('CVFR corridors carry no weekday opening hour', () => {

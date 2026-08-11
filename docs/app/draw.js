@@ -453,6 +453,9 @@ function drawVerticalProfile(ctx, x, y, w, h) {
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawAreas();                  // airspace bubbles under the waypoints
+  // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
+  // what a pilot is actually looking at even with every segment drawn.
+  if (typeof drawGraphLegs === 'function') drawGraphLegs();
   drawNavWaypoints();
   drawReportingBadges();
   drawCommChangeRings();
@@ -4566,6 +4569,143 @@ function drawPageFrame() {
       octx.lineTo(r.x + r.w, r.y + r.h / 2);
     }
     octx.stroke();
+  }
+  octx.restore();
+}
+
+// --- graph-legs review overlay (?graphlegs=1) ---------------------------------
+// Every published segment of the current layer's graph, drawn as it is STORED, so the
+// stored direction can be read straight off the chart underneath it. A review tool, not a
+// feature: no toolbar entry, nothing persisted, invisible unless the flag is in the URL.
+//
+// Deliberately not the leg kite. The kite answers "what altitude am I flying this leg at"
+// for ONE leg of the pilot's route; this answers "what does the dataset claim" for all 271
+// of them at once, and a kite per segment would bury the map it is meant to be checked
+// against.
+//
+// It reads the same fields routing reads, so what is drawn is what fplGraphChain will do:
+// a one-way arrow points the way the chain search may actually travel.
+var _graphLegsGraph = null;
+var _graphLegsLoading = false;
+function graphLegsEnabled() {
+  try { return new URLSearchParams(location.search).get('graphlegs') === '1'; }
+  catch (e) { return false; }
+}
+// Class -> tuning key. The colours live in the registry (and therefore in the live gist)
+// like every other presentation value in the drawing code; nothing here is a literal.
+const GRAPH_LEG_COLOR_KEYS = {
+  army:   'graphLegArmyColor',     // never routable
+  atc:    'graphLegAtcColor',      // real-time clearance only
+  closed: 'graphLegClosedColor',   // hinted shut
+  oneWay: 'graphLegOneWayColor',
+  plain:  'graphLegPlainColor',
+};
+const graphLegColor = (kind) => tune(GRAPH_LEG_COLOR_KEYS[kind] || 'graphLegPlainColor');
+function drawGraphLegs() {
+  if (!graphLegsEnabled()) return;
+  const prefix = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+  if (!_graphLegsGraph && !_graphLegsLoading) {
+    _graphLegsLoading = true;
+    routeGraphData(prefix).then(g => {
+      _graphLegsGraph = g || null; _graphLegsLoading = false; scheduleDraw();
+    }).catch(() => { _graphLegsLoading = false; });
+    return;
+  }
+  const g = _graphLegsGraph;
+  if (!g || !g.nodes || !g.edges) return;
+  const zoom = map.getZoom();
+  const labels = zoom >= tune('graphLegLabelMinZoom');
+  octx.save();
+  octx.lineWidth = tune('graphLegWidthPx');
+  octx.lineCap = 'round';
+  octx.font = 'bold 12px sans-serif';
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  const seen = new Set();
+  for (const [from, es] of Object.entries(g.edges)) {
+    for (const e of es) {
+      const key = [from, e.to].sort().join('|');
+      if (seen.has(key)) continue;          // one line per undirected pair
+      seen.add(key);
+      const rev = (g.edges[e.to] || []).find(x => x.to === from);
+      const a = g.nodes[from], b = g.nodes[e.to];
+      if (!a || !b) continue;
+      // The direction that may actually be flown, decided exactly as routing decides it.
+      const fwdOpen = !e.blocked, revOpen = !!rev && !rev.blocked;
+      const flown = fwdOpen ? e : rev;
+      if (!flown) continue;
+      const p = proj(fwdOpen ? a : b), q = proj(fwdOpen ? b : a);
+      const kind = flown.armyAirway ? 'army' : flown.onAtcApproval ? 'atc'
+        : flown.closedHint ? 'closed' : (fwdOpen && revOpen) ? 'plain' : 'oneWay';
+      octx.strokeStyle = graphLegColor(kind);
+      octx.setLineDash(kind === 'closed' ? [9, 7] : []);
+      octx.beginPath(); octx.moveTo(p.x, p.y); octx.lineTo(q.x, q.y); octx.stroke();
+      octx.setLineDash([]);
+      // Arrowheads: one per travellable direction, so a two-way leg reads <---> and a
+      // one-way reads ---> without having to consult a legend.
+      //
+      // FILLED and large on purpose. This overlay is read while cross-checking a chart, at
+      // whatever zoom the airspace happens to need, and two thin strokes could not be told
+      // apart from the segment they sit on. A solid triangle survives a busy background.
+      const ang = Math.atan2(q.y - p.y, q.x - p.x);
+      const head = (x, y, dir) => {
+        const s = tune('graphLegArrowPx'), spread = 0.42;
+        octx.beginPath();
+        octx.moveTo(x, y);
+        octx.lineTo(x - s * Math.cos(dir - spread), y - s * Math.sin(dir - spread));
+        octx.lineTo(x - s * 0.62 * Math.cos(dir), y - s * 0.62 * Math.sin(dir));
+        octx.lineTo(x - s * Math.cos(dir + spread), y - s * Math.sin(dir + spread));
+        octx.closePath();
+        octx.fillStyle = graphLegColor(kind);
+        octx.fill();
+      };
+      // Each arrowhead sits at the end its direction STARTS from, next to that
+      // direction's altitude -- so an arrow and the figure it belongs to are read as one
+      // mark. Putting the head at the far end instead left the pair split across the leg,
+      // and on a two-way leg there was no way to tell which figure went with which arrow.
+      // The head still POINTS the way of travel; only where it sits changed.
+      const startFwd = 0.22, startRev = 0.78;
+      head(p.x + (q.x - p.x) * startFwd, p.y + (q.y - p.y) * startFwd, ang);
+      if (fwdOpen && revOpen) head(p.x + (q.x - p.x) * startRev, p.y + (q.y - p.y) * startRev, ang + Math.PI);
+      if (!labels) continue;
+      // The altitude of the direction being flown -- the same field the kite reads, so a
+      // blank here is the dataset defect this overlay exists to make visible.
+      // A two-way leg has TWO altitudes and they routinely differ (4000 one way, 3500 the
+      // other). One label in the middle could only ever show one of them, and gave no clue
+      // which -- so each altitude is drawn beside the end it is flown FROM, which is where
+      // the published CVFR chart prints it. Matching the chart's own convention is the
+      // point: this overlay is read side by side with it, and a figure in the other place
+      // would have to be mentally re-mapped on every leg.
+      //
+      // Read off the entry for the direction concerned: inboundAltitude is always
+      // "this entry's from -> to", so the p->q direction takes fwd.inboundAltitude and the
+      // q->p direction takes the reverse entry's.
+      const fwdEntry = fwdOpen ? e : rev;              // the p -> q direction
+      const revEntry = fwdOpen ? rev : e;              // the q -> p direction
+      const txt = (v) => Number.isFinite(v) ? String(v) : '—';
+      const put = (x, y, label) => {
+        octx.lineWidth = tune('overlayLabelHaloWidthPx') || 4;
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+        octx.strokeText(label, x, y);
+        octx.fillStyle = graphLegColor(kind);
+        octx.fillText(label, x, y);
+        octx.lineWidth = tune('graphLegWidthPx');
+      };
+      // Sit the labels just inside the arrowheads, offset perpendicular to the leg so they
+      // clear the line itself whatever angle it runs at.
+      const nx = -Math.sin(ang) * 9, ny = Math.cos(ang) * 9;
+      const at = (t) => ({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
+      const twoWay = fwdOpen && revOpen;
+      if (twoWay) {
+        // p->q starts at p; q->p starts at q.
+        const a = at(0.30), b = at(0.70);
+        put(a.x + nx, a.y + ny, txt(fwdEntry && fwdEntry.inboundAltitude));
+        put(b.x + nx, b.y + ny, txt(revEntry && revEntry.inboundAltitude));
+      } else {
+        const a = at(0.30);          // the permitted direction runs p -> q, so it starts at p
+        put(a.x + nx, a.y + ny, txt(flown.inboundAltitude));
+      }
+    }
   }
   octx.restore();
 }
