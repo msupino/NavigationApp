@@ -453,6 +453,9 @@ function drawVerticalProfile(ctx, x, y, w, h) {
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawAreas();                  // airspace bubbles under the waypoints
+  // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
+  // what a pilot is actually looking at even with every segment drawn.
+  if (typeof drawGraphLegs === 'function') drawGraphLegs();
   drawNavWaypoints();
   drawReportingBadges();
   drawCommChangeRings();
@@ -4566,6 +4569,101 @@ function drawPageFrame() {
       octx.lineTo(r.x + r.w, r.y + r.h / 2);
     }
     octx.stroke();
+  }
+  octx.restore();
+}
+
+// --- graph-legs review overlay (?graphlegs=1) ---------------------------------
+// Every published segment of the current layer's graph, drawn as it is STORED, so the
+// stored direction can be read straight off the chart underneath it. A review tool, not a
+// feature: no toolbar entry, nothing persisted, invisible unless the flag is in the URL.
+//
+// Deliberately not the leg kite. The kite answers "what altitude am I flying this leg at"
+// for ONE leg of the pilot's route; this answers "what does the dataset claim" for all 271
+// of them at once, and a kite per segment would bury the map it is meant to be checked
+// against.
+//
+// It reads the same fields routing reads, so what is drawn is what fplGraphChain will do:
+// a one-way arrow points the way the chain search may actually travel.
+var _graphLegsGraph = null;
+var _graphLegsLoading = false;
+function graphLegsEnabled() {
+  try { return new URLSearchParams(location.search).get('graphlegs') === '1'; }
+  catch (e) { return false; }
+}
+const GRAPH_LEG_COLORS = {
+  army:   '#c0392b',   // never routable
+  atc:    '#8e44ad',   // real-time clearance only
+  closed: '#e67e22',   // hinted shut
+  oneWay: '#2980b9',
+  plain:  '#16a085',
+};
+function drawGraphLegs() {
+  if (!graphLegsEnabled()) return;
+  const prefix = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+  if (!_graphLegsGraph && !_graphLegsLoading) {
+    _graphLegsLoading = true;
+    routeGraphData(prefix).then(g => {
+      _graphLegsGraph = g || null; _graphLegsLoading = false; scheduleDraw();
+    }).catch(() => { _graphLegsLoading = false; });
+    return;
+  }
+  const g = _graphLegsGraph;
+  if (!g || !g.nodes || !g.edges) return;
+  const zoom = map.getZoom();
+  const labels = zoom >= 10;
+  octx.save();
+  octx.lineWidth = 2;
+  octx.font = 'bold 10px sans-serif';
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  const seen = new Set();
+  for (const [from, es] of Object.entries(g.edges)) {
+    for (const e of es) {
+      const key = [from, e.to].sort().join('|');
+      if (seen.has(key)) continue;          // one line per undirected pair
+      seen.add(key);
+      const rev = (g.edges[e.to] || []).find(x => x.to === from);
+      const a = g.nodes[from], b = g.nodes[e.to];
+      if (!a || !b) continue;
+      // The direction that may actually be flown, decided exactly as routing decides it.
+      const fwdOpen = !e.blocked, revOpen = !!rev && !rev.blocked;
+      const flown = fwdOpen ? e : rev;
+      if (!flown) continue;
+      const p = proj(fwdOpen ? a : b), q = proj(fwdOpen ? b : a);
+      const kind = flown.armyAirway ? 'army' : flown.onAtcApproval ? 'atc'
+        : flown.closedHint ? 'closed' : (fwdOpen && revOpen) ? 'plain' : 'oneWay';
+      octx.strokeStyle = GRAPH_LEG_COLORS[kind];
+      octx.setLineDash(kind === 'closed' ? [5, 4] : []);
+      octx.beginPath(); octx.moveTo(p.x, p.y); octx.lineTo(q.x, q.y); octx.stroke();
+      octx.setLineDash([]);
+      // Arrowheads: one per travellable direction, so a two-way leg reads <---> and a
+      // one-way reads ---> without having to consult a legend.
+      const ang = Math.atan2(q.y - p.y, q.x - p.x);
+      const head = (x, y, dir) => {
+        const s = 7;
+        octx.beginPath();
+        octx.moveTo(x, y);
+        octx.lineTo(x - s * Math.cos(dir - 0.4), y - s * Math.sin(dir - 0.4));
+        octx.moveTo(x, y);
+        octx.lineTo(x - s * Math.cos(dir + 0.4), y - s * Math.sin(dir + 0.4));
+        octx.stroke();
+      };
+      const inset = 0.82, back = 0.18;
+      head(p.x + (q.x - p.x) * inset, p.y + (q.y - p.y) * inset, ang);
+      if (fwdOpen && revOpen) head(p.x + (q.x - p.x) * back, p.y + (q.y - p.y) * back, ang + Math.PI);
+      if (!labels) continue;
+      // The altitude of the direction being flown -- the same field the kite reads, so a
+      // blank here is the dataset defect this overlay exists to make visible.
+      const alt = Number.isFinite(flown.inboundAltitude) ? String(flown.inboundAltitude) : '—';
+      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+      octx.lineWidth = 3;
+      octx.strokeStyle = 'rgba(255,255,255,0.9)';
+      octx.strokeText(alt, mx, my - 7);
+      octx.fillStyle = GRAPH_LEG_COLORS[kind];
+      octx.fillText(alt, mx, my - 7);
+      octx.lineWidth = 2;
+    }
   }
   octx.restore();
 }
