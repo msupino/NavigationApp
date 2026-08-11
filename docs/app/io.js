@@ -1183,7 +1183,13 @@ function fplPointLabel(code) {
   }
   return code;
 }
-// dep local clock + EET, as HH:MM. Both are already known to the caller; this only adds.
+// dep local clock + a minute count, as HH:MM, wrapping past midnight. The one shared
+// implementation of "add minutes to HH:MM" in this file -- it used to be reimplemented
+// inline at each call site (the mail preamble, the XC form's ETA and ETD, the per-point
+// nav-log ETA), which is how a wraparound or padding fix could land in two of the three
+// and miss the one feeding a pilot-facing clock. 0 minutes is a real value here (arrival
+// == departure); callers for whom "no elapsed time" means "nothing to show" guard before
+// calling, they don't rely on this function to invent that distinction.
 function fplArrivalLocal(depTimeLocal, eetMinutes) {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(depTimeLocal || '').trim());
   if (!m || !Number.isFinite(eetMinutes)) return '';
@@ -9323,12 +9329,10 @@ function showFplXcForm(opts) {
   const depLocal = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(String(o.timeLocal || ''))
     ? String(o.timeLocal) : '';
   const rawEetMin = prof && prof.totalTimeH > 0 ? Math.round(prof.totalTimeH * 60) : 0;
-  const arrLocal = (() => {
-    if (!depLocal || !rawEetMin) return '';
-    const [h, m] = depLocal.split(':').map(Number);
-    const t = (h * 60 + m + rawEetMin) % (24 * 60);
-    return pad2(Math.floor(t / 60)) + ':' + pad2(t % 60);
-  })();
+  // 0 means "no route total to add", not "a zero-length flight" -- guard before calling
+  // the shared arrival helper, which (correctly, for its other caller) treats 0 as a real
+  // EET and would compute arrival == departure instead of leaving the field blank.
+  const arrLocal = rawEetMin ? fplArrivalLocal(depLocal, rawEetMin) : '';
   const flightDate = /^\d{4}-\d{2}-\d{2}$/.test(String(o.dateLocal || ''))
     ? String(o.dateLocal) : todayLocal;
 
@@ -9505,12 +9509,8 @@ function showFplXcForm(opts) {
     const site = fplXcInput(siteName);
     if (siteName && latinOnly(siteName)) site.dir = 'ltr';
     // Estimated clock time over this point, from the departure the pilot entered.
-    const eta = (() => {
-      if (!depLocal || !r || r.cumMin === '') return '';
-      const [h, m] = depLocal.split(':').map(Number);
-      const t = (h * 60 + m + Number(r.cumMin || 0)) % (24 * 60);
-      return pad2(Math.floor(t / 60)) + ':' + pad2(t % 60);
-    })();
+    const eta = (!depLocal || !r || r.cumMin === '')
+      ? '' : fplArrivalLocal(depLocal, Number(r.cumMin || 0));
     // The two זמן columns are the actual takeoff and landing, so only the first and
     // last rows carry them. The per-point ESTIMATE goes in the detail column, which is
     // what that column's own header asks for ("שעה משוערת").
