@@ -39,6 +39,22 @@
 
   function savePoints() { try { localStorage.setItem(KEY, JSON.stringify(points)); } catch (e) {} }
   function savePolys() { try { localStorage.setItem(PKEY, JSON.stringify(polys)); } catch (e) {} }
+  // Debounced write for the DRAG path only. Each loaded point now carries its whole
+  // source record in `_node` (needed so the export can ride every field through -- see
+  // json() below), so a `Load known` of ~200 CVFR nodes makes savePoints() tens of KB
+  // instead of a few hundred bytes. Dragging fires that write on every mouseup; a fast
+  // multi-point reposition session turns into one big synchronous localStorage write per
+  // drag instead of one for the whole session. Same debounce shape as persist()/
+  // flushPersist() in io.js, for the same reason: collapse a burst into one write,
+  // flush on unload so nothing is lost if the tab closes mid-drag.
+  var _pointsSaveTimer = null;
+  function savePointsSoon() {
+    if (_pointsSaveTimer) return;
+    _pointsSaveTimer = setTimeout(function () { _pointsSaveTimer = null; savePoints(); }, 400);
+  }
+  window.addEventListener('beforeunload', function () {
+    if (_pointsSaveTimer) { clearTimeout(_pointsSaveTimer); _pointsSaveTimer = null; savePoints(); }
+  });
 
   // Reuses the shared active-layer lookup from draw.js (loaded before this
   // script) instead of keeping a second, independently-maintained copy.
@@ -74,10 +90,33 @@
       var name = prompt('Waypoint name (blank to delete):', points[i].name || '');
       if (name === null) return;                  // cancel — no change
       name = name.trim();
-      if (name) points[i].name = name; else points.splice(i, 1);
+      if (name) {
+        // The export keys the nodes map by this name (uppercased), one bare assignment
+        // per point -- a second point with the same name would silently overwrite the
+        // first's whole record on export, with no error. Catch it here instead, where a
+        // human is already looking at the map and can pick a different name or the point
+        // that should really be renamed.
+        var up = name.toUpperCase();
+        var lyr = p.layer || currentLayer();
+        var clash = points.some(function (q, j) {
+          return j !== i && (q.layer || '') === lyr &&
+            String(q.name || '').trim().toUpperCase() === up;
+        });
+        if (clash) {
+          alert('Another point on this layer is already named "' + name + '". ' +
+            'Two points sharing a name would collapse into one on export -- rename or move one first.');
+          return;
+        }
+        points[i].name = name;
+      } else {
+        points.splice(i, 1);
+      }
       savePoints(); render(); redraw();           // name lands in the exported JSON
     });
-    m.on('dragend', function (ev) { var ll = ev.target.getLatLng(); points[i].lat = r5(ll.lat); points[i].lng = r5(ll.lng); savePoints(); render(); });
+    // savePointsSoon, not savePoints: the localStorage write is debounced, but render()
+    // still runs synchronously every time, so the panel's count and #ed-json stay live --
+    // only the disk write behind them is throttled.
+    m.on('dragend', function (ev) { var ll = ev.target.getLatLng(); points[i].lat = r5(ll.lat); points[i].lng = r5(ll.lng); savePointsSoon(); render(); });
     return m;
   }
 
@@ -127,6 +166,7 @@
   // ---- export -----------------------------------------------------------
   function json() {
     if (mode === 'polygon') {
+      dupeWarning = '';   // point-mode-only warning; clear so switching modes doesn't leak it
       return JSON.stringify(curPolys().map(function (pg) {
         var o = { type: 'polygon', coords: pg.coords };
         if (pg.name) o.name = pg.name;
@@ -161,27 +201,49 @@
     // lose captured coordinates silently, and capture-then-name IS the workflow: you click
     // to drop, export to check, and name afterwards. UNNAMED_n is obviously not a code, so
     // it cannot be pasted back by accident without being noticed.
-    var out = {}, draft = 0;
+    // Belt and suspenders: the rename prompt refuses a clashing name up front, but this
+    // loop must never silently drop a record even if a collision reaches it some other
+    // way. A bare `out[id] = base` would let the later point overwrite the earlier one's
+    // whole record with no error -- that WAS this function's bug. A colliding id is
+    // suffixed instead, so both survive and the count below tells the pilot to look.
+    var out = {}, draft = 0, dupes = [];
     curPoints().forEach(function (p) {
-      var id = (p.name || '').trim().toUpperCase();
+      var name = (p.name || '').trim().toUpperCase();   // the REAL name -- goes in the record
+      var id = name;                                     // the map KEY -- may get disambiguated
       if (!id) { draft++; id = 'UNNAMED_' + draft; }
+      else if (out.hasOwnProperty(id)) {
+        var n = 2;
+        while (out.hasOwnProperty(id + '__DUP' + n)) n++;
+        dupes.push(id);
+        id = id + '__DUP' + n;                            // key only -- name/code stay real
+      }
       var base = p._node ? JSON.parse(JSON.stringify(p._node)) : {};
       base.lat = p.lat;
       base.lng = p.lng;
       if (p.report) base.report = p.report;
-      var named = !!(p.name || '').trim();
-      if (named) base.name = id;
+      var named = !!name;
+      if (named) base.name = name;
       if (p.he) base.he = p.he;
       // A node the validator will accept: it requires he, and en or code. A draft gets
       // neither -- it is not a node yet, and inventing a code would make it look like one.
-      if (named && !base.code) base.code = id;
-      if (!base.en && !base.code) base.en = id;
+      if (named && !base.code) base.code = name;
+      if (!base.en && !base.code) base.en = name || id;
       if (!base.kind) base.kind = 'waypoint';
       var lyr = prefixForLayer(p.layer || currentLayer());
       if (!Array.isArray(base.layers)) base.layers = [lyr];
       else if (base.layers.indexOf(lyr) < 0) base.layers = base.layers.concat([lyr]);
       out[id] = base;
     });
+    if (dupes.length) {
+      // Surfaced where the pilot is already looking, not buried in the JSON: the export
+      // still succeeds and nothing is dropped (see the __DUP suffix above), but two points
+      // sharing a name is a mistake worth fixing before this is pasted anywhere.
+      dupeWarning = 'Duplicate name' + (dupes.length > 1 ? 's' : '') + ': ' +
+        Array.from(new Set(dupes)).join(', ') +
+        ' -- exported under a __DUP suffix so nothing is lost, but rename before using this.';
+    } else {
+      dupeWarning = '';
+    }
     return JSON.stringify({ nodes: out }, null, 2);
   }
 
@@ -296,13 +358,15 @@
 
   // ---- panel ------------------------------------------------------------
   var countEl, taEl, finishBtn, typeRow;
+  var dupeWarning = '';   // set by json() point mode; surfaced in the count line below
   function render() {
+    if (taEl) taEl.value = json();   // sets dupeWarning as a side effect, before countEl reads it
     if (countEl) {
-      countEl.textContent = mode === 'polygon'
+      countEl.textContent = (mode === 'polygon'
         ? curPolys().length + ' / ' + polys.length + ' polys' + (draft.length ? ' (+' + draft.length + ')' : '') + ' (' + (currentLayer() || '—') + ')'
-        : curPoints().length + ' / ' + points.length + ' pts (' + (currentLayer() || '—') + ')';
+        : curPoints().length + ' / ' + points.length + ' pts (' + (currentLayer() || '—') + ')') +
+        (dupeWarning ? '  ⚠ ' + dupeWarning : '');
     }
-    if (taEl) taEl.value = json();
     if (finishBtn) finishBtn.style.display = mode === 'polygon' ? '' : 'none';
     if (typeRow) typeRow.style.display = mode === 'polygon' ? 'none' : '';
   }
