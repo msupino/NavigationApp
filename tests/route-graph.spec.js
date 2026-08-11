@@ -367,8 +367,13 @@ test('MMORR to ARRAD is flyable one way only, westbound', () => {
   expect(rev.oneWay).toBe(true);
   expect(fwd.blocked).toBeUndefined();          // westbound: the one you may fly
   expect(rev.blocked).toBe(true);               // eastbound: refused
-  expect(fwd.outboundAltitude).toBe(4000);
-  expect(fwd.inboundAltitude).toBeNull();
+  // The altitude of a direction lives in the entry's inboundAltitude (from -> to), which is
+  // what the leg kite reads. Putting 4000 on the OTHER field left this leg routable with no
+  // altitude, so it drew no kite -- the schema's "a single null means that direction is not
+  // allowed" and a traversable edge cannot both be true of the same entry.
+  expect(fwd.inboundAltitude).toBe(4000);
+  expect(fwd.outboundAltitude).toBeNull();
+  expect(rev.inboundAltitude).toBeNull();
   // Refusing a direction must not strand either end -- the way back exists, just longer.
   expect(g.edges.ARRAD.some(e => !e.blocked && e.to === 'HATRU')).toBe(true);
 });

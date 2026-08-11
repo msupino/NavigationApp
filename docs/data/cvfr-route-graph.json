@@ -4935,8 +4935,8 @@
       },
       {
         "to": "MMORR",
-        "inboundAltitude": 4000,
-        "outboundAltitude": null,
+        "inboundAltitude": null,
+        "outboundAltitude": 4000,
         "distanceNm": 8.14,
         "chartDistanceNm": 8.1,
         "oneWay": true,
@@ -5075,8 +5075,8 @@
     "MMORR": [
       {
         "to": "ARRAD",
-        "inboundAltitude": null,
-        "outboundAltitude": 4000,
+        "inboundAltitude": 4000,
+        "outboundAltitude": null,
         "distanceNm": 8.14,
         "chartDistanceNm": 8.1,
         "oneWay": true,
