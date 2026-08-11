@@ -5534,7 +5534,7 @@
         "chartDistanceNm": 5,
         "status": "candidate",
         "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "onAtcApproval": true
       },
       {
         "to": "ESTOL",
@@ -5544,7 +5544,7 @@
         "chartDistanceNm": 3.8,
         "status": "candidate",
         "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "onAtcApproval": true
       },
       {
         "to": "SHARG",
@@ -7008,7 +7008,7 @@
         "chartDistanceNm": 5,
         "status": "candidate",
         "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "onAtcApproval": true
       },
       {
         "to": "NCSHN",
@@ -7049,7 +7049,7 @@
         "chartDistanceNm": 3.8,
         "status": "candidate",
         "source": "cvfr-map airway adjacency",
-        "closedHint": true
+        "onAtcApproval": true
       },
       {
         "to": "SORES",
