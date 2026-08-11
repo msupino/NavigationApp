@@ -73,20 +73,82 @@ test.describe('leg-approach alert', () => {
     await stubWebNotify(page);
     await bootLive(page);
     const out = await page.evaluate(() => {
-      // A short leg (~0.5 nm) so a modest groundspeed puts ETA under 120 s immediately.
+      // A short-ish leg so a live position close to BRAVO puts ETA (at the leg's PLANNED
+      // speed, not the fix's reported one -- see the dedicated test for that) under 120 s.
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
-      // Far from BRAVO first: groundspeed known (30 kt), but ETA is minutes away -- no alert yet.
-      window.__liveCb(window.__fix(31.90, 34.0, { speedMs: 15.4 }));   // ~30 kt
+      // Far from BRAVO first: ETA is minutes away regardless of speed -- no alert yet.
+      window.__liveCb(window.__fix(31.90, 34.0, { speedMs: 15.4 }));
       const early = window.__notifications.length;
-      // Now close enough (~0.5 nm) that ETA <= 120 s at 30 kt.
+      // Now close enough (~0.5 nm) that ETA at the plan's speed drops under 120 s.
       window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
       return { early, afterClose: window.__notifications.slice() };
     });
     expect(out.early).toBe(0);
     expect(out.afterClose.length).toBe(1);
     expect(out.afterClose[0].body).toContain('BRAVO');
+  });
+
+  test('ETA is measured against the PLANNED speed, not the live fix\'s reported groundspeed', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      state.legs[0].flightSpeed = 15;   // slow plan: ETA from ~0.5 nm out is minutes, not seconds
+      startLiveLocation();
+      // Fast live fix (300 kt!) at the same close distance that fires in the test above at
+      // the default speed -- if the fix's speed were still driving ETA, this would fire.
+      window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 154 }));   // ~300 kt reported
+      const atSlowPlan = window.__notifications.length;
+      state.legs[0].flightSpeed = 900;   // fast plan: same distance is now seconds away
+      window.__liveCb(window.__fix(31.9993, 34.0, { speedMs: 154 }));
+      return { atSlowPlan, afterFastPlan: window.__notifications.slice() };
+    });
+    expect(out.atSlowPlan).toBe(0);          // fast FIX speed did not fire it
+    expect(out.afterFastPlan.length).toBe(1); // fast PLAN speed did
+  });
+
+  test('a leg shorter than 2 minutes (planned) uses a 1-minute lead time instead', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      // A leg planned at 90 kt over 2.0 nm is 80 s total (dist/speed*3600) -- under the
+      // standard 2-minute lead time, so the short-leg rule kicks in: 60 s instead of 120 s.
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.03333, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      state.legs[0].flightSpeed = 90;
+      startLiveLocation();
+      // 1.6 nm out -> ETA 64 s at the plan's 90 kt: past the short-leg's 60 s -- must NOT fire.
+      window.__liveCb(window.__fix(32.00667, 34.0, { speedMs: 20 }));
+      const beforeShortThreshold = window.__notifications.length;
+      // 1.4 nm out -> ETA 56 s: inside the short-leg's 60 s threshold.
+      window.__liveCb(window.__fix(32.01, 34.0, { speedMs: 20 }));
+      return { beforeShortThreshold, afterShortThreshold: window.__notifications.slice() };
+    });
+    expect(out.beforeShortThreshold).toBe(0);
+    expect(out.afterShortThreshold.length).toBe(1);
+  });
+
+  test('omits altitude and heading when the pilot hid the next leg\'s nav kite', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.00, lng: 34.50, name: 'BRAVO' },
+        { lat: 32.00, lng: 35.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      state.legs[1].inboundAltitude = 5000;
+      state.legs[1].hideKite = 1;   // the leg being approached has its kite hidden
+      startLiveLocation();
+      window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
+      return window.__notifications.slice();
+    });
+    expect(out.length).toBe(1);
+    expect(out[0].body).toBe('Approaching BRAVO');   // no altitude/heading suffix at all
   });
 
   test('does not repeat while still inside the ETA window for the same leg', async ({ page }) => {
@@ -148,7 +210,7 @@ test.describe('leg-approach alert', () => {
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
       // Expected heading via the SAME conversion the code uses -- magnetic, not the raw
       // true bearing geo() returns, so this doesn't hardcode a variation-dependent number.
-      const expectedHdg = toMagnetic(geo(state.waypoints[1], state.waypoints[2]).brg);
+      const expectedHdg = pad3(toMagnetic(geo(state.waypoints[1], state.waypoints[2]).brg));
       return { notif: window.__notifications.slice(), expectedHdg };
     });
     expect(out.notif.length).toBe(1);
@@ -180,8 +242,8 @@ test.describe('leg-approach alert', () => {
       const brg = geo(state.waypoints[1], state.waypoints[2]).brg;
       const w = legWindFor(state.legs[1]);
       const fx = windTriangle(brg, state.legs[1].flightSpeed, w);
-      const expectedHdg = toMagnetic(fx.hdgTrue);
-      const expectedPlainHdg = toMagnetic(brg);
+      const expectedHdg = pad3(toMagnetic(fx.hdgTrue));
+      const expectedPlainHdg = pad3(toMagnetic(brg));
       return { notif: window.__notifications.slice(), expectedHdg, expectedPlainHdg };
     });
     expect(out.notif.length).toBe(1);
@@ -220,7 +282,7 @@ test.describe('leg-approach alert', () => {
       // state.legs[1].inboundAltitude left unset.
       startLiveLocation();
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
-      const expectedHdg = toMagnetic(geo(state.waypoints[1], state.waypoints[2]).brg);
+      const expectedHdg = pad3(toMagnetic(geo(state.waypoints[1], state.waypoints[2]).brg));
       return { notif: window.__notifications.slice(), expectedHdg };
     });
     expect(out.notif.length).toBe(1);

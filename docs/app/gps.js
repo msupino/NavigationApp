@@ -813,33 +813,60 @@ function gpsCheckLegAlerts() {
   const { dist } = geo(gpsOwn, next);
   if (!Number.isFinite(dist)) return;
 
-  if (!_gpsAlertLegFired && gpsLastGS > 0) {
-    const etaS = (dist / gpsLastGS) * 3600;
-    if (etaS <= GPS_LEG_ETA_S) {
+  // ETA is measured against the CURRENT leg's own PLANNED speed, not gpsLastGS -- the route
+  // plan is the source of truth for how fast this leg is flown, not whatever the live fix
+  // happens to report right now (a pilot running faster or slower than planned still gets
+  // the alert relative to the plan, matching what the leg kite itself already shows).
+  const curLeg = legs[gpsAlertLegIndex];
+  const planSpeed = (curLeg && curLeg.flightSpeed > 0) ? curLeg.flightSpeed : null;
+  if (!_gpsAlertLegFired && planSpeed) {
+    // A leg shorter than the standard 2-minute lead time would otherwise fire the alert
+    // essentially at the moment the leg starts (or never usefully "N minutes before" at
+    // all) -- half the lead time instead, once the CURRENT leg's own planned duration is
+    // under the standard threshold.
+    let etaThreshold = GPS_LEG_ETA_S;
+    const start = wps[gpsAlertLegIndex];
+    const legDurationS = start ? (geo(start, next).dist / planSpeed) * 3600 : Infinity;
+    if (Number.isFinite(legDurationS) && legDurationS < GPS_LEG_ETA_S) {
+      etaThreshold = GPS_LEG_ETA_S / 2;
+    }
+    const etaS = (dist / planSpeed) * 3600;
+    if (etaS <= etaThreshold) {
       _gpsAlertLegFired = true;
       const label = (typeof waypointDisplayLabel === 'function')
         ? waypointDisplayLabel(next, gpsAlertLegIndex + 1) : (next.name || '');
       // What to fly on the leg AFTER this waypoint -- the one starting here, not the one
       // just being finished -- so the alert doubles as prep for the turn, not just a
       // "you're nearly there" ping. Either can be unavailable (last leg: no next leg at
-      // all; no altitude entered on it) and is simply omitted, never guessed.
+      // all; no altitude entered on it; the pilot hid that leg's nav kite -- legKiteVisible,
+      // same effective-visibility rule the kite itself uses, so a leg deliberately
+      // decluttered on the map doesn't get its numbers read out here either) and is simply
+      // omitted, never guessed.
       const nextLeg = legs[gpsAlertLegIndex + 1];
-      const nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
-        ? Math.round(nextLeg.inboundAltitude) : null;
-      const afterNext = wps[gpsAlertLegIndex + 2];
-      const nextLegBrg = afterNext ? geo(next, afterNext).brg : null;
-      // Magnetic AND wind-corrected -- the leg inspector's own "With wind" readout
-      // (interact.js) shows toMagnetic(windTriangle(brg, leg.flightSpeed, wind).hdgTrue),
-      // not the plain course; this reported the uncorrected course, which read off by
-      // however many degrees of WCA the leg's wind produced (reported live: leg inspector
-      // said 6°, this said 5°). windTriangle() itself returns null for calm/no-wind/an
-      // unflyable crosswind, in which case the plain course is the right answer anyway.
+      const nextLegKiteVisible = (typeof legKiteVisible !== 'function') ||
+        legKiteVisible(gpsAlertLegIndex + 1, nextLeg);
+      let nextLegAlt = null;
       let nextLegHdg = null;
-      if (Number.isFinite(nextLegBrg) && typeof toMagnetic === 'function') {
-        const nextWind = (nextLeg && typeof legWindFor === 'function') ? legWindFor(nextLeg) : null;
-        const fx = (nextWind && typeof windTriangle === 'function' && nextLeg)
-          ? windTriangle(nextLegBrg, nextLeg.flightSpeed, nextWind) : null;
-        nextLegHdg = toMagnetic(fx ? fx.hdgTrue : nextLegBrg);
+      if (nextLegKiteVisible) {
+        nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
+          ? Math.round(nextLeg.inboundAltitude) : null;
+        const afterNext = wps[gpsAlertLegIndex + 2];
+        const nextLegBrg = afterNext ? geo(next, afterNext).brg : null;
+        // Magnetic AND wind-corrected -- the leg inspector's own "With wind" readout
+        // (interact.js) shows toMagnetic(windTriangle(brg, leg.flightSpeed, wind).hdgTrue),
+        // not the plain course; this reported the uncorrected course, which read off by
+        // however many degrees of WCA the leg's wind produced (reported live: leg inspector
+        // said 6°, this said 5°). windTriangle() itself returns null for calm/no-wind/an
+        // unflyable crosswind, in which case the plain course is the right answer anyway.
+        if (Number.isFinite(nextLegBrg) && typeof toMagnetic === 'function') {
+          const nextWind = (nextLeg && typeof legWindFor === 'function') ? legWindFor(nextLeg) : null;
+          const fx = (nextWind && typeof windTriangle === 'function' && nextLeg)
+            ? windTriangle(nextLegBrg, nextLeg.flightSpeed, nextWind) : null;
+          // Three digits, same as every other heading the app displays (pad3 -- the leg
+          // kite, the wind-effect readout, VOR radials): "004", not "4".
+          nextLegHdg = (typeof pad3 === 'function')
+            ? pad3(toMagnetic(fx ? fx.hdgTrue : nextLegBrg)) : toMagnetic(fx ? fx.hdgTrue : nextLegBrg);
+        }
       }
       gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'NavAid',
         (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg)
