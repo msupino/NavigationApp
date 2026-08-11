@@ -269,3 +269,48 @@ test('a drawn ATC-approval leg is refused at filing, and the refusal reads as te
   expect(out.noPayload).not.toContain('function');
   expect(out.noPayload).not.toBe('errFplAtcApprovalLeg');
 });
+
+test('a hint keyed only on the direction FLOWN still matches when auto-route splices in a real stop', async ({ page }) => {
+  // Regression: NTAIM's TEL_NOF hint used to require before:TYONA directly adjacent.
+  // Auto-route correctly splices SUPER between TYONA and NTAIM (a real published corridor
+  // stop) -- which broke that exact adjacency and silently fell back to the general
+  // solver, which happened to repeat TYONA's own frequency (PALMACHIM) at NTAIM instead
+  // of the maintainer-verified TEL_NOF. Confirmed live on navaid.supino.org before the fix.
+  //
+  // Fix: a comm-change point's applicable call sign is a property of the point and the
+  // direction FLOWN (`after`), not of whatever happens to precede it -- so routeHints
+  // dataset-wide are `after`-only now (see cvfr-route-graph.json), and this must hold
+  // regardless of how many real intermediate stops auto-route inserts.
+  await boot(page);
+  await page.evaluate(async () => { await loadCommChange(); window.showCommChange = true; });
+  await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.NTAIM);
+  const out = await page.evaluate(async () => {
+    const hz = airfieldByIcao('LLHZ');
+    const nagid = navWP.find(w => w.name === 'NAGID');
+    state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ' }];
+    syncLegs();
+    const prev = state.waypoints[0];
+    const newWp = { lat: nagid.lat, lng: nagid.lng, name: 'NAGID' };
+    state.waypoints.push(newWp);
+    syncLegs();
+    seedCommChangeNotes();
+    const mid = await autoRouteChain(prev, newWp);
+    state.waypoints.splice(1, 0, ...mid);
+    syncLegs();
+    seedCommChangeNotes();
+    return {
+      names: state.waypoints.map(w => w.name),
+      ntaim: state.notes.find(n => n.cc === 'NTAIM'),
+      tyona: state.notes.find(n => n.cc === 'TYONA'),
+    };
+  });
+  // SUPER really is a real intermediate stop on this corridor -- confirms the scenario
+  // actually exercises the broken adjacency, not a route that happened to stay direct.
+  expect(out.names).toContain('SUPER');
+  const ntaimIdx = out.names.indexOf('NTAIM');
+  expect(out.names[ntaimIdx - 1]).toBe('SUPER');
+  expect(out.tyona.freqName).toBe('PALMACHIM');
+  expect(out.ntaim).toBeTruthy();
+  expect(out.ntaim.freqName).toBe('TEL_NOF');           // not PALMACHIM, and not silently missing
+  expect(out.ntaim.freq).toBe('129.05');
+});

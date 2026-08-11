@@ -2784,14 +2784,25 @@ function commSolveRouteCallSigns(entries) {
   }
   return best ? best.path : [];
 }
+// `hinted` names the entries whose value came from an EXPLICIT maintainer routeHint
+// (before/after -> callSign), as opposed to the general solve's tie-broken guess. The
+// difference matters to at least one caller: suppressing a note because its computed
+// frequency happens to match what came before it is only safe when that computation is
+// grounded in a verified rule, not a coincidence produced by an ambiguous solve. Splicing
+// an extra corridor point between two comm-change points (auto-route) is exactly what
+// breaks a before/after match and pushes a point onto the lower-confidence solve path --
+// so an unqualified "same as before" check would silently drop a note for a point whose
+// actual frequency was never really known to agree.
 function commRouteCalloutDefaultsMap() {
   const entries = commRouteChangeEntries();
   const path = commSolveRouteCallSigns(entries);
   const out = {};
+  const hinted = new Set();
   for (let i = 0; i < entries.length; i++) {
     const routeHint = commRouteHintDefault(entries[i]);
     if (routeHint) {
       out[entries[i].name] = routeHint;
+      hinted.add(entries[i].name);
       continue;
     }
     if (!path.length) continue;
@@ -2799,11 +2810,11 @@ function commRouteCalloutDefaultsMap() {
     const opt = commCallSignOptionById(entries[i].name, id);
     if (opt) out[entries[i].name] = { freqName: opt.id, freq: opt.freq || '' };
   }
-  return out;
+  return { defaults: out, hinted };
 }
 function commCalloutDefaults(name) {
   const key = canonicalNavWaypointName(name);
-  const routeDefaults = commRouteCalloutDefaultsMap();
+  const { defaults: routeDefaults } = commRouteCalloutDefaultsMap();
   return (key && routeDefaults[key]) || commStaticCalloutDefaults(key);
 }
 function commNoteCallSignOption(n) {
@@ -3063,7 +3074,21 @@ function seedCommChangeNotes() {
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
   let changed = pruneStaleCommChangeNotes();
   if (pruneStaleCommChangeSuppressions()) changed = true;
-  const routeDefaults = commRouteCalloutDefaultsMap();
+  const { defaults: routeDefaults, hinted } = commRouteCalloutDefaultsMap();
+  // The frequency actually in effect as the route is walked in order. Two DIFFERENT
+  // comm-change points along the way can happen to publish the SAME frequency (e.g. two
+  // adjacent reporting points share one call sign) -- crossing the second one is not a
+  // change to make on the radio, so no note is worth seeding for it. Purely computed from
+  // the route's own sequence on every pass, never persisted: drag a waypoint or reorder
+  // the route and this re-evaluates on its own, same as everything else this function does.
+  //
+  // Suppressing only fires below when `hinted` names this point -- i.e. its callout came
+  // from an EXPLICIT, maintainer-verified routeHint, not the general solve's tie-broken
+  // guess. The solve's guesses have already been shown (this same session, on this same
+  // corridor) to coincidentally repeat a preceding frequency where the real answer
+  // differed -- suppressing on an uncertain match would have hidden that note instead of
+  // surfacing the wrong one, which is worse.
+  let routeFreq = '';
   for (let wpIdx = 0; wpIdx < state.waypoints.length; wpIdx++) {
     const wp = state.waypoints[wpIdx];
     if (!wp) continue;
@@ -3088,6 +3113,7 @@ function seedCommChangeNotes() {
     if (!nm || !cc || !cc.commChange) continue;
     if (!commChangeWaypointInRange(wp, nm)) continue;
     const callout = routeDefaults[nm] || commStaticCalloutDefaults(nm);
+    const calloutFreq = commFormatFreq(callout.freq);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
     if (existing) {
       if (unsuppressCommChange(nm)) changed = true;
@@ -3112,9 +3138,23 @@ function seedCommChangeNotes() {
         existing.lng = tail.lng;
         changed = true;
       }
+      // A note the pilot hand-edited wins over the computed default for what is actually
+      // in effect from here on, same as it wins on screen.
+      const shownFreq = commFormatFreq(existing.freq);
+      if (shownFreq) routeFreq = shownFreq;
       continue;
     }
-    if (isCommChangeSuppressed(nm)) continue;
+    if (isCommChangeSuppressed(nm)) {
+      // A manual suppression hides the NOTE, not the radio environment -- the frequency
+      // still changes here whether or not a callout says so, so later points still
+      // compare against it.
+      if (calloutFreq) routeFreq = calloutFreq;
+      continue;
+    }
+    // Same frequency already in effect from an earlier point on the route: crossing this
+    // one calls for no action on the radio, so no note is seeded for it. Gated on `hinted`
+    // -- see the comment above the loop for why an unverified match must never suppress.
+    if (calloutFreq && calloutFreq === routeFreq && hinted.has(nm)) continue;
     const tail = commCalloutDefaultTail(wp, wpIdx);
     state.notes.push({
       lat: tail.lat,
@@ -3128,6 +3168,7 @@ function seedCommChangeNotes() {
       freqAuto: true,
     });
     changed = true;
+    if (calloutFreq) routeFreq = calloutFreq;
   }
   return changed;
 }
