@@ -1662,6 +1662,15 @@ window.S = Object.assign({
   gpsRecNotifTitle: 'NavAid GPS recording',
   gpsRecNotifText: 'Recording your track — tap to return',
   gpsError: 'GPS error: ',
+  // Local device notifications for the watch-alert feature (gpsCheckLegAlerts in gps.js) --
+  // mirrored to a paired Garmin (or any) watch by the OS's own notification mirroring, same
+  // channel SMS/WhatsApp use. Not shown in-app; only ever read from a notification tray.
+  watchAlertLegTitle: 'NavAid — next leg',
+  watchAlertLegBody: function(wp) { return 'Approaching ' + wp; },
+  watchAlertAltTitle: 'NavAid — altitude',
+  watchAlertAltBody: function(actual, planned) {
+    return actual + ' ft — planned ' + planned + ' ft';
+  },
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',

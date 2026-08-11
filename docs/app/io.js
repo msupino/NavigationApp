@@ -8093,6 +8093,18 @@ async function _simFetch() {
       ias: d.ias || 0,
     };
     _simSetStatus(true);
+    // Feed the same watch-alert pipeline the real device-GPS paths do (gpsCheckLegAlerts in
+    // gps.js), so flying a planned route in a connected simulator is a real way to test --
+    // or use -- the leg-approach / altitude alerts without a phone. altitude/ias assumed
+    // already in ft/kt (aviation units), unlike the raw Geolocation API's metres/(m/s) --
+    // confirm against your actual bridge if it reports SI units instead.
+    if (typeof gpsCheckLegAlerts === 'function') {
+      gpsOwn = { lat: window.simAircraft.lat, lng: window.simAircraft.lng,
+        hdg: window.simAircraft.hdg, t: Date.now() };
+      gpsLastGS = window.simAircraft.ias || null;
+      gpsLastAlt = window.simAircraft.alt || null;
+      gpsCheckLegAlerts();
+    }
     if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
     draw();
   } catch (e) {
@@ -8108,6 +8120,8 @@ function simStart() {
   _simSession++;                 // anything still in flight belongs to the previous session
   simOn = true;
   window.simAircraft = null;
+  if (typeof gpsResetLegAlerts === 'function') gpsResetLegAlerts();
+  if (typeof gpsRequestNotifyPermission === 'function') gpsRequestNotifyPermission();
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try { localStorage.setItem('navaid.simOn', '1'); } catch (e) { /* */ }
   _simFetch();

@@ -998,4 +998,10 @@ window.S = {
   wpLabel: 'צד״ר',
   gpsNoTrack: 'לא הוקלט מסלול.',
   gpsError: 'שגיאת GPS: ',
+  watchAlertLegTitle: 'NavAid — קטע הבא',
+  watchAlertLegBody: function(wp) { return 'מתקרב אל ' + wp; },
+  watchAlertAltTitle: 'NavAid — גובה',
+  watchAlertAltBody: function(actual, planned) {
+    return actual + ' רגל — מתוכנן ' + planned + ' רגל';
+  },
 };

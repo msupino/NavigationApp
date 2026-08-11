@@ -54,11 +54,12 @@ for (const dep of ['@capacitor/core', '@capacitor/android', '@capacitor/ios', '@
 }
 
 const indexHtml = fs.readFileSync(path.join(repoRoot, 'docs', 'index.html'), 'utf8');
-// In remote-URL mode the shell loads the production hostname, so GA must be
-// gated on the injected Capacitor bridge (plus the legacy local-origin check).
-if (!indexHtml.includes("location.hostname !== 'app.navaid.local'") ||
-    !indexHtml.includes('window.Capacitor')) {
-  fail('docs/index.html must suppress production GA inside the native shell');
+// GA was removed from the whole app (production has no mutable analytics runtime at all --
+// see tests/ga-blocked.spec.js, which asserts its absence). This used to check that GA was
+// gated behind the native-shell detection instead; that markup is gone along with GA itself,
+// so the only invariant left to hold here is that it stays gone.
+if (/googletagmanager|google-analytics|\bgtag\s*\(/.test(indexHtml)) {
+  fail('docs/index.html must not reintroduce a Google Analytics / GTM runtime');
 }
 
 const uiJs = fs.readFileSync(path.join(repoRoot, 'docs', 'app/ui.js'), 'utf8');

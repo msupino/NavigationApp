@@ -171,13 +171,26 @@ function onLivePosition(pos) {
   const c = pos.coords;
   if (c.accuracy != null && c.accuracy > GPS_MAX_ACC_M) return;
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
+  const t = pos.timestamp || Date.now();
   const hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
             : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : 0);
   const isFirst = (_gpsLivePrev === null);
-  _gpsLivePrev = p;
+  const prev = _gpsLivePrev;
+  // Groundspeed/altitude, same derivation onGpsPosition uses below: the live readout
+  // stays position-only outside a recording (gpsUpdateReadout), but gpsCheckLegAlerts()
+  // needs both regardless of which live mode is running.
+  let gsMs = (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed : null;
+  if (gsMs == null && prev && prev.t) {
+    const dt = (t - prev.t) / 1000;
+    if (dt > 0) gsMs = _gpsMetres(prev, p) / dt;
+  }
+  gpsLastGS = gsMs != null ? gsMs * 1.94384 : null;             // m/s → kt
+  gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null; // m → ft
+  _gpsLivePrev = { lat: p.lat, lng: p.lng, t };
   // Carry the fix time so everything downstream can tell live from frozen.
-  gpsOwn = { lat: p.lat, lng: p.lng, hdg, t: pos.timestamp || Date.now() };
+  gpsOwn = { lat: p.lat, lng: p.lng, hdg, t };
   gpsNoteFixArrived();
+  gpsCheckLegAlerts();
   scheduleDraw();
   if (typeof map !== 'undefined') {
     if (isFirst) map.setView([p.lat, p.lng], map.getZoom());
@@ -222,6 +235,8 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  gpsResetLegAlerts();
+  gpsRequestNotifyPermission();
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try {
     gpsLiveWatchId = gpsStartWatch(onLivePosition, onGpsLiveError,
@@ -307,6 +322,7 @@ function onGpsPosition(pos) {
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t };
   gpsNoteFixArrived();
   gpsUpdateReadout();
+  gpsCheckLegAlerts();
   scheduleDraw();
   if (gpsFollow && typeof map !== 'undefined') map.setView([pt.lat, pt.lng], map.getZoom());
 }
@@ -395,6 +411,8 @@ function startGpsRecording() {
   gpsTrack = [];
   if (!gpsLiveOn) gpsOwn = null;
   gpsStartT = Date.now();
+  gpsResetLegAlerts();
+  gpsRequestNotifyPermission();
   try {
     gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
       S.gpsRecNotifTitle || 'NavAid GPS recording', S.gpsRecNotifText || 'Recording your track — tap to return');
@@ -685,4 +703,114 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden && gpsRecording) gpsAcquireWakeLock();
   });
+}
+
+// --- watch alerts: leg approach + altitude off plan -----------------------
+// "Prepare for next leg" / "altitude off plan" as local device notifications. A paired
+// Garmin watch (or any other) picks these up the same way it picks up SMS/WhatsApp --
+// Garmin Connect mirrors ordinary OS notifications ("Smart Notifications"), so no
+// Garmin-specific integration is needed, just a real notification to mirror. Runs
+// automatically whenever a live fix is flowing -- from onGpsPosition (recording),
+// onLivePosition (live-only), and io.js's connected-simulator poll (_simFetch) -- via
+// gpsCheckLegAlerts(); no separate on/off setting. The simulator path doubles as a way to
+// test (or just use) these alerts without a phone or a real flight.
+var GPS_LEG_ETA_S = 120;          // fire this many seconds before the next waypoint
+var GPS_LEG_CAPTURE_NM = 0.3;     // ...or this close, whichever comes first
+var GPS_ALT_TOLERANCE_FT = 100;
+var gpsAlertLegIndex = 0;         // forward-only pointer into state.legs/state.waypoints
+var _gpsAlertMinDistNm = Infinity;
+var _gpsAlertLegFired = false;    // leg-approach alert already sent for gpsAlertLegIndex
+var _gpsAlertAltDeviated = false; // currently inside an altitude-deviation episode
+
+// Called whenever tracking (re)starts, so a pointer left over from a previous flight or
+// route can't silently suppress real alerts on this one. Does NOT try to track mid-flight
+// route edits (rare, and the bounds check in gpsCheckLegAlerts keeps a shrunk route safe).
+function gpsResetLegAlerts() {
+  gpsAlertLegIndex = 0;
+  _gpsAlertMinDistNm = Infinity;
+  _gpsAlertLegFired = false;
+  _gpsAlertAltDeviated = false;
+}
+
+function gpsCheckLegAlerts() {
+  if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
+  const wps = state.waypoints || [];
+  const legs = state.legs || [];
+  if (gpsAlertLegIndex >= legs.length || gpsAlertLegIndex + 1 >= wps.length) return;
+  const next = wps[gpsAlertLegIndex + 1];
+  if (!next) return;
+  const { dist } = geo(gpsOwn, next);
+  if (!Number.isFinite(dist)) return;
+
+  if (!_gpsAlertLegFired && gpsLastGS > 0) {
+    const etaS = (dist / gpsLastGS) * 3600;
+    if (etaS <= GPS_LEG_ETA_S) {
+      _gpsAlertLegFired = true;
+      const label = (typeof waypointDisplayLabel === 'function')
+        ? waypointDisplayLabel(next, gpsAlertLegIndex + 1) : (next.name || '');
+      gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'NavAid',
+        (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label) : ('Approaching ' + label));
+    }
+  }
+
+  // Altitude vs. the CURRENT leg's planned altitude -- same field routeProfile() treats
+  // as the leg's planned altitude. One-shot per deviation episode: fires once on the way
+  // out past tolerance, clears once back inside it, so a second real drift fires again.
+  const planned = legs[gpsAlertLegIndex].inboundAltitude;
+  if (Number.isFinite(planned) && gpsLastAlt != null) {
+    const off = Math.abs(gpsLastAlt - planned);
+    if (off >= GPS_ALT_TOLERANCE_FT) {
+      if (!_gpsAlertAltDeviated) {
+        _gpsAlertAltDeviated = true;
+        gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'NavAid',
+          (S && S.watchAlertAltBody)
+            ? S.watchAlertAltBody(Math.round(gpsLastAlt), Math.round(planned))
+            : (Math.round(gpsLastAlt) + ' ft, planned ' + Math.round(planned) + ' ft'));
+      }
+    } else {
+      _gpsAlertAltDeviated = false;
+    }
+  }
+
+  // Advance the leg pointer: within the capture radius of the next waypoint, or the
+  // distance to it has started growing again after shrinking (passed abeam it).
+  if (dist < _gpsAlertMinDistNm) _gpsAlertMinDistNm = dist;
+  if (dist <= GPS_LEG_CAPTURE_NM || dist > _gpsAlertMinDistNm + GPS_LEG_CAPTURE_NM) {
+    gpsAlertLegIndex++;
+    _gpsAlertMinDistNm = Infinity;
+    _gpsAlertLegFired = false;
+    _gpsAlertAltDeviated = false;
+  }
+}
+
+// Native (APK) local-notifications plugin, mirroring _bgGeo()'s access pattern -- the
+// injected Capacitor bridge exposes any synced plugin at window.Capacitor.Plugins.*.
+function _nativeNotify() {
+  const C = typeof window !== 'undefined' && window.Capacitor;
+  return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() &&
+          C.Plugins && C.Plugins.LocalNotifications) || null;
+}
+var _watchNotifyPermAsked = false;
+// Ask once per tracking session, not once per alert -- a denial should not re-prompt on
+// every fix. Best-effort: a silent no-op on an unsupported/denied context is the correct
+// behaviour here, not an error the pilot needs to see.
+function gpsRequestNotifyPermission() {
+  if (_watchNotifyPermAsked) return;
+  _watchNotifyPermAsked = true;
+  const nn = _nativeNotify();
+  if (nn) { nn.requestPermissions().catch(function () {}); return; }
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    Notification.requestPermission().catch(function () {});
+  }
+}
+var _watchAlertId = 1;
+function gpsSendWatchAlert(title, body) {
+  const nn = _nativeNotify();
+  if (nn) {
+    nn.schedule({ notifications: [{ id: _watchAlertId++, title: title, body: body,
+      schedule: { at: new Date(Date.now() + 100) } }] }).catch(function () {});
+    return;
+  }
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  try { new Notification(title, { body: body }); } catch (e) { /* unsupported context */ }
 }
