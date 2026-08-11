@@ -218,6 +218,209 @@ test.describe('native delivery (Capacitor LocalNotifications)', () => {
   });
 });
 
+test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () => {
+  // gpsCheckDrift runs on its own setInterval, not per-fix -- called directly in these
+  // tests rather than waiting 2 real minutes. gpsOwn/gpsAlertLegIndex are set directly,
+  // matching how other tests reach into plain globals rather than driving a fix sequence
+  // just to arrive at a known state.
+
+  test('does not fire when on course', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const n = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      // Exactly on the leg's own bearing from its start -- zero track-angle error.
+      const leg = geo(state.waypoints[0], state.waypoints[1]);
+      const onCourse = { lat: state.waypoints[0].lat + Math.cos(leg.brg * Math.PI / 180) * 0.05,
+        lng: state.waypoints[0].lng + Math.sin(leg.brg * Math.PI / 180) * 0.05 };
+      gpsOwn = { lat: onCourse.lat, lng: onCourse.lng, hdg: leg.brg, t: Date.now() };
+      gpsCheckDrift();
+      return window.__notifications.length;
+    });
+    expect(n).toBe(0);
+  });
+
+  test('stays silent below the 10-degree threshold', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const n = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      // A tiny lateral nudge early in the leg -- well under 10 deg of track-angle error.
+      gpsOwn = { lat: 32.001, lng: 34.05, hdg: 90, t: Date.now() };
+      gpsCheckDrift();
+      return window.__notifications.length;
+    });
+    expect(n).toBe(0);
+  });
+
+  test('before the midpoint: reports drift-out and a doubled intercept angle', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      // Well north of the direct line, early in the leg (< half its length).
+      const pos = { lat: 32.15, lng: 34.15 };
+      gpsOwn = { lat: pos.lat, lng: pos.lng, hdg: 90, t: Date.now() };
+      const start = state.waypoints[0], end = state.waypoints[1];
+      const leg = geo(start, end);
+      const flown = geo(start, pos);
+      const expectedOut = Math.round(Math.abs(((flown.brg - leg.brg + 540) % 360) - 180));
+      gpsCheckDrift();
+      return { notif: window.__notifications.slice(), expectedOut,
+        pastMidpoint: flown.dist >= leg.dist / 2 };
+    });
+    expect(out.pastMidpoint).toBe(false);           // sanity: this test is the before-midpoint case
+    expect(out.notif.length).toBe(1);
+    const nums = out.notif[0].body.match(/\d+/g).map(Number);
+    expect(nums).toHaveLength(2);
+    const [driftOut, driftIn] = nums;
+    expect(driftOut).toBe(out.expectedOut);
+    expect(driftIn).toBe(driftOut * 2);              // classic doubled-angle intercept
+  });
+
+  test('past the midpoint: reports a single correction to the next waypoint instead', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      // Off course but most of the way to BRAVO -- past the leg's midpoint.
+      const pos = { lat: 32.15, lng: 34.85 };
+      gpsOwn = { lat: pos.lat, lng: pos.lng, hdg: 90, t: Date.now() };
+      const start = state.waypoints[0], end = state.waypoints[1];
+      const leg = geo(start, end);
+      const flown = geo(start, pos);
+      gpsCheckDrift();
+      return { notif: window.__notifications.slice(), pastMidpoint: flown.dist >= leg.dist / 2 };
+    });
+    expect(out.pastMidpoint).toBe(true);             // sanity: this test is the past-midpoint case
+    expect(out.notif.length).toBe(1);
+    expect(out.notif[0].body).toContain('BRAVO');
+    expect(out.notif[0].body).not.toContain('intercept');
+    expect(out.notif[0].body.match(/\d+/g)).toHaveLength(1);   // one correction number, not two
+  });
+
+  test('does not fire past the last leg', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const n = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 1;   // past the only leg (index 0)
+      gpsOwn = { lat: 32.15, lng: 35.15, hdg: 90, t: Date.now() };
+      gpsCheckDrift();
+      return window.__notifications.length;
+    });
+    expect(n).toBe(0);
+  });
+
+  test('the drift timer starts with live location and stops when tracking fully stops', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__liveCb = null;
+      navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+      navigator.geolocation.clearWatch = () => {};
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof startLiveLocation === 'function' &&
+      typeof gpsMaybeStartDriftTimer === 'function');
+    const out = await page.evaluate(() => {
+      startLiveLocation();
+      const runningAfterStart = _gpsDriftTimer !== null;
+      stopLiveLocation();
+      const clearedAfterStop = _gpsDriftTimer === null;
+      return { runningAfterStart, clearedAfterStop };
+    });
+    expect(out.runningAfterStart).toBe(true);
+    expect(out.clearedAfterStop).toBe(true);
+  });
+
+  test('the drift timer survives stopping a recording while live location is still on', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__recCb = null; window.__liveCb = null; let n = 0;
+      navigator.geolocation.watchPosition = (cb) => { n++; if (n === 1) window.__recCb = cb; else window.__liveCb = cb; return n; };
+      navigator.geolocation.clearWatch = () => {};
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof startGpsRecording === 'function' &&
+      typeof startLiveLocation === 'function');
+    const out = await page.evaluate(() => {
+      startGpsRecording();
+      startLiveLocation();
+      const runningWithBoth = _gpsDriftTimer !== null;
+      stopGpsRecording();
+      const stillRunning = _gpsDriftTimer !== null;   // live location alone keeps it alive
+      stopLiveLocation();
+      const clearedAtEnd = _gpsDriftTimer === null;
+      return { runningWithBoth, stillRunning, clearedAtEnd };
+    });
+    expect(out.runningWithBoth).toBe(true);
+    expect(out.stillRunning).toBe(true);
+    expect(out.clearedAtEnd).toBe(true);
+  });
+});
+
+test.describe('loading a route while already tracking (applyRouteData)', () => {
+  test('snaps the leg pointer to the nearest leg of the NEW route, and checks immediately', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof applyRouteData === 'function' &&
+      typeof serializeRoute === 'function');
+    const out = await page.evaluate(() => {
+      // Build a valid route blob via the app's own serializer/import round-trip (matches
+      // how a saved-route load or an XC import actually calls applyRouteData).
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.00, lng: 34.50, name: 'BRAVO' },
+        { lat: 32.00, lng: 35.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      state.legs[1].inboundAltitude = 3000;   // the leg BRAVO->CHARLIE has a plan
+      const data = serializeRoute();
+
+      // Already tracking, and already well inside the BRAVO->CHARLIE leg -- a leg the
+      // pointer (still at whatever a fresh reset would give, 0) does not know about yet.
+      gpsOwn = { lat: 32.001, lng: 34.75, hdg: 90, t: Date.now() };
+      gpsLastAlt = 3200;   // 200 ft over BRAVO->CHARLIE's plan -- should alert immediately
+
+      applyRouteData(data);
+
+      return { legIndex: gpsAlertLegIndex, notif: window.__notifications.slice() };
+    });
+    expect(out.legIndex).toBe(1);         // snapped straight to the BRAVO->CHARLIE leg
+    expect(out.notif.length).toBe(1);     // fired on load, not on some later fix
+    expect(out.notif[0].body).toContain('3200');
+  });
+
+  test('a route loaded before any fix exists is a no-op, not a crash', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof applyRouteData === 'function' &&
+      typeof serializeRoute === 'function');
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      const data = serializeRoute();
+      gpsOwn = null;   // nothing tracking yet
+      applyRouteData(data);
+      return { legIndex: gpsAlertLegIndex, notif: window.__notifications.length };
+    });
+    expect(out.legIndex).toBe(0);
+    expect(out.notif).toBe(0);
+  });
+});
+
 test.describe('connected-simulator path (io.js _simFetch)', () => {
   test('a poll close enough to the next waypoint fires the same alert a real GPS fix would', async ({ page }) => {
     await stubWebNotify(page);

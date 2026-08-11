@@ -1671,6 +1671,21 @@ window.S = Object.assign({
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';
   },
+  watchAlertDriftTitle: 'NavAid — off course',
+  // Before the leg's midpoint: two numbers, the classic "double the error" intercept --
+  // how far off course (driftOut), then the heading correction to converge back (driftIn).
+  watchAlertDriftBody: function(driftOut, driftIn) {
+    return driftOut + '° off course, ' + driftIn + '° to intercept';
+  },
+  // Past the midpoint: rejoining the original line buys nothing this close to the
+  // waypoint, so this reports the correction to head direct to it instead.
+  watchAlertDriftDirectBody: function(correction, wp) {
+    return correction + '° to ' + wp;
+  },
+  // TEMPORARY, test-only -- remove alongside the nudge in gps.js's startLiveLocation once
+  // the watch-alert feature is validated.
+  watchAlertNoRouteTestTitle: 'NavAid',
+  watchAlertNoRouteTestBody: 'Load a route to get alerts if you drift off course or altitude.',
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',

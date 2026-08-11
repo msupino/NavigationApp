@@ -1004,4 +1004,13 @@ window.S = {
   watchAlertAltBody: function(actual, planned) {
     return actual + ' רגל — מתוכנן ' + planned + ' רגל';
   },
+  watchAlertDriftTitle: 'NavAid — סטייה מהמסלול',
+  watchAlertDriftBody: function(driftOut, driftIn) {
+    return driftOut + '° סטייה, ' + driftIn + '° לתיקון';
+  },
+  watchAlertDriftDirectBody: function(correction, wp) {
+    return correction + '° אל ' + wp;
+  },
+  watchAlertNoRouteTestTitle: 'NavAid',
+  watchAlertNoRouteTestBody: 'טענו מסלול כדי לקבל התראות על סטייה מהמסלול או מהגובה.',
 };

@@ -2529,6 +2529,17 @@ function applyRouteData(d) {
   showInspector();
   fitView();
   applyMapBearing(d);            // restore the saved map orientation
+  // A route can be loaded WHILE already tracking (live location or a recording running),
+  // and not necessarily from its own start -- a pilot picking a plan mid-flight is already
+  // somewhere along it. The leg pointer these alerts use is keyed to the PREVIOUS route's
+  // waypoint indices, so it has to snap onto whichever leg of the NEW route is actually
+  // nearest before anything else; and checking right away (not waiting for the next fix or
+  // the drift timer's next tick) is what makes "already off this new plan's altitude" show
+  // up the moment the plan loads, not some seconds later. No-ops if nothing is tracking
+  // (gpsOwn is null): only the pointer changes.
+  if (typeof gpsSnapLegAlertsToPosition === 'function') gpsSnapLegAlertsToPosition();
+  if (typeof gpsCheckLegAlerts === 'function') gpsCheckLegAlerts();
+  if (typeof gpsCheckDrift === 'function') gpsCheckDrift();
   draw();
 }
 
@@ -8122,6 +8133,7 @@ function simStart() {
   window.simAircraft = null;
   if (typeof gpsResetLegAlerts === 'function') gpsResetLegAlerts();
   if (typeof gpsRequestNotifyPermission === 'function') gpsRequestNotifyPermission();
+  if (typeof gpsMaybeStartDriftTimer === 'function') gpsMaybeStartDriftTimer();
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try { localStorage.setItem('navaid.simOn', '1'); } catch (e) { /* */ }
   _simFetch();
@@ -8130,6 +8142,7 @@ function simStart() {
 
 function simStop() {
   simOn = false;
+  if (typeof gpsMaybeStopDriftTimer === 'function') gpsMaybeStopDriftTimer();
   _simSession++;                 // invalidate any in-flight poll's result
   window.simAircraft = null;
   if (_simInterval) { clearInterval(_simInterval); _simInterval = null; }

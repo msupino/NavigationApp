@@ -237,6 +237,15 @@ function startLiveLocation() {
   gpsLiveOn = true; _gpsLivePrev = null;
   gpsResetLegAlerts();
   gpsRequestNotifyPermission();
+  gpsMaybeStartDriftTimer();
+  // TEMPORARY, test-only nudge -- remove once the watch-alert feature is validated. Lets a
+  // pilot testing "Show location" alone (no route) confirm notifications are actually
+  // reaching the device/watch, and points them at loading a route for the real alerts.
+  if (!state.waypoints || state.waypoints.length < 2) {
+    gpsSendWatchAlert((S && S.watchAlertNoRouteTestTitle) || 'NavAid',
+      (S && S.watchAlertNoRouteTestBody) ||
+      'Load a route to get alerts if you drift off course or altitude.');
+  }
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try {
     gpsLiveWatchId = gpsStartWatch(onLivePosition, onGpsLiveError,
@@ -260,6 +269,7 @@ function stopLiveLocation() {
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
+  gpsMaybeStopDriftTimer();
   scheduleDraw();
 }
 
@@ -413,6 +423,7 @@ function startGpsRecording() {
   gpsStartT = Date.now();
   gpsResetLegAlerts();
   gpsRequestNotifyPermission();
+  gpsMaybeStartDriftTimer();
   try {
     gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
       S.gpsRecNotifTitle || 'NavAid GPS recording', S.gpsRecNotifText || 'Recording your track — tap to return');
@@ -693,6 +704,7 @@ function stopGpsRecording() {
   gpsReleaseWakeLock();
   gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;
+  gpsMaybeStopDriftTimer();
   gpsUpdateReadout();
   scheduleDraw();
 }
@@ -723,13 +735,63 @@ var _gpsAlertLegFired = false;    // leg-approach alert already sent for gpsAler
 var _gpsAlertAltDeviated = false; // currently inside an altitude-deviation episode
 
 // Called whenever tracking (re)starts, so a pointer left over from a previous flight or
-// route can't silently suppress real alerts on this one. Does NOT try to track mid-flight
-// route edits (rare, and the bounds check in gpsCheckLegAlerts keeps a shrunk route safe).
+// route can't silently suppress real alerts on this one. Plain reset to leg 0 -- correct
+// when there is no fix yet (nothing to snap to) or the route is being drawn fresh.
 function gpsResetLegAlerts() {
   gpsAlertLegIndex = 0;
   _gpsAlertMinDistNm = Infinity;
   _gpsAlertLegFired = false;
   _gpsAlertAltDeviated = false;
+}
+// Along-track / cross-track projection of p onto great-circle segment a->b, in nm.
+// alongNm is distance from a toward b (negative = short of a, > leg length = past b);
+// crossNm is signed perpendicular distance off the line. Null if a and b coincide.
+function _gpsTrackProjection(a, b, p) {
+  const ab = geo(a, b);
+  if (!Number.isFinite(ab.dist) || ab.dist <= 0) return null;
+  const ap = geo(a, p);
+  if (!Number.isFinite(ap.dist)) return null;
+  const R = 3440.065;   // earth radius, nm
+  if (ap.dist <= 0) return { alongNm: 0, crossNm: 0 };
+  const d13 = ap.dist / R;
+  const brg13 = ap.brg * Math.PI / 180, brg12 = ab.brg * Math.PI / 180;
+  const crossRad = Math.asin(Math.sin(d13) * Math.sin(brg13 - brg12));
+  const alongRad = Math.acos(Math.min(1, Math.cos(d13) / Math.cos(crossRad)));
+  return { alongNm: alongRad * R, crossNm: crossRad * R };
+}
+// A route can be loaded WHILE already tracking, and not necessarily from its own start --
+// a pilot picking a plan mid-flight is already somewhere along it. gpsResetLegAlerts()
+// alone would leave the pointer at leg 0 no matter where that is: gpsCheckLegAlerts only
+// advances ONE leg per call, so a single immediate check afterward would not catch up over
+// several legs. A "nearest endpoint" heuristic is not enough here: right next to a shared
+// waypoint, the leg ending there and the leg starting there look equally close, and picking
+// wrong there is exactly the common case (loading a route near where you already are, i.e.
+// near one of its waypoints). Projects onto each leg's actual track instead, and picks the
+// leg the position falls WITHIN (along-track distance between 0 and the leg's length,
+// smallest cross-track error breaking a tie); falls back to nearest single leg by endpoint
+// distance only if the position doesn't project onto any leg at all (e.g. off the route
+// entirely).
+function gpsSnapLegAlertsToPosition() {
+  gpsResetLegAlerts();
+  if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
+  const wps = state.waypoints || [];
+  const legs = state.legs || [];
+  const n = Math.min(legs.length, wps.length - 1);
+  let onTrack = -1, onTrackCross = Infinity;
+  let nearest = 0, nearestD = Infinity;
+  for (let i = 0; i < n; i++) {
+    const a = wps[i], b = wps[i + 1];
+    if (!a || !b) continue;
+    const legLen = geo(a, b).dist;
+    const proj = _gpsTrackProjection(a, b, gpsOwn);
+    if (proj && proj.alongNm >= 0 && proj.alongNm <= legLen) {
+      const absCross = Math.abs(proj.crossNm);
+      if (absCross < onTrackCross) { onTrackCross = absCross; onTrack = i; }
+    }
+    const d = Math.min(geo(gpsOwn, a).dist, geo(gpsOwn, b).dist);
+    if (d < nearestD) { nearestD = d; nearest = i; }
+  }
+  gpsAlertLegIndex = onTrack >= 0 ? onTrack : nearest;
 }
 
 function gpsCheckLegAlerts() {
@@ -813,4 +875,67 @@ function gpsSendWatchAlert(title, body) {
   }
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   try { new Notification(title, { body: body }); } catch (e) { /* unsupported context */ }
+}
+
+// --- watch alert: drifted off the leg's course line -----------------------
+// Checked on its own 2-minute timer, not per-fix like the leg/altitude alerts above --
+// this is a "how are we doing" periodic check, not a one-shot event, and re-fires every
+// interval as long as the drift persists (no one-shot suppression here; 2 minutes is
+// already the pacing).
+var GPS_DRIFT_CHECK_MS = 120000;
+var GPS_DRIFT_TRACK_ERROR_DEG = 10;   // fire once track-angle error reaches this
+var _gpsDriftTimer = null;
+
+function gpsMaybeStartDriftTimer() {
+  if (_gpsDriftTimer) return;
+  _gpsDriftTimer = setInterval(gpsCheckDrift, GPS_DRIFT_CHECK_MS);
+}
+// Only actually stops once NONE of the three position sources (recording, live-only,
+// connected simulator) are still running -- called from all three teardown paths, each of
+// which may fire while another is still active (e.g. stopping a recording with live
+// location still on).
+function gpsMaybeStopDriftTimer() {
+  if (gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn)) return;
+  if (_gpsDriftTimer) { clearInterval(_gpsDriftTimer); _gpsDriftTimer = null; }
+}
+
+// Signed angular difference a-b, wrapped to (-180, 180].
+function _gpsAngleDiff(a, b) {
+  return ((a - b + 540) % 360) - 180;
+}
+
+function gpsCheckDrift() {
+  if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
+  const wps = state.waypoints || [];
+  if (gpsAlertLegIndex + 1 >= wps.length) return;
+  const start = wps[gpsAlertLegIndex], end = wps[gpsAlertLegIndex + 1];
+  if (!start || !end) return;
+  const leg = geo(start, end);
+  if (!Number.isFinite(leg.dist) || leg.dist <= 0) return;
+  const flown = geo(start, gpsOwn);
+  if (!Number.isFinite(flown.dist)) return;
+  // Track-angle error: how far the bearing FROM the leg's start TO here has diverged from
+  // the planned course -- not a full cross-track projection, just the angle a pilot would
+  // read off a compass/HSI against the planned course.
+  const trackErrorDeg = _gpsAngleDiff(flown.brg, leg.brg);
+  if (Math.abs(trackErrorDeg) < GPS_DRIFT_TRACK_ERROR_DEG) return;
+  const label = (typeof waypointDisplayLabel === 'function')
+    ? waypointDisplayLabel(end, gpsAlertLegIndex + 1) : (end.name || '');
+  if (flown.dist < leg.dist / 2) {
+    // Before the leg's midpoint: worth rejoining the original line. Classic "double the
+    // error" intercept -- fly the correction back at twice the angle you drifted out at.
+    const driftOut = Math.round(Math.abs(trackErrorDeg));
+    const driftIn = driftOut * 2;
+    gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'NavAid — off course',
+      (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, driftIn)
+        : (driftOut + '° off course, ' + driftIn + '° to intercept'));
+  } else {
+    // Past the midpoint: rejoining the original line buys nothing this close to the
+    // waypoint -- report the correction to head direct to it instead.
+    const direct = geo(gpsOwn, end);
+    const correction = Math.round(Math.abs(_gpsAngleDiff(direct.brg, leg.brg)));
+    gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'NavAid — off course',
+      (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(correction, label)
+        : (correction + '° to ' + label));
+  }
 }
