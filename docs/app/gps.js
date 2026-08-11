@@ -8,6 +8,17 @@ var gpsWatchId = null;
 var gpsOwn = null;          // {lat,lng,hdg} last fix for own-ship rendering
 var gpsWakeLock = null;     // Screen Wake Lock sentinel held while recording
 
+// True while any own-ship position source is live: real GPS (recording or just showing
+// location) or a connected simulator. interact.js's waypoint-drag handlers check this to
+// freeze the route plan mid-flight -- moving a waypoint out from under an in-progress leg
+// is exactly the edge case that can spuriously fire/miss the leg-approach and TOP alerts
+// (see gpsCheckLegAlerts's own _gpsAlertMinDistNm comment). A plain click/tap still opens
+// the inspector as normal (see the callers: this only gates the MOVE, not the selection) --
+// wanting to see a waypoint's satellite image mid-flight is unaffected.
+function gpsMapLocked() {
+  return !!(gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn));
+}
+
 // Keep the screen awake while recording so the phone doesn't sleep mid-track.
 // Wake Lock is auto-released by the browser when the tab is hidden; we re-acquire
 // on visibilitychange (see listener at end of file). Best-effort: silently
