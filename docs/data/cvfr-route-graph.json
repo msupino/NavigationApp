@@ -3542,7 +3542,8 @@
           "greenScore": 0.656,
           "maxGap": 12,
           "samples": 61
-        }
+        },
+        "blocked": true
       },
       {
         "to": "DUGIT",
@@ -3582,7 +3583,6 @@
         "distanceNm": 4.29,
         "chartDistanceNm": 4.3,
         "oneWay": true,
-        "blocked": true,
         "status": "candidate",
         "detection": {
           "greenScore": 0.656,
@@ -5508,7 +5508,8 @@
         "oneWay": true,
         "status": "candidate",
         "armyAirway": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "blocked": true
       }
     ],
     "LTRUN": [
@@ -5590,7 +5591,6 @@
         "distanceNm": 5.77,
         "chartDistanceNm": 5.8,
         "oneWay": true,
-        "blocked": true,
         "status": "reviewed",
         "onAtcApproval": true,
         "source": "cvfr-map airway adjacency",
@@ -6824,7 +6824,6 @@
         "distanceNm": 6.71,
         "chartDistanceNm": 6.7,
         "oneWay": true,
-        "blocked": true,
         "status": "candidate",
         "armyAirway": true,
         "source": "cvfr-map airway adjacency"
@@ -6836,7 +6835,6 @@
         "distanceNm": 5.37,
         "chartDistanceNm": 5.4,
         "oneWay": true,
-        "blocked": true,
         "status": "candidate",
         "armyAirway": true,
         "source": "cvfr-map airway adjacency"
@@ -7082,7 +7080,8 @@
         "onAtcApproval": true,
         "source": "cvfr-map airway adjacency",
         "closedHint": true,
-        "weekdayClosedHint": true
+        "weekdayClosedHint": true,
+        "blocked": true
       }
     ],
     "ZHRYA": [
@@ -7259,7 +7258,8 @@
         "oneWay": true,
         "status": "candidate",
         "armyAirway": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "blocked": true
       }
     ],
     "EMMEK": [
@@ -7333,7 +7333,8 @@
         "chartDistanceNm": 3.1,
         "oneWay": true,
         "status": "candidate",
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "blocked": true
       },
       {
         "to": "SHARO",
@@ -7365,7 +7366,6 @@
         "distanceNm": 3.56,
         "chartDistanceNm": 3.6,
         "oneWay": true,
-        "blocked": true,
         "status": "candidate",
         "armyAirway": true,
         "source": "cvfr-map airway adjacency"
@@ -7723,7 +7723,6 @@
         "distanceNm": 4.04,
         "chartDistanceNm": 4,
         "oneWay": true,
-        "blocked": true,
         "status": "reviewed",
         "detection": {
           "greenScore": 0.793,
@@ -8148,7 +8147,6 @@
         "distanceNm": 3.09,
         "chartDistanceNm": 3.1,
         "oneWay": true,
-        "blocked": true,
         "status": "candidate",
         "source": "cvfr-map airway adjacency"
       },
@@ -8177,7 +8175,8 @@
           "greenScore": 0.793,
           "maxGap": 12,
           "samples": 58
-        }
+        },
+        "blocked": true
       }
     ],
     "HAREL": [
@@ -9119,7 +9118,8 @@
         "oneWay": true,
         "status": "candidate",
         "armyAirway": true,
-        "source": "cvfr-map airway adjacency"
+        "source": "cvfr-map airway adjacency",
+        "blocked": true
       }
     ],
     "SHARG": [
