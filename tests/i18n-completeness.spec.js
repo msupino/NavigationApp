@@ -18,6 +18,7 @@ const SAME_IN_BOTH = [
   'vorRadialDme', 'windFetchOk',               // "R-123° / 4 NM", "5 hPa ← .."
   'routeLibraryExportJson',                    // JSON, beside the GPX button
   'watchAlertNoRouteTestTitle',                 // "NavAid" -- TEMPORARY test-only string
+  'watchAlertTopTitle',                         // "NavAid — TOP" -- CVFR radio phraseology
 ];
 
 test('every English string key has a Hebrew one', async ({ page }) => {

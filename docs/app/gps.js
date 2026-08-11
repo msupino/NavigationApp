@@ -847,29 +847,38 @@ function gpsCheckLegAlerts() {
         legKiteVisible(gpsAlertLegIndex + 1, nextLeg);
       let nextLegAlt = null;
       let nextLegHdg = null;
+      let nextLegTime = null;
       if (nextLegKiteVisible) {
         nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
           ? Math.round(nextLeg.inboundAltitude) : null;
         const afterNext = wps[gpsAlertLegIndex + 2];
-        const nextLegBrg = afterNext ? geo(next, afterNext).brg : null;
+        const nextLegGeo = afterNext ? geo(next, afterNext) : null;
         // Magnetic AND wind-corrected -- the leg inspector's own "With wind" readout
         // (interact.js) shows toMagnetic(windTriangle(brg, leg.flightSpeed, wind).hdgTrue),
         // not the plain course; this reported the uncorrected course, which read off by
         // however many degrees of WCA the leg's wind produced (reported live: leg inspector
         // said 6°, this said 5°). windTriangle() itself returns null for calm/no-wind/an
         // unflyable crosswind, in which case the plain course is the right answer anyway.
-        if (Number.isFinite(nextLegBrg) && typeof toMagnetic === 'function') {
+        if (nextLegGeo && Number.isFinite(nextLegGeo.brg) && typeof toMagnetic === 'function') {
           const nextWind = (nextLeg && typeof legWindFor === 'function') ? legWindFor(nextLeg) : null;
           const fx = (nextWind && typeof windTriangle === 'function' && nextLeg)
-            ? windTriangle(nextLegBrg, nextLeg.flightSpeed, nextWind) : null;
+            ? windTriangle(nextLegGeo.brg, nextLeg.flightSpeed, nextWind) : null;
           // Three digits, same as every other heading the app displays (pad3 -- the leg
           // kite, the wind-effect readout, VOR radials): "004", not "4".
           nextLegHdg = (typeof pad3 === 'function')
-            ? pad3(toMagnetic(fx ? fx.hdgTrue : nextLegBrg)) : toMagnetic(fx ? fx.hdgTrue : nextLegBrg);
+            ? pad3(toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg)) : toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg);
+        }
+        // Planned time for the next leg -- its own distance at its own PLANNED speed, same
+        // "route plan is the only source of truth ... ignore any drift" rule as the ETA
+        // trigger and the wind-corrected heading above: not an estimate of how long it will
+        // actually take given how the flight is actually going, just what the plan says.
+        if (nextLegGeo && Number.isFinite(nextLegGeo.dist) && nextLeg && nextLeg.flightSpeed > 0 &&
+            typeof toHMS === 'function') {
+          nextLegTime = toHMS(nextLegGeo.dist / nextLeg.flightSpeed);
         }
       }
-      gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'NavAid',
-        (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg)
+      gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
+        (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime)
           : ('Approaching ' + label));
     }
   }
@@ -883,7 +892,7 @@ function gpsCheckLegAlerts() {
     if (off >= GPS_ALT_TOLERANCE_FT) {
       if (!_gpsAlertAltDeviated) {
         _gpsAlertAltDeviated = true;
-        gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'NavAid',
+        gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
           (S && S.watchAlertAltBody)
             ? S.watchAlertAltBody(Math.round(gpsLastAlt), Math.round(planned))
             : (Math.round(gpsLastAlt) + ' ft, planned ' + Math.round(planned) + ' ft'));
@@ -894,9 +903,18 @@ function gpsCheckLegAlerts() {
   }
 
   // Advance the leg pointer: within the capture radius of the next waypoint, or the
-  // distance to it has started growing again after shrinking (passed abeam it).
+  // distance to it has started growing again after shrinking (passed abeam it). This IS
+  // the "overhead the waypoint" moment -- CVFR radio phraseology's own "TOP <point>" call --
+  // so it fires here, once per crossing (the index only ever moves forward past a given
+  // waypoint the one time this condition is first met; a lingering loiter right at the
+  // capture radius does not re-fire it, because by the next check gpsAlertLegIndex has
+  // already moved on to a different `next`).
   if (dist < _gpsAlertMinDistNm) _gpsAlertMinDistNm = dist;
   if (dist <= GPS_LEG_CAPTURE_NM || dist > _gpsAlertMinDistNm + GPS_LEG_CAPTURE_NM) {
+    const topLabel = (typeof waypointDisplayLabel === 'function')
+      ? waypointDisplayLabel(next, gpsAlertLegIndex + 1) : (next.name || '');
+    gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
+      (S && S.watchAlertTopBody) ? S.watchAlertTopBody(topLabel) : ('TOP ' + topLabel));
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;
     _gpsAlertLegFired = false;
@@ -1056,7 +1074,7 @@ function gpsCheckDrift() {
     // error" intercept -- fly the correction back at twice the angle you drifted out at.
     const driftOut = Math.round(Math.abs(trackErrorDeg));
     const driftIn = driftOut * 2;
-    gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'NavAid — off course',
+    gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, driftIn, label)
         : (driftOut + '° off course, ' + driftIn + '° to intercept toward ' + label));
   } else {
@@ -1064,7 +1082,7 @@ function gpsCheckDrift() {
     // waypoint -- report the correction to head direct to it instead.
     const direct = geo(gpsOwn, end);
     const correction = Math.round(Math.abs(_gpsAngleDiff(direct.brg, leg.brg)));
-    gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'NavAid — off course',
+    gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(correction, label)
         : (correction + '° to ' + label));
   }

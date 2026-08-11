@@ -147,8 +147,11 @@ test.describe('leg-approach alert', () => {
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
       return window.__notifications.slice();
     });
-    expect(out.length).toBe(1);
+    // Also captures BRAVO in the same fix -- the leg-approach alert (index 0) and the
+    // separate TOP alert (index 1, unconditional on kite visibility) both fire.
+    expect(out.length).toBe(2);
     expect(out[0].body).toBe('Approaching BRAVO');   // no altitude/heading suffix at all
+    expect(out[1].body).toBe('TOP BRAVO');
   });
 
   test('does not repeat while still inside the ETA window for the same leg', async ({ page }) => {
@@ -178,17 +181,20 @@ test.describe('leg-approach alert', () => {
       syncLegs();
       startLiveLocation();
       // Landing exactly on BRAVO both captures it AND satisfies its own ETA<=0 condition --
-      // that alert is expected here too, not just the pointer advance.
+      // that alert (index 0) fires here, and so does the separate TOP alert (index 1) the
+      // same capture also triggers.
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
       const afterCapture = gpsAlertLegIndex;
-      // Now close enough to CHARLIE for its own, separate ETA alert.
+      // Now close enough to CHARLIE for its own ETA alert AND its own TOP capture.
       window.__liveCb(window.__fix(32.0392, 34.00, { speedMs: 15.4 }));
       return { afterCapture, notif: window.__notifications.slice() };
     });
     expect(out.afterCapture).toBe(1);
-    expect(out.notif.length).toBe(2);
+    expect(out.notif.length).toBe(4);
     expect(out.notif[0].body).toContain('BRAVO');
-    expect(out.notif[1].body).toContain('CHARLIE');
+    expect(out.notif[1].body).toBe('TOP BRAVO');
+    expect(out.notif[2].body).toContain('CHARLIE');
+    expect(out.notif[3].body).toBe('TOP CHARLIE');
   });
 
   test('includes the NEXT leg\'s planned altitude and heading, not the leg being finished', async ({ page }) => {
@@ -213,7 +219,7 @@ test.describe('leg-approach alert', () => {
       const expectedHdg = pad3(toMagnetic(geo(state.waypoints[1], state.waypoints[2]).brg));
       return { notif: window.__notifications.slice(), expectedHdg };
     });
-    expect(out.notif.length).toBe(1);
+    expect(out.notif.length).toBe(2);   // leg-approach (index 0) + the same capture's TOP
     expect(out.notif[0].body).toContain('BRAVO');
     expect(out.notif[0].body).toContain('5000 ft');
     expect(out.notif[0].body).not.toContain('2000 ft');
@@ -246,7 +252,7 @@ test.describe('leg-approach alert', () => {
       const expectedPlainHdg = pad3(toMagnetic(brg));
       return { notif: window.__notifications.slice(), expectedHdg, expectedPlainHdg };
     });
-    expect(out.notif.length).toBe(1);
+    expect(out.notif.length).toBe(2);   // leg-approach (index 0) + the same capture's TOP
     // Sanity: this scenario really does produce a different number than the plain
     // course would -- otherwise the test can't tell a correct fix from a silently
     // reverted one.
@@ -265,8 +271,9 @@ test.describe('leg-approach alert', () => {
       window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
       return window.__notifications.slice();
     });
-    expect(out.length).toBe(1);
+    expect(out.length).toBe(2);   // leg-approach (index 0) + the same capture's TOP
     expect(out[0].body).toBe('Approaching BRAVO');   // no trailing ", N ft, hdg N°" at all
+    expect(out[1].body).toBe('TOP BRAVO');
   });
 
   test('omits altitude when the next leg has none entered, keeps the heading', async ({ page }) => {
@@ -285,9 +292,101 @@ test.describe('leg-approach alert', () => {
       const expectedHdg = pad3(toMagnetic(geo(state.waypoints[1], state.waypoints[2]).brg));
       return { notif: window.__notifications.slice(), expectedHdg };
     });
-    expect(out.notif.length).toBe(1);
+    expect(out.notif.length).toBe(2);   // leg-approach (index 0) + the same capture's TOP
     expect(out.notif[0].body).not.toContain('ft');
     expect(out.notif[0].body).toContain('hdg ' + out.expectedHdg + '°');
+  });
+
+  test('includes the next leg\'s planned time, from the plan\'s own speed -- ignores the live fix entirely', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.00, lng: 34.50, name: 'BRAVO' },
+        { lat: 32.00, lng: 35.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      state.legs[1].flightSpeed = 120;   // the plan's speed for BRAVO->CHARLIE
+      startLiveLocation();
+      // Reported groundspeed is wildly different from the plan -- must not affect the
+      // reported time at all (route plan is the only source of truth, no fixes).
+      window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 500 }));
+      const expectedTime = toHMS(geo(state.waypoints[1], state.waypoints[2]).dist / 120);
+      return { notif: window.__notifications.slice(), expectedTime };
+    });
+    expect(out.notif[0].body).toContain('next leg:');
+    expect(out.notif[0].body).toContain(out.expectedTime);
+  });
+
+  test('omits the time when the next leg has no planned speed to time it with', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.00, lng: 34.50, name: 'BRAVO' },
+        { lat: 32.00, lng: 35.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      state.legs[1].flightSpeed = 0;   // no planned speed for BRAVO->CHARLIE
+      startLiveLocation();
+      window.__liveCb(window.__fix(31.9992, 34.5, { speedMs: 15.4 }));
+      return window.__notifications.slice();
+    });
+    // Heading is still derivable (pure geometry, no speed needed) -- only the TIME is
+    // dropped, same "omit rather than guess" rule altitude/heading already follow.
+    expect(out[0].body).toContain('hdg');
+    expect(out[0].body).not.toMatch(/\d+:\d\d/);
+  });
+});
+
+test.describe('TOP alert (overhead the waypoint)', () => {
+  test('fires "TOP <name>" the moment a waypoint is captured, in addition to the leg-approach alert', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.02, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      startLiveLocation();
+      window.__liveCb(window.__fix(32.02, 34.0, { speedMs: 15.4 }));   // lands exactly on BRAVO
+      return window.__notifications.slice();
+    });
+    expect(out.length).toBe(2);
+    expect(out[1].body).toBe('TOP BRAVO');
+    expect(out[1].title).toContain('TOP');
+  });
+
+  test('fires for the LAST waypoint too, not just intermediate ones', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.02, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      startLiveLocation();
+      window.__liveCb(window.__fix(32.02, 34.0, { speedMs: 15.4 }));
+      return window.__notifications.slice();
+    });
+    expect(out.some((n) => n.body === 'TOP BRAVO')).toBe(true);
+  });
+
+  test('does not re-fire while lingering at the same waypoint -- the pointer has already moved on', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.02, lng: 34.00, name: 'BRAVO' },
+        { lat: 32.04, lng: 34.00, name: 'CHARLIE' },
+      ];
+      syncLegs();
+      startLiveLocation();
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));   // same fix again
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      return window.__notifications.filter((n) => n.body === 'TOP BRAVO').length;
+    });
+    expect(out).toBe(1);
   });
 });
 
