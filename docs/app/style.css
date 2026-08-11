@@ -5662,3 +5662,13 @@ body.theme-light .search-flash-ring {
   .search-flash-ring::before, .search-flash-ring::after { display: none; }
   .search-flash-ring { animation: search-flash-hold var(--flash-ms, 3500ms) linear 1 both; }
 }
+
+/* Frequency-NOTAM pointer in the airfield inspector (#1535). Styled as a warning
+   affordance, not as a frequency: it names a NOTAM, it never shows a value. */
+.freq-notam-row .freq-notam-btn {
+  width: 100%; text-align: start; cursor: pointer;
+  background: rgba(255, 176, 32, 0.14);
+  border: 1px solid rgba(255, 176, 32, 0.55);
+  color: inherit; border-radius: 4px; padding: 4px 6px; font-size: 12px;
+}
+.freq-notam-row .freq-notam-btn:hover { background: rgba(255, 176, 32, 0.26); }

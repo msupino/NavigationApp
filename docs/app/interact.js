@@ -1468,6 +1468,32 @@ function appendAirfieldFrequencyRows(body, af) {
   };
   appendFieldParts('clearance', S.clearance || 'Clearance', 'clearance-row');
   appendFieldParts('atis', S.atis || 'ATIS', 'atis-row');
+
+  // A NOTAM about this field's frequencies. A POINTER, never a value: the rows above keep
+  // showing what the AIP publishes, and nothing is read out of the NOTAM text. A NOTAM
+  // frequency is true today, not in general, and a mis-parse would put a pilot on the wrong
+  // frequency -- worse than making them read two lines. So this says "there is one, here it
+  // is" and the pilot decides.
+  const freqNotams = (typeof airfieldFreqNotams === 'function')
+    ? airfieldFreqNotams(af && af.name) : [];
+  if (freqNotams.length) {
+    const row = document.createElement('div');
+    row.className = 'insp-row freq-notam-row';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'freq-notam-btn';
+    btn.textContent = '\u26A0 ' + (S.freqNotamNote
+      ? S.freqNotamNote(freqNotams.map(n => n.id))
+      : 'Frequency NOTAM: ' + freqNotams.map(n => n.id).join(', '));
+    btn.title = freqNotams.map(n => n.id).join(', ');
+    btn.onclick = () => {
+      // Reuse the existing paths: flash it on the map if it is drawn, else open the list.
+      if (typeof flashNotam === 'function') flashNotam(freqNotams[0].id);
+      if (typeof showNotamModal === 'function') showNotamModal(freqNotams[0].id);
+    };
+    row.appendChild(btn);
+    body.appendChild(row);
+  }
 }
 
 const SATELLITE_TILE_SIZE = 256;

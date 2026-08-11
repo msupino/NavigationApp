@@ -59,3 +59,42 @@ test('the published frequency is never replaced by the NOTAM value', async ({ pa
   expect(out.published).toContain('121.70');
   expect(out.published).not.toContain('125.6');
 });
+
+test('the airfield inspector shows a pointer row, and it opens the NOTAM', async ({ page }) => {
+  await boot(page);
+  // Select LLHZ's airfield and open its inspector, as a pilot would.
+  const shown = await page.evaluate(async () => {
+    await loadAirfields();
+    const i = airfields.findIndex(a => a.name === 'LLHZ');
+    state.selected = { type: 'airfield', index: i };
+    showInspector();
+    const btn = document.querySelector('.freq-notam-row .freq-notam-btn');
+    const cRow = document.querySelector('.clearance-row');
+    const cInput = cRow ? cRow.querySelector('input') : null;
+    return {
+      note: btn ? btn.textContent : null,
+      clearance: cInput ? cInput.value : (cRow ? cRow.textContent : null),
+    };
+  });
+  // The pointer names the NOTAM...
+  expect(shown.note).toContain('F1/26');
+  // ...and never a frequency: not the NOTAM's 125.6, not any number of its own.
+  expect(shown.note).not.toContain('125.6');
+  expect(shown.note).not.toMatch(/1[0-3][0-9]\.[0-9]/);
+  // The published frequency row is untouched beside it.
+  expect(shown.clearance).toContain('121.70');
+});
+
+test('no frequency NOTAM, no row', async ({ page }) => {
+  await boot(page);
+  const has = await page.evaluate(async () => {
+    await loadAirfields();
+    // LLER has no NOTAM in the fixture at all.
+    const i = airfields.findIndex(a => a.name === 'LLER');
+    if (i < 0) return 'no-such-field';
+    state.selected = { type: 'airfield', index: i };
+    showInspector();
+    return !!document.querySelector('.freq-notam-row');
+  });
+  expect(has === false || has === 'no-such-field').toBe(true);
+});
