@@ -1209,6 +1209,9 @@ window.S = Object.assign({
   fplAckRequired: 'Confirm the checks above before submitting the plan.',
   fplAckLanding: function(site) { return 'I coordinated the landing with the operator of ' + site; },
   fplAckTower: function(site) { return 'I coordinated the landing with ' + site + ' tower, and will keep continuous radio contact'; },
+  // Shown only when the filed speed disagrees with some leg's actual speed -- an
+  // override away from a uniform route, or a route that was already flown unevenly.
+  fplAckSpeed: function(kt) { return 'The filed speed (' + kt + ' kt) does not match every leg’s actual speed'; },
   fplCustomRecipient: 'Not the published AIS address — this plan will be sent to:',
   fplCopy: 'Copy',
   fplCopied: 'Flight plan copied.',

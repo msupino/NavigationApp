@@ -1812,6 +1812,15 @@ function buildIcaoFpl(profile, opts) {
   // Cruising TAS is one number in field 15; a route flown at mixed speeds has no
   // single answer, so the first leg's speed is used and the caller is told.
   const mixedSpeed = legs.some(l => Math.round(Number(l.flightSpeed)) !== naturalSpeedKt);
+  // A different question from mixedSpeed: not "was the route flown at one speed", but
+  // "does the number about to be FILED match every leg actually flown". mixedSpeed stays
+  // pinned to naturalSpeedKt so an override alone can never trigger it (see above); this
+  // one is pinned to speedKt on purpose, so it catches BOTH an override that disagrees
+  // with a uniform route AND a route that was already uneven with no override at all --
+  // either way, what reaches ATC would misdescribe some leg of the flight. The caller
+  // gates filing on this (an explicit confirmation, not just a warning), because a wrong
+  // declared TAS is what a controller acts on, not an internal note to the pilot.
+  const speedFileMismatch = legs.some(l => Math.round(Number(l.flightSpeed)) !== speedKt);
 
   const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
   // Filed to the next whole 5 minutes: nobody files 00:33, and rounding UP never
@@ -1912,7 +1921,7 @@ function buildIcaoFpl(profile, opts) {
   return {
     text, dep: depIcao || depPlain, dest: destIcao || destPlain, eet: fplHhmm(eetH),
     expandedPoints: pts.slice(), expandedUnresolved,
-    eetMinutes: Math.round(eetH * 60), mixedSpeed, speedKt, warns,
+    eetMinutes: Math.round(eetH * 60), mixedSpeed, speedKt, speedFileMismatch, warns,
     opensAt: fplEarliestFiling(utc.when),
     to: toAddr,
     eobtUtc: utc.eobt, dof: utc.dof, lead,
@@ -9064,6 +9073,15 @@ function showFplDialog() {
         : (S.fplAckLanding ? S.fplAckLanding(landing.label)
           : 'I coordinated the landing with the operator of ' + landing.label)]);
     }
+    // Fourth box, only when the number about to be filed does not match every leg --
+    // whether that is because the Speed box was overridden away from a uniform route, or
+    // because the route itself was flown at more than one speed and no override was even
+    // typed. Either way, this is what actually reaches a controller, so it is a
+    // confirmation to make before submitting, not a warning left in a corner.
+    if (wantAcks && res.speedFileMismatch) {
+      ackList.push(['fpl-ack-speed', S.fplAckSpeed ? S.fplAckSpeed(res.speedKt)
+        : 'The filed speed (' + res.speedKt + ' kt) does not match every leg’s actual speed']);
+    }
     for (const [id, label] of ackList) {
       const wrap = document.createElement('label');
       wrap.className = 'fpl-ack';
@@ -9106,6 +9124,7 @@ function showFplDialog() {
     copy.className = 'modal-cancel';        // secondary: submitting is the primary action
     copy.textContent = S.fplCopy || 'Copy';
     copy.onclick = () => {
+      if (!requireAcks()) return;
       const write = (navigator.clipboard && navigator.clipboard.writeText)
         ? navigator.clipboard.writeText(res.text)
         : Promise.reject(new Error('no clipboard API'));
@@ -9122,14 +9141,7 @@ function showFplDialog() {
       // A cross-country plan never reaches this step (Continue opens the form
       // instead), but the guard stays: this button must never mail one.
       if (formOnly) return;
-      if (!acksDone()) {
-        ackAsked = true;
-        ackNote.hidden = false;
-        sync();
-        const first = acks.find(cb => !cb.checked);
-        if (first) first.focus();
-        return;
-      }
+      if (!requireAcks()) return;
       // mailto only: a static site has no sender of its own, and the pilot must be
       // the one who files. cc keeps the pilot on the thread the approval returns on.
       // The AIP prescribes no subject line (א'-11 §3.ב only names the address), so this
@@ -9182,6 +9194,20 @@ function showFplDialog() {
       if (acksDone()) ackNote.hidden = true;
     };
     for (const cb of acks) cb.addEventListener('change', sync);
+    // Shared by Mail AND Copy: an unticked box is exactly as much a problem for a plan
+    // copied into a paper form or another app as for one mailed straight from here --
+    // the checks exist because the pilot has not actually confirmed them yet, not
+    // because of which button happens to send the text somewhere. Returns whether it is
+    // safe to proceed; false has already marked the missing boxes and focused the first.
+    const requireAcks = () => {
+      if (acksDone()) return true;
+      ackAsked = true;
+      ackNote.hidden = false;
+      sync();
+      const first = acks.find(cb => !cb.checked);
+      if (first) first.focus();
+      return false;
+    };
     const backBtn = document.createElement('button');
     backBtn.type = 'button';
     backBtn.id = 'fpl-back';
