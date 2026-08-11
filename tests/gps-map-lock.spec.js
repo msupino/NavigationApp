@@ -96,3 +96,41 @@ test.describe('map lock while GPS/sim connected', () => {
     expect(seq).toEqual([false, true, false, true, false, true, false]);
   });
 });
+
+test.describe('legend hidden on mobile while a position source is live', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test('legend visible normally, hidden once live, visible again once stopped', async ({ page }) => {
+    await boot(page);
+    const before = await page.evaluate(() =>
+      getComputedStyle(document.getElementById('map-legend')).display);
+    expect(before).not.toBe('none');
+    const live = await page.evaluate(() => {
+      window.gpsLiveOn = true;
+      draw();   // gpsMapLocked() is synced at the top of draw(), not on the flag write itself
+      return getComputedStyle(document.getElementById('map-legend')).display;
+    });
+    expect(live).toBe('none');
+    const after = await page.evaluate(() => {
+      window.gpsLiveOn = false;
+      draw();
+      return getComputedStyle(document.getElementById('map-legend')).display;
+    });
+    expect(after).not.toBe('none');
+  });
+
+  test('recording and a connected simulator hide it too', async ({ page }) => {
+    await boot(page);
+    for (const flag of ['gpsRecording', 'simOn']) {
+      const hidden = await page.evaluate((f) => {
+        window[f] = true;
+        draw();
+        const d = getComputedStyle(document.getElementById('map-legend')).display;
+        window[f] = false;
+        draw();
+        return d;
+      }, flag);
+      expect(hidden, flag).toBe('none');
+    }
+  });
+});

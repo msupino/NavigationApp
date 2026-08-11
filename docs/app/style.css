@@ -2223,6 +2223,12 @@ body.theme-light .shortcuts-help-keys kbd {
      it on a small screen — hide them until it closes. */
   body:has(.modal-back) .map-legend,
   body:has(.modal-back) #toolbar { display: none; }
+  /* Same reasoning, different trigger: while a position source is live (recording,
+     live location, or a connected simulator -- see gpsMapLocked() in gps.js, kept in
+     sync every redraw in draw.js), the legend's chart-symbol key and route totals
+     are exactly the screen space a phone needs for the map itself mid-flight. Desktop
+     has room for both, so this stays scoped to this mobile breakpoint. */
+  body.gps-tracking-active .map-legend { display: none; }
   /* Saved-routes modal: the two-column rows (name | wrapped action buttons and
      name field | save button) don't fit a phone — the auto action/button column
      claims its full max-content width and starves the 1fr name to a few pixels,

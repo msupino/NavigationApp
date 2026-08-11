@@ -456,6 +456,17 @@ function drawVerticalProfile(ctx, x, y, w, h) {
 }
 
 function draw() {
+  // Reclaims the legend's screen space on a phone while a position source is live
+  // (recording, live location, or a connected simulator) -- reported live as "legend
+  // should be hidden, to make screen place". Kept in sync here (every redraw, which
+  // already runs on essentially every state change) rather than threaded through each
+  // of the six start/stop functions individually, so an early-return or a failed
+  // registration can't leave it stuck in the wrong state. The actual hiding is CSS,
+  // scoped to mobile widths only (see .gps-tracking-active .map-legend in style.css) --
+  // desktop has room for both.
+  if (typeof document !== 'undefined' && typeof gpsMapLocked === 'function') {
+    document.body.classList.toggle('gps-tracking-active', gpsMapLocked());
+  }
   octx.clearRect(0, 0, vw(), vh());
   drawAreas();                  // airspace bubbles under the waypoints
   // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
