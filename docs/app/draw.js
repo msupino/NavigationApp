@@ -1081,6 +1081,26 @@ function drawNotams() {
 // Most NOTAMs carry no coordinates (airport-procedural / FIR-wide) — the source
 // gives none. For ones tied to a known airport, drop a count badge at the field
 // so they're visible on the map; the full text is in the NOTAM list.
+// Active NOTAMs for an airfield that MENTION a frequency. Deliberately a boolean-ish
+// question, not an extraction: the published frequency stays what the app shows, and this
+// only says "there is a NOTAM about a frequency here, go read it".
+//
+// Not parsing the value is the whole point. A NOTAM frequency is true today, not true in
+// general -- baking one into airfields.json next to `clearance` would freeze a temporary
+// claim into a file that means "published truth", which is exactly how closedHint and
+// openFromHourHint ended up wrong. And a mis-parse here puts a pilot on the wrong
+// frequency, which is worse than making them read two lines of NOTAM text.
+//
+// So: no value is read out, nothing is substituted, and the badge is a pointer.
+const FREQ_MENTION_RE = /\b(?:FREQ|FREQUENCY|TWR|TOWER|AFIS|ATIS|RADIO|QDM)\b|\b1[0-3][0-9]\.[0-9]{1,3}\b/;
+function airfieldFreqNotams(icao) {
+  const code = String(icao || '').toUpperCase();
+  if (!code || typeof activeNotams !== 'function') return [];
+  return activeNotams().filter(function (n) {
+    if (!n || String(n.icao || '').toUpperCase() !== code) return false;
+    return FREQ_MENTION_RE.test(String(n.text || '').toUpperCase());
+  });
+}
 function drawNotamAirportMarkers() {
   if (!Array.isArray(airfields) || !airfields.length) return;
   const byIcao = {};
