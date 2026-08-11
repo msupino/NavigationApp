@@ -2252,6 +2252,15 @@ body.theme-light .shortcuts-help-keys kbd {
   #toolbar #privacy-link,
   #toolbar #terms-link { display: none; }
 
+  /* #sim-trigger stays visible (see comment above) but, unlike the two GPS buttons,
+     goes icon-only here: its own text label ("Simulator") was the one thing that
+     didn't fit -- the two GPS buttons already reserve ~100-120px each of the
+     collapsed panel's one row (see the min-width rule below), and a third
+     full-width label pushed the row to wrap, doubling the closed menu's height
+     (broke the "closed menu is one row" / "does not cover the Zulu clock" checks).
+     A plane-icon button next to two labelled ones is still self-explanatory. */
+  #toolbar #sim-trigger .footer-link-text { display: none; }
+
   /* Make the Edit-header separator (between the Save/Load buttons and the
      "Edit" label) span the full head like the dividers between sections: let
      the two-line block fill the head width and float the expand caret out of
