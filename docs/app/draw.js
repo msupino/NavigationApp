@@ -4613,8 +4613,8 @@ function drawGraphLegs() {
   const zoom = map.getZoom();
   const labels = zoom >= 10;
   octx.save();
-  octx.lineWidth = 2;
-  octx.font = 'bold 10px sans-serif';
+  octx.lineWidth = 3;
+  octx.font = 'bold 11px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
   const seen = new Set();
@@ -4639,17 +4639,23 @@ function drawGraphLegs() {
       octx.setLineDash([]);
       // Arrowheads: one per travellable direction, so a two-way leg reads <---> and a
       // one-way reads ---> without having to consult a legend.
+      //
+      // FILLED and large on purpose. This overlay is read while cross-checking a chart, at
+      // whatever zoom the airspace happens to need, and two thin strokes could not be told
+      // apart from the segment they sit on. A solid triangle survives a busy background.
       const ang = Math.atan2(q.y - p.y, q.x - p.x);
       const head = (x, y, dir) => {
-        const s = 7;
+        const s = 18, spread = 0.42;
         octx.beginPath();
         octx.moveTo(x, y);
-        octx.lineTo(x - s * Math.cos(dir - 0.4), y - s * Math.sin(dir - 0.4));
-        octx.moveTo(x, y);
-        octx.lineTo(x - s * Math.cos(dir + 0.4), y - s * Math.sin(dir + 0.4));
-        octx.stroke();
+        octx.lineTo(x - s * Math.cos(dir - spread), y - s * Math.sin(dir - spread));
+        octx.lineTo(x - s * 0.62 * Math.cos(dir), y - s * 0.62 * Math.sin(dir));
+        octx.lineTo(x - s * Math.cos(dir + spread), y - s * Math.sin(dir + spread));
+        octx.closePath();
+        octx.fillStyle = GRAPH_LEG_COLORS[kind];
+        octx.fill();
       };
-      const inset = 0.82, back = 0.18;
+      const inset = 0.78, back = 0.22;
       head(p.x + (q.x - p.x) * inset, p.y + (q.y - p.y) * inset, ang);
       if (fwdOpen && revOpen) head(p.x + (q.x - p.x) * back, p.y + (q.y - p.y) * back, ang + Math.PI);
       if (!labels) continue;
@@ -4657,12 +4663,12 @@ function drawGraphLegs() {
       // blank here is the dataset defect this overlay exists to make visible.
       const alt = Number.isFinite(flown.inboundAltitude) ? String(flown.inboundAltitude) : '—';
       const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-      octx.lineWidth = 3;
-      octx.strokeStyle = 'rgba(255,255,255,0.9)';
+      octx.lineWidth = 4;
+      octx.strokeStyle = 'rgba(255,255,255,0.95)';
       octx.strokeText(alt, mx, my - 7);
       octx.fillStyle = GRAPH_LEG_COLORS[kind];
       octx.fillText(alt, mx, my - 7);
-      octx.lineWidth = 2;
+      octx.lineWidth = 3;
     }
   }
   octx.restore();
