@@ -251,25 +251,14 @@ function drawHeadingLine(pos, hdg, gsKt) {
     octx.fillText(secondaryLabel, lx, ly2);
   }
 
-  // Fixed-distance marks: "2"/"5"/"10" (bare NM number), time-to-reach below when a
-  // groundspeed is available (toHMS -- M:SS, matches the leg-approach alert's own
-  // next-leg time format), omitted rather than guessed otherwise.
-  const times = [];
-  for (const nm of HEADING_LINE_MARKS_NM) {
-    const timeLabel = (haveSpeed && typeof toHMS === 'function') ? toHMS(nm / gsKt) : null;
-    times.push(timeLabel);
-    drawMark(nm, String(nm), timeLabel);
-  }
-  // Fixed-time marks: "N min", distance below (the derived value here, since the mark
-  // itself is defined by time). Needs a groundspeed to place at all.
-  const dists = [];
+  // Fixed-distance marks: bare NM number ("2"/"5"/"10"). No secondary derived row --
+  // a time-to-reach subtext was tried and reported as unwanted clutter ("it shows
+  // 1:20 as well"); just the marks themselves.
+  for (const nm of HEADING_LINE_MARKS_NM) drawMark(nm, String(nm), null);
+  // Fixed-time marks: "N min". Needs a groundspeed to place at all (their distance is
+  // derived from it); no secondary distance row either, same reasoning as above.
   if (haveSpeed) {
-    for (const min of HEADING_LINE_MARKS_MIN) {
-      const nm = nmAtMin(min);
-      const distLabel = nm.toFixed(1) + ' nm';
-      dists.push(distLabel);
-      drawMark(nm, min + ' min', distLabel);
-    }
+    for (const min of HEADING_LINE_MARKS_MIN) drawMark(nmAtMin(min), min + ' min', null);
   }
   // Heading value at the far end of the line, past the last tick's own labels
   // rather than stacked on top of them. Magnetic + padded to 3 digits, same as
@@ -289,8 +278,8 @@ function drawHeadingLine(pos, hdg, gsKt) {
   octx.fillText(headingLabel, headEnd.x, headEnd.y);
   octx.restore();
   if (typeof window !== 'undefined')
-    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(), times,
-      minMarks: HEADING_LINE_MARKS_MIN.slice(), dists, headingLabel };
+    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(),
+      minMarks: haveSpeed ? HEADING_LINE_MARKS_MIN.slice() : [], headingLabel };
 }
 
 // TOC / TOD markers along the route (#672). A small dot + label at the point

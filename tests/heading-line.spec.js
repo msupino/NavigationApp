@@ -1,11 +1,13 @@
 // @ts-check
 // Own-ship heading predictor: a line along the current track with TWO sets of
-// cross-tick marks -- fixed distance (2/5/10 NM, each with its own time-to-reach) and
-// fixed time (2/5 minutes ahead, each with the distance it works out to) -- both, not
-// either/or. The NM marks draw regardless of speed; the minute marks need a
-// groundspeed to derive a distance from and are simply omitted without one. Shown for
-// both live GPS location and the simulator own-ship; freezes on the last valid heading
-// when GPS course goes null (zero groundspeed). See drawHeadingLine() in draw.js.
+// cross-tick marks -- fixed distance (2/5/10 NM) and fixed time (2/5 minutes ahead) --
+// both, not either/or. Just the marks themselves: a time-to-reach subtext under the NM
+// marks and a distance subtext under the minute marks were both tried and reported as
+// unwanted clutter ("it shows 1:20 as well"), so neither carries a secondary row. The
+// NM marks draw regardless of speed; the minute marks need a groundspeed to derive
+// their distance from and are simply omitted without one. Shown for both live GPS
+// location and the simulator own-ship; freezes on the last valid heading when GPS
+// course goes null (zero groundspeed). See drawHeadingLine() in draw.js.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -28,55 +30,23 @@ test('predictor marks the line at 2 / 5 / 10 NM for the live own-ship', async ({
   expect(marks).not.toBeNull();
   expect(marks.marks).toEqual([2, 5, 10]);
   expect(marks.heading).toBe(90);
+  expect(marks.minMarks).toEqual([]);   // no groundspeed here -- minute marks need one
 });
 
-test('NM marks carry a time-to-reach at the current groundspeed, M:SS format', async ({ page }) => {
+test('minute marks (2 / 5 min) appear alongside the NM marks once a groundspeed is known', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     window.__headingLine = null;
     window.gpsLiveOn = true;
     window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
-    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 60);   // 60 kt: 2 NM = 2:00, 5 NM = 5:00, 10 NM = 10:00
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 90);
     return window.__headingLine;
   });
-  expect(out.times).toEqual(['2:00', '5:00', '10:00']);
-});
-
-test('omits the NM marks\' time (not a guess) when there is no reliable groundspeed', async ({ page }) => {
-  await boot(page);
-  const noSpeed = await page.evaluate(() => {
-    window.__headingLine = null;
-    window.gpsLiveOn = true;
-    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
-    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg);   // no 3rd arg -- stationary/taxiing GPS
-    return window.__headingLine;
-  });
-  expect(noSpeed.times).toEqual([null, null, null]);
-  expect(noSpeed.marks).toEqual([2, 5, 10]);          // NM marks still draw regardless
-  const zeroSpeed = await page.evaluate(() => {
-    window.__headingLine = null;
-    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 0);   // 0 kt is not a divide-by-zero guess either
-    return window.__headingLine.times;
-  });
-  expect(zeroSpeed).toEqual([null, null, null]);
-});
-
-test('minute marks (2 / 5 min) show the distance they work out to, alongside the NM marks', async ({ page }) => {
-  await boot(page);
-  const out = await page.evaluate(() => {
-    window.__headingLine = null;
-    window.gpsLiveOn = true;
-    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
-    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 60);   // 60 kt: 2 min = 2.0 nm, 5 min = 5.0 nm
-    return window.__headingLine;
-  });
+  expect(out.marks).toEqual([2, 5, 10]);      // both sets present at once, not either/or
   expect(out.minMarks).toEqual([2, 5]);
-  expect(out.dists).toEqual(['2.0 nm', '5.0 nm']);
-  // Both sets present at once, not either/or.
-  expect(out.marks).toEqual([2, 5, 10]);
 });
 
-test('minute marks are omitted (not the whole line) without a reliable groundspeed', async ({ page }) => {
+test('the NM-marked line still draws without a reliable groundspeed -- only the minute marks are omitted', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     window.__headingLine = null;
@@ -85,22 +55,31 @@ test('minute marks are omitted (not the whole line) without a reliable groundspe
     drawOwnShip(window.gpsOwn, window.gpsOwn.hdg);   // no speed
     return window.__headingLine;
   });
-  expect(out).not.toBeNull();       // the NM-marked line itself still draws
+  expect(out).not.toBeNull();
   expect(out.marks).toEqual([2, 5, 10]);
-  expect(out.dists).toEqual([]);    // but no minute marks -- nothing to derive their distance from
+  expect(out.minMarks).toEqual([]);
+  const zeroSpeed = await page.evaluate(() => {
+    window.__headingLine = null;
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 0);   // 0 kt is not a divide-by-zero guess either
+    return window.__headingLine.minMarks;
+  });
+  expect(zeroSpeed).toEqual([]);
 });
 
 test('the line reaches whichever mark set extends further (a fast aircraft\'s 5-minute mark, past 10 NM)', async ({ page }) => {
   await boot(page);
-  // 200 kt: the 5-minute mark is 16.7 nm out, past the fixed 10 NM mark.
-  const dists = await page.evaluate(() => {
+  // 200 kt: the 5-minute mark is 16.7 nm out, past the fixed 10 NM mark -- checked via
+  // the underlying atNm() offset math (no per-mark screen position is exposed), same
+  // way the dedicated NM-projection test below verifies it.
+  const out = await page.evaluate(() => {
     window.__headingLine = null;
     window.gpsLiveOn = true;
     window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
     drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 200);
-    return window.__headingLine.dists;
+    return window.__headingLine;
   });
-  expect(dists[1]).toBe('16.7 nm');
+  expect(out.marks).toEqual([2, 5, 10]);
+  expect(out.minMarks).toEqual([2, 5]);
 });
 
 test('end-of-line heading label is magnetic (toMagnetic), padded to 3 digits, wraps 0-360', async ({ page }) => {
@@ -134,17 +113,16 @@ test('also draws for the simulator own-ship', async ({ page }) => {
   expect(drawn.heading).toBe(270);
 });
 
-test('the simulator own-ship gets minute-mark distances from its own IAS', async ({ page }) => {
+test('the simulator own-ship gets minute marks from its own IAS too', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     window.__headingLine = null;
     window.simOn = true;
     window.simAircraft = { lat: 32.1, lng: 34.9, hdg: 270, ias: 120 };
     drawOwnShip(window.simAircraft, window.simAircraft.hdg, window.simAircraft.ias);
-    return window.__headingLine.dists;
+    return window.__headingLine.minMarks;
   });
-  // 120 kt: 2 min = 4.0 nm, 5 min = 10.0 nm.
-  expect(out).toEqual(['4.0 nm', '10.0 nm']);
+  expect(out).toEqual([2, 5]);
 });
 
 test('the 10 NM mark projects to a point 10 NM ahead on the heading', async ({ page }) => {
