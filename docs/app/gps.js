@@ -324,6 +324,28 @@ var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
 
 // Live readout next to the toolbar button: points · elapsed · ground speed ·
 // altitude (the last two only when the fix provides them). No-op if absent.
+// The readout is measurements -- "18 kt · 390 ft" -- which must read left to right even
+// in the RTL UI, where the bidi algorithm otherwise reorders the sequence and showed
+// "kt · 390 ft 18". The stale-fix notice cannot simply come along for the ride: its
+// Hebrew ("קליטת GPS מלפני") is two Hebrew words either side of a Latin one, and an LTR
+// base reverses how they read. So the measurements are written into an LTR-isolated
+// element and the notice carries dir="auto", taking its own base from its own text.
+function gpsSetReadout(el, parts, staleText) {
+  el.textContent = '';
+  const measured = parts.join(' · ');
+  if (measured) el.appendChild(document.createTextNode(measured));
+  if (!staleText) return;
+  if (measured) el.appendChild(document.createTextNode(' · '));
+  const span = document.createElement('span');
+  span.dir = 'auto';
+  span.textContent = staleText;
+  el.appendChild(span);
+}
+function gpsStaleText() {
+  return gpsFixStale()
+    ? ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(gpsFixAgeMs() / 1000) + 's'
+    : '';
+}
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
@@ -331,14 +353,10 @@ function gpsUpdateReadout() {
     const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
     const mm = String(Math.floor(secs / 60)).padStart(2, '0');
     const ss = String(secs % 60).padStart(2, '0');
-    let s = gpsTrack.length + ' pts · ' + mm + ':' + ss;
-    if (gpsLastGS != null) s += ' · ' + Math.round(gpsLastGS) + ' kt';
-    if (gpsLastAlt != null) s += ' · ' + Math.round(gpsLastAlt) + ' ft';
-    if (gpsFixStale()) {
-      s += ' · ' + ((S && S.gpsFixStale) || 'GPS fix') + ' ' +
-        Math.round(gpsFixAgeMs() / 1000) + 's';
-    }
-    el.textContent = s;
+    const parts = [gpsTrack.length + ' pts · ' + mm + ':' + ss];
+    if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
+    if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
+    gpsSetReadout(el, parts, gpsStaleText());
     return;
   }
   // Not recording, but still a live position source (plain "show location", or a
@@ -351,17 +369,12 @@ function gpsUpdateReadout() {
     const parts = [];
     if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
     if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
-    if (gpsFixStale()) {
-      parts.push(((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(gpsFixAgeMs() / 1000) + 's');
-    }
-    el.textContent = parts.join(' · ');
+    gpsSetReadout(el, parts, gpsStaleText());
     return;
   }
   // Nothing active: a stale leftover fix is still worth saying (the map may still show
   // a frozen own-ship symbol with no other way to tell it stopped updating).
-  const age = gpsFixStale() ? gpsFixAgeMs() : null;
-  el.textContent = age == null ? ''
-    : ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(age / 1000) + 's';
+  gpsSetReadout(el, [], gpsStaleText());
 }
 
 function onGpsPosition(pos) {
