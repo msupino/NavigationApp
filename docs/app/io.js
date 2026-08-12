@@ -2529,6 +2529,17 @@ function applyRouteData(d) {
   showInspector();
   fitView();
   applyMapBearing(d);            // restore the saved map orientation
+  // A route can be loaded WHILE already tracking (live location or a recording running),
+  // and not necessarily from its own start -- a pilot picking a plan mid-flight is already
+  // somewhere along it. The leg pointer these alerts use is keyed to the PREVIOUS route's
+  // waypoint indices, so it has to snap onto whichever leg of the NEW route is actually
+  // nearest before anything else; and checking right away (not waiting for the next fix or
+  // the drift timer's next tick) is what makes "already off this new plan's altitude" show
+  // up the moment the plan loads, not some seconds later. No-ops if nothing is tracking
+  // (gpsOwn is null): only the pointer changes.
+  if (typeof gpsSnapLegAlertsToPosition === 'function') gpsSnapLegAlertsToPosition();
+  if (typeof gpsCheckLegAlerts === 'function') gpsCheckLegAlerts();
+  if (typeof gpsCheckDrift === 'function') gpsCheckDrift();
   draw();
 }
 
@@ -8071,6 +8082,10 @@ function _simAbort(ms) {
 // stop/start let the OLD session's fix overwrite the new session's position.
 let _simSession = 0;
 let _simAborter = null;
+// A jump bigger than this between two consecutive 1-second polls is not a real (or
+// plausibly fast simulated) aircraft moving -- it's the bridge process having restarted
+// out from under an already-connected session. See the comment at its one use in _simFetch.
+const SIM_DISCONTINUITY_NM = 5;
 
 async function _simFetch() {
   const session = _simSession;
@@ -8085,14 +8100,72 @@ async function _simFetch() {
     // Stopped, or restarted, while this request was in flight: its answer is about a
     // session the pilot has already ended, so it must not touch the map or the status.
     if (session !== _simSession) return;
+    // d.heading is already MAGNETIC -- schema.json computes it as
+    // (rpos_heading_true - variation) % 360, same convention a real backend uses too --
+    // but every geometric consumer of this hdg (the own-ship icon's rotation, and
+    // especially the heading-line predictor's lat/lng trigonometry, which is inherently
+    // TRUE-north-referenced) needs TRUE. Converting back here, once, at the point where
+    // the value's provenance is actually known, keeps simAircraft.hdg in the same TRUE
+    // convention gpsOwn.hdg already uses from a real GPS fix (coords.heading is true per
+    // the Geolocation API spec) -- reported live: "that line still uses true north, not
+    // magnetic" (the predictor line was drawn rotated off by the local variation).
+    // toMagnetic() at any DISPLAY site converts back for a pilot-facing number, same as
+    // every other heading readout in the app.
+    const hdgTrue = (Number.isFinite(d.heading) && Number.isFinite(d.variation))
+      ? (d.heading + d.variation + 360) % 360 : (d.heading || 0);
     window.simAircraft = {
       lat: d.latitude,
       lng: d.longitude,
       alt: d.altitude || 0,
-      hdg: d.heading || 0,
+      hdg: hdgTrue,
       ias: d.ias || 0,
     };
+    // How much faster than real time the reporting aircraft's own clock is running (cvfr-
+    // bridge's speed_factor field; 1 = real time, and always 1 from a real X-Plane backend).
+    // gpsCheckDrift runs on a fixed REAL-TIME interval, with no idea a connected simulator
+    // might be flying many times faster -- see gpsMaybeStartDriftTimer in gps.js, which
+    // reads this to scale its own real-time cadence to match.
+    window.simSpeedFactor = (Number.isFinite(d.speed_factor) && d.speed_factor > 0)
+      ? d.speed_factor : 1;
     _simSetStatus(true);
+    // Feed the same watch-alert pipeline the real device-GPS paths do (gpsCheckLegAlerts in
+    // gps.js), so flying a planned route in a connected simulator is a real way to test --
+    // or use -- the leg-approach / altitude alerts without a phone. altitude/ias assumed
+    // already in ft/kt (aviation units), unlike the raw Geolocation API's metres/(m/s) --
+    // confirm against your actual bridge if it reports SI units instead.
+    //
+    // Real GPS wins if both happen to be on at once (recording or live location) -- same
+    // precedent draw.js already set for the own-ship MARKER (simAircraft only drawn when
+    // neither gpsRecording nor gpsLiveOn is active); this is that same rule applied to the
+    // alert pipeline, which the marker's own guard never covered. Without it, a real fix
+    // and a sim poll racing to overwrite gpsOwn/gpsLastGS/gpsLastAlt would fight over
+    // which one's position the alerts react to, however briefly each one wins between fixes.
+    if (typeof gpsCheckLegAlerts === 'function' && !gpsRecording && !gpsLiveOn) {
+      const prevOwn = gpsOwn;
+      gpsOwn = { lat: window.simAircraft.lat, lng: window.simAircraft.lng,
+        hdg: window.simAircraft.hdg, t: Date.now() };
+      gpsLastGS = window.simAircraft.ias || null;
+      gpsLastAlt = window.simAircraft.alt || null;
+      // The bridge process restarting mid-session (its own clock resets, position jumps
+      // back to the start of its route) never calls simStart() again -- the browser-side
+      // poll just keeps running -- so gpsResetLegAlerts() never re-fires and the pointer
+      // is left pointing at a leg the OLD session had long since passed, comparing fresh
+      // near-the-beginning fixes against it (reported live: "getting notifications about
+      // FRDIS when i am in BAZRA after restart"). An implausible jump between two
+      // consecutive 1-second polls -- far beyond anything a real aircraft (or a fast
+      // simulated one; --speed-factor still moves nm per poll, not tens of them) -- is
+      // that same signal gpsSnapLegAlertsToPosition() already knows how to recover from.
+      if (prevOwn && typeof geo === 'function' && typeof gpsSnapLegAlertsToPosition === 'function') {
+        const jumpNm = geo(prevOwn, gpsOwn).dist;
+        if (Number.isFinite(jumpNm) && jumpNm > SIM_DISCONTINUITY_NM) gpsSnapLegAlertsToPosition();
+      }
+      gpsCheckLegAlerts();
+      // Same footer readout a GPS recording/live session shows (speed, altitude) --
+      // gpsUpdateReadout() otherwise only ever ran from the real-GPS paths, so a
+      // connected simulator left #gps-readout blank the whole time. Reported live:
+      // "show alt like gps mode shows alt in sim mode".
+      if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+    }
     if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
     draw();
   } catch (e) {
@@ -8108,6 +8181,31 @@ function simStart() {
   _simSession++;                 // anything still in flight belongs to the previous session
   simOn = true;
   window.simAircraft = null;
+  // Snap to wherever gpsOwn's last known position actually falls on the route, not a
+  // blind reset to leg 0 -- see the identical comment at startLiveLocation() in gps.js
+  // for why: a blind reset here compared the very next poll's real altitude against a
+  // stale, wrong leg's planned altitude, the instant simStart() ran on anything other
+  // than a genuinely fresh session (reconnecting, or resuming after a reload, while
+  // the aircraft's real position never went anywhere). Falls back to the old plain
+  // reset when there is no prior gpsOwn to project.
+  if (typeof gpsSnapLegAlertsToPosition === 'function') gpsSnapLegAlertsToPosition();
+  else if (typeof gpsResetLegAlerts === 'function') gpsResetLegAlerts();
+  if (typeof gpsMaybeStartDriftTimer === 'function') gpsMaybeStartDriftTimer();
+  // TEMPORARY, test-only nudge -- remove alongside the identical one in gps.js's
+  // startLiveLocation once the watch-alert feature is validated. The simulator only
+  // supplies position/altitude/speed/heading -- it has no idea what route NavAid has
+  // loaded (or whether it has one at all), so connecting it without a route loaded here
+  // compares against nothing and silently does nothing. Same nudge, same fix.
+  if (typeof gpsRequestNotifyPermission === 'function') {
+    gpsRequestNotifyPermission().then(function () {
+      if (typeof gpsSendWatchAlert === 'function' &&
+          (!state.waypoints || state.waypoints.length < 2)) {
+        gpsSendWatchAlert((S && S.watchAlertNoRouteTestTitle) || 'NavAid',
+          (S && S.watchAlertNoRouteTestBody) ||
+          'Load a route to get alerts if you drift off course or altitude.');
+      }
+    });
+  }
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try { localStorage.setItem('navaid.simOn', '1'); } catch (e) { /* */ }
   _simFetch();
@@ -8116,6 +8214,7 @@ function simStart() {
 
 function simStop() {
   simOn = false;
+  if (typeof gpsMaybeStopDriftTimer === 'function') gpsMaybeStopDriftTimer();
   _simSession++;                 // invalidate any in-flight poll's result
   window.simAircraft = null;
   if (_simInterval) { clearInterval(_simInterval); _simInterval = null; }
@@ -8125,6 +8224,13 @@ function simStop() {
   try { localStorage.setItem('navaid.simOn', '0'); } catch (e) { /* */ }
   const _el = window._simStatusEl;
   if (_el) _el.textContent = '';
+  // Otherwise the last sim speed/altitude reading sat in the footer readout forever --
+  // same "real GPS wins" guard _simFetch's own write already follows, so a real GPS
+  // session's own numbers (if one happens to also be running) are left alone.
+  if (!gpsRecording && !gpsLiveOn) {
+    gpsLastGS = null; gpsLastAlt = null;
+    if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+  }
   draw();
 }
 window.simStart = simStart;

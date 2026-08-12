@@ -17,13 +17,14 @@
     "@capacitor/android": "8.4.0",
     "@capacitor/core": "8.4.0",
     "@capacitor/ios": "8.4.0",
+    "@capacitor/local-notifications": "^8.2.1",
     "@capgo/capacitor-social-login": "^8.3.35"
   },
   "devDependencies": {
     "@capacitor/cli": "8.4.0"
   },
   "overrides": {
-    "brace-expansion": ">=5.0.7",
+    "brace-expansion": ">=5.0.9",
     "tar": ">=7.5.21"
   }
 }

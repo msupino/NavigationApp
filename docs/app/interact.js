@@ -3737,6 +3737,10 @@ map.on('mousemove', e => {
   const p = e.containerPoint;
   if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
   if (drag.kind === 'wp') {
+    // Locked (GPS/sim connected): leave drag.moved false and do nothing. On mouseup
+    // that reads as a plain click, not a drag -- the inspector still opens normally
+    // (endMouseDrag's own !drag.moved path), only the position edit is skipped.
+    if (typeof gpsMapLocked === 'function' && gpsMapLocked()) return;
     drag.moved = true;
     const wp = state.waypoints[drag.i];
     const r = applyNavSnap(e.latlng, wp.name || '', dragOriginExclude(drag, e.latlng));
@@ -4247,6 +4251,9 @@ mapEl.addEventListener('touchmove', e => {
   const ll = map.containerPointToLatLng([p.x, p.y]);
   if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
   if (touchDrag.kind === 'wp') {
+    // Same lock as the mouse path -- see there for why leaving touchDrag.moved
+    // false is what keeps a plain tap opening the inspector as normal.
+    if (typeof gpsMapLocked === 'function' && gpsMapLocked()) return;
     touchDrag.moved = true;
     const wp = state.waypoints[touchDrag.i];
     const r = applyNavSnap(ll, wp.name || '', dragOriginExclude(touchDrag, ll));

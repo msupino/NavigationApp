@@ -1792,8 +1792,30 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   /* Reserve comfortably past the widest label (measured ~76–82 px HE, ~94–107
      px EN) so font-metric differences across platforms can't let a label
      exceed the reserved width and reintroduce the reflow. */
+  /* Trimmed from 120px: still comfortably past the ~94-107px EN content this label
+     actually measures (per the comment above), just less pure slack -- the room
+     recovered here is what lets #sim-trigger below get real padding instead of being
+     bare icon-width with nothing around it. */
   html[lang="he"] #toolbar > #footer-links #gps-live { min-width: 100px; }
-  html[lang="en"] #toolbar > #footer-links #gps-live { min-width: 120px; }
+  html[lang="en"] #toolbar > #footer-links #gps-live { min-width: 108px; }
+  /* #sim-trigger joined this group (see its own comment at .footer-link-text above) --
+     the group's default 12px gap was sized for two full-text buttons with room to
+     spare; with a third item the group's total content width ran past the collapsed
+     card's own right edge (LTR) / sat flush with zero clearance against its left edge
+     (RTL) and, worse, overlapped the Zulu clock -- rendered outside the visible card
+     and effectively unreachable, reported live as "the sim button on mobile is
+     hidden". Tightening the gap here (only at this width, where the card is actually
+     tight) is what actually buys the room back, not just satisfying a test's own
+     panel-width assertion the way nesting sim into the group alone did last time. */
+  #toolbar > #footer-links .footer-gps-group { gap: 4px; }
+  /* Bare icon-width (14px, zero padding) rendered every measurable property
+     correctly -- right colour, right opacity, right position -- and was still
+     reported as "I don't see the sim button on mobile at all": technically painted
+     is not the same as noticeable on a real phone next to two labelled buttons.
+     Padding gives it real visual/tap footprint instead of a sliver flush against
+     its neighbour; the min-width trim above is what pays for it without
+     reopening the clock overlap this whole block exists to avoid. */
+  #toolbar > #footer-links #sim-trigger { padding: 0 8px; }
 }
 #toolbar .footer-link {
   display: inline-flex;
@@ -2223,6 +2245,12 @@ body.theme-light .shortcuts-help-keys kbd {
      it on a small screen — hide them until it closes. */
   body:has(.modal-back) .map-legend,
   body:has(.modal-back) #toolbar { display: none; }
+  /* Same reasoning, different trigger: while a position source is live (recording,
+     live location, or a connected simulator -- see gpsMapLocked() in gps.js, kept in
+     sync every redraw in draw.js), the legend's chart-symbol key and route totals
+     are exactly the screen space a phone needs for the map itself mid-flight. Desktop
+     has room for both, so this stays scoped to this mobile breakpoint. */
+  body.gps-tracking-active .map-legend { display: none; }
   /* Saved-routes modal: the two-column rows (name | wrapped action buttons and
      name field | save button) don't fit a phone — the auto action/button column
      claims its full max-content width and starves the 1fr name to a few pixels,
@@ -2237,8 +2265,9 @@ body.theme-light .shortcuts-help-keys kbd {
   }
 
   /* Declutter the footer in the mobile expanded menu — keep the GPS controls
-     (Start/Stop recording + Show/Hide location); hide the shortcuts, doc links,
-     and simulator here (all still available on desktop). */
+     (Start/Stop recording + Show/Hide location) AND the simulator (connecting one is
+     how the leg-approach/altitude/drift watch alerts get tested on mobile, not just a
+     desktop dev tool); hide the shortcuts and doc links here (still available on desktop). */
   #toolbar #help-trigger,
   /* ...including the ⋯ that holds them: on a phone it was an 11px-wide trigger for
      six hidden links, and it still claimed a whole flex row, leaving a ~100px empty
@@ -2249,8 +2278,16 @@ body.theme-light .shortcuts-help-keys kbd {
   #toolbar #issues-link,
   #toolbar #about-link,
   #toolbar #privacy-link,
-  #toolbar #terms-link,
-  #toolbar #sim-trigger { display: none; }
+  #toolbar #terms-link { display: none; }
+
+  /* #sim-trigger stays visible (see comment above) but, unlike the two GPS buttons,
+     goes icon-only here: its own text label ("Simulator") was the one thing that
+     didn't fit -- the two GPS buttons already reserve ~100-120px each of the
+     collapsed panel's one row (see the min-width rule below), and a third
+     full-width label pushed the row to wrap, doubling the closed menu's height
+     (broke the "closed menu is one row" / "does not cover the Zulu clock" checks).
+     A plane-icon button next to two labelled ones is still self-explanatory. */
+  #toolbar #sim-trigger .footer-link-text { display: none; }
 
   /* Make the Edit-header separator (between the Save/Load buttons and the
      "Edit" label) span the full head like the dividers between sections: let

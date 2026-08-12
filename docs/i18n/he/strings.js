@@ -998,4 +998,27 @@ window.S = {
   wpLabel: 'צד״ר',
   gpsNoTrack: 'לא הוקלט מסלול.',
   gpsError: 'שגיאת GPS: ',
+  watchAlertLegTitle: 'קטע הבא',
+  watchAlertLegBody: function(wp, alt, hdg, time) {
+    const parts = [];
+    if (alt != null) parts.push(alt + ' רגל');
+    if (hdg != null) parts.push(hdg + '°');
+    if (time != null) parts.push(time);
+    return 'מתקרב אל ' + wp + (parts.length ? ' — הקטע הבא: ' + parts.join(', ') : '');
+  },
+  watchAlertTopTitle: 'TOP',
+  watchAlertTopBody: 'TOP',
+  watchAlertAltTitle: 'גובה',
+  watchAlertAltBody: function(actual, planned) {
+    return actual + ' רגל — מתוכנן ' + planned + ' רגל';
+  },
+  watchAlertDriftTitle: 'סטייה מהמסלול',
+  watchAlertDriftBody: function(driftOut, driftIn, wp) {
+    return driftOut + '° סטייה, ' + driftIn + '° לתיקון לכיוון ' + wp;
+  },
+  watchAlertDriftDirectBody: function(correction, wp) {
+    return correction + '° אל ' + wp;
+  },
+  watchAlertNoRouteTestTitle: 'NavAid',
+  watchAlertNoRouteTestBody: 'טענו מסלול כדי לקבל התראות על סטייה מהמסלול או מהגובה.',
 };

@@ -8,6 +8,17 @@ var gpsWatchId = null;
 var gpsOwn = null;          // {lat,lng,hdg} last fix for own-ship rendering
 var gpsWakeLock = null;     // Screen Wake Lock sentinel held while recording
 
+// True while any own-ship position source is live: real GPS (recording or just showing
+// location) or a connected simulator. interact.js's waypoint-drag handlers check this to
+// freeze the route plan mid-flight -- moving a waypoint out from under an in-progress leg
+// is exactly the edge case that can spuriously fire/miss the leg-approach and TOP alerts
+// (see gpsCheckLegAlerts's own _gpsAlertMinDistNm comment). A plain click/tap still opens
+// the inspector as normal (see the callers: this only gates the MOVE, not the selection) --
+// wanting to see a waypoint's satellite image mid-flight is unaffected.
+function gpsMapLocked() {
+  return !!(gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn));
+}
+
 // Keep the screen awake while recording so the phone doesn't sleep mid-track.
 // Wake Lock is auto-released by the browser when the tab is hidden; we re-acquire
 // on visibilitychange (see listener at end of file). Best-effort: silently
@@ -171,13 +182,36 @@ function onLivePosition(pos) {
   const c = pos.coords;
   if (c.accuracy != null && c.accuracy > GPS_MAX_ACC_M) return;
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
+  const t = pos.timestamp || Date.now();
+  // NaN, not 0, when neither the device nor a previous fix can supply a heading --
+  // 0 is a real compass value (due north) and Number.isFinite(0) is true, so a
+  // literal 0 here reads downstream as "confirmed heading: north" rather than
+  // "unknown," locking the own-ship icon AND the predictor line onto true north
+  // for as long as the device fails to report a course (stationary/taxiing GPS
+  // routinely omits it -- reported live as "the broken line in front of the
+  // plane is showing true north"). NaN correctly fails Number.isFinite() and
+  // lets drawHeadingLine's/drawOwnShip's own frozen-last-heading fallback run.
   const hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
-            : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : 0);
+            : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : NaN);
   const isFirst = (_gpsLivePrev === null);
-  _gpsLivePrev = p;
+  const prev = _gpsLivePrev;
+  // Groundspeed/altitude, same derivation onGpsPosition uses below -- gpsCheckLegAlerts()
+  // needs both regardless of which live mode is running, and so does the footer readout
+  // (gpsUpdateReadout, below -- used to stay position-only outside a recording, showing
+  // nothing here; reported live: "show alt like gps mode shows alt in sim mode").
+  let gsMs = (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed : null;
+  if (gsMs == null && prev && prev.t) {
+    const dt = (t - prev.t) / 1000;
+    if (dt > 0) gsMs = _gpsMetres(prev, p) / dt;
+  }
+  gpsLastGS = gsMs != null ? gsMs * 1.94384 : null;             // m/s → kt
+  gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null; // m → ft
+  _gpsLivePrev = { lat: p.lat, lng: p.lng, t };
   // Carry the fix time so everything downstream can tell live from frozen.
-  gpsOwn = { lat: p.lat, lng: p.lng, hdg, t: pos.timestamp || Date.now() };
+  gpsOwn = { lat: p.lat, lng: p.lng, hdg, t };
   gpsNoteFixArrived();
+  gpsCheckLegAlerts();
+  if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   scheduleDraw();
   if (typeof map !== 'undefined') {
     if (isFirst) map.setView([p.lat, p.lng], map.getZoom());
@@ -222,6 +256,31 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  // Snap to wherever gpsOwn's last known position actually falls on the route, not a
+  // blind reset to leg 0 -- this runs on every start, including the auto-resume-after-
+  // reload path (below), where the aircraft's real position never went anywhere. A
+  // blind reset here compared the live fix against a stale, wrong leg's planned
+  // altitude the instant a resumed session's first fix arrived -- reported live: "it
+  // said 1500 planned 800, planned is 1500" (aircraft genuinely on a later leg,
+  // pointer forced back to an early one). gpsSnapLegAlertsToPosition() itself falls
+  // back to plain gpsResetLegAlerts() when there is no prior gpsOwn to project (a
+  // genuinely fresh start), so this is never worse than the old behaviour, only
+  // better when a real prior position exists.
+  if (typeof gpsSnapLegAlertsToPosition === 'function') gpsSnapLegAlertsToPosition();
+  else gpsResetLegAlerts();
+  gpsMaybeStartDriftTimer();
+  // TEMPORARY, test-only nudge -- remove once the watch-alert feature is validated. Lets a
+  // pilot testing "Show location" alone (no route) confirm notifications are actually
+  // reaching the device/watch, and points them at loading a route for the real alerts.
+  // Waits for the permission answer first: firing right after the (async) request used to
+  // read the still-'default' permission and silently drop, exactly on a first-ever grant.
+  gpsRequestNotifyPermission().then(function () {
+    if (!state.waypoints || state.waypoints.length < 2) {
+      gpsSendWatchAlert((S && S.watchAlertNoRouteTestTitle) || 'NavAid',
+        (S && S.watchAlertNoRouteTestBody) ||
+        'Load a route to get alerts if you drift off course or altitude.');
+    }
+  });
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try {
     gpsLiveWatchId = gpsStartWatch(onLivePosition, onGpsLiveError,
@@ -235,16 +294,26 @@ function startLiveLocation() {
     onGpsLiveError(e);
     return;
   }
+  // Persisted so a full page reload (language switch's location.href, or any other) can
+  // resume it -- see the auto-reconnect block beside the #gps-live button in ui.js. Only
+  // written once the watch actually registered; onGpsLiveError's stopLiveLocation() below
+  // clears it again on a registration failure.
+  try { localStorage.setItem('navaid.gpsLiveOn', '1'); } catch (e) { /* */ }
   scheduleDraw();
 }
 
 function stopLiveLocation() {
+  try { localStorage.setItem('navaid.gpsLiveOn', '0'); } catch (e) { /* */ }
   gpsStopWatch(gpsLiveWatchId);
   gpsLiveWatchId = null;
   gpsLiveOn = false;
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
+  gpsMaybeStopDriftTimer();
+  // Otherwise the last live speed/altitude reading sat in the readout forever -- same
+  // refresh stopGpsRecording() already does on its own stop.
+  if (!gpsRecording && typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   scheduleDraw();
 }
 
@@ -258,25 +327,41 @@ var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
-  // A stale fix is worth saying even when nothing is being recorded: the map still shows an
-  // own-ship symbol, and the pilot has no other way to tell it is frozen.
-  if (!gpsRecording) {
-    const age = gpsFixStale() ? gpsFixAgeMs() : null;
-    el.textContent = age == null ? ''
-      : ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(age / 1000) + 's';
+  if (gpsRecording) {
+    const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
+    const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+    const ss = String(secs % 60).padStart(2, '0');
+    let s = gpsTrack.length + ' pts · ' + mm + ':' + ss;
+    if (gpsLastGS != null) s += ' · ' + Math.round(gpsLastGS) + ' kt';
+    if (gpsLastAlt != null) s += ' · ' + Math.round(gpsLastAlt) + ' ft';
+    if (gpsFixStale()) {
+      s += ' · ' + ((S && S.gpsFixStale) || 'GPS fix') + ' ' +
+        Math.round(gpsFixAgeMs() / 1000) + 's';
+    }
+    el.textContent = s;
     return;
   }
-  const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
-  const mm = String(Math.floor(secs / 60)).padStart(2, '0');
-  const ss = String(secs % 60).padStart(2, '0');
-  let s = gpsTrack.length + ' pts · ' + mm + ':' + ss;
-  if (gpsLastGS != null) s += ' · ' + Math.round(gpsLastGS) + ' kt';
-  if (gpsLastAlt != null) s += ' · ' + Math.round(gpsLastAlt) + ' ft';
-  if (gpsFixStale()) {
-    s += ' · ' + ((S && S.gpsFixStale) || 'GPS fix') + ' ' +
-      Math.round(gpsFixAgeMs() / 1000) + 's';
+  // Not recording, but still a live position source (plain "show location", or a
+  // connected simulator -- see the gpsUpdateReadout() call in io.js's _simFetch) --
+  // same speed/altitude fields as a recording, just without the point-count/elapsed
+  // -time prefix that only means something while actually building a track. Used to
+  // show nothing at all outside a recording; reported live: "show alt like gps mode
+  // shows alt in sim mode".
+  if (gpsLiveOn || (typeof simOn !== 'undefined' && simOn)) {
+    const parts = [];
+    if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
+    if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
+    if (gpsFixStale()) {
+      parts.push(((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(gpsFixAgeMs() / 1000) + 's');
+    }
+    el.textContent = parts.join(' · ');
+    return;
   }
-  el.textContent = s;
+  // Nothing active: a stale leftover fix is still worth saying (the map may still show
+  // a frozen own-ship symbol with no other way to tell it stopped updating).
+  const age = gpsFixStale() ? gpsFixAgeMs() : null;
+  el.textContent = age == null ? ''
+    : ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(age / 1000) + 's';
 }
 
 function onGpsPosition(pos) {
@@ -301,12 +386,15 @@ function onGpsPosition(pos) {
   gpsLastGS = gsMs != null ? gsMs * 1.94384 : null;            // m/s → kt
   gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null;  // m → ft
   // heading: device value when moving, else bearing from the previous point.
+  // NaN (not 0 -- see onLivePosition's identical fallback for why) when neither
+  // is available.
   let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
-            : (prev ? geo(prev, pt).brg : 0);
+            : (prev ? geo(prev, pt).brg : NaN);
   // Same fix time as the live path: a stalled RECORDING freezes the same symbol.
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t };
   gpsNoteFixArrived();
   gpsUpdateReadout();
+  gpsCheckLegAlerts();
   scheduleDraw();
   if (gpsFollow && typeof map !== 'undefined') map.setView([pt.lat, pt.lng], map.getZoom());
 }
@@ -395,6 +483,9 @@ function startGpsRecording() {
   gpsTrack = [];
   if (!gpsLiveOn) gpsOwn = null;
   gpsStartT = Date.now();
+  gpsResetLegAlerts();
+  gpsRequestNotifyPermission();
+  gpsMaybeStartDriftTimer();
   try {
     gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
       S.gpsRecNotifTitle || 'NavAid GPS recording', S.gpsRecNotifText || 'Recording your track — tap to return');
@@ -663,7 +754,7 @@ function drawGpsTrack() {
     octx.lineCap = 'round'; octx.lineJoin = 'round'; octx.stroke(); octx.restore();
     if (typeof window !== 'undefined') window.__gpsBreadcrumbDrawn = (window.__gpsBreadcrumbDrawn || 0) + 1;
   }
-  if (gpsOwn && (gpsRecording || gpsLiveOn)) drawOwnShip(gpsOwn, gpsOwn.hdg);
+  if (gpsOwn && (gpsRecording || gpsLiveOn)) drawOwnShip(gpsOwn, gpsOwn.hdg, gpsLastGS);
 }
 
 // Stop watching without saving. (Save handled in a later task.)
@@ -675,6 +766,7 @@ function stopGpsRecording() {
   gpsReleaseWakeLock();
   gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;
+  gpsMaybeStopDriftTimer();
   gpsUpdateReadout();
   scheduleDraw();
 }
@@ -685,4 +777,394 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden && gpsRecording) gpsAcquireWakeLock();
   });
+}
+
+// --- watch alerts: leg approach + altitude off plan -----------------------
+// "Prepare for next leg" / "altitude off plan" as local device notifications. A paired
+// Garmin watch (or any other) picks these up the same way it picks up SMS/WhatsApp --
+// Garmin Connect mirrors ordinary OS notifications ("Smart Notifications"), so no
+// Garmin-specific integration is needed, just a real notification to mirror. Runs
+// automatically whenever a live fix is flowing -- from onGpsPosition (recording),
+// onLivePosition (live-only), and io.js's connected-simulator poll (_simFetch) -- via
+// gpsCheckLegAlerts(); no separate on/off setting. The simulator path doubles as a way to
+// test (or just use) these alerts without a phone or a real flight.
+var GPS_LEG_ETA_S = 120;          // fire this many seconds before the next waypoint
+var GPS_LEG_CAPTURE_NM = 0.3;     // ...or this close, whichever comes first
+var GPS_ALT_TOLERANCE_FT = 100;
+var gpsAlertLegIndex = 0;         // forward-only pointer into state.legs/state.waypoints
+var _gpsAlertMinDistNm = Infinity;
+var _gpsAlertLegFired = false;    // leg-approach alert already sent for gpsAlertLegIndex
+var _gpsAlertAltDeviated = false; // currently inside an altitude-deviation episode
+// Whether gpsAlertLegIndex has ever been verified against a REAL waypoint, not just
+// inferred from geometry. gpsSnapLegAlertsToPosition() picks a leg from an along-track
+// projection alone -- a reasonable best guess on the very first fix (start mid-route,
+// resume a session, a page reload), but still a guess: an imprecise or early fix could
+// project onto the wrong leg, and every alert type (ETA, altitude, drift) reads
+// gpsAlertLegIndex as ground truth. All three stay silent until a fix has actually
+// landed within capture radius of a real waypoint -- true confirmation, not an
+// inference -- same "don't alert on a guess" rule requested live after the false
+// "planned 800 ft" alarm this fix's own snap change could otherwise still produce on
+// an unlucky first fix. Only the CAPTURE-RADIUS branch of the TOP block below counts;
+// the "passed abeam, never got close" branch advances the pointer (still needed to
+// keep tracking) but does not confirm it.
+var _gpsAlertConfirmed = false;
+
+// Called whenever tracking (re)starts, so a pointer left over from a previous flight or
+// route can't silently suppress real alerts on this one. Plain reset to leg 0 -- correct
+// when there is no fix yet (nothing to snap to) or the route is being drawn fresh.
+function gpsResetLegAlerts() {
+  gpsAlertLegIndex = 0;
+  _gpsAlertMinDistNm = Infinity;
+  _gpsAlertLegFired = false;
+  _gpsAlertAltDeviated = false;
+  _gpsAlertConfirmed = false;
+}
+// Along-track / cross-track projection of p onto great-circle segment a->b, in nm.
+// alongNm is distance from a toward b (negative = short of a, > leg length = past b);
+// crossNm is signed perpendicular distance off the line. Null if a and b coincide.
+function _gpsTrackProjection(a, b, p) {
+  const ab = geo(a, b);
+  if (!Number.isFinite(ab.dist) || ab.dist <= 0) return null;
+  const ap = geo(a, p);
+  if (!Number.isFinite(ap.dist)) return null;
+  const R = 3440.065;   // earth radius, nm
+  if (ap.dist <= 0) return { alongNm: 0, crossNm: 0 };
+  const d13 = ap.dist / R;
+  const brg13 = ap.brg * Math.PI / 180, brg12 = ab.brg * Math.PI / 180;
+  const crossRad = Math.asin(Math.sin(d13) * Math.sin(brg13 - brg12));
+  const alongRad = Math.acos(Math.min(1, Math.cos(d13) / Math.cos(crossRad)));
+  return { alongNm: alongRad * R, crossNm: crossRad * R };
+}
+// A route can be loaded WHILE already tracking, and not necessarily from its own start --
+// a pilot picking a plan mid-flight is already somewhere along it. gpsResetLegAlerts()
+// alone would leave the pointer at leg 0 no matter where that is: gpsCheckLegAlerts only
+// advances ONE leg per call, so a single immediate check afterward would not catch up over
+// several legs. A "nearest endpoint" heuristic is not enough here: right next to a shared
+// waypoint, the leg ending there and the leg starting there look equally close, and picking
+// wrong there is exactly the common case (loading a route near where you already are, i.e.
+// near one of its waypoints). Projects onto each leg's actual track instead, and picks the
+// leg the position falls WITHIN (along-track distance between 0 and the leg's length,
+// smallest cross-track error breaking a tie); falls back to nearest single leg by endpoint
+// distance only if the position doesn't project onto any leg at all (e.g. off the route
+// entirely).
+function gpsSnapLegAlertsToPosition() {
+  gpsResetLegAlerts();
+  if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
+  const wps = state.waypoints || [];
+  const legs = state.legs || [];
+  const n = Math.min(legs.length, wps.length - 1);
+  let onTrack = -1, onTrackCross = Infinity;
+  let nearest = 0, nearestD = Infinity;
+  for (let i = 0; i < n; i++) {
+    const a = wps[i], b = wps[i + 1];
+    if (!a || !b) continue;
+    const legLen = geo(a, b).dist;
+    const proj = _gpsTrackProjection(a, b, gpsOwn);
+    if (proj && proj.alongNm >= 0 && proj.alongNm <= legLen) {
+      const absCross = Math.abs(proj.crossNm);
+      if (absCross < onTrackCross) { onTrackCross = absCross; onTrack = i; }
+    }
+    const d = Math.min(geo(gpsOwn, a).dist, geo(gpsOwn, b).dist);
+    if (d < nearestD) { nearestD = d; nearest = i; }
+  }
+  gpsAlertLegIndex = onTrack >= 0 ? onTrack : nearest;
+}
+
+function gpsCheckLegAlerts() {
+  if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
+  const wps = state.waypoints || [];
+  const legs = state.legs || [];
+  if (gpsAlertLegIndex >= legs.length || gpsAlertLegIndex + 1 >= wps.length) return;
+  const next = wps[gpsAlertLegIndex + 1];
+  if (!next) return;
+  const { dist } = geo(gpsOwn, next);
+  if (!Number.isFinite(dist)) return;
+
+  // ETA is measured against the CURRENT leg's own PLANNED speed, not gpsLastGS -- the route
+  // plan is the source of truth for how fast this leg is flown, not whatever the live fix
+  // happens to report right now (a pilot running faster or slower than planned still gets
+  // the alert relative to the plan, matching what the leg kite itself already shows).
+  const curLeg = legs[gpsAlertLegIndex];
+  const planSpeed = (curLeg && curLeg.flightSpeed > 0) ? curLeg.flightSpeed : null;
+  if (_gpsAlertConfirmed && !_gpsAlertLegFired && planSpeed) {
+    // A leg shorter than the standard 2-minute lead time would otherwise fire the alert
+    // essentially at the moment the leg starts (or never usefully "N minutes before" at
+    // all) -- half the lead time instead, once the CURRENT leg's own planned duration is
+    // under the standard threshold.
+    let etaThreshold = GPS_LEG_ETA_S;
+    const start = wps[gpsAlertLegIndex];
+    const legDurationS = start ? (geo(start, next).dist / planSpeed) * 3600 : Infinity;
+    if (Number.isFinite(legDurationS) && legDurationS < GPS_LEG_ETA_S) {
+      etaThreshold = GPS_LEG_ETA_S / 2;
+    }
+    const etaS = (dist / planSpeed) * 3600;
+    if (etaS <= etaThreshold) {
+      _gpsAlertLegFired = true;
+      const label = (typeof waypointDisplayLabel === 'function')
+        ? waypointDisplayLabel(next, gpsAlertLegIndex + 1) : (next.name || '');
+      // What to fly on the leg AFTER this waypoint -- the one starting here, not the one
+      // just being finished -- so the alert doubles as prep for the turn, not just a
+      // "you're nearly there" ping. Either can be unavailable (last leg: no next leg at
+      // all; no altitude entered on it; the pilot hid that leg's nav kite -- legKiteVisible,
+      // same effective-visibility rule the kite itself uses, so a leg deliberately
+      // decluttered on the map doesn't get its numbers read out here either) and is simply
+      // omitted, never guessed.
+      const nextLeg = legs[gpsAlertLegIndex + 1];
+      const nextLegKiteVisible = (typeof legKiteVisible !== 'function') ||
+        legKiteVisible(gpsAlertLegIndex + 1, nextLeg);
+      let nextLegAlt = null;
+      let nextLegHdg = null;
+      let nextLegTime = null;
+      if (nextLegKiteVisible) {
+        nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
+          ? Math.round(nextLeg.inboundAltitude) : null;
+        const afterNext = wps[gpsAlertLegIndex + 2];
+        const nextLegGeo = afterNext ? geo(next, afterNext) : null;
+        // Magnetic AND wind-corrected -- the leg inspector's own "With wind" readout
+        // (interact.js) shows toMagnetic(windTriangle(brg, leg.flightSpeed, wind).hdgTrue),
+        // not the plain course; this reported the uncorrected course, which read off by
+        // however many degrees of WCA the leg's wind produced (reported live: leg inspector
+        // said 6°, this said 5°). windTriangle() itself returns null for calm/no-wind/an
+        // unflyable crosswind, in which case the plain course is the right answer anyway.
+        if (nextLegGeo && Number.isFinite(nextLegGeo.brg) && typeof toMagnetic === 'function') {
+          const nextWind = (nextLeg && typeof legWindFor === 'function') ? legWindFor(nextLeg) : null;
+          const fx = (nextWind && typeof windTriangle === 'function' && nextLeg)
+            ? windTriangle(nextLegGeo.brg, nextLeg.flightSpeed, nextWind) : null;
+          // Three digits, same as every other heading the app displays (pad3 -- the leg
+          // kite, the wind-effect readout, VOR radials): "004", not "4".
+          nextLegHdg = (typeof pad3 === 'function')
+            ? pad3(toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg)) : toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg);
+        }
+        // Planned time for the next leg -- its own distance at its own PLANNED speed, same
+        // "route plan is the only source of truth ... ignore any drift" rule as the ETA
+        // trigger and the wind-corrected heading above: not an estimate of how long it will
+        // actually take given how the flight is actually going, just what the plan says.
+        if (nextLegGeo && Number.isFinite(nextLegGeo.dist) && nextLeg && nextLeg.flightSpeed > 0 &&
+            typeof toHMS === 'function') {
+          nextLegTime = toHMS(nextLegGeo.dist / nextLeg.flightSpeed);
+        }
+      }
+      gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
+        (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime)
+          : ('Approaching ' + label));
+    }
+  }
+
+  // Altitude vs. the CURRENT leg's planned altitude -- same field routeProfile() treats
+  // as the leg's planned altitude. One-shot per deviation episode: fires once on the way
+  // out past tolerance, clears once back inside it, so a second real drift fires again.
+  const planned = legs[gpsAlertLegIndex].inboundAltitude;
+  if (_gpsAlertConfirmed && Number.isFinite(planned) && gpsLastAlt != null) {
+    const off = Math.abs(gpsLastAlt - planned);
+    if (off >= GPS_ALT_TOLERANCE_FT) {
+      if (!_gpsAlertAltDeviated) {
+        _gpsAlertAltDeviated = true;
+        gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
+          (S && S.watchAlertAltBody)
+            ? S.watchAlertAltBody(Math.round(gpsLastAlt), Math.round(planned))
+            : (Math.round(gpsLastAlt) + ' ft, planned ' + Math.round(planned) + ' ft'));
+      }
+    } else {
+      _gpsAlertAltDeviated = false;
+    }
+  }
+
+  // Advance the leg pointer: within the capture radius of the next waypoint, or the
+  // distance to it has started growing again after shrinking (passed abeam it). This IS
+  // the "overhead the waypoint" moment -- CVFR radio phraseology's own "TOP <point>" call --
+  // so it fires here, once per crossing (the index only ever moves forward past a given
+  // waypoint the one time this condition is first met; a lingering loiter right at the
+  // capture radius does not re-fire it, because by the next check gpsAlertLegIndex has
+  // already moved on to a different `next`).
+  if (dist < _gpsAlertMinDistNm) _gpsAlertMinDistNm = dist;
+  const captured = dist <= GPS_LEG_CAPTURE_NM;
+  if (captured || dist > _gpsAlertMinDistNm + GPS_LEG_CAPTURE_NM) {
+    // A genuine capture -- a fix actually landed within radius of a real waypoint --
+    // is what confirms gpsAlertLegIndex is right, not just an inferred snap. The
+    // "passed abeam without ever getting close" branch still advances the pointer
+    // (needed to keep tracking a route flown well off one waypoint), but does not
+    // confirm it -- if this is the FIRST advance since a snap, its own TOP alert
+    // (and every other alert type, gated above) stays silent too.
+    if (captured) _gpsAlertConfirmed = true;
+    if (_gpsAlertConfirmed) {
+      // Just "TOP" -- no waypoint name. The leg-approach alert already named it
+      // seconds earlier; repeating it here only added characters to a small watch screen.
+      gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
+        (S && S.watchAlertTopBody) || 'TOP');
+    }
+    gpsAlertLegIndex++;
+    _gpsAlertMinDistNm = Infinity;
+    _gpsAlertLegFired = false;
+    _gpsAlertAltDeviated = false;
+  }
+}
+
+// Native (APK) local-notifications plugin, mirroring _bgGeo()'s access pattern -- the
+// injected Capacitor bridge exposes any synced plugin at window.Capacitor.Plugins.*.
+function _nativeNotify() {
+  const C = typeof window !== 'undefined' && window.Capacitor;
+  return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() &&
+          C.Plugins && C.Plugins.LocalNotifications) || null;
+}
+// No point prompting for, or sending, a WEB notification on a desktop browser during a
+// REAL flight -- nothing is going to mirror it to a watch, and there's no phone to show it
+// on either. The APK path (_nativeNotify above) is unaffected: it's definitionally a phone
+// already. Prefers the modern, non-sniffing signal (userAgentData.mobile) where Chromium
+// exposes it; the UA string is a fallback for engines that don't (Firefox, Safari).
+//
+// Exempt while connected to a flight simulator (simOn, io.js): that's either dev/testing
+// (the whole point is seeing the alert on the machine you're testing from, however it's
+// wired up) or a real home-sim setup where the desktop IS where a pilot would watch for
+// it -- neither belongs behind a "you're not on a phone" gate meant for an actual flight.
+function _gpsIsMobileDevice() {
+  if (typeof simOn !== 'undefined' && simOn) return true;
+  if (typeof navigator === 'undefined') return false;
+  if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
+    return navigator.userAgentData.mobile;
+  }
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+}
+var _watchNotifyPermAsked = false;
+// Ask once per tracking session, not once per alert -- a denial should not re-prompt on
+// every fix. Best-effort: a silent no-op on an unsupported/denied context is the correct
+// behaviour here, not an error the pilot needs to see.
+// Returns a promise so a caller that wants to send an alert RIGHT AFTER asking (the
+// no-route test nudge below) can wait for the answer -- the browser/native permission
+// prompt is async and waits on the user, so a synchronous gpsSendWatchAlert() call right
+// after this one used to read the still-'default' permission and silently drop the very
+// first alert of a session, exactly when a pilot had just clicked Allow.
+function gpsRequestNotifyPermission() {
+  if (_watchNotifyPermAsked) return Promise.resolve();
+  _watchNotifyPermAsked = true;
+  const nn = _nativeNotify();
+  if (nn) return nn.requestPermissions().catch(function () {});
+  if (!_gpsIsMobileDevice()) return Promise.resolve();
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    return Notification.requestPermission().catch(function () {});
+  }
+  return Promise.resolve();
+}
+var _watchAlertId = 1;
+function gpsSendWatchAlert(title, body) {
+  const nn = _nativeNotify();
+  if (nn) {
+    nn.schedule({ notifications: [{ id: _watchAlertId++, title: title, body: body,
+      schedule: { at: new Date(Date.now() + 100) } }] }).catch(function () {});
+    return;
+  }
+  if (!_gpsIsMobileDevice()) return;
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const plain = function () {
+    try { new Notification(title, { body: body }); } catch (e) { /* unsupported context */ }
+  };
+  const sw = (typeof navigator !== 'undefined') ? navigator.serviceWorker : null;
+  if (!sw || typeof sw.ready === 'undefined') { plain(); return; }
+  // Android Chrome refuses the bare `new Notification()` constructor once a service worker
+  // is registered for the page -- throws "Illegal constructor", silently swallowed by
+  // plain()'s catch, which is exactly why this app's alerts worked on a desktop browser but
+  // never appeared on an Android one. Route through the service worker's showNotification()
+  // instead, which works everywhere. Raced against a short timeout so an environment with no
+  // ACTIVE worker (a test harness; a page that never got past `?nogist`-style early boot)
+  // still falls back promptly instead of hanging on a `.ready` that never resolves.
+  let settled = false;
+  const timeout = setTimeout(function () { if (!settled) { settled = true; plain(); } }, 800);
+  sw.ready.then(function (reg) {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeout);
+    if (reg && typeof reg.showNotification === 'function') reg.showNotification(title, { body: body }).catch(plain);
+    else plain();
+  }).catch(function () {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeout);
+    plain();
+  });
+}
+
+// --- watch alert: drifted off the leg's course line -----------------------
+// Checked on its own 2-minute timer, not per-fix like the leg/altitude alerts above --
+// this is a "how are we doing" periodic check, not a one-shot event, and re-fires every
+// interval as long as the drift persists (no one-shot suppression here; 2 minutes is
+// already the pacing).
+var GPS_DRIFT_CHECK_MS = 120000;
+var GPS_DRIFT_TRACK_ERROR_DEG = 10;   // fire once track-angle error reaches this
+var _gpsDriftTimer = null;
+
+// A connected simulator's own clock can run faster than real time (cvfr-bridge's
+// speed_factor field, captured onto window.simSpeedFactor in io.js's _simFetch) -- a fixed
+// REAL-TIME interval has no idea, and a 2-real-minute wait against a 10x-fast aircraft
+// checks 10x too rarely relative to how quickly it's actually covering ground. Real GPS
+// (simOn false) always uses the standard cadence -- there is no "sped up" real flight.
+function _gpsDriftIntervalMs() {
+  const sf = (typeof simOn !== 'undefined' && simOn && typeof window !== 'undefined' &&
+    Number.isFinite(window.simSpeedFactor) && window.simSpeedFactor > 0)
+    ? window.simSpeedFactor : 1;
+  return GPS_DRIFT_CHECK_MS / sf;
+}
+// setTimeout, not setInterval: re-reads the (possibly just-changed) speed factor on every
+// reschedule, so a factor that changes mid-session -- reconnecting to a differently-tuned
+// bridge, or simply disconnecting the simulator and falling back to real GPS -- takes
+// effect on the very next check instead of only once the OLD interval is torn down and
+// restarted.
+function _gpsDriftTick() {
+  gpsCheckDrift();
+  if (_gpsDriftTimer !== null) _gpsDriftTimer = setTimeout(_gpsDriftTick, _gpsDriftIntervalMs());
+}
+function gpsMaybeStartDriftTimer() {
+  if (_gpsDriftTimer !== null) return;
+  _gpsDriftTimer = setTimeout(_gpsDriftTick, _gpsDriftIntervalMs());
+}
+// Only actually stops once NONE of the three position sources (recording, live-only,
+// connected simulator) are still running -- called from all three teardown paths, each of
+// which may fire while another is still active (e.g. stopping a recording with live
+// location still on).
+function gpsMaybeStopDriftTimer() {
+  if (gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn)) return;
+  if (_gpsDriftTimer !== null) { clearTimeout(_gpsDriftTimer); _gpsDriftTimer = null; }
+}
+
+// Signed angular difference a-b, wrapped to (-180, 180].
+function _gpsAngleDiff(a, b) {
+  return ((a - b + 540) % 360) - 180;
+}
+
+function gpsCheckDrift() {
+  if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
+  // Reads gpsAlertLegIndex as the reference leg to measure track error against --
+  // meaningless (or actively wrong) before a real waypoint has confirmed it, same
+  // "don't alert on a guess" rule gpsCheckLegAlerts' own three alert types follow.
+  if (!_gpsAlertConfirmed) return;
+  const wps = state.waypoints || [];
+  if (gpsAlertLegIndex + 1 >= wps.length) return;
+  const start = wps[gpsAlertLegIndex], end = wps[gpsAlertLegIndex + 1];
+  if (!start || !end) return;
+  const leg = geo(start, end);
+  if (!Number.isFinite(leg.dist) || leg.dist <= 0) return;
+  const flown = geo(start, gpsOwn);
+  if (!Number.isFinite(flown.dist)) return;
+  // Track-angle error: how far the bearing FROM the leg's start TO here has diverged from
+  // the planned course -- not a full cross-track projection, just the angle a pilot would
+  // read off a compass/HSI against the planned course.
+  const trackErrorDeg = _gpsAngleDiff(flown.brg, leg.brg);
+  if (Math.abs(trackErrorDeg) < GPS_DRIFT_TRACK_ERROR_DEG) return;
+  const label = (typeof waypointDisplayLabel === 'function')
+    ? waypointDisplayLabel(end, gpsAlertLegIndex + 1) : (end.name || '');
+  if (flown.dist < leg.dist / 2) {
+    // Before the leg's midpoint: worth rejoining the original line. Classic "double the
+    // error" intercept -- fly the correction back at twice the angle you drifted out at.
+    const driftOut = Math.round(Math.abs(trackErrorDeg));
+    const driftIn = driftOut * 2;
+    gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
+      (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, driftIn, label)
+        : (driftOut + '° off course, ' + driftIn + '° to intercept toward ' + label));
+  } else {
+    // Past the midpoint: rejoining the original line buys nothing this close to the
+    // waypoint -- report the correction to head direct to it instead.
+    const direct = geo(gpsOwn, end);
+    const correction = Math.round(Math.abs(_gpsAngleDiff(direct.brg, leg.brg)));
+    gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
+      (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(correction, label)
+        : (correction + '° to ' + label));
+  }
 }
