@@ -779,8 +779,11 @@ function hitLegLabel(px, py) {
     if (!f) continue;
     // A hidden kite is not drawn, so it must not be hit-testable either -- the same reason
     // a blocked one-way kite is skipped below. Otherwise hiding it leaves an invisible
-    // clickable, draggable object on the map.
-    if (typeof legKiteHidden === 'function' && legKiteHidden(state.legs[i])) continue;
+    // clickable, draggable object on the map. legKiteVisible (not the narrower
+    // legKiteHidden, which only sees the explicit leg.hideKite flag) is the actual
+    // draw-time gate draw.js uses -- it also covers a leg inside the departure CTR,
+    // hidden by default with no explicit flag set at all.
+    if (typeof legKiteVisible === 'function' && !legKiteVisible(i, state.legs[i])) continue;
     for (const which of ['in', 'out']) {
       if (which === 'out' && (!showReturn || !legAllowsReturn(i))) continue;
       // A blocked inbound one-way leg draws NO nav kite (see draw.js) — so it must
@@ -868,6 +871,11 @@ function hitCumLabel(px, py) {
   if (!showCumTime) return null;   // not drawn (draw.js gates on it) → not grabbable
   const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
+    // Same as draw.js's own `showCumTime && !preClock` gate: a leg inside the departure
+    // CTR is flown on the field's procedure and draws no cumulative kite at all. Missing
+    // this left a phantom, never-drawn kite still hit-testable right over the leg's own
+    // endpoint waypoint -- exactly the kind of invisible blocker a hidden kite must not be.
+    if (typeof legInsideCtr === 'function' && legInsideCtr(i)) continue;
     const c = cumLabelCenter(i);
     const b = state.waypoints[i + 1] && proj(state.waypoints[i + 1]);
     if (c && b && _pointInKiteBox(px, py, c.x, c.y, b.x, b.y, halfL, halfW)) return { i };
@@ -3646,7 +3654,13 @@ map.on('mousedown', e => {
     draw();
     return;
   }
-  const cum = hitCumLabel(p.x, p.y);
+  // Kite labels (cum-time / altitude-speed) are chart decoration, not route structure --
+  // grabbing one for a drag makes no sense mid-placement, and their default offsets can
+  // drift far enough (long/diagonal legs, a tall waypoint disc at high zoom) to sit right
+  // on top of an unrelated waypoint the pilot is trying to add next. Add mode always means
+  // "place a point here", so it skips kites entirely, same as it already skips VOR/airfield/
+  // navWP overlay markers below.
+  const cum = state.mode !== 'add' ? hitCumLabel(p.x, p.y) : null;
   if (cum) {
     downHit = true;
     _materialiseDefaultCumLabel(cum.i);
@@ -3656,7 +3670,7 @@ map.on('mousedown', e => {
     showInspector(); draw();
     return;
   }
-  const cumRet = hitCumLabelRet(p.x, p.y);
+  const cumRet = state.mode !== 'add' ? hitCumLabelRet(p.x, p.y) : null;
   if (cumRet) {
     downHit = true;
     _materialiseDefaultCumLabelRet(cumRet.i);
@@ -3666,7 +3680,7 @@ map.on('mousedown', e => {
     showInspector(); draw();
     return;
   }
-  const lab = hitLegLabel(p.x, p.y);
+  const lab = state.mode !== 'add' ? hitLegLabel(p.x, p.y) : null;
   if (lab) {
     downHit = true;
     _materialiseDefaultLegLabel(lab.i, lab.which);
@@ -4158,9 +4172,13 @@ mapEl.addEventListener('touchstart', e => {
   const activeOvHits = note < 0 ? ovAll : [];
   const wpAmbiguous = activeWpHits.length > 1;
   const wp = activeWpHits.length ? activeWpHits[0].index : -1;
-  const cum = (!wpAmbiguous && wp < 0 && note < 0) ? hitCumLabel(p.x, p.y) : null;
-  const cumRet = (!wpAmbiguous && wp < 0 && note < 0 && !cum) ? hitCumLabelRet(p.x, p.y) : null;
-  const lab = (!wpAmbiguous && wp < 0 && note < 0 && !cum && !cumRet) ? hitLegLabel(p.x, p.y) : null;
+  // Add mode always means "place a point here" -- kites (chart decoration, not route
+  // structure) are skipped entirely, same as VOR/airfield/navWP overlay markers below.
+  // See the matching comment on the mousedown handler for why.
+  const kitesLive = state.mode !== 'add';
+  const cum = (kitesLive && !wpAmbiguous && wp < 0 && note < 0) ? hitCumLabel(p.x, p.y) : null;
+  const cumRet = (kitesLive && !wpAmbiguous && wp < 0 && note < 0 && !cum) ? hitCumLabelRet(p.x, p.y) : null;
+  const lab = (kitesLive && !wpAmbiguous && wp < 0 && note < 0 && !cum && !cumRet) ? hitLegLabel(p.x, p.y) : null;
   const leg = (!wpAmbiguous && wp < 0 && note < 0 && !lab && !cum && !cumRet) ? hitLeg(p.x, p.y) : -1;
   const onPage = (!wpAmbiguous && wp < 0 && note < 0 && !lab && !cum && !cumRet && leg < 0 && pageSize)
     ? hitPageFrameEdge(p.x, p.y) : false;
