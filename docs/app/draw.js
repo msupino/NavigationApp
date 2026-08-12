@@ -56,22 +56,25 @@ function waypointDiscRadiusPx(sizeSel) {
         Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
 }
 // Constant offset of the cum-time kite from its waypoint anchor: clear the
-// waypoint disc + the cum kite's own half-height + a margin. Not leg-length
+// waypoint disc + the cum kite's own half-length + a margin. Not leg-length
 // dependent, so the cum kite sits the same distance from every waypoint.
 function cumDefaultLabelPerp() {
-  // Clear the waypoint disc, then a full cum-kite height (so the whole kite sits
-  // off the disc with a half-height gap), plus the margin. Keeps the cum kite
-  // clearly separated from the waypoint.
+  // drawCumTimeArrow rotates the pentagon so its TIP points at the waypoint (flightAng
+  // is atan2'd straight toward it) -- the tip sits L/2 further than this anchor point,
+  // where L is the kite's own LENGTH (triangle + cell), not its height. This offset is
+  // purely perpendicular (along=0 by default), so the tip's distance to the waypoint is
+  // exactly (this return value) - L/2: clearing the disc means budgeting for L/2 here,
+  // not the height. Using height instead (the previous bug) left the tip poking into --
+  // on some legs clean through -- the waypoint disc, since a kite is normally far wider
+  // (cell + triangle) than it is tall.
   //
   // The disc term is taken at the SHIPPED waypoint size, not the live one: the
   // cumulative arrow belongs to the leg-arrow controls, and reading the live wpSize made
   // it slide outwards whenever waypoints were resized -- one slider moving another
-  // slider's marker. The clearance is dominated by the arrow's own height anyway (at the
-  // largest waypoint size the disc is r=24px while the arrow's near edge sits ~71px out),
-  // so dropping the coupling cannot let the disc reach the arrow.
-  return waypointDiscRadiusPx(1) +
-         tune('cumKiteHeightPx') * cumKiteDrawScale() +
-         tune('defaultLabelMarginPx') * cumKiteDrawScale();
+  // slider's marker.
+  const sc = cumKiteDrawScale();
+  const halfLen = (tune('cumKiteCellWidthPx') + tune('cumKiteTriangleLenPx')) * sc / 2;
+  return waypointDiscRadiusPx(1) + halfLen + tune('defaultLabelMarginPx') * sc;
 }
 function legKiteAlongHalfPx(sc) {
   sc = sc ?? ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
