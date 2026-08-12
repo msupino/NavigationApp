@@ -123,6 +123,7 @@ const NOT_A_SYNCED_SETTING = [
   // Dev-only scratch space.
   [/^navaid\.editor\./,          '?edit=1 overlay editor scratch data'],
   [/^navaid\.sim/,               'simulator link, per device'],
+  [/^navaid\.gpsLiveOn$/,        'whether live location is on, per device -- resumed on reload, not synced to others'],
   [/^navaid\.apkReloadedForBuild$/, 'APK self-reload bookkeeping'],
   [/^navaid\.toolbarPosDesktop$/, 'panel geometry (the *Pos rule misses this suffix)'],
   [/^navaid\.wxTime$/,           'forecast valid-time pick, only reused if still offered'],

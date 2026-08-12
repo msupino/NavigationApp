@@ -1662,6 +1662,49 @@ window.S = Object.assign({
   gpsRecNotifTitle: 'NavAid GPS recording',
   gpsRecNotifText: 'Recording your track — tap to return',
   gpsError: 'GPS error: ',
+  // Local device notifications for the watch-alert feature (gpsCheckLegAlerts in gps.js) --
+  // mirrored to a paired Garmin (or any) watch by the OS's own notification mirroring, same
+  // channel SMS/WhatsApp use. Not shown in-app; only ever read from a notification tray.
+  // Bare "next leg" -- no "NavAid —" prefix -- watch notification tiles already show the
+  // sending app's icon/name, so the prefix only ate characters off a tiny watch screen.
+  watchAlertLegTitle: 'Next leg',
+  // alt/hdg/time describe the NEXT leg -- the one starting at `wp`, not the one ending
+  // there -- so the alert doubles as prep for the turn, explicitly labelled as such (not
+  // just implied by context). All three come from the PLAN (planned altitude, planned
+  // course + planned speed for time) -- none reflect live drift, same "route plan is the
+  // only source of truth" rule the ETA trigger itself already follows. Any of the three may
+  // be null (last leg: no next leg at all; no altitude entered; no planned speed to time
+  // it with) and is simply left out, never guessed.
+  watchAlertLegBody: function(wp, alt, hdg, time) {
+    const parts = [];
+    if (alt != null) parts.push(alt + ' ft');
+    if (hdg != null) parts.push(hdg + '°');
+    if (time != null) parts.push(time);
+    return 'Approaching ' + wp + (parts.length ? ' — next leg: ' + parts.join(', ') : '');
+  },
+  // The overhead-the-waypoint moment -- CVFR radio phraseology's own "TOP <point>" call.
+  watchAlertTopTitle: 'TOP',
+  watchAlertTopBody: 'TOP',
+  watchAlertAltTitle: 'Altitude',
+  watchAlertAltBody: function(actual, planned) {
+    return actual + ' ft — planned ' + planned + ' ft';
+  },
+  watchAlertDriftTitle: 'Off course',
+  // Before the leg's midpoint: two numbers, the classic "double the error" intercept --
+  // how far off course (driftOut), then the heading correction to converge back (driftIn),
+  // toward wp -- the leg's own next waypoint, so the correction has a course to name.
+  watchAlertDriftBody: function(driftOut, driftIn, wp) {
+    return driftOut + '° off course, ' + driftIn + '° to intercept toward ' + wp;
+  },
+  // Past the midpoint: rejoining the original line buys nothing this close to the
+  // waypoint, so this reports the correction to head direct to it instead.
+  watchAlertDriftDirectBody: function(correction, wp) {
+    return correction + '° to ' + wp;
+  },
+  // TEMPORARY, test-only -- remove alongside the nudge in gps.js's startLiveLocation once
+  // the watch-alert feature is validated.
+  watchAlertNoRouteTestTitle: 'NavAid',   // deliberately keeps the app name -- generic startup nudge, not a leg alert
+  watchAlertNoRouteTestBody: 'Load a route to get alerts if you drift off course or altitude.',
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',

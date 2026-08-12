@@ -717,8 +717,12 @@
         <span class="footer-link-icon gps-footer-icon" aria-hidden="true">📍</span>
         <span class="footer-link-text" data-i18n="tbGpsLive"></span>
       </button>
-      </span>
-      <span id="gps-readout" class="gps-readout footer-gps-readout"></span>
+      <!-- Grouped with the GPS buttons, not a sibling after them: that keeps it on
+           the SAME wrap-eligible flex item as far as #footer-links is concerned, so
+           the mobile collapsed menu's flex-wrap never has a reason to break a new
+           line just to fit it (see the CSS comment at #toolbar #sim-trigger
+           .footer-link-text for why a sibling placement doubled the closed menu's
+           height instead). -->
       <button id="sim-trigger" type="button" class="footer-link footer-link-button"
               data-i18n-title="tbSecSim" data-i18n-aria="tbSecSim">
         <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
@@ -728,6 +732,8 @@
         </svg>
         <span class="footer-link-text" data-i18n="tbSecSim"></span>
       </button>
+      </span>
+      <span id="gps-readout" class="gps-readout footer-gps-readout"></span>
     </div>
   </div>
 

@@ -1,8 +1,13 @@
 // @ts-check
-// Own-ship heading predictor: a line along the current track with cross-tick
-// range marks at 2 / 5 / 10 NM. Shown for both live GPS location and the
-// simulator own-ship; freezes on the last valid heading when GPS course goes
-// null (zero groundspeed). See drawHeadingLine() in draw.js.
+// Own-ship heading predictor: a line along the current track with TWO sets of
+// cross-tick marks -- fixed distance (2/5/10 NM) and fixed time (2/5 minutes ahead) --
+// both, not either/or. Just the marks themselves: a time-to-reach subtext under the NM
+// marks and a distance subtext under the minute marks were both tried and reported as
+// unwanted clutter ("it shows 1:20 as well"), so neither carries a secondary row. The
+// NM marks draw regardless of speed; the minute marks need a groundspeed to derive
+// their distance from and are simply omitted without one. Shown for both live GPS
+// location and the simulator own-ship; freezes on the last valid heading when GPS
+// course goes null (zero groundspeed). See drawHeadingLine() in draw.js.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -25,6 +30,74 @@ test('predictor marks the line at 2 / 5 / 10 NM for the live own-ship', async ({
   expect(marks).not.toBeNull();
   expect(marks.marks).toEqual([2, 5, 10]);
   expect(marks.heading).toBe(90);
+  expect(marks.minMarks).toEqual([]);   // no groundspeed here -- minute marks need one
+});
+
+test('minute marks (2 / 5 min) appear alongside the NM marks once a groundspeed is known', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    window.__headingLine = null;
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 90);
+    return window.__headingLine;
+  });
+  expect(out.marks).toEqual([2, 5, 10]);      // both sets present at once, not either/or
+  expect(out.minMarks).toEqual([2, 5]);
+});
+
+test('the NM-marked line still draws without a reliable groundspeed -- only the minute marks are omitted', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    window.__headingLine = null;
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg);   // no speed
+    return window.__headingLine;
+  });
+  expect(out).not.toBeNull();
+  expect(out.marks).toEqual([2, 5, 10]);
+  expect(out.minMarks).toEqual([]);
+  const zeroSpeed = await page.evaluate(() => {
+    window.__headingLine = null;
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 0);   // 0 kt is not a divide-by-zero guess either
+    return window.__headingLine.minMarks;
+  });
+  expect(zeroSpeed).toEqual([]);
+});
+
+test('the line reaches whichever mark set extends further (a fast aircraft\'s 5-minute mark, past 10 NM)', async ({ page }) => {
+  await boot(page);
+  // 200 kt: the 5-minute mark is 16.7 nm out, past the fixed 10 NM mark -- checked via
+  // the underlying atNm() offset math (no per-mark screen position is exposed), same
+  // way the dedicated NM-projection test below verifies it.
+  const out = await page.evaluate(() => {
+    window.__headingLine = null;
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 200);
+    return window.__headingLine;
+  });
+  expect(out.marks).toEqual([2, 5, 10]);
+  expect(out.minMarks).toEqual([2, 5]);
+});
+
+test('end-of-line heading label is magnetic (toMagnetic), padded to 3 digits, wraps 0-360', async ({ page }) => {
+  await boot(page);
+  const cases = await page.evaluate(() => {
+    const out = [];
+    for (const hdg of [4, 90, 359, -10, 370]) {
+      window.__headingLine = null;
+      window.gpsLiveOn = true;
+      window.gpsOwn = { lat: 32.1, lng: 34.9, hdg };
+      drawOwnShip(window.gpsOwn, hdg);
+      out.push({ label: window.__headingLine.headingLabel, expected: toMagnetic(hdg) });
+    }
+    return out;
+  });
+  for (const c of cases) {
+    expect(c.label).toBe(String(c.expected).padStart(3, '0') + '°');
+  }
 });
 
 test('also draws for the simulator own-ship', async ({ page }) => {
@@ -40,9 +113,21 @@ test('also draws for the simulator own-ship', async ({ page }) => {
   expect(drawn.heading).toBe(270);
 });
 
+test('the simulator own-ship gets minute marks from its own IAS too', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    window.__headingLine = null;
+    window.simOn = true;
+    window.simAircraft = { lat: 32.1, lng: 34.9, hdg: 270, ias: 120 };
+    drawOwnShip(window.simAircraft, window.simAircraft.hdg, window.simAircraft.ias);
+    return window.__headingLine.minMarks;
+  });
+  expect(out).toEqual([2, 5]);
+});
+
 test('the 10 NM mark projects to a point 10 NM ahead on the heading', async ({ page }) => {
   await boot(page);
-  // Re-derive the outermost mark geographically and check it against geo():
+  // Re-derive the outermost fixed mark geographically and check it against geo():
   // 10 NM at 090° from the own-ship should read ~10 NM / ~090° back.
   const out = await page.evaluate(() => {
     const pos = { lat: 32.1, lng: 34.9 };
@@ -106,6 +191,36 @@ test('draws nothing when there has never been a valid heading', async ({ page })
   expect(none).toBeNull();
 });
 
+test('a real GPS fix with no course does not synthesize a fake 0 (north) heading', async ({ page }) => {
+  // Regression: onLivePosition/onGpsPosition (gps.js) used to fall back to the
+  // literal number 0 -- not null/NaN -- when the device reported no course AND
+  // there was no previous fix to derive a bearing from (routine on the very
+  // first fix, or any time the GPS chip omits course while stationary/taxiing).
+  // 0 passes Number.isFinite(), so downstream code read it as "confirmed
+  // heading: true north" instead of "unknown", locking both the own-ship icon
+  // and this predictor line onto north indefinitely. Reported live: "the
+  // broken line in front of the plane is showing true north".
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 21; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await boot(page);
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  const out = await page.evaluate(() => {
+    startLiveLocation();
+    window.__headingLine = null;
+    // First-ever fix: no previous point to derive a bearing from, and the
+    // device reports no course either -- genuinely unknown, not north.
+    window.__liveCb({ coords: { latitude: 32.1, longitude: 34.9, accuracy: 8,
+      heading: null, speed: null, altitude: null }, timestamp: Date.now() });
+    return { hdg: window.gpsOwn && window.gpsOwn.hdg, line: window.__headingLine };
+  });
+  expect(out.hdg).not.toBe(0);          // not a fake, confirmed-looking north
+  expect(Number.isFinite(out.hdg)).toBe(false);
+  expect(out.line).toBeNull();          // nothing to draw yet, not a line pointing north
+});
+
 test('resetHeadingPredictor clears the frozen heading so a parked restart draws nothing', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
@@ -123,4 +238,27 @@ test('resetHeadingPredictor clears the frozen heading so a parked restart draws 
   });
   expect(out.before).toBe(200);              // heading was established
   expect(out.after).toBeNull();              // reset dropped it — 200° did not persist
+});
+
+test('the simulator feed\'s magnetic heading is converted to true for the geometry', async ({ page }) => {
+  // Regression: cvfr-bridge's schema reports "heading" already magnetic
+  // (rpos_heading_true - variation), but drawHeadingLine's lat/lng trigonometry is
+  // inherently TRUE-north-referenced -- feeding it the raw magnetic value drew the
+  // line rotated off by the local variation. Reported live: "that line still uses
+  // true north, not magnetic" (i.e. the line's own direction was wrong, not just a
+  // label). Fixed at the source: _simFetch() (io.js) converts d.heading + d.variation
+  // back to true before storing it in simAircraft.hdg, so downstream geometry (and
+  // this test) never has to know the wire format was magnetic at all.
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof simStart === 'function' && typeof _simFetch === 'function');
+  const out = await page.evaluate(async () => {
+    simStart();
+    // heading 090 magnetic, variation 5 (5°E) -> true heading should come out as 095.
+    window.fetch = () => Promise.resolve({ ok: true, status: 200,
+      json: async () => ({ latitude: 32.1, longitude: 34.9, altitude: 1000,
+        heading: 90, variation: 5, ias: 90 }) });
+    await _simFetch();
+    return window.simAircraft.hdg;
+  });
+  expect(out).toBe(95);
 });

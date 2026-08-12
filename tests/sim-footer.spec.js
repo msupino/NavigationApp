@@ -48,3 +48,10 @@ test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }
   await page.locator('#sim-modal-close').click();
   await expect(page.locator('#sim-modal')).toBeHidden();
 });
+
+test('the sim icon stays visible on a mobile viewport -- connecting one is how the watch alerts get tested there', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!document.getElementById('sim-trigger'));
+  await expect(page.locator('#sim-trigger')).toBeVisible();
+});

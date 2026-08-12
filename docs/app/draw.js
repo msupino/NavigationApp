@@ -83,18 +83,23 @@ function legKiteAlongHalfPx(sc) {
 // both the simulator aircraft and the live GPS position). Top-down airplane
 // silhouette: nose up in local frame, rotated to (heading − map bearing) so it
 // tracks correctly on a rotated map.
-function drawOwnShip(pos, hdg) {
+function drawOwnShip(pos, hdg, gsKt) {
   if (!pos) return;
   // A frozen fix is drawn faded, and without the heading predictor: extrapolating a track
   // from a position that stopped updating is the one thing a stale fix must not do.
   const stale = typeof gpsFixStale === 'function' && gpsFixStale();
-  if (!stale) drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol
+  if (!stale) drawHeadingLine(pos, hdg, gsKt);   // predictor under the aircraft symbol, freezes lastOwnHeadingDeg
   const s = proj(pos);
   // Screen angle from a projected geographic offset in the heading direction,
   // so it stays correct under map rotation (map.setBearing) — same approach as
   // the wind/kite arrows. (The manual `heading − mapBearing` was only right at
   // north-up.) The silhouette's nose is up (−y) in local frame, hence +90°.
-  const to = (hdg || 0) * Math.PI / 180;
+  // Same frozen-last-heading fallback as the predictor line, not a bare `|| 0`:
+  // a missing/NaN heading is not "confirmed heading 0 (north)", and locking the
+  // icon onto true north whenever the device drops course reporting (routine
+  // while stationary/taxiing) was the actual bug, not just the line beneath it.
+  const h = Number.isFinite(hdg) ? hdg : (Number.isFinite(lastOwnHeadingDeg) ? lastOwnHeadingDeg : 0);
+  const to = h * Math.PI / 180;
   const eps = 0.02;   // ~1.2 NM; used for direction only
   const p2 = proj({
     lat: pos.lat + Math.cos(to) * eps,
@@ -155,13 +160,18 @@ function drawOwnShip(pos, hdg) {
   octx.restore();
 }
 
-// Heading predictor for the own-ship (live GPS + simulator). A straight line
-// along the current track with cross-tick range marks at 2 / 5 / 10 NM so a
-// pilot can read distance-to-go ahead of the aircraft. Uses the same NM→geo
-// offset as notamCirclePoints and projects every point, so it stays correct
-// under map rotation. GPS course goes null at zero groundspeed, so the last
-// valid heading is remembered and reused (the line freezes rather than flicker).
+// Heading predictor for the own-ship (live GPS + simulator). A straight line along the
+// current track with TWO sets of cross-tick marks: fixed distance (2/5/10 NM, each
+// labelled with its own time-to-reach) and fixed time (2/5 minutes ahead, each labelled
+// with the distance it works out to at the current groundspeed) -- both, not either/or.
+// The NM marks draw regardless of speed (their position never depended on it); the
+// minute marks need a groundspeed to derive a distance from and are simply omitted
+// without one, same "omit rather than guess" rule the rest of this feature follows.
+// Uses the same NM→geo offset as notamCirclePoints and projects every point, so it
+// stays correct under map rotation. GPS course goes null at zero groundspeed, so the
+// last valid heading is remembered and reused (the line freezes rather than flicker).
 const HEADING_LINE_MARKS_NM = [2, 5, 10];
+const HEADING_LINE_MARKS_MIN = [2, 5];
 let lastOwnHeadingDeg = null;
 // Clear the frozen predictor heading when the own-ship SOURCE changes (live GPS
 // start, sim start). Without this, restarting live location while parked (GPS
@@ -169,19 +179,27 @@ let lastOwnHeadingDeg = null;
 // confidently at a stale course, and switching sim↔live leaks one source's
 // heading into the other.
 function resetHeadingPredictor() { lastOwnHeadingDeg = null; }
-function drawHeadingLine(pos, hdg) {
+function drawHeadingLine(pos, hdg, gsKt) {
   if (!pos) return;
   const h = Number.isFinite(hdg) ? hdg : lastOwnHeadingDeg;
   if (!Number.isFinite(h)) return;          // no heading yet — nothing to draw
   lastOwnHeadingDeg = h;
+  const haveSpeed = Number.isFinite(gsKt) && gsKt > 0;
   const hr = h * Math.PI / 180;
   const cosLat = Math.max(0.2, Math.cos(pos.lat * Math.PI / 180));
   const atNm = (nm) => proj({
     lat: pos.lat + (nm / 60) * Math.cos(hr),
     lng: pos.lng + (nm / 60) * Math.sin(hr) / cosLat,
   });
+  const nmAtMin = (min) => gsKt * (min / 60);   // distance covered in `min` minutes at gsKt
   const s = proj(pos);
-  const end = atNm(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1]);
+  // Line reaches whichever mark set extends further -- the 10 NM mark, or the 5-minute
+  // mark's own distance if that's farther out at the current speed (fast aircraft).
+  const farNm = haveSpeed
+    ? Math.max(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1],
+                nmAtMin(HEADING_LINE_MARKS_MIN[HEADING_LINE_MARKS_MIN.length - 1]))
+    : HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1];
+  const end = atNm(farNm);
   const dx = end.x - s.x, dy = end.y - s.y;
   const len = Math.hypot(dx, dy);
   if (len < 1) return;                       // degenerate (extreme zoom-out)
@@ -201,12 +219,14 @@ function drawHeadingLine(pos, hdg) {
   octx.stroke();
   octx.setLineDash([]);   // solid ticks below
 
-  // cross-ticks + upright labels at each range mark
+  // cross-ticks + upright two-row labels at a given geographic distance -- shared by
+  // both the NM marks and the minute marks below, just with different label text.
   const tick = tune('liveHeadingTickPx'), gap = tune('liveHeadingLabelGapPx');
-  octx.font = 'bold ' + tune('liveHeadingLabelPx') + 'px sans-serif';
+  const labelPx = tune('liveHeadingLabelPx');
+  octx.font = 'bold ' + labelPx + 'px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
-  for (const nm of HEADING_LINE_MARKS_NM) {
+  function drawMark(nm, primaryLabel, secondaryLabel) {
     const m = atNm(nm);
     octx.beginPath();
     octx.moveTo(m.x - px * tick, m.y - py * tick);
@@ -215,16 +235,51 @@ function drawHeadingLine(pos, hdg) {
     octx.lineWidth = tune('liveHeadingLineWidthPx');
     octx.stroke();
     const lx = m.x + px * (tick + gap), ly = m.y + py * (tick + gap);
-    const label = String(nm);
     octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
     octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
-    octx.strokeText(label, lx, ly);
+    octx.strokeText(primaryLabel, lx, ly);
     octx.fillStyle = tune('liveHeadingTextColor');
-    octx.fillText(label, lx, ly);
+    octx.fillText(primaryLabel, lx, ly);
+    if (secondaryLabel == null) return;
+    // Second row, straight below in screen space -- readable regardless of which
+    // way the line itself runs (px/py only offset the row to the line's side).
+    const ly2 = ly + labelPx + 2;
+    octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
+    octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
+    octx.strokeText(secondaryLabel, lx, ly2);
+    octx.fillStyle = tune('liveHeadingTextColor');
+    octx.fillText(secondaryLabel, lx, ly2);
   }
+
+  // Fixed-distance marks: "N nm" ("2 nm"/"5 nm"/"10 nm"). No secondary derived row --
+  // a time-to-reach subtext was tried and reported as unwanted clutter ("it shows
+  // 1:20 as well"); just the marks themselves.
+  for (const nm of HEADING_LINE_MARKS_NM) drawMark(nm, nm + ' nm', null);
+  // Fixed-time marks: "N min". Needs a groundspeed to place at all (their distance is
+  // derived from it); no secondary distance row either, same reasoning as above.
+  if (haveSpeed) {
+    for (const min of HEADING_LINE_MARKS_MIN) drawMark(nmAtMin(min), min + ' min', null);
+  }
+  // Heading value at the far end of the line, past the last tick's own labels
+  // rather than stacked on top of them. Magnetic + padded to 3 digits, same as
+  // every other heading this app displays (leg kite, next-leg watch alert, VOR
+  // radials) -- h itself is TRUE here (both gpsOwn.hdg from a real fix and
+  // simAircraft.hdg from the sim feed are converted to true at their own source
+  // now, see the comment where simAircraft.hdg is set in io.js), so this needs
+  // the same toMagnetic() conversion every other heading label already gets.
+  const headEnd = { x: end.x + ux * (tick + gap), y: end.y + uy * (tick + gap) };
+  const hMag = typeof toMagnetic === 'function' ? toMagnetic(h) : h;
+  const headingLabel = (typeof pad3 === 'function' ? pad3(Math.round(((hMag % 360) + 360) % 360)) :
+    Math.round(hMag)) + '°';
+  octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
+  octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
+  octx.strokeText(headingLabel, headEnd.x, headEnd.y);
+  octx.fillStyle = tune('liveHeadingTextColor');
+  octx.fillText(headingLabel, headEnd.x, headEnd.y);
   octx.restore();
   if (typeof window !== 'undefined')
-    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice() };
+    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(),
+      minMarks: haveSpeed ? HEADING_LINE_MARKS_MIN.slice() : [], headingLabel };
 }
 
 // TOC / TOD markers along the route (#672). A small dot + label at the point
@@ -451,6 +506,17 @@ function drawVerticalProfile(ctx, x, y, w, h) {
 }
 
 function draw() {
+  // Reclaims the legend's screen space on a phone while a position source is live
+  // (recording, live location, or a connected simulator) -- reported live as "legend
+  // should be hidden, to make screen place". Kept in sync here (every redraw, which
+  // already runs on essentially every state change) rather than threaded through each
+  // of the six start/stop functions individually, so an early-return or a failed
+  // registration can't leave it stuck in the wrong state. The actual hiding is CSS,
+  // scoped to mobile widths only (see .gps-tracking-active .map-legend in style.css) --
+  // desktop has room for both.
+  if (typeof document !== 'undefined' && typeof gpsMapLocked === 'function') {
+    document.body.classList.toggle('gps-tracking-active', gpsMapLocked());
+  }
   octx.clearRect(0, 0, vw(), vh());
   drawAreas();                  // airspace bubbles under the waypoints
   // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
@@ -471,7 +537,7 @@ function draw() {
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
-  if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg);  // sim own-ship
+  if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg, simAircraft.ias);  // sim own-ship
   drawInfo();
   drawPageFrame();
   drawPlanCard();          // flight-plan card placed for PNG export (#378)

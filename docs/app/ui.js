@@ -2631,6 +2631,18 @@ if (liveBtn) {
       if (gpsLiveOn) { setFooterBtn(liveBtn, S.tbGpsLiveStop, '📍'); liveBtn.setAttribute('aria-pressed', 'true'); }
     }
   });
+  // Nothing else here survives a full page reload -- language switching (lang-select's
+  // click handler above uses location.href, a real navigation) and any other reload
+  // silently stopped live tracking, with it the watch alerts that depend on it, and no
+  // sign anything had changed. Same auto-reconnect pattern the simulator already uses
+  // (navaid.simOn, below): persist on/off (see startLiveLocation/stopLiveLocation in
+  // gps.js) and resume here on boot.
+  let _liveWasOn = false;
+  try { _liveWasOn = lsGet('navaid.gpsLiveOn') === '1'; } catch (e) { /* */ }
+  if (_liveWasOn && navigator.geolocation && typeof startLiveLocation === 'function') {
+    startLiveLocation();
+    if (gpsLiveOn) { setFooterBtn(liveBtn, S.tbGpsLiveStop, '📍'); liveBtn.setAttribute('aria-pressed', 'true'); }
+  }
 }
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
