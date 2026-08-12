@@ -5309,11 +5309,15 @@ html[dir="rtl"] .fpl-subfields {
   align-items: center;
   gap: 6px;
 }
-/* A letters row is two lines (label, then the box): centring the ↻ over the pair left it
-   floating between them, level with neither. Pin it to the top, so it sits with the label
-   that names it. Not `end`: these rows are <details>, and once one is expanded the bottom
-   is the far edge of an open checkbox list -- the ↻ would slide down the screen with it. */
+/* A letters row's label is lifted onto its own line (see withReset), leaving the box and
+   the ↻ as the second line -- so the ↻ sits with the box, not with the heading above it.
+   `start`, not `center`: these are <details>, and an expanded checkbox list would drag a
+   centred ↻ down the screen with it; the box's own first line is the summary. */
 .fpl-adv-row-tall { align-items: start; }
+/* .fpl-advanced .fpl-row carries a 3px top margin; the ↻ is not a row, so it needs the
+   same nudge to line up with the box rather than sitting 3px proud of it. */
+.fpl-adv-row-tall > .fpl-adv-reset { margin-top: 3px; }
+.fpl-adv-label { grid-column: 1 / -1; margin-bottom: 4px; }
 /* The ↻ takes its width out of the row, and .fpl-row's control track would keep its full
    190px and starve the label instead -- "Turbulence category" ran 4px past its box at
    375px. Give the control track back roughly what the button costs, so the label column

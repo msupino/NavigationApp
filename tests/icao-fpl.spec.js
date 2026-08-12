@@ -2041,6 +2041,11 @@ test('a dialog label never paints over its own field', async ({ page }) => {
         const label = row.querySelector('span, label');
         const ctrl = row.querySelector('input, select, textarea');
         if (!label || !ctrl) continue;
+        // A label that WRAPS its own control (the letter groups' checkboxes) always
+        // "overlaps" it -- the input is inside the label's own box. That is the normal
+        // shape of a checkbox, not the starved-track bug this guards against, which is a
+        // label and its field sitting in separate grid columns.
+        if (label.contains(ctrl)) continue;
         rows.push(1);
         // The label's own box is its grid track and can never exceed it -- what paints over
         // the field is the TEXT, which does not clip. Measure the ink with a Range.
@@ -2474,4 +2479,39 @@ test('Advanced: the restore button does not activate the field beside it', async
   await openAdvanced(page, {});
   expect(await page.evaluate(() =>
     !!document.getElementById('fpl-wake-reset').closest('label'))).toBe(false);
+});
+
+// The equipment/transponder rows stack (label, then the box), so a ↻ centred over the pair
+// floated between the two -- level with neither. Each ↻ must sit with the control it
+// restores, in both languages and whether or not the letter list is expanded.
+test('Advanced: each ↻ lines up with its own control', async ({ page }) => {
+  for (const lang of ['he', 'en']) {
+    await boot(page, '?lang=' + lang + '&nogist');
+    await route(page);
+    await openAdvanced(page, {});
+    for (const expand of [false, true]) {
+      if (expand) await page.evaluate(() => { document.getElementById('fpl-equip').open = true; });
+      const rows = await page.evaluate(() => {
+        const out = [];
+        for (const wrap of document.querySelectorAll('.fpl-modal .fpl-adv-row')) {
+          const btn = wrap.querySelector('.fpl-adv-reset');
+          const row = wrap.querySelector('.fpl-row');
+          const det = row.querySelector(':scope > details');
+          // For a letter group the clickable line is the summary, not the whole open box.
+          const line = det ? det.querySelector(':scope > summary')
+                           : row.querySelector(':scope > input, :scope > select');
+          const b = btn.getBoundingClientRect(), l = line.getBoundingClientRect();
+          out.push({
+            id: btn.id,
+            off: Math.round((b.top + b.height / 2) - (l.top + l.height / 2)),
+          });
+        }
+        return out;
+      });
+      expect(rows.length, lang).toBe(4);
+      for (const r of rows) {
+        expect(Math.abs(r.off), lang + ' ' + r.id + ' expanded=' + expand).toBeLessThanOrEqual(2);
+      }
+    }
+  }
 });

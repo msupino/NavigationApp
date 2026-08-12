@@ -9053,11 +9053,19 @@ function showFplDialog() {
     const withReset = (rowEl, id, restore) => {
       const wrap = document.createElement('div');
       wrap.className = 'fpl-adv-row';
-      // A letters row puts its label on one line and the box on the next, so centring the
-      // ↻ over the pair left it floating between the two, level with neither. Marked here
-      // so it can align to the label line instead -- the ↻ then sits level with its own
-      // label on every row, wide or narrow.
-      if (rowEl.classList.contains('fpl-row-letters')) wrap.classList.add('fpl-adv-row-tall');
+      // A letters row stacks internally -- its label is a block, the box sits under it --
+      // so no alignment on this wrapper can put the ↻ beside the box: it would always land
+      // level with the label, or float between the two. Lift the label out to its own line
+      // here, leaving the box and the ↻ as the second line, so the ↻ sits with the control
+      // it restores exactly as it does on a single-line row.
+      if (rowEl.classList.contains('fpl-row-letters')) {
+        wrap.classList.add('fpl-adv-row-tall');
+        const span = rowEl.querySelector(':scope > span');
+        if (span) {
+          span.classList.add('fpl-adv-label');
+          wrap.appendChild(span);
+        }
+      }
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'fpl-adv-reset';
