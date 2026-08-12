@@ -2041,6 +2041,11 @@ test('a dialog label never paints over its own field', async ({ page }) => {
         const label = row.querySelector('span, label');
         const ctrl = row.querySelector('input, select, textarea');
         if (!label || !ctrl) continue;
+        // A label that WRAPS its own control (the letter groups' checkboxes) always
+        // "overlaps" it -- the input is inside the label's own box. That is the normal
+        // shape of a checkbox, not the starved-track bug this guards against, which is a
+        // label and its field sitting in separate grid columns.
+        if (label.contains(ctrl)) continue;
         rows.push(1);
         // The label's own box is its grid track and can never exceed it -- what paints over
         // the field is the TEXT, which does not clip. Measure the ink with a Range.
@@ -2399,4 +2404,114 @@ test('the mail subject carries the departure time', async ({ page }) => {
   const plain = await page.evaluate(([r, o]) => fplMailtoUrl(r, o), [res, { reg: 'HLH' }]);
   const s2 = decodeURIComponent(plain.match(/subject=([^&]+)/)[1]);
   expect(s2).toMatch(/^FPL 4XHLH LLHZ-\S+ \d{6}$/);
+});
+
+
+// The Advanced fields are ICAO letter codes with no obvious "normal" value: a pilot who
+// experiments with them, or inherits a stale profile, needs a way back that does not
+// depend on remembering L/S/C by heart. Per field, like the waypoint inspector's ↻.
+async function openAdvanced(page, profile) {
+  await page.evaluate((p) => {
+    for (const [k, v] of Object.entries(p)) localStorage.setItem('navaid.fpl.' + k, v);
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  }, profile);
+  await page.click('.fpl-advanced summary');
+}
+const advValues = page => page.evaluate(() => ({
+  wake: document.getElementById('fpl-wake').value,
+  equip: document.getElementById('fpl-equip').__value(),
+  surv: document.getElementById('fpl-surv').__value(),
+  ais: document.getElementById('fpl-ais-email').value,
+}));
+
+test('Advanced: each field restores its own default, and only its own', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  // A profile that differs from the defaults in every one of the four fields.
+  await openAdvanced(page, { wake: 'M', equip: 'SGD', surv: 'SE' });
+  await page.fill('#fpl-ais-email', 'ops@example.com');
+  expect(await advValues(page)).toEqual({ wake: 'M', equip: 'DGS', surv: 'ES', ais: 'ops@example.com' });
+
+  // Each ↻ restores its own field and leaves the other three exactly as they were --
+  // one button for the whole section would throw away a deliberate equipment set.
+  await page.locator('#fpl-wake-reset').click();
+  expect(await advValues(page)).toEqual({ wake: 'L', equip: 'DGS', surv: 'ES', ais: 'ops@example.com' });
+
+  await page.locator('#fpl-surv-reset').click();
+  expect(await advValues(page)).toEqual({ wake: 'L', equip: 'DGS', surv: 'C', ais: 'ops@example.com' });
+
+  await page.locator('#fpl-equip-reset').click();
+  expect(await advValues(page)).toEqual({ wake: 'L', equip: 'S', surv: 'C', ais: 'ops@example.com' });
+
+  // The address default is the PUBLISHED address for the flight type, not a constant.
+  await page.locator('#fpl-ais-email-reset').click();
+  expect(await advValues(page)).toEqual({ wake: 'L', equip: 'S', surv: 'C', ais: 'ais@iaa.gov.il' });
+});
+
+test('Advanced: the filing-address restore follows the flight type', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await openAdvanced(page, {});
+  await page.selectOption('#fpl-kind', 'crosscountry');
+  await page.fill('#fpl-ais-email', 'ops@example.com');
+  await page.locator('#fpl-ais-email-reset').click();
+  await expect(page.locator('#fpl-ais-email')).toHaveValue('fpl@iaa.gov.il');
+});
+
+// An equipment string is the pilot's own declaration: letters this control does not
+// offer are carried through every other path, so the reset must not silently drop them.
+test('Advanced: restoring equipment keeps letters the control does not list', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  // Z is a real field-10 letter with no checkbox here.
+  await openAdvanced(page, { equip: 'SGZ' });
+  await page.locator('#fpl-equip-reset').click();
+  // G (offered, unchecked by the restore) is gone; Z (not offered) survives.
+  expect(await page.evaluate(() => document.getElementById('fpl-equip').__value())).toBe('SZ');
+});
+
+// The ↻ must not be inside the row's <label>, or the label forwards the click to its
+// own control -- restoring the wake category would also open the select.
+test('Advanced: the restore button does not activate the field beside it', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await openAdvanced(page, {});
+  expect(await page.evaluate(() =>
+    !!document.getElementById('fpl-wake-reset').closest('label'))).toBe(false);
+});
+
+// The equipment/transponder rows stack (label, then the box), so a ↻ centred over the pair
+// floated between the two -- level with neither. Each ↻ must sit with the control it
+// restores, in both languages and whether or not the letter list is expanded.
+test('Advanced: each ↻ lines up with its own control', async ({ page }) => {
+  for (const lang of ['he', 'en']) {
+    await boot(page, '?lang=' + lang + '&nogist');
+    await route(page);
+    await openAdvanced(page, {});
+    for (const expand of [false, true]) {
+      if (expand) await page.evaluate(() => { document.getElementById('fpl-equip').open = true; });
+      const rows = await page.evaluate(() => {
+        const out = [];
+        for (const wrap of document.querySelectorAll('.fpl-modal .fpl-adv-row')) {
+          const btn = wrap.querySelector('.fpl-adv-reset');
+          const row = wrap.querySelector('.fpl-row');
+          const det = row.querySelector(':scope > details');
+          // For a letter group the clickable line is the summary, not the whole open box.
+          const line = det ? det.querySelector(':scope > summary')
+                           : row.querySelector(':scope > input, :scope > select');
+          const b = btn.getBoundingClientRect(), l = line.getBoundingClientRect();
+          out.push({
+            id: btn.id,
+            off: Math.round((b.top + b.height / 2) - (l.top + l.height / 2)),
+          });
+        }
+        return out;
+      });
+      expect(rows.length, lang).toBe(4);
+      for (const r of rows) {
+        expect(Math.abs(r.off), lang + ' ' + r.id + ' expanded=' + expand).toBeLessThanOrEqual(2);
+      }
+    }
+  }
 });

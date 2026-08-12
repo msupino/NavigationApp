@@ -5300,6 +5300,60 @@ html[dir="rtl"] .fpl-subfields {
 }
 .fpl-advanced .fpl-row { margin-top: 3px; }
 .fpl-advanced { margin-top: 2px; }
+/* Per-field restore: the row keeps its own grid, the ↻ sits beside it. `1fr auto` rather
+   than a fixed width so the row itself still gives way first on a narrow screen -- the
+   same reason .fpl-row's own control column is a minmax. */
+.fpl-adv-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+/* A letters row's label is lifted onto its own line (see withReset), leaving the box and
+   the ↻ as the second line -- so the ↻ sits with the box, not with the heading above it.
+   `start`, not `center`: these are <details>, and an expanded checkbox list would drag a
+   centred ↻ down the screen with it; the box's own first line is the summary. */
+.fpl-adv-row-tall { align-items: start; }
+/* .fpl-advanced .fpl-row carries a 3px top margin; the ↻ is not a row, so it needs the
+   same nudge to line up with the box rather than sitting 3px proud of it. */
+.fpl-adv-row-tall > .fpl-adv-reset { margin-top: 3px; }
+.fpl-adv-label { grid-column: 1 / -1; margin-bottom: 4px; }
+/* The ↻ takes its width out of the row, and .fpl-row's control track would keep its full
+   190px and starve the label instead -- "Turbulence category" ran 4px past its box at
+   375px. Give the control track back roughly what the button costs, so the label column
+   is the one that stays whole. Labels do not clip; a select can shrink. */
+.fpl-adv-row > .fpl-row {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 156px);
+}
+/* Same breakpoint .fpl-row itself stacks at: below this the ↻'s own column starved the
+   label track, and labels do not clip -- "Turbulence category" ran 4px past its box at
+   280px. Give the row the full width back and drop the ↻ onto its own line. */
+@media (max-width: 359px) {
+  .fpl-adv-row { grid-template-columns: 1fr; gap: 2px; }
+  .fpl-adv-reset { justify-self: end; }
+  /* The two-column rule above is more specific than .fpl-row's own stacking rule at this
+     breakpoint, so it has to stack here explicitly or the label keeps a starved track. */
+  .fpl-adv-row > .fpl-row { grid-template-columns: 1fr; }
+}
+/* A quiet affordance, not a dialog action: it must not read like Send/Cancel. Sized to
+   stay tappable on a phone while the glyph itself stays small. */
+.fpl-adv-reset {
+  flex: 0 0 auto;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 2px 6px;
+  font-size: 13px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: transparent;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.fpl-adv-reset:hover { color: #e8e8e8; border-color: #6b6565; }
+body.theme-light .fpl-adv-reset { color: #55504f; border-color: #d8d4d4; }
+body.theme-light .fpl-adv-reset:hover { color: #1c1a1a; border-color: #a9a4a4; }
 .fpl-modal .modal-btns { margin-top: 6px; }
 .fpl-ack { margin: 1px 0; }
 .fpl-primary { font-weight: 600; }

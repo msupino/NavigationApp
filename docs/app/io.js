@@ -8300,6 +8300,14 @@ let fplXcOpen = false;
 // dialog asked for the pilot's own address, and an early build let that same address be
 // typed into the filing address -- which then silently outranked the published one.
 const FPL_DEAD_FIELDS = ['pilotEmail', 'ias'];
+// The ICAO letters a plan falls back to when the pilot has never set them: a light
+// aeroplane with standard radio/nav and a Mode A+C transponder. Shared by the profile
+// reader and the dialog's "restore defaults" action so the two cannot drift apart --
+// a reset that put back a different letter than a fresh profile starts with would file
+// a different aircraft than the pilot expects. `aisEmail` is deliberately absent: its
+// default is the PUBLISHED address for the chosen flight type (fplFileTo), not a
+// constant, and it is never persisted (see fplProfileWrite).
+const FPL_ADV_DEFAULTS = { wake: 'L', equip: 'S', surv: 'C' };
 function fplProfileRead() {
   const p = {};
   for (const f of FPL_PROFILE_FIELDS) {
@@ -8321,9 +8329,9 @@ function fplProfileRead() {
     }
   } catch (e) { /* storage unavailable */ }
   if (!p.kind) p.kind = 'routes';
-  if (!p.wake) p.wake = 'L';
-  if (!p.equip) p.equip = 'S';
-  if (!p.surv) p.surv = 'C';
+  if (!p.wake) p.wake = FPL_ADV_DEFAULTS.wake;
+  if (!p.equip) p.equip = FPL_ADV_DEFAULTS.equip;
+  if (!p.surv) p.surv = FPL_ADV_DEFAULTS.surv;
   return p;
 }
 function fplProfileWrite(p) {
@@ -8977,6 +8985,15 @@ function showFplDialog() {
         sum.textContent = v ? (v + (names.length ? '  \u2014 ' + names.join(', ') : ''))
                             : (S.fplLettersNone || 'nothing selected');
       };
+      // Restoring a default is a change to what THIS control offers, so it only touches
+      // the boxes. `extra` (letters the pilot carries that this control does not list)
+      // is deliberately untouched -- it is kept by __value on every other path too, and
+      // silently dropping it here would file a different aircraft.
+      wrap.__reset = (letters) => {
+        const want = new Set(String(letters || '').toUpperCase());
+        for (const b of boxes) b.checked = want.has(b.value);
+        refresh();
+      };
       refresh();
       if (extra.length) {
         const note = document.createElement('div');
@@ -9025,22 +9042,64 @@ function showFplDialog() {
         aisEmail.value = fplFileTo(kind.value);
       }
     };
+    // Each of these has a default with no obvious "normal" value to type back from memory,
+    // so each gets its own restore -- the same per-field ↻ the waypoint inspector uses. One
+    // button for the whole section would be less capable, not simpler: resetting a
+    // transponder letter would also throw away a deliberate equipment set like SG.
+    //
+    // The ↻ goes OUTSIDE the row: `row()` builds a <label>, and a button inside a label
+    // gets the label's forwarded activation -- clicking ↻ would also open the select it
+    // sits next to.
+    const withReset = (rowEl, id, restore) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'fpl-adv-row';
+      // A letters row stacks internally -- its label is a block, the box sits under it --
+      // so no alignment on this wrapper can put the ↻ beside the box: it would always land
+      // level with the label, or float between the two. Lift the label out to its own line
+      // here, leaving the box and the ↻ as the second line, so the ↻ sits with the control
+      // it restores exactly as it does on a single-line row.
+      if (rowEl.classList.contains('fpl-row-letters')) {
+        wrap.classList.add('fpl-adv-row-tall');
+        const span = rowEl.querySelector(':scope > span');
+        if (span) {
+          span.classList.add('fpl-adv-label');
+          wrap.appendChild(span);
+        }
+      }
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fpl-adv-reset';
+      btn.id = id;
+      btn.textContent = '↻';
+      const tip = fplIsolate(S.fplAdvResetTip || 'Restore the default');
+      btn.title = tip;
+      btn.setAttribute('aria-label', tip);
+      btn.onclick = restore;
+      wrap.append(rowEl, btn);
+      return wrap;
+    };
     // These are single letters from an ICAO table; without a tooltip they mean nothing
     // to anyone who has not filed a plan by hand before.
     const advRows = [
-      [row(S.fplWake || 'Wake category', wake), S.fplWakeTip],
-      [rowWide(S.fplEquip || 'Equipment', equip), S.fplEquipTip],
-      [rowWide(S.fplSurv || 'Transponder', surv), S.fplSurvTip],
-      [row(S.fplAisEmail || 'File to', aisEmail), S.fplAisEmailTip],
+      [row(S.fplWake || 'Wake category', wake), S.fplWakeTip,
+        'fpl-wake-reset', () => { wake.value = FPL_ADV_DEFAULTS.wake; }],
+      [rowWide(S.fplEquip || 'Equipment', equip), S.fplEquipTip,
+        'fpl-equip-reset', () => equip.__reset(FPL_ADV_DEFAULTS.equip)],
+      [rowWide(S.fplSurv || 'Transponder', surv), S.fplSurvTip,
+        'fpl-surv-reset', () => surv.__reset(FPL_ADV_DEFAULTS.surv)],
+      // Not a constant: the published address depends on the flight type chosen above,
+      // so this restores whatever that type publishes rather than a fixed string.
+      [row(S.fplAisEmail || 'File to', aisEmail), S.fplAisEmailTip,
+        'fpl-ais-email-reset', () => { aisEmail.value = fplFileTo(kind.value); }],
     ];
-    for (const [rowEl, tip] of advRows) {
+    for (const [rowEl, tip, resetId, restore] of advRows) {
       if (tip) {
         // title attributes cannot carry markup, so the isolation goes in as Unicode.
         rowEl.title = fplIsolate(tip);
         const field = rowEl.querySelector('input, select');
         if (field) field.title = fplIsolate(tip);
       }
-      adv.appendChild(rowEl);
+      adv.appendChild(withReset(rowEl, resetId, restore));
     }
     body.appendChild(adv);
 
