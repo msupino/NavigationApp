@@ -1619,7 +1619,14 @@ body.theme-light #aircraft-custom input {
   unicode-bidi: isolate;
 }
 .vor-radial-row select {
-  width: 58px;
+  /* A fixed 58px fit the VOR idents (2-3 letters: "BGN", "NAT") this control mostly
+     shows, but clipped the "— none —" / "— ללא —" placeholder option, which is much
+     longer -- reported live as a stray "א —" (the placeholder's own trailing letters,
+     everything before them clipped off). A native <select> with no explicit width
+     already sizes to its CURRENTLY SELECTED option's own rendered width, so this stays
+     just as compact for an ident and only grows when the placeholder is what's shown. */
+  width: auto;
+  min-width: 58px;
 }
 .row .val.vor-radial-val {
   min-width: 92px;

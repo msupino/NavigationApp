@@ -166,6 +166,34 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     expect(controlsBox.x + controlsBox.width).toBeLessThan(labelBox.x - 4);
   });
 
+  test('the "— none —" placeholder is not clipped, in Hebrew or English', async ({ page }) => {
+    // Regression: a fixed 58px width fit the VOR idents this select mostly shows
+    // ("BGN", "NAT"), but clipped the much longer placeholder option -- reported live
+    // as a stray "א —" (the placeholder's own trailing letters, everything before them
+    // cut off). Native <select> with no explicit width sizes to its currently
+    // SELECTED option's own rendered width, so this stays just as compact for an
+    // ident and only widens when the placeholder is what's actually shown.
+    for (const lang of ['he', 'en']) {
+      await boot(page, lang);
+      await page.evaluate(async () => {
+        await loadVors();
+        window.vorRef = '';
+        window.inspectorVorRef = undefined;
+        state.waypoints = [{ lat: 32.46472, lng: 34.91222, name: 'HADRA' }];
+        syncLegs();
+        state.selected = { type: 'wp', index: 0 };
+        showInspector();
+      });
+      const sel = page.locator('#insp-body .vor-radial-row select.insp-vor-ref');
+      await expect(sel).toHaveValue('');
+      const out = await sel.evaluate(el => {
+        const b = el.getBoundingClientRect();
+        return { text: el.options[el.selectedIndex].textContent, width: b.width, scrollWidth: el.scrollWidth };
+      });
+      expect(out.width, lang + ': ' + out.text).toBeGreaterThanOrEqual(out.scrollWidth);
+    }
+  });
+
   test('flight plan: VOR picker + frequency, Radial/DME to the leg START', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
