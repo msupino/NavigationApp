@@ -2314,9 +2314,9 @@
       "report": "mandatory",
       "commChange": true,
       "callSigns": [
-        "BEN_GURION",
+        "TEL_NOF",
         "PALMACHIM",
-        "TEL_NOF"
+        "BEN_GURION"
       ],
       "routeHints": [
         {
@@ -2333,7 +2333,7 @@
         },
         {
           "after": "NAGID",
-          "callSign": "TEL_NOF"
+          "callSign": "PALMACHIM"
         },
         {
           "after": "TYONA",
