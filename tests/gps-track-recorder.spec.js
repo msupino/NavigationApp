@@ -58,6 +58,48 @@ test('readout shows realtime ground speed + altitude while recording', async ({ 
   await expect(readout).toHaveText('');
 });
 
+test('readout shows ground speed + altitude for plain "show location" too, not just recording', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  await page.evaluate(() => {
+    startLiveLocation();
+    // speed 50 m/s ≈ 97 kt; altitude 304.8 m = 1000 ft.
+    window.__liveCb({ coords: { latitude: 32.0, longitude: 34.0, accuracy: 8, heading: null, speed: 50, altitude: 304.8 }, timestamp: Date.now() });
+  });
+  const readout = page.locator('#gps-readout');
+  await expect(readout).toContainText('97 kt');
+  await expect(readout).toContainText('1000 ft');
+  // No point-count/elapsed-time prefix outside a recording -- neither means anything here.
+  await expect(readout).not.toContainText('pts');
+  await page.evaluate(() => stopLiveLocation());
+  await expect(readout).toHaveText('');
+});
+
+test('readout shows ground speed + altitude for a connected simulator, same as GPS mode', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof simStart === 'function' && typeof _simFetch === 'function');
+  await page.evaluate(async () => {
+    simStart();
+    // ias 120 kt, altitude 3500 ft -- reported directly, no unit conversion (unlike the
+    // Geolocation API's metres/(m/s), the bridge's own JSON is already aviation units).
+    window.fetch = () => Promise.resolve({ ok: true, status: 200,
+      json: async () => ({ latitude: 32.0, longitude: 34.0, altitude: 3500, heading: 90, ias: 120 }) });
+    await _simFetch();
+  });
+  const readout = page.locator('#gps-readout');
+  await expect(readout).toContainText('120 kt');
+  await expect(readout).toContainText('3500 ft');
+  await expect(readout).not.toContainText('pts');
+  // Disconnecting clears it -- otherwise the last sim reading sat there forever.
+  await page.evaluate(() => simStop());
+  await expect(readout).toHaveText('');
+});
+
 test('recording collects filtered fixes and stops cleanly', async ({ page }) => {
   await page.addInitScript(() => {
     window.__geoCb = null; window.__cleared = 0;
@@ -444,6 +486,43 @@ test('Show my location shows own-ship without recording or saving a track', asyn
   await btn.click();
   expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
   expect(await page.evaluate(() => gpsOwn)).toBeNull(); // own-ship cleared (no recording active)
+});
+
+test('live location survives a full page reload (e.g. switching language) -- resumes automatically', async ({ page }) => {
+  // Language switching (the lang-select control) does location.href = '?...', a real
+  // navigation -- every in-memory flag, gpsLiveOn included, is gone afterward. Without
+  // persistence this silently stopped tracking (and with it the watch alerts that depend
+  // on it) on any reload, with no sign anything had changed.
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  const btn = page.locator('#gps-live');
+  await btn.click();
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.gpsLiveOn'))).toBe('1');
+
+  // Simulate the reload: a fresh navigation, same stubs (watchPosition would otherwise be
+  // the real geolocation.watchPosition again, unrelated to whether resume itself works).
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 12; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof gpsLiveOn !== 'undefined');
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(true);         // resumed, not left off
+  await expect(btn).toHaveAttribute('aria-pressed', 'true');       // button reflects it too
+
+  // ...and stopping persists the OFF state, so the next reload does not resume it.
+  await btn.click();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.gpsLiveOn'))).toBe('0');
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof gpsLiveOn !== 'undefined');
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
 });
 
 test('stopping a recording keeps own-ship when live location is still on', async ({ page }) => {
