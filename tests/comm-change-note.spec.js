@@ -457,12 +457,21 @@ test.describe('comm-change auto-note (#487)', () => {
     };
     await installCommChangeFixture(page, routeFixture);
     await boot(page);
-    // A made-up name, not NAGID: NTAIM is a real graph node, and the fixture merge (see
-    // _layerData.js) leaves the REAL node's routeHints in place whenever the fixture's own
-    // NTAIM entry doesn't specify any -- the real graph now has an explicit after:NAGID hint
-    // (this session's data fix), so using the real name here would make this test assert on
-    // that hint firing instead of on the fallback mechanism it's meant to probe.
-    const thirdPoint = { lat: NAGID.lat, lng: NAGID.lng, name: 'ZZZTESTPT' };
+    // A made-up name AND a small coordinate nudge off NAGID's own, not NAGID's exact spot:
+    // NTAIM is a real graph node, and the fixture merge (see _layerData.js) leaves the REAL
+    // node's routeHints in place whenever the fixture's own NTAIM entry doesn't specify any
+    // -- the real graph now has an explicit after:NAGID hint (this session's data fix). A
+    // fake NAME alone isn't enough to dodge that any more: commRouteAfterNames now folds in
+    // the published corridor between drawn waypoints (this session's other fix, for a route
+    // that SKIPS a named stop entirely), and fplGraphPointAt resolves a waypoint to a graph
+    // node by close COORDINATES too, not just by name -- sitting exactly on NAGID's own
+    // coordinates resolved straight back to the real 'NAGID' node regardless of the fake
+    // name, defeating the isolation this test needs. Nudged just past
+    // fplGraphPointAt's own coordinate-fallback epsilon (SAME_REFERENCE_POINT_DEG*2,
+    // ~0.1 nm) -- small enough that the general SOLVER's own distance-based guess (the
+    // mechanism this test is actually about) still lands on PALMACHIM same as before, large
+    // enough that it no longer resolves to a real graph node at all.
+    const thirdPoint = { lat: NAGID.lat + 0.003, lng: NAGID.lng + 0.003, name: 'ZZZTESTPT' };
     const out = await page.evaluate(({ tyona, ntaim, third }) => {
       state.waypoints = [tyona, ntaim];
       state.notes = [];
@@ -2242,5 +2251,49 @@ test.describe('a comm-change point with several routeHints picks the NEARER afte
     }, { i: INDIA, j: JULIET, k: KILO, l: LIMA });
     expect(out[2]).toEqual(['INDIA']);                // JULIET suppressed once KILO is added
     expect(out[3]).toEqual(['INDIA', 'LIMA']);         // still suppressed after LIMA joins too
+  });
+});
+
+// A pilot's drawn route can SKIP a published corridor stop entirely, not just have an extra
+// one spliced in -- NTAIM's own "after: BOVED" hint never matched a route drawn straight
+// NTAIM -> YAVNE, even though the real published corridor between them passes through BOVED
+// (same as fplExpandRoute already fills in for the filed ICAO plan). Uses the REAL shipped
+// route graph (routeGraphDataSync), not a synthetic fixture -- the whole point is the real
+// published corridor, which no fixture can stand in for.
+test.describe('commRouteAfterNames folds in the published corridor, not just drawn waypoints', () => {
+  test('CLORE -> TYONA -> NTAIM -> YAVNE -> ZASHD: NTAIM suppresses via BOVED on the real corridor', async ({ page }) => {
+    await page.addInitScript(() => {
+      try { for (const k of Object.keys(localStorage)) localStorage.removeItem(k); } catch (e) {}
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof seedCommChangeNotes === 'function' &&
+      typeof routeGraphData === 'function');
+    await page.evaluate(() => loadCommChange());
+    await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.NTAIM);
+    await page.evaluate(async () => {
+      window.showCommChange = true;
+      await routeGraphData('cvfr');   // resolved before seeding -- routeGraphDataSync needs it cached
+    });
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.05306, lng: 34.73583, name: 'CLORE' },
+        { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+        { lat: 31.94361, lng: 34.78083, name: 'NTAIM' },
+        { lat: 31.87194, lng: 34.75694, name: 'YAVNE' },
+        { lat: 31.82611, lng: 34.70833, name: 'ZASHD' },
+      ];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => ({ cc: n.cc, freqName: n.freqName }));
+    });
+    // NTAIM's PALMACHIM (via BOVED) matches TYONA's already-active PALMACHIM -- suppressed.
+    // ZASHD keeps its own note: single-option static default, never a verified hint, so
+    // never suppressed even though it also happens to be PALMACHIM (same policy as the
+    // "an UNHINTED point is never suppressed" rule above).
+    expect(out).toEqual([
+      { cc: 'TYONA', freqName: 'PALMACHIM' },
+      { cc: 'ZASHD', freqName: 'PALMACHIM' },
+    ]);
   });
 });
