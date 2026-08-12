@@ -8100,11 +8100,24 @@ async function _simFetch() {
     // Stopped, or restarted, while this request was in flight: its answer is about a
     // session the pilot has already ended, so it must not touch the map or the status.
     if (session !== _simSession) return;
+    // d.heading is already MAGNETIC -- schema.json computes it as
+    // (rpos_heading_true - variation) % 360, same convention a real backend uses too --
+    // but every geometric consumer of this hdg (the own-ship icon's rotation, and
+    // especially the heading-line predictor's lat/lng trigonometry, which is inherently
+    // TRUE-north-referenced) needs TRUE. Converting back here, once, at the point where
+    // the value's provenance is actually known, keeps simAircraft.hdg in the same TRUE
+    // convention gpsOwn.hdg already uses from a real GPS fix (coords.heading is true per
+    // the Geolocation API spec) -- reported live: "that line still uses true north, not
+    // magnetic" (the predictor line was drawn rotated off by the local variation).
+    // toMagnetic() at any DISPLAY site converts back for a pilot-facing number, same as
+    // every other heading readout in the app.
+    const hdgTrue = (Number.isFinite(d.heading) && Number.isFinite(d.variation))
+      ? (d.heading + d.variation + 360) % 360 : (d.heading || 0);
     window.simAircraft = {
       lat: d.latitude,
       lng: d.longitude,
       alt: d.altitude || 0,
-      hdg: d.heading || 0,
+      hdg: hdgTrue,
       ias: d.ias || 0,
     };
     // How much faster than real time the reporting aircraft's own clock is running (cvfr-

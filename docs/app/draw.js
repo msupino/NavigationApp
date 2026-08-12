@@ -160,13 +160,18 @@ function drawOwnShip(pos, hdg, gsKt) {
   octx.restore();
 }
 
-// Heading predictor for the own-ship (live GPS + simulator). A straight line
-// along the current track with cross-tick range marks at 2 / 5 / 10 NM so a
-// pilot can read distance-to-go ahead of the aircraft. Uses the same NM→geo
-// offset as notamCirclePoints and projects every point, so it stays correct
-// under map rotation. GPS course goes null at zero groundspeed, so the last
-// valid heading is remembered and reused (the line freezes rather than flicker).
+// Heading predictor for the own-ship (live GPS + simulator). A straight line along the
+// current track with TWO sets of cross-tick marks: fixed distance (2/5/10 NM, each
+// labelled with its own time-to-reach) and fixed time (2/5 minutes ahead, each labelled
+// with the distance it works out to at the current groundspeed) -- both, not either/or.
+// The NM marks draw regardless of speed (their position never depended on it); the
+// minute marks need a groundspeed to derive a distance from and are simply omitted
+// without one, same "omit rather than guess" rule the rest of this feature follows.
+// Uses the same NM→geo offset as notamCirclePoints and projects every point, so it
+// stays correct under map rotation. GPS course goes null at zero groundspeed, so the
+// last valid heading is remembered and reused (the line freezes rather than flicker).
 const HEADING_LINE_MARKS_NM = [2, 5, 10];
+const HEADING_LINE_MARKS_MIN = [2, 5];
 let lastOwnHeadingDeg = null;
 // Clear the frozen predictor heading when the own-ship SOURCE changes (live GPS
 // start, sim start). Without this, restarting live location while parked (GPS
@@ -179,14 +184,22 @@ function drawHeadingLine(pos, hdg, gsKt) {
   const h = Number.isFinite(hdg) ? hdg : lastOwnHeadingDeg;
   if (!Number.isFinite(h)) return;          // no heading yet — nothing to draw
   lastOwnHeadingDeg = h;
+  const haveSpeed = Number.isFinite(gsKt) && gsKt > 0;
   const hr = h * Math.PI / 180;
   const cosLat = Math.max(0.2, Math.cos(pos.lat * Math.PI / 180));
   const atNm = (nm) => proj({
     lat: pos.lat + (nm / 60) * Math.cos(hr),
     lng: pos.lng + (nm / 60) * Math.sin(hr) / cosLat,
   });
+  const nmAtMin = (min) => gsKt * (min / 60);   // distance covered in `min` minutes at gsKt
   const s = proj(pos);
-  const end = atNm(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1]);
+  // Line reaches whichever mark set extends further -- the 10 NM mark, or the 5-minute
+  // mark's own distance if that's farther out at the current speed (fast aircraft).
+  const farNm = haveSpeed
+    ? Math.max(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1],
+                nmAtMin(HEADING_LINE_MARKS_MIN[HEADING_LINE_MARKS_MIN.length - 1]))
+    : HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1];
+  const end = atNm(farNm);
   const dx = end.x - s.x, dy = end.y - s.y;
   const len = Math.hypot(dx, dy);
   if (len < 1) return;                       // degenerate (extreme zoom-out)
@@ -206,22 +219,14 @@ function drawHeadingLine(pos, hdg, gsKt) {
   octx.stroke();
   octx.setLineDash([]);   // solid ticks below
 
-  // cross-ticks + upright labels at each range mark
+  // cross-ticks + upright two-row labels at a given geographic distance -- shared by
+  // both the NM marks and the minute marks below, just with different label text.
   const tick = tune('liveHeadingTickPx'), gap = tune('liveHeadingLabelGapPx');
   const labelPx = tune('liveHeadingLabelPx');
   octx.font = 'bold ' + labelPx + 'px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
-  // Time-to-reach each mark at the current groundspeed, alongside the distance --
-  // "2 NM" alone doesn't say whether that's ten seconds or two minutes away, and a
-  // pilot glancing at the predictor line wants both without doing the division
-  // themselves. toHMS() gives M:SS (matches the leg-approach alert's own next-leg
-  // time format). Omitted, not guessed, when there is no reliable groundspeed yet
-  // (stationary/taxiing GPS, or a sim not reporting IAS) -- same "omit rather than
-  // guess" rule the watch alerts already follow.
-  const haveSpeed = Number.isFinite(gsKt) && gsKt > 0 && typeof toHMS === 'function';
-  const times = [];
-  for (const nm of HEADING_LINE_MARKS_NM) {
+  function drawMark(nm, primaryLabel, secondaryLabel) {
     const m = atNm(nm);
     octx.beginPath();
     octx.moveTo(m.x - px * tick, m.y - py * tick);
@@ -230,39 +235,53 @@ function drawHeadingLine(pos, hdg, gsKt) {
     octx.lineWidth = tune('liveHeadingLineWidthPx');
     octx.stroke();
     const lx = m.x + px * (tick + gap), ly = m.y + py * (tick + gap);
-    const label = String(nm);
     octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
     octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
-    octx.strokeText(label, lx, ly);
+    octx.strokeText(primaryLabel, lx, ly);
     octx.fillStyle = tune('liveHeadingTextColor');
-    octx.fillText(label, lx, ly);
-    if (haveSpeed) {
-      const timeLabel = toHMS(nm / gsKt);
-      times.push(timeLabel);
-      // Second row, straight below in screen space -- readable regardless of which
-      // way the line itself runs (px/py only offset the row to the line's side).
-      const ly2 = ly + labelPx + 2;
-      octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
-      octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
-      octx.strokeText(timeLabel, lx, ly2);
-      octx.fillStyle = tune('liveHeadingTextColor');
-      octx.fillText(timeLabel, lx, ly2);
-    } else {
-      times.push(null);
+    octx.fillText(primaryLabel, lx, ly);
+    if (secondaryLabel == null) return;
+    // Second row, straight below in screen space -- readable regardless of which
+    // way the line itself runs (px/py only offset the row to the line's side).
+    const ly2 = ly + labelPx + 2;
+    octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
+    octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
+    octx.strokeText(secondaryLabel, lx, ly2);
+    octx.fillStyle = tune('liveHeadingTextColor');
+    octx.fillText(secondaryLabel, lx, ly2);
+  }
+
+  // Fixed-distance marks: "2"/"5"/"10" (bare NM number), time-to-reach below when a
+  // groundspeed is available (toHMS -- M:SS, matches the leg-approach alert's own
+  // next-leg time format), omitted rather than guessed otherwise.
+  const times = [];
+  for (const nm of HEADING_LINE_MARKS_NM) {
+    const timeLabel = (haveSpeed && typeof toHMS === 'function') ? toHMS(nm / gsKt) : null;
+    times.push(timeLabel);
+    drawMark(nm, String(nm), timeLabel);
+  }
+  // Fixed-time marks: "N min", distance below (the derived value here, since the mark
+  // itself is defined by time). Needs a groundspeed to place at all.
+  const dists = [];
+  if (haveSpeed) {
+    for (const min of HEADING_LINE_MARKS_MIN) {
+      const nm = nmAtMin(min);
+      const distLabel = nm.toFixed(1) + ' nm';
+      dists.push(distLabel);
+      drawMark(nm, min + ' min', distLabel);
     }
   }
-  // Heading value at the far end of the line, past the last (10 NM) tick's own
-  // labels rather than stacked on top of them. Padded to 3 digits, same as every
-  // other heading this app displays (leg kite, next-leg watch alert, VOR radials).
-  //
-  // NOT reference-frame-corrected: `h` is TRUE for a real GPS fix (the Geolocation
-  // API's own spec) but already MAGNETIC for the simulator feed (cvfr-bridge's
-  // schema computes heading as rpos_heading_true - variation) -- this function has
-  // no way to tell which source it was called for, so the number is printed as-is.
-  // Right for live GPS, off by the local variation for a connected simulator.
+  // Heading value at the far end of the line, past the last tick's own labels
+  // rather than stacked on top of them. Magnetic + padded to 3 digits, same as
+  // every other heading this app displays (leg kite, next-leg watch alert, VOR
+  // radials) -- h itself is TRUE here (both gpsOwn.hdg from a real fix and
+  // simAircraft.hdg from the sim feed are converted to true at their own source
+  // now, see the comment where simAircraft.hdg is set in io.js), so this needs
+  // the same toMagnetic() conversion every other heading label already gets.
   const headEnd = { x: end.x + ux * (tick + gap), y: end.y + uy * (tick + gap) };
-  const headingLabel = (typeof pad3 === 'function' ? pad3(Math.round(((h % 360) + 360) % 360)) :
-    Math.round(h)) + '°';
+  const hMag = typeof toMagnetic === 'function' ? toMagnetic(h) : h;
+  const headingLabel = (typeof pad3 === 'function' ? pad3(Math.round(((hMag % 360) + 360) % 360)) :
+    Math.round(hMag)) + '°';
   octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
   octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
   octx.strokeText(headingLabel, headEnd.x, headEnd.y);
@@ -270,7 +289,8 @@ function drawHeadingLine(pos, hdg, gsKt) {
   octx.fillText(headingLabel, headEnd.x, headEnd.y);
   octx.restore();
   if (typeof window !== 'undefined')
-    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(), times, headingLabel };
+    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(), times,
+      minMarks: HEADING_LINE_MARKS_MIN.slice(), dists, headingLabel };
 }
 
 // TOC / TOD markers along the route (#672). A small dot + label at the point
