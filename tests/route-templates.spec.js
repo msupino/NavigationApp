@@ -175,9 +175,14 @@ test.describe('route templates', () => {
         'EIRON', 'ZMGID', 'AFULA', 'TAVOR', 'DESHE', 'AMNON', 'LLIB',
       ],
       alts: {},
+      // ZMGID's own hint (after:AFULA -> PLUTO_EAST) fires the frequency change here, not
+      // AFULA -- crossing AFULA afterward is still on the same PLUTO_EAST ZMGID already put
+      // in effect, so it's correctly suppressed (same-frequency, hinted). Matches the
+      // "Herzliya to Rosh Pina" template below, which flies the same ZMGID->AFULA leg and
+      // already expected ZMGID here. Confirmed against the real app.
       notes: [
         { cc: 'DAROM', freqName: 'PLUTO_WEST', freq: '118.40' },
-        { cc: 'AFULA', freqName: 'PLUTO_EAST', freq: '123.85' },
+        { cc: 'ZMGID', freqName: 'PLUTO_EAST', freq: '123.85' },
         { cc: 'DESHE', freqName: 'ROSH_PINA', freq: '118.45' },
       ],
     },

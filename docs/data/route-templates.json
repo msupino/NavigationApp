@@ -669,7 +669,7 @@
           "freqAuto": true
         },
         {
-          "cc": "AFULA",
+          "cc": "ZMGID",
           "freqName": "PLUTO_EAST",
           "freqAuto": true
         },
@@ -678,9 +678,6 @@
           "freqName": "ROSH_PINA",
           "freqAuto": true
         }
-      ],
-      "commChangeSuppressions": [
-        "ZMGID"
       ],
       "layer": "cvfr"
     }

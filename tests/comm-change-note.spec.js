@@ -457,12 +457,27 @@ test.describe('comm-change auto-note (#487)', () => {
     };
     await installCommChangeFixture(page, routeFixture);
     await boot(page);
-    const out = await page.evaluate(({ tyona, ntaim, nagid }) => {
+    // A made-up name AND a small coordinate nudge off NAGID's own, not NAGID's exact spot:
+    // NTAIM is a real graph node, and the fixture merge (see _layerData.js) leaves the REAL
+    // node's routeHints in place whenever the fixture's own NTAIM entry doesn't specify any
+    // -- the real graph now has an explicit after:NAGID hint (this session's data fix). A
+    // fake NAME alone isn't enough to dodge that any more: commRouteAfterNames now folds in
+    // the published corridor between drawn waypoints (this session's other fix, for a route
+    // that SKIPS a named stop entirely), and fplGraphPointAt resolves a waypoint to a graph
+    // node by close COORDINATES too, not just by name -- sitting exactly on NAGID's own
+    // coordinates resolved straight back to the real 'NAGID' node regardless of the fake
+    // name, defeating the isolation this test needs. Nudged just past
+    // fplGraphPointAt's own coordinate-fallback epsilon (SAME_REFERENCE_POINT_DEG*2,
+    // ~0.1 nm) -- small enough that the general SOLVER's own distance-based guess (the
+    // mechanism this test is actually about) still lands on PALMACHIM same as before, large
+    // enough that it no longer resolves to a real graph node at all.
+    const thirdPoint = { lat: NAGID.lat + 0.003, lng: NAGID.lng + 0.003, name: 'ZZZTESTPT' };
+    const out = await page.evaluate(({ tyona, ntaim, third }) => {
       state.waypoints = [tyona, ntaim];
       state.notes = [];
       syncLegs();
       seedCommChangeNotes();
-      const beforeNagid = state.notes
+      const beforeThird = state.notes
         .filter(n => n.cc)
         .map(n => ({
           cc: n.cc,
@@ -471,10 +486,10 @@ test.describe('comm-change auto-note (#487)', () => {
           freqAuto: n.freqAuto,
         }));
 
-      state.waypoints.push(nagid);
+      state.waypoints.push(third);
       syncLegs();
       seedCommChangeNotes();
-      const afterNagid = state.notes
+      const afterThird = state.notes
         .filter(n => n.cc)
         .map(n => ({
           cc: n.cc,
@@ -483,13 +498,13 @@ test.describe('comm-change auto-note (#487)', () => {
           lines: noteLines(n),
           freqAuto: n.freqAuto,
         }));
-      return { beforeNagid, afterNagid };
-    }, { tyona: TYONA, ntaim: NTAIM, nagid: NAGID });
-    expect(out.beforeNagid).toEqual([
+      return { beforeThird, afterThird };
+    }, { tyona: TYONA, ntaim: NTAIM, third: thirdPoint });
+    expect(out.beforeThird).toEqual([
       { cc: 'TYONA', freqName: 'PALMACHIM', freq: '135.55', freqAuto: true },
       { cc: 'NTAIM', freqName: 'BEN_GURION', freq: '118.30', freqAuto: true },
     ]);
-    expect(out.afterNagid).toEqual([
+    expect(out.afterThird).toEqual([
       { cc: 'TYONA', freqName: 'PALMACHIM', freq: '135.55', lines: ['PALMACHIM', '135.55'], freqAuto: true },
       { cc: 'NTAIM', freqName: 'PALMACHIM', freq: '135.55', lines: ['PALMACHIM', '135.55'], freqAuto: true },
     ]);
@@ -1967,9 +1982,12 @@ const ALPHA = { lat: 31.50, lng: 34.90, name: 'ALPHA' };
 const BETA = { lat: 31.51, lng: 34.90, name: 'BETA' };
 const GAMMA = { lat: 31.52, lng: 34.90, name: 'GAMMA' };
 const DELTA = { lat: 31.51, lng: 34.90, name: 'DELTA' };   // same slot as BETA, different case
-const ALPHA_CENTER = ALPHA;
 
-async function bootSuppression(page, lang = 'en') {
+// Generic boot for a STANDALONE fixture: installCommChangeFixture's stubGraph
+// concatenates onto whatever fixture came before it (no default is installed for these
+// tests), so the shared boot()'s hard-wait on TYONA would hang forever here -- wait on
+// whichever point NAME the fixture actually carries instead.
+async function bootFixture(page, waitName, center, lang = 'en') {
   await page.addInitScript(() => {
     try {
       if (localStorage.getItem('__test_comm_init_v1') !== '1') {
@@ -1989,18 +2007,18 @@ async function bootSuppression(page, lang = 'en') {
   await page.evaluate(() => loadAirfields());
   await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
   await page.evaluate(() => loadCommChange());
-  // Waits on ALPHA, not TYONA: SUPPRESSION_FIXTURE stands alone (installCommChangeFixture's
-  // stubGraph concatenates onto whatever fixture came before it, and no default fixture is
-  // installed for these tests), so the shared boot()'s TYONA wait would hang forever here.
-  await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.ALPHA);
+  await page.waitForFunction(n => window.commChangeMap && window.commChangeMap[n], waitName);
   await page.evaluate(() => { window.showCommChange = true; });
-  await page.evaluate(t => map.setView([t.lat, t.lng], 12), ALPHA_CENTER);
+  await page.evaluate(t => map.setView([t.lat, t.lng], 12), center);
   await page.evaluate(() => {
     state.waypoints = [];
     state.legs = [];
     state.notes = [];
     state.commChangeSuppressions = [];
   });
+}
+async function bootSuppression(page, lang = 'en') {
+  await bootFixture(page, 'ALPHA', ALPHA, lang);
 }
 
 test.describe('same-frequency suppression', () => {
@@ -2047,5 +2065,235 @@ test.describe('same-frequency suppression', () => {
       return state.notes.filter(n => n.cc).map(n => n.cc);
     }, { a: ALPHA, b: BETA });
     expect(out).toContain('BETA');
+  });
+
+  test('a note seeded BEFORE the route matches its hint is retroactively removed once it does', async ({ page }) => {
+    // The incremental-build case, as opposed to the all-at-once tests above: a route built
+    // one waypoint at a time (manually, not via auto-route) seeds BETA's note while GAMMA
+    // doesn't exist yet -- BETA's hint can't match (nothing to check `after` against), so
+    // it falls to the guessed/static default and gets its own note (matches "an UNHINTED
+    // point is never suppressed" above). ADDING GAMMA afterward makes BETA's hint fire for
+    // real -- now genuinely redundant with ALPHA's already-active X -- but the note from
+    // the first pass used to just sit there with an updated frequency, never actually
+    // removed. Reported live: "when i set manually, it starts NTAIM with TEL_NOF, after
+    // adding BOVED or NAGID, it changes, but doesn't suppress".
+    await installCommChangeFixture(page, SUPPRESSION_FIXTURE);
+    await bootSuppression(page);
+    const out = await page.evaluate(({ a, b, c }) => {
+      state.waypoints = [a, b];
+      syncLegs();
+      seedCommChangeNotes();
+      const beforeGamma = state.notes.filter(n => n.cc).map(n => n.cc);
+      state.waypoints = [a, b, c];
+      syncLegs();
+      seedCommChangeNotes();
+      const afterGamma = state.notes.filter(n => n.cc).map(n => n.cc);
+      return { beforeGamma, afterGamma };
+    }, { a: ALPHA, b: BETA, c: GAMMA });
+    expect(out.beforeGamma).toEqual(['ALPHA', 'BETA']);   // BETA unhinted yet -- not suppressed
+    expect(out.afterGamma).toEqual(['ALPHA']);             // BETA's now-hinted note is gone
+  });
+
+  test('a note the pilot hand-edited is never retroactively removed, even if it becomes redundant', async ({ page }) => {
+    await installCommChangeFixture(page, SUPPRESSION_FIXTURE);
+    await bootSuppression(page);
+    const out = await page.evaluate(({ a, b, c }) => {
+      state.waypoints = [a, b];
+      syncLegs();
+      seedCommChangeNotes();
+      const note = state.notes.find(n => n.cc === 'BETA');
+      note.freqAuto = false;   // the pilot touched this note
+      state.waypoints = [a, b, c];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => n.cc);
+    }, { a: ALPHA, b: BETA, c: GAMMA });
+    expect(out).toEqual(['ALPHA', 'BETA']);   // still there -- hand-edited notes are never removed
+  });
+});
+
+// A hint's `after` sometimes misses the immediate next drawn waypoint because an extra
+// point got spliced in right after the comm-change point -- auto-route inserting a real
+// corridor stop the hint was never written to expect. The tolerance isn't a fixed hop
+// count: the hint's target can be any waypoint up to the NEXT comm-change point, however
+// many stops away that is -- past that boundary the frequency has already changed again.
+const LOOKAHEAD_FIXTURE = {
+  version: 1,
+  source: 'test fixture',
+  callSigns: { X: { label: 'Xray', he: 'איקס', primary: '121.10' },
+    Y: { label: 'Yankee', he: 'וואי', primary: '128.20' },
+    Z: { label: 'Zulu', he: 'זד', primary: '119.90' } },
+  points: [
+    // ECHO's hint says "after: GOLF" -- written assuming GOLF is the immediate next point.
+    // Y listed FIRST so the no-hint-match fallback (array-order tie-break, same mechanism
+    // documented earlier this session) defaults to Y -- distinguishing "the hint fired and
+    // gave X" from "the hint did not fire and the fallback happened to also say X".
+    { name: 'ECHO', commChange: true, callSigns: ['Y', 'X'],
+      routeHints: [{ after: 'GOLF', callSign: 'X' }] },
+    // A second comm-change point: once the route passes HOTEL, ECHO's frequency is no
+    // longer in force, so ECHO's hint must not reach past it.
+    { name: 'HOTEL', commChange: true, callSigns: ['Z'] },
+  ],
+};
+const ECHO = { lat: 31.60, lng: 34.90, name: 'ECHO' };
+const FOXTROT = { lat: 31.61, lng: 34.90, name: 'FOXTROT' };   // an inserted point -- not comm-change
+const GOLF = { lat: 31.62, lng: 34.90, name: 'GOLF' };
+const HOTEL = { lat: 31.63, lng: 34.90, name: 'HOTEL' };
+
+test.describe('a hint\'s after-target reached across the whole corridor to the next comm-change point', () => {
+  test('still matches when an extra point is spliced in right after the comm-change point', async ({ page }) => {
+    await installCommChangeFixture(page, LOOKAHEAD_FIXTURE);
+    await bootFixture(page, 'ECHO', ECHO);
+    const out = await page.evaluate(({ e, f, g }) => {
+      // ECHO -> FOXTROT -> GOLF: FOXTROT sits where the hint expected GOLF directly.
+      state.waypoints = [e, f, g];
+      syncLegs();
+      seedCommChangeNotes();
+      const note = state.notes.find(n => n.cc === 'ECHO');
+      return note ? { freqName: note.freqName, freq: note.freq } : null;
+    }, { e: ECHO, f: FOXTROT, g: GOLF });
+    expect(out).toEqual({ freqName: 'X', freq: '121.10' });
+  });
+
+  test('still matches many hops out, as long as no comm-change point comes first', async ({ page }) => {
+    await installCommChangeFixture(page, LOOKAHEAD_FIXTURE);
+    await bootFixture(page, 'ECHO', ECHO);
+    const out = await page.evaluate(({ e, g }) => {
+      // ECHO -> 4 plain waypoints -> GOLF: no fixed hop count, so this still fires.
+      const filler = [1, 2, 3, 4].map(n => ({ lat: 31.60 + n * 0.001, lng: 34.90, name: 'FILL' + n }));
+      state.waypoints = [e, ...filler, g];
+      syncLegs();
+      seedCommChangeNotes();
+      const note = state.notes.find(n => n.cc === 'ECHO');
+      return note ? { freqName: note.freqName, freq: note.freq } : null;
+    }, { e: ECHO, g: GOLF });
+    expect(out).toEqual({ freqName: 'X', freq: '121.10' });
+  });
+
+  test('does not reach past an intervening comm-change point -- that ends the corridor', async ({ page }) => {
+    await installCommChangeFixture(page, LOOKAHEAD_FIXTURE);
+    await bootFixture(page, 'ECHO', ECHO);
+    const out = await page.evaluate(({ e, h, g }) => {
+      // ECHO -> HOTEL -> GOLF: HOTEL is itself a comm-change point, so ECHO's frequency
+      // is no longer in force by the time GOLF shows up -- the hint must not fire.
+      state.waypoints = [e, h, g];
+      syncLegs();
+      seedCommChangeNotes();
+      const note = state.notes.find(n => n.cc === 'ECHO');
+      return note ? note.freqName : null;
+    }, { e: ECHO, h: HOTEL, g: GOLF });
+    expect(out).not.toBe('X');
+  });
+});
+
+// A comm-change point can carry several routeHints, each written for a DIFFERENT possible
+// next leg -- and the lookahead corridor above (commRouteAfterNames) can put more than one
+// of their targets in range at once, if none of the intervening waypoints are themselves a
+// comm-change point. Only the NEARER target is the leg actually being flown right now.
+const RANKING_FIXTURE = {
+  version: 1,
+  source: 'test fixture',
+  callSigns: {
+    X: { label: 'Xray', he: 'איקס', primary: '121.10' },
+    Y: { label: 'Yankee', he: 'וואי', primary: '128.20' },
+    Z: { label: 'Zulu', he: 'זד', primary: '119.90' },
+  },
+  points: [
+    { name: 'INDIA', commChange: true, callSigns: ['X'] },
+    // KILO is reachable BEFORE LIMA on a route that visits both -- "after: KILO" must win
+    // over "after: LIMA" whenever both are technically within lookahead range, not just
+    // whichever happens to be listed first or produce a set with one element.
+    { name: 'JULIET', commChange: true, callSigns: ['X', 'Y'],
+      routeHints: [{ after: 'KILO', callSign: 'X' }, { after: 'LIMA', callSign: 'Y' }] },
+    { name: 'LIMA', commChange: true, callSigns: ['Z'] },
+  ],
+};
+const INDIA = { lat: 31.70, lng: 34.90, name: 'INDIA' };
+const JULIET = { lat: 31.71, lng: 34.90, name: 'JULIET' };
+const KILO = { lat: 31.72, lng: 34.90, name: 'KILO' };     // not itself comm-change
+const LIMA = { lat: 31.73, lng: 34.90, name: 'LIMA' };
+
+test.describe('a comm-change point with several routeHints picks the NEARER after-target', () => {
+  test('JULIET -> KILO -> LIMA: KILO (closer) wins over LIMA, even though LIMA also matches', async ({ page }) => {
+    await installCommChangeFixture(page, RANKING_FIXTURE);
+    await bootFixture(page, 'INDIA', INDIA);
+    const out = await page.evaluate(({ i, j, k, l }) => {
+      state.waypoints = [i, j, k, l];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => ({ cc: n.cc, freqName: n.freqName }));
+    }, { i: INDIA, j: JULIET, k: KILO, l: LIMA });
+    // INDIA (X) -- JULIET matches KILO (nearer, X) not LIMA (farther, Y): same X already in
+    // effect, hinted, so JULIET is suppressed entirely. LIMA is a genuine change (Z), kept.
+    expect(out).toEqual([{ cc: 'INDIA', freqName: 'X' }, { cc: 'LIMA', freqName: 'Z' }]);
+  });
+
+  test('regression: adding LIMA to an already-suppressed JULIET must not un-suppress it', async ({ page }) => {
+    // The exact incremental sequence reported live: JULIET's note correctly suppresses once
+    // KILO is added (matches INDIA's X), but adding LIMA afterward -- a real comm-change
+    // point further down the corridor, with ITS OWN unrelated routeHint on JULIET -- used to
+    // put both KILO and LIMA in range simultaneously, make the two hints disagree (X vs Y),
+    // give up (ambiguous -> null), and fall through to an unrelated solver guess instead of
+    // staying suppressed.
+    await installCommChangeFixture(page, RANKING_FIXTURE);
+    await bootFixture(page, 'INDIA', INDIA);
+    const out = await page.evaluate(({ i, j, k, l }) => {
+      const steps = [];
+      state.waypoints = [i]; state.notes = []; syncLegs(); seedCommChangeNotes();
+      steps.push(state.notes.filter(n => n.cc).map(n => n.cc));
+      state.waypoints = [i, j]; syncLegs(); seedCommChangeNotes();
+      steps.push(state.notes.filter(n => n.cc).map(n => n.cc));
+      state.waypoints = [i, j, k]; syncLegs(); seedCommChangeNotes();
+      steps.push(state.notes.filter(n => n.cc).map(n => n.cc));
+      state.waypoints = [i, j, k, l]; syncLegs(); seedCommChangeNotes();
+      steps.push(state.notes.filter(n => n.cc).map(n => n.cc));
+      return steps;
+    }, { i: INDIA, j: JULIET, k: KILO, l: LIMA });
+    expect(out[2]).toEqual(['INDIA']);                // JULIET suppressed once KILO is added
+    expect(out[3]).toEqual(['INDIA', 'LIMA']);         // still suppressed after LIMA joins too
+  });
+});
+
+// A pilot's drawn route can SKIP a published corridor stop entirely, not just have an extra
+// one spliced in -- NTAIM's own "after: BOVED" hint never matched a route drawn straight
+// NTAIM -> YAVNE, even though the real published corridor between them passes through BOVED
+// (same as fplExpandRoute already fills in for the filed ICAO plan). Uses the REAL shipped
+// route graph (routeGraphDataSync), not a synthetic fixture -- the whole point is the real
+// published corridor, which no fixture can stand in for.
+test.describe('commRouteAfterNames folds in the published corridor, not just drawn waypoints', () => {
+  test('CLORE -> TYONA -> NTAIM -> YAVNE -> ZASHD: NTAIM suppresses via BOVED on the real corridor', async ({ page }) => {
+    await page.addInitScript(() => {
+      try { for (const k of Object.keys(localStorage)) localStorage.removeItem(k); } catch (e) {}
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof seedCommChangeNotes === 'function' &&
+      typeof routeGraphData === 'function');
+    await page.evaluate(() => loadCommChange());
+    await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.NTAIM);
+    await page.evaluate(async () => {
+      window.showCommChange = true;
+      await routeGraphData('cvfr');   // resolved before seeding -- routeGraphDataSync needs it cached
+    });
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.05306, lng: 34.73583, name: 'CLORE' },
+        { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+        { lat: 31.94361, lng: 34.78083, name: 'NTAIM' },
+        { lat: 31.87194, lng: 34.75694, name: 'YAVNE' },
+        { lat: 31.82611, lng: 34.70833, name: 'ZASHD' },
+      ];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => ({ cc: n.cc, freqName: n.freqName }));
+    });
+    // NTAIM's PALMACHIM (via BOVED) matches TYONA's already-active PALMACHIM -- suppressed.
+    // ZASHD keeps its own note: single-option static default, never a verified hint, so
+    // never suppressed even though it also happens to be PALMACHIM (same policy as the
+    // "an UNHINTED point is never suppressed" rule above).
+    expect(out).toEqual([
+      { cc: 'TYONA', freqName: 'PALMACHIM' },
+      { cc: 'ZASHD', freqName: 'PALMACHIM' },
+    ]);
   });
 });
