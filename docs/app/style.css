@@ -5309,6 +5309,11 @@ html[dir="rtl"] .fpl-subfields {
   align-items: center;
   gap: 6px;
 }
+/* A letters row is two lines (label, then the box): centring the ↻ over the pair left it
+   floating between them, level with neither. Pin it to the top, so it sits with the label
+   that names it. Not `end`: these rows are <details>, and once one is expanded the bottom
+   is the far edge of an open checkbox list -- the ↻ would slide down the screen with it. */
+.fpl-adv-row-tall { align-items: start; }
 /* The ↻ takes its width out of the row, and .fpl-row's control track would keep its full
    190px and starve the label instead -- "Turbulence category" ran 4px past its box at
    375px. Give the control track back roughly what the button costs, so the label column

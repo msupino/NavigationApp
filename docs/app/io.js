@@ -9053,6 +9053,11 @@ function showFplDialog() {
     const withReset = (rowEl, id, restore) => {
       const wrap = document.createElement('div');
       wrap.className = 'fpl-adv-row';
+      // A letters row puts its label on one line and the box on the next, so centring the
+      // ↻ over the pair left it floating between the two, level with neither. Marked here
+      // so it can align to the label line instead -- the ↻ then sits level with its own
+      // label on every row, wide or narrow.
+      if (rowEl.classList.contains('fpl-row-letters')) wrap.classList.add('fpl-adv-row-tall');
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'fpl-adv-reset';
