@@ -2401,56 +2401,77 @@ test('the mail subject carries the departure time', async ({ page }) => {
   expect(s2).toMatch(/^FPL 4XHLH LLHZ-\S+ \d{6}$/);
 });
 
-// The Advanced section is ICAO letter codes with no obvious "normal" value: a pilot who
+
+// The Advanced fields are ICAO letter codes with no obvious "normal" value: a pilot who
 // experiments with them, or inherits a stale profile, needs a way back that does not
-// depend on remembering L/S/C by heart.
-test('Advanced: restore defaults puts all four fields back', async ({ page }) => {
-  await boot(page);
-  await route(page);
-  await page.evaluate(() => {
-    // A profile that differs from the defaults in every one of the four fields.
-    localStorage.setItem('navaid.fpl.wake', 'M');
-    localStorage.setItem('navaid.fpl.equip', 'SGD');
-    localStorage.setItem('navaid.fpl.surv', 'SE');
+// depend on remembering L/S/C by heart. Per field, like the waypoint inspector's ↻.
+async function openAdvanced(page, profile) {
+  await page.evaluate((p) => {
+    for (const [k, v] of Object.entries(p)) localStorage.setItem('navaid.fpl.' + k, v);
     showFlightPlan();
     document.getElementById('fpl-open').click();
-  });
+  }, profile);
   await page.click('.fpl-advanced summary');
-  // The stale profile is what the dialog opens with...
-  await expect(page.locator('#fpl-wake')).toHaveValue('M');
-  expect(await page.evaluate(() => document.getElementById('fpl-equip').__value())).toBe('DGS');
-  expect(await page.evaluate(() => document.getElementById('fpl-surv').__value())).toBe('ES');
+}
+const advValues = page => page.evaluate(() => ({
+  wake: document.getElementById('fpl-wake').value,
+  equip: document.getElementById('fpl-equip').__value(),
+  surv: document.getElementById('fpl-surv').__value(),
+  ais: document.getElementById('fpl-ais-email').value,
+}));
+
+test('Advanced: each field restores its own default, and only its own', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  // A profile that differs from the defaults in every one of the four fields.
+  await openAdvanced(page, { wake: 'M', equip: 'SGD', surv: 'SE' });
   await page.fill('#fpl-ais-email', 'ops@example.com');
+  expect(await advValues(page)).toEqual({ wake: 'M', equip: 'DGS', surv: 'ES', ais: 'ops@example.com' });
 
-  await page.locator('#fpl-adv-reset').click();
+  // Each ↻ restores its own field and leaves the other three exactly as they were --
+  // one button for the whole section would throw away a deliberate equipment set.
+  await page.locator('#fpl-wake-reset').click();
+  expect(await advValues(page)).toEqual({ wake: 'L', equip: 'DGS', surv: 'ES', ais: 'ops@example.com' });
 
-  // ...and all four are back to the standard light-aeroplane set. The filing address
-  // returns to the PUBLISHED address for the flight type, not a hard-coded constant.
-  await expect(page.locator('#fpl-wake')).toHaveValue('L');
-  expect(await page.evaluate(() => document.getElementById('fpl-equip').__value())).toBe('S');
-  expect(await page.evaluate(() => document.getElementById('fpl-surv').__value())).toBe('C');
-  await expect(page.locator('#fpl-ais-email')).toHaveValue('ais@iaa.gov.il');
+  await page.locator('#fpl-surv-reset').click();
+  expect(await advValues(page)).toEqual({ wake: 'L', equip: 'DGS', surv: 'C', ais: 'ops@example.com' });
 
-  // The reset follows the flight type rather than pinning one address.
+  await page.locator('#fpl-equip-reset').click();
+  expect(await advValues(page)).toEqual({ wake: 'L', equip: 'S', surv: 'C', ais: 'ops@example.com' });
+
+  // The address default is the PUBLISHED address for the flight type, not a constant.
+  await page.locator('#fpl-ais-email-reset').click();
+  expect(await advValues(page)).toEqual({ wake: 'L', equip: 'S', surv: 'C', ais: 'ais@iaa.gov.il' });
+});
+
+test('Advanced: the filing-address restore follows the flight type', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await openAdvanced(page, {});
   await page.selectOption('#fpl-kind', 'crosscountry');
   await page.fill('#fpl-ais-email', 'ops@example.com');
-  await page.locator('#fpl-adv-reset').click();
+  await page.locator('#fpl-ais-email-reset').click();
   await expect(page.locator('#fpl-ais-email')).toHaveValue('fpl@iaa.gov.il');
 });
 
 // An equipment string is the pilot's own declaration: letters this control does not
 // offer are carried through every other path, so the reset must not silently drop them.
-test('Advanced: restore defaults keeps letters the control does not list', async ({ page }) => {
+test('Advanced: restoring equipment keeps letters the control does not list', async ({ page }) => {
   await boot(page);
   await route(page);
-  await page.evaluate(() => {
-    // Z is a real field-10 letter with no checkbox here.
-    localStorage.setItem('navaid.fpl.equip', 'SGZ');
-    showFlightPlan();
-    document.getElementById('fpl-open').click();
-  });
-  await page.click('.fpl-advanced summary');
-  await page.locator('#fpl-adv-reset').click();
-  // G (offered, unchecked by the reset) is gone; Z (not offered) survives.
+  // Z is a real field-10 letter with no checkbox here.
+  await openAdvanced(page, { equip: 'SGZ' });
+  await page.locator('#fpl-equip-reset').click();
+  // G (offered, unchecked by the restore) is gone; Z (not offered) survives.
   expect(await page.evaluate(() => document.getElementById('fpl-equip').__value())).toBe('SZ');
+});
+
+// The ↻ must not be inside the row's <label>, or the label forwards the click to its
+// own control -- restoring the wake category would also open the select.
+test('Advanced: the restore button does not activate the field beside it', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await openAdvanced(page, {});
+  expect(await page.evaluate(() =>
+    !!document.getElementById('fpl-wake-reset').closest('label'))).toBe(false);
 });

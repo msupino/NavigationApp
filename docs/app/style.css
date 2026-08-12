@@ -5300,22 +5300,47 @@ html[dir="rtl"] .fpl-subfields {
 }
 .fpl-advanced .fpl-row { margin-top: 3px; }
 .fpl-advanced { margin-top: 2px; }
-/* A quiet, secondary action -- it restores this section, so it must not read like the
-   dialog's own Send/Cancel buttons. Sits at the end of the disclosure, aligned to the
-   text edge in both directions (margin-inline-start, not margin-left). */
+/* Per-field restore: the row keeps its own grid, the ↻ sits beside it. `1fr auto` rather
+   than a fixed width so the row itself still gives way first on a narrow screen -- the
+   same reason .fpl-row's own control column is a minmax. */
+.fpl-adv-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+/* The ↻ takes its width out of the row, and .fpl-row's control track would keep its full
+   190px and starve the label instead -- "Turbulence category" ran 4px past its box at
+   375px. Give the control track back roughly what the button costs, so the label column
+   is the one that stays whole. Labels do not clip; a select can shrink. */
+.fpl-adv-row > .fpl-row {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 156px);
+}
+/* Same breakpoint .fpl-row itself stacks at: below this the ↻'s own column starved the
+   label track, and labels do not clip -- "Turbulence category" ran 4px past its box at
+   280px. Give the row the full width back and drop the ↻ onto its own line. */
+@media (max-width: 359px) {
+  .fpl-adv-row { grid-template-columns: 1fr; gap: 2px; }
+  .fpl-adv-reset { justify-self: end; }
+  /* The two-column rule above is more specific than .fpl-row's own stacking rule at this
+     breakpoint, so it has to stack here explicitly or the label keeps a starved track. */
+  .fpl-adv-row > .fpl-row { grid-template-columns: 1fr; }
+}
+/* A quiet affordance, not a dialog action: it must not read like Send/Cancel. Sized to
+   stay tappable on a phone while the glyph itself stays small. */
 .fpl-adv-reset {
-  display: block;
-  margin: 8px 0 2px;
-  margin-inline-start: auto;
-  padding: 4px 10px;
-  font-size: 12px;
-  line-height: 1.6;
+  flex: 0 0 auto;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 2px 6px;
+  font-size: 13px;
+  line-height: 1;
   color: #b9b3b3;
   background: transparent;
   border: 1px solid #443f3f;
   border-radius: 4px;
   cursor: pointer;
-  white-space: nowrap;
 }
 .fpl-adv-reset:hover { color: #e8e8e8; border-color: #6b6565; }
 body.theme-light .fpl-adv-reset { color: #55504f; border-color: #d8d4d4; }

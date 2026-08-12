@@ -9042,43 +9042,52 @@ function showFplDialog() {
         aisEmail.value = fplFileTo(kind.value);
       }
     };
+    // Each of these has a default with no obvious "normal" value to type back from memory,
+    // so each gets its own restore -- the same per-field ↻ the waypoint inspector uses. One
+    // button for the whole section would be less capable, not simpler: resetting a
+    // transponder letter would also throw away a deliberate equipment set like SG.
+    //
+    // The ↻ goes OUTSIDE the row: `row()` builds a <label>, and a button inside a label
+    // gets the label's forwarded activation -- clicking ↻ would also open the select it
+    // sits next to.
+    const withReset = (rowEl, id, restore) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'fpl-adv-row';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fpl-adv-reset';
+      btn.id = id;
+      btn.textContent = '↻';
+      const tip = fplIsolate(S.fplAdvResetTip || 'Restore the default');
+      btn.title = tip;
+      btn.setAttribute('aria-label', tip);
+      btn.onclick = restore;
+      wrap.append(rowEl, btn);
+      return wrap;
+    };
     // These are single letters from an ICAO table; without a tooltip they mean nothing
     // to anyone who has not filed a plan by hand before.
     const advRows = [
-      [row(S.fplWake || 'Wake category', wake), S.fplWakeTip],
-      [rowWide(S.fplEquip || 'Equipment', equip), S.fplEquipTip],
-      [rowWide(S.fplSurv || 'Transponder', surv), S.fplSurvTip],
-      [row(S.fplAisEmail || 'File to', aisEmail), S.fplAisEmailTip],
+      [row(S.fplWake || 'Wake category', wake), S.fplWakeTip,
+        'fpl-wake-reset', () => { wake.value = FPL_ADV_DEFAULTS.wake; }],
+      [rowWide(S.fplEquip || 'Equipment', equip), S.fplEquipTip,
+        'fpl-equip-reset', () => equip.__reset(FPL_ADV_DEFAULTS.equip)],
+      [rowWide(S.fplSurv || 'Transponder', surv), S.fplSurvTip,
+        'fpl-surv-reset', () => surv.__reset(FPL_ADV_DEFAULTS.surv)],
+      // Not a constant: the published address depends on the flight type chosen above,
+      // so this restores whatever that type publishes rather than a fixed string.
+      [row(S.fplAisEmail || 'File to', aisEmail), S.fplAisEmailTip,
+        'fpl-ais-email-reset', () => { aisEmail.value = fplFileTo(kind.value); }],
     ];
-    for (const [rowEl, tip] of advRows) {
+    for (const [rowEl, tip, resetId, restore] of advRows) {
       if (tip) {
         // title attributes cannot carry markup, so the isolation goes in as Unicode.
         rowEl.title = fplIsolate(tip);
         const field = rowEl.querySelector('input, select');
         if (field) field.title = fplIsolate(tip);
       }
-      adv.appendChild(rowEl);
+      adv.appendChild(withReset(rowEl, resetId, restore));
     }
-    // These are ICAO letter codes with no obvious "normal" value -- a pilot who
-    // experiments with them (or inherits a stale profile) has no way back to the
-    // standard light-aeroplane set short of remembering L/S/C by heart. Restores only
-    // this section; the identity fields above it are the pilot's own and are untouched.
-    const advReset = document.createElement('button');
-    advReset.type = 'button';
-    advReset.className = 'fpl-adv-reset';
-    advReset.id = 'fpl-adv-reset';
-    advReset.textContent = S.fplAdvReset || '↻ Restore defaults';
-    advReset.title = fplIsolate(S.fplAdvResetTip ||
-      'Put the wake category, equipment and transponder letters back to the standard ' +
-      'light-aeroplane set, and file to the published address for this flight type.');
-    advReset.onclick = () => {
-      wake.value = FPL_ADV_DEFAULTS.wake;
-      equip.__reset(FPL_ADV_DEFAULTS.equip);
-      surv.__reset(FPL_ADV_DEFAULTS.surv);
-      // Not a constant: the published address depends on the flight type chosen above.
-      aisEmail.value = fplFileTo(kind.value);
-    };
-    adv.appendChild(advReset);
     body.appendChild(adv);
 
     const fieldEls = { aisEmail, reg, type, wake, equip, surv, pic, license, cell, endurance,
