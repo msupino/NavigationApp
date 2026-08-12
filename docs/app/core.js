@@ -1146,6 +1146,7 @@ window.S = Object.assign({
   fplEquipTip: 'Radio and navigation equipment. S = standard (VHF, VOR, ILS). Append letters for extras, e.g. SG adds GNSS.',
   fplSurvTip: 'Surveillance equipment. C = transponder Mode A and C, S = Mode S, N = none.',
   fplAisEmailTip: 'The published filing address for the flight type above (AIP א\'-11 §3.ב). Change it only if AIS told you to.',
+  fplAdvResetTip: 'Restore the default for this field',
   fplDate: 'Date of flight',
   fplTime: 'Departure (local)',
   fplEndurance: 'Fuel endurance',
