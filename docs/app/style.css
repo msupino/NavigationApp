@@ -1627,6 +1627,13 @@ body.theme-light #aircraft-custom input {
      just as compact for an ident and only grows when the placeholder is what's shown. */
   width: auto;
   min-width: 58px;
+  /* An explicit min-width overrides the flex item's default min-content protection,
+     so the flex-shrink:1 default was letting `.vor-radial-controls` squeeze this box
+     down toward 58px when the row got tight -- even while showing the much-wider
+     placeholder text. The box shrank but the text didn't reflow, so it visually
+     clipped on the right (LTR-forced inside the RTL row). Never shrink below the
+     selected option's own rendered width. */
+  flex-shrink: 0;
 }
 .row .val.vor-radial-val {
   min-width: 92px;
