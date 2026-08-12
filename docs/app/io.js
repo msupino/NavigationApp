@@ -8300,6 +8300,14 @@ let fplXcOpen = false;
 // dialog asked for the pilot's own address, and an early build let that same address be
 // typed into the filing address -- which then silently outranked the published one.
 const FPL_DEAD_FIELDS = ['pilotEmail', 'ias'];
+// The ICAO letters a plan falls back to when the pilot has never set them: a light
+// aeroplane with standard radio/nav and a Mode A+C transponder. Shared by the profile
+// reader and the dialog's "restore defaults" action so the two cannot drift apart --
+// a reset that put back a different letter than a fresh profile starts with would file
+// a different aircraft than the pilot expects. `aisEmail` is deliberately absent: its
+// default is the PUBLISHED address for the chosen flight type (fplFileTo), not a
+// constant, and it is never persisted (see fplProfileWrite).
+const FPL_ADV_DEFAULTS = { wake: 'L', equip: 'S', surv: 'C' };
 function fplProfileRead() {
   const p = {};
   for (const f of FPL_PROFILE_FIELDS) {
@@ -8321,9 +8329,9 @@ function fplProfileRead() {
     }
   } catch (e) { /* storage unavailable */ }
   if (!p.kind) p.kind = 'routes';
-  if (!p.wake) p.wake = 'L';
-  if (!p.equip) p.equip = 'S';
-  if (!p.surv) p.surv = 'C';
+  if (!p.wake) p.wake = FPL_ADV_DEFAULTS.wake;
+  if (!p.equip) p.equip = FPL_ADV_DEFAULTS.equip;
+  if (!p.surv) p.surv = FPL_ADV_DEFAULTS.surv;
   return p;
 }
 function fplProfileWrite(p) {
@@ -8977,6 +8985,15 @@ function showFplDialog() {
         sum.textContent = v ? (v + (names.length ? '  \u2014 ' + names.join(', ') : ''))
                             : (S.fplLettersNone || 'nothing selected');
       };
+      // Restoring a default is a change to what THIS control offers, so it only touches
+      // the boxes. `extra` (letters the pilot carries that this control does not list)
+      // is deliberately untouched -- it is kept by __value on every other path too, and
+      // silently dropping it here would file a different aircraft.
+      wrap.__reset = (letters) => {
+        const want = new Set(String(letters || '').toUpperCase());
+        for (const b of boxes) b.checked = want.has(b.value);
+        refresh();
+      };
       refresh();
       if (extra.length) {
         const note = document.createElement('div');
@@ -9042,6 +9059,26 @@ function showFplDialog() {
       }
       adv.appendChild(rowEl);
     }
+    // These are ICAO letter codes with no obvious "normal" value -- a pilot who
+    // experiments with them (or inherits a stale profile) has no way back to the
+    // standard light-aeroplane set short of remembering L/S/C by heart. Restores only
+    // this section; the identity fields above it are the pilot's own and are untouched.
+    const advReset = document.createElement('button');
+    advReset.type = 'button';
+    advReset.className = 'fpl-adv-reset';
+    advReset.id = 'fpl-adv-reset';
+    advReset.textContent = S.fplAdvReset || '↻ Restore defaults';
+    advReset.title = fplIsolate(S.fplAdvResetTip ||
+      'Put the wake category, equipment and transponder letters back to the standard ' +
+      'light-aeroplane set, and file to the published address for this flight type.');
+    advReset.onclick = () => {
+      wake.value = FPL_ADV_DEFAULTS.wake;
+      equip.__reset(FPL_ADV_DEFAULTS.equip);
+      surv.__reset(FPL_ADV_DEFAULTS.surv);
+      // Not a constant: the published address depends on the flight type chosen above.
+      aisEmail.value = fplFileTo(kind.value);
+    };
+    adv.appendChild(advReset);
     body.appendChild(adv);
 
     const fieldEls = { aisEmail, reg, type, wake, equip, surv, pic, license, cell, endurance,

@@ -2400,3 +2400,57 @@ test('the mail subject carries the departure time', async ({ page }) => {
   const s2 = decodeURIComponent(plain.match(/subject=([^&]+)/)[1]);
   expect(s2).toMatch(/^FPL 4XHLH LLHZ-\S+ \d{6}$/);
 });
+
+// The Advanced section is ICAO letter codes with no obvious "normal" value: a pilot who
+// experiments with them, or inherits a stale profile, needs a way back that does not
+// depend on remembering L/S/C by heart.
+test('Advanced: restore defaults puts all four fields back', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    // A profile that differs from the defaults in every one of the four fields.
+    localStorage.setItem('navaid.fpl.wake', 'M');
+    localStorage.setItem('navaid.fpl.equip', 'SGD');
+    localStorage.setItem('navaid.fpl.surv', 'SE');
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  await page.click('.fpl-advanced summary');
+  // The stale profile is what the dialog opens with...
+  await expect(page.locator('#fpl-wake')).toHaveValue('M');
+  expect(await page.evaluate(() => document.getElementById('fpl-equip').__value())).toBe('DGS');
+  expect(await page.evaluate(() => document.getElementById('fpl-surv').__value())).toBe('ES');
+  await page.fill('#fpl-ais-email', 'ops@example.com');
+
+  await page.locator('#fpl-adv-reset').click();
+
+  // ...and all four are back to the standard light-aeroplane set. The filing address
+  // returns to the PUBLISHED address for the flight type, not a hard-coded constant.
+  await expect(page.locator('#fpl-wake')).toHaveValue('L');
+  expect(await page.evaluate(() => document.getElementById('fpl-equip').__value())).toBe('S');
+  expect(await page.evaluate(() => document.getElementById('fpl-surv').__value())).toBe('C');
+  await expect(page.locator('#fpl-ais-email')).toHaveValue('ais@iaa.gov.il');
+
+  // The reset follows the flight type rather than pinning one address.
+  await page.selectOption('#fpl-kind', 'crosscountry');
+  await page.fill('#fpl-ais-email', 'ops@example.com');
+  await page.locator('#fpl-adv-reset').click();
+  await expect(page.locator('#fpl-ais-email')).toHaveValue('fpl@iaa.gov.il');
+});
+
+// An equipment string is the pilot's own declaration: letters this control does not
+// offer are carried through every other path, so the reset must not silently drop them.
+test('Advanced: restore defaults keeps letters the control does not list', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    // Z is a real field-10 letter with no checkbox here.
+    localStorage.setItem('navaid.fpl.equip', 'SGZ');
+    showFlightPlan();
+    document.getElementById('fpl-open').click();
+  });
+  await page.click('.fpl-advanced summary');
+  await page.locator('#fpl-adv-reset').click();
+  // G (offered, unchecked by the reset) is gone; Z (not offered) survives.
+  expect(await page.evaluate(() => document.getElementById('fpl-equip').__value())).toBe('SZ');
+});

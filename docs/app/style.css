@@ -5300,6 +5300,26 @@ html[dir="rtl"] .fpl-subfields {
 }
 .fpl-advanced .fpl-row { margin-top: 3px; }
 .fpl-advanced { margin-top: 2px; }
+/* A quiet, secondary action -- it restores this section, so it must not read like the
+   dialog's own Send/Cancel buttons. Sits at the end of the disclosure, aligned to the
+   text edge in both directions (margin-inline-start, not margin-left). */
+.fpl-adv-reset {
+  display: block;
+  margin: 8px 0 2px;
+  margin-inline-start: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b9b3b3;
+  background: transparent;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fpl-adv-reset:hover { color: #e8e8e8; border-color: #6b6565; }
+body.theme-light .fpl-adv-reset { color: #55504f; border-color: #d8d4d4; }
+body.theme-light .fpl-adv-reset:hover { color: #1c1a1a; border-color: #a9a4a4; }
 .fpl-modal .modal-btns { margin-top: 6px; }
 .fpl-ack { margin: 1px 0; }
 .fpl-primary { font-weight: 600; }
