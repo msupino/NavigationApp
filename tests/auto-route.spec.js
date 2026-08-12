@@ -271,16 +271,21 @@ test('a drawn ATC-approval leg is refused at filing, and the refusal reads as te
 });
 
 test('a hint keyed only on the direction FLOWN still matches when auto-route splices in a real stop', async ({ page }) => {
-  // Regression: NTAIM's TEL_NOF hint used to require before:TYONA directly adjacent.
-  // Auto-route correctly splices SUPER between TYONA and NTAIM (a real published corridor
-  // stop) -- which broke that exact adjacency and silently fell back to the general
-  // solver, which happened to repeat TYONA's own frequency (PALMACHIM) at NTAIM instead
-  // of the maintainer-verified TEL_NOF. Confirmed live on navaid.supino.org before the fix.
+  // Regression: NTAIM's hint used to require before:TYONA directly adjacent. Auto-route
+  // correctly splices SUPER between TYONA and NTAIM (a real published corridor stop) --
+  // which broke that exact adjacency and silently fell back to the general solver instead
+  // of the maintainer-verified hint. Confirmed live on navaid.supino.org before the fix.
   //
   // Fix: a comm-change point's applicable call sign is a property of the point and the
   // direction FLOWN (`after`), not of whatever happens to precede it -- so routeHints
   // dataset-wide are `after`-only now (see cvfr-route-graph.json), and this must hold
   // regardless of how many real intermediate stops auto-route inserts.
+  //
+  // NTAIM's after:NAGID hint originally said TEL_NOF here; corrected later this session to
+  // PALMACHIM (NAGID really is PALMACHIM, not TEL_NOF -- reported live). That correction
+  // means NTAIM's hinted call sign now matches TYONA's already-active PALMACHIM, so NTAIM's
+  // note is correctly SUPPRESSED here too (same-frequency suppression, gated on `hinted` --
+  // this scenario is exactly what proves the hint fired for real, not a coincidental guess).
   await boot(page);
   await page.evaluate(async () => { await loadCommChange(); window.showCommChange = true; });
   await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.NTAIM);
@@ -310,7 +315,8 @@ test('a hint keyed only on the direction FLOWN still matches when auto-route spl
   const ntaimIdx = out.names.indexOf('NTAIM');
   expect(out.names[ntaimIdx - 1]).toBe('SUPER');
   expect(out.tyona.freqName).toBe('PALMACHIM');
-  expect(out.ntaim).toBeTruthy();
-  expect(out.ntaim.freqName).toBe('TEL_NOF');           // not PALMACHIM, and not silently missing
-  expect(out.ntaim.freq).toBe('129.05');
+  // NTAIM's hint fired (proven by the suppression itself -- an unhinted/guessed match is
+  // never suppressed, see the "same-frequency suppression" describe block) and correctly
+  // resolved to PALMACHIM, matching TYONA already in effect -- so no separate note.
+  expect(out.ntaim).toBeFalsy();
 });

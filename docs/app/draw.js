@@ -1418,14 +1418,26 @@ function fetchLayerData(kind) {
 // itself lives in app/route-graph-shapes.js, shared with the equivalence proof
 // (scripts/legacy-from-graph.mjs) so the app cannot drift from what that proof checked.
 const _graphMemo = {};
+const _graphResolved = {};
 function routeGraphData(prefix) {
   if (!_graphMemo[prefix]) {
     const url = 'data/' + prefix + '-route-graph.json?v=' + _verOf(S.routeGraphUrl);
     _graphMemo[prefix] = fetch(url)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(d => { _graphResolved[prefix] = d; return d; })
       .catch(e => { delete _graphMemo[prefix]; throw e; });
   }
   return _graphMemo[prefix];
+}
+// Synchronous accessor for callers that cannot await -- the comm-hint lookahead
+// (commRouteAfterNames) runs inline during note-seeding/UI render, never as an async
+// flow. Returns the already-resolved graph, or null if it hasn't loaded yet, in which
+// case the caller falls back to its own non-graph-aware behaviour for that one pass --
+// the fetch is already kicked off elsewhere (auto-route, corridor rendering) well
+// before a pilot reaches the comm-note workflow in practice, and the next redraw/edit
+// re-checks and picks it up once it resolves.
+function routeGraphDataSync(prefix) {
+  return _graphResolved[prefix] || null;
 }
 
 async function _fetchLayerDataRaw(kind) {
@@ -2726,22 +2738,86 @@ function commRouteHintName(raw) {
 function commCallSignDefaultFromOption(opt) {
   return opt ? { freqName: opt.id, freq: opt.freq || '' } : null;
 }
+function commRouteAfterNames(entry) {
+  // Every waypoint from here to the next comm-change point (inclusive of that point, exclusive
+  // of anything past it) -- the span a call sign picked at `entry` is actually in force for.
+  // A route sometimes has extra waypoints spliced in right after a comm-change point (auto-route
+  // inserting a real corridor stop a hint's `after` was never written to expect -- NTAIM's
+  // TEL_NOF hint said "after: SIRNI" and a route drawn NTAIM->SUPER->SIRNI missed it on the
+  // immediate neighbour alone), so a fixed hop count is the wrong tolerance: the actual boundary
+  // is the next place the frequency would change again, however many stops away that is.
+  //
+  // A pilot's DRAWN route can also skip a published point entirely rather than splice one in --
+  // NTAIM's own "after: BOVED" hint never matched a route drawn NTAIM -> YAVNE directly, even
+  // though the real published corridor between them passes through BOVED (same as
+  // fplExpandRoute already fills in for the filed ICAO plan). Between each consecutive pair of
+  // DRAWN waypoints in this span, the published corridor's own intermediate points (if the
+  // route graph has loaded -- routeGraphDataSync is a synchronous best-effort read, since this
+  // whole function runs inline during note-seeding/UI render, never as an async flow) are
+  // folded in too, so an existing hint written for a corridor stop still fires even when the
+  // pilot never drew that stop as its own waypoint.
+  const names = [];
+  if (typeof state === 'undefined' || !Array.isArray(state.waypoints)) return names;
+  const graph = (typeof routeGraphDataSync === 'function') ? routeGraphDataSync('cvfr') : null;
+  let prev = state.waypoints[entry.index];
+  for (let i = entry.index + 1; i < state.waypoints.length; i++) {
+    const wp = state.waypoints[i];
+    let stopped = false;
+    if (graph && prev && wp && typeof fplGraphPointAt === 'function' && typeof fplGraphChain === 'function') {
+      const a = fplGraphPointAt(graph, prev);
+      const b = fplGraphPointAt(graph, wp);
+      const chain = (a && b) ? fplGraphChain(graph, a, b, { ignoreAvailability: true }) : null;
+      if (chain && chain.length > 2) {
+        for (const mid of chain.slice(1, -1)) {
+          names.push(mid);
+          const midRow = commChangeMap && commChangeMap[mid];
+          if (midRow && midRow.commChange) { stopped = true; break; }
+        }
+      }
+    }
+    if (stopped) break;
+    const nm = canonicalNavWaypointName(wp && wp.name);
+    if (nm) names.push(nm);
+    const row = commChangeMap && wp && commChangeMap[wp.name];
+    if (row && row.commChange) break;
+    prev = wp;
+  }
+  return names;
+}
 function commRouteHintDefault(entry) {
   if (!entry || !commChangeMap || typeof state === 'undefined' ||
       !Array.isArray(state.waypoints)) return null;
   const row = commChangeMap[entry.name];
   if (!row || !Array.isArray(row.routeHints) || !row.routeHints.length) return null;
   const before = commRouteContextName(entry.index - 1);
-  const after = commRouteContextName(entry.index + 1);
+  const afterNames = commRouteAfterNames(entry);
+  // Rank each matching hint by how soon its `after` target is actually crossed -- a
+  // comm-change point can carry several routeHints, each written for a DIFFERENT possible
+  // next leg, and the corridor lookahead (commRouteAfterNames) can put more than one of
+  // their targets within range at once. NTAIM's own "after: BOVED" and "after: NSHRM"
+  // hints both matched once a route drawn NTAIM -> BOVED -> ... -> NSHRM put both names in
+  // afterNames -- treating them as EQUALLY valid produced two different call signs and gave
+  // up (ambiguous -> null -> fell to the solver's unrelated guess), when only the nearer one
+  // (BOVED, actually crossed first) is the leg in force right now. An unconstrained
+  // before-only hint has no "after" distance to rank by, so it always stays in the running
+  // alongside whichever after-based hint(s) are nearest.
+  let bestRank = Infinity;
   const candidates = [];
   const seen = new Set();
   for (const hint of row.routeHints) {
     if (!hint || typeof hint !== 'object') continue;
     if (hint.before && commRouteHintName(hint.before) !== before) continue;
-    if (hint.after && commRouteHintName(hint.after) !== after) continue;
+    let rank = -1;
+    if (hint.after) {
+      rank = afterNames.indexOf(commRouteHintName(hint.after));
+      if (rank === -1) continue;   // this hint's target isn't in range at all
+    }
+    if (rank > bestRank) continue;      // a strictly-farther match than the best seen so far
     const opt = commCallSignOptionById(entry.name, hint.callSign);
     const key = opt && commCallSignIdKey(opt.id);
-    if (!opt || !key || seen.has(key)) continue;
+    if (!opt || !key) continue;
+    if (rank < bestRank) { bestRank = rank; candidates.length = 0; seen.clear(); }
+    if (seen.has(key)) continue;
     seen.add(key);
     candidates.push(opt);
   }
@@ -3182,6 +3258,22 @@ function seedCommChangeNotes() {
     const calloutFreq = commFormatFreq(callout.freq);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
     if (existing) {
+      // An auto-generated note can become redundant AFTER it was seeded -- a route built
+      // incrementally seeds NTAIM's note while its next waypoint (and so its callout) is
+      // still unknown (static default), and only later grows a next waypoint that makes
+      // NTAIM's own frequency match what TYONA already put in effect. Updating the note's
+      // shown frequency (below) used to be as far as this went, leaving a now-pointless
+      // note in place instead of removing it -- reported live: "when i set manually, it
+      // starts NTAIM with TEL_NOF, after adding BOVED or NAGID, it changes, but doesn't
+      // suppress". Same condition the "no existing note" branch below already uses to
+      // skip CREATING one; applied retroactively here too. A note the pilot hand-created
+      // or hand-edited (freqAuto !== true) is never removed this way.
+      if (existing.freqAuto === true && calloutFreq && calloutFreq === routeFreq && hinted.has(nm)) {
+        const idx = state.notes.indexOf(existing);
+        if (idx !== -1) { state.notes.splice(idx, 1); changed = true; }
+        routeFreq = calloutFreq;
+        continue;
+      }
       if (unsuppressCommChange(nm)) changed = true;
       if (existing.cc !== nm) { existing.cc = nm; changed = true; }
       if (!existing.freqName) { existing.freqName = callout.freqName; changed = true; }
