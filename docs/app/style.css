@@ -1092,7 +1092,18 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
   transform: translateY(46px);
 }
 .coord-readout.show { display: block; }
-.gps-readout { display: block; font-size: 11px; opacity: 0.75; margin-top: 2px; }
+/* Measurements read left to right in both languages: "18 kt · 390 ft", not the
+   "kt · 390 ft 18" the bidi algorithm produced from the same string in the RTL UI.
+   Isolated so the LTR base cannot leak into the surrounding toolbar text; the stale-fix
+   notice inside carries its own dir="auto" (see gpsSetReadout). */
+.gps-readout {
+  display: block;
+  font-size: 11px;
+  opacity: 0.75;
+  margin-top: 2px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 .zoom-readout {
   display: block;
   padding: 2px 4px;

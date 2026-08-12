@@ -695,3 +695,49 @@ test('an async addWatcher rejection is a registration failure, not a transient b
   await page.waitForFunction(() => gpsRecording === false, { timeout: 4000 });
   expect(alerted).toBe(true);
 });
+
+// Reported live from the Hebrew UI: the readout showed "kt · 390 ft 18". The string is
+// measurements, so the bidi algorithm reordered the whole sequence around the RTL base.
+test('the readout reads left to right in Hebrew, and keeps the stale notice readable', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  await page.evaluate(() => {
+    startLiveLocation();
+    // speed 9.26 m/s ≈ 18 kt; altitude 118.87 m ≈ 390 ft.
+    window.__liveCb({ coords: { latitude: 32.0, longitude: 34.8, accuracy: 8, heading: null, speed: 9.26, altitude: 118.87 }, timestamp: Date.now() });
+  });
+  const readout = page.locator('#gps-readout');
+  await expect(readout).toHaveText('18 kt · 390 ft');
+  // Not just the string: the RUNS must sit left to right on screen, which is what the
+  // bug was -- the text content was always in the right order.
+  const visual = await readout.evaluate((el) => {
+    const runs = [];
+    const walk = (n) => {
+      if (n.nodeType === 3 && n.textContent.trim()) {
+        const r = document.createRange();
+        r.selectNodeContents(n);
+        runs.push({ t: n.textContent, x: r.getBoundingClientRect().left });
+      }
+      for (const c of n.childNodes) walk(c);
+    };
+    walk(el);
+    return runs.sort((a, b) => a.x - b.x).map(r => r.t.trim());
+  });
+  expect(visual[0]).toMatch(/^18 kt/);
+
+  // A stale fix appends a Hebrew notice: two Hebrew words either side of a Latin one, so
+  // it must keep its own RTL base rather than inheriting the LTR measurements'.
+  await page.evaluate(() => {
+    gpsOwn = { lat: 32, lng: 34.8, t: Date.now() - 120000 };
+    gpsUpdateReadout();
+  });
+  await expect(readout).toContainText('18 kt · 390 ft');
+  const stale = readout.locator('span[dir="auto"]');
+  await expect(stale).toHaveCount(1);
+  await expect(stale).toContainText('120s');
+});
