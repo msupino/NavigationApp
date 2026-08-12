@@ -194,6 +194,37 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     }
   });
 
+  test('the "— none —" placeholder is not clipped when the row is squeezed narrow', async ({ page }) => {
+    // Regression: an explicit min-width on a flex item overrides the browser's default
+    // min-content protection, so flex-shrink:1 (the default) let .vor-radial-controls
+    // squeeze this select down toward its 58px min-width floor once the row got tight --
+    // the BOX shrank below the placeholder text's own rendered width, but the text
+    // inside a native <select> doesn't reflow, so it visually clipped on the right. A
+    // bounding-box-vs-container check misses this entirely (nothing overflows its
+    // parent); only clientWidth < scrollWidth on the select itself exposes it.
+    await page.setViewportSize({ width: 240, height: 500 });
+    for (const lang of ['he', 'en']) {
+      await boot(page, lang);
+      await page.evaluate(async () => {
+        await loadVors();
+        window.vorRef = '';
+        window.inspectorVorRef = undefined;
+        state.waypoints = [{ lat: 32.46472, lng: 34.91222, name: 'HADRA' }];
+        syncLegs();
+        state.selected = { type: 'wp', index: 0 };
+        showInspector();
+      });
+      const sel = page.locator('#insp-body .vor-radial-row select.insp-vor-ref');
+      await expect(sel).toHaveValue('');
+      const out = await sel.evaluate(el => ({
+        text: el.options[el.selectedIndex].textContent,
+        clientWidth: el.clientWidth,
+        scrollWidth: el.scrollWidth,
+      }));
+      expect(out.clientWidth, lang + ': ' + out.text).toBeGreaterThanOrEqual(out.scrollWidth);
+    }
+  });
+
   test('flight plan: VOR picker + frequency, Radial/DME to the leg START', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
