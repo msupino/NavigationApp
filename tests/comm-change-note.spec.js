@@ -2176,3 +2176,71 @@ test.describe('a hint\'s after-target reached across the whole corridor to the n
     expect(out).not.toBe('X');
   });
 });
+
+// A comm-change point can carry several routeHints, each written for a DIFFERENT possible
+// next leg -- and the lookahead corridor above (commRouteAfterNames) can put more than one
+// of their targets in range at once, if none of the intervening waypoints are themselves a
+// comm-change point. Only the NEARER target is the leg actually being flown right now.
+const RANKING_FIXTURE = {
+  version: 1,
+  source: 'test fixture',
+  callSigns: {
+    X: { label: 'Xray', he: 'איקס', primary: '121.10' },
+    Y: { label: 'Yankee', he: 'וואי', primary: '128.20' },
+    Z: { label: 'Zulu', he: 'זד', primary: '119.90' },
+  },
+  points: [
+    { name: 'INDIA', commChange: true, callSigns: ['X'] },
+    // KILO is reachable BEFORE LIMA on a route that visits both -- "after: KILO" must win
+    // over "after: LIMA" whenever both are technically within lookahead range, not just
+    // whichever happens to be listed first or produce a set with one element.
+    { name: 'JULIET', commChange: true, callSigns: ['X', 'Y'],
+      routeHints: [{ after: 'KILO', callSign: 'X' }, { after: 'LIMA', callSign: 'Y' }] },
+    { name: 'LIMA', commChange: true, callSigns: ['Z'] },
+  ],
+};
+const INDIA = { lat: 31.70, lng: 34.90, name: 'INDIA' };
+const JULIET = { lat: 31.71, lng: 34.90, name: 'JULIET' };
+const KILO = { lat: 31.72, lng: 34.90, name: 'KILO' };     // not itself comm-change
+const LIMA = { lat: 31.73, lng: 34.90, name: 'LIMA' };
+
+test.describe('a comm-change point with several routeHints picks the NEARER after-target', () => {
+  test('JULIET -> KILO -> LIMA: KILO (closer) wins over LIMA, even though LIMA also matches', async ({ page }) => {
+    await installCommChangeFixture(page, RANKING_FIXTURE);
+    await bootFixture(page, 'INDIA', INDIA);
+    const out = await page.evaluate(({ i, j, k, l }) => {
+      state.waypoints = [i, j, k, l];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => ({ cc: n.cc, freqName: n.freqName }));
+    }, { i: INDIA, j: JULIET, k: KILO, l: LIMA });
+    // INDIA (X) -- JULIET matches KILO (nearer, X) not LIMA (farther, Y): same X already in
+    // effect, hinted, so JULIET is suppressed entirely. LIMA is a genuine change (Z), kept.
+    expect(out).toEqual([{ cc: 'INDIA', freqName: 'X' }, { cc: 'LIMA', freqName: 'Z' }]);
+  });
+
+  test('regression: adding LIMA to an already-suppressed JULIET must not un-suppress it', async ({ page }) => {
+    // The exact incremental sequence reported live: JULIET's note correctly suppresses once
+    // KILO is added (matches INDIA's X), but adding LIMA afterward -- a real comm-change
+    // point further down the corridor, with ITS OWN unrelated routeHint on JULIET -- used to
+    // put both KILO and LIMA in range simultaneously, make the two hints disagree (X vs Y),
+    // give up (ambiguous -> null), and fall through to an unrelated solver guess instead of
+    // staying suppressed.
+    await installCommChangeFixture(page, RANKING_FIXTURE);
+    await bootFixture(page, 'INDIA', INDIA);
+    const out = await page.evaluate(({ i, j, k, l }) => {
+      const steps = [];
+      state.waypoints = [i]; state.notes = []; syncLegs(); seedCommChangeNotes();
+      steps.push(state.notes.filter(n => n.cc).map(n => n.cc));
+      state.waypoints = [i, j]; syncLegs(); seedCommChangeNotes();
+      steps.push(state.notes.filter(n => n.cc).map(n => n.cc));
+      state.waypoints = [i, j, k]; syncLegs(); seedCommChangeNotes();
+      steps.push(state.notes.filter(n => n.cc).map(n => n.cc));
+      state.waypoints = [i, j, k, l]; syncLegs(); seedCommChangeNotes();
+      steps.push(state.notes.filter(n => n.cc).map(n => n.cc));
+      return steps;
+    }, { i: INDIA, j: JULIET, k: KILO, l: LIMA });
+    expect(out[2]).toEqual(['INDIA']);                // JULIET suppressed once KILO is added
+    expect(out[3]).toEqual(['INDIA', 'LIMA']);         // still suppressed after LIMA joins too
+  });
+});

@@ -2752,15 +2752,33 @@ function commRouteHintDefault(entry) {
   if (!row || !Array.isArray(row.routeHints) || !row.routeHints.length) return null;
   const before = commRouteContextName(entry.index - 1);
   const afterNames = commRouteAfterNames(entry);
+  // Rank each matching hint by how soon its `after` target is actually crossed -- a
+  // comm-change point can carry several routeHints, each written for a DIFFERENT possible
+  // next leg, and the corridor lookahead (commRouteAfterNames) can put more than one of
+  // their targets within range at once. NTAIM's own "after: BOVED" and "after: NSHRM"
+  // hints both matched once a route drawn NTAIM -> BOVED -> ... -> NSHRM put both names in
+  // afterNames -- treating them as EQUALLY valid produced two different call signs and gave
+  // up (ambiguous -> null -> fell to the solver's unrelated guess), when only the nearer one
+  // (BOVED, actually crossed first) is the leg in force right now. An unconstrained
+  // before-only hint has no "after" distance to rank by, so it always stays in the running
+  // alongside whichever after-based hint(s) are nearest.
+  let bestRank = Infinity;
   const candidates = [];
   const seen = new Set();
   for (const hint of row.routeHints) {
     if (!hint || typeof hint !== 'object') continue;
     if (hint.before && commRouteHintName(hint.before) !== before) continue;
-    if (hint.after && !afterNames.includes(commRouteHintName(hint.after))) continue;
+    let rank = -1;
+    if (hint.after) {
+      rank = afterNames.indexOf(commRouteHintName(hint.after));
+      if (rank === -1) continue;   // this hint's target isn't in range at all
+    }
+    if (rank > bestRank) continue;      // a strictly-farther match than the best seen so far
     const opt = commCallSignOptionById(entry.name, hint.callSign);
     const key = opt && commCallSignIdKey(opt.id);
-    if (!opt || !key || seen.has(key)) continue;
+    if (!opt || !key) continue;
+    if (rank < bestRank) { bestRank = rank; candidates.length = 0; seen.clear(); }
+    if (seen.has(key)) continue;
     seen.add(key);
     candidates.push(opt);
   }
