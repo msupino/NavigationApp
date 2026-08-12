@@ -3201,6 +3201,22 @@ function seedCommChangeNotes() {
     const calloutFreq = commFormatFreq(callout.freq);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
     if (existing) {
+      // An auto-generated note can become redundant AFTER it was seeded -- a route built
+      // incrementally seeds NTAIM's note while its next waypoint (and so its callout) is
+      // still unknown (static default), and only later grows a next waypoint that makes
+      // NTAIM's own frequency match what TYONA already put in effect. Updating the note's
+      // shown frequency (below) used to be as far as this went, leaving a now-pointless
+      // note in place instead of removing it -- reported live: "when i set manually, it
+      // starts NTAIM with TEL_NOF, after adding BOVED or NAGID, it changes, but doesn't
+      // suppress". Same condition the "no existing note" branch below already uses to
+      // skip CREATING one; applied retroactively here too. A note the pilot hand-created
+      // or hand-edited (freqAuto !== true) is never removed this way.
+      if (existing.freqAuto === true && calloutFreq && calloutFreq === routeFreq && hinted.has(nm)) {
+        const idx = state.notes.indexOf(existing);
+        if (idx !== -1) { state.notes.splice(idx, 1); changed = true; }
+        routeFreq = calloutFreq;
+        continue;
+      }
       if (unsuppressCommChange(nm)) changed = true;
       if (existing.cc !== nm) { existing.cc = nm; changed = true; }
       if (!existing.freqName) { existing.freqName = callout.freqName; changed = true; }

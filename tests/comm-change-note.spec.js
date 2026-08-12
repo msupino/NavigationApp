@@ -2057,6 +2057,50 @@ test.describe('same-frequency suppression', () => {
     }, { a: ALPHA, b: BETA });
     expect(out).toContain('BETA');
   });
+
+  test('a note seeded BEFORE the route matches its hint is retroactively removed once it does', async ({ page }) => {
+    // The incremental-build case, as opposed to the all-at-once tests above: a route built
+    // one waypoint at a time (manually, not via auto-route) seeds BETA's note while GAMMA
+    // doesn't exist yet -- BETA's hint can't match (nothing to check `after` against), so
+    // it falls to the guessed/static default and gets its own note (matches "an UNHINTED
+    // point is never suppressed" above). ADDING GAMMA afterward makes BETA's hint fire for
+    // real -- now genuinely redundant with ALPHA's already-active X -- but the note from
+    // the first pass used to just sit there with an updated frequency, never actually
+    // removed. Reported live: "when i set manually, it starts NTAIM with TEL_NOF, after
+    // adding BOVED or NAGID, it changes, but doesn't suppress".
+    await installCommChangeFixture(page, SUPPRESSION_FIXTURE);
+    await bootSuppression(page);
+    const out = await page.evaluate(({ a, b, c }) => {
+      state.waypoints = [a, b];
+      syncLegs();
+      seedCommChangeNotes();
+      const beforeGamma = state.notes.filter(n => n.cc).map(n => n.cc);
+      state.waypoints = [a, b, c];
+      syncLegs();
+      seedCommChangeNotes();
+      const afterGamma = state.notes.filter(n => n.cc).map(n => n.cc);
+      return { beforeGamma, afterGamma };
+    }, { a: ALPHA, b: BETA, c: GAMMA });
+    expect(out.beforeGamma).toEqual(['ALPHA', 'BETA']);   // BETA unhinted yet -- not suppressed
+    expect(out.afterGamma).toEqual(['ALPHA']);             // BETA's now-hinted note is gone
+  });
+
+  test('a note the pilot hand-edited is never retroactively removed, even if it becomes redundant', async ({ page }) => {
+    await installCommChangeFixture(page, SUPPRESSION_FIXTURE);
+    await bootSuppression(page);
+    const out = await page.evaluate(({ a, b, c }) => {
+      state.waypoints = [a, b];
+      syncLegs();
+      seedCommChangeNotes();
+      const note = state.notes.find(n => n.cc === 'BETA');
+      note.freqAuto = false;   // the pilot touched this note
+      state.waypoints = [a, b, c];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => n.cc);
+    }, { a: ALPHA, b: BETA, c: GAMMA });
+    expect(out).toEqual(['ALPHA', 'BETA']);   // still there -- hand-edited notes are never removed
+  });
 });
 
 // A hint's `after` sometimes misses the immediate next drawn waypoint because an extra
