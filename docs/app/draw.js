@@ -251,10 +251,10 @@ function drawHeadingLine(pos, hdg, gsKt) {
     octx.fillText(secondaryLabel, lx, ly2);
   }
 
-  // Fixed-distance marks: bare NM number ("2"/"5"/"10"). No secondary derived row --
+  // Fixed-distance marks: "N nm" ("2 nm"/"5 nm"/"10 nm"). No secondary derived row --
   // a time-to-reach subtext was tried and reported as unwanted clutter ("it shows
   // 1:20 as well"); just the marks themselves.
-  for (const nm of HEADING_LINE_MARKS_NM) drawMark(nm, String(nm), null);
+  for (const nm of HEADING_LINE_MARKS_NM) drawMark(nm, nm + ' nm', null);
   // Fixed-time marks: "N min". Needs a groundspeed to place at all (their distance is
   // derived from it); no secondary distance row either, same reasoning as above.
   if (haveSpeed) {
