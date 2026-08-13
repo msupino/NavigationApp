@@ -520,11 +520,12 @@ NavAid.tuningDefaults = {
   // these whenever localStorage has no explicit user choice for that toggle.
   defaultShowReturn: { value: false, type: 'bool', label: 'Default: show return leg' },
   // Whether the feature EXISTS, as opposed to defaultShowReturn's whether it starts on.
-  // The mirrored return path draws an imaginary second route on top of the real legs; with
-  // a turning point the route already contains its return, and without one the mirror is a
-  // guess. Set false in the tuning gist to take the control, its keyboard shortcut and the
-  // drawing off the table entirely, without a deploy.
-  featureShowReturn: { value: true, type: 'bool', label: 'Feature: show return path' },
+  // Ships OFF: the mirrored return path draws an imaginary second route on top of the real
+  // legs, and with a turning point the route already contains its return, so the mirror was
+  // at best redundant and at worst two headings claiming to be the same leg. Set true in the
+  // tuning gist to bring the control, its keyboard shortcut and the drawing back, without a
+  // deploy -- the code is all still here.
+  featureShowReturn: { value: false, type: 'bool', label: 'Feature: show return path' },
   defaultShowNavWP: { value: true, type: 'bool', label: 'Default: show VFR reporting points' },
   defaultShowAirfields: { value: true, type: 'bool', label: 'Default: show airfields' },
   defaultShowVor: { value: true, type: 'bool', label: 'Default: show VOR stations' },

@@ -70,6 +70,10 @@ test('only the nav kite stops drawing — every other marker is untouched', asyn
   await route(page);
   const drawn = await page.evaluate(() => {
     window.showCumTime = true; window.showReturn = true;
+    // The return path now ships OFF (featureShowReturn), so a test that counts the RETURN
+    // kite has to switch the feature on rather than assume it.
+    const _tune = window.tune;
+    window.tune = (k) => (k === 'featureShowReturn' ? true : _tune(k));
     window.showMidLeg = true; window.showWind = true; window.showDrift = true;
     const spies = {};
     for (const fn of ['drawLegArrow', 'drawCumTimeArrow', 'drawDistanceBadge',

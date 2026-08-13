@@ -4,17 +4,33 @@
 // route already contains its return, and without one the mirror is a guess.
 const { test, expect } = require('./_setup');
 
-test('the flag ships ON, so nothing changes by default', async ({ page }) => {
+test('the feature ships OFF: control hidden, state clear, nothing drawn', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof tune === 'function');
   const out = await page.evaluate(() => ({
     flag: tune('featureShowReturn'),
     rowHidden: document.getElementById('ret-cb').closest('label').hidden,
     featureOn: showReturnFeatureOn(),
+    showReturn: window.showReturn,
   }));
-  expect(out.flag).toBe(true);
-  expect(out.rowHidden).toBe(false);
-  expect(out.featureOn).toBe(true);
+  expect(out.flag).toBe(false);
+  expect(out.rowHidden).toBe(true);
+  expect(out.featureOn).toBe(false);
+  expect(out.showReturn).toBe(false);
+});
+
+test('turning the flag back on restores the control', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showReturnFeatureOn === 'function');
+  const on = await page.evaluate(() => {
+    const orig = window.tune;
+    window.tune = (k) => (k === 'featureShowReturn' ? true : orig(k));
+    const res = showReturnFeatureOn();
+    window.tune = orig;
+    return res;
+  });
+  // The code is all still here -- the gist decides, nothing was deleted.
+  expect(on).toBe(true);
 });
 
 test('with the flag off the control is hidden and the state forced off', async ({ page }) => {
@@ -53,6 +69,9 @@ test('the mirrored path is not drawn even if showReturn is forced true', async (
       return n;
     };
     window.showReturn = true;
+    // Both directions forced explicitly -- the shipped default is now OFF, so "with the
+    // feature" has to be asked for rather than assumed.
+    window.tune = (k) => (k === 'featureShowReturn' ? true : orig(k));
     const withFeature = count();                       // inbound + return
     window.tune = (k) => (k === 'featureShowReturn' ? false : orig(k));
     const withoutFeature = count();                    // inbound only
