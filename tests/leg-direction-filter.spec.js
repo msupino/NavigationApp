@@ -576,3 +576,77 @@ test('a stacked row keeps its full height when the menu overflows', async ({ pag
     expect(r.overlapsNext, r.id + ' paints over the next row').toBe(false);
   }
 });
+
+// A loop starts and finishes at the same field, so "first to last" reduced to
+// "LLHZ -> LLHZ" -- true, and useless in a list of saved routes. The turning point is what
+// tells two sorties out of the same field apart.
+test.describe('a turning point names the saved route', () => {
+  async function loop(page) {
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.21056, lng: 34.80722, name: 'SFAIM' },
+        { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+        { lat: 32.14083, lng: 34.80139, name: 'KNTRY' },
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+      ];
+      syncLegs();
+    });
+  }
+
+  test('the suggested name carries the turn, in English', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    const out = await page.evaluate(() => {
+      const before = defaultSavedRouteName();
+      setTurnWaypoint(2);                      // TYONA
+      // Endpoints are already shown by their localised display name, and the turn is
+      // named the same way rather than as a raw code.
+      const shown = (typeof navName === 'function') ? navName('TYONA') : 'TYONA';
+      return { before, after: defaultSavedRouteName(), shown };
+    });
+    expect(out.before).toBe('LLHZ → LLHZ');    // both ends the same: says nothing
+    expect(out.after).toContain(out.shown);
+    expect(out.after).toContain('LLHZ');
+  });
+
+  test('and in Hebrew, without naming the same field twice', async ({ page }) => {
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof defaultSavedRouteName === 'function' &&
+      typeof setTurnWaypoint === 'function');
+    await loop(page);
+    const out = await page.evaluate(() => {
+      setTurnWaypoint(2);
+      return { name: defaultSavedRouteName(),
+               shown: (typeof navName === 'function') ? navName('TYONA') : 'TYONA' };
+    });
+    const name = out.name;
+    expect(name).toContain(out.shown);
+    expect(name).toContain('וחזרה');
+    // LLHZ is the start AND the end; "וחזרה" already says where it returns to.
+    expect(name.split('LLHZ').length - 1).toBe(1);
+  });
+
+  test('a one-way route is named as before', async ({ page }) => {
+    await boot(page);
+    const name = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
+                         { lat: 32.1, lng: 34.1, name: 'BRAVO' }];
+      syncLegs();
+      return defaultSavedRouteName();
+    });
+    expect(name).toBe('ALPHA → BRAVO');
+  });
+
+  test('the saved entry keeps that name', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    const out = await page.evaluate(() => {
+      setTurnWaypoint(2);
+      const entry = routeLibrarySaveCurrent('');   // blank = use the suggestion
+      return { name: entry && entry.name,
+               shown: (typeof navName === 'function') ? navName('TYONA') : 'TYONA' };
+    });
+    expect(out.name).toContain(out.shown);
+  });
+});

@@ -2636,6 +2636,22 @@ function defaultSavedRouteName() {
       // No isolate characters here: this string is DATA. It goes into the editable name
       // field, is stored, and is synced -- U+2068/2069 in it would be invisible junk the
       // pilot cannot see or delete. Isolation is applied where the name is RENDERED.
+      // A route with a turning point is named by where it TURNS, not just its ends. A loop
+      // starts and finishes at the same field, so "first to last" reduced to "LLHZ → LLHZ"
+      // -- true, and useless in a list of saved routes. The far point is what tells two
+      // sorties out of the same field apart.
+      const ti = (typeof legRetraceTurnIndex === 'function') ? legRetraceTurnIndex() : -1;
+      const t = ti >= 0 ? nm(wps[ti]) : '';
+      if (t && t !== a && t !== b) {
+        if (he) {
+          // Same field at both ends: "וחזרה" already says where it comes back to, so
+          // naming it twice reads worse, not clearer.
+          return a === b ? ('\u05de\u05be' + a + ' \u05d0\u05dc ' + t + ' \u05d5\u05d7\u05d6\u05e8\u05d4')
+                         : ('\u05de\u05be' + a + ' \u05d0\u05dc ' + t + ' \u05d5\u05d7\u05d6\u05e8\u05d4 \u05d0\u05dc ' + b);
+        }
+        return a === b ? (a + ' \u2192 ' + t + ' \u2192 back')
+                       : (a + ' \u2192 ' + t + ' \u2192 ' + b);
+      }
       return he ? ('\u05de\u05be' + a + ' \u05d0\u05dc ' + b)   // "מ־<a> אל <b>"
                 : (a + ' \u2192 ' + b);
     }
