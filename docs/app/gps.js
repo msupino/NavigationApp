@@ -346,6 +346,41 @@ function gpsStaleText() {
     ? ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(gpsFixAgeMs() / 1000) + 's'
     : '';
 }
+// The comm change (if any) attached to a waypoint. Reads the ROUTE'S OWN note rather than
+// the static dataset: the note is what the pilot sees on the map and what the frequency
+// pipeline may have overridden or suppressed for this particular route, so speaking
+// anything else would be reading out a different frequency from the one drawn.
+function gpsCommChangeAt(wp) {
+  if (!wp || typeof state === 'undefined' || !Array.isArray(state.notes)) return null;
+  const name = wp.name || '';
+  if (!name) return null;
+  const note = state.notes.find(n => n && n.cc && n.cc === name);
+  if (!note) return null;
+  if (!note.freqName && !note.freq) return null;
+  return { freqName: note.freqName || '', freq: note.freq || '' };
+}
+// "118.4" -> "one one eight decimal four". Digit by digit, like a heading and for the same
+// reason: a frequency misheard as a number is a frequency tuned wrong.
+function gpsSpokenFreq(freq, lang) {
+  const str = String(freq || '').trim();
+  if (!str) return '';
+  const dec = (typeof S !== 'undefined' && S.spokenDecimal) || 'decimal';
+  return str.split('.')
+    .map(part => gpsSpokenDigits(part, lang))
+    .filter(Boolean)
+    .join(' ' + dec + ' ');
+}
+// Magnetic heading for the readout, or null when the fix carries none (a stationary GPS
+// reports no course at all). gpsOwn.hdg is TRUE in both paths -- the geolocation API is
+// true-referenced, and the simulator bridge's magnetic value is converted to true in
+// _simFetch -- so this is the one place it turns back into what a pilot reads off the DI.
+function gpsReadoutHeading() {
+  if (!gpsOwn || !Number.isFinite(gpsOwn.hdg)) return null;
+  const mag = (typeof toMagnetic === 'function') ? toMagnetic(gpsOwn.hdg) : gpsOwn.hdg;
+  if (!Number.isFinite(mag)) return null;
+  const r = ((Math.round(mag) % 360) + 360) % 360;
+  return ((typeof pad3 === 'function') ? pad3(r) : String(r)) + '\u00b0';
+}
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
@@ -356,6 +391,8 @@ function gpsUpdateReadout() {
     const parts = [gpsTrack.length + ' pts · ' + mm + ':' + ss];
     if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
     if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
+    const hdgRec = gpsReadoutHeading();
+    if (hdgRec) parts.push(hdgRec);
     gpsSetReadout(el, parts, gpsStaleText());
     return;
   }
@@ -369,6 +406,10 @@ function gpsUpdateReadout() {
     const parts = [];
     if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
     if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
+    // Same three fields whether the position comes from the device GPS or a connected
+    // simulator -- both land in gpsOwn, and this branch already serves both.
+    const hdgLive = gpsReadoutHeading();
+    if (hdgLive) parts.push(hdgLive);
     gpsSetReadout(el, parts, gpsStaleText());
     return;
   }
@@ -831,6 +872,13 @@ function gpsResetLegAlerts() {
   _gpsAlertLegFired = false;
   _gpsAlertAltDeviated = false;
   _gpsAlertConfirmed = false;
+  _gpsLastTopAt = 0;
+  // Cone/off-route state belongs to the same episode: a fresh session must not inherit a
+  // half-elapsed unknown timer or a stale recovery heading from the last one.
+  _gpsConeOutsideSince = null;
+  _gpsConeAlertedHdg = null;
+  _gpsConeAlertedAt = 0;
+  gpsRouteUnknown = false;
 }
 // Along-track / cross-track projection of p onto great-circle segment a->b, in nm.
 // alongNm is distance from a toward b (negative = short of a, > leg length = past b);
@@ -883,10 +931,182 @@ function gpsSnapLegAlertsToPosition() {
   gpsAlertLegIndex = onTrack >= 0 ? onTrack : nearest;
 }
 
+// --- cone-based leg tracking (2026-08-13-cone-leg-tracking-design.md) --------------
+// Which leg is the aircraft on? The old answer was a forward-only pointer over an
+// UNBOUNDED perpendicular corridor, so every position belonged to some leg and the app
+// could never say "I do not know where you are relative to this route" -- it always
+// answered, even when the answer was meaningless, and the altitude and off-course alerts
+// were then measured against a leg the aircraft was nowhere near.
+//
+// A leg is now the OVERLAP of a 90-degree cone from each of its ends: +/-45 degrees from A
+// toward B, and +/-45 degrees from B back toward A. The region is a diamond -- a point at
+// each waypoint, widest (half the leg length) at the midpoint. Since tan(45) = 1, the test
+// reduces to a comparison with no trigonometry:
+//
+//     0 <= along <= legLen   and   |cross| <= min(along, legLen - along)
+//
+// A single cone anchored at A was rejected: it widens without bound, so near B a position a
+// whole leg-length off to the side still reads as "on the leg", and the unknown state would
+// almost never trigger on a long leg -- defeating the point.
+var GPS_CONE_UNKNOWN_MS = 15000;      // continuously outside every cone before we say so
+var GPS_CONE_SECTOR_DEG = 45;         // recovery target preferred within this of the nose
+var GPS_CONE_REPEAT_DEG = 15;         // re-speak once the recovery heading moves this far
+var GPS_CONE_REPEAT_MS = 60000;       // ...and never more often than this
+var _gpsConeOutsideSince = null;      // when we first fell outside every cone, or null
+var _gpsConeAlertedHdg = null;        // heading given by the last recovery call
+var _gpsConeAlertedAt = 0;            // when that call was made
+var gpsRouteUnknown = false;          // true while outside every cone (after the debounce)
+
+function _gpsLegConeContains(a, b, p) {
+  const ab = geo(a, b);
+  if (!Number.isFinite(ab.dist) || ab.dist <= 0) return false;
+  const ap = geo(a, p);
+  const bp = geo(b, p);
+  if (!Number.isFinite(ap.dist) || !Number.isFinite(bp.dist)) return false;
+  // Standing ON a waypoint has no meaningful bearing from it; that is the cone's apex, so
+  // it counts as inside rather than as a division by zero.
+  if (ap.dist <= 0 || bp.dist <= 0) return true;
+  // The angle form, not an along/cross comparison: _gpsTrackProjection derives alongNm
+  // through acos, so it is never negative, and a position squarely BEHIND the start read
+  // as a small positive along-track distance -- i.e. inside the cone. Measuring the two
+  // bearings directly is both correct there and exactly what the spec describes.
+  const fromA = Math.abs(_gpsAngleDiff(ap.brg, ab.brg));
+  const fromB = Math.abs(_gpsAngleDiff(bp.brg, geo(b, a).brg));
+  return fromA <= GPS_CONE_SECTOR_DEG && fromB <= GPS_CONE_SECTOR_DEG;
+}
+
+// Recomputed every fix. Returns the leg index, or -1 when no cone contains the position.
+// Hysteresis first: if the CURRENT leg still contains us, keep it. That is what stops
+// flapping where adjacent diamonds overlap around a shared waypoint.
+function gpsLegByCone() {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const legs = (typeof state !== 'undefined' && state.legs) || [];
+  const n = Math.min(legs.length, wps.length - 1);
+  if (!gpsOwn || n <= 0) return -1;
+  const cur = gpsAlertLegIndex;
+  if (cur >= 0 && cur < n && wps[cur] && wps[cur + 1] &&
+      _gpsLegConeContains(wps[cur], wps[cur + 1], gpsOwn)) {
+    return cur;
+  }
+  let best = -1, bestCross = Infinity;
+  for (let i = 0; i < n; i++) {
+    const a = wps[i], b = wps[i + 1];
+    if (!a || !b || !_gpsLegConeContains(a, b, gpsOwn)) continue;
+    const proj = _gpsTrackProjection(a, b, gpsOwn);
+    const cross = proj ? Math.abs(proj.crossNm) : Infinity;
+    if (cross < bestCross) { bestCross = cross; best = i; }
+  }
+  return best;
+}
+
+// Where to fly to get back on. Candidates are the waypoints still AHEAD on the route --
+// never simply the nearest by distance: after drifting off late in a leg, or on a route
+// that doubles back, the closest waypoint is routinely one already overflown, and "direct
+// ALPHA" when ALPHA is behind tells a pilot to turn around to resume a route that
+// continues ahead. Among those, the nearest one within +/-45 degrees of the current
+// heading wins -- least turn, and the one a pilot would pick by eye. If none is in the
+// sector the nearest candidate is named anyway, with the turn direction, because "you are
+// off route" with no target is the unhelpful message this exists to avoid.
+function gpsRouteRecovery() {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  if (!gpsOwn || wps.length < 2) return null;
+  const from = Math.min(Math.max(gpsAlertLegIndex, 0) + 1, wps.length - 1);
+  const hdg = Number.isFinite(gpsOwn.hdg) ? gpsOwn.hdg : null;
+  let inSector = null, nearest = null;
+  for (let i = from; i < wps.length; i++) {
+    const wp = wps[i];
+    if (!wp) continue;
+    const g = geo(gpsOwn, wp);
+    if (!Number.isFinite(g.dist)) continue;
+    const cand = { index: i, wp: wp, distNm: g.dist, brg: g.brg };
+    if (!nearest || cand.distNm < nearest.distNm) nearest = cand;
+    if (hdg != null && Math.abs(_gpsAngleDiff(g.brg, hdg)) <= GPS_CONE_SECTOR_DEG) {
+      if (!inSector || cand.distNm < inSector.distNm) inSector = cand;
+    }
+  }
+  const pick = inSector || nearest;
+  if (!pick) return null;
+  // Only worth naming a turn when the target is NOT already ahead of the nose.
+  let turn = null;
+  if (!inSector && hdg != null) turn = _gpsAngleDiff(pick.brg, hdg) >= 0 ? 'right' : 'left';
+  return { index: pick.index, wp: pick.wp, distNm: pick.distNm, brg: pick.brg, turn: turn };
+}
+
+// Debounced: a wide turn at a waypoint and ordinary GPS scatter both put a fix briefly
+// outside, and an alert that cried wolf there would be turned off. Timed, not counted in
+// fixes -- fix rate varies with the source, and a count would mean a different grace
+// period on a 1 Hz phone fix than on a simulator poll.
+function gpsCheckRouteUnknown(insideCone) {
+  if (insideCone) {
+    _gpsConeOutsideSince = null;
+    _gpsConeAlertedHdg = null;
+    gpsRouteUnknown = false;
+    return;
+  }
+  const now = Date.now();
+  if (_gpsConeOutsideSince == null) { _gpsConeOutsideSince = now; return; }
+  if (now - _gpsConeOutsideSince < GPS_CONE_UNKNOWN_MS) return;
+  gpsRouteUnknown = true;
+  const rec = gpsRouteRecovery();
+  if (!rec) return;
+  const hdgMag = (typeof toMagnetic === 'function') ? toMagnetic(rec.brg) : rec.brg;
+  const hdg = Math.round(hdgMag);
+  // A heading given once goes stale the moment the aircraft turns, so this repeats -- but
+  // only when the course has genuinely moved, and never more often than once a minute.
+  // Flying straight at the target produces no repeats.
+  if (_gpsConeAlertedHdg != null) {
+    const moved = Math.abs(_gpsAngleDiff(hdg, _gpsConeAlertedHdg));
+    if (moved < GPS_CONE_REPEAT_DEG || now - _gpsConeAlertedAt < GPS_CONE_REPEAT_MS) return;
+  }
+  _gpsConeAlertedHdg = hdg;
+  _gpsConeAlertedAt = now;
+  const label = (typeof waypointDisplayLabel === 'function')
+    ? waypointDisplayLabel(rec.wp, rec.index) : (rec.wp.name || '');
+  const hdg3 = (typeof pad3 === 'function') ? pad3(hdg) : String(hdg);
+  const nm = Math.round(rec.distNm * 10) / 10;
+  gpsSendWatchAlert(
+    (S && S.watchAlertOffRouteTitle) || 'Off route',
+    (S && S.watchAlertOffRouteBody) ? S.watchAlertOffRouteBody(label, hdg3, nm, rec.turn)
+      : ('Direct ' + label + ', heading ' + hdg3 + ', ' + nm + ' NM'),
+    // Spoken form only once the voice feature is present -- these two land independently,
+    // and an undefined helper here would take the notification down with it.
+    (S && S.speakAlertOffRoute && typeof gpsSpokenDigits === 'function')
+      ? S.speakAlertOffRoute(label,
+          gpsSpokenDigits(hdg3, (typeof window !== 'undefined' && window.__navLang) || 'en'),
+          nm, rec.turn)
+      : null);
+}
+
 function gpsCheckLegAlerts() {
   if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
   const wps = state.waypoints || [];
   const legs = state.legs || [];
+  // The cone decides which leg we are on, every fix -- not a forward-only pointer. This is
+  // what lets a pilot rejoin mid-route, fly it backwards, or skip a leg and still be
+  // tracked, and what makes "I do not know where you are" expressible at all.
+  const coneLeg = gpsLegByCone();
+  if (coneLeg >= 0) {
+    if (coneLeg !== gpsAlertLegIndex) {
+      // A different leg means that leg's one-shot alerts are owed again -- rejoining a leg
+      // you had left should give you its approach call. The hysteresis in gpsLegByCone is
+      // what keeps this from re-arming on every wobble at a cone boundary.
+      gpsAlertLegIndex = coneLeg;
+      _gpsAlertLegFired = false;
+      _gpsAlertAltDeviated = false;
+      _gpsAlertMinDistNm = Infinity;
+    }
+    // Being inside a cone IS confirmation: it is a positional fact about a bounded region,
+    // not the nearest-leg guess the old gate was protecting against. Alerts therefore start
+    // working as soon as the aircraft is demonstrably on a leg, instead of waiting for the
+    // first waypoint capture -- which used to cost the FIRST waypoint of every session its
+    // approach call, since the capture that confirmed was the same event that fired TOP.
+    _gpsAlertConfirmed = true;
+  }
+  gpsCheckRouteUnknown(coneLeg >= 0);
+  // Outside every cone there is no trustworthy leg to measure against, and an altitude
+  // "deviation" from a leg the aircraft is not flying is noise. The off-route alert
+  // supersedes them; normal alerting resumes on re-entry.
+  if (gpsRouteUnknown) return;
   if (gpsAlertLegIndex >= legs.length || gpsAlertLegIndex + 1 >= wps.length) return;
   const next = wps[gpsAlertLegIndex + 1];
   if (!next) return;
@@ -1020,9 +1240,20 @@ function gpsCheckLegAlerts() {
     if (_gpsAlertConfirmed) {
       // Just "TOP" -- no waypoint name. The leg-approach alert already named it
       // seconds earlier; repeating it here only added characters to a small watch screen.
+      // Passing a waypoint is also the moment the drift check must go quiet for a while:
+      // see _gpsLastTopAt in gpsCheckDrift.
+      _gpsLastTopAt = Date.now();
+      // A waypoint that changes frequency is exactly where the pilot is about to make a
+      // call, so TOP carries it: the notification already shows the callout on the map,
+      // and hearing it saves looking down at the one moment the eyes are outside.
+      const ccAt = gpsCommChangeAt(next);
+      const ccLang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+      const ccFreq = ccAt ? gpsSpokenFreq(ccAt.freq, ccLang) : '';
       gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
         (S && S.watchAlertTopBody) || 'TOP',
-        (S && S.speakAlertTop) ? S.speakAlertTop() : null);
+        (ccAt && S && S.speakAlertTopComm)
+          ? S.speakAlertTopComm(ccAt.freqName, ccFreq)
+          : ((S && S.speakAlertTop) ? S.speakAlertTop() : null));
     }
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;
@@ -1233,6 +1464,13 @@ function gpsSendWatchAlert(title, body, speech) {
 // already the pacing).
 var GPS_DRIFT_CHECK_MS = 120000;
 var GPS_DRIFT_TRACK_ERROR_DEG = 10;   // fire once track-angle error reaches this
+// Overhead a waypoint the aircraft is turning onto the next leg, so its track is honestly
+// nothing like that leg's course -- track-angle error is huge and shrinking, and calling
+// that "off course" is crying wolf at the one moment the pilot is busiest and least wrong.
+// Reported live: the drift alert "shoots too early" after TOP. Stay quiet until the turn
+// has had time to settle.
+var GPS_DRIFT_AFTER_TOP_MS = 30000;
+var _gpsLastTopAt = 0;
 var _gpsDriftTimer = null;
 
 // A connected simulator's own clock can run faster than real time (cvfr-bridge's
@@ -1279,6 +1517,9 @@ function gpsCheckDrift() {
   // meaningless (or actively wrong) before a real waypoint has confirmed it, same
   // "don't alert on a guess" rule gpsCheckLegAlerts' own three alert types follow.
   if (!_gpsAlertConfirmed) return;
+  // Just passed a waypoint: the turn onto the new leg has not settled yet (see
+  // GPS_DRIFT_AFTER_TOP_MS).
+  if (_gpsLastTopAt && Date.now() - _gpsLastTopAt < GPS_DRIFT_AFTER_TOP_MS) return;
   const wps = state.waypoints || [];
   if (gpsAlertLegIndex + 1 >= wps.length) return;
   const start = wps[gpsAlertLegIndex], end = wps[gpsAlertLegIndex + 1];

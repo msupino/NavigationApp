@@ -1013,6 +1013,15 @@ window.S = {
   watchAlertAltBody: function(actual, planned) {
     return actual + ' רגל — מתוכנן ' + planned + ' רגל';
   },
+  watchAlertOffRouteTitle: 'מחוץ למסלול',
+  watchAlertOffRouteBody: function(wp, hdg, nm, turn) {
+    const t = turn === 'right' ? ', פנה ימינה' : (turn === 'left' ? ', פנה שמאלה' : '');
+    return 'ישר אל ' + wp + t + ', מגמה ' + hdg + '\u00b0, ' + nm + ' מ״י';
+  },
+  speakAlertOffRoute: function(wp, hdgDigits, nm, turn) {
+    const t = turn === 'right' ? ' פנה ימינה.' : (turn === 'left' ? ' פנה שמאלה.' : '');
+    return 'מחוץ למסלול. ישר אל ' + wp + '.' + t + ' מגמה ' + hdgDigits + ', ' + nm + ' מייל.';
+  },
   watchAlertDriftTitle: 'סטייה מהמסלול',
   watchAlertDriftBody: function(driftOut, driftIn, wp) {
     return driftOut + '° סטייה, ' + driftIn + '° לתיקון לכיוון ' + wp;
@@ -1043,6 +1052,13 @@ window.S = {
     return s;
   },
   speakAlertTop: function() { return 'טופ.'; },
+  speakAlertTopComm: function(station, freqDigits) {
+    const bits = [];
+    if (station) bits.push(String(station).replace(/_/g, ' '));
+    if (freqDigits) bits.push(freqDigits);
+    return bits.length ? ('טופ. עבור אל ' + bits.join(', ') + '.') : 'טופ.';
+  },
+  spokenDecimal: 'נקודה',
   speakAlertAlt: function(actual, planned) {
     return 'גובה ' + actual + ' רגל, מתוכנן ' + planned + '.';
   },
