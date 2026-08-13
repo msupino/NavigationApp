@@ -2425,6 +2425,13 @@ document.getElementById('reverse').onclick = () => {
   }
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   showInspector(); draw();
+  // The published network is DIRECTED: plenty of corridors are one-way, and a reversed
+  // route can quietly contain segments that are not flyable the other way. The app cannot
+  // decide that for the pilot -- it is a question for the chart and the NOTAMs -- so it
+  // says so rather than implying the reversal is automatically valid.
+  if (typeof showToast === 'function') {
+    showToast(S.reverseRouteWarn || 'Reversed — might not match allowed routes');
+  }
 };
 document.getElementById('undo').onclick = () => { if (typeof undo === 'function') undo(); };
 document.getElementById('clear').onclick = () => {

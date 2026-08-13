@@ -1427,6 +1427,7 @@ window.S = Object.assign({
   tbPlateAirfieldAll: 'All airfields',
   tbPlateAirfieldAuto: 'Auto (route start + end)',
   tbDisabledByTurn: 'Not available on a route with a turning point — it already flies out and back, so there is nothing to reverse or mirror.',
+  reverseRouteWarn: '\u26a0 Reversed — might not match allowed routes. Check the chart: published corridors can be one-way.',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
   tbUndo: '↶ Undo (Ctrl-Z)',

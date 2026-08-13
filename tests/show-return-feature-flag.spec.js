@@ -104,3 +104,50 @@ test('the B shortcut does nothing when the feature is off', async ({ page }) => 
   expect(out.clicked).toBe(0);
   expect(out.showReturn).toBe(false);
 });
+
+test('the B shortcut is not listed in the help while the feature is off', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showShortcutsHelp === 'function');
+  const readKeys = () => page.evaluate(() => {
+    showShortcutsHelp();
+    return [...document.querySelectorAll('.shortcuts-help-keys')].map(e => e.textContent.trim());
+  });
+  // showShortcutsHelp is idempotent while its modal is open, so close it the way a user
+  // does rather than ripping the node out -- that left the guard set and the next open
+  // silently returned nothing.
+  const close = () => page.keyboard.press('Escape');
+
+  const off = await readKeys();
+  await close();
+  // Listing a key that does nothing teaches a shortcut that will not work.
+  expect(off).not.toContain('B');
+
+  await page.evaluate(() => {
+    const orig = window.tune;
+    window.__origTune = orig;
+    window.tune = (k) => (k === 'featureShowReturn' ? true : orig(k));
+  });
+  const on = await readKeys();
+  await close();
+  await page.evaluate(() => { window.tune = window.__origTune; });
+  expect(on).toContain('B');
+});
+
+test('reversing a route warns that it may not match allowed routes', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showToast === 'function');
+  const msg = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                       { lat: 32.1, lng: 34.1, name: 'B' }];
+    syncLegs();
+    let seen = '';
+    const orig = window.showToast;
+    window.showToast = (t) => { seen = t; };
+    document.getElementById('reverse').click();
+    window.showToast = orig;
+    return seen;
+  });
+  expect(msg).toMatch(/allowed routes/i);
+  // The published network is directed; the app must not imply a reversal is valid.
+  expect(msg).toMatch(/one-way|chart/i);
+});

@@ -175,7 +175,7 @@ const SHORTCUTS_HELP_ROWS = [
       { keys: ['N'], descKey: 'shortcutAddNote' },
       { keys: ['C'], descKey: 'shortcutClear' },
       { keys: ['R'], descKey: 'shortcutReverse' },
-      { keys: ['B'], descKey: 'shortcutBothDirections' },
+      { keys: ['B'], descKey: 'shortcutBothDirections', feature: 'featureShowReturn' },
       { keys: ['Ctrl', 'Z'], altKeys: ['⌘', 'Z'], descKey: 'shortcutUndo' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
       { keys: ['D'], altKeys: ['Delete', 'Backspace'], descKey: 'shortcutDelete' },
@@ -221,8 +221,12 @@ function showShortcutsHelp() {
     list.appendChild(groupTitle);
     // Alphabetical within each category (by the primary key combo) so the
     // rows are predictable to scan; the category order itself is curated.
-    const rows = [...group.rows].sort((a, b) =>
-      a.keys.join('+').localeCompare(b.keys.join('+')));
+    // A row for a feature that is switched off is a shortcut that does nothing: listing it
+    // teaches a key that will not work, which is worse than not mentioning it.
+    const rows = [...group.rows]
+      .filter(r => !r.feature || (typeof tune !== 'function') || tune(r.feature) !== false)
+      .sort((a, b) => a.keys.join('+').localeCompare(b.keys.join('+')));
+    if (!rows.length) { list.removeChild(groupTitle); continue; }
     for (const row of rows) {
       const dt = document.createElement('dt');
       dt.className = 'shortcuts-help-keys';
