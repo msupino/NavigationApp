@@ -3450,14 +3450,18 @@ function drawLegs() {
     // already gated by legAllowsReturn).
     const inboundBlocked = typeof legAltitudeIsBlocked === 'function' &&
       legAltitudeIsBlocked(leg, 'inboundAltitude');
-    if (!inboundBlocked && !kiteOff) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
+    // Direction filter (see legDirVisible): hides the KITES of one direction on an
+    // out-and-back route so a printed map stays readable. The leg line, the distance badge
+    // and the drift lines are untouched -- the track itself is never hidden.
+    const dirOff = (typeof legDirVisible === 'function') && !legDirVisible(i);
+    if (!inboundBlocked && !kiteOff && !dirOff) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
     const defCum = { a: 0, _default: 1, _m: 1 };
-    if (showCumTime && !preClock) {
+    if (showCumTime && !preClock && !dirOff) {
       const cumP = leg.cumLabel || defCum;
       const cumPerp  = cumP._default ? cumPerpDef : (cumP.p || 0) * zoomScale;
       const cumAlong = (cumP.a || 0) * zoomScale;
@@ -3468,7 +3472,7 @@ function drawLegs() {
         cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
     }
 
-    if (showReturn && legAllowsReturn(i)) {
+    if (showReturn && legAllowsReturn(i) && !dirOff) {
       if (!kiteOff) drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),

@@ -2647,6 +2647,7 @@ if (liveBtn) {
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY  = 'navaid.showCumTime';
+const LEG_DIR_KEY  = 'navaid.legDirFilter';
 const VOICE_ALERTS_KEY = 'navaid.voiceAlerts';
 const LIMIT_KITES_KEY = 'navaid.limitLegKites';
 const SIM_URL_KEY  = 'navaid.simUrl';
@@ -2673,6 +2674,28 @@ try {
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('cumtime-cb').checked = showCumTime;
+// Leg-kite direction filter. Options are built here rather than in the HTML so their
+// labels come from the string table like every other localised control.
+(function () {
+  const sel = document.getElementById('leg-dir-select');
+  if (!sel) return;
+  try {
+    const saved = lsGet(LEG_DIR_KEY);
+    if (saved === 'out' || saved === 'back' || saved === 'both') window.legDirFilter = saved;
+  } catch (e) { /* storage unavailable */ }
+  for (const [v, key] of [['both', 'tbLegDirBoth'], ['out', 'tbLegDirOut'], ['back', 'tbLegDirBack']]) {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = (S && S[key]) || v;
+    sel.appendChild(o);
+  }
+  sel.value = window.legDirFilter || 'both';
+  sel.onchange = () => {
+    window.legDirFilter = sel.value;
+    try { localStorage.setItem(LEG_DIR_KEY, sel.value); } catch (e) { /* */ }
+    draw();
+  };
+})();
 document.getElementById('limit-kites-cb').checked = limitLegKites;
 // Voice alerts: default off (it talks out loud in a cockpit -- opt in, never a surprise
 // on first upgrade). Visible on the website too, as a testing aid.

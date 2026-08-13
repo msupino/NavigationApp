@@ -1770,6 +1770,11 @@ window.S = Object.assign({
   offlineCancelled: 'cancelled',
   offlineDone: 'saved ',
   offlineTilesCount: 'offline tiles: ',
+  tbLegDir: '🧭 Leg kites',
+  tbLegDirTitle: 'Which direction\u2019s leg kites to draw. On an out-and-back route both directions land on top of each other near the turnaround — readable on screen, unusable on a printed map. The route line is never hidden, only the kites.',
+  tbLegDirBoth: 'Both directions',
+  tbLegDirOut: 'Outbound only',
+  tbLegDirBack: 'Return only',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -1859,6 +1864,11 @@ const state = {
   wind: { dir: tune('windDir'), speed: tune('windSpeed') }, // route-wide wind (#722): dir °true FROM, kt; 0 = calm; default is tunable
 };
 var showReturn = false;     // outbound (return) markers — off by default
+// Which direction's leg kites to draw: 'both' | 'out' | 'back'. An out-and-back route
+// draws a kite for each direction, and near the turnaround they land on top of each
+// other -- readable on screen where you can zoom, unusable on a printed map. This filters
+// the KITES only; the route line itself is never hidden, so the printed track stays whole.
+var legDirFilter = 'both';
 var showMidLeg = false;
 var showCumTime = true;     // cumulative-time kites — on by default
 var highlightDiff = false;  // purple halo on legs that change altitude
@@ -4082,6 +4092,28 @@ function markLegAltitudeManual(i) {
   delete leg._legAltitudeOutboundBlocked;
   delete leg._legAltitudeOneWay;
   leg._altSig = legEndpointSig(i);         // remember which endpoints this value is for
+}
+// Does leg i fly back down a leg already flown? True when its two waypoints are the same
+// pair as an EARLIER leg's, reversed. Exact, and needs no guess about where a turnaround
+// is: on an out-and-back this picks out precisely the return legs, and on a route that
+// never retraces it is false everywhere, so the direction filter simply does nothing.
+function legIsRetrace(i) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const a = wps[i], b = wps[i + 1];
+  if (!a || !b) return false;
+  const same = (p, q) => p && q &&
+    (typeof sameMapPoint === 'function' ? sameMapPoint(p, q) : (p.lat === q.lat && p.lng === q.lng));
+  for (let j = 0; j < i; j++) {
+    if (same(wps[j], b) && same(wps[j + 1], a)) return true;
+  }
+  return false;
+}
+// Should leg i's kites be drawn, given the direction filter?
+function legDirVisible(i) {
+  const f = (typeof legDirFilter === 'string') ? legDirFilter : 'both';
+  if (f === 'out') return !legIsRetrace(i);
+  if (f === 'back') return legIsRetrace(i);
+  return true;
 }
 function legAllowsReturn(i) {
   const leg = state.legs[i];
