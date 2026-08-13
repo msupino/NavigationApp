@@ -242,7 +242,7 @@ test('switching it back off hides the row and clears the state again', async ({ 
 });
 
 test.describe('reversing with nothing to reverse', () => {
-  test('says nothing on an empty map', async ({ page }) => {
+  test('says there is no route to reverse, on an empty map', async ({ page }) => {
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof showToast === 'function');
     const seen = await page.evaluate(() => {
@@ -250,17 +250,19 @@ test.describe('reversing with nothing to reverse', () => {
       syncLegs();
       let msg = null;
       const orig = window.showToast;
-      window.showToast = (t) => { msg = t; };
+      window.showToast = (t, o) => { msg = { text: t, opts: o || {} }; };
       document.getElementById('reverse').click();
       window.showToast = orig;
       return msg;
     });
-    // Warning about a route that does not exist teaches the pilot to dismiss the warning
-    // unread -- exactly what must not happen the day it appears on a real route.
-    expect(seen).toBeNull();
+    // Says what happened, rather than staying silent (did the button work?) or raising the
+    // corridor warning about a route that does not exist.
+    expect(seen.text).toMatch(/no route to reverse/i);
+    // Plain toast: nothing is wrong, so it must not blink or hold like the real warning.
+    expect(seen.opts.blink).toBeFalsy();
   });
 
-  test('says nothing for a single waypoint', async ({ page }) => {
+  test('says the same for a single waypoint, and leaves it alone', async ({ page }) => {
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof showToast === 'function');
     const out = await page.evaluate(() => {
@@ -273,7 +275,7 @@ test.describe('reversing with nothing to reverse', () => {
       window.showToast = orig;
       return { msg, wps: state.waypoints.length };
     });
-    expect(out.msg).toBeNull();
+    expect(out.msg).toMatch(/no route to reverse/i);
     expect(out.wps).toBe(1);      // and nothing was mangled on the way out
   });
 
