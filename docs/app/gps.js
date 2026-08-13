@@ -1012,6 +1012,27 @@ function gpsCheckLegAlerts() {
   }
 }
 
+// --- spoken alerts (APK) -------------------------------------------------
+// A heading is read digit by digit -- "zero zero four", never "four". Every heading this
+// app displays is already three-digit padded (pad3), and a TTS engine handed "004" says
+// "four", which is a different heading to anyone listening.
+var _GPS_DIGIT_WORDS = {
+  en: ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'],
+  he: ['אפס', 'אחת', 'שתיים', 'שלוש', 'ארבע', 'חמש', 'שש', 'שבע', 'שמונה', 'תשע'],
+};
+function gpsSpokenDigits(value, lang) {
+  if (value == null) return '';
+  const words = _GPS_DIGIT_WORDS[lang] || _GPS_DIGIT_WORDS.en;
+  const out = [];
+  const s = String(value);
+  for (let i = 0; i < s.length; i++) {
+    const d = s.charCodeAt(i) - 48;
+    if (d >= 0 && d <= 9) out.push(words[d]);
+  }
+  return out.join(' ');
+}
+window.gpsSpokenDigits = gpsSpokenDigits;
+
 // Native (APK) local-notifications plugin, mirroring _bgGeo()'s access pattern -- the
 // injected Capacitor bridge exposes any synced plugin at window.Capacitor.Plugins.*.
 function _nativeNotify() {
