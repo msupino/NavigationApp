@@ -2681,9 +2681,10 @@ document.getElementById('cumtime-cb').checked = showCumTime;
   if (!sel) return;
   try {
     const saved = lsGet(LEG_DIR_KEY);
-    if (saved === 'out' || saved === 'back' || saved === 'both') window.legDirFilter = saved;
+    if (['both', 'out', 'back', 'outTurn', 'backTurn'].includes(saved)) window.legDirFilter = saved;
   } catch (e) { /* storage unavailable */ }
-  for (const [v, key] of [['both', 'tbLegDirBoth'], ['out', 'tbLegDirOut'], ['back', 'tbLegDirBack']]) {
+  for (const [v, key] of [['both', 'tbLegDirBoth'], ['out', 'tbLegDirOut'], ['back', 'tbLegDirBack'],
+    ['outTurn', 'tbLegDirOutTurn'], ['backTurn', 'tbLegDirBackTurn']]) {
     const o = document.createElement('option');
     o.value = v;
     o.textContent = (S && S[key]) || v;

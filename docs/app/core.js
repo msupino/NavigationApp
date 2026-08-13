@@ -1795,8 +1795,10 @@ window.S = Object.assign({
   tbLegDir: '🧭 Leg kites',
   tbLegDirTitle: 'Which direction\u2019s leg kites to draw. On an out-and-back route both directions land on top of each other near the turnaround — readable on screen, unusable on a printed map. The route line is never hidden, only the kites.',
   tbLegDirBoth: 'Both directions',
-  tbLegDirOut: 'Outbound only',
-  tbLegDirBack: 'Return only',
+  tbLegDirOut: 'Outbound — skip retraced legs',
+  tbLegDirBack: 'Return — retraced legs only',
+  tbLegDirOutTurn: 'Outbound — up to the turnaround',
+  tbLegDirBackTurn: 'Return — from the turnaround',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -4130,11 +4132,37 @@ function legIsRetrace(i) {
   }
   return false;
 }
+// The turnaround: the waypoint furthest from the route's start. Everything from there on
+// is the way home. A blunter rule than legIsRetrace -- it needs no leg to be retraced at
+// all -- which is the point: a sortie that goes out one way and comes back another never
+// retraces a single leg, yet a pilot still thinks of it as out and back.
+function legTurnaroundIndex() {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  if (wps.length < 3 || typeof geo !== 'function') return -1;
+  let best = -1, bestD = -1;
+  for (let i = 1; i < wps.length - 1; i++) {
+    if (!wps[i]) continue;
+    const { dist } = geo(wps[0], wps[i]);
+    if (Number.isFinite(dist) && dist > bestD) { bestD = dist; best = i; }
+  }
+  return best;
+}
 // Should leg i's kites be drawn, given the direction filter?
+//
+// Two ways to read "the way back", because routes come in both shapes:
+//   out / back            -- a leg that flies back down a track already flown
+//                            (exact; a route that never retraces has none)
+//   outTurn / backTurn    -- everything past the furthest point from the start
+//                            (works when the return takes a different path home)
 function legDirVisible(i) {
   const f = (typeof legDirFilter === 'string') ? legDirFilter : 'both';
   if (f === 'out') return !legIsRetrace(i);
   if (f === 'back') return legIsRetrace(i);
+  if (f === 'outTurn' || f === 'backTurn') {
+    const t = legTurnaroundIndex();
+    if (t < 0) return f === 'outTurn';    // no turnaround to speak of: it is all outbound
+    return f === 'outTurn' ? i < t : i >= t;
+  }
   return true;
 }
 function legAllowsReturn(i) {
