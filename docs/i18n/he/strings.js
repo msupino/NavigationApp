@@ -1025,7 +1025,12 @@ window.S = {
     let s = 'מתקרב אל ' + wp + '.';
     const parts = [];
     if (alt != null) parts.push(alt + ' רגל');
-    if (hdgDigits != null) parts.push('כיוון ' + hdgDigits);
+    // "מגמה", not the written UI's "כיוון". Unvocalized כיוון is a homograph: a TTS engine
+    // reads it as "keivan" (since/because) as readily as "kivvun" (direction), and heard
+    // once in flight the sentence stops meaning anything. מגמה is the standard Hebrew
+    // aviation term for heading and cannot be misread. The written strings keep כיוון,
+    // where surrounding context disambiguates it.
+    if (hdgDigits != null) parts.push('מגמה ' + hdgDigits);
     if (mins != null) parts.push(mins < 1 ? 'פחות מדקה' : (mins + ' דקות'));
     if (parts.length) s += ' הקטע הבא ' + parts.join(', ') + '.';
     return s;
@@ -1035,7 +1040,10 @@ window.S = {
     return 'גובה ' + actual + ' רגל, מתוכנן ' + planned + '.';
   },
   speakAlertDrift: function(driftOut, driftIn, wp) {
-    return driftOut + ' מעלות סטייה. ' + driftIn + ' מעלות לתיקון לכיוון ' + wp + '.';
+    // "אל", matching speakAlertDriftDirect below, rather than "לכיוון" -- one less
+    // occurrence of the כיוון homograph in spoken text, and the two drift calls now read
+    // the same way.
+    return driftOut + ' מעלות סטייה. ' + driftIn + ' מעלות לתיקון אל ' + wp + '.';
   },
   speakAlertDriftDirect: function(correction, wp) {
     return correction + ' מעלות אל ' + wp + '.';
