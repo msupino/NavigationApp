@@ -346,6 +346,17 @@ function gpsStaleText() {
     ? ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(gpsFixAgeMs() / 1000) + 's'
     : '';
 }
+// Magnetic heading for the readout, or null when the fix carries none (a stationary GPS
+// reports no course at all). gpsOwn.hdg is TRUE in both paths -- the geolocation API is
+// true-referenced, and the simulator bridge's magnetic value is converted to true in
+// _simFetch -- so this is the one place it turns back into what a pilot reads off the DI.
+function gpsReadoutHeading() {
+  if (!gpsOwn || !Number.isFinite(gpsOwn.hdg)) return null;
+  const mag = (typeof toMagnetic === 'function') ? toMagnetic(gpsOwn.hdg) : gpsOwn.hdg;
+  if (!Number.isFinite(mag)) return null;
+  const r = ((Math.round(mag) % 360) + 360) % 360;
+  return ((typeof pad3 === 'function') ? pad3(r) : String(r)) + '\u00b0';
+}
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
@@ -356,6 +367,8 @@ function gpsUpdateReadout() {
     const parts = [gpsTrack.length + ' pts · ' + mm + ':' + ss];
     if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
     if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
+    const hdgRec = gpsReadoutHeading();
+    if (hdgRec) parts.push(hdgRec);
     gpsSetReadout(el, parts, gpsStaleText());
     return;
   }
@@ -369,6 +382,10 @@ function gpsUpdateReadout() {
     const parts = [];
     if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
     if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
+    // Same three fields whether the position comes from the device GPS or a connected
+    // simulator -- both land in gpsOwn, and this branch already serves both.
+    const hdgLive = gpsReadoutHeading();
+    if (hdgLive) parts.push(hdgLive);
     gpsSetReadout(el, parts, gpsStaleText());
     return;
   }
@@ -831,6 +848,7 @@ function gpsResetLegAlerts() {
   _gpsAlertLegFired = false;
   _gpsAlertAltDeviated = false;
   _gpsAlertConfirmed = false;
+  _gpsLastTopAt = 0;
 }
 // Along-track / cross-track projection of p onto great-circle segment a->b, in nm.
 // alongNm is distance from a toward b (negative = short of a, > leg length = past b);
@@ -1002,6 +1020,9 @@ function gpsCheckLegAlerts() {
     if (_gpsAlertConfirmed) {
       // Just "TOP" -- no waypoint name. The leg-approach alert already named it
       // seconds earlier; repeating it here only added characters to a small watch screen.
+      // Passing a waypoint is also the moment the drift check must go quiet for a while:
+      // see _gpsLastTopAt in gpsCheckDrift.
+      _gpsLastTopAt = Date.now();
       gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
         (S && S.watchAlertTopBody) || 'TOP');
     }
@@ -1102,6 +1123,13 @@ function gpsSendWatchAlert(title, body) {
 // already the pacing).
 var GPS_DRIFT_CHECK_MS = 120000;
 var GPS_DRIFT_TRACK_ERROR_DEG = 10;   // fire once track-angle error reaches this
+// Overhead a waypoint the aircraft is turning onto the next leg, so its track is honestly
+// nothing like that leg's course -- track-angle error is huge and shrinking, and calling
+// that "off course" is crying wolf at the one moment the pilot is busiest and least wrong.
+// Reported live: the drift alert "shoots too early" after TOP. Stay quiet until the turn
+// has had time to settle.
+var GPS_DRIFT_AFTER_TOP_MS = 30000;
+var _gpsLastTopAt = 0;
 var _gpsDriftTimer = null;
 
 // A connected simulator's own clock can run faster than real time (cvfr-bridge's
@@ -1148,6 +1176,9 @@ function gpsCheckDrift() {
   // meaningless (or actively wrong) before a real waypoint has confirmed it, same
   // "don't alert on a guess" rule gpsCheckLegAlerts' own three alert types follow.
   if (!_gpsAlertConfirmed) return;
+  // Just passed a waypoint: the turn onto the new leg has not settled yet (see
+  // GPS_DRIFT_AFTER_TOP_MS).
+  if (_gpsLastTopAt && Date.now() - _gpsLastTopAt < GPS_DRIFT_AFTER_TOP_MS) return;
   const wps = state.waypoints || [];
   if (gpsAlertLegIndex + 1 >= wps.length) return;
   const start = wps[gpsAlertLegIndex], end = wps[gpsAlertLegIndex + 1];

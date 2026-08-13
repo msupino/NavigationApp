@@ -1348,3 +1348,59 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
     expect(out[0].body).toContain('BRAVO');
   });
 });
+
+// Reported live: the drift alert "shoots too early" after TOP. Overhead a waypoint the
+// aircraft is turning onto the next leg, so its track is honestly nothing like that leg's
+// course -- the track-angle error is huge and shrinking, and calling that "off course" is
+// crying wolf at the moment the pilot is busiest and least wrong.
+test.describe('drift stays quiet while the turn onto a new leg settles', () => {
+  test('suppressed right after TOP, allowed once the window passes', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
+                         { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;
+      // Well off the leg's own bearing -- a genuine drift by any measure.
+      gpsOwn = { lat: 32.15, lng: 34.2, hdg: 20, t: Date.now() };
+
+      _gpsLastTopAt = Date.now();            // just passed a waypoint
+      gpsCheckDrift();
+      const justAfterTop = window.__notifications.length;
+
+      _gpsLastTopAt = Date.now() - 10000;    // 10 s later: still turning
+      gpsCheckDrift();
+      const at10s = window.__notifications.length;
+
+      _gpsLastTopAt = Date.now() - 31000;    // past the settling window
+      gpsCheckDrift();
+      const at31s = window.__notifications.length;
+      return { justAfterTop, at10s, at31s, windowMs: GPS_DRIFT_AFTER_TOP_MS };
+    });
+    expect(out.windowMs).toBe(30000);
+    expect(out.justAfterTop).toBe(0);
+    expect(out.at10s).toBe(0);
+    expect(out.at31s).toBeGreaterThan(0);
+  });
+
+  test('a drift with no TOP behind it still alerts immediately', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const n = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
+                         { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;
+      _gpsLastTopAt = 0;                     // no waypoint passed yet this session
+      gpsOwn = { lat: 32.15, lng: 34.2, hdg: 20, t: Date.now() };
+      gpsCheckDrift();
+      return window.__notifications.length;
+    });
+    expect(n).toBeGreaterThan(0);
+  });
+});
