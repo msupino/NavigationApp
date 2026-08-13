@@ -538,3 +538,41 @@ test.describe('the turn restarts the cumulative clock', () => {
     expect(drawn[0]).toBe(drawn[1]);
   });
 });
+
+// The menu is capped to the screen and scrolls, but a flex item still shrinks BELOW its
+// content by default -- so once the rows stopped fitting they compressed instead, and a row
+// whose label sits above its control squashed to one line with its select painting over the
+// row beneath. Reported as the VOR ref box overlapping "Show/Add Freq Changes".
+test('a stacked row keeps its full height when the menu overflows', async ({ page }) => {
+  // The capped, scrolling menu exists only from 681px up (below that the section is an
+  // inline block with no height limit), so the squash can only happen there. Short height
+  // so the section cannot possibly fit and the cap is genuinely in play.
+  await page.setViewportSize({ width: 900, height: 420 });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => !!document.getElementById('vor-ref-row'));
+  const out = await page.evaluate(() => {
+    const sec = document.getElementById('vor-ref-row').closest('.tb-section');
+    if (sec) sec.classList.add('open');
+    const rows = [document.getElementById('vor-ref-row'), document.getElementById('leg-dir-row')];
+    return rows.filter(Boolean).map((row) => {
+      const sel = row.querySelector('select');
+      const rb = row.getBoundingClientRect(), sb = sel.getBoundingClientRect();
+      const next = row.nextElementSibling;
+      const nb = next ? next.getBoundingClientRect() : null;
+      return {
+        id: row.id,
+        // The row must be tall enough for what is inside it...
+        containsSelect: sb.bottom <= rb.bottom + 1,
+        // ...and must not paint over whatever follows.
+        overlapsNext: nb ? sb.bottom > nb.top + 1 : false,
+        shrink: getComputedStyle(row).flexShrink,
+      };
+    });
+  });
+  expect(out.length).toBeGreaterThan(0);
+  for (const r of out) {
+    expect(r.shrink, r.id + ' must not shrink below its content').toBe('0');
+    expect(r.containsSelect, r.id + ' select escapes its row').toBe(true);
+    expect(r.overlapsNext, r.id + ' paints over the next row').toBe(false);
+  }
+});

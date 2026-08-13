@@ -826,6 +826,15 @@ html[dir="rtl"] #toolbar.collapsed {
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   }
 
+  /* The menu is capped to the screen and scrolls, but a flex item still shrinks BELOW its
+     content by default -- so once the rows no longer fit, they compressed instead of the
+     menu scrolling. A row whose label sits above its control (VOR ref, leg kites) squashed
+     to a single line's height and its select painted over the row beneath it. Reported as
+     the VOR ref box overlapping "Show/Add Freq Changes", and it only appeared once another
+     row pushed the section past the cap.
+     Every row keeps its own height; overflow-y: auto above then does what it says. */
+  .tb-section-body > * { flex-shrink: 0; }
+
   .tb-section[data-sec="export"] .tb-section-body,
   .tb-section[data-sec="weather"] .tb-section-body,
   .tb-section[data-sec="print"] .tb-section-body {
