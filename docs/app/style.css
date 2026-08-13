@@ -609,12 +609,7 @@ html[dir="rtl"] #toolbar.collapsed {
 }
 #toolbar .navtoggle input { cursor: pointer; margin: 0; }
 #toolbar .navtoggle input[type="range"] { flex: 1; width: 0; min-width: 0; }
-/* Both of this section's selects stack their label above the control. A select left in the
-   row's default side-by-side flex sizes itself to its widest OPTION -- "Outbound only" is
-   far wider than the numeric readouts these rows were built for -- which drags the whole
-   content-sized menu around it. Same treatment for both, rather than one of each. */
-#toolbar #vor-ref-row,
-#toolbar #leg-dir-row {
+#toolbar #vor-ref-row {
   align-items: stretch;
   flex-direction: column;
   gap: 3px;
@@ -1418,8 +1413,7 @@ html[dir="rtl"] #toolbar .navtoggle select {
   text-align: start;
   text-align-last: start;
 }
-#toolbar #vor-ref-row select,
-#toolbar #leg-dir-row select {
+#toolbar #vor-ref-row select {
   box-sizing: border-box;
   min-width: 0;
   width: 100%;
