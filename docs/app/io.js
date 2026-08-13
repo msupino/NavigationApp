@@ -984,6 +984,9 @@ function serializeRoute() {
   const data = {
     waypoints: state.waypoints.map(w => ({
       lat: r5(w.lat), lng: r5(w.lng), name: w.name || '',
+      // Only when set: a loop route repeats no waypoint, so nothing in the geometry says
+      // where it turns for home -- the pilot does.
+      ...(w.turn ? { turn: 1 } : {}),
     })),
     legs: state.legs.map(l => ({
       inboundAltitude: encodeRouteAltitude(l.inboundAltitude),
@@ -2482,6 +2485,7 @@ function applyRouteData(d) {
                                   // (routeLibraryApply re-sets it right after)
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
+    ...(w.turn ? { turn: 1 } : {}),
   }));
   // Use the blob's `legArrowSize` if present (forward-compat — current
   // serializeRoute() doesn't emit it). Otherwise fall back to the current

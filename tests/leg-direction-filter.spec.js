@@ -265,3 +265,98 @@ test.describe('the picker dims when there is no turn', () => {
     expect(vis.b).toEqual([true, true]);
   });
 });
+
+// A LOOP route repeats no waypoint, so no leg retraces and the geometry has nothing to say
+// about where it turns for home -- but the pilot knows. Reported on this route.
+test.describe('manual turning point', () => {
+  const LOOP = [
+    { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+    { lat: 32.21056, lng: 34.80722, name: 'SFAIM' },
+    { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+    { lat: 32.11028, lng: 34.76250, name: 'RIDNG' },
+    { lat: 32.14556, lng: 34.77833, name: 'HTZUK' },
+    { lat: 32.14083, lng: 34.80139, name: 'KNTRY' },
+    { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+  ];
+  async function loop(page) {
+    await page.evaluate((wps) => {
+      state.waypoints = wps.map(w => ({ ...w }));
+      syncLegs();
+    }, LOOP);
+  }
+
+  test('the loop has no detectable turn until one is marked', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    const before = await page.evaluate(() => legRetraceTurnIndex());
+    expect(before).toBe(-1);   // no leg retraces: LLHZ repeats, but no PAIR reverses
+
+    const after = await page.evaluate(() => {
+      setTurnWaypoint(2);      // TYONA, the far end
+      return { turn: legRetraceTurnIndex(), marked: !!state.waypoints[2].turn };
+    });
+    expect(after.marked).toBe(true);
+    expect(after.turn).toBe(2);
+  });
+
+  test('marking a turn splits the loop, and enables the picker', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    const out = await page.evaluate(() => {
+      setTurnWaypoint(2);
+      if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+      const at = (f) => { window.legDirFilter = f; return state.legs.map((_, i) => legDirVisible(i)); };
+      const o = at('out'), b = at('back');
+      window.legDirFilter = 'both';
+      return { o, b, disabled: document.getElementById('leg-dir-select').disabled };
+    });
+    expect(out.disabled).toBe(false);
+    expect(out.o).toEqual([true, true, false, false, false, false]);
+    expect(out.b).toEqual([false, false, true, true, true, true]);
+  });
+
+  test('only one waypoint can be the turn, and it toggles off', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    const out = await page.evaluate(() => {
+      setTurnWaypoint(2);
+      setTurnWaypoint(4);                       // moving it clears the old one
+      const marks = state.waypoints.map(w => !!w.turn);
+      setTurnWaypoint(4);                       // pressing the same one clears it
+      return { marks, cleared: state.waypoints.every(w => !w.turn) };
+    });
+    expect(out.marks).toEqual([false, false, false, false, true, false, false]);
+    expect(out.cleared).toBe(true);
+  });
+
+  test('the mark survives a save/load round-trip', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    const kept = await page.evaluate(() => {
+      setTurnWaypoint(2);
+      const blob = serializeRoute();
+      state.waypoints = [];
+      syncLegs();
+      applyRouteData(blob);
+      return { idx: state.waypoints.findIndex(w => w.turn), turn: legRetraceTurnIndex() };
+    });
+    expect(kept.idx).toBe(2);
+    expect(kept.turn).toBe(2);
+  });
+
+  test('the inspector button marks the selected waypoint', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    await page.evaluate(() => {
+      state.selected = { type: 'wp', index: 2 };
+      showInspector();
+    });
+    await page.locator('#insp-turn-btn').click();
+    const out = await page.evaluate(() => ({
+      marked: !!state.waypoints[2].turn,
+      pressed: document.getElementById('insp-turn-btn').getAttribute('aria-pressed'),
+    }));
+    expect(out.marked).toBe(true);
+    expect(out.pressed).toBe('true');   // relabels to "clear" once set
+  });
+});

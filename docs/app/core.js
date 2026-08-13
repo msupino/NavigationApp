@@ -1797,7 +1797,10 @@ window.S = Object.assign({
   tbLegDirBoth: 'Both directions',
   tbLegDirOut: 'Outbound only',
   tbLegDirBack: 'Return only',
-  tbLegDirNoTurn: 'This route does not double back, so there is no outbound and return to separate.',
+  tbLegDirNoTurn: 'This route does not double back and no turning point is marked, so there is no outbound and return to separate. Mark one on a waypoint to enable this.',
+  inspTurnSet: '\u21bb Mark as turning point',
+  inspTurnClear: '\u21bb Clear turning point',
+  inspTurnTitle: 'Where this route turns for home. A loop repeats no waypoint, so nothing in the geometry says where the far end is — mark it here and the leg-direction filter can split outbound from return.',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -4157,10 +4160,27 @@ function legRetraceTurnIndex() {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
   const legs = (typeof state !== 'undefined' && state.legs) || [];
   const n = Math.min(legs.length, wps.length - 1);
+  // A hand-set turn wins outright. A LOOP route repeats no waypoint, so no leg retraces
+  // and the geometry has nothing to say about where it turns for home -- but the pilot
+  // flying LLHZ -> SFAIM -> TYONA -> RIDNG -> HTZUK -> KNTRY -> LLHZ knows perfectly well
+  // that TYONA is the far end. Marked in the waypoint inspector.
+  for (let i = 0; i < wps.length; i++) {
+    if (wps[i] && wps[i].turn) return Math.min(i, n);
+  }
   for (let i = 0; i < n; i++) {
     if (legIsRetrace(i)) return i;
   }
   return -1;
+}
+// Mark (or clear) the waypoint the route turns for home at. One per route: setting a new
+// one clears the old, because a route has a single far end and two would make "outbound"
+// meaningless.
+function setTurnWaypoint(idx) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const was = wps[idx] && wps[idx].turn;
+  for (const w of wps) { if (w) delete w.turn; }
+  if (!was && wps[idx]) wps[idx].turn = 1;
+  return !was;
 }
 function legTurnaroundIndex() { return legRetraceTurnIndex(); }
 // Should leg i's kites be drawn, given the direction filter? Everything from the turnaround

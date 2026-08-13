@@ -2859,6 +2859,27 @@ function showInspector() {
     if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
     resetName.onclick = () => resetWpName(state.selected.index);
     body.appendChild(resetName);
+    // Where the route turns for home. A loop repeats no waypoint, so no leg retraces and
+    // the geometry cannot find the far end -- the pilot marks it. Offered on every
+    // waypoint rather than only on loops: a route can be edited into and out of that shape,
+    // and a control that appears and vanishes is harder to find than one that is simply there.
+    const idx = state.selected.index;
+    const isTurn = !!(state.waypoints[idx] && state.waypoints[idx].turn);
+    const turnBtn = document.createElement('button');
+    turnBtn.className = 'insp-btn' + (isTurn ? ' insp-btn-on' : '');
+    turnBtn.id = 'insp-turn-btn';
+    turnBtn.textContent = isTurn ? (S.inspTurnClear || '↻ Clear turning point')
+                                 : (S.inspTurnSet || '↻ Mark as turning point');
+    if (S.inspTurnTitle) turnBtn.title = S.inspTurnTitle;
+    turnBtn.setAttribute('aria-pressed', isTurn ? 'true' : 'false');
+    turnBtn.onclick = () => {
+      setTurnWaypoint(idx);
+      if (typeof persist === 'function') persist();
+      if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+      draw();
+      showInspector();      // relabel to what the button now does
+    };
+    body.appendChild(turnBtn);
   }
   finalizeInspectorActions(body);
   persistInspectorSelection();

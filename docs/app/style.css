@@ -1773,6 +1773,14 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 }
 .insp-btn.insp-btn-safe:hover { background: #e2e7ee; }
 .insp-btn.insp-btn-safe:disabled:hover { background: #eef1f5; }
+/* A latched state, not an action: the turning-point button stays lit while the waypoint
+   IS the turn, so the inspector shows at a glance which one is marked. */
+.insp-btn.insp-btn-on {
+  color: #1f252c;
+  background: #ffd98a;
+  border: 1px solid #d7a93c;
+}
+.insp-btn.insp-btn-on:hover { background: #f5c862; }
 .insp-btn:disabled {
   opacity: 0.48;
   cursor: default;
