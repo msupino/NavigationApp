@@ -3,6 +3,7 @@
 // Targets gaps in the existing spec suite: section headers, display checkboxes,
 // sliders, base-map layer, and toolbar collapse state.
 const { test, expect } = require('./_setup');
+const { enableShowReturn } = require('./_show-return');
 
 async function boot(page) {
   // Guard: run only on the FIRST goto so subsequent reloads keep whatever
@@ -56,6 +57,9 @@ test.describe('Display checkbox toggles', () => {
   for (const c of cases) {
     test(`${c.id}: toggle writes ${c.key} to localStorage`, async ({ page }) => {
       await boot(page);
+      // The return path ships OFF, which hides its row -- this case is about the control,
+      // so it asks for the feature.
+      if (c.id === '#ret-cb') await enableShowReturn(page);
       const cb = page.locator(c.id);
       const before = await cb.isChecked();
       expect(before).toBe(c.startsChecked);

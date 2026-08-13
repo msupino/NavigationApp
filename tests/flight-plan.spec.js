@@ -210,7 +210,15 @@ test.describe('Flight plan', () => {
   });
 
   test('return toggle while modal is open updates the table', async ({ page }) => {
-    await page.evaluate(() => { window.showReturn = false; });
+    // The return path now ships OFF (featureShowReturn), which hides this control. This
+    // test is ABOUT that control, so it asks for the feature instead of inheriting it.
+    await page.evaluate(() => {
+      const orig = window.tune;
+      window.tune = (k) => (k === 'featureShowReturn' ? true : orig(k));
+      const row = document.getElementById('ret-cb').closest('label');
+      if (row) row.hidden = false;
+      window.showReturn = false;
+    });
     await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();

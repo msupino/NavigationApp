@@ -2304,6 +2304,9 @@ document.addEventListener('keydown', e => {
   } else if (shortcutPlain(e, 'KeyB', 'b')) {
     const t = e.target;
     if (shortcutTypingTarget(t)) return;
+    // Nothing to toggle when the feature is off, and a shortcut that silently turns on a
+    // hidden control is worse than one that does nothing.
+    if (typeof showReturnFeatureOn === 'function' && !showReturnFeatureOn()) return;
     // Toggling the checkbox fires its onchange (persist + redraw).
     document.getElementById('ret-cb').click();
   }
@@ -2422,6 +2425,16 @@ document.getElementById('reverse').onclick = () => {
   }
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   showInspector(); draw();
+  // The published network is DIRECTED: plenty of corridors are one-way, and a reversed
+  // route can quietly contain segments that are not flyable the other way. The app cannot
+  // decide that for the pilot -- it is a question for the chart and the NOTAMs -- so it
+  // says so rather than implying the reversal is automatically valid.
+  if (typeof showToast === 'function') {
+    showToast(S.reverseRouteWarn || 'Reversed — might not match allowed routes', {
+      ms: (typeof tune === 'function') ? tune('reverseWarnMs') : 10000,
+      blink: (typeof tune !== 'function') || tune('reverseWarnBlink') !== false,
+    });
+  }
 };
 document.getElementById('undo').onclick = () => { if (typeof undo === 'function') undo(); };
 document.getElementById('clear').onclick = () => {
@@ -2671,6 +2684,27 @@ try {
   const sf = lsGet(SIM_FOLLOW_KEY);
   if (sf !== null) window.simFollow = sf === '1';
 } catch (e) { /* storage unavailable */ }
+// The return path can be switched off wholesale from the tuning gist (featureShowReturn).
+// Hidden AND forced off, not merely hidden: a stored 'on' from before it was disabled would
+// otherwise keep drawing the mirrored path with no control left to turn it off.
+function showReturnFeatureOn() {
+  return typeof tune !== 'function' || tune('featureShowReturn') !== false;
+}
+window.showReturnFeatureOn = showReturnFeatureOn;
+// Re-runnable, not a one-shot at boot: the tuning gist loads AFTER this file, so a gist
+// that switches the feature back ON has to be able to bring the row back without a reload.
+// The B shortcut and the shortcuts-help list already read the flag when they run, so this
+// was the only one of the three that could get stuck.
+function refreshShowReturnFeature() {
+  const on = showReturnFeatureOn();
+  const cb = document.getElementById('ret-cb');
+  const row = cb && cb.closest('label');
+  if (!on) window.showReturn = false;
+  if (row) row.hidden = !on;
+  if (cb) cb.checked = !!window.showReturn;
+}
+window.refreshShowReturnFeature = refreshShowReturnFeature;
+refreshShowReturnFeature();
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('cumtime-cb').checked = showCumTime;
@@ -6219,6 +6253,7 @@ function createTuningPanel() {
       // reconciliation so the change is visible immediately in this session too
       // (for toggles the current user hasn't explicitly set).
       if (typeof NavAid.applyDefaultVisibility === 'function') NavAid.applyDefaultVisibility();
+      if (typeof refreshShowReturnFeature === 'function') refreshShowReturnFeature();
       redrawAfterTune();
       return;
     }
@@ -6798,6 +6833,8 @@ if (typeof loadRemoteConfig === "function") {
     // Gist may have flipped a default-layer-visibility bool — reconcile the
     // toolbar checkboxes for any toggle the user hasn't explicitly set.
     if (NavAid && typeof NavAid.applyDefaultVisibility === "function") NavAid.applyDefaultVisibility();
+    // Same reason: the gist may have switched the return path back on.
+    if (typeof refreshShowReturnFeature === "function") refreshShowReturnFeature();
     // The gist may have turned base layers on or off -- rebuild the picker to match.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
     if (typeof scheduleDraw === "function") scheduleDraw();

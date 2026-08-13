@@ -607,6 +607,10 @@ html[dir="rtl"] #toolbar.collapsed {
   cursor: pointer;
   white-space: nowrap;
 }
+/* [hidden] is only a default (display: none) and any real display rule beats it -- and
+   #toolbar .navtoggle sets display: flex, so setting the attribute on a toolbar row did
+   exactly nothing. Anything that hides a row by attribute depends on this. */
+#toolbar .navtoggle[hidden] { display: none; }
 #toolbar .navtoggle input { cursor: pointer; margin: 0; }
 #toolbar .navtoggle input[type="range"] { flex: 1; width: 0; min-width: 0; }
 #toolbar #vor-ref-row {
@@ -4642,6 +4646,18 @@ body.theme-light #tuning-panel summary {
   pointer-events: none;
 }
 .toast.show { opacity: 1; }
+/* A warning that must be acted on, not just noticed. Pulses the background rather than the
+   opacity so the text stays readable at every point in the cycle -- a message that fades
+   out and back is harder to read than one that simply sits there. */
+.toast.toast-blink.show { animation: toast-blink 1s steps(1, end) infinite; }
+@keyframes toast-blink {
+  0%, 50%   { background: #b03636; }
+  50.01%, 100% { background: #2f2b2b; }
+}
+/* Respect a stated preference for less motion: keep the alarm colour, drop the flashing. */
+@media (prefers-reduced-motion: reduce) {
+  .toast.toast-blink.show { animation: none; background: #b03636; }
+}
 
 .build-update-notice {
   position: fixed;

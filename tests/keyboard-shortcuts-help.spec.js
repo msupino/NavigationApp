@@ -5,6 +5,7 @@
 // inside inputs, and existing global shortcuts (F, Ctrl-F, Esc, Backspace)
 // keep working after the change.
 const { test, expect } = require('./_setup');
+const { enableShowReturn } = require('./_show-return');
 const { hideToolbarMenus, pressShortcut } = require('./_toolbar');
 
 async function boot(page, lang = 'en') {
@@ -267,6 +268,7 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
 
   test('B toggles show-return-path (ret-cb) and persists', async ({ page }) => {
     await boot(page);
+    await enableShowReturn(page);
     await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
     const cb = page.locator('#ret-cb');
     const before = await cb.isChecked();
@@ -290,6 +292,7 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
 
   test('B shortcut row appears in the cheat-sheet (Editing group)', async ({ page }) => {
     await boot(page);
+    await enableShowReturn(page);
     await page.evaluate(() => showShortcutsHelp());
     const keyTexts = await page.locator('.shortcuts-help-keys').allTextContents();
     expect(keyTexts.some(t => t.trim() === 'B')).toBe(true);

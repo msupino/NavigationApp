@@ -7,6 +7,7 @@
 // Guards: suppressed while typing in an input/textarea, and (for A/N/C)
 // while a modal backdrop is open.
 const { test, expect } = require('./_setup');
+const { enableShowReturn } = require('./_show-return');
 const { stubGraph } = require('./_layerData');
 
 async function boot(page, lang = 'en') {
@@ -190,6 +191,9 @@ test.describe('A / N / C keyboard shortcuts', () => {
 
   test('English app shortcuts work while the keyboard layout is Hebrew', async ({ page }) => {
     await boot(page, 'he');
+    // This case presses B (Hebrew נ) for the return path, which ships OFF -- ask for the
+    // feature, or the key correctly does nothing and the assertion reads as a layout bug.
+    await enableShowReturn(page);
     await page.evaluate(() => {
       state.waypoints = [
         { lat: 32.0, lng: 34.9, name: 'A' },

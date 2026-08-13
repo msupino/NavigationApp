@@ -3495,7 +3495,11 @@ function drawLegs() {
         cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
     }
 
-    if (showReturn && legAllowsReturn(i) && !dirOff) {
+    // Belt and braces: the feature flag is checked at the draw site too, so a stored or
+    // synced 'showReturn = true' cannot paint the mirrored path once it is switched off.
+    const returnOn = showReturn &&
+      (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn());
+    if (returnOn && legAllowsReturn(i) && !dirOff) {
       if (!kiteOff) drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
