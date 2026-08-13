@@ -24,11 +24,24 @@ test.describe('dev workflow guards', () => {
     expect(yml).toMatch(/case "\$BASE" in main\) METHOD=--merge/);
   });
 
-  test('Auto PR dev to main squash-syncs main into dev', () => {
+  // This guard used to assert the opposite -- that the sync was a SQUASH -- because the
+  // aim was one tidy commit per integration on dev. That cost more than it bought: a
+  // squash copies main's tree into dev but not its ancestry, so `main` never became an
+  // ancestor of `dev`, and CI's own "Check PR is rebased" step (a literal
+  // `git merge-base --is-ancestor`) fails on every dev->main promotion PR. It stayed
+  // invisible only because a promotion PR's workflow runs sit in `action_required` and
+  // never execute; the green lint on past promos came from the push-triggered run, which
+  // has no rebase check. See #1560.
+  test('Auto PR dev to main MERGES main into dev, preserving ancestry', () => {
     const yml = workflow('auto-pr-dev-to-main.yml');
-    expect(yml).toContain('git merge --squash main');
-    expect(yml).toContain('Squash merge main into dev (auto-sync before promotion PR)');
-    expect(yml).not.toContain('git merge --no-ff');
+    expect(yml).toContain('git merge --no-ff main');
+    expect(yml).toContain('Merge main into dev (auto-sync before promotion PR)');
+    // A squash here is the bug this guard now exists to prevent.
+    expect(yml).not.toContain('git merge --squash main');
+    // No "skip when the tree is unchanged" shortcut: after a promotion, main's merge
+    // commit usually brings dev no new files -- dev is where the content came from -- and
+    // that is exactly the case that must still be recorded, or the ancestry is lost again.
+    expect(yml).not.toContain('main introduced no tree changes for dev');
   });
 
   test('CI reports merge commits on dev pushes without blocking promotion', () => {
