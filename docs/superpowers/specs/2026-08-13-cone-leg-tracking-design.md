@@ -68,10 +68,37 @@ grace period on a 1 Hz phone fix than on a simulator poll.
 Not on the first stray fix: a wide turn at a waypoint and ordinary GPS scatter both put a
 fix briefly outside, and an alert that cries wolf there would be turned off.
 
-Fires ONCE per episode. It clears on re-entry into a cone; a later exit is a new episode
-and fires again. New EN/HE strings, sent through `gpsSendWatchAlert` like every other
-alert — so it inherits the watch mirroring now and the spoken form once
-`2026-08-13-voice-alerts-design.md` ships.
+It clears on re-entry into a cone; a later exit is a new episode. New EN/HE strings, sent
+through `gpsSendWatchAlert` like every other alert — so it inherits the watch mirroring now
+and the spoken form once `2026-08-13-voice-alerts-design.md` ships.
+
+### It carries a course back, not just the bad news
+
+"I do not know where you are" is the least useful thing to say to someone who already
+knows they are lost. The alert therefore names a waypoint and the course to it:
+
+> Off route. Direct CHARLIE, heading 045, 4 miles.
+
+**The target is the nearest waypoint STILL AHEAD on the route** — the closest one at or
+after the last known leg — never simply the nearest by straight-line distance. On a route
+that doubles back, or after drifting off late in a leg, the closest waypoint is routinely
+one already overflown, and an app that says "direct ALPHA" when ALPHA is behind is telling
+a pilot to turn around to resume a route that continues ahead. If every waypoint has been
+overflown, the target is the destination.
+
+This is advisory. The pilot may well ignore it and press on to a later point instead;
+there is no better general answer for rejoining a route, and the app does not pretend
+otherwise. What it must not do is silently suggest flying backwards.
+
+### Repeating
+
+A heading given once goes stale the moment the aircraft turns, so the alert repeats while
+the position stays outside every cone — but only when the required heading has moved more
+than 15° since the last call, and never more often than once a minute. Flying straight at
+the target produces no repeats; manoeuvring produces a fresh course when the old one has
+genuinely expired.
+
+Silent again the instant a fix lands inside any cone.
 
 ## TOP
 
@@ -93,20 +120,37 @@ feature is for.
 
 ## Testing
 
-Pure-geometry tests first, since the rest rests on them:
+One acceptance criterion comes from a defect observed live on the deployed build, and is
+the clearest proof the confirmation change works:
+
+- **The first waypoint of a session gets its approach call.** Today it does not: the
+  leg-approach alert is gated on `_gpsAlertConfirmed`, which is only set by a waypoint
+  CAPTURE — the TOP event itself. Flying ALPHA→BRAVO→CHARLIE on the current build speaks
+  "Top." at BRAVO and only then starts working ("Approaching CHARLIE" immediately after).
+  With cone membership counting as confirmation, the approach call for the FIRST waypoint
+  must fire.
+
+Then the pure-geometry tests, since the rest rests on them:
 
 - inside / outside / exactly on the cone edge; the midpoint maximum width; a very short
   leg; a position beyond either end
 - selection with overlapping cones near a shared waypoint, and the hysteresis that keeps
   the current leg
 - re-arming on leg change, and no re-fire while the leg is held
-- the debounce: brief excursions stay silent, a sustained one fires once
+- the debounce: brief excursions stay silent, a sustained one fires
+- the recovery target is the nearest waypoint AHEAD, never a passed one — including on a
+  route that doubles back, and including the all-overflown case that falls back to the
+  destination
+- the repeat rule: no repeat while the heading holds, a repeat once it has moved past 15°,
+  and never more often than once a minute
 - suppression of the other four alerts while unknown, and their resumption after
 
 ## What this deliberately does not do
 
 - No map or toolbar display of the current leg or the unknown state. Alerts only.
-- No re-nagging while lost. One alert per episode.
+- No re-nagging on an unchanged course. The repeat rule above is deliberately gated on the
+  heading having moved materially; a pilot flying straight at the recovery target hears the
+  call once.
 - No change to how TOP is detected.
 
 ## Risk
