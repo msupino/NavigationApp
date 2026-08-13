@@ -140,14 +140,60 @@ test('reversing a route warns that it may not match allowed routes', async ({ pa
     state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
                        { lat: 32.1, lng: 34.1, name: 'B' }];
     syncLegs();
-    let seen = '';
+    let seen = null;
     const orig = window.showToast;
-    window.showToast = (t) => { seen = t; };
+    window.showToast = (t, o) => { seen = { text: t, opts: o || {} }; };
     document.getElementById('reverse').click();
     window.showToast = orig;
     return seen;
   });
-  expect(msg).toMatch(/allowed routes/i);
+  expect(msg.text).toMatch(/allowed routes/i);
   // The published network is directed; the app must not imply a reversal is valid.
-  expect(msg).toMatch(/one-way|chart/i);
+  expect(msg.text).toMatch(/one-way|chart/i);
+  // It must outlast an ordinary 'saved' toast, and draw the eye.
+  expect(msg.opts.ms).toBe(10000);
+  expect(msg.opts.blink).toBe(true);
+});
+
+test('the warning dwell and blink come from the gist, not the code', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showToast === 'function');
+  const out = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                       { lat: 32.1, lng: 34.1, name: 'B' }];
+    syncLegs();
+    const origTune = window.tune;
+    window.tune = (k) => (k === 'reverseWarnMs' ? 4000
+      : k === 'reverseWarnBlink' ? false : origTune(k));
+    let seen = null;
+    const origToast = window.showToast;
+    window.showToast = (t, o) => { seen = { text: t, opts: o || {} }; };
+    document.getElementById('reverse').click();
+    window.showToast = origToast;
+    window.tune = origTune;
+    return seen;
+  });
+  expect(out.opts.ms).toBe(4000);
+  expect(out.opts.blink).toBe(false);
+});
+
+test('a blinking toast keeps its text readable throughout', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showToast === 'function');
+  const out = await page.evaluate(async () => {
+    showToast('warning', { ms: 5000, blink: true });
+    const el = document.querySelector('.toast');
+    // Past the fade-IN (a transition on .show), then sample across a full blink cycle --
+    // the pulse must never take the text with it.
+    await new Promise(r => setTimeout(r, 500));
+    const samples = [];
+    for (let i = 0; i < 6; i++) {
+      samples.push(Number(getComputedStyle(el).opacity));
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return { blinkClass: el.classList.contains('toast-blink'), min: Math.min(...samples) };
+  });
+  expect(out.blinkClass).toBe(true);
+  // The pulse is on the background, not opacity -- text that fades is harder to read.
+  expect(out.min).toBe(1);
 });

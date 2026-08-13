@@ -526,6 +526,12 @@ NavAid.tuningDefaults = {
   // tuning gist to bring the control, its keyboard shortcut and the drawing back, without a
   // deploy -- the code is all still here.
   featureShowReturn: { value: false, type: 'bool', label: 'Feature: show return path' },
+  // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
+  // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
+  // it, let alone weigh it. Both live here so they can be tuned from the gist without a
+  // deploy, like every other number in the app.
+  reverseWarnMs: { value: 10000, min: 1000, max: 30000, step: 500, label: 'Reverse warning (ms)' },
+  reverseWarnBlink: { value: true, type: 'bool', label: 'Reverse warning blinks' },
   defaultShowNavWP: { value: true, type: 'bool', label: 'Default: show VFR reporting points' },
   defaultShowAirfields: { value: true, type: 'bool', label: 'Default: show airfields' },
   defaultShowVor: { value: true, type: 'bool', label: 'Default: show VOR stations' },
@@ -630,7 +636,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'reverseWarnMs', 'reverseWarnBlink', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.

@@ -2430,7 +2430,10 @@ document.getElementById('reverse').onclick = () => {
   // decide that for the pilot -- it is a question for the chart and the NOTAMs -- so it
   // says so rather than implying the reversal is automatically valid.
   if (typeof showToast === 'function') {
-    showToast(S.reverseRouteWarn || 'Reversed — might not match allowed routes');
+    showToast(S.reverseRouteWarn || 'Reversed — might not match allowed routes', {
+      ms: (typeof tune === 'function') ? tune('reverseWarnMs') : 10000,
+      blink: (typeof tune !== 'function') || tune('reverseWarnBlink') !== false,
+    });
   }
 };
 document.getElementById('undo').onclick = () => { if (typeof undo === 'function') undo(); };
