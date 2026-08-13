@@ -197,3 +197,46 @@ test('a blinking toast keeps its text readable throughout', async ({ page }) => 
   // The pulse is on the background, not opacity -- text that fades is harder to read.
   expect(out.min).toBe(1);
 });
+
+// The gist loads AFTER the app scripts, so switching the feature back on must bring the
+// control back without a reload -- the shortcut and the help list already re-read the flag
+// when they run, but the row was hidden once at boot.
+test('a gist that switches the feature on restores the row without a reload', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof refreshShowReturnFeature === 'function');
+  const hiddenAtBoot = await page.evaluate(() =>
+    getComputedStyle(document.getElementById('ret-cb').closest('label')).display);
+  expect(hiddenAtBoot).toBe('none');
+
+  const after = await page.evaluate(() => {
+    const orig = window.tune;
+    window.tune = (k) => (k === 'featureShowReturn' ? true : orig(k));
+    refreshShowReturnFeature();              // what the gist-applied hook calls
+    const row = document.getElementById('ret-cb').closest('label');
+    const res = { display: getComputedStyle(row).display, hidden: row.hidden };
+    window.tune = orig;
+    return res;
+  });
+  expect(after.hidden).toBe(false);
+  expect(after.display).not.toBe('none');
+});
+
+test('switching it back off hides the row and clears the state again', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof refreshShowReturnFeature === 'function');
+  const out = await page.evaluate(() => {
+    const orig = window.tune;
+    window.tune = (k) => (k === 'featureShowReturn' ? true : orig(k));
+    refreshShowReturnFeature();
+    document.getElementById('ret-cb').checked = true;
+    window.showReturn = true;
+    window.tune = orig;                       // gist flips it back off
+    refreshShowReturnFeature();
+    const row = document.getElementById('ret-cb').closest('label');
+    return { display: getComputedStyle(row).display, showReturn: window.showReturn,
+             checked: document.getElementById('ret-cb').checked };
+  });
+  expect(out.display).toBe('none');
+  expect(out.showReturn).toBe(false);   // cannot be left drawing with no control
+  expect(out.checked).toBe(false);
+});
