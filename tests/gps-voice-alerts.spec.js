@@ -481,3 +481,80 @@ test.describe('the voice-alerts toggle', () => {
     expect(out.checked).toBe(true);
   });
 });
+
+// A waypoint that changes frequency is exactly where the pilot is about to make a call, so
+// TOP carries it -- hearing it saves looking down at the one moment the eyes are outside.
+test.describe('TOP reads out the comm change', () => {
+  test('speaks the station and frequency, digit by digit', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const spoken = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
+                         { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      // The route's own note is the source of truth -- it is what is drawn on the map.
+      state.notes = [{ lat: 32.008, lng: 34.0, cc: 'BRAVO',
+                       freqName: 'PLUTO_EAST', freq: '118.4' }];
+      gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;
+      gpsOwn = { lat: 32.008, lng: 34.0, t: Date.now() };
+      gpsLastAlt = null;
+      gpsCheckLegAlerts();
+      await window.__gpsSpeakChain;
+      return window.__spoken.map(s => s.text);
+    });
+    const top = spoken.find(t => /^Top\./.test(t));
+    expect(top).toBeTruthy();
+    expect(top).toContain('PLUTO EAST');            // underscores never spoken
+    expect(top).toContain('one one eight decimal four');
+    expect(top).not.toContain('118.4');             // never read as a bare number
+  });
+
+  test('a waypoint with no comm change still just says Top', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const spoken = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
+                         { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      state.notes = [];
+      gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;
+      gpsOwn = { lat: 32.008, lng: 34.0, t: Date.now() };
+      gpsLastAlt = null;
+      gpsCheckLegAlerts();
+      await window.__gpsSpeakChain;
+      return window.__spoken.map(s => s.text);
+    });
+    expect(spoken).toContain('Top.');
+  });
+
+  test('speaks the Hebrew form when the UI is Hebrew', async ({ page }) => {
+    await stubTts(page, { languages: ['en-US', 'he-IL'] });
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const spoken = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
+                         { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      state.notes = [{ lat: 32.008, lng: 34.0, cc: 'BRAVO',
+                       freqName: 'PLUTO_EAST', freq: '118.4' }];
+      gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;
+      gpsOwn = { lat: 32.008, lng: 34.0, t: Date.now() };
+      gpsLastAlt = null;
+      gpsCheckLegAlerts();
+      await window.__gpsSpeakChain;
+      return window.__spoken.map(s => s.text);
+    });
+    const top = spoken.find(t => /טופ/.test(t));
+    expect(top).toBeTruthy();
+    expect(top).toContain('נקודה');     // the decimal, spoken
+    expect(top).not.toContain('118.4');
+  });
+});

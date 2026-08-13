@@ -346,6 +346,30 @@ function gpsStaleText() {
     ? ((S && S.gpsFixStale) || 'GPS fix') + ' ' + Math.round(gpsFixAgeMs() / 1000) + 's'
     : '';
 }
+// The comm change (if any) attached to a waypoint. Reads the ROUTE'S OWN note rather than
+// the static dataset: the note is what the pilot sees on the map and what the frequency
+// pipeline may have overridden or suppressed for this particular route, so speaking
+// anything else would be reading out a different frequency from the one drawn.
+function gpsCommChangeAt(wp) {
+  if (!wp || typeof state === 'undefined' || !Array.isArray(state.notes)) return null;
+  const name = wp.name || '';
+  if (!name) return null;
+  const note = state.notes.find(n => n && n.cc && n.cc === name);
+  if (!note) return null;
+  if (!note.freqName && !note.freq) return null;
+  return { freqName: note.freqName || '', freq: note.freq || '' };
+}
+// "118.4" -> "one one eight decimal four". Digit by digit, like a heading and for the same
+// reason: a frequency misheard as a number is a frequency tuned wrong.
+function gpsSpokenFreq(freq, lang) {
+  const str = String(freq || '').trim();
+  if (!str) return '';
+  const dec = (typeof S !== 'undefined' && S.spokenDecimal) || 'decimal';
+  return str.split('.')
+    .map(part => gpsSpokenDigits(part, lang))
+    .filter(Boolean)
+    .join(' ' + dec + ' ');
+}
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
@@ -1020,9 +1044,17 @@ function gpsCheckLegAlerts() {
     if (_gpsAlertConfirmed) {
       // Just "TOP" -- no waypoint name. The leg-approach alert already named it
       // seconds earlier; repeating it here only added characters to a small watch screen.
+      // A waypoint that changes frequency is exactly where the pilot is about to make a
+      // call, so TOP carries it: the notification already shows the callout on the map,
+      // and hearing it saves looking down at the one moment the eyes are outside.
+      const ccAt = gpsCommChangeAt(next);
+      const ccLang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+      const ccFreq = ccAt ? gpsSpokenFreq(ccAt.freq, ccLang) : '';
       gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
         (S && S.watchAlertTopBody) || 'TOP',
-        (S && S.speakAlertTop) ? S.speakAlertTop() : null);
+        (ccAt && S && S.speakAlertTopComm)
+          ? S.speakAlertTopComm(ccAt.freqName, ccFreq)
+          : ((S && S.speakAlertTop) ? S.speakAlertTop() : null));
     }
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;

@@ -1043,6 +1043,13 @@ window.S = {
     return s;
   },
   speakAlertTop: function() { return 'טופ.'; },
+  speakAlertTopComm: function(station, freqDigits) {
+    const bits = [];
+    if (station) bits.push(String(station).replace(/_/g, ' '));
+    if (freqDigits) bits.push(freqDigits);
+    return bits.length ? ('טופ. עבור אל ' + bits.join(', ') + '.') : 'טופ.';
+  },
+  spokenDecimal: 'נקודה',
   speakAlertAlt: function(actual, planned) {
     return 'גובה ' + actual + ' רגל, מתוכנן ' + planned + '.';
   },
