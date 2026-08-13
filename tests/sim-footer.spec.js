@@ -55,3 +55,38 @@ test('the sim icon stays visible on a mobile viewport -- connecting one is how t
   await page.waitForFunction(() => !!document.getElementById('sim-trigger'));
   await expect(page.locator('#sim-trigger')).toBeVisible();
 });
+
+// Reported from the installed APK: the sim button was invisible AND untappable there,
+// while the same build id at the same width in Chrome on the same phone drew it. It was
+// the only footer button using an inline <svg>; the two GPS buttons beside it use emoji
+// glyphs and rendered in both. On mobile its text label is hidden, so a glyph that does
+// not paint leaves a blank ~16px at the edge of the row -- nothing to see, nothing to
+// hit. This pins the icon to a real rendered glyph and to the same shape its siblings
+// use, rather than markup that can silently paint nothing.
+test('the footer sim icon draws a glyph, like its GPS siblings', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 808 });
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => !!document.getElementById('sim-trigger'));
+  const out = await page.evaluate(() => {
+    const btn = document.getElementById('sim-trigger');
+    const icon = btn.querySelector('.footer-link-icon');
+    const r = btn.getBoundingClientRect();
+    const ir = icon ? icon.getBoundingClientRect() : null;
+    return {
+      iconTag: icon ? icon.tagName : null,
+      text: icon ? icon.textContent.trim() : '',
+      btnW: Math.round(r.width),
+      iconW: ir ? Math.round(ir.width) : 0,
+      // Same element shape as the buttons that are known to render in the APK.
+      gpsIconTags: [...document.querySelectorAll('#gps-record .footer-link-icon, #gps-live .footer-link-icon')]
+        .map(e => e.tagName),
+    };
+  });
+  expect(out.iconTag).toBe('SPAN');
+  expect(out.gpsIconTags).toEqual(['SPAN', 'SPAN']);
+  expect(out.text.length).toBeGreaterThan(0);
+  // The label is hidden at this width, so the icon IS the button: it has to carry
+  // real width, not collapse to padding.
+  expect(out.iconW).toBeGreaterThan(8);
+  expect(out.btnW).toBeGreaterThan(20);
+});
