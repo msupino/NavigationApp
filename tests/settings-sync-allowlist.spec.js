@@ -96,6 +96,11 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.tracks\./,          'which recorded tracks are drawn locally'],
   [/^navaid\.plateAirfield$/,     'last plate viewed, per device'],
   [/^navaid\.windField(Alt|Opacity)$/, 'transient overlay state'],
+  // Whether a device speaks depends on the device, not the pilot: the phone in the
+  // cockpit should talk, the desktop browser it was planned on should not start talking
+  // because the phone does. It also depends on what the device can actually do -- native
+  // TTS in the APK, an unreliable browser fallback elsewhere.
+  [/^navaid\.voiceAlerts$/,       'speaking out loud is a property of the device you are on'],
   // navaid.ai.baseUrl decides where data is sent — same rule as aisEmail.
   // navaid.ai.panelSize is device-local geometry (panelPos is caught by /Pos$/).
   // navaid.ai.key.*/model.* base strings (with trailing '.') are composed at

@@ -1020,6 +1020,43 @@ window.S = {
   watchAlertDriftDirectBody: function(correction, wp) {
     return correction + '° אל ' + wp;
   },
+  // ראו את ההערה בגרסה האנגלית: אלה הניסוחים המדוברים, ולא גוף ההתראה.
+  speakAlertLeg: function(wp, alt, hdgDigits, hms) {
+    let s = 'מתקרב אל ' + wp + '.';
+    const parts = [];
+    if (alt != null) parts.push(alt + ' רגל');
+    // "מגמה", not the written UI's "כיוון". Unvocalized כיוון is a homograph: a TTS engine
+    // reads it as "keivan" (since/because) as readily as "kivvun" (direction), and heard
+    // once in flight the sentence stops meaning anything. מגמה is the standard Hebrew
+    // aviation term for heading and cannot be misread. The written strings keep כיוון,
+    // where surrounding context disambiguates it.
+    if (hdgDigits != null) parts.push('מגמה ' + hdgDigits);
+    // ראו את ההערה בגרסה האנגלית: זהו אותו זמן שמוצג על החץ, לא מספר דקות מעוגל.
+    if (hms) {
+      const t = [];
+      if (hms.h) t.push(hms.h === 1 ? 'שעה' : hms.h + ' שעות');
+      if (hms.m) t.push(hms.m === 1 ? 'דקה' : hms.m + ' דקות');
+      if (hms.s) t.push(hms.s + ' שניות');
+      if (t.length) parts.push(t.join(' '));
+    }
+    if (parts.length) s += ' הקטע הבא ' + parts.join(', ') + '.';
+    return s;
+  },
+  speakAlertTop: function() { return 'טופ.'; },
+  speakAlertAlt: function(actual, planned) {
+    return 'גובה ' + actual + ' רגל, מתוכנן ' + planned + '.';
+  },
+  speakAlertDrift: function(driftOut, driftIn, wp) {
+    // "אל", matching speakAlertDriftDirect below, rather than "לכיוון" -- one less
+    // occurrence of the כיוון homograph in spoken text, and the two drift calls now read
+    // the same way.
+    return driftOut + ' מעלות סטייה. ' + driftIn + ' מעלות לתיקון אל ' + wp + '.';
+  },
+  speakAlertDriftDirect: function(correction, wp) {
+    return correction + ' מעלות אל ' + wp + '.';
+  },
+  tbVoiceAlerts: '🔊 הקראת התראות',
+  tbVoiceAlertsTitle: 'הקראה קולית של התראות הטיסה (קטע, טופ, גובה, סטייה). פועלת גם בדפדפן לצורך בדיקה, אך ההקראה בדפדפן נעצרת כשהלשונית ברקע — האפליקציה היא הדרך האמינה בטיסה.',
   watchAlertNoRouteTestTitle: 'NavAid',
   watchAlertNoRouteTestBody: 'טענו מסלול כדי לקבל התראות על סטייה מהמסלול או מהגובה.',
 };

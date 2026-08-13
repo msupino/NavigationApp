@@ -928,6 +928,7 @@ function gpsCheckLegAlerts() {
       let nextLegAlt = null;
       let nextLegHdg = null;
       let nextLegTime = null;
+      let nextLegHms = null;    // {h,m,s} of the SAME figure the kite shows, for speech
       if (nextLegKiteVisible) {
         nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
           ? Math.round(nextLeg.inboundAltitude) : null;
@@ -955,11 +956,26 @@ function gpsCheckLegAlerts() {
         if (nextLegGeo && Number.isFinite(nextLegGeo.dist) && nextLeg && nextLeg.flightSpeed > 0 &&
             typeof toHMS === 'function') {
           nextLegTime = toHMS(nextLegGeo.dist / nextLeg.flightSpeed);
+          // Whole minutes for the SPOKEN form -- seconds are false precision on a planned
+          // time, and they lengthen the phrase at the moment the pilot is busiest.
+          // Speak the figure the kite ALREADY shows rather than deriving a second one.
+          // toHMS floors the minutes and quantises the seconds to 5s, so rounding its
+          // result again to whole minutes both loses information and disagrees with the
+          // map: a 12:30 leg was being spoken as "13 minutes".
+          const _hms = nextLegTime.split(':').map(Number);
+          nextLegHms = _hms.length === 3
+            ? { h: _hms[0], m: _hms[1], s: _hms[2] }
+            : { h: 0, m: _hms[0], s: _hms[1] };
         }
       }
       gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
         (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime)
-          : ('Approaching ' + label));
+          : ('Approaching ' + label),
+        (S && S.speakAlertLeg)
+          ? S.speakAlertLeg(label, nextLegAlt,
+              nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, (typeof window !== 'undefined' && window.__navLang) || 'en'),
+              nextLegHms)
+          : null);
     }
   }
 
@@ -975,7 +991,9 @@ function gpsCheckLegAlerts() {
         gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
           (S && S.watchAlertAltBody)
             ? S.watchAlertAltBody(Math.round(gpsLastAlt), Math.round(planned))
-            : (Math.round(gpsLastAlt) + ' ft, planned ' + Math.round(planned) + ' ft'));
+            : (Math.round(gpsLastAlt) + ' ft, planned ' + Math.round(planned) + ' ft'),
+          (S && S.speakAlertAlt)
+            ? S.speakAlertAlt(Math.round(gpsLastAlt), Math.round(planned)) : null);
       }
     } else {
       _gpsAlertAltDeviated = false;
@@ -1003,7 +1021,8 @@ function gpsCheckLegAlerts() {
       // Just "TOP" -- no waypoint name. The leg-approach alert already named it
       // seconds earlier; repeating it here only added characters to a small watch screen.
       gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
-        (S && S.watchAlertTopBody) || 'TOP');
+        (S && S.watchAlertTopBody) || 'TOP',
+        (S && S.speakAlertTop) ? S.speakAlertTop() : null);
     }
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;
@@ -1011,6 +1030,114 @@ function gpsCheckLegAlerts() {
     _gpsAlertAltDeviated = false;
   }
 }
+
+// --- spoken alerts (APK) -------------------------------------------------
+// A heading is read digit by digit -- "zero zero four", never "four". Every heading this
+// app displays is already three-digit padded (pad3), and a TTS engine handed "004" says
+// "four", which is a different heading to anyone listening.
+var _GPS_DIGIT_WORDS = {
+  en: ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'],
+  he: ['אפס', 'אחת', 'שתיים', 'שלוש', 'ארבע', 'חמש', 'שש', 'שבע', 'שמונה', 'תשע'],
+};
+function gpsSpokenDigits(value, lang) {
+  if (value == null) return '';
+  const words = _GPS_DIGIT_WORDS[lang] || _GPS_DIGIT_WORDS.en;
+  const out = [];
+  const s = String(value);
+  for (let i = 0; i < s.length; i++) {
+    const d = s.charCodeAt(i) - 48;
+    if (d >= 0 && d <= 9) out.push(words[d]);
+  }
+  return out.join(' ');
+}
+window.gpsSpokenDigits = gpsSpokenDigits;
+
+// Native TTS, same access pattern as _nativeNotify()/_bgGeo(): the injected Capacitor
+// bridge exposes any synced plugin at window.Capacitor.Plugins.*. On the website (no
+// native plugin) gpsSpeak() falls back to window.speechSynthesis below -- but that
+// fallback is a TESTING aid only, never the in-flight path: browsers suspend
+// speechSynthesis when the page is backgrounded, which is exactly the cockpit case
+// (phone locked, background geolocation still feeding fixes). A voice that goes quiet
+// precisely when it is needed is worse than none, because it is trusted. The APK's
+// native plugin does not have that failure mode and stays the reliable path in flight.
+function _nativeTts() {
+  const C = typeof window !== 'undefined' && window.Capacitor;
+  return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() &&
+          C.Plugins && C.Plugins.TextToSpeech) || null;
+}
+function gpsVoiceAlertsOn() {
+  return typeof window !== 'undefined' && window.voiceAlerts === true;
+}
+// Resolved once per session: asking the engine on every alert would put a round trip in
+// front of speech that is already late by the time it matters.
+var _gpsVoiceLang = null;
+function _gpsResolveVoiceLang(tts) {
+  if (_gpsVoiceLang) return Promise.resolve(_gpsVoiceLang);
+  const want = (typeof window !== 'undefined' && window.__navLang === 'he') ? 'he-IL' : 'en-US';
+  if (want === 'en-US') { _gpsVoiceLang = want; return Promise.resolve(want); }
+  if (typeof tts.getSupportedLanguages !== 'function') {
+    _gpsVoiceLang = want;
+    return Promise.resolve(want);
+  }
+  return tts.getSupportedLanguages().then(function (res) {
+    const list = (res && res.languages) || [];
+    // A device with no Hebrew voice speaks the English phrasing rather than nothing: a
+    // missing voice must never mean a missed alert.
+    _gpsVoiceLang = list.some(function (l) { return String(l).toLowerCase().indexOf('he') === 0; })
+      ? want : 'en-US';
+    return _gpsVoiceLang;
+  }).catch(function () { _gpsVoiceLang = 'en-US'; return _gpsVoiceLang; });
+}
+// Web speechSynthesis fallback, used only when there is no native plugin (see the
+// comment above _nativeTts). Resolves the returned promise on 'end' so the speak chain
+// still queues correctly, and also resolves on 'error' -- an engine that never calls
+// back must not hang the chain forever. Absence of either global is a silent no-op, same
+// as the rest of gpsSpeak.
+function _webSpeak(text, lang) {
+  if (typeof window === 'undefined' || !window.speechSynthesis ||
+      typeof window.SpeechSynthesisUtterance !== 'function') {
+    return Promise.resolve();
+  }
+  return new Promise(function (resolve) {
+    const u = new window.SpeechSynthesisUtterance(text);
+    u.lang = lang;
+    u.onend = function () { resolve(); };
+    u.onerror = function () { resolve(); };
+    window.speechSynthesis.speak(u);
+  });
+}
+// Chained, never interrupted: a TOP firing seconds after a leg-approach alert waits its
+// turn rather than cutting it off mid-word.
+window.__gpsSpeakChain = Promise.resolve();
+function gpsSpeak(text) {
+  if (!text || !gpsVoiceAlertsOn()) return;
+  const tts = _nativeTts();
+  const lang = (typeof window !== 'undefined' && window.__navLang === 'he') ? 'he-IL' : 'en-US';
+  if (tts && typeof tts.speak === 'function') {
+    window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
+      return _gpsResolveVoiceLang(tts).then(function (voiceLang) {
+        return tts.speak({
+          text: text,
+          lang: voiceLang,
+          // iOS audio-session category; ignored on Android. 'playback', NOT the plugin's
+          // 'ambient' default: the plugin's own docs say 'playback' is what plays audio
+          // "even when the app is in the background", and backgrounded is precisely when
+          // these alerts matter -- phone locked in a cockpit, background geolocation still
+          // feeding fixes. An 'ambient' session would go silent exactly then, which is the
+          // failure mode this whole feature exists to avoid.
+          category: 'playback',
+        });
+      });
+    }).catch(function () { /* best-effort: never let a TTS failure break the chain */ });
+    return;
+  }
+  // No native plugin -- website testing path.
+  window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
+    return _webSpeak(text, lang);
+  }).catch(function () { /* best-effort: never let a TTS failure break the chain */ });
+}
+window.gpsSpeak = gpsSpeak;
+window.gpsVoiceAlertsOn = gpsVoiceAlertsOn;
 
 // Native (APK) local-notifications plugin, mirroring _bgGeo()'s access pattern -- the
 // injected Capacitor bridge exposes any synced plugin at window.Capacitor.Plugins.*.
@@ -1058,7 +1185,11 @@ function gpsRequestNotifyPermission() {
   return Promise.resolve();
 }
 var _watchAlertId = 1;
-function gpsSendWatchAlert(title, body) {
+function gpsSendWatchAlert(title, body, speech) {
+  // Speech first, and independent: it is fire-and-forget, and the notification below has
+  // its own return paths (native plugin, service worker, plain constructor) that must not
+  // decide whether the pilot hears the alert.
+  gpsSpeak(speech);
   const nn = _nativeNotify();
   if (nn) {
     nn.schedule({ notifications: [{ id: _watchAlertId++, title: title, body: body,
@@ -1170,7 +1301,8 @@ function gpsCheckDrift() {
     const driftIn = driftOut * 2;
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, driftIn, label)
-        : (driftOut + '° off course, ' + driftIn + '° to intercept toward ' + label));
+        : (driftOut + '° off course, ' + driftIn + '° to intercept toward ' + label),
+      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, driftIn, label) : null);
   } else {
     // Past the midpoint: rejoining the original line buys nothing this close to the
     // waypoint -- report the correction to head direct to it instead.
@@ -1178,6 +1310,7 @@ function gpsCheckDrift() {
     const correction = Math.round(Math.abs(_gpsAngleDiff(direct.brg, leg.brg)));
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(correction, label)
-        : (correction + '° to ' + label));
+        : (correction + '° to ' + label),
+      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(correction, label) : null);
   }
 }
