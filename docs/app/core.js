@@ -1690,6 +1690,18 @@ window.S = Object.assign({
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';
   },
+  // Outside every leg cone: the app no longer knows where the aircraft is relative to the
+  // route. Saying only that is useless to someone who already knows they are lost, so the
+  // alert carries a course back. `turn` is set only when the target is NOT already ahead of
+  // the nose -- when it is, the heading alone is the whole instruction.
+  watchAlertOffRouteTitle: 'Off route',
+  watchAlertOffRouteBody: function(wp, hdg, nm, turn) {
+    return 'Direct ' + wp + (turn ? ', turn ' + turn : '') + ', heading ' + hdg + '\u00b0, ' + nm + ' NM';
+  },
+  speakAlertOffRoute: function(wp, hdgDigits, nm, turn) {
+    return 'Off route. Direct ' + wp + '.' + (turn ? ' Turn ' + turn + '.' : '') +
+      ' Heading ' + hdgDigits + ', ' + nm + ' miles.';
+  },
   watchAlertDriftTitle: 'Off course',
   // Before the leg's midpoint: two numbers, the classic "double the error" intercept --
   // how far off course (driftOut), then the heading correction to converge back (driftIn),
@@ -1726,6 +1738,16 @@ window.S = Object.assign({
     return s;
   },
   speakAlertTop: function() { return 'Top.'; },
+  // Spoken at TOP when that waypoint changes frequency. Either half may be missing -- a
+  // callout can name a station with no frequency, or a frequency with no station -- and
+  // whichever is present is still worth hearing.
+  speakAlertTopComm: function(station, freqDigits) {
+    const bits = [];
+    if (station) bits.push(String(station).replace(/_/g, ' '));
+    if (freqDigits) bits.push(freqDigits);
+    return bits.length ? ('Top. Contact ' + bits.join(', ') + '.') : 'Top.';
+  },
+  spokenDecimal: 'decimal',
   speakAlertAlt: function(actual, planned) {
     return 'Altitude ' + actual + ' feet, planned ' + planned + '.';
   },
