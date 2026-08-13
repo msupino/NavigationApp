@@ -8910,7 +8910,14 @@ function showFplDialog() {
     dateEl.addEventListener('change', refreshPreview);
     timeEl.addEventListener('change', refreshPreview);
     setTimeout(refreshPreview, 0);          // show the drawn route expanded straight away
-    body.append(retRow, expandLbl, retPreview);
+    // Only offer the return picker when there is something to pick. The loop above lists
+    // only saved routes that START where this one ENDS -- on most plans that is nothing, and
+    // a dropdown whose sole entry is "none" is a question with no answers. Hidden rather
+    // than disabled: unlike the leg-direction picker, whose absence would be puzzling on a
+    // route that simply has no turn, this one is a niche joining tool and its row is pure
+    // noise when empty.
+    const hasReturnChoices = retSel.options.length > 1;
+    if (hasReturnChoices) body.append(retRow, expandLbl, retPreview);
     if (endsAtField) {
       const why = document.createElement('div');
       why.className = 'fpl-hint';
