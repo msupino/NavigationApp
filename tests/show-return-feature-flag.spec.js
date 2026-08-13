@@ -240,3 +240,59 @@ test('switching it back off hides the row and clears the state again', async ({ 
   expect(out.showReturn).toBe(false);   // cannot be left drawing with no control
   expect(out.checked).toBe(false);
 });
+
+test.describe('reversing with nothing to reverse', () => {
+  test('says there is no route to reverse, on an empty map', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof showToast === 'function');
+    const seen = await page.evaluate(() => {
+      state.waypoints = [];
+      syncLegs();
+      let msg = null;
+      const orig = window.showToast;
+      window.showToast = (t, o) => { msg = { text: t, opts: o || {} }; };
+      document.getElementById('reverse').click();
+      window.showToast = orig;
+      return msg;
+    });
+    // Says what happened, rather than staying silent (did the button work?) or raising the
+    // corridor warning about a route that does not exist.
+    expect(seen.text).toMatch(/no route to reverse/i);
+    // Plain toast: nothing is wrong, so it must not blink or hold like the real warning.
+    expect(seen.opts.blink).toBeFalsy();
+  });
+
+  test('says the same for a single waypoint, and leaves it alone', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof showToast === 'function');
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' }];
+      syncLegs();
+      let msg = null;
+      const orig = window.showToast;
+      window.showToast = (t) => { msg = t; };
+      document.getElementById('reverse').click();
+      window.showToast = orig;
+      return { msg, wps: state.waypoints.length };
+    });
+    expect(out.msg).toMatch(/no route to reverse/i);
+    expect(out.wps).toBe(1);      // and nothing was mangled on the way out
+  });
+
+  test('still warns as soon as there is a real leg', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof showToast === 'function');
+    const seen = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                         { lat: 32.1, lng: 34.1, name: 'B' }];
+      syncLegs();
+      let msg = null;
+      const orig = window.showToast;
+      window.showToast = (t) => { msg = t; };
+      document.getElementById('reverse').click();
+      window.showToast = orig;
+      return msg;
+    });
+    expect(seen).toMatch(/allowed routes/i);
+  });
+});
