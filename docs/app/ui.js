@@ -2695,6 +2695,17 @@ document.getElementById('cumtime-cb').checked = showCumTime;
     try { localStorage.setItem(LEG_DIR_KEY, sel.value); } catch (e) { /* */ }
     draw();
   };
+  // A route that never doubles back has no turn, so there is nothing to divide into out
+  // and back. Disabled rather than hidden: the control keeps its place, and the tooltip
+  // explains why it is unavailable instead of leaving the pilot to wonder.
+  window.refreshLegDirEnabled = function () {
+    const has = (typeof legRetraceTurnIndex === 'function') && legRetraceTurnIndex() >= 0;
+    sel.disabled = !has;
+    const row = sel.closest('label');
+    if (row) row.classList.toggle('navtoggle-disabled', !has);
+    sel.title = has ? '' : ((S && S.tbLegDirNoTurn) || 'This route does not double back');
+  };
+  refreshLegDirEnabled();
 })();
 document.getElementById('limit-kites-cb').checked = limitLegKites;
 // Voice alerts: default off (it talks out loud in a cockpit -- opt in, never a surprise

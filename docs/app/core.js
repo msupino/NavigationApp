@@ -1797,6 +1797,7 @@ window.S = Object.assign({
   tbLegDirBoth: 'Both directions',
   tbLegDirOut: 'Outbound only',
   tbLegDirBack: 'Return only',
+  tbLegDirNoTurn: 'This route does not double back, so there is no outbound and return to separate.',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -3691,6 +3692,9 @@ function syncLegs() {
   if (state.legs.length > before && typeof onRouteLegsGrown === 'function') onRouteLegsGrown();
   // Auto plate-filter follows the route's first/last airfield.
   if (typeof onRouteChangedForPlates === 'function') onRouteChangedForPlates();
+  // Whether the route doubles back can change with any edit, and with it whether the
+  // leg-direction picker has anything to divide.
+  if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
 }
 
 // Canonical -- the same key whichever way the leg is flown. The graph stores a segment in
@@ -4143,11 +4147,12 @@ function legIsRetrace(i) {
 // With nothing retraced at all, fall back to the waypoint furthest from the start -- a
 // sortie that goes out one way and comes back another still has a turn, it just leaves no
 // reversed leg to find it by.
-// The turn EVIDENCED by a retraced leg, or -1. Separate from legTurnaroundIndex because
-// that one falls back to measuring the furthest waypoint, which is a reasonable guess for
-// filtering kites but must never stand in for proof: a straight A->B->C route has no turn
-// at all, and treating its furthest point as one would suppress a real frequency change
-// there. Anything that changes what the pilot is told to do wants the proof, not the guess.
+// The turn: the start of the first retraced leg, or -1 when the route never doubles back.
+// Proof, never a guess. An earlier version fell back to "the waypoint furthest from the
+// start" when nothing retraced, which read plausibly and was wrong twice over: it invented
+// a turn on a straight A->B->C route, and in the comm-change path that suppressed a real
+// frequency change at an arbitrary point. With no retraced leg there is no turn, the
+// direction filter has nothing to divide, and the picker says so by disabling itself.
 function legRetraceTurnIndex() {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
   const legs = (typeof state !== 'undefined' && state.legs) || [];
@@ -4157,19 +4162,7 @@ function legRetraceTurnIndex() {
   }
   return -1;
 }
-function legTurnaroundIndex() {
-  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
-  const byRetrace = legRetraceTurnIndex();
-  if (byRetrace >= 0) return byRetrace;
-  if (wps.length < 3 || typeof geo !== 'function') return -1;
-  let best = -1, bestD = -1;
-  for (let i = 1; i < wps.length - 1; i++) {
-    if (!wps[i]) continue;
-    const { dist } = geo(wps[0], wps[i]);
-    if (Number.isFinite(dist) && dist > bestD) { bestD = dist; best = i; }
-  }
-  return best;
-}
+function legTurnaroundIndex() { return legRetraceTurnIndex(); }
 // Should leg i's kites be drawn, given the direction filter? Everything from the turnaround
 // on counts as the return -- not just the legs that literally retrace. Hiding only the
 // reversed leg would leave the rest of the way home drawn, which is not what "outbound
@@ -4177,8 +4170,8 @@ function legTurnaroundIndex() {
 function legDirVisible(i) {
   const f = (typeof legDirFilter === 'string') ? legDirFilter : 'both';
   if (f !== 'out' && f !== 'back') return true;
-  const t = legTurnaroundIndex();
-  if (t < 0) return f === 'out';      // no turn to speak of: it is all outbound
+  const t = legRetraceTurnIndex();
+  if (t < 0) return true;             // no turn: nothing to divide, so hide nothing
   return f === 'out' ? i < t : i >= t;
 }
 function legAllowsReturn(i) {

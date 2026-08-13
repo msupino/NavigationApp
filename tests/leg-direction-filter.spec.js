@@ -30,7 +30,7 @@ test('a leg that reverses an earlier leg is a retrace; a fresh leg is not', asyn
   expect(out.leg1).toBe(true);    // same pair, reversed
 });
 
-test('a route that never retraces falls back to the furthest waypoint as the turn', async ({ page }) => {
+test('a route that never retraces has no turn, so nothing is filtered', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     state.waypoints = [
@@ -51,10 +51,10 @@ test('a route that never retraces falls back to the furthest waypoint as the tur
     return { retrace, visOut, visBack };
   });
   expect(out.retrace).toEqual([false, false, false]);
-  // Nothing retraces, so the turn falls back to the furthest waypoint (C, index 2):
-  // legs 0-1 outbound, leg 2 the way home.
-  expect(out.visOut).toEqual([true, true, false]);
-  expect(out.visBack).toEqual([false, false, true]);
+  // No retraced leg means no proven turn, so neither setting hides anything. Inventing a
+  // turn by measuring the furthest waypoint was wrong: it split a route that never turns.
+  expect(out.visOut).toEqual([true, true, true]);
+  expect(out.visBack).toEqual([true, true, true]);
 });
 
 test('the filter selects one direction on an out-and-back', async ({ page }) => {
@@ -146,7 +146,7 @@ test.describe('turnaround split', () => {
     expect(retrace).toEqual([false, false, false, true, false, false]);
   });
 
-  test('a route with no turnaround to speak of is all outbound', async ({ page }) => {
+  test('a two-waypoint route has no turn, and nothing is hidden', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' }, { lat: 32.1, lng: 34.0, name: 'B' }];
@@ -160,7 +160,7 @@ test.describe('turnaround split', () => {
     });
     expect(out.t).toBe(-1);
     expect(out.o).toEqual([true]);
-    expect(out.b).toEqual([false]);
+    expect(out.b).toEqual([true]);
   });
 });
 
@@ -216,5 +216,52 @@ test.describe('the turn point seeds no automatic frequency change', () => {
     // No retrace anywhere -> no proven turn -> nothing suppressed. The distance-based
     // fallback used for kite filtering must never reach the comm-change logic.
     expect(out.retraceTurn).toBe(-1);
+  });
+});
+
+test.describe('the picker dims when there is no turn', () => {
+  test('disabled on a straight route, enabled once the route doubles back', async ({ page }) => {
+    await boot(page);
+    const straight = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                         { lat: 32.05, lng: 34.0, name: 'B' },
+                         { lat: 32.10, lng: 34.1, name: 'C' }];
+      syncLegs();
+      const sel = document.getElementById('leg-dir-select');
+      return { disabled: sel.disabled, dimmed: sel.closest('label').classList.contains('navtoggle-disabled'),
+               hasTitle: sel.title.length > 0, turn: legRetraceTurnIndex() };
+    });
+    expect(straight.turn).toBe(-1);
+    expect(straight.disabled).toBe(true);
+    expect(straight.dimmed).toBe(true);
+    expect(straight.hasTitle).toBe(true);   // says WHY it is unavailable
+
+    const outBack = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                         { lat: 32.05, lng: 34.0, name: 'B' },
+                         { lat: 32.0, lng: 34.0, name: 'A' }];
+      syncLegs();
+      const sel = document.getElementById('leg-dir-select');
+      return { disabled: sel.disabled, dimmed: sel.closest('label').classList.contains('navtoggle-disabled') };
+    });
+    expect(outBack.disabled).toBe(false);
+    expect(outBack.dimmed).toBe(false);
+  });
+
+  test('with no turn the filter hides nothing, whatever it is set to', async ({ page }) => {
+    await boot(page);
+    const vis = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                         { lat: 32.05, lng: 34.0, name: 'B' },
+                         { lat: 32.10, lng: 34.1, name: 'C' }];
+      syncLegs();
+      const at = (f) => { window.legDirFilter = f; return state.legs.map((_, i) => legDirVisible(i)); };
+      const o = at('out'), b = at('back');
+      window.legDirFilter = 'both';
+      return { o, b };
+    });
+    // A stale 'out'/'back' from another route must never blank a straight route's kites.
+    expect(vis.o).toEqual([true, true]);
+    expect(vis.b).toEqual([true, true]);
   });
 });

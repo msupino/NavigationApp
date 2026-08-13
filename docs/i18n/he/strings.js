@@ -922,6 +922,7 @@ window.S = {
   tbLegDirBoth: 'שני הכיוונים',
   tbLegDirOut: 'הלוך בלבד',
   tbLegDirBack: 'חזור בלבד',
+  tbLegDirNoTurn: 'המסלול הזה אינו חוזר על עקבותיו, ולכן אין הלוך וחזור להפריד ביניהם.',
   tbSecSim: 'סימולטור',   // כפתור פוטר + כותרת המודל; האייקון מגיע מה-SVG של הכפתור
   tbSimConnect: 'התחבר לסימולטור',
   tbSimDisconnect: 'התנתק מהסימולטור',
