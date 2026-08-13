@@ -189,3 +189,122 @@ test.describe('gpsSpeak', () => {
     expect(order).toEqual(['start:first', 'end:first', 'start:second', 'end:second']);
   });
 });
+
+test.describe('alerts speak their own phrasing', () => {
+  test('gpsSendWatchAlert speaks the third argument, not the notification body', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSendWatchAlert === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      gpsSendWatchAlert('Altitude', '1500 ft — planned 2000 ft', 'Altitude 1500 feet, planned 2000.');
+      await window.__gpsSpeakChain;
+      return window.__spoken.map(s => s.text);
+    });
+    expect(out).toEqual(['Altitude 1500 feet, planned 2000.']);
+  });
+
+  test('an alert with no spoken text stays silent but still notifies', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSendWatchAlert === 'function');
+    const n = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      gpsSendWatchAlert('Title', 'body');           // no third argument
+      await window.__gpsSpeakChain;
+      return window.__spoken.length;
+    });
+    expect(n).toBe(0);
+  });
+
+  test('the TOP alert speaks', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
+                         { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;
+      // Inside the capture radius of BRAVO -- the overhead-the-waypoint moment.
+      gpsOwn = { lat: 32.008, lng: 34.0, t: Date.now() };
+      gpsLastAlt = null;
+      gpsCheckLegAlerts();
+      await window.__gpsSpeakChain;
+      return window.__spoken.map(s => s.text);
+    });
+    expect(out).toContain('Top.');
+  });
+
+  test('speaks the Hebrew phrasing when the UI is Hebrew', async ({ page }) => {
+    await stubTts(page, { languages: ['en-US', 'he-IL'] });
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof gpsSendWatchAlert === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      gpsSendWatchAlert('גובה', 'body', S.speakAlertAlt(1500, 2000));
+      await window.__gpsSpeakChain;
+      return window.__spoken.slice();
+    });
+    expect(out.length).toBe(1);
+    expect(out[0].lang).toBe('he-IL');
+    expect(out[0].text).toContain('גובה');
+    expect(out[0].text).toContain('1500');
+    expect(out[0].text).not.toContain('°');
+  });
+
+  // The whole point of speaking FIRST and fire-and-forget: the alert the pilot relies on
+  // must not depend on the audio device working.
+  test('a TTS failure does not suppress the notification', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__scheduled = [];
+      window.Capacitor = {
+        isNativePlatform: () => true,
+        Plugins: {
+          TextToSpeech: {
+            speak: () => Promise.reject(new Error('no engine')),
+            getSupportedLanguages: () => Promise.resolve({ languages: ['en-US'] }),
+          },
+          LocalNotifications: {
+            requestPermissions: () => Promise.resolve({ display: 'granted' }),
+            schedule: (o) => { window.__scheduled.push(o); return Promise.resolve(); },
+          },
+        },
+      };
+    });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSendWatchAlert === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      gpsSendWatchAlert('Altitude', '1500 ft', 'Altitude 1500 feet, planned 2000.');
+      await window.__gpsSpeakChain;
+      return window.__scheduled.slice();
+    });
+    expect(out.length).toBe(1);
+    expect(out[0].notifications[0].title).toBe('Altitude');
+  });
+
+  test('the drift alert speaks its own phrasing, with no degree symbol', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
+                         { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;   // testing the drift math itself, not the confirmation gate
+      // Well off the leg's own bearing, before the midpoint.
+      gpsOwn = { lat: 32.15, lng: 34.2, t: Date.now() };
+      gpsCheckDrift();
+      await window.__gpsSpeakChain;
+      return window.__spoken.map(s => s.text);
+    });
+    expect(out.length).toBe(1);
+    expect(out[0]).toMatch(/degrees off course/);
+    expect(out[0]).not.toContain('°');
+  });
+});

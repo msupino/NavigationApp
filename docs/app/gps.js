@@ -928,6 +928,7 @@ function gpsCheckLegAlerts() {
       let nextLegAlt = null;
       let nextLegHdg = null;
       let nextLegTime = null;
+      let nextLegMin = null;    // whole minutes, for the spoken form
       if (nextLegKiteVisible) {
         nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
           ? Math.round(nextLeg.inboundAltitude) : null;
@@ -955,11 +956,19 @@ function gpsCheckLegAlerts() {
         if (nextLegGeo && Number.isFinite(nextLegGeo.dist) && nextLeg && nextLeg.flightSpeed > 0 &&
             typeof toHMS === 'function') {
           nextLegTime = toHMS(nextLegGeo.dist / nextLeg.flightSpeed);
+          // Whole minutes for the SPOKEN form -- seconds are false precision on a planned
+          // time, and they lengthen the phrase at the moment the pilot is busiest.
+          nextLegMin = Math.round((nextLegGeo.dist / nextLeg.flightSpeed) * 60);
         }
       }
       gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
         (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime)
-          : ('Approaching ' + label));
+          : ('Approaching ' + label),
+        (S && S.speakAlertLeg)
+          ? S.speakAlertLeg(label, nextLegAlt,
+              nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, (typeof window !== 'undefined' && window.__navLang) || 'en'),
+              nextLegMin)
+          : null);
     }
   }
 
@@ -975,7 +984,9 @@ function gpsCheckLegAlerts() {
         gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
           (S && S.watchAlertAltBody)
             ? S.watchAlertAltBody(Math.round(gpsLastAlt), Math.round(planned))
-            : (Math.round(gpsLastAlt) + ' ft, planned ' + Math.round(planned) + ' ft'));
+            : (Math.round(gpsLastAlt) + ' ft, planned ' + Math.round(planned) + ' ft'),
+          (S && S.speakAlertAlt)
+            ? S.speakAlertAlt(Math.round(gpsLastAlt), Math.round(planned)) : null);
       }
     } else {
       _gpsAlertAltDeviated = false;
@@ -1003,7 +1014,8 @@ function gpsCheckLegAlerts() {
       // Just "TOP" -- no waypoint name. The leg-approach alert already named it
       // seconds earlier; repeating it here only added characters to a small watch screen.
       gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
-        (S && S.watchAlertTopBody) || 'TOP');
+        (S && S.watchAlertTopBody) || 'TOP',
+        (S && S.speakAlertTop) ? S.speakAlertTop() : null);
     }
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;
@@ -1134,7 +1146,11 @@ function gpsRequestNotifyPermission() {
   return Promise.resolve();
 }
 var _watchAlertId = 1;
-function gpsSendWatchAlert(title, body) {
+function gpsSendWatchAlert(title, body, speech) {
+  // Speech first, and independent: it is fire-and-forget, and the notification below has
+  // its own return paths (native plugin, service worker, plain constructor) that must not
+  // decide whether the pilot hears the alert.
+  gpsSpeak(speech);
   const nn = _nativeNotify();
   if (nn) {
     nn.schedule({ notifications: [{ id: _watchAlertId++, title: title, body: body,
@@ -1246,7 +1262,8 @@ function gpsCheckDrift() {
     const driftIn = driftOut * 2;
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, driftIn, label)
-        : (driftOut + '° off course, ' + driftIn + '° to intercept toward ' + label));
+        : (driftOut + '° off course, ' + driftIn + '° to intercept toward ' + label),
+      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, driftIn, label) : null);
   } else {
     // Past the midpoint: rejoining the original line buys nothing this close to the
     // waypoint -- report the correction to head direct to it instead.
@@ -1254,6 +1271,7 @@ function gpsCheckDrift() {
     const correction = Math.round(Math.abs(_gpsAngleDiff(direct.brg, leg.brg)));
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(correction, label)
-        : (correction + '° to ' + label));
+        : (correction + '° to ' + label),
+      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(correction, label) : null);
   }
 }
