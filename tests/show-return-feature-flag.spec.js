@@ -10,11 +10,15 @@ test('the feature ships OFF: control hidden, state clear, nothing drawn', async 
   const out = await page.evaluate(() => ({
     flag: tune('featureShowReturn'),
     rowHidden: document.getElementById('ret-cb').closest('label').hidden,
+    rowDisplay: getComputedStyle(document.getElementById('ret-cb').closest('label')).display,
     featureOn: showReturnFeatureOn(),
     showReturn: window.showReturn,
   }));
   expect(out.flag).toBe(false);
   expect(out.rowHidden).toBe(true);
+  // The attribute alone is not enough: #toolbar .navtoggle sets display:flex, which beats
+  // [hidden]'s default display:none. Assert what the user actually sees.
+  expect(out.rowDisplay).toBe('none');
   expect(out.featureOn).toBe(false);
   expect(out.showReturn).toBe(false);
 });
