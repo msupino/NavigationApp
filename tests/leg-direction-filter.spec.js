@@ -402,3 +402,42 @@ test.describe('the picker reflects the route in front of you', () => {
     expect(back.shown).toBe('back');
   });
 });
+
+test('clearing the turning point drops the picker back to outbound only', async ({ page }) => {
+  await boot(page);
+  // A loop: no leg retraces, so the turn only exists because it is marked by hand.
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+      { lat: 32.21056, lng: 34.80722, name: 'SFAIM' },
+      { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+      { lat: 32.14083, lng: 34.80139, name: 'KNTRY' },
+      { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+    ];
+    syncLegs();
+    setTurnWaypoint(2);
+    if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+    const sel = document.getElementById('leg-dir-select');
+    sel.value = 'back';
+    sel.dispatchEvent(new Event('change'));
+  });
+  const withTurn = await page.evaluate(() => {
+    const sel = document.getElementById('leg-dir-select');
+    return { shown: sel.value, disabled: sel.disabled };
+  });
+  expect(withTurn.disabled).toBe(false);
+  expect(withTurn.shown).toBe('back');
+
+  // Remove it the way the inspector button does.
+  const cleared = await page.evaluate(() => {
+    setTurnWaypoint(2);                 // pressing the marked one again clears it
+    if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+    const sel = document.getElementById('leg-dir-select');
+    return { shown: sel.value, disabled: sel.disabled, filter: window.legDirFilter,
+             anyMarked: state.waypoints.some(w => w.turn) };
+  });
+  expect(cleared.anyMarked).toBe(false);
+  expect(cleared.disabled).toBe(true);
+  expect(cleared.shown).toBe('out');    // not the 'back' it was left on
+  expect(cleared.filter).toBe('out');
+});
