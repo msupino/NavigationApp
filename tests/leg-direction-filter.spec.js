@@ -163,3 +163,58 @@ test.describe('turnaround split', () => {
     expect(out.b).toEqual([false]);
   });
 });
+
+// The turnaround is where the route reverses, not where it crosses into another sector:
+// the aircraft leaves on the same frequency it arrived on, so an automatic callout there
+// is a radio call that is not made. Reported from the route below, where NTAIM -- flown
+// out to and straight back from -- was seeding one.
+test.describe('the turn point seeds no automatic frequency change', () => {
+  const OUT_AND_BACK = [
+    { lat: 32.17648, lng: 34.83524, name: '' },
+    { lat: 32.21056, lng: 34.80722, name: 'SFAIM' },
+    { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+    { lat: 31.94361, lng: 34.78083, name: 'NTAIM' },
+    { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+    { lat: 32.14556, lng: 34.77833, name: 'HTZUK' },
+    { lat: 32.14083, lng: 34.80139, name: 'KNTRY' },
+  ];
+
+  test('NTAIM gets no auto note, while the other comm points still do', async ({ page }) => {
+    await boot(page);
+    const ccs = await page.evaluate(async (wps) => {
+      if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+      state.waypoints = wps.map(w => ({ ...w }));
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.filter(n => n && n.cc).map(n => n.cc);
+    }, OUT_AND_BACK);
+    expect(ccs).not.toContain('NTAIM');   // the turn point
+    expect(ccs.length).toBeGreaterThan(0); // but the route still has its other callouts
+  });
+
+  test('a hand-added note at the turn point survives', async ({ page }) => {
+    await boot(page);
+    const kept = await page.evaluate(async (wps) => {
+      if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+      state.waypoints = wps.map(w => ({ ...w }));
+      // freqAuto absent == the pilot put this one there deliberately.
+      state.notes = [{ lat: 31.94361, lng: 34.78083, cc: 'NTAIM',
+                       freqName: 'TEL_NOF', freq: '129.05', text: 'freq' }];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.some(n => n && n.cc === 'NTAIM');
+    }, OUT_AND_BACK);
+    expect(kept).toBe(true);
+  });
+
+  test('a straight route that never turns keeps every frequency change', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(() => ({
+      retraceTurn: legRetraceTurnIndex(),
+    }));
+    // No retrace anywhere -> no proven turn -> nothing suppressed. The distance-based
+    // fallback used for kite filtering must never reach the comm-change logic.
+    expect(out.retraceTurn).toBe(-1);
+  });
+});

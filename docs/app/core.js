@@ -4143,13 +4143,24 @@ function legIsRetrace(i) {
 // With nothing retraced at all, fall back to the waypoint furthest from the start -- a
 // sortie that goes out one way and comes back another still has a turn, it just leaves no
 // reversed leg to find it by.
-function legTurnaroundIndex() {
+// The turn EVIDENCED by a retraced leg, or -1. Separate from legTurnaroundIndex because
+// that one falls back to measuring the furthest waypoint, which is a reasonable guess for
+// filtering kites but must never stand in for proof: a straight A->B->C route has no turn
+// at all, and treating its furthest point as one would suppress a real frequency change
+// there. Anything that changes what the pilot is told to do wants the proof, not the guess.
+function legRetraceTurnIndex() {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
   const legs = (typeof state !== 'undefined' && state.legs) || [];
   const n = Math.min(legs.length, wps.length - 1);
   for (let i = 0; i < n; i++) {
     if (legIsRetrace(i)) return i;
   }
+  return -1;
+}
+function legTurnaroundIndex() {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const byRetrace = legRetraceTurnIndex();
+  if (byRetrace >= 0) return byRetrace;
   if (wps.length < 3 || typeof geo !== 'function') return -1;
   let best = -1, bestD = -1;
   for (let i = 1; i < wps.length - 1; i++) {
