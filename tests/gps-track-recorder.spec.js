@@ -741,3 +741,41 @@ test('the readout reads left to right in Hebrew, and keeps the stale notice read
   await expect(stale).toHaveCount(1);
   await expect(stale).toContainText('120s');
 });
+
+// Reported live: the footer readout showed "90 kt · 800 ft" and the pilot wanted the
+// heading beside them. gpsOwn.hdg is TRUE in both paths (the geolocation API is
+// true-referenced; the sim bridge's magnetic value is converted to true in _simFetch), so
+// the readout is where it turns back into the magnetic heading read off the DI.
+test('the readout carries the magnetic heading beside speed and altitude', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  await page.evaluate(() => {
+    startLiveLocation();
+    // 46.3 m/s ~ 90 kt; 243.8 m ~ 800 ft; course 40 deg TRUE.
+    window.__liveCb({ coords: { latitude: 32.0, longitude: 34.8, accuracy: 8,
+      heading: 40, speed: 46.3, altitude: 243.8 }, timestamp: Date.now() });
+  });
+  const readout = page.locator('#gps-readout');
+  await expect(readout).toContainText('90 kt');
+  await expect(readout).toContainText('800 ft');
+  // Three-digit padded and magnetic, like every other heading the app shows.
+  const text = await readout.textContent();
+  expect(text).toMatch(/\d{3}°/);
+  const shown = Number(text.match(/(\d{3})°/)[1]);
+  const expected = await page.evaluate(() => Math.round(toMagnetic(40)));
+  expect(shown).toBe(((expected % 360) + 360) % 360);
+
+  // A fix carrying no course does NOT blank the heading: the app falls back to the track
+  // between consecutive fixes (see the hdg derivation in onLivePosition), so the readout
+  // keeps showing a real heading rather than a gap.
+  await page.evaluate(() => {
+    window.__liveCb({ coords: { latitude: 32.01, longitude: 34.8, accuracy: 8,
+      heading: null, speed: 40, altitude: 243.8 }, timestamp: Date.now() });
+  });
+  await expect(readout).toContainText('°');
+});
