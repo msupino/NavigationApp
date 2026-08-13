@@ -2304,6 +2304,9 @@ document.addEventListener('keydown', e => {
   } else if (shortcutPlain(e, 'KeyB', 'b')) {
     const t = e.target;
     if (shortcutTypingTarget(t)) return;
+    // Nothing to toggle when the feature is off, and a shortcut that silently turns on a
+    // hidden control is worse than one that does nothing.
+    if (typeof showReturnFeatureOn === 'function' && !showReturnFeatureOn()) return;
     // Toggling the checkbox fires its onchange (persist + redraw).
     document.getElementById('ret-cb').click();
   }
@@ -2671,6 +2674,18 @@ try {
   const sf = lsGet(SIM_FOLLOW_KEY);
   if (sf !== null) window.simFollow = sf === '1';
 } catch (e) { /* storage unavailable */ }
+// The return path can be switched off wholesale from the tuning gist (featureShowReturn).
+// Hidden AND forced off, not merely hidden: a stored 'on' from before it was disabled would
+// otherwise keep drawing the mirrored path with no control left to turn it off.
+function showReturnFeatureOn() {
+  return typeof tune !== 'function' || tune('featureShowReturn') !== false;
+}
+window.showReturnFeatureOn = showReturnFeatureOn;
+if (!showReturnFeatureOn()) {
+  window.showReturn = false;
+  const retRow = document.getElementById('ret-cb').closest('label');
+  if (retRow) retRow.hidden = true;
+}
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('cumtime-cb').checked = showCumTime;
