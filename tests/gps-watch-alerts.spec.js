@@ -516,7 +516,11 @@ test.describe('confirmation gate (no alerting off an unconfirmed snap)', () => {
     { lat: 32.00, lng: 34.30, name: 'DELTA' },
   ];
 
-  test('an unconfirmed snap onto a mid-route leg stays silent even with a real altitude deviation', async ({ page }) => {
+  // The gate's rule changed with cone-based leg tracking: being inside a leg's CONE is
+  // itself confirmation -- a positional fact about a bounded region, not the nearest-leg
+  // guess the gate was protecting against. What still must not alert is a position that is
+  // not demonstrably on any leg at all, which is now the genuinely unconfirmed case.
+  test('a position outside every cone stays silent even with a real altitude deviation', async ({ page }) => {
     await stubWebNotify(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function' &&
@@ -527,18 +531,26 @@ test.describe('confirmation gate (no alerting off an unconfirmed snap)', () => {
       state.legs[1].inboundAltitude = 3000;   // BRAVO->CHARLIE
       // Starting mid-route: a fix well inside leg 1, never having touched a waypoint --
       // exactly a fresh GPS start, a resumed session, or a mid-flight route load.
-      gpsOwn = { lat: 32.00, lng: 34.15, hdg: 90, t: Date.now() };
+      // Far off the route -- inside no cone at all.
+      gpsOwn = { lat: 32.60, lng: 34.15, hdg: 90, t: Date.now() };
       gpsSnapLegAlertsToPosition();
-      const legAfterSnap = gpsAlertLegIndex;
       gpsLastAlt = 3300;   // 300 ft over BRAVO->CHARLIE's plan -- a real deviation
       gpsCheckLegAlerts();
-      return { legAfterSnap, notif: window.__notifications.slice() };
+      _gpsConeOutsideSince = Date.now() - 20000;   // past the off-route debounce
+      gpsCheckLegAlerts();
+      const offRouteOnly = window.__notifications.every((n) => /off route/i.test(n.title));
+      // Now genuinely on the leg: the cone confirms, and the deviation alerts.
+      window.__notifications.length = 0;
+      gpsOwn = { lat: 32.00, lng: 34.15, hdg: 90, t: Date.now() };
+      gpsCheckLegAlerts();
+      return { offRouteOnly, onLeg: window.__notifications.slice() };
     }, WPS);
-    expect(out.legAfterSnap).toBe(1);      // snap itself is correct...
-    expect(out.notif.length).toBe(0);      // ...but nothing fires: unconfirmed
+    // Nothing about altitude while off route -- only the off-route call itself.
+    expect(out.offRouteOnly).toBe(true);
+    expect(out.onLeg.some((n) => n.body.includes('3300'))).toBe(true);
   });
 
-  test('the first real waypoint capture confirms it, and normal alerting resumes from there', async ({ page }) => {
+  test('being on a leg confirms the pointer, without waiting for a waypoint capture', async ({ page }) => {
     await stubWebNotify(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function' &&
@@ -563,10 +575,12 @@ test.describe('confirmation gate (no alerting off an unconfirmed snap)', () => {
       gpsCheckLegAlerts();
       return { beforeCapture, legAfterCapture, afterCapture, notif: window.__notifications.slice() };
     }, WPS);
-    expect(out.beforeCapture).toBe(0);        // still silent right up to the real capture
+    // The deviation alerts as soon as the aircraft is demonstrably on the leg. Waiting for
+    // a capture used to cost the FIRST waypoint of every session its approach call, because
+    // the capture that confirmed was the same event that fired TOP.
+    expect(out.beforeCapture).toBeGreaterThan(0);
     expect(out.legAfterCapture).toBe(2);      // pointer advanced past BRAVO->CHARLIE
-    expect(out.afterCapture).toBeGreaterThan(0);   // TOP fires now -- confirmed as of this capture
-    expect(out.notif.some((n) => n.body.includes('3300'))).toBe(true);   // and the leg-2 deviation alerts too
+    expect(out.notif.some((n) => n.body.includes('3300'))).toBe(true);
   });
 
   test('a "passed abeam without ever getting close" advance does not confirm on its own', async ({ page }) => {
@@ -1036,7 +1050,7 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
 });
 
 test.describe('loading a route while already tracking (applyRouteData)', () => {
-  test('snaps the leg pointer to the nearest leg of the NEW route, but does not alert until a real waypoint confirms it', async ({ page }) => {
+  test('snaps the leg pointer to the nearest leg of the NEW route, and alerts once the cone confirms it', async ({ page }) => {
     // Loading a route mid-flight snaps from an inferred along-track projection, same as
     // a fresh GPS start onto an existing route -- an educated guess, not ground truth.
     // Alerting off it immediately used to fire the moment a route loaded (this test's own
@@ -1068,9 +1082,10 @@ test.describe('loading a route while already tracking (applyRouteData)', () => {
       return { legIndex: gpsAlertLegIndex, notif: window.__notifications.slice() };
     });
     expect(out.legIndex).toBe(1);        // snapped straight to the BRAVO->CHARLIE leg
-    expect(out.notif.length).toBe(0);    // but nothing fired yet -- unconfirmed (see the
-    // dedicated "confirmation gate" describe block for what happens once a real waypoint
-    // capture does confirm it).
+    // The fix is squarely inside that leg's cone, which IS confirmation -- a load no longer
+    // has to wait for a waypoint capture before it can say anything. A snap the cone does
+    // NOT back up stays silent instead; see the confirmation-gate block above.
+    expect(out.notif.some((n) => n.body.includes('3200'))).toBe(true);
   });
 
   test('a route loaded before any fix exists is a no-op, not a crash', async ({ page }) => {

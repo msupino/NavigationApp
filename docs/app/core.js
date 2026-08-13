@@ -1690,6 +1690,18 @@ window.S = Object.assign({
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';
   },
+  // Outside every leg cone: the app no longer knows where the aircraft is relative to the
+  // route. Saying only that is useless to someone who already knows they are lost, so the
+  // alert carries a course back. `turn` is set only when the target is NOT already ahead of
+  // the nose -- when it is, the heading alone is the whole instruction.
+  watchAlertOffRouteTitle: 'Off route',
+  watchAlertOffRouteBody: function(wp, hdg, nm, turn) {
+    return 'Direct ' + wp + (turn ? ', turn ' + turn : '') + ', heading ' + hdg + '\u00b0, ' + nm + ' NM';
+  },
+  speakAlertOffRoute: function(wp, hdgDigits, nm, turn) {
+    return 'Off route. Direct ' + wp + '.' + (turn ? ' Turn ' + turn + '.' : '') +
+      ' Heading ' + hdgDigits + ', ' + nm + ' miles.';
+  },
   watchAlertDriftTitle: 'Off course',
   // Before the leg's midpoint: two numbers, the classic "double the error" intercept --
   // how far off course (driftOut), then the heading correction to converge back (driftIn),
