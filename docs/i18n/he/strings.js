@@ -1035,7 +1035,7 @@ window.S = {
     return 'גובה ' + actual + ' רגל, מתוכנן ' + planned + '.';
   },
   speakAlertDrift: function(driftOut, driftIn, wp) {
-    return driftOut + ' מעלות סטייה. ' + driftIn + ' לתיקון לכיוון ' + wp + '.';
+    return driftOut + ' מעלות סטייה. ' + driftIn + ' מעלות לתיקון לכיוון ' + wp + '.';
   },
   speakAlertDriftDirect: function(correction, wp) {
     return correction + ' מעלות אל ' + wp + '.';

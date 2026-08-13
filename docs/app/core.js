@@ -1722,7 +1722,7 @@ window.S = Object.assign({
     return 'Altitude ' + actual + ' feet, planned ' + planned + '.';
   },
   speakAlertDrift: function(driftOut, driftIn, wp) {
-    return driftOut + ' degrees off course. ' + driftIn + ' to intercept toward ' + wp + '.';
+    return driftOut + ' degrees off course. ' + driftIn + ' degrees to intercept toward ' + wp + '.';
   },
   speakAlertDriftDirect: function(correction, wp) {
     return correction + ' degrees to ' + wp + '.';
