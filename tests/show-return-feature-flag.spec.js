@@ -240,3 +240,57 @@ test('switching it back off hides the row and clears the state again', async ({ 
   expect(out.showReturn).toBe(false);   // cannot be left drawing with no control
   expect(out.checked).toBe(false);
 });
+
+test.describe('reversing with nothing to reverse', () => {
+  test('says nothing on an empty map', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof showToast === 'function');
+    const seen = await page.evaluate(() => {
+      state.waypoints = [];
+      syncLegs();
+      let msg = null;
+      const orig = window.showToast;
+      window.showToast = (t) => { msg = t; };
+      document.getElementById('reverse').click();
+      window.showToast = orig;
+      return msg;
+    });
+    // Warning about a route that does not exist teaches the pilot to dismiss the warning
+    // unread -- exactly what must not happen the day it appears on a real route.
+    expect(seen).toBeNull();
+  });
+
+  test('says nothing for a single waypoint', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof showToast === 'function');
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' }];
+      syncLegs();
+      let msg = null;
+      const orig = window.showToast;
+      window.showToast = (t) => { msg = t; };
+      document.getElementById('reverse').click();
+      window.showToast = orig;
+      return { msg, wps: state.waypoints.length };
+    });
+    expect(out.msg).toBeNull();
+    expect(out.wps).toBe(1);      // and nothing was mangled on the way out
+  });
+
+  test('still warns as soon as there is a real leg', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof showToast === 'function');
+    const seen = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                         { lat: 32.1, lng: 34.1, name: 'B' }];
+      syncLegs();
+      let msg = null;
+      const orig = window.showToast;
+      window.showToast = (t) => { msg = t; };
+      document.getElementById('reverse').click();
+      window.showToast = orig;
+      return msg;
+    });
+    expect(seen).toMatch(/allowed routes/i);
+  });
+});

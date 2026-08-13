@@ -2317,6 +2317,11 @@ document.addEventListener('click', e => {
   }
 });
 document.getElementById('reverse').onclick = () => {
+  // Nothing to reverse: an empty map, or a single point with no leg. Reversing is a no-op
+  // there, and warning that a route "might not match allowed routes" when there IS no route
+  // is noise that teaches the pilot to dismiss the warning without reading it -- which is
+  // exactly what must not happen the day it appears on a real route.
+  if (!state.waypoints || state.waypoints.length < 2) return;
   // Reversing flight direction means each leg's inbound/outbound roles swap.
   // The leg's local axes (along + perpendicular) also flip, so negating the
   // label offsets keeps the markers visually pinned to the same map pixels.
