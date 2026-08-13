@@ -175,7 +175,7 @@ const SHORTCUTS_HELP_ROWS = [
       { keys: ['N'], descKey: 'shortcutAddNote' },
       { keys: ['C'], descKey: 'shortcutClear' },
       { keys: ['R'], descKey: 'shortcutReverse' },
-      { keys: ['B'], descKey: 'shortcutBothDirections' },
+      { keys: ['B'], descKey: 'shortcutBothDirections', feature: 'featureShowReturn' },
       { keys: ['Ctrl', 'Z'], altKeys: ['⌘', 'Z'], descKey: 'shortcutUndo' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
       { keys: ['D'], altKeys: ['Delete', 'Backspace'], descKey: 'shortcutDelete' },
@@ -221,8 +221,12 @@ function showShortcutsHelp() {
     list.appendChild(groupTitle);
     // Alphabetical within each category (by the primary key combo) so the
     // rows are predictable to scan; the category order itself is curated.
-    const rows = [...group.rows].sort((a, b) =>
-      a.keys.join('+').localeCompare(b.keys.join('+')));
+    // A row for a feature that is switched off is a shortcut that does nothing: listing it
+    // teaches a key that will not work, which is worse than not mentioning it.
+    const rows = [...group.rows]
+      .filter(r => !r.feature || (typeof tune !== 'function') || tune(r.feature) !== false)
+      .sort((a, b) => a.keys.join('+').localeCompare(b.keys.join('+')));
+    if (!rows.length) { list.removeChild(groupTitle); continue; }
     for (const row of rows) {
       const dt = document.createElement('dt');
       dt.className = 'shortcuts-help-keys';
@@ -7489,17 +7493,21 @@ function tryLoadRouteFromUrl() {
 // pilots want the link copied and to keep working. The toast self-removes
 // after 2.5 s; clipboard failures still fall through to a window.prompt
 // so the URL can be copied manually.
-function showToast(msg) {
+// `opts.ms` overrides how long the toast stays up, `opts.blink` makes it pulse. A warning
+// a pilot must actually act on cannot share its dwell time with 'route saved'.
+function showToast(msg, opts) {
+  const o = opts || {};
   const el = document.createElement('div');
-  el.className = 'toast';
+  el.className = 'toast' + (o.blink ? ' toast-blink' : '');
   el.textContent = msg;
   document.body.appendChild(el);
   void el.offsetWidth;                  // force reflow so the fade-in runs
   el.classList.add('show');
+  const ms = Number.isFinite(o.ms) && o.ms > 0 ? o.ms : 2500;
   setTimeout(() => {
     el.classList.remove('show');
     setTimeout(() => el.remove(), 250);
-  }, 2500);
+  }, ms);
 }
 
 // --- magnifying glass -------------------------------------------------

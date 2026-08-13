@@ -680,6 +680,7 @@ window.S = {
   tbPlateAirfieldAll: 'כל השדות',
   tbPlateAirfieldAuto: 'אוטומטי (תחילת וסוף מסלול)',
   tbDisabledByTurn: 'לא זמין במסלול עם נקודת חזרה — הוא כבר טס הלוך וחזור, ולכן אין מה להפוך או לשקף.',
+  reverseRouteWarn: '\u26a0 הופך — ייתכן שאינו תואם למסלולים המאושרים. בדקו במפה: מסדרונות מפורסמים יכולים להיות חד-כיווניים.',
   tbReverse: '⇄ הפוך מסלול (R)',
   tbReverseTitle: 'הפוך סדר מסלול',
   tbUndo: '↶ בטל (Ctrl-Z)',

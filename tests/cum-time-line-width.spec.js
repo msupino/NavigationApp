@@ -2,6 +2,7 @@
 // Coverage for PR #513: cumulative-time kite (drawCumTimeArrow / cumLabel +
 // the showCumTime toggle) and the leg line-width slider.
 const { test, expect } = require('./_setup');
+const { enableShowReturn } = require('./_show-return');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 const { hideToolbarMenus } = require('./_toolbar');
 
@@ -385,6 +386,7 @@ test.describe('Cumulative-time kite', () => {
 
   test('return route adds a second cum kite per leg', async ({ page }) => {
     await boot(page);
+    await enableShowReturn(page);
     await loadRoute(page);
     const counts = await page.evaluate(() => {
       window.showCumTime = true;

@@ -3,6 +3,7 @@
 // waypoints, reverse, clear, mode switching, inspector. Same 11-WP
 // LLHZ → LLHA fixture as tests/flight-plan.spec.js and tests/share-route.spec.js.
 const { test, expect } = require('./_setup');
+const { enableShowReturn } = require('./_show-return');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 const { hideToolbarMenus } = require('./_toolbar');
 
@@ -711,12 +712,38 @@ test.describe('Overlay toggles', () => {
     await expect(page.locator('#airfield-cb')).not.toBeChecked();
   });
 
-  test('Show return path toggle persists', async ({ page }) => {
+  test('Show return path toggle persists while the feature is on', async ({ page }) => {
+    await enableShowReturn(page);
     await page.locator('#ret-cb').check();
     await page.waitForFunction(() =>
       localStorage.getItem('navaid.showReturn') === '1');
     await page.reload({ waitUntil: 'domcontentloaded' });
+    // The feature ships OFF, so boot deliberately clears the stored preference (see
+    // refreshShowReturnFeature). Switch it back on the way a gist would, and the stored
+    // '1' is what the control comes back as.
+    await page.waitForFunction(() => typeof refreshShowReturnFeature === 'function');
+    await enableShowReturn(page);
+    await page.evaluate(() => {
+      window.showReturn = localStorage.getItem('navaid.showReturn') === '1';
+      refreshShowReturnFeature();
+    });
     await expect(page.locator('#ret-cb')).toBeChecked();
+  });
+
+  test('a stored "on" cannot resurrect the return path while the feature is off', async ({ page }) => {
+    // The other half of the same rule: someone who had it on before it was switched off
+    // must not come back to a mirrored route with no control to stop it.
+    await page.evaluate(() => localStorage.setItem('navaid.showReturn', '1'));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof refreshShowReturnFeature === 'function');
+    const out = await page.evaluate(() => ({
+      showReturn: window.showReturn,
+      checked: document.getElementById('ret-cb').checked,
+      display: getComputedStyle(document.getElementById('ret-cb').closest('label')).display,
+    }));
+    expect(out.showReturn).toBe(false);
+    expect(out.checked).toBe(false);
+    expect(out.display).toBe('none');
   });
 });
 
