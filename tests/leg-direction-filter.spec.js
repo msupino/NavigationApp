@@ -650,3 +650,56 @@ test.describe('a turning point names the saved route', () => {
     expect(out.name).toContain(out.shown);
   });
 });
+
+// routeFileSlug feeds EVERY export -- json, gpx, pln, fdr, csv, png, kml -- so a loop
+// without the turn made every sortie out of one field collide in the downloads folder.
+test.describe('a turning point names the exported files', () => {
+  test('a loop is named by its far point, not "LLHZ-to-LLHZ"', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(() => {
+      // A LOOP, not an out-and-back: no leg retraces, so nothing is auto-detected and the
+      // slug really is the useless "LLHZ-to-LLHZ" until a turn is marked.
+      state.waypoints = [
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.21056, lng: 34.80722, name: 'SFAIM' },
+        { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+        { lat: 32.14083, lng: 34.80139, name: 'KNTRY' },
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+      ];
+      syncLegs();
+      const before = routeFileSlug();
+      setTurnWaypoint(2);
+      return { before, after: routeFileSlug() };
+    });
+    expect(out.before).toBe('LLHZ-to-LLHZ');
+    expect(out.after).toMatch(/^LLHZ-via-/);
+    expect(out.after).not.toBe(out.before);
+  });
+
+  test('different ends keep both, with the turn between', async ({ page }) => {
+    await boot(page);
+    const slug = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+        { lat: 31.83417, lng: 34.80972, name: 'LLES' },
+      ];
+      syncLegs();
+      setTurnWaypoint(1);
+      return routeFileSlug();
+    });
+    expect(slug).toMatch(/^LLHZ-via-.*-to-LLES$/);
+  });
+
+  test('a one-way route is unchanged, and stays filename-safe', async ({ page }) => {
+    await boot(page);
+    const slug = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+                         { lat: 31.83417, lng: 34.80972, name: 'LLES' }];
+      syncLegs();
+      return routeFileSlug();
+    });
+    expect(slug).toBe('LLHZ-to-LLES');
+    expect(slug).toMatch(/^[A-Za-z0-9-]+$/);   // no spaces or punctuation in a filename
+  });
+});
