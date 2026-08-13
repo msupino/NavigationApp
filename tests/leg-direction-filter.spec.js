@@ -30,7 +30,7 @@ test('a leg that reverses an earlier leg is a retrace; a fresh leg is not', asyn
   expect(out.leg1).toBe(true);    // same pair, reversed
 });
 
-test('a route that never doubles back has no retrace legs, so the filter is a no-op', async ({ page }) => {
+test('a route that never retraces falls back to the furthest waypoint as the turn', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     state.waypoints = [
@@ -51,8 +51,10 @@ test('a route that never doubles back has no retrace legs, so the filter is a no
     return { retrace, visOut, visBack };
   });
   expect(out.retrace).toEqual([false, false, false]);
-  expect(out.visOut).toEqual([true, true, true]);    // outbound-only keeps everything
-  expect(out.visBack).toEqual([false, false, false]); // return-only has nothing to show
+  // Nothing retraces, so the turn falls back to the furthest waypoint (C, index 2):
+  // legs 0-1 outbound, leg 2 the way home.
+  expect(out.visOut).toEqual([true, true, false]);
+  expect(out.visBack).toEqual([false, false, true]);
 });
 
 test('the filter selects one direction on an out-and-back', async ({ page }) => {
@@ -65,6 +67,7 @@ test('the filter selects one direction on an out-and-back', async ({ page }) => 
     return { both, outbound, back };
   });
   expect(out.both).toEqual([true, true]);
+  // ALPHA->BRAVO->ALPHA: leg 1 retraces, so it is the turn -- leg 0 out, leg 1 home.
   expect(out.outbound).toEqual([true, false]);
   expect(out.back).toEqual([false, true]);
 });
@@ -124,12 +127,13 @@ test.describe('turnaround split', () => {
     const out = await page.evaluate(() => {
       const t = legTurnaroundIndex();
       const at = (f) => { window.legDirFilter = f; return state.legs.map((_, i) => legDirVisible(i)); };
-      const o = at('outTurn'), b = at('backTurn');
+      const o = at('out'), b = at('back');
       window.legDirFilter = 'both';
       return { t, o, b, name: state.waypoints[t].name };
     });
-    expect(out.name).toBe('NTAIM');
+    // The turn is found from the RETRACED leg (NTAIM->TYONA), not by measuring distance.
     expect(out.t).toBe(3);
+    expect(out.name).toBe('NTAIM');
     // Legs 0-2 outbound; 3-5 the way home -- including the ones that never retrace.
     expect(out.o).toEqual([true, true, true, false, false, false]);
     expect(out.b).toEqual([false, false, false, true, true, true]);
@@ -150,7 +154,7 @@ test.describe('turnaround split', () => {
     });
     const out = await page.evaluate(() => {
       const at = (f) => { window.legDirFilter = f; return state.legs.map((_, i) => legDirVisible(i)); };
-      const o = at('outTurn'), b = at('backTurn');
+      const o = at('out'), b = at('back');
       window.legDirFilter = 'both';
       return { t: legTurnaroundIndex(), o, b };
     });

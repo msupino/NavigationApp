@@ -1795,10 +1795,8 @@ window.S = Object.assign({
   tbLegDir: '🧭 Leg kites',
   tbLegDirTitle: 'Which direction\u2019s leg kites to draw. On an out-and-back route both directions land on top of each other near the turnaround — readable on screen, unusable on a printed map. The route line is never hidden, only the kites.',
   tbLegDirBoth: 'Both directions',
-  tbLegDirOut: 'Outbound — skip retraced legs',
-  tbLegDirBack: 'Return — retraced legs only',
-  tbLegDirOutTurn: 'Outbound — up to the turnaround',
-  tbLegDirBackTurn: 'Return — from the turnaround',
+  tbLegDirOut: 'Outbound only',
+  tbLegDirBack: 'Return only',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -4132,12 +4130,26 @@ function legIsRetrace(i) {
   }
   return false;
 }
-// The turnaround: the waypoint furthest from the route's start. Everything from there on
-// is the way home. A blunter rule than legIsRetrace -- it needs no leg to be retraced at
-// all -- which is the point: a sortie that goes out one way and comes back another never
-// retraces a single leg, yet a pilot still thinks of it as out and back.
+// Where the route turns for home. The FIRST retraced leg is the answer whenever there is
+// one: a leg flown back down a track already flown is direct evidence of the turn, not an
+// inference, and everything after it is the way home even where it takes a different path
+// and retraces nothing further. On the route this was reported from --
+//
+//   LLHZ -> SFAIM -> TYONA -> NTAIM -> TYONA -> HTZUK -> KNTRY
+//
+// only NTAIM->TYONA reverses an earlier leg, so leg 3 is the turn and legs 3-5 are the
+// return, which is how the pilot flying it describes the sortie.
+//
+// With nothing retraced at all, fall back to the waypoint furthest from the start -- a
+// sortie that goes out one way and comes back another still has a turn, it just leaves no
+// reversed leg to find it by.
 function legTurnaroundIndex() {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const legs = (typeof state !== 'undefined' && state.legs) || [];
+  const n = Math.min(legs.length, wps.length - 1);
+  for (let i = 0; i < n; i++) {
+    if (legIsRetrace(i)) return i;
+  }
   if (wps.length < 3 || typeof geo !== 'function') return -1;
   let best = -1, bestD = -1;
   for (let i = 1; i < wps.length - 1; i++) {
@@ -4147,23 +4159,16 @@ function legTurnaroundIndex() {
   }
   return best;
 }
-// Should leg i's kites be drawn, given the direction filter?
-//
-// Two ways to read "the way back", because routes come in both shapes:
-//   out / back            -- a leg that flies back down a track already flown
-//                            (exact; a route that never retraces has none)
-//   outTurn / backTurn    -- everything past the furthest point from the start
-//                            (works when the return takes a different path home)
+// Should leg i's kites be drawn, given the direction filter? Everything from the turnaround
+// on counts as the return -- not just the legs that literally retrace. Hiding only the
+// reversed leg would leave the rest of the way home drawn, which is not what "outbound
+// only" means to anyone reading a printed map.
 function legDirVisible(i) {
   const f = (typeof legDirFilter === 'string') ? legDirFilter : 'both';
-  if (f === 'out') return !legIsRetrace(i);
-  if (f === 'back') return legIsRetrace(i);
-  if (f === 'outTurn' || f === 'backTurn') {
-    const t = legTurnaroundIndex();
-    if (t < 0) return f === 'outTurn';    // no turnaround to speak of: it is all outbound
-    return f === 'outTurn' ? i < t : i >= t;
-  }
-  return true;
+  if (f !== 'out' && f !== 'back') return true;
+  const t = legTurnaroundIndex();
+  if (t < 0) return f === 'out';      // no turn to speak of: it is all outbound
+  return f === 'out' ? i < t : i >= t;
 }
 function legAllowsReturn(i) {
   const leg = state.legs[i];
