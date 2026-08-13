@@ -30,7 +30,10 @@ test.describe('EN/HE string parity', () => {
     await page.waitForFunction(() => typeof window.S === 'object' && window.S);
     const enKeys = await page.evaluate(() => Object.keys(window.S));
     const he = await heKeys(page);
-    for (const k of ['sliderReset', 'exportShowCumTime']) {
+    for (const k of ['sliderReset', 'exportShowCumTime',
+      'speakAlertLeg', 'speakAlertTop', 'speakAlertAlt',
+      'speakAlertDrift', 'speakAlertDriftDirect',
+      'tbVoiceAlerts', 'tbVoiceAlertsTitle']) {
       expect(enKeys).toContain(k);
       expect(he).toContain(k);
     }

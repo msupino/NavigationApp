@@ -1020,6 +1020,28 @@ window.S = {
   watchAlertDriftDirectBody: function(correction, wp) {
     return correction + '° אל ' + wp;
   },
+  // ראו את ההערה בגרסה האנגלית: אלה הניסוחים המדוברים, ולא גוף ההתראה.
+  speakAlertLeg: function(wp, alt, hdgDigits, mins) {
+    let s = 'מתקרב אל ' + wp + '.';
+    const parts = [];
+    if (alt != null) parts.push(alt + ' רגל');
+    if (hdgDigits != null) parts.push('כיוון ' + hdgDigits);
+    if (mins != null) parts.push(mins < 1 ? 'פחות מדקה' : (mins + ' דקות'));
+    if (parts.length) s += ' הקטע הבא ' + parts.join(', ') + '.';
+    return s;
+  },
+  speakAlertTop: function() { return 'טופ.'; },
+  speakAlertAlt: function(actual, planned) {
+    return 'גובה ' + actual + ' רגל, מתוכנן ' + planned + '.';
+  },
+  speakAlertDrift: function(driftOut, driftIn, wp) {
+    return driftOut + ' מעלות סטייה. ' + driftIn + ' לתיקון לכיוון ' + wp + '.';
+  },
+  speakAlertDriftDirect: function(correction, wp) {
+    return correction + ' מעלות אל ' + wp + '.';
+  },
+  tbVoiceAlerts: '🔊 הקראת התראות',
+  tbVoiceAlertsTitle: 'הקראה קולית של התראות הטיסה (קטע, טופ, גובה, סטייה). באפליקציה בלבד — נדרש קול מותקן בשפה שלך.',
   watchAlertNoRouteTestTitle: 'NavAid',
   watchAlertNoRouteTestBody: 'טענו מסלול כדי לקבל התראות על סטייה מהמסלול או מהגובה.',
 };

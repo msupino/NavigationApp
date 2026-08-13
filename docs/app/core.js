@@ -1702,6 +1702,33 @@ window.S = Object.assign({
   watchAlertDriftDirectBody: function(correction, wp) {
     return correction + '° to ' + wp;
   },
+  // Spoken forms of the alerts above. Deliberately NOT the notification bodies: those are
+  // written for a watch face -- dense, and full of symbols (-, °, 0:12:30) whose spoken
+  // rendering is entirely up to the device's TTS engine. These spell the units out, take
+  // the heading already split into digits (see gpsSpokenDigits), and give a time in whole
+  // minutes. A missing field is left out here exactly as it is left out of the
+  // notification: never guessed.
+  speakAlertLeg: function(wp, alt, hdgDigits, mins) {
+    let s = 'Approaching ' + wp + '.';
+    const parts = [];
+    if (alt != null) parts.push(alt + ' feet');
+    if (hdgDigits != null) parts.push('heading ' + hdgDigits);
+    if (mins != null) parts.push(mins < 1 ? 'less than a minute' : (mins + ' minutes'));
+    if (parts.length) s += ' Next leg ' + parts.join(', ') + '.';
+    return s;
+  },
+  speakAlertTop: function() { return 'Top.'; },
+  speakAlertAlt: function(actual, planned) {
+    return 'Altitude ' + actual + ' feet, planned ' + planned + '.';
+  },
+  speakAlertDrift: function(driftOut, driftIn, wp) {
+    return driftOut + ' degrees off course. ' + driftIn + ' to intercept toward ' + wp + '.';
+  },
+  speakAlertDriftDirect: function(correction, wp) {
+    return correction + ' degrees to ' + wp + '.';
+  },
+  tbVoiceAlerts: '🔊 Speak alerts',
+  tbVoiceAlertsTitle: 'Say the in-flight alerts out loud (leg, TOP, altitude, off course). App only — needs a voice installed for your language.',
   // TEMPORARY, test-only -- remove alongside the nudge in gps.js's startLiveLocation once
   // the watch-alert feature is validated.
   watchAlertNoRouteTestTitle: 'NavAid',   // deliberately keeps the app name -- generic startup nudge, not a leg alert
