@@ -2704,6 +2704,22 @@ document.getElementById('cumtime-cb').checked = showCumTime;
     const row = sel.closest('label');
     if (row) row.classList.toggle('navtoggle-disabled', !has);
     sel.title = has ? '' : ((S && S.tbLegDirNoTurn) || 'This route does not double back');
+    if (!has) {
+      // With no turn the whole route IS outbound, so that is what the control should read.
+      // Leaving a stale 'Return only' sitting there describes the route wrongly, and on a
+      // route with no return half it reads as though every kite ought to be hidden.
+      // localStorage is deliberately NOT written: this reflects the route in front of you,
+      // and a real choice made on a route that HAS a turn must survive opening one that
+      // does not.
+      sel.value = 'out';
+      window.legDirFilter = 'out';
+      return;
+    }
+    let saved = null;
+    try { saved = lsGet(LEG_DIR_KEY); } catch (e) { /* storage unavailable */ }
+    const restored = ['both', 'out', 'back'].includes(saved) ? saved : 'both';
+    window.legDirFilter = restored;
+    sel.value = restored;
   };
   refreshLegDirEnabled();
 })();

@@ -360,3 +360,45 @@ test.describe('manual turning point', () => {
     expect(out.pressed).toBe('true');   // relabels to "clear" once set
   });
 });
+
+test.describe('the picker reflects the route in front of you', () => {
+  test('reads "outbound only" when there is no turn, whatever was chosen before', async ({ page }) => {
+    await boot(page);
+    // Choose "Return only" on a route that DOES turn.
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                         { lat: 32.05, lng: 34.0, name: 'B' },
+                         { lat: 32.0, lng: 34.0, name: 'A' }];
+      syncLegs();
+      const sel = document.getElementById('leg-dir-select');
+      sel.value = 'back';
+      sel.dispatchEvent(new Event('change'));
+    });
+    // Now open a route with no turn at all.
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                         { lat: 32.05, lng: 34.0, name: 'B' },
+                         { lat: 32.10, lng: 34.1, name: 'C' }];
+      syncLegs();
+      const sel = document.getElementById('leg-dir-select');
+      return { shown: sel.value, filter: window.legDirFilter, disabled: sel.disabled,
+               stored: localStorage.getItem('navaid.legDirFilter') };
+    });
+    expect(out.disabled).toBe(true);
+    expect(out.shown).toBe('out');      // not the stale 'back'
+    expect(out.filter).toBe('out');
+    expect(out.stored).toBe('back');    // the real preference is not clobbered
+
+    // ...and it comes back when a route with a turn is opened again.
+    const back = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'A' },
+                         { lat: 32.05, lng: 34.0, name: 'B' },
+                         { lat: 32.0, lng: 34.0, name: 'A' }];
+      syncLegs();
+      const sel = document.getElementById('leg-dir-select');
+      return { shown: sel.value, disabled: sel.disabled };
+    });
+    expect(back.disabled).toBe(false);
+    expect(back.shown).toBe('back');
+  });
+});
