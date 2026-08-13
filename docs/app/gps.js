@@ -1033,6 +1033,61 @@ function gpsSpokenDigits(value, lang) {
 }
 window.gpsSpokenDigits = gpsSpokenDigits;
 
+// Native TTS, same access pattern as _nativeNotify()/_bgGeo(): the injected Capacitor
+// bridge exposes any synced plugin at window.Capacitor.Plugins.*. Web speechSynthesis is
+// deliberately NOT a fallback -- browsers suspend it when the page is backgrounded, which
+// is exactly the cockpit case (phone locked, background geolocation still feeding fixes).
+// A voice that goes quiet precisely when it is needed is worse than none, because it is
+// trusted.
+function _nativeTts() {
+  const C = typeof window !== 'undefined' && window.Capacitor;
+  return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() &&
+          C.Plugins && C.Plugins.TextToSpeech) || null;
+}
+function gpsVoiceAlertsOn() {
+  return typeof window !== 'undefined' && window.voiceAlerts === true;
+}
+// Resolved once per session: asking the engine on every alert would put a round trip in
+// front of speech that is already late by the time it matters.
+var _gpsVoiceLang = null;
+function _gpsResolveVoiceLang(tts) {
+  if (_gpsVoiceLang) return Promise.resolve(_gpsVoiceLang);
+  const want = (typeof window !== 'undefined' && window.__navLang === 'he') ? 'he-IL' : 'en-US';
+  if (want === 'en-US') { _gpsVoiceLang = want; return Promise.resolve(want); }
+  if (typeof tts.getSupportedLanguages !== 'function') {
+    _gpsVoiceLang = want;
+    return Promise.resolve(want);
+  }
+  return tts.getSupportedLanguages().then(function (res) {
+    const list = (res && res.languages) || [];
+    // A device with no Hebrew voice speaks the English phrasing rather than nothing: a
+    // missing voice must never mean a missed alert.
+    _gpsVoiceLang = list.some(function (l) { return String(l).toLowerCase().indexOf('he') === 0; })
+      ? want : 'en-US';
+    return _gpsVoiceLang;
+  }).catch(function () { _gpsVoiceLang = 'en-US'; return _gpsVoiceLang; });
+}
+// Chained, never interrupted: a TOP firing seconds after a leg-approach alert waits its
+// turn rather than cutting it off mid-word.
+window.__gpsSpeakChain = Promise.resolve();
+function gpsSpeak(text) {
+  if (!text || !gpsVoiceAlertsOn()) return;
+  const tts = _nativeTts();
+  if (!tts || typeof tts.speak !== 'function') return;
+  window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
+    return _gpsResolveVoiceLang(tts).then(function (voiceLang) {
+      return tts.speak({
+        text: text,
+        lang: voiceLang,
+        // Duck other audio (music, intercom) rather than being talked over or blocking it.
+        category: 'ambient',
+      });
+    });
+  }).catch(function () { /* best-effort: never let a TTS failure break the chain */ });
+}
+window.gpsSpeak = gpsSpeak;
+window.gpsVoiceAlertsOn = gpsVoiceAlertsOn;
+
 // Native (APK) local-notifications plugin, mirroring _bgGeo()'s access pattern -- the
 // injected Capacitor bridge exposes any synced plugin at window.Capacitor.Plugins.*.
 function _nativeNotify() {
