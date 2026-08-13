@@ -4245,6 +4245,16 @@ function routeFileSlug() {
   if (wps && wps.length >= 2) {
     const a = clean(wps[0]);
     const b = clean(wps[wps.length - 1]);
+    // Same reason the saved-route NAME carries the turn: a loop is "LLHZ-to-LLHZ" without
+    // it, so every export of every sortie out of one field collides in the downloads
+    // folder. One function feeds them all -- json, gpx, pln, fdr, csv, png, kml.
+    const ti = (typeof legRetraceTurnIndex === 'function') ? legRetraceTurnIndex() : -1;
+    const t = ti >= 0 ? clean(wps[ti]) : '';
+    if (a && t && t !== a && t !== b) {
+      // "via" rather than "-to-<t>-to-<b>": shorter, and it reads as the far point of the
+      // sortie instead of implying the route ends there.
+      return b && b !== a ? (a + '-via-' + t + '-to-' + b) : (a + '-via-' + t);
+    }
     if (a && b) return a + '-to-' + b;
     if (a || b) return a || b;
   }
