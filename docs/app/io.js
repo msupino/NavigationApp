@@ -984,6 +984,9 @@ function serializeRoute() {
   const data = {
     waypoints: state.waypoints.map(w => ({
       lat: r5(w.lat), lng: r5(w.lng), name: w.name || '',
+      // Only when set: a loop route repeats no waypoint, so nothing in the geometry says
+      // where it turns for home -- the pilot does.
+      ...(w.turn ? { turn: 1 } : {}),
     })),
     legs: state.legs.map(l => ({
       inboundAltitude: encodeRouteAltitude(l.inboundAltitude),
@@ -2482,6 +2485,7 @@ function applyRouteData(d) {
                                   // (routeLibraryApply re-sets it right after)
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
+    ...(w.turn ? { turn: 1 } : {}),
   }));
   // Use the blob's `legArrowSize` if present (forward-compat — current
   // serializeRoute() doesn't emit it). Otherwise fall back to the current
@@ -2632,6 +2636,22 @@ function defaultSavedRouteName() {
       // No isolate characters here: this string is DATA. It goes into the editable name
       // field, is stored, and is synced -- U+2068/2069 in it would be invisible junk the
       // pilot cannot see or delete. Isolation is applied where the name is RENDERED.
+      // A route with a turning point is named by where it TURNS, not just its ends. A loop
+      // starts and finishes at the same field, so "first to last" reduced to "LLHZ → LLHZ"
+      // -- true, and useless in a list of saved routes. The far point is what tells two
+      // sorties out of the same field apart.
+      const ti = (typeof legRetraceTurnIndex === 'function') ? legRetraceTurnIndex() : -1;
+      const t = ti >= 0 ? nm(wps[ti]) : '';
+      if (t && t !== a && t !== b) {
+        if (he) {
+          // Same field at both ends: "וחזרה" already says where it comes back to, so
+          // naming it twice reads worse, not clearer.
+          return a === b ? ('\u05de\u05be' + a + ' \u05d0\u05dc ' + t + ' \u05d5\u05d7\u05d6\u05e8\u05d4')
+                         : ('\u05de\u05be' + a + ' \u05d0\u05dc ' + t + ' \u05d5\u05d7\u05d6\u05e8\u05d4 \u05d0\u05dc ' + b);
+        }
+        return a === b ? (a + ' \u2192 ' + t + ' \u2192 back')
+                       : (a + ' \u2192 ' + t + ' \u2192 ' + b);
+      }
       return he ? ('\u05de\u05be' + a + ' \u05d0\u05dc ' + b)   // "מ־<a> אל <b>"
                 : (a + ' \u2192 ' + b);
     }
@@ -4225,6 +4245,16 @@ function routeFileSlug() {
   if (wps && wps.length >= 2) {
     const a = clean(wps[0]);
     const b = clean(wps[wps.length - 1]);
+    // Same reason the saved-route NAME carries the turn: a loop is "LLHZ-to-LLHZ" without
+    // it, so every export of every sortie out of one field collides in the downloads
+    // folder. One function feeds them all -- json, gpx, pln, fdr, csv, png, kml.
+    const ti = (typeof legRetraceTurnIndex === 'function') ? legRetraceTurnIndex() : -1;
+    const t = ti >= 0 ? clean(wps[ti]) : '';
+    if (a && t && t !== a && t !== b) {
+      // "via" rather than "-to-<t>-to-<b>": shorter, and it reads as the far point of the
+      // sortie instead of implying the route ends there.
+      return b && b !== a ? (a + '-via-' + t + '-to-' + b) : (a + '-via-' + t);
+    }
     if (a && b) return a + '-to-' + b;
     if (a || b) return a || b;
   }
@@ -8906,7 +8936,14 @@ function showFplDialog() {
     dateEl.addEventListener('change', refreshPreview);
     timeEl.addEventListener('change', refreshPreview);
     setTimeout(refreshPreview, 0);          // show the drawn route expanded straight away
-    body.append(retRow, expandLbl, retPreview);
+    // Only offer the return picker when there is something to pick. The loop above lists
+    // only saved routes that START where this one ENDS -- on most plans that is nothing, and
+    // a dropdown whose sole entry is "none" is a question with no answers. Hidden rather
+    // than disabled: unlike the leg-direction picker, whose absence would be puzzling on a
+    // route that simply has no turn, this one is a niche joining tool and its row is pure
+    // noise when empty.
+    const hasReturnChoices = retSel.options.length > 1;
+    if (hasReturnChoices) body.append(retRow, expandLbl, retPreview);
     if (endsAtField) {
       const why = document.createElement('div');
       why.className = 'fpl-hint';

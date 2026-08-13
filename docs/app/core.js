@@ -1419,6 +1419,7 @@ window.S = Object.assign({
   tbPlateAirfieldTitle: 'Limit airfield-plate overlays to one airfield, so neighbouring fields’ plates don’t overlap',
   tbPlateAirfieldAll: 'All airfields',
   tbPlateAirfieldAuto: 'Auto (route start + end)',
+  tbDisabledByTurn: 'Not available on a route with a turning point — it already flies out and back, so there is nothing to reverse or mirror.',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
   tbUndo: '↶ Undo (Ctrl-Z)',
@@ -1792,6 +1793,15 @@ window.S = Object.assign({
   offlineCancelled: 'cancelled',
   offlineDone: 'saved ',
   offlineTilesCount: 'offline tiles: ',
+  tbLegDir: '🧭 Leg kites',
+  tbLegDirTitle: 'Which direction\u2019s leg kites to draw. On an out-and-back route both directions land on top of each other near the turnaround — readable on screen, unusable on a printed map. The route line is never hidden, only the kites.',
+  tbLegDirBoth: 'Both directions',
+  tbLegDirOut: 'Outbound only',
+  tbLegDirBack: 'Return only',
+  tbLegDirNoTurn: 'This route does not double back and no turning point is marked, so there is no outbound and return to separate. Mark one on a waypoint to enable this.',
+  inspTurnSet: '\u21bb Mark as turning point',
+  inspTurnClear: '\u21bb Clear turning point',
+  inspTurnTitle: 'Where this route turns for home. A loop repeats no waypoint, so nothing in the geometry says where the far end is — mark it here and the leg-direction filter can split outbound from return.',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -1881,6 +1891,11 @@ const state = {
   wind: { dir: tune('windDir'), speed: tune('windSpeed') }, // route-wide wind (#722): dir °true FROM, kt; 0 = calm; default is tunable
 };
 var showReturn = false;     // outbound (return) markers — off by default
+// Which direction's leg kites to draw: 'both' | 'out' | 'back'. An out-and-back route
+// draws a kite for each direction, and near the turnaround they land on top of each
+// other -- readable on screen where you can zoom, unusable on a printed map. This filters
+// the KITES only; the route line itself is never hidden, so the printed track stays whole.
+var legDirFilter = 'both';
 var showMidLeg = false;
 var showCumTime = true;     // cumulative-time kites — on by default
 var highlightDiff = false;  // purple halo on legs that change altitude
@@ -3681,6 +3696,10 @@ function syncLegs() {
   if (state.legs.length > before && typeof onRouteLegsGrown === 'function') onRouteLegsGrown();
   // Auto plate-filter follows the route's first/last airfield.
   if (typeof onRouteChangedForPlates === 'function') onRouteChangedForPlates();
+  // Whether the route doubles back can change with any edit, and with it whether the
+  // leg-direction picker has anything to divide.
+  if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+  if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
 }
 
 // Canonical -- the same key whichever way the leg is flown. The graph stores a segment in
@@ -4104,6 +4123,78 @@ function markLegAltitudeManual(i) {
   delete leg._legAltitudeOutboundBlocked;
   delete leg._legAltitudeOneWay;
   leg._altSig = legEndpointSig(i);         // remember which endpoints this value is for
+}
+// Does leg i fly back down a leg already flown? True when its two waypoints are the same
+// pair as an EARLIER leg's, reversed. Exact, and needs no guess about where a turnaround
+// is: on an out-and-back this picks out precisely the return legs, and on a route that
+// never retraces it is false everywhere, so the direction filter simply does nothing.
+function legIsRetrace(i) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const a = wps[i], b = wps[i + 1];
+  if (!a || !b) return false;
+  const same = (p, q) => p && q &&
+    (typeof sameMapPoint === 'function' ? sameMapPoint(p, q) : (p.lat === q.lat && p.lng === q.lng));
+  for (let j = 0; j < i; j++) {
+    if (same(wps[j], b) && same(wps[j + 1], a)) return true;
+  }
+  return false;
+}
+// Where the route turns for home. The FIRST retraced leg is the answer whenever there is
+// one: a leg flown back down a track already flown is direct evidence of the turn, not an
+// inference, and everything after it is the way home even where it takes a different path
+// and retraces nothing further. On the route this was reported from --
+//
+//   LLHZ -> SFAIM -> TYONA -> NTAIM -> TYONA -> HTZUK -> KNTRY
+//
+// only NTAIM->TYONA reverses an earlier leg, so leg 3 is the turn and legs 3-5 are the
+// return, which is how the pilot flying it describes the sortie.
+//
+// With nothing retraced at all, fall back to the waypoint furthest from the start -- a
+// sortie that goes out one way and comes back another still has a turn, it just leaves no
+// reversed leg to find it by.
+// The turn: the start of the first retraced leg, or -1 when the route never doubles back.
+// Proof, never a guess. An earlier version fell back to "the waypoint furthest from the
+// start" when nothing retraced, which read plausibly and was wrong twice over: it invented
+// a turn on a straight A->B->C route, and in the comm-change path that suppressed a real
+// frequency change at an arbitrary point. With no retraced leg there is no turn, the
+// direction filter has nothing to divide, and the picker says so by disabling itself.
+function legRetraceTurnIndex() {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const legs = (typeof state !== 'undefined' && state.legs) || [];
+  const n = Math.min(legs.length, wps.length - 1);
+  // A hand-set turn wins outright. A LOOP route repeats no waypoint, so no leg retraces
+  // and the geometry has nothing to say about where it turns for home -- but the pilot
+  // flying LLHZ -> SFAIM -> TYONA -> RIDNG -> HTZUK -> KNTRY -> LLHZ knows perfectly well
+  // that TYONA is the far end. Marked in the waypoint inspector.
+  for (let i = 0; i < wps.length; i++) {
+    if (wps[i] && wps[i].turn) return Math.min(i, n);
+  }
+  for (let i = 0; i < n; i++) {
+    if (legIsRetrace(i)) return i;
+  }
+  return -1;
+}
+// Mark (or clear) the waypoint the route turns for home at. One per route: setting a new
+// one clears the old, because a route has a single far end and two would make "outbound"
+// meaningless.
+function setTurnWaypoint(idx) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const was = wps[idx] && wps[idx].turn;
+  for (const w of wps) { if (w) delete w.turn; }
+  if (!was && wps[idx]) wps[idx].turn = 1;
+  return !was;
+}
+function legTurnaroundIndex() { return legRetraceTurnIndex(); }
+// Should leg i's kites be drawn, given the direction filter? Everything from the turnaround
+// on counts as the return -- not just the legs that literally retrace. Hiding only the
+// reversed leg would leave the rest of the way home drawn, which is not what "outbound
+// only" means to anyone reading a printed map.
+function legDirVisible(i) {
+  const f = (typeof legDirFilter === 'string') ? legDirFilter : 'both';
+  if (f !== 'out' && f !== 'back') return true;
+  const t = legRetraceTurnIndex();
+  if (t < 0) return true;             // no turn: nothing to divide, so hide nothing
+  return f === 'out' ? i < t : i >= t;
 }
 function legAllowsReturn(i) {
   const leg = state.legs[i];

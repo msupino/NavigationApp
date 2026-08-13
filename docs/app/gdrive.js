@@ -304,6 +304,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.showFreqChanges', 'navaid.showMidLeg',
   'navaid.highlightDiff', 'navaid.limitLegKites', 'navaid.showMsa',
   'navaid.showReporting', 'navaid.forceSnap', 'navaid.showReturn',
+  'navaid.legDirFilter',
   'navaid.showWind', 'navaid.windField', 'navaid.imsPwx',
   // NOTAM visibility is remembered per chart (see notamPrefKey), so the shared
   // 'navaid.showNotam' this list used to carry is no longer written by anything —

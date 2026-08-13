@@ -2647,6 +2647,7 @@ if (liveBtn) {
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY  = 'navaid.showCumTime';
+const LEG_DIR_KEY  = 'navaid.legDirFilter';
 const VOICE_ALERTS_KEY = 'navaid.voiceAlerts';
 const LIMIT_KITES_KEY = 'navaid.limitLegKites';
 const SIM_URL_KEY  = 'navaid.simUrl';
@@ -2673,6 +2674,83 @@ try {
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('cumtime-cb').checked = showCumTime;
+// Leg-kite direction filter. Options are built here rather than in the HTML so their
+// labels come from the string table like every other localised control.
+(function () {
+  const sel = document.getElementById('leg-dir-select');
+  if (!sel) return;
+  try {
+    const saved = lsGet(LEG_DIR_KEY);
+    if (['both', 'out', 'back'].includes(saved)) window.legDirFilter = saved;
+  } catch (e) { /* storage unavailable */ }
+  for (const [v, key] of [['both', 'tbLegDirBoth'], ['out', 'tbLegDirOut'], ['back', 'tbLegDirBack']]) {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = (S && S[key]) || v;
+    sel.appendChild(o);
+  }
+  sel.value = window.legDirFilter || 'both';
+  sel.onchange = () => {
+    window.legDirFilter = sel.value;
+    try { localStorage.setItem(LEG_DIR_KEY, sel.value); } catch (e) { /* */ }
+    draw();
+  };
+  // A route that never doubles back has no turn, so there is nothing to divide into out
+  // and back. Disabled rather than hidden: the control keeps its place, and the tooltip
+  // explains why it is unavailable instead of leaving the pilot to wonder.
+  window.refreshLegDirEnabled = function () {
+    const has = (typeof legRetraceTurnIndex === 'function') && legRetraceTurnIndex() >= 0;
+    sel.disabled = !has;
+    const row = sel.closest('label');
+    if (row) row.classList.toggle('navtoggle-disabled', !has);
+    sel.title = has ? '' : ((S && S.tbLegDirNoTurn) || 'This route does not double back');
+    if (!has) {
+      // With no turn the whole route IS outbound, so that is what the control should read.
+      // Leaving a stale 'Return only' sitting there describes the route wrongly, and on a
+      // route with no return half it reads as though every kite ought to be hidden.
+      // localStorage is deliberately NOT written: this reflects the route in front of you,
+      // and a real choice made on a route that HAS a turn must survive opening one that
+      // does not.
+      sel.value = 'out';
+      window.legDirFilter = 'out';
+      return;
+    }
+    let saved = null;
+    try { saved = lsGet(LEG_DIR_KEY); } catch (e) { /* storage unavailable */ }
+    const restored = ['both', 'out', 'back'].includes(saved) ? saved : 'both';
+    window.legDirFilter = restored;
+    sel.value = restored;
+  };
+  // Two controls stop making sense once the route contains its own return.
+  //
+  // "Reverse route" flips the waypoint order to fly the other way -- but an out-and-back
+  // already ends where it started, so reversing it produces the same sortie with the legs
+  // renumbered. "Show return path" mirrors a one-way route to picture coming home; with a
+  // real return already drawn it adds a second, imaginary one on top of the actual legs.
+  //
+  // Disabled with a reason rather than hidden: both are familiar controls, and a pilot who
+  // reaches for one and finds it gone has no way to learn why.
+  window.refreshTurnDependentControls = function () {
+    const hasTurn = (typeof legRetraceTurnIndex === 'function') && legRetraceTurnIndex() >= 0;
+    const why = hasTurn ? ((S && S.tbDisabledByTurn) || '') : '';
+    const rev = document.getElementById('reverse');
+    if (rev) {
+      rev.disabled = hasTurn;
+      rev.title = hasTurn ? why : ((S && S.tbReverseTitle) || '');
+    }
+    const retCb = document.getElementById('ret-cb');
+    if (retCb) {
+      retCb.disabled = hasTurn;
+      const row = retCb.closest('label');
+      if (row) {
+        row.classList.toggle('navtoggle-disabled', hasTurn);
+        row.title = hasTurn ? why : ((S && S.tbShowReturnTitle) || '');
+      }
+    }
+  };
+  refreshTurnDependentControls();
+  refreshLegDirEnabled();
+})();
 document.getElementById('limit-kites-cb').checked = limitLegKites;
 // Voice alerts: default off (it talks out loud in a cockpit -- opt in, never a surprise
 // on first upgrade). Visible on the website too, as a testing aid.

@@ -3234,6 +3234,13 @@ function seedCommChangeNotes() {
   // differed -- suppressing on an uncertain match would have hidden that note instead of
   // surfacing the wrong one, which is worse.
   let routeFreq = '';
+  // The waypoint the route turns at: the start of the first retraced leg (see
+  // legTurnaroundIndex), i.e. the point flown out to and then straight back from.
+  // legRetraceTurnIndex, NOT legTurnaroundIndex: only a genuinely retraced leg proves the
+  // route turned here. legTurnaroundIndex falls back to the furthest waypoint, which is
+  // fine for choosing which kites to draw but would suppress a real frequency change on a
+  // straight route that never doubles back.
+  const turnWpIdx = (typeof legRetraceTurnIndex === 'function') ? legRetraceTurnIndex() : -1;
   for (let wpIdx = 0; wpIdx < state.waypoints.length; wpIdx++) {
     const wp = state.waypoints[wpIdx];
     if (!wp) continue;
@@ -3257,6 +3264,16 @@ function seedCommChangeNotes() {
     }
     if (!nm || !cc || !cc.commChange) continue;
     if (!commChangeWaypointInRange(wp, nm)) continue;
+    // The turnaround is where the route reverses, not where it crosses into another
+    // sector: the aircraft leaves on the same frequency it arrived on, so an automatic
+    // callout there is a radio call that is not made. Reported from a real route, where
+    // NTAIM -- flown out to and straight back from -- was seeding one. Only the AUTOMATIC
+    // note is withheld: a pilot who does have a call to make there can still add one, and
+    // an existing hand-made note is left alone by the `existing` branch below.
+    if (wpIdx === turnWpIdx && !state.notes.some(n => n && n.cc &&
+        canonicalNavWaypointName(n.cc) === nm && !n.freqAuto)) {
+      continue;
+    }
     const callout = routeDefaults[nm] || commStaticCalloutDefaults(nm);
     const calloutFreq = commFormatFreq(callout.freq);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
@@ -3442,6 +3459,12 @@ function drawLegs() {
     // route's stopwatch: the clock starts at the boundary reporting point (see
     // ctr-boundaries.json). Those legs add nothing and show no cumulative kite.
     const preClock = typeof legInsideCtr === 'function' && legInsideCtr(i);
+    // The turn starts the clock again. A cumulative time that keeps climbing through the
+    // way home answers a question nobody asks in the air -- what matters after the turn is
+    // how long until you are back, not how long you have been out. The FILED plan is
+    // untouched: field 15 and the nav log stay continuous, because a filing desk does want
+    // the total. See legRetraceTurnIndex.
+    if (typeof legRetraceTurnIndex === 'function' && i === legRetraceTurnIndex()) cumInH = 0;
     if (!preClock) cumInH += durH;
     const cumInStr = (!preClock && cumInH > 0) ? toHMS(cumInH) : '--';
 
@@ -3450,14 +3473,18 @@ function drawLegs() {
     // already gated by legAllowsReturn).
     const inboundBlocked = typeof legAltitudeIsBlocked === 'function' &&
       legAltitudeIsBlocked(leg, 'inboundAltitude');
-    if (!inboundBlocked && !kiteOff) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
+    // Direction filter (see legDirVisible): hides the KITES of one direction on an
+    // out-and-back route so a printed map stays readable. The leg line, the distance badge
+    // and the drift lines are untouched -- the track itself is never hidden.
+    const dirOff = (typeof legDirVisible === 'function') && !legDirVisible(i);
+    if (!inboundBlocked && !kiteOff && !dirOff) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
     const defCum = { a: 0, _default: 1, _m: 1 };
-    if (showCumTime && !preClock) {
+    if (showCumTime && !preClock && !dirOff) {
       const cumP = leg.cumLabel || defCum;
       const cumPerp  = cumP._default ? cumPerpDef : (cumP.p || 0) * zoomScale;
       const cumAlong = (cumP.a || 0) * zoomScale;
@@ -3468,7 +3495,7 @@ function drawLegs() {
         cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
     }
 
-    if (showReturn && legAllowsReturn(i)) {
+    if (showReturn && legAllowsReturn(i) && !dirOff) {
       if (!kiteOff) drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
