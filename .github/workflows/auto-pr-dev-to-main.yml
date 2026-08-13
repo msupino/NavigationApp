@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  # `write` is required so the "Squash-sync main into dev" step can push the
+  # `write` is required so the "Merge main into dev" step can push the
   # single integration commit back to origin/dev before opening the promotion PR.
   contents: write
   pull-requests: write
@@ -42,7 +42,7 @@ jobs:
           fetch-depth: 0   # need full history to merge main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Squash-sync main into dev
+      - name: Merge main into dev
         # Skip this step when the triggering push *is* our own auto-sync
         # commit — otherwise the push we make below would re-trigger the
         # workflow indefinitely. The `pull_request: closed` trigger has its
@@ -63,21 +63,31 @@ jobs:
             echo "had_conflict=false" >> "$GITHUB_ENV"
             exit 0
           fi
-          # Try a squash merge so every automated update that lands on dev is
-          # one ordinary commit. The exact commit message is matched by the
-          # recursion guard above, so don't change it without updating both.
-          if git merge --squash main; then
-            if git diff --cached --quiet; then
-              echo "main introduced no tree changes for dev — skipping commit"
-              echo "had_conflict=false" >> "$GITHUB_ENV"
-              exit 0
-            fi
-            git commit -m "Squash merge main into dev (auto-sync before promotion PR)"
-            echo "Squash-sync succeeded"
+          # A REAL merge, not a squash. A squash copies main's tree into dev but not its
+          # ancestry, so `main` never becomes an ancestor of `dev` -- and CI's "Check PR is
+          # rebased" step (`git merge-base --is-ancestor <base> <head>`) fails on every
+          # dev->main promotion PR. That failure stayed invisible only because the
+          # promotion PR's own workflow runs sit in `action_required` and never execute;
+          # the green `lint` seen on past promos came from the push-triggered run, which
+          # has no rebase check. Approving those runs once (#1554) exposed it immediately,
+          # and it could only be cleared by merging main into dev by hand.
+          #
+          # --no-ff so the merge commit exists even when dev could fast-forward: the commit
+          # IS the ancestry record this whole step exists to create.
+          #
+          # The exact commit message is matched by the recursion guard above, so don't
+          # change it without updating both.
+          if git merge --no-ff main -m "Merge main into dev (auto-sync before promotion PR)"; then
+            # Deliberately no "skip when the tree is unchanged" branch. After a promotion,
+            # main's merge commit usually brings dev NO new files -- dev is where the
+            # content came from -- and that is exactly the case that must still be
+            # recorded, or ancestry is lost again and the next promo PR fails the rebase
+            # check.
+            echo "Merge succeeded"
             git push origin dev
             echo "had_conflict=false" >> "$GITHUB_ENV"
           else
-            echo "Squash-sync conflict — aborting merge but proceeding to open PR with a warning."
+            echo "Merge conflict — aborting merge but proceeding to open PR with a warning."
             git merge --abort || git reset --merge || true
             echo "had_conflict=true" >> "$GITHUB_ENV"
           fi
