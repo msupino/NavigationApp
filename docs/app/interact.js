@@ -2876,6 +2876,7 @@ function showInspector() {
       setTurnWaypoint(idx);
       if (typeof persist === 'function') persist();
       if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+      if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
       draw();
       showInspector();      // relabel to what the button now does
     };

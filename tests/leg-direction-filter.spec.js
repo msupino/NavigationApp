@@ -441,3 +441,56 @@ test('clearing the turning point drops the picker back to outbound only', async 
   expect(cleared.shown).toBe('out');    // not the 'back' it was left on
   expect(cleared.filter).toBe('out');
 });
+
+// Both controls assume a one-way route you might fly back. With a turn the route already
+// contains its return: reversing it renumbers the same sortie, and the mirrored return
+// path draws an imaginary second one on top of the real legs.
+test.describe('a turning point disables reverse and show-return', () => {
+  async function loop(page) {
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.21056, lng: 34.80722, name: 'SFAIM' },
+        { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+        { lat: 32.14083, lng: 34.80139, name: 'KNTRY' },
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+      ];
+      syncLegs();
+    });
+  }
+
+  test('enabled with no turn, disabled once one is marked, back again when cleared', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    const read = () => page.evaluate(() => {
+      const rev = document.getElementById('reverse');
+      const ret = document.getElementById('ret-cb');
+      return { rev: rev.disabled, ret: ret.disabled,
+               dimmed: ret.closest('label').classList.contains('navtoggle-disabled'),
+               why: rev.title };
+    });
+
+    const before = await read();
+    expect(before.rev).toBe(false);
+    expect(before.ret).toBe(false);
+
+    await page.evaluate(() => {
+      setTurnWaypoint(2);
+      refreshTurnDependentControls();
+    });
+    const marked = await read();
+    expect(marked.rev).toBe(true);
+    expect(marked.ret).toBe(true);
+    expect(marked.dimmed).toBe(true);
+    expect(marked.why.length).toBeGreaterThan(0);   // says why, rather than just going dead
+
+    await page.evaluate(() => {
+      setTurnWaypoint(2);           // clears it
+      refreshTurnDependentControls();
+    });
+    const cleared = await read();
+    expect(cleared.rev).toBe(false);
+    expect(cleared.ret).toBe(false);
+    expect(cleared.dimmed).toBe(false);
+  });
+});

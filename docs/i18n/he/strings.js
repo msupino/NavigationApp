@@ -679,6 +679,7 @@ window.S = {
   tbPlateAirfieldTitle: 'הגבל את תרשימי השדה לשדה אחד, כדי שתרשימי שדות שכנים לא יחפפו',
   tbPlateAirfieldAll: 'כל השדות',
   tbPlateAirfieldAuto: 'אוטומטי (תחילת וסוף מסלול)',
+  tbDisabledByTurn: 'לא זמין במסלול עם נקודת סיבוב — הוא כבר טס הלוך וחזור, ולכן אין מה להפוך או לשקף.',
   tbReverse: '⇄ הפוך מסלול (R)',
   tbReverseTitle: 'הפוך סדר מסלול',
   tbUndo: '↶ בטל (Ctrl-Z)',

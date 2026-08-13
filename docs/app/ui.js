@@ -2721,6 +2721,34 @@ document.getElementById('cumtime-cb').checked = showCumTime;
     window.legDirFilter = restored;
     sel.value = restored;
   };
+  // Two controls stop making sense once the route contains its own return.
+  //
+  // "Reverse route" flips the waypoint order to fly the other way -- but an out-and-back
+  // already ends where it started, so reversing it produces the same sortie with the legs
+  // renumbered. "Show return path" mirrors a one-way route to picture coming home; with a
+  // real return already drawn it adds a second, imaginary one on top of the actual legs.
+  //
+  // Disabled with a reason rather than hidden: both are familiar controls, and a pilot who
+  // reaches for one and finds it gone has no way to learn why.
+  window.refreshTurnDependentControls = function () {
+    const hasTurn = (typeof legRetraceTurnIndex === 'function') && legRetraceTurnIndex() >= 0;
+    const why = hasTurn ? ((S && S.tbDisabledByTurn) || '') : '';
+    const rev = document.getElementById('reverse');
+    if (rev) {
+      rev.disabled = hasTurn;
+      rev.title = hasTurn ? why : ((S && S.tbReverseTitle) || '');
+    }
+    const retCb = document.getElementById('ret-cb');
+    if (retCb) {
+      retCb.disabled = hasTurn;
+      const row = retCb.closest('label');
+      if (row) {
+        row.classList.toggle('navtoggle-disabled', hasTurn);
+        row.title = hasTurn ? why : ((S && S.tbShowReturnTitle) || '');
+      }
+    }
+  };
+  refreshTurnDependentControls();
   refreshLegDirEnabled();
 })();
 document.getElementById('limit-kites-cb').checked = limitLegKites;

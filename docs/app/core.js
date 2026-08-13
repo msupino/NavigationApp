@@ -1419,6 +1419,7 @@ window.S = Object.assign({
   tbPlateAirfieldTitle: 'Limit airfield-plate overlays to one airfield, so neighbouring fields’ plates don’t overlap',
   tbPlateAirfieldAll: 'All airfields',
   tbPlateAirfieldAuto: 'Auto (route start + end)',
+  tbDisabledByTurn: 'Not available on a route with a turning point — it already flies out and back, so there is nothing to reverse or mirror.',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
   tbUndo: '↶ Undo (Ctrl-Z)',
@@ -3698,6 +3699,7 @@ function syncLegs() {
   // Whether the route doubles back can change with any edit, and with it whether the
   // leg-direction picker has anything to divide.
   if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+  if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
 }
 
 // Canonical -- the same key whichever way the leg is flown. The graph stores a segment in
