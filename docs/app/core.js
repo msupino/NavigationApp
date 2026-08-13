@@ -1708,12 +1708,20 @@ window.S = Object.assign({
   // the heading already split into digits (see gpsSpokenDigits), and give a time in whole
   // minutes. A missing field is left out here exactly as it is left out of the
   // notification: never guessed.
-  speakAlertLeg: function(wp, alt, hdgDigits, mins) {
+  speakAlertLeg: function(wp, alt, hdgDigits, hms) {
     let s = 'Approaching ' + wp + '.';
     const parts = [];
     if (alt != null) parts.push(alt + ' feet');
     if (hdgDigits != null) parts.push('heading ' + hdgDigits);
-    if (mins != null) parts.push(mins < 1 ? 'less than a minute' : (mins + ' minutes'));
+    // `hms` is the {h,m,s} of the very string the kite shows, not a rounded minute count:
+    // the spoken time and the drawn time must never be two different numbers.
+    if (hms) {
+      const t = [];
+      if (hms.h) t.push(hms.h + (hms.h === 1 ? ' hour' : ' hours'));
+      if (hms.m) t.push(hms.m + (hms.m === 1 ? ' minute' : ' minutes'));
+      if (hms.s) t.push(hms.s + ' seconds');
+      if (t.length) parts.push(t.join(' '));
+    }
     if (parts.length) s += ' Next leg ' + parts.join(', ') + '.';
     return s;
   },

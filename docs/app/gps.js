@@ -928,7 +928,7 @@ function gpsCheckLegAlerts() {
       let nextLegAlt = null;
       let nextLegHdg = null;
       let nextLegTime = null;
-      let nextLegMin = null;    // whole minutes, for the spoken form
+      let nextLegHms = null;    // {h,m,s} of the SAME figure the kite shows, for speech
       if (nextLegKiteVisible) {
         nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
           ? Math.round(nextLeg.inboundAltitude) : null;
@@ -958,7 +958,14 @@ function gpsCheckLegAlerts() {
           nextLegTime = toHMS(nextLegGeo.dist / nextLeg.flightSpeed);
           // Whole minutes for the SPOKEN form -- seconds are false precision on a planned
           // time, and they lengthen the phrase at the moment the pilot is busiest.
-          nextLegMin = Math.round((nextLegGeo.dist / nextLeg.flightSpeed) * 60);
+          // Speak the figure the kite ALREADY shows rather than deriving a second one.
+          // toHMS floors the minutes and quantises the seconds to 5s, so rounding its
+          // result again to whole minutes both loses information and disagrees with the
+          // map: a 12:30 leg was being spoken as "13 minutes".
+          const _hms = nextLegTime.split(':').map(Number);
+          nextLegHms = _hms.length === 3
+            ? { h: _hms[0], m: _hms[1], s: _hms[2] }
+            : { h: 0, m: _hms[0], s: _hms[1] };
         }
       }
       gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
@@ -967,7 +974,7 @@ function gpsCheckLegAlerts() {
         (S && S.speakAlertLeg)
           ? S.speakAlertLeg(label, nextLegAlt,
               nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, (typeof window !== 'undefined' && window.__navLang) || 'en'),
-              nextLegMin)
+              nextLegHms)
           : null);
     }
   }
@@ -1112,8 +1119,13 @@ function gpsSpeak(text) {
         return tts.speak({
           text: text,
           lang: voiceLang,
-          // Duck other audio (music, intercom) rather than being talked over or blocking it.
-          category: 'ambient',
+          // iOS audio-session category; ignored on Android. 'playback', NOT the plugin's
+          // 'ambient' default: the plugin's own docs say 'playback' is what plays audio
+          // "even when the app is in the background", and backgrounded is precisely when
+          // these alerts matter -- phone locked in a cockpit, background geolocation still
+          // feeding fixes. An 'ambient' session would go silent exactly then, which is the
+          // failure mode this whole feature exists to avoid.
+          category: 'playback',
         });
       });
     }).catch(function () { /* best-effort: never let a TTS failure break the chain */ });

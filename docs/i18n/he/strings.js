@@ -1021,7 +1021,7 @@ window.S = {
     return correction + '° אל ' + wp;
   },
   // ראו את ההערה בגרסה האנגלית: אלה הניסוחים המדוברים, ולא גוף ההתראה.
-  speakAlertLeg: function(wp, alt, hdgDigits, mins) {
+  speakAlertLeg: function(wp, alt, hdgDigits, hms) {
     let s = 'מתקרב אל ' + wp + '.';
     const parts = [];
     if (alt != null) parts.push(alt + ' רגל');
@@ -1031,7 +1031,14 @@ window.S = {
     // aviation term for heading and cannot be misread. The written strings keep כיוון,
     // where surrounding context disambiguates it.
     if (hdgDigits != null) parts.push('מגמה ' + hdgDigits);
-    if (mins != null) parts.push(mins < 1 ? 'פחות מדקה' : (mins + ' דקות'));
+    // ראו את ההערה בגרסה האנגלית: זהו אותו זמן שמוצג על החץ, לא מספר דקות מעוגל.
+    if (hms) {
+      const t = [];
+      if (hms.h) t.push(hms.h === 1 ? 'שעה' : hms.h + ' שעות');
+      if (hms.m) t.push(hms.m === 1 ? 'דקה' : hms.m + ' דקות');
+      if (hms.s) t.push(hms.s + ' שניות');
+      if (t.length) parts.push(t.join(' '));
+    }
     if (parts.length) s += ' הקטע הבא ' + parts.join(', ') + '.';
     return s;
   },
