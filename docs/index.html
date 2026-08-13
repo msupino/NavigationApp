@@ -239,6 +239,12 @@
         <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
           <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
         </label>
+        <!-- Speaks the in-flight alerts. Visible on the website too, as a testing aid --
+             browser speechSynthesis stops when the tab is backgrounded, so the APK's
+             native TTS remains the reliable path in flight. -->
+        <label class="navtoggle" id="voice-alerts-row" data-i18n-title="tbVoiceAlertsTitle">
+          <input type="checkbox" id="voice-alerts-cb"> <span data-i18n="tbVoiceAlerts"></span>
+        </label>
         <!-- Which chart the nav data comes from. Satellite / OSM / Navigation used to be
              pinned to CVFR with no way to ask for the LSA or helicopter sets, though both
              ship. Drives waypoints, comm changes and leg altitudes together. -->

@@ -1046,11 +1046,13 @@ function gpsSpokenDigits(value, lang) {
 window.gpsSpokenDigits = gpsSpokenDigits;
 
 // Native TTS, same access pattern as _nativeNotify()/_bgGeo(): the injected Capacitor
-// bridge exposes any synced plugin at window.Capacitor.Plugins.*. Web speechSynthesis is
-// deliberately NOT a fallback -- browsers suspend it when the page is backgrounded, which
-// is exactly the cockpit case (phone locked, background geolocation still feeding fixes).
-// A voice that goes quiet precisely when it is needed is worse than none, because it is
-// trusted.
+// bridge exposes any synced plugin at window.Capacitor.Plugins.*. On the website (no
+// native plugin) gpsSpeak() falls back to window.speechSynthesis below -- but that
+// fallback is a TESTING aid only, never the in-flight path: browsers suspend
+// speechSynthesis when the page is backgrounded, which is exactly the cockpit case
+// (phone locked, background geolocation still feeding fixes). A voice that goes quiet
+// precisely when it is needed is worse than none, because it is trusted. The APK's
+// native plugin does not have that failure mode and stays the reliable path in flight.
 function _nativeTts() {
   const C = typeof window !== 'undefined' && window.Capacitor;
   return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() &&
@@ -1079,22 +1081,47 @@ function _gpsResolveVoiceLang(tts) {
     return _gpsVoiceLang;
   }).catch(function () { _gpsVoiceLang = 'en-US'; return _gpsVoiceLang; });
 }
+// Web speechSynthesis fallback, used only when there is no native plugin (see the
+// comment above _nativeTts). Resolves the returned promise on 'end' so the speak chain
+// still queues correctly, and also resolves on 'error' -- an engine that never calls
+// back must not hang the chain forever. Absence of either global is a silent no-op, same
+// as the rest of gpsSpeak.
+function _webSpeak(text, lang) {
+  if (typeof window === 'undefined' || !window.speechSynthesis ||
+      typeof window.SpeechSynthesisUtterance !== 'function') {
+    return Promise.resolve();
+  }
+  return new Promise(function (resolve) {
+    const u = new window.SpeechSynthesisUtterance(text);
+    u.lang = lang;
+    u.onend = function () { resolve(); };
+    u.onerror = function () { resolve(); };
+    window.speechSynthesis.speak(u);
+  });
+}
 // Chained, never interrupted: a TOP firing seconds after a leg-approach alert waits its
 // turn rather than cutting it off mid-word.
 window.__gpsSpeakChain = Promise.resolve();
 function gpsSpeak(text) {
   if (!text || !gpsVoiceAlertsOn()) return;
   const tts = _nativeTts();
-  if (!tts || typeof tts.speak !== 'function') return;
-  window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
-    return _gpsResolveVoiceLang(tts).then(function (voiceLang) {
-      return tts.speak({
-        text: text,
-        lang: voiceLang,
-        // Duck other audio (music, intercom) rather than being talked over or blocking it.
-        category: 'ambient',
+  const lang = (typeof window !== 'undefined' && window.__navLang === 'he') ? 'he-IL' : 'en-US';
+  if (tts && typeof tts.speak === 'function') {
+    window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
+      return _gpsResolveVoiceLang(tts).then(function (voiceLang) {
+        return tts.speak({
+          text: text,
+          lang: voiceLang,
+          // Duck other audio (music, intercom) rather than being talked over or blocking it.
+          category: 'ambient',
+        });
       });
-    });
+    }).catch(function () { /* best-effort: never let a TTS failure break the chain */ });
+    return;
+  }
+  // No native plugin -- website testing path.
+  window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
+    return _webSpeak(text, lang);
   }).catch(function () { /* best-effort: never let a TTS failure break the chain */ });
 }
 window.gpsSpeak = gpsSpeak;

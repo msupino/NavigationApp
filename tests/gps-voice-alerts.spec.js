@@ -1,5 +1,7 @@
 // @ts-check
-// Spoken in-flight alerts (APK only). See
+// Spoken in-flight alerts. Native TTS in the APK is the reliable in-flight path; a
+// window.speechSynthesis fallback lets the feature be heard and tested in a browser too,
+// where it is a testing aid only (browsers suspend speech when backgrounded). See
 // docs/superpowers/specs/2026-08-13-voice-alerts-design.md
 const { test, expect } = require('./_setup');
 
@@ -77,15 +79,36 @@ test.describe('gpsSpeak', () => {
     expect(n).toBe(0);
   });
 
-  test('says nothing on a non-native platform, even with the setting on', async ({ page }) => {
+  // On the website there is no native plugin -- gpsSpeak falls back to the browser's
+  // own speechSynthesis. This is a testing aid, not the reliable in-flight path (see
+  // the web-speech-fallback describe below): browsers suspend speechSynthesis when the
+  // page is backgrounded, which is exactly the cockpit case.
+  test('falls back to window.speechSynthesis on a non-native platform, when the setting is on', async ({ page }) => {
     await stubTts(page, { native: false });
+    await stubWebSpeech(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsSpeak === 'function');
-    const n = await page.evaluate(async () => {
+    const out = await page.evaluate(async () => {
       window.voiceAlerts = true;
       gpsSpeak('Top.');
       await window.__gpsSpeakChain;
-      return window.__spoken.length;
+      return window.__webSpoken.map(u => ({ text: u.text, lang: u.lang }));
+    });
+    expect(out.length).toBe(1);
+    expect(out[0].text).toBe('Top.');
+    expect(out[0].lang).toBe('en-US');
+  });
+
+  test('says nothing via the web fallback on a non-native platform when the setting is off', async ({ page }) => {
+    await stubTts(page, { native: false });
+    await stubWebSpeech(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSpeak === 'function');
+    const n = await page.evaluate(async () => {
+      window.voiceAlerts = false;
+      gpsSpeak('Top.');
+      await window.__gpsSpeakChain;
+      return window.__webSpoken.length;
     });
     expect(n).toBe(0);
   });
@@ -187,6 +210,114 @@ test.describe('gpsSpeak', () => {
       return window.__order.slice();
     });
     expect(order).toEqual(['start:first', 'end:first', 'start:second', 'end:second']);
+  });
+});
+
+// The web fallback is a testing aid only (see the comment above gpsSpeak in gps.js):
+// browsers suspend speechSynthesis when the tab is backgrounded, so it must never be
+// relied on in flight. These tests exercise it in isolation from the native-plugin tests
+// above.
+// window.speechSynthesis is a getter-only accessor in real Chromium (no setter), so a
+// plain `window.speechSynthesis = ...` silently no-ops and the real engine stays in
+// place -- Object.defineProperty is required to actually replace it with the stub.
+function stubWebSpeech(page) {
+  return page.addInitScript(() => {
+    window.__webSpoken = [];
+    window.SpeechSynthesisUtterance = function (text) {
+      this.text = text; this.lang = null; this.onend = null; this.onerror = null;
+    };
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        speak: function (u) {
+          window.__webSpoken.push(u);
+          setTimeout(function () { if (u.onend) u.onend(); }, 0);
+        },
+      },
+    });
+  });
+}
+
+test.describe('web speech fallback', () => {
+  test('speaks Hebrew with he-IL when the UI language is Hebrew', async ({ page }) => {
+    await stubTts(page, { native: false });
+    await stubWebSpeech(page);
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof gpsSpeak === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      gpsSpeak('שלום');
+      await window.__gpsSpeakChain;
+      return window.__webSpoken.map(u => ({ text: u.text, lang: u.lang }));
+    });
+    expect(out).toEqual([{ text: 'שלום', lang: 'he-IL' }]);
+  });
+
+  test('does nothing when speechSynthesis is unavailable', async ({ page }) => {
+    await stubTts(page, { native: false });
+    // Actually remove both globals (headless Chromium ships a real speechSynthesis) so
+    // this exercises the guard-for-absence branch, not the real engine.
+    await page.addInitScript(() => {
+      delete window.speechSynthesis;
+      delete window.SpeechSynthesisUtterance;
+    });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSpeak === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      let threw = false;
+      try { gpsSpeak('Top.'); } catch (e) { threw = true; }
+      await window.__gpsSpeakChain;
+      return { threw, hasSS: 'speechSynthesis' in window };
+    });
+    expect(out.threw).toBe(false);
+    expect(out.hasSS).toBe(false);
+  });
+
+  test('resolves the speak chain even when the utterance errors instead of ending', async ({ page }) => {
+    await stubTts(page, { native: false });
+    await page.addInitScript(() => {
+      window.__webSpoken = [];
+      window.SpeechSynthesisUtterance = function (text) {
+        this.text = text; this.lang = null; this.onend = null; this.onerror = null;
+      };
+      Object.defineProperty(window, 'speechSynthesis', {
+        configurable: true,
+        value: {
+          speak: function (u) {
+            window.__webSpoken.push(u);
+            // Simulates an engine failure: onend never fires, only onerror.
+            setTimeout(function () { if (u.onerror) u.onerror(new Error('synth failed')); }, 0);
+          },
+        },
+      });
+    });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSpeak === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      gpsSpeak('first');
+      gpsSpeak('second');
+      // The chain must not hang forever waiting on the failed utterance's onend.
+      await window.__gpsSpeakChain;
+      return window.__webSpoken.map(u => u.text);
+    });
+    expect(out).toEqual(['first', 'second']);
+  });
+
+  test('the native plugin takes precedence over the web fallback when both exist', async ({ page }) => {
+    await stubTts(page, { native: true });
+    await stubWebSpeech(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSpeak === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      gpsSpeak('Top.');
+      await window.__gpsSpeakChain;
+      return { native: window.__spoken.length, web: window.__webSpoken.length };
+    });
+    expect(out.native).toBe(1);
+    expect(out.web).toBe(0);
   });
 });
 
@@ -306,5 +437,47 @@ test.describe('alerts speak their own phrasing', () => {
     expect(out.length).toBe(1);
     expect(out[0]).toMatch(/degrees off course/);
     expect(out[0]).not.toContain('°');
+  });
+});
+
+// AMENDMENT: the toggle row is always visible, on the website too -- browser speech is a
+// testing aid (see the web-speech-fallback describe above), not something hidden away.
+test.describe('the voice-alerts toggle', () => {
+  test('is visible on the website and defaults to off', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => !!document.getElementById('voice-alerts-cb'));
+    const out = await page.evaluate(() => {
+      const cb = document.getElementById('voice-alerts-cb');
+      const row = cb.closest('label');
+      return { checked: cb.checked, on: window.voiceAlerts === true,
+               rowShown: getComputedStyle(row).display !== 'none' };
+    });
+    expect(out.checked).toBe(false);
+    expect(out.on).toBe(false);
+    expect(out.rowShown).toBe(true);   // visible on the website too -- it's a testing aid, not a dead switch
+  });
+
+  test('toggling it persists', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => !!document.getElementById('voice-alerts-cb'));
+    await page.evaluate(() => { document.getElementById('voice-alerts-cb').click(); });
+    const after = await page.evaluate(() => ({
+      on: window.voiceAlerts, stored: localStorage.getItem('navaid.voiceAlerts'),
+    }));
+    expect(after.on).toBe(true);
+    expect(after.stored).toBe('1');
+  });
+
+  test('a stored preference is restored on load', async ({ page }) => {
+    await stubTts(page);
+    await page.addInitScript(() => localStorage.setItem('navaid.voiceAlerts', '1'));
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => !!document.getElementById('voice-alerts-cb'));
+    const out = await page.evaluate(() => ({
+      on: window.voiceAlerts, checked: document.getElementById('voice-alerts-cb').checked,
+    }));
+    expect(out.on).toBe(true);
+    expect(out.checked).toBe(true);
   });
 });

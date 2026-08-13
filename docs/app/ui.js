@@ -2647,6 +2647,7 @@ if (liveBtn) {
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY  = 'navaid.showCumTime';
+const VOICE_ALERTS_KEY = 'navaid.voiceAlerts';
 const LIMIT_KITES_KEY = 'navaid.limitLegKites';
 const SIM_URL_KEY  = 'navaid.simUrl';
 const SIM_ON_KEY   = 'navaid.simOn';
@@ -2658,6 +2659,8 @@ try {
   if (sm !== null) window.showMidLeg =sm === '1';
   const sc = lsGet(CUMTIME_KEY);
   if (sc !== null) window.showCumTime = sc === '1';
+  const sva = lsGet(VOICE_ALERTS_KEY);
+  if (sva !== null) window.voiceAlerts = sva === '1';
   const slk = lsGet(LIMIT_KITES_KEY);
   if (slk !== null) window.limitLegKites = slk === '1';
   const su = lsGet(SIM_URL_KEY);
@@ -2671,6 +2674,14 @@ document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('cumtime-cb').checked = showCumTime;
 document.getElementById('limit-kites-cb').checked = limitLegKites;
+// Voice alerts: default off (it talks out loud in a cockpit -- opt in, never a surprise
+// on first upgrade). Visible on the website too, as a testing aid.
+if (typeof window.voiceAlerts !== 'boolean') window.voiceAlerts = false;
+document.getElementById('voice-alerts-cb').checked = window.voiceAlerts === true;
+document.getElementById('voice-alerts-cb').onchange = e => {
+  window.voiceAlerts = e.target.checked;
+  try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
+};
 document.getElementById('cumtime-cb').onchange = e => {
   window.showCumTime = e.target.checked;
   try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }
@@ -7544,6 +7555,7 @@ NavAid.defaultVisibilityMap = [
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
+  ['voice-alerts-cb', 'navaid.voiceAlerts', 'defaultVoiceAlerts'],
   ['commchange-cb', 'navaid.showFreqChanges', 'defaultShowCommChange'],
   ['mid-cb', 'navaid.showMidLeg', 'defaultShowMidLeg'],
   ['diff-cb', 'navaid.highlightDiff', 'defaultHighlightDiff'],

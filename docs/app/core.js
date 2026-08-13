@@ -1728,7 +1728,7 @@ window.S = Object.assign({
     return correction + ' degrees to ' + wp + '.';
   },
   tbVoiceAlerts: '🔊 Speak alerts',
-  tbVoiceAlertsTitle: 'Say the in-flight alerts out loud (leg, TOP, altitude, off course). App only — needs a voice installed for your language.',
+  tbVoiceAlertsTitle: 'Say the in-flight alerts out loud (leg, TOP, altitude, off course). Also works in the browser for testing, but browser speech stops when the tab is in the background — the app is the reliable one in flight.',
   // TEMPORARY, test-only -- remove alongside the nudge in gps.js's startLiveLocation once
   // the watch-alert feature is validated.
   watchAlertNoRouteTestTitle: 'NavAid',   // deliberately keeps the app name -- generic startup nudge, not a leg alert
