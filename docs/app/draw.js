@@ -3459,6 +3459,12 @@ function drawLegs() {
     // route's stopwatch: the clock starts at the boundary reporting point (see
     // ctr-boundaries.json). Those legs add nothing and show no cumulative kite.
     const preClock = typeof legInsideCtr === 'function' && legInsideCtr(i);
+    // The turn starts the clock again. A cumulative time that keeps climbing through the
+    // way home answers a question nobody asks in the air -- what matters after the turn is
+    // how long until you are back, not how long you have been out. The FILED plan is
+    // untouched: field 15 and the nav log stay continuous, because a filing desk does want
+    // the total. See legRetraceTurnIndex.
+    if (typeof legRetraceTurnIndex === 'function' && i === legRetraceTurnIndex()) cumInH = 0;
     if (!preClock) cumInH += durH;
     const cumInStr = (!preClock && cumInH > 0) ? toHMS(cumInH) : '--';
 

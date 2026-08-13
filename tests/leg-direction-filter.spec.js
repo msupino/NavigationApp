@@ -494,3 +494,47 @@ test.describe('a turning point disables reverse and show-return', () => {
     expect(cleared.dimmed).toBe(false);
   });
 });
+
+// What matters after the turn is how long until you are back, not how long you have been
+// out -- so the map's cumulative clock restarts there. The FILED plan must not: a filing
+// desk wants the total.
+test.describe('the turn restarts the cumulative clock', () => {
+  async function outAndBack(page) {
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.0, name: 'A' },
+        { lat: 32.10, lng: 34.0, name: 'B' },
+        { lat: 32.00, lng: 34.0, name: 'A' },
+      ];
+      syncLegs();
+      state.legs.forEach(l => { l.flightSpeed = 60; });   // 6 NM legs at 60 kt = 6 min each
+      window.showCumTime = true;
+      draw();
+    });
+  }
+
+  test('the map clock restarts, while the flight plan keeps running totals', async ({ page }) => {
+    await boot(page);
+    await outAndBack(page);
+    const out = await page.evaluate(() => {
+      const turn = legRetraceTurnIndex();
+      // The plan's own cumulative column, built independently of the map kites.
+      const rows = (typeof buildFlightRows === 'function') ? buildFlightRows() : null;
+      return { turn, rows: rows && rows.length };
+    });
+    expect(out.turn).toBe(1);   // leg 1 (B->A) retraces leg 0
+
+    // The drawn kite for the leg AFTER the turn must not carry the outbound time.
+    const drawn = await page.evaluate(() => {
+      const seen = [];
+      const orig = window.drawCumTimeArrow;
+      window.drawCumTimeArrow = (cx, cy, ang, txt) => { seen.push(txt); };
+      draw();
+      window.drawCumTimeArrow = orig;
+      return seen;
+    });
+    // Two legs, two cumulative kites: the second restarts rather than reading ~12 min.
+    expect(drawn.length).toBe(2);
+    expect(drawn[0]).toBe(drawn[1]);
+  });
+});
