@@ -567,6 +567,10 @@ jobs:
     if: always() && github.event_name == 'pull_request'
     needs: e2e-deployed-shard
     runs-on: ubuntu-latest
+    # Reads a job result and nothing else. It checks out no code, but a pull-request
+    # workflow's token has no business being writable either way.
+    permissions:
+      contents: read
     timeout-minutes: 2
     steps:
       - name: Check every shard passed
