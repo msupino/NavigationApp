@@ -450,14 +450,43 @@ test('DeepSeek adapter: uses api.deepseek.com and a proxy base URL override', as
   await expect.poll(() => hitProxy).toBe(true);
 });
 
-test('settings offer Gemini, Claude, OpenRouter and DeepSeek; DeepSeek shows the CORS note', async ({ page }) => {
+test('NVIDIA NIM adapter: OpenAI-compatible, integrate.api.nvidia.com, its own proxy override', async ({ page }) => {
+  await boot(page);
+  let hitDefault = false, hitProxy = false, auth = null, model = null, sawFnTools = false;
+  const reply = () => ({ choices: [{ message: { role: 'assistant', content: 'ok' } }] });
+  await page.route(/^https:\/\/integrate\.api\.nvidia\.com\//, route => {
+    hitDefault = true;
+    const req = route.request();
+    auth = req.headers()['authorization'];
+    const body = JSON.parse(req.postData() || '{}');
+    model = body.model;
+    if (body.tools && body.tools[0] && body.tools[0].type === 'function') sawFnTools = true;
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply()) });
+  });
+  await page.route(/^https:\/\/nim-proxy\.test\//, route => { hitProxy = true; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply()) }); });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'nim'); localStorage.setItem('navaid.ai.key.nim', 'nvapi-k'); localStorage.removeItem('navaid.ai.baseUrl.nim'); });
+  await page.evaluate(() => NavAid.assistant.send('hi'));
+  await expect.poll(() => hitDefault).toBe(true);
+  expect(auth).toBe('Bearer nvapi-k');
+  expect(model).toBe('meta/llama-3.3-70b-instruct');   // a NIM model that can call tools
+  expect(sawFnTools).toBe(true);                        // tools go as OpenAI function defs
+  // The proxy override is stored per provider, so it cannot carry another provider's key here.
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.baseUrl.nim', 'https://nim-proxy.test/v1'); NavAid.assistant.reset(); });
+  await page.evaluate(() => NavAid.assistant.send('hi again'));
+  await expect.poll(() => hitProxy).toBe(true);
+});
+
+test('settings offer Gemini, Claude, OpenRouter, DeepSeek and NVIDIA NIM; the server-side ones show the CORS note', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => NavAid.assistant.open());
   await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
   const sel = page.locator('.assistant-settings select.assistant-field');
-  await expect(sel.locator('option')).toHaveCount(4);
+  await expect(sel.locator('option')).toHaveCount(5);
   await sel.selectOption('deepseek');
   await expect(page.locator('.assistant-note')).toBeVisible();
+  await expect(page.locator('.assistant-note')).toContainText(/CORS|proxy/i);
+  await sel.selectOption('nim');
+  await expect(page.locator('.assistant-note')).toBeVisible();   // integrate.api.nvidia.com is a server-side API
   await expect(page.locator('.assistant-note')).toContainText(/CORS|proxy/i);
   await sel.selectOption('openrouter');
   await expect(page.locator('.assistant-note')).toBeHidden();   // OpenRouter works browser-direct
