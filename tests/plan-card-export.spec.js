@@ -94,6 +94,34 @@ test('hidden-direction VOR references do not add VOR content to the export', asy
   expect(hasVor).toEqual({ outbound: false, back: true });
 });
 
+test('printed procedure legs suppress direction together with leg time', async ({ page }) => {
+  await boot(page);
+  const rendered = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.00, lng: 34.00, name: 'AIRFIELD' },
+      { lat: 32.10, lng: 34.00, name: 'FIRST' },
+      { lat: 32.10, lng: 34.20, name: 'LAST' },
+      { lat: 32.00, lng: 34.20, name: 'AIRFIELD' },
+    ];
+    state.legs = [];
+    syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 100; l.inboundAltitude = 2000; });
+    const headings = state.legs.map((_, i) => {
+      const g = geo(state.waypoints[i], state.waypoints[i + 1]);
+      return pad3(toMagnetic(g.brg)) + '°M';
+    });
+    legInsideCtr = i => i === 0 || i === 2;
+    const ctx = document.createElement('canvas').getContext('2d');
+    const seen = [];
+    ctx.fillText = text => { seen.push(String(text)); };
+    drawFlightPlanTable(ctx, 0, 0, 1200, 180, 'tl');
+    return { headings, seen };
+  });
+  expect(rendered.seen).not.toContain(rendered.headings[0]);
+  expect(rendered.seen).toContain(rendered.headings[1]);
+  expect(rendered.seen).not.toContain(rendered.headings[2]);
+});
+
 test('export modal: plan checkbox is gated on a route, not a page frame', async ({ page }) => {
   await boot(page);
   // No route → checkbox disabled.

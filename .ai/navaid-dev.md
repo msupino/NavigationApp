@@ -493,7 +493,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   marks, anchored notes, route totals, flight-plan rows/profile and the placed plan
   card. Route Fit also uses only the selected half. Global chart overlays and free
   map notes stay visible. A placed card starts in the visible part of an oversized,
-  zoomed-in page frame.
+  zoomed-in page frame. In the printed plan card, airfield procedure legs that omit
+  leg time also omit direction (airfield to first reporting point and last reporting
+  point to airfield).
 - **GPS track recorder:** the `📍 Record GPS track` toggle in the View/Set
   toolbar section records the flown path from the device GPS (live own-ship
   dot + breadcrumb trail on the map). On Stop it auto-saves a timestamped

@@ -4635,7 +4635,10 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     const rd = vorCells(B, legs[i]);
     rows.push({ num: seq + 1, legIndex: i, from: waypointDisplayLabel(A, i),
       to: waypointDisplayLabel(B, i + 1),
-      hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
+      // Procedure legs at either end of the route have no timed/navigation leg
+      // in the printed kneeboard. Keep Direction consistent with Time: the
+      // airfield-to-first-point and last-point-to-airfield rows show neither.
+      hdg: cardPre ? '---' : pad3(hdg) + '°M', dist: dist.toFixed(1),
       speed: String(legs[i].flightSpeed),
       // Guard non-finite (unknown) altitude like the kite + flight-plan modal do,
       // so the PNG plan card shows the unknown-label instead of the literal "NaN".
