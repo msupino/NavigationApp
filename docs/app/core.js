@@ -539,6 +539,11 @@ NavAid.tuningDefaults = {
   defaultShowCumTime: { value: true, type: 'bool', label: 'Default: show cumulative time' },
   defaultShowDrift: { value: true, type: 'bool', label: 'Default: show drift lines' },
   defaultShowCommChange: { value: true, type: 'bool', label: 'Default: show comm-change rings' },
+  // Speaking the alerts is opt-in per device (navaid.voiceAlerts is deliberately not
+  // synced), but the shipped default belongs here like every other toggle's: without an
+  // entry tune() returns 0, so applyDefaultVisibility could only ever push this OFF and
+  // the gist had no way to hand a fresh phone a talking cockpit.
+  defaultVoiceAlerts: { value: false, type: 'bool', label: 'Default: speak alerts' },
   defaultShowMidLeg: { value: false, type: 'bool', label: 'Default: show mid-leg marks' },
   defaultHighlightDiff: { value: false, type: 'bool', label: 'Default: highlight speed/alt change' },
   defaultLimitLegKites: { value: true, type: 'bool', label: 'Default: limit leg kites' },
@@ -636,7 +641,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'reverseWarnMs', 'reverseWarnBlink', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'reverseWarnMs', 'reverseWarnBlink', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
