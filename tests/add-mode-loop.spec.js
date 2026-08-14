@@ -133,6 +133,22 @@ test('a distinct point after an unnamed return gets the next unused label', asyn
   expect(result.legs).toBe(4);
   expect(result.labels).toEqual(['WP 1', 'WP 2', 'WP 3', 'WP 1', 'WP 4']);
   expect(result.coords[0]).toEqual(result.coords[3]);
+
+  // The invariant is independent of turn detection: revisiting the shared
+  // point again must append another visit without truncating the route.
+  await pressWaypoint(page, 0);
+  const revisited = await page.evaluate(() => ({
+    count: state.waypoints.length,
+    legs: state.legs.length,
+    labels: state.waypoints.map((_, i) => wpLabel(i)),
+    same: sameMapPoint(state.waypoints[0], state.waypoints[5]),
+  }));
+  expect(revisited).toEqual({
+    count: 6,
+    legs: 5,
+    labels: ['WP 1', 'WP 2', 'WP 3', 'WP 1', 'WP 4', 'WP 1'],
+    same: true,
+  });
 });
 
 test('pointer jitter while turning from WP4 back to WP3 appends the return leg', async ({ page }) => {
