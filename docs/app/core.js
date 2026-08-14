@@ -1366,6 +1366,7 @@ window.S = Object.assign({
   assistantModelPlaceholder: 'model',
   assistantSaveKey: 'Save',
   assistantKeySaved: 'Settings saved',
+  assistantProviderSwitched: 'Using',
   assistantNoKey: 'Add an API key in settings to start chatting.',
   assistantError: 'Assistant error',
   assistantConfirmChange: 'The assistant wants to change your route:',

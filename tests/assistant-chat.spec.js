@@ -510,6 +510,26 @@ test('settings offer Gemini, Claude, OpenRouter, DeepSeek and OrcaRouter; only D
   await expect(page.locator('.assistant-note')).toBeHidden();   // sends Access-Control-Allow-Origin: * -- no proxy needed
 });
 
+test('picking a provider switches to it at once, carrying an unsaved key with it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => NavAid.assistant.open());
+  await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
+  const sel = page.locator('.assistant-settings select.assistant-field');
+  const key = page.locator('.assistant-settings input[type=password]');
+  // Type a key for the provider on screen, then switch away WITHOUT pressing Save.
+  await sel.selectOption('orcarouter');
+  await key.fill('sk-orca');
+  await sel.selectOption('anthropic');
+  // The switch took effect immediately -- no Save needed.
+  expect(await page.evaluate(() => localStorage.getItem('navaid.ai.provider'))).toBe('anthropic');
+  await expect(key).toHaveValue('');                       // Claude's own (empty) key, not OrcaRouter's
+  // ...and the typed key was kept against the provider it was typed for.
+  expect(await page.evaluate(() => localStorage.getItem('navaid.ai.key.orcarouter'))).toBe('sk-orca');
+  await sel.selectOption('orcarouter');
+  await expect(key).toHaveValue('sk-orca');
+  expect(await page.evaluate(() => localStorage.getItem('navaid.ai.provider'))).toBe('orcarouter');
+});
+
 test('the Base URL box shows the provider endpoint it would use, without storing it', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => NavAid.assistant.open());

@@ -1055,17 +1055,31 @@
         : '';
       note.style.display = note.textContent ? '' : 'none';
     }
+    // Write the three boxes to whichever provider they belong to. Save uses it, and so does
+    // a provider switch -- otherwise a key typed but not yet saved would vanish the moment
+    // the picker reloads the fields for the newly chosen provider.
+    function persist(id) {
+      setLs(keyKey(id), keyIn.value.trim() || null);
+      setLs(modelKey(id), modelIn.value.trim() || null);
+      if (PROVIDERS[id].openaiCompat) setLs(baseKey(id), baseIn.value.trim() || null);
+    }
     provSel.value = activeProvider();
     syncProvider(provSel.value, true);
-    provSel.onchange = () => syncProvider(provSel.value, true);
+    // Picking a provider switches to it immediately. It used to only preview the provider's
+    // stored settings, leaving the previous one active until Save -- closing the panel then
+    // sent the next question to a provider the picker was no longer showing.
+    provSel.onchange = () => {
+      persist(activeProvider());        // keep whatever was typed for the one being left
+      setLs(PROV, provSel.value);
+      syncProvider(provSel.value, true);
+      toast(t('assistantProviderSwitched', 'Using') + ' ' + PROVIDERS[provSel.value].label);
+    };
 
     const save = el('button', 'assistant-send', t('assistantSaveKey', 'Save')); save.type = 'button';
     save.onclick = () => {
       const id = provSel.value;
       setLs(PROV, id);
-      setLs(keyKey(id), keyIn.value.trim() || null);
-      setLs(modelKey(id), modelIn.value.trim() || null);
-      if (PROVIDERS[id].openaiCompat) setLs(baseKey(id), baseIn.value.trim() || null);
+      persist(id);
       box.classList.add('hidden');
       toast(t('assistantKeySaved', 'Settings saved'));
     };
