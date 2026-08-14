@@ -150,3 +150,47 @@ test('with a route, an airfield inspects rather than joining', async ({ page }) 
   expect(r.selType).toBe('airfield');
   expect(r.inspector).toBe(true);
 });
+
+
+// The pointer promised a pan and delivered a waypoint: while the map is primed, the click
+// adds, so it wears add mode's crosshair rather than the grab hand.
+test('the primed map shows the add cursor, and drops it once the route starts', async ({ page }) => {
+  await fresh(page);
+  await expect(page.locator('#empty-route-hint')).toBeVisible();
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('map')).cursor)).toBe('crosshair');
+  await clickMap(page, 32.18, 34.83);
+  await page.waitForTimeout(80);
+  // Add mode armed by that click keeps the crosshair; leaving it returns the map to normal.
+  await page.evaluate(() => setMode(null));
+  const after = await page.evaluate(() => ({
+    cursor: getComputedStyle(document.getElementById('map')).cursor,
+    priming: document.getElementById('map').classList.contains('priming'),
+  }));
+  expect(after.priming).toBe(false);
+  expect(after.cursor).not.toBe('crosshair');
+});
+
+test('a returning user gets no crosshair — nothing is primed', async ({ page }) => {
+  await returning(page);
+  expect(await page.evaluate(() => document.getElementById('map').classList.contains('priming'))).toBe(false);
+});
+
+test.describe('the featureRouteIntro switch', () => {
+  test('off: no hint, no priming, and a plain click does nothing', async ({ page }) => {
+    await fresh(page);
+    await expect(page.locator('#empty-route-hint')).toBeVisible();   // on by default
+    await page.evaluate(() => { setTune('featureRouteIntro', false); refreshEmptyRouteHint(); });
+    await expect(page.locator('#empty-route-hint')).toHaveCount(0);
+    expect(await page.evaluate(() => document.getElementById('map').classList.contains('priming'))).toBe(false);
+    await clickMap(page, 32.18, 34.83);
+    await page.waitForTimeout(80);
+    const r = await page.evaluate(() => ({ wps: state.waypoints.length, mode: state.mode }));
+    expect(r.wps).toBe(0);          // the map behaves as it does for a user who has seen the hint
+    expect(r.mode).toBeNull();
+  });
+
+  test('on is the shipped default', async ({ page }) => {
+    await fresh(page);
+    expect(await page.evaluate(() => tune('featureRouteIntro'))).toBe(true);
+  });
+});
