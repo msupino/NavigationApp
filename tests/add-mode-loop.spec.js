@@ -62,6 +62,126 @@ test('in add mode, pressing the first waypoint closes the loop', async ({ page }
   expect(after.selected).toEqual({ type: 'wp', index: 3 });
 });
 
+test('an unnamed closed loop reuses WP1 on the map and in the flight plan', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.8, name: '' },
+      { lat: 32.1, lng: 34.9, name: '' },
+      { lat: 32.2, lng: 34.85, name: '' },
+    ];
+    syncLegs();
+    map.fitBounds(state.waypoints.map(w => [w.lat, w.lng]));
+    draw();
+    setMode('add');
+  });
+  await pressWaypoint(page, 0);
+
+  const labels = await page.evaluate(() => state.waypoints.map((_, i) => wpLabel(i)));
+  expect(labels).toEqual(['WP 1', 'WP 2', 'WP 3', 'WP 1']);
+  expect(await page.evaluate(() => legPairTitle(2))).toBe('WP 3 → WP 1');
+  expect(await page.evaluate(() => {
+    state.waypoints[0].name = 'HOME';
+    const tail = wpLabel(3);
+    state.waypoints[0].name = '';
+    return tail;
+  })).toBe('HOME');
+
+  await page.evaluate(() => {
+    setMode(null);
+    const wp = state.waypoints[0];
+    const p = map.latLngToContainerPoint([wp.lat, wp.lng]);
+    map.fire('mousedown', { containerPoint: L.point(p.x, p.y), latlng: L.latLng(wp.lat, wp.lng) });
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    showFlightPlan();
+  });
+  await expect(page.locator('#insp-title')).toHaveValue('WP 1');
+  const placeholders = await page.locator('.plan-name').evaluateAll(inputs =>
+    inputs.map(input => input.placeholder));
+  expect(placeholders).toEqual(['WP 1', 'WP 2', 'WP 2', 'WP 3', 'WP 3', 'WP 1']);
+});
+
+test('an unnamed route can leave and revisit WP1 repeatedly without truncation or skipped labels', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.8, name: '' },
+      { lat: 32.1, lng: 34.9, name: '' },
+      { lat: 32.2, lng: 34.85, name: '' },
+    ];
+    syncLegs();
+    map.fitBounds(state.waypoints.map(w => [w.lat, w.lng]));
+    draw();
+    setMode('add');
+  });
+
+  await pressWaypoint(page, 0); // WP1 WP2 WP3 WP1
+  await page.evaluate(() => {
+    const ll = L.latLng(32.12, 34.75);
+    const p = map.latLngToContainerPoint(ll);
+    map.fire('mousedown', { containerPoint: p, latlng: ll });
+    map.fire('click', { containerPoint: p, latlng: ll }); // add a new distinct point
+  });
+  await pressWaypoint(page, 0); // ... WP4 WP1
+
+  const result = await page.evaluate(() => ({
+    count: state.waypoints.length,
+    legs: state.legs.length,
+    labels: state.waypoints.map((_, i) => wpLabel(i)),
+    coords: state.waypoints.map(w => [w.lat, w.lng]),
+  }));
+  expect(result.count).toBe(6);
+  expect(result.legs).toBe(5);
+  expect(result.labels).toEqual(['WP 1', 'WP 2', 'WP 3', 'WP 1', 'WP 4', 'WP 1']);
+  expect(result.coords[0]).toEqual(result.coords[3]);
+  expect(result.coords[0]).toEqual(result.coords[5]);
+});
+
+test('pointer jitter while revisiting a shared point extends instead of deleting its adjacent leg', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    map.setView([32.0, 34.8], 16);
+    const origin = L.latLng(32.0, 34.8);
+    const p = map.latLngToContainerPoint(origin);
+    state.waypoints = [
+      { lat: origin.lat, lng: origin.lng, name: '' },
+      { lat: 32.04, lng: 34.84, name: '' },
+      { lat: 32.07, lng: 34.82, name: '' },
+      { lat: origin.lat, lng: origin.lng, name: '' },
+      { lat: origin.lat, lng: origin.lng + 0.001, name: '' },
+    ];
+    syncLegs();
+    draw();
+    // Keep WP4 outside WP1's hit target but close enough that a tiny movement
+    // toward it used to activate the adjacent-waypoint delete gesture.
+    const wp4Point = L.point(p.x + waypointGeom(0).r + tune('hitWaypointExtraPx') + 3, p.y);
+    const wp4 = map.containerPointToLatLng(wp4Point);
+    state.waypoints[4].lat = wp4.lat;
+    state.waypoints[4].lng = wp4.lng;
+    syncLegs();
+    draw();
+    setMode('add');
+
+    const start = map.latLngToContainerPoint(origin);
+    const jitter = L.point(start.x + 2, start.y);
+    map.fire('mousedown', { containerPoint: start, latlng: origin });
+    map.fire('mousemove', { containerPoint: jitter,
+      latlng: map.containerPointToLatLng(jitter) });
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    return {
+      count: state.waypoints.length,
+      legs: state.legs.length,
+      labels: state.waypoints.map((_, i) => wpLabel(i)),
+      repeated: sameMapPoint(state.waypoints[0], state.waypoints[5]),
+    };
+  });
+
+  expect(result.count).toBe(6);
+  expect(result.legs).toBe(5);
+  expect(result.labels).toEqual(['WP 1', 'WP 2', 'WP 3', 'WP 1', 'WP 4', 'WP 1']);
+  expect(result.repeated).toBe(true);
+});
+
 test('pressing a middle waypoint routes through it again', async ({ page }) => {
   await boot(page);
   await route(page);

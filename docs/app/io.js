@@ -2868,6 +2868,15 @@ function fitPageFrame() {
     [center.lat + degLat, center.lng + degLng]
   );
   map.fitBounds(bounds, fitOpts('fitBoxPaddingPx', null));
+  // Preserve the calculated physical page fit by default. A gist can apply a
+  // small per-paper correction for installations whose toolbar or viewport
+  // makes the frame edge feel cramped; negative values zoom out. A4x2 has the
+  // assembled dimensions of A3, so it intentionally shares the A3 offset.
+  const offsetKey = pageSize === 'A4' ? 'a4FitZoomOffset' : 'a3FitZoomOffset';
+  const zoomOffset = Number(tune(offsetKey));
+  if (Number.isFinite(zoomOffset) && zoomOffset !== 0) {
+    map.setZoom(map.getZoom() + zoomOffset, { animate: false });
+  }
 }
 
 // --- flight plan table -----------------------------------------------
@@ -3125,8 +3134,8 @@ function showFlightPlan() {
       if (!indexes.length) return;
       const depIndex = indexes[0], destIndex = indexes[indexes.length - 1] + 1;
       const dep = state.waypoints[depIndex] || {}, dest = state.waypoints[destIndex] || {};
-      const depName = navName((dep.name || '').trim()) || (S.wpPrefix + (depIndex + 1));
-      const destName = navName((dest.name || '').trim()) || (S.wpPrefix + (destIndex + 1));
+      const depName = wpLabel(depIndex);
+      const destName = wpLabel(destIndex);
       // d=0 (departure) is on the left in LTR, on the right in RTL.
       lEnd.textContent = rtl ? destName : depName;
       rEnd.textContent = rtl ? depName : destName;
@@ -3346,7 +3355,7 @@ function showFlightPlan() {
     // #81: show the locale-resolved label so the cell matches the map.
     normalizeWaypointSequenceName(state.waypoints[wpIdx]);
     inp.value = navName((state.waypoints[wpIdx].name || '').trim());
-    inp.placeholder = S.wpPrefix + (wpIdx + 1);
+    inp.placeholder = waypointDisplayLabel(state.waypoints[wpIdx], wpIdx);
     inp.oninput = () => {
       const t = (inp.value || '').trim();
       const next = isSequenceWaypointName(t) ? '' : inp.value;
@@ -4356,24 +4365,26 @@ function exportPrintOnTopLine() {
 }
 function showExportModal() {
   if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
-  // On desktop the print/export menu is a floating panel at the inspector's
-  // default location (top-right), not a centered modal — the map stays visible
-  // and interactive underneath so the plan card can be dragged straight away.
+  // On desktop the print/export menu floats opposite the inspector.
+  // It starts on the left in LTR and the right in RTL.
+  // The map stays visible and interactive so the plan card can be dragged.
   // In mobile toolbar mode (the Print button no longer fits inline with the
   // others) it falls back to the centered, dimmed modal. `export-place` makes
   // the backdrop transparent + click-through; `.export-floating` pins the box
-  // to the inspector spot.
+  // opposite the inspector.
   // `let`: the fit check after the panel is in the DOM can demote it to the
   // centered modal, and syncPlaceThrough() reads the current value.
   let floatPanel = ((typeof toolbarUsesDesktopMenu !== 'function') || toolbarUsesDesktopMenu())
     && exportPrintOnTopLine();
   const back = document.createElement('div');
-  back.className = floatPanel ? 'modal-back export-place' : 'modal-back';
+  back.className = floatPanel
+    ? 'modal-back export-options export-place'
+    : 'modal-back export-options';
   const box = document.createElement('div');
   box.className = floatPanel ? 'modal export-floating' : 'modal';
-  // Floating panel occupies the inspector spot — hide the inspector to avoid
-  // overlap; it returns on the next selection.
-  if (floatPanel) {
+  // A centered/mobile modal has no room for a second panel. Desktop keeps an
+  // existing inspector open and places Print away from it after layout.
+  if (!floatPanel) {
     const inspEl = document.getElementById('inspector');
     if (inspEl) inspEl.classList.add('hidden');
   }
@@ -4390,6 +4401,7 @@ function showExportModal() {
     const r = box.getBoundingClientRect();
     drag = { ox: e.clientX - r.left, oy: e.clientY - r.top };
     box.style.position = 'fixed';
+    box.style.right = 'auto';
     box.style.left = r.left + 'px';
     box.style.top = r.top + 'px';
     box.style.margin = '0';
@@ -4399,8 +4411,11 @@ function showExportModal() {
       // pattern the flight-plan modal already uses.
       const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
       const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
-      box.style.left = x + 'px';
-      box.style.top = y + 'px';
+      const insp = document.getElementById('inspector');
+      const p = (typeof floatingPanelPosition === 'function')
+        ? floatingPanelPosition(box, insp, x, y) : { x, y };
+      if (typeof setFloatingPanelPosition === 'function') setFloatingPanelPosition(box, p);
+      else { box.style.left = p.x + 'px'; box.style.top = p.y + 'px'; }
     };
     const onUp = function () {
       drag = null;
@@ -4904,6 +4919,14 @@ function showExportModal() {
     floatPanel = false;
     box.classList.remove('export-floating');
     syncPlaceThrough();   // keeps the backdrop click-through if a card is placed
+  }
+  if (floatPanel && typeof floatingPanelPosition === 'function') {
+    const r = box.getBoundingClientRect();
+    const insp = document.getElementById('inspector');
+    setFloatingPanelPosition(box, floatingPanelPosition(box, insp, r.left, r.top));
+  } else if (!floatPanel) {
+    const insp = document.getElementById('inspector');
+    if (insp) insp.classList.add('hidden');
   }
   document.addEventListener('keydown', onEsc);
 }

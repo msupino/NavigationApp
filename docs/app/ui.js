@@ -2593,8 +2593,11 @@ for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadR
     const onMove = function (ev) {
       const x = Math.max(0, Math.min(window.innerWidth - insp.offsetWidth, ev.clientX - off.x));
       const y = Math.max(0, Math.min(window.innerHeight - insp.offsetHeight, ev.clientY - off.y));
-      insp.style.left = x + 'px';
-      insp.style.top = y + 'px';
+      const printBox = document.querySelector('.modal-back.export-options .modal.export-floating');
+      const p = (typeof floatingPanelPosition === 'function')
+        ? floatingPanelPosition(insp, printBox, x, y) : { x, y };
+      insp.style.left = p.x + 'px';
+      insp.style.top = p.y + 'px';
     };
     const onUp = function () {
       document.removeEventListener('mousemove', onMove);
