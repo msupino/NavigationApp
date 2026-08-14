@@ -2777,7 +2777,7 @@ function showInspector() {
     title.readOnly = true;
     title.oninput = null;
     let labelValue = storedName ? navName(storedName) : '';
-    const defaultWpName = S.wpPrefix + (state.selected.index + 1);
+    const defaultWpName = waypointDisplayLabel(wp, state.selected.index);
     const preferDefaultWpName = !storedName && wp._defaultWpName;
     if (!preferDefaultWpName && refLocale && (!storedName || storedName === canonical)) labelValue = refLocale;
     const nameValue = labelValue || storedName || defaultWpName;
@@ -2891,6 +2891,13 @@ function showInspector() {
   }
   finalizeInspectorActions(body);
   persistInspectorSelection();
+  // The inspector owns its chosen position. If a dragged Print panel occupies
+  // that space, move Print to the nearest free position instead of hiding either.
+  const printBox = document.querySelector('.modal-back.export-options .modal.export-floating');
+  if (printBox && typeof floatingPanelPosition === 'function') {
+    const r = printBox.getBoundingClientRect();
+    setFloatingPanelPosition(printBox, floatingPanelPosition(printBox, insp, r.left, r.top));
+  }
 }
 function colorRow(label, value, onChange, defaultValue) {
   const row = document.createElement('div');
@@ -3443,6 +3450,28 @@ function dragOriginExclude(d, latlng) {
   return { lat: d.origLat, lng: d.origLng };
 }
 
+// A tap commonly delivers one or two pointer-move frames. In add mode that
+// gesture means "visit this waypoint again", not "drag this visit onto its
+// neighbour and delete it". The existing origin re-snap distance is the
+// deliberate-drag threshold; restore every coincident visit before treating
+// sub-threshold movement as the tap the pilot intended.
+function settleAddModeWaypointTap(d) {
+  if (!d || d.kind !== 'wp' || !d.moved || d.originSnapArmed || state.mode !== 'add') {
+    return false;
+  }
+  const indexes = [d.i].concat(d.also || []);
+  for (const i of indexes) {
+    const wp = state.waypoints[i];
+    if (!wp) continue;
+    wp.lat = d.origLat;
+    wp.lng = d.origLng;
+    if (typeof d.origName === 'string') wp.name = d.origName;
+  }
+  syncLegs();
+  d.moved = false;
+  return true;
+}
+
 // Precedence: if an item is already selected (its inspector is open) and the
 // press lands on that SAME item, grab it for dragging — don't reopen the point
 // chooser / re-select an item that merely overlaps it. Returns true if it set
@@ -3823,6 +3852,7 @@ map.on('mousemove', e => {
 // browser chrome and leaves the map permanently unpannable (issue #70).
 function endMouseDrag() {
   if (drag) {
+    settleAddModeWaypointTap(drag);
     if (drag.kind === 'wp' && drag.moved) {
       const wp = state.waypoints[drag.i];
       const snappedToSelf = sameMapPoint(wp, { lat: drag.origLat, lng: drag.origLng });
@@ -4336,6 +4366,7 @@ mapEl.addEventListener('touchmove', e => {
 
 function endTouch() {
   if (touchDrag) {
+    settleAddModeWaypointTap(touchDrag);
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
       const wp = state.waypoints[touchDrag.i];
       const snappedToSelf = sameMapPoint(wp, { lat: touchDrag.origLat, lng: touchDrag.origLng });

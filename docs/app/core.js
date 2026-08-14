@@ -323,6 +323,8 @@ NavAid.tuningDefaults = {
   fitAreaPaddingPx: { value: 40, min: 0, max: 200, step: 5, label: 'Fit LSA area: padding (px)' },
   fitAreaMaxZoom: { value: 12, min: 6, max: 18, step: 0.5, label: 'Fit LSA area: max zoom' },
   fitBoxPaddingPx: { value: 30, min: 0, max: 200, step: 5, label: 'Fit metre-box: padding (px)' },
+  a3FitZoomOffset: { value: 0, min: -2, max: 2, step: 0.25, label: 'A3/A4x2 fit zoom offset' },
+  a4FitZoomOffset: { value: 0, min: -2, max: 2, step: 0.25, label: 'A4 fit zoom offset' },
   defaultViewLat: { value: 32.1, min: 29, max: 34, step: 0.05, label: 'First-run map centre latitude' },
   defaultViewLng: { value: 34.95, min: 33, max: 36.5, step: 0.05, label: 'First-run map centre longitude' },
   hitLegLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Leg label hit min' },
@@ -490,6 +492,7 @@ NavAid.tuningDefaults = {
 
   inspectorDefaultTopPx: { value: 96, min: 40, max: 240, step: 1, label: 'Inspector default top' },
   inspectorBottomGapPx: { value: 12, min: 0, max: 120, step: 1, label: 'Inspector bottom gap' },
+  floatingPanelGapPx: { value: 12, min: 0, max: 80, step: 1, label: 'Floating panel separation' },
   zuluClockMinWidthPx: { value: 82, min: 40, max: 180, step: 1, label: 'Zulu clock min width' },
   zuluClockPadYPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock vertical padding' },
   zuluClockPadXPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock horizontal padding' },
@@ -635,7 +638,7 @@ NavAid.tuningGroups = [
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
-  { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
+  { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the
   // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
   // in front of them.
@@ -644,6 +647,7 @@ NavAid.tuningGroups = [
     'fitTrackPaddingPx', 'fitTrackMaxZoom', 'fitTrackPointZoom',
     'fitAltPairPaddingPx', 'fitAltPairMaxZoom',
     'fitAreaPaddingPx', 'fitAreaMaxZoom', 'fitBoxPaddingPx',
+    'a3FitZoomOffset', 'a4FitZoomOffset',
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
@@ -671,6 +675,48 @@ function tune(key) {
     return spec.options && spec.options.indexOf(v) !== -1 ? v : spec.value;
   }
   return Number.isFinite(v) ? v : spec.value;
+}
+
+// Keep two draggable panels readable. The caller supplies the moving panel's
+// desired top-left; this returns the nearest in-viewport position that does not
+// overlap the fixed panel. On a viewport too narrow to hold both, it preserves
+// the desired position and lets the z-index fallback decide which panel is active.
+function floatingPanelPosition(movingEl, fixedEl, desiredX, desiredY) {
+  const width = movingEl ? movingEl.offsetWidth : 0;
+  const height = movingEl ? movingEl.offsetHeight : 0;
+  const maxX = Math.max(0, window.innerWidth - width);
+  const maxY = Math.max(0, window.innerHeight - height);
+  const clamp = p => ({
+    x: Math.max(0, Math.min(maxX, p.x)),
+    y: Math.max(0, Math.min(maxY, p.y)),
+  });
+  const desired = clamp({ x: desiredX, y: desiredY });
+  if (!movingEl || !fixedEl || fixedEl.classList.contains('hidden')) return desired;
+  const fixed = fixedEl.getBoundingClientRect();
+  if (!(fixed.width > 0 && fixed.height > 0 && width > 0 && height > 0)) return desired;
+  const gap = Math.max(0, tune('floatingPanelGapPx'));
+  const overlaps = p => p.x < fixed.right + gap && p.x + width > fixed.left - gap
+    && p.y < fixed.bottom + gap && p.y + height > fixed.top - gap;
+  if (!overlaps(desired)) return desired;
+  const candidates = [
+    { x: fixed.left - gap - width, y: desired.y },
+    { x: fixed.right + gap, y: desired.y },
+    { x: desired.x, y: fixed.top - gap - height },
+    { x: desired.x, y: fixed.bottom + gap },
+  ].map(clamp).filter(p => !overlaps(p));
+  if (!candidates.length) return desired;
+  candidates.sort((a, b) => ((a.x - desired.x) ** 2 + (a.y - desired.y) ** 2)
+    - ((b.x - desired.x) ** 2 + (b.y - desired.y) ** 2));
+  return candidates[0];
+}
+
+function setFloatingPanelPosition(el, position) {
+  if (!el || !position) return;
+  el.style.position = 'fixed';
+  el.style.right = 'auto';
+  el.style.left = position.x + 'px';
+  el.style.top = position.y + 'px';
+  el.style.margin = '0';
 }
 function setTune(key, value) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
