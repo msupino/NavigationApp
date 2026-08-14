@@ -30,6 +30,23 @@ async function boot(page) {
 const runTool = (page, name, args) => page.evaluate(([n, a]) =>
   NavAid.assistant._tools.find(t => t.name === n).run(a), [name, args]);
 
+// The launcher is a Leaflet control, so it lives inside the map container: without
+// disableClickPropagation a tap on it also reached the map, and in add-waypoint mode that
+// dropped a waypoint under the button and opened its inspector over the chat.
+test('tapping the launcher in add mode does not also drop a waypoint on the map', async ({ page }) => {
+  await boot(page);
+  const before = await page.evaluate(() => state.waypoints.length);
+  await page.evaluate(() => { state.mode = 'add'; });
+  await page.locator('.assistant-fab').click();
+  await expect(page.locator('.assistant-panel')).not.toHaveClass(/hidden/);
+  const after = await page.evaluate(() => ({
+    wps: state.waypoints.length,
+    inspector: !!document.querySelector('#inspector:not(.hidden)'),
+  }));
+  expect(after.wps).toBe(before);        // the click never reached the map
+  expect(after.inspector).toBe(false);
+});
+
 test('the FAB docks in the bottom-right control column and hides no control', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
