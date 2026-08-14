@@ -4228,9 +4228,17 @@ function legDirVisible(i) {
   return f === 'out' ? i < t : i >= t;
 }
 function legDirVisibleIndexes() {
-  const indexes = [];
   const legs = (typeof state !== 'undefined' && state.legs) || [];
-  for (let i = 0; i < legs.length; i++) if (legDirVisible(i)) indexes.push(i);
+  const f = (typeof legDirFilter === 'string') ? legDirFilter : 'both';
+  const t = (f === 'out' || f === 'back') ? legRetraceTurnIndex() : -1;
+  const indexes = [];
+  if (t < 0) {
+    for (let i = 0; i < legs.length; i++) indexes.push(i);
+    return indexes;
+  }
+  const start = f === 'back' ? t : 0;
+  const end = f === 'out' ? t : legs.length;
+  for (let i = start; i < end; i++) indexes.push(i);
   return indexes;
 }
 function legDirWaypointVisible(i) {
