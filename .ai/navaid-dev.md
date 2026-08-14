@@ -529,7 +529,7 @@ as a machine-readable registry.
   or zoom outside `[map.options.minZoom, map.options.maxZoom]`.
   `bearing` is also written to legacy `navaid.bearing` for back-compat,
   but `navaid.view.bearing` wins on restore when present. Manual re-fit:
-  the `⌖ Fit to screen` toolbar button (Build section) or the `F`
+  the `⌖ Fit to screen` toolbar button (Build or Print section) or the `F`
   keyboard shortcut (when not focused in an input). With an A3, A4, or A4×2 frame
   selected, those controls fit the frame instead of the route.
 - `navaid.layer` — selected base layer name.

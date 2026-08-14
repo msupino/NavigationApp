@@ -25,6 +25,24 @@ async function route(page) {
   });
 }
 
+test('the Print menu keeps Fit to screen directly available', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    setPage('A4');
+    map.zoomIn(3, { animate: false });
+    document.querySelector('.tb-section[data-sec="print"] .tb-section-head').click();
+  });
+  const printSection = page.locator('.tb-section[data-sec="print"]');
+  const before = await page.evaluate(() => map.getZoom());
+  await expect(printSection).toHaveClass(/open/);
+  await printSection.locator('#print-fit-screen').click();
+  const after = await page.evaluate(() => map.getZoom());
+  expect(after).toBeLessThan(before);
+  await expect(printSection).toHaveClass(/open/);
+});
+
 test('drawFlightPlanTable renders a sized table; none without a route', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
