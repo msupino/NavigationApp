@@ -468,7 +468,11 @@ jobs:
             gh api "repos/${REPO}/issues/${PR}/comments" -f body="$BODY"
           fi
 
-  e2e-deployed:
+  # Sharded like CI's e2e (see .github/workflows/ci.yml): one runner took ~21 min.
+  # Branch protection requires a check named exactly `e2e-deployed`, which a matrix
+  # job cannot provide (it becomes `e2e-deployed-shard (1)`), hence the gate job at
+  # the end -- do not rename either without updating the required checks.
+  e2e-deployed-shard:
     if: github.event_name == 'pull_request'
     # Pull requests never deploy. Test the Pages artifact produced by `build`
     # through a local HTTP server so deploy-time rewrites are still covered.
@@ -476,13 +480,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # The suite outgrew the old 15 min: the last run under it took 13.9 min for
-    # 1364 tests and the next PR's 17 new tests pushed it past the cap, where the
-    # SIGINT surfaced as four bogus wind.spec failures (tests killed mid-flight,
-    # green locally and in the previous run) — a timeout that looked like a
-    # regression. This job also runs 4 workers to CI's 100%, so it needs the
-    # larger budget of the two, not the smaller.
-    timeout-minutes: 25
+    strategy:
+      # One shard's failure is not the others' business: let them all report.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    # A shard is a quarter of the suite, but the cap still has to lead its growth:
+    # a SIGINT at the cap kills tests mid-flight and surfaces as bogus failures
+    # that read like a regression (that is how the old 15 min cap failed, with
+    # four wind.spec tests green locally and in the previous run). This job also
+    # runs 4 workers to CI's 100%, so it keeps the larger per-runner budget.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -538,7 +546,10 @@ jobs:
           # app's offline shell), but this job exists to verify the PR's app build, and part
           # of that build is the service worker -- offline-tiles.spec.js reads its source.
           cp docs/sw.js "$PREVIEW/sw.js" 2>/dev/null || true
-          python3 -m http.server 8000 --directory _site >/tmp/http.log 2>&1 &
+          # ThreadingHTTPServer, not single-threaded `python -m http.server`: four
+          # Playwright workers against a serialising server spend their time queued
+          # (same reason as the CI job's server).
+          python3 -c "from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler; import functools; ThreadingHTTPServer(('127.0.0.1', 8000), functools.partial(SimpleHTTPRequestHandler, directory='_site')).serve_forever()" >/tmp/http.log 2>&1 &
           SRV=$!
           trap 'kill $SRV 2>/dev/null || true' EXIT
           for i in $(seq 1 20); do
@@ -547,4 +558,22 @@ jobs:
           done
           BASE_URL="http://127.0.0.1:8000/pr/$PR_NUM/" EXPECTED_SHA="$SHA" \
             npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') \
+            --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
             --reporter=list --max-failures=20
+
+  # The required status check. Exists only so branch protection has one stable name
+  # to wait on; it passes when every shard passed.
+  e2e-deployed:
+    if: always() && github.event_name == 'pull_request'
+    needs: e2e-deployed-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check every shard passed
+        run: |
+          # 'skipped' counts as a pass only when the whole matrix was skipped with the
+          # job it depends on -- a shard that fails or is cancelled must fail here.
+          case "${{ needs.e2e-deployed-shard.result }}" in
+            success|skipped) echo "✅ all e2e-deployed shards passed"; exit 0 ;;
+            *) echo "❌ an e2e-deployed shard reported '${{ needs.e2e-deployed-shard.result }}'"; exit 1 ;;
+          esac
