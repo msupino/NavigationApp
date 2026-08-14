@@ -2795,9 +2795,9 @@ function toggleOrientation() {
   if (pageSize) { applyPage(); fitPageFrame(); }
   refreshOrientButton();
 }
-// Keep the clipping warning and the fit button in step with the page frame, the map
-// view and the route. Called from applyPage/draw, so panning the map, resizing the
-// page, dragging the frame or editing the route all re-evaluate it.
+// Keep the clipping warning and the fit button state in step with the page frame,
+// map view and route. The action stays visible so the Print menu does not reshape;
+// it is disabled when there is nothing useful it can do.
 function refreshPrintFit() {
   const warn = document.getElementById('print-clip-warn');
   const fitBtn = document.getElementById('print-fit');
@@ -2806,14 +2806,13 @@ function refreshPrintFit() {
   const fit = noFrame ? { fits: true } : routePageFit();
   if (noFrame || fit.fits) {
     warn.hidden = true;
-    fitBtn.hidden = true;
+    fitBtn.hidden = false;
+    fitBtn.disabled = true;
     return;
   }
   // Is there any page that COULD hold it? Ask without committing, so the message can
   // distinguish "press the button" from "no page is big enough, split the route".
-  const savedSize = pageSize, savedOrient = pageOrient, savedOffset = pageOffset;
-  const pick = fitPageToRoute();
-  pageSize = savedSize; pageOrient = savedOrient; pageOffset = savedOffset;
+  const pick = fitPageToRoute(false);
   warn.hidden = false;
   // Name what is actually clipped. Saying "the route runs past the page" while the
   // route plainly sits inside the frame reads as a warning that failed to clear --
@@ -2827,7 +2826,8 @@ function refreshPrintFit() {
   warn.textContent = !pick ? (S.printNoFit || 'No page size holds this route.')
     : routeInside ? (S.printClipWarnLabels || 'A label hangs past the page.')
       : (S.printClipWarn || 'The route runs past the page.');
-  fitBtn.hidden = !pick;
+  fitBtn.hidden = false;
+  fitBtn.disabled = !pick;
 }
 
 function refreshOrientButton() {

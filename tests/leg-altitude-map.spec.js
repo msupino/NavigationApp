@@ -2,6 +2,7 @@
 // CVFR leg altitude table wiring: new map legs between known green-route
 // endpoints should pick up the table altitudes automatically.
 const { test, expect } = require('./_setup');
+const { hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page) {
   await page.addInitScript(() => {
@@ -225,6 +226,7 @@ test('map-added known green-route leg uses leg altitudes', async ({ page }) => {
     await expect(inAlt).not.toHaveClass(/is-default/);
     const reset = page.locator('#insp-body .row').filter({ hasText: 'Inbound alt' })
       .locator('button.row-reset');
+    await hideToolbarMenus(page);
     await reset.click();
     await expect(inAlt).toHaveValue('5000');
     await expect(inAlt).toHaveClass(/is-default/);
@@ -246,6 +248,7 @@ test('map-added known green-route leg uses leg altitudes', async ({ page }) => {
     await expect(inAlt).not.toHaveClass(/is-default/);
     const reset = page.locator('#insp-body .row').filter({ hasText: 'Inbound alt' })
       .locator('button.row-reset');
+    await hideToolbarMenus(page);
     await reset.click();
     await expect(inAlt).toHaveValue('5000');
     await expect(inAlt).toHaveClass(/is-default/);

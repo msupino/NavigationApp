@@ -4,15 +4,15 @@
 //  C2 — legLabelCenter()/hitLegLabel()/legFrame(): the kite-label hit test
 //       returns {i,which} only when the cursor is on the rendered label,
 //       and leg-label drags stay between the waypoint perpendicular gates.
-//  C3 — hitPageFrameEdge()/clampPageOffset(): the page-frame border band is
-//       grabbable; the centre is not; the drag offset is clamped on-screen.
+//  C3 — the page frame is viewport-locked by default, so its border pans the map;
+//       the gist switch restores the legacy draggable, clamped frame.
 //  C6 — rotEnd(cycle): a tap (drag start, no move) steps the bearing through
 //       0 -> 270 -> 180 -> 90 -> 0 (shown 0/90/180/270).
 const { test, expect } = require('./_setup');
 const { hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page) {
-  await page.goto('?lang=en');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() =>
     typeof legLabelCenter === 'function' &&
     typeof hitLegLabel === 'function' &&
@@ -199,10 +199,30 @@ test.describe('Leg-label hit test (C2)', () => {
   });
 });
 
-test.describe('Page-frame drag grip (C3)', () => {
-  test('hitPageFrameEdge: border band true, centre false', async ({ page }) => {
+test.describe('Page-frame centre lock and legacy drag grip (C3)', () => {
+  test('the default lock keeps the frame centred and removes its drag grip', async ({ page }) => {
     await boot(page);
     const out = await page.evaluate(() => {
+      setPage('A4');
+      pageOffset = { x: 180, y: -120 };
+      const r = pageFrameRect();
+      return {
+        locked: tune('pageFrameLocked'),
+        centre: { x: r.x + r.w / 2, y: r.y + r.h / 2 },
+        viewport: { x: vw() / 2, y: vh() / 2 },
+        onTopEdge: hitPageFrameEdge(r.x + r.w / 2, r.y),
+      };
+    });
+    expect(out.locked).toBe(true);
+    expect(out.centre.x).toBeCloseTo(out.viewport.x, 5);
+    expect(out.centre.y).toBeCloseTo(out.viewport.y, 5);
+    expect(out.onTopEdge).toBe(false);
+  });
+
+  test('the gist tune can restore the movable frame drag grip', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(() => {
+      setTune('pageFrameLocked', false);
       setPage('A4');
       fitPageFrame();
       const r = pageFrameRect();
@@ -213,6 +233,34 @@ test.describe('Page-frame drag grip (C3)', () => {
     });
     expect(out.onTopEdge).toBe(true);
     expect(out.atCentre).toBe(false);
+  });
+
+  test('dragging a locked frame edge pans the map under a centred frame', async ({ page }) => {
+    await boot(page);
+    const before = await page.evaluate(() => {
+      state.waypoints = []; state.legs = []; state.notes = [];
+      setPage('A4');
+      const r = pageFrameRect();
+      return { edge: { x: r.x + r.w / 2, y: r.y }, center: map.getCenter() };
+    });
+    await page.mouse.move(before.edge.x, before.edge.y);
+    await page.mouse.down();
+    await page.mouse.move(before.edge.x + 90, before.edge.y + 45, { steps: 5 });
+    await page.mouse.up();
+    const after = await page.evaluate(() => {
+      const r = pageFrameRect();
+      return {
+        center: map.getCenter(),
+        frameCentre: { x: r.x + r.w / 2, y: r.y + r.h / 2 },
+        viewport: { x: vw() / 2, y: vh() / 2 },
+        offset: pageOffset,
+      };
+    });
+    expect(Math.abs(after.center.lat - before.center.lat) +
+      Math.abs(after.center.lng - before.center.lng)).toBeGreaterThan(0.001);
+    expect(after.frameCentre.x).toBeCloseTo(after.viewport.x, 5);
+    expect(after.frameCentre.y).toBeCloseTo(after.viewport.y, 5);
+    expect(after.offset).toEqual({ x: 0, y: 0 });
   });
 
   test('hitPageFrameEdge is false when no page frame is set', async ({ page }) => {
