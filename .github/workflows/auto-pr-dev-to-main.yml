@@ -16,10 +16,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  # `write` is required so the "Merge main into dev" step can push the
-  # single integration commit back to origin/dev before opening the promotion PR.
+  # The ancestry sync is pushed to a temporary branch and merged through a PR.
   contents: write
   pull-requests: write
+  # Bot-created PRs do not trigger other workflows, so dispatch their checks
+  # and the auto-merge watcher explicitly.
+  actions: write
 
 # One run at a time: two near-simultaneous dev pushes raced past the
 # existing-PR check and the loser failed on 'a pull request already exists'.
@@ -42,57 +44,69 @@ jobs:
           fetch-depth: 0   # need full history to merge main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Merge main into dev
-        # Skip this step when the triggering push *is* our own auto-sync
-        # commit — otherwise the push we make below would re-trigger the
-        # workflow indefinitely. The `pull_request: closed` trigger has its
-        # own `merged == true` filter at the job level so it doesn't need this
-        # guard.
-        if: github.event_name != 'push' || !contains(github.event.head_commit.message, 'auto-sync before promotion PR')
+      - name: Sync main into dev through a PR
+        id: sync
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -e
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main:main
-          # Skip if dev is already up to date with main (idempotent no-op).
           BEHIND=$(gh api "repos/${{ github.repository }}/compare/dev...main" --jq '.ahead_by')
           if [ "$BEHIND" -eq 0 ]; then
             echo "dev is already up to date with main — skipping merge"
-            echo "had_conflict=false" >> "$GITHUB_ENV"
+            echo "needed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # A REAL merge, not a squash. A squash copies main's tree into dev but not its
-          # ancestry, so `main` never becomes an ancestor of `dev` -- and CI's "Check PR is
-          # rebased" step (`git merge-base --is-ancestor <base> <head>`) fails on every
-          # dev->main promotion PR. That failure stayed invisible only because the
-          # promotion PR's own workflow runs sit in `action_required` and never execute;
-          # the green `lint` seen on past promos came from the push-triggered run, which
-          # has no rebase check. Approving those runs once (#1554) exposed it immediately,
-          # and it could only be cleared by merging main into dev by hand.
-          #
-          # --no-ff so the merge commit exists even when dev could fast-forward: the commit
-          # IS the ancestry record this whole step exists to create.
-          #
-          # The exact commit message is matched by the recursion guard above, so don't
-          # change it without updating both.
-          if git merge --no-ff main -m "Merge main into dev (auto-sync before promotion PR)"; then
-            # Deliberately no "skip when the tree is unchanged" branch. After a promotion,
-            # main's merge commit usually brings dev NO new files -- dev is where the
-            # content came from -- and that is exactly the case that must still be
-            # recorded, or ancestry is lost again and the next promo PR fails the rebase
-            # check.
-            echo "Merge succeeded"
-            git push origin dev
-            echo "had_conflict=false" >> "$GITHUB_ENV"
-          else
-            echo "Merge conflict — aborting merge but proceeding to open PR with a warning."
-            git merge --abort || git reset --merge || true
-            echo "had_conflict=true" >> "$GITHUB_ENV"
+
+          # `dev` is protected, so preserve ancestry on an automation-owned
+          # branch and let the normal required checks merge it through a PR.
+          # The branch is stable for one main tip; a later dev push refreshes
+          # the same open sync PR rather than creating a duplicate.
+          MAIN_SHA=$(git rev-parse --short=12 main)
+          SYNC_BRANCH="automation/sync-main-into-dev-${MAIN_SHA}"
+          git checkout -B "$SYNC_BRANCH" origin/dev
+          git merge --no-ff main -m "Merge main into dev (auto-sync before promotion PR)"
+          git fetch origin "$SYNC_BRANCH:refs/remotes/origin/$SYNC_BRANCH" 2>/dev/null || true
+          git push --force-with-lease origin "HEAD:$SYNC_BRANCH"
+
+          PR=$(gh pr list \
+            --base dev \
+            --head "$SYNC_BRANCH" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+          if [ -z "$PR" ]; then
+            gh pr create \
+              --base dev \
+              --head "$SYNC_BRANCH" \
+              --title "Sync main into dev (${MAIN_SHA:0:7})" \
+              --body "Automated ancestry sync required before the next dev-to-main promotion."
+            PR=$(gh pr list \
+              --base dev \
+              --head "$SYNC_BRANCH" \
+              --state open \
+              --json number \
+              --jq '.[0].number')
           fi
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+          echo "pr=$PR" >> "$GITHUB_OUTPUT"
+
+          # GITHUB_TOKEN-created PR events do not start workflows. Dispatch
+          # every required workflow against the sync commit, including the
+          # Deploy workflow's explicit PR-number mode for e2e-deployed.
+          gh workflow run CI --ref "$SYNC_BRANCH"
+          gh workflow run Deploy --ref "$SYNC_BRANCH"
+          gh workflow run Review --ref "$SYNC_BRANCH"
+          gh workflow run "Draft + auto-merge" \
+            --ref "$SYNC_BRANCH" \
+            -f pr="$PR" \
+            -f round=1
+          echo "Sync PR #$PR will resume promotion after it merges."
 
       - name: Check for existing dev to main PR
+        if: steps.sync.outputs.needed == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -105,7 +119,6 @@ jobs:
           # `gh api compare` re-queries fresh from origin, so this correctly
           # reflects dev's state *after* the sync step pushed (if it did).
           # Skip if dev has nothing new on main (e.g. after a main→dev sync).
-          BEHIND=$(gh api "repos/${{ github.repository }}/compare/dev...main" --jq '.ahead_by')
           AHEAD=$(gh api "repos/${{ github.repository }}/compare/main...dev" --jq '.ahead_by')
           if [ "$EXISTING" -gt 0 ] || [ "$AHEAD" -eq 0 ]; then
             echo "pr_exists=true" >> "$GITHUB_ENV"
@@ -114,15 +127,12 @@ jobs:
           fi
 
       - name: Create dev to main PR
-        if: env.pr_exists == 'false'
+        if: steps.sync.outputs.needed == 'false' && env.pr_exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           SHA=$(git rev-parse --short HEAD)
           BODY="Auto-generated PR promoting dev ($SHA) to main."
-          if [ "${{ env.had_conflict }}" = "true" ]; then
-            BODY="$BODY"$'\n\n'"⚠️ Auto-sync of \`main\` into \`dev\` failed due to merge conflicts. \`dev\` needs to be manually rebased/merged with \`main\` before this PR can be merged."
-          fi
           # `|| true` guard: if a parallel run created the PR between our
           # existence check and here, "already exists" is success, not failure.
           gh pr create \
