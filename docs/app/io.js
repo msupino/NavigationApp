@@ -3133,7 +3133,6 @@ function showFlightPlan() {
       dirRow.hidden = indexes.length === 0;
       if (!indexes.length) return;
       const depIndex = indexes[0], destIndex = indexes[indexes.length - 1] + 1;
-      const dep = state.waypoints[depIndex] || {}, dest = state.waypoints[destIndex] || {};
       const depName = wpLabel(depIndex);
       const destName = wpLabel(destIndex);
       // d=0 (departure) is on the left in LTR, on the right in RTL.
