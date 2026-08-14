@@ -24,8 +24,12 @@ test.describe('workflow trust and integrity gates', () => {
     }
   });
 
+  // e2e-deployed-shard is where the pull request's own code runs; `e2e-deployed` is now a
+  // gate job that only reads the matrix result (the required check keeps that name). Both
+  // are pinned: the sharded one because it executes untrusted code, the gate because a
+  // pull-request workflow should hold no writable token at all.
   test('PR-controlled tests have read-only permissions and no persisted checkout token', () => {
-    const e2e = job('.github/workflows/deploy.yml', 'e2e-deployed');
+    const e2e = job('.github/workflows/deploy.yml', 'e2e-deployed-shard');
     // The job runs code from the pull request, so its token must be able to do nothing but
     // read: no Pages publish, no deployment records, no PR writes, no OIDC identity.
     expect(e2e.permissions).toEqual({ contents: 'read' });
@@ -34,6 +38,7 @@ test.describe('workflow trust and integrity gates', () => {
     for (const step of checkouts) {
       expect(step.with && step.with['persist-credentials'], 'checkout keeps its token').toBe(false);
     }
+    expect(job('.github/workflows/deploy.yml', 'e2e-deployed').permissions).toEqual({ contents: 'read' });
   });
 
   test('every job that can run pull-request code is read-only', () => {
