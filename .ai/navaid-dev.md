@@ -447,6 +447,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   size button again clears it. Orientation chosen via the
   `chooseOrientation()` modal. The toolbar Fit button and `F` fit the active
   page frame when one is selected; without a frame they fit the route.
+  The frame stays centred on the viewport by default, so dragging its border
+  pans the map underneath it. The gist boolean `pageFrameLocked` defaults to
+  `true`; setting it to `false` restores the legacy movable-frame drag grip.
+  `Fit page to route` likewise pans map content into the locked frame and its
+  availability preview is side-effect-free.
   Print keeps both fit actions visible: `Fit page to route` is disabled/dimmed
   unless clipping can be resolved by changing the page size or orientation.
 - **Keyboard shortcuts cheat-sheet (issue #420):** modal listing every

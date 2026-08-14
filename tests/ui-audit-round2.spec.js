@@ -621,6 +621,7 @@ test('the legend can still be dragged freely after being pushed clear', async ({
 test('printing warns when the route runs off the page, and can fit it', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
+    setTune('pageFrameLocked', false);
     state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.44, lng: 34.90, name: 'HADERA' }];
     state.legs = []; syncLegs(); map.setView([32.31, 34.87], 11, { animate: false });
     setPage('A4'); pageOrient = 'portrait'; pageOffset = { x: 400, y: 260 }; draw();

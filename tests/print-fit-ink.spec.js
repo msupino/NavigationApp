@@ -27,6 +27,7 @@ async function twoLegRoute(page) {
 // Slide the frame so every waypoint is still inside but the outermost ink is cut.
 async function clipTheInkOnly(page) {
   return page.evaluate(() => {
+    setTune('pageFrameLocked', false);
     const fr = pageFrameRect();
     const ink = routeInkRects();
     const wpMaxX = Math.max(...state.waypoints.map(w => proj(w).x));
@@ -90,16 +91,89 @@ test('Fit page to route fits the ink, not just the coordinates', async ({ page }
   expect(after.fitDisabled).toBe(true);
 });
 
+test('locked Fit preview is inert, while applying Fit pans the map under the frame', async ({ page }) => {
+  await boot(page);
+  await twoLegRoute(page);
+  const before = await page.evaluate(() => {
+    setTune('pageFrameLocked', true);
+    map.panBy([420, 0], { animate: false });
+    draw();
+    const c = map.getCenter();
+    return {
+      fits: routePageFit().fits,
+      center: { lat: c.lat, lng: c.lng },
+      enabled: !document.getElementById('print-fit').disabled,
+    };
+  });
+  expect(before.fits).toBe(false);
+  expect(before.enabled).toBe(true);
+
+  // Re-running the availability preview must not move the map.
+  const preview = await page.evaluate(() => {
+    refreshPrintFit();
+    const c = map.getCenter();
+    return { lat: c.lat, lng: c.lng };
+  });
+  expect(preview.lat).toBeCloseTo(before.center.lat, 8);
+  expect(preview.lng).toBeCloseTo(before.center.lng, 8);
+
+  const after = await page.evaluate(() => {
+    document.getElementById('print-fit').click();
+    draw();
+    const c = map.getCenter(), r = pageFrameRect();
+    return {
+      fits: routePageFit().fits,
+      center: { lat: c.lat, lng: c.lng },
+      frameCentre: { x: r.x + r.w / 2, y: r.y + r.h / 2 },
+      viewport: { x: vw() / 2, y: vh() / 2 },
+    };
+  });
+  expect(after.fits).toBe(true);
+  expect(Math.abs(after.center.lat - before.center.lat) +
+    Math.abs(after.center.lng - before.center.lng)).toBeGreaterThan(0.001);
+  expect(after.frameCentre.x).toBeCloseTo(after.viewport.x, 5);
+  expect(after.frameCentre.y).toBeCloseTo(after.viewport.y, 5);
+});
+
 test('Fit page to route stays visible but dimmed when the page already fits', async ({ page }) => {
   await boot(page);
   await twoLegRoute(page);
   const state = await page.evaluate(() => {
     const button = document.getElementById('print-fit');
-    return { visible: !button.hidden, disabled: button.disabled, fits: routePageFit().fits };
+    return { visible: !button.hidden, disabled: button.disabled, fits: routePageFit().fits,
+      opacity: parseFloat(getComputedStyle(button).opacity) };
   });
   expect(state.fits).toBe(true);
   expect(state.visible).toBe(true);
   expect(state.disabled).toBe(true);
+  expect(state.opacity).toBeLessThan(1);
+});
+
+test('phone RTL Print menu keeps both Fit actions visible without horizontal overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof setPage === 'function');
+  await page.locator('#toolbar-toggle').click();
+  await page.locator('.tb-section[data-sec="print"] .tb-section-head').click();
+  const layout = await page.evaluate(() => {
+    const screen = document.getElementById('print-fit-screen').getBoundingClientRect();
+    const route = document.getElementById('print-fit').getBoundingClientRect();
+    return {
+      dir: document.documentElement.dir,
+      screen: { left: screen.left, right: screen.right, width: screen.width },
+      route: { left: route.left, right: route.right, width: route.width },
+      routeVisible: !document.getElementById('print-fit').hidden,
+      routeOpacity: parseFloat(getComputedStyle(document.getElementById('print-fit')).opacity),
+    };
+  });
+  expect(layout.dir).toBe('rtl');
+  expect(layout.routeVisible).toBe(true);
+  expect(layout.routeOpacity).toBeLessThan(1);
+  for (const box of [layout.screen, layout.route]) {
+    expect(box.width).toBeGreaterThan(0);
+    expect(box.left).toBeGreaterThanOrEqual(0);
+    expect(box.right).toBeLessThanOrEqual(375);
+  }
 });
 
 test('notes and comm callouts count as ink', async ({ page }) => {
@@ -163,6 +237,7 @@ test('a genuine route overrun still blames the route', async ({ page }) => {
   await twoLegRoute(page);
   const r = await page.evaluate(() => {
     // shove the frame right off the route
+    setTune('pageFrameLocked', false);
     pageOffset = { x: 600, y: 0 };
     draw();
     return { fits: routePageFit().fits, text: document.getElementById('print-clip-warn').textContent };

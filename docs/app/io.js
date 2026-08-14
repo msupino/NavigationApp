@@ -2812,9 +2812,7 @@ function refreshPrintFit() {
   }
   // Is there any page that COULD hold it? Ask without committing, so the message can
   // distinguish "press the button" from "no page is big enough, split the route".
-  const savedSize = pageSize, savedOrient = pageOrient, savedOffset = pageOffset;
-  const pick = fitPageToRoute();
-  pageSize = savedSize; pageOrient = savedOrient; pageOffset = savedOffset;
+  const pick = fitPageToRoute(false);
   warn.hidden = false;
   // Name what is actually clipped. Saying "the route runs past the page" while the
   // route plainly sits inside the frame reads as a warning that failed to clear --

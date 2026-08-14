@@ -4406,8 +4406,9 @@ function pageFrameRect() {
   const d = pageDims();
   const w = d.w * 1852 / mpp;
   const h = d.h * 1852 / mpp;
-  return { x: (vw() - w) / 2 + pageOffset.x,
-           y: (vh() - h) / 2 + pageOffset.y, w, h };
+  const locked = tune('pageFrameLocked');
+  return { x: (vw() - w) / 2 + (locked ? 0 : pageOffset.x),
+           y: (vh() - h) / 2 + (locked ? 0 : pageOffset.y), w, h };
 }
 
 // Every piece of INK the export will draw, as screen-space rectangles: waypoint discs,
@@ -4516,9 +4517,10 @@ function routePageFit() {
 }
 
 // Smallest page that holds the route, centred on it. Tries every size/orientation in
-// increasing paper area and centres the frame on the route's midpoint; returns false
-// when even the largest cannot hold it (the caller says so rather than pretending).
-function fitPageToRoute() {
+// increasing paper area and centres the map (locked frame) or paper (legacy unlocked
+// frame) on the route midpoint. Pass false for a side-effect-free availability probe.
+// Returns false when even the largest cannot hold it.
+function fitPageToRoute(apply) {
   const wps = (state.waypoints || []);
   if (!wps.length) return false;
   // Fit the INK, not the waypoints: fitting to bare coordinates chose a page that
@@ -4544,16 +4546,25 @@ function fitPageToRoute() {
   }
   const pick = candidates.find(c => c.w >= need.w && c.h >= need.h);
   if (!pick) return false;
+  if (apply === false) return { size: pick.size, orient: pick.orient };
   pageSize = pick.size;
   pageOrient = pick.orient;
-  // Centre the chosen page on the route: pageFrameRect() centres on the viewport and
-  // then adds pageOffset, so the offset is simply route-midpoint minus viewport-centre.
-  pageOffset = { x: mid.x - vw() / 2, y: mid.y - vh() / 2 };
+  if (tune('pageFrameLocked')) {
+    // The paper stays centred on screen. Put its content under it by moving the
+    // Leaflet view to the route-ink midpoint instead of dragging the paper.
+    pageOffset = { x: 0, y: 0 };
+    const centre = map.containerPointToLatLng([mid.x, mid.y]);
+    map.setView(centre, map.getZoom(), { animate: false });
+  } else {
+    // Legacy gist-tunable behaviour: centre the movable paper on the route.
+    pageOffset = { x: mid.x - vw() / 2, y: mid.y - vh() / 2 };
+  }
   return { size: pick.size, orient: pick.orient };
 }
 
 // True if (px,py) is on the page-frame border band — the drag grip.
 function hitPageFrameEdge(px, py) {
+  if (tune('pageFrameLocked')) return false;
   const r = pageFrameRect();
   if (!r) return false;
   const t = tune('pageFrameHitPx');

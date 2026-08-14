@@ -1579,6 +1579,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(resetFreq).toBeEnabled();
     expect(await page.evaluate(() => state.notes[0].freq)).toBe('118.40');
     await expect(resetFreq).toBeEnabled();
+    await hideToolbarMenus(page);
     await resetFreq.click();
     await expect(field).toHaveValue('118.40');
     await expect(field).toHaveAttribute('aria-invalid', 'false');
@@ -1689,6 +1690,7 @@ test.describe('comm-change auto-note (#487)', () => {
       { cc: 'DAROM', freqName: 'HERZLIYA', freq: '125.60', lines: ['HERZLIYA', '125.60'] },
     ]);
 
+    await hideToolbarMenus(page);
     await resetFreq.click();
     await expect(fields.first()).toHaveValue('122.20');
     await expect(fields.first()).toHaveClass(/is-default/);

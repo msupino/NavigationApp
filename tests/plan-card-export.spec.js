@@ -217,6 +217,7 @@ test('a card added to a shifted paper frame stays within all four frame edges', 
   await boot(page);
   await route(page);
   await page.evaluate(() => {
+    setTune('pageFrameLocked', false);
     setPage('A4');
     const fr = pageFrameRect();
     pageOffset = { x: -fr.w * 0.75, y: -fr.h * 0.6 };
