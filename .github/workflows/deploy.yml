@@ -473,7 +473,10 @@ jobs:
   # job cannot provide (it becomes `e2e-deployed-shard (1)`), hence the gate job at
   # the end -- do not rename either without updating the required checks.
   e2e-deployed-shard:
-    if: github.event_name == 'pull_request'
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' &&
+       startsWith(github.ref_name, 'automation/sync-main-into-dev-'))
     # Pull requests never deploy. Test the Pages artifact produced by `build`
     # through a local HTTP server so deploy-time rewrites are still covered.
     needs: build
@@ -494,7 +497,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -516,9 +519,25 @@ jobs:
           tar -xf _artifact/artifact.tar -C _site
       - name: Serve published site locally and run e2e
         env:
-          PR_NUM: ${{ github.event.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
+          PR_NUM="${{ github.event.number }}"
+          if [ -z "$PR_NUM" ]; then
+            # A bot-created sync PR cannot trigger this PR-only job, so its
+            # workflow_dispatch run has no event.number. The build artifact
+            # already contains every open PR preview; identify the one whose
+            # injected version SHA matches this dispatched branch exactly.
+            for CORE in _site/pr/*/app/core.js; do
+              [ -f "$CORE" ] || continue
+              CANDIDATE_SHA=$(sed -nE "s/.*version: '1\.0-([A-Za-z0-9]+)'.*/\1/p" "$CORE")
+              case "$HEAD_SHA" in
+                "$CANDIDATE_SHA"*) PR_NUM=${CORE#_site/pr/}; PR_NUM=${PR_NUM%%/*}; break ;;
+              esac
+            done
+          fi
+          case "$PR_NUM" in
+            ''|*[!0-9]*) echo "::error::No open dev sync PR found for $GITHUB_REF_NAME"; exit 1 ;;
+          esac
           # Serve the byte-identical Pages artifact locally. This keeps
           # deploy-rewrite coverage (cache-bust ?v=, version SHA, /pr/N/
           # subpath URLs, and the byop base path) deterministic without
@@ -564,7 +583,11 @@ jobs:
   # The required status check. Exists only so branch protection has one stable name
   # to wait on; it passes when every shard passed.
   e2e-deployed:
-    if: always() && github.event_name == 'pull_request'
+    if: >-
+      always() &&
+      (github.event_name == 'pull_request' ||
+       (github.event_name == 'workflow_dispatch' &&
+        startsWith(github.ref_name, 'automation/sync-main-into-dev-')))
     needs: e2e-deployed-shard
     runs-on: ubuntu-latest
     # Reads a job result and nothing else. It checks out no code, but a pull-request
