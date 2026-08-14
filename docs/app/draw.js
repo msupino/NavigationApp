@@ -1941,7 +1941,19 @@ function referenceOverlayLabel(ref, kind) {
 
 function waypointDisplayLabel(wp, idx) {
   const n = navName((wp && wp.name || '').trim());
-  return n || (S.wpPrefix + (idx + 1));
+  if (n) return n;
+  // A closed route stores its return visit as a second waypoint at exactly the
+  // same coordinates. If both visits are unnamed, reuse the first visit's
+  // sequence number instead of inventing a phantom WP4 for a return to WP1.
+  if (wp && typeof state !== 'undefined' && Array.isArray(state.waypoints)) {
+    for (let i = 0; i < idx; i++) {
+      const earlier = state.waypoints[i];
+      if (earlier && earlier.lat === wp.lat && earlier.lng === wp.lng) {
+        return waypointDisplayLabel(earlier, i);
+      }
+    }
+  }
+  return S.wpPrefix + (idx + 1);
 }
 
 function nearestReference(latlng, options = {}) {

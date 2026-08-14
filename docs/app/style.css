@@ -2436,20 +2436,27 @@ body.theme-light .shortcuts-help-keys kbd {
   pointer-events: none;
 }
 .modal-back.export-place > .modal { pointer-events: auto; }
-/* The print/export panel floats at the inspector's default location (top-right)
-   rather than centered, so the map stays visible + interactive underneath. */
+/* A waypoint/leg selection made while Print is open must put its shared
+   inspector above the Print panel. Keep the desktop inspector below the menu
+   bar dropdowns; the centered/mobile variant has to clear the regular modal
+   backdrop instead. Print stays open underneath and becomes reachable again
+   when the inspector closes. */
+body:has(.modal-back.export-options.export-place) #inspector { z-index: 2326; }
+body:has(.modal-back.export-options:not(.export-place)) #inspector { z-index: 2401; }
+/* The print/export panel floats opposite the inspector rather than centered,
+   so both panels can remain visible while the map stays interactive. */
 .modal-back.export-place > .modal.export-floating {
   position: absolute;
   top: var(--navaid-inspector-default-top, 96px);
-  right: 12px;
-  left: auto;
+  left: 12px;
+  right: auto;
   margin: 0;
   width: 280px;
   max-width: 92vw;
   max-height: calc(100dvh - var(--navaid-inspector-max-height-offset, 96px));
   overflow: auto;
 }
-html[dir="rtl"] .modal-back.export-place > .modal.export-floating { right: auto; left: 12px; }
+html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; right: 12px; }
 .modal {
   position: relative;        /* anchor the close-✕ to the modal box, not the viewport */
   min-width: min(240px, 92vw);

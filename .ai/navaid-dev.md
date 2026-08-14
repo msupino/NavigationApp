@@ -450,11 +450,25 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   The frame stays centred on the viewport by default, so dragging its border
   pans the map underneath it. The gist boolean `pageFrameLocked` defaults to
   `true`; setting it to `false` restores the legacy movable-frame drag grip.
+  The gist numbers `a3FitZoomOffset` and `a4FitZoomOffset` default to `0`, so
+  an unset gist preserves the calculated page zoom. Negative values zoom out;
+  A4×2 uses `a3FitZoomOffset` because its assembled frame is A3-sized.
   `Fit page to route` likewise pans map content into the locked frame, while
   `refreshPrintFit()` checks whether that action can help without moving the map.
   Print keeps both fit actions visible. `Fit page to route` is disabled/dimmed
   unless a supported page/orientation can contain all print ink. Locked mode
   centres the map on that ink; legacy unlocked mode centres the paper.
+  Opening a waypoint or leg inspector while Print is open raises the shared
+  inspector above the Print panel; closing the inspector reveals Print again.
+  On desktop, the floating Print panel starts opposite the inspector: left in
+  English/LTR and right in Hebrew/RTL. Both panels remain draggable, but
+  collision avoidance prevents either one from covering the other. Opening an
+  inspector moves an overlapping Print panel to the nearest free position. The
+  gist number `floatingPanelGapPx` controls their separation and defaults to 12.
+- **Unnamed closed-loop labels:** repeating an earlier unnamed route waypoint
+  reuses its sequence label. A route closed on its first point is displayed as
+  `WP 1 → … → WP 1` on the map, in inspectors, and in the flight plan; the
+  repeated visit does not acquire a new sequence identity such as `WP 4`.
 - **Keyboard shortcuts cheat-sheet (issue #420):** modal listing every
   global shortcut, openable via the toolbar "Shortcuts" link (in
   `#footer-links`) or the `?` (Shift-`/`) key. Built by

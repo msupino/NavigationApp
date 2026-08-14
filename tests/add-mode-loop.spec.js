@@ -62,6 +62,45 @@ test('in add mode, pressing the first waypoint closes the loop', async ({ page }
   expect(after.selected).toEqual({ type: 'wp', index: 3 });
 });
 
+test('an unnamed closed loop reuses WP1 on the map and in the flight plan', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.8, name: '' },
+      { lat: 32.1, lng: 34.9, name: '' },
+      { lat: 32.2, lng: 34.85, name: '' },
+    ];
+    syncLegs();
+    map.fitBounds(state.waypoints.map(w => [w.lat, w.lng]));
+    draw();
+    setMode('add');
+  });
+  await pressWaypoint(page, 0);
+
+  const labels = await page.evaluate(() => state.waypoints.map((_, i) => wpLabel(i)));
+  expect(labels).toEqual(['WP 1', 'WP 2', 'WP 3', 'WP 1']);
+  expect(await page.evaluate(() => legPairTitle(2))).toBe('WP 3 → WP 1');
+  expect(await page.evaluate(() => {
+    state.waypoints[0].name = 'HOME';
+    const tail = wpLabel(3);
+    state.waypoints[0].name = '';
+    return tail;
+  })).toBe('HOME');
+
+  await page.evaluate(() => {
+    setMode(null);
+    const wp = state.waypoints[0];
+    const p = map.latLngToContainerPoint([wp.lat, wp.lng]);
+    map.fire('mousedown', { containerPoint: L.point(p.x, p.y), latlng: L.latLng(wp.lat, wp.lng) });
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    showFlightPlan();
+  });
+  await expect(page.locator('#insp-title')).toHaveValue('WP 1');
+  const placeholders = await page.locator('.plan-name').evaluateAll(inputs =>
+    inputs.map(input => input.placeholder));
+  expect(placeholders).toEqual(['WP 1', 'WP 2', 'WP 2', 'WP 3', 'WP 3', 'WP 1']);
+});
+
 test('pressing a middle waypoint routes through it again', async ({ page }) => {
   await boot(page);
   await route(page);

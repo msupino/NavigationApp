@@ -2777,7 +2777,7 @@ function showInspector() {
     title.readOnly = true;
     title.oninput = null;
     let labelValue = storedName ? navName(storedName) : '';
-    const defaultWpName = S.wpPrefix + (state.selected.index + 1);
+    const defaultWpName = waypointDisplayLabel(wp, state.selected.index);
     const preferDefaultWpName = !storedName && wp._defaultWpName;
     if (!preferDefaultWpName && refLocale && (!storedName || storedName === canonical)) labelValue = refLocale;
     const nameValue = labelValue || storedName || defaultWpName;
@@ -2891,6 +2891,13 @@ function showInspector() {
   }
   finalizeInspectorActions(body);
   persistInspectorSelection();
+  // The inspector owns its chosen position. If a dragged Print panel occupies
+  // that space, move Print to the nearest free position instead of hiding either.
+  const printBox = document.querySelector('.modal-back.export-options .modal.export-floating');
+  if (printBox && typeof floatingPanelPosition === 'function') {
+    const r = printBox.getBoundingClientRect();
+    setFloatingPanelPosition(printBox, floatingPanelPosition(printBox, insp, r.left, r.top));
+  }
 }
 function colorRow(label, value, onChange, defaultValue) {
   const row = document.createElement('div');
