@@ -101,7 +101,7 @@ test('an unnamed closed loop reuses WP1 on the map and in the flight plan', asyn
   expect(placeholders).toEqual(['WP 1', 'WP 2', 'WP 2', 'WP 3', 'WP 3', 'WP 1']);
 });
 
-test('an unnamed route can leave and revisit WP1 repeatedly without truncation or skipped labels', async ({ page }) => {
+test('a distinct point after an unnamed return gets the next unused label', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     state.waypoints = [
@@ -122,7 +122,6 @@ test('an unnamed route can leave and revisit WP1 repeatedly without truncation o
     map.fire('mousedown', { containerPoint: p, latlng: ll });
     map.fire('click', { containerPoint: p, latlng: ll }); // add a new distinct point
   });
-  await pressWaypoint(page, 0); // ... WP4 WP1
 
   const result = await page.evaluate(() => ({
     count: state.waypoints.length,
@@ -130,41 +129,56 @@ test('an unnamed route can leave and revisit WP1 repeatedly without truncation o
     labels: state.waypoints.map((_, i) => wpLabel(i)),
     coords: state.waypoints.map(w => [w.lat, w.lng]),
   }));
-  expect(result.count).toBe(6);
-  expect(result.legs).toBe(5);
-  expect(result.labels).toEqual(['WP 1', 'WP 2', 'WP 3', 'WP 1', 'WP 4', 'WP 1']);
+  expect(result.count).toBe(5);
+  expect(result.legs).toBe(4);
+  expect(result.labels).toEqual(['WP 1', 'WP 2', 'WP 3', 'WP 1', 'WP 4']);
   expect(result.coords[0]).toEqual(result.coords[3]);
-  expect(result.coords[0]).toEqual(result.coords[5]);
+
+  // The invariant is independent of turn detection: revisiting the shared
+  // point again must append another visit without truncating the route.
+  await pressWaypoint(page, 0);
+  const revisited = await page.evaluate(() => ({
+    count: state.waypoints.length,
+    legs: state.legs.length,
+    labels: state.waypoints.map((_, i) => wpLabel(i)),
+    same: sameMapPoint(state.waypoints[0], state.waypoints[5]),
+  }));
+  expect(revisited).toEqual({
+    count: 6,
+    legs: 5,
+    labels: ['WP 1', 'WP 2', 'WP 3', 'WP 1', 'WP 4', 'WP 1'],
+    same: true,
+  });
 });
 
-test('pointer jitter while revisiting a shared point extends instead of deleting its adjacent leg', async ({ page }) => {
+test('pointer jitter while turning from WP4 back to WP3 appends the return leg', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(() => {
-    map.setView([32.0, 34.8], 16);
-    const origin = L.latLng(32.0, 34.8);
-    const p = map.latLngToContainerPoint(origin);
+    map.setView([32.07, 34.82], 16);
+    const turnBackTo = L.latLng(32.07, 34.82);
+    const p = map.latLngToContainerPoint(turnBackTo);
     state.waypoints = [
-      { lat: origin.lat, lng: origin.lng, name: '' },
+      { lat: 32.0, lng: 34.8, name: '' },
       { lat: 32.04, lng: 34.84, name: '' },
-      { lat: 32.07, lng: 34.82, name: '' },
-      { lat: origin.lat, lng: origin.lng, name: '' },
-      { lat: origin.lat, lng: origin.lng + 0.001, name: '' },
+      { lat: turnBackTo.lat, lng: turnBackTo.lng, name: '' },
+      { lat: turnBackTo.lat, lng: turnBackTo.lng + 0.001, name: '' },
     ];
     syncLegs();
     draw();
-    // Keep WP4 outside WP1's hit target but close enough that a tiny movement
-    // toward it used to activate the adjacent-waypoint delete gesture.
-    const wp4Point = L.point(p.x + waypointGeom(0).r + tune('hitWaypointExtraPx') + 3, p.y);
+    // Keep WP4 outside WP3's hit target but close enough that a tiny movement
+    // toward it used to activate the adjacent-waypoint delete gesture instead
+    // of adding WP3 as the first return leg.
+    const wp4Point = L.point(p.x + waypointGeom(2).r + tune('hitWaypointExtraPx') + 3, p.y);
     const wp4 = map.containerPointToLatLng(wp4Point);
-    state.waypoints[4].lat = wp4.lat;
-    state.waypoints[4].lng = wp4.lng;
+    state.waypoints[3].lat = wp4.lat;
+    state.waypoints[3].lng = wp4.lng;
     syncLegs();
     draw();
     setMode('add');
 
-    const start = map.latLngToContainerPoint(origin);
+    const start = map.latLngToContainerPoint(turnBackTo);
     const jitter = L.point(start.x + 2, start.y);
-    map.fire('mousedown', { containerPoint: start, latlng: origin });
+    map.fire('mousedown', { containerPoint: start, latlng: turnBackTo });
     map.fire('mousemove', { containerPoint: jitter,
       latlng: map.containerPointToLatLng(jitter) });
     window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
@@ -172,13 +186,13 @@ test('pointer jitter while revisiting a shared point extends instead of deleting
       count: state.waypoints.length,
       legs: state.legs.length,
       labels: state.waypoints.map((_, i) => wpLabel(i)),
-      repeated: sameMapPoint(state.waypoints[0], state.waypoints[5]),
+      repeated: sameMapPoint(state.waypoints[2], state.waypoints[4]),
     };
   });
 
-  expect(result.count).toBe(6);
-  expect(result.legs).toBe(5);
-  expect(result.labels).toEqual(['WP 1', 'WP 2', 'WP 3', 'WP 1', 'WP 4', 'WP 1']);
+  expect(result.count).toBe(5);
+  expect(result.legs).toBe(4);
+  expect(result.labels).toEqual(['WP 1', 'WP 2', 'WP 3', 'WP 4', 'WP 3']);
   expect(result.repeated).toBe(true);
 });
 
