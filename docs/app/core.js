@@ -1808,7 +1808,7 @@ window.S = Object.assign({
   offlineCancelled: 'cancelled',
   offlineDone: 'saved ',
   offlineTilesCount: 'offline tiles: ',
-  tbLegDir: '🧭 Leg kites',
+  tbLegDir: '🧭 Route direction',
   tbLegDirTitle: 'Which direction\u2019s leg kites to draw. On an out-and-back route both directions land on top of each other near the turnaround — readable on screen, unusable on a printed map. The route line is never hidden, only the kites.',
   tbLegDirBoth: 'Both directions',
   tbLegDirOut: 'Outbound only',
