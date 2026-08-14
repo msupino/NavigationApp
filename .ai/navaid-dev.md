@@ -488,14 +488,14 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   includes the cumulative-time kite layer in the exported PNG; disabling
   it still renders leg markers but hides cumulative kites. Drift lines have
   no separate print override: export uses the route's current global and
-  per-leg drift visibility. The outbound / return direction selector filters every
-  route-bound visual: track lines, waypoints, kites, drift/minute/distance/wind/profile
-  marks, anchored notes, route totals, flight-plan rows/profile and the placed plan
-  card. Route Fit also uses only the selected half. Global chart overlays and free
-  map notes stay visible. A placed card starts in the visible part of an oversized,
-  zoomed-in page frame. In the printed plan card, airfield procedure legs that omit
-  leg time also omit direction (airfield to first reporting point and last reporting
-  point to airfield).
+  per-leg drift visibility. The outbound / return selector filters route-bound map
+  visuals: track lines, waypoints, kites, drift, time and distance marks, wind and
+  profile marks, and anchored notes. It also filters route totals, flight-plan rows
+  and profile, the placed plan card, print ink bounds, and Route Fit. Global chart
+  overlays and free map notes stay visible.
+  A placed card starts in the visible part of an oversized, zoomed-in page frame. In
+  the printed plan card, airfield procedure legs that omit leg time also omit direction
+  (airfield to first reporting point and last reporting point to airfield).
 - **GPS track recorder:** the `📍 Record GPS track` toggle in the View/Set
   toolbar section records the flown path from the device GPS (live own-ship
   dot + breadcrumb trail on the map). On Stop it auto-saves a timestamped

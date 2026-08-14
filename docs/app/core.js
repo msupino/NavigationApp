@@ -4227,6 +4227,12 @@ function legDirVisible(i) {
   if (t < 0) return true;             // no turn: nothing to divide, so hide nothing
   return f === 'out' ? i < t : i >= t;
 }
+function legDirVisibleIndexes() {
+  const indexes = [];
+  const legs = (typeof state !== 'undefined' && state.legs) || [];
+  for (let i = 0; i < legs.length; i++) if (legDirVisible(i)) indexes.push(i);
+  return indexes;
+}
 function legDirWaypointVisible(i) {
   const f = (typeof legDirFilter === 'string') ? legDirFilter : 'both';
   if (f !== 'out' && f !== 'back') return true;

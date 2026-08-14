@@ -3119,10 +3119,8 @@ function showFlightPlan() {
     dirRow.appendChild(lEnd); dirRow.appendChild(arrow); dirRow.appendChild(rEnd);
     profWrap.appendChild(dirRow);
     refreshProfileDirection = function () {
-      const indexes = [];
-      for (let i = 0; i < state.legs.length; i++) {
-        if (typeof legDirVisible !== 'function' || legDirVisible(i)) indexes.push(i);
-      }
+      const indexes = typeof legDirVisibleIndexes === 'function'
+        ? legDirVisibleIndexes() : state.legs.map((_, i) => i);
       dirRow.hidden = indexes.length === 0;
       if (!indexes.length) return;
       const depIndex = indexes[0], destIndex = indexes[indexes.length - 1] + 1;
@@ -3601,10 +3599,8 @@ function showFlightPlan() {
     table.classList.toggle('no-vor', !anyVorActive());
     let td = 0, th = 0, tf = 0;
     const ac = aircraft;
-    const visibleIndexes = [];
-    for (let i = 0; i < state.legs.length; i++) {
-      if (typeof legDirVisible !== 'function' || legDirVisible(i)) visibleIndexes.push(i);
-    }
+    const visibleIndexes = typeof legDirVisibleIndexes === 'function'
+      ? legDirVisibleIndexes() : state.legs.map((_, i) => i);
     const firstVisible = visibleIndexes.length ? visibleIndexes[0] : 0;
     const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[firstVisible]) ? ac.taxiGal : 0;
     if (taxiFuel) tf = taxiFuel;

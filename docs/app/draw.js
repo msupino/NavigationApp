@@ -321,10 +321,8 @@ function drawProfileMarkers() {
 // (x,y,w,h). Used by the Flight Plan modal (#672).
 function drawVerticalProfile(ctx, x, y, w, h) {
   if (typeof routeProfile !== 'function') return;
-  const visibleIndexes = [];
-  for (let i = 0; i < (state.legs || []).length; i++) {
-    if (typeof legDirVisible !== 'function' || legDirVisible(i)) visibleIndexes.push(i);
-  }
+  const visibleIndexes = typeof legDirVisibleIndexes === 'function'
+    ? legDirVisibleIndexes() : (state.legs || []).map((_, i) => i);
   const prof = routeProfile(undefined, visibleIndexes);
   if (!prof.pts.length || prof.totalDist <= 0) return;
   const alts = prof.pts.map(p => p.alt);
@@ -4280,10 +4278,8 @@ function drawInfo() {
   // different ETEs for one route. (Per-leg kite times stay still-air/TAS on purpose:
   // they have to agree with the minute ticks they sit on.)
   const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
-  const legIndexes = [];
-  for (let i = 0; i < state.legs.length; i++) {
-    if (typeof legDirVisible !== 'function' || legDirVisible(i)) legIndexes.push(i);
-  }
+  const legIndexes = typeof legDirVisibleIndexes === 'function'
+    ? legDirVisibleIndexes() : state.legs.map((_, i) => i);
   let totalDist = 0, totalH = 0, totalFuel = 0;
   if (prof) {
     for (const i of legIndexes) {
@@ -4580,12 +4576,8 @@ function clampPageOffset() {
 // (or null when there's no route). Paper-print look — white bg, black text.
 // Shared by the live export preview and the PNG render so they match exactly.
 function flightPlanCardLegIndexes() {
-  const legs = state.legs || [];
-  const indexes = [];
-  for (let i = 0; i < legs.length; i++) {
-    if (typeof legDirVisible !== 'function' || legDirVisible(i)) indexes.push(i);
-  }
-  return indexes;
+  return typeof legDirVisibleIndexes === 'function'
+    ? legDirVisibleIndexes() : (state.legs || []).map((_, i) => i);
 }
 
 function flightPlanCardHasVorInfo() {
