@@ -636,11 +636,13 @@ test('printing warns when the route runs off the page, and can fit it', async ({
   const after = await page.evaluate(() => {
     document.getElementById('print-fit').click();
     return { fit: routePageFit().fits, warn: !document.getElementById('print-clip-warn').hidden,
-      fitBtn: !document.getElementById('print-fit').hidden, orient: pageOrient };
+      fitBtn: !document.getElementById('print-fit').hidden,
+      fitDisabled: document.getElementById('print-fit').disabled, orient: pageOrient };
   });
   expect(after.fit).toBe(true);                // one click puts the whole route on the page
   expect(after.warn).toBe(false);
-  expect(after.fitBtn).toBe(false);
+  expect(after.fitBtn).toBe(true);
+  expect(after.fitDisabled).toBe(true);
 });
 
 test('a route too long for any page says so instead of offering a fit', async ({ page }) => {
@@ -651,11 +653,13 @@ test('a route too long for any page says so instead of offering a fit', async ({
     state.legs = []; syncLegs(); fitView(); setPage('A4'); draw();
     return { text: document.getElementById('print-clip-warn').textContent,
       warn: !document.getElementById('print-clip-warn').hidden,
-      fitBtn: !document.getElementById('print-fit').hidden };
+      fitBtn: !document.getElementById('print-fit').hidden,
+      fitDisabled: document.getElementById('print-fit').disabled };
   });
   expect(r.warn).toBe(true);
   expect(r.text).toMatch(/No page size/);
-  expect(r.fitBtn).toBe(false);                // nothing to offer, so no dead button
+  expect(r.fitBtn).toBe(true);
+  expect(r.fitDisabled).toBe(true);            // visible, but dimmed because no page can help
 });
 
 test('the legend keeps its size with no route, across reloads', async ({ page }) => {

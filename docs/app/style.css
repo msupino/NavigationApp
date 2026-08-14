@@ -101,6 +101,10 @@ html, body {
   white-space: nowrap;
 }
 #toolbar button:hover { background: #3c3737; }
+#toolbar button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
 #toolbar button.tool.active,
 #toolbar button[aria-pressed="true"] {
   background: #1d6fe0;

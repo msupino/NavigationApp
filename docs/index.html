@@ -610,12 +610,10 @@
         </div>
         <button id="print-fit-screen" type="button"
                 data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
-        <!-- Clipping warning + one-click fix. The page frame is a fixed real-world
-             size, so a long route simply cannot fit and Print used to cut it off
-             without a word. Both are shown only when the route actually overruns
-             (see refreshPrintFit). -->
+        <!-- Clipping warning + one-click fix. The warning is conditional, while the
+             action stays visible and is disabled when no useful fit is available. -->
         <div id="print-clip-warn" class="print-clip-warn" hidden></div>
-        <button id="print-fit" type="button" hidden
+        <button id="print-fit" type="button" disabled
                 data-i18n="printFitPage" data-i18n-title="printFitPageTitle"></button>
         <div class="tb-print-separator" aria-hidden="true"></div>
         <button id="print" data-i18n="tbPrint" data-i18n-title="tbPrintTitle"></button>

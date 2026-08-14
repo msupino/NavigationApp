@@ -447,6 +447,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   size button again clears it. Orientation chosen via the
   `chooseOrientation()` modal. The toolbar Fit button and `F` fit the active
   page frame when one is selected; without a frame they fit the route.
+  Print keeps both fit actions visible: `Fit page to route` is disabled/dimmed
+  unless clipping can be resolved by changing the page size or orientation.
 - **Keyboard shortcuts cheat-sheet (issue #420):** modal listing every
   global shortcut, openable via the toolbar "Shortcuts" link (in
   `#footer-links`) or the `?` (Shift-`/`) key. Built by

@@ -64,11 +64,13 @@ test('a clipped kite triggers the warning even when every waypoint is inside', a
   expect(wpsStillInside).toBe(true);                 // the old check would have passed here
   const r = await page.evaluate(() => ({ fit: routePageFit(),
     warn: !document.getElementById('print-clip-warn').hidden,
-    fitBtn: !document.getElementById('print-fit').hidden }));
+    fitBtn: !document.getElementById('print-fit').hidden,
+    fitDisabled: document.getElementById('print-fit').disabled }));
   expect(r.fit.fits).toBe(false);
   expect(r.fit.inside).toBeLessThan(r.fit.total);
   expect(r.warn).toBe(true);
   expect(r.fitBtn).toBe(true);
+  expect(r.fitDisabled).toBe(false);
 });
 
 test('Fit page to route fits the ink, not just the coordinates', async ({ page }) => {
@@ -78,10 +80,26 @@ test('Fit page to route fits the ink, not just the coordinates', async ({ page }
   const after = await page.evaluate(() => {
     document.getElementById('print-fit').click();
     draw();
-    return { fit: routePageFit(), warn: !document.getElementById('print-clip-warn').hidden };
+    return { fit: routePageFit(), warn: !document.getElementById('print-clip-warn').hidden,
+      fitVisible: !document.getElementById('print-fit').hidden,
+      fitDisabled: document.getElementById('print-fit').disabled };
   });
   expect(after.fit.fits).toBe(true);
   expect(after.warn).toBe(false);
+  expect(after.fitVisible).toBe(true);
+  expect(after.fitDisabled).toBe(true);
+});
+
+test('Fit page to route stays visible but dimmed when the page already fits', async ({ page }) => {
+  await boot(page);
+  await twoLegRoute(page);
+  const state = await page.evaluate(() => {
+    const button = document.getElementById('print-fit');
+    return { visible: !button.hidden, disabled: button.disabled, fits: routePageFit().fits };
+  });
+  expect(state.fits).toBe(true);
+  expect(state.visible).toBe(true);
+  expect(state.disabled).toBe(true);
 });
 
 test('notes and comm callouts count as ink', async ({ page }) => {
@@ -158,9 +176,11 @@ test('a route too long for any page keeps its own message', async ({ page }) => 
   const r = await page.evaluate(() => {
     state.waypoints = [{ lat: 31.23, lng: 34.79, name: 'LLBS' }, { lat: 32.99, lng: 35.57, name: 'LLIB' }];
     state.legs = []; syncLegs(); fitView(); setPage('A4'); draw();
+    const button = document.getElementById('print-fit');
     return { text: document.getElementById('print-clip-warn').textContent,
-      fitBtn: !document.getElementById('print-fit').hidden };
+      fitBtn: !button.hidden, fitDisabled: button.disabled };
   });
   expect(r.text).toMatch(/No page size/);
-  expect(r.fitBtn).toBe(false);
+  expect(r.fitBtn).toBe(true);
+  expect(r.fitDisabled).toBe(true);
 });
