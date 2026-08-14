@@ -5803,6 +5803,10 @@ function restoreRoute() {
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
     ...(w._defaultWpName ? { _defaultWpName: 1 } : {}),
+    // Third place waypoints are rebuilt field by field (serializeRoute and applyRouteData
+    // are the other two). Anything not named here is dropped, which is how a marked
+    // turning point vanished on every reload -- and switching language IS a reload.
+    ...(w.turn ? { turn: 1 } : {}),
   }));
   // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
   // scale proportionally with zoom. Pre-#393 blobs lack `_m` and hold raw

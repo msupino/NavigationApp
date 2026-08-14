@@ -703,3 +703,47 @@ test.describe('a turning point names the exported files', () => {
     expect(slug).toMatch(/^[A-Za-z0-9-]+$/);   // no spaces or punctuation in a filename
   });
 });
+
+// Waypoints are rebuilt field by field in THREE places -- serializeRoute, applyRouteData,
+// and the session restore -- so a new field has to be added to all three or it silently
+// vanishes. Reported as: switching language loses the marked turning point (a language
+// change is a reload, which goes through the session restore).
+test('the turning point survives a reload, including a language change', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+      { lat: 32.21056, lng: 34.80722, name: 'SFAIM' },
+      { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
+      { lat: 32.14083, lng: 34.80139, name: 'KNTRY' },
+      { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+    ];
+    syncLegs();
+    setTurnWaypoint(2);          // TYONA
+    persist();                   // what every edit does
+  });
+
+  // A plain reload first.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof legRetraceTurnIndex === 'function' &&
+    state.waypoints.length === 5);
+  const afterReload = await page.evaluate(() => ({
+    marked: state.waypoints.findIndex(w => w.turn),
+    turn: legRetraceTurnIndex(),
+  }));
+  expect(afterReload.marked).toBe(2);
+  expect(afterReload.turn).toBe(2);
+
+  // Then the language switch, which is the reported case.
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => typeof legRetraceTurnIndex === 'function' &&
+    state.waypoints.length === 5);
+  const afterLang = await page.evaluate(() => ({
+    marked: state.waypoints.findIndex(w => w.turn),
+    turn: legRetraceTurnIndex(),
+    picker: document.getElementById('leg-dir-select').disabled,
+  }));
+  expect(afterLang.marked).toBe(2);
+  expect(afterLang.turn).toBe(2);
+  expect(afterLang.picker).toBe(false);   // and the picker is still usable
+});
