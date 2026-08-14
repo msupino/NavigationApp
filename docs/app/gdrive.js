@@ -366,6 +366,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.ai.key.anthropic',   'navaid.ai.model.anthropic',
   'navaid.ai.key.openrouter',  'navaid.ai.model.openrouter',
   'navaid.ai.key.deepseek',    'navaid.ai.model.deepseek',
+  'navaid.ai.key.orcarouter',  'navaid.ai.model.orcarouter',
 ];
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
 const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';

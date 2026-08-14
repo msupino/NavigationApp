@@ -678,6 +678,13 @@
     anthropic: { label: 'Anthropic (Claude)', model: 'claude-sonnet-5', keyUrl: 'https://console.anthropic.com/settings/keys', send: anthropicSend },
     openrouter: { label: 'OpenRouter', model: 'openai/gpt-4o-mini', keyUrl: 'https://openrouter.ai/keys', send: openAiCompatSend, base: 'https://openrouter.ai/api/v1', openaiCompat: true },
     deepseek: { label: 'DeepSeek', model: 'deepseek-chat', keyUrl: 'https://platform.deepseek.com/api_keys', send: openAiCompatSend, base: 'https://api.deepseek.com', openaiCompat: true, browserBlocked: true },
+    // OrcaRouter is a BYOK gateway over ~185 models behind an OpenAI-compatible endpoint, so
+    // it reuses this adapter. Its preflight answers Access-Control-Allow-Origin: *, so unlike
+    // DeepSeek it works browser-direct with no proxy. The default is an explicit model rather
+    // than one of the orcarouter/fusion auto-routing ids: this assistant is useless without
+    // tool calls, and a router that picks the model per prompt cannot promise every pick
+    // supports them. Any id from the catalog can be typed into the model field.
+    orcarouter: { label: 'OrcaRouter', model: 'google/gemini-2.5-flash', keyUrl: 'https://www.orcarouter.ai/console/token', send: openAiCompatSend, base: 'https://api.orcarouter.ai/v1', openaiCompat: true },
   };
   async function dispatchSend(messages) { return PROVIDERS[activeProvider()].send(messages); }
   let providerSend = dispatchSend;   // tests override via NS.assistant._setProvider
@@ -989,6 +996,14 @@
     if (typeof L !== 'undefined' && L.Control && typeof map !== 'undefined' && map && map.addControl) {
       const wrap = el('div', 'leaflet-control assistant-fab-control');
       wrap.appendChild(fab);
+      // The control sits INSIDE the map container, so without this a tap on the launcher
+      // also reaches the map underneath it -- in add-waypoint mode that dropped a waypoint
+      // where the button is and opened its inspector on top of the chat. Leaflet's own
+      // controls do this in their onAdd; a custom one has to ask.
+      if (L.DomEvent && L.DomEvent.disableClickPropagation) {
+        L.DomEvent.disableClickPropagation(wrap);
+        L.DomEvent.disableScrollPropagation(wrap);
+      }
       const Ctl = L.Control.extend({ options: { position: 'bottomright' }, onAdd: () => wrap });
       map.addControl(new Ctl());
       const corner = wrap.parentNode;   // the bottomright corner container
@@ -1005,7 +1020,7 @@
 
     // Provider picker.
     const provSel = el('select', 'assistant-field');
-    for (const id of ['gemini', 'anthropic', 'openrouter', 'deepseek']) {
+    for (const id of ['gemini', 'anthropic', 'openrouter', 'deepseek', 'orcarouter']) {
       const opt = el('option', null, PROVIDERS[id].label + (id === 'gemini' ? ' — ' + t('assistantFreeTier', 'free tier') : ''));
       opt.value = id; provSel.appendChild(opt);
     }
@@ -1027,6 +1042,11 @@
         baseIn.value = ls(baseKey(id)) || '';
       }
       modelIn.placeholder = P.model;
+      // The provider's own endpoint, shown the same way the model default is: an empty box
+      // reads as "unset" when it actually means "use the provider's URL". Placeholder, not
+      // value -- a filled-in value gets SAVED as a per-provider override, freezing the
+      // endpoint at whatever shipped instead of following the provider entry.
+      baseIn.placeholder = P.base || t('assistantBaseUrlPlaceholder', 'Base URL (optional proxy)');
       link.textContent = t('assistantGetKey', 'Get an API key') + ' — ' + P.label;
       link.href = P.keyUrl;
       baseIn.style.display = P.openaiCompat ? '' : 'none';   // proxy override for OpenAI-compatible providers
@@ -1035,17 +1055,31 @@
         : '';
       note.style.display = note.textContent ? '' : 'none';
     }
+    // Write the three boxes to whichever provider they belong to. Save uses it, and so does
+    // a provider switch -- otherwise a key typed but not yet saved would vanish the moment
+    // the picker reloads the fields for the newly chosen provider.
+    function persist(id) {
+      setLs(keyKey(id), keyIn.value.trim() || null);
+      setLs(modelKey(id), modelIn.value.trim() || null);
+      if (PROVIDERS[id].openaiCompat) setLs(baseKey(id), baseIn.value.trim() || null);
+    }
     provSel.value = activeProvider();
     syncProvider(provSel.value, true);
-    provSel.onchange = () => syncProvider(provSel.value, true);
+    // Picking a provider switches to it immediately. It used to only preview the provider's
+    // stored settings, leaving the previous one active until Save -- closing the panel then
+    // sent the next question to a provider the picker was no longer showing.
+    provSel.onchange = () => {
+      persist(activeProvider());        // keep whatever was typed for the one being left
+      setLs(PROV, provSel.value);
+      syncProvider(provSel.value, true);
+      toast(t('assistantProviderSwitched', 'Using') + ' ' + PROVIDERS[provSel.value].label);
+    };
 
     const save = el('button', 'assistant-send', t('assistantSaveKey', 'Save')); save.type = 'button';
     save.onclick = () => {
       const id = provSel.value;
       setLs(PROV, id);
-      setLs(keyKey(id), keyIn.value.trim() || null);
-      setLs(modelKey(id), modelIn.value.trim() || null);
-      if (PROVIDERS[id].openaiCompat) setLs(baseKey(id), baseIn.value.trim() || null);
+      persist(id);
       box.classList.add('hidden');
       toast(t('assistantKeySaved', 'Settings saved'));
     };

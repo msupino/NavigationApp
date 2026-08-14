@@ -30,6 +30,23 @@ async function boot(page) {
 const runTool = (page, name, args) => page.evaluate(([n, a]) =>
   NavAid.assistant._tools.find(t => t.name === n).run(a), [name, args]);
 
+// The launcher is a Leaflet control, so it lives inside the map container: without
+// disableClickPropagation a tap on it also reached the map, and in add-waypoint mode that
+// dropped a waypoint under the button and opened its inspector over the chat.
+test('tapping the launcher in add mode does not also drop a waypoint on the map', async ({ page }) => {
+  await boot(page);
+  const before = await page.evaluate(() => state.waypoints.length);
+  await page.evaluate(() => { state.mode = 'add'; });
+  await page.locator('.assistant-fab').click();
+  await expect(page.locator('.assistant-panel')).not.toHaveClass(/hidden/);
+  const after = await page.evaluate(() => ({
+    wps: state.waypoints.length,
+    inspector: !!document.querySelector('#inspector:not(.hidden)'),
+  }));
+  expect(after.wps).toBe(before);        // the click never reached the map
+  expect(after.inspector).toBe(false);
+});
+
 test('the FAB docks in the bottom-right control column and hides no control', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
@@ -450,12 +467,38 @@ test('DeepSeek adapter: uses api.deepseek.com and a proxy base URL override', as
   await expect.poll(() => hitProxy).toBe(true);
 });
 
-test('settings offer Gemini, Claude, OpenRouter and DeepSeek; DeepSeek shows the CORS note', async ({ page }) => {
+test('OrcaRouter adapter: OpenAI-compatible, api.orcarouter.ai, browser-direct (no CORS note)', async ({ page }) => {
+  await boot(page);
+  let calls = 0, auth = null, model = null, sawFnTools = false, sawToolRole = false;
+  await page.route(/^https:\/\/api\.orcarouter\.ai\/v1\//, async route => {
+    calls++;
+    const req = route.request();
+    auth = req.headers()['authorization'];
+    const body = JSON.parse(req.postData() || '{}');
+    model = body.model;
+    if (body.tools && body.tools[0] && body.tools[0].type === 'function') sawFnTools = true;
+    if ((body.messages || []).some(m => m.role === 'tool')) sawToolRole = true;
+    const resp = calls === 1
+      ? { choices: [{ message: { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'describe_route', arguments: '{}' } }] } }] }
+      : { choices: [{ message: { role: 'assistant', content: 'No route.' } }] };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(resp) });
+  });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'orcarouter'); localStorage.setItem('navaid.ai.key.orcarouter', 'sk-orca'); });
+  await page.evaluate(() => NavAid.assistant.send('my route?'));
+  await expect(page.locator('.assistant-assistant')).toContainText('No route');
+  expect(calls).toBe(2);
+  expect(auth).toBe('Bearer sk-orca');
+  expect(model).toBe('google/gemini-2.5-flash');   // an explicit tool-calling model, not an auto-router id
+  expect(sawFnTools).toBe(true);
+  expect(sawToolRole).toBe(true);
+});
+
+test('settings offer Gemini, Claude, OpenRouter, DeepSeek and OrcaRouter; only DeepSeek shows the CORS note', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => NavAid.assistant.open());
   await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
   const sel = page.locator('.assistant-settings select.assistant-field');
-  await expect(sel.locator('option')).toHaveCount(4);
+  await expect(sel.locator('option')).toHaveCount(5);
   await sel.selectOption('deepseek');
   await expect(page.locator('.assistant-note')).toBeVisible();
   await expect(page.locator('.assistant-note')).toContainText(/CORS|proxy/i);
@@ -463,6 +506,44 @@ test('settings offer Gemini, Claude, OpenRouter and DeepSeek; DeepSeek shows the
   await expect(page.locator('.assistant-note')).toBeHidden();   // OpenRouter works browser-direct
   await sel.selectOption('gemini');
   await expect(page.locator('.assistant-note')).toBeHidden();
+  await sel.selectOption('orcarouter');
+  await expect(page.locator('.assistant-note')).toBeHidden();   // sends Access-Control-Allow-Origin: * -- no proxy needed
+});
+
+test('picking a provider switches to it at once, carrying an unsaved key with it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => NavAid.assistant.open());
+  await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
+  const sel = page.locator('.assistant-settings select.assistant-field');
+  const key = page.locator('.assistant-settings input[type=password]');
+  // Type a key for the provider on screen, then switch away WITHOUT pressing Save.
+  await sel.selectOption('orcarouter');
+  await key.fill('sk-orca');
+  await sel.selectOption('anthropic');
+  // The switch took effect immediately -- no Save needed.
+  expect(await page.evaluate(() => localStorage.getItem('navaid.ai.provider'))).toBe('anthropic');
+  await expect(key).toHaveValue('');                       // Claude's own (empty) key, not OrcaRouter's
+  // ...and the typed key was kept against the provider it was typed for.
+  expect(await page.evaluate(() => localStorage.getItem('navaid.ai.key.orcarouter'))).toBe('sk-orca');
+  await sel.selectOption('orcarouter');
+  await expect(key).toHaveValue('sk-orca');
+  expect(await page.evaluate(() => localStorage.getItem('navaid.ai.provider'))).toBe('orcarouter');
+});
+
+test('the Base URL box shows the provider endpoint it would use, without storing it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => NavAid.assistant.open());
+  await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
+  const sel = page.locator('.assistant-settings select.assistant-field');
+  const base = page.locator('.assistant-settings input[placeholder]').nth(2);
+  await sel.selectOption('orcarouter');
+  await expect(base).toHaveAttribute('placeholder', 'https://api.orcarouter.ai/v1');
+  await expect(base).toHaveValue('');            // a value would be saved as an override
+  await sel.selectOption('deepseek');
+  await expect(base).toHaveAttribute('placeholder', 'https://api.deepseek.com');
+  // Saving with the box left empty must not freeze the endpoint as an override.
+  await page.locator('.assistant-settings button.assistant-send').click();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.ai.baseUrl.deepseek'))).toBeNull();
 });
 
 test('get_weather parses Open-Meteo current conditions (fetch mocked)', async ({ page }) => {
