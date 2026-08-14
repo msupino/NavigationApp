@@ -3104,11 +3104,8 @@ function showFlightPlan() {
   // Direction indicator above the strip — the profile/X-axis mirrors in RTL
   // (Hebrew), so spell out the flow: departure → destination with a centred
   // arrow, oriented to match the axis (arrow points the way it's flown).
+  let refreshProfileDirection = function () {};
   (function () {
-    const wps = state.waypoints || [];
-    if (wps.length < 2) return;
-    const depName = navName((wps[0].name || '').trim()) || (S.wpPrefix + 1);
-    const destName = navName((wps[wps.length - 1].name || '').trim()) || (S.wpPrefix + wps.length);
     const rtl = document.documentElement && document.documentElement.dir === 'rtl';
     const label = S.fpDirection || 'Direction';
     const dirRow = document.createElement('div');
@@ -3118,12 +3115,23 @@ function showFlightPlan() {
     const arrow = document.createElement('span');
     arrow.className = 'fp-dir-arrow';
     const rEnd = document.createElement('span');
-    // d=0 (departure) is on the left in LTR, on the right in RTL.
-    lEnd.textContent = rtl ? destName : depName;
-    rEnd.textContent = rtl ? depName : destName;
     arrow.textContent = rtl ? ('◄ ' + label) : (label + ' ►');
     dirRow.appendChild(lEnd); dirRow.appendChild(arrow); dirRow.appendChild(rEnd);
     profWrap.appendChild(dirRow);
+    refreshProfileDirection = function () {
+      const indexes = typeof legDirVisibleIndexes === 'function'
+        ? legDirVisibleIndexes() : state.legs.map((_, i) => i);
+      dirRow.hidden = indexes.length === 0;
+      if (!indexes.length) return;
+      const depIndex = indexes[0], destIndex = indexes[indexes.length - 1] + 1;
+      const dep = state.waypoints[depIndex] || {}, dest = state.waypoints[destIndex] || {};
+      const depName = navName((dep.name || '').trim()) || (S.wpPrefix + (depIndex + 1));
+      const destName = navName((dest.name || '').trim()) || (S.wpPrefix + (destIndex + 1));
+      // d=0 (departure) is on the left in LTR, on the right in RTL.
+      lEnd.textContent = rtl ? destName : depName;
+      rEnd.textContent = rtl ? depName : destName;
+    };
+    refreshProfileDirection();
   })();
   const profCanvas = document.createElement('canvas');
   profCanvas.className = 'fp-profile-canvas';
@@ -3132,6 +3140,7 @@ function showFlightPlan() {
   box.appendChild(profWrap);
   drawProfileStripIfOpen = function () {
     if (!profCanvas.isConnected) return;
+    refreshProfileDirection();
     const cssW = profCanvas.clientWidth || 600;
     profCanvas.width = cssW; profCanvas.height = 104;
     const cx = profCanvas.getContext('2d');
@@ -3372,6 +3381,8 @@ function showFlightPlan() {
   const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
   const radialCells = [];              // leg index -> VOR radial cell (To wp)
   const dmeCells = [];                 // leg index -> VOR DME cell (To wp)
+  const legRows = [];                  // leg index -> forward table row
+  const seqCells = [];                 // leg index -> visible sequence number
   // Radial (magnetic) + DME of a waypoint from the selected reference VOR.
   // Per-leg override (leg.vorRef) wins over the global reference VOR.
   const legVorSelects = [];             // { sel, leg } for every Radial cell
@@ -3381,7 +3392,8 @@ function showFlightPlan() {
   }
   function anyVorActive() {
     return !!(typeof activeVor === 'function' && activeVor()) ||
-      state.legs.some(l => l && l.vorRef);
+      state.legs.some((l, i) => l && l.vorRef &&
+        (typeof legDirVisible !== 'function' || legDirVisible(i)));
   }
   function vorCells(wp, leg) {
     const v = legVorObj(leg);
@@ -3435,7 +3447,9 @@ function showFlightPlan() {
     const leg = state.legs[i];
     const { dist, brg } = geo(A, B);
     const tr = document.createElement('tr');
-    tr.appendChild(fpCell('seq', planCell(String(i + 1))));
+    const seqCell = planCell(String(i + 1));
+    seqCells[i] = seqCell;
+    tr.appendChild(fpCell('seq', seqCell));
     tr.appendChild(fpCell('from', nameCell(i)));
     tr.appendChild(fpCell('to', nameCell(i + 1)));
     const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
@@ -3539,6 +3553,7 @@ function showFlightPlan() {
       delTd.appendChild(delBtn);
       tr.appendChild(fpCell('delete', delTd));
     })(i);
+    legRows[i] = tr;
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -3584,13 +3599,22 @@ function showFlightPlan() {
     table.classList.toggle('no-vor', !anyVorActive());
     let td = 0, th = 0, tf = 0;
     const ac = aircraft;
-    const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
+    const visibleIndexes = typeof legDirVisibleIndexes === 'function'
+      ? legDirVisibleIndexes() : state.legs.map((_, i) => i);
+    const firstVisible = visibleIndexes.length ? visibleIndexes[0] : 0;
+    const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[firstVisible]) ? ac.taxiGal : 0;
     if (taxiFuel) tf = taxiFuel;
     // Per-leg time/fuel accounting for climb & descent (#672); falls back to
     // flat cruise per leg when the profile engine is unavailable.
     const prof = typeof routeProfile === 'function' ? routeProfile(ac) : null;
     if (typeof drawProfileStripIfOpen === 'function') drawProfileStripIfOpen();
+    let visibleSeq = 0;
     for (let i = 0; i < state.legs.length; i++) {
+      const visible = typeof legDirVisible !== 'function' || legDirVisible(i);
+      if (legRows[i]) legRows[i].hidden = !visible;
+      if (!visible) continue;
+      visibleSeq++;
+      if (seqCells[i]) seqCells[i].textContent = String(visibleSeq);
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;
       const { dist, brg } = geo(A, B);
@@ -3614,7 +3638,7 @@ function showFlightPlan() {
       if (ac) {
         const fuel = prof && prof.legs[i] ? prof.legs[i].fuel : dur * ac.gph;
         tf += fuel;
-        const mark = i === 0 && taxiFuel;
+        const mark = i === firstVisible && taxiFuel;
         fuelCells[i].textContent = (mark ? fuel + taxiFuel : fuel).toFixed(1) + (mark ? ' *' : '');
         fuelCells[i].title = mark ? S.fpTaxiTip(taxiFuel) : '';
       } else {
@@ -3648,7 +3672,7 @@ function showFlightPlan() {
     // Keep the narrow-screen summary in step with the table it summarises.
     if (mobileSummary) {
       mobileSummary.textContent = (typeof S.fpMobileSummary === 'function')
-        ? S.fpMobileSummary(state.legs.length, td.toFixed(1),
+        ? S.fpMobileSummary(visibleIndexes.length, td.toFixed(1),
             th > 0 ? toHMS(th) : '--', ac ? tf.toFixed(1) : '--')
         : '';
     }
@@ -4401,16 +4425,6 @@ function showExportModal() {
   wpNameLabel.appendChild(document.createTextNode(S.exportShowWpNames));
   body.appendChild(wpNameLabel);
 
-  // Show Drift Lines checkbox (default on).
-  const driftLabel = document.createElement('label');
-  driftLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
-  const driftCb = document.createElement('input');
-  driftCb.type = 'checkbox';
-  driftCb.checked = true;
-  driftLabel.appendChild(driftCb);
-  driftLabel.appendChild(document.createTextNode(S.exportShowDrift));
-  body.appendChild(driftLabel);
-
   // Show Cumulative time checkbox (default on).
   const cumLabel = document.createElement('label');
   cumLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
@@ -4567,7 +4581,6 @@ function showExportModal() {
   const origNavWP = showNavWP;
   const origAirfields = showAirfields;
   const origWpNames = showWpNames;
-  const origDrift = showDrift;
   const origCumTime = showCumTime;
   const origMapOpacity = mapOpacity;
   const origLayer = (function () {
@@ -4579,7 +4592,6 @@ function showExportModal() {
   // the PNG will look like before touching any control.
   showNavWP = navWpCb.checked;
   showWpNames = wpNameCb.checked;
-  showDrift = driftCb.checked;
   showCumTime = cumCb.checked;
   showAirfields = afCb.checked;
   const chosen = layerSel.value;
@@ -4612,6 +4624,26 @@ function showExportModal() {
     const s = map.getSize();
     return { x: 0, y: 0, w: s.x, h: s.y };
   }
+  // A zoomed-in paper frame can be physically larger than the viewport. In
+  // that case its top-left is off-screen, so starting the card there makes the
+  // preview appear to do nothing. Start inside the visible part of the frame,
+  // below the toolbar so its first rows are not hidden under the menu bar.
+  function initialPlanCardPosition(bounds) {
+    const mapBox = map.getContainer().getBoundingClientRect();
+    const toolbar = document.getElementById('toolbar');
+    const toolbarBottom = toolbar ? toolbar.getBoundingClientRect().bottom - mapBox.top : 0;
+    return { x: Math.max(bounds.x, 0) + 14,
+      y: Math.max(bounds.y, toolbarBottom, 0) + 14 };
+  }
+  function clampPlanCardToBounds(bounds) {
+    if (!planCard || !planCardRect) return false;
+    const oldX = planCard.x, oldY = planCard.y;
+    const maxX = Math.max(bounds.x, bounds.x + bounds.w - planCardRect.w);
+    const maxY = Math.max(bounds.y, bounds.y + bounds.h - planCardRect.h);
+    planCard.x = Math.max(bounds.x, Math.min(maxX, planCard.x));
+    planCard.y = Math.max(bounds.y, Math.min(maxY, planCard.y));
+    return planCard.x !== oldX || planCard.y !== oldY;
+  }
   // Keep the backdrop click-through while a card is placed (or while floating).
   function syncPlaceThrough() {
     const placing = !!(planCb && planCb.checked && planCard);
@@ -4634,7 +4666,6 @@ function showExportModal() {
     const chk = (id, fallback) => { const e = cb(id); return e ? e.checked : fallback; };
     showNavWP = chk('navwp-cb', origNavWP);
     showWpNames = chk('wpname-cb', origWpNames);
-    showDrift = chk('drift-cb', origDrift);
     showCumTime = chk('cumtime-cb', origCumTime);
     showAirfields = chk('airfield-cb', origAirfields);
     const sel = cb('layer-select');
@@ -4666,10 +4697,6 @@ function showExportModal() {
     showWpNames = wpNameCb.checked;
     draw();
   };
-  driftCb.onchange = function () {
-    showDrift = driftCb.checked;
-    draw();
-  };
   cumCb.onchange = function () {
     showCumTime = cumCb.checked;
     draw();
@@ -4684,7 +4711,8 @@ function showExportModal() {
   planCb.onchange = function () {
     const fr0 = planBounds();
     if (planCb.checked) {
-      window.planCard = { x: fr0.x + 14, y: fr0.y + 14, scale: 1 };
+      const at = initialPlanCardPosition(fr0);
+      window.planCard = { x: at.x, y: at.y, scale: 1 };
     } else {
       window.planCard = null;
     }
@@ -4701,11 +4729,15 @@ function showExportModal() {
     // to read. The corner grip resizes it from there.
     if (planCard && planCardRect) {
       const target = fr0.w * 0.7;
-      if (planCardRect.w > target) {
-        planCard.scale = Math.max(0.4, planCard.scale * target / planCardRect.w);
-        planCard.x = fr0.x + 14; planCard.y = fr0.y + 14;
+      const availableH = Math.max(1, fr0.h - 28);
+      const factor = Math.min(1, target / planCardRect.w, availableH / planCardRect.h);
+      if (factor < 1) {
+        planCard.scale *= factor;
+        const at = initialPlanCardPosition(fr0);
+        planCard.x = at.x; planCard.y = at.y;
         draw();
       }
+      if (clampPlanCardToBounds(fr0)) draw();
     }
   };
   // Drag the card inside the page frame. Listens on the map container so it
@@ -4717,7 +4749,8 @@ function showExportModal() {
     const pt = map.mouseEventToContainerPoint(e);
     // Bottom-right grip → resize; elsewhere inside the card → move.
     if (typeof planCardOnGrip === 'function' && planCardOnGrip(pt.x, pt.y)) {
-      cardDrag = { resize: true, baseW1: planCardRect.w / (planCard.scale || 1) };
+      cardDrag = { resize: true, baseW1: planCardRect.w / (planCard.scale || 1),
+        minScale: Math.min(0.15, planCard.scale || 0.15) };
       if (map.dragging) map.dragging.disable();
       e.preventDefault(); e.stopPropagation();
       return;
@@ -4735,7 +4768,7 @@ function showExportModal() {
     if (cardDrag.resize) {
       // Scale ∝ rendered width. Clamp so the card never grows past the page
       // frame (prevents overflow + the snap-back that follows it).
-      let s = Math.max(0.15, (pt.x - planCard.x) / cardDrag.baseW1);
+      let s = Math.max(cardDrag.minScale, (pt.x - planCard.x) / cardDrag.baseW1);
       const fr = planBounds();
       if (fr && planCardRect && planCardRect.w) {
         const ratio = planCardRect.h / planCardRect.w;   // table aspect (scale-invariant)
@@ -4743,7 +4776,7 @@ function showExportModal() {
         const maxH = (fr.y + fr.h) - planCard.y;
         s = Math.min(s, maxW / cardDrag.baseW1, maxH / (cardDrag.baseW1 * ratio));
       }
-      planCard.scale = Math.max(0.15, Math.min(6, s));
+      planCard.scale = Math.max(cardDrag.minScale, Math.min(6, s));
       draw();
       return;
     }
@@ -5205,8 +5238,7 @@ function exportPNG(mode) {
       // Mirror the plan card's own gate (draw.js): a reference VOR that actually
       // resolves via activeVor() (not a stale/unloaded ident), or any per-leg VOR.
       const exportHasVorInfo = !!planCard &&
-        ((typeof activeVor === 'function' && activeVor()) ||
-         (state.legs || []).some(l => l && l.vorRef));
+        typeof flightPlanCardHasVorInfo === 'function' && flightPlanCardHasVorInfo();
       drawVors(exportHasVorInfo);
       drawLegs();
       drawWaypoints();

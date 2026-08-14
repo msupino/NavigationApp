@@ -129,9 +129,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **State:**
   - `state.waypoints[i]` = `{lat, lng, name}` (name optional).
   - `state.legs[i]` = `{inboundAltitude, outboundAltitude, flightSpeed,
-    inLabel, outLabel}`. `inLabel` / `outLabel` are `{a, p}` offsets
+    inLabel, outLabel, hideDrift?, showDrift?}`. `inLabel` / `outLabel` are `{a, p}` offsets
     (along-leg / perpendicular, screen px) so markers can be dragged
-    apart from the leg midpoint.
+    apart from the leg midpoint. `hideDrift: 1` hides that leg even when
+    route-wide drift lines are on; `showDrift: 1` shows it when route-wide
+    drift lines are off. `hideDrift` wins if both legacy flags are present.
   - `state.notes[i]` = `{lat, lng, text, color, shape}` — free-text
     annotation boxes; `shape` is `'rect'` or `'oval'`.
   - `state.mode` = `'add' | 'note' | null` (null = inspect);
@@ -443,7 +445,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
   screen px sized so its contents are 1:250 000. Clicking the same
   size button again clears it. Orientation chosen via the
-  `chooseOrientation()` modal.
+  `chooseOrientation()` modal. The toolbar Fit button and `F` fit the active
+  page frame when one is selected; without a frame they fit the route.
 - **Keyboard shortcuts cheat-sheet (issue #420):** modal listing every
   global shortcut, openable via the toolbar "Shortcuts" link (in
   `#footer-links`) or the `?` (Shift-`/`) key. Built by
@@ -459,7 +462,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   match physical `KeyboardEvent.code` values so the same English keys work
   while the OS keyboard layout is Hebrew.
   Current global shortcuts surfaced:
-  - **Navigation:** `F` — fit route to view; `+`/`=` / numpad `+` — zoom
+  - **Navigation:** `F` — fit the selected A3/A4/A4×2 page frame to the view, or fit
+    the route when no page is selected; `+`/`=` / numpad `+` — zoom
     map in (loupe zoom in when magnifier is on); `−`/`-` / numpad `−` —
     zoom map out (loupe zoom out when magnifier is on); `M` — toggle
     magnifying glass (skipped while any modal backdrop is open).
@@ -482,7 +486,16 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   named `navigation-A4.png` / `navigation-CVFR.png` etc.
   An "Include cumulative time" checkbox in the export modal (default on)
   includes the cumulative-time kite layer in the exported PNG; disabling
-  it still renders leg markers but hides cumulative kites.
+  it still renders leg markers but hides cumulative kites. Drift lines have
+  no separate print override: export uses the route's current global and
+  per-leg drift visibility. The outbound / return selector filters route-bound map
+  visuals: track lines, waypoints, kites, drift, time and distance marks, wind and
+  profile marks, and anchored notes. It also filters route totals, flight-plan rows
+  and profile, the placed plan card, print ink bounds, and Route Fit. Global chart
+  overlays and free map notes stay visible.
+  A placed card starts in the visible part of an oversized, zoomed-in page frame. In
+  the printed plan card, airfield procedure legs that omit leg time also omit direction
+  (airfield to first reporting point and last reporting point to airfield).
 - **GPS track recorder:** the `📍 Record GPS track` toggle in the View/Set
   toolbar section records the flown path from the device GPS (live own-ship
   dot + breadcrumb trail on the map). On Stop it auto-saves a timestamped
@@ -516,8 +529,9 @@ as a machine-readable registry.
   or zoom outside `[map.options.minZoom, map.options.maxZoom]`.
   `bearing` is also written to legacy `navaid.bearing` for back-compat,
   but `navaid.view.bearing` wins on restore when present. Manual re-fit:
-  the `⌖ Fit to screen` toolbar button (Build section) or the `F`
-  keyboard shortcut (when not focused in an input).
+  the `⌖ Fit to screen` toolbar button (Build or Print section) or the `F`
+  keyboard shortcut (when not focused in an input). With an A3, A4, or A4×2 frame
+  selected, those controls fit the frame instead of the route.
 - `navaid.layer` — selected base layer name.
 - `navaid.navDataPrefix` — which chart the *navigation data* comes from,
   independently of the base layer's visuals: `''`/absent = **follow chart**

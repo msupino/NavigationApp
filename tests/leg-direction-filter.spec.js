@@ -1,7 +1,6 @@
 // @ts-check
-// On an out-and-back route both directions draw a kite, and near the turnaround they land
-// on top of each other -- readable on screen where you can zoom, unusable on a printed map.
-// The filter hides one direction's KITES; the route line is never hidden.
+// On an out-and-back route the direction selector is a complete view filter: route
+// geometry, waypoints, annotations and calculated display totals all follow it.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -92,17 +91,178 @@ test('the toggle persists and is restored on load', async ({ page }) => {
   expect(restored.selValue).toBe('out');
 });
 
-test('hiding a direction never hides the route line itself', async ({ page }) => {
+test('the selected direction hides the other half route line and leg decorations', async ({ page }) => {
   await boot(page);
   await outAndBack(page);
   const out = await page.evaluate(() => {
     window.legDirFilter = 'out';
-    draw();
-    // Both waypoints and both legs still exist and are drawn -- only kites are filtered.
-    return { legs: state.legs.length, wps: state.waypoints.length };
+    window.showDrift = false;
+    window.showMidLeg = false;
+    window.showCumTime = false;
+    window.showWind = false;
+    window.showReturn = false;
+    state.legs.forEach(l => { l.flightSpeed = 0; l.hideKite = 1; });
+    let strokes = 0;
+    const stroke = octx.stroke;
+    octx.stroke = () => { strokes++; };
+    try { drawLegs(); } finally { octx.stroke = stroke; }
+    return { strokes, legs: state.legs.length };
   });
-  expect(out.legs).toBe(2);
-  expect(out.wps).toBe(3);
+  expect(out.legs).toBe(2); // filtering is visual; route data stays intact
+  expect(out.strokes).toBe(1);
+});
+
+test('waypoints, anchored notes and hit targets follow the selected direction', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.00, lng: 34.00, name: 'A' },
+      { lat: 32.03, lng: 34.03, name: 'B' },
+      { lat: 32.06, lng: 34.06, name: 'TURN', turn: 1 },
+      { lat: 32.09, lng: 34.09, name: 'D' },
+      { lat: 32.12, lng: 34.12, name: 'E' },
+    ];
+    state.legs = [];
+    syncLegs();
+    state.notes = [
+      { lat: 32.015, lng: 34.015, text: 'OUT', shape: 'oval', rp: { leg: 0, t: 0.5 } },
+      { lat: 32.105, lng: 34.105, text: 'BACK', shape: 'oval', rp: { leg: 3, t: 0.5 } },
+      { lat: 31.9, lng: 34.2, text: 'FREE', shape: 'rect' },
+    ];
+    window.legDirFilter = 'out';
+    const waypointVisibility = state.waypoints.map((_, i) => legDirWaypointVisible(i));
+    const noteVisibility = state.notes.map(n => routeNoteDirVisible(n));
+    const hiddenPoint = proj(state.waypoints[4]);
+    const hiddenHit = hitWaypointCandidates(hiddenPoint.x, hiddenPoint.y).map(h => h.index);
+    window.legDirFilter = 'back';
+    const backWaypoints = state.waypoints.map((_, i) => legDirWaypointVisible(i));
+    return { waypointVisibility, backWaypoints, noteVisibility, hiddenHit };
+  });
+  expect(out.waypointVisibility).toEqual([true, true, true, false, false]);
+  expect(out.backWaypoints).toEqual([false, false, true, true, true]);
+  expect(out.noteVisibility).toEqual([true, false, true]);
+  expect(out.hiddenHit).toEqual([]);
+});
+
+test('route summary and open flight plan show only the selected half', async ({ page }) => {
+  await boot(page);
+  const outbound = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.00, lng: 34.00, name: 'A' },
+      { lat: 32.03, lng: 34.03, name: 'B' },
+      { lat: 32.06, lng: 34.06, name: 'TURN', turn: 1 },
+      { lat: 32.09, lng: 34.09, name: 'D' },
+      { lat: 32.12, lng: 34.12, name: 'E' },
+    ];
+    state.legs = [];
+    syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 100; });
+    window.legDirFilter = 'out';
+    draw();
+    showFlightPlan();
+    const rows = Array.from(document.querySelectorAll('.fp-scroll > .flight-table:first-of-type tbody tr'));
+    return {
+      summary: document.getElementById('route-summary').textContent,
+      rows: rows.filter(r => !r.hidden).map(r => {
+        const cells = r.querySelectorAll('td');
+        return { seq: cells[0].textContent.trim(), from: cells[1].querySelector('input').value,
+          to: cells[2].querySelector('input').value };
+      }),
+    };
+  });
+  expect(outbound.summary).toMatch(/^2 legs ·/);
+  expect(outbound.rows).toEqual([
+    { seq: '1', from: 'A', to: 'B' },
+    { seq: '2', from: 'B', to: 'TURN' },
+  ]);
+
+  const returned = await page.evaluate(() => {
+    window.legDirFilter = 'back';
+    draw();
+    const rows = Array.from(document.querySelectorAll('.fp-scroll > .flight-table:first-of-type tbody tr'));
+    return {
+      summary: document.getElementById('route-summary').textContent,
+      rows: rows.filter(r => !r.hidden).map(r => {
+        const cells = r.querySelectorAll('td');
+        return { seq: cells[0].textContent.trim(), from: cells[1].querySelector('input').value,
+          to: cells[2].querySelector('input').value };
+      }),
+    };
+  });
+  expect(returned.summary).toMatch(/^2 legs ·/);
+  expect(returned.rows).toEqual([
+    { seq: '1', from: 'TURN', to: 'D' },
+    { seq: '2', from: 'D', to: 'E' },
+  ]);
+});
+
+test('switching direction clears an inspector selection from the hidden half', async ({ page }) => {
+  await boot(page);
+  const selected = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.00, lng: 34.00, name: 'A' },
+      { lat: 32.03, lng: 34.03, name: 'TURN', turn: 1 },
+      { lat: 32.06, lng: 34.06, name: 'HOME' },
+    ];
+    state.legs = [];
+    syncLegs();
+    state.selected = { type: 'wp', index: 2 };
+    const sel = document.getElementById('leg-dir-select');
+    sel.value = 'out';
+    sel.dispatchEvent(new Event('change'));
+    return state.selected;
+  });
+  expect(selected).toBeNull();
+});
+
+test('Fit to route uses only waypoints in the selected direction', async ({ page }) => {
+  await boot(page);
+  const fitted = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.00, lng: 34.00, name: 'A' },
+      { lat: 32.02, lng: 34.02, name: 'TURN', turn: 1 },
+      { lat: 33.00, lng: 35.00, name: 'FAR RETURN' },
+    ];
+    state.legs = [];
+    syncLegs();
+    window.legDirFilter = 'out';
+    const original = map.fitBounds;
+    let bounds;
+    map.fitBounds = b => { bounds = b; };
+    try { fitView(); } finally { map.fitBounds = original; }
+    return {
+      south: bounds.getSouth(), north: bounds.getNorth(),
+      west: bounds.getWest(), east: bounds.getEast(),
+    };
+  });
+  expect(fitted).toEqual({ south: 32, north: 32.02, west: 34, east: 34.02 });
+});
+
+test('vertical profile distance and waypoint labels follow the selected direction', async ({ page }) => {
+  await boot(page);
+  const profile = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.00, lng: 34.00, name: 'A' },
+      { lat: 32.02, lng: 34.02, name: 'TURN', turn: 1 },
+      { lat: 33.00, lng: 35.00, name: 'FAR RETURN' },
+    ];
+    state.legs = [];
+    syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 100; l.inboundAltitude = 2000; });
+    window.legDirFilter = 'out';
+    const indexes = state.legs.map((_, i) => i).filter(i => legDirVisible(i));
+    const selected = routeProfile(undefined, indexes);
+    const whole = routeProfile();
+    return {
+      indexes,
+      selectedWpIndexes: selected.wpIndexes,
+      selectedDistance: selected.totalDist,
+      wholeDistance: whole.totalDist,
+    };
+  });
+  expect(profile.indexes).toEqual([0]);
+  expect(profile.selectedWpIndexes).toEqual([0, 1]);
+  expect(profile.selectedDistance).toBeLessThan(profile.wholeDistance);
 });
 
 // A sortie that goes out one way and comes home another never retraces a single leg, yet a

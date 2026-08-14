@@ -113,11 +113,10 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
     await page.locator('.modal-back').waitFor();
 
     const checkboxLabels = page.locator('.modal label:has(input[type="checkbox"])');
-    expect(await checkboxLabels.count()).toBe(6);
+    expect(await checkboxLabels.count()).toBe(5);
     const labelText = await checkboxLabels.allTextContents();
     expect(labelText).toEqual(expect.arrayContaining([
       expect.stringMatching(/waypoint names/i),
-      expect.stringMatching(/drift lines/i),
       expect.stringMatching(/cumulative time/i),
       expect.stringMatching(/navigation waypoints/i),
       expect.stringMatching(/airfields/i),
