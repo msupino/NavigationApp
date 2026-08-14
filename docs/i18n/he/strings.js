@@ -609,6 +609,7 @@ window.S = {
   assistantModelPlaceholder: 'מודל',
   assistantSaveKey: 'שמור',
   assistantKeySaved: 'ההגדרות נשמרו',
+  assistantProviderSwitched: 'עובר אל',
   assistantNoKey: 'הוסף מפתח API בהגדרות כדי להתחיל שיחה.',
   assistantError: 'שגיאת עוזר',
   assistantConfirmChange: 'העוזר מבקש לשנות את המסלול שלך:',
