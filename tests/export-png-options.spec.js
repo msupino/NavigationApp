@@ -9,6 +9,14 @@ function rectsOverlap(a, b) {
   return a.x < b.x + b.width && a.x + a.width > b.x
     && a.y < b.y + b.height && a.y + a.height > b.y;
 }
+function rectSeparation(a, b) {
+  return Math.max(
+    b.x - (a.x + a.width),
+    a.x - (b.x + b.width),
+    b.y - (a.y + a.height),
+    a.y - (b.y + b.height),
+  );
+}
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
@@ -132,6 +140,7 @@ test.describe('Export PNG options modal', () => {
     await boot(page);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.evaluate(wps => {
+      NavAid.tuning.floatingPanelGapPx = 40;
       state.waypoints = wps;
       syncLegs();
       draw();
@@ -194,6 +203,7 @@ test.describe('Export PNG options modal', () => {
     expect(rectsOverlap(printBox, inspectorBox)).toBe(false);
 
     // Drag Print toward the inspector; collision avoidance keeps both readable.
+    await page.evaluate(() => { NavAid.tuning.floatingPanelGapPx = 40; });
     let handle = await print.locator('.modal-title').boundingBox();
     await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
     await page.mouse.down();
@@ -202,8 +212,10 @@ test.describe('Export PNG options modal', () => {
     printBox = await print.boundingBox();
     inspectorBox = await inspector.boundingBox();
     expect(rectsOverlap(printBox, inspectorBox)).toBe(false);
+    expect(rectSeparation(printBox, inspectorBox)).toBeGreaterThanOrEqual(39);
 
     // Drag the inspector back toward Print; it must not cover Print either.
+    await page.evaluate(() => { NavAid.tuning.floatingPanelGapPx = 40; });
     handle = await inspector.locator('#insp-header').boundingBox();
     await page.mouse.move(handle.x + 30, handle.y + 15);
     await page.mouse.down();
@@ -212,6 +224,7 @@ test.describe('Export PNG options modal', () => {
     printBox = await print.boundingBox();
     inspectorBox = await inspector.boundingBox();
     expect(rectsOverlap(printBox, inspectorBox)).toBe(false);
+    expect(rectSeparation(printBox, inspectorBox)).toBeGreaterThanOrEqual(39);
   });
   test('mobile: menu is a centered dimmed modal', async ({ page }) => {
     await boot(page);
