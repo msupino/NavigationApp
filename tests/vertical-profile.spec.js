@@ -155,6 +155,8 @@ test('flight plan modal renders the vertical-profile strip', async ({ page }) =>
   await page.evaluate(() => showFlightPlan());
   await expect(page.locator('.fp-profile-canvas')).toBeVisible();
   await expect(page.locator('.fp-profile-label')).toContainText(/profile/i);
+  await expect(page.locator('.fp-profile-dir span').first()).toHaveText('A');
+  await expect(page.locator('.fp-profile-dir span').last()).toHaveText('D');
   // TOC/TOD map markers turn on while the plan is open.
   expect(await page.evaluate(() => window.showProfile)).toBe(true);
   // The strip must paint on first open — not only after an edit. refresh()
