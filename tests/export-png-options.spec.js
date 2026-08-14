@@ -40,18 +40,19 @@ test.describe('Export PNG options modal', () => {
     await page.locator('.modal-back').waitFor();
     // Title.
     expect(await page.locator('.modal-title').textContent()).toBe('Export PNG');
-    // 6 checkboxes: Waypoint Names (on), Drift Lines (on), Cumulative time (on),
-    // Nav WPs (off), Airfields (off), Place flight plan (off; enabled because a
+    // 5 checkboxes: Waypoint Names (on), Cumulative time (on), Nav WPs (off),
+    // Airfields (off), Place flight plan (off; enabled because a
     // route is set — a page frame is not required).
     const cbs = page.locator('.modal input[type="checkbox"]');
-    expect(await cbs.count()).toBe(6);
+    expect(await cbs.count()).toBe(5);
     expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
-    expect(await cbs.nth(1).isChecked()).toBe(true);   // Drift Lines default on
-    expect(await cbs.nth(2).isChecked()).toBe(true);   // Cumulative time default on
-    expect(await cbs.nth(3).isChecked()).toBe(false);  // Nav WPs
-    expect(await cbs.nth(4).isChecked()).toBe(false);  // Airfields
-    expect(await cbs.nth(5).isChecked()).toBe(false);  // Place flight plan
-    expect(await cbs.nth(5).isDisabled()).toBe(false);  // route present → enabled (no page needed)
+    expect(await cbs.nth(1).isChecked()).toBe(true);   // Cumulative time default on
+    expect(await cbs.nth(2).isChecked()).toBe(false);  // Nav WPs
+    expect(await cbs.nth(3).isChecked()).toBe(false);  // Airfields
+    expect(await cbs.nth(4).isChecked()).toBe(false);  // Place flight plan
+    expect(await cbs.nth(4).isDisabled()).toBe(false);  // route present → enabled (no page needed)
+    await expect(page.locator('.modal-back').filter({ has: page.locator('#export-plan-cb') }))
+      .not.toContainText('Print drift lines');
     // Layer defaults to Navigation.
     const sel = page.locator('#export-layer-select');
     expect(await sel.inputValue()).toBe('Navigation');
@@ -60,6 +61,23 @@ test.describe('Export PNG options modal', () => {
     // Cancel closes the modal.
     await page.locator('.modal .modal-cancel').click();
     await expect(page.locator('.modal-back')).toHaveCount(0);
+  });
+
+  test('opening print/export preserves the route drift-line choices', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(wps => {
+      state.waypoints = wps;
+      syncLegs();
+      window.showDrift = false;
+      state.legs[0].showDrift = 1;
+      draw();
+      showExportModal();
+    }, pairLLHZ_LLHA());
+    const drift = await page.evaluate(() => ({
+      global: window.showDrift,
+      leg: legDriftVisible(state.legs[0], window.showDrift, 0),
+    }));
+    expect(drift).toEqual({ global: false, leg: true });
   });
 
   test('desktop: menu floats at the inspector location, map not dimmed', async ({ page }) => {
@@ -119,14 +137,14 @@ test.describe('Export PNG options modal', () => {
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
     const cbs = page.locator('.modal input[type="checkbox"]');
-    // Check "Print navigation waypoints" (idx 3) → showNavWP becomes true.
-    await cbs.nth(3).check();
+    // Check "Print navigation waypoints" (idx 2) → showNavWP becomes true.
+    await cbs.nth(2).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Uncheck → showNavWP back to false.
-    await cbs.nth(3).uncheck();
+    await cbs.nth(2).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
-    // Check "Print airfields" (idx 4) → showAirfields becomes true.
-    await cbs.nth(4).check();
+    // Check "Print airfields" (idx 3) → showAirfields becomes true.
+    await cbs.nth(3).check();
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
 
@@ -136,8 +154,8 @@ test.describe('Export PNG options modal', () => {
     await page.evaluate(() => { showNavWP = true; showAirfields = true; draw(); });
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
-    // Modal hides them (default). Toggle waypoints on (idx 3 = Nav WPs).
-    await page.locator('.modal input[type="checkbox"]').nth(3).check();
+    // Modal hides them (default). Toggle waypoints on (idx 2 = Nav WPs).
+    await page.locator('.modal input[type="checkbox"]').nth(2).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Cancel → restore original (both true).
     await page.locator('.modal .modal-cancel').click();
@@ -168,8 +186,8 @@ test.describe('Export PNG options modal', () => {
     await page.evaluate(() => { showNavWP = true; draw(); });
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
-    // Toggle waypoints off in the modal (idx 1 = Nav WPs).
-    await page.locator('.modal input[type="checkbox"]').nth(1).uncheck();
+    // Waypoints are already off by default; explicitly leave that option off.
+    await page.locator('.modal input[type="checkbox"]').nth(2).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
     // Click ✕ close button.
     await page.locator('.modal-close-x').click();
@@ -329,13 +347,13 @@ test.describe('Export PNG options modal', () => {
     }, pairLLHZ_LLHA());
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
-    // Toggle both checkboxes on, switch to CVFR.
+    // Toggle navigation waypoints and airfields on, switch to CVFR.
     const cbs = page.locator('.modal input[type="checkbox"]');
-    await cbs.nth(1).check();
-    await cbs.nth(0).check();
+    await cbs.nth(2).check();
+    await cbs.nth(3).check();
     await page.locator('#export-layer-select').selectOption('CVFR');
-    expect(await cbs.nth(1).isChecked()).toBe(true);
-    expect(await cbs.nth(0).isChecked()).toBe(true);
+    expect(await cbs.nth(2).isChecked()).toBe(true);
+    expect(await cbs.nth(3).isChecked()).toBe(true);
     expect(await page.locator('#export-layer-select').inputValue()).toBe('CVFR');
     // Click Export and verify download triggers.
     const dl = page.waitForEvent('download', { timeout: 30000 });

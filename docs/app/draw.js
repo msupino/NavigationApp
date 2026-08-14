@@ -291,6 +291,7 @@ function drawProfileMarkers() {
   if (typeof routeProfile !== 'function' || (state.legs || []).length === 0) return;
   const prof = routeProfile();
   const mark = (m, label, color) => {
+    if (typeof legDirVisible === 'function' && !legDirVisible(m.leg)) return;
     const A = state.waypoints[m.leg], B = state.waypoints[m.leg + 1];
     if (!A || !B) return;
     const sa = proj(A), sb = proj(B);
@@ -320,7 +321,9 @@ function drawProfileMarkers() {
 // (x,y,w,h). Used by the Flight Plan modal (#672).
 function drawVerticalProfile(ctx, x, y, w, h) {
   if (typeof routeProfile !== 'function') return;
-  const prof = routeProfile();
+  const visibleIndexes = typeof legDirVisibleIndexes === 'function'
+    ? legDirVisibleIndexes() : (state.legs || []).map((_, i) => i);
+  const prof = routeProfile(undefined, visibleIndexes);
   if (!prof.pts.length || prof.totalDist <= 0) return;
   const alts = prof.pts.map(p => p.alt);
   const maxA = Math.max.apply(null, alts) * 1.1 + 100;
@@ -446,7 +449,8 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const last = cum.length - 1;
   const gap = last > 0 ? plotW / last : plotW;  // px between adjacent waypoints (ticks span plotW, not full w)
   const wpId = i => {
-    const wp = state.waypoints[i];
+    const sourceIndex = prof.wpIndexes && Number.isInteger(prof.wpIndexes[i]) ? prof.wpIndexes[i] : i;
+    const wp = state.waypoints[sourceIndex];
     if (!wp) return '';
     return String(wp.code || wp.name || '').slice(0, 4).toUpperCase();
   };
@@ -3384,6 +3388,7 @@ function drawLegs() {
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
+    if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     const leg = state.legs[i];
     const sa = proj(A), sb = proj(B);
     const selected = selectionVisible() && state.selected &&
@@ -3473,18 +3478,14 @@ function drawLegs() {
     // already gated by legAllowsReturn).
     const inboundBlocked = typeof legAltitudeIsBlocked === 'function' &&
       legAltitudeIsBlocked(leg, 'inboundAltitude');
-    // Direction filter (see legDirVisible): hides the KITES of one direction on an
-    // out-and-back route so a printed map stays readable. The leg line, the distance badge
-    // and the drift lines are untouched -- the track itself is never hidden.
-    const dirOff = (typeof legDirVisible === 'function') && !legDirVisible(i);
-    if (!inboundBlocked && !kiteOff && !dirOff) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
+    if (!inboundBlocked && !kiteOff) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
     const defCum = { a: 0, _default: 1, _m: 1 };
-    if (showCumTime && !preClock && !dirOff) {
+    if (showCumTime && !preClock) {
       const cumP = leg.cumLabel || defCum;
       const cumPerp  = cumP._default ? cumPerpDef : (cumP.p || 0) * zoomScale;
       const cumAlong = (cumP.a || 0) * zoomScale;
@@ -3499,7 +3500,7 @@ function drawLegs() {
     // synced 'showReturn = true' cannot paint the mirrored path once it is switched off.
     const returnOn = showReturn &&
       (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn());
-    if (returnOn && legAllowsReturn(i) && !dirOff) {
+    if (returnOn && legAllowsReturn(i)) {
       if (!kiteOff) drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
@@ -3889,6 +3890,7 @@ function selectionVisible() {
 }
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
+    if (typeof legDirWaypointVisible === 'function' && !legDirWaypointVisible(i)) continue;
     const wp = state.waypoints[i];
     if (!wp) continue;   // skip a null/hole (corrupt/partially-applied state) rather than throwing in proj()
     const s = proj(wp);
@@ -4188,6 +4190,7 @@ function selectedCommCallout(i) {
 function drawNotes() {
   for (let i = 0; i < state.notes.length; i++) {
     const n = state.notes[i];
+    if (typeof routeNoteDirVisible === 'function' && !routeNoteDirVisible(n)) continue;
     if (n && n.cc && !showCommChange) continue;
     if (n && n.rp) {
       // Keep the anchored oval on its leg: recompute lat/lng from the anchor
@@ -4275,23 +4278,21 @@ function drawInfo() {
   // different ETEs for one route. (Per-leg kite times stay still-air/TAS on purpose:
   // they have to agree with the minute ticks they sit on.)
   const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
-  let totalDist = 0, totalH = 0;
+  const legIndexes = typeof legDirVisibleIndexes === 'function'
+    ? legDirVisibleIndexes() : state.legs.map((_, i) => i);
+  let totalDist = 0, totalH = 0, totalFuel = 0;
   if (prof) {
-    totalDist = prof.totalDist;
-    totalH = prof.totalTimeH;
-    // The pill must agree with the plan table, which keeps CTR legs off the clock. The
-    // profile's own total stays untouched -- it feeds the FILED EET, and the filed time is
-    // the whole flight, procedure legs included.
-    if (typeof legInsideCtr === 'function' && Array.isArray(prof.legs)) {
-      for (let i = 0; i < prof.legs.length; i++) {
-        if (legInsideCtr(i) && prof.legs[i] && Number.isFinite(prof.legs[i].timeH)) {
-          totalH -= prof.legs[i].timeH;
-        }
+    for (const i of legIndexes) {
+      const p = prof.legs && prof.legs[i];
+      if (!p) continue;
+      if (Number.isFinite(p.dist)) totalDist += p.dist;
+      if (!(typeof legInsideCtr === 'function' && legInsideCtr(i)) && Number.isFinite(p.timeH)) {
+        totalH += p.timeH;
       }
-      if (totalH < 0) totalH = 0;
+      if (Number.isFinite(p.fuel)) totalFuel += p.fuel;
     }
   } else {
-    for (let i = 0; i < state.legs.length; i++) {
+    for (const i of legIndexes) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;   // legs can transiently outnumber waypoints-1 mid-edit; guard like the sibling loops
       if (typeof legInsideCtr === 'function' && legInsideCtr(i)) { totalDist += geo(A, B).dist; continue; }
@@ -4306,7 +4307,7 @@ function drawInfo() {
   // The stats block that used to live at the bottom of the mobile menu is gone: the
   // legend card now carries the same totals at every width, and on a phone the two
   // were on screen together saying the same thing twice.
-  drawSummaryPill(prof, totalDist, totalH);
+  drawSummaryPill(prof, totalDist, totalH, totalFuel, legIndexes);
   // Panning, zooming, editing the route or dragging the frame can all push the route
   // off the page — re-check here so the warning tracks whatever the map is showing.
   if (typeof refreshPrintFit === 'function') refreshPrintFit();
@@ -4333,7 +4334,7 @@ function reserveSummaryWidth(pill) {
   if (_legendPillW > 0) pill.style.minWidth = _legendPillW + 'px';
 }
 
-function drawSummaryPill(prof, totalDist, totalH) {
+function drawSummaryPill(prof, totalDist, totalH, totalFuel, legIndexes) {
   const pill = document.getElementById('route-summary');
   if (!pill) return;
   // No route: keep the row's BOX but hide its ink. Removing it from layout made the
@@ -4356,12 +4357,14 @@ function drawSummaryPill(prof, totalDist, totalH) {
   // effective profile here so merely opening the plan cannot change this total.
   const summaryAircraft = (aircraft && typeof aircraft === 'object')
     ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+  const firstLeg = legIndexes && legIndexes.length ? legIndexes[0] : 0;
   const taxi = (summaryAircraft.taxiGal > 0 && typeof isAirport === 'function' &&
-    state.waypoints[0] && isAirport(state.waypoints[0])) ? summaryAircraft.taxiGal : 0;
-  const gal = prof && prof.totalFuel > 0 ? prof.totalFuel + taxi : 0;
+    state.waypoints[firstLeg] && isAirport(state.waypoints[firstLeg])) ? summaryAircraft.taxiGal : 0;
+  const gal = prof && totalFuel > 0 ? totalFuel + taxi : 0;
+  const legCount = legIndexes ? legIndexes.length : state.legs.length;
   pill.style.display = '';
   pill.textContent = (typeof S.fpMobileSummary === 'function')
-    ? S.fpMobileSummary(state.legs.length, totalDist.toFixed(1),
+    ? S.fpMobileSummary(legCount, totalDist.toFixed(1),
       totalH > 0 ? toHMS(totalH) : '--', gal.toFixed(1))
     : `${totalDist.toFixed(1)} NM`;
   reserveSummaryWidth(pill);
@@ -4432,6 +4435,7 @@ function routeInkRects() {
   };
 
   for (let i = 0; i < wps.length; i++) {
+    if (typeof legDirWaypointVisible === 'function' && !legDirWaypointVisible(i)) continue;
     const p = proj(wps[i]);
     const g = (typeof waypointGeom === 'function') ? waypointGeom(i) : null;
     const r = g && Number.isFinite(g.r) ? g.r : 6;
@@ -4442,6 +4446,7 @@ function routeInkRects() {
   const halfW = tune('legKiteHeightPx') * sc / 2;
   const cum = (typeof _cumKiteHalfDims === 'function') ? _cumKiteHalfDims() : null;
   for (let i = 0; i < (state.legs || []).length; i++) {
+    if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     const A = wps[i] && proj(wps[i]), B = wps[i + 1] && proj(wps[i + 1]);
     if (!A || !B) continue;
     // Only ink that is actually DRAWN may drive the clipping warning and "Fit page to
@@ -4474,6 +4479,7 @@ function routeInkRects() {
   }
   for (let i = 0; i < (state.notes || []).length; i++) {
     const n = state.notes[i];
+    if (typeof routeNoteDirVisible === 'function' && !routeNoteDirVisible(n)) continue;
     const box = (n && n.cc && typeof commCalloutRect === 'function') ? commCalloutRect(n)
       : (typeof noteRect === 'function' ? noteRect(i) : null);
     if (box) push(box.x, box.y, box.w, box.h);
@@ -4569,14 +4575,28 @@ function clampPageOffset() {
 // `align` ('tl'|'tr'|'bl'|'br'|'center'). Returns the rendered { x, y, w, h }
 // (or null when there's no route). Paper-print look — white bg, black text.
 // Shared by the live export preview and the PNG render so they match exactly.
+function flightPlanCardLegIndexes() {
+  return typeof legDirVisibleIndexes === 'function'
+    ? legDirVisibleIndexes() : (state.legs || []).map((_, i) => i);
+}
+
+function flightPlanCardHasVorInfo() {
+  const legs = state.legs || [];
+  const refVor = typeof activeVor === 'function' ? activeVor() : null;
+  return !!refVor || flightPlanCardLegIndexes().some(i => legs[i] && legs[i].vorRef);
+}
+
 function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const legs = state.legs || [];
   const wpts = state.waypoints || [];
-  if (!legs.length || wpts.length < 2) return null;
+  const legIndexes = flightPlanCardLegIndexes();
+  if (!legIndexes.length || wpts.length < 2) return null;
   // Default to 8 gph when no aircraft is configured (matches the printed
   // flight plan) so the Fuel / Cum. fuel columns aren't just '--'.
   const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
-  const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' && isAirport(wpts[0]) ? ac.taxiGal : 0;
+  const firstLegIndex = legIndexes[0];
+  const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' &&
+    isAirport(wpts[firstLegIndex]) ? ac.taxiGal : 0;
   const empty = S.fpVorRadialEmpty || '—';
   // Radial / DME of a waypoint from the leg's reference VOR (per-leg override,
   // else the global reference). Blank when no VOR is selected.
@@ -4589,24 +4609,28 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   };
   const rows = [];
   let totTime = 0, totFuel = 0;
-  for (let i = 0; i < legs.length; i++) {
+  for (let seq = 0; seq < legIndexes.length; seq++) {
+    const i = legIndexes[seq];
     const A = wpts[i], B = wpts[i + 1];
     if (!A || !B) continue;
     const { dist, brg } = geo(A, B);
     const hdg = toMagnetic(brg);
     const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
     let fuel = ac ? dur * ac.gph : 0;
-    if (i === 0 && taxiFuel) fuel += taxiFuel;
+    if (seq === 0 && taxiFuel) fuel += taxiFuel;
     // The printed kneeboard must say what the on-screen plan says: CTR legs read --- and
     // stay out of the running clock. Fuel is real either way.
     const cardPre = typeof legInsideCtr === 'function' && legInsideCtr(i);
     if (!cardPre) totTime += dur;
     totFuel += fuel;
-    const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
+    const fLabel = ac ? fuel.toFixed(1) + (seq === 0 && taxiFuel ? ' *' : '') : '--';
     const rd = vorCells(B, legs[i]);
-    rows.push({ num: i + 1, from: waypointDisplayLabel(A, i),
+    rows.push({ num: seq + 1, legIndex: i, from: waypointDisplayLabel(A, i),
       to: waypointDisplayLabel(B, i + 1),
-      hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
+      // Procedure legs at either end of the route have no timed/navigation leg
+      // in the printed kneeboard. Keep Direction consistent with Time: the
+      // airfield-to-first-point and last-point-to-airfield rows show neither.
+      hdg: cardPre ? '---' : pad3(hdg) + '°M', dist: dist.toFixed(1),
       speed: String(legs[i].flightSpeed),
       // Guard non-finite (unknown) altitude like the kite + flight-plan modal do,
       // so the PNG plan card shows the unknown-label instead of the literal "NaN".
@@ -4622,7 +4646,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // flight-plan modal so the printed table aligns with it).
   const freqSources = typeof routeFreqSources === 'function' ? routeFreqSources() : [];
   for (let r = 0; r < rows.length; r++) {
-    rows[r].freq = typeof legActiveFreq === 'function' ? legActiveFreq(rows[r].num - 1, freqSources) : '';
+    rows[r].freq = typeof legActiveFreq === 'function' ? legActiveFreq(rows[r].legIndex, freqSources) : '';
   }
   const freqActive = rows.some(r => r.freq);
   // Fixed kneeboard column set: Destination, Direction, Altitude, Speed,
@@ -4631,7 +4655,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // Radial / DME columns appear only when a reference VOR is selected (global
   // or any per-leg). The Radial header carries the reference VOR ident.
   const refVor = typeof activeVor === 'function' ? activeVor() : null;
-  const vorActive = !!refVor || legs.some(l => l && l.vorRef);
+  const vorActive = flightPlanCardHasVorInfo();
   const headers = [
     '#',
     S.planColDestination || 'Destination',
@@ -4757,7 +4781,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 function drawPlanCard() {
   if (!planCard) { window.planCardRect = null; return; }
   const scale = planCard.scale > 0 ? planCard.scale : 1;
-  const numRows = (state.legs ? state.legs.length : 0) + 2;
+  const numRows = flightPlanCardLegIndexes().length + 2;
   const h = numRows * tune('planCardBaseRowPx') * scale;
   window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
   // The resize grip is a UI handle — never bake it into the exported PNG.

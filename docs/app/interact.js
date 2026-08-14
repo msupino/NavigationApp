@@ -6,6 +6,7 @@
 function hitNote(px, py) {
   for (let i = state.notes.length - 1; i >= 0; i--) {
     const note = state.notes[i];
+    if (typeof routeNoteDirVisible === 'function' && !routeNoteDirVisible(note)) continue;
     if (note && note.cc && !showCommChange) continue;
     // Frequency callouts are drawn above waypoint markers, but the waypoint
     // circle itself must remain independently selectable.
@@ -62,6 +63,7 @@ function hitCommCalloutCandidates(px, py) {
   const hits = [];
   for (let i = state.notes.length - 1; i >= 0; i--) {
     const note = state.notes[i];
+    if (typeof routeNoteDirVisible === 'function' && !routeNoteDirVisible(note)) continue;
     if (!note || !note.cc || !showCommChange) continue;
     if (hitCommCallout(px, py, note) === true) hits.push({ type: 'commcallout', index: i });
   }
@@ -350,6 +352,7 @@ function hitWaypoint(px, py) {
 function hitWaypointCandidates(px, py) {
   const hits = [];
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
+    if (typeof legDirWaypointVisible === 'function' && !legDirWaypointVisible(i)) continue;
     const s = proj(state.waypoints[i]);
     if (Math.hypot(s.x - px, s.y - py) <= waypointGeom(i).r + tune('hitWaypointExtraPx')) {
       hits.push({ type: 'wp', index: i });
@@ -607,6 +610,7 @@ function showPointChoice(candidates) {
 }
 function hitLeg(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
+    if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;   // guard the transient legs>waypoints-1 state (imported / mid-edit)
     const a = proj(A);
@@ -775,6 +779,7 @@ function hitLegLabel(px, py) {
   const halfL = (tune('legKiteCellWidthPx') * 2 + tune('legKiteTriangleLenPx')) * sc / 2 + m;
   const halfW = tune('legKiteHeightPx') * sc / 2 + m;
   for (let i = 0; i < state.legs.length; i++) {
+    if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     const f = legFrame(i);
     if (!f) continue;
     // A hidden kite is not drawn, so it must not be hit-testable either -- the same reason
@@ -871,6 +876,7 @@ function hitCumLabel(px, py) {
   if (!showCumTime) return null;   // not drawn (draw.js gates on it) → not grabbable
   const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
+    if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     // Same as draw.js's own `showCumTime && !preClock` gate: a leg inside the departure
     // CTR is flown on the field's procedure and draws no cumulative kite at all. Missing
     // this left a phantom, never-drawn kite still hit-testable right over the leg's own
@@ -949,6 +955,7 @@ function hitCumLabelRet(px, py) {
   if (!showCumTime) return null;         // draw.js nests it in showCumTime too
   const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
+    if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     if (!legAllowsReturn(i)) continue;
     const c = cumLabelRetCenter(i);
     const a = state.waypoints[i] && proj(state.waypoints[i]);   // return kite points toward A
@@ -4015,11 +4022,12 @@ window.addEventListener('keydown', e => {
     if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
     return;
   }
-  // Issue #413: F (no modifier) re-runs fit-to-route. Ctrl/Cmd-F is the
-  // search-overlay shortcut handled in ui.js — bail out so we don't shadow it.
+  // Issue #413: F (no modifier) fits the active paper frame when one is
+  // selected, otherwise it re-runs fit-to-route. Ctrl/Cmd-F is the search
+  // overlay shortcut handled in ui.js — bail out so we don't shadow it.
   if (shortcutPlain(e, 'KeyF', 'f')) {
     e.preventDefault();
-    fitView();
+    fitToScreen();
     return;
   }
   // Map zoom (+ / − / numpad) and magnifier (M) — skip under any modal
@@ -4387,11 +4395,22 @@ map.on('resize', () => { resizeOverlay(); scheduleDraw(); });
 
 // --- view fitting ----------------------------------------------------
 function fitView() {
-  if (state.waypoints.length === 0) {
+  const visibleWaypoints = state.waypoints.filter((w, i) =>
+    typeof legDirWaypointVisible !== 'function' || legDirWaypointVisible(i));
+  if (visibleWaypoints.length === 0) {
     map.setView([tune('defaultViewLat'), tune('defaultViewLng')], tune('fitRouteEmptyZoom'));
     return;
   }
-  const b = L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng]));
+  const b = L.latLngBounds(visibleWaypoints.map(w => [w.lat, w.lng]));
   // Clamp maxZoom so two close waypoints don't snap to a tight, useless view.
   map.fitBounds(b, fitOpts('fitRoutePaddingPx', 'fitRouteMaxZoom'));
+}
+
+function fitToScreen() {
+  if (typeof pageSize !== 'undefined' && pageSize && typeof fitPageFrame === 'function') {
+    pageOffset = { x: 0, y: 0 };
+    fitPageFrame();
+    return;
+  }
+  fitView();
 }
