@@ -17,20 +17,35 @@ function emptyRouteHintSeen() {
   try { return lsGet(EMPTY_HINT_KEY) === '1'; }
   catch (e) { return false; }          // storage unavailable -> show it, harmless
 }
+// The intro (hint + click priming) can be switched off wholesale from the tuning gist.
+function routeIntroOn() {
+  return typeof tune !== 'function' || tune('featureRouteIntro') !== false;
+}
 function refreshEmptyRouteHint() {
   const empty = !state.waypoints || !state.waypoints.length;
   let el = document.getElementById('empty-route-hint');
-  if (!empty || state.mode) { if (el) el.remove(); return; }
+  if (!routeIntroOn()) { if (el) el.remove(); refreshPrimingCursor(); return; }
+  if (!empty || state.mode) { if (el) el.remove(); refreshPrimingCursor(); return; }
   if (!el) {
     // The flag is written when the hint is CREATED, and an element already on screen
     // is left alone, so marking it seen cannot make it vanish mid-read.
-    if (emptyRouteHintSeen()) return;
+    if (emptyRouteHintSeen()) { refreshPrimingCursor(); return; }
     el = document.createElement('div');
     el.id = 'empty-route-hint';
     document.body.appendChild(el);
     try { localStorage.setItem(EMPTY_HINT_KEY, '1'); } catch (e) { /* storage unavailable */ }
   }
   el.textContent = S.emptyRouteHint || 'Click the map to add your first waypoint';
+  refreshPrimingCursor();
+}
+// While the map is primed to start a route (see routePrimingArmed in interact.js) a plain
+// click drops the first waypoint -- but the pointer was still the pan hand, promising a
+// drag and delivering a waypoint. Same crosshair as add mode, since it is the same action.
+function refreshPrimingCursor() {
+  const m = document.getElementById('map');
+  if (!m) return;
+  const armed = typeof routePrimingArmed === 'function' && routePrimingArmed();
+  m.classList.toggle('priming', !!armed);
 }
 
 function refreshModeChip() {
@@ -6265,6 +6280,7 @@ function createTuningPanel() {
       // (for toggles the current user hasn't explicitly set).
       if (typeof NavAid.applyDefaultVisibility === 'function') NavAid.applyDefaultVisibility();
       if (typeof refreshShowReturnFeature === 'function') refreshShowReturnFeature();
+      if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
       redrawAfterTune();
       return;
     }
@@ -6846,6 +6862,7 @@ if (typeof loadRemoteConfig === "function") {
     if (NavAid && typeof NavAid.applyDefaultVisibility === "function") NavAid.applyDefaultVisibility();
     // Same reason: the gist may have switched the return path back on.
     if (typeof refreshShowReturnFeature === "function") refreshShowReturnFeature();
+    if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     // The gist may have turned base layers on or off -- rebuild the picker to match.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
     if (typeof scheduleDraw === "function") scheduleDraw();

@@ -29,13 +29,18 @@ html, body {
      not the map itself (the chart + OSM underlay look the same in both). */
   background: #e7ebf0;
 }
-#map.add { cursor: crosshair; }
+#map.add,
+/* Primed to start a route: a plain click adds the first waypoint, so it gets add mode's
+   pointer rather than the pan hand. */
+#map.priming { cursor: crosshair; }
 /* Non-edit (select) mode reads as an arrow — markers are clickable, not a
    grab/pan hand. Crosshair in add/note mode; grabbing while actively panning. */
 #map .leaflet-grab,
 #map .leaflet-interactive { cursor: default; }
 #map.add .leaflet-grab,
-#map.add .leaflet-interactive { cursor: crosshair; }
+#map.add .leaflet-interactive,
+#map.priming .leaflet-grab,
+#map.priming .leaflet-interactive { cursor: crosshair; }
 #map.leaflet-dragging .leaflet-grab { cursor: grabbing; }
 /* Flight-plan VOR Radial/DME columns collapse when no reference VOR is set. */
 .flight-table.no-vor .fp-vor-col { display: none; }
