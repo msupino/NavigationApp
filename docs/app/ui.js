@@ -2734,7 +2734,7 @@ refreshShowReturnFeature();
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('cumtime-cb').checked = showCumTime;
-// Leg-kite direction filter. Options are built here rather than in the HTML so their
+// Route-direction display filter. Options are built here rather than in the HTML so their
 // labels come from the string table like every other localised control.
 (function () {
   const sel = document.getElementById('leg-dir-select');
@@ -2753,6 +2753,11 @@ document.getElementById('cumtime-cb').checked = showCumTime;
   sel.onchange = () => {
     window.legDirFilter = sel.value;
     try { localStorage.setItem(LEG_DIR_KEY, sel.value); } catch (e) { /* */ }
+    if (state.selected && typeof routeSelectionDirVisible === 'function' &&
+        !routeSelectionDirVisible(state.selected)) {
+      state.selected = null;
+      showInspector();
+    }
     draw();
   };
   // A route that never doubles back has no turn, so there is nothing to divide into out

@@ -1820,7 +1820,7 @@ window.S = Object.assign({
   offlineDone: 'saved ',
   offlineTilesCount: 'offline tiles: ',
   tbLegDir: '🧭 Route direction',
-  tbLegDirTitle: 'Which direction\u2019s leg kites to draw. On an out-and-back route both directions land on top of each other near the turnaround — readable on screen, unusable on a printed map. The route line is never hidden, only the kites.',
+  tbLegDirTitle: 'Which route direction to display. The other half\u2019s route line, waypoints, kites, drift and time marks, wind arrows, route-bound notes, totals and plan rows are hidden.',
   tbLegDirBoth: 'Both directions',
   tbLegDirOut: 'Outbound only',
   tbLegDirBack: 'Return only',
@@ -3084,7 +3084,7 @@ function routeEndpointElev(i) {
 // Returns per-leg
 // time/fuel, altitude-vs-distance vertices (pts), and wpCum (cumulative NM at
 // each waypoint, for the distance axis).
-function routeProfile(ac) {
+function routeProfile(ac, legIndexes) {
   ac = ac || (typeof aircraft === 'object' && aircraft) || {};
   // V/S shapes the PICTURE, never the clock. Leg time is dist / speed, full stop, so
   // the kite, the plan, the totals and the nav log cannot disagree, and the ETE never
@@ -3095,7 +3095,10 @@ function routeProfile(ac) {
   const climbKt = ac.climbKt > 0 ? ac.climbKt : tune('profileClimbKt');
   const gph = ac.gph > 0 ? ac.gph : tune('defaultGph');
   const legs = state.legs || [], wps = state.waypoints || [];
-  const n = legs.length;
+  const indexes = Array.isArray(legIndexes)
+    ? legIndexes.filter(i => Number.isInteger(i) && i >= 0 && i < legs.length)
+    : legs.map((_, i) => i);
+  const n = indexes.length;
   // A leg with no altitude entered is flown LEVEL for timing: the plan must not
   // charge climb/descent time against an altitude the pilot never typed. It used
   // to assume 2 000 ft silently, model a descent onto the field, and come out ~50 s
@@ -3109,13 +3112,16 @@ function routeProfile(ac) {
   // aircraft demonstrably leaves a known elevation. A leg starting anywhere else is
   // drawn level at its own altitude -- no synthesized mid-route ramps, and no descent
   // invented onto the destination field (so TOD is gone; TOC stays).
-  const out = { legs: [], pts: [], tocs: [], wpCum: [0], wpTime: [0], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
+  const out = { legs: [], pts: [], tocs: [], wpCum: [0], wpTime: [0],
+    wpIndexes: n ? [indexes[0]].concat(indexes.map(i => i + 1)) : [],
+    totalDist: 0, totalTimeH: 0, totalFuel: 0 };
 
   // Prepass: per-leg distance + cumulative NM at each waypoint.
   const dists = [];
   let total = 0;
   for (let i = 0; i < n; i++) {
-    const A = wps[i], B = wps[i + 1];
+    const sourceIndex = indexes[i];
+    const A = wps[sourceIndex], B = wps[sourceIndex + 1];
     const d = A && B ? geo(A, B).dist : 0;
     dists.push(d); total += d; out.wpCum.push(total);
   }
@@ -3124,23 +3130,24 @@ function routeProfile(ac) {
 
   let cum = 0;
   for (let i = 0; i < n; i++) {
+    const sourceIndex = indexes[i];
     const dist = dists[i];
-    const cr = legAlt(i);
+    const cr = legAlt(sourceIndex);
     // Does this leg start ON an airfield? Then it climbs from that field's elevation
     // to its own altitude at the V/S, over however much distance that takes (capped
     // at the leg). Everything else is drawn level.
-    const startElev = routeEndpointElev(i);
-    const climbs = altKnown(i) && startElev != null && cr > startElev;
+    const startElev = routeEndpointElev(sourceIndex);
+    const climbs = altKnown(sourceIndex) && startElev != null && cr > startElev;
     const startAlt = climbs ? startElev : cr;
     const climbDist = climbs
       ? Math.min(dist, climbKt * ((cr - startAlt) / climbFpm) / 60)
       : 0;
     // Time is speed and distance only -- the ramp above costs nothing.
-    const timeH = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
+    const timeH = legs[sourceIndex].flightSpeed > 0 ? dist / legs[sourceIndex].flightSpeed : 0;
     const fuel = timeH * gph;
     // assumed: nothing was typed for this leg, so cr is unknownProfileAltFt. The
     // strip must not draw an invented height as confidently as a real one.
-    const assumed = !altKnown(i);
+    const assumed = !altKnown(sourceIndex);
     if (assumed) out.hasAssumed = true;
     out.legs.push({ dist, timeH, fuel, climbDist, descDist: 0,
       cruiseDist: Math.max(0, dist - climbDist), startAlt, cruiseAlt: cr, endAlt: cr, assumed });
@@ -4210,16 +4217,45 @@ function setTurnWaypoint(idx) {
   return !was;
 }
 function legTurnaroundIndex() { return legRetraceTurnIndex(); }
-// Should leg i's kites be drawn, given the direction filter? Everything from the turnaround
-// on counts as the return -- not just the legs that literally retrace. Hiding only the
-// reversed leg would leave the rest of the way home drawn, which is not what "outbound
-// only" means to anyone reading a printed map.
+// Should leg i be shown, given the direction filter? Everything from the turnaround
+// on counts as the return -- not just the legs that literally retrace. This is the
+// shared gate for every route-bound visual and hit target.
 function legDirVisible(i) {
   const f = (typeof legDirFilter === 'string') ? legDirFilter : 'both';
   if (f !== 'out' && f !== 'back') return true;
   const t = legRetraceTurnIndex();
   if (t < 0) return true;             // no turn: nothing to divide, so hide nothing
   return f === 'out' ? i < t : i >= t;
+}
+function legDirWaypointVisible(i) {
+  const f = (typeof legDirFilter === 'string') ? legDirFilter : 'both';
+  if (f !== 'out' && f !== 'back') return true;
+  const t = legRetraceTurnIndex();
+  if (t < 0) return true;
+  return f === 'out' ? i <= t : i >= t;
+}
+function routeNoteDirVisible(note) {
+  if (!note) return false;
+  if (note.rp && Number.isInteger(note.rp.leg)) return legDirVisible(note.rp.leg);
+  if (!note.cc || !Array.isArray(state.waypoints)) return true;
+  const canonical = value => typeof canonicalNavWaypointName === 'function'
+    ? canonicalNavWaypointName(value) : String(value || '').trim();
+  const key = canonical(note.cc);
+  let routeBound = false;
+  for (let i = 0; i < state.waypoints.length; i++) {
+    const wp = state.waypoints[i];
+    if (!wp || canonical(wp.name) !== key) continue;
+    routeBound = true;
+    if (legDirWaypointVisible(i)) return true;
+  }
+  return !routeBound;
+}
+function routeSelectionDirVisible(selection) {
+  if (!selection) return true;
+  if (selection.type === 'leg') return legDirVisible(selection.index);
+  if (selection.type === 'wp') return legDirWaypointVisible(selection.index);
+  if (selection.type === 'note') return routeNoteDirVisible(state.notes[selection.index]);
+  return true;
 }
 function legAllowsReturn(i) {
   const leg = state.legs[i];

@@ -3104,11 +3104,8 @@ function showFlightPlan() {
   // Direction indicator above the strip — the profile/X-axis mirrors in RTL
   // (Hebrew), so spell out the flow: departure → destination with a centred
   // arrow, oriented to match the axis (arrow points the way it's flown).
+  let refreshProfileDirection = function () {};
   (function () {
-    const wps = state.waypoints || [];
-    if (wps.length < 2) return;
-    const depName = navName((wps[0].name || '').trim()) || (S.wpPrefix + 1);
-    const destName = navName((wps[wps.length - 1].name || '').trim()) || (S.wpPrefix + wps.length);
     const rtl = document.documentElement && document.documentElement.dir === 'rtl';
     const label = S.fpDirection || 'Direction';
     const dirRow = document.createElement('div');
@@ -3118,12 +3115,25 @@ function showFlightPlan() {
     const arrow = document.createElement('span');
     arrow.className = 'fp-dir-arrow';
     const rEnd = document.createElement('span');
-    // d=0 (departure) is on the left in LTR, on the right in RTL.
-    lEnd.textContent = rtl ? destName : depName;
-    rEnd.textContent = rtl ? depName : destName;
     arrow.textContent = rtl ? ('◄ ' + label) : (label + ' ►');
     dirRow.appendChild(lEnd); dirRow.appendChild(arrow); dirRow.appendChild(rEnd);
     profWrap.appendChild(dirRow);
+    refreshProfileDirection = function () {
+      const indexes = [];
+      for (let i = 0; i < state.legs.length; i++) {
+        if (typeof legDirVisible !== 'function' || legDirVisible(i)) indexes.push(i);
+      }
+      dirRow.hidden = indexes.length === 0;
+      if (!indexes.length) return;
+      const depIndex = indexes[0], destIndex = indexes[indexes.length - 1] + 1;
+      const dep = state.waypoints[depIndex] || {}, dest = state.waypoints[destIndex] || {};
+      const depName = navName((dep.name || '').trim()) || (S.wpPrefix + (depIndex + 1));
+      const destName = navName((dest.name || '').trim()) || (S.wpPrefix + (destIndex + 1));
+      // d=0 (departure) is on the left in LTR, on the right in RTL.
+      lEnd.textContent = rtl ? destName : depName;
+      rEnd.textContent = rtl ? depName : destName;
+    };
+    refreshProfileDirection();
   })();
   const profCanvas = document.createElement('canvas');
   profCanvas.className = 'fp-profile-canvas';
@@ -3132,6 +3142,7 @@ function showFlightPlan() {
   box.appendChild(profWrap);
   drawProfileStripIfOpen = function () {
     if (!profCanvas.isConnected) return;
+    refreshProfileDirection();
     const cssW = profCanvas.clientWidth || 600;
     profCanvas.width = cssW; profCanvas.height = 104;
     const cx = profCanvas.getContext('2d');
@@ -3372,6 +3383,8 @@ function showFlightPlan() {
   const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
   const radialCells = [];              // leg index -> VOR radial cell (To wp)
   const dmeCells = [];                 // leg index -> VOR DME cell (To wp)
+  const legRows = [];                  // leg index -> forward table row
+  const seqCells = [];                 // leg index -> visible sequence number
   // Radial (magnetic) + DME of a waypoint from the selected reference VOR.
   // Per-leg override (leg.vorRef) wins over the global reference VOR.
   const legVorSelects = [];             // { sel, leg } for every Radial cell
@@ -3381,7 +3394,8 @@ function showFlightPlan() {
   }
   function anyVorActive() {
     return !!(typeof activeVor === 'function' && activeVor()) ||
-      state.legs.some(l => l && l.vorRef);
+      state.legs.some((l, i) => l && l.vorRef &&
+        (typeof legDirVisible !== 'function' || legDirVisible(i)));
   }
   function vorCells(wp, leg) {
     const v = legVorObj(leg);
@@ -3435,7 +3449,9 @@ function showFlightPlan() {
     const leg = state.legs[i];
     const { dist, brg } = geo(A, B);
     const tr = document.createElement('tr');
-    tr.appendChild(fpCell('seq', planCell(String(i + 1))));
+    const seqCell = planCell(String(i + 1));
+    seqCells[i] = seqCell;
+    tr.appendChild(fpCell('seq', seqCell));
     tr.appendChild(fpCell('from', nameCell(i)));
     tr.appendChild(fpCell('to', nameCell(i + 1)));
     const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
@@ -3539,6 +3555,7 @@ function showFlightPlan() {
       delTd.appendChild(delBtn);
       tr.appendChild(fpCell('delete', delTd));
     })(i);
+    legRows[i] = tr;
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -3584,13 +3601,24 @@ function showFlightPlan() {
     table.classList.toggle('no-vor', !anyVorActive());
     let td = 0, th = 0, tf = 0;
     const ac = aircraft;
-    const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
+    const visibleIndexes = [];
+    for (let i = 0; i < state.legs.length; i++) {
+      if (typeof legDirVisible !== 'function' || legDirVisible(i)) visibleIndexes.push(i);
+    }
+    const firstVisible = visibleIndexes.length ? visibleIndexes[0] : 0;
+    const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[firstVisible]) ? ac.taxiGal : 0;
     if (taxiFuel) tf = taxiFuel;
     // Per-leg time/fuel accounting for climb & descent (#672); falls back to
     // flat cruise per leg when the profile engine is unavailable.
     const prof = typeof routeProfile === 'function' ? routeProfile(ac) : null;
     if (typeof drawProfileStripIfOpen === 'function') drawProfileStripIfOpen();
+    let visibleSeq = 0;
     for (let i = 0; i < state.legs.length; i++) {
+      const visible = typeof legDirVisible !== 'function' || legDirVisible(i);
+      if (legRows[i]) legRows[i].hidden = !visible;
+      if (!visible) continue;
+      visibleSeq++;
+      if (seqCells[i]) seqCells[i].textContent = String(visibleSeq);
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;
       const { dist, brg } = geo(A, B);
@@ -3614,7 +3642,7 @@ function showFlightPlan() {
       if (ac) {
         const fuel = prof && prof.legs[i] ? prof.legs[i].fuel : dur * ac.gph;
         tf += fuel;
-        const mark = i === 0 && taxiFuel;
+        const mark = i === firstVisible && taxiFuel;
         fuelCells[i].textContent = (mark ? fuel + taxiFuel : fuel).toFixed(1) + (mark ? ' *' : '');
         fuelCells[i].title = mark ? S.fpTaxiTip(taxiFuel) : '';
       } else {
@@ -3648,7 +3676,7 @@ function showFlightPlan() {
     // Keep the narrow-screen summary in step with the table it summarises.
     if (mobileSummary) {
       mobileSummary.textContent = (typeof S.fpMobileSummary === 'function')
-        ? S.fpMobileSummary(state.legs.length, td.toFixed(1),
+        ? S.fpMobileSummary(visibleIndexes.length, td.toFixed(1),
             th > 0 ? toHMS(th) : '--', ac ? tf.toFixed(1) : '--')
         : '';
     }
