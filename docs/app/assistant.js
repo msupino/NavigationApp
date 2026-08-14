@@ -1034,6 +1034,11 @@
         baseIn.value = ls(baseKey(id)) || '';
       }
       modelIn.placeholder = P.model;
+      // The provider's own endpoint, shown the same way the model default is: an empty box
+      // reads as "unset" when it actually means "use the provider's URL". Placeholder, not
+      // value -- a filled-in value gets SAVED as a per-provider override, freezing the
+      // endpoint at whatever shipped instead of following the provider entry.
+      baseIn.placeholder = P.base || t('assistantBaseUrlPlaceholder', 'Base URL (optional proxy)');
       link.textContent = t('assistantGetKey', 'Get an API key') + ' — ' + P.label;
       link.href = P.keyUrl;
       baseIn.style.display = P.openaiCompat ? '' : 'none';   // proxy override for OpenAI-compatible providers

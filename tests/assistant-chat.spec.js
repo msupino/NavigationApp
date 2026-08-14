@@ -493,6 +493,22 @@ test('settings offer Gemini, Claude, OpenRouter, DeepSeek and OrcaRouter; only D
   await expect(page.locator('.assistant-note')).toBeHidden();   // sends Access-Control-Allow-Origin: * -- no proxy needed
 });
 
+test('the Base URL box shows the provider endpoint it would use, without storing it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => NavAid.assistant.open());
+  await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
+  const sel = page.locator('.assistant-settings select.assistant-field');
+  const base = page.locator('.assistant-settings input[placeholder]').nth(2);
+  await sel.selectOption('orcarouter');
+  await expect(base).toHaveAttribute('placeholder', 'https://api.orcarouter.ai/v1');
+  await expect(base).toHaveValue('');            // a value would be saved as an override
+  await sel.selectOption('deepseek');
+  await expect(base).toHaveAttribute('placeholder', 'https://api.deepseek.com');
+  // Saving with the box left empty must not freeze the endpoint as an override.
+  await page.locator('.assistant-settings button.assistant-send').click();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.ai.baseUrl.deepseek'))).toBeNull();
+});
+
 test('get_weather parses Open-Meteo current conditions (fetch mocked)', async ({ page }) => {
   await boot(page);
   await page.route(/^https:\/\/api\.open-meteo\.com\//, route => route.fulfill({
