@@ -129,9 +129,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **State:**
   - `state.waypoints[i]` = `{lat, lng, name}` (name optional).
   - `state.legs[i]` = `{inboundAltitude, outboundAltitude, flightSpeed,
-    inLabel, outLabel}`. `inLabel` / `outLabel` are `{a, p}` offsets
+    inLabel, outLabel, hideDrift?, showDrift?}`. `inLabel` / `outLabel` are `{a, p}` offsets
     (along-leg / perpendicular, screen px) so markers can be dragged
-    apart from the leg midpoint.
+    apart from the leg midpoint. `hideDrift: 1` hides that leg even when
+    route-wide drift lines are on; `showDrift: 1` shows it when route-wide
+    drift lines are off. `hideDrift` wins if both legacy flags are present.
   - `state.notes[i]` = `{lat, lng, text, color, shape}` — free-text
     annotation boxes; `shape` is `'rect'` or `'oval'`.
   - `state.mode` = `'add' | 'note' | null` (null = inspect);
@@ -460,7 +462,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   match physical `KeyboardEvent.code` values so the same English keys work
   while the OS keyboard layout is Hebrew.
   Current global shortcuts surfaced:
-  - **Navigation:** `F` — fit the selected A3/A4 page frame to the view, or fit
+  - **Navigation:** `F` — fit the selected A3/A4/A4×2 page frame to the view, or fit
     the route when no page is selected; `+`/`=` / numpad `+` — zoom
     map in (loupe zoom in when magnifier is on); `−`/`-` / numpad `−` —
     zoom map out (loupe zoom out when magnifier is on); `M` — toggle
@@ -523,7 +525,7 @@ as a machine-readable registry.
   `bearing` is also written to legacy `navaid.bearing` for back-compat,
   but `navaid.view.bearing` wins on restore when present. Manual re-fit:
   the `⌖ Fit to screen` toolbar button (Build section) or the `F`
-  keyboard shortcut (when not focused in an input). With an A3/A4 frame
+  keyboard shortcut (when not focused in an input). With an A3, A4, or A4×2 frame
   selected, those controls fit the frame instead of the route.
 - `navaid.layer` — selected base layer name.
 - `navaid.navDataPrefix` — which chart the *navigation data* comes from,

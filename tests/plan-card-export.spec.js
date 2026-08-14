@@ -72,6 +72,28 @@ test('the printed flight-plan card follows the selected route direction', async 
   expect(labels.back).not.toContain('BRAVO');
 });
 
+test('hidden-direction VOR references do not add VOR content to the export', async ({ page }) => {
+  await boot(page);
+  const hasVor = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.00, lng: 34.0, name: 'ALPHA' },
+      { lat: 32.05, lng: 34.0, name: 'BRAVO' },
+      { lat: 32.00, lng: 34.0, name: 'ALPHA' },
+    ];
+    state.legs = [];
+    syncLegs();
+    vorRef = null;
+    state.legs[1].vorRef = 'BGN';
+    legDirFilter = 'out';
+    const outbound = flightPlanCardHasVorInfo();
+    legDirFilter = 'back';
+    const back = flightPlanCardHasVorInfo();
+    legDirFilter = 'both';
+    return { outbound, back };
+  });
+  expect(hasVor).toEqual({ outbound: false, back: true });
+});
+
 test('export modal: plan checkbox is gated on a route, not a page frame', async ({ page }) => {
   await boot(page);
   // No route → checkbox disabled.
@@ -144,6 +166,32 @@ test('a card added while the paper frame is larger than the viewport is visible'
   expect(placed.r.y).toBeGreaterThan(placed.toolbarBottom);
 });
 
+test('a card added to a shifted paper frame stays within all four frame edges', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    setPage('A4');
+    const fr = pageFrameRect();
+    pageOffset = { x: -fr.w * 0.75, y: -fr.h * 0.6 };
+    draw();
+    showExportModal();
+  });
+  await page.locator('#export-plan-cb').check();
+  const placed = await page.evaluate(() => {
+    draw();
+    return { fr: pageFrameRect(), r: planCardRect };
+  });
+  expect(placed.fr.x).toBeLessThan(0);
+  expect(placed.fr.y).toBeLessThan(0);
+  expect(placed.r.x).toBeGreaterThanOrEqual(placed.fr.x - 1);
+  expect(placed.r.y).toBeGreaterThanOrEqual(placed.fr.y - 1);
+  expect(placed.r.x + placed.r.w).toBeLessThanOrEqual(placed.fr.x + placed.fr.w + 1);
+  expect(placed.r.y + placed.r.h).toBeLessThanOrEqual(placed.fr.y + placed.fr.h + 1);
+  expect(placed.r.x + placed.r.w).toBeGreaterThan(0);
+  expect(placed.r.y + placed.r.h).toBeGreaterThan(0);
+});
+
 test('Fit fits the selected paper frame instead of the route', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 700 });
   await boot(page);
@@ -157,6 +205,30 @@ test('Fit fits the selected paper frame instead of the route', async ({ page }) 
     setPage('A4');
     map.zoomIn(3, { animate: false });
     document.getElementById('fit').click();
+    const fr = pageFrameRect();
+    return { fr, viewport: { w: map.getSize().x, h: map.getSize().y } };
+  });
+  expect(fitted.fr.x).toBeGreaterThanOrEqual(-1);
+  expect(fitted.fr.y).toBeGreaterThanOrEqual(-1);
+  expect(fitted.fr.x + fitted.fr.w).toBeLessThanOrEqual(fitted.viewport.w + 1);
+  expect(fitted.fr.y + fitted.fr.h).toBeLessThanOrEqual(fitted.viewport.h + 1);
+});
+
+test('F fits the active A3 paper frame', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.1800, lng: 34.8300, name: 'A' },
+      { lat: 32.1805, lng: 34.8305, name: 'B' },
+    ];
+    state.legs = [];
+    syncLegs();
+    setPage('A3');
+    map.zoomIn(3, { animate: false });
+  });
+  await page.keyboard.press('f');
+  const fitted = await page.evaluate(() => {
     const fr = pageFrameRect();
     return { fr, viewport: { w: map.getSize().x, h: map.getSize().y } };
   });

@@ -95,7 +95,7 @@ both branches and assembles a single Pages site:
   - `navaid.route` — route geometry (waypoints / legs / notes).
   - `navaid.view` — map center / zoom / bearing, persisted across
     reloads. `F` (no modifier) and the `⌖ Fit to screen` toolbar button fit
-    the selected A3/A4 page frame, or fit the route when no page is selected.
+    the selected A3/A4/A4×2 page frame, or fit the route when no page is selected.
     `+`/`=`/numpad `+` and
     `−`/numpad `−` zoom the map (or loupe zoom when the magnifier is on);
     `M` toggles the magnifying glass. All are listed in the `?` cheat-sheet

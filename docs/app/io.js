@@ -4611,6 +4611,15 @@ function showExportModal() {
     return { x: Math.max(bounds.x, 0) + 14,
       y: Math.max(bounds.y, toolbarBottom, 0) + 14 };
   }
+  function clampPlanCardToBounds(bounds) {
+    if (!planCard || !planCardRect) return false;
+    const oldX = planCard.x, oldY = planCard.y;
+    const maxX = Math.max(bounds.x, bounds.x + bounds.w - planCardRect.w);
+    const maxY = Math.max(bounds.y, bounds.y + bounds.h - planCardRect.h);
+    planCard.x = Math.max(bounds.x, Math.min(maxX, planCard.x));
+    planCard.y = Math.max(bounds.y, Math.min(maxY, planCard.y));
+    return planCard.x !== oldX || planCard.y !== oldY;
+  }
   // Keep the backdrop click-through while a card is placed (or while floating).
   function syncPlaceThrough() {
     const placing = !!(planCb && planCb.checked && planCard);
@@ -4696,12 +4705,15 @@ function showExportModal() {
     // to read. The corner grip resizes it from there.
     if (planCard && planCardRect) {
       const target = fr0.w * 0.7;
-      if (planCardRect.w > target) {
-        planCard.scale = Math.max(0.4, planCard.scale * target / planCardRect.w);
+      const availableH = Math.max(1, fr0.h - 28);
+      const factor = Math.min(1, target / planCardRect.w, availableH / planCardRect.h);
+      if (factor < 1) {
+        planCard.scale = Math.max(0.15, planCard.scale * factor);
         const at = initialPlanCardPosition(fr0);
         planCard.x = at.x; planCard.y = at.y;
         draw();
       }
+      if (clampPlanCardToBounds(fr0)) draw();
     }
   };
   // Drag the card inside the page frame. Listens on the map container so it
@@ -5201,8 +5213,7 @@ function exportPNG(mode) {
       // Mirror the plan card's own gate (draw.js): a reference VOR that actually
       // resolves via activeVor() (not a stale/unloaded ident), or any per-leg VOR.
       const exportHasVorInfo = !!planCard &&
-        ((typeof activeVor === 'function' && activeVor()) ||
-         (state.legs || []).some(l => l && l.vorRef));
+        typeof flightPlanCardHasVorInfo === 'function' && flightPlanCardHasVorInfo();
       drawVors(exportHasVorInfo);
       drawLegs();
       drawWaypoints();

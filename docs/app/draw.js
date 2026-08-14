@@ -4578,6 +4578,12 @@ function flightPlanCardLegIndexes() {
   return indexes;
 }
 
+function flightPlanCardHasVorInfo() {
+  const legs = state.legs || [];
+  const refVor = typeof activeVor === 'function' ? activeVor() : null;
+  return !!refVor || flightPlanCardLegIndexes().some(i => legs[i] && legs[i].vorRef);
+}
+
 function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const legs = state.legs || [];
   const wpts = state.waypoints || [];
@@ -4644,7 +4650,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // Radial / DME columns appear only when a reference VOR is selected (global
   // or any per-leg). The Radial header carries the reference VOR ident.
   const refVor = typeof activeVor === 'function' ? activeVor() : null;
-  const vorActive = !!refVor || legIndexes.some(i => legs[i] && legs[i].vorRef);
+  const vorActive = flightPlanCardHasVorInfo();
   const headers = [
     '#',
     S.planColDestination || 'Destination',
