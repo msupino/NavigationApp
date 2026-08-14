@@ -224,15 +224,24 @@ test('a long flight plan shrinks enough to stay inside a zoomed-out A4 frame', a
 
   // A small inward grip movement must not snap the already-fitted card back to
   // the normal 0.15 resize floor and reintroduce bottom overflow.
-  await page.mouse.move(placed.mapBox.x + placed.r.x + placed.r.w - 6,
-    placed.mapBox.y + placed.r.y + placed.r.h - 6);
-  await page.mouse.down();
-  await page.mouse.move(placed.mapBox.x + placed.r.x + placed.r.w - 7,
-    placed.mapBox.y + placed.r.y + placed.r.h - 7);
-  await page.mouse.up();
-  const resized = await page.evaluate(() => ({ fr: pageFrameRect(), r: planCardRect,
-    scale: planCard.scale }));
-  expect(resized.scale).toBeLessThanOrEqual(placed.scale + 0.001);
+  const resized = await page.evaluate(() => {
+    const mapEl = map.getContainer();
+    const mb = mapEl.getBoundingClientRect();
+    let delivered = false;
+    const disable = map.dragging.disable.bind(map.dragging);
+    map.dragging.disable = () => { delivered = true; disable(); };
+    const at = (type, cx, cy, target) => target.dispatchEvent(
+      new MouseEvent(type, { clientX: cx, clientY: cy, bubbles: true, cancelable: true }));
+    const x = mb.left + planCardRect.x + planCardRect.w - 6;
+    const y = mb.top + planCardRect.y + planCardRect.h - 6;
+    at('mousedown', x, y, mapEl);
+    at('mousemove', x - 1, y - 1, window);
+    at('mouseup', x - 1, y - 1, window);
+    return { fr: pageFrameRect(), r: planCardRect, scale: planCard.scale, delivered };
+  });
+  expect(resized.delivered).toBe(true);
+  expect(resized.scale).toBeCloseTo(placed.scale, 8);
+  expect(resized.scale).toBeLessThan(0.15);
   expect(resized.r.x + resized.r.w).toBeLessThanOrEqual(resized.fr.x + resized.fr.w + 1);
   expect(resized.r.y + resized.r.h).toBeLessThanOrEqual(resized.fr.y + resized.fr.h + 1);
 });
