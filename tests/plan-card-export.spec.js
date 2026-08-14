@@ -41,6 +41,37 @@ test('drawFlightPlanTable renders a sized table; none without a route', async ({
   expect(r.rect.x).toBe(10);
 });
 
+test('the printed flight-plan card follows the selected route direction', async ({ page }) => {
+  await boot(page);
+  const labels = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.00, lng: 34.0, name: 'ALPHA' },
+      { lat: 32.05, lng: 34.0, name: 'BRAVO' },
+      { lat: 32.00, lng: 34.0, name: 'ALPHA' },
+    ];
+    state.legs = [];
+    syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 100; });
+    const render = filter => {
+      window.legDirFilter = filter;
+      const ctx = document.createElement('canvas').getContext('2d');
+      const seen = [];
+      const fillText = ctx.fillText.bind(ctx);
+      ctx.fillText = text => { seen.push(String(text)); fillText(text, 0, 0); };
+      drawFlightPlanTable(ctx, 0, 0, 1000, 120, 'tl');
+      return seen;
+    };
+    const outbound = render('out');
+    const back = render('back');
+    window.legDirFilter = 'both';
+    return { outbound, back };
+  });
+  expect(labels.outbound).toContain('BRAVO');
+  expect(labels.outbound).not.toContain('ALPHA');
+  expect(labels.back).toContain('ALPHA');
+  expect(labels.back).not.toContain('BRAVO');
+});
+
 test('export modal: plan checkbox is gated on a route, not a page frame', async ({ page }) => {
   await boot(page);
   // No route → checkbox disabled.
@@ -84,6 +115,55 @@ test('checking the box places a card; it clears on cancel', async ({ page }) => 
   // Cancel clears the placement.
   await page.evaluate(() => { document.querySelector('.modal-cancel').click(); });
   expect(await page.evaluate(() => planCard)).toBeNull();
+});
+
+test('a card added while the paper frame is larger than the viewport is visible', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    setPage('A4');
+    map.zoomIn(3, { animate: false });
+    draw();
+    showExportModal();
+  });
+  await page.locator('#export-plan-cb').check();
+  const placed = await page.evaluate(() => {
+    draw();
+    const fr = pageFrameRect(), r = planCardRect;
+    const mapBox = map.getContainer().getBoundingClientRect();
+    const toolbarBox = document.getElementById('toolbar').getBoundingClientRect();
+    return { fr, r, toolbarBottom: toolbarBox.bottom - mapBox.top,
+      viewport: { w: map.getSize().x, h: map.getSize().y } };
+  });
+  expect(placed.fr.x).toBeLessThan(0); // proves the page top-left is off-screen
+  expect(placed.r.x + placed.r.w).toBeGreaterThan(0);
+  expect(placed.r.y + placed.r.h).toBeGreaterThan(0);
+  expect(placed.r.x).toBeLessThan(placed.viewport.w);
+  expect(placed.r.y).toBeLessThan(placed.viewport.h);
+  expect(placed.r.y).toBeGreaterThan(placed.toolbarBottom);
+});
+
+test('Fit fits the selected paper frame instead of the route', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await boot(page);
+  const fitted = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.1800, lng: 34.8300, name: 'A' },
+      { lat: 32.1805, lng: 34.8305, name: 'B' },
+    ];
+    state.legs = [];
+    syncLegs();
+    setPage('A4');
+    map.zoomIn(3, { animate: false });
+    document.getElementById('fit').click();
+    const fr = pageFrameRect();
+    return { fr, viewport: { w: map.getSize().x, h: map.getSize().y } };
+  });
+  expect(fitted.fr.x).toBeGreaterThanOrEqual(-1);
+  expect(fitted.fr.y).toBeGreaterThanOrEqual(-1);
+  expect(fitted.fr.x + fitted.fr.w).toBeLessThanOrEqual(fitted.viewport.w + 1);
+  expect(fitted.fr.y + fitted.fr.h).toBeLessThanOrEqual(fitted.viewport.h + 1);
 });
 
 test('dragging the card on the map moves it within the frame', async ({ page }) => {

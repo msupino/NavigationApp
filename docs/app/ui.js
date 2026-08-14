@@ -2616,7 +2616,7 @@ document.getElementById('file').onchange = e => {
   else load(f);
   e.target.value = '';
 };
-document.getElementById('fit').onclick = fitView;
+document.getElementById('fit').onclick = fitToScreen;
 document.getElementById('fly').onclick = flyRoute;
 const openFlightPlan = () => {
   if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();

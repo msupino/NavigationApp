@@ -4015,11 +4015,12 @@ window.addEventListener('keydown', e => {
     if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
     return;
   }
-  // Issue #413: F (no modifier) re-runs fit-to-route. Ctrl/Cmd-F is the
-  // search-overlay shortcut handled in ui.js — bail out so we don't shadow it.
+  // Issue #413: F (no modifier) fits the active paper frame when one is
+  // selected, otherwise it re-runs fit-to-route. Ctrl/Cmd-F is the search
+  // overlay shortcut handled in ui.js — bail out so we don't shadow it.
   if (shortcutPlain(e, 'KeyF', 'f')) {
     e.preventDefault();
-    fitView();
+    fitToScreen();
     return;
   }
   // Map zoom (+ / − / numpad) and magnifier (M) — skip under any modal
@@ -4394,4 +4395,13 @@ function fitView() {
   const b = L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng]));
   // Clamp maxZoom so two close waypoints don't snap to a tight, useless view.
   map.fitBounds(b, fitOpts('fitRoutePaddingPx', 'fitRouteMaxZoom'));
+}
+
+function fitToScreen() {
+  if (typeof pageSize !== 'undefined' && pageSize && typeof fitPageFrame === 'function') {
+    pageOffset = { x: 0, y: 0 };
+    fitPageFrame();
+    return;
+  }
+  fitView();
 }

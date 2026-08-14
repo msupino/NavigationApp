@@ -4401,16 +4401,6 @@ function showExportModal() {
   wpNameLabel.appendChild(document.createTextNode(S.exportShowWpNames));
   body.appendChild(wpNameLabel);
 
-  // Show Drift Lines checkbox (default on).
-  const driftLabel = document.createElement('label');
-  driftLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
-  const driftCb = document.createElement('input');
-  driftCb.type = 'checkbox';
-  driftCb.checked = true;
-  driftLabel.appendChild(driftCb);
-  driftLabel.appendChild(document.createTextNode(S.exportShowDrift));
-  body.appendChild(driftLabel);
-
   // Show Cumulative time checkbox (default on).
   const cumLabel = document.createElement('label');
   cumLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
@@ -4567,7 +4557,6 @@ function showExportModal() {
   const origNavWP = showNavWP;
   const origAirfields = showAirfields;
   const origWpNames = showWpNames;
-  const origDrift = showDrift;
   const origCumTime = showCumTime;
   const origMapOpacity = mapOpacity;
   const origLayer = (function () {
@@ -4579,7 +4568,6 @@ function showExportModal() {
   // the PNG will look like before touching any control.
   showNavWP = navWpCb.checked;
   showWpNames = wpNameCb.checked;
-  showDrift = driftCb.checked;
   showCumTime = cumCb.checked;
   showAirfields = afCb.checked;
   const chosen = layerSel.value;
@@ -4612,6 +4600,17 @@ function showExportModal() {
     const s = map.getSize();
     return { x: 0, y: 0, w: s.x, h: s.y };
   }
+  // A zoomed-in paper frame can be physically larger than the viewport. In
+  // that case its top-left is off-screen, so starting the card there makes the
+  // preview appear to do nothing. Start inside the visible part of the frame,
+  // below the toolbar so its first rows are not hidden under the menu bar.
+  function initialPlanCardPosition(bounds) {
+    const mapBox = map.getContainer().getBoundingClientRect();
+    const toolbar = document.getElementById('toolbar');
+    const toolbarBottom = toolbar ? toolbar.getBoundingClientRect().bottom - mapBox.top : 0;
+    return { x: Math.max(bounds.x, 0) + 14,
+      y: Math.max(bounds.y, toolbarBottom, 0) + 14 };
+  }
   // Keep the backdrop click-through while a card is placed (or while floating).
   function syncPlaceThrough() {
     const placing = !!(planCb && planCb.checked && planCard);
@@ -4634,7 +4633,6 @@ function showExportModal() {
     const chk = (id, fallback) => { const e = cb(id); return e ? e.checked : fallback; };
     showNavWP = chk('navwp-cb', origNavWP);
     showWpNames = chk('wpname-cb', origWpNames);
-    showDrift = chk('drift-cb', origDrift);
     showCumTime = chk('cumtime-cb', origCumTime);
     showAirfields = chk('airfield-cb', origAirfields);
     const sel = cb('layer-select');
@@ -4666,10 +4664,6 @@ function showExportModal() {
     showWpNames = wpNameCb.checked;
     draw();
   };
-  driftCb.onchange = function () {
-    showDrift = driftCb.checked;
-    draw();
-  };
   cumCb.onchange = function () {
     showCumTime = cumCb.checked;
     draw();
@@ -4684,7 +4678,8 @@ function showExportModal() {
   planCb.onchange = function () {
     const fr0 = planBounds();
     if (planCb.checked) {
-      window.planCard = { x: fr0.x + 14, y: fr0.y + 14, scale: 1 };
+      const at = initialPlanCardPosition(fr0);
+      window.planCard = { x: at.x, y: at.y, scale: 1 };
     } else {
       window.planCard = null;
     }
@@ -4703,7 +4698,8 @@ function showExportModal() {
       const target = fr0.w * 0.7;
       if (planCardRect.w > target) {
         planCard.scale = Math.max(0.4, planCard.scale * target / planCardRect.w);
-        planCard.x = fr0.x + 14; planCard.y = fr0.y + 14;
+        const at = initialPlanCardPosition(fr0);
+        planCard.x = at.x; planCard.y = at.y;
         draw();
       }
     }

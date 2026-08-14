@@ -4569,14 +4569,26 @@ function clampPageOffset() {
 // `align` ('tl'|'tr'|'bl'|'br'|'center'). Returns the rendered { x, y, w, h }
 // (or null when there's no route). Paper-print look — white bg, black text.
 // Shared by the live export preview and the PNG render so they match exactly.
+function flightPlanCardLegIndexes() {
+  const legs = state.legs || [];
+  const indexes = [];
+  for (let i = 0; i < legs.length; i++) {
+    if (typeof legDirVisible !== 'function' || legDirVisible(i)) indexes.push(i);
+  }
+  return indexes;
+}
+
 function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const legs = state.legs || [];
   const wpts = state.waypoints || [];
-  if (!legs.length || wpts.length < 2) return null;
+  const legIndexes = flightPlanCardLegIndexes();
+  if (!legIndexes.length || wpts.length < 2) return null;
   // Default to 8 gph when no aircraft is configured (matches the printed
   // flight plan) so the Fuel / Cum. fuel columns aren't just '--'.
   const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
-  const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' && isAirport(wpts[0]) ? ac.taxiGal : 0;
+  const firstLegIndex = legIndexes[0];
+  const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' &&
+    isAirport(wpts[firstLegIndex]) ? ac.taxiGal : 0;
   const empty = S.fpVorRadialEmpty || '—';
   // Radial / DME of a waypoint from the leg's reference VOR (per-leg override,
   // else the global reference). Blank when no VOR is selected.
@@ -4589,22 +4601,23 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   };
   const rows = [];
   let totTime = 0, totFuel = 0;
-  for (let i = 0; i < legs.length; i++) {
+  for (let seq = 0; seq < legIndexes.length; seq++) {
+    const i = legIndexes[seq];
     const A = wpts[i], B = wpts[i + 1];
     if (!A || !B) continue;
     const { dist, brg } = geo(A, B);
     const hdg = toMagnetic(brg);
     const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
     let fuel = ac ? dur * ac.gph : 0;
-    if (i === 0 && taxiFuel) fuel += taxiFuel;
+    if (seq === 0 && taxiFuel) fuel += taxiFuel;
     // The printed kneeboard must say what the on-screen plan says: CTR legs read --- and
     // stay out of the running clock. Fuel is real either way.
     const cardPre = typeof legInsideCtr === 'function' && legInsideCtr(i);
     if (!cardPre) totTime += dur;
     totFuel += fuel;
-    const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
+    const fLabel = ac ? fuel.toFixed(1) + (seq === 0 && taxiFuel ? ' *' : '') : '--';
     const rd = vorCells(B, legs[i]);
-    rows.push({ num: i + 1, from: waypointDisplayLabel(A, i),
+    rows.push({ num: seq + 1, legIndex: i, from: waypointDisplayLabel(A, i),
       to: waypointDisplayLabel(B, i + 1),
       hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
       speed: String(legs[i].flightSpeed),
@@ -4622,7 +4635,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // flight-plan modal so the printed table aligns with it).
   const freqSources = typeof routeFreqSources === 'function' ? routeFreqSources() : [];
   for (let r = 0; r < rows.length; r++) {
-    rows[r].freq = typeof legActiveFreq === 'function' ? legActiveFreq(rows[r].num - 1, freqSources) : '';
+    rows[r].freq = typeof legActiveFreq === 'function' ? legActiveFreq(rows[r].legIndex, freqSources) : '';
   }
   const freqActive = rows.some(r => r.freq);
   // Fixed kneeboard column set: Destination, Direction, Altitude, Speed,
@@ -4631,7 +4644,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // Radial / DME columns appear only when a reference VOR is selected (global
   // or any per-leg). The Radial header carries the reference VOR ident.
   const refVor = typeof activeVor === 'function' ? activeVor() : null;
-  const vorActive = !!refVor || legs.some(l => l && l.vorRef);
+  const vorActive = !!refVor || legIndexes.some(i => legs[i] && legs[i].vorRef);
   const headers = [
     '#',
     S.planColDestination || 'Destination',
@@ -4757,7 +4770,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 function drawPlanCard() {
   if (!planCard) { window.planCardRect = null; return; }
   const scale = planCard.scale > 0 ? planCard.scale : 1;
-  const numRows = (state.legs ? state.legs.length : 0) + 2;
+  const numRows = flightPlanCardLegIndexes().length + 2;
   const h = numRows * tune('planCardBaseRowPx') * scale;
   window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
   // The resize grip is a UI handle — never bake it into the exported PNG.
