@@ -989,6 +989,14 @@
     if (typeof L !== 'undefined' && L.Control && typeof map !== 'undefined' && map && map.addControl) {
       const wrap = el('div', 'leaflet-control assistant-fab-control');
       wrap.appendChild(fab);
+      // The control sits INSIDE the map container, so without this a tap on the launcher
+      // also reaches the map underneath it -- in add-waypoint mode that dropped a waypoint
+      // where the button is and opened its inspector on top of the chat. Leaflet's own
+      // controls do this in their onAdd; a custom one has to ask.
+      if (L.DomEvent && L.DomEvent.disableClickPropagation) {
+        L.DomEvent.disableClickPropagation(wrap);
+        L.DomEvent.disableScrollPropagation(wrap);
+      }
       const Ctl = L.Control.extend({ options: { position: 'bottomright' }, onAdd: () => wrap });
       map.addControl(new Ctl());
       const corner = wrap.parentNode;   // the bottomright corner container
