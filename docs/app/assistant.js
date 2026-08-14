@@ -678,6 +678,13 @@
     anthropic: { label: 'Anthropic (Claude)', model: 'claude-sonnet-5', keyUrl: 'https://console.anthropic.com/settings/keys', send: anthropicSend },
     openrouter: { label: 'OpenRouter', model: 'openai/gpt-4o-mini', keyUrl: 'https://openrouter.ai/keys', send: openAiCompatSend, base: 'https://openrouter.ai/api/v1', openaiCompat: true },
     deepseek: { label: 'DeepSeek', model: 'deepseek-chat', keyUrl: 'https://platform.deepseek.com/api_keys', send: openAiCompatSend, base: 'https://api.deepseek.com', openaiCompat: true, browserBlocked: true },
+    // OrcaRouter is a BYOK gateway over ~185 models behind an OpenAI-compatible endpoint, so
+    // it reuses this adapter. Its preflight answers Access-Control-Allow-Origin: *, so unlike
+    // DeepSeek it works browser-direct with no proxy. The default is an explicit model rather
+    // than one of the orcarouter/fusion auto-routing ids: this assistant is useless without
+    // tool calls, and a router that picks the model per prompt cannot promise every pick
+    // supports them. Any id from the catalog can be typed into the model field.
+    orcarouter: { label: 'OrcaRouter', model: 'google/gemini-2.5-flash', keyUrl: 'https://www.orcarouter.ai/console/token', send: openAiCompatSend, base: 'https://api.orcarouter.ai/v1', openaiCompat: true },
   };
   async function dispatchSend(messages) { return PROVIDERS[activeProvider()].send(messages); }
   let providerSend = dispatchSend;   // tests override via NS.assistant._setProvider
@@ -1005,7 +1012,7 @@
 
     // Provider picker.
     const provSel = el('select', 'assistant-field');
-    for (const id of ['gemini', 'anthropic', 'openrouter', 'deepseek']) {
+    for (const id of ['gemini', 'anthropic', 'openrouter', 'deepseek', 'orcarouter']) {
       const opt = el('option', null, PROVIDERS[id].label + (id === 'gemini' ? ' — ' + t('assistantFreeTier', 'free tier') : ''));
       opt.value = id; provSel.appendChild(opt);
     }

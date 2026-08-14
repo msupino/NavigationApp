@@ -450,12 +450,38 @@ test('DeepSeek adapter: uses api.deepseek.com and a proxy base URL override', as
   await expect.poll(() => hitProxy).toBe(true);
 });
 
-test('settings offer Gemini, Claude, OpenRouter and DeepSeek; DeepSeek shows the CORS note', async ({ page }) => {
+test('OrcaRouter adapter: OpenAI-compatible, api.orcarouter.ai, browser-direct (no CORS note)', async ({ page }) => {
+  await boot(page);
+  let calls = 0, auth = null, model = null, sawFnTools = false, sawToolRole = false;
+  await page.route(/^https:\/\/api\.orcarouter\.ai\/v1\//, async route => {
+    calls++;
+    const req = route.request();
+    auth = req.headers()['authorization'];
+    const body = JSON.parse(req.postData() || '{}');
+    model = body.model;
+    if (body.tools && body.tools[0] && body.tools[0].type === 'function') sawFnTools = true;
+    if ((body.messages || []).some(m => m.role === 'tool')) sawToolRole = true;
+    const resp = calls === 1
+      ? { choices: [{ message: { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'describe_route', arguments: '{}' } }] } }] }
+      : { choices: [{ message: { role: 'assistant', content: 'No route.' } }] };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(resp) });
+  });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'orcarouter'); localStorage.setItem('navaid.ai.key.orcarouter', 'sk-orca'); });
+  await page.evaluate(() => NavAid.assistant.send('my route?'));
+  await expect(page.locator('.assistant-assistant')).toContainText('No route');
+  expect(calls).toBe(2);
+  expect(auth).toBe('Bearer sk-orca');
+  expect(model).toBe('google/gemini-2.5-flash');   // an explicit tool-calling model, not an auto-router id
+  expect(sawFnTools).toBe(true);
+  expect(sawToolRole).toBe(true);
+});
+
+test('settings offer Gemini, Claude, OpenRouter, DeepSeek and OrcaRouter; only DeepSeek shows the CORS note', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => NavAid.assistant.open());
   await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
   const sel = page.locator('.assistant-settings select.assistant-field');
-  await expect(sel.locator('option')).toHaveCount(4);
+  await expect(sel.locator('option')).toHaveCount(5);
   await sel.selectOption('deepseek');
   await expect(page.locator('.assistant-note')).toBeVisible();
   await expect(page.locator('.assistant-note')).toContainText(/CORS|proxy/i);
@@ -463,6 +489,8 @@ test('settings offer Gemini, Claude, OpenRouter and DeepSeek; DeepSeek shows the
   await expect(page.locator('.assistant-note')).toBeHidden();   // OpenRouter works browser-direct
   await sel.selectOption('gemini');
   await expect(page.locator('.assistant-note')).toBeHidden();
+  await sel.selectOption('orcarouter');
+  await expect(page.locator('.assistant-note')).toBeHidden();   // sends Access-Control-Allow-Origin: * -- no proxy needed
 });
 
 test('get_weather parses Open-Meteo current conditions (fetch mocked)', async ({ page }) => {
