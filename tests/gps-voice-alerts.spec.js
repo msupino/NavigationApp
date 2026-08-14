@@ -469,6 +469,25 @@ test.describe('the voice-alerts toggle', () => {
     expect(after.stored).toBe('1');
   });
 
+  // The row was in defaultVisibilityMap but its tune key was never registered, so tune()
+  // returned 0 and the gist could only ever push the toggle off.
+  test('the gist can turn it on for a pilot who never chose', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof tune === 'function' &&
+      !!document.getElementById('voice-alerts-cb'));
+    expect(await page.evaluate(() => tune('defaultVoiceAlerts'))).toBe(false);
+    const on = await page.evaluate(() => {
+      setTune('defaultVoiceAlerts', true);
+      NavAid.applyDefaultVisibility();
+      return { checked: document.getElementById('voice-alerts-cb').checked,
+               flag: window.voiceAlerts === true,
+               // Still gist-controlled next load: nothing was written as a user choice.
+               stored: localStorage.getItem('navaid.voiceAlerts') };
+    });
+    expect(on).toEqual({ checked: true, flag: true, stored: null });
+  });
+
   test('a stored preference is restored on load', async ({ page }) => {
     await stubTts(page);
     await page.addInitScript(() => localStorage.setItem('navaid.voiceAlerts', '1'));
