@@ -5,7 +5,7 @@ const { test, expect } = require('./_setup');
 const { pairLLHZ_LLHA } = require('./_airfieldArp');
 const { clickToolbarControl } = require('./_toolbar');
 
-async function boot(page) {
+async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
       if (localStorage.getItem('__test_export_init') !== '1') {
@@ -17,7 +17,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('?lang=en');
+  await page.goto(`?lang=${lang}`);
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof exportPNG === 'function');
 }
 
@@ -80,7 +80,7 @@ test.describe('Export PNG options modal', () => {
     expect(drift).toEqual({ global: false, leg: true });
   });
 
-  test('desktop: menu floats at the inspector location, map not dimmed', async ({ page }) => {
+  test('desktop: English menu floats opposite the inspector on the left', async ({ page }) => {
     await boot(page);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.evaluate(wps => { state.waypoints = wps; syncLegs(); draw(); }, pairLLHZ_LLHA());
@@ -88,10 +88,60 @@ test.describe('Export PNG options modal', () => {
     await expect(page.locator('.modal-back.export-place')).toHaveCount(1);   // click-through backdrop
     const box = page.locator('.modal.export-floating');
     await expect(box).toHaveCount(1);
-    // Pinned to the top-right (inspector spot), not centered.
+    // Pinned to the left, opposite the English inspector, not centered.
     const b = await box.boundingBox();
-    expect(1280 - (b.x + b.width)).toBeLessThan(24);   // near the right edge
+    expect(b.x).toBeLessThan(24);                        // near the left edge
     expect(b.y).toBeLessThan(140);                       // near the top
+  });
+
+  test('desktop: Hebrew menu floats opposite the inspector on the right', async ({ page }) => {
+    await boot(page, 'he');
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.evaluate(wps => { state.waypoints = wps; syncLegs(); draw(); }, pairLLHZ_LLHA());
+    await page.evaluate(() => showExportModal());
+    const box = page.locator('.modal.export-floating');
+    const b = await box.boundingBox();
+    expect(1280 - (b.x + b.width)).toBeLessThan(24);      // near the right edge
+    expect(b.y).toBeLessThan(140);                        // near the top
+  });
+
+  test('desktop: waypoint and leg inspectors open above the Print menu', async ({ page }) => {
+    await boot(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.evaluate(wps => {
+      state.waypoints = wps;
+      syncLegs();
+      draw();
+      showExportModal();
+      // Simulate a user dragging Print back over the English inspector spot;
+      // the stacking fallback must still make a later selection reachable.
+      const printBox = document.querySelector('.modal.export-floating');
+      printBox.style.left = 'auto';
+      printBox.style.right = '12px';
+    }, pairLLHZ_LLHA());
+
+    for (const selection of [{ type: 'wp', index: 0 }, { type: 'leg', index: 0 }]) {
+      const result = await page.evaluate(sel => {
+        state.selected = sel;
+        showInspector();
+        const inspector = document.getElementById('inspector');
+        const rect = inspector.getBoundingClientRect();
+        const topmost = document.elementFromPoint(
+          rect.left + rect.width / 2,
+          rect.top + Math.min(rect.height / 2, 80),
+        );
+        return {
+          hidden: inspector.classList.contains('hidden'),
+          topmostIsInspector: topmost === inspector || inspector.contains(topmost),
+          printStillOpen: !!document.querySelector('.modal-back.export-place'),
+        };
+      }, selection);
+      expect(result).toEqual({
+        hidden: false,
+        topmostIsInspector: true,
+        printStillOpen: true,
+      });
+    }
   });
 
   test('mobile: menu is a centered dimmed modal', async ({ page }) => {
@@ -102,6 +152,27 @@ test.describe('Export PNG options modal', () => {
     await expect(page.locator('.modal-back')).toHaveCount(1);
     await expect(page.locator('.modal.export-floating')).toHaveCount(0);
     await expect(page.locator('.modal-back.export-place')).toHaveCount(0);
+  });
+
+  test('mobile: an inspector opens above the centered Print menu', async ({ page }) => {
+    await boot(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.evaluate(wps => {
+      state.waypoints = wps;
+      syncLegs();
+      draw();
+      showExportModal();
+      state.selected = { type: 'leg', index: 0 };
+      showInspector();
+    }, pairLLHZ_LLHA());
+
+    const inspectorIsTopmost = await page.locator('#inspector').evaluate(inspector => {
+      const rect = inspector.getBoundingClientRect();
+      const topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + 40);
+      return topmost === inspector || inspector.contains(topmost);
+    });
+    expect(inspectorIsTopmost).toBe(true);
+    await expect(page.locator('.modal-back.export-options')).toHaveCount(1);
   });
 
   test('Export with both checkboxes off uses Navigation layer', async ({ page }) => {

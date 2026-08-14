@@ -2868,6 +2868,15 @@ function fitPageFrame() {
     [center.lat + degLat, center.lng + degLng]
   );
   map.fitBounds(bounds, fitOpts('fitBoxPaddingPx', null));
+  // Preserve the calculated physical page fit by default. A gist can apply a
+  // small per-paper correction for installations whose toolbar or viewport
+  // makes the frame edge feel cramped; negative values zoom out. A4x2 has the
+  // assembled dimensions of A3, so it intentionally shares the A3 offset.
+  const offsetKey = pageSize === 'A4' ? 'a4FitZoomOffset' : 'a3FitZoomOffset';
+  const zoomOffset = Number(tune(offsetKey));
+  if (Number.isFinite(zoomOffset) && zoomOffset !== 0) {
+    map.setZoom(map.getZoom() + zoomOffset, { animate: false });
+  }
 }
 
 // --- flight plan table -----------------------------------------------
@@ -4356,23 +4365,25 @@ function exportPrintOnTopLine() {
 }
 function showExportModal() {
   if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
-  // On desktop the print/export menu is a floating panel at the inspector's
-  // default location (top-right), not a centered modal — the map stays visible
-  // and interactive underneath so the plan card can be dragged straight away.
+  // On desktop the print/export menu is a floating panel opposite the
+  // inspector (left in LTR, right in RTL), not a centered modal — the map stays
+  // visible and interactive underneath so the plan card can be dragged straight away.
   // In mobile toolbar mode (the Print button no longer fits inline with the
   // others) it falls back to the centered, dimmed modal. `export-place` makes
   // the backdrop transparent + click-through; `.export-floating` pins the box
-  // to the inspector spot.
+  // opposite the inspector.
   // `let`: the fit check after the panel is in the DOM can demote it to the
   // centered modal, and syncPlaceThrough() reads the current value.
   let floatPanel = ((typeof toolbarUsesDesktopMenu !== 'function') || toolbarUsesDesktopMenu())
     && exportPrintOnTopLine();
   const back = document.createElement('div');
-  back.className = floatPanel ? 'modal-back export-place' : 'modal-back';
+  back.className = floatPanel
+    ? 'modal-back export-options export-place'
+    : 'modal-back export-options';
   const box = document.createElement('div');
   box.className = floatPanel ? 'modal export-floating' : 'modal';
-  // Floating panel occupies the inspector spot — hide the inspector to avoid
-  // overlap; it returns on the next selection.
+  // Hide an inspector that was already open; the next waypoint/leg selection
+  // raises its newly rendered inspector over Print if the panels overlap.
   if (floatPanel) {
     const inspEl = document.getElementById('inspector');
     if (inspEl) inspEl.classList.add('hidden');
