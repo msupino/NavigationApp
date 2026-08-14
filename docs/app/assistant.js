@@ -681,9 +681,10 @@
     // NVIDIA NIM serves the models on build.nvidia.com behind an OpenAI-compatible
     // /v1/chat/completions, so it needs no adapter of its own -- only the base URL and a
     // default model that supports tool calling (this assistant is useless without tools).
-    // Flagged browserBlocked like DeepSeek: integrate.api.nvidia.com is a server-side API
-    // and its CORS response is not something we control, so the proxy note is shown rather
-    // than leaving a pilot with an unexplained network error.
+    // Flagged browserBlocked, and unlike DeepSeek's "may" this one is measured: a preflight
+    // to integrate.api.nvidia.com answers 200 with no Access-Control-Allow-Origin at all, so
+    // a browser-direct call cannot work and a proxy base URL is required, not optional. The
+    // note is shown rather than leaving a pilot with an unexplained network error.
     nim: { label: 'NVIDIA NIM', model: 'meta/llama-3.3-70b-instruct', keyUrl: 'https://build.nvidia.com/settings/api-keys', send: openAiCompatSend, base: 'https://integrate.api.nvidia.com/v1', openaiCompat: true, browserBlocked: true },
   };
   async function dispatchSend(messages) { return PROVIDERS[activeProvider()].send(messages); }
