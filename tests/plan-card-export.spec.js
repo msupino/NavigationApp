@@ -192,6 +192,35 @@ test('a card added to a shifted paper frame stays within all four frame edges', 
   expect(placed.r.y + placed.r.h).toBeGreaterThan(0);
 });
 
+test('a long flight plan shrinks enough to stay inside a zoomed-out A4 frame', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = Array.from({ length: 64 }, (_, i) => ({
+      lat: 31.9 + i * 0.001,
+      lng: 34.8 + i * 0.001,
+      name: 'WP' + (i + 1),
+    }));
+    state.legs = [];
+    syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 100; });
+    setPage('A4');
+    map.setZoom(7, { animate: false });
+    draw();
+    showExportModal();
+  });
+  await page.locator('#export-plan-cb').check();
+  const placed = await page.evaluate(() => {
+    draw();
+    return { fr: pageFrameRect(), r: planCardRect, scale: planCard.scale };
+  });
+  expect(placed.scale).toBeLessThan(0.15);
+  expect(placed.r.x).toBeGreaterThanOrEqual(placed.fr.x - 1);
+  expect(placed.r.y).toBeGreaterThanOrEqual(placed.fr.y - 1);
+  expect(placed.r.x + placed.r.w).toBeLessThanOrEqual(placed.fr.x + placed.fr.w + 1);
+  expect(placed.r.y + placed.r.h).toBeLessThanOrEqual(placed.fr.y + placed.fr.h + 1);
+});
+
 test('Fit fits the selected paper frame instead of the route', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 700 });
   await boot(page);

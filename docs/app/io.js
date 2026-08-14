@@ -4708,7 +4708,7 @@ function showExportModal() {
       const availableH = Math.max(1, fr0.h - 28);
       const factor = Math.min(1, target / planCardRect.w, availableH / planCardRect.h);
       if (factor < 1) {
-        planCard.scale = Math.max(0.15, planCard.scale * factor);
+        planCard.scale *= factor;
         const at = initialPlanCardPosition(fr0);
         planCard.x = at.x; planCard.y = at.y;
         draw();
