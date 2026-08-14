@@ -9,7 +9,6 @@ function rectsOverlap(a, b) {
   return a.x < b.x + b.width && a.x + a.width > b.x
     && a.y < b.y + b.height && a.y + a.height > b.y;
 }
-
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
@@ -214,7 +213,6 @@ test.describe('Export PNG options modal', () => {
     inspectorBox = await inspector.boundingBox();
     expect(rectsOverlap(printBox, inspectorBox)).toBe(false);
   });
-
   test('mobile: menu is a centered dimmed modal', async ({ page }) => {
     await boot(page);
     await page.setViewportSize({ width: 375, height: 812 });
