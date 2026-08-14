@@ -468,7 +468,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Unnamed closed-loop labels:** repeating an earlier unnamed route waypoint
   reuses its sequence label. A route closed on its first point is displayed as
   `WP 1 → … → WP 1` on the map, in inspectors, and in the flight plan; the
-  repeated visit does not acquire a new sequence identity such as `WP 4`.
+  repeated visit does not acquire a new sequence identity or consume the next
+  number. For example, `WP 1 → WP 2 → WP 3 → WP 1 → WP 4 → WP 1` retains all
+  six visits and five legs. Pointer jitter below `originResnapArmPx` while in
+  Add mode remains a visit/tap; it cannot invoke the adjacent-point drag-delete
+  gesture. An intentional drag beyond that threshold can still delete a point
+  by dropping it on its neighbour.
 - **Keyboard shortcuts cheat-sheet (issue #420):** modal listing every
   global shortcut, openable via the toolbar "Shortcuts" link (in
   `#footer-links`) or the `?` (Shift-`/`) key. Built by

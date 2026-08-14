@@ -1952,6 +1952,24 @@ function waypointDisplayLabel(wp, idx) {
         return waypointDisplayLabel(earlier, i);
       }
     }
+    // Generated labels count distinct route points, not visits. Otherwise
+    // WP1-WP2-WP3-WP1 makes the next new point WP5 even though WP4 has never
+    // appeared. Named points still occupy their place in the route sequence;
+    // only a repeated coordinate is skipped.
+    let ordinal = 1;
+    for (let i = 0; i < idx; i++) {
+      const earlier = state.waypoints[i];
+      let firstVisit = true;
+      for (let j = 0; j < i; j++) {
+        const prior = state.waypoints[j];
+        if (earlier && prior && earlier.lat === prior.lat && earlier.lng === prior.lng) {
+          firstVisit = false;
+          break;
+        }
+      }
+      if (firstVisit) ordinal++;
+    }
+    return S.wpPrefix + ordinal;
   }
   return S.wpPrefix + (idx + 1);
 }
