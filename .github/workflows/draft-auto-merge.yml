@@ -65,6 +65,7 @@ jobs:
           TITLE: ${{ github.event.pull_request.title }}
           ROUND: ${{ inputs.round || '1' }}
           MAX_ROUNDS: '3'
+          WATCH_REF: ${{ github.event_name == 'workflow_dispatch' && github.ref_name || github.event.repository.default_branch }}
         run: |
           set -e
           # A handed-off run has no pull_request payload, so read the title back.
@@ -90,7 +91,9 @@ jobs:
           # dev -> main promoting, or main -> dev backmerging after one -- must keep ancestry,
           # or the next PR between them conflicts on every file the squash flattened.
           METHOD=--squash
-          case "$HEAD_REF" in main|dev) METHOD=--merge ;; esac
+          case "$HEAD_REF" in
+            main|dev|automation/sync-main-into-dev-*) METHOD=--merge ;;
+          esac
           case "$BASE" in main) METHOD=--merge ;; esac
           # --delete-branch is required for feature branches: the repo's
           # delete_branch_on_merge setting only fires for human-initiated merges, and
@@ -160,7 +163,7 @@ jobs:
             # branch, so this only works once this change is on main. Until then
             # (or if the dispatch is refused) warn rather than fail: the PR still
             # merges on its own; only the Deploy dispatch needs a hand.
-            gh workflow run "Draft + auto-merge" --ref "${{ github.event.repository.default_branch }}" \
+            gh workflow run "Draft + auto-merge" --ref "$WATCH_REF" \
               -f pr="$PR" -f round="$NEXT" || \
               echo "::warning::Could not hand off the watch for PR #$PR. Auto-merge stays armed; dispatch Deploy by hand once it lands."
             exit 0

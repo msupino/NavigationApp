@@ -775,6 +775,11 @@ downloadable `route.json`.
   require explicit maintainer authorization.
 - **Production deploy** = merge a `dev` → `main` pull request (`main` is
   branch-protected; the merge triggers the same workflow).
+  The promotion automation first verifies that `dev` contains the current
+  `main` ancestry. If it does not, the workflow opens a temporary sync PR into
+  `dev`, explicitly runs its required checks, and auto-merges it. The merged
+  sync then resumes creation of the `dev` → `main` promotion PR. Automation
+  never pushes the ancestry merge directly to protected `dev`.
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
 - **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites

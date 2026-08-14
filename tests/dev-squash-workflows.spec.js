@@ -20,7 +20,7 @@ test.describe('dev workflow guards', () => {
     // nobody had written. The flags are chosen per PR now; see the two guards below.
     expect(yml).toContain('--auto $METHOD $DELETE');
     expect(yml).toContain('METHOD=--squash');
-    expect(yml).toMatch(/case "\$HEAD_REF" in main\|dev\) METHOD=--merge/);
+    expect(yml).toMatch(/main\|dev\|automation\/sync-main-into-dev-\*\) METHOD=--merge/);
     expect(yml).toMatch(/case "\$BASE" in main\) METHOD=--merge/);
   });
 
@@ -42,6 +42,29 @@ test.describe('dev workflow guards', () => {
     // commit usually brings dev no new files -- dev is where the content came from -- and
     // that is exactly the case that must still be recorded, or the ancestry is lost again.
     expect(yml).not.toContain('main introduced no tree changes for dev');
+  });
+
+  test('Auto PR syncs protected dev through a checked auto-merge PR', () => {
+    const yml = workflow('auto-pr-dev-to-main.yml');
+    // `dev` is protected, so the workflow cannot publish its ancestry merge
+    // directly. The sync branch must go through the same required checks and
+    // auto-merge watcher as an ordinary PR before promotion resumes.
+    expect(yml).not.toContain('git push origin dev');
+    expect(yml).toContain('SYNC_BRANCH="automation/sync-main-into-dev-');
+    expect(yml).toContain('git push --force-with-lease origin "HEAD:$SYNC_BRANCH"');
+    expect(yml).toContain('--base dev');
+    expect(yml).toContain('--head "$SYNC_BRANCH"');
+    expect(yml).toContain('gh workflow run CI --ref "$SYNC_BRANCH"');
+    expect(yml).toContain('gh workflow run Deploy --ref "$SYNC_BRANCH"');
+    expect(yml).toContain('gh workflow run Review --ref "$SYNC_BRANCH"');
+    expect(yml).toContain('gh workflow run "Draft + auto-merge"');
+    expect(yml).toContain('--ref "$SYNC_BRANCH"');
+    expect(yml).toContain('actions: write');
+
+    const deploy = workflow('deploy.yml');
+    expect(deploy).toContain("startsWith(github.ref_name, 'automation/sync-main-into-dev-')");
+    expect(deploy).toContain('for CORE in _site/pr/*/app/core.js');
+    expect(deploy).toContain('HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}');
   });
 
   test('CI reports merge commits on dev pushes without blocking promotion', () => {
