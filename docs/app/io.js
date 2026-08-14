@@ -4725,7 +4725,8 @@ function showExportModal() {
     const pt = map.mouseEventToContainerPoint(e);
     // Bottom-right grip → resize; elsewhere inside the card → move.
     if (typeof planCardOnGrip === 'function' && planCardOnGrip(pt.x, pt.y)) {
-      cardDrag = { resize: true, baseW1: planCardRect.w / (planCard.scale || 1) };
+      cardDrag = { resize: true, baseW1: planCardRect.w / (planCard.scale || 1),
+        minScale: Math.min(0.15, planCard.scale || 0.15) };
       if (map.dragging) map.dragging.disable();
       e.preventDefault(); e.stopPropagation();
       return;
@@ -4743,7 +4744,7 @@ function showExportModal() {
     if (cardDrag.resize) {
       // Scale ∝ rendered width. Clamp so the card never grows past the page
       // frame (prevents overflow + the snap-back that follows it).
-      let s = Math.max(0.15, (pt.x - planCard.x) / cardDrag.baseW1);
+      let s = Math.max(cardDrag.minScale, (pt.x - planCard.x) / cardDrag.baseW1);
       const fr = planBounds();
       if (fr && planCardRect && planCardRect.w) {
         const ratio = planCardRect.h / planCardRect.w;   // table aspect (scale-invariant)
@@ -4751,7 +4752,7 @@ function showExportModal() {
         const maxH = (fr.y + fr.h) - planCard.y;
         s = Math.min(s, maxW / cardDrag.baseW1, maxH / (cardDrag.baseW1 * ratio));
       }
-      planCard.scale = Math.max(0.15, Math.min(6, s));
+      planCard.scale = Math.max(cardDrag.minScale, Math.min(6, s));
       draw();
       return;
     }

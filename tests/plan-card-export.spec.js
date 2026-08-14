@@ -212,13 +212,29 @@ test('a long flight plan shrinks enough to stay inside a zoomed-out A4 frame', a
   await page.locator('#export-plan-cb').check();
   const placed = await page.evaluate(() => {
     draw();
-    return { fr: pageFrameRect(), r: planCardRect, scale: planCard.scale };
+    const mb = map.getContainer().getBoundingClientRect();
+    return { fr: pageFrameRect(), r: planCardRect, scale: planCard.scale,
+      mapBox: { x: mb.left, y: mb.top } };
   });
   expect(placed.scale).toBeLessThan(0.15);
   expect(placed.r.x).toBeGreaterThanOrEqual(placed.fr.x - 1);
   expect(placed.r.y).toBeGreaterThanOrEqual(placed.fr.y - 1);
   expect(placed.r.x + placed.r.w).toBeLessThanOrEqual(placed.fr.x + placed.fr.w + 1);
   expect(placed.r.y + placed.r.h).toBeLessThanOrEqual(placed.fr.y + placed.fr.h + 1);
+
+  // A small inward grip movement must not snap the already-fitted card back to
+  // the normal 0.15 resize floor and reintroduce bottom overflow.
+  await page.mouse.move(placed.mapBox.x + placed.r.x + placed.r.w - 6,
+    placed.mapBox.y + placed.r.y + placed.r.h - 6);
+  await page.mouse.down();
+  await page.mouse.move(placed.mapBox.x + placed.r.x + placed.r.w - 7,
+    placed.mapBox.y + placed.r.y + placed.r.h - 7);
+  await page.mouse.up();
+  const resized = await page.evaluate(() => ({ fr: pageFrameRect(), r: planCardRect,
+    scale: planCard.scale }));
+  expect(resized.scale).toBeLessThanOrEqual(placed.scale + 0.001);
+  expect(resized.r.x + resized.r.w).toBeLessThanOrEqual(resized.fr.x + resized.fr.w + 1);
+  expect(resized.r.y + resized.r.h).toBeLessThanOrEqual(resized.fr.y + resized.fr.h + 1);
 });
 
 test('Fit fits the selected paper frame instead of the route', async ({ page }) => {
