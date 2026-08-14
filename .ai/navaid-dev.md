@@ -450,10 +450,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   The frame stays centred on the viewport by default, so dragging its border
   pans the map underneath it. The gist boolean `pageFrameLocked` defaults to
   `true`; setting it to `false` restores the legacy movable-frame drag grip.
-  `Fit page to route` likewise pans map content into the locked frame and its
-  availability preview is side-effect-free.
+  `Fit page to route` likewise pans map content into the locked frame, while
+  `refreshPrintFit()` checks whether that action can help without moving the map.
   Print keeps both fit actions visible: `Fit page to route` is disabled/dimmed
-  unless clipping can be resolved by changing the page size or orientation.
+  unless a supported page/orientation can contain all print ink after centring
+  the map (locked mode) or the paper (legacy unlocked mode) on that ink.
 - **Keyboard shortcuts cheat-sheet (issue #420):** modal listing every
   global shortcut, openable via the toolbar "Shortcuts" link (in
   `#footer-links`) or the `?` (Shift-`/`) key. Built by
