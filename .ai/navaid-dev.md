@@ -537,6 +537,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   footer behavior. The footer plane button opens the Simulator panel. Its title
   is a drag handle; pointer dragging clamps the panel to the viewport so its
   close button and controls remain reachable.
+  TOP is edge-triggered by the waypoint capture circle: repeated fixes while
+  the aircraft remains inside one circle emit only one alert. Leaving the
+  0.3 NM circle re-arms TOP for a legitimate later return to that waypoint.
   Recording takes a **screen wake lock** while it runs (`gpsAcquireWakeLock()`
   in `gps.js`), releases it on Stop, and re-acquires it when the page becomes
   visible again — browsers drop the sentinel while the tab is hidden, so a
