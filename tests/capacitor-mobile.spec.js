@@ -88,9 +88,15 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(androidPlugin).toContain('239.255.1.1');
     expect(androidPlugin).toContain('49707');
     expect(androidPlugin).toContain("data[0] == 'B'");
+    expect(androidPlugin).toContain('UNTRUSTED_ORIGIN');
+    expect(androidPlugin).toContain('probeBridge(host)');
     expect(androidActivity).toContain('registerPlugin(XPlaneDiscoveryPlugin.class)');
     expect(iosDelegate).toContain('class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin');
     expect(iosDelegate).toContain('source": "local-bridge-scan"');
+    expect(iosDelegate).toContain('UNTRUSTED_ORIGIN');
+    expect(iosDelegate).toContain('interface.ifa_addr');
+    expect(iosDelegate).toContain('interface.ifa_netmask');
+    expect(iosDelegate).toContain('LOCAL_NETWORK_DENIED');
     expect(iosDelegate).not.toContain('NWMulticastGroup');
     expect(iosStoryboard).toContain('customClass="NavAidBridgeViewController"');
   });

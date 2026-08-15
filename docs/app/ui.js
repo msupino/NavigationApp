@@ -2919,7 +2919,7 @@ document.getElementById('limit-kites-cb').onchange = e => {
       statusEl.textContent = S.tbSimDiscovering || 'Searching the local network…';
       statusEl.style.color = '';
       try {
-        const result = await plugin.discover({ timeoutMs: 3500, bridgePort: 2020 });
+        const result = await plugin.discover();
         if (!result || !result.found || !result.bridgeUrl) {
           showUrlProblem(S.tbSimDiscoverNone || 'No X-Plane bridge found.');
           return;

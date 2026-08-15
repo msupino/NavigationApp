@@ -197,8 +197,8 @@ test('native Android discovers X-Plane and fills the bridge URL', async ({ page 
       getPlatform: () => 'android',
       Plugins: {
         XPlaneDiscovery: {
-          discover: async opts => ({
-            found: opts.timeoutMs === 3500 && opts.bridgePort === 2020,
+          discover: async () => ({
+            found: true,
             host: '192.168.1.44',
             name: 'Flight Mac',
             bridgeUrl: 'http://192.168.1.44:2020',

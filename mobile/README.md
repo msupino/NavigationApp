@@ -36,8 +36,8 @@ Prereqs: Android SDK at `~/Library/Android/sdk`, **JDK 21** (Capacitor 8
 fails on older with `invalid source release: 21`; Homebrew:
 `/opt/homebrew/opt/openjdk@21`).
 
-The current package version is **1.5** (`versionCode 5`), released as
-`android-v1.5.0`.
+The current package version is **1.5** (`versionCode 5`). Its
+`android-v1.5.0` GitHub release remains a draft until this PR reaches production.
 
 ```sh
 cd mobile/android

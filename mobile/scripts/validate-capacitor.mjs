@@ -150,9 +150,15 @@ const androidDiscovery = path.join(mobileRoot,
   'android/app/src/main/java/org/supino/navaid/XPlaneDiscoveryPlugin.java');
 const androidActivity = path.join(mobileRoot,
   'android/app/src/main/java/org/supino/navaid/MainActivity.java');
-if (!fs.existsSync(androidDiscovery) ||
-    !fs.readFileSync(androidDiscovery, 'utf8').includes('239.255.1.1')) {
+const androidDiscoveryText = fs.existsSync(androidDiscovery)
+  ? fs.readFileSync(androidDiscovery, 'utf8')
+  : '';
+if (!androidDiscoveryText.includes('239.255.1.1')) {
   fail('Android X-Plane BECN discovery plugin is missing');
+}
+if (!androidDiscoveryText.includes('UNTRUSTED_ORIGIN') ||
+    !androidDiscoveryText.includes('probeBridge(host)')) {
+  fail('Android X-Plane discovery must be production-bound and verify the bridge');
 }
 if (!fs.readFileSync(androidActivity, 'utf8').includes('registerPlugin(XPlaneDiscoveryPlugin.class)')) {
   fail('Android X-Plane discovery plugin is not registered');
@@ -166,6 +172,11 @@ if (!iosDelegate.includes('class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlu
 }
 if (iosDelegate.includes('NWMulticastGroup')) {
   fail('iOS discovery must not require Apple restricted multicast entitlement');
+}
+if (!iosDelegate.includes('UNTRUSTED_ORIGIN') ||
+    !iosDelegate.includes('interface.ifa_netmask') ||
+    !iosDelegate.includes('LOCAL_NETWORK_DENIED')) {
+  fail('iOS X-Plane discovery must be production-bound and subnet-aware');
 }
 
 console.log('Capacitor mobile wrapper ok');

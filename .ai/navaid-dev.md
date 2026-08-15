@@ -1006,10 +1006,13 @@ downloadable `route.json`.
   downloaded chart packs; native-only changes still require rebuilding the app.
 - The native Simulator panel has a **Find X-Plane** action. Android joins
   X-Plane's `239.255.1.1:49707` UDP multicast group, validates the `BECN\0`
-  header, and uses the sender address for the existing bridge URL on port 2020.
+  packet, and verifies simulator coordinates from the sender on fixed bridge
+  port 2020 before using its URL.
   Manual URL entry remains available. Physical iOS devices cannot receive this
   arbitrary multicast without Apple's restricted multicast entitlement, so the
-  iOS wrapper uses a local unicast bridge scan instead; do not add the entitlement
-  unless Apple has approved it for the app's provisioning profile.
+  iOS wrapper scans its actual Wi-Fi subnet with a `/22` safety limit instead.
+  Do not add the entitlement unless Apple has approved it for the app's
+  provisioning profile. Both native plugins accept discovery calls only from
+  the exact production app root. Staging and PR pages cannot initiate LAN scans.
 
 <!-- ci-flake-audit: no-op change to trigger a full CI run -->
