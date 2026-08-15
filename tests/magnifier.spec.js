@@ -176,8 +176,22 @@ test.describe('Magnifying glass', () => {
     if (!mapBox) { test.skip(true, 'map not found'); return; }
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     await page.locator('#tool-magnifier').click();
-    // Hi-res tiles fetch over the network — give them time to land.
-    await page.waitForTimeout(2500);
+    // Wait for the observable condition under test instead of sampling after
+    // a fixed delay. On a busy CI worker the initial loupe rebuild can be
+    // superseded while its hi-res tiles are settling, briefly leaving only
+    // the cloned map-zoom layer in the DOM.
+    await page.waitForFunction(() => {
+      const zooms = new Set();
+      for (const el of document.querySelectorAll('#mag-content img')) {
+        if (!el.src) continue;
+        try {
+          const parts = new URL(el.src).pathname.split('/');
+          const z = parseInt(parts[parts.length - 3], 10);
+          if (Number.isFinite(z)) zooms.add(z);
+        } catch (e) { /* wait for another image */ }
+      }
+      return zooms.size >= 2;
+    }, { timeout: magnifierTileReadyMs });
 
     const report = await page.evaluate(() => {
       const content = document.getElementById('mag-content');

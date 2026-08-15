@@ -534,7 +534,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   recording, plain live location, and the simulator. It remains visible in the
   compact desktop/full-screen toolbar while one of those sources is active;
   when desktop live mode stops it hides again. Mobile keeps its existing text
-  footer behavior. The footer plane button opens the Simulator panel. Its title
+  footer behavior. At phone widths, the footer reserves a 44 px simulator-button
+  column. It truncates the two GPS labels when Android large-text scaling needs
+  the room, which keeps the simulator entry point visible and tappable. The footer
+  plane button opens the Simulator panel. Its title
   is a drag handle; pointer dragging clamps the panel to the viewport so its
   close button and controls remain reachable.
   The simulator field accepts an HTTP or HTTPS bridge URL. On desktop,
@@ -547,12 +550,19 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   secure-context features. The native shell still loads the HTTPS site, but it
   sends HTTP simulator polls through Capacitor's native HTTP client. Its iOS
   plist grants local-network access without disabling App Transport Security
-  globally. In the native app, `localhost` means the iPad itself; use the
-  simulator computer's LAN address. The panel detects invalid combinations
+  globally. The plist's `WKAppBoundDomains` entry and Capacitor's
+  `ios.limitsNavigationsToAppBoundDomains: true` setting must remain paired;
+  otherwise WebKit rejects the native bridge on the live remote page. In the
+  native iOS or Android app, `localhost` means the phone or tablet itself; use
+  the simulator computer's LAN address. Both native apps route HTTP simulator
+  polling through CapacitorHttp; Android's manifest explicitly permits that
+  cleartext transport. The panel detects invalid combinations
   before polling and shows platform-specific guidance.
-  TOP is edge-triggered by the waypoint capture circle: repeated fixes while
-  the aircraft remains inside one circle emit only one alert. Leaving the
-  0.3 NM circle re-arms TOP for a legitimate later return to that waypoint.
+  The **Speak alerts** toggle sits directly below **Default speed** in View/Set.
+  TOP and the preceding approach call are edge-triggered by the waypoint capture
+  circle: repeated fixes and cone changes while the aircraft remains inside one
+  circle emit only one of each alert. Leaving the 0.3 NM circle re-arms them for
+  a legitimate later return to that waypoint.
   Off-course alerts report the actual zero-padded magnetic heading to fly.
   Before the leg midpoint, they give an intercept heading. After the midpoint,
   they give a heading direct to the next waypoint. They never leave a relative
@@ -985,7 +995,8 @@ downloadable `route.json`.
   the WebView loads the live production URL.
 - `mobile/capacitor.config.json` owns the native app metadata:
   `appId: org.supino.navaid`, `appName: NavAid`, `webDir: shell`, and
-  `server.url: https://navaid.supino.org`.
+  `server.url: https://navaid.supino.org`. Its iOS app-bound navigation option
+  allows Capacitor bridge injection on that production domain.
 - Keep Capacitor packages in `mobile/package.json`; the root package remains
   only the Playwright/static-check tooling for the web app.
 - `mobile/scripts/validate-capacitor.mjs` and
@@ -993,5 +1004,15 @@ downloadable `route.json`.
 - The installed shell updates with web deploys. Offline behavior comes from the
   production service worker after the first online launch, including explicitly
   downloaded chart packs; native-only changes still require rebuilding the app.
+- The native Simulator panel has a **Find X-Plane** action. Android joins
+  X-Plane's `239.255.1.1:49707` UDP multicast group, validates the `BECN\0`
+  packet, and verifies simulator coordinates from the sender on fixed bridge
+  port 2020 before using its URL.
+  Manual URL entry remains available. Physical iOS devices cannot receive this
+  arbitrary multicast without Apple's restricted multicast entitlement, so the
+  iOS wrapper scans its actual Wi-Fi subnet with a `/22` safety limit instead.
+  Do not add the entitlement unless Apple has approved it for the app's
+  provisioning profile. Both native plugins accept discovery calls only from
+  the exact production app root. Staging and PR pages cannot initiate LAN scans.
 
 <!-- ci-flake-audit: no-op change to trigger a full CI run -->

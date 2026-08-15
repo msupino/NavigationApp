@@ -36,6 +36,9 @@ Prereqs: Android SDK at `~/Library/Android/sdk`, **JDK 21** (Capacitor 8
 fails on older with `invalid source release: 21`; Homebrew:
 `/opt/homebrew/opt/openjdk@21`).
 
+The current package version is **1.5** (`versionCode 5`), with release tag
+`android-v1.5.0`. Publish the draft only after this version reaches `main`.
+
 ```sh
 cd mobile/android
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
@@ -84,14 +87,18 @@ Xcode + CocoaPods (`brew install cocoapods`) and an Apple ID in Xcode
 (free = own-device installs that expire weekly; the $99/yr program adds
 TestFlight/App Store). `Info.plist` lists `navaid.supino.org` under
 `WKAppBoundDomains` so the site's service worker (offline + chart packs)
-works inside WKWebView. Background location on iOS still needs the
+works inside WKWebView. The matching Capacitor
+`ios.limitsNavigationsToAppBoundDomains` option must remain enabled; WebKit
+otherwise rejects the native JavaScript bridge on the remote page. Background
+location on iOS still needs the
 `UIBackgroundModes: location` entitlement + usage strings before lock-screen
 recording works there.
 
-The native iOS app can poll an HTTP simulator bridge on the local network.
-Those requests use Capacitor's native HTTP client, and `Info.plist` declares
-local-network access without disabling App Transport Security globally.
-Enter the simulator computer's LAN address; `localhost` means the iPad itself.
+The native iOS and Android apps can poll an HTTP simulator bridge on the local
+network. Those requests use Capacitor's native HTTP client instead of mixed-content
+WebView fetch. iOS declares local-network access without disabling App Transport
+Security globally; Android opts into cleartext transport in its manifest. Enter the
+simulator computer's LAN address; `localhost` means the phone or tablet itself.
 
 ## Notes
 
@@ -102,3 +109,5 @@ Enter the simulator computer's LAN address; `localhost` means the iPad itself.
   (`app.navaid.local`) shell skips it.
 - Contract tests: `tests/capacitor-mobile.spec.js` +
   `mobile/scripts/validate-capacitor.mjs` (run via `npm run sync`).
+- Native checks: `cd android && ./gradlew testDebugUnitTest` validates Android
+  discovery parsing. CI also compiles the iOS simulator app without code signing.

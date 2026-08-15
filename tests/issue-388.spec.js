@@ -266,6 +266,11 @@ test.describe('issue #388 — review cleanup', () => {
 
       const result = await page.evaluate(async useShortRun => {
         const readBatch = () => {
+          // `_magBatch` advances synchronously at the start of every rebuild.
+          // Prefer it over inspecting live tile nodes: a fast/cacheless rebuild
+          // can legitimately leave no tagged `<img>` by the time CI samples the
+          // DOM even though the rAF hot path ran.
+          if (typeof _magBatch === 'number') return _magBatch;
           const imgs = Array.from(
             document.querySelectorAll('#mag-content img[data-batch]'));
           return imgs.length
