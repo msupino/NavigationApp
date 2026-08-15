@@ -2393,6 +2393,11 @@ body.theme-light .shortcuts-help-keys kbd {
   gap: 8px;
   min-width: 220px;
 }
+.modal.sim-modal > .sim-modal-title {
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+}
 .modal.sim-modal > button:not(.sim-modal-close),
 .modal.sim-modal > label,
 .modal.sim-modal > #sim-status { width: 100%; }

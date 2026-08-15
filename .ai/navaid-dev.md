@@ -534,7 +534,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   recording, plain live location, and the simulator. It remains visible in the
   compact desktop/full-screen toolbar while one of those sources is active;
   when desktop live mode stops it hides again. Mobile keeps its existing text
-  footer behavior.
+  footer behavior. The footer plane button opens the Simulator panel. Its title
+  is a drag handle; pointer dragging clamps the panel to the viewport so its
+  close button and controls remain reachable.
   Recording takes a **screen wake lock** while it runs (`gpsAcquireWakeLock()`
   in `gps.js`), releases it on Stop, and re-acquires it when the page becomes
   visible again — browsers drop the sentinel while the tab is hidden, so a
