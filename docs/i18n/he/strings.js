@@ -55,6 +55,8 @@ window.S = {
   pwxModalTitle: 'מפות רוח / טמפרטורה (PWX)',
   pwxMissing: 'המפה אינה זמינה עדיין לגובה/זמן זה.',
   pwxUnavailable: 'מפות רוח/טמפ׳ אינן זמינות כעת.',
+  wxPwxUnavailableWatermark: 'רוח/טמפרטורה — לא זמין',
+  wxSigwxUnavailableWatermark: 'SIGWX — לא זמין',
   tbShowMsa: 'הצג גובה בטוח (MSA)',
   tbShowMsaTitle: 'הצג גובה בטוח מינימלי (תבליט + 1000 רגל) בחלונית הקטע. אמצעי תכנון בלבד.',
   report: 'דיווח',
