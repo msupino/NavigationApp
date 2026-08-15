@@ -40,7 +40,9 @@ jobs:
       - name: Validate wrapper and test Android discovery
         run: |
           npm --prefix mobile run validate
-          cd mobile/android
+          cd mobile
+          npx cap sync android
+          cd android
           ./gradlew testDebugUnitTest
 
   native-ios:
