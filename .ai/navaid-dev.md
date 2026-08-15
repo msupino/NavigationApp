@@ -554,9 +554,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   simulator computer's LAN address. The panel detects invalid combinations
   before polling and shows platform-specific guidance.
   The **Speak alerts** toggle sits directly below **Default speed** in View/Set.
-  TOP is edge-triggered by the waypoint capture circle: repeated fixes while
-  the aircraft remains inside one circle emit only one alert. Leaving the
-  0.3 NM circle re-arms TOP for a legitimate later return to that waypoint.
+  TOP and the preceding approach call are edge-triggered by the waypoint capture
+  circle: repeated fixes and cone changes while the aircraft remains inside one
+  circle emit only one of each alert. Leaving the 0.3 NM circle re-arms them for
+  a legitimate later return to that waypoint.
   Off-course alerts report the actual zero-padded magnetic heading to fly.
   Before the leg midpoint, they give an intercept heading. After the midpoint,
   they give a heading direct to the next waypoint. They never leave a relative

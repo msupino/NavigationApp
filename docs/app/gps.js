@@ -1133,6 +1133,14 @@ function gpsCheckLegAlerts() {
   if (!next) return;
   const { dist } = geo(gpsOwn, next);
   if (!Number.isFinite(dist)) return;
+  // GPS scatter at a turn can briefly put the aircraft back in the completed leg's
+  // cone. That leg targets the waypoint whose capture circle we are still inside, so
+  // treating the cone change as a fresh approach repeats "Approaching <waypoint>" on
+  // every wobble. TOP already uses this physical-circle latch; the approach alert must
+  // honor it too. Leaving the circle clears the latch above, allowing a real later
+  // return to announce the waypoint again.
+  const sameTopCapture = !!(_gpsTopCapturePoint &&
+    _gpsTopCapturePoint.lat === next.lat && _gpsTopCapturePoint.lng === next.lng);
 
   // ETA is measured against the CURRENT leg's own PLANNED speed, not gpsLastGS -- the route
   // plan is the source of truth for how fast this leg is flown, not whatever the live fix
@@ -1140,7 +1148,7 @@ function gpsCheckLegAlerts() {
   // the alert relative to the plan, matching what the leg kite itself already shows).
   const curLeg = legs[gpsAlertLegIndex];
   const planSpeed = (curLeg && curLeg.flightSpeed > 0) ? curLeg.flightSpeed : null;
-  if (_gpsAlertConfirmed && !_gpsAlertLegFired && planSpeed) {
+  if (_gpsAlertConfirmed && !_gpsAlertLegFired && !sameTopCapture && planSpeed) {
     // A leg shorter than the standard 2-minute lead time would otherwise fire the alert
     // essentially at the moment the leg starts (or never usefully "N minutes before" at
     // all) -- half the lead time instead, once the CURRENT leg's own planned duration is
@@ -1257,8 +1265,7 @@ function gpsCheckLegAlerts() {
     // confirm it -- if this is the FIRST advance since a snap, its own TOP alert
     // (and every other alert type, gated above) stays silent too.
     if (captured) _gpsAlertConfirmed = true;
-    const sameCapture = captured && _gpsTopCapturePoint &&
-      _gpsTopCapturePoint.lat === next.lat && _gpsTopCapturePoint.lng === next.lng;
+    const sameCapture = captured && sameTopCapture;
     if (_gpsAlertConfirmed && !sameCapture) {
       if (captured) _gpsTopCapturePoint = { lat: next.lat, lng: next.lng };
       // Just "TOP" -- no waypoint name. The leg-approach alert already named it
