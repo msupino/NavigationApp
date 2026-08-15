@@ -115,6 +115,13 @@ if (fs.existsSync(iosInfo)) {
   if (!text.includes('<key>CFBundleDisplayName</key>') || !text.includes('<string>NavAid</string>')) {
     fail('iOS display name drifted');
   }
+  if (!/<key>NSAllowsLocalNetworking<\/key>\s*<true\/>/.test(text) ||
+      !/<key>NSLocalNetworkUsageDescription<\/key>\s*<string>[^<]+<\/string>/.test(text)) {
+    fail('iOS local simulator bridge access is not declared');
+  }
+  if (text.includes('<key>NSAllowsArbitraryLoads</key>')) {
+    fail('iOS must not disable App Transport Security globally');
+  }
 }
 
 console.log('Capacitor mobile wrapper ok');
