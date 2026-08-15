@@ -49,6 +49,32 @@ test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }
   await expect(page.locator('#sim-modal')).toBeHidden();
 });
 
+test('desktop simulator panel is draggable by its title and stays in the viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.locator('#sim-trigger').click();
+
+  const box = page.locator('#sim-modal .modal.sim-modal');
+  const title = page.locator('#sim-modal .sim-modal-title');
+  const before = await box.boundingBox();
+  const grip = await title.boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2 + 180, grip.y + grip.height / 2 + 90,
+    { steps: 8 });
+  await page.mouse.up();
+
+  const after = await box.boundingBox();
+  expect(after.x).toBeGreaterThan(before.x + 100);
+  expect(after.y).toBeGreaterThan(before.y + 40);
+  expect(after.x).toBeGreaterThanOrEqual(0);
+  expect(after.y).toBeGreaterThanOrEqual(0);
+  expect(after.x + after.width).toBeLessThanOrEqual(1280);
+  expect(after.y + after.height).toBeLessThanOrEqual(800);
+  await expect(page.locator('#sim-modal #sim-connect-cb')).toBeVisible();
+  await expect(page.locator('#sim-modal-close')).toBeVisible();
+});
+
 test('the sim icon stays visible on a mobile viewport -- connecting one is how the watch alerts get tested there', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('?lang=en&nogist');
