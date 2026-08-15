@@ -853,6 +853,8 @@ window.S = Object.assign({
   pwxModalTitle: 'Wind / temperature charts (PWX)',
   pwxMissing: 'Chart not available for this level/time yet.',
   pwxUnavailable: 'Wind/temp charts are temporarily unavailable.',
+  wxPwxUnavailableWatermark: 'Wind/temp — Unavailable',
+  wxSigwxUnavailableWatermark: 'SIGWX — Unavailable',
   tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
   tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',

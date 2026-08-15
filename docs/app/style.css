@@ -141,6 +141,35 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   background-image: none;
 }
 
+/* A shared weather time may exist for PWX, SIGWX, or both. When an enabled overlay
+   cannot render that time, keep the missing layer obvious without blocking map input. */
+.weather-unavailable-watermark {
+  position: absolute;
+  z-index: 700;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: calc(100% - 32px);
+  padding: 10px 18px;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  border: 4px double rgba(147, 18, 18, 0.82);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
+  color: rgba(147, 18, 18, 0.92);
+  font-size: clamp(20px, 3vw, 38px);
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.weather-unavailable-watermark[hidden] { display: none; }
+
 .map-legend {
   display: flex;
   flex-direction: column;

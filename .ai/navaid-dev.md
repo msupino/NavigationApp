@@ -126,6 +126,13 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Route overlay:** a `<canvas id="overlay">` over the map with
   `pointer-events: none`, redrawn on every Leaflet `move` / `zoom` /
   `resize`. `proj(wp)` = `map.latLngToContainerPoint`.
+- **IMS weather overlays:** PWX wind/temperature and SIGWX share the union of
+  their valid date/time options in `#wx-time`. An enabled overlay that lacks
+  the selected option is removed and listed in the centered, non-interactive
+  `#weather-unavailable-watermark`; selecting a time it publishes or switching
+  it off clears that layer's line. Enabling either overlay never changes the
+  selected date/time; a deliberate PWX level change may select a time published
+  by that level.
 - **State:**
   - `state.waypoints[i]` = `{lat, lng, name}` (name optional).
   - `state.legs[i]` = `{inboundAltitude, outboundAltitude, flightSpeed,
