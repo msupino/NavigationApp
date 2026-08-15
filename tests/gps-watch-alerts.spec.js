@@ -448,6 +448,34 @@ test.describe('TOP alert (overhead the waypoint)', () => {
     });
     expect(out).toBe(1);
   });
+
+  test('does not repeat at the final waypoint until the aircraft exits its capture circle', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.02, lng: 34.00, name: 'BRAVO' },
+      ];
+      syncLegs();
+      startLiveLocation();
+      window._gpsAlertConfirmed = true;
+
+      // At the final waypoint cone tracking can select the completed leg again after the
+      // pointer advances past it. Every fix here is still the same physical circle entry.
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      const whileInside = window.__notifications.filter((n) => n.body === 'TOP').length;
+
+      // More than 0.3 NM away re-arms the circle. Returning later is a new crossing.
+      window.__liveCb(window.__fix(32.01, 34.00, { speedMs: 15.4 }));
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      const afterReturn = window.__notifications.filter((n) => n.body === 'TOP').length;
+      return { whileInside, afterReturn };
+    });
+    expect(out).toEqual({ whileInside: 1, afterReturn: 2 });
+  });
 });
 
 test.describe('altitude alert', () => {
