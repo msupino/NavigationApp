@@ -63,6 +63,9 @@ test.describe('Capacitor mobile wrapper', () => {
     const iosInfo = readText('mobile/ios/App/App/Info.plist');
     expect(iosInfo).toContain('WKAppBoundDomains');
     expect(iosInfo).toContain('navaid.supino.org');
+    expect(iosInfo).toContain('NSAllowsLocalNetworking');
+    expect(iosInfo).toContain('NSLocalNetworkUsageDescription');
+    expect(iosInfo).not.toContain('NSAllowsArbitraryLoads');
   });
 
   test('sets native package identifiers and display names', () => {

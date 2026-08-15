@@ -98,6 +98,8 @@ test('simulator URL guidance distinguishes desktop, iPad browser, and native app
       { kind: 'ipad', pageProtocol: 'http:' }),
     nativeHttp: simConnectionProblem('http://192.168.1.20:2020',
       { kind: 'native', pageProtocol: 'https:' }),
+    nativeLoopback: simConnectionProblem('http://localhost:2020',
+      { kind: 'native', pageProtocol: 'https:' }),
     invalid: simConnectionProblem('sim-pc:2020',
       { kind: 'desktop', pageProtocol: 'https:' }),
   }));
@@ -106,8 +108,44 @@ test('simulator URL guidance distinguishes desktop, iPad browser, and native app
   expect(out.ipadLoopback).toMatch(/localhost means this iPad/i);
   expect(out.ipadHttps).toBe('');
   expect(out.ipadHttpLan).toBe('');
-  expect(out.nativeHttp).toMatch(/native build.*local HTTP bridge/i);
+  expect(out.nativeHttp).toBe('');
+  expect(out.nativeLoopback).toMatch(/localhost means this device/i);
   expect(out.invalid).toMatch(/complete HTTP or HTTPS bridge URL/i);
+});
+
+test('native iOS polls an HTTP LAN bridge through CapacitorHttp', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__nativeHttpRequests = [];
+    window.Capacitor = {
+      isNativePlatform: () => true,
+      getPlatform: () => 'ios',
+      Plugins: {
+        CapacitorHttp: {
+          get: async options => {
+            window.__nativeHttpRequests.push(options);
+            return {
+              status: 200,
+              data: { latitude: 32.1, longitude: 34.8, altitude: 1000, heading: 90, ias: 110 },
+            };
+          },
+        },
+      },
+    };
+  });
+  await page.goto('?lang=en&nogist');
+  await page.locator('#sim-trigger').click();
+  await page.locator('#sim-url').fill('http://192.168.1.20:2020');
+  await page.locator('#sim-connect-cb').click();
+  await expect(page.locator('#sim-connect-cb')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => window.__nativeHttpRequests.length)).toBeGreaterThan(0);
+  const request = await page.evaluate(() => window.__nativeHttpRequests[0]);
+  expect(request).toMatchObject({
+    url: 'http://192.168.1.20:2020',
+    connectTimeout: 900,
+    readTimeout: 900,
+    responseType: 'json',
+  });
+  await page.locator('#sim-connect-cb').click();
 });
 
 test('an iPad on an HTTP NavAid page is guided to the Mac LAN address, not localhost', async ({ page }) => {

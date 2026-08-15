@@ -2874,14 +2874,17 @@ document.getElementById('limit-kites-cb').onchange = e => {
       return S.tbSimLocalhostIpad ||
         '⚠ localhost means this iPad. Enter the simulator PC’s HTTPS bridge or tunnel URL.';
     }
+    if (env.kind === 'native' && loopback) {
+      return S.tbSimLocalhostNative ||
+        '⚠ localhost means this device. Enter the simulator computer’s LAN bridge URL.';
+    }
     if (env.pageProtocol === 'https:' && parsed.protocol === 'http:') {
       // Desktop loopback is a potentially trustworthy origin in current browsers and is
       // the one useful HTTP exception: NavAid and the bridge are on the same computer.
       if (env.kind === 'desktop' && loopback) return '';
-      if (env.kind === 'native') {
-        return S.tbSimNativeHttp ||
-          '⚠ This native build cannot use a local HTTP bridge yet. Enter an HTTPS bridge or tunnel URL.';
-      }
+      // Native HTTP polling uses CapacitorHttp rather than the HTTPS WebView, while
+      // iOS grants only local-network transport in Info.plist.
+      if (env.kind === 'native') return '';
       return S.tbSimMixedContent ||
         '⚠ Blocked: NavAid uses HTTPS but this bridge uses HTTP. Enter an HTTPS bridge or tunnel URL.';
     }

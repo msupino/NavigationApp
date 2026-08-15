@@ -8183,15 +8183,35 @@ let _simAborter = null;
 // out from under an already-connected session. See the comment at its one use in _simFetch.
 const SIM_DISCONTINUITY_NM = 5;
 
+async function _simRequestData(url, signal) {
+  const cap = window.Capacitor;
+  const native = !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+  const nativeHttp = cap && cap.Plugins && cap.Plugins.CapacitorHttp;
+  if (native && /^http:\/\//i.test(url) && nativeHttp && typeof nativeHttp.get === 'function') {
+    const res = await nativeHttp.get({
+      url,
+      connectTimeout: 900,
+      readTimeout: 900,
+      responseType: 'json',
+    });
+    const status = Number(res && res.status);
+    if (!Number.isFinite(status) || status < 200 || status >= 300) {
+      throw new Error('HTTP ' + (Number.isFinite(status) ? status : 'error'));
+    }
+    return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+  }
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
 async function _simFetch() {
   const session = _simSession;
   const ab = _simAbort(900);
   _simAborter = ab;
   try {
     const url = (typeof simUrl === 'string' && simUrl.trim()) || 'http://localhost:2020';
-    const res = await fetch(url, { signal: ab.signal });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
+    const d = await _simRequestData(url, ab.signal);
     if (typeof d.latitude !== 'number' || typeof d.longitude !== 'number') throw new Error('bad data');
     // Stopped, or restarted, while this request was in flight: its answer is about a
     // session the pilot has already ended, so it must not touch the map or the status.

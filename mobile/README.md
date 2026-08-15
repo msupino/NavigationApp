@@ -88,6 +88,11 @@ works inside WKWebView. Background location on iOS still needs the
 `UIBackgroundModes: location` entitlement + usage strings before lock-screen
 recording works there.
 
+The native iOS app can poll an HTTP simulator bridge on the local network.
+Those requests use Capacitor's native HTTP client, and `Info.plist` declares
+local-network access without disabling App Transport Security globally.
+Enter the simulator computer's LAN address; `localhost` means the iPad itself.
+
 ## Notes
 
 - The web app detects the shell (`isNativeCapacitorShell()` in
