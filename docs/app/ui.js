@@ -7379,9 +7379,10 @@ const NavWxAvailability = (function () {
 
   cb.addEventListener('change', () => {
     controls.hidden = !cb.checked;
-    // Switching the overlay ON is also a moment where the selected time has to be one this
-    // level publishes -- otherwise it appears to do nothing at all.
-    if (cb.checked) fillTimes(true);
+    // Enabling an overlay must not move the pilot's shared date/time selection. If this PWX
+    // level does not publish that time, updateLayer() explains the absence with its
+    // watermark. A deliberate level change still calls fillTimes(true) above because the
+    // pilot explicitly requested weather at that different level.
     updateLayer(); persist();
   });
   levelSel.addEventListener('change', () => { fillTimes(true); updateLayer(); persist(); });

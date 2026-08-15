@@ -243,16 +243,20 @@ test('enabled overlays watermark dates that only the other weather feed publishe
   });
   await page.waitForFunction(() => document.querySelectorAll('#wx-time option').length === 2);
 
-  await page.evaluate(() => {
+  const selectedAfterEnable = await page.evaluate(() => {
+    // Choose the SIGWX-only date while both overlays are off. Enabling PWX used to call
+    // prefer() and silently jump this selection back to PWX's available/near-now date.
+    const time = document.getElementById('wx-time');
+    time.value = '21/06/2026|18:00';
+    time.dispatchEvent(new Event('change'));
     for (const id of ['ims-pwx-cb', 'sigwx-ov-cb']) {
       const cb = document.getElementById(id);
       cb.checked = true;
       cb.dispatchEvent(new Event('change'));
     }
-    const time = document.getElementById('wx-time');
-    time.value = '21/06/2026|18:00';
-    time.dispatchEvent(new Event('change'));
+    return time.value;
   });
+  expect(selectedAfterEnable).toBe('21/06/2026|18:00');
 
   const mark = page.locator('#weather-unavailable-watermark');
   await expect(mark).toBeVisible();

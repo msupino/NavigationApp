@@ -130,7 +130,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   their valid date/time options in `#wx-time`. An enabled overlay that lacks
   the selected option is removed and listed in the centered, non-interactive
   `#weather-unavailable-watermark`; selecting a time it publishes or switching
-  it off clears that layer's line.
+  it off clears that layer's line. Enabling either overlay never changes the
+  selected date/time; a deliberate PWX level change may select a time published
+  by that level.
 - **State:**
   - `state.waypoints[i]` = `{lat, lng, name}` (name optional).
   - `state.legs[i]` = `{inboundAltitude, outboundAltitude, flightSpeed,
