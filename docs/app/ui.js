@@ -7236,6 +7236,48 @@ const NavWxOpacity = (function () {
   return { value, onChange: fn => { if (sel) sel.addEventListener('input', fn); } };
 })();
 
+// The shared valid-time selector is the union of the PWX and SIGWX feeds. A time can
+// therefore be valid for one enabled overlay but absent from the other. Keep that absence
+// visible on the map instead of silently removing the unavailable overlay.
+const NavWxAvailability = (function () {
+  const mapEl = document.getElementById('map');
+  const missing = new Set();
+  const labels = {
+    pwx: () => S.wxPwxUnavailableWatermark || 'Wind/temp — Unavailable',
+    sigwx: () => S.wxSigwxUnavailableWatermark || 'SIGWX — Unavailable',
+  };
+  let el = null;
+
+  function render() {
+    if (!mapEl) return;
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'weather-unavailable-watermark';
+      el.className = 'weather-unavailable-watermark';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      el.hidden = true;
+      mapEl.appendChild(el);
+    }
+    const keys = ['pwx', 'sigwx'].filter(key => missing.has(key));
+    el.replaceChildren(...keys.map(key => {
+      const line = document.createElement('span');
+      line.dataset.layer = key;
+      line.textContent = labels[key]();
+      return line;
+    }));
+    el.hidden = keys.length === 0;
+  }
+
+  return {
+    set: (key, unavailable) => {
+      if (!labels[key]) return;
+      if (unavailable) missing.add(key); else missing.delete(key);
+      render();
+    },
+  };
+})();
+
 // Manifest + PNGs are published by .github/workflows/ims-charts.yml to the
 // ims-data orphan branch (the browser can't fetch ims.gov.il directly — no
 // CORS). The control stays hidden until the manifest loads, so nothing shows
@@ -7264,9 +7306,18 @@ const NavWxOpacity = (function () {
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
   function updateLayer() {
-    if (!cb.checked || !manifest) { removeLayer(); return; }
+    if (!cb.checked || !manifest) {
+      removeLayer();
+      NavWxAvailability.set('pwx', false);
+      return;
+    }
     const t = currentTime();
-    if (!t) { removeLayer(); return; }
+    if (!t) {
+      removeLayer();
+      NavWxAvailability.set('pwx', true);
+      return;
+    }
+    NavWxAvailability.set('pwx', false);
     const b = manifest.bounds;
     // Tunable (?tune=1 → Weather (IMS)) for fine-aligning the overlay:
     // scale the span about its centre (zoom), then nudge lat/lng.
@@ -7784,9 +7835,18 @@ const NavWxOpacity = (function () {
   let sigwxGen = 0;
   function updateLayer() {
     const gen = ++sigwxGen;
-    if (!cb.checked || !manifest) { removeLayers(); return; }
+    if (!cb.checked || !manifest) {
+      removeLayers();
+      NavWxAvailability.set('sigwx', false);
+      return;
+    }
     const t = currentTime();
-    if (!t) { removeLayers(); return; }
+    if (!t) {
+      removeLayers();
+      NavWxAvailability.set('sigwx', true);
+      return;
+    }
+    NavWxAvailability.set('sigwx', false);
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     cropPanel(url, CROP_MAP, true).then(data => {
       if (gen !== sigwxGen) return;                 // a newer selection won

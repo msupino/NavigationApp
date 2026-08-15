@@ -24,7 +24,7 @@ async function freezeNearMidnight(page) {
   });
 }
 
-async function serve(page, { pwx, sigwx, sigwxDelayMs = 0, pwxDelayMs = 0 }) {
+async function serve(page, { pwx, sigwx, sigwxDelayMs = 0, pwxDelayMs = 0, lang = 'en' }) {
   await page.route(/ims-data\/ims\/.*\.png/, r =>
     r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
   await page.route(/ims-data\/ims\/pwx\.json/, async r => {
@@ -41,7 +41,7 @@ async function serve(page, { pwx, sigwx, sigwxDelayMs = 0, pwxDelayMs = 0 }) {
     for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
   });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=' + lang + '&nogist');
 }
 
 const labels = page => page.evaluate(() =>
@@ -231,4 +231,69 @@ test('a pinned SIGWX-only time is not dragged away by PWX on load', async ({ pag
   // moving the shared dropdown off the stored choice.
   expect(await page.evaluate(() => document.getElementById('wx-time').value))
     .toBe('22/06/2026|03:00');
+});
+
+test('enabled overlays watermark dates that only the other weather feed publishes', async ({ page }) => {
+  await serve(page, {
+    pwx: { generatedAt: '2026-06-21T09:00:00Z', bounds: BOUNDS, levels: [
+      { level: '90', label: 'FL030', times: [
+        { valid: '12:00', day: '21/06/2026', png: 'ims/pwx/90/a.png' }] }] },
+    sigwx: { generatedAt: '2026-06-21T09:00:00Z', times: [
+      { valid: '18:00', day: '21/06/2026', png: 'ims/sigwx/b.png' }] },
+  });
+  await page.waitForFunction(() => document.querySelectorAll('#wx-time option').length === 2);
+
+  await page.evaluate(() => {
+    for (const id of ['ims-pwx-cb', 'sigwx-ov-cb']) {
+      const cb = document.getElementById(id);
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change'));
+    }
+    const time = document.getElementById('wx-time');
+    time.value = '21/06/2026|18:00';
+    time.dispatchEvent(new Event('change'));
+  });
+
+  const mark = page.locator('#weather-unavailable-watermark');
+  await expect(mark).toBeVisible();
+  await expect(mark.locator('[data-layer="pwx"]')).toHaveText('Wind/temp — Unavailable');
+  await expect(mark.locator('[data-layer="sigwx"]')).toHaveCount(0);
+  await expect(mark).toHaveCSS('pointer-events', 'none');
+
+  await page.evaluate(() => {
+    const time = document.getElementById('wx-time');
+    time.value = '21/06/2026|12:00';
+    time.dispatchEvent(new Event('change'));
+  });
+  await expect(mark.locator('[data-layer="pwx"]')).toHaveCount(0);
+  await expect(mark.locator('[data-layer="sigwx"]')).toHaveText('SIGWX — Unavailable');
+
+  await page.evaluate(() => {
+    const cb = document.getElementById('sigwx-ov-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change'));
+  });
+  await expect(mark).toBeHidden();
+});
+
+test('weather-unavailable watermark is localized in Hebrew', async ({ page }) => {
+  await serve(page, {
+    lang: 'he',
+    pwx: { generatedAt: '2026-06-21T09:00:00Z', bounds: BOUNDS, levels: [
+      { level: '90', label: 'FL030', times: [
+        { valid: '12:00', day: '21/06/2026', png: 'ims/pwx/90/a.png' }] }] },
+    sigwx: { generatedAt: '2026-06-21T09:00:00Z', times: [
+      { valid: '18:00', day: '21/06/2026', png: 'ims/sigwx/b.png' }] },
+  });
+  await page.waitForFunction(() => document.querySelectorAll('#wx-time option').length === 2);
+  await page.evaluate(() => {
+    const cb = document.getElementById('ims-pwx-cb');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+    const time = document.getElementById('wx-time');
+    time.value = '21/06/2026|18:00';
+    time.dispatchEvent(new Event('change'));
+  });
+  await expect(page.locator('#weather-unavailable-watermark [data-layer="pwx"]'))
+    .toHaveText('רוח/טמפרטורה — לא זמין');
 });
