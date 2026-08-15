@@ -436,6 +436,7 @@ test.describe('alerts speak their own phrasing', () => {
     });
     expect(out.length).toBe(1);
     expect(out[0]).toMatch(/degrees off course/);
+    expect(out[0]).toMatch(/Fly heading (zero|one|two|three|four|five|six|seven|eight|nine)/);
     expect(out[0]).not.toContain('°');
   });
 });

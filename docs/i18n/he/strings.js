@@ -1035,11 +1035,11 @@ window.S = {
     return 'מחוץ למסלול. ישר אל ' + wp + '.' + t + ' מגמה ' + hdgDigits + ', ' + nm + ' מייל.';
   },
   watchAlertDriftTitle: 'סטייה מהמסלול',
-  watchAlertDriftBody: function(driftOut, driftIn, wp) {
-    return driftOut + '° סטייה, ' + driftIn + '° לתיקון לכיוון ' + wp;
+  watchAlertDriftBody: function(driftOut, heading, wp) {
+    return driftOut + '° סטייה, מגמה ' + heading + '° ליירוט לכיוון ' + wp;
   },
-  watchAlertDriftDirectBody: function(correction, wp) {
-    return correction + '° אל ' + wp;
+  watchAlertDriftDirectBody: function(heading, wp) {
+    return 'מגמה ' + heading + '° ישירות אל ' + wp;
   },
   // ראו את ההערה בגרסה האנגלית: אלה הניסוחים המדוברים, ולא גוף ההתראה.
   speakAlertLeg: function(wp, alt, hdgDigits, hms) {
@@ -1074,14 +1074,14 @@ window.S = {
   speakAlertAlt: function(actual, planned) {
     return 'גובה ' + actual + ' רגל, מתוכנן ' + planned + '.';
   },
-  speakAlertDrift: function(driftOut, driftIn, wp) {
+  speakAlertDrift: function(driftOut, headingDigits, wp) {
     // "אל", matching speakAlertDriftDirect below, rather than "לכיוון" -- one less
     // occurrence of the כיוון homograph in spoken text, and the two drift calls now read
     // the same way.
-    return driftOut + ' מעלות סטייה. ' + driftIn + ' מעלות לתיקון אל ' + wp + '.';
+    return driftOut + ' מעלות סטייה. טוס מגמה ' + headingDigits + ' ליירוט אל ' + wp + '.';
   },
-  speakAlertDriftDirect: function(correction, wp) {
-    return correction + ' מעלות אל ' + wp + '.';
+  speakAlertDriftDirect: function(headingDigits, wp) {
+    return 'טוס מגמה ' + headingDigits + ' ישירות אל ' + wp + '.';
   },
   tbVoiceAlerts: '🔊 הקראת התראות',
   tbVoiceAlertsTitle: 'הקראה קולית של התראות הטיסה (קטע, טופ, גובה, סטייה). פועלת גם בדפדפן לצורך בדיקה, אך ההקראה בדפדפן נעצרת כשהלשונית ברקע — האפליקציה היא הדרך האמינה בטיסה.',
