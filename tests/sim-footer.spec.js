@@ -96,10 +96,12 @@ test('simulator URL guidance distinguishes desktop, iPad browser, and native app
       { kind: 'ipad', pageProtocol: 'https:' }),
     ipadHttpLan: simConnectionProblem('http://192.168.1.20:2020',
       { kind: 'ipad', pageProtocol: 'http:' }),
-    nativeHttp: simConnectionProblem('http://192.168.1.20:2020',
-      { kind: 'native', pageProtocol: 'https:' }),
-    nativeLoopback: simConnectionProblem('http://localhost:2020',
-      { kind: 'native', pageProtocol: 'https:' }),
+    nativeIosHttp: simConnectionProblem('http://192.168.1.20:2020',
+      { kind: 'native-ios', pageProtocol: 'https:' }),
+    nativeIosLoopback: simConnectionProblem('http://localhost:2020',
+      { kind: 'native-ios', pageProtocol: 'https:' }),
+    nativeAndroidHttp: simConnectionProblem('http://192.168.1.20:2020',
+      { kind: 'native-other', pageProtocol: 'https:' }),
     invalid: simConnectionProblem('sim-pc:2020',
       { kind: 'desktop', pageProtocol: 'https:' }),
   }));
@@ -108,8 +110,9 @@ test('simulator URL guidance distinguishes desktop, iPad browser, and native app
   expect(out.ipadLoopback).toMatch(/localhost means this iPad/i);
   expect(out.ipadHttps).toBe('');
   expect(out.ipadHttpLan).toBe('');
-  expect(out.nativeHttp).toBe('');
-  expect(out.nativeLoopback).toMatch(/localhost means this device/i);
+  expect(out.nativeIosHttp).toBe('');
+  expect(out.nativeIosLoopback).toMatch(/localhost means this device/i);
+  expect(out.nativeAndroidHttp).toMatch(/native build cannot use a local HTTP bridge/i);
   expect(out.invalid).toMatch(/complete HTTP or HTTPS bridge URL/i);
 });
 
@@ -145,6 +148,11 @@ test('native iOS polls an HTTP LAN bridge through CapacitorHttp', async ({ page 
     readTimeout: 900,
     responseType: 'json',
   });
+  await expect.poll(() => page.evaluate(() => ({
+    lat: window.simAircraft && window.simAircraft.lat,
+    lng: window.simAircraft && window.simAircraft.lng,
+  }))).toEqual({ lat: 32.1, lng: 34.8 });
+  await expect(page.locator('#sim-status')).toContainText('Connected');
   await page.locator('#sim-connect-cb').click();
 });
 
