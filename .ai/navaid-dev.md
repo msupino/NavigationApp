@@ -537,6 +537,16 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   footer behavior. The footer plane button opens the Simulator panel. Its title
   is a drag handle; pointer dragging clamps the panel to the viewport so its
   close button and controls remain reachable.
+  The simulator field accepts an HTTP or HTTPS bridge URL. On desktop,
+  `http://localhost:2020` means a bridge running on that same computer. In an
+  iPad browser, `localhost` means the iPad itself. An HTTPS NavAid page cannot
+  poll an HTTP bridge on the simulator PC, so that case requires an HTTPS bridge
+  or secure tunnel. An HTTP copy of NavAid opened from the Mac's LAN address may
+  poll the bridge at the Mac's HTTP LAN address when the bridge allows CORS, but
+  that insecure NavAid page loses GPS, service-worker/offline-PWA, and related
+  secure-context features. The current native shell loads the HTTPS site and has
+  no native local-HTTP transport. The panel detects invalid combinations before
+  polling and shows platform-specific guidance.
   TOP is edge-triggered by the waypoint capture circle: repeated fixes while
   the aircraft remains inside one circle emit only one alert. Leaving the
   0.3 NM circle re-arms TOP for a legitimate later return to that waypoint.

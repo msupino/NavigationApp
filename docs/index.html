@@ -761,14 +761,17 @@
       <button id="sim-connect-cb" type="button" data-i18n-title="tbSimConnectTitle"></button>
       <label class="navtoggle" data-i18n-title="tbSimIpTitle">
         <span data-i18n="tbSimIpLabel"></span>
-        <input type="text" id="sim-url" value="http://localhost:2020"
+        <input type="url" id="sim-url" value="http://localhost:2020"
+               inputmode="url" autocomplete="off" spellcheck="false"
                style="flex:1;min-width:0;font:inherit;font-size:11px">
       </label>
+      <p id="sim-url-help" class="sim-url-help"></p>
       <button id="sim-follow-cb" type="button" data-i18n="tbSimFollow"
               data-i18n-title="tbSimFollowTitle"></button>
       <button id="sim-center" type="button" data-i18n="tbSimCenter"
               data-i18n-title="tbSimCenterTitle"></button>
-      <span id="sim-status" style="font-size:11px;padding:0 6px"></span>
+      <span id="sim-status" role="status" aria-live="polite"
+            style="font-size:11px;padding:0 6px"></span>
     </div>
   </div>
 

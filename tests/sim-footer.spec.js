@@ -82,6 +82,74 @@ test('the sim icon stays visible on a mobile viewport -- connecting one is how t
   await expect(page.locator('#sim-trigger')).toBeVisible();
 });
 
+test('simulator URL guidance distinguishes desktop, iPad browser, and native app', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof window.simConnectionProblem === 'function');
+  const out = await page.evaluate(() => ({
+    desktopLoopback: simConnectionProblem('http://localhost:2020',
+      { kind: 'desktop', pageProtocol: 'https:' }),
+    desktopLan: simConnectionProblem('http://192.168.1.20:2020',
+      { kind: 'desktop', pageProtocol: 'https:' }),
+    ipadLoopback: simConnectionProblem('http://localhost:2020',
+      { kind: 'ipad', pageProtocol: 'https:' }),
+    ipadHttps: simConnectionProblem('https://sim.example.test',
+      { kind: 'ipad', pageProtocol: 'https:' }),
+    ipadHttpLan: simConnectionProblem('http://192.168.1.20:2020',
+      { kind: 'ipad', pageProtocol: 'http:' }),
+    nativeHttp: simConnectionProblem('http://192.168.1.20:2020',
+      { kind: 'native', pageProtocol: 'https:' }),
+    invalid: simConnectionProblem('sim-pc:2020',
+      { kind: 'desktop', pageProtocol: 'https:' }),
+  }));
+  expect(out.desktopLoopback).toBe('');
+  expect(out.desktopLan).toMatch(/NavAid uses HTTPS.*bridge uses HTTP/i);
+  expect(out.ipadLoopback).toMatch(/localhost means this iPad/i);
+  expect(out.ipadHttps).toBe('');
+  expect(out.ipadHttpLan).toBe('');
+  expect(out.nativeHttp).toMatch(/native build.*local HTTP bridge/i);
+  expect(out.invalid).toMatch(/complete HTTP or HTTPS bridge URL/i);
+});
+
+test('an iPad on an HTTP NavAid page is guided to the Mac LAN address, not localhost', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
+    Object.defineProperty(navigator, 'maxTouchPoints', { value: 5, configurable: true });
+  });
+  await page.goto('?lang=en&nogist');
+  await page.locator('#sim-trigger').click();
+  await expect(page.locator('#sim-url-help')).toContainText('Mac’s HTTP LAN address');
+  await expect(page.locator('#sim-url-help')).toContainText('http://192.168.1.20:2020');
+});
+
+test('an invalid simulator URL shows a clear error and never starts polling', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.locator('#sim-trigger').click();
+  await page.locator('#sim-url').fill('sim-pc:2020');
+  await page.locator('#sim-connect-cb').click();
+  await expect(page.locator('#sim-status')).toContainText('complete HTTP or HTTPS bridge URL');
+  await expect(page.locator('#sim-connect-cb')).toHaveAttribute('aria-pressed', 'false');
+  const state = await page.evaluate(() => ({ simOn, aircraft: window.simAircraft || null }));
+  expect(state.simOn).toBe(false);
+  expect(state.aircraft).toBeNull();
+});
+
+test('editing a connected simulator to an unusable URL disconnects with the specific error', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.locator('#sim-trigger').click();
+  await page.locator('#sim-url').fill('http://localhost:2020');
+  await page.locator('#sim-connect-cb').click();
+  await expect(page.locator('#sim-connect-cb')).toHaveAttribute('aria-pressed', 'true');
+
+  // The local test server is HTTP, so use an invalid scheme to exercise the real input
+  // handler's disconnect path. The pure-validator test above separately pins the exact
+  // HTTPS/HTTP mixed-content message and each platform distinction.
+  await page.locator('#sim-url').fill('ftp://sim-pc.local:2020');
+  await page.locator('#sim-url').press('Tab');
+  await expect(page.locator('#sim-connect-cb')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#sim-status')).toContainText('complete HTTP or HTTPS bridge URL');
+  expect(await page.evaluate(() => simOn)).toBe(false);
+});
+
 // Reported from the installed APK: the sim button was invisible AND untappable there,
 // while the same build id at the same width in Chrome on the same phone drew it. It was
 // the only footer button using an inline <svg>; the two GPS buttons beside it use emoji

@@ -2400,8 +2400,23 @@ body.theme-light .shortcuts-help-keys kbd {
 }
 .modal.sim-modal > button:not(.sim-modal-close),
 .modal.sim-modal > label,
-.modal.sim-modal > #sim-status { width: 100%; }
+.modal.sim-modal > #sim-status,
+.modal.sim-modal > .sim-url-help { width: 100%; }
 .modal.sim-modal > button:not(.sim-modal-close) { text-align: center; }
+.modal.sim-modal > .sim-url-help {
+  box-sizing: border-box;
+  margin: -2px 0 0;
+  padding: 0 6px;
+  max-width: 300px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.modal.sim-modal > #sim-status {
+  box-sizing: border-box;
+  white-space: normal;
+  line-height: 1.35;
+}
 /* Active state for the toggle buttons (Connect / Follow) + a brief flash for
    the one-shot Center button, so it's clear when they fire. */
 .modal.sim-modal > button[aria-pressed="true"] {
