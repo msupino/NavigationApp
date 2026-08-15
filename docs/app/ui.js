@@ -2847,7 +2847,63 @@ document.getElementById('limit-kites-cb').onchange = e => {
   const urlInp = document.getElementById('sim-url');
   const followCb = document.getElementById('sim-follow-cb');
   const statusEl = document.getElementById('sim-status');
-  if (!cb || !urlInp || !followCb || !statusEl) return;
+  const helpEl = document.getElementById('sim-url-help');
+  if (!cb || !urlInp || !followCb || !statusEl || !helpEl) return;
+
+  function simPlatformKind() {
+    if (typeof isNativeCapacitorShell === 'function' && isNativeCapacitorShell()) return 'native';
+    const ua = navigator.userAgent || '';
+    const ipad = /iPad/i.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return ipad ? 'ipad' : 'desktop';
+  }
+
+  function simConnectionProblem(raw, environment) {
+    const env = environment || { kind: simPlatformKind(), pageProtocol: location.protocol };
+    let parsed;
+    try { parsed = new URL(String(raw || '').trim()); } catch (e) {
+      return S.tbSimUrlInvalid || '⚠ Enter a complete HTTP or HTTPS bridge URL.';
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return S.tbSimUrlInvalid || '⚠ Enter a complete HTTP or HTTPS bridge URL.';
+    }
+    const host = parsed.hostname.toLowerCase();
+    const loopback = host === 'localhost' || host === '::1' || host === '[::1]' ||
+      host === '127.0.0.1' || host.startsWith('127.');
+    if (env.kind === 'ipad' && loopback) {
+      return S.tbSimLocalhostIpad ||
+        '⚠ localhost means this iPad. Enter the simulator PC’s HTTPS bridge or tunnel URL.';
+    }
+    if (env.pageProtocol === 'https:' && parsed.protocol === 'http:') {
+      // Desktop loopback is a potentially trustworthy origin in current browsers and is
+      // the one useful HTTP exception: NavAid and the bridge are on the same computer.
+      if (env.kind === 'desktop' && loopback) return '';
+      if (env.kind === 'native') {
+        return S.tbSimNativeHttp ||
+          '⚠ This native build cannot use a local HTTP bridge yet. Enter an HTTPS bridge or tunnel URL.';
+      }
+      return S.tbSimMixedContent ||
+        '⚠ Blocked: NavAid uses HTTPS but this bridge uses HTTP. Enter an HTTPS bridge or tunnel URL.';
+    }
+    return '';
+  }
+  window.simConnectionProblem = simConnectionProblem;
+
+  const platform = simPlatformKind();
+  helpEl.textContent = platform === 'native'
+    ? (S.tbSimHelpNative || '')
+    : (platform === 'ipad'
+      ? (location.protocol === 'https:'
+        ? (S.tbSimHelpIpad || '') : (S.tbSimHelpIpadHttp || ''))
+      : (S.tbSimHelpDesktop || ''));
+
+  let urlProblemShown = false;
+  function showUrlProblem(problem) {
+    statusEl.textContent = problem;
+    statusEl.style.color = typeof tune === 'function'
+      ? tune('simStatusErrColor') : '#e67e22';
+    urlProblemShown = true;
+  }
 
   // Connect + Follow are toggle BUTTONS (not checkboxes). Track their state
   // via aria-pressed; the connect label swaps Connect ⇄ Disconnect.
@@ -2872,9 +2928,21 @@ document.getElementById('limit-kites-cb').onchange = e => {
   const saveSimUrl = () => {
     window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
     try { localStorage.setItem(SIM_URL_KEY, window.simUrl); } catch (e) { /* */ }
+    if (urlProblemShown) {
+      statusEl.textContent = '';
+      urlProblemShown = false;
+    }
   };
-  urlInp.oninput  = saveSimUrl;
-  urlInp.onchange = saveSimUrl;
+  urlInp.oninput = saveSimUrl;
+  urlInp.onchange = () => {
+    saveSimUrl();
+    const problem = simConnectionProblem(window.simUrl);
+    if (!connected || !problem) return;
+    connected = false;
+    setConnectLabel();
+    if (typeof window.simStop === 'function') simStop();
+    showUrlProblem(problem);         // simStop clears status, so explain after stopping
+  };
 
   followCb.onclick = () => {
     window.simFollow = !simFollow;
@@ -2897,13 +2965,21 @@ document.getElementById('limit-kites-cb').onchange = e => {
   };
 
   cb.onclick = () => {
-    connected = !connected;
-    setConnectLabel();
-    if (connected) {
+    if (!connected) {
       window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
+      const problem = simConnectionProblem(window.simUrl);
+      if (problem) {
+        showUrlProblem(problem);
+        setConnectLabel();
+        return;
+      }
+      connected = true;
+      setConnectLabel();
       window._simStatusEl = statusEl;
       if (typeof window.simStart === 'function') simStart();  // saves navaid.simOn
     } else {
+      connected = false;
+      setConnectLabel();
       if (typeof window.simStop === 'function') simStop();    // saves navaid.simOn
     }
   };
@@ -2914,11 +2990,18 @@ document.getElementById('limit-kites-cb').onchange = e => {
   let _savedOn = false;
   try { _savedOn = lsGet('navaid.simOn') === '1'; } catch (e) { /* */ }
   if (_savedOn && typeof window.simStart === 'function') {
-    connected = true;
-    setConnectLabel();
-    // The sim panel now lives behind the footer icon (#sim-modal); the
-    // connected status shows when the user opens it. Just resume polling.
-    simStart();
+    const problem = simConnectionProblem(window.simUrl);
+    if (problem) {
+      window.simOn = false;
+      try { localStorage.setItem(SIM_ON_KEY, '0'); } catch (e) { /* */ }
+      showUrlProblem(problem);
+    } else {
+      connected = true;
+      setConnectLabel();
+      // The sim panel now lives behind the footer icon (#sim-modal); the
+      // connected status shows when the user opens it. Just resume polling.
+      simStart();
+    }
   }
 })();
 
