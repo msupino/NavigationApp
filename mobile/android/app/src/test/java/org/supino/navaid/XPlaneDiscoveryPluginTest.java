@@ -45,5 +45,16 @@ public class XPlaneDiscoveryPluginTest {
 
     byte[] emptyName = beacon("", 49000);
     assertFalse(XPlaneDiscoveryPlugin.isBeacon(emptyName, emptyName.length));
+
+    byte[] unterminated = beacon("Flight Mac", 49000);
+    unterminated[unterminated.length - 1] = '!';
+    assertFalse(XPlaneDiscoveryPlugin.isBeacon(unterminated, unterminated.length));
+  }
+
+  @Test
+  public void acceptsOnlyFiniteGeographicCoordinates() {
+    assertTrue(XPlaneDiscoveryPlugin.validCoordinates(32.1, 34.8));
+    assertFalse(XPlaneDiscoveryPlugin.validCoordinates(91, 34.8));
+    assertFalse(XPlaneDiscoveryPlugin.validCoordinates(true, 34.8));
   }
 }

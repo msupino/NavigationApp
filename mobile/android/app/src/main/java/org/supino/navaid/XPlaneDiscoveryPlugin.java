@@ -106,7 +106,14 @@ public class XPlaneDiscoveryPlugin extends Plugin {
   static boolean isBeacon(byte[] data, int length) {
     return length >= 22 && data[0] == 'B' && data[1] == 'E' && data[2] == 'C' &&
         data[3] == 'N' && data[4] == 0 && data[5] == 1 && beaconPort(data, length) > 0 &&
-        data[21] != 0;
+        data[21] != 0 && beaconNameTerminated(data, length);
+  }
+
+  private static boolean beaconNameTerminated(byte[] data, int length) {
+    for (int index = 22; index < length; index++) {
+      if (data[index] == 0) return true;
+    }
+    return false;
   }
 
   static int beaconPort(byte[] data, int length) {
@@ -137,13 +144,21 @@ public class XPlaneDiscoveryPlugin extends Plugin {
         while ((read = input.read(chunk)) >= 0 && output.size() <= 65536) output.write(chunk, 0, read);
         if (output.size() > 65536) return false;
         JSONObject json = new JSONObject(output.toString(StandardCharsets.UTF_8.name()));
-        return json.opt("latitude") instanceof Number && json.opt("longitude") instanceof Number;
+        return validCoordinates(json.opt("latitude"), json.opt("longitude"));
       }
     } catch (Exception ignored) {
       return false;
     } finally {
       if (connection != null) connection.disconnect();
     }
+  }
+
+  static boolean validCoordinates(Object latitudeValue, Object longitudeValue) {
+    if (!(latitudeValue instanceof Number) || !(longitudeValue instanceof Number)) return false;
+    double latitude = ((Number) latitudeValue).doubleValue();
+    double longitude = ((Number) longitudeValue).doubleValue();
+    return Double.isFinite(latitude) && Double.isFinite(longitude) &&
+        latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
   }
 
   @Override

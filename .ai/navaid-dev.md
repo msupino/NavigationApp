@@ -535,8 +535,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   compact desktop/full-screen toolbar while one of those sources is active;
   when desktop live mode stops it hides again. Mobile keeps its existing text
   footer behavior. At phone widths, the footer reserves a 44 px simulator-button
-  column and truncates the two GPS labels when Android large-text scaling needs
-  the room, so the simulator entry point stays visible and tappable. The footer
+  column. It truncates the two GPS labels when Android large-text scaling needs
+  the room, which keeps the simulator entry point visible and tappable. The footer
   plane button opens the Simulator panel. Its title
   is a drag handle; pointer dragging clamps the panel to the viewport so its
   close button and controls remain reachable.

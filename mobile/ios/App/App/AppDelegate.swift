@@ -2,9 +2,11 @@ import UIKit
 import Capacitor
 import Foundation
 import Darwin
+import CoreFoundation
 
 @objc(XPlaneDiscoveryPlugin)
 public class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin {
+    private static let maximumBridgeResponseBytes = 65_536
     public let identifier = "XPlaneDiscoveryPlugin"
     public let jsName = "XPlaneDiscovery"
     public let pluginMethods: [CAPPluginMethod] = [
@@ -110,12 +112,20 @@ public class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin {
     private func probeBridge(host: String, session: URLSession) async -> ProbeResult {
         guard let url = URL(string: "http://\(host):2020") else { return .unavailable }
         do {
-            let (data, response) = try await session.data(from: url)
+            let (bytes, response) = try await session.bytes(from: url)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
-                  let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  json["latitude"] is NSNumber, json["longitude"] is NSNumber else {
+                  http.expectedContentLength <= Self.maximumBridgeResponseBytes else {
                 return .unavailable
             }
+            var data = Data()
+            data.reserveCapacity(min(max(Int(http.expectedContentLength), 0),
+                                     Self.maximumBridgeResponseBytes))
+            for try await byte in bytes {
+                guard data.count < Self.maximumBridgeResponseBytes else { return .unavailable }
+                data.append(byte)
+            }
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  validCoordinates(json) else { return .unavailable }
             return .found(host)
         } catch let error as URLError where error.code == .notConnectedToInternet ||
                                               error.code == .dataNotAllowed {
@@ -123,6 +133,17 @@ public class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin {
         } catch {
             return .unavailable
         }
+    }
+
+    private func validCoordinates(_ json: [String: Any]) -> Bool {
+        guard let latitude = json["latitude"] as? NSNumber,
+              let longitude = json["longitude"] as? NSNumber,
+              CFGetTypeID(latitude) != CFBooleanGetTypeID(),
+              CFGetTypeID(longitude) != CFBooleanGetTypeID() else { return false }
+        let lat = latitude.doubleValue
+        let lng = longitude.doubleValue
+        return lat.isFinite && lng.isFinite && (-90...90).contains(lat) &&
+            (-180...180).contains(lng)
     }
 
     private func wifiNetwork() -> (address: UInt32, mask: UInt32)? {
