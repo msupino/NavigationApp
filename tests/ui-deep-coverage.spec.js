@@ -8,6 +8,10 @@
 const { test, expect } = require('./_setup');
 const { LLHZ } = require('./_airfieldArp');
 
+const MAP_TILE_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+  'base64');
+
 // These specs reload the page and drive heavy modals; the default 15s is tight
 // under parallel-worker CI load and flakes with page-closed timeouts. Give the
 // whole file room.
@@ -92,6 +96,11 @@ async function clickToolbarControl(page, selector) {
 // Inspector panel
 // ---------------------------------------------------------------------------
 test.describe('Inspector panel', () => {
+  // The satellite-modal test mocks third-party tiles below. The app service
+  // worker claims the page and otherwise owns those requests before
+  // Playwright's route handlers can fulfill them.
+  test.use({ serviceWorkers: 'block' });
+
   test('opens when a waypoint is selected; close button hides it', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
@@ -133,6 +142,15 @@ test.describe('Inspector panel', () => {
   });
 
   test('waypoint inspector shows an expandable satellite snippet', async ({ page }) => {
+    // Keep the modal interaction deterministic: this test verifies layer
+    // switching and zoom behavior, not availability of third-party tiles.
+    await page.route(/World_Imagery\/MapServer\/tile\//, route => route.fulfill({
+      status: 200, contentType: 'image/png', body: MAP_TILE_PNG,
+    }));
+    await page.route(/^https?:\/\/([^/]*\.)?flight-maps\.com\/tiles\//,
+      route => route.fulfill({
+        status: 200, contentType: 'image/png', body: MAP_TILE_PNG,
+      }));
     await boot(page);
     await page.evaluate(hz => {
       state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ' }];
@@ -223,7 +241,10 @@ test.describe('Inspector panel', () => {
     await zoomIn.click();
     await page.waitForFunction(() =>
       window.__satModalMap && window.__satModalMap.getZoom() === 14);
-    await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
+    // Leaflet retains the prior zoom level's tiles as hidden DOM nodes while
+    // the replacement level settles. Select the rendered tile instead of
+    // pinning the assertion to a stale hidden `.first()` element.
+    await expect(lmap.locator('.leaflet-tile:visible').first()).toBeVisible();
     expect(await page.evaluate(() => window.__satModalMap.getZoom())).toBe(14);
     // Zoom readout chip mirrors the main map: `z<level> · <mult>×`, z12 = 1×
     // (mult = 2^(z-12), so z14 → 4×). It tracks the zoom buttons live.
