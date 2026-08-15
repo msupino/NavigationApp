@@ -1951,9 +1951,16 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   #toolbar .footer-link-text {
     display: none;
   }
-  /* The live-coords readout doesn't fit the compact icon row — own-ship on the
-     map carries the position; the readout shows in the mobile (text) footer. */
+  /* Keep the compact icon row clear while idle. During GPS/simulator operation,
+     heading / altitude / speed are live cockpit data and remain visible on the
+     desktop/full-screen map as soon as the readout has a value. */
   #toolbar .footer-gps-readout { display: none; }
+  #toolbar .footer-gps-readout.live-active:not(:empty) {
+    display: inline;
+    flex: 0 0 auto;
+    padding: 0 4px;
+    white-space: nowrap;
+  }
 }
 
 /* Keyboard-shortcuts cheat-sheet (issue #420) ---------------------- */
@@ -2385,6 +2392,11 @@ body.theme-light .shortcuts-help-keys kbd {
   flex-direction: column;
   gap: 8px;
   min-width: 220px;
+}
+.modal.sim-modal > .sim-modal-title {
+  cursor: move;
+  user-select: none;
+  touch-action: none;
 }
 .modal.sim-modal > button:not(.sim-modal-close),
 .modal.sim-modal > label,

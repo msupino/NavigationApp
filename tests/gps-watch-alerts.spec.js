@@ -448,6 +448,34 @@ test.describe('TOP alert (overhead the waypoint)', () => {
     });
     expect(out).toBe(1);
   });
+
+  test('does not repeat at the final waypoint until the aircraft exits its capture circle', async ({ page }) => {
+    await stubWebNotify(page);
+    await bootLive(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+        { lat: 32.02, lng: 34.00, name: 'BRAVO' },
+      ];
+      syncLegs();
+      startLiveLocation();
+      window._gpsAlertConfirmed = true;
+
+      // At the final waypoint cone tracking can select the completed leg again after the
+      // pointer advances past it. Every fix here is still the same physical circle entry.
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      const whileInside = window.__notifications.filter((n) => n.body === 'TOP').length;
+
+      // More than 0.3 NM away re-arms the circle. Returning later is a new crossing.
+      window.__liveCb(window.__fix(32.01, 34.00, { speedMs: 15.4 }));
+      window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
+      const afterReturn = window.__notifications.filter((n) => n.body === 'TOP').length;
+      return { whileInside, afterReturn };
+    });
+    expect(out).toEqual({ whileInside: 1, afterReturn: 2 });
+  });
 });
 
 test.describe('altitude alert', () => {
@@ -893,7 +921,7 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
     expect(n).toBe(0);
   });
 
-  test('before the midpoint: reports drift-out and a doubled intercept angle', async ({ page }) => {
+  test('before the midpoint: reports drift-out and the magnetic intercept heading', async ({ page }) => {
     await stubWebNotify(page);
     await page.goto('?lang=en');
     await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
@@ -910,20 +938,22 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
       const flown = geo(start, pos);
       const expectedOut = Math.round(Math.abs(((flown.brg - leg.brg + 540) % 360) - 180));
       gpsCheckDrift();
-      return { notif: window.__notifications.slice(), expectedOut,
+      const expectedHdg = pad3(toMagnetic(leg.brg - (((flown.brg - leg.brg + 540) % 360) - 180)));
+      return { notif: window.__notifications.slice(), expectedOut, expectedHdg,
         pastMidpoint: flown.dist >= leg.dist / 2 };
     });
     expect(out.pastMidpoint).toBe(false);           // sanity: this test is the before-midpoint case
     expect(out.notif.length).toBe(1);
     const nums = out.notif[0].body.match(/\d+/g).map(Number);
     expect(nums).toHaveLength(2);
-    const [driftOut, driftIn] = nums;
+    const [driftOut, heading] = nums;
     expect(driftOut).toBe(out.expectedOut);
-    expect(driftIn).toBe(driftOut * 2);              // classic doubled-angle intercept
+    expect(heading).toBe(Number(out.expectedHdg));
+    expect(out.notif[0].body).toContain('heading ' + out.expectedHdg + '°');
     expect(out.notif[0].body).toContain('BRAVO');    // names which waypoint it's toward
   });
 
-  test('past the midpoint: reports a single correction to the next waypoint instead', async ({ page }) => {
+  test('past the midpoint: reports the direct magnetic heading to the next waypoint', async ({ page }) => {
     await stubWebNotify(page);
     await page.goto('?lang=en');
     await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
@@ -939,13 +969,32 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
       const leg = geo(start, end);
       const flown = geo(start, pos);
       gpsCheckDrift();
-      return { notif: window.__notifications.slice(), pastMidpoint: flown.dist >= leg.dist / 2 };
+      const expectedHdg = pad3(toMagnetic(geo(pos, end).brg));
+      return { notif: window.__notifications.slice(), expectedHdg,
+        pastMidpoint: flown.dist >= leg.dist / 2 };
     });
     expect(out.pastMidpoint).toBe(true);             // sanity: this test is the past-midpoint case
     expect(out.notif.length).toBe(1);
     expect(out.notif[0].body).toContain('BRAVO');
-    expect(out.notif[0].body).not.toContain('intercept');
-    expect(out.notif[0].body.match(/\d+/g)).toHaveLength(1);   // one correction number, not two
+    expect(out.notif[0].body).toContain('Heading ' + out.expectedHdg + '° direct');
+    expect(out.notif[0].body.match(/\d+/g)).toHaveLength(1);   // one heading, not a correction
+  });
+
+  test('the Hebrew alert also labels the actionable magnetic heading', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const body = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;
+      gpsOwn = { lat: 32.15, lng: 34.15, hdg: 90, t: Date.now() };
+      gpsCheckDrift();
+      return window.__notifications[0].body;
+    });
+    expect(body).toMatch(/מגמה \d{3}°/);
+    expect(body).toContain('BRAVO');
   });
 
   test('does not fire past the last leg', async ({ page }) => {

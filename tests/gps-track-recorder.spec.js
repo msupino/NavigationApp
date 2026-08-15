@@ -43,6 +43,7 @@ test('readout shows realtime ground speed + altitude while recording', async ({ 
     navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
     navigator.geolocation.clearWatch = () => {};
   });
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function');
   await page.evaluate(() => {
@@ -51,11 +52,13 @@ test('readout shows realtime ground speed + altitude while recording', async ({ 
     window.__geoCb({ coords: { latitude: 32.0, longitude: 34.0, accuracy: 8, heading: null, speed: 50, altitude: 304.8 }, timestamp: Date.now() });
   });
   const readout = page.locator('#gps-readout');
+  await expect(readout).toBeVisible();
   await expect(readout).toContainText('97 kt');
   await expect(readout).toContainText('1000 ft');
   // Stopping clears the live values.
   await page.evaluate(() => stopGpsRecording());
   await expect(readout).toHaveText('');
+  await expect(readout).toBeHidden();
 });
 
 test('readout shows ground speed + altitude for plain "show location" too, not just recording', async ({ page }) => {
@@ -64,6 +67,7 @@ test('readout shows ground speed + altitude for plain "show location" too, not j
     navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
     navigator.geolocation.clearWatch = () => {};
   });
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startLiveLocation === 'function');
   await page.evaluate(() => {
@@ -72,15 +76,18 @@ test('readout shows ground speed + altitude for plain "show location" too, not j
     window.__liveCb({ coords: { latitude: 32.0, longitude: 34.0, accuracy: 8, heading: null, speed: 50, altitude: 304.8 }, timestamp: Date.now() });
   });
   const readout = page.locator('#gps-readout');
+  await expect(readout).toBeVisible();
   await expect(readout).toContainText('97 kt');
   await expect(readout).toContainText('1000 ft');
   // No point-count/elapsed-time prefix outside a recording -- neither means anything here.
   await expect(readout).not.toContainText('pts');
   await page.evaluate(() => stopLiveLocation());
   await expect(readout).toHaveText('');
+  await expect(readout).toBeHidden();
 });
 
 test('readout shows ground speed + altitude for a connected simulator, same as GPS mode', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof simStart === 'function' && typeof _simFetch === 'function');
   await page.evaluate(async () => {
@@ -92,12 +99,14 @@ test('readout shows ground speed + altitude for a connected simulator, same as G
     await _simFetch();
   });
   const readout = page.locator('#gps-readout');
+  await expect(readout).toBeVisible();
   await expect(readout).toContainText('120 kt');
   await expect(readout).toContainText('3500 ft');
   await expect(readout).not.toContainText('pts');
   // Disconnecting clears it -- otherwise the last sim reading sat there forever.
   await page.evaluate(() => simStop());
   await expect(readout).toHaveText('');
+  await expect(readout).toBeHidden();
 });
 
 test('recording collects filtered fixes and stops cleanly', async ({ page }) => {

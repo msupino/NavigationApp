@@ -530,6 +530,20 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   dot + breadcrumb trail on the map). On Stop it auto-saves a timestamped
   `kind:'gps'` saved-route entry containing simplified waypoints plus the raw
   `track[]` breadcrumb, carried by the existing Drive sync. Requires HTTPS.
+  The footer live readout shows magnetic heading, altitude, and speed for GPS
+  recording, plain live location, and the simulator. It remains visible in the
+  compact desktop/full-screen toolbar while one of those sources is active;
+  when desktop live mode stops it hides again. Mobile keeps its existing text
+  footer behavior. The footer plane button opens the Simulator panel. Its title
+  is a drag handle; pointer dragging clamps the panel to the viewport so its
+  close button and controls remain reachable.
+  TOP is edge-triggered by the waypoint capture circle: repeated fixes while
+  the aircraft remains inside one circle emit only one alert. Leaving the
+  0.3 NM circle re-arms TOP for a legitimate later return to that waypoint.
+  Off-course alerts report the actual zero-padded magnetic heading to fly.
+  Before the leg midpoint, they give an intercept heading. After the midpoint,
+  they give a heading direct to the next waypoint. They never leave a relative
+  correction for the pilot to apply.
   Recording takes a **screen wake lock** while it runs (`gpsAcquireWakeLock()`
   in `gps.js`), releases it on Stop, and re-acquires it when the page becomes
   visible again — browsers drop the sentinel while the tab is hidden, so a

@@ -384,6 +384,12 @@ function gpsReadoutHeading() {
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
+  // The compact desktop toolbar normally hides this text to save space. A live
+  // GPS or simulator source is the exception: in a full-width/full-screen map,
+  // heading, altitude and speed are cockpit information, not footer decoration.
+  const liveActive = gpsRecording || gpsLiveOn ||
+    (typeof simOn !== 'undefined' && simOn);
+  el.classList.toggle('live-active', !!liveActive);
   if (gpsRecording) {
     const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
     const mm = String(Math.floor(secs / 60)).padStart(2, '0');
@@ -402,7 +408,7 @@ function gpsUpdateReadout() {
   // -time prefix that only means something while actually building a track. Used to
   // show nothing at all outside a recording; reported live: "show alt like gps mode
   // shows alt in sim mode".
-  if (gpsLiveOn || (typeof simOn !== 'undefined' && simOn)) {
+  if (liveActive) {
     const parts = [];
     if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
     if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
@@ -849,6 +855,11 @@ var gpsAlertLegIndex = 0;         // forward-only pointer into state.legs/state.
 var _gpsAlertMinDistNm = Infinity;
 var _gpsAlertLegFired = false;    // leg-approach alert already sent for gpsAlertLegIndex
 var _gpsAlertAltDeviated = false; // currently inside an altitude-deviation episode
+// Physical capture-circle latch for TOP. The cone tracker can select the just-completed
+// final leg again after gpsAlertLegIndex advances past the route, so the pointer alone is
+// not a one-shot guard. Keep the captured coordinates latched until the aircraft actually
+// leaves that waypoint's circle; a later return is then a fresh crossing and may alert.
+var _gpsTopCapturePoint = null;   // {lat,lng} while still inside the last TOP circle
 // Whether gpsAlertLegIndex has ever been verified against a REAL waypoint, not just
 // inferred from geometry. gpsSnapLegAlertsToPosition() picks a leg from an along-track
 // projection alone -- a reasonable best guess on the very first fix (start mid-route,
@@ -872,6 +883,7 @@ function gpsResetLegAlerts() {
   _gpsAlertLegFired = false;
   _gpsAlertAltDeviated = false;
   _gpsAlertConfirmed = false;
+  _gpsTopCapturePoint = null;
   _gpsLastTopAt = 0;
   // Cone/off-route state belongs to the same episode: a fresh session must not inherit a
   // half-elapsed unknown timer or a stale recovery heading from the last one.
@@ -1081,6 +1093,15 @@ function gpsCheckLegAlerts() {
   if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
   const wps = state.waypoints || [];
   const legs = state.legs || [];
+  // Re-arm TOP only on the physical exit edge, before any cone/unknown early return. This
+  // also lets a route revisit the same waypoint later without repeating while loitering
+  // inside it now.
+  if (_gpsTopCapturePoint) {
+    const fromCaptured = geo(gpsOwn, _gpsTopCapturePoint).dist;
+    if (!Number.isFinite(fromCaptured) || fromCaptured > GPS_LEG_CAPTURE_NM) {
+      _gpsTopCapturePoint = null;
+    }
+  }
   // The cone decides which leg we are on, every fix -- not a forward-only pointer. This is
   // what lets a pilot rejoin mid-route, fly it backwards, or skip a leg and still be
   // tracked, and what makes "I do not know where you are" expressible at all.
@@ -1223,10 +1244,9 @@ function gpsCheckLegAlerts() {
   // Advance the leg pointer: within the capture radius of the next waypoint, or the
   // distance to it has started growing again after shrinking (passed abeam it). This IS
   // the "overhead the waypoint" moment -- CVFR radio phraseology's own "TOP <point>" call --
-  // so it fires here, once per crossing (the index only ever moves forward past a given
-  // waypoint the one time this condition is first met; a lingering loiter right at the
-  // capture radius does not re-fire it, because by the next check gpsAlertLegIndex has
-  // already moved on to a different `next`).
+  // so it fires here, once per physical circle entry. The cone tracker may select a
+  // completed leg again (notably at the final waypoint), so gpsAlertLegIndex is not enough
+  // to suppress repeats; _gpsTopCapturePoint remains latched until the aircraft exits.
   if (dist < _gpsAlertMinDistNm) _gpsAlertMinDistNm = dist;
   const captured = dist <= GPS_LEG_CAPTURE_NM;
   if (captured || dist > _gpsAlertMinDistNm + GPS_LEG_CAPTURE_NM) {
@@ -1237,7 +1257,10 @@ function gpsCheckLegAlerts() {
     // confirm it -- if this is the FIRST advance since a snap, its own TOP alert
     // (and every other alert type, gated above) stays silent too.
     if (captured) _gpsAlertConfirmed = true;
-    if (_gpsAlertConfirmed) {
+    const sameCapture = captured && _gpsTopCapturePoint &&
+      _gpsTopCapturePoint.lat === next.lat && _gpsTopCapturePoint.lng === next.lng;
+    if (_gpsAlertConfirmed && !sameCapture) {
+      if (captured) _gpsTopCapturePoint = { lat: next.lat, lng: next.lng };
       // Just "TOP" -- no waypoint name. The leg-approach alert already named it
       // seconds earlier; repeating it here only added characters to a small watch screen.
       // Passing a waypoint is also the moment the drift check must go quiet for a while:
@@ -1511,6 +1534,12 @@ function _gpsAngleDiff(a, b) {
   return ((a - b + 540) % 360) - 180;
 }
 
+function _gpsMagHeadingDigits(trueDeg) {
+  const mag = (typeof toMagnetic === 'function') ? toMagnetic(trueDeg) : trueDeg;
+  const normalized = ((Math.round(mag) % 360) + 360) % 360;
+  return (typeof pad3 === 'function') ? pad3(normalized) : String(normalized);
+}
+
 function gpsCheckDrift() {
   if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
   // Reads gpsAlertLegIndex as the reference leg to measure track error against --
@@ -1537,21 +1566,28 @@ function gpsCheckDrift() {
     ? waypointDisplayLabel(end, gpsAlertLegIndex + 1) : (end.name || '');
   if (flown.dist < leg.dist / 2) {
     // Before the leg's midpoint: worth rejoining the original line. Classic "double the
-    // error" intercept -- fly the correction back at twice the angle you drifted out at.
+    // error" intercept. Give the pilot the resulting magnetic heading to fly, not the
+    // relative correction they would otherwise have to apply mentally to the course.
     const driftOut = Math.round(Math.abs(trackErrorDeg));
-    const driftIn = driftOut * 2;
+    const interceptHdg = _gpsMagHeadingDigits(leg.brg - trackErrorDeg);
+    const spokenHdg = (typeof gpsSpokenDigits === 'function')
+      ? gpsSpokenDigits(interceptHdg, (typeof window !== 'undefined' && window.__navLang) || 'en')
+      : interceptHdg;
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
-      (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, driftIn, label)
-        : (driftOut + '° off course, ' + driftIn + '° to intercept toward ' + label),
-      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, driftIn, label) : null);
+      (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, interceptHdg, label)
+        : (driftOut + '° off course, heading ' + interceptHdg + '° to intercept toward ' + label),
+      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, spokenHdg, label) : null);
   } else {
     // Past the midpoint: rejoining the original line buys nothing this close to the
-    // waypoint -- report the correction to head direct to it instead.
+    // waypoint -- report the magnetic heading direct to it instead of a relative angle.
     const direct = geo(gpsOwn, end);
-    const correction = Math.round(Math.abs(_gpsAngleDiff(direct.brg, leg.brg)));
+    const directHdg = _gpsMagHeadingDigits(direct.brg);
+    const spokenHdg = (typeof gpsSpokenDigits === 'function')
+      ? gpsSpokenDigits(directHdg, (typeof window !== 'undefined' && window.__navLang) || 'en')
+      : directHdg;
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
-      (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(correction, label)
-        : (correction + '° to ' + label),
-      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(correction, label) : null);
+      (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(directHdg, label)
+        : ('Heading ' + directHdg + '° direct ' + label),
+      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(spokenHdg, label) : null);
   }
 }

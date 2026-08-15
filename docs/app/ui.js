@@ -2933,7 +2933,9 @@ document.getElementById('limit-kites-cb').onchange = e => {
   // focus stayed on the plane icon behind it, Tab walked the page underneath, and
   // closing left focus nowhere. Same treatment the factory dialogs get.
   const box = modal.querySelector('.modal') || modal;
+  const dragHandle = box.querySelector('.sim-modal-title');
   let prevFocus = null;
+  let panelDrag = null;
   const focusables = () => [...box.querySelectorAll(
     'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])')]
     .filter(el => !el.disabled && el.offsetParent !== null);
@@ -2945,6 +2947,32 @@ document.getElementById('limit-kites-cb').onchange = e => {
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   };
+  const stopPanelDrag = () => {
+    panelDrag = null;
+    document.removeEventListener('pointermove', movePanel);
+    document.removeEventListener('pointerup', stopPanelDrag);
+    document.removeEventListener('pointercancel', stopPanelDrag);
+  };
+  const movePanel = e => {
+    if (!panelDrag || (e.pointerId != null && e.pointerId !== panelDrag.pointerId)) return;
+    const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
+    box.style.left = Math.max(0, Math.min(maxX, e.clientX - panelDrag.ox)) + 'px';
+    box.style.top = Math.max(0, Math.min(maxY, e.clientY - panelDrag.oy)) + 'px';
+  };
+  if (dragHandle) dragHandle.addEventListener('pointerdown', e => {
+    if (e.button != null && e.button !== 0) return;
+    const r = box.getBoundingClientRect();
+    panelDrag = { pointerId: e.pointerId, ox: e.clientX - r.left, oy: e.clientY - r.top };
+    box.style.position = 'fixed';
+    box.style.left = r.left + 'px';
+    box.style.top = r.top + 'px';
+    box.style.margin = '0';
+    document.addEventListener('pointermove', movePanel);
+    document.addEventListener('pointerup', stopPanelDrag);
+    document.addEventListener('pointercancel', stopPanelDrag);
+    e.preventDefault();
+  });
   const open = () => {
     if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
     modal.classList.remove('hidden');
@@ -2954,6 +2982,7 @@ document.getElementById('limit-kites-cb').onchange = e => {
     if (firstStop) { try { firstStop.focus(); } catch (e) { /* */ } }
   };
   const close = () => {
+    stopPanelDrag();
     modal.classList.add('hidden');
     box.removeEventListener('keydown', onTrapTab);
     const el = prevFocus;
