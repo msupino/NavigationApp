@@ -84,7 +84,10 @@ Xcode + CocoaPods (`brew install cocoapods`) and an Apple ID in Xcode
 (free = own-device installs that expire weekly; the $99/yr program adds
 TestFlight/App Store). `Info.plist` lists `navaid.supino.org` under
 `WKAppBoundDomains` so the site's service worker (offline + chart packs)
-works inside WKWebView. Background location on iOS still needs the
+works inside WKWebView. The matching Capacitor
+`ios.limitsNavigationsToAppBoundDomains` option must remain enabled; WebKit
+otherwise rejects the native JavaScript bridge on the remote page. Background
+location on iOS still needs the
 `UIBackgroundModes: location` entitlement + usage strings before lock-screen
 recording works there.
 

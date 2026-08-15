@@ -30,6 +30,13 @@ if (config.server?.url !== 'https://navaid.supino.org') {
 if (config.server?.androidScheme !== 'https') {
   fail('Android must use an https app origin for secure WebView APIs');
 }
+// Info.plist declares WKAppBoundDomains so the remote shell can use service workers.
+// WebKit then permits Capacitor's JavaScript bridge on that domain only when this
+// matching WKWebView option is enabled. Without it the page looks like Safari and
+// native plugins (including the iOS local-HTTP simulator transport) disappear.
+if (config.ios?.limitsNavigationsToAppBoundDomains !== true) {
+  fail('iOS remote shell must enable app-bound navigation for the Capacitor bridge');
+}
 
 // The background-geolocation package supplies Android's foreground service. Its current
 // Swift package pins Capacitor 7 and cannot coexist with the Capacitor 8 social-login

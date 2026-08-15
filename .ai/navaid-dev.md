@@ -547,7 +547,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   secure-context features. The native shell still loads the HTTPS site, but it
   sends HTTP simulator polls through Capacitor's native HTTP client. Its iOS
   plist grants local-network access without disabling App Transport Security
-  globally. In the native app, `localhost` means the iPad itself; use the
+  globally. The plist's `WKAppBoundDomains` entry and Capacitor's
+  `ios.limitsNavigationsToAppBoundDomains: true` setting must remain paired;
+  otherwise WebKit rejects the native bridge on the live remote page. In the
+  native app, `localhost` means the iPad itself; use the
   simulator computer's LAN address. The panel detects invalid combinations
   before polling and shows platform-specific guidance.
   TOP is edge-triggered by the waypoint capture circle: repeated fixes while
@@ -985,7 +988,8 @@ downloadable `route.json`.
   the WebView loads the live production URL.
 - `mobile/capacitor.config.json` owns the native app metadata:
   `appId: org.supino.navaid`, `appName: NavAid`, `webDir: shell`, and
-  `server.url: https://navaid.supino.org`.
+  `server.url: https://navaid.supino.org`. Its iOS app-bound navigation option
+  allows Capacitor bridge injection on that production domain.
 - Keep Capacitor packages in `mobile/package.json`; the root package remains
   only the Playwright/static-check tooling for the web app.
 - `mobile/scripts/validate-capacitor.mjs` and
