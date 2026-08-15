@@ -1777,16 +1777,15 @@ window.S = Object.assign({
       ' Heading ' + hdgDigits + ', ' + nm + ' miles.';
   },
   watchAlertDriftTitle: 'Off course',
-  // Before the leg's midpoint: two numbers, the classic "double the error" intercept --
-  // how far off course (driftOut), then the heading correction to converge back (driftIn),
-  // toward wp -- the leg's own next waypoint, so the correction has a course to name.
-  watchAlertDriftBody: function(driftOut, driftIn, wp) {
-    return driftOut + '° off course, ' + driftIn + '° to intercept toward ' + wp;
+  // Before the leg's midpoint: retain the track error for context, then give the actual
+  // magnetic intercept heading. The pilot should not have to apply a relative correction.
+  watchAlertDriftBody: function(driftOut, heading, wp) {
+    return driftOut + '° off course, heading ' + heading + '° to intercept toward ' + wp;
   },
   // Past the midpoint: rejoining the original line buys nothing this close to the
-  // waypoint, so this reports the correction to head direct to it instead.
-  watchAlertDriftDirectBody: function(correction, wp) {
-    return correction + '° to ' + wp;
+  // waypoint, so report the actual magnetic heading direct to it.
+  watchAlertDriftDirectBody: function(heading, wp) {
+    return 'Heading ' + heading + '° direct ' + wp;
   },
   // Spoken forms of the alerts above. Deliberately NOT the notification bodies: those are
   // written for a watch face -- dense, and full of symbols (-, °, 0:12:30) whose spoken
@@ -1825,11 +1824,11 @@ window.S = Object.assign({
   speakAlertAlt: function(actual, planned) {
     return 'Altitude ' + actual + ' feet, planned ' + planned + '.';
   },
-  speakAlertDrift: function(driftOut, driftIn, wp) {
-    return driftOut + ' degrees off course. ' + driftIn + ' degrees to intercept toward ' + wp + '.';
+  speakAlertDrift: function(driftOut, headingDigits, wp) {
+    return driftOut + ' degrees off course. Fly heading ' + headingDigits + ' to intercept toward ' + wp + '.';
   },
-  speakAlertDriftDirect: function(correction, wp) {
-    return correction + ' degrees to ' + wp + '.';
+  speakAlertDriftDirect: function(headingDigits, wp) {
+    return 'Fly heading ' + headingDigits + ' direct ' + wp + '.';
   },
   tbVoiceAlerts: '🔊 Speak alerts',
   tbVoiceAlertsTitle: 'Say the in-flight alerts out loud (leg, TOP, altitude, off course). Also works in the browser for testing, but browser speech stops when the tab is in the background — the app is the reliable one in flight.',

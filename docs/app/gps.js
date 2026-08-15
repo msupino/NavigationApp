@@ -1534,6 +1534,12 @@ function _gpsAngleDiff(a, b) {
   return ((a - b + 540) % 360) - 180;
 }
 
+function _gpsMagHeadingDigits(trueDeg) {
+  const mag = (typeof toMagnetic === 'function') ? toMagnetic(trueDeg) : trueDeg;
+  const normalized = ((Math.round(mag) % 360) + 360) % 360;
+  return (typeof pad3 === 'function') ? pad3(normalized) : String(normalized);
+}
+
 function gpsCheckDrift() {
   if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
   // Reads gpsAlertLegIndex as the reference leg to measure track error against --
@@ -1560,21 +1566,28 @@ function gpsCheckDrift() {
     ? waypointDisplayLabel(end, gpsAlertLegIndex + 1) : (end.name || '');
   if (flown.dist < leg.dist / 2) {
     // Before the leg's midpoint: worth rejoining the original line. Classic "double the
-    // error" intercept -- fly the correction back at twice the angle you drifted out at.
+    // error" intercept. Give the pilot the resulting magnetic heading to fly, not the
+    // relative correction they would otherwise have to apply mentally to the course.
     const driftOut = Math.round(Math.abs(trackErrorDeg));
-    const driftIn = driftOut * 2;
+    const interceptHdg = _gpsMagHeadingDigits(leg.brg - trackErrorDeg);
+    const spokenHdg = (typeof gpsSpokenDigits === 'function')
+      ? gpsSpokenDigits(interceptHdg, (typeof window !== 'undefined' && window.__navLang) || 'en')
+      : interceptHdg;
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
-      (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, driftIn, label)
-        : (driftOut + '° off course, ' + driftIn + '° to intercept toward ' + label),
-      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, driftIn, label) : null);
+      (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, interceptHdg, label)
+        : (driftOut + '° off course, heading ' + interceptHdg + '° to intercept toward ' + label),
+      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, spokenHdg, label) : null);
   } else {
     // Past the midpoint: rejoining the original line buys nothing this close to the
-    // waypoint -- report the correction to head direct to it instead.
+    // waypoint -- report the magnetic heading direct to it instead of a relative angle.
     const direct = geo(gpsOwn, end);
-    const correction = Math.round(Math.abs(_gpsAngleDiff(direct.brg, leg.brg)));
+    const directHdg = _gpsMagHeadingDigits(direct.brg);
+    const spokenHdg = (typeof gpsSpokenDigits === 'function')
+      ? gpsSpokenDigits(directHdg, (typeof window !== 'undefined' && window.__navLang) || 'en')
+      : directHdg;
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
-      (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(correction, label)
-        : (correction + '° to ' + label),
-      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(correction, label) : null);
+      (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(directHdg, label)
+        : ('Heading ' + directHdg + '° direct ' + label),
+      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(spokenHdg, label) : null);
   }
 }

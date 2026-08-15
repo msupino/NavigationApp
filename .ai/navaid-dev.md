@@ -540,6 +540,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   TOP is edge-triggered by the waypoint capture circle: repeated fixes while
   the aircraft remains inside one circle emit only one alert. Leaving the
   0.3 NM circle re-arms TOP for a legitimate later return to that waypoint.
+  Off-course alerts report the actual zero-padded magnetic heading to fly.
+  Before the leg midpoint, they give an intercept heading. After the midpoint,
+  they give a heading direct to the next waypoint. They never leave a relative
+  correction for the pilot to apply.
   Recording takes a **screen wake lock** while it runs (`gpsAcquireWakeLock()`
   in `gps.js`), releases it on Stop, and re-acquires it when the page becomes
   visible again — browsers drop the sentinel while the tab is hidden, so a
