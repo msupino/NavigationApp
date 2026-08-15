@@ -544,9 +544,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   or secure tunnel. An HTTP copy of NavAid opened from the Mac's LAN address may
   poll the bridge at the Mac's HTTP LAN address when the bridge allows CORS, but
   that insecure NavAid page loses GPS, service-worker/offline-PWA, and related
-  secure-context features. The current native shell loads the HTTPS site and has
-  no native local-HTTP transport. The panel detects invalid combinations before
-  polling and shows platform-specific guidance.
+  secure-context features. The native shell still loads the HTTPS site, but it
+  sends HTTP simulator polls through Capacitor's native HTTP client. Its iOS
+  plist grants local-network access without disabling App Transport Security
+  globally. In the native app, `localhost` means the iPad itself; use the
+  simulator computer's LAN address. The panel detects invalid combinations
+  before polling and shows platform-specific guidance.
   TOP is edge-triggered by the waypoint capture circle: repeated fixes while
   the aircraft remains inside one circle emit only one alert. Leaving the
   0.3 NM circle re-arms TOP for a legitimate later return to that waypoint.
