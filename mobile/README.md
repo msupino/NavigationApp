@@ -11,6 +11,9 @@ Native bits baked into the shell:
 - `@capacitor-community/background-geolocation` — Android foreground service
   so GPS track recording / live location keep running while the phone is
   locked (`docs/app/gps.js` falls back to plain `watchPosition` on the web).
+  `capacitor.config.json` deliberately excludes it from `ios.includePlugins`:
+  its Swift package targets Capacitor 7, while this shell and social login use
+  Capacitor 8. iOS background location is not enabled or advertised yet.
 - Android manifest: fine/coarse location, `FOREGROUND_SERVICE(_LOCATION)`,
   `POST_NOTIFICATIONS`.
 - `webDir` is the tiny `shell/` stub — packaged only so `cap sync` has a

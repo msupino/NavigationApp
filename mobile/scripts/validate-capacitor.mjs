@@ -31,6 +31,19 @@ if (config.server?.androidScheme !== 'https') {
   fail('Android must use an https app origin for secure WebView APIs');
 }
 
+// The background-geolocation package supplies Android's foreground service. Its current
+// Swift package pins Capacitor 7 and cannot coexist with the Capacitor 8 social-login
+// package, while NavAid does not claim iOS background tracking yet. Keep it installed for
+// Android but exclude it from the iOS plugin graph explicitly.
+const expectedIosPlugins = [
+  '@capacitor-community/text-to-speech',
+  '@capacitor/local-notifications',
+  '@capgo/capacitor-social-login',
+];
+if (JSON.stringify(config.ios?.includePlugins) !== JSON.stringify(expectedIosPlugins)) {
+  fail('iOS plugin allowlist must exclude Android-only background geolocation');
+}
+
 const webDir = path.resolve(mobileRoot, config.webDir);
 if (webDir !== path.join(mobileRoot, 'shell')) fail('webDir resolved outside mobile/shell');
 if (!fs.existsSync(path.join(webDir, 'index.html'))) fail('missing mobile/shell/index.html');
