@@ -534,7 +534,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   recording, plain live location, and the simulator. It remains visible in the
   compact desktop/full-screen toolbar while one of those sources is active;
   when desktop live mode stops it hides again. Mobile keeps its existing text
-  footer behavior. The footer plane button opens the Simulator panel. Its title
+  footer behavior. At phone widths, the footer reserves a 44 px simulator-button
+  column and truncates the two GPS labels when Android large-text scaling needs
+  the room, so the simulator entry point stays visible and tappable. The footer
+  plane button opens the Simulator panel. Its title
   is a drag handle; pointer dragging clamps the panel to the viewport so its
   close button and controls remain reachable.
   The simulator field accepts an HTTP or HTTPS bridge URL. On desktop,
@@ -550,8 +553,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   globally. The plist's `WKAppBoundDomains` entry and Capacitor's
   `ios.limitsNavigationsToAppBoundDomains: true` setting must remain paired;
   otherwise WebKit rejects the native bridge on the live remote page. In the
-  native app, `localhost` means the iPad itself; use the
-  simulator computer's LAN address. The panel detects invalid combinations
+  native iOS or Android app, `localhost` means the phone or tablet itself; use
+  the simulator computer's LAN address. Both native apps route HTTP simulator
+  polling through CapacitorHttp; Android's manifest explicitly permits that
+  cleartext transport. The panel detects invalid combinations
   before polling and shows platform-specific guidance.
   The **Speak alerts** toggle sits directly below **Default speed** in View/Set.
   TOP and the preceding approach call are edge-triggered by the waypoint capture

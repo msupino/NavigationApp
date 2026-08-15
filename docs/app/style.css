@@ -1843,7 +1843,11 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   gap: 12px;
 }
 @media (max-width: 680px) {
-  #toolbar > #footer-links .gps-footer-btn { justify-content: flex-start; }
+  #toolbar > #footer-links .gps-footer-btn {
+    justify-content: flex-start;
+    min-width: 0;
+    overflow: hidden;
+  }
   /* Reserve comfortably past the widest label (measured ~76–82 px HE, ~94–107
      px EN) so font-metric differences across platforms can't let a label
      exceed the reserved width and reintroduce the reflow. */
@@ -1851,8 +1855,8 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
      actually measures (per the comment above), just less pure slack -- the room
      recovered here is what lets #sim-trigger below get real padding instead of being
      bare icon-width with nothing around it. */
-  html[lang="he"] #toolbar > #footer-links #gps-live { min-width: 100px; }
-  html[lang="en"] #toolbar > #footer-links #gps-live { min-width: 108px; }
+  html[lang="he"] #toolbar > #footer-links #gps-live,
+  html[lang="en"] #toolbar > #footer-links #gps-live { min-width: 0; }
   /* #sim-trigger joined this group (see its own comment at .footer-link-text above) --
      the group's default 12px gap was sized for two full-text buttons with room to
      spare; with a third item the group's total content width ran past the collapsed
@@ -1862,7 +1866,18 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
      hidden". Tightening the gap here (only at this width, where the card is actually
      tight) is what actually buys the room back, not just satisfying a test's own
      panel-width assertion the way nesting sim into the group alone did last time. */
-  #toolbar > #footer-links .footer-gps-group { gap: 4px; }
+  #toolbar > #footer-links .footer-gps-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+    width: 100%;
+    max-width: 100%;
+    gap: 4px;
+  }
+  #toolbar > #footer-links .gps-footer-btn .footer-link-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   /* Bare icon-width (14px, zero padding) rendered every measurable property
      correctly -- right colour, right opacity, right position -- and was still
      reported as "I don't see the sim button on mobile at all": technically painted
@@ -1870,7 +1885,11 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
      Padding gives it real visual/tap footprint instead of a sliver flush against
      its neighbour; the min-width trim above is what pays for it without
      reopening the clock overlap this whole block exists to avoid. */
-  #toolbar > #footer-links #sim-trigger { padding: 0 8px; }
+  #toolbar > #footer-links #sim-trigger {
+    width: 44px;
+    padding: 0 8px;
+    justify-content: center;
+  }
 }
 #toolbar .footer-link {
   display: inline-flex;

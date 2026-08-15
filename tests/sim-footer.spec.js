@@ -101,7 +101,7 @@ test('simulator URL guidance distinguishes desktop, iPad browser, and native app
     nativeIosLoopback: simConnectionProblem('http://localhost:2020',
       { kind: 'native-ios', pageProtocol: 'https:' }),
     nativeAndroidHttp: simConnectionProblem('http://192.168.1.20:2020',
-      { kind: 'native-other', pageProtocol: 'https:' }),
+      { kind: 'native-android', pageProtocol: 'https:' }),
     invalid: simConnectionProblem('sim-pc:2020',
       { kind: 'desktop', pageProtocol: 'https:' }),
   }));
@@ -112,7 +112,7 @@ test('simulator URL guidance distinguishes desktop, iPad browser, and native app
   expect(out.ipadHttpLan).toBe('');
   expect(out.nativeIosHttp).toBe('');
   expect(out.nativeIosLoopback).toMatch(/localhost means this device/i);
-  expect(out.nativeAndroidHttp).toMatch(/native build cannot use a local HTTP bridge/i);
+  expect(out.nativeAndroidHttp).toBe('');
   expect(out.invalid).toMatch(/complete HTTP or HTTPS bridge URL/i);
 });
 
@@ -148,6 +148,39 @@ test('native iOS polls an HTTP LAN bridge through CapacitorHttp', async ({ page 
     readTimeout: 900,
     responseType: 'json',
   });
+  await expect.poll(() => page.evaluate(() => ({
+    lat: window.simAircraft && window.simAircraft.lat,
+    lng: window.simAircraft && window.simAircraft.lng,
+  }))).toEqual({ lat: 32.1, lng: 34.8 });
+  await expect(page.locator('#sim-status')).toContainText('Connected');
+  await page.locator('#sim-connect-cb').click();
+});
+
+test('native Android polls an HTTP LAN bridge through CapacitorHttp', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__nativeHttpRequests = [];
+    window.Capacitor = {
+      isNativePlatform: () => true,
+      getPlatform: () => 'android',
+      Plugins: {
+        CapacitorHttp: {
+          get: async options => {
+            window.__nativeHttpRequests.push(options);
+            return {
+              status: 200,
+              data: { latitude: 32.1, longitude: 34.8, altitude: 1000, heading: 90, ias: 110 },
+            };
+          },
+        },
+      },
+    };
+  });
+  await page.goto('?lang=en&nogist');
+  await page.locator('#sim-trigger').click();
+  await page.locator('#sim-url').fill('http://192.168.1.20:2020');
+  await page.locator('#sim-connect-cb').click();
+  await expect(page.locator('#sim-connect-cb')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => window.__nativeHttpRequests.length)).toBeGreaterThan(0);
   await expect.poll(() => page.evaluate(() => ({
     lat: window.simAircraft && window.simAircraft.lat,
     lng: window.simAircraft && window.simAircraft.lng,

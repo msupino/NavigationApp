@@ -92,12 +92,23 @@ if (fs.existsSync(androidGradle)) {
   const text = fs.readFileSync(androidGradle, 'utf8');
   if (!text.includes('namespace = "org.supino.navaid"')) fail('Android namespace drifted');
   if (!text.includes('applicationId "org.supino.navaid"')) fail('Android applicationId drifted');
+  if (!text.includes('versionCode 5') || !text.includes('versionName "1.5"')) {
+    fail('Android release version must match v1.5');
+  }
 }
 
 const androidStrings = path.join(mobileRoot, 'android/app/src/main/res/values/strings.xml');
 if (fs.existsSync(androidStrings)) {
   const text = fs.readFileSync(androidStrings, 'utf8');
   if (!text.includes('<string name="app_name">NavAid</string>')) fail('Android app name drifted');
+}
+
+const androidManifest = path.join(mobileRoot, 'android/app/src/main/AndroidManifest.xml');
+if (fs.existsSync(androidManifest)) {
+  const text = fs.readFileSync(androidManifest, 'utf8');
+  if (!text.includes('android:usesCleartextTraffic="true"')) {
+    fail('Android must permit the native HTTP simulator transport');
+  }
 }
 
 const androidTest = path.join(mobileRoot, 'android/app/src/androidTest/java/org/supino/navaid/ExampleInstrumentedTest.java');

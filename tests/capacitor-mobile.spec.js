@@ -48,8 +48,11 @@ test.describe('Capacitor mobile wrapper', () => {
     const manifest = readText('mobile/android/app/src/main/AndroidManifest.xml');
     const mobilePackage = readJson('mobile/package.json');
     const config = readJson('mobile/capacitor.config.json');
+    const androidGradle = readText('mobile/android/app/build.gradle');
 
     expect(mobilePackage.dependencies['@capacitor-community/background-geolocation']).toBeTruthy();
+    expect(androidGradle).toContain('versionCode 5');
+    expect(androidGradle).toContain('versionName "1.5"');
     expect(config.ios.includePlugins).toEqual([
       '@capacitor-community/text-to-speech',
       '@capacitor/local-notifications',
@@ -60,6 +63,7 @@ test.describe('Capacitor mobile wrapper', () => {
       'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'POST_NOTIFICATIONS']) {
       expect(manifest, `${perm} must be declared`).toContain(perm);
     }
+    expect(manifest).toContain('android:usesCleartextTraffic="true"');
     // iOS: the site's SW (offline + chart packs) only runs for app-bound domains.
     const iosInfo = readText('mobile/ios/App/App/Info.plist');
     expect(iosInfo).toContain('WKAppBoundDomains');

@@ -36,6 +36,9 @@ Prereqs: Android SDK at `~/Library/Android/sdk`, **JDK 21** (Capacitor 8
 fails on older with `invalid source release: 21`; Homebrew:
 `/opt/homebrew/opt/openjdk@21`).
 
+The current package version is **1.5** (`versionCode 5`), released as
+`android-v1.5.0`.
+
 ```sh
 cd mobile/android
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
@@ -91,10 +94,11 @@ location on iOS still needs the
 `UIBackgroundModes: location` entitlement + usage strings before lock-screen
 recording works there.
 
-The native iOS app can poll an HTTP simulator bridge on the local network.
-Those requests use Capacitor's native HTTP client, and `Info.plist` declares
-local-network access without disabling App Transport Security globally.
-Enter the simulator computer's LAN address; `localhost` means the iPad itself.
+The native iOS and Android apps can poll an HTTP simulator bridge on the local
+network. Those requests use Capacitor's native HTTP client instead of mixed-content
+WebView fetch. iOS declares local-network access without disabling App Transport
+Security globally; Android opts into cleartext transport in its manifest. Enter the
+simulator computer's LAN address; `localhost` means the phone or tablet itself.
 
 ## Notes
 
