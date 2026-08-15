@@ -46,8 +46,15 @@ test.describe('Capacitor mobile wrapper', () => {
   test('ships the lock-screen GPS foreground service (Android)', () => {
     const manifest = readText('mobile/android/app/src/main/AndroidManifest.xml');
     const mobilePackage = readJson('mobile/package.json');
+    const config = readJson('mobile/capacitor.config.json');
 
     expect(mobilePackage.dependencies['@capacitor-community/background-geolocation']).toBeTruthy();
+    expect(config.ios.includePlugins).toEqual([
+      '@capacitor-community/text-to-speech',
+      '@capacitor/local-notifications',
+      '@capgo/capacitor-social-login',
+    ]);
+    expect(config.ios.includePlugins).not.toContain('@capacitor-community/background-geolocation');
     for (const perm of ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION',
       'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'POST_NOTIFICATIONS']) {
       expect(manifest, `${perm} must be declared`).toContain(perm);

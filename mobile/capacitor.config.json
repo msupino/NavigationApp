@@ -2,6 +2,13 @@
   "appId": "org.supino.navaid",
   "appName": "NavAid",
   "webDir": "shell",
+  "ios": {
+    "includePlugins": [
+      "@capacitor-community/text-to-speech",
+      "@capacitor/local-notifications",
+      "@capgo/capacitor-social-login"
+    ]
+  },
   "server": {
     "url": "https://navaid.supino.org",
     "androidScheme": "https"
