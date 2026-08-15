@@ -113,6 +113,43 @@ test('the first waypoint of a session gets its approach call', async ({ page }) 
   expect(alerts).toContain('TOP');
 });
 
+// Reported live on iPad: while turning at BARZA, small fixes just behind the turn put the
+// cone tracker back on the completed leg. That transition must not re-arm the approach
+// call until the aircraft has physically left BARZA's capture circle.
+test('GPS jitter inside a turn waypoint does not repeat its approach call', async ({ page }) => {
+  await boot(page);
+  await route(page, [
+    { lat: 32.00, lng: 34.00, name: 'ALPHA' },
+    { lat: 32.05, lng: 34.00, name: 'BARZA' },
+    { lat: 32.05, lng: 34.05, name: 'CHARLIE' },
+  ]);
+  const alerts = await page.evaluate(() => {
+    const seen = [];
+    const orig = window.gpsSendWatchAlert;
+    window.gpsSendWatchAlert = (title, body) => { seen.push({ title, body }); };
+    state.legs.forEach(l => { l.flightSpeed = 90; });
+    gpsResetLegAlerts();
+
+    // Approach and capture BARZA from the south.
+    gpsOwn = { lat: 32.049, lng: 34.00, hdg: 0, t: Date.now() };
+    gpsLastAlt = null;
+    gpsCheckLegAlerts();
+    gpsOwn = { lat: 32.050, lng: 34.00, hdg: 90, t: Date.now() };
+    gpsCheckLegAlerts();
+
+    // Jitter behind the turn repeatedly selects ALPHA -> BARZA again, but every fix is
+    // still inside BARZA's 0.3 NM circle.
+    for (const lat of [32.0490, 32.0495, 32.0488, 32.0492]) {
+      gpsOwn = { lat, lng: 34.00, hdg: 90, t: Date.now() };
+      gpsCheckLegAlerts();
+    }
+    window.gpsSendWatchAlert = orig;
+    return seen;
+  });
+  expect(alerts.filter(a => a.title === 'Next leg')).toHaveLength(1);
+  expect(alerts.filter(a => a.title === 'TOP')).toHaveLength(1);
+});
+
 test.describe('the off-route alert', () => {
   test('waits out a brief excursion, then fires with a course back', async ({ page }) => {
     await boot(page);

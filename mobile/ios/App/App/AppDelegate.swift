@@ -1,5 +1,193 @@
 import UIKit
 import Capacitor
+import Foundation
+import Darwin
+import CoreFoundation
+
+@objc(XPlaneDiscoveryPlugin)
+public class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin {
+    private static let maximumBridgeResponseBytes = 65_536
+    public let identifier = "XPlaneDiscoveryPlugin"
+    public let jsName = "XPlaneDiscovery"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "discover", returnType: CAPPluginReturnPromise)
+    ]
+    private var discoveryTask: Task<Void, Never>?
+
+    private enum DiscoveryError: Error {
+        case noWifi
+        case subnetTooLarge
+        case networkDenied
+    }
+
+    private enum ProbeResult {
+        case found(String)
+        case unavailable
+        case networkDenied
+    }
+
+    @objc func discover(_ call: CAPPluginCall) {
+        guard isTrustedProductionPage() else {
+            call.reject("X-Plane discovery is available only on production NavAid", "UNTRUSTED_ORIGIN")
+            return
+        }
+        discoveryTask?.cancel()
+        discoveryTask = Task {
+            do {
+                if let found = try await findBridge() {
+                    call.resolve([
+                        "found": true,
+                        "host": found,
+                        "name": "X-Plane",
+                        "bridgeUrl": "http://\(found):2020",
+                        "source": "local-bridge-scan"
+                    ])
+                } else {
+                    call.resolve(["found": false])
+                }
+            } catch DiscoveryError.noWifi {
+                call.reject("Wi-Fi is unavailable", "NO_WIFI")
+            } catch DiscoveryError.subnetTooLarge {
+                call.reject("The Wi-Fi subnet is too large to scan safely", "SUBNET_TOO_LARGE")
+            } catch DiscoveryError.networkDenied {
+                call.reject("Local Network access is denied or unavailable", "LOCAL_NETWORK_DENIED")
+            } catch {
+                call.reject("X-Plane discovery failed", nil, error)
+            }
+        }
+    }
+
+    private func isTrustedProductionPage() -> Bool {
+        guard let url = bridge?.webView?.url else { return false }
+        return url.scheme == "https" && url.host == "navaid.supino.org" && url.port == nil &&
+            (url.path.isEmpty || url.path == "/")
+    }
+
+    private func findBridge() async throws -> String? {
+        guard let network = wifiNetwork() else { throw DiscoveryError.noWifi }
+        let wildcard = ~network.mask
+        guard wildcard > 1 else { return nil }
+        guard wildcard <= 1_023 else { throw DiscoveryError.subnetTooLarge }
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 0.7
+        config.timeoutIntervalForResource = config.timeoutIntervalForRequest
+        config.waitsForConnectivity = false
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel() }
+
+        let first = (network.address & network.mask) + 1
+        let last = (network.address & network.mask) + wildcard - 1
+        let candidates = (first...last).filter { $0 != network.address }
+        var denied = false
+        for start in stride(from: 0, to: candidates.count, by: 64) {
+            if Task.isCancelled { return nil }
+            let end = min(start + 64, candidates.count)
+            let batch = await withTaskGroup(of: ProbeResult.self,
+                                            returning: (String?, Bool).self, body: { group in
+                for address in candidates[start..<end] {
+                    guard let host = self.ipv4String(address) else { continue }
+                    group.addTask { await self.probeBridge(host: host, session: session) }
+                }
+                var sawDenied = false
+                for await result in group {
+                    switch result {
+                    case .found(let host):
+                        group.cancelAll()
+                        return (host, sawDenied)
+                    case .networkDenied:
+                        sawDenied = true
+                    case .unavailable:
+                        break
+                    }
+                }
+                return (nil, sawDenied)
+            })
+            if let host = batch.0 { return host }
+            denied = denied || batch.1
+        }
+        if denied { throw DiscoveryError.networkDenied }
+        return nil
+    }
+
+    private func probeBridge(host: String, session: URLSession) async -> ProbeResult {
+        guard let url = URL(string: "http://\(host):2020") else { return .unavailable }
+        do {
+            let (bytes, response) = try await session.bytes(from: url)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  http.expectedContentLength <= Self.maximumBridgeResponseBytes else {
+                return .unavailable
+            }
+            var data = Data()
+            data.reserveCapacity(min(max(Int(http.expectedContentLength), 0),
+                                     Self.maximumBridgeResponseBytes))
+            for try await byte in bytes {
+                guard data.count < Self.maximumBridgeResponseBytes else { return .unavailable }
+                data.append(byte)
+            }
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  validCoordinates(json) else { return .unavailable }
+            return .found(host)
+        } catch let error as URLError where error.code == .notConnectedToInternet ||
+                                              error.code == .dataNotAllowed {
+            return .networkDenied
+        } catch {
+            return .unavailable
+        }
+    }
+
+    private func validCoordinates(_ json: [String: Any]) -> Bool {
+        guard let latitude = json["latitude"] as? NSNumber,
+              let longitude = json["longitude"] as? NSNumber,
+              CFGetTypeID(latitude) != CFBooleanGetTypeID(),
+              CFGetTypeID(longitude) != CFBooleanGetTypeID() else { return false }
+        let lat = latitude.doubleValue
+        let lng = longitude.doubleValue
+        return lat.isFinite && lng.isFinite && (-90...90).contains(lat) &&
+            (-180...180).contains(lng)
+    }
+
+    private func wifiNetwork() -> (address: UInt32, mask: UInt32)? {
+        var list: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&list) == 0, let first = list else { return nil }
+        defer { freeifaddrs(list) }
+        var cursor: UnsafeMutablePointer<ifaddrs>? = first
+        while let item = cursor {
+            let interface = item.pointee
+            if let addressPointer = interface.ifa_addr,
+               let maskPointer = interface.ifa_netmask,
+               addressPointer.pointee.sa_family == UInt8(AF_INET),
+               String(cString: interface.ifa_name) == "en0" {
+                let address = addressPointer.withMemoryRebound(to: sockaddr_in.self, capacity: 1) {
+                    UInt32(bigEndian: $0.pointee.sin_addr.s_addr)
+                }
+                let mask = maskPointer.withMemoryRebound(to: sockaddr_in.self, capacity: 1) {
+                    UInt32(bigEndian: $0.pointee.sin_addr.s_addr)
+                }
+                return (address, mask)
+            }
+            cursor = interface.ifa_next
+        }
+        return nil
+    }
+
+    private func ipv4String(_ value: UInt32) -> String? {
+        var address = in_addr(s_addr: value.bigEndian)
+        var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+        guard inet_ntop(AF_INET, &address, &buffer, socklen_t(buffer.count)) != nil else { return nil }
+        return String(cString: buffer)
+    }
+
+    deinit {
+        discoveryTask?.cancel()
+    }
+}
+
+@objc(NavAidBridgeViewController)
+class NavAidBridgeViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        bridge?.registerPluginInstance(XPlaneDiscoveryPlugin())
+    }
+}
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {

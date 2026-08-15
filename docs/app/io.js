@@ -8185,10 +8185,11 @@ const SIM_DISCONTINUITY_NM = 5;
 
 async function _simRequestData(url, signal) {
   const cap = window.Capacitor;
-  const iosNative = !!(cap && typeof cap.isNativePlatform === 'function' &&
-    cap.isNativePlatform() && typeof cap.getPlatform === 'function' && cap.getPlatform() === 'ios');
+  const nativePlatform = cap && typeof cap.isNativePlatform === 'function' &&
+    cap.isNativePlatform() && typeof cap.getPlatform === 'function' ? cap.getPlatform() : '';
+  const nativeLocalHttp = nativePlatform === 'ios' || nativePlatform === 'android';
   const nativeHttp = cap && cap.Plugins && cap.Plugins.CapacitorHttp;
-  if (iosNative && /^http:\/\//i.test(url) && nativeHttp && typeof nativeHttp.get === 'function') {
+  if (nativeLocalHttp && /^http:\/\//i.test(url) && nativeHttp && typeof nativeHttp.get === 'function') {
     const res = await nativeHttp.get({
       url,
       connectTimeout: 900,

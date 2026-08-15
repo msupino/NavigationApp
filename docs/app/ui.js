@@ -2848,13 +2848,17 @@ document.getElementById('limit-kites-cb').onchange = e => {
   const followCb = document.getElementById('sim-follow-cb');
   const statusEl = document.getElementById('sim-status');
   const helpEl = document.getElementById('sim-url-help');
+  const discoverBtn = document.getElementById('sim-discover');
   if (!cb || !urlInp || !followCb || !statusEl || !helpEl) return;
 
   function simPlatformKind() {
     if (typeof isNativeCapacitorShell === 'function' && isNativeCapacitorShell()) {
       const cap = window.Capacitor;
-      return cap && typeof cap.getPlatform === 'function' && cap.getPlatform() === 'ios'
-        ? 'native-ios' : 'native-other';
+      const nativePlatform = cap && typeof cap.getPlatform === 'function'
+        ? cap.getPlatform() : '';
+      if (nativePlatform === 'ios') return 'native-ios';
+      if (nativePlatform === 'android') return 'native-android';
+      return 'native-other';
     }
     const ua = navigator.userAgent || '';
     const ipad = /iPad/i.test(ua) ||
@@ -2878,7 +2882,7 @@ document.getElementById('limit-kites-cb').onchange = e => {
       return S.tbSimLocalhostIpad ||
         '⚠ localhost means this iPad. Enter the simulator PC’s HTTPS bridge or tunnel URL.';
     }
-    if (env.kind === 'native-ios' && loopback) {
+    if ((env.kind === 'native-ios' || env.kind === 'native-android') && loopback) {
       return S.tbSimLocalhostNative ||
         '⚠ localhost means this device. Enter the simulator computer’s LAN bridge URL.';
     }
@@ -2886,9 +2890,10 @@ document.getElementById('limit-kites-cb').onchange = e => {
       // Desktop loopback is a potentially trustworthy origin in current browsers and is
       // the one useful HTTP exception: NavAid and the bridge are on the same computer.
       if (env.kind === 'desktop' && loopback) return '';
-      // Native HTTP polling uses CapacitorHttp rather than the HTTPS WebView, while
-      // iOS grants only local-network transport in Info.plist.
-      if (env.kind === 'native-ios') return '';
+      // Native HTTP polling uses CapacitorHttp rather than the HTTPS WebView. iOS grants
+      // local-network transport in Info.plist; Android opts into cleartext transport in
+      // its manifest. Browser mixed-content behavior remains unchanged.
+      if (env.kind === 'native-ios' || env.kind === 'native-android') return '';
       if (env.kind === 'native-other') {
         return S.tbSimNativeHttp ||
           '⚠ This native build cannot use a local HTTP bridge. Enter an HTTPS bridge or tunnel URL.';
@@ -2901,7 +2906,38 @@ document.getElementById('limit-kites-cb').onchange = e => {
   window.simConnectionProblem = simConnectionProblem;
 
   const platform = simPlatformKind();
-  helpEl.textContent = platform === 'native-ios'
+  if (discoverBtn && (platform === 'native-ios' || platform === 'native-android')) {
+    discoverBtn.classList.remove('hidden');
+    discoverBtn.onclick = async () => {
+      const plugin = window.Capacitor && window.Capacitor.Plugins &&
+        window.Capacitor.Plugins.XPlaneDiscovery;
+      if (!plugin || typeof plugin.discover !== 'function') {
+        showUrlProblem(S.tbSimDiscoverError || 'Could not search the local network.');
+        return;
+      }
+      discoverBtn.disabled = true;
+      statusEl.textContent = S.tbSimDiscovering || 'Searching the local network…';
+      statusEl.style.color = '';
+      try {
+        const result = await plugin.discover();
+        if (!result || !result.found || !result.bridgeUrl) {
+          showUrlProblem(S.tbSimDiscoverNone || 'No X-Plane bridge found.');
+          return;
+        }
+        urlInp.value = result.bridgeUrl;
+        saveSimUrl();
+        statusEl.textContent = (S.tbSimDiscovered || 'X-Plane found on {host}')
+          .replace('{host}', result.name || result.host || result.bridgeUrl);
+        statusEl.style.color = typeof tune === 'function'
+          ? tune('simStatusOkColor') : '#2ecc71';
+      } catch (e) {
+        showUrlProblem(S.tbSimDiscoverError || 'Could not search the local network.');
+      } finally {
+        discoverBtn.disabled = false;
+      }
+    };
+  }
+  helpEl.textContent = platform === 'native-ios' || platform === 'native-android'
     ? (S.tbSimHelpNative || '')
     : (platform === 'native-other'
       ? (S.tbSimHelpNativeOther || '')

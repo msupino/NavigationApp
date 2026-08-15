@@ -26,11 +26,13 @@ test('the control sits under the layer picker in View/Set and shows 90 by defaul
     return {
       layerIdx: rows.findIndex(r => r.querySelector('#layer-select')),
       speedIdx: rows.findIndex(r => r.querySelector('#default-speed')),
+      voiceIdx: rows.findIndex(r => r.querySelector('#voice-alerts-cb')),
       sameSection: !!body.querySelector('#default-speed'),
     };
   });
   expect(order.sameSection).toBe(true);
   expect(order.speedIdx).toBe(order.layerIdx + 1);   // directly below Layer
+  expect(order.voiceIdx).toBe(order.speedIdx + 1);  // directly below Default speed
 });
 
 test('it is labelled in both languages', async ({ page }) => {

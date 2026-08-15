@@ -212,6 +212,32 @@ test('the sim-trigger button (inside the GPS group, overflows the panel like its
   }
 });
 
+test('the sim trigger remains visible and tappable with Android large text', async ({ page }) => {
+  for (const lang of ['en', 'he']) {
+    await page.goto('?lang=' + lang + '&nogist');
+    await page.waitForFunction(() => !!document.getElementById('sim-trigger'));
+    const r = await page.evaluate(() => {
+      // Android's accessibility font scale enlarges WebView text without widening the
+      // phone viewport. Emulate that pressure directly: the two GPS labels may truncate,
+      // but the fixed simulator column must never be pushed outside the toolbar.
+      const style = document.createElement('style');
+      style.textContent = '#toolbar .footer-link { font-size: 24px !important; }';
+      document.head.appendChild(style);
+      const tb = document.getElementById('toolbar');
+      if (!tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
+      const footer = document.getElementById('footer-links').getBoundingClientRect();
+      const sim = document.getElementById('sim-trigger').getBoundingClientRect();
+      return {
+        visible: sim.width >= 44 && sim.height >= 44,
+        inside: sim.left >= footer.left - 0.5 && sim.right <= footer.right + 0.5 &&
+          sim.top >= footer.top - 0.5 && sim.bottom <= footer.bottom + 0.5,
+      };
+    });
+    expect(r.visible, 'large-text sim target in ' + lang).toBe(true);
+    expect(r.inside, 'large-text sim target escaped the footer in ' + lang).toBe(true);
+  }
+});
+
 test('the closed menu keeps finger-sized targets', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => !!document.getElementById('toolbar'));

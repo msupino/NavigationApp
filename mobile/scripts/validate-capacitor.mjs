@@ -30,6 +30,13 @@ if (config.server?.url !== 'https://navaid.supino.org') {
 if (config.server?.androidScheme !== 'https') {
   fail('Android must use an https app origin for secure WebView APIs');
 }
+// Info.plist declares WKAppBoundDomains so the remote shell can use service workers.
+// WebKit then permits Capacitor's JavaScript bridge on that domain only when this
+// matching WKWebView option is enabled. Without it the page looks like Safari and
+// native plugins (including the iOS local-HTTP simulator transport) disappear.
+if (config.ios?.limitsNavigationsToAppBoundDomains !== true) {
+  fail('iOS remote shell must enable app-bound navigation for the Capacitor bridge');
+}
 
 // The background-geolocation package supplies Android's foreground service. Its current
 // Swift package pins Capacitor 7 and cannot coexist with the Capacitor 8 social-login
@@ -85,12 +92,26 @@ if (fs.existsSync(androidGradle)) {
   const text = fs.readFileSync(androidGradle, 'utf8');
   if (!text.includes('namespace = "org.supino.navaid"')) fail('Android namespace drifted');
   if (!text.includes('applicationId "org.supino.navaid"')) fail('Android applicationId drifted');
+  if (!text.includes('versionCode 5') || !text.includes('versionName "1.5"')) {
+    fail('Android release version must match v1.5');
+  }
 }
 
 const androidStrings = path.join(mobileRoot, 'android/app/src/main/res/values/strings.xml');
 if (fs.existsSync(androidStrings)) {
   const text = fs.readFileSync(androidStrings, 'utf8');
   if (!text.includes('<string name="app_name">NavAid</string>')) fail('Android app name drifted');
+}
+
+const androidManifest = path.join(mobileRoot, 'android/app/src/main/AndroidManifest.xml');
+if (fs.existsSync(androidManifest)) {
+  const text = fs.readFileSync(androidManifest, 'utf8');
+  if (!text.includes('android:usesCleartextTraffic="true"')) {
+    fail('Android must permit the native HTTP simulator transport');
+  }
+  for (const permission of ['ACCESS_WIFI_STATE', 'CHANGE_WIFI_MULTICAST_STATE']) {
+    if (!text.includes(permission)) fail(`Android X-Plane discovery lacks ${permission}`);
+  }
 }
 
 const androidTest = path.join(mobileRoot, 'android/app/src/androidTest/java/org/supino/navaid/ExampleInstrumentedTest.java');
@@ -122,6 +143,40 @@ if (fs.existsSync(iosInfo)) {
   if (text.includes('<key>NSAllowsArbitraryLoads</key>')) {
     fail('iOS must not disable App Transport Security globally');
   }
+  if (!text.includes('finds X-Plane')) fail('iOS local-network reason must explain discovery');
+}
+
+const androidDiscovery = path.join(mobileRoot,
+  'android/app/src/main/java/org/supino/navaid/XPlaneDiscoveryPlugin.java');
+const androidActivity = path.join(mobileRoot,
+  'android/app/src/main/java/org/supino/navaid/MainActivity.java');
+const androidDiscoveryText = fs.existsSync(androidDiscovery)
+  ? fs.readFileSync(androidDiscovery, 'utf8')
+  : '';
+if (!androidDiscoveryText.includes('239.255.1.1')) {
+  fail('Android X-Plane BECN discovery plugin is missing');
+}
+if (!androidDiscoveryText.includes('UNTRUSTED_ORIGIN') ||
+    !androidDiscoveryText.includes('probeBridge(host)')) {
+  fail('Android X-Plane discovery must be production-bound and verify the bridge');
+}
+if (!fs.readFileSync(androidActivity, 'utf8').includes('registerPlugin(XPlaneDiscoveryPlugin.class)')) {
+  fail('Android X-Plane discovery plugin is not registered');
+}
+const iosDelegate = fs.readFileSync(path.join(mobileRoot, 'ios/App/App/AppDelegate.swift'), 'utf8');
+const iosStoryboard = fs.readFileSync(
+  path.join(mobileRoot, 'ios/App/App/Base.lproj/Main.storyboard'), 'utf8');
+if (!iosDelegate.includes('class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin') ||
+    !iosStoryboard.includes('customClass="NavAidBridgeViewController"')) {
+  fail('iOS X-Plane bridge discovery plugin is not registered');
+}
+if (iosDelegate.includes('NWMulticastGroup')) {
+  fail('iOS discovery must not require Apple restricted multicast entitlement');
+}
+if (!iosDelegate.includes('UNTRUSTED_ORIGIN') ||
+    !iosDelegate.includes('interface.ifa_netmask') ||
+    !iosDelegate.includes('LOCAL_NETWORK_DENIED')) {
+  fail('iOS X-Plane discovery must be production-bound and subnet-aware');
 }
 
 console.log('Capacitor mobile wrapper ok');

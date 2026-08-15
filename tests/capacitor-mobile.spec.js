@@ -39,6 +39,7 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(config.webDir).toBe('shell');
     expect(config.server.url).toBe('https://navaid.supino.org');
     expect(config.server.androidScheme).toBe('https');
+    expect(config.ios.limitsNavigationsToAppBoundDomains).toBe(true);
     expect(fs.existsSync(path.join(__dirname, '..', 'mobile', 'shell', 'index.html'))).toBe(true);
     expect(fs.existsSync(path.join(__dirname, '..', 'docs', 'index.html'))).toBe(true);
   });
@@ -47,8 +48,11 @@ test.describe('Capacitor mobile wrapper', () => {
     const manifest = readText('mobile/android/app/src/main/AndroidManifest.xml');
     const mobilePackage = readJson('mobile/package.json');
     const config = readJson('mobile/capacitor.config.json');
+    const androidGradle = readText('mobile/android/app/build.gradle');
 
     expect(mobilePackage.dependencies['@capacitor-community/background-geolocation']).toBeTruthy();
+    expect(androidGradle).toContain('versionCode 5');
+    expect(androidGradle).toContain('versionName "1.5"');
     expect(config.ios.includePlugins).toEqual([
       '@capacitor-community/text-to-speech',
       '@capacitor/local-notifications',
@@ -56,16 +60,45 @@ test.describe('Capacitor mobile wrapper', () => {
     ]);
     expect(config.ios.includePlugins).not.toContain('@capacitor-community/background-geolocation');
     for (const perm of ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION',
-      'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'POST_NOTIFICATIONS']) {
+      'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'POST_NOTIFICATIONS',
+      'ACCESS_WIFI_STATE', 'CHANGE_WIFI_MULTICAST_STATE']) {
       expect(manifest, `${perm} must be declared`).toContain(perm);
     }
+    expect(manifest).toContain('android:usesCleartextTraffic="true"');
     // iOS: the site's SW (offline + chart packs) only runs for app-bound domains.
     const iosInfo = readText('mobile/ios/App/App/Info.plist');
     expect(iosInfo).toContain('WKAppBoundDomains');
     expect(iosInfo).toContain('navaid.supino.org');
+    expect(config.ios.limitsNavigationsToAppBoundDomains).toBe(true);
     expect(iosInfo).toMatch(/<key>NSAllowsLocalNetworking<\/key>\s*<true\/>/);
     expect(iosInfo).toMatch(/<key>NSLocalNetworkUsageDescription<\/key>\s*<string>[^<]+<\/string>/);
     expect(iosInfo).not.toContain('NSAllowsArbitraryLoads');
+    expect(iosInfo).toContain('finds X-Plane');
+  });
+
+  test('registers native X-Plane discovery without requiring an iOS multicast entitlement', () => {
+    const androidPlugin = readText(
+      'mobile/android/app/src/main/java/org/supino/navaid/XPlaneDiscoveryPlugin.java');
+    const androidActivity = readText(
+      'mobile/android/app/src/main/java/org/supino/navaid/MainActivity.java');
+    const iosDelegate = readText('mobile/ios/App/App/AppDelegate.swift');
+    const iosStoryboard = readText('mobile/ios/App/App/Base.lproj/Main.storyboard');
+
+    expect(androidPlugin).toContain('@CapacitorPlugin(name = "XPlaneDiscovery")');
+    expect(androidPlugin).toContain('239.255.1.1');
+    expect(androidPlugin).toContain('49707');
+    expect(androidPlugin).toContain("data[0] == 'B'");
+    expect(androidPlugin).toContain('UNTRUSTED_ORIGIN');
+    expect(androidPlugin).toContain('probeBridge(host)');
+    expect(androidActivity).toContain('registerPlugin(XPlaneDiscoveryPlugin.class)');
+    expect(iosDelegate).toContain('class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin');
+    expect(iosDelegate).toContain('source": "local-bridge-scan"');
+    expect(iosDelegate).toContain('UNTRUSTED_ORIGIN');
+    expect(iosDelegate).toContain('interface.ifa_addr');
+    expect(iosDelegate).toContain('interface.ifa_netmask');
+    expect(iosDelegate).toContain('LOCAL_NETWORK_DENIED');
+    expect(iosDelegate).not.toContain('NWMulticastGroup');
+    expect(iosStoryboard).toContain('customClass="NavAidBridgeViewController"');
   });
 
   test('sets native package identifiers and display names', () => {

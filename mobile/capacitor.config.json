@@ -3,6 +3,7 @@
   "appName": "NavAid",
   "webDir": "shell",
   "ios": {
+    "limitsNavigationsToAppBoundDomains": true,
     "includePlugins": [
       "@capacitor-community/text-to-speech",
       "@capacitor/local-notifications",
