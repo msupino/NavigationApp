@@ -1,5 +1,111 @@
 import UIKit
 import Capacitor
+import Foundation
+import Darwin
+
+@objc(XPlaneDiscoveryPlugin)
+public class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "XPlaneDiscoveryPlugin"
+    public let jsName = "XPlaneDiscovery"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "discover", returnType: CAPPluginReturnPromise)
+    ]
+
+    @objc func discover(_ call: CAPPluginCall) {
+        let timeoutMs = max(500, min(10_000, call.getInt("timeoutMs") ?? 3_500))
+        let bridgePort = max(1, min(65_535, call.getInt("bridgePort") ?? 2_020))
+        Task {
+            do {
+                if let found = try await findBridge(port: bridgePort, timeoutMs: timeoutMs) {
+                    call.resolve([
+                        "found": true,
+                        "host": found,
+                        "name": "X-Plane",
+                        "bridgeUrl": "http://\(found):\(bridgePort)",
+                        "source": "local-bridge-scan"
+                    ])
+                } else {
+                    call.resolve(["found": false])
+                }
+            } catch {
+                call.reject("X-Plane discovery failed", nil, error)
+            }
+        }
+    }
+
+    private func findBridge(port: Int, timeoutMs: Int) async throws -> String? {
+        guard let address = wifiIPv4(), let dot = address.lastIndex(of: ".") else { return nil }
+        let prefix = String(address[...dot])
+        let ownSuffix = Int(address[address.index(after: dot)...]) ?? -1
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = min(0.7, Double(timeoutMs) / 1000.0)
+        config.timeoutIntervalForResource = config.timeoutIntervalForRequest
+        config.waitsForConnectivity = false
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel() }
+
+        let candidates = (1...254).filter { $0 != ownSuffix }
+        for start in stride(from: 0, to: candidates.count, by: 64) {
+            if Task.isCancelled { return nil }
+            let end = min(start + 64, candidates.count)
+            if let host = await withTaskGroup(of: String?.self, returning: String?.self, body: { group in
+                for suffix in candidates[start..<end] {
+                    let host = prefix + String(suffix)
+                    group.addTask { await self.probeBridge(host: host, port: port, session: session) }
+                }
+                for await result in group {
+                    if let result {
+                        group.cancelAll()
+                        return result
+                    }
+                }
+                return nil
+            }) { return host }
+        }
+        return nil
+    }
+
+    private func probeBridge(host: String, port: Int, session: URLSession) async -> String? {
+        guard let url = URL(string: "http://\(host):\(port)") else { return nil }
+        do {
+            let (data, response) = try await session.data(from: url)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  json["latitude"] is NSNumber, json["longitude"] is NSNumber else { return nil }
+            return host
+        } catch {
+            return nil
+        }
+    }
+
+    private func wifiIPv4() -> String? {
+        var list: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&list) == 0, let first = list else { return nil }
+        defer { freeifaddrs(list) }
+        var cursor: UnsafeMutablePointer<ifaddrs>? = first
+        while let item = cursor {
+            let interface = item.pointee
+            if interface.ifa_addr.pointee.sa_family == UInt8(AF_INET),
+               String(cString: interface.ifa_name) == "en0" {
+                var address = interface.ifa_addr.pointee
+                var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                if getnameinfo(&address, socklen_t(interface.ifa_addr.pointee.sa_len),
+                               &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST) == 0 {
+                    return String(cString: buffer)
+                }
+            }
+            cursor = interface.ifa_next
+        }
+        return nil
+    }
+}
+
+@objc(NavAidBridgeViewController)
+class NavAidBridgeViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        bridge?.registerPluginInstance(XPlaneDiscoveryPlugin())
+    }
+}
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {

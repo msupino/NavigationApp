@@ -60,7 +60,8 @@ test.describe('Capacitor mobile wrapper', () => {
     ]);
     expect(config.ios.includePlugins).not.toContain('@capacitor-community/background-geolocation');
     for (const perm of ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION',
-      'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'POST_NOTIFICATIONS']) {
+      'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'POST_NOTIFICATIONS',
+      'ACCESS_WIFI_STATE', 'CHANGE_WIFI_MULTICAST_STATE']) {
       expect(manifest, `${perm} must be declared`).toContain(perm);
     }
     expect(manifest).toContain('android:usesCleartextTraffic="true"');
@@ -72,6 +73,26 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(iosInfo).toMatch(/<key>NSAllowsLocalNetworking<\/key>\s*<true\/>/);
     expect(iosInfo).toMatch(/<key>NSLocalNetworkUsageDescription<\/key>\s*<string>[^<]+<\/string>/);
     expect(iosInfo).not.toContain('NSAllowsArbitraryLoads');
+    expect(iosInfo).toContain('finds X-Plane');
+  });
+
+  test('registers native X-Plane discovery without requiring an iOS multicast entitlement', () => {
+    const androidPlugin = readText(
+      'mobile/android/app/src/main/java/org/supino/navaid/XPlaneDiscoveryPlugin.java');
+    const androidActivity = readText(
+      'mobile/android/app/src/main/java/org/supino/navaid/MainActivity.java');
+    const iosDelegate = readText('mobile/ios/App/App/AppDelegate.swift');
+    const iosStoryboard = readText('mobile/ios/App/App/Base.lproj/Main.storyboard');
+
+    expect(androidPlugin).toContain('@CapacitorPlugin(name = "XPlaneDiscovery")');
+    expect(androidPlugin).toContain('239.255.1.1');
+    expect(androidPlugin).toContain('49707');
+    expect(androidPlugin).toContain("data[0] == 'B'");
+    expect(androidActivity).toContain('registerPlugin(XPlaneDiscoveryPlugin.class)');
+    expect(iosDelegate).toContain('class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin');
+    expect(iosDelegate).toContain('source": "local-bridge-scan"');
+    expect(iosDelegate).not.toContain('NWMulticastGroup');
+    expect(iosStoryboard).toContain('customClass="NavAidBridgeViewController"');
   });
 
   test('sets native package identifiers and display names', () => {

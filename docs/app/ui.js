@@ -2848,6 +2848,7 @@ document.getElementById('limit-kites-cb').onchange = e => {
   const followCb = document.getElementById('sim-follow-cb');
   const statusEl = document.getElementById('sim-status');
   const helpEl = document.getElementById('sim-url-help');
+  const discoverBtn = document.getElementById('sim-discover');
   if (!cb || !urlInp || !followCb || !statusEl || !helpEl) return;
 
   function simPlatformKind() {
@@ -2905,6 +2906,37 @@ document.getElementById('limit-kites-cb').onchange = e => {
   window.simConnectionProblem = simConnectionProblem;
 
   const platform = simPlatformKind();
+  if (discoverBtn && (platform === 'native-ios' || platform === 'native-android')) {
+    discoverBtn.classList.remove('hidden');
+    discoverBtn.onclick = async () => {
+      const plugin = window.Capacitor && window.Capacitor.Plugins &&
+        window.Capacitor.Plugins.XPlaneDiscovery;
+      if (!plugin || typeof plugin.discover !== 'function') {
+        showUrlProblem(S.tbSimDiscoverError || 'Could not search the local network.');
+        return;
+      }
+      discoverBtn.disabled = true;
+      statusEl.textContent = S.tbSimDiscovering || 'Searching the local network…';
+      statusEl.style.color = '';
+      try {
+        const result = await plugin.discover({ timeoutMs: 3500, bridgePort: 2020 });
+        if (!result || !result.found || !result.bridgeUrl) {
+          showUrlProblem(S.tbSimDiscoverNone || 'No X-Plane bridge found.');
+          return;
+        }
+        urlInp.value = result.bridgeUrl;
+        saveSimUrl();
+        statusEl.textContent = (S.tbSimDiscovered || 'X-Plane found on {host}')
+          .replace('{host}', result.name || result.host || result.bridgeUrl);
+        statusEl.style.color = typeof tune === 'function'
+          ? tune('simStatusOkColor') : '#2ecc71';
+      } catch (e) {
+        showUrlProblem(S.tbSimDiscoverError || 'Could not search the local network.');
+      } finally {
+        discoverBtn.disabled = false;
+      }
+    };
+  }
   helpEl.textContent = platform === 'native-ios' || platform === 'native-android'
     ? (S.tbSimHelpNative || '')
     : (platform === 'native-other'

@@ -109,6 +109,9 @@ if (fs.existsSync(androidManifest)) {
   if (!text.includes('android:usesCleartextTraffic="true"')) {
     fail('Android must permit the native HTTP simulator transport');
   }
+  for (const permission of ['ACCESS_WIFI_STATE', 'CHANGE_WIFI_MULTICAST_STATE']) {
+    if (!text.includes(permission)) fail(`Android X-Plane discovery lacks ${permission}`);
+  }
 }
 
 const androidTest = path.join(mobileRoot, 'android/app/src/androidTest/java/org/supino/navaid/ExampleInstrumentedTest.java');
@@ -140,6 +143,29 @@ if (fs.existsSync(iosInfo)) {
   if (text.includes('<key>NSAllowsArbitraryLoads</key>')) {
     fail('iOS must not disable App Transport Security globally');
   }
+  if (!text.includes('finds X-Plane')) fail('iOS local-network reason must explain discovery');
+}
+
+const androidDiscovery = path.join(mobileRoot,
+  'android/app/src/main/java/org/supino/navaid/XPlaneDiscoveryPlugin.java');
+const androidActivity = path.join(mobileRoot,
+  'android/app/src/main/java/org/supino/navaid/MainActivity.java');
+if (!fs.existsSync(androidDiscovery) ||
+    !fs.readFileSync(androidDiscovery, 'utf8').includes('239.255.1.1')) {
+  fail('Android X-Plane BECN discovery plugin is missing');
+}
+if (!fs.readFileSync(androidActivity, 'utf8').includes('registerPlugin(XPlaneDiscoveryPlugin.class)')) {
+  fail('Android X-Plane discovery plugin is not registered');
+}
+const iosDelegate = fs.readFileSync(path.join(mobileRoot, 'ios/App/App/AppDelegate.swift'), 'utf8');
+const iosStoryboard = fs.readFileSync(
+  path.join(mobileRoot, 'ios/App/App/Base.lproj/Main.storyboard'), 'utf8');
+if (!iosDelegate.includes('class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin') ||
+    !iosStoryboard.includes('customClass="NavAidBridgeViewController"')) {
+  fail('iOS X-Plane bridge discovery plugin is not registered');
+}
+if (iosDelegate.includes('NWMulticastGroup')) {
+  fail('iOS discovery must not require Apple restricted multicast entitlement');
 }
 
 console.log('Capacitor mobile wrapper ok');

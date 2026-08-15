@@ -18,8 +18,9 @@ test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }
   // Opening reveals the sim controls.
   await trigger.click();
   await expect(page.locator('#sim-modal')).toBeVisible();
-  // Three stacked buttons: connect, follow, center.
-  await expect(page.locator('#sim-modal .modal.sim-modal > button:not(.sim-modal-close)')).toHaveCount(3);
+  // Browser mode keeps the three normal actions visible; native discovery is hidden.
+  await expect(page.locator(
+    '#sim-modal .modal.sim-modal > button:not(.sim-modal-close):visible')).toHaveCount(3);
   await expect(page.locator('#sim-modal #sim-connect-cb')).toBeVisible();
   await expect(page.locator('#sim-modal #sim-follow-cb')).toBeVisible();
   await expect(page.locator('#sim-modal #sim-center')).toBeVisible();
@@ -187,6 +188,40 @@ test('native Android polls an HTTP LAN bridge through CapacitorHttp', async ({ p
   }))).toEqual({ lat: 32.1, lng: 34.8 });
   await expect(page.locator('#sim-status')).toContainText('Connected');
   await page.locator('#sim-connect-cb').click();
+});
+
+test('native Android discovers X-Plane and fills the bridge URL', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.Capacitor = {
+      isNativePlatform: () => true,
+      getPlatform: () => 'android',
+      Plugins: {
+        XPlaneDiscovery: {
+          discover: async opts => ({
+            found: opts.timeoutMs === 3500 && opts.bridgePort === 2020,
+            host: '192.168.1.44',
+            name: 'Flight Mac',
+            bridgeUrl: 'http://192.168.1.44:2020',
+            source: 'xplane-becn',
+          }),
+        },
+      },
+    };
+  });
+  await page.goto('/');
+  await page.locator('#sim-trigger').click();
+  await expect(page.locator('#sim-discover')).toBeVisible();
+  await page.locator('#sim-discover').click();
+  await expect(page.locator('#sim-url')).toHaveValue('http://192.168.1.44:2020');
+  await expect(page.locator('#sim-status')).toContainText('Flight Mac');
+  expect(await page.evaluate(() => localStorage.getItem('navaid.simUrl')))
+    .toBe('http://192.168.1.44:2020');
+});
+
+test('browser keeps native X-Plane discovery hidden', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#sim-trigger').click();
+  await expect(page.locator('#sim-discover')).toBeHidden();
 });
 
 test('an iPad on an HTTP NavAid page is guided to the Mac LAN address, not localhost', async ({ page }) => {

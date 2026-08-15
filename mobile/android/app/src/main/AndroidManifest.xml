@@ -39,6 +39,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!-- GPS track recording keeps running with the screen locked via the
          background-geolocation plugin's foreground service. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />

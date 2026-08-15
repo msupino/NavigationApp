@@ -2421,6 +2421,7 @@ body.theme-light .shortcuts-help-keys kbd {
 .modal.sim-modal > label,
 .modal.sim-modal > #sim-status,
 .modal.sim-modal > .sim-url-help { width: 100%; }
+#sim-discover.hidden { display: none; }
 .modal.sim-modal > button:not(.sim-modal-close) { text-align: center; }
 .modal.sim-modal > .sim-url-help {
   box-sizing: border-box;
