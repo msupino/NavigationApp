@@ -530,6 +530,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   dot + breadcrumb trail on the map). On Stop it auto-saves a timestamped
   `kind:'gps'` saved-route entry containing simplified waypoints plus the raw
   `track[]` breadcrumb, carried by the existing Drive sync. Requires HTTPS.
+  The footer live readout shows magnetic heading, altitude, and speed for GPS
+  recording, plain live location, and the simulator. It remains visible in the
+  compact desktop/full-screen toolbar while one of those sources is active;
+  when desktop live mode stops it hides again. Mobile keeps its existing text
+  footer behavior.
   Recording takes a **screen wake lock** while it runs (`gpsAcquireWakeLock()`
   in `gps.js`), releases it on Stop, and re-acquires it when the page becomes
   visible again — browsers drop the sentinel while the tab is hidden, so a

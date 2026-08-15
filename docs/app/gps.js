@@ -384,6 +384,12 @@ function gpsReadoutHeading() {
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
+  // The compact desktop toolbar normally hides this text to save space. A live
+  // GPS or simulator source is the exception: in a full-width/full-screen map,
+  // heading, altitude and speed are cockpit information, not footer decoration.
+  const liveActive = gpsRecording || gpsLiveOn ||
+    (typeof simOn !== 'undefined' && simOn);
+  el.classList.toggle('live-active', !!liveActive);
   if (gpsRecording) {
     const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
     const mm = String(Math.floor(secs / 60)).padStart(2, '0');
@@ -402,7 +408,7 @@ function gpsUpdateReadout() {
   // -time prefix that only means something while actually building a track. Used to
   // show nothing at all outside a recording; reported live: "show alt like gps mode
   // shows alt in sim mode".
-  if (gpsLiveOn || (typeof simOn !== 'undefined' && simOn)) {
+  if (liveActive) {
     const parts = [];
     if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
     if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
