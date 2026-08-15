@@ -553,6 +553,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   native app, `localhost` means the iPad itself; use the
   simulator computer's LAN address. The panel detects invalid combinations
   before polling and shows platform-specific guidance.
+  The **Speak alerts** toggle sits directly below **Default speed** in View/Set.
   TOP is edge-triggered by the waypoint capture circle: repeated fixes while
   the aircraft remains inside one circle emit only one alert. Leaving the
   0.3 NM circle re-arms TOP for a legitimate later return to that waypoint.
