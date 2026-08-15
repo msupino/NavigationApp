@@ -208,7 +208,9 @@ test('native Android discovers X-Plane and fills the bridge URL', async ({ page 
       },
     };
   });
-  await page.goto('/');
+  // Keep the deployed-preview base path (`/pr/NNN/`) instead of jumping to
+  // the production origin root.
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
   await expect(page.locator('#sim-discover')).toBeVisible();
   await page.locator('#sim-discover').click();
@@ -219,7 +221,7 @@ test('native Android discovers X-Plane and fills the bridge URL', async ({ page 
 });
 
 test('browser keeps native X-Plane discovery hidden', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
   await expect(page.locator('#sim-discover')).toBeHidden();
 });
