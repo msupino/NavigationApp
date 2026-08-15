@@ -65,7 +65,9 @@ jobs:
       - name: Validate wrapper and compile iOS simulator app
         run: |
           npm --prefix mobile run validate
-          cd mobile/ios/App
+          cd mobile
+          npx cap sync ios
+          cd ios/App
           xcodebuild -project App.xcodeproj -scheme App -sdk iphonesimulator \
             -configuration Debug CODE_SIGNING_ALLOWED=NO build
 
