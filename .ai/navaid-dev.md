@@ -137,9 +137,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **State:**
   - `state.waypoints[i]` = `{lat, lng, name, hotspot?}` (name optional).
     A named route waypoint is highlighted as a hotspot by default when its waypoint-kind
-    node in `cvfr-route-graph.json` connects to more than two distinct route neighbours.
-    The generated default set includes both directions of a physical one-way connection;
-    a dataset parity test prevents it drifting from the graph. The route-waypoint inspector
+    node in `cvfr-route-graph.json` connects to more than two distinct bidirectional route
+    neighbours. One-way legs do not make either endpoint a hotspot. A dataset parity test
+    prevents the generated defaults drifting from the graph. The route-waypoint inspector
     toggle stores an explicit `hotspot` boolean, so a pilot can enable any waypoint or
     disable a default hotspot. Explicit overrides persist in saved routes, route files,
     and share links. Standalone reference waypoints remain read-only.
