@@ -1149,7 +1149,9 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
    notice inside carries its own dir="auto" (see gpsSetReadout). */
 .gps-readout {
   display: block;
-  font-size: 11px;
+  /* Cockpit data, not footer decoration: read at arm's length, in sunlight, on a
+     kneeboard. Size comes from gpsReadoutFontPx (tuning gist / ?tune=1). */
+  font-size: var(--navaid-gps-readout-font, 16px);
   opacity: 0.75;
   margin-top: 2px;
   direction: ltr;
@@ -1966,7 +1968,14 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
 }
 #toolbar button.gps-footer-btn:disabled { opacity: 0.4; cursor: default; }
 #toolbar .footer-gps-readout {
-  display: inline; margin: 0; font-size: 11px; opacity: 0.9; color: #8a8484;
+  display: inline; margin: 0; opacity: 0.9; color: #8a8484;
+  font-size: var(--navaid-gps-readout-font, 16px);
+}
+/* Live values earn their contrast: while a fix is driving the map this line is the
+   instrument, so it drops the muted footer treatment. */
+#toolbar .footer-gps-readout.live-active:not(:empty) {
+  opacity: 1;
+  color: inherit;
 }
 
 @media (min-width: 681px) {
