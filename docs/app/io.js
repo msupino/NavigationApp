@@ -8301,6 +8301,9 @@ async function _simFetch() {
         hdg: window.simAircraft.hdg, t: Date.now() };
       gpsLastGS = window.simAircraft.ias || null;
       gpsLastAlt = window.simAircraft.alt || null;
+      // A simulator already reports the altitude an altimeter would show, so the geoid /
+      // temperature correction that a raw GNSS height needs must not run over it.
+      window.gpsAltIsGeometric = false;
       // The bridge process restarting mid-session (its own clock resets, position jumps
       // back to the start of its route) never calls simStart() again -- the browser-side
       // poll just keeps running -- so gpsResetLegAlerts() never re-fires and the pointer

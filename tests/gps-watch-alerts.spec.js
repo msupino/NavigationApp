@@ -44,8 +44,18 @@ function installFixHelper() {
   });
 }
 
+// These cases are about WHEN an altitude alert fires, not about turning a GNSS height into
+// an indicated one -- so they pin the altimetry correction off and the numbers they feed in
+// are the numbers the alert sees. The correction itself is covered by gps-altimetry.spec.js.
+const pinAltimetryOff = () => {
+  window.addEventListener('load', () => {
+    try { if (typeof setTune === 'function') setTune('altimetryCorrection', false); } catch (e) { /* */ }
+  });
+};
+
 async function bootLive(page) {
   await page.addInitScript(installFixHelper);
+  await page.addInitScript(pinAltimetryOff);
   await page.addInitScript(() => {
     window.__liveCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
@@ -58,6 +68,7 @@ async function bootLive(page) {
 
 async function bootRecording(page) {
   await page.addInitScript(installFixHelper);
+  await page.addInitScript(pinAltimetryOff);
   await page.addInitScript(() => {
     window.__recCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__recCb = cb; return 7; };
@@ -550,6 +561,7 @@ test.describe('confirmation gate (no alerting off an unconfirmed snap)', () => {
   // not demonstrably on any leg at all, which is now the genuinely unconfirmed case.
   test('a position outside every cone stays silent even with a real altitude deviation', async ({ page }) => {
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function' &&
       typeof gpsSnapLegAlertsToPosition === 'function');
@@ -580,6 +592,7 @@ test.describe('confirmation gate (no alerting off an unconfirmed snap)', () => {
 
   test('being on a leg confirms the pointer, without waiting for a waypoint capture', async ({ page }) => {
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function' &&
       typeof gpsSnapLegAlertsToPosition === 'function');
@@ -613,6 +626,7 @@ test.describe('confirmation gate (no alerting off an unconfirmed snap)', () => {
 
   test('a "passed abeam without ever getting close" advance does not confirm on its own', async ({ page }) => {
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function' &&
       typeof gpsSnapLegAlertsToPosition === 'function');
@@ -1067,6 +1081,7 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
   });
 
   test('the check interval scales with a connected simulator\'s reported speed_factor', async ({ page }) => {
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof simStart === 'function' && typeof startLiveLocation === 'function');
     const out = await page.evaluate(async () => {
@@ -1107,6 +1122,7 @@ test.describe('loading a route while already tracking (applyRouteData)', () => {
     // every other start path, so a bad snap on load can't produce a false alarm before the
     // pilot has had a chance to notice the pointer is wrong.
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en');
     await page.waitForFunction(() => typeof applyRouteData === 'function' &&
       typeof serializeRoute === 'function');
@@ -1158,6 +1174,7 @@ test.describe('loading a route while already tracking (applyRouteData)', () => {
 test.describe('connected-simulator path (io.js _simFetch)', () => {
   test('nudges toward loading a route when none is loaded -- the simulator has no idea what route NavAid has', async ({ page }) => {
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof simStart === 'function');
     const n = await page.evaluate(async () => {
@@ -1179,6 +1196,7 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
       navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
       navigator.geolocation.clearWatch = () => {};
     });
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof simStart === 'function' && typeof startLiveLocation === 'function');
     const out = await page.evaluate(async () => {
@@ -1207,6 +1225,7 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
 
   test('a poll close enough to the next waypoint fires the same alert a real GPS fix would', async ({ page }) => {
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof _simFetch === 'function' &&
       typeof gpsCheckLegAlerts === 'function');
@@ -1241,6 +1260,7 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
     // gpsSnapLegAlertsToPosition() -- already used for the SIM_DISCONTINUITY_NM
     // restart case below -- is the correct tool for BOTH directions of desync.
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof _simFetch === 'function' &&
       typeof gpsCheckLegAlerts === 'function');
@@ -1293,6 +1313,7 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
     // logic in _simFetch already having re-snapped gpsOwn earlier in the same session
     // after a bridge process restart; that mechanism is unchanged and tested
     // separately below).
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof simStart === 'function' &&
       typeof gpsCheckLegAlerts === 'function');
@@ -1315,6 +1336,7 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
 
   test('an implausible position jump (the bridge process restarting mid-session) re-snaps the leg pointer', async ({ page }) => {
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof _simFetch === 'function' &&
       typeof gpsCheckLegAlerts === 'function');
@@ -1351,6 +1373,7 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
 
   test('a normal poll-to-poll movement does NOT trigger a re-snap', async ({ page }) => {
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof _simFetch === 'function' &&
       typeof gpsCheckLegAlerts === 'function');
@@ -1394,6 +1417,7 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
         Object.defineProperty(navigator, 'serviceWorker', { value: undefined, configurable: true });
       } catch (e) { /* ignore */ }
     });
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof _simFetch === 'function' &&
       typeof gpsCheckLegAlerts === 'function');
@@ -1420,6 +1444,7 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
 test.describe('drift stays quiet while the turn onto a new leg settles', () => {
   test('suppressed right after TOP, allowed once the window passes', async ({ page }) => {
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
     const out = await page.evaluate(() => {
@@ -1452,6 +1477,7 @@ test.describe('drift stays quiet while the turn onto a new leg settles', () => {
 
   test('a drift with no TOP behind it still alerts immediately', async ({ page }) => {
     await stubWebNotify(page);
+    await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
     const n = await page.evaluate(() => {
