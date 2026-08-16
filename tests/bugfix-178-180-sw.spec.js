@@ -5,6 +5,12 @@
 // #180 — navigation falls back to the cached app shell when request not cached
 const { test, expect } = require('./_setup');
 
+// These are service-worker regressions, so they opt out of the suite-wide block (see
+// playwright.config.js) -- and they are exactly why the block exists: a worker's own
+// requests bypass page.route, which is how the fixture's tile interception was silently
+// escaped. Nothing here fetches a real tile.
+test.use({ serviceWorkers: 'allow' });
+
 async function waitForSW(page) {
   await page.waitForFunction(async () => {
     const reg = await navigator.serviceWorker.getRegistration();
