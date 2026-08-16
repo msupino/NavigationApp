@@ -11,13 +11,12 @@ git fetch origin --prune
 git checkout dev
 git branch --set-upstream-to=origin/dev dev
 git pull --ff-only origin dev
-git merge-base --is-ancestor origin/main HEAD || git merge --ff-only origin/main
 ```
 
-If `origin/main` cannot fast-forward into `dev`, compare their trees. When the
-trees are identical (the normal post-promotion shape), branch from updated
-`origin/dev`. Otherwise stop and use a reviewed feature/maintenance PR; never
-push directly to `dev` or `main` as routine recovery.
+Production promotions use merge commits, so the normal post-promotion `main`
+merge commit does not need to be merged back into `dev`. If `origin/main`
+contains production-only file changes, stop and use a reviewed maintenance PR;
+never push directly to `dev` or `main` as routine recovery.
 
 Create feature branches with the `codex/` prefix unless the user requested a
 specific branch:
@@ -121,6 +120,12 @@ gh workflow run Deploy --ref dev
 
 Ordinary changes always use an issue and feature-branch PR targeting `dev`.
 Direct protected-branch pushes require explicit maintainer authorization.
+
+After a change merges into `dev`, `Auto PR dev to main` opens or reuses the
+direct promotion PR. It explicitly dispatches CI, Deploy, Review, and the
+auto-merge watcher against the `dev` SHA, so a bot-created PR does not depend on
+GitHub emitting recursive workflow events. No preliminary `main` to `dev` sync
+PR is needed because the promotion merge commit preserves both histories.
 
 ## Squash Policy
 

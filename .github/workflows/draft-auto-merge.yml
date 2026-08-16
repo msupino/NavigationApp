@@ -92,7 +92,7 @@ jobs:
           # or the next PR between them conflicts on every file the squash flattened.
           METHOD=--squash
           case "$HEAD_REF" in
-            main|dev|automation/sync-main-into-dev-*) METHOD=--merge ;;
+            main|dev) METHOD=--merge ;;
           esac
           case "$BASE" in main) METHOD=--merge ;; esac
           # --delete-branch is required for feature branches: the repo's
