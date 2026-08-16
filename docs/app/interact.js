@@ -2893,6 +2893,21 @@ function showInspector() {
         appendAddFreqChangeButton(body, wp, ccKey);
       }
     }
+    const hotspotOn = typeof waypointHotspot === 'function' && waypointHotspot(wp);
+    const hotspotBtn = document.createElement('button');
+    hotspotBtn.className = 'insp-btn' + (hotspotOn ? ' insp-btn-on' : '');
+    hotspotBtn.id = 'insp-hotspot-btn';
+    hotspotBtn.textContent = hotspotOn ? (S.inspHotspotClear || '🔥 Clear hotspot')
+                                       : (S.inspHotspotSet || '🔥 Mark as hotspot');
+    if (S.inspHotspotTitle) hotspotBtn.title = S.inspHotspotTitle;
+    hotspotBtn.setAttribute('aria-pressed', hotspotOn ? 'true' : 'false');
+    hotspotBtn.onclick = () => {
+      wp.hotspot = !hotspotOn;
+      if (typeof persist === 'function') persist();
+      draw();
+      showInspector();
+    };
+    body.appendChild(hotspotBtn);
     const del = document.createElement('button');
     del.className = 'insp-btn';
     del.textContent = S.deleteWp;

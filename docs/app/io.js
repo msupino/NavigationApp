@@ -439,6 +439,9 @@ function validateRoute(d) {
       _v(w, 'lat',  'number', p, errs);
       _v(w, 'lng',  'number', p, errs);
       _v(w, 'name', 'string', p, errs);
+      if (Object.prototype.hasOwnProperty.call(w, 'hotspot') && typeof w.hotspot !== 'boolean') {
+        errs.push(p + '.hotspot: expected boolean, got ' + _vKind(w.hotspot));
+      }
     }
   }
   if (legsOk) {
@@ -991,6 +994,7 @@ function serializeRoute() {
       // Only when set: a loop route repeats no waypoint, so nothing in the geometry says
       // where it turns for home -- the pilot does.
       ...(w.turn ? { turn: 1 } : {}),
+      ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
     })),
     legs: state.legs.map(l => ({
       inboundAltitude: encodeRouteAltitude(l.inboundAltitude),
@@ -2490,6 +2494,7 @@ function applyRouteData(d) {
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
     ...(w.turn ? { turn: 1 } : {}),
+    ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
   }));
   // Use the blob's `legArrowSize` if present (forward-compat — current
   // serializeRoute() doesn't emit it). Otherwise fall back to the current
@@ -5871,6 +5876,7 @@ function restoreRoute() {
     // are the other two). Anything not named here is dropped, which is how a marked
     // turning point vanished on every reload -- and switching language IS a reload.
     ...(w.turn ? { turn: 1 } : {}),
+    ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
   }));
   // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
   // scale proportionally with zoom. Pre-#393 blobs lack `_m` and hold raw
@@ -7438,8 +7444,11 @@ function buildShareUrl() {
   // Preserve ?lang= so the receiver opens in the sender's language. Drop
   // any previous share params so re-shares don't double up.
   params.delete('r'); params.delete('n'); params.delete('l');
-  params.delete('f'); params.delete('x');
+  params.delete('f'); params.delete('x'); params.delete('h');
   params.set('r', r); params.set('n', n); params.set('l', l);
+  const hotspotOverrides = state.waypoints.map(w =>
+    Object.prototype.hasOwnProperty.call(w, 'hotspot') ? (w.hotspot ? '1' : '0') : '_').join('');
+  if (/[01]/.test(hotspotOverrides)) params.set('h', hotspotOverrides);
   const freqNotes = state.notes.filter(n => n && n.cc);
   if (freqNotes.length) {
     const f = _b64UrlEncode(freqNotes.map(n =>
@@ -7459,11 +7468,16 @@ function decodeShareUrl(search) {
   const r = params.get('r'), n = params.get('n'), l = params.get('l');
   if (!r || n === null || l === null) return null;
   let coords, names, legParts;
-  let freqNotes = [], suppressions = [];
+  let freqNotes = [], suppressions = [], hotspotOverrides = null;
   try {
     coords = polylineDecode(r);
     names = _b64UrlDecode(n).split(SHARE_NAME_SEP);
     legParts = l === '' ? [] : l.split(';');
+    const h = params.get('h');
+    if (h !== null) {
+      if (h.length !== coords.length || /[^_01]/.test(h)) return null;
+      hotspotOverrides = Array.from(h, c => c === '_' ? undefined : c === '1');
+    }
     const f = params.get('f');
     if (f) {
       const raw = _b64UrlDecode(f);
@@ -7482,7 +7496,11 @@ function decodeShareUrl(search) {
   }
   if (!coords.length || names.length !== coords.length) return null;
   if (legParts.length !== Math.max(0, coords.length - 1)) return null;
-  const waypoints = coords.map(([lat, lng], i) => ({ lat, lng, name: names[i] || '' }));
+  const waypoints = coords.map(([lat, lng], i) => ({
+    lat, lng, name: names[i] || '',
+    ...(hotspotOverrides && hotspotOverrides[i] !== undefined
+      ? { hotspot: hotspotOverrides[i] } : {}),
+  }));
   const legs = legParts.map(s => {
     const parts = s.split(',');
     // Treat an empty field as unset (NaN), NOT 0 — Number('') is 0, which would
@@ -7527,7 +7545,10 @@ function tryLoadRouteFromUrl() {
   if (!r) return false;
   const verr = validateRoute(r);
   if (verr) { console.warn('share-link schema error:', verr); return false; }
-  state.waypoints = r.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+  state.waypoints = r.waypoints.map(w => ({
+    lat: w.lat, lng: w.lng, name: w.name,
+    ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
+  }));
   state.legs = r.legs;
   state.notes = [];
   state.commChangeSuppressions = [];
