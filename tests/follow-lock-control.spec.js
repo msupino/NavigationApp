@@ -93,13 +93,27 @@ test('the choice is remembered on this device', async ({ page }) => {
   expect(await page.evaluate(() => gpsFollow)).toBe(false);
 });
 
-test('it sits with the rotation dial, in the same corner', async ({ page }) => {
+test('it sits at the top of the bottom-right stack, above the assistant launcher', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => startLiveLocation());
-  const together = await page.evaluate(() => {
+  const order = await page.evaluate(() => {
     const b = document.getElementById('follow-lock');
     const dial = document.getElementById('rotate-dial');
-    return { sameCorner: !!b.closest('.leaflet-bottom.leaflet-right') && !!dial.closest('.leaflet-bottom.leaflet-right') };
+    const fab = document.querySelector('.assistant-fab');
+    const corner = b.closest('.leaflet-bottom.leaflet-right');
+    const rowOf = (el) => {
+      const row = el && el.closest('.leaflet-control');
+      return row ? Array.prototype.indexOf.call(corner.children, row) : -1;
+    };
+    return {
+      sameCorner: !!corner && !!dial.closest('.leaflet-bottom.leaflet-right'),
+      follow: rowOf(b),
+      fab: rowOf(fab),
+      dial: rowOf(dial),
+    };
   });
-  expect(together.sameCorner).toBe(true);
+  expect(order.sameCorner).toBe(true);
+  expect(order.follow).toBe(0);                       // first child = highest on screen
+  expect(order.follow).toBeLessThan(order.fab);       // above the 💬 launcher
+  expect(order.fab).toBeLessThan(order.dial);         // which is itself above the dial
 });

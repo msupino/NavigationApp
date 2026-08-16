@@ -284,6 +284,12 @@ function refreshGpsFollowControl() {
   if (!wrap) return;
   const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
   wrap.style.display = tracking ? '' : 'none';
+  // Top of the bottom-right stack: above the assistant's launcher, which puts itself
+  // above the zoom buttons. Re-asserted on every refresh rather than once at boot,
+  // because the assistant builds its control on DOMContentLoaded -- whichever ran last
+  // would otherwise own the top slot. In flight this is the button being reached for.
+  const corner = wrap.parentNode;
+  if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
   followBtn.textContent = on ? '🔒' : '🔓';
   followBtn.classList.toggle('follow-on', on);
