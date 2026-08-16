@@ -65,6 +65,30 @@ jobs:
               --json number \
               --jq '.[0].number')
           fi
+          # The previous promotion leaves a merge commit on main that is not
+          # yet in dev. Update this PR's head in place instead of opening a
+          # separate bot-authored main -> dev PR. This is GitHub's supported
+          # "Update branch" operation for the protected dev branch.
+          BEHIND=$(gh api "repos/${{ github.repository }}/compare/main...dev" --jq '.behind_by')
+          if [ "$BEHIND" -gt 0 ]; then
+            OLD_HEAD=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+            gh api \
+              --method PUT \
+              "repos/${{ github.repository }}/pulls/$PR/update-branch" \
+              -f expected_head_sha="$OLD_HEAD"
+            for attempt in $(seq 1 30); do
+              NEW_HEAD=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+              if [ "$NEW_HEAD" != "$OLD_HEAD" ]; then
+                echo "Promotion PR #$PR updated dev from $OLD_HEAD to $NEW_HEAD"
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "Timed out waiting for promotion PR #$PR to update dev" >&2
+                exit 1
+              fi
+              sleep 2
+            done
+          fi
           echo "needed=true" >> "$GITHUB_OUTPUT"
           echo "pr=$PR" >> "$GITHUB_OUTPUT"
 

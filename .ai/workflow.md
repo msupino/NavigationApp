@@ -13,8 +13,9 @@ git branch --set-upstream-to=origin/dev dev
 git pull --ff-only origin dev
 ```
 
-Production promotions use merge commits, so the normal post-promotion `main`
-merge commit does not need to be merged back into `dev`. If `origin/main`
+Before each production promotion, automation uses the open `dev` → `main`
+PR's Update branch operation to bring the previous promotion merge commit
+back into `dev`; no separate sync PR is needed. If `origin/main`
 contains production-only file changes, stop and use a reviewed maintenance PR;
 never push directly to `dev` or `main` as routine recovery.
 
@@ -122,10 +123,11 @@ Ordinary changes always use an issue and feature-branch PR targeting `dev`.
 Direct protected-branch pushes require explicit maintainer authorization.
 
 After a change merges into `dev`, `Auto PR dev to main` opens or reuses the
-direct promotion PR. It explicitly dispatches CI, Deploy, Review, and the
-auto-merge watcher against the `dev` SHA, so a bot-created PR does not depend on
-GitHub emitting recursive workflow events. No preliminary `main` to `dev` sync
-PR is needed because the promotion merge commit preserves both histories.
+direct promotion PR. It invokes that PR's Update branch operation when the
+previous promotion left a merge commit only on `main`, then waits for `dev` to
+advance. It explicitly dispatches CI, Deploy, Review, and the auto-merge
+watcher against the aligned `dev` SHA. No preliminary `main` to `dev` sync PR
+or first-time-contributor approval is needed.
 
 ## Squash Policy
 

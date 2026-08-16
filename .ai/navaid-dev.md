@@ -57,8 +57,9 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 **Before creating a feature branch from `dev`:** update local `dev`
 first. Fetch `origin`, check out `dev`, and fast-forward it to
 `origin/dev` before creating or switching to the feature branch.
-Production promotions use merge commits, so the normal post-promotion
-`main` merge commit does not need to be merged back into `dev`. If
+Before each production promotion, automation uses the open `dev` → `main`
+PR's Update branch operation to bring the previous promotion merge commit
+back into `dev`; no separate sync PR is needed. If
 `main` contains production-only file changes, stop and use a reviewed
 maintenance PR.
 
@@ -846,10 +847,11 @@ downloadable `route.json`.
   require explicit maintainer authorization.
 - **Production deploy** = merge a `dev` → `main` pull request (`main` is
   branch-protected; the merge triggers the same workflow).
-  The promotion automation opens or reuses the direct `dev` → `main` PR,
-  explicitly dispatches its required checks, and arms its auto-merge watcher.
-  The promotion uses a merge commit, which preserves both branch histories;
-  it does not require a preliminary `main` → `dev` sync PR.
+  The promotion automation opens or reuses the direct `dev` → `main` PR.
+  It uses that PR's Update branch operation to align `dev` with the previous
+  production merge commit, without a preliminary `main` → `dev` sync PR.
+  It then dispatches required checks and arms auto-merge against the aligned
+  `dev` tip.
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
 - **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites
