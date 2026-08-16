@@ -1854,18 +1854,18 @@ function canonicalNavWaypointName(name) {
   return s;
 }
 
-// CVFR graph junctions: waypoint-kind nodes with more than two distinct route
-// neighbours in cvfr-route-graph.json. Count the physical connection even when
-// its outgoing representation is blocked (the reverse one-way route can still
-// arrive here). The dataset parity test keeps this generated list in sync.
+// CVFR graph junctions: waypoint-kind nodes with more than two distinct
+// BIDIRECTIONAL route neighbours in cvfr-route-graph.json. A one-way leg does
+// not make either endpoint a branching hotspot. The dataset parity test keeps
+// this generated list in sync.
 // An own `hotspot` boolean always wins, including false.
 const DEFAULT_HOTSPOT_WAYPOINTS = new Set(('AAKKO AFULA ALMOG ALUMT AMIOZ AMNON ARAVA ARRAD ' +
-  'ASKLN AYLON BKAMA BMNUH BOKER BOREN BRORA BSEMS DALIA DESHE DIMON DUMIM EIRON EITAN ' +
+  'ASKLN AYLON BKAMA BMNUH BOKER BOREN BRORA BSEMS DESHE DIMON DUMIM EITAN ' +
   'ENGDI ESTOL EVLYM FAZEL FRDIS GALIM GILAM GVARM HADRA HASID HAZVA HOTRM HOVAV HTZUK ' +
-  'HULAT KOYAR KRYON LIAAD LTRUN MMORR MOVIL MYTAR NAGID NASIH NCITY NITZA NMASD NOAAM ' +
-  'NSHRM NTAIM NTVOT OLGAH OMMER OSNAT OVDAT PARDS PELEG RIDNG RUHOT SAMAR SDTYM SFAIM ' +
+  'HULAT KOYAR KRYON LIAAD LTRUN MMORR MOVIL MYTAR NASIH NCITY NITZA NMASD NOAAM ' +
+  'NSHRM NTAIM NTVOT OMMER OSNAT PARDS PELEG RIDNG RUHOT SAMAR SFAIM ' +
   'SHAHR SHALM SHARO SIZFN SOKET SORES SOVAL TAVOR TIRAT TLLIM TYONA YAHEL YASFA YATED ' +
-  'YOTVT ZALMN ZASHD ZDAFA ZGOAL ZMGID ZOFAR ZOHAR ZZHOR').split(' '));
+  'YOTVT ZALMN ZDAFA ZGOAL ZMGID ZOFAR ZOHAR ZZHOR').split(' '));
 function waypointHotspot(wp) {
   if (!wp) return false;
   if (Object.prototype.hasOwnProperty.call(wp, 'hotspot')) return wp.hotspot === true;
