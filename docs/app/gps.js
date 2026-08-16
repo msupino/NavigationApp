@@ -931,10 +931,15 @@ function gpsSnapLegAlertsToPosition() {
   for (let i = 0; i < n; i++) {
     const a = wps[i], b = wps[i + 1];
     if (!a || !b) continue;
-    const legLen = geo(a, b).dist;
-    const proj = _gpsTrackProjection(a, b, gpsOwn);
-    if (proj && proj.alongNm >= 0 && proj.alongNm <= legLen) {
-      const absCross = Math.abs(proj.crossNm);
+    // The cone test, not an along-track range check: _gpsTrackProjection derives alongNm
+    // through acos, so it is never negative and a position squarely BEHIND the start reads
+    // as that same distance ALONG the leg (3 NM short of A and 3 NM past A are literally
+    // the same number). _gpsLegConeContains measures the two bearings instead and is the
+    // one place that gets this right -- so the snap uses it too, and cross-track distance
+    // is left to do what it is good for: breaking ties between legs that both contain us.
+    if (_gpsLegConeContains(a, b, gpsOwn)) {
+      const proj = _gpsTrackProjection(a, b, gpsOwn);
+      const absCross = proj ? Math.abs(proj.crossNm) : Infinity;
       if (absCross < onTrackCross) { onTrackCross = absCross; onTrack = i; }
     }
     const d = Math.min(geo(gpsOwn, a).dist, geo(gpsOwn, b).dist);

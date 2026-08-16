@@ -812,3 +812,30 @@ test.describe('syncLegs invariant', () => {
     expect(await after()).toBe(true);
   });
 });
+
+// A blank name means two different things -- "NavAid numbered this one" and "the pilot
+// cleared the name" -- and _defaultWpName is what tells them apart. The session snapshot
+// always carried it; the wire format did not, so a file (or route-library) round trip
+// turned a numbered point into a nameless one and the inspector started offering a nearby
+// chart point's name instead of WP n.
+test.describe('the default-name marker travels with the route', () => {
+  test('survives serialize -> apply, and stays off points that never had it', async ({ page }) => {
+    await bootWithRoute(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00, lng: 34.00, name: 'A' },
+        { lat: 32.10, lng: 34.05, name: '', _defaultWpName: 1 },
+        { lat: 32.20, lng: 34.10, name: '' },
+      ];
+      syncLegs();
+      const wire = JSON.parse(JSON.stringify(serializeRoute()));
+      applyRouteData(wire);
+      return {
+        onWire: wire.waypoints.map(w => w._defaultWpName || 0),
+        afterApply: state.waypoints.map(w => w._defaultWpName || 0),
+      };
+    });
+    expect(out.onWire).toEqual([0, 1, 0]);
+    expect(out.afterApply).toEqual([0, 1, 0]);
+  });
+});

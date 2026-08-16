@@ -991,6 +991,11 @@ function serializeRoute() {
   const data = {
     waypoints: state.waypoints.map(w => ({
       lat: r5(w.lat), lng: r5(w.lng), name: w.name || '',
+      // Whether this point's blank name means "NavAid numbered it" rather than "the pilot
+      // cleared it". restoreRoute() has always carried this; the wire format dropped it, so
+      // a route that went out to a file (or the route library) and came back showed a
+      // nearby chart point's name in the inspector where it used to read WP n.
+      ...(w._defaultWpName ? { _defaultWpName: 1 } : {}),
       // Only when set: a loop route repeats no waypoint, so nothing in the geometry says
       // where it turns for home -- the pilot does.
       ...(w.turn ? { turn: 1 } : {}),
@@ -2493,6 +2498,7 @@ function applyRouteData(d) {
                                   // (routeLibraryApply re-sets it right after)
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
+    ...(w._defaultWpName ? { _defaultWpName: 1 } : {}),
     ...(w.turn ? { turn: 1 } : {}),
     ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
   }));
