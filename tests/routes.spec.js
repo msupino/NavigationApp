@@ -469,6 +469,58 @@ test.describe('Point selection chooser', () => {
     await expect(page.locator('#insp-title')).toHaveValue('SECOND');
     expect(await page.evaluate(() => map.getZoom())).toBe(beforeZoom);
   });
+
+  test('named route airfield is one chooser option, not an apparent WP sequence point', async ({ page }) => {
+    await page.evaluate(async route => {
+      await loadAirfields();
+      await loadNavWaypoints();
+      state.waypoints = route.waypoints.map(w => ({ ...w }));
+      state.notes = [];
+      state.commChangeSuppressions = [];
+      syncLegs();
+      window.showAirfields = true;
+      window.showNavWP = true;
+      window.showCommChange = true;
+      seedCommChangeNotes();
+      const routeIndex = state.waypoints.findIndex(w => w.name === 'LLHA');
+      // At zoom 7/8 the DAROM frequency-change arrow's hit area reaches LLHA, opening the
+      // overlap chooser. At zoom 9+ LLHA wins directly, which is why the duplicate looked
+      // zoom-dependent in the reported route.
+      map.setView([32.65, 34.98], 8, { animate: false });
+      draw();
+      const p = proj(state.waypoints[routeIndex]);
+      map.fire('mousedown', {
+        containerPoint: L.point(p.x, p.y),
+        latlng: L.latLng(state.waypoints[routeIndex].lat, state.waypoints[routeIndex].lng),
+      });
+    }, ROUTE);
+
+    const chooser = page.locator('.point-choice-modal');
+    await expect(chooser).toBeVisible();
+    const llha = chooser.locator('.point-choice-option').filter({ hasText: 'LLHA' });
+    await expect(llha).toHaveCount(1);
+    await expect(llha.locator('.point-choice-primary')).toHaveText('LLHA');
+    await expect(llha.locator('.point-choice-meta')).toHaveText('Route waypoint / Airfield / Haifa');
+    await expect(llha).not.toContainText('11');
+
+    await llha.click();
+    expect(await page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 10 });
+    await expect(page.locator('#insp-title')).toHaveValue(/LLHA.*Haifa/);
+  });
+
+  test('unnamed route points retain their generated chooser number', async ({ page }) => {
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.2, lng: 34.9, name: '' }];
+      syncLegs();
+      showPointChoice([
+        { type: 'notam', notam: { id: 'TEST-NOTAM' } },
+        { type: 'wp', index: 0 },
+      ]);
+    });
+    const unnamed = page.locator('.point-choice-option').filter({ hasText: 'WP 1' });
+    await expect(unnamed.locator('.point-choice-primary')).toHaveText('WP 1');
+    await expect(unnamed.locator('.point-choice-meta')).toHaveText('Route waypoint 1');
+  });
 });
 
 test.describe('Reverse route', () => {
