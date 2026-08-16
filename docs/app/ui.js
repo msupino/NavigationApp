@@ -262,6 +262,48 @@ function reloadLayerDatasets() {
   });
 }
 
+// --- follow lock — a map control next to the rotation dial -----------
+// A standing choice, not a per-fix one: ON keeps the aircraft centred (after the pan/zoom
+// grace, see followResumeMs), OFF leaves the map where the pilot put it. It only appears
+// while a real fix is driving the own-ship -- with nothing to follow it would be a switch
+// for nothing.
+const followCtrl = L.control({ position: 'bottomright' });
+followCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control follow-ctrl');
+  wrap.innerHTML = '<button id="follow-lock" type="button" aria-pressed="true"></button>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+followCtrl.addTo(map);
+const followBtn = document.getElementById('follow-lock');
+// Shown only while tracking, and only in step with the switch itself: one function owns
+// both, so the icon can never say one thing while the map does another.
+function refreshGpsFollowControl() {
+  const wrap = followBtn && followBtn.parentNode;
+  if (!wrap) return;
+  const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
+  wrap.style.display = tracking ? '' : 'none';
+  // Top of the bottom-right stack: above the assistant's launcher, which puts itself
+  // above the zoom buttons. Re-asserted on every refresh rather than once at boot,
+  // because the assistant builds its control on DOMContentLoaded -- whichever ran last
+  // would otherwise own the top slot. In flight this is the button being reached for.
+  const corner = wrap.parentNode;
+  if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+  const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
+  followBtn.textContent = on ? '🔒' : '🔓';
+  followBtn.classList.toggle('follow-on', on);
+  followBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const label = on ? (S.followLockOn || 'Following the aircraft — tap to leave the map put')
+                   : (S.followLockOff || 'Map stays put — tap to follow the aircraft');
+  followBtn.title = label;
+  followBtn.setAttribute('aria-label', label);
+}
+followBtn.onclick = () => {
+  if (typeof gpsSetFollow === 'function') gpsSetFollow(!gpsFollow);
+};
+refreshGpsFollowControl();
+
 // --- rotate dial — a map control next to the zoom buttons -----------
 const rotateCtrl = L.control({ position: 'bottomright' });
 rotateCtrl.onAdd = function () {
@@ -369,6 +411,15 @@ function applyTuningCssVars() {
   px('--navaid-inspector-default-top', 'inspectorDefaultTopPx');
   // Speed / altitude / heading: cockpit data, read at arm's length.
   px('--navaid-gps-readout-font', 'gpsReadoutFontPx');
+  // Centre crosshair (touch): size, line thickness and both colours, so it can be dialled
+  // in against whichever chart it has to stay visible over.
+  px('--navaid-crosshair-size', 'crosshairSizePx');
+  px('--navaid-crosshair-line', 'crosshairWidthPx');
+  root.setProperty('--navaid-crosshair-color', tune('crosshairColor'));
+  root.setProperty('--navaid-crosshair-halo',
+    cssRgba(tune('crosshairHaloColor'), tune('crosshairAlpha')));
+  root.setProperty('--navaid-crosshair-offset', (-tune('crosshairSizePx') / 2) + 'px');
+  root.setProperty('--navaid-crosshair-nudge', (-tune('crosshairWidthPx') / 2) + 'px');
   root.setProperty('--navaid-inspector-max-height-offset',
     (tune('inspectorDefaultTopPx') + tune('inspectorBottomGapPx')) + 'px');
 
@@ -690,6 +741,23 @@ function showCenterCoord() {
   coordBox.textContent = coordReadoutText(c.lat, c.lng);
   showVorReadout(c.lat, c.lng);
 }
+// --- centre crosshair (touch) ----------------------------------------
+// The readout follows the mouse, and a phone has no mouse: it shows the map CENTRE there,
+// with nothing on screen saying so. A thin crosshair marks the spot the numbers belong to,
+// so panning the map under it reads coordinates the way a chart ruler would. Touch only --
+// with a pointer, the pointer already is the marker.
+function coarsePointerOnly() {
+  return typeof matchMedia === 'function' &&
+    (matchMedia('(pointer: coarse)').matches || matchMedia('(max-width: 680px)').matches);
+}
+const mapCrosshair = document.createElement('div');
+mapCrosshair.id = 'map-crosshair';
+mapCrosshair.setAttribute('aria-hidden', 'true');     // decoration: the readout carries the value
+map.getContainer().appendChild(mapCrosshair);
+// Live while the map moves, not just at moveend: the crosshair is over a different place
+// the whole time a pan is in flight, and numbers that lag it are worse than none.
+if (coarsePointerOnly()) map.on('move', showCenterCoord);
+
 showCenterCoord();
 showZoom();
 map.on('mousemove', e => showCoord(e.latlng));

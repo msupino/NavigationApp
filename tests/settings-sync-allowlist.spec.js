@@ -101,6 +101,9 @@ const NOT_A_SYNCED_SETTING = [
   // because the phone does. It also depends on what the device can actually do -- native
   // TTS in the APK, an unreliable browser fallback elsewhere.
   [/^navaid\.voiceAlerts$/,       'speaking out loud is a property of the device you are on'],
+  // Whether the map chases the aircraft depends on how the device is mounted -- a phone
+  // clamped in front of you wants following, the desktop it was planned on does not.
+  [/^navaid\.gpsFollow$/,         'following the aircraft is a property of the device you fly with'],
   // navaid.ai.baseUrl decides where data is sent — same rule as aisEmail.
   // navaid.ai.panelSize is device-local geometry (panelPos is caught by /Pos$/).
   // navaid.ai.key.*/model.* base strings (with trailing '.') are composed at

@@ -1045,6 +1045,74 @@ html[dir="rtl"] #toolbar.collapsed {
 
 }
 
+/* Centre crosshair — what the coordinate readout is reading on a touch device, where
+   there is no pointer to be the marker. Hidden wherever a pointer exists. */
+#map-crosshair {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* Size, thickness and both colours come from the tuning gist (crosshair* keys) so the
+     mark can be dialled in against whichever chart it has to stay visible over. The
+     literals here are the same defaults, for a boot before applyTuningCssVars runs. */
+  width: var(--navaid-crosshair-size, 34px);
+  height: var(--navaid-crosshair-size, 34px);
+  margin: var(--navaid-crosshair-offset, -17px) 0 0 var(--navaid-crosshair-offset, -17px);
+  z-index: 650;             /* over the tiles and the route canvas, under the controls */
+  pointer-events: none;     /* never eats a tap meant for the map */
+}
+/* Two hairlines with a gap in the middle: a solid + would hide the very point it marks. */
+#map-crosshair::before,
+#map-crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--navaid-crosshair-color, #231F20);
+  /* Halo, so a dark line stays readable over dark chart ink and vice versa. */
+  box-shadow: 0 0 0 1px var(--navaid-crosshair-halo, rgba(255, 255, 255, 0.85));
+}
+#map-crosshair::before {
+  left: 50%;
+  top: 0;
+  width: var(--navaid-crosshair-line, 1px);
+  height: var(--navaid-crosshair-size, 34px);
+  margin-left: var(--navaid-crosshair-nudge, -0.5px);
+}
+#map-crosshair::after {
+  top: 50%;
+  left: 0;
+  height: var(--navaid-crosshair-line, 1px);
+  width: var(--navaid-crosshair-size, 34px);
+  margin-top: var(--navaid-crosshair-nudge, -0.5px);
+}
+@media (max-width: 680px), (pointer: coarse) {
+  #map-crosshair { display: block; }
+}
+body.theme-dark #map-crosshair::before,
+body.theme-dark #map-crosshair::after {
+  background: #f2f2f2;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.85);
+}
+
+/* follow lock — sits above the rotation dial, only while a fix is driving the map */
+.follow-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
+.follow-ctrl button {
+  /* Same 44 px square as the rotation dial below it -- one column, one target size,
+     and 44 px is what a gloved thumb can hit on a bumpy leg. */
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid #9a9a9a;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  touch-action: manipulation;
+}
+/* Following is the state that changes the map under you, so it is the one that reads as
+   engaged rather than the one that reads as normal. */
+.follow-ctrl button.follow-on { background: #d8f0d8; border-color: #4a8a4a; }
+
 /* rotate dial — Google-Maps-style compass needle by the zoom buttons */
 .rotate-ctrl {
   display: flex;
@@ -1186,11 +1254,15 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
   direction: ltr;
 }
 /* Float the readout to the LEFT of the bottom-right zoom +/- + rotate-dial
-   column (~44px wide) instead of stacking under it (#526). The leaflet
-   corner div is the positioning context. */
+   column instead of stacking under it (#526). The leaflet corner div is the
+   positioning context. The clearance is a variable because the column is not
+   one width: the touch pass grew the zoom buttons from 30px to 44px, and the
+   52px written for the desktop column then left the readout sliding under
+   them on every phone. */
+:root { --navaid-map-ctrl-clear: 52px; }
 .leaflet-bottom.leaflet-right .coord-readout {
   position: absolute;
-  right: 52px;
+  right: var(--navaid-map-ctrl-clear);
   bottom: 26px;            /* clears the Leaflet attribution row */
   margin: 0;
 }
@@ -5100,6 +5172,10 @@ html[data-theme="light"] #insp-body .insp-actions {
      the map's heading entry (38x19), the language picker (71x21) — which is one of
      only four controls the COLLAPSED toolbar leaves reachable — and the search
      panel's dismiss (28x28). */
+  /* 44px buttons + Leaflet's own 10px corner margin: the readouts must clear all of it
+     or they are hidden behind the zoom column exactly when the map is the only thing
+     on screen. */
+  :root { --navaid-map-ctrl-clear: 66px; }
   #rotate-hdg { min-height: 44px; min-width: 56px; font-size: 15px; }
   #lang-select { min-height: 44px; font-size: 15px; }
   #search-close { min-width: 44px; min-height: 44px; }

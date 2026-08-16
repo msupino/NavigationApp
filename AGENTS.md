@@ -78,6 +78,13 @@ both branches and assembles a single Pages site:
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
   the area, create one.
+- **Run only the new feature's own tests locally; let CI find regressions.**
+  CI runs the whole suite on every push, sharded across four runners, so a
+  local full run buys a twenty-minute wait for an answer GitHub is already
+  computing. Prove the new spec fails without the change and passes with it,
+  push, and read the shards. Run the suite locally only when CI cannot answer
+  the question: a change to the fixture or config every spec loads, a bisect,
+  or an investigation where CI turnaround is the bottleneck.
 - **Keep `tests/README.md` in sync** when adding tests that don't run in
   e2e-deployed, or when changing the exclusion pattern in `deploy.yml`.
 - If a push to `dev` / `main` doesn't trigger `Deploy` / `CI` within
