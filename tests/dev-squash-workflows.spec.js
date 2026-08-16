@@ -24,7 +24,7 @@ test.describe('dev workflow guards', () => {
     expect(yml).toMatch(/case "\$BASE" in main\) METHOD=--merge/);
   });
 
-  test('Auto PR promotes dev directly without a bot-authored back-merge PR', () => {
+  test('Auto PR aligns and promotes dev without a bot-authored back-merge PR', () => {
     const yml = workflow('auto-pr-dev-to-main.yml');
     expect(yml).not.toContain('pull_request:');
     expect(yml).toContain("github.actor != 'github-actions[bot]'");
@@ -34,6 +34,10 @@ test.describe('dev workflow guards', () => {
     expect(yml).toContain('--base main');
     expect(yml).toContain('--head dev');
     expect(yml).toContain('compare/main...dev');
+    expect(yml).toContain("'.behind_by'");
+    expect(yml).toContain('pulls/$PR/update-branch');
+    expect(yml).toContain('-f expected_head_sha="$OLD_HEAD"');
+    expect(yml).toContain('if [ "$NEW_HEAD" != "$OLD_HEAD" ]');
   });
 
   test('Auto PR explicitly checks and auto-merges the direct promotion PR', () => {

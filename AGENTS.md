@@ -55,9 +55,10 @@ both branches and assembles a single Pages site:
   deployed commit without manually increasing the source version number.
 - **Before creating a feature branch from `dev`, update `dev` first.**
   Fetch `origin`, check out `dev`, fast-forward it to `origin/dev`, then
-  branch from that tip. Production promotions use merge commits, so the
-  normal post-promotion `main` merge commit does not need to be merged back
-  into `dev`. If `main` contains production-only file changes, stop and use
+  branch from that tip. Before each production promotion, automation uses the
+  open `dev` → `main` PR's Update branch operation to bring the previous
+  promotion merge commit back into `dev`; no separate sync PR is needed.
+  If `main` contains production-only file changes, stop and use
   a reviewed maintenance PR. Never directly push protected branches as
   routine recovery.
 - **Before `git commit`, verify the current branch** (`git branch
