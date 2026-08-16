@@ -42,6 +42,32 @@ test('HADRA defaults on and route waypoint inspector exposes the pressed toggle'
   expect(result.text).toContain('Clear hotspot');
 });
 
+test('default hotspots exactly match waypoint graph junctions with more than two neighbours', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const graph = await (await fetch('data/cvfr-route-graph.json?hotspot-parity=1')).json();
+    const expected = Object.entries(graph.edges)
+      .filter(([name, edges]) => graph.nodes[name] && graph.nodes[name].kind === 'waypoint' &&
+        new Set(edges.map(edge => edge.to)).size > 2)
+      .map(([name]) => name).sort();
+    const actual = Object.keys(graph.nodes)
+      .filter(name => graph.nodes[name].kind === 'waypoint' && waypointHotspot({ name }))
+      .sort();
+    return {
+      expected,
+      actual,
+      hadraDegree: new Set(graph.edges.HADRA.map(edge => edge.to)).size,
+      airfieldDefaults: Object.keys(graph.nodes)
+        .filter(name => graph.nodes[name].kind === 'airfield' && waypointHotspot({ name })),
+    };
+  });
+  expect(result.actual).toEqual(result.expected);
+  expect(result.actual).toHaveLength(87);
+  expect(result.actual).toContain('HADRA');
+  expect(result.hadraDegree).toBe(6);
+  expect(result.airfieldDefaults).toEqual([]);
+});
+
 test('inspector can explicitly disable the default and the override survives reload', async ({ page }) => {
   await boot(page);
   await setRoute(page);
