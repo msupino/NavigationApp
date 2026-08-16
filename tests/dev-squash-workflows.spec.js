@@ -40,9 +40,15 @@ test.describe('dev workflow guards', () => {
     expect(yml).toContain('if [ "$NEW_HEAD" != "$OLD_HEAD" ]');
   });
 
-  test('Auto PR explicitly checks and auto-merges the direct promotion PR', () => {
+  test('Auto PR dispatches checks only for a new promotion and arms once', () => {
     const yml = workflow('auto-pr-dev-to-main.yml');
     expect(yml).not.toContain('git push origin dev');
+    expect(yml).toContain('CREATED=false');
+    expect(yml).toContain('CREATED=true');
+    expect(yml).toContain('echo "dispatch_checks=$CREATED"');
+    expect(yml).toContain("if: steps.promotion.outputs.dispatch_checks == 'true'");
+    expect(yml).toContain("if: steps.promotion.outputs.dispatch_watcher == 'true'");
+    expect(yml).toContain("'.autoMergeRequest != null'");
     expect(yml).toContain('gh workflow run CI --ref dev');
     expect(yml).toContain('gh workflow run Deploy --ref dev');
     expect(yml).toContain('gh workflow run Review --ref dev');
