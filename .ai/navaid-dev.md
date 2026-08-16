@@ -476,6 +476,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   collision avoidance prevents either one from covering the other. Opening an
   inspector moves an overlapping Print panel to the nearest free position. The
   gist number `floatingPanelGapPx` controls their separation and defaults to 12.
+  Print is single-instance: activating it again focuses the existing panel
+  instead of creating duplicate controls with stale plan or VOR labels.
 - **Unnamed closed-loop labels:** repeating an earlier unnamed route waypoint
   reuses its sequence label. A route closed on its first point is displayed as
   `WP 1 → … → WP 1` on the map, in inspectors, and in the flight plan; the

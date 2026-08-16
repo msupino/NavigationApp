@@ -4363,6 +4363,16 @@ function exportPrintOnTopLine() {
   return printHead.getBoundingClientRect().top <= minTop + 6;
 }
 function showExportModal() {
+  // This dialog owns fixed control IDs used by the live preview helpers below.
+  // Repeated toolbar activation used to append another copy. getElementById()
+  // then updated the first dialog while later copies showed blank or stale plan and
+  // VOR text. Keep one instance and return focus to it instead.
+  const openExport = document.querySelector('.modal-back.export-options');
+  if (openExport) {
+    const focusTarget = openExport.querySelector('.modal-close-x, button, input, select');
+    if (focusTarget && typeof focusTarget.focus === 'function') focusTarget.focus();
+    return;
+  }
   if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
   // On desktop the print/export menu floats opposite the inspector.
   // It starts on the left in LTR and the right in RTL.
