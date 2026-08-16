@@ -295,7 +295,7 @@ test.describe('the first-fix snap', () => {
       const a = state.waypoints[0], b = state.waypoints[1];
       const behind = { lat: 31.95, lng: 34.0 };            // ~3 NM short of ALPHA
       const proj = _gpsTrackProjection(a, b, behind);
-      gpsOwn = { ...behind, t: Date.now() };
+      window.gpsOwn = { ...behind, t: Date.now() };
       gpsSnapLegAlertsToPosition();
       return {
         alongNm: proj.alongNm,                             // still positive: acos, unchanged
@@ -322,7 +322,7 @@ test.describe('the first-fix snap', () => {
       { lat: 32.30, lng: 34.50, name: 'C' },
     ]);
     const out = await page.evaluate(() => {
-      gpsOwn = { lat: 31.90, lng: 34.55, t: Date.now() };   // southeast, past the corner
+      window.gpsOwn = { lat: 31.90, lng: 34.55, t: Date.now() };   // southeast, past the corner
       gpsSnapLegAlertsToPosition();
       const a = state.waypoints[0], b = state.waypoints[1];
       return {
@@ -345,7 +345,7 @@ test.describe('the first-fix snap', () => {
     await boot(page);
     await route(page);
     const picked = await page.evaluate(() => {
-      gpsOwn = { lat: 32.075, lng: 34.0, t: Date.now() };   // between BRAVO and CHARLIE
+      window.gpsOwn = { lat: 32.075, lng: 34.0, t: Date.now() };   // between BRAVO and CHARLIE
       gpsSnapLegAlertsToPosition();
       return gpsAlertLegIndex;
     });
