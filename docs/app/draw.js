@@ -1854,6 +1854,15 @@ function canonicalNavWaypointName(name) {
   return s;
 }
 
+// These named route waypoints are hotspots unless the pilot explicitly
+// toggles them off. An own `hotspot` boolean always wins, including false.
+const DEFAULT_HOTSPOT_WAYPOINTS = new Set(['HADRA']);
+function waypointHotspot(wp) {
+  if (!wp) return false;
+  if (Object.prototype.hasOwnProperty.call(wp, 'hotspot')) return wp.hotspot === true;
+  return DEFAULT_HOTSPOT_WAYPOINTS.has(canonicalNavWaypointName(wp.name).toUpperCase());
+}
+
 function escapeRegExp(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -3919,6 +3928,7 @@ function selectionVisible() {
   return !(window.NavAid && NavAid.exporting);
 }
 function drawWaypoints() {
+  window.__hotspotWaypointIndexes = [];
   for (let i = 0; i < state.waypoints.length; i++) {
     if (typeof legDirWaypointVisible === 'function' && !legDirWaypointVisible(i)) continue;
     const wp = state.waypoints[i];
@@ -3929,10 +3939,21 @@ function drawWaypoints() {
                      state.selected.index === i;
     const { label, fontPx, r } = waypointGeom(i);
     const radius = selected ? r + tune('waypointSelectedRadiusAddPx') : r;
+    const hotspot = waypointHotspot(wp);
+
+    if (hotspot) {
+      window.__hotspotWaypointIndexes.push(i);
+      octx.beginPath();
+      octx.arc(s.x, s.y, radius + tune('waypointHotspotRingGapPx'), 0, Math.PI * 2);
+      octx.lineWidth = tune('waypointHotspotRingWidthPx');
+      octx.strokeStyle = tune('waypointHotspotRingColor');
+      octx.stroke();
+    }
 
     octx.beginPath();
     octx.arc(s.x, s.y, radius, 0, Math.PI * 2);
-    octx.fillStyle = selected ? tune('selectedColor') : tintFill(tune('waypointFillColor'));
+    octx.fillStyle = selected ? tune('selectedColor')
+      : tintFill(tune(hotspot ? 'waypointHotspotFillColor' : 'waypointFillColor'));
     octx.fill();
     octx.lineWidth = tune('waypointStrokeWidthPx');
     octx.strokeStyle = tune('inkColor');
