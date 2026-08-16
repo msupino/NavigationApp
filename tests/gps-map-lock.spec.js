@@ -44,15 +44,17 @@ async function simulateDrag(page, dxPx) {
 }
 
 test.describe('map lock while GPS/sim connected', () => {
-  test('live location on: dragging a waypoint does not move it, but still opens the inspector', async ({ page }) => {
+  test('live location on: dragging a waypoint neither moves it nor opens the inspector', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => { window.gpsLiveOn = true; });
     const before = { lat: LLHZ.lat, lng: LLHZ.lng };
     const out = await simulateDrag(page, 80);   // a real drag distance, not a sub-pixel jiggle
     expect(out.lat).toBe(before.lat);
     expect(out.lng).toBe(before.lng);
-    expect(out.inspectorOpen).toBe(true);
-    expect(out.selected).toEqual({ type: 'wp', index: 0 });
+    // The panel used to open here. In flight the map is what is being read, and the
+    // inspector covers it -- see inspector-while-tracking.spec.js.
+    expect(out.inspectorOpen).toBe(false);
+    expect(out.selected).toBeNull();
   });
 
   test('recording on: same lock', async ({ page }) => {
@@ -61,10 +63,13 @@ test.describe('map lock while GPS/sim connected', () => {
     const out = await simulateDrag(page, 80);
     expect(out.lat).toBe(LLHZ.lat);
     expect(out.lng).toBe(LLHZ.lng);
-    expect(out.inspectorOpen).toBe(true);
+    expect(out.inspectorOpen).toBe(false);
   });
 
-  test('connected simulator: same lock', async ({ page }) => {
+  // The simulator locks the DRAG (a route edit mid-flight can shift the alerts) but still
+  // opens the inspector: a sim session is someone at a desk, where looking at a waypoint is
+  // the point. Only a real fix closes the panel.
+  test('connected simulator: the drag is locked, the inspector still opens', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => { window.simOn = true; });
     const out = await simulateDrag(page, 80);
