@@ -469,6 +469,48 @@ test.describe('Point selection chooser', () => {
     await expect(page.locator('#insp-title')).toHaveValue('SECOND');
     expect(await page.evaluate(() => map.getZoom())).toBe(beforeZoom);
   });
+
+  test('named route airfield is one chooser option, not an apparent WP sequence point', async ({ page }) => {
+    await page.evaluate(async route => {
+      await loadAirfields();
+      state.waypoints = route.waypoints.map(w => ({ ...w }));
+      syncLegs();
+      const routeIndex = state.waypoints.findIndex(w => w.name === 'LLHA');
+      const airfieldIndex = airfields.findIndex(a => a.name === 'LLHA');
+      showPointChoice([
+        { type: 'notam', notam: { id: 'TEST-NOTAM' } },
+        { type: 'wp', index: routeIndex },
+        { type: 'airfield', index: airfieldIndex },
+      ]);
+    }, ROUTE);
+
+    const chooser = page.locator('.point-choice-modal');
+    await expect(chooser).toBeVisible();
+    await expect(chooser.locator('.point-choice-option')).toHaveCount(2);
+    const llha = chooser.locator('.point-choice-option').filter({ hasText: 'LLHA' });
+    await expect(llha).toHaveCount(1);
+    await expect(llha.locator('.point-choice-primary')).toHaveText('LLHA');
+    await expect(llha.locator('.point-choice-meta')).toHaveText('Route waypoint / Airfield / Haifa');
+    await expect(llha).not.toContainText('11');
+
+    await llha.click();
+    expect(await page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 10 });
+    await expect(page.locator('#insp-title')).toHaveValue(/LLHA.*Haifa/);
+  });
+
+  test('unnamed route points retain their generated chooser number', async ({ page }) => {
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.2, lng: 34.9, name: '' }];
+      syncLegs();
+      showPointChoice([
+        { type: 'notam', notam: { id: 'TEST-NOTAM' } },
+        { type: 'wp', index: 0 },
+      ]);
+    });
+    const unnamed = page.locator('.point-choice-option').filter({ hasText: 'WP 1' });
+    await expect(unnamed.locator('.point-choice-primary')).toHaveText('WP 1');
+    await expect(unnamed.locator('.point-choice-meta')).toHaveText('Route waypoint 1');
+  });
 });
 
 test.describe('Reverse route', () => {

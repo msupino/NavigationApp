@@ -482,7 +482,23 @@ function pointChoiceText(c) {
   }
   if (c.type === 'wp') {
     const wp = state.waypoints[c.index] || {};
-    const meta = (S.choosePointRoute || 'Route waypoint') + ' ' + (c.index + 1);
+    const named = !!String(wp.name || '').trim() &&
+      !(typeof isSequenceWaypointName === 'function' && isSequenceWaypointName(wp.name));
+    let meta = (S.choosePointRoute || 'Route waypoint') + (named ? '' : ' ' + (c.index + 1));
+    // A named route point and its chart reference are one place and one useful chooser
+    // action. The route identity wins so the point remains editable, while this suffix
+    // makes the airfield/navigation information discoverable.
+    const refChoice = c.mergedReference;
+    if (refChoice && refChoice.type === 'airfield') {
+      const af = airfields && airfields[refChoice.index];
+      const label = referenceLocaleName(af, 'airfield');
+      meta += ' / ' + (S.choosePointAirfield || 'Airfield') + (label ? ' / ' + label : '');
+    } else if (refChoice && refChoice.type === 'navwp') {
+      const nw = navWP && navWP[refChoice.index];
+      const label = referenceOverlayLabel(nw, 'navwp');
+      meta += ' / ' + (S.choosePointNavWaypoint || 'Navigation waypoint') +
+        (label && label !== waypointDisplayLabel(wp, c.index) ? ' / ' + label : '');
+    }
     return { primary: waypointDisplayLabel(wp, c.index), meta };
   }
   if (c.type === 'vor') {
@@ -559,6 +575,33 @@ function collapseLinkedCommRouteCandidates(items) {
     return !(key && linkedKeys.has(key));
   });
 }
+function collapseNamedRouteReferenceCandidates(items) {
+  const out = (items || []).slice();
+  const routes = out.filter(c => c && c.type === 'wp' && Number.isInteger(c.index));
+  if (!routes.length) return out;
+  const merged = new Set();
+  for (const refChoice of out) {
+    if (!refChoice || (refChoice.type !== 'airfield' && refChoice.type !== 'navwp')) continue;
+    const ref = refChoice.type === 'airfield'
+      ? (airfields && airfields[refChoice.index])
+      : (navWP && navWP[refChoice.index]);
+    const refKey = pointCandidateCanonicalKey(refChoice);
+    if (!ref || !refKey) continue;
+    const routeChoice = routes.find(c => {
+      const wp = state.waypoints[c.index];
+      return wp && pointCandidateCanonicalKey(c) === refKey &&
+        (typeof sameMapPoint === 'function'
+          ? sameMapPoint(wp, ref)
+          : wp.lat === ref.lat && wp.lng === ref.lng);
+    });
+    if (!routeChoice) continue;
+    // Keep selecting the route object: its inspector already includes the matching
+    // airfield/nav-point details, and it also retains move/delete/edit actions.
+    routeChoice.mergedReference = refChoice;
+    merged.add(refChoice);
+  }
+  return out.filter(c => !merged.has(c));
+}
 function selectPointCandidate(c) {
   if (c.type === 'notam') {
     if (typeof showNotamModal === 'function') showNotamModal([c.notam]);
@@ -571,7 +614,8 @@ function selectPointCandidate(c) {
   draw();
 }
 function showPointChoice(candidates) {
-  const items = collapseLinkedCommRouteCandidates(dedupePointCandidates(candidates));
+  const items = collapseNamedRouteReferenceCandidates(
+    collapseLinkedCommRouteCandidates(dedupePointCandidates(candidates)));
   if (!items.length) return false;
   if (items.length === 1) {
     selectPointCandidate(items[0]);
