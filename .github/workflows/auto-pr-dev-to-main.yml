@@ -1,143 +1,130 @@
 name: Auto PR dev to main
 
 on:
-  # Kept for human UI merges and non-bot pushes. GITHUB_TOKEN-initiated bot
-  # merges suppress BOTH this `pull_request: closed` event AND the `push:
-  # dev` below (GitHub anti-recursion rule applies to all events generated
-  # by GITHUB_TOKEN — push, pull_request, AND workflow_run). The bot-merge
-  # case is handled by `Draft + auto-merge` explicitly `gh workflow run`ing
-  # this workflow via workflow_dispatch (which IS exempt from
-  # anti-recursion) after the synchronous merge poll detects MERGED.
-  pull_request:
-    types: [closed]
-    branches: [dev]
+  # Human merges and direct maintainer updates emit push. GITHUB_TOKEN-driven
+  # merges are handed here explicitly by Draft + auto-merge through
+  # workflow_dispatch, which is exempt from GitHub's anti-recursion rule.
   push:
     branches: [dev]
   workflow_dispatch:
 
 permissions:
-  # The ancestry sync is pushed to a temporary branch and merged through a PR.
-  contents: write
+  contents: read
   pull-requests: write
-  # Bot-created PRs do not trigger other workflows, so dispatch their checks
-  # and the auto-merge watcher explicitly.
+  # A promotion PR created with GITHUB_TOKEN may not emit usable downstream
+  # workflow events. Dispatch its required checks and merge watcher directly.
   actions: write
 
-# One run at a time: two near-simultaneous dev pushes raced past the
-# existing-PR check and the loser failed on 'a pull request already exists'.
 concurrency:
   group: auto-pr-dev-to-main
   cancel-in-progress: false
 
 jobs:
   auto-pr:
-    # Per-event guards:
-    # - pull_request: only when actually merged.
-    if: >-
-      github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    # Some GitHub-token merges unexpectedly emit push as well as the explicit
+    # hand-off. Skip that redundant bot push so checks are dispatched once.
+    if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           ref: dev
-          fetch-depth: 0   # need full history to merge main
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+          persist-credentials: false
 
-      - name: Sync main into dev through a PR
-        id: sync
+      - name: Create or find dev to main PR
+        id: promotion
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main:main
-          BEHIND=$(gh api "repos/${{ github.repository }}/compare/dev...main" --jq '.ahead_by')
-          if [ "$BEHIND" -eq 0 ]; then
-            echo "dev is already up to date with main — skipping merge"
-            echo "needed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # `dev` is protected, so preserve ancestry on an automation-owned
-          # branch and let the normal required checks merge it through a PR.
-          # The branch is stable for one main tip; a later dev push refreshes
-          # the same open sync PR rather than creating a duplicate.
-          MAIN_SHA=$(git rev-parse --short=12 main)
-          SYNC_BRANCH="automation/sync-main-into-dev-${MAIN_SHA}"
-          git checkout -B "$SYNC_BRANCH" origin/dev
-          git merge --no-ff main -m "Merge main into dev (auto-sync before promotion PR)"
-          git fetch origin "$SYNC_BRANCH:refs/remotes/origin/$SYNC_BRANCH" 2>/dev/null || true
-          git push --force-with-lease origin "HEAD:$SYNC_BRANCH"
-
           PR=$(gh pr list \
-            --base dev \
-            --head "$SYNC_BRANCH" \
+            --base main \
+            --head dev \
             --state open \
             --json number \
             --jq '.[0].number // empty')
+          CREATED=false
+          AHEAD=$(gh api "repos/${{ github.repository }}/compare/main...dev" --jq '.ahead_by')
+          if [ -z "$PR" ] && [ "$AHEAD" -eq 0 ]; then
+            echo "dev has nothing new to promote"
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ -z "$PR" ]; then
+            CREATED=true
+            SHA=$(git rev-parse --short HEAD)
             gh pr create \
-              --base dev \
-              --head "$SYNC_BRANCH" \
-              --title "Sync main into dev (${MAIN_SHA:0:7})" \
-              --body "Automated ancestry sync required before the next dev-to-main promotion."
+              --base main \
+              --head dev \
+              --title "Dev to main ($SHA)" \
+              --body "Auto-generated PR promoting dev ($SHA) to main."
             PR=$(gh pr list \
-              --base dev \
-              --head "$SYNC_BRANCH" \
+              --base main \
+              --head dev \
               --state open \
               --json number \
               --jq '.[0].number')
           fi
-          echo "needed=true" >> "$GITHUB_OUTPUT"
-          echo "pr=$PR" >> "$GITHUB_OUTPUT"
+          # The previous promotion leaves a merge commit on main that is not
+          # yet in dev. Update this PR's head in place instead of opening a
+          # separate bot-authored main -> dev PR. This is GitHub's supported
+          # "Update branch" operation for the protected dev branch.
+          BEHIND=$(gh api "repos/${{ github.repository }}/compare/main...dev" --jq '.behind_by')
+          if [ "$BEHIND" -gt 0 ]; then
+            OLD_HEAD=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+            gh api \
+              --method PUT \
+              "repos/${{ github.repository }}/pulls/$PR/update-branch" \
+              -f expected_head_sha="$OLD_HEAD"
+            for attempt in $(seq 1 30); do
+              NEW_HEAD=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+              if [ "$NEW_HEAD" != "$OLD_HEAD" ]; then
+                echo "Promotion PR #$PR updated dev from $OLD_HEAD to $NEW_HEAD"
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "Timed out waiting for promotion PR #$PR to update dev" >&2
+                exit 1
+              fi
+              sleep 2
+            done
+          fi
+          ARMED=$(gh pr view "$PR" --json autoMergeRequest --jq '.autoMergeRequest != null')
+          {
+            echo "needed=true"
+            echo "pr=$PR"
+            echo "dispatch_checks=$CREATED"
+            if [ "$ARMED" = "true" ]; then
+              echo "dispatch_watcher=false"
+            else
+              echo "dispatch_watcher=true"
+            fi
+          } >> "$GITHUB_OUTPUT"
 
-          # GITHUB_TOKEN-created PR events do not start workflows. Dispatch
-          # every required workflow against the sync commit, including the
-          # Deploy workflow's explicit PR-number mode for e2e-deployed.
-          gh workflow run CI --ref "$SYNC_BRANCH"
-          gh workflow run Deploy --ref "$SYNC_BRANCH"
-          gh workflow run Review --ref "$SYNC_BRANCH"
+      - name: Dispatch checks for a newly created promotion PR
+        if: steps.promotion.outputs.dispatch_checks == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Creation with GITHUB_TOKEN can suppress pull_request events. An
+          # existing PR receives normal synchronize checks when dev advances;
+          # dispatching copies there can cancel each other and poison the SHA.
+          gh workflow run CI --ref dev
+          gh workflow run Deploy --ref dev
+          gh workflow run Review --ref dev
+
+      - name: Arm promotion auto-merge watcher
+        if: steps.promotion.outputs.dispatch_watcher == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.promotion.outputs.pr }}
+        run: |
+          set -euo pipefail
           gh workflow run "Draft + auto-merge" \
-            --ref "$SYNC_BRANCH" \
+            --ref dev \
             -f pr="$PR" \
             -f round=1
-          echo "Sync PR #$PR will resume promotion after it merges."
-
-      - name: Check for existing dev to main PR
-        if: steps.sync.outputs.needed == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          EXISTING=$(gh pr list \
-            --base main \
-            --head dev \
-            --state open \
-            --json number,title \
-            --jq 'length')
-          # `gh api compare` re-queries fresh from origin, so this correctly
-          # reflects dev's state *after* the sync step pushed (if it did).
-          # Skip if dev has nothing new on main (e.g. after a main→dev sync).
-          AHEAD=$(gh api "repos/${{ github.repository }}/compare/main...dev" --jq '.ahead_by')
-          if [ "$EXISTING" -gt 0 ] || [ "$AHEAD" -eq 0 ]; then
-            echo "pr_exists=true" >> "$GITHUB_ENV"
-          else
-            echo "pr_exists=false" >> "$GITHUB_ENV"
-          fi
-
-      - name: Create dev to main PR
-        if: steps.sync.outputs.needed == 'false' && env.pr_exists == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          SHA=$(git rev-parse --short HEAD)
-          BODY="Auto-generated PR promoting dev ($SHA) to main."
-          # `|| true` guard: if a parallel run created the PR between our
-          # existence check and here, "already exists" is success, not failure.
-          gh pr create \
-            --base main \
-            --head dev \
-            --title "Dev to main ($SHA)" \
-            --body "$BODY" \
-            || { gh pr list --base main --head dev --state open --json number --jq 'length' | grep -q '^[1-9]' && echo "PR already exists — fine"; }
+          echo "Promotion PR #$PR auto-merge watcher dispatched."

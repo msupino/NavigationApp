@@ -55,12 +55,13 @@ always target `dev` as the PR base branch.
 enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
 **Before creating a feature branch from `dev`:** update local `dev`
-first, then bring production back into it. Fetch `origin`, check out
-`dev`, fast-forward it to `origin/dev`, and integrate `origin/main`
-when possible. Resolve and push that `dev` update before creating or
-switching to the feature branch. If `dev` cannot fast-forward or
-`origin/main` cannot be integrated cleanly, stop and resolve that
-before branching.
+first. Fetch `origin`, check out `dev`, and fast-forward it to
+`origin/dev` before creating or switching to the feature branch.
+Before each production promotion, automation uses the open `dev` → `main`
+PR's Update branch operation to bring the previous promotion merge commit
+back into `dev`; no separate sync PR is needed. If
+`main` contains production-only file changes, stop and use a reviewed
+maintenance PR.
 
 **Before any `git commit`:** run `git branch --show-current` (and
 `git status` when in doubt). If the branch is not the one the user
@@ -476,6 +477,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   collision avoidance prevents either one from covering the other. Opening an
   inspector moves an overlapping Print panel to the nearest free position. The
   gist number `floatingPanelGapPx` controls their separation and defaults to 12.
+  Print is single-instance: activating it again focuses the existing panel
+  instead of creating duplicate controls with stale plan or VOR labels.
 - **Unnamed closed-loop labels:** repeating an earlier unnamed route waypoint
   reuses its sequence label. A route closed on its first point is displayed as
   `WP 1 → … → WP 1` on the map, in inspectors, and in the flight plan; the
@@ -844,11 +847,13 @@ downloadable `route.json`.
   require explicit maintainer authorization.
 - **Production deploy** = merge a `dev` → `main` pull request (`main` is
   branch-protected; the merge triggers the same workflow).
-  The promotion automation first verifies that `dev` contains the current
-  `main` ancestry. If it does not, the workflow opens a temporary sync PR into
-  `dev`, explicitly runs its required checks, and auto-merges it. The merged
-  sync then resumes creation of the `dev` → `main` promotion PR. Automation
-  never pushes the ancestry merge directly to protected `dev`.
+  The promotion automation opens or reuses the direct `dev` → `main` PR.
+  It uses that PR's Update branch operation to align `dev` with the previous
+  production merge commit, without a preliminary `main` → `dev` sync PR.
+  A newly bot-created promotion PR gets explicit required-check and auto-merge
+  dispatches because its creation event may be suppressed. An existing PR uses
+  normal synchronize checks and keeps its armed auto-merge request, avoiding
+  duplicate cancelled checks on the same `dev` SHA.
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
 - **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites
