@@ -93,6 +93,19 @@ test('the choice is remembered on this device', async ({ page }) => {
   expect(await page.evaluate(() => gpsFollow)).toBe(false);
 });
 
+test('it is the same square as the rotation dial', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startLiveLocation());
+  const size = await page.evaluate(() => {
+    const b = document.getElementById('follow-lock').getBoundingClientRect();
+    const d = document.getElementById('rotate-dial').getBoundingClientRect();
+    return { bw: Math.round(b.width), bh: Math.round(b.height), dw: Math.round(d.width), dh: Math.round(d.height) };
+  });
+  expect(size.bw).toBe(size.dw);
+  expect(size.bh).toBe(size.dh);
+  expect(size.bw).toBe(size.bh);          // square, like the dial
+});
+
 test('it sits at the top of the bottom-right stack, above the assistant launcher', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => startLiveLocation());
