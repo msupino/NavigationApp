@@ -1206,11 +1206,15 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
   direction: ltr;
 }
 /* Float the readout to the LEFT of the bottom-right zoom +/- + rotate-dial
-   column (~44px wide) instead of stacking under it (#526). The leaflet
-   corner div is the positioning context. */
+   column instead of stacking under it (#526). The leaflet corner div is the
+   positioning context. The clearance is a variable because the column is not
+   one width: the touch pass grew the zoom buttons from 30px to 44px, and the
+   52px written for the desktop column then left the readout sliding under
+   them on every phone. */
+:root { --navaid-map-ctrl-clear: 52px; }
 .leaflet-bottom.leaflet-right .coord-readout {
   position: absolute;
-  right: 52px;
+  right: var(--navaid-map-ctrl-clear);
   bottom: 26px;            /* clears the Leaflet attribution row */
   margin: 0;
 }
@@ -5120,6 +5124,10 @@ html[data-theme="light"] #insp-body .insp-actions {
      the map's heading entry (38x19), the language picker (71x21) — which is one of
      only four controls the COLLAPSED toolbar leaves reachable — and the search
      panel's dismiss (28x28). */
+  /* 44px buttons + Leaflet's own 10px corner margin: the readouts must clear all of it
+     or they are hidden behind the zoom column exactly when the map is the only thing
+     on screen. */
+  :root { --navaid-map-ctrl-clear: 66px; }
   #rotate-hdg { min-height: 44px; min-width: 56px; font-size: 15px; }
   #lang-select { min-height: 44px; font-size: 15px; }
   #search-close { min-width: 44px; min-height: 44px; }
