@@ -42,13 +42,13 @@ test('HADRA defaults on and route waypoint inspector exposes the pressed toggle'
   expect(result.text).toContain('Clear hotspot');
 });
 
-test('default hotspots exactly match waypoint graph junctions with more than two neighbours', async ({ page }) => {
+test('default hotspots exactly match waypoint graph junctions with more than two bidirectional neighbours', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
     const graph = await (await fetch('data/cvfr-route-graph.json?hotspot-parity=1')).json();
     const expected = Object.entries(graph.edges)
       .filter(([name, edges]) => graph.nodes[name] && graph.nodes[name].kind === 'waypoint' &&
-        new Set(edges.map(edge => edge.to)).size > 2)
+        new Set(edges.filter(edge => !edge.oneWay && !edge.blocked).map(edge => edge.to)).size > 2)
       .map(([name]) => name).sort();
     const actual = Object.keys(graph.nodes)
       .filter(name => graph.nodes[name].kind === 'waypoint' && waypointHotspot({ name }))
@@ -56,15 +56,21 @@ test('default hotspots exactly match waypoint graph junctions with more than two
     return {
       expected,
       actual,
-      hadraDegree: new Set(graph.edges.HADRA.map(edge => edge.to)).size,
+      hadraDegree: new Set(graph.edges.HADRA
+        .filter(edge => !edge.oneWay && !edge.blocked).map(edge => edge.to)).size,
+      eironDegree: new Set(graph.edges.EIRON
+        .filter(edge => !edge.oneWay && !edge.blocked).map(edge => edge.to)).size,
+      eironHotspot: waypointHotspot({ name: 'EIRON' }),
       airfieldDefaults: Object.keys(graph.nodes)
         .filter(name => graph.nodes[name].kind === 'airfield' && waypointHotspot({ name })),
     };
   });
   expect(result.actual).toEqual(result.expected);
-  expect(result.actual).toHaveLength(87);
+  expect(result.actual).toHaveLength(80);
   expect(result.actual).toContain('HADRA');
-  expect(result.hadraDegree).toBe(6);
+  expect(result.hadraDegree).toBe(5);
+  expect(result.eironDegree).toBe(2);
+  expect(result.eironHotspot).toBe(false);
   expect(result.airfieldDefaults).toEqual([]);
 });
 
