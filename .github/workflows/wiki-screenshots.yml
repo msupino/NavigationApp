@@ -51,7 +51,12 @@ jobs:
           python3 -c "from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler; import functools; ThreadingHTTPServer(('127.0.0.1', 8000), functools.partial(SimpleHTTPRequestHandler, directory='docs')).serve_forever()" &
           SERVER=$!
           sleep 1
+          # Screenshots need real chart imagery, so this job -- and only this job -- takes
+          # tiles from OUR OWN copy (navaid-tiles.supino.org / the NavigationApp-tiles
+          # repo) rather than the stand-in image the rest of the suite gets. Never from
+          # flight-maps.com: that is someone else's server (issue #1668).
           WIKI_IMG="$GITHUB_WORKSPACE/wiki/img" BASE_URL="http://127.0.0.1:8000" \
+          NAVAID_TEST_TILES=mirror \
             npx playwright test tests/wiki-screenshots.spec.js --reporter=line
           kill $SERVER || true
 
