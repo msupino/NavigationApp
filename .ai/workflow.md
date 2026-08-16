@@ -4,14 +4,25 @@
 
 Default base branch is `dev`.
 
-Before creating a feature branch:
+Before creating a feature branch, bring `dev` level with `main` first — always,
+not only when something looks stale. A branch cut from a `dev` that is behind
+`main` is born conflicting with production, and the conflict surfaces at promo
+time instead of now:
 
 ```bash
 git fetch origin --prune
 git checkout dev
 git branch --set-upstream-to=origin/dev dev
 git pull --ff-only origin dev
+git merge --ff-only origin/main || git merge --no-edit origin/main   # dev is shared: merge, never rebase
+git push origin dev
+git checkout -b <branch>
 ```
+
+`git merge`, not `git rebase`: `dev` is a shared branch that `main` is promoted
+from, so rewriting its history would orphan every open PR based on it and every
+clone that has it. Fast-forward when `dev` has nothing of its own; a merge
+commit otherwise — which is what the promotion history already looks like.
 
 Before each production promotion, automation uses the open `dev` → `main`
 PR's Update branch operation to bring the previous promotion merge commit
