@@ -850,8 +850,10 @@ downloadable `route.json`.
   The promotion automation opens or reuses the direct `dev` → `main` PR.
   It uses that PR's Update branch operation to align `dev` with the previous
   production merge commit, without a preliminary `main` → `dev` sync PR.
-  It then dispatches required checks and arms auto-merge against the aligned
-  `dev` tip.
+  A newly bot-created promotion PR gets explicit required-check and auto-merge
+  dispatches because its creation event may be suppressed. An existing PR uses
+  normal synchronize checks and keeps its armed auto-merge request, avoiding
+  duplicate cancelled checks on the same `dev` SHA.
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
 - **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites

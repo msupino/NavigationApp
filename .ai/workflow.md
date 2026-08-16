@@ -125,9 +125,12 @@ Direct protected-branch pushes require explicit maintainer authorization.
 After a change merges into `dev`, `Auto PR dev to main` opens or reuses the
 direct promotion PR. It invokes that PR's Update branch operation when the
 previous promotion left a merge commit only on `main`, then waits for `dev` to
-advance. It explicitly dispatches CI, Deploy, Review, and the auto-merge
-watcher against the aligned `dev` SHA. No preliminary `main` to `dev` sync PR
-or first-time-contributor approval is needed.
+advance. A newly bot-created promotion PR gets explicit CI, Deploy, Review, and
+auto-merge-watcher dispatches because its creation event may be suppressed.
+An existing promotion PR uses its normal synchronize checks and keeps its
+already-armed auto-merge request, avoiding duplicate cancelled checks on one
+SHA. No preliminary `main` to `dev` sync PR or first-time-contributor approval
+is needed.
 
 ## Squash Policy
 

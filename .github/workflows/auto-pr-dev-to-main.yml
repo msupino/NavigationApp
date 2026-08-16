@@ -45,6 +45,7 @@ jobs:
             --state open \
             --json number \
             --jq '.[0].number // empty')
+          CREATED=false
           AHEAD=$(gh api "repos/${{ github.repository }}/compare/main...dev" --jq '.ahead_by')
           if [ -z "$PR" ] && [ "$AHEAD" -eq 0 ]; then
             echo "dev has nothing new to promote"
@@ -52,6 +53,7 @@ jobs:
             exit 0
           fi
           if [ -z "$PR" ]; then
+            CREATED=true
             SHA=$(git rev-parse --short HEAD)
             gh pr create \
               --base main \
@@ -89,24 +91,40 @@ jobs:
               sleep 2
             done
           fi
-          echo "needed=true" >> "$GITHUB_OUTPUT"
-          echo "pr=$PR" >> "$GITHUB_OUTPUT"
+          ARMED=$(gh pr view "$PR" --json autoMergeRequest --jq '.autoMergeRequest != null')
+          {
+            echo "needed=true"
+            echo "pr=$PR"
+            echo "dispatch_checks=$CREATED"
+            if [ "$ARMED" = "true" ]; then
+              echo "dispatch_watcher=false"
+            else
+              echo "dispatch_watcher=true"
+            fi
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Dispatch promotion checks and auto-merge watcher
-        if: steps.promotion.outputs.needed == 'true'
+      - name: Dispatch checks for a newly created promotion PR
+        if: steps.promotion.outputs.dispatch_checks == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Creation with GITHUB_TOKEN can suppress pull_request events. An
+          # existing PR receives normal synchronize checks when dev advances;
+          # dispatching copies there can cancel each other and poison the SHA.
+          gh workflow run CI --ref dev
+          gh workflow run Deploy --ref dev
+          gh workflow run Review --ref dev
+
+      - name: Arm promotion auto-merge watcher
+        if: steps.promotion.outputs.dispatch_watcher == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ steps.promotion.outputs.pr }}
         run: |
           set -euo pipefail
-          # Explicit dispatch is reliable even when the PR was created by
-          # GITHUB_TOKEN and its pull_request events are suppressed. The
-          # workflow runs attach their required checks to the same dev SHA.
-          gh workflow run CI --ref dev
-          gh workflow run Deploy --ref dev
-          gh workflow run Review --ref dev
           gh workflow run "Draft + auto-merge" \
             --ref dev \
             -f pr="$PR" \
             -f round=1
-          echo "Promotion PR #$PR is fully armed."
+          echo "Promotion PR #$PR auto-merge watcher dispatched."
