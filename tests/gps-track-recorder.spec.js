@@ -48,13 +48,16 @@ test('readout shows realtime ground speed + altitude while recording', async ({ 
   await page.waitForFunction(() => typeof startGpsRecording === 'function');
   await page.evaluate(() => {
     startGpsRecording();
-    // speed 50 m/s ≈ 97 kt; altitude 304.8 m = 1000 ft.
+    // speed 50 m/s ≈ 97 kt; altitude 304.8 m = 1000 ft ABOVE THE ELLIPSOID, which is
+    // 941 ft on the altimeter once the geoid comes off (the fixture pins standard
+    // atmosphere, so the temperature term is zero). See gps-altimetry.spec.js.
     window.__geoCb({ coords: { latitude: 32.0, longitude: 34.0, accuracy: 8, heading: null, speed: 50, altitude: 304.8 }, timestamp: Date.now() });
   });
   const readout = page.locator('#gps-readout');
   await expect(readout).toBeVisible();
   await expect(readout).toContainText('97 kt');
-  await expect(readout).toContainText('1000 ft');
+  await expect(readout).toContainText('941 ft');
+  await expect(readout).toContainText('29.92\u2033');   // the subscale setting, in inches
   // Stopping clears the live values.
   await page.evaluate(() => stopGpsRecording());
   await expect(readout).toHaveText('');
@@ -72,13 +75,15 @@ test('readout shows ground speed + altitude for plain "show location" too, not j
   await page.waitForFunction(() => typeof startLiveLocation === 'function');
   await page.evaluate(() => {
     startLiveLocation();
-    // speed 50 m/s ≈ 97 kt; altitude 304.8 m = 1000 ft.
+    // speed 50 m/s ≈ 97 kt; altitude 304.8 m = 1000 ft ABOVE THE ELLIPSOID, which is
+    // 941 ft on the altimeter once the geoid comes off (the fixture pins standard
+    // atmosphere, so the temperature term is zero). See gps-altimetry.spec.js.
     window.__liveCb({ coords: { latitude: 32.0, longitude: 34.0, accuracy: 8, heading: null, speed: 50, altitude: 304.8 }, timestamp: Date.now() });
   });
   const readout = page.locator('#gps-readout');
   await expect(readout).toBeVisible();
   await expect(readout).toContainText('97 kt');
-  await expect(readout).toContainText('1000 ft');
+  await expect(readout).toContainText('941 ft');
   // No point-count/elapsed-time prefix outside a recording -- neither means anything here.
   await expect(readout).not.toContainText('pts');
   await page.evaluate(() => stopLiveLocation());
@@ -753,11 +758,11 @@ test('the readout reads left to right in Hebrew, and keeps the stale notice read
   await page.waitForFunction(() => typeof startLiveLocation === 'function');
   await page.evaluate(() => {
     startLiveLocation();
-    // speed 9.26 m/s ≈ 18 kt; altitude 118.87 m ≈ 390 ft.
+    // speed 9.26 m/s ≈ 18 kt; altitude 118.87 m ≈ 390 ft ellipsoidal → 331 ft indicated.
     window.__liveCb({ coords: { latitude: 32.0, longitude: 34.8, accuracy: 8, heading: null, speed: 9.26, altitude: 118.87 }, timestamp: Date.now() });
   });
   const readout = page.locator('#gps-readout');
-  await expect(readout).toHaveText('18 kt · 390 ft');
+  await expect(readout).toHaveText('18 kt · 331 ft · 29.92\u2033');
   // Not just the string: the RUNS must sit left to right on screen, which is what the
   // bug was -- the text content was always in the right order.
   const visual = await readout.evaluate((el) => {
@@ -781,13 +786,14 @@ test('the readout reads left to right in Hebrew, and keeps the stale notice read
     gpsOwn = { lat: 32, lng: 34.8, t: Date.now() - 120000 };
     gpsUpdateReadout();
   });
-  await expect(readout).toContainText('18 kt · 390 ft');
+  await expect(readout).toContainText('18 kt · 331 ft');
   const stale = readout.locator('span[dir="auto"]');
   await expect(stale).toHaveCount(1);
   await expect(stale).toContainText('120s');
 });
 
-// Reported live: the footer readout showed "90 kt · 800 ft" and the pilot wanted the
+// Reported live: the footer readout showed "90 kt · 800 ft" (an altimeter reads 741 ft
+// there now -- see gps-altimetry.spec.js) and the pilot wanted the
 // heading beside them. gpsOwn.hdg is TRUE in both paths (the geolocation API is
 // true-referenced; the sim bridge's magnetic value is converted to true in _simFetch), so
 // the readout is where it turns back into the magnetic heading read off the DI.
@@ -801,13 +807,13 @@ test('the readout carries the magnetic heading beside speed and altitude', async
   await page.waitForFunction(() => typeof startLiveLocation === 'function');
   await page.evaluate(() => {
     startLiveLocation();
-    // 46.3 m/s ~ 90 kt; 243.8 m ~ 800 ft; course 40 deg TRUE.
+    // 46.3 m/s ~ 90 kt; 243.8 m ~ 800 ft ellipsoidal (741 ft indicated); course 40 deg TRUE.
     window.__liveCb({ coords: { latitude: 32.0, longitude: 34.8, accuracy: 8,
       heading: 40, speed: 46.3, altitude: 243.8 }, timestamp: Date.now() });
   });
   const readout = page.locator('#gps-readout');
   await expect(readout).toContainText('90 kt');
-  await expect(readout).toContainText('800 ft');
+  await expect(readout).toContainText('741 ft');
   // Three-digit padded and magnetic, like every other heading the app shows.
   const text = await readout.textContent();
   expect(text).toMatch(/\d{3}°/);

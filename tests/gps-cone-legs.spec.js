@@ -282,3 +282,73 @@ test.describe('the off-route alert', () => {
     expect(out.afterMove).toBe(2);    // moved past 15 deg: repeats
   });
 });
+
+
+// The snap that runs on the first fix used to test `alongNm` against the leg length. That
+// value comes out of an acos, so it is never negative: 3 NM SHORT of the start and 3 NM
+// along the leg are the same number, and a position behind the route read as on it.
+test.describe('the first-fix snap', () => {
+  test('does not treat a position behind the start as on the leg', async ({ page }) => {
+    await boot(page);
+    await route(page);
+    const out = await page.evaluate(() => {
+      const a = state.waypoints[0], b = state.waypoints[1];
+      const behind = { lat: 31.95, lng: 34.0 };            // ~3 NM short of ALPHA
+      const proj = _gpsTrackProjection(a, b, behind);
+      window.gpsOwn = { ...behind, t: Date.now() };
+      gpsSnapLegAlertsToPosition();
+      return {
+        alongNm: proj.alongNm,                             // still positive: acos, unchanged
+        inCone: _gpsLegConeContains(a, b, behind),
+        picked: gpsAlertLegIndex,
+        confirmed: _gpsAlertConfirmed,
+      };
+    });
+    expect(out.alongNm).toBeGreaterThan(0);   // the value itself cannot tell us
+    expect(out.inCone).toBe(false);           // the cone can
+    expect(out.picked).toBe(0);               // falls back to the nearest leg, not a false match
+    expect(out.confirmed).toBe(false);        // and a snap never confirms on its own
+  });
+
+  // Concrete consequence on a dog-leg route (north, then east): a fix southeast of the
+  // corner is nowhere near the northbound first leg, but its along-track distance came out
+  // positive and inside that leg's length, so the old test matched it there -- and every
+  // alert then measured against a leg 20+ NM away.
+  test('a fix off the far corner snaps to the leg it is nearest, not the first one', async ({ page }) => {
+    await boot(page);
+    await route(page, [
+      { lat: 32.00, lng: 34.00, name: 'A' },
+      { lat: 32.30, lng: 34.00, name: 'B' },
+      { lat: 32.30, lng: 34.50, name: 'C' },
+    ]);
+    const out = await page.evaluate(() => {
+      window.gpsOwn = { lat: 31.90, lng: 34.55, t: Date.now() };   // southeast, past the corner
+      gpsSnapLegAlertsToPosition();
+      const a = state.waypoints[0], b = state.waypoints[1];
+      return {
+        picked: gpsAlertLegIndex,
+        alongLeg0: _gpsTrackProjection(a, b, gpsOwn).alongNm,
+        leg0Len: geo(a, b).dist,
+        toA: geo(gpsOwn, a).dist,
+        toC: geo(gpsOwn, state.waypoints[2]).dist,
+      };
+    });
+    // The number the old code trusted: positive and inside leg 0's length, despite the
+    // aircraft being nowhere near it.
+    expect(out.alongLeg0).toBeGreaterThan(0);
+    expect(out.alongLeg0).toBeLessThan(out.leg0Len);
+    expect(out.toC).toBeLessThan(out.toA);
+    expect(out.picked).toBe(1);
+  });
+
+  test('still picks the leg it is actually flying, by cross-track', async ({ page }) => {
+    await boot(page);
+    await route(page);
+    const picked = await page.evaluate(() => {
+      window.gpsOwn = { lat: 32.075, lng: 34.0, t: Date.now() };   // between BRAVO and CHARLIE
+      gpsSnapLegAlertsToPosition();
+      return gpsAlertLegIndex;
+    });
+    expect(picked).toBe(1);
+  });
+});

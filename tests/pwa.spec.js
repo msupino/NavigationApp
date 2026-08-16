@@ -433,4 +433,45 @@ test.describe('APK self-update (native remote-URL shell)', () => {
     expect(r.did).toBe(false);
     expect(r.reloaded).toBe(false);
   });
+
+  // The track being recorded lives in memory only, and nothing restores a recording on
+  // boot: reloading mid-flight ends the recording and takes every point of it with it.
+  test('never reloads while a track is being recorded, and reloads once it stops', async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      const run = (recording) => {
+        let reloaded = false;
+        const store = { _v: {}, getItem(k) { return this._v[k] || null; }, setItem(k, v) { this._v[k] = v; } };
+        return checkApkForUpdate({
+          buildId: 'aaaaaaa', force: true, recording, storage: store,
+          reload: () => { reloaded = true; },
+          fetch: () => Promise.resolve({ ok: true, text: () => Promise.resolve("const CACHE = 'navaid-bbbbbbb';") }),
+        }).then(did => ({ did, reloaded, marker: store.getItem('navaid.apkReloadedForBuild') }));
+      };
+      return { during: await run(true), after: await run(false) };
+    });
+    expect(r.during.reloaded).toBe(false);
+    expect(r.during.did).toBe(false);
+    // No marker while skipped: stamping it would mean "already reloaded for this build"
+    // and would swallow the update for good once the flight ended.
+    expect(r.during.marker).toBeNull();
+    expect(r.after.reloaded).toBe(true);
+    expect(r.after.marker).toBe('bbbbbbb');
+  });
+
+  test('the live recording flag is what gates it, with no override passed', async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      window.gpsRecording = true;
+      let reloaded = false;
+      const did = await checkApkForUpdate({
+        buildId: 'aaaaaaa', force: true,
+        storage: { getItem: () => null, setItem: () => {} },
+        reload: () => { reloaded = true; },
+        fetch: () => Promise.resolve({ ok: true, text: () => Promise.resolve("const CACHE = 'navaid-bbbbbbb';") }),
+      });
+      window.gpsRecording = false;
+      return { did, reloaded };
+    });
+    expect(r.reloaded).toBe(false);
+    expect(r.did).toBe(false);
+  });
 });

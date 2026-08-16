@@ -6958,6 +6958,15 @@ function checkApkForUpdate(opts) {
       let already = '';
       try { already = (store && store.getItem(APK_RELOADED_FOR_KEY)) || ''; } catch (e) {}
       if (already === live) return false;    // already reloaded for this build — don't loop
+      // Never mid-flight. The track being recorded lives in memory only (gpsTrack), and
+      // nothing restores a recording on boot -- so reloading here ends the recording and
+      // discards every point of it, silently, at the one moment the pilot is relying on it.
+      // The check runs again on the next resume/focus/interval, so the update lands as soon
+      // as the recording stops. Deliberately NOT stamping APK_RELOADED_FOR_KEY: that marker
+      // means "already reloaded for this build", and claiming it here would skip the reload
+      // for good once the flight ended.
+      if (opts.recording !== undefined ? opts.recording
+        : (typeof window !== 'undefined' && window.gpsRecording)) return false;
       try { if (store) store.setItem(APK_RELOADED_FOR_KEY, live); } catch (e) {}
       reload();
       return true;
