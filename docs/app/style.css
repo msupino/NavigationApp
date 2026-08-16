@@ -1045,6 +1045,38 @@ html[dir="rtl"] #toolbar.collapsed {
 
 }
 
+/* Centre crosshair — what the coordinate readout is reading on a touch device, where
+   there is no pointer to be the marker. Hidden wherever a pointer exists. */
+#map-crosshair {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  z-index: 650;             /* over the tiles and the route canvas, under the controls */
+  pointer-events: none;     /* never eats a tap meant for the map */
+}
+/* Two hairlines with a gap in the middle: a solid + would hide the very point it marks. */
+#map-crosshair::before,
+#map-crosshair::after {
+  content: '';
+  position: absolute;
+  background: #231F20;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);   /* readable over dark chart ink */
+}
+#map-crosshair::before { left: 50%; top: 0; width: 1px; height: 34px; margin-left: -0.5px; }
+#map-crosshair::after  { top: 50%; left: 0; height: 1px; width: 34px; margin-top: -0.5px; }
+@media (max-width: 680px), (pointer: coarse) {
+  #map-crosshair { display: block; }
+}
+body.theme-dark #map-crosshair::before,
+body.theme-dark #map-crosshair::after {
+  background: #f2f2f2;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.85);
+}
+
 /* follow lock — sits above the rotation dial, only while a fix is driving the map */
 .follow-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
 .follow-ctrl button {

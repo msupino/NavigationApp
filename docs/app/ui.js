@@ -732,6 +732,23 @@ function showCenterCoord() {
   coordBox.textContent = coordReadoutText(c.lat, c.lng);
   showVorReadout(c.lat, c.lng);
 }
+// --- centre crosshair (touch) ----------------------------------------
+// The readout follows the mouse, and a phone has no mouse: it shows the map CENTRE there,
+// with nothing on screen saying so. A thin crosshair marks the spot the numbers belong to,
+// so panning the map under it reads coordinates the way a chart ruler would. Touch only --
+// with a pointer, the pointer already is the marker.
+function coarsePointerOnly() {
+  return typeof matchMedia === 'function' &&
+    (matchMedia('(pointer: coarse)').matches || matchMedia('(max-width: 680px)').matches);
+}
+const mapCrosshair = document.createElement('div');
+mapCrosshair.id = 'map-crosshair';
+mapCrosshair.setAttribute('aria-hidden', 'true');     // decoration: the readout carries the value
+map.getContainer().appendChild(mapCrosshair);
+// Live while the map moves, not just at moveend: the crosshair is over a different place
+// the whole time a pan is in flight, and numbers that lag it are worse than none.
+if (coarsePointerOnly()) map.on('move', showCenterCoord);
+
 showCenterCoord();
 showZoom();
 map.on('mousemove', e => showCoord(e.latlng));
