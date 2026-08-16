@@ -188,7 +188,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   Backspace doesn't delete.
 - **Waypoints:** circle auto-sized to fit name or sequence number
   (`waypointGeom(i)`). Selection bumps the radius +2 and swaps fill
-  to gold. The `wpSize` slider scales font + circle.
+  to gold. The `wpSize` slider scales font + circle. In the overlap chooser,
+  a named route point and its coincident matching airfield/navigation reference
+  collapse into one route-editable option with the reference kind in its detail
+  line. Named points do not receive a route-position suffix there; unnamed
+  points retain their generated sequence number.
 - **Leg markers (informally "kite"):** aviation pennant — rectangle (altitude / time) +
   heading triangle. Yellow-fill inbound, pink-fill return; draggable
   via the `inLabel` / `outLabel` offsets. **Highlight diff** adds a
