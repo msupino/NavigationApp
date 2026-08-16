@@ -16,14 +16,19 @@ const { test, expect } = require('./_setup');
 // flight-maps.com and OSM are never acceptable, in any mode. Our own copy is acceptable
 // only in the mirror mode the wiki-screenshot job uses (NAVAID_TEST_TILES=mirror), which
 // exists so those pictures show real charts -- from our copy, not theirs.
-const FORBIDDEN_RE = process.env.NAVAID_TEST_TILES === 'mirror'
-  ? /flight-maps\.com|tile\.openstreetmap\.org/
-  : /flight-maps\.com|tile\.openstreetmap\.org|navaid-tiles\.supino\.org/;
+//
+// Matched as a HOST, not as a substring of the URL: `flight-maps.com.example.net` is a
+// different server, and a pattern that matches anywhere in the string would call it this
+// one (CodeQL js/regex/missing-regexp-anchor).
+const FORBIDDEN_HOSTS = ['flight-maps.com', 'tile.openstreetmap.org']
+  .concat(process.env.NAVAID_TEST_TILES === 'mirror' ? [] : ['navaid-tiles.supino.org']);
+const isForbiddenHost = (host) =>
+  FORBIDDEN_HOSTS.some((h) => host === h || host.endsWith('.' + h));
 
 test('booting and zooming the map reaches no tile server', async ({ page }) => {
   const live = [];
   page.on('response', async (r) => {
-    if (!FORBIDDEN_RE.test(new URL(r.url()).hostname)) return;
+    if (!isForbiddenHost(new URL(r.url()).hostname)) return;
     // The fixture stamps what it answers itself; anything without the stamp came off a wire.
     const stub = await r.headerValue('x-navaid-stub-tile').catch(() => null);
     if (!stub) live.push(r.url());
@@ -41,7 +46,7 @@ test('booting and zooming the map reaches no tile server', async ({ page }) => {
 test('every base chart layer is served from inside the harness too', async ({ page }) => {
   const live = [];
   page.on('response', async (r) => {
-    if (!FORBIDDEN_RE.test(new URL(r.url()).hostname)) return;
+    if (!isForbiddenHost(new URL(r.url()).hostname)) return;
     const stub = await r.headerValue('x-navaid-stub-tile').catch(() => null);
     if (!stub) live.push(r.url());
   });
