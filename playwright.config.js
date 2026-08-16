@@ -33,9 +33,14 @@ module.exports = defineConfig({
     // cannot serve pre-#418 interact.js while HTML/core match the new SHA
     // (waitForFunction on window.resetWpName would hang forever).
     // Same for offline subpath sim (`NAVAID_E2E_BLOCK_SW`).
-    ...(process.env.NAVAID_E2E_BLOCK_SW === '1' || process.env.EXPECTED_SHA
-      ? { serviceWorkers: 'block' }
-      : {}),
+    // Service workers are BLOCKED by default. Two reasons, and the second is the load-
+    // bearing one: (a) cache-first serving of a stale build, which is why the deployed-
+    // preview runs already blocked them; (b) a request made from inside a service worker
+    // is NOT visible to page.route, so the fixture's tile interception (tests/_setup.js)
+    // silently missed every chart tile and the suite went on hammering a third party's
+    // server from CI. Specs that are ABOUT the worker opt back in with
+    // `test.use({ serviceWorkers: 'allow' })`.
+    serviceWorkers: 'block',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

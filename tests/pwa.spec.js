@@ -3,6 +3,10 @@
 // icon files, and the meta tags that make the app installable.
 const { test, expect } = require('./_setup');
 
+// This whole file is about the service worker, so it opts out of the suite-wide block
+// (see playwright.config.js).
+test.use({ serviceWorkers: 'allow' });
+
 async function waitForServiceWorkerScriptUrl(page) {
   return page.evaluate(async () => {
     if (!('serviceWorker' in navigator)) return null;
