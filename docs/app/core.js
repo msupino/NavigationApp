@@ -38,6 +38,8 @@ NavAid.tuningDefaults = {
   // Android reports altitude against. ~18 m across the Israel FIR; one number is enough
   // for an area this size, and it is here rather than hardcoded for the day it is not.
   geoidUndulationFt: { value: 59, min: 0, max: 200, step: 1, label: 'Geoid height above ellipsoid (ft)' },
+  // How long a pan or zoom by hand keeps the map, before following the own-ship resumes.
+  followResumeMs: { value: 5000, min: 0, max: 60000, step: 500, label: 'Resume following after (ms)' },
 
   profileClimbFpm: { value: 500, min: 100, max: 3000, step: 50, label: 'Default climb rate (fpm)' },
   profileClimbKt: { value: 75, min: 30, max: 200, step: 1, label: 'Default climb speed (kt)' },
@@ -592,7 +594,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },

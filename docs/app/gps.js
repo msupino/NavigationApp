@@ -216,8 +216,10 @@ function onLivePosition(pos) {
   if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   scheduleDraw();
   if (typeof map !== 'undefined') {
+    // The FIRST fix always centres: there is nothing on screen to preserve yet, and a
+    // pilot who opened the app to find out where they are should be shown.
     if (isFirst) map.setView([p.lat, p.lng], map.getZoom());
-    else if (gpsFollow) map.setView([p.lat, p.lng], map.getZoom());
+    else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
   }
 }
 
@@ -258,6 +260,8 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
+  gpsWatchUserMapMoves();
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
   // blind reset to leg 0 -- this runs on every start, including the auto-resume-after-
   // reload path (below), where the aircraft's real position never went anywhere. A
@@ -320,6 +324,40 @@ function stopLiveLocation() {
 }
 
 var gpsFollow = true;  // recenter on own-ship while recording
+// A pan or zoom by hand is a request to look at something, and the next fix used to undo
+// it: at 1 Hz the map snapped back before the pilot had read anything. Following pauses
+// for a few seconds after the last gesture, then resumes on its own -- no button to
+// remember to press again, which is the failure mode of a manual follow toggle in flight.
+var _gpsUserMovedAt = 0;
+function gpsFollowGraceMs() {
+  return typeof tune === 'function' ? tune('followResumeMs') : 5000;
+}
+// Called from the map's own gesture listeners (wired in gpsWatchUserMapMoves).
+function gpsNoteUserMapMove() { _gpsUserMovedAt = Date.now(); }
+// True while a recent gesture still owns the view.
+function gpsFollowSuspended() {
+  return !!_gpsUserMovedAt && (Date.now() - _gpsUserMovedAt) < gpsFollowGraceMs();
+}
+// Recenter on the own-ship, unless the pilot has just moved the map themselves.
+function gpsFollowRecenter(lat, lng) {
+  if (typeof map === 'undefined' || !map) return false;
+  if (gpsFollowSuspended()) return false;
+  map.setView([lat, lng], map.getZoom());
+  return true;
+}
+// Any gesture that moves the map counts, whatever it is: drag, wheel, pinch, double-tap,
+// the zoom buttons, the keyboard. Listening for the raw input on the container catches all
+// of them, and -- unlike Leaflet's move/zoom events -- cannot mistake our own setView for
+// the pilot's hand.
+function gpsWatchUserMapMoves() {
+  if (typeof map === 'undefined' || !map || typeof map.getContainer !== 'function') return;
+  const el = map.getContainer();
+  if (!el || el.__gpsMoveWatch) return;
+  el.__gpsMoveWatch = true;
+  for (const ev of ['pointerdown', 'touchstart', 'wheel', 'keydown']) {
+    el.addEventListener(ev, gpsNoteUserMapMove, { passive: true, capture: true });
+  }
+}
 var gpsStartT = 0;
 var gpsLastGS = null;   // current ground speed (kt), null if unknown
 var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
@@ -571,7 +609,7 @@ function onGpsPosition(pos) {
   gpsUpdateReadout();
   gpsCheckLegAlerts();
   scheduleDraw();
-  if (gpsFollow && typeof map !== 'undefined') map.setView([pt.lat, pt.lng], map.getZoom());
+  if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
 }
 
 // Reset a footer GPS button's (hidden) label + icon without wiping its icon
@@ -654,6 +692,8 @@ function startGpsRecording() {
   if (gpsRecording) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsRecording = true;
+  _gpsUserMovedAt = 0;
+  gpsWatchUserMapMoves();
   updateGpsRecIndicator();
   gpsTrack = [];
   if (!gpsLiveOn) gpsOwn = null;
