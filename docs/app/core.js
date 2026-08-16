@@ -30,6 +30,14 @@ NavAid.tuning = {};
 NavAid.tuningDefaults = {
   magneticVariationDeg: { value: -5, min: -30, max: 30, step: 0.5, label: 'Magnetic variation (° — negative = E)' },
   msaBufferFt: { value: 1000, min: 0, max: 5000, step: 100, label: 'MSA clearance above terrain (ft)' },
+  // A GNSS fix is a geometric height; a planned altitude is a pressure height. Correcting
+  // the first into the second is what stops an aircraft flying exactly on plan from being
+  // told its altitude is off. Off = compare the raw fix, as before.
+  altimetryCorrection: { value: true, type: 'bool', label: 'Correct GPS altitude to indicated' },
+  // Height of the geoid (mean sea level) above the WGS84 ellipsoid, which is the datum
+  // Android reports altitude against. ~18 m across the Israel FIR; one number is enough
+  // for an area this size, and it is here rather than hardcoded for the day it is not.
+  geoidUndulationFt: { value: 59, min: 0, max: 200, step: 1, label: 'Geoid height above ellipsoid (ft)' },
 
   profileClimbFpm: { value: 500, min: 100, max: 3000, step: 50, label: 'Default climb rate (fpm)' },
   profileClimbKt: { value: 75, min: 30, max: 200, step: 1, label: 'Default climb speed (kt)' },
@@ -584,7 +592,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },

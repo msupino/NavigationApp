@@ -206,10 +206,12 @@ function onLivePosition(pos) {
   }
   gpsLastGS = gsMs != null ? gsMs * 1.94384 : null;             // m/s → kt
   gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null; // m → ft
+  gpsAltIsGeometric = true;
   _gpsLivePrev = { lat: p.lat, lng: p.lng, t };
   // Carry the fix time so everything downstream can tell live from frozen.
   gpsOwn = { lat: p.lat, lng: p.lng, hdg, t };
   gpsNoteFixArrived();
+  gpsRefreshQnh(p.lat, p.lng);
   gpsCheckLegAlerts();
   if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   scheduleDraw();
@@ -321,6 +323,109 @@ var gpsFollow = true;  // recenter on own-ship while recording
 var gpsStartT = 0;
 var gpsLastGS = null;   // current ground speed (kt), null if unknown
 var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
+// Whether gpsLastAlt is a GEOMETRIC height (a GNSS fix) or an altitude a simulator
+// already reports the way an altimeter would. Only the former needs correcting -- running
+// the geoid and temperature terms over a sim's own altitude would invent an error.
+var gpsAltIsGeometric = true;
+
+// --- altimetry: what the altimeter would read ------------------------------------
+// A GPS fix reports a GEOMETRIC height; an altimeter reports a PRESSURE height. Comparing
+// one against a planned altitude produced "altitude off plan" calls on an aircraft flying
+// exactly on plan. Two systematic differences, both correctable:
+//
+//   Geoid.       Android reports height above the WGS84 ELLIPSOID, not mean sea level.
+//                Israel's geoid undulation is ~18 m, so every fix reads ~59 ft high --
+//                a constant, and the FIR is small enough for one number (tunable).
+//   Temperature. An altimeter reads true altitude only in ISA. In warmer air the true
+//                altitude is HIGHER than indicated, by the standard ~4 ft per 1000 ft
+//                per degree of ISA deviation -- ~110 ft at 2000 ft on a 30 degree day,
+//                which alone exceeds the alert tolerance.
+//
+// QNH does not enter the correction (an altimeter set to QNH already reads altitude above
+// MSL); it is fetched because a pilot glancing at the subscale setting beside their
+// altitude gets more out of it than any correction, and shown in inches of mercury.
+var gpsQnh = null;          // { inHg, hPa, tempC, elevFt, lat, lng, at } or null
+var _gpsQnhFetching = false;
+var GPS_QNH_TTL_MS = 15 * 60 * 1000;    // model output updates every 15 min
+var GPS_QNH_MOVE_NM = 25;               // ...or once the aircraft has moved this far
+const HPA_PER_INHG = 33.8639;
+
+function gpsAltimetryOn() {
+  return typeof tune !== 'function' || tune('altimetryCorrection') !== false;
+}
+function gpsGeoidFt() {
+  return typeof tune === 'function' ? tune('geoidUndulationFt') : 59;
+}
+// Pressure as a pilot sets it on the subscale: inches of mercury, two decimals.
+function gpsFormatInHg(inHg) {
+  return Number.isFinite(inHg) ? inHg.toFixed(2) : null;
+}
+// Is the cached reading still good for this position?
+function _gpsQnhFresh(lat, lng) {
+  if (!gpsQnh) return false;
+  if (Date.now() - gpsQnh.at > GPS_QNH_TTL_MS) return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
+  const d = (typeof geo === 'function') ? geo(gpsQnh, { lat, lng }).dist : 0;
+  return !Number.isFinite(d) || d <= GPS_QNH_MOVE_NM;
+}
+// Sea-level pressure and surface temperature for the position, from Open-Meteo (the
+// forecast source this app already uses; no key, and it answers cross-origin). Best
+// effort in every sense: a failure leaves gpsQnh alone, so the correction simply does
+// not run and the readout says nothing about pressure.
+function gpsRefreshQnh(lat, lng, opts) {
+  const o = opts || {};
+  if (!gpsAltimetryOn()) return Promise.resolve(null);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return Promise.resolve(gpsQnh);
+  if (!o.force && _gpsQnhFresh(lat, lng)) return Promise.resolve(gpsQnh);
+  if (_gpsQnhFetching) return Promise.resolve(gpsQnh);
+  const doFetch = o.fetch || ((typeof fetch === 'function') ? fetch : null);
+  if (!doFetch) return Promise.resolve(gpsQnh);
+  _gpsQnhFetching = true;
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(3) +
+    '&longitude=' + lng.toFixed(3) +
+    '&current=pressure_msl,temperature_2m&timezone=UTC';
+  return Promise.resolve(doFetch(url))
+    .then(r => (r && r.ok && typeof r.json === 'function') ? r.json() : null)
+    .then(j => {
+      const cur = j && j.current;
+      const hPa = cur && Number(cur.pressure_msl);
+      if (!Number.isFinite(hPa) || hPa <= 0) return gpsQnh;
+      gpsQnh = {
+        hPa,
+        inHg: hPa / HPA_PER_INHG,
+        tempC: Number.isFinite(Number(cur.temperature_2m)) ? Number(cur.temperature_2m) : null,
+        elevFt: Number.isFinite(Number(j.elevation)) ? Number(j.elevation) * 3.28084 : 0,
+        lat, lng, at: Date.now(),
+      };
+      if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+      return gpsQnh;
+    })
+    .catch(() => gpsQnh)
+    .finally(() => { _gpsQnhFetching = false; });
+}
+// ISA deviation at sea level, from the surface temperature at the station's own elevation.
+function _gpsIsaDeviationC(q) {
+  if (!q || !Number.isFinite(q.tempC)) return null;
+  const elevFt = Number.isFinite(q.elevFt) ? q.elevFt : 0;
+  const isaAtStation = 15 - 1.98 * (elevFt / 1000);
+  return q.tempC - isaAtStation;
+}
+// GPS height -> what the altimeter shows. Returns null when there is nothing to correct.
+function gpsIndicatedAltitudeFt(rawFt, q) {
+  if (!Number.isFinite(rawFt)) return null;
+  if (!gpsAltimetryOn()) return rawFt;
+  const msl = rawFt - gpsGeoidFt();
+  const dev = _gpsIsaDeviationC(q === undefined ? gpsQnh : q);
+  if (dev == null) return msl;              // no temperature: the geoid part still stands
+  // Warm air: true altitude exceeds indicated, so the indicated value is the lower one.
+  return msl - 4 * (msl / 1000) * dev;
+}
+// The altitude every consumer should use: alerts, the readout, anything compared against
+// a planned (pressure) altitude.
+function gpsAltitudeForCompare() {
+  if (gpsLastAlt == null) return null;
+  return gpsAltIsGeometric ? gpsIndicatedAltitudeFt(gpsLastAlt) : gpsLastAlt;
+}
 
 // Live readout next to the toolbar button: points · elapsed · ground speed ·
 // altitude (the last two only when the fix provides them). No-op if absent.
@@ -381,6 +486,14 @@ function gpsReadoutHeading() {
   const r = ((Math.round(mag) % 360) + 360) % 360;
   return ((typeof pad3 === 'function') ? pad3(r) : String(r)) + '\u00b0';
 }
+// Altitude as the altimeter would read it, plus the subscale setting that goes with it.
+// One helper so the recording and live branches cannot drift apart.
+function gpsPushAltitudeParts(parts) {
+  const alt = gpsAltitudeForCompare();
+  if (alt != null) parts.push(Math.round(alt) + ' ft');
+  const inHg = gpsQnh && gpsFormatInHg(gpsQnh.inHg);
+  if (inHg) parts.push(inHg + '\u2033');     // 29.83" -- the subscale setting, not a length
+}
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
@@ -396,7 +509,7 @@ function gpsUpdateReadout() {
     const ss = String(secs % 60).padStart(2, '0');
     const parts = [gpsTrack.length + ' pts · ' + mm + ':' + ss];
     if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
-    if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
+    gpsPushAltitudeParts(parts);
     const hdgRec = gpsReadoutHeading();
     if (hdgRec) parts.push(hdgRec);
     gpsSetReadout(el, parts, gpsStaleText());
@@ -411,8 +524,8 @@ function gpsUpdateReadout() {
   if (liveActive) {
     const parts = [];
     if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
-    if (gpsLastAlt != null) parts.push(Math.round(gpsLastAlt) + ' ft');
-    // Same three fields whether the position comes from the device GPS or a connected
+    gpsPushAltitudeParts(parts);
+    // Same fields whether the position comes from the device GPS or a connected
     // simulator -- both land in gpsOwn, and this branch already serves both.
     const hdgLive = gpsReadoutHeading();
     if (hdgLive) parts.push(hdgLive);
@@ -445,6 +558,7 @@ function onGpsPosition(pos) {
   }
   gpsLastGS = gsMs != null ? gsMs * 1.94384 : null;            // m/s → kt
   gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null;  // m → ft
+  gpsAltIsGeometric = true;
   // heading: device value when moving, else bearing from the previous point.
   // NaN (not 0 -- see onLivePosition's identical fallback for why) when neither
   // is available.
@@ -453,6 +567,7 @@ function onGpsPosition(pos) {
   // Same fix time as the live path: a stalled RECORDING freezes the same symbol.
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t };
   gpsNoteFixArrived();
+  gpsRefreshQnh(pt.lat, pt.lng);
   gpsUpdateReadout();
   gpsCheckLegAlerts();
   scheduleDraw();
@@ -931,10 +1046,15 @@ function gpsSnapLegAlertsToPosition() {
   for (let i = 0; i < n; i++) {
     const a = wps[i], b = wps[i + 1];
     if (!a || !b) continue;
-    const legLen = geo(a, b).dist;
-    const proj = _gpsTrackProjection(a, b, gpsOwn);
-    if (proj && proj.alongNm >= 0 && proj.alongNm <= legLen) {
-      const absCross = Math.abs(proj.crossNm);
+    // The cone test, not an along-track range check: _gpsTrackProjection derives alongNm
+    // through acos, so it is never negative and a position squarely BEHIND the start reads
+    // as that same distance ALONG the leg (3 NM short of A and 3 NM past A are literally
+    // the same number). _gpsLegConeContains measures the two bearings instead and is the
+    // one place that gets this right -- so the snap uses it too, and cross-track distance
+    // is left to do what it is good for: breaking ties between legs that both contain us.
+    if (_gpsLegConeContains(a, b, gpsOwn)) {
+      const proj = _gpsTrackProjection(a, b, gpsOwn);
+      const absCross = proj ? Math.abs(proj.crossNm) : Infinity;
       if (absCross < onTrackCross) { onTrackCross = absCross; onTrack = i; }
     }
     const d = Math.min(geo(gpsOwn, a).dist, geo(gpsOwn, b).dist);
@@ -1232,17 +1352,20 @@ function gpsCheckLegAlerts() {
   // as the leg's planned altitude. One-shot per deviation episode: fires once on the way
   // out past tolerance, clears once back inside it, so a second real drift fires again.
   const planned = legs[gpsAlertLegIndex].inboundAltitude;
-  if (_gpsAlertConfirmed && Number.isFinite(planned) && gpsLastAlt != null) {
-    const off = Math.abs(gpsLastAlt - planned);
+  // The CORRECTED altitude: `planned` is a pressure altitude off the chart, and the raw
+  // fix is a geometric height. See gpsIndicatedAltitudeFt.
+  const flownAlt = gpsAltitudeForCompare();
+  if (_gpsAlertConfirmed && Number.isFinite(planned) && flownAlt != null) {
+    const off = Math.abs(flownAlt - planned);
     if (off >= GPS_ALT_TOLERANCE_FT) {
       if (!_gpsAlertAltDeviated) {
         _gpsAlertAltDeviated = true;
         gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
           (S && S.watchAlertAltBody)
-            ? S.watchAlertAltBody(Math.round(gpsLastAlt), Math.round(planned))
-            : (Math.round(gpsLastAlt) + ' ft, planned ' + Math.round(planned) + ' ft'),
+            ? S.watchAlertAltBody(Math.round(flownAlt), Math.round(planned))
+            : (Math.round(flownAlt) + ' ft, planned ' + Math.round(planned) + ' ft'),
           (S && S.speakAlertAlt)
-            ? S.speakAlertAlt(Math.round(gpsLastAlt), Math.round(planned)) : null);
+            ? S.speakAlertAlt(Math.round(flownAlt), Math.round(planned)) : null);
       }
     } else {
       _gpsAlertAltDeviated = false;

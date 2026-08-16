@@ -49,6 +49,18 @@ function isTileHost(host) {
 // (navaid-tiles.supino.org, the NavigationApp-tiles repo) instead of the stand-in, for the
 // runs that need a picture rather than a passing assertion -- the wiki screenshots. Never
 // from flight-maps.com: whose server it is, is the whole point.
+// The weather feed the altimetry correction reads (sea-level pressure + temperature).
+// Answered here with STANDARD atmosphere: 1013.25 hPa, 15 degrees at sea level, so the
+// temperature term is exactly zero and a test's altitude arithmetic is the geoid alone --
+// deterministic, and no test run touches a public API. Specs that are about the weather
+// (wind, windfield, the assistant) register their own route, which wins by registering
+// later. Same courtesy as the tiles: nobody's server should carry this suite's load.
+const ISA_WEATHER = JSON.stringify({
+  latitude: 32, longitude: 34.9, elevation: 0,
+  current: { time: '2026-01-01T00:00', pressure_msl: 1013.25, temperature_2m: 15,
+    surface_pressure: 1013.25 },
+});
+
 const TILE_MODE = process.env.NAVAID_TEST_TILES || 'stub';
 const MIRROR_BASE = 'https://navaid-tiles.supino.org';
 const MIRROR_HOST = 'navaid-tiles.supino.org';
@@ -95,6 +107,12 @@ exports.test = base.test.extend({
         // makes Leaflet retry and log errors, so the quiet answer is a real (empty) image.
         // Specs that need tile behaviour register their own route, which wins by later
         // registration.
+        if (host === 'api.open-meteo.com') {
+          return route.fulfill({
+            status: 200, contentType: 'application/json', body: ISA_WEATHER,
+            headers: { 'x-navaid-stub-weather': '1' },
+          });
+        }
         if (isTileHost(host)) {
           const mirrored = TILE_MODE === 'mirror' && host !== MIRROR_HOST && mirrorUrlFor(url);
           if (mirrored) return route.continue({ url: mirrored });
