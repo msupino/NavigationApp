@@ -1951,6 +1951,19 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 }
 /* GPS record / show-my-location moved to the footer (near the simulator). */
 #toolbar button.gps-footer-btn[aria-pressed="true"] { color: #6fb0ff; }
+/* The desktop footer is icon-only, so a small colour shift was not enough to
+   tell whether live location or route recording was running in dark mode.
+   Give the latched state a filled, outlined treatment without changing button
+   dimensions (and therefore without making the footer jump). */
+body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] {
+  color: #fff;
+  background: #1d6fe0;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px #8fc2ff;
+}
+body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link-icon {
+  opacity: 1;
+}
 #toolbar button.gps-footer-btn:disabled { opacity: 0.4; cursor: default; }
 #toolbar .footer-gps-readout {
   display: inline; margin: 0; font-size: 11px; opacity: 0.9; color: #8a8484;

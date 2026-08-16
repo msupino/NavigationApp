@@ -552,7 +552,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   recording, plain live location, and the simulator. It remains visible in the
   compact desktop/full-screen toolbar while one of those sources is active;
   when desktop live mode stops it hides again. Mobile keeps its existing text
-  footer behavior. At phone widths, the footer reserves a 44 px simulator-button
+  footer behavior. In dark mode, an active Record or Show location footer button
+  uses a filled blue state with a light outline; `aria-pressed` remains the source
+  of truth for both the visual state and assistive technology. At phone widths,
+  the footer reserves a 44 px simulator-button
   column. It truncates the two GPS labels when Android large-text scaling needs
   the room, which keeps the simulator entry point visible and tappable. The footer
   plane button opens the Simulator panel. Its title
