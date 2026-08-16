@@ -23,16 +23,22 @@ Start a static server:
 python3 -m http.server -d docs 8000 --bind 127.0.0.1
 ```
 
-Run all tests:
+**On a new feature, run only that feature's own tests locally.** CI runs the whole
+suite on every push, sharded across four runners, and finds regressions faster
+than a laptop can — so a local full run mostly buys a twenty-minute wait for an
+answer GitHub is already computing. Write the new spec, prove it fails without
+the change and passes with it, push, and read CI for the rest.
+
+```bash
+BASE_URL=http://127.0.0.1:8000 npx playwright test tests/<the-new-spec>.spec.js
+```
+
+Run the whole suite locally only when there is a reason CI cannot answer: a
+change to the fixture or config every spec loads, a bisect, or an investigation
+where the CI turnaround is the bottleneck.
 
 ```bash
 BASE_URL=http://127.0.0.1:8000 npm test
-```
-
-Run a focused suite:
-
-```bash
-BASE_URL=http://127.0.0.1:8000 npx playwright test tests/bidi-regression.spec.js
 ```
 
 Stop the server before finishing.

@@ -44,6 +44,12 @@ NavAid.tuningDefaults = {
   // while being the one thing read at arm's length in a bumpy cockpit, in sunlight, on a
   // kneeboard. Bigger by default, and tunable from there.
   gpsReadoutFontPx: { value: 16, min: 9, max: 32, step: 1, label: 'GPS readout text (px)' },
+  // The touch crosshair that marks what the coordinate readout is reading.
+  crosshairSizePx: { value: 34, min: 10, max: 120, step: 2, label: 'Centre crosshair size (px)' },
+  crosshairWidthPx: { value: 1, min: 1, max: 6, step: 1, label: 'Centre crosshair line (px)' },
+  crosshairColor: { value: '#231F20', type: 'color', label: 'Centre crosshair colour' },
+  crosshairHaloColor: { value: '#ffffff', type: 'color', label: 'Centre crosshair halo' },
+  crosshairAlpha: { value: 0.85, min: 0.1, max: 1, step: 0.05, label: 'Centre crosshair opacity' },
 
   profileClimbFpm: { value: 500, min: 100, max: 3000, step: 50, label: 'Default climb rate (fpm)' },
   profileClimbKt: { value: 75, min: 30, max: 200, step: 1, label: 'Default climb speed (kt)' },
@@ -601,7 +607,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -1482,6 +1488,8 @@ window.S = Object.assign({
   gotoTitle: 'Click to go to coordinates',
   gotoError: 'Type the digits, or paste a coordinate like 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
+  followLockOn: 'Following your aircraft — tap to leave the map where you put it',
+  followLockOff: 'Map stays where you put it — tap to follow your aircraft',
   expandMenu: 'Expand menu',
   collapseMenu: 'Collapse menu',
   summaryLegs: 'Legs',
