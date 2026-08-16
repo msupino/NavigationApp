@@ -12,11 +12,23 @@ var gpsWakeLock = null;     // Screen Wake Lock sentinel held while recording
 // location) or a connected simulator. interact.js's waypoint-drag handlers check this to
 // freeze the route plan mid-flight -- moving a waypoint out from under an in-progress leg
 // is exactly the edge case that can spuriously fire/miss the leg-approach and TOP alerts
-// (see gpsCheckLegAlerts's own _gpsAlertMinDistNm comment). A plain click/tap still opens
-// the inspector as normal (see the callers: this only gates the MOVE, not the selection) --
-// wanting to see a waypoint's satellite image mid-flight is unaffected.
+// (see gpsCheckLegAlerts's own _gpsAlertMinDistNm comment). This gates the MOVE; whether a
+// tap also opens the inspector is gpsTrackingLive's business, below.
 function gpsMapLocked() {
   return !!(gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn));
+}
+// Airborne on a REAL fix -- recording a track, or just showing the position. Deliberately
+// not the simulator: a sim session is someone at a desk, where opening a waypoint is the
+// point. In the air it is the opposite -- a stray tap while flying used to cover the map
+// with the inspector, which is the one thing a pilot is looking at.
+function gpsTrackingLive() {
+  return !!(gpsRecording || gpsLiveOn);
+}
+// Whether the inspector may open at all right now. The gist can put the old behaviour back
+// (featureInspectorWhileTracking) for anyone who wants a waypoint's details mid-flight.
+function inspectorAllowedNow() {
+  if (!gpsTrackingLive()) return true;
+  return typeof tune === 'function' && tune('featureInspectorWhileTracking') === true;
 }
 
 // Keep the screen awake while recording so the phone doesn't sleep mid-track.
