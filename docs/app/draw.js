@@ -2264,8 +2264,9 @@ function drawNavWaypoints() {
 // reference VOR is highlighted so it is obvious which one feeds the radial/
 // DME readouts. Gated by the "Show VOR stations" toggle.
 // `force` draws the stations regardless of the "Show VOR stations" toggle —
-// used by the PNG export so the exported chart shows the stations whenever it
-// carries VOR info (plan-card Radial/DME columns) even with the toggle off.
+// used by the PNG export so the exported chart shows the stations and their
+// ident/frequency labels whenever it carries VOR info (plan-card Radial/DME
+// columns), even with the toggle off or below the normal label zoom threshold.
 // The VOR station symbol, in one place: ring, four N/E/S/W ticks just outside it, and
 // a filled centre dot. Shared with the map legend's swatch (ui.js paints it into a
 // small canvas) -- the legend used to approximate this in CSS and looked nothing like
@@ -2294,7 +2295,7 @@ function drawVorSymbol(ctx, x, y, r, col, lineWidth, tickLen) {
 function drawVors(force) {
   if ((!showVorStations && !force) || !vors || !vors.length) return;
   const r = tune('vorMarkerRadiusPx');
-  const showLabels = map.getZoom() >= tune('vorLabelMinZoom');
+  const showLabels = !!force || map.getZoom() >= tune('vorLabelMinZoom');
   octx.save();
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
