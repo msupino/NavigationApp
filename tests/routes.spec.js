@@ -473,20 +473,30 @@ test.describe('Point selection chooser', () => {
   test('named route airfield is one chooser option, not an apparent WP sequence point', async ({ page }) => {
     await page.evaluate(async route => {
       await loadAirfields();
+      await loadNavWaypoints();
       state.waypoints = route.waypoints.map(w => ({ ...w }));
+      state.notes = [];
+      state.commChangeSuppressions = [];
       syncLegs();
+      window.showAirfields = true;
+      window.showNavWP = true;
+      window.showCommChange = true;
+      seedCommChangeNotes();
       const routeIndex = state.waypoints.findIndex(w => w.name === 'LLHA');
-      const airfieldIndex = airfields.findIndex(a => a.name === 'LLHA');
-      showPointChoice([
-        { type: 'notam', notam: { id: 'TEST-NOTAM' } },
-        { type: 'wp', index: routeIndex },
-        { type: 'airfield', index: airfieldIndex },
-      ]);
+      // At zoom 7/8 the DAROM frequency-change arrow's hit area reaches LLHA, opening the
+      // overlap chooser. At zoom 9+ LLHA wins directly, which is why the duplicate looked
+      // zoom-dependent in the reported route.
+      map.setView([32.65, 34.98], 8, { animate: false });
+      draw();
+      const p = proj(state.waypoints[routeIndex]);
+      map.fire('mousedown', {
+        containerPoint: L.point(p.x, p.y),
+        latlng: L.latLng(state.waypoints[routeIndex].lat, state.waypoints[routeIndex].lng),
+      });
     }, ROUTE);
 
     const chooser = page.locator('.point-choice-modal');
     await expect(chooser).toBeVisible();
-    await expect(chooser.locator('.point-choice-option')).toHaveCount(2);
     const llha = chooser.locator('.point-choice-option').filter({ hasText: 'LLHA' });
     await expect(llha).toHaveCount(1);
     await expect(llha.locator('.point-choice-primary')).toHaveText('LLHA');
