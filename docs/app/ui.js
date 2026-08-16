@@ -367,6 +367,8 @@ function applyTuningCssVars() {
   const root = document.documentElement.style;
   const px = (cssVar, key) => root.setProperty(cssVar, tune(key) + 'px');
   px('--navaid-inspector-default-top', 'inspectorDefaultTopPx');
+  // Speed / altitude / heading: cockpit data, read at arm's length.
+  px('--navaid-gps-readout-font', 'gpsReadoutFontPx');
   root.setProperty('--navaid-inspector-max-height-offset',
     (tune('inspectorDefaultTopPx') + tune('inspectorBottomGapPx')) + 'px');
 
