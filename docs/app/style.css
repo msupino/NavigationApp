@@ -1052,9 +1052,12 @@ html[dir="rtl"] #toolbar.collapsed {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 34px;
-  height: 34px;
-  margin: -17px 0 0 -17px;
+  /* Size, thickness and both colours come from the tuning gist (crosshair* keys) so the
+     mark can be dialled in against whichever chart it has to stay visible over. The
+     literals here are the same defaults, for a boot before applyTuningCssVars runs. */
+  width: var(--navaid-crosshair-size, 34px);
+  height: var(--navaid-crosshair-size, 34px);
+  margin: var(--navaid-crosshair-offset, -17px) 0 0 var(--navaid-crosshair-offset, -17px);
   z-index: 650;             /* over the tiles and the route canvas, under the controls */
   pointer-events: none;     /* never eats a tap meant for the map */
 }
@@ -1063,11 +1066,24 @@ html[dir="rtl"] #toolbar.collapsed {
 #map-crosshair::after {
   content: '';
   position: absolute;
-  background: #231F20;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);   /* readable over dark chart ink */
+  background: var(--navaid-crosshair-color, #231F20);
+  /* Halo, so a dark line stays readable over dark chart ink and vice versa. */
+  box-shadow: 0 0 0 1px var(--navaid-crosshair-halo, rgba(255, 255, 255, 0.85));
 }
-#map-crosshair::before { left: 50%; top: 0; width: 1px; height: 34px; margin-left: -0.5px; }
-#map-crosshair::after  { top: 50%; left: 0; height: 1px; width: 34px; margin-top: -0.5px; }
+#map-crosshair::before {
+  left: 50%;
+  top: 0;
+  width: var(--navaid-crosshair-line, 1px);
+  height: var(--navaid-crosshair-size, 34px);
+  margin-left: var(--navaid-crosshair-nudge, -0.5px);
+}
+#map-crosshair::after {
+  top: 50%;
+  left: 0;
+  height: var(--navaid-crosshair-line, 1px);
+  width: var(--navaid-crosshair-size, 34px);
+  margin-top: var(--navaid-crosshair-nudge, -0.5px);
+}
 @media (max-width: 680px), (pointer: coarse) {
   #map-crosshair { display: block; }
 }

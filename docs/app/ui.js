@@ -411,6 +411,15 @@ function applyTuningCssVars() {
   px('--navaid-inspector-default-top', 'inspectorDefaultTopPx');
   // Speed / altitude / heading: cockpit data, read at arm's length.
   px('--navaid-gps-readout-font', 'gpsReadoutFontPx');
+  // Centre crosshair (touch): size, line thickness and both colours, so it can be dialled
+  // in against whichever chart it has to stay visible over.
+  px('--navaid-crosshair-size', 'crosshairSizePx');
+  px('--navaid-crosshair-line', 'crosshairWidthPx');
+  root.setProperty('--navaid-crosshair-color', tune('crosshairColor'));
+  root.setProperty('--navaid-crosshair-halo',
+    cssRgba(tune('crosshairHaloColor'), tune('crosshairAlpha')));
+  root.setProperty('--navaid-crosshair-offset', (-tune('crosshairSizePx') / 2) + 'px');
+  root.setProperty('--navaid-crosshair-nudge', (-tune('crosshairWidthPx') / 2) + 'px');
   root.setProperty('--navaid-inspector-max-height-offset',
     (tune('inspectorDefaultTopPx') + tune('inspectorBottomGapPx')) + 'px');
 

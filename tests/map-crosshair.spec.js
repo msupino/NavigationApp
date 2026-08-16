@@ -61,6 +61,42 @@ test('it never swallows a tap meant for the map', async ({ page }) => {
   expect(passesThrough.hitIsCrosshair).toBe(false);
 });
 
+test('its size, thickness and colours come from the tuning gist', async ({ page }) => {
+  await boot(page, PHONE);
+  const before = await page.evaluate(() => {
+    const b = document.getElementById('map-crosshair').getBoundingClientRect();
+    return { w: Math.round(b.width), h: Math.round(b.height) };
+  });
+  expect(before.w).toBe(await page.evaluate(() => tune('crosshairSizePx')));
+  const after = await page.evaluate(() => {
+    setTune('crosshairSizePx', 80);
+    setTune('crosshairWidthPx', 4);
+    setTune('crosshairColor', '#ff0000');
+    applyTuningCssVars();
+    const el = document.getElementById('map-crosshair');
+    const b = el.getBoundingClientRect();
+    const arm = getComputedStyle(el, '::before');
+    const m = map.getContainer().getBoundingClientRect();
+    return {
+      w: Math.round(b.width), h: Math.round(b.height),
+      line: arm.width, colour: arm.backgroundColor,
+      // Still centred after the resize -- the offset has to track the size.
+      dx: Math.abs((b.left + b.width / 2) - (m.left + m.width / 2)),
+      dy: Math.abs((b.top + b.height / 2) - (m.top + m.height / 2)),
+    };
+  });
+  expect(after.w).toBe(80);
+  expect(after.h).toBe(80);
+  expect(after.line).toBe('4px');
+  expect(after.colour).toBe('rgb(255, 0, 0)');
+  expect(after.dx).toBeLessThanOrEqual(1);
+  expect(after.dy).toBeLessThanOrEqual(1);
+  await page.evaluate(() => {
+    setTune('crosshairSizePx', 34); setTune('crosshairWidthPx', 1); setTune('crosshairColor', '#231F20');
+    applyTuningCssVars();
+  });
+});
+
 test('with a real pointer there is no crosshair — the pointer is the marker', async ({ page }) => {
   await boot(page, DESKTOP);
   expect(await shown(page)).toBe(false);
