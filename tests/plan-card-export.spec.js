@@ -112,6 +112,36 @@ test('hidden-direction VOR references do not add VOR content to the export', asy
   expect(hasVor).toEqual({ outbound: false, back: true });
 });
 
+test('forced print VOR rendering includes ident and frequency below the screen zoom threshold', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    await loadVors();
+    const station = vors.find(v => v.ident === 'BGN') || vors[0];
+    vorRef = station.ident;
+    state.selected = null;
+    inspectorVorRef = null;
+    map.setZoom(Math.max(map.getMinZoom(), tune('vorLabelMinZoom') - 1), { animate: false });
+    const render = force => {
+      const labels = [];
+      const original = octx.fillText;
+      octx.fillText = text => { labels.push(String(text)); };
+      try { drawVors(force); } finally { octx.fillText = original; }
+      return labels;
+    };
+    const freq = vorEffectiveFreq(station);
+    return {
+      zoom: map.getZoom(),
+      threshold: tune('vorLabelMinZoom'),
+      freq,
+      screenLabels: render(false),
+      printLabels: render(true),
+    };
+  });
+  expect(result.zoom).toBeLessThan(result.threshold);
+  expect(result.screenLabels.some(label => label.includes(result.freq))).toBe(false);
+  expect(result.printLabels.some(label => label.includes(result.freq))).toBe(true);
+});
+
 test('printed procedure legs suppress direction together with leg time', async ({ page }) => {
   await boot(page);
   const rendered = await page.evaluate(() => {
