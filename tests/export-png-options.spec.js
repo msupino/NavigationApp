@@ -75,6 +75,31 @@ test.describe('Export PNG options modal', () => {
     await expect(page.locator('.modal-back')).toHaveCount(0);
   });
 
+  test('repeated Hebrew Print activation keeps one dialog with stable plan and VOR text', async ({ page }) => {
+    await boot(page, 'he');
+    await page.evaluate(wps => {
+      state.waypoints = wps;
+      syncLegs();
+      draw();
+      showExportModal();
+      showExportModal();
+      showExportModal();
+    }, pairLLHZ_LLHA());
+
+    await expect(page.locator('.modal-back.export-options')).toHaveCount(1);
+    await expect(page.locator('#export-plan-cb')).toHaveCount(1);
+    const expected = await page.evaluate(() => ({
+      plan: S.exportPlanPlace,
+      vor: (S.fpVorLabel || 'VOR') + ':',
+    }));
+    await expect(page.locator('#export-plan-cb-label')).toHaveText(expected.plan);
+
+    await page.locator('#export-plan-cb').check();
+    const vorRow = page.locator('#export-vor-select').locator('..');
+    await expect(vorRow).toBeVisible();
+    await expect(vorRow.locator('span')).toHaveText(expected.vor);
+  });
+
   test('opening print/export preserves the route drift-line choices', async ({ page }) => {
     await boot(page);
     await page.evaluate(wps => {
