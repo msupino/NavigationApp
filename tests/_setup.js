@@ -22,6 +22,43 @@ const GA_HOSTS = [
 
 const EXPECTED_SHA = process.env.EXPECTED_SHA;
 
+// A 1x1 transparent PNG, served in place of every real map tile. Nothing in the suite
+// asserts on tile PIXELS -- specs check which URL a layer builds, not what comes back --
+// so a stand-in costs the tests nothing.
+const TRANSPARENT_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+  'base64'
+);
+// Tile hosts the suite must never actually hit. flight-maps.com is a third party's
+// server: the charts are theirs, served as a courtesy, and 2000+ tests each booting the
+// map into ~24 live tiles turned every CI run into tens of thousands of requests from a
+// GitHub runner -- reported by its owner as millions over three months from
+// "127.0.0.1:8000 in the US", which is exactly what this suite looks like from outside.
+// OpenStreetMap's tile policy says the same thing about automated bulk use, and
+// navaid-tiles.supino.org is only the CORS mirror of the same charts. None of them are
+// under test here; the app's own behaviour is.
+const TILE_HOSTS = [
+  'flight-maps.com',
+  'navaid-tiles.supino.org',
+  'tile.openstreetmap.org',
+];
+function isTileHost(host) {
+  return TILE_HOSTS.some(h => host === h || host.endsWith('.' + h));
+}
+// NAVAID_TEST_TILES=mirror serves real chart imagery from OUR OWN copy
+// (navaid-tiles.supino.org, the NavigationApp-tiles repo) instead of the stand-in, for the
+// runs that need a picture rather than a passing assertion -- the wiki screenshots. Never
+// from flight-maps.com: whose server it is, is the whole point.
+const TILE_MODE = process.env.NAVAID_TEST_TILES || 'stub';
+const MIRROR_BASE = 'https://navaid-tiles.supino.org';
+const MIRROR_HOST = 'navaid-tiles.supino.org';
+const MIRROR_DIR = { cvfr: 'CVFR', nav: 'Israel-Navigation', la: 'LSA-Low-Altitude', 'il-hel': 'Israel-Helicopters' };
+// https://flight-maps.com/tiles/<kind>/z/x/y.png -> the same tile in our copy.
+function mirrorUrlFor(url) {
+  const m = /\/tiles\/(cvfr|nav|la|il-hel)\/(\d+)\/(\d+)\/(\d+)\.png/.exec(url);
+  return m ? MIRROR_BASE + '/' + MIRROR_DIR[m[1]] + '/' + m[2] + '/' + m[3] + '/' + m[4] + '.png' : null;
+}
+
 exports.test = base.test.extend({
   page: async ({ page }, use) => {
     // 1. Network-level: every Google Analytics / GTM request aborts before it
@@ -53,6 +90,20 @@ exports.test = base.test.extend({
         if (host === 'raw.githubusercontent.com' &&
             /(?:\/notam-data\/|\/notam\.json)$/.test(new URL(url).pathname)) {
           return route.abort();
+        }
+        // Map tiles never leave the harness -- fulfilled, not aborted: an aborted tile
+        // makes Leaflet retry and log errors, so the quiet answer is a real (empty) image.
+        // Specs that need tile behaviour register their own route, which wins by later
+        // registration.
+        if (isTileHost(host)) {
+          const mirrored = TILE_MODE === 'mirror' && host !== MIRROR_HOST && mirrorUrlFor(url);
+          if (mirrored) return route.continue({ url: mirrored });
+          if (host === MIRROR_HOST && TILE_MODE === 'mirror') return route.continue();
+          // The marker header is how a test can prove nothing left the machine.
+          return route.fulfill({
+            status: 200, contentType: 'image/png', body: TRANSPARENT_PNG,
+            headers: { 'x-navaid-stub-tile': '1' },
+          });
         }
       } catch (e) { /* relative URLs etc. */ }
       return route.continue();
