@@ -135,7 +135,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   selected date/time; a deliberate PWX level change may select a time published
   by that level.
 - **State:**
-  - `state.waypoints[i]` = `{lat, lng, name}` (name optional).
+  - `state.waypoints[i]` = `{lat, lng, name, hotspot?}` (name optional).
+    Route waypoint `HADRA` is highlighted as a hotspot by default. The route-waypoint
+    inspector toggle stores an explicit `hotspot` boolean, so a pilot can enable any
+    waypoint or disable a default hotspot. Explicit overrides persist in saved routes,
+    route files, and share links. Standalone reference waypoints remain read-only.
   - `state.legs[i]` = `{inboundAltitude, outboundAltitude, flightSpeed,
     inLabel, outLabel, hideDrift?, showDrift?}`. `inLabel` / `outLabel` are `{a, p}` offsets
     (along-leg / perpendicular, screen px) so markers can be dragged
@@ -548,7 +552,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   recording, plain live location, and the simulator. It remains visible in the
   compact desktop/full-screen toolbar while one of those sources is active;
   when desktop live mode stops it hides again. Mobile keeps its existing text
-  footer behavior. At phone widths, the footer reserves a 44 px simulator-button
+  footer behavior. In dark mode, an active Record or Show location footer button
+  uses a filled blue state with a light outline; `aria-pressed` remains the source
+  of truth for both the visual state and assistive technology. At phone widths,
+  the footer reserves a 44 px simulator-button
   column. It truncates the two GPS labels when Android large-text scaling needs
   the room, which keeps the simulator entry point visible and tappable. The footer
   plane button opens the Simulator panel. Its title

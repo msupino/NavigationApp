@@ -362,6 +362,42 @@ test('toolbar GPS button toggles recording and updates its label', async ({ page
   await expect(btn).toContainText('Start recording');
 });
 
+test('dark mode clearly fills active live-location and recording controls', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('navaid.theme', 'dark');
+    navigator.geolocation.watchPosition = () => 41;
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => document.body.classList.contains('theme-dark') &&
+    typeof startGpsRecording === 'function');
+  const live = page.locator('#gps-live');
+  const record = page.locator('#gps-record');
+  const style = id => page.evaluate(buttonId => {
+    const cs = getComputedStyle(document.getElementById(buttonId));
+    return { background: cs.backgroundColor, color: cs.color, shadow: cs.boxShadow };
+  }, id);
+
+  const liveOff = await style('gps-live');
+  await live.click();
+  await expect(live).toHaveAttribute('aria-pressed', 'true');
+  const liveOn = await style('gps-live');
+  expect(liveOn.background).toBe('rgb(29, 111, 224)');
+  expect(liveOn.color).toBe('rgb(255, 255, 255)');
+  expect(liveOn.shadow).not.toBe('none');
+  expect(liveOn.background).not.toBe(liveOff.background);
+  await live.click();
+
+  const recordOff = await style('gps-record');
+  await record.click();
+  await expect(record).toHaveAttribute('aria-pressed', 'true');
+  const recordOn = await style('gps-record');
+  expect(recordOn.background).toBe('rgb(29, 111, 224)');
+  expect(recordOn.color).toBe('rgb(255, 255, 255)');
+  expect(recordOn.shadow).not.toBe('none');
+  expect(recordOn.background).not.toBe(recordOff.background);
+});
+
 test('saving a GPS track does not mutate the currently-loaded routes legs', async ({ page }) => {
   await page.addInitScript(() => {
     window.__geoCb = null;

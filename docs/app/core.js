@@ -193,6 +193,10 @@ NavAid.tuningDefaults = {
   waypointSelectedRadiusAddPx: { value: 2, min: 0, max: 20, step: 0.5, label: 'Selected waypoint radius add' },
   waypointStrokeWidthPx: { value: 1, min: 0.25, max: 10, step: 0.25, label: 'Waypoint stroke width' },
   waypointFillColor: { value: '#fff6aa', type: 'color', label: 'Waypoint fill color' },
+  waypointHotspotFillColor: { value: '#ffd166', type: 'color', label: 'Hotspot waypoint fill' },
+  waypointHotspotRingColor: { value: '#d7263d', type: 'color', label: 'Hotspot waypoint ring' },
+  waypointHotspotRingWidthPx: { value: 3, min: 1, max: 10, step: 0.5, label: 'Hotspot ring width' },
+  waypointHotspotRingGapPx: { value: 3, min: 0, max: 12, step: 0.5, label: 'Hotspot ring gap' },
 
   airfieldMarkerRadiusPx: { value: 7, min: 2, max: 40, step: 1, label: 'Airfield triangle radius' },
   airfieldMarkerWidthFactor: { value: 0.95, min: 0.1, max: 2, step: 0.05, label: 'Airfield triangle width factor' },
@@ -611,7 +615,7 @@ NavAid.tuningGroups = [
   { name: 'Cumulative kites', keys: ['cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintHeightMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
-  { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor'] },
+  { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor', 'waypointHotspotFillColor', 'waypointHotspotRingColor', 'waypointHotspotRingWidthPx', 'waypointHotspotRingGapPx'] },
   { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldMarkerWidthFactor', 'airfieldMarkerBaseFactor', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldOutlineColor'] },
   { name: 'Nav waypoints', keys: ['navWaypointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
@@ -968,6 +972,9 @@ window.S = Object.assign({
       need + ' layer, load the route, then change layer after if required.';
   },
   deleteWp: '🗑 Delete waypoint (D)',                  // inspector button
+  inspHotspotSet: '🔥 Mark as hotspot',
+  inspHotspotClear: '🔥 Clear hotspot',
+  inspHotspotTitle: 'Highlight this route waypoint as a hotspot on the map',
   resetWpName: '↻ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
   resetWpNameTitle: 'Set name to the nearest reference (airfield / nav-WP), or clear when off-grid (dimmed sequence label)',
   tbResetAllWpNames: '↻ Reset all waypoint names',
