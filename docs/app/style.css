@@ -1045,6 +1045,23 @@ html[dir="rtl"] #toolbar.collapsed {
 
 }
 
+/* follow lock — sits above the rotation dial, only while a fix is driving the map */
+.follow-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
+.follow-ctrl button {
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid #9a9a9a;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+}
+/* Following is the state that changes the map under you, so it is the one that reads as
+   engaged rather than the one that reads as normal. */
+.follow-ctrl button.follow-on { background: #d8f0d8; border-color: #4a8a4a; }
+
 /* rotate dial — Google-Maps-style compass needle by the zoom buttons */
 .rotate-ctrl {
   display: flex;

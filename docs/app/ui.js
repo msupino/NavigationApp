@@ -262,6 +262,42 @@ function reloadLayerDatasets() {
   });
 }
 
+// --- follow lock — a map control next to the rotation dial -----------
+// A standing choice, not a per-fix one: ON keeps the aircraft centred (after the pan/zoom
+// grace, see followResumeMs), OFF leaves the map where the pilot put it. It only appears
+// while a real fix is driving the own-ship -- with nothing to follow it would be a switch
+// for nothing.
+const followCtrl = L.control({ position: 'bottomright' });
+followCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control follow-ctrl');
+  wrap.innerHTML = '<button id="follow-lock" type="button" aria-pressed="true"></button>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+followCtrl.addTo(map);
+const followBtn = document.getElementById('follow-lock');
+// Shown only while tracking, and only in step with the switch itself: one function owns
+// both, so the icon can never say one thing while the map does another.
+function refreshGpsFollowControl() {
+  const wrap = followBtn && followBtn.parentNode;
+  if (!wrap) return;
+  const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
+  wrap.style.display = tracking ? '' : 'none';
+  const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
+  followBtn.textContent = on ? '🔒' : '🔓';
+  followBtn.classList.toggle('follow-on', on);
+  followBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const label = on ? (S.followLockOn || 'Following the aircraft — tap to leave the map put')
+                   : (S.followLockOff || 'Map stays put — tap to follow the aircraft');
+  followBtn.title = label;
+  followBtn.setAttribute('aria-label', label);
+}
+followBtn.onclick = () => {
+  if (typeof gpsSetFollow === 'function') gpsSetFollow(!gpsFollow);
+};
+refreshGpsFollowControl();
+
 // --- rotate dial — a map control next to the zoom buttons -----------
 const rotateCtrl = L.control({ position: 'bottomright' });
 rotateCtrl.onAdd = function () {

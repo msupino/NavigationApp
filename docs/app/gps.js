@@ -228,9 +228,10 @@ function onLivePosition(pos) {
   if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   scheduleDraw();
   if (typeof map !== 'undefined') {
-    // The FIRST fix always centres: there is nothing on screen to preserve yet, and a
-    // pilot who opened the app to find out where they are should be shown.
-    if (isFirst) map.setView([p.lat, p.lng], map.getZoom());
+    // The FIRST fix centres: there is nothing on screen to preserve yet, and a pilot who
+    // opened the app to find out where they are should be shown -- unless they have
+    // switched following off, which is a standing instruction, not a per-fix one.
+    if (isFirst && gpsFollow) map.setView([p.lat, p.lng], map.getZoom());
     else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
   }
 }
@@ -272,6 +273,7 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
   gpsWatchUserMapMoves();
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
@@ -325,6 +327,7 @@ function stopLiveLocation() {
   gpsStopWatch(gpsLiveWatchId);
   gpsLiveWatchId = null;
   gpsLiveOn = false;
+  if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
@@ -335,7 +338,24 @@ function stopLiveLocation() {
   scheduleDraw();
 }
 
-var gpsFollow = true;  // recenter on own-ship while recording
+// Whether the map follows the own-ship at all. The pilot's own switch, on the map beside
+// the rotation dial (see gpsFollowControl in ui.js) -- ON keeps the aircraft centred (after
+// the pan/zoom grace below), OFF leaves the map exactly where it was put. Remembered per
+// device: which one you want depends on how the phone is mounted, not on the route.
+var gpsFollow = true;
+const GPS_FOLLOW_KEY = 'navaid.gpsFollow';
+try {
+  const stored = localStorage.getItem(GPS_FOLLOW_KEY);
+  if (stored !== null) gpsFollow = stored === '1';
+} catch (e) { /* storage unavailable: the default stands */ }
+function gpsSetFollow(on) {
+  gpsFollow = !!on;
+  try { localStorage.setItem(GPS_FOLLOW_KEY, gpsFollow ? '1' : '0'); } catch (e) { /* */ }
+  // Turning it back on should act now rather than at the next fix -- and the pan that
+  // preceded the tap must not hold the map hostage for its grace period either.
+  if (gpsFollow && gpsOwn) { _gpsUserMovedAt = 0; gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng); }
+  if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+}
 // A pan or zoom by hand is a request to look at something, and the next fix used to undo
 // it: at 1 Hz the map snapped back before the pilot had read anything. Following pauses
 // for a few seconds after the last gesture, then resumes on its own -- no button to
@@ -686,6 +706,8 @@ function onGpsLiveError(err) {
 // start / stop / error paths consistent.
 function updateGpsRecIndicator() {
   if (typeof document === 'undefined') return;
+  // The follow switch lives or dies with tracking; this runs on every start and stop.
+  if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   const el = document.getElementById('gps-rec-indicator');
   if (el) el.hidden = !gpsRecording;
   const btn = document.getElementById('gps-record');
