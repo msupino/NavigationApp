@@ -2431,6 +2431,17 @@ function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
   const body = document.getElementById('insp-body');
+  // Not while the aircraft is being tracked: the panel covers the map, and in flight the
+  // map is what the pilot is reading. The selection is dropped with it, so nothing is left
+  // highlighted with no panel to explain it. See inspectorAllowedNow (gps.js).
+  if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow()) {
+    state.selected = null;
+    insp.classList.add('hidden');
+    if (typeof resetInspectorVorRef === 'function') resetInspectorVorRef();
+    if (typeof clearStoredInspectorSelection === 'function') clearStoredInspectorSelection();
+    if (typeof scheduleDraw === 'function') scheduleDraw();
+    return;
+  }
   body.innerHTML = '';
   title.classList.remove('editable');
   title.dir = 'auto';

@@ -12,11 +12,23 @@ var gpsWakeLock = null;     // Screen Wake Lock sentinel held while recording
 // location) or a connected simulator. interact.js's waypoint-drag handlers check this to
 // freeze the route plan mid-flight -- moving a waypoint out from under an in-progress leg
 // is exactly the edge case that can spuriously fire/miss the leg-approach and TOP alerts
-// (see gpsCheckLegAlerts's own _gpsAlertMinDistNm comment). A plain click/tap still opens
-// the inspector as normal (see the callers: this only gates the MOVE, not the selection) --
-// wanting to see a waypoint's satellite image mid-flight is unaffected.
+// (see gpsCheckLegAlerts's own _gpsAlertMinDistNm comment). This gates the MOVE; whether a
+// tap also opens the inspector is gpsTrackingLive's business, below.
 function gpsMapLocked() {
   return !!(gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn));
+}
+// Airborne on a REAL fix -- recording a track, or just showing the position. Deliberately
+// not the simulator: a sim session is someone at a desk, where opening a waypoint is the
+// point. In the air it is the opposite -- a stray tap while flying used to cover the map
+// with the inspector, which is the one thing a pilot is looking at.
+function gpsTrackingLive() {
+  return !!(gpsRecording || gpsLiveOn);
+}
+// Whether the inspector may open at all right now. The gist can put the old behaviour back
+// (featureInspectorWhileTracking) for anyone who wants a waypoint's details mid-flight.
+function inspectorAllowedNow() {
+  if (!gpsTrackingLive()) return true;
+  return typeof tune === 'function' && tune('featureInspectorWhileTracking') === true;
 }
 
 // Keep the screen awake while recording so the phone doesn't sleep mid-track.
@@ -216,8 +228,10 @@ function onLivePosition(pos) {
   if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   scheduleDraw();
   if (typeof map !== 'undefined') {
+    // The FIRST fix always centres: there is nothing on screen to preserve yet, and a
+    // pilot who opened the app to find out where they are should be shown.
     if (isFirst) map.setView([p.lat, p.lng], map.getZoom());
-    else if (gpsFollow) map.setView([p.lat, p.lng], map.getZoom());
+    else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
   }
 }
 
@@ -258,6 +272,8 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
+  gpsWatchUserMapMoves();
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
   // blind reset to leg 0 -- this runs on every start, including the auto-resume-after-
   // reload path (below), where the aircraft's real position never went anywhere. A
@@ -320,6 +336,40 @@ function stopLiveLocation() {
 }
 
 var gpsFollow = true;  // recenter on own-ship while recording
+// A pan or zoom by hand is a request to look at something, and the next fix used to undo
+// it: at 1 Hz the map snapped back before the pilot had read anything. Following pauses
+// for a few seconds after the last gesture, then resumes on its own -- no button to
+// remember to press again, which is the failure mode of a manual follow toggle in flight.
+var _gpsUserMovedAt = 0;
+function gpsFollowGraceMs() {
+  return typeof tune === 'function' ? tune('followResumeMs') : 5000;
+}
+// Called from the map's own gesture listeners (wired in gpsWatchUserMapMoves).
+function gpsNoteUserMapMove() { _gpsUserMovedAt = Date.now(); }
+// True while a recent gesture still owns the view.
+function gpsFollowSuspended() {
+  return !!_gpsUserMovedAt && (Date.now() - _gpsUserMovedAt) < gpsFollowGraceMs();
+}
+// Recenter on the own-ship, unless the pilot has just moved the map themselves.
+function gpsFollowRecenter(lat, lng) {
+  if (typeof map === 'undefined' || !map) return false;
+  if (gpsFollowSuspended()) return false;
+  map.setView([lat, lng], map.getZoom());
+  return true;
+}
+// Any gesture that moves the map counts, whatever it is: drag, wheel, pinch, double-tap,
+// the zoom buttons, the keyboard. Listening for the raw input on the container catches all
+// of them, and -- unlike Leaflet's move/zoom events -- cannot mistake our own setView for
+// the pilot's hand.
+function gpsWatchUserMapMoves() {
+  if (typeof map === 'undefined' || !map || typeof map.getContainer !== 'function') return;
+  const el = map.getContainer();
+  if (!el || el.__gpsMoveWatch) return;
+  el.__gpsMoveWatch = true;
+  for (const ev of ['pointerdown', 'touchstart', 'wheel', 'keydown']) {
+    el.addEventListener(ev, gpsNoteUserMapMove, { passive: true, capture: true });
+  }
+}
 var gpsStartT = 0;
 var gpsLastGS = null;   // current ground speed (kt), null if unknown
 var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
@@ -571,7 +621,7 @@ function onGpsPosition(pos) {
   gpsUpdateReadout();
   gpsCheckLegAlerts();
   scheduleDraw();
-  if (gpsFollow && typeof map !== 'undefined') map.setView([pt.lat, pt.lng], map.getZoom());
+  if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
 }
 
 // Reset a footer GPS button's (hidden) label + icon without wiping its icon
@@ -654,6 +704,8 @@ function startGpsRecording() {
   if (gpsRecording) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsRecording = true;
+  _gpsUserMovedAt = 0;
+  gpsWatchUserMapMoves();
   updateGpsRecIndicator();
   gpsTrack = [];
   if (!gpsLiveOn) gpsOwn = null;
