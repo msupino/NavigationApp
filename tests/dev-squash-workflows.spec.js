@@ -20,49 +20,36 @@ test.describe('dev workflow guards', () => {
     // nobody had written. The flags are chosen per PR now; see the two guards below.
     expect(yml).toContain('--auto $METHOD $DELETE');
     expect(yml).toContain('METHOD=--squash');
-    expect(yml).toMatch(/main\|dev\|automation\/sync-main-into-dev-\*\) METHOD=--merge/);
+    expect(yml).toMatch(/main\|dev\) METHOD=--merge/);
     expect(yml).toMatch(/case "\$BASE" in main\) METHOD=--merge/);
   });
 
-  // This guard used to assert the opposite -- that the sync was a SQUASH -- because the
-  // aim was one tidy commit per integration on dev. That cost more than it bought: a
-  // squash copies main's tree into dev but not its ancestry, so `main` never became an
-  // ancestor of `dev`, and CI's own "Check PR is rebased" step (a literal
-  // `git merge-base --is-ancestor`) fails on every dev->main promotion PR. It stayed
-  // invisible only because a promotion PR's workflow runs sit in `action_required` and
-  // never execute; the green lint on past promos came from the push-triggered run, which
-  // has no rebase check. See #1560.
-  test('Auto PR dev to main MERGES main into dev, preserving ancestry', () => {
+  test('Auto PR promotes dev directly without a bot-authored back-merge PR', () => {
     const yml = workflow('auto-pr-dev-to-main.yml');
-    expect(yml).toContain('git merge --no-ff main');
-    expect(yml).toContain('Merge main into dev (auto-sync before promotion PR)');
-    // A squash here is the bug this guard now exists to prevent.
-    expect(yml).not.toContain('git merge --squash main');
-    // No "skip when the tree is unchanged" shortcut: after a promotion, main's merge
-    // commit usually brings dev no new files -- dev is where the content came from -- and
-    // that is exactly the case that must still be recorded, or the ancestry is lost again.
-    expect(yml).not.toContain('main introduced no tree changes for dev');
+    expect(yml).not.toContain('pull_request:');
+    expect(yml).toContain("github.actor != 'github-actions[bot]'");
+    expect(yml).not.toContain('git merge --no-ff main');
+    expect(yml).not.toContain('SYNC_BRANCH=');
+    expect(yml).not.toContain('--base dev');
+    expect(yml).toContain('--base main');
+    expect(yml).toContain('--head dev');
+    expect(yml).toContain('compare/main...dev');
   });
 
-  test('Auto PR syncs protected dev through a checked auto-merge PR', () => {
+  test('Auto PR explicitly checks and auto-merges the direct promotion PR', () => {
     const yml = workflow('auto-pr-dev-to-main.yml');
-    // `dev` is protected, so the workflow cannot publish its ancestry merge
-    // directly. The sync branch must go through the same required checks and
-    // auto-merge watcher as an ordinary PR before promotion resumes.
     expect(yml).not.toContain('git push origin dev');
-    expect(yml).toContain('SYNC_BRANCH="automation/sync-main-into-dev-');
-    expect(yml).toContain('git push --force-with-lease origin "HEAD:$SYNC_BRANCH"');
-    expect(yml).toContain('--base dev');
-    expect(yml).toContain('--head "$SYNC_BRANCH"');
-    expect(yml).toContain('gh workflow run CI --ref "$SYNC_BRANCH"');
-    expect(yml).toContain('gh workflow run Deploy --ref "$SYNC_BRANCH"');
-    expect(yml).toContain('gh workflow run Review --ref "$SYNC_BRANCH"');
+    expect(yml).toContain('gh workflow run CI --ref dev');
+    expect(yml).toContain('gh workflow run Deploy --ref dev');
+    expect(yml).toContain('gh workflow run Review --ref dev');
     expect(yml).toContain('gh workflow run "Draft + auto-merge"');
-    expect(yml).toContain('--ref "$SYNC_BRANCH"');
+    expect(yml).toContain('--ref dev');
+    expect(yml).toContain('-f pr="$PR"');
     expect(yml).toContain('actions: write');
 
     const deploy = workflow('deploy.yml');
-    expect(deploy).toContain("startsWith(github.ref_name, 'automation/sync-main-into-dev-')");
+    expect(deploy).toContain("github.ref_name == 'dev'");
+    expect(deploy).not.toContain("startsWith(github.ref_name, 'automation/sync-main-into-dev-')");
     expect(deploy).toContain('for CORE in _site/pr/*/app/core.js');
     expect(deploy).toContain('HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}');
   });

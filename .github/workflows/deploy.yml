@@ -476,7 +476,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' &&
-       startsWith(github.ref_name, 'automation/sync-main-into-dev-'))
+       github.ref_name == 'dev')
     # Pull requests never deploy. Test the Pages artifact produced by `build`
     # through a local HTTP server so deploy-time rewrites are still covered.
     needs: build
@@ -523,7 +523,7 @@ jobs:
         run: |
           PR_NUM="${{ github.event.number }}"
           if [ -z "$PR_NUM" ]; then
-            # A bot-created sync PR cannot trigger this PR-only job, so its
+            # A bot-created promotion PR may not trigger this PR-only job, so its
             # workflow_dispatch run has no event.number. The build artifact
             # already contains every open PR preview; identify the one whose
             # injected version SHA matches this dispatched branch exactly.
@@ -536,7 +536,7 @@ jobs:
             done
           fi
           case "$PR_NUM" in
-            ''|*[!0-9]*) echo "::error::No open dev sync PR found for $GITHUB_REF_NAME"; exit 1 ;;
+            ''|*[!0-9]*) echo "::error::No open dev-to-main PR found for $GITHUB_REF_NAME"; exit 1 ;;
           esac
           # Serve the byte-identical Pages artifact locally. This keeps
           # deploy-rewrite coverage (cache-bust ?v=, version SHA, /pr/N/
@@ -587,7 +587,7 @@ jobs:
       always() &&
       (github.event_name == 'pull_request' ||
        (github.event_name == 'workflow_dispatch' &&
-        startsWith(github.ref_name, 'automation/sync-main-into-dev-')))
+        github.ref_name == 'dev'))
     needs: e2e-deployed-shard
     runs-on: ubuntu-latest
     # Reads a job result and nothing else. It checks out no code, but a pull-request

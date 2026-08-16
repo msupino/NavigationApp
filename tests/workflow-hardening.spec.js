@@ -249,9 +249,9 @@ test.describe('workflow trust and integrity gates', () => {
     // A squashed dev -> main promo gives main dev's content with none of its ancestry, so git
     // stops knowing main contains dev's commits and the NEXT promo reports every flattened
     // file as "changed in both" -- 37 files of phantom conflicts on #1425. The same applies to
-    // a main -> dev backmerge, which exists precisely to restore that ancestry.
+    // another long-lived-branch merge.
     expect(arm).toContain('METHOD=--squash');
-    expect(arm).toMatch(/main\|dev\|automation\/sync-main-into-dev-\*\) METHOD=--merge/);
+    expect(arm).toMatch(/main\|dev\) METHOD=--merge/);
     expect(arm).toMatch(/case "\$BASE" in main\) METHOD=--merge/);
     // ...and the flags must be variables, not a hard-coded --squash on the merge call.
     expect(arm).toContain('--auto $METHOD $DELETE');

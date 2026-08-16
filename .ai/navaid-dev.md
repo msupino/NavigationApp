@@ -55,12 +55,12 @@ always target `dev` as the PR base branch.
 enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
 **Before creating a feature branch from `dev`:** update local `dev`
-first, then bring production back into it. Fetch `origin`, check out
-`dev`, fast-forward it to `origin/dev`, and integrate `origin/main`
-when possible. Resolve and push that `dev` update before creating or
-switching to the feature branch. If `dev` cannot fast-forward or
-`origin/main` cannot be integrated cleanly, stop and resolve that
-before branching.
+first. Fetch `origin`, check out `dev`, and fast-forward it to
+`origin/dev` before creating or switching to the feature branch.
+Production promotions use merge commits, so the normal post-promotion
+`main` merge commit does not need to be merged back into `dev`. If
+`main` contains production-only file changes, stop and use a reviewed
+maintenance PR.
 
 **Before any `git commit`:** run `git branch --show-current` (and
 `git status` when in doubt). If the branch is not the one the user
@@ -844,11 +844,10 @@ downloadable `route.json`.
   require explicit maintainer authorization.
 - **Production deploy** = merge a `dev` → `main` pull request (`main` is
   branch-protected; the merge triggers the same workflow).
-  The promotion automation first verifies that `dev` contains the current
-  `main` ancestry. If it does not, the workflow opens a temporary sync PR into
-  `dev`, explicitly runs its required checks, and auto-merges it. The merged
-  sync then resumes creation of the `dev` → `main` promotion PR. Automation
-  never pushes the ancestry merge directly to protected `dev`.
+  The promotion automation opens or reuses the direct `dev` → `main` PR,
+  explicitly dispatches its required checks, and arms its auto-merge watcher.
+  The promotion uses a merge commit, which preserves both branch histories;
+  it does not require a preliminary `main` → `dev` sync PR.
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
 - **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites
