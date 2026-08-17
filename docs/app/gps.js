@@ -393,8 +393,18 @@ function gpsWatchUserMapMoves() {
   const el = map.getContainer();
   if (!el || el.__gpsMoveWatch) return;
   el.__gpsMoveWatch = true;
+  // Only gestures on the MAP SURFACE count. The controls live inside the same container --
+  // zoom buttons, the rotation dial, the follow switch, the assistant launcher -- and this
+  // listener runs in the capture phase, ahead of their disableClickPropagation, so without
+  // this test merely opening the assistant stopped the map following the aircraft for five
+  // seconds. Tapping a button is not asking to look somewhere else.
+  const fromControl = (ev) => {
+    const t = ev && ev.target;
+    return !!(t && t.closest && t.closest('.leaflet-control, .leaflet-control-container'));
+  };
+  const note = (ev) => { if (!fromControl(ev)) gpsNoteUserMapMove(); };
   for (const ev of ['pointerdown', 'touchstart', 'wheel', 'keydown']) {
-    el.addEventListener(ev, gpsNoteUserMapMove, { passive: true, capture: true });
+    el.addEventListener(ev, note, { passive: true, capture: true });
   }
 }
 var gpsStartT = 0;
@@ -429,7 +439,11 @@ function _gpsCompassFromEvent(e) {
   if (!e) return null;
   if (Number.isFinite(e.webkitCompassHeading)) return e.webkitCompassHeading;
   if (!Number.isFinite(e.alpha)) return null;
-  if (e.absolute === false) return null;          // relative-only: meaningless as a heading
+  // Earth-referenced or nothing. `absolute` must be TRUE, not merely "not false": a plain
+  // deviceorientation event can carry a gyro-only alpha with no `absolute` field at all,
+  // and that is a number drifting from an arbitrary start -- using it would print a
+  // confident `045m` for a heading nobody measured.
+  if (e.absolute !== true) return null;
   const screen = (typeof window !== 'undefined' && window.screen && window.screen.orientation &&
     Number.isFinite(window.screen.orientation.angle)) ? window.screen.orientation.angle : 0;
   return ((360 - e.alpha + screen) % 360 + 360) % 360;
