@@ -4394,6 +4394,11 @@ mapEl.addEventListener('touchstart', e => {
   }
 
   if (touchDrag) {
+    // Where the finger LANDED -- the threshold below measures from here. Seeding it from
+    // the first touchmove instead made that move measure zero, so the guard let the first
+    // (largest) jump through and only started counting afterwards.
+    touchDrag.startX = p.x;
+    touchDrag.startY = p.y;
     map.dragging.disable();
     e.preventDefault();                // suppress pan + the synthetic click
     showInspector(); draw();
@@ -4404,6 +4409,16 @@ mapEl.addEventListener('touchmove', e => {
   if (!touchDrag || touchDrag.kind === 'legtap' || e.touches.length !== 1) return;
   e.preventDefault();
   const p = touchXY(e.touches[0]);
+  // A fingertip is ~10 mm across and never lands still, so a plain tap arrives with a few
+  // pixels of travel. Below the threshold this is still a tap: nothing moves, and the
+  // waypoint the finger came to open is not nudged out from under it. The dial has had the
+  // same guard (rotDragPx) since it was built.
+  if (touchDrag.startX == null) { touchDrag.startX = p.x; touchDrag.startY = p.y; }  // paths that set no start
+  if (!touchDrag.moved && !touchDrag.dragArmed) {
+    const far = Math.hypot(p.x - touchDrag.startX, p.y - touchDrag.startY);
+    if (far < (typeof tune === 'function' ? tune('touchDragPx') : 10)) return;
+    touchDrag.dragArmed = true;
+  }
   const ll = map.containerPointToLatLng([p.x, p.y]);
   if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
   if (touchDrag.kind === 'wp') {

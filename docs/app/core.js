@@ -148,6 +148,10 @@ NavAid.tuningDefaults = {
 
   undoLimit: { value: 50, min: 5, max: 500, step: 5, label: 'Undo history depth' },
   rotDragPx: { value: 8, min: 1, max: 40, step: 1, label: 'Rotate drag threshold (px)' },
+  // How far a finger must travel before a touch counts as dragging something rather than
+  // tapping it. A fingertip is ~10 mm across and never lands still: without a threshold a
+  // plain tap nudged the waypoint it was meant to open.
+  touchDragPx: { value: 10, min: 1, max: 40, step: 1, label: 'Touch drag threshold (px)' },
   shareMaxWaypoints: { value: 64, min: 8, max: 256, step: 1, label: 'Share URL max waypoints' },
 
   routeLineWidthPx: { value: 3.5, min: 0.5, max: 12, step: 0.1, label: 'Route line width' },
@@ -632,7 +636,7 @@ NavAid.tuningGroups = [
   { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },
   { name: 'Wind', keys: ['windDir', 'windSpeed'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
-  { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx'] },
+  { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'touchDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
   { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },

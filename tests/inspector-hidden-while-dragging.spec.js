@@ -76,6 +76,38 @@ test('a tap right after a drag opens the panel again', async ({ page }) => {
   expect(await page.evaluate(() => state.selected && state.selected.index)).toBe(1);
 });
 
+// A fingertip never lands still: a tap arrives with a few pixels of travel. Without a
+// threshold that travel was applied to the waypoint, so pressing a point to open it nudged
+// it off its position -- and, once a moved drag started closing the panel, pressing a point
+// both moved it AND refused to open.
+test('a press with fingertip jitter neither moves the point nor closes the panel', async ({ page }) => {
+  await boot(page);
+  const before = await page.evaluate(() => ({ lat: state.waypoints[0].lat, lng: state.waypoints[0].lng }));
+  const p = await at(page, 0);
+  await touch(page, 'touchstart', p.x, p.y);
+  for (const [dx, dy] of [[2, 1], [3, -2], [1, 2]]) {          // well inside the threshold
+    await touch(page, 'touchmove', p.x + dx, p.y + dy);
+  }
+  await touch(page, 'touchend', p.x + 1, p.y + 2);
+  const after = await page.evaluate(() => ({ lat: state.waypoints[0].lat, lng: state.waypoints[0].lng }));
+  expect(after).toEqual(before);                                // not nudged
+  expect(await hidden(page)).toBe(false);                       // still a tap: panel opens
+  expect(await page.evaluate(() => state.selected && state.selected.index)).toBe(0);
+});
+
+test('past the threshold it is a drag again', async ({ page }) => {
+  await boot(page);
+  const before = await page.evaluate(() => state.waypoints[0].lat);
+  const p = await at(page, 0);
+  await touch(page, 'touchstart', p.x, p.y);
+  await touch(page, 'touchmove', p.x + 4, p.y + 3);             // under: still a tap
+  expect(await page.evaluate(() => state.waypoints[0].lat)).toBe(before);
+  await touch(page, 'touchmove', p.x + 60, p.y + 45);           // over: a drag
+  expect(await hidden(page)).toBe(true);
+  await touch(page, 'touchend', p.x + 60, p.y + 45);
+  expect(await page.evaluate(() => state.waypoints[0].lat)).not.toBe(before);
+});
+
 test('a tap that never moves keeps the panel up throughout', async ({ page }) => {
   await boot(page);
   const p = await at(page, 1);
