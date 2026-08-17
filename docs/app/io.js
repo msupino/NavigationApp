@@ -8349,21 +8349,10 @@ function simStart() {
   if (typeof gpsSnapLegAlertsToPosition === 'function') gpsSnapLegAlertsToPosition();
   else if (typeof gpsResetLegAlerts === 'function') gpsResetLegAlerts();
   if (typeof gpsMaybeStartDriftTimer === 'function') gpsMaybeStartDriftTimer();
-  // TEMPORARY, test-only nudge -- remove alongside the identical one in gps.js's
-  // startLiveLocation once the watch-alert feature is validated. The simulator only
-  // supplies position/altitude/speed/heading -- it has no idea what route NavAid has
-  // loaded (or whether it has one at all), so connecting it without a route loaded here
-  // compares against nothing and silently does nothing. Same nudge, same fix.
-  if (typeof gpsRequestNotifyPermission === 'function') {
-    gpsRequestNotifyPermission().then(function () {
-      if (typeof gpsSendWatchAlert === 'function' &&
-          (!state.waypoints || state.waypoints.length < 2)) {
-        gpsSendWatchAlert((S && S.watchAlertNoRouteTestTitle) || 'NavAid',
-          (S && S.watchAlertNoRouteTestBody) ||
-          'Load a route to get alerts if you drift off course or altitude.');
-      }
-    });
-  }
+  // Ask for the notification permission the real alerts need; send nothing to prove it.
+  // The "load a route" nudge here was the twin of the one in startLiveLocation, and went
+  // for the same reason -- see the comment there.
+  if (typeof gpsRequestNotifyPermission === 'function') gpsRequestNotifyPermission();
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try { localStorage.setItem('navaid.simOn', '1'); } catch (e) { /* */ }
   _simFetch();

@@ -677,74 +677,6 @@ test.describe('tracking session reset', () => {
   });
 });
 
-test.describe('no-route test nudge (temporary)', () => {
-  test('waits for the permission answer before firing -- a delayed grant is not silently dropped', async ({ page }) => {
-    await page.addInitScript(installMobileDeviceStub);
-    await page.addInitScript(() => {
-      window.__notifications = [];
-      let resolveGrant;
-      window.__grant = new Promise((r) => { resolveGrant = r; });
-      window.__triggerGrant = () => resolveGrant();
-      class FakeNotification {
-        constructor(title, opts) { window.__notifications.push({ title, body: (opts || {}).body }); }
-      }
-      FakeNotification.permission = 'default';
-      // Mirrors a real permission prompt: resolves only once the pilot answers it, not
-      // synchronously -- the exact case that used to lose the nudge (checked immediately
-      // after asking, before the answer came back).
-      FakeNotification.requestPermission = () => window.__grant.then(() => {
-        FakeNotification.permission = 'granted';
-        return 'granted';
-      });
-      window.Notification = FakeNotification;
-      try {
-        Object.defineProperty(navigator, 'serviceWorker', { value: undefined, configurable: true });
-      } catch (e) { /* ignore */ }
-      window.__liveCb = null;
-      navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
-      navigator.geolocation.clearWatch = () => {};
-    });
-    await page.goto('?lang=en');
-    await page.waitForFunction(() => typeof startLiveLocation === 'function');
-    const before = await page.evaluate(() => {
-      state.waypoints = [];   // no route loaded
-      startLiveLocation();
-      // Not testing the confirmation gate itself here -- see the dedicated
-      // "confirmation gate" describe block for that. Every other test's fix is a
-      // manufactured scenario, not a real waypoint capture, so bypass it directly.
-      window._gpsAlertConfirmed = true;
-      return window.__notifications.length;
-    });
-    expect(before).toBe(0);         // not answered yet -- must not have fired already
-    await page.evaluate(() => window.__triggerGrant());
-    await page.waitForFunction(() => window.__notifications.length > 0);
-    expect(await page.evaluate(() => window.__notifications.length)).toBe(1);
-  });
-
-  test('does not fire when a route is already loaded', async ({ page }) => {
-    await stubWebNotify(page);
-    await page.addInitScript(() => {
-      window.__liveCb = null;
-      navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
-      navigator.geolocation.clearWatch = () => {};
-    });
-    await page.goto('?lang=en');
-    await page.waitForFunction(() => typeof startLiveLocation === 'function');
-    const n = await page.evaluate(async () => {
-      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.0, lng: 35.0, name: 'BRAVO' }];
-      syncLegs();
-      startLiveLocation();
-      // Not testing the confirmation gate itself here -- see the dedicated
-      // "confirmation gate" describe block for that. Every other test's fix is a
-      // manufactured scenario, not a real waypoint capture, so bypass it directly.
-      window._gpsAlertConfirmed = true;
-      await new Promise((r) => setTimeout(r, 20));   // let the (already-granted) permission promise settle
-      return window.__notifications.length;
-    });
-    expect(n).toBe(0);
-  });
-});
-
 test.describe('web delivery via service worker (the Android Chrome fix)', () => {
   test('routes through registration.showNotification() instead of the bare constructor when a service worker is active', async ({ page }) => {
     await page.addInitScript(installFixHelper);
@@ -1172,7 +1104,9 @@ test.describe('loading a route while already tracking (applyRouteData)', () => {
 });
 
 test.describe('connected-simulator path (io.js _simFetch)', () => {
-  test('nudges toward loading a route when none is loaded -- the simulator has no idea what route NavAid has', async ({ page }) => {
+  // The nudge these used to assert was test scaffolding and has been removed; connecting a
+  // simulator with no route now says nothing. See no-route-nudge-gone.spec.js.
+  test('says nothing when no route is loaded', async ({ page }) => {
     await stubWebNotify(page);
     await page.addInitScript(pinAltimetryOff);
     await page.goto('?lang=en&nogist');
@@ -1180,12 +1114,11 @@ test.describe('connected-simulator path (io.js _simFetch)', () => {
     const n = await page.evaluate(async () => {
       state.waypoints = [];   // no route loaded
       simStart();
-      // See the identical comment at startLiveLocation() above.
       window._gpsAlertConfirmed = true;
-      await new Promise((r) => setTimeout(r, 20));   // let the (already-granted) permission promise settle
+      await new Promise((r) => setTimeout(r, 50));   // the nudge was async, behind the permission answer
       return window.__notifications.length;
     });
-    expect(n).toBe(1);
+    expect(n).toBe(0);
   });
 
   test('real GPS wins if live location is also on -- a sim poll must not overwrite it', async ({ page }) => {

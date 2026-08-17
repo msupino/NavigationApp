@@ -88,10 +88,9 @@ test.describe('issue #388 — review cleanup', () => {
       // true) and flip `_magFixed`, turning the border green.
       const box = page.locator('.modal-back.flight-plan > .modal');
       const boxBB = await box.boundingBox();
-      if (!boxBB) {
-        test.skip(true, 'modal box missing — flight plan failed to open');
-        return;
-      }
+      // The flight plan failing to open is the bug this file exists to catch, so it must
+      // fail here rather than skip: a skip reads as "not applicable", which it never is.
+      expect(boxBB, 'the flight plan modal must open').not.toBeNull();
       await page.mouse.click(boxBB.x + boxBB.width / 2,
                              boxBB.y + boxBB.height / 2);
 
@@ -123,7 +122,7 @@ test.describe('issue #388 — review cleanup', () => {
       // won't tear down the magnifier; verify by visibility check.
       await expect(mag).toBeVisible();
       const mapBox = await page.locator('#map').boundingBox();
-      if (!mapBox) { test.skip(true, 'map not found'); return; }
+      expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
       const startBox = await mag.boundingBox();
       await page.mouse.move(mapBox.x + 700, mapBox.y + 400);
       // Allow the rAF-coalesced reposition to land.
@@ -192,7 +191,7 @@ test.describe('issue #388 — review cleanup', () => {
       });
 
       const mapBox = await page.locator('#map').boundingBox();
-      if (!mapBox) { test.skip(true, 'map not found'); return; }
+      expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
       const cx = mapBox.x + mapBox.width / 2;
       const cy = mapBox.y + mapBox.height / 2;
       await page.mouse.move(cx, cy);
@@ -252,7 +251,7 @@ test.describe('issue #388 — review cleanup', () => {
       // own generous ceiling — the test just needs to live long enough).
       test.slow();
       const mapBox = await page.locator('#map').boundingBox();
-      if (!mapBox) { test.skip(true, 'map not found'); return; }
+      expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
       const cx = mapBox.x + mapBox.width / 2;
       const cy = mapBox.y + mapBox.height / 2;
       await page.mouse.move(cx, cy);

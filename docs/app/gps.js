@@ -289,18 +289,14 @@ function startLiveLocation() {
   if (typeof gpsSnapLegAlertsToPosition === 'function') gpsSnapLegAlertsToPosition();
   else gpsResetLegAlerts();
   gpsMaybeStartDriftTimer();
-  // TEMPORARY, test-only nudge -- remove once the watch-alert feature is validated. Lets a
-  // pilot testing "Show location" alone (no route) confirm notifications are actually
-  // reaching the device/watch, and points them at loading a route for the real alerts.
-  // Waits for the permission answer first: firing right after the (async) request used to
-  // read the still-'default' permission and silently drop, exactly on a first-ever grant.
-  gpsRequestNotifyPermission().then(function () {
-    if (!state.waypoints || state.waypoints.length < 2) {
-      gpsSendWatchAlert((S && S.watchAlertNoRouteTestTitle) || 'NavAid',
-        (S && S.watchAlertNoRouteTestBody) ||
-        'Load a route to get alerts if you drift off course or altitude.');
-    }
-  });
+  // The permission is still asked for here -- the real alerts need it -- but nothing is
+  // sent to prove it works. The "load a route" nudge that used to fire here was test
+  // scaffolding from before the watch alerts were validated, and it outlived its purpose:
+  // showing your position without a route drawn is an ordinary thing to do, and the app
+  // has no business interrupting it. It also fired unbidden on the boot that RESUMES live
+  // location (navaid.gpsLiveOn), so a pilot who had not touched anything got a
+  // notification telling them to load a route.
+  gpsRequestNotifyPermission();
   if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try {
     gpsLiveWatchId = gpsStartWatch(onLivePosition, onGpsLiveError,
