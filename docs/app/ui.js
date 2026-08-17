@@ -3117,11 +3117,15 @@ document.getElementById('limit-kites-cb').onchange = e => {
     } else {
       connected = true;
       setConnectLabel();
-      // The sim panel now lives behind the footer icon (#sim-modal); the
-      // connected status shows when the user opens it. Just resume polling.
+      // The sim panel lives behind the footer icon (#sim-modal), but the icon itself now
+      // carries the connected state (refreshSimTrigger, called from simStart/simStop), so
+      // a resumed session is visible without opening anything.
       simStart();
     }
   }
+  // ...and mark the icon on a boot that did NOT resume, so it starts in a known state
+  // rather than inheriting whatever the markup said.
+  if (typeof window.refreshSimTrigger === 'function') window.refreshSimTrigger();
 })();
 
 // Footer plane icon ⇄ simulator panel modal (#sim-modal).

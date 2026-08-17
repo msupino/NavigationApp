@@ -1908,6 +1908,7 @@ window.S = Object.assign({
   inspTurnSet: '\u21bb Mark as turning point',
   inspTurnClear: '\u21bb Clear turning point',
   inspTurnTitle: 'Where this route turns for home. A loop repeats no waypoint, so nothing in the geometry says where the far end is — mark it here and the leg-direction filter can split outbound from return.',
+  tbSimConnected: 'Simulator connected — showing its aircraft on the map',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDiscover: 'Find X-Plane',
