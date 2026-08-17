@@ -985,8 +985,21 @@ function setCumLabelFromPoint(legIdx, isReturn, px, py) {
   if (!leg || !frame) return;
   const key = isReturn ? 'cumLabelRet' : 'cumLabel';
   const label = leg[key] || { a: 0, p: 0, _m: 1 };
-  const vx = px - frame.anchor.x;
-  const vy = py - frame.anchor.y;
+  let vx = px - frame.anchor.x;
+  let vy = py - frame.anchor.y;
+  // The kite points AT the waypoint, so dragging it towards one buries the tip in the
+  // circle -- and on a busy chart the pilot cannot then read either. Held at arm's length:
+  // the tip may touch the edge of the disc and no further, whichever direction it is
+  // dragged from. Only the distance is clamped, so the kite still goes wherever it is put.
+  const wpIdx = isReturn ? legIdx : legIdx + 1;
+  const clear = cumKiteMinAnchorDistPx(wpIdx);
+  const dist = Math.hypot(vx, vy);
+  if (dist > 0 && dist < clear) {
+    vx = vx * clear / dist;
+    vy = vy * clear / dist;
+  } else if (dist === 0) {
+    vy = clear;                       // dropped exactly on the waypoint: park it below
+  }
   const sc = legZoomScale() || 1;
   label.a = (vx * frame.dx + vy * frame.dy) / sc;
   label.p = (vx * frame.nx + vy * frame.ny) / sc;
@@ -3915,6 +3928,7 @@ map.on('mousemove', e => {
     draw();   // move silently — but keep an already-open inspector in sync
     if (!document.getElementById('inspector').classList.contains('hidden')) showInspector();
   } else if (drag.kind === 'note') {
+    drag.moved = true;
     const n = state.notes[drag.i];
     if (n && n.rp) {
       setReportPointTFromScreen(n, p.x, p.y);   // constrained to slide along its leg
@@ -3924,8 +3938,10 @@ map.on('mousemove', e => {
     }
     draw();
   } else if (drag.kind === 'label') {
+    drag.moved = true;
     if (setLegLabelFromPoint(drag, p.x, p.y)) draw();
   } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
+    drag.moved = true;
     setCumLabelFromPoint(drag.i, drag.kind === 'cumlabelret', p.x, p.y);
     draw();
   } else if (drag.kind === 'page') {
@@ -4448,6 +4464,7 @@ mapEl.addEventListener('touchmove', e => {
     }
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
+    touchDrag.moved = true;
     setInspectorDragHidden(true);
     const n = state.notes[touchDrag.i];
     if (n && n.rp) {
@@ -4458,9 +4475,11 @@ mapEl.addEventListener('touchmove', e => {
     }
     draw();
   } else if (touchDrag.kind === 'label') {
+    touchDrag.moved = true;
     setInspectorDragHidden(true);
     if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
+    touchDrag.moved = true;
     setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
     draw();
   } else if (touchDrag.kind === 'page') {
