@@ -86,18 +86,18 @@ test('tapping a map control is not a gesture', async ({ page }) => {
   await page.evaluate(() => startLiveLocation());
   await fix(page, 32.00, 34.00);
   const out = await page.evaluate(() => {
-    _gpsUserMovedAt = 0;
+    window._gpsUserMovedAt = 0;
     const tap = (sel) => {
       const el = document.querySelector(sel);
       if (el) el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      return _gpsUserMovedAt;
+      return window._gpsUserMovedAt;
     };
     const afterFab = tap('.assistant-fab');
     const afterZoom = tap('.leaflet-control-zoom-in');
     const afterDial = tap('#rotate-dial');
     // ...while the map itself still counts.
     map.getContainer().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-    return { afterFab, afterZoom, afterDial, afterMap: _gpsUserMovedAt, suspended: gpsFollowSuspended() };
+    return { afterFab, afterZoom, afterDial, afterMap: window._gpsUserMovedAt, suspended: gpsFollowSuspended() };
   });
   expect(out.afterFab).toBe(0);
   expect(out.afterZoom).toBe(0);
