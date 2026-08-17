@@ -2427,6 +2427,14 @@ function refreshInspectorIfVisible() {
   if (state.selected && typeof showInspector === 'function') showInspector();
 }
 
+// While a finger is dragging a waypoint the inspector is in the way: on a phone it covers
+// the half of the map the point is being dragged towards, and it is rebuilt on every frame
+// of the drag anyway. Hidden for the duration, without touching the selection -- the panel
+// comes back, with the same waypoint in it, as soon as the finger lifts.
+function setInspectorDragHidden(on) {
+  const insp = document.getElementById('inspector');
+  if (insp) insp.classList.toggle('insp-drag-hidden', !!on);
+}
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
@@ -4386,6 +4394,11 @@ mapEl.addEventListener('touchstart', e => {
   }
 
   if (touchDrag) {
+    // Where the finger LANDED -- the threshold below measures from here. Seeding it from
+    // the first touchmove instead made that move measure zero, so the guard let the first
+    // (largest) jump through and only started counting afterwards.
+    touchDrag.startX = p.x;
+    touchDrag.startY = p.y;
     map.dragging.disable();
     e.preventDefault();                // suppress pan + the synthetic click
     showInspector(); draw();
@@ -4396,12 +4409,23 @@ mapEl.addEventListener('touchmove', e => {
   if (!touchDrag || touchDrag.kind === 'legtap' || e.touches.length !== 1) return;
   e.preventDefault();
   const p = touchXY(e.touches[0]);
+  // A fingertip is ~10 mm across and never lands still, so a plain tap arrives with a few
+  // pixels of travel. Below the threshold this is still a tap: nothing moves, and the
+  // waypoint the finger came to open is not nudged out from under it. The dial has had the
+  // same guard (rotDragPx) since it was built.
+  if (touchDrag.startX == null) { touchDrag.startX = p.x; touchDrag.startY = p.y; }  // paths that set no start
+  if (!touchDrag.moved && !touchDrag.dragArmed) {
+    const far = Math.hypot(p.x - touchDrag.startX, p.y - touchDrag.startY);
+    if (far < (typeof tune === 'function' ? tune('touchDragPx') : 10)) return;
+    touchDrag.dragArmed = true;
+  }
   const ll = map.containerPointToLatLng([p.x, p.y]);
   if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
   if (touchDrag.kind === 'wp') {
     // Same lock as the mouse path -- see there for why leaving touchDrag.moved
     // false is what keeps a plain tap opening the inspector as normal.
     if (typeof gpsMapLocked === 'function' && gpsMapLocked()) return;
+    if (!touchDrag.moved) setInspectorDragHidden(true);   // first real movement, not a tap
     touchDrag.moved = true;
     const wp = state.waypoints[touchDrag.i];
     const r = applyNavSnap(ll, wp.name || '', dragOriginExclude(touchDrag, ll));
@@ -4412,6 +4436,7 @@ mapEl.addEventListener('touchmove', e => {
     }
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
+    setInspectorDragHidden(true);
     const n = state.notes[touchDrag.i];
     if (n && n.rp) {
       setReportPointTFromScreen(n, p.x, p.y);   // constrained to slide along its leg
@@ -4421,6 +4446,7 @@ mapEl.addEventListener('touchmove', e => {
     }
     draw();
   } else if (touchDrag.kind === 'label') {
+    setInspectorDragHidden(true);
     if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
     setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
@@ -4435,6 +4461,14 @@ mapEl.addEventListener('touchmove', e => {
 }, { passive: false });
 
 function endTouch() {
+  // A drag is not a request to inspect: the finger came down to MOVE something, so the
+  // panel that was hidden for the drag stays shut, and the selection goes with it (a
+  // highlighted point with no panel explains nothing). A tap that never moved is the
+  // opposite -- that IS the request -- and keeps its panel.
+  const wasDrag = !!(touchDrag && touchDrag.moved &&
+    (touchDrag.kind === 'wp' || touchDrag.kind === 'note' || touchDrag.kind === 'label'));
+  setInspectorDragHidden(false);
+  if (wasDrag) { state.selected = null; showInspector(); }
   if (touchDrag) {
     settleAddModeWaypointTap(touchDrag);
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
@@ -4476,7 +4510,9 @@ function endTouch() {
       changed = applyLegAltitudesToRoute();
       if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
-    if (changed) { draw(); showInspector(); }
+    // seedCommChangeNotes/applyLegAltitudesToRoute may repaint; after a drag the panel must
+    // stay shut, so redraw without reopening it.
+    if (changed) { draw(); if (!wasDrag) showInspector(); }
     if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
     touchDrag = null;

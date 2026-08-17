@@ -1045,6 +1045,10 @@ html[dir="rtl"] #toolbar.collapsed {
 
 }
 
+/* Hidden while a finger drags something on the map: the panel covers the half of the map
+   the point is heading for. The selection is untouched, so it returns as it was. */
+#inspector.insp-drag-hidden { display: none; }
+
 /* Centre crosshair — what the coordinate readout is reading on a touch device, where
    there is no pointer to be the marker. Hidden wherever a pointer exists. */
 #map-crosshair {
