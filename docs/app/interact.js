@@ -2427,6 +2427,14 @@ function refreshInspectorIfVisible() {
   if (state.selected && typeof showInspector === 'function') showInspector();
 }
 
+// While a finger is dragging a waypoint the inspector is in the way: on a phone it covers
+// the half of the map the point is being dragged towards, and it is rebuilt on every frame
+// of the drag anyway. Hidden for the duration, without touching the selection -- the panel
+// comes back, with the same waypoint in it, as soon as the finger lifts.
+function setInspectorDragHidden(on) {
+  const insp = document.getElementById('inspector');
+  if (insp) insp.classList.toggle('insp-drag-hidden', !!on);
+}
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
@@ -4402,6 +4410,7 @@ mapEl.addEventListener('touchmove', e => {
     // Same lock as the mouse path -- see there for why leaving touchDrag.moved
     // false is what keeps a plain tap opening the inspector as normal.
     if (typeof gpsMapLocked === 'function' && gpsMapLocked()) return;
+    if (!touchDrag.moved) setInspectorDragHidden(true);   // first real movement, not a tap
     touchDrag.moved = true;
     const wp = state.waypoints[touchDrag.i];
     const r = applyNavSnap(ll, wp.name || '', dragOriginExclude(touchDrag, ll));
@@ -4412,6 +4421,7 @@ mapEl.addEventListener('touchmove', e => {
     }
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
+    setInspectorDragHidden(true);
     const n = state.notes[touchDrag.i];
     if (n && n.rp) {
       setReportPointTFromScreen(n, p.x, p.y);   // constrained to slide along its leg
@@ -4421,6 +4431,7 @@ mapEl.addEventListener('touchmove', e => {
     }
     draw();
   } else if (touchDrag.kind === 'label') {
+    setInspectorDragHidden(true);
     if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
     setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
@@ -4435,6 +4446,8 @@ mapEl.addEventListener('touchmove', e => {
 }, { passive: false });
 
 function endTouch() {
+  // Whatever this drag did or did not do, the finger is off the glass: the panel comes back.
+  setInspectorDragHidden(false);
   if (touchDrag) {
     settleAddModeWaypointTap(touchDrag);
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
