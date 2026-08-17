@@ -45,6 +45,10 @@ NavAid.tuningDefaults = {
   // kneeboard. Bigger by default, and tunable from there.
   gpsReadoutFontPx: { value: 16, min: 9, max: 32, step: 1, label: 'GPS readout text (px)' },
   // The touch crosshair that marks what the coordinate readout is reading.
+  // Use the phone's compass for the own-ship heading where the GPS gives no course
+  // (stationary, taxiing). Never above taxi speed: in flight the GPS course is the truth,
+  // and a phone in a metal cockpit is not. See gpsCompassTrue.
+  compassFallback: { value: true, type: 'bool', label: 'Compass heading when stopped' },
   crosshairSizePx: { value: 34, min: 10, max: 120, step: 2, label: 'Centre crosshair size (px)' },
   crosshairWidthPx: { value: 1, min: 1, max: 6, step: 1, label: 'Centre crosshair line (px)' },
   crosshairColor: { value: '#231F20', type: 'color', label: 'Centre crosshair colour' },
@@ -607,7 +611,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'compassFallback', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
