@@ -78,6 +78,34 @@ test('each new gesture restarts the wait', async ({ page }) => {
   expect(stamps.second).toBeGreaterThan(stamps.first);
 });
 
+// The controls live INSIDE the map container and this watch runs in the capture phase, so
+// without a filter every button in the corner counted as "the pilot moved the map" --
+// opening the assistant stopped the map following the aircraft for five seconds.
+test('tapping a map control is not a gesture', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startLiveLocation());
+  await fix(page, 32.00, 34.00);
+  const out = await page.evaluate(() => {
+    _gpsUserMovedAt = 0;
+    const tap = (sel) => {
+      const el = document.querySelector(sel);
+      if (el) el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      return _gpsUserMovedAt;
+    };
+    const afterFab = tap('.assistant-fab');
+    const afterZoom = tap('.leaflet-control-zoom-in');
+    const afterDial = tap('#rotate-dial');
+    // ...while the map itself still counts.
+    map.getContainer().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    return { afterFab, afterZoom, afterDial, afterMap: _gpsUserMovedAt, suspended: gpsFollowSuspended() };
+  });
+  expect(out.afterFab).toBe(0);
+  expect(out.afterZoom).toBe(0);
+  expect(out.afterDial).toBe(0);
+  expect(out.afterMap).toBeGreaterThan(0);
+  expect(out.suspended).toBe(true);
+});
+
 test('the very first fix centres even straight after a gesture', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
