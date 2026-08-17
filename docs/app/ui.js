@@ -2544,6 +2544,11 @@ document.getElementById('clear').onclick = () => {
   state.selected = null;
   routeAltPrefix = null;    // empty route unpins its altitude layer
   currentRouteLibraryId = null;   // cleared route is no longer a saved entry
+  // Everything that follows a route edit runs through syncLegs -- including the
+  // turn-dependent controls. Emptying the arrays by hand skipped it, so after Clear map
+  // the Route direction picker stayed lit and kept whatever direction the deleted route
+  // had been filtered to. There is no route to have a direction.
+  syncLegs();
   showInspector(); draw();
 };
 document.getElementById('tool-reset-all-wp-names').onclick = () => {
