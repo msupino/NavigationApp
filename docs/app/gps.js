@@ -203,8 +203,16 @@ function onLivePosition(pos) {
   // routinely omits it -- reported live as "the broken line in front of the
   // plane is showing true north"). NaN correctly fails Number.isFinite() and
   // lets drawHeadingLine's/drawOwnShip's own frozen-last-heading fallback run.
-  const hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
+  let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
             : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : NaN);
+  // ...and where even that is missing (stationary: no course, and no previous fix to take a
+  // bearing from), the phone's own compass, if it is pointing at anything. See gpsCompassTrue.
+  let hdgFromCompass = false;
+  if (!Number.isFinite(hdg)) {
+    const kt = (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed * 1.94384 : 0;
+    const comp = gpsCompassTrue(kt);
+    if (comp != null) { hdg = comp; hdgFromCompass = true; }
+  }
   const isFirst = (_gpsLivePrev === null);
   const prev = _gpsLivePrev;
   // Groundspeed/altitude, same derivation onGpsPosition uses below -- gpsCheckLegAlerts()
@@ -220,8 +228,9 @@ function onLivePosition(pos) {
   gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null; // m → ft
   gpsAltIsGeometric = true;
   _gpsLivePrev = { lat: p.lat, lng: p.lng, t };
-  // Carry the fix time so everything downstream can tell live from frozen.
-  gpsOwn = { lat: p.lat, lng: p.lng, hdg, t };
+  // Carry the fix time so everything downstream can tell live from frozen, and where the
+  // heading came from so the readout can say (045m, not 045°).
+  gpsOwn = { lat: p.lat, lng: p.lng, hdg, t, hdgCompass: hdgFromCompass };
   gpsNoteFixArrived();
   gpsRefreshQnh(p.lat, p.lng);
   gpsCheckLegAlerts();
@@ -273,6 +282,7 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  gpsStartCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
   gpsWatchUserMapMoves();
@@ -323,6 +333,7 @@ function stopLiveLocation() {
   gpsStopWatch(gpsLiveWatchId);
   gpsLiveWatchId = null;
   gpsLiveOn = false;
+  if (!gpsRecording) gpsStopCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
@@ -393,6 +404,87 @@ var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
 // already reports the way an altimeter would. Only the former needs correcting -- running
 // the geoid and temperature terms over a sim's own altitude would invent an error.
 var gpsAltIsGeometric = true;
+
+// --- phone compass (fallback heading) --------------------------------------------
+// A GPS fix reports COURSE OVER GROUND, and only while moving: stationary, taxiing or in a
+// slow turn the device sends nothing and the own-ship freezes at its last heading. The
+// phone's magnetometer can say where it is pointing there.
+//
+// Strictly a fallback, and only that. Course and heading are different quantities -- they
+// differ by the drift angle, which is the number the off-course alert is built on -- so a
+// real GPS course always wins. And a phone is not the aircraft: it reads where it is
+// clamped, through a steel airframe and a headset magnet, so it is worth a symbol on the
+// ground and nothing more. The readout marks the difference (045m, not 045°) rather than
+// passing a compass value off as a GPS one.
+var gpsCompassMag = null;        // last compass reading, MAGNETIC degrees, or null
+var _gpsCompassAt = 0;
+var GPS_COMPASS_STALE_MS = 5000;      // a reading older than this is not "available"
+var GPS_COMPASS_MAX_KT = 3;           // above taxi speed, the GPS course is the truth
+function gpsCompassOn() {
+  return typeof tune !== 'function' || tune('compassFallback') !== false;
+}
+// iOS reports the compass directly; Android gives alpha (counter-clockwise from north) and
+// needs the screen's own rotation taken out, or a phone in landscape reads 90 degrees off.
+function _gpsCompassFromEvent(e) {
+  if (!e) return null;
+  if (Number.isFinite(e.webkitCompassHeading)) return e.webkitCompassHeading;
+  if (!Number.isFinite(e.alpha)) return null;
+  if (e.absolute === false) return null;          // relative-only: meaningless as a heading
+  const screen = (typeof window !== 'undefined' && window.screen && window.screen.orientation &&
+    Number.isFinite(window.screen.orientation.angle)) ? window.screen.orientation.angle : 0;
+  return ((360 - e.alpha + screen) % 360 + 360) % 360;
+}
+function _gpsOnDeviceOrientation(e) {
+  const mag = _gpsCompassFromEvent(e);
+  if (mag == null) return;
+  gpsCompassMag = ((mag % 360) + 360) % 360;
+  _gpsCompassAt = Date.now();
+}
+var _gpsCompassWatching = false;
+function gpsStartCompass() {
+  if (_gpsCompassWatching || !gpsCompassOn()) return Promise.resolve(false);
+  if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
+    return Promise.resolve(false);
+  }
+  const DO = window.DeviceOrientationEvent;
+  if (!DO) return Promise.resolve(false);
+  const listen = () => {
+    if (_gpsCompassWatching) return true;
+    _gpsCompassWatching = true;
+    // 'deviceorientationabsolute' is the earth-referenced one where it exists (Android);
+    // iOS fires plain 'deviceorientation' carrying webkitCompassHeading.
+    window.addEventListener('deviceorientationabsolute', _gpsOnDeviceOrientation, true);
+    window.addEventListener('deviceorientation', _gpsOnDeviceOrientation, true);
+    return true;
+  };
+  // iOS 13+ needs an explicit grant, and only from a user gesture -- which starting
+  // tracking is. A refusal is not an error here: the app simply has no compass.
+  if (typeof DO.requestPermission === 'function') {
+    return Promise.resolve(DO.requestPermission())
+      .then(r => (r === 'granted' ? listen() : false))
+      .catch(() => false);
+  }
+  return Promise.resolve(listen());
+}
+function gpsStopCompass() {
+  if (!_gpsCompassWatching) return;
+  _gpsCompassWatching = false;
+  window.removeEventListener('deviceorientationabsolute', _gpsOnDeviceOrientation, true);
+  window.removeEventListener('deviceorientation', _gpsOnDeviceOrientation, true);
+  gpsCompassMag = null;
+  _gpsCompassAt = 0;
+}
+// The compass heading as a TRUE bearing (everything downstream stores true), or null when
+// there is nothing usable: switched off, stale, or moving fast enough that the GPS course
+// is the better answer.
+function gpsCompassTrue(groundSpeedKt) {
+  if (!gpsCompassOn() || gpsCompassMag == null) return null;
+  if (Date.now() - _gpsCompassAt > GPS_COMPASS_STALE_MS) return null;
+  if (Number.isFinite(groundSpeedKt) && groundSpeedKt > GPS_COMPASS_MAX_KT) return null;
+  const mv = (typeof tune === 'function') ? tune('magneticVariationDeg') : -5;
+  // toMagnetic() adds the variation, so undo it to get back to true.
+  return ((gpsCompassMag - mv) % 360 + 360) % 360;
+}
 
 // --- altimetry: what the altimeter would read ------------------------------------
 // A GPS fix reports a GEOMETRIC height; an altimeter reports a PRESSURE height. Comparing
@@ -550,7 +642,10 @@ function gpsReadoutHeading() {
   const mag = (typeof toMagnetic === 'function') ? toMagnetic(gpsOwn.hdg) : gpsOwn.hdg;
   if (!Number.isFinite(mag)) return null;
   const r = ((Math.round(mag) % 360) + 360) % 360;
-  return ((typeof pad3 === 'function') ? pad3(r) : String(r)) + '\u00b0';
+  const shown = (typeof pad3 === 'function') ? pad3(r) : String(r);
+  // A compass heading is where the phone points, not where the aircraft is going: it gets
+  // its own mark rather than being dressed up as a GPS course.
+  return shown + (gpsOwn.hdgCompass ? 'm' : '\u00b0');
 }
 // Altitude as the altimeter would read it, plus the subscale setting that goes with it.
 // One helper so the recording and live branches cannot drift apart.
@@ -630,8 +725,13 @@ function onGpsPosition(pos) {
   // is available.
   let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
             : (prev ? geo(prev, pt).brg : NaN);
+  let hdgFromCompass = false;
+  if (!Number.isFinite(hdg)) {
+    const comp = gpsCompassTrue(gpsLastGS);
+    if (comp != null) { hdg = comp; hdgFromCompass = true; }
+  }
   // Same fix time as the live path: a stalled RECORDING freezes the same symbol.
-  gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t };
+  gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t, hdgCompass: hdgFromCompass };
   gpsNoteFixArrived();
   gpsRefreshQnh(pt.lat, pt.lng);
   gpsUpdateReadout();
@@ -722,6 +822,7 @@ function startGpsRecording() {
   if (gpsRecording) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsRecording = true;
+  gpsStartCompass();
   _gpsUserMovedAt = 0;
   gpsWatchUserMapMoves();
   updateGpsRecIndicator();
@@ -1007,6 +1108,7 @@ function stopGpsRecording() {
   gpsStopWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
+  if (!gpsLiveOn) gpsStopCompass();
   updateGpsRecIndicator();
   gpsReleaseWakeLock();
   gpsLastGS = null; gpsLastAlt = null;
