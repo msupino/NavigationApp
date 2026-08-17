@@ -58,6 +58,21 @@ function waypointDiscRadiusPx(sizeSel) {
 // Constant offset of the cum-time kite from its waypoint anchor: clear the
 // waypoint disc + the cum kite's own half-length + a margin. Not leg-length
 // dependent, so the cum kite sits the same distance from every waypoint.
+// Closest the cum kite's ANCHOR may sit to its waypoint: the waypoint's own drawn radius
+// (which follows the size slider and the zoom) plus the kite's half-length, so its tip
+// stops at the edge of the circle rather than inside it. Used by the default offset and to
+// clamp a dragged one -- one number, so a dragged kite and a default one obey the same rule.
+function cumKiteMinAnchorDistPx(wpIdx) {
+  const sc = cumKiteDrawScale();
+  const halfLen = (tune('cumKiteCellWidthPx') + tune('cumKiteTriangleLenPx')) * sc / 2;
+  let discR = waypointDiscRadiusPx();
+  if (Number.isInteger(wpIdx) && typeof waypointGeom === 'function' && state.waypoints[wpIdx]) {
+    const g = waypointGeom(wpIdx);
+    if (g && Number.isFinite(g.r)) discR = g.r;
+  }
+  return discR + halfLen;
+}
+
 function cumDefaultLabelPerp() {
   // drawCumTimeArrow rotates the pentagon so its TIP points at the waypoint (flightAng
   // is atan2'd straight toward it) -- the tip sits L/2 further than this anchor point,
