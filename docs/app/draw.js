@@ -2058,9 +2058,10 @@ function applyNavSnap(latlng, currentName, excludeLl) {
 // --- airfield reference overlay -------------------------------------
 // Lazy-loads docs/data/airfields.json on first activation. Format:
 // { airfields:[{ name, he, en, lat, lng, elev_ft, plates:[string] }] } —
-// published Israeli airfields with matching BYOP plate filenames. The
-// `plates` field is data-only for now; rendering a per-airfield plate
-// list is tracked as a follow-up. Validated strictly by
+// published Israeli airfields with matching BYOP plate filenames. `plates`
+// drives the Airport charts modal (io.js: the per-airfield list, its prefetch
+// and the overlay) -- the "data-only for now" this comment used to claim
+// stopped being true when that shipped. Validated strictly by
 // validateAirfields() (issue #101): every documented field must be
 // present and well-typed; extras are silently allowed for forward-compat.
 async function loadAirfields() {
