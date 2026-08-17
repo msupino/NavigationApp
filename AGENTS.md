@@ -78,6 +78,13 @@ both branches and assembles a single Pages site:
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
   the area, create one.
+- **Before pushing to a PR branch, check the PR is still open** (`gh pr view
+  <n> --json state`). A PR merged while work is in flight is squashed from the
+  snapshot GitHub took, so a commit pushed afterwards is silently left out: the
+  branch and the PR body describe work that is not in `dev`. It has happened
+  twice. If the PR has merged, branch fresh from `dev` and cherry-pick. After
+  any merge, verify the merged code contains what the PR claimed — grep `dev`
+  for a symbol the change introduced, not the PR page.
 - **Run only the new feature's own tests locally; let CI find regressions.**
   CI runs the whole suite on every push, sharded across four runners, so a
   local full run buys a twenty-minute wait for an answer GitHub is already

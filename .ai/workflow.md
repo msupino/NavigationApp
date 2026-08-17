@@ -39,6 +39,26 @@ git checkout -b codex/short-task-name
 
 ## Issues And PRs
 
+Before pushing another commit to a branch with an open PR, confirm the PR is
+still open:
+
+```bash
+gh pr view <n> --json state -q .state      # OPEN, or start a new branch
+```
+
+A merge squashes the snapshot GitHub holds at merge time. A commit that lands
+after that snapshot is dropped without a word, and both the branch and the PR
+description then claim work that never reached `dev`. When it has already
+merged, cut a fresh branch from `dev` and cherry-pick the orphaned commits.
+
+After a merge, verify the result rather than the PR page — grep `dev` for a
+symbol the change introduced:
+
+```bash
+git show origin/dev:docs/app/gps.js | grep -c gpsCompassTrue
+```
+
+
 Every PR must have a matching GitHub issue.
 
 1. Create the issue first.
