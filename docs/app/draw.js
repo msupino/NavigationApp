@@ -4249,6 +4249,28 @@ function selectedCommCallout(i) {
   return state.selected.type === 'wp' && state.selected.freqNoteIndex === i;
 }
 
+// Is something being dragged right now, and does this comm-change callout belong to it?
+// The callout is an arrow from a waypoint to a label: while either end is moving it draws a
+// black line sweeping across the chart, over the very ground the point is being dragged
+// towards. It goes for the duration and comes back where it lands -- or does not come back,
+// if the drop broke its link to the comm-change point, which is the existing rule.
+function commCalloutDragging(noteIndex) {
+  const note = state.notes[noteIndex];
+  if (!note || !note.cc) return false;
+  const active = (typeof drag !== 'undefined' && drag && drag.moved ? drag : null) ||
+    (typeof touchDrag !== 'undefined' && touchDrag && touchDrag.moved ? touchDrag : null);
+  if (!active) return false;
+  // The callout itself is being dragged.
+  if (active.kind === 'note' && active.i === noteIndex) return true;
+  // ...or the waypoint it points at is.
+  if (active.kind !== 'wp') return false;
+  const wp = state.waypoints[active.i];
+  if (!wp) return false;
+  const owner = typeof canonicalNavWaypointName === 'function'
+    ? canonicalNavWaypointName(wp.name) : (wp.name || '');
+  return !!owner && owner === note.cc;
+}
+
 function drawNotes() {
   for (let i = 0; i < state.notes.length; i++) {
     const n = state.notes[i];
@@ -4269,7 +4291,7 @@ function drawNotes() {
         state.selected.index === i);
     const color = n.color || tune('noteDefaultFillColor') || NOTE_DEFAULT_COLOR;
     if (n.cc) {
-      drawCommCallout(n, selected);
+      if (!commCalloutDragging(i)) drawCommCallout(n, selected);
       continue;
     }
     octx.fillStyle = tintFill(color, tune('kiteNoteAlpha'));   // notes share the gist-tuned kite opacity
