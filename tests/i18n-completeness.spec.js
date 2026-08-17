@@ -17,7 +17,6 @@ const SAME_IN_BOTH = [
   'tbViewSource', 'tbWiki',                    // GitHub / Wiki
   'vorRadialDme', 'windFetchOk',               // "R-123° / 4 NM", "5 hPa ← .."
   'routeLibraryExportJson',                    // JSON, beside the GPX button
-  'watchAlertNoRouteTestTitle',                 // "NavAid" -- TEMPORARY test-only string
   'watchAlertTopTitle',                         // "NavAid — TOP" -- CVFR radio phraseology
 ];
 
