@@ -80,7 +80,7 @@ test.describe('Magnifying glass', () => {
     await expect(mag).toBeVisible();
     // move mouse over the map
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     const cx = mapBox.x + mapBox.width / 2;
     const cy = mapBox.y + mapBox.height / 2;
     await page.mouse.move(cx, cy);
@@ -109,7 +109,7 @@ test.describe('Magnifying glass', () => {
     await expect(mag).toBeVisible();
     // move to a position
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     // first, add a couple waypoints so there's something to select. In
     // desktop-menubar mode the preset-open section dropdowns overlay the map,
     // so a "map" click can land on a dropdown button instead — this test used
@@ -173,7 +173,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(1000);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     await page.locator('#tool-magnifier').click();
     // Wait for the observable condition under test instead of sampling after
@@ -292,7 +292,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(1000);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     await page.locator('#tool-magnifier').click();
     await page.waitForTimeout(2500);
@@ -336,7 +336,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(1000);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     // Open the magnifier first — `#mag-zoom` lives in the
     // `magnifier-settings` panel which is `display:none` until then.
@@ -389,7 +389,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     await page.locator('#tool-magnifier').click();
     await page.waitForTimeout(800);
@@ -445,7 +445,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
 
     await page.locator('#tool-magnifier').click();
@@ -477,7 +477,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(500);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
 
     await page.locator('#tool-magnifier').click();
@@ -507,7 +507,7 @@ test.describe('Magnifying glass', () => {
       { timeout: magnifierPaneTileMs });
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     await page.locator('#tool-magnifier').click();
 
@@ -530,7 +530,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     await page.locator('#tool-magnifier').click();
     await page.waitForTimeout(800);
@@ -569,7 +569,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     const cx = mapBox.x + mapBox.width / 2;
     const cy = mapBox.y + mapBox.height / 2;
     await page.mouse.move(cx, cy);
@@ -610,7 +610,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     const cx = mapBox.x + mapBox.width / 2;
     const cy = mapBox.y + mapBox.height / 2;
     await page.mouse.move(cx, cy);
@@ -669,7 +669,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(200);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     const cx = mapBox.x + mapBox.width / 2;
     const cy = mapBox.y + mapBox.height / 2;
     await page.mouse.move(cx, cy);
@@ -722,7 +722,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForTimeout(1000);
 
     const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    expect(mapBox, 'the map must be on screen for this test to mean anything').not.toBeNull();
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     tileReqs.clear();
     await page.locator('#tool-magnifier').click();
