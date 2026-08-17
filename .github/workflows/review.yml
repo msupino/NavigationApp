@@ -25,6 +25,16 @@ concurrency:
 
 jobs:
   eslint:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -35,6 +45,16 @@ jobs:
         run: npx --yes eslint@9 docs
 
   semgrep:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -51,6 +71,16 @@ jobs:
         run: semgrep scan --config=p/default --quiet --metrics=off
 
   codeql:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -62,6 +92,16 @@ jobs:
       - uses: github/codeql-action/analyze@v3
 
   lighthouse:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

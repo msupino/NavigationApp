@@ -29,6 +29,16 @@ permissions:
 
 jobs:
   lint:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -110,6 +120,16 @@ jobs:
           echo "cache-bust ok: $vs"
 
   build:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     needs: lint
     runs-on: ubuntu-latest
     steps:
@@ -371,12 +391,22 @@ jobs:
           path: site
 
   deploy:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
     # PR previews publish again -- but ONLY for branches in this repository. A pull
     # request from a fork must never get its code served from the production origin:
     # `navaid.supino.org/pr/<n>/` shares localStorage, the service-worker scope and any
     # stored Drive/BYOK token with the live app, so a preview is same-origin with real
     # pilot data no matter which path it sits under.
     if: >-
+      (github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main') &&
+      (>-)
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
     needs: build
@@ -473,7 +503,17 @@ jobs:
   # job cannot provide (it becomes `e2e-deployed-shard (1)`), hence the gate job at
   # the end -- do not rename either without updating the required checks.
   e2e-deployed-shard:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
     if: >-
+      (github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main') &&
+      (>-)
       github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' &&
        github.ref_name == 'dev')
@@ -583,7 +623,17 @@ jobs:
   # The required status check. Exists only so branch protection has one stable name
   # to wait on; it passes when every shard passed.
   e2e-deployed:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
     if: >-
+      (github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main') &&
+      (>-)
       always() &&
       (github.event_name == 'pull_request' ||
        (github.event_name == 'workflow_dispatch' &&

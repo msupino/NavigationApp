@@ -15,6 +15,16 @@ permissions:
 
 jobs:
   native-android:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -46,6 +56,16 @@ jobs:
           ./gradlew testDebugUnitTest
 
   native-ios:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
@@ -101,6 +121,16 @@ jobs:
           fi
 
   lint:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -202,6 +232,16 @@ jobs:
   # matrix job cannot provide (it becomes `e2e-shard (1)`), hence the gate job
   # below -- do not rename either without updating the required checks.
   e2e-shard:
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
     runs-on: ubuntu-latest
     # Cold or slow Playwright browser setup can take 6+ minutes before the
     # suite starts; keep enough headroom for one shard of the local e2e run.
@@ -278,7 +318,17 @@ jobs:
   # The required status check. Exists only so branch protection has one stable
   # name to wait on; it passes when every shard passed.
   e2e:
-    if: always()
+    # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
+    # pull_request runs land in `action_required` and sit there unapproved, while the
+    # promotion workflow has already dispatched CI / Deploy / Review on `dev` -- which
+    # reports every required context against the very same SHA. Running them again here
+    # duplicates the entire suite and leaves a PR that looks blocked on an approval it
+    # does not need. See auto-pr-dev-to-main.yml.
+    if: >-
+      (github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main') &&
+      (always())
     needs: e2e-shard
     runs-on: ubuntu-latest
     timeout-minutes: 2
