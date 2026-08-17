@@ -59,6 +59,34 @@ test('the guard is a skip, not a silent pass on ordinary PRs', () => {
   expect(evaluate(lint, { event_name: 'pull_request', head_ref: 'dev', base_ref: 'main' })).toBe(false);
 });
 
+// The guard was first written by a script that mistook an existing folded `if: >-` for the
+// condition itself and emitted `(>-)` into the expression. GitHub rejected the whole file
+// -- "Invalid workflow" -- so production deploys stopped, silently, on main. Parse the
+// workflows and look at what each condition actually says.
+test('every guarded condition is a real expression, not a mangled block marker', () => {
+  for (const [rel, jobs] of Object.entries(GUARDED)) {
+    const doc = read(rel);
+    for (const job of jobs) {
+      const cond = String(doc.jobs[job].if || '');
+      expect(cond, rel + ' ' + job + ' carries a YAML block marker').not.toMatch(/>-|\|-/);
+      // Balanced brackets: the mangling also left an orphan '(' pair behind.
+      const opens = (cond.match(/\(/g) || []).length;
+      const closes = (cond.match(/\)/g) || []).length;
+      expect(opens, rel + ' ' + job + ' has unbalanced brackets').toBe(closes);
+    }
+  }
+});
+
+// The one that would have caught it: the fork check, the workflow_dispatch conditions and
+// always() must survive the guard being ANDed in front of them.
+test('the conditions the guard was added to are still intact', () => {
+  const deploy = read('.github/workflows/deploy.yml').jobs;
+  const flat = (c) => String(c).replace(/\s+/g, ' ');
+  expect(flat(deploy.deploy.if)).toContain('github.event.pull_request.head.repo.full_name == github.repository');
+  expect(flat(deploy['e2e-deployed-shard'].if)).toContain("github.ref_name == 'dev'");
+  expect(flat(deploy['e2e-deployed'].if)).toContain('always()');
+});
+
 test('the promotion workflow still dispatches the runs that report those contexts', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/auto-pr-dev-to-main.yml'), 'utf8');
   // Without these the guard above would leave the promotion with no checks at all.
