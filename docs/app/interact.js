@@ -3915,6 +3915,7 @@ map.on('mousemove', e => {
     draw();   // move silently — but keep an already-open inspector in sync
     if (!document.getElementById('inspector').classList.contains('hidden')) showInspector();
   } else if (drag.kind === 'note') {
+    drag.moved = true;
     const n = state.notes[drag.i];
     if (n && n.rp) {
       setReportPointTFromScreen(n, p.x, p.y);   // constrained to slide along its leg
@@ -3924,8 +3925,10 @@ map.on('mousemove', e => {
     }
     draw();
   } else if (drag.kind === 'label') {
+    drag.moved = true;
     if (setLegLabelFromPoint(drag, p.x, p.y)) draw();
   } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
+    drag.moved = true;
     setCumLabelFromPoint(drag.i, drag.kind === 'cumlabelret', p.x, p.y);
     draw();
   } else if (drag.kind === 'page') {
@@ -4448,6 +4451,7 @@ mapEl.addEventListener('touchmove', e => {
     }
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
+    touchDrag.moved = true;
     setInspectorDragHidden(true);
     const n = state.notes[touchDrag.i];
     if (n && n.rp) {
@@ -4458,9 +4462,11 @@ mapEl.addEventListener('touchmove', e => {
     }
     draw();
   } else if (touchDrag.kind === 'label') {
+    touchDrag.moved = true;
     setInspectorDragHidden(true);
     if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
+    touchDrag.moved = true;
     setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
     draw();
   } else if (touchDrag.kind === 'page') {
