@@ -53,10 +53,27 @@ test('the panel goes away for the drag and comes back after it', async ({ page }
   await touch(page, 'touchmove', p.x + 90, p.y + 70);
   expect(await hidden(page)).toBe(true);
   await touch(page, 'touchend', p.x + 90, p.y + 70);
-  expect(await hidden(page)).toBe(false);            // finger up: back again
-  // ...and still showing the point that was dragged, not a cleared selection.
-  expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('wp');
+  // The finger came down to MOVE the point, not to read about it: the panel stays shut.
+  expect(await hidden(page)).toBe(true);
+  expect(await page.evaluate(() => state.selected)).toBeNull();   // nothing left highlighted
   expect(await page.evaluate(() => state.waypoints[0].lat)).not.toBe(32.10);   // it moved
+  // Not merely hidden by the drag class -- properly closed, so the next tap opens it clean.
+  expect(await page.evaluate(() =>
+    document.getElementById('inspector').classList.contains('insp-drag-hidden'))).toBe(false);
+});
+
+test('a tap right after a drag opens the panel again', async ({ page }) => {
+  await boot(page);
+  const p = await at(page, 0);
+  await touch(page, 'touchstart', p.x, p.y);
+  await touch(page, 'touchmove', p.x + 70, p.y + 50);
+  await touch(page, 'touchend', p.x + 70, p.y + 50);
+  expect(await hidden(page)).toBe(true);
+  const q = await at(page, 1);
+  await touch(page, 'touchstart', q.x, q.y);
+  await touch(page, 'touchend', q.x, q.y);
+  expect(await hidden(page)).toBe(false);
+  expect(await page.evaluate(() => state.selected && state.selected.index)).toBe(1);
 });
 
 test('a tap that never moves keeps the panel up throughout', async ({ page }) => {

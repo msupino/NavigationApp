@@ -4446,8 +4446,14 @@ mapEl.addEventListener('touchmove', e => {
 }, { passive: false });
 
 function endTouch() {
-  // Whatever this drag did or did not do, the finger is off the glass: the panel comes back.
+  // A drag is not a request to inspect: the finger came down to MOVE something, so the
+  // panel that was hidden for the drag stays shut, and the selection goes with it (a
+  // highlighted point with no panel explains nothing). A tap that never moved is the
+  // opposite -- that IS the request -- and keeps its panel.
+  const wasDrag = !!(touchDrag && touchDrag.moved &&
+    (touchDrag.kind === 'wp' || touchDrag.kind === 'note' || touchDrag.kind === 'label'));
   setInspectorDragHidden(false);
+  if (wasDrag) { state.selected = null; showInspector(); }
   if (touchDrag) {
     settleAddModeWaypointTap(touchDrag);
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
@@ -4489,7 +4495,9 @@ function endTouch() {
       changed = applyLegAltitudesToRoute();
       if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
-    if (changed) { draw(); showInspector(); }
+    // seedCommChangeNotes/applyLegAltitudesToRoute may repaint; after a drag the panel must
+    // stay shut, so redraw without reopening it.
+    if (changed) { draw(); if (!wasDrag) showInspector(); }
     if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
     touchDrag = null;
