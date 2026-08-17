@@ -4262,12 +4262,16 @@ function commCalloutDragging(noteIndex) {
   if (!active) return false;
   // The callout itself is being dragged.
   if (active.kind === 'note' && active.i === noteIndex) return true;
-  // ...or the waypoint it points at is.
+  // ...or the waypoint it points at is. Matched on the name the waypoint had when the drag
+  // STARTED (drag.origName): applyNavSnap clears wp.name the moment the point leaves its
+  // snap position, so by the first frame of the drag the live name is '' -- the one moment
+  // this has to work is the one moment the live name cannot answer.
   if (active.kind !== 'wp') return false;
   const wp = state.waypoints[active.i];
   if (!wp) return false;
+  const startName = typeof active.origName === 'string' ? active.origName : wp.name;
   const owner = typeof canonicalNavWaypointName === 'function'
-    ? canonicalNavWaypointName(wp.name) : (wp.name || '');
+    ? canonicalNavWaypointName(startName) : (startName || '');
   return !!owner && owner === note.cc;
 }
 

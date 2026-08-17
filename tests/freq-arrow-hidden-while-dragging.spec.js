@@ -90,6 +90,46 @@ test('an unrelated drag leaves it alone', async ({ page }) => {
   expect(during).toBeGreaterThan(0);
 });
 
+// The two cases the synthetic state above cannot vouch for. Both were broken when this was
+// first written, and both looked identical to production because nothing hid:
+//   - the live wp.name is CLEARED by applyNavSnap as soon as the point leaves its snap
+//     position, so matching the callout by the waypoint's current name compared '' to the
+//     callout's code, every frame of the only drag that matters;
+//   - `moved` was set for waypoint drags only, so dragging the callout itself never
+//     registered as a drag at all.
+test.describe('a real drag, driven through the handlers', () => {
+  const countDuring = (page, what) => page.evaluate((which) => {
+    const noteIdx = state.notes.findIndex(n => n.cc);
+    const target = which === 'note'
+      ? { lat: state.notes[noteIdx].lat, lng: state.notes[noteIdx].lng }
+      : { lat: state.waypoints[0].lat, lng: state.waypoints[0].lng };
+    const p0 = map.latLngToContainerPoint([target.lat, target.lng]);
+    map.fire('mousedown', { containerPoint: p0, latlng: L.latLng(target.lat, target.lng) });
+    const p1 = L.point(p0.x + 60, p0.y + 40);
+    map.fire('mousemove', { containerPoint: p1, latlng: map.containerPointToLatLng(p1) });
+    let drawn = 0;
+    const orig = window.drawCommCallout;
+    window.drawCommCallout = (...a) => { drawn++; return orig.apply(null, a); };
+    draw();
+    window.drawCommCallout = orig;
+    const nameNow = state.waypoints[0].name;
+    endMouseDrag();
+    return { drawn, nameNow };
+  }, what);
+
+  test('dragging the callout hides it', async ({ page }) => {
+    await boot(page);
+    expect((await countDuring(page, 'note')).drawn).toBe(0);
+  });
+
+  test('dragging its waypoint hides it, even though the drag clears the name', async ({ page }) => {
+    await boot(page);
+    const out = await countDuring(page, 'wp');
+    expect(out.nameNow).toBe('');     // the snap dropped it -- this is why origName is used
+    expect(out.drawn).toBe(0);
+  });
+});
+
 test('a press that never moves keeps it drawn', async ({ page }) => {
   await boot(page);
   const during = await page.evaluate(() => {
