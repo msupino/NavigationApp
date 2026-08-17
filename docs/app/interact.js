@@ -2435,6 +2435,18 @@ function setInspectorDragHidden(on) {
   const insp = document.getElementById('inspector');
   if (insp) insp.classList.toggle('insp-drag-hidden', !!on);
 }
+// Everything the pilot can drag on the map is route LAYOUT: the waypoint, its nav kite, the
+// cumulative-time kite, notes and comm callouts. While a real fix (or a simulator) is
+// driving the map, none of it may move -- a nudge in flight rewrites the plan under the
+// alerts that are measuring against it, and on a kneeboard the nudge is usually accidental.
+// The waypoint has been locked for a while; the rest were not, which is the same hazard
+// with a smaller target. The page frame is print layout, not the route, so it stays free.
+const LOCKABLE_DRAG_KINDS = ['wp', 'note', 'label', 'cumlabel', 'cumlabelret'];
+function dragLockedNow(kind) {
+  if (LOCKABLE_DRAG_KINDS.indexOf(kind) === -1) return false;
+  return typeof gpsMapLocked === 'function' && gpsMapLocked();
+}
+
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
@@ -3886,11 +3898,11 @@ map.on('mousemove', e => {
   }
   const p = e.containerPoint;
   if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
+  // Locked (GPS/sim connected): leave drag.moved false and do nothing. On mouseup that
+  // reads as a plain click, not a drag -- the inspector still opens normally (endMouseDrag's
+  // own !drag.moved path), only the layout edit is skipped.
+  if (dragLockedNow(drag.kind)) return;
   if (drag.kind === 'wp') {
-    // Locked (GPS/sim connected): leave drag.moved false and do nothing. On mouseup
-    // that reads as a plain click, not a drag -- the inspector still opens normally
-    // (endMouseDrag's own !drag.moved path), only the position edit is skipped.
-    if (typeof gpsMapLocked === 'function' && gpsMapLocked()) return;
     drag.moved = true;
     const wp = state.waypoints[drag.i];
     const r = applyNavSnap(e.latlng, wp.name || '', dragOriginExclude(drag, e.latlng));
@@ -4421,10 +4433,10 @@ mapEl.addEventListener('touchmove', e => {
   }
   const ll = map.containerPointToLatLng([p.x, p.y]);
   if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
+  // Same lock as the mouse path -- see there for why leaving touchDrag.moved false is what
+  // keeps a plain tap opening the inspector as normal.
+  if (dragLockedNow(touchDrag.kind)) return;
   if (touchDrag.kind === 'wp') {
-    // Same lock as the mouse path -- see there for why leaving touchDrag.moved
-    // false is what keeps a plain tap opening the inspector as normal.
-    if (typeof gpsMapLocked === 'function' && gpsMapLocked()) return;
     if (!touchDrag.moved) setInspectorDragHidden(true);   // first real movement, not a tap
     touchDrag.moved = true;
     const wp = state.waypoints[touchDrag.i];

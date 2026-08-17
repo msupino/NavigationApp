@@ -43,6 +43,68 @@ async function simulateDrag(page, dxPx) {
   }, dxPx);
 }
 
+// Reported: the waypoint was locked, but its nav kite and the cumulative-time kite still
+// dragged, as did notes and comm callouts. Same hazard with a smaller target -- all of it is
+// route layout being rewritten mid-flight, under the alerts measuring against it.
+test.describe('every draggable piece of the route is locked, not just the waypoint', () => {
+  const KINDS = ['label', 'cumlabel', 'cumlabelret', 'note'];
+
+  for (const kind of KINDS) {
+    test(kind + ' does not move while tracking, and moves again once it stops', async ({ page }) => {
+      await boot(page);
+      const out = await page.evaluate((k) => {
+        // A two-waypoint route so the kites have a leg to belong to.
+        state.waypoints = [
+          { lat: 32.00, lng: 34.00, name: 'A' },
+          { lat: 32.10, lng: 34.10, name: 'B' },
+        ];
+        state.notes = [{ lat: 32.05, lng: 34.05, text: 'note', color: '#ffd166', shape: 'rect' }];
+        syncLegs();
+        draw();
+        const snapshot = () => JSON.stringify({
+          inLabel: state.legs[0].inLabel, cum: state.legs[0].cumLabel,
+          cumRet: state.legs[0].cumLabelRet,
+          note: { lat: state.notes[0].lat, lng: state.notes[0].lng },
+        });
+        const move = () => {
+          const p0 = map.latLngToContainerPoint([32.05, 34.05]);
+          drag = { kind: k, i: 0, which: 'in', moved: false,
+                   offLat: 0, offLng: 0, lx: p0.x, ly: p0.y };
+          map.fire('mousemove', {
+            containerPoint: L.point(p0.x + 70, p0.y + 50),
+            latlng: map.containerPointToLatLng(L.point(p0.x + 70, p0.y + 50)),
+          });
+          const after = snapshot();
+          drag = null;
+          return after;
+        };
+        const before = snapshot();
+        window.gpsLiveOn = true;                       // showing location
+        const whileTracking = move();
+        window.gpsLiveOn = false;
+        const afterStopping = move();
+        return { before, whileTracking, afterStopping };
+      }, kind);
+      expect(out.whileTracking).toBe(out.before);          // frozen in flight
+      expect(out.afterStopping).not.toBe(out.before);      // ...and free on the ground
+    });
+  }
+
+  test('a simulator connection locks them too', async ({ page }) => {
+    await boot(page);
+    const locked = await page.evaluate(() => {
+      window.simOn = true;
+      const kinds = ['wp', 'label', 'cumlabel', 'cumlabelret', 'note'];
+      const out = kinds.map(k => dragLockedNow(k));
+      window.simOn = false;
+      return { out, page: dragLockedNow('page') };
+    });
+    expect(locked.out).toEqual([true, true, true, true, true]);
+    // The page frame is print layout, not the route: still free to position mid-flight.
+    expect(locked.page).toBe(false);
+  });
+});
+
 test.describe('map lock while GPS/sim connected', () => {
   test('live location on: dragging a waypoint neither moves it nor opens the inspector', async ({ page }) => {
     await boot(page);
