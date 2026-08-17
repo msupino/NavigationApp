@@ -80,11 +80,23 @@ test('a stale reading is not a heading', async ({ page }) => {
   expect(out.stale).toBeNull();
 });
 
-test('a relative-only orientation event is refused', async ({ page }) => {
+test('anything but an earth-referenced reading is refused', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => startLiveLocation());
-  await compass(page, 90, { absolute: false });
-  expect(await page.evaluate(() => gpsCompassMag)).toBeNull();
+  const out = await page.evaluate(() => ({
+    // Explicitly relative.
+    explicitFalse: _gpsCompassFromEvent({ alpha: 270, absolute: false }),
+    // No `absolute` field at all: a gyro-only alpha drifting from an arbitrary start.
+    // This used to be accepted and printed as a confident `045m`.
+    missing: _gpsCompassFromEvent({ alpha: 270 }),
+    absolute: _gpsCompassFromEvent({ alpha: 270, absolute: true }),
+    // iOS says so directly, and needs no `absolute`.
+    ios: _gpsCompassFromEvent({ webkitCompassHeading: 123 }),
+  }));
+  expect(out.explicitFalse).toBeNull();
+  expect(out.missing).toBeNull();
+  expect(out.absolute).toBe(90);
+  expect(out.ios).toBe(123);
 });
 
 test('landscape does not read 90 degrees off', async ({ page }) => {
