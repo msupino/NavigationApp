@@ -8334,10 +8334,29 @@ async function _simFetch() {
   }
 }
 
+// The footer plane icon carries the connection state, the way the GPS buttons carry
+// theirs: a pilot glancing at the bar should not have to open the panel to find out
+// whether the simulator is feeding the map. Same latched treatment (aria-pressed +
+// .gps-footer-btn colouring), so one look reads all three sources the same way.
+function refreshSimTrigger() {
+  if (typeof document === 'undefined') return;
+  const btn = document.getElementById('sim-trigger');
+  if (!btn) return;
+  const on = typeof simOn !== 'undefined' && !!simOn;
+  btn.classList.add('gps-footer-btn');            // borrow the latched styling, not a new one
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const label = on ? ((S && S.tbSimConnected) || 'Simulator connected')
+                   : ((S && S.tbSecSim) || 'Simulator');
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+}
+if (typeof window !== 'undefined') window.refreshSimTrigger = refreshSimTrigger;
+
 function simStart() {
   if (_simInterval) return;
   _simSession++;                 // anything still in flight belongs to the previous session
   simOn = true;
+  refreshSimTrigger();
   window.simAircraft = null;
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
   // blind reset to leg 0 -- see the identical comment at startLiveLocation() in gps.js
@@ -8361,6 +8380,7 @@ function simStart() {
 
 function simStop() {
   simOn = false;
+  refreshSimTrigger();
   if (typeof gpsMaybeStopDriftTimer === 'function') gpsMaybeStopDriftTimer();
   _simSession++;                 // invalidate any in-flight poll's result
   window.simAircraft = null;
