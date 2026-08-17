@@ -97,6 +97,28 @@ test('its size, thickness and colours come from the tuning gist', async ({ page 
   });
 });
 
+// A tablet is wide but has no pointer, so the width clause of the media query never
+// matches there -- `(pointer: coarse)` is what carries it. Asked directly: "iPad will not
+// see it?" It does, and this is what keeps that true.
+test.describe('a tablet: wide screen, no pointer', () => {
+  test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: false });
+
+  test('gets the crosshair, and the live readout that goes with it', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => !!document.getElementById('map-crosshair'));
+    const out = await page.evaluate(() => ({
+      shown: getComputedStyle(document.getElementById('map-crosshair')).display !== 'none',
+      narrowClause: matchMedia('(max-width: 680px)').matches,
+      pointerClause: matchMedia('(pointer: coarse)').matches,
+      liveUpdates: coarsePointerOnly(),
+    }));
+    expect(out.shown).toBe(true);
+    expect(out.narrowClause).toBe(false);      // NOT the width clause -- the screen is wide
+    expect(out.pointerClause).toBe(true);      // this is what carries it
+    expect(out.liveUpdates).toBe(true);        // ...and the readout follows the mark
+  });
+});
+
 test('with a real pointer there is no crosshair — the pointer is the marker', async ({ page }) => {
   await boot(page, DESKTOP);
   expect(await shown(page)).toBe(false);
