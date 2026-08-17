@@ -985,8 +985,21 @@ function setCumLabelFromPoint(legIdx, isReturn, px, py) {
   if (!leg || !frame) return;
   const key = isReturn ? 'cumLabelRet' : 'cumLabel';
   const label = leg[key] || { a: 0, p: 0, _m: 1 };
-  const vx = px - frame.anchor.x;
-  const vy = py - frame.anchor.y;
+  let vx = px - frame.anchor.x;
+  let vy = py - frame.anchor.y;
+  // The kite points AT the waypoint, so dragging it towards one buries the tip in the
+  // circle -- and on a busy chart the pilot cannot then read either. Held at arm's length:
+  // the tip may touch the edge of the disc and no further, whichever direction it is
+  // dragged from. Only the distance is clamped, so the kite still goes wherever it is put.
+  const wpIdx = isReturn ? legIdx : legIdx + 1;
+  const clear = cumKiteMinAnchorDistPx(wpIdx);
+  const dist = Math.hypot(vx, vy);
+  if (dist > 0 && dist < clear) {
+    vx = vx * clear / dist;
+    vy = vy * clear / dist;
+  } else if (dist === 0) {
+    vy = clear;                       // dropped exactly on the waypoint: park it below
+  }
   const sc = legZoomScale() || 1;
   label.a = (vx * frame.dx + vy * frame.dy) / sc;
   label.p = (vx * frame.nx + vy * frame.ny) / sc;
