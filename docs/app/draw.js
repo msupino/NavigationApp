@@ -101,7 +101,13 @@ function cumDefaultLabelPerp() {
   // slider's marker.
   const sc = cumKiteDrawScale();
   const halfLen = (tune('cumKiteCellWidthPx') + tune('cumKiteTriangleLenPx')) * sc / 2;
-  return waypointDiscRadiusPx(1) + halfLen + tune('defaultLabelMarginPx') * sc;
+  const base = waypointDiscRadiusPx(1) + halfLen + tune('defaultLabelMarginPx') * sc;
+  // cumKiteGapPx moves it in or out from there. The floor is the clearance the rest of this
+  // function exists to compute: pulled in past it, the kite's tip would be inside the disc it
+  // is pointing at, which is the state this placement was written to avoid.
+  const gap = (typeof tune === 'function') ? Number(tune('cumKiteGapPx')) : 0;
+  const floor = waypointDiscRadiusPx(1) + halfLen;
+  return Math.max(floor, base + (Number.isFinite(gap) ? gap * sc : 0));
 }
 function legKiteAlongHalfPx(sc) {
   sc = sc ?? ((typeof legZoomScale === 'function') ? legZoomScale() : 1);

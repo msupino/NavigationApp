@@ -227,6 +227,10 @@ NavAid.tuningDefaults = {
   // Range runs past a half turn on purpose: -230 and +130 are the same place, and a pilot
   // dialling this in should not have to do the arithmetic to stay inside a bound.
   commCalloutAngleDeg: { value: -230, min: -359, max: 359, step: 5, label: 'Freq callout angle from track (deg, +left)' },
+  // How far the cumulative kite sits from its waypoint, on top of the minimum that keeps its
+  // tip clear of the waypoint disc. 0 is the shipped placement; negative pulls it in, and the
+  // clearance floor still applies, so the tip can touch the edge of the disc and no closer.
+  cumKiteGapPx: { value: 0, min: -40, max: 200, step: 2, label: 'Cum kite extra distance from waypoint (px)' },
   cumKiteAngleDeg: { value: 180, min: 0, max: 359, step: 5, label: 'Cum kite angle from nav kite (deg)' },
   cumKiteFillColor: { value: '#00ff00', type: 'color', label: 'Cum kite fill color' },
   returnCumKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return cum kite fill color' },
@@ -691,7 +695,7 @@ NavAid.tuningGroups = [
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
   { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'kitePrintHeightMm', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
-  { name: 'Cumulative kites', keys: ['cumKiteAngleDeg', 'cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintHeightMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
+  { name: 'Cumulative kites', keys: ['cumKiteAngleDeg', 'cumKiteGapPx', 'cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintHeightMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
   { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor', 'waypointHotspotFillColor', 'waypointHotspotRingColor', 'waypointHotspotRingWidthPx', 'waypointHotspotRingGapPx'] },
