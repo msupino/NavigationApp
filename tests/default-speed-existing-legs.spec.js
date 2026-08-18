@@ -3,6 +3,7 @@
 // after drawing the route should not have to re-type it leg by leg -- and must not lose
 // the one leg they deliberately slowed for a low pass.
 const { test, expect } = require('./_setup');
+const { enableAssistant } = require('./_assistant-on');
 
 async function boot(page) {
   await page.addInitScript(() => {
@@ -10,8 +11,8 @@ async function boot(page) {
       for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print'])
         localStorage.setItem('navaid.sec.' + sec, '1');
     } catch (e) {}
-  });
-  await page.goto('?lang=en&nogist');
+  });  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => typeof tune === 'function' && typeof syncLegs === 'function');
 }
 
@@ -135,8 +136,8 @@ test('a return-speed edit pins only the return direction', async ({ page }) => {
 test('reloading the tab does not freeze the route at the old default', async ({ page }) => {
   await boot(page);
   await route(page);
-  await page.evaluate(() => flushPersist());
-  await page.goto('?lang=en&nogist');
+  await page.evaluate(() => flushPersist());  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => typeof tune === 'function' && state.legs.length === 3);
   expect((await speeds(page)).every(l => l[2] === 'auto' && l[3] === 'auto')).toBe(true);
   await setDefault(page, 110);
@@ -182,8 +183,8 @@ test('a gist-shipped default carries the route too', async ({ page }) => {
   await page.route('https://gist.githubusercontent.com/**', r => r.fulfill({
     status: 200, contentType: 'application/json',
     body: JSON.stringify({ defaultLegSpeedKt: 100 }),
-  }));
-  await page.goto('?lang=en');                 // gist path live (no ?nogist)
+  }));  await page.goto('?lang=en');                 // gist path live (no ?nogist)
+  await enableAssistant(page);
   await page.waitForFunction(() => typeof syncLegs === 'function');
   await route(page);
   await page.waitForFunction(() => tune('defaultLegSpeedKt') === 100);

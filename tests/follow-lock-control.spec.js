@@ -4,14 +4,15 @@
 // put it and never takes it back. It only appears while a real fix is driving the
 // own-ship, because with nothing to follow it would be a switch for nothing.
 const { test, expect } = require('./_setup');
+const { enableAssistant } = require('./_assistant-on');
 
 async function boot(page) {
   await page.addInitScript(() => {
     window.__geoCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 8; };
     navigator.geolocation.clearWatch = () => {};
-  });
-  await page.goto('?lang=en&nogist');
+  });  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => typeof startLiveLocation === 'function' &&
     !!document.getElementById('follow-lock'));
 }

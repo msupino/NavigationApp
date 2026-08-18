@@ -2,6 +2,7 @@
 // Findings from the review of main @ 83b93d3. Two are regressions in yesterday's fixes: the
 // wind request identity was too weak, and the fail-closed shim check proved the wrong thing.
 const { test, expect } = require('./_setup');
+const { enableAssistant } = require('./_assistant-on');
 const fs = require('fs');
 const path = require('path');
 
@@ -18,8 +19,8 @@ test('an off/on at the same altitude retries instead of reporting the old failur
   let n = 0;
   const gate = [];
   await page.route(OM_RE, route => { n++; gate.push(route); });   // hold every grid request
-  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
-  await page.goto('?lang=en&nogist');
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => !!document.getElementById('windfield-cb'));
 
   const cb = page.locator('#windfield-cb');
@@ -44,8 +45,8 @@ test('a genuine failure of the live request still reports', async ({ page }) => 
   // state for another.
   let aborted = 0;
   await page.route(OM_RE, r => { aborted++; return r.abort(); });
-  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
-  await page.goto('?lang=en&nogist');
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => !!document.getElementById('windfield-cb'));
   // Set + dispatch rather than locator.check(): the abort fails so fast that the error
   // handler unchecks the box before check() can verify its own click, and Playwright then
@@ -100,8 +101,8 @@ test('one provider\'s key is never sent to another provider\'s proxy', async ({ 
     // ...and today they are on OpenRouter, with a different key and no proxy of its own.
     localStorage.setItem('navaid.ai.provider', 'openrouter');
     localStorage.setItem('navaid.ai.key.openrouter', 'OPENROUTER-SECRET');
-  });
-  await page.goto('?lang=en&nogist');
+  });  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => !!(window.NavAid && NavAid.assistant));
   await page.evaluate(() => NavAid.assistant.send('hello'));
   await expect.poll(() => sent.length, { timeout: 10000 }).toBeGreaterThan(0);
@@ -123,8 +124,8 @@ test('a legacy global Base URL is dropped, never re-pointed at a provider', asyn
     await page.addInitScript(p => {
       localStorage.setItem('navaid.ai.baseUrl', 'https://proxy.example/v1');
       localStorage.setItem('navaid.ai.provider', p);
-    }, active);
-    await page.goto('?lang=en&nogist');
+    }, active);    await page.goto('?lang=en&nogist');
+    await enableAssistant(page);
     await page.waitForFunction(() => !!(window.NavAid && NavAid.assistant));
     const r = await page.evaluate(() => ({
       legacy: localStorage.getItem('navaid.ai.baseUrl'),
