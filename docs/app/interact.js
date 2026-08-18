@@ -873,8 +873,11 @@ function cumLabelCenter(i) {
   const sc = legZoomScale();
   // Use own driftPerp (not inLabel's perp) so the cum kite is independent
   // of the navigation kite position when in default state.
-  const perp  = o._default ? cumDefaultLabelPerp() : (o.p || 0) * sc;
-  const along = (o.a || 0) * sc;
+  // Default placement comes from draw.js's own helper so the box is always where the kite
+  // was painted -- cumKiteAngleDeg moves it off the pure perpendicular.
+  const def = cumDefaultLabelOffset();
+  const perp  = o._default ? def.perp : (o.p || 0) * sc;
+  const along = o._default ? def.along : (o.a || 0) * sc;
   return { x: b.x + dx * along + nx * perp,
            y: b.y + dy * along + ny * perp };
 }
@@ -888,8 +891,8 @@ function _materialiseDefaultCumLabel(legIdx) {
   const b = proj(state.waypoints[legIdx + 1]);
   if (!a || !b) return;
   const sc = legZoomScale() || 1;
-  const perpPx = cumDefaultLabelPerp();
-  leg.cumLabel = { a: o.a || 0, p: perpPx / sc, _m: 1 };
+  const def = cumDefaultLabelOffset();
+  leg.cumLabel = { a: def.along / sc, p: def.perp / sc, _m: 1 };
 }
 // Point inside a rotated box: center (cx,cy), unit along-axis (ux,uy) toward
 // `anchor`, half-length halfL, half-height halfW.
@@ -947,8 +950,9 @@ function cumLabelRetCenter(i) {
   const leg = state.legs[i];
   const o = (leg && leg.cumLabelRet) || { a: 0, _default: 1, _m: 1 };
   const sc = legZoomScale();
-  const perp  = o._default ? -cumDefaultLabelPerp() : (o.p || 0) * sc;
-  const along = (o.a || 0) * sc;
+  const def = cumDefaultLabelOffset();            // mirrored, as the renderer mirrors it
+  const perp  = o._default ? -def.perp : (o.p || 0) * sc;
+  const along = o._default ? -def.along : (o.a || 0) * sc;
   return { x: a.x + dx * along + nx * perp,
            y: a.y + dy * along + ny * perp };
 }
@@ -961,8 +965,8 @@ function _materialiseDefaultCumLabelRet(legIdx) {
   const b = proj(state.waypoints[legIdx + 1]);
   if (!a || !b) return;
   const sc = legZoomScale() || 1;
-  const perpPx = cumDefaultLabelPerp();
-  leg.cumLabelRet = { a: o.a || 0, p: -perpPx / sc, _m: 1 };  // default is the -perp side
+  const def = cumDefaultLabelOffset();
+  leg.cumLabelRet = { a: -def.along / sc, p: -def.perp / sc, _m: 1 };  // mirror of the inbound one
 }
 function cumLabelDragFrame(legIdx, isReturn) {
   if (!state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return null;
