@@ -4,6 +4,7 @@
 // exercise the agent loop + each tool tier: read (safe), route (auto + undo),
 // outbound (confirm).
 const { test, expect } = require('./_setup');
+const { enableAssistant } = require('./_assistant-on');
 
 // Anchored to the raw.githubusercontent origin so it can't match a look-alike
 // host embedded elsewhere in a URL (CodeQL js/regex/missing-anchor).
@@ -22,6 +23,7 @@ const NOTAM_DATA = {
 async function boot(page) {
   await page.route(NOTAM_RE, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(NOTAM_DATA) }));
   await page.goto('?lang=en');
+  await enableAssistant(page);          // the feature ships off; these specs are about it
   await page.waitForFunction(() => typeof state !== 'undefined' && window.NavAid &&
     NavAid.assistant && document.querySelector('.assistant-fab'));
 }

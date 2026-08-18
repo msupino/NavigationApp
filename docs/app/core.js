@@ -48,6 +48,12 @@ NavAid.tuningDefaults = {
   // Use the phone's compass for the own-ship heading where the GPS gives no course
   // (stationary, taxiing). Never above taxi speed: in flight the GPS course is the truth,
   // and a phone in a metal cockpit is not. See gpsCompassTrue.
+  // How long an in-flight notification stays in the shade before the app withdraws it.
+  // Android keeps notifications until they are swiped, so without this a sortie ends with
+  // a stack of stale calls. Short on purpose: the alert has already made its noise and, in
+  // the APK, spoken it -- the shade entry is a glance-at-it-now copy, not a log. 0 = keep
+  // them, the old behaviour.
+  alertNotifyTtlSec: { value: 15, min: 0, max: 3600, step: 5, label: 'Alert notification life (s)' },
   compassFallback: { value: true, type: 'bool', label: 'Compass heading when stopped' },
   // How far the heading must move before a heading-up map is rotated. Every rotation
   // redraws the whole chart, and a degree of GPS scatter is not worth that -- nor the
@@ -574,6 +580,11 @@ NavAid.tuningDefaults = {
   // The inspector stays shut while a real fix is driving the map (recording or showing
   // location). Set true to have a tap open it in flight, the way it used to.
   featureInspectorWhileTracking: { value: false, type: 'bool', label: 'Feature: inspector while tracking' },
+  // The assistant's launcher sits in the bottom-right map controls, where a thumb reaching
+  // for zoom or the follow lock finds it. Ships OFF: the assistant is a planning-desk tool
+  // and the map is where a pilot is reading, so it is opted into rather than out of. On
+  // brings back the button and the panel with nothing else to configure.
+  featureAssistant: { value: false, type: 'bool', label: 'Feature: AI assistant button' },
   // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
   // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
   // it, let alone weigh it. Both live here so they can be tuned from the gist without a
@@ -619,7 +630,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -690,7 +701,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'reverseWarnMs', 'reverseWarnBlink', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
