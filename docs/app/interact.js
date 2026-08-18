@@ -3956,6 +3956,17 @@ map.on('mousemove', e => {
 // Re-enable map dragging on release anywhere, not just inside the map.
 // Listening to map.on('mouseup') alone misses releases over the toolbar /
 // browser chrome and leaves the map permanently unpannable (issue #70).
+// Anything hidden FOR the drag -- the frequency callout whose end is moving (draw.js's
+// commCalloutDragging) -- is only restored by a repaint that happens after the drag state
+// is gone. Every draw() inside the release path still sees `drag`/`touchDrag` set, so the
+// callout stayed hidden until some later interaction happened to repaint: reported as the
+// arrow vanishing until the waypoint was pressed. Clearing and repainting therefore travel
+// together, on every exit path.
+function clearDragAndRedraw(which) {
+  if (which === 'touch') touchDrag = null; else drag = null;
+  if (typeof scheduleDraw === 'function') scheduleDraw(); else if (typeof draw === 'function') draw();
+}
+
 function endMouseDrag() {
   if (drag) {
     settleAddModeWaypointTap(drag);
@@ -3971,7 +3982,7 @@ function endMouseDrag() {
         showInspector(); draw();
         if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
         map.dragging.enable();
-        drag = null;
+        clearDragAndRedraw();
         return;
       }
       // Landed on another waypoint that is NOT a neighbour: the two are the same place now,
@@ -4015,7 +4026,7 @@ function endMouseDrag() {
       // Extended the route through this point; no inspector, and the new waypoint is selected.
       if (typeof setLiveDragging === 'function') setLiveDragging(false);
       map.dragging.enable();
-      drag = null;
+      clearDragAndRedraw();
       return;
     }
     if (drag.kind === 'wp') {
@@ -4024,7 +4035,7 @@ function endMouseDrag() {
     }
     if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
-    drag = null;
+    clearDragAndRedraw();
   }
 }
 window.addEventListener('mouseup', endMouseDrag);
@@ -4512,7 +4523,7 @@ function endTouch() {
         showInspector(); draw();
         if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
         map.dragging.enable();
-        touchDrag = null;
+        clearDragAndRedraw('touch');
         return;
       }
       // Adopt the name of the point it landed on -- see endMouseDrag.
@@ -4532,7 +4543,7 @@ function endTouch() {
         addModeExtendThroughWaypoint(touchDrag.i)) {
       if (typeof setLiveDragging === 'function') setLiveDragging(false);
       map.dragging.enable();
-      touchDrag = null;
+      clearDragAndRedraw('touch');
       return;
     }
     // #487: seed a comm-change note if a touch waypoint-drag landed on one.
@@ -4546,7 +4557,7 @@ function endTouch() {
     if (changed) { draw(); if (!wasDrag) showInspector(); }
     if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
-    touchDrag = null;
+    clearDragAndRedraw('touch');
   }
 }
 mapEl.addEventListener('touchend', endTouch);

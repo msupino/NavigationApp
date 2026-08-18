@@ -130,7 +130,7 @@ function gpsStartWatch(onPos, onErr, title, message) {
     // `timeout` matters as much as accuracy: without it a watch that never delivers again
     // simply goes quiet, and onErr is never called.
     return { web: navigator.geolocation.watchPosition(onPos, onErr,
-      { enableHighAccuracy: true, timeout: GPS_STALE_MS, maximumAge: 0 }) };
+      { enableHighAccuracy: true, timeout: gpsStaleMs(), maximumAge: 0 }) };
   }
   const h = { native: null, stopped: false };
   // addWatcher is typed Promise<string>, but on some runtimes (Capacitor 8
@@ -192,7 +192,7 @@ function onLivePosition(pos) {
   if (!gpsLiveOn || !pos || !pos.coords) return;
   if (gpsRecording) return;   // recording drives own-ship + recenter; avoid dueling
   const c = pos.coords;
-  if (c.accuracy != null && c.accuracy > GPS_MAX_ACC_M) return;
+  if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
   const t = pos.timestamp || Date.now();
   // NaN, not 0, when neither the device nor a previous fix can supply a heading --
@@ -254,7 +254,7 @@ function gpsFixAgeMs() {
 }
 function gpsFixStale() {
   const age = gpsFixAgeMs();
-  return age != null && age > GPS_STALE_MS;
+  return age != null && age > gpsStaleMs();
 }
 // No fix means no callback, so staleness cannot be noticed by the fix handler. This ticks
 // while a live watch (or a recording) is on, and redraws once when the fix crosses from fresh
@@ -502,7 +502,7 @@ function gpsStopCompass() {
 function gpsCompassTrue(groundSpeedKt) {
   if (!gpsCompassOn() || gpsCompassMag == null) return null;
   if (Date.now() - _gpsCompassAt > GPS_COMPASS_STALE_MS) return null;
-  if (Number.isFinite(groundSpeedKt) && groundSpeedKt > GPS_COMPASS_MAX_KT) return null;
+  if (Number.isFinite(groundSpeedKt) && groundSpeedKt > gpsCompassMaxKt()) return null;
   const mv = (typeof tune === 'function') ? tune('magneticVariationDeg') : -5;
   // toMagnetic() adds the variation, so undo it to get back to true.
   return ((gpsCompassMag - mv) % 360 + 360) % 360;
@@ -723,12 +723,12 @@ function gpsUpdateReadout() {
 function onGpsPosition(pos) {
   if (!gpsRecording || !pos || !pos.coords) return;
   const c = pos.coords;
-  if (c.accuracy != null && c.accuracy > GPS_MAX_ACC_M) return;       // too imprecise
+  if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;       // too imprecise
   const pt = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now(),
                alt: c.altitude != null ? c.altitude : null,
                acc: c.accuracy != null ? c.accuracy : null };
   const prev = gpsTrack[gpsTrack.length - 1];
-  if (prev && _gpsMetres(prev, pt) < GPS_MIN_MOVE_M) return;          // de-jitter
+  if (prev && _gpsMetres(prev, pt) < gpsMinMoveM()) return;          // de-jitter
   // At the cap, stop growing the track but keep the live display (own-ship,
   // GS/alt, readout, recenter) updating instead of freezing.
   if (gpsTrack.length < GPS_MAX_POINTS) gpsTrack.push(pt);
@@ -1159,7 +1159,20 @@ if (typeof document !== 'undefined') {
 // onLivePosition (live-only), and io.js's connected-simulator poll (_simFetch) -- via
 // gpsCheckLegAlerts(); no separate on/off setting. The simulator path doubles as a way to
 // test (or just use) these alerts without a phone or a real flight.
-var GPS_LEG_ETA_S = 120;          // fire this many seconds before the next waypoint
+var GPS_LEG_ETA_S = 120;          // shipped default; legEtaLeadSec overrides it live
+// Read through tune() at the point of use, not once at load: a gist override that landed
+// after boot would otherwise be ignored until a reload.
+function gpsLegEtaLeadS() { return (typeof tune === 'function') ? tune('legEtaLeadSec') : GPS_LEG_ETA_S; }
+function gpsLegCaptureNm() { return (typeof tune === 'function') ? tune('legCaptureNm') : GPS_LEG_CAPTURE_NM; }
+function gpsAltToleranceFt() { return (typeof tune === 'function') ? tune('altToleranceFt') : GPS_ALT_TOLERANCE_FT; }
+function gpsAltMaxPerLeg() { return (typeof tune === 'function') ? tune('altMaxAlertsPerLeg') : GPS_ALT_MAX_PER_LEG; }
+function gpsDriftErrorDeg() { return (typeof tune === 'function') ? tune('driftTrackErrorDeg') : GPS_DRIFT_TRACK_ERROR_DEG; }
+function gpsDriftCheckMs() { return ((typeof tune === 'function') ? tune('driftCheckSec') : 120) * 1000; }
+function gpsConeUnknownMs() { return ((typeof tune === 'function') ? tune('coneUnknownSec') : 15) * 1000; }
+function gpsMaxAccM() { return (typeof tune === 'function') ? tune('gpsMaxAccuracyM') : GPS_MAX_ACC_M; }
+function gpsMinMoveM() { return (typeof tune === 'function') ? tune('gpsMinMoveM') : GPS_MIN_MOVE_M; }
+function gpsStaleMs() { return ((typeof tune === 'function') ? tune('gpsStaleSec') : 20) * 1000; }
+function gpsCompassMaxKt() { return (typeof tune === 'function') ? tune('compassMaxKt') : GPS_COMPASS_MAX_KT; }
 var GPS_LEG_CAPTURE_NM = 0.3;     // ...or this close, whichever comes first
 var GPS_ALT_TOLERANCE_FT = 100;
 var gpsAlertLegIndex = 0;         // forward-only pointer into state.legs/state.waypoints
@@ -1381,7 +1394,7 @@ function gpsCheckRouteUnknown(insideCone) {
   }
   const now = Date.now();
   if (_gpsConeOutsideSince == null) { _gpsConeOutsideSince = now; return; }
-  if (now - _gpsConeOutsideSince < GPS_CONE_UNKNOWN_MS) return;
+  if (now - _gpsConeOutsideSince < gpsConeUnknownMs()) return;
   gpsRouteUnknown = true;
   const rec = gpsRouteRecovery();
   if (!rec) return;
@@ -1422,7 +1435,7 @@ function gpsCheckLegAlerts() {
   // inside it now.
   if (_gpsTopCapturePoint) {
     const fromCaptured = geo(gpsOwn, _gpsTopCapturePoint).dist;
-    if (!Number.isFinite(fromCaptured) || fromCaptured > GPS_LEG_CAPTURE_NM) {
+    if (!Number.isFinite(fromCaptured) || fromCaptured > gpsLegCaptureNm()) {
       _gpsTopCapturePoint = null;
     }
   }
@@ -1478,11 +1491,11 @@ function gpsCheckLegAlerts() {
     // essentially at the moment the leg starts (or never usefully "N minutes before" at
     // all) -- half the lead time instead, once the CURRENT leg's own planned duration is
     // under the standard threshold.
-    let etaThreshold = GPS_LEG_ETA_S;
+    let etaThreshold = gpsLegEtaLeadS();
     const start = wps[gpsAlertLegIndex];
     const legDurationS = start ? (geo(start, next).dist / planSpeed) * 3600 : Infinity;
-    if (Number.isFinite(legDurationS) && legDurationS < GPS_LEG_ETA_S) {
-      etaThreshold = GPS_LEG_ETA_S / 2;
+    if (Number.isFinite(legDurationS) && legDurationS < gpsLegEtaLeadS()) {
+      etaThreshold = gpsLegEtaLeadS() / 2;
     }
     const etaS = (dist / planSpeed) * 3600;
     if (etaS <= etaThreshold) {
@@ -1562,13 +1575,13 @@ function gpsCheckLegAlerts() {
   const flownAlt = gpsAltitudeForCompare();
   if (_gpsAlertConfirmed && Number.isFinite(planned) && flownAlt != null) {
     const off = Math.abs(flownAlt - planned);
-    if (off >= GPS_ALT_TOLERANCE_FT) {
+    if (off >= gpsAltToleranceFt()) {
       if (!_gpsAlertAltDeviated) {
         _gpsAlertAltDeviated = true;
         // Latched either way: crossing back and forth still counts as episodes, so the
         // cap cannot be dodged by the aircraft settling briefly inside tolerance.
         _gpsAlertAltCount++;
-        if (_gpsAlertAltCount <= GPS_ALT_MAX_PER_LEG) {
+        if (_gpsAlertAltCount <= gpsAltMaxPerLeg()) {
           gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
             (S && S.watchAlertAltBody)
               ? S.watchAlertAltBody(Math.round(flownAlt), Math.round(planned))
@@ -1589,8 +1602,8 @@ function gpsCheckLegAlerts() {
   // completed leg again (notably at the final waypoint), so gpsAlertLegIndex is not enough
   // to suppress repeats; _gpsTopCapturePoint remains latched until the aircraft exits.
   if (dist < _gpsAlertMinDistNm) _gpsAlertMinDistNm = dist;
-  const captured = dist <= GPS_LEG_CAPTURE_NM;
-  if (captured || dist > _gpsAlertMinDistNm + GPS_LEG_CAPTURE_NM) {
+  const captured = dist <= gpsLegCaptureNm();
+  if (captured || dist > _gpsAlertMinDistNm + gpsLegCaptureNm()) {
     // A genuine capture -- a fix actually landed within radius of a real waypoint --
     // is what confirms gpsAlertLegIndex is right, not just an inferred snap. The
     // "passed abeam without ever getting close" branch still advances the pointer
@@ -1891,7 +1904,7 @@ function _gpsDriftIntervalMs() {
   const sf = (typeof simOn !== 'undefined' && simOn && typeof window !== 'undefined' &&
     Number.isFinite(window.simSpeedFactor) && window.simSpeedFactor > 0)
     ? window.simSpeedFactor : 1;
-  return GPS_DRIFT_CHECK_MS / sf;
+  return gpsDriftCheckMs() / sf;
 }
 // setTimeout, not setInterval: re-reads the (possibly just-changed) speed factor on every
 // reschedule, so a factor that changes mid-session -- reconnecting to a differently-tuned
@@ -1947,7 +1960,7 @@ function gpsCheckDrift() {
   // the planned course -- not a full cross-track projection, just the angle a pilot would
   // read off a compass/HSI against the planned course.
   const trackErrorDeg = _gpsAngleDiff(flown.brg, leg.brg);
-  if (Math.abs(trackErrorDeg) < GPS_DRIFT_TRACK_ERROR_DEG) return;
+  if (Math.abs(trackErrorDeg) < gpsDriftErrorDeg()) return;
   const label = (typeof waypointDisplayLabel === 'function')
     ? waypointDisplayLabel(end, gpsAlertLegIndex + 1) : (end.name || '');
   if (flown.dist < leg.dist / 2) {

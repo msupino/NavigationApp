@@ -1,6 +1,6 @@
 // @ts-check
 // The comm-change callout is an arrow from a waypoint to a label. While either end is being
-// dragged it sweeps a heavy black line across the chart — over the very ground the point is
+// dragged by its WAYPOINT end it sweeps a heavy black line across the chart — over the very ground the point is
 // being dragged towards. It goes for the duration of the drag and comes back where things
 // land (or does not come back, if the drop broke its link to the comm-change point — that
 // rule is unchanged).
@@ -61,7 +61,7 @@ test('it disappears while its waypoint is being dragged, and returns after', asy
   expect(await calloutDrawn(page)).toBeGreaterThan(0);   // finger up: back again
 });
 
-test('dragging the callout itself hides it too', async ({ page }) => {
+test('dragging the callout itself keeps it painted -- you are aiming it', async ({ page }) => {
   await boot(page);
   const during = await page.evaluate(() => {
     const idx = state.notes.findIndex(n => n.cc);
@@ -73,7 +73,7 @@ test('dragging the callout itself hides it too', async ({ page }) => {
     window.drawCommCallout = orig;
     return drawn;
   });
-  expect(during).toBe(0);
+  expect(during).toBeGreaterThan(0);
 });
 
 test('an unrelated drag leaves it alone', async ({ page }) => {
@@ -95,8 +95,8 @@ test('an unrelated drag leaves it alone', async ({ page }) => {
 //   - the live wp.name is CLEARED by applyNavSnap as soon as the point leaves its snap
 //     position, so matching the callout by the waypoint's current name compared '' to the
 //     callout's code, every frame of the only drag that matters;
-//   - `moved` was set for waypoint drags only, so dragging the callout itself never
-//     registered as a drag at all.
+//   - `moved` was set for waypoint drags only, so a drag of anything else never registered
+//     as a drag at all (which is what `moved` is still needed for elsewhere).
 test.describe('a real drag, driven through the handlers', () => {
   const countDuring = (page, what) => page.evaluate((which) => {
     const noteIdx = state.notes.findIndex(n => n.cc);
@@ -117,9 +117,9 @@ test.describe('a real drag, driven through the handlers', () => {
     return { drawn, nameNow };
   }, what);
 
-  test('dragging the callout hides it', async ({ page }) => {
+  test('dragging the callout keeps it painted, so it can be aimed', async ({ page }) => {
     await boot(page);
-    expect((await countDuring(page, 'note')).drawn).toBe(0);
+    expect((await countDuring(page, 'note')).drawn).toBeGreaterThan(0);
   });
 
   test('dragging its waypoint hides it, even though the drag clears the name', async ({ page }) => {
