@@ -4045,8 +4045,12 @@ function endMouseDrag() {
       if (!drag.moved || inspOpen) showInspector();
     }
     if (KITE_DRAG_KINDS.indexOf(drag.kind) !== -1) {
-      if (drag.moved) state.selected = null;
-      showInspector();            // a tap opens it, a drag shuts it: see KITE_DRAG_KINDS
+      // Waypoint rule, to the letter: a tap opens the panel, a drag leaves a shut panel
+      // shut, and a panel that was already open before the gesture stays open and refreshes
+      // (dragging a kite is no reason to take away something the pilot was reading).
+      const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
+      if (drag.moved && !inspOpen) state.selected = null;
+      showInspector();
     }
     if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();

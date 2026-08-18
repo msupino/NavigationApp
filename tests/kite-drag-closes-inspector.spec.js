@@ -114,3 +114,21 @@ test('the touch path agrees: a moved kite drag ends shut', async ({ page }) => {
   expect(out.openedDuring).toBe(true);
   expect(out.after).toBe(false);
 });
+
+// The waypoint rule has a third case, and kites follow it: a panel the pilot already had
+// open is not taken away by a drag — it refreshes onto whatever is now selected.
+test('a panel already open before the drag stays open', async ({ page }) => {
+  await boot(page);
+  const c = await cumCentre(page);
+  const out = await page.evaluate(([x, y]) => {
+    state.selected = { type: 'wp', index: 0 };
+    showInspector();                                   // open before the gesture starts
+    const p0 = L.point(x, y);
+    map.fire('mousedown', { containerPoint: p0, latlng: map.containerPointToLatLng(p0) });
+    const p1 = L.point(x + 40, y + 30);
+    map.fire('mousemove', { containerPoint: p1, latlng: map.containerPointToLatLng(p1) });
+    endMouseDrag();
+    return !document.getElementById('inspector').classList.contains('hidden');
+  }, [c.x, c.y]);
+  expect(out).toBe(true);
+});
