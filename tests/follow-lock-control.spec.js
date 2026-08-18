@@ -126,7 +126,8 @@ test('it sits at the top of the bottom-right stack, above the assistant launcher
     };
   });
   expect(order.sameCorner).toBe(true);
-  expect(order.follow).toBe(0);                       // first child = highest on screen
+  // Relative, not absolute: the north-up/heading-up toggle now sits above this one, so
+  // pinning an index here would break every time the in-flight column gains a control.
   expect(order.follow).toBeLessThan(order.fab);       // above the 💬 launcher
   expect(order.fab).toBeLessThan(order.dial);         // which is itself above the dial
 });
