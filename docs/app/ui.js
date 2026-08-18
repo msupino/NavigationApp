@@ -310,28 +310,52 @@ function refreshOrientControl() {
   // Directly above the follow lock, which itself sits above the assistant launcher.
   const corner = wrap.parentNode;
   if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
-  orientBtn.textContent = headingUpOn ? '\u2708\ufe0f' : '\u2b06\ufe0f';   // aircraft vs north arrow
+  // Three states, not two: the dial can leave the chart pointing anywhere, and a button
+  // that still claimed "north up" over a map turned 40 degrees would be describing
+  // something else. Rotated-by-hand reads as its own state, and tapping straightens up.
+  const bearing = (typeof mapBearing === 'function') ? Math.round(mapBearing()) : 0;
+  const rotated = !headingUpOn && ((bearing % 360) + 360) % 360 !== 0;
+  orientBtn.textContent = headingUpOn ? '\u2708\ufe0f' : (rotated ? '\u21ba' : '\u2b06\ufe0f');
   orientBtn.classList.toggle('orient-on', headingUpOn);
+  orientBtn.classList.toggle('orient-rotated', rotated);
   orientBtn.setAttribute('aria-pressed', headingUpOn ? 'true' : 'false');
   const label = headingUpOn ? (S.orientHeadingUp || 'Heading up — tap for north up')
-                            : (S.orientNorthUp || 'North up — tap to hold your heading up');
+                            : (rotated ? (S.orientRotated || 'Map rotated — tap for north up')
+                                       : (S.orientNorthUp || 'North up — tap to hold your heading up'));
   orientBtn.title = label;
   orientBtn.setAttribute('aria-label', label);
 }
 window.refreshOrientControl = refreshOrientControl;
 
 orientBtn.onclick = () => {
-  headingUpOn = !headingUpOn;
-  try { localStorage.setItem(HEADING_UP_KEY, headingUpOn ? '1' : '0'); } catch (e) { /* */ }
-  if (headingUpOn) {
-    applyHeadingUp();
-  } else if (typeof map.setBearing === 'function') {
-    map.setBearing(0);                           // back to a paper-chart view
+  const bearing = (typeof mapBearing === 'function') ? ((Math.round(mapBearing()) % 360) + 360) % 360 : 0;
+  // From a hand-rotated chart the useful next step is straightening up, not jumping
+  // into heading-up: the pilot who turned the dial is looking at something.
+  if (!headingUpOn && bearing !== 0) {
+    if (typeof map.setBearing === 'function') map.setBearing(0);
+  } else {
+    headingUpOn = !headingUpOn;
+    try { localStorage.setItem(HEADING_UP_KEY, headingUpOn ? '1' : '0'); } catch (e) { /* */ }
+    if (headingUpOn) applyHeadingUp();
+    else if (typeof map.setBearing === 'function') map.setBearing(0);
   }
   refreshOrientControl();
   if (typeof refreshDial === 'function') refreshDial();
 };
+// Turning the dial by hand is taking control: heading-up stops fighting it, rather than
+// snapping the chart back on the next fix and leaving the dial feeling broken.
+function orientNoteManualRotation() {
+  if (headingUpOn) {
+    headingUpOn = false;
+    try { localStorage.setItem(HEADING_UP_KEY, '0'); } catch (e) { /* */ }
+  }
+  refreshOrientControl();
+}
+window.orientNoteManualRotation = orientNoteManualRotation;
 refreshOrientControl();
+// Any rotation at all -- dial, keyboard, a restored view -- refreshes the button, so what
+// it says and what the chart does cannot drift apart.
+map.on('rotate rotateend', () => refreshOrientControl());
 
 // --- follow lock — a map control next to the rotation dial -----------
 // A standing choice, not a per-fix one: ON keeps the aircraft centred (after the pan/zoom
@@ -406,6 +430,7 @@ rotHdg.addEventListener('change', () => {
   if (!Number.isFinite(raw)) { refreshDial(); return; }
   const v = ((raw % 360) + 360) % 360;
   rotHdg.value = v;
+  orientNoteManualRotation();
   map.setBearing((360 - v) % 360);
 });
 rotHdg.addEventListener('keydown', e => {
@@ -436,6 +461,7 @@ rotDial.addEventListener('pointermove', e => {
     if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < tune('rotDragPx')) return;
     rotMoved = true;
   }
+  orientNoteManualRotation();
   map.setBearing(((360 - dialAngle(e)) % 360 + 360) % 360);
 });
 function rotEnd(cycle) {
@@ -444,6 +470,7 @@ function rotEnd(cycle) {
     // From an off-axis angle the first tap snaps back to north.
     const shown = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
     const next = shown % 90 === 0 ? (shown + 90) % 360 : 0;
+    orientNoteManualRotation();
     map.setBearing((360 - next) % 360);
   }
   rotDragging = false;

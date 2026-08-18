@@ -83,6 +83,46 @@ test('a degree of scatter does not rotate the chart', async ({ page }) => {
   expect((await state_(page)).bearing).not.toBe(settled);
 });
 
+// The dial can leave the chart pointing anywhere, and the button must not go on claiming
+// "north up" over a map turned 40 degrees.
+test('a hand-rotated chart reads as rotated, and the button straightens it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startLiveLocation());
+  await fix(page, 90);
+  expect((await state_(page)).label).toMatch(/north up/i);
+
+  await page.evaluate(() => { map.setBearing(320); });     // turned by hand
+  const turned = await state_(page);
+  expect(turned.label).toMatch(/rotated/i);
+  expect(turned.pressed).toBe('false');
+
+  await page.click('#orient-toggle');                       // straighten up
+  const straight = await state_(page);
+  expect(straight.bearing).toBe(0);
+  expect(straight.label).toMatch(/north up/i);
+});
+
+test('turning the dial while heading-up hands control back to the pilot', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startLiveLocation());
+  await fix(page, 90);
+  await page.click('#orient-toggle');
+  expect((await state_(page)).pressed).toBe('true');
+
+  // The rotation entry field is one of the dial's own inputs.
+  await page.evaluate(() => {
+    const f = document.getElementById('rotate-hdg');
+    f.value = '40';
+    f.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  const after = await state_(page);
+  expect(after.pressed).toBe('false');            // heading-up stopped fighting the dial
+  expect(await page.evaluate(() => localStorage.getItem('navaid.headingUp'))).toBe('0');
+  // ...and the next fix leaves the hand-set rotation alone.
+  await fix(page, 200);
+  expect((await state_(page)).bearing).toBe(320);
+});
+
 test('the choice is remembered on this device', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => startLiveLocation());
