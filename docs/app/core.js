@@ -1820,9 +1820,9 @@ window.S = Object.assign({
   tbGpsRecord: 'Record',
   tbGpsRecordTitle: 'Start recording your flown track from the device GPS; Stop saves it to your routes',
   tbGpsStop: 'Stop',
-  tbGpsLive: 'Show location',
+  tbGpsLive: 'Location',
   tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
-  tbGpsLiveStop: 'Hide location',
+  tbGpsLiveStop: 'Hide',
   gpsUnsupported: 'GPS is not available in this browser.',
   // Prefixes an age in seconds: "GPS fix 47s" — the fix is that old, not that recent.
   gpsFixStale: 'GPS fix',

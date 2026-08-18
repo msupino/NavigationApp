@@ -72,8 +72,8 @@ test('an oversized language picker shrinks instead of wrapping', async ({ page }
   expect(m.links).toBeGreaterThan(0);
 });
 
-// The GPS labels change with state ('Start recording' → 'Stop recording', 'Show location' →
-// 'Hide location'). The simulator button carries no label of its own, so it must not move
+// The GPS labels change with state ('Record' → 'Stop', 'Location' → 'Hide'). The simulator
+// button carries no label of its own, so it must not move
 // when its neighbours' do — it was being pushed onto a second line the moment a recording
 // started, which is a control changing place for a reason the pilot cannot see.
 for (const lang of ['en', 'he']) {
