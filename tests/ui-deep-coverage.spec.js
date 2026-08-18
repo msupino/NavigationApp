@@ -210,9 +210,11 @@ test.describe('Inspector panel', () => {
       if (!window.__satModalMap) return null;
       let out = null;
       window.__satModalMap.eachLayer(layer => {
-        // The CVFR chart layer, whichever host serves it here: '/tiles/cvfr/' on the live
-        // site, '/CVFR/' on our mirror everywhere else.
-        if (layer && layer._url && /\/tiles\/cvfr\/|\/CVFR\//.test(layer._url)) {
+        // The CVFR chart layer, whichever host serves it here: flight-maps.com on the live
+        // site, our mirror everywhere else. Anchored on the whole URL rather than matching a
+        // path fragment that any host could carry.
+        const chartUrl = /^https:\/\/(flight-maps\.com\/tiles\/cvfr\/|navaid-tiles\.supino\.org\/CVFR\/)/;
+        if (layer && layer._url && chartUrl.test(layer._url)) {
           out = {
             zoom: window.__satModalMap.getZoom(),
             maxZoom: layer.options.maxZoom,

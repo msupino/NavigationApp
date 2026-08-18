@@ -141,8 +141,11 @@ test('mosaic layer selector switches the preview tile source', async ({ page }) 
   // Switch to CVFR → previews load chart tiles instead, from whichever host this deployment
   // draws them from (our mirror off the live site — see tiles-live-site-only.spec.js).
   await sel.selectOption('CVFR');
+  // Anchored at the scheme and matching the host exactly: an unanchored alternation would
+  // also accept evil.example/?x=flight-maps.com/tiles/cvfr as a chart tile.
   await expect.poll(async () => modal.locator('.satellite-snippet img').first()
-    .getAttribute('src')).toMatch(/flight-maps\.com\/tiles\/cvfr|navaid-tiles\.supino\.org\/CVFR/);
+    .getAttribute('src')).toMatch(
+    /^https:\/\/(flight-maps\.com\/tiles\/cvfr\/|navaid-tiles\.supino\.org\/CVFR\/)/);
 });
 
 test('clicking a mosaic cell opens the satellite view for that waypoint', async ({ page }) => {
