@@ -1,7 +1,8 @@
 // @ts-check
-// On a phone the inspector covers the half of the map a waypoint is being dragged towards,
-// and it is rebuilt on every frame of the drag. Hidden while the finger is down, back as
-// soon as it lifts — with the same waypoint still selected, so nothing has to be re-found.
+// On a phone the inspector covers the half of the map a waypoint is being dragged towards.
+// A press cannot be told from a drag until the finger lifts, so the panel waits for the
+// release: a tap opens it, a drag never opens it at all. It used to open on the press and
+// hide again on the first movement, which flashed the panel across the map on every drag.
 const { test, expect } = require('./_setup');
 
 test.use({ viewport: { width: 390, height: 780 }, hasTouch: true });
@@ -47,9 +48,9 @@ test('the panel goes away for the drag and comes back after it', async ({ page }
   await boot(page);
   const p = await at(page, 0);
   await touch(page, 'touchstart', p.x, p.y);
-  expect(await hidden(page)).toBe(false);            // a touch alone is a tap: panel opens
+  expect(await hidden(page)).toBe(true);             // nothing opens on the press
   await touch(page, 'touchmove', p.x + 60, p.y + 40);
-  expect(await hidden(page)).toBe(true);             // ...dragging hides it
+  expect(await hidden(page)).toBe(true);             // ...and dragging never opens it
   await touch(page, 'touchmove', p.x + 90, p.y + 70);
   expect(await hidden(page)).toBe(true);
   await touch(page, 'touchend', p.x + 90, p.y + 70);
@@ -103,12 +104,12 @@ test('past the threshold it is a drag again', async ({ page }) => {
   await touch(page, 'touchmove', p.x + 4, p.y + 3);             // under: still a tap
   expect(await page.evaluate(() => state.waypoints[0].lat)).toBe(before);
   await touch(page, 'touchmove', p.x + 60, p.y + 45);           // over: a drag
-  expect(await hidden(page)).toBe(true);
+  expect(await hidden(page)).toBe(true);                        // never opened
   await touch(page, 'touchend', p.x + 60, p.y + 45);
   expect(await page.evaluate(() => state.waypoints[0].lat)).not.toBe(before);
 });
 
-test('a tap that never moves keeps the panel up throughout', async ({ page }) => {
+test('a tap that never moves opens the panel on release', async ({ page }) => {
   await boot(page);
   const p = await at(page, 1);
   await touch(page, 'touchstart', p.x, p.y);
