@@ -5,14 +5,15 @@
 // (followResumeMs), after which following resumes on its own: no button to remember to
 // press again, which is what a manual follow toggle costs you in flight.
 const { test, expect } = require('./_setup');
+const { enableAssistant } = require('./_assistant-on');
 
 async function boot(page) {
   await page.addInitScript(() => {
     window.__geoCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 4; };
     navigator.geolocation.clearWatch = () => {};
-  });
-  await page.goto('?lang=en&nogist');
+  });  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => typeof startLiveLocation === 'function' &&
     typeof gpsFollowSuspended === 'function');
 }
