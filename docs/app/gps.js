@@ -242,6 +242,7 @@ function onLivePosition(pos) {
     // switched following off, which is a standing instruction, not a per-fix one.
     if (isFirst && gpsFollow) map.setView([p.lat, p.lng], map.getZoom());
     else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
+    gpsApplyHeadingUp();
   }
 }
 
@@ -284,6 +285,7 @@ function startLiveLocation() {
   gpsLiveOn = true; _gpsLivePrev = null;
   gpsStartCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
   _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
   gpsWatchUserMapMoves();
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
@@ -335,6 +337,7 @@ function stopLiveLocation() {
   gpsLiveOn = false;
   if (!gpsRecording) gpsStopCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
@@ -362,6 +365,7 @@ function gpsSetFollow(on) {
   // preceded the tap must not hold the map hostage for its grace period either.
   if (gpsFollow && gpsOwn) { _gpsUserMovedAt = 0; gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng); }
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
 }
 // A pan or zoom by hand is a request to look at something, and the next fix used to undo
 // it: at 1 Hz the map snapped back before the pilot had read anything. Following pauses
@@ -378,6 +382,10 @@ function gpsFollowSuspended() {
   return !!_gpsUserMovedAt && (Date.now() - _gpsUserMovedAt) < gpsFollowGraceMs();
 }
 // Recenter on the own-ship, unless the pilot has just moved the map themselves.
+// Hold the map to the aircraft's heading, if that is the mode the pilot chose (ui.js).
+function gpsApplyHeadingUp() {
+  if (typeof applyHeadingUp === 'function') applyHeadingUp();
+}
 function gpsFollowRecenter(lat, lng) {
   if (typeof map === 'undefined' || !map) return false;
   if (gpsFollowSuspended()) return false;
@@ -752,6 +760,7 @@ function onGpsPosition(pos) {
   gpsCheckLegAlerts();
   scheduleDraw();
   if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
+  gpsApplyHeadingUp();
 }
 
 // Reset a footer GPS button's (hidden) label + icon without wiping its icon
@@ -818,6 +827,7 @@ function updateGpsRecIndicator() {
   if (typeof document === 'undefined') return;
   // The follow switch lives or dies with tracking; this runs on every start and stop.
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
   const el = document.getElementById('gps-rec-indicator');
   if (el) el.hidden = !gpsRecording;
   const btn = document.getElementById('gps-record');
@@ -1156,6 +1166,13 @@ var gpsAlertLegIndex = 0;         // forward-only pointer into state.legs/state.
 var _gpsAlertMinDistNm = Infinity;
 var _gpsAlertLegFired = false;    // leg-approach alert already sent for gpsAlertLegIndex
 var _gpsAlertAltDeviated = false; // currently inside an altitude-deviation episode
+// How many altitude calls this leg has already made. The episode latch alone stops a
+// CONTINUOUS deviation repeating, but an aircraft riding the tolerance -- a bumpy leg, a
+// slow drift, a climb settling -- crosses the line again and again, and each crossing is a
+// fresh episode and a fresh alarm. After a couple of calls the pilot knows; more of them is
+// just noise in the cockpit, and noise is what gets alerts switched off.
+var _gpsAlertAltCount = 0;
+var GPS_ALT_MAX_PER_LEG = 2;
 // Physical capture-circle latch for TOP. The cone tracker can select the just-completed
 // final leg again after gpsAlertLegIndex advances past the route, so the pointer alone is
 // not a one-shot guard. Keep the captured coordinates latched until the aircraft actually
@@ -1183,6 +1200,7 @@ function gpsResetLegAlerts() {
   _gpsAlertMinDistNm = Infinity;
   _gpsAlertLegFired = false;
   _gpsAlertAltDeviated = false;
+  _gpsAlertAltCount = 0;
   _gpsAlertConfirmed = false;
   _gpsTopCapturePoint = null;
   _gpsLastTopAt = 0;
@@ -1420,6 +1438,7 @@ function gpsCheckLegAlerts() {
       gpsAlertLegIndex = coneLeg;
       _gpsAlertLegFired = false;
       _gpsAlertAltDeviated = false;
+      _gpsAlertAltCount = 0;              // a new leg owes its own calls
       _gpsAlertMinDistNm = Infinity;
     }
     // Being inside a cone IS confirmation: it is a positional fact about a bounded region,
@@ -1546,12 +1565,17 @@ function gpsCheckLegAlerts() {
     if (off >= GPS_ALT_TOLERANCE_FT) {
       if (!_gpsAlertAltDeviated) {
         _gpsAlertAltDeviated = true;
-        gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
-          (S && S.watchAlertAltBody)
-            ? S.watchAlertAltBody(Math.round(flownAlt), Math.round(planned))
-            : (Math.round(flownAlt) + ' ft, planned ' + Math.round(planned) + ' ft'),
-          (S && S.speakAlertAlt)
-            ? S.speakAlertAlt(Math.round(flownAlt), Math.round(planned)) : null);
+        // Latched either way: crossing back and forth still counts as episodes, so the
+        // cap cannot be dodged by the aircraft settling briefly inside tolerance.
+        _gpsAlertAltCount++;
+        if (_gpsAlertAltCount <= GPS_ALT_MAX_PER_LEG) {
+          gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
+            (S && S.watchAlertAltBody)
+              ? S.watchAlertAltBody(Math.round(flownAlt), Math.round(planned))
+              : (Math.round(flownAlt) + ' ft, planned ' + Math.round(planned) + ' ft'),
+            (S && S.speakAlertAlt)
+              ? S.speakAlertAlt(Math.round(flownAlt), Math.round(planned)) : null);
+        }
       }
     } else {
       _gpsAlertAltDeviated = false;
@@ -1598,6 +1622,7 @@ function gpsCheckLegAlerts() {
     _gpsAlertMinDistNm = Infinity;
     _gpsAlertLegFired = false;
     _gpsAlertAltDeviated = false;
+    _gpsAlertAltCount = 0;
   }
 }
 
