@@ -164,7 +164,12 @@ function allKeyLiterals() {
   const out = new Set();
   for (const line of src.split('\n')) {
     if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
-    for (const m of line.matchAll(/'(navaid\.[A-Za-z0-9._]+)'/g)) out.add(m[1]);
+    for (const m of line.matchAll(/'(navaid\.[A-Za-z0-9._]+)'/g)) {
+      // 'navaid.supino.org' is the production HOSTNAME, not a storage key -- the sweep looks
+      // for navaid.* string literals and cannot tell the two apart by shape alone.
+      if (/\.(org|com|net|io|dev)$/.test(m[1])) continue;
+      out.add(m[1]);
+    }
   }
   return [...out];
 }
