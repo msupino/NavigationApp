@@ -3547,12 +3547,18 @@ function drawLegs() {
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
-    // Cumulative inbound time: < [time], position driven by leg.cumLabel
-    // (default: at B waypoint, same perpendicular side as main kite).
+    // Cumulative inbound time: < [time], position driven by leg.cumLabel. By default it
+    // takes the side AWAY from the nav kite (cumKiteOppositeNav): sharing a side stacked
+    // the two against each other at the waypoint, and a glance had to separate them.
+    // Sign only -- the distance is cumPerpDef either way, so both stay clear of the disc.
     const defCum = { a: 0, _default: 1, _m: 1 };
+    // -1 puts it opposite the nav kite (the default), +1 back on the nav kite's side.
+    // Declared out here because the RETURN cum kite mirrors it, and that is drawn in the
+    // return block below -- inside the inbound block it was simply out of scope there.
+    const cumSide = (typeof tune === 'function' && tune('cumKiteOppositeNav') === false) ? 1 : -1;
     if (showCumTime && !preClock) {
       const cumP = leg.cumLabel || defCum;
-      const cumPerp  = cumP._default ? cumPerpDef : (cumP.p || 0) * zoomScale;
+      const cumPerp  = cumP._default ? cumSide * cumPerpDef : (cumP.p || 0) * zoomScale;
       const cumAlong = (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
@@ -3576,7 +3582,7 @@ function drawLegs() {
         // as the inbound kite so its drag math is identical; default sits on
         // the opposite perpendicular side (-driftPerp).
         const cumRetP = leg.cumLabelRet || defCum;
-        const cumRetPerp  = cumRetP._default ? -cumPerpDef : (cumRetP.p || 0) * zoomScale;
+        const cumRetPerp  = cumRetP._default ? -cumSide * cumPerpDef : (cumRetP.p || 0) * zoomScale;
         const cumRetAlong = (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
