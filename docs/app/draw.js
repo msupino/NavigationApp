@@ -3552,14 +3552,19 @@ function drawLegs() {
     // the two against each other at the waypoint, and a glance had to separate them.
     // Sign only -- the distance is cumPerpDef either way, so both stay clear of the disc.
     const defCum = { a: 0, _default: 1, _m: 1 };
-    // -1 puts it opposite the nav kite (the default), +1 back on the nav kite's side.
+    // Default placement of the cumulative kite around its waypoint: an angle FROM the nav
+    // kite's side (cumKiteAngleDeg), turned towards the direction of flight. The nav kite
+    // sits at +n, so 0 lands on top of it, 180 opposite, 90 ahead along the leg. Distance
+    // is cumPerpDef whatever the angle, so the tip clears the disc from every direction.
     // Declared out here because the RETURN cum kite mirrors it, and that is drawn in the
-    // return block below -- inside the inbound block it was simply out of scope there.
-    const cumSide = (typeof tune === 'function' && tune('cumKiteOppositeNav') === false) ? 1 : -1;
+    // return block below -- inside the inbound block it was out of scope there.
+    const cumAngRad = ((typeof tune === 'function' ? tune('cumKiteAngleDeg') : 180) || 0) * Math.PI / 180;
+    const cumUnitPerp = Math.cos(cumAngRad);        // component along the leg's normal
+    const cumUnitAlong = Math.sin(cumAngRad);       // ...and along the leg itself
     if (showCumTime && !preClock) {
       const cumP = leg.cumLabel || defCum;
-      const cumPerp  = cumP._default ? cumSide * cumPerpDef : (cumP.p || 0) * zoomScale;
-      const cumAlong = (cumP.a || 0) * zoomScale;
+      const cumPerp  = cumP._default ? cumUnitPerp * cumPerpDef : (cumP.p || 0) * zoomScale;
+      const cumAlong = cumP._default ? cumUnitAlong * cumPerpDef : (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       drawCumTimeArrow(cumX, cumY,
@@ -3582,8 +3587,9 @@ function drawLegs() {
         // as the inbound kite so its drag math is identical; default sits on
         // the opposite perpendicular side (-driftPerp).
         const cumRetP = leg.cumLabelRet || defCum;
-        const cumRetPerp  = cumRetP._default ? -cumSide * cumPerpDef : (cumRetP.p || 0) * zoomScale;
-        const cumRetAlong = (cumRetP.a || 0) * zoomScale;
+        // The return kite mirrors it (angle + 180), so the pair never share a place.
+        const cumRetPerp  = cumRetP._default ? -cumUnitPerp * cumPerpDef : (cumRetP.p || 0) * zoomScale;
+        const cumRetAlong = cumRetP._default ? -cumUnitAlong * cumPerpDef : (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         drawCumTimeArrow(cumRetX, cumRetY,

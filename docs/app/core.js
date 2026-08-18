@@ -195,10 +195,13 @@ NavAid.tuningDefaults = {
   legKiteHeadingTextPx: { value: 13, min: 4, max: 40, step: 1, label: 'Leg kite heading text size' },
   legKiteHeadingAnchor: { value: 0.25, min: -0.5, max: 1, step: 0.01, label: 'Leg kite heading anchor' },
 
-  // Which side of the leg the cumulative-time kite sits on. It used to share the nav
-  // kite's side, so the two stacked against each other at the waypoint and the eye had to
-  // separate them; opposite sides reads the way the frequency callout already does.
-  cumKiteOppositeNav: { value: true, type: 'bool', label: 'Cum kite opposite the nav kite' },
+  // Where the cumulative-time kite sits around its waypoint, as an angle FROM the nav
+  // kite's side, turned towards the direction of flight. 0 = the nav kite's own side
+  // (which is where it used to be, stacking the two against each other), 180 = straight
+  // opposite it, 90 = ahead along the leg. An angle rather than a left/right switch
+  // because the useful positions on a busy chart are not only the two sides -- and the
+  // distance is unchanged at any angle, so the kite always clears the waypoint disc.
+  cumKiteAngleDeg: { value: 180, min: 0, max: 359, step: 5, label: 'Cum kite angle from nav kite (deg)' },
   cumKiteFillColor: { value: '#00ff00', type: 'color', label: 'Cum kite fill color' },
   returnCumKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return cum kite fill color' },
   cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cum kite height' },
@@ -662,7 +665,7 @@ NavAid.tuningGroups = [
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
   { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'kitePrintHeightMm', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
-  { name: 'Cumulative kites', keys: ['cumKiteOppositeNav', 'cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintHeightMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
+  { name: 'Cumulative kites', keys: ['cumKiteAngleDeg', 'cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintHeightMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
   { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor', 'waypointHotspotFillColor', 'waypointHotspotRingColor', 'waypointHotspotRingWidthPx', 'waypointHotspotRingGapPx'] },

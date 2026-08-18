@@ -1,8 +1,10 @@
 // @ts-check
 // The cumulative-time kite used to sit on the SAME side of the leg as the nav kite, so the
-// two stacked against each other at the waypoint and the eye had to separate them. It now
-// takes the opposite side by default — the way the frequency callout already does —
-// and `cumKiteOppositeNav` puts it back for anyone who preferred the old arrangement.
+// two stacked against each other at the waypoint. Its default place is now an ANGLE from
+// the nav kite's side (`cumKiteAngleDeg`), turned towards the direction of flight: 180
+// (the default) is straight opposite, 0 is back where it was, 90 is ahead along the leg.
+// The distance is unchanged at any angle, so the tip clears the waypoint disc from every
+// direction — the clamp in cum-kite-clear-of-waypoint.spec.js covers dragged ones.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -37,30 +39,56 @@ const sides = (page) => page.evaluate(() => {
   // Read the defaults straight from the same helpers the draw code uses.
   const drift = legDefaultLabelPerp(len);
   const cumDef = cumDefaultLabelPerp();
-  const oppositeOn = tune('cumKiteOppositeNav') !== false;
+  const ang = (tune('cumKiteAngleDeg') || 0) * Math.PI / 180;
   return {
     navPerp: drift,                              // inbound nav kite: +driftPerp
-    cumPerp: (oppositeOn ? -1 : 1) * cumDef,
+    cumPerp: Math.cos(ang) * cumDef,
+    cumAlong: Math.sin(ang) * cumDef,
     frame: { nx, ny },
   };
 });
 
-test('by default the cumulative kite is opposite the nav kite', async ({ page }) => {
+test('180 by default: straight opposite the nav kite', async ({ page }) => {
   await boot(page);
   const s = await sides(page);
+  expect(await page.evaluate(() => tune('cumKiteAngleDeg'))).toBe(180);
   expect(Math.sign(s.navPerp)).toBe(1);
   expect(Math.sign(s.cumPerp)).toBe(-1);         // opposite sign = opposite side
+  expect(Math.abs(s.cumAlong)).toBeLessThan(0.001);   // ...and nothing along the leg
 });
 
-test('the tunable puts it back on the nav kite side', async ({ page }) => {
+test('0 puts it back on the nav kite side, 90 sends it along the leg', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => { setTune('cumKiteOppositeNav', false); draw(); });
-  const s = await sides(page);
-  expect(Math.sign(s.cumPerp)).toBe(Math.sign(s.navPerp));
-  await page.evaluate(() => setTune('cumKiteOppositeNav', true));
+  await page.evaluate(() => { setTune('cumKiteAngleDeg', 0); draw(); });
+  const same = await sides(page);
+  expect(Math.sign(same.cumPerp)).toBe(Math.sign(same.navPerp));
+  expect(Math.abs(same.cumAlong)).toBeLessThan(0.001);
+
+  await page.evaluate(() => { setTune('cumKiteAngleDeg', 90); draw(); });
+  const ahead = await sides(page);
+  expect(Math.abs(ahead.cumPerp)).toBeLessThan(0.001);   // nothing sideways
+  expect(ahead.cumAlong).toBeGreaterThan(0);             // ...all of it along the leg
+  await page.evaluate(() => setTune('cumKiteAngleDeg', 180));
 });
 
-test('the drawn kite really is on that side, not just the number', async ({ page }) => {
+test('the distance is the same at every angle, so the disc is always cleared', async ({ page }) => {
+  await boot(page);
+  const dists = await page.evaluate(() => {
+    const out = [];
+    for (const a of [0, 45, 90, 135, 180, 250, 315]) {
+      setTune('cumKiteAngleDeg', a);
+      const r = cumDefaultLabelPerp();
+      const rad = a * Math.PI / 180;
+      out.push(Math.hypot(Math.cos(rad) * r, Math.sin(rad) * r));
+    }
+    setTune('cumKiteAngleDeg', 180);
+    return out;
+  });
+  const first = dists[0];
+  for (const d of dists) expect(Math.abs(d - first)).toBeLessThan(0.001);
+});
+
+test('the drawn kite really is where the angle says, not just the number', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     // Capture where the cum kite is actually painted.
@@ -84,10 +112,10 @@ test('a dragged kite is untouched by the setting', async ({ page }) => {
     const b = map.latLngToContainerPoint([state.waypoints[1].lat, state.waypoints[1].lng]);
     setCumLabelFromPoint(0, false, b.x + 140, b.y + 90);      // placed by hand, well clear
     const placed = { a: state.legs[0].cumLabel.a, p: state.legs[0].cumLabel.p };
-    setTune('cumKiteOppositeNav', false);
+    setTune('cumKiteAngleDeg', 0);
     draw();
     const afterFlip = { a: state.legs[0].cumLabel.a, p: state.legs[0].cumLabel.p };
-    setTune('cumKiteOppositeNav', true);
+    setTune('cumKiteAngleDeg', 180);
     return { placed, afterFlip };
   });
   expect(out.afterFlip).toEqual(out.placed);
