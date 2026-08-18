@@ -242,6 +242,7 @@ function onLivePosition(pos) {
     // switched following off, which is a standing instruction, not a per-fix one.
     if (isFirst && gpsFollow) map.setView([p.lat, p.lng], map.getZoom());
     else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
+    gpsApplyHeadingUp();
   }
 }
 
@@ -284,6 +285,7 @@ function startLiveLocation() {
   gpsLiveOn = true; _gpsLivePrev = null;
   gpsStartCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
   _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
   gpsWatchUserMapMoves();
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
@@ -335,6 +337,7 @@ function stopLiveLocation() {
   gpsLiveOn = false;
   if (!gpsRecording) gpsStopCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
@@ -362,6 +365,7 @@ function gpsSetFollow(on) {
   // preceded the tap must not hold the map hostage for its grace period either.
   if (gpsFollow && gpsOwn) { _gpsUserMovedAt = 0; gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng); }
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
 }
 // A pan or zoom by hand is a request to look at something, and the next fix used to undo
 // it: at 1 Hz the map snapped back before the pilot had read anything. Following pauses
@@ -378,6 +382,10 @@ function gpsFollowSuspended() {
   return !!_gpsUserMovedAt && (Date.now() - _gpsUserMovedAt) < gpsFollowGraceMs();
 }
 // Recenter on the own-ship, unless the pilot has just moved the map themselves.
+// Hold the map to the aircraft's heading, if that is the mode the pilot chose (ui.js).
+function gpsApplyHeadingUp() {
+  if (typeof applyHeadingUp === 'function') applyHeadingUp();
+}
 function gpsFollowRecenter(lat, lng) {
   if (typeof map === 'undefined' || !map) return false;
   if (gpsFollowSuspended()) return false;
@@ -752,6 +760,7 @@ function onGpsPosition(pos) {
   gpsCheckLegAlerts();
   scheduleDraw();
   if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
+  gpsApplyHeadingUp();
 }
 
 // Reset a footer GPS button's (hidden) label + icon without wiping its icon
@@ -818,6 +827,7 @@ function updateGpsRecIndicator() {
   if (typeof document === 'undefined') return;
   // The follow switch lives or dies with tracking; this runs on every start and stop.
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
   const el = document.getElementById('gps-rec-indicator');
   if (el) el.hidden = !gpsRecording;
   const btn = document.getElementById('gps-record');

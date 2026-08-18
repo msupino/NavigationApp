@@ -1097,6 +1097,26 @@ body.theme-dark #map-crosshair::after {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.85);
 }
 
+/* north-up / heading-up toggle — directly above the follow lock, same square so the two
+   read as one column of in-flight controls. */
+.orient-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
+.orient-ctrl button {
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid #9a9a9a;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  touch-action: manipulation;
+}
+.orient-ctrl button.orient-on { background: #d8f0d8; border-color: #4a8a4a; }
+/* Hand-rotated: neither north-up nor heading-up. Marked so the button is not silently
+   claiming an orientation the chart does not have. */
+.orient-ctrl button.orient-rotated { background: #fdf0d5; border-color: #b8860b; }
+
 /* follow lock — sits above the rotation dial, only while a fix is driving the map */
 .follow-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
 .follow-ctrl button {
