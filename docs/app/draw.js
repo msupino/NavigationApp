@@ -3158,7 +3158,12 @@ function commCalloutDefaultTail(wp, idx, wpsOverride) {
       lng: r5(wp.lng + tune('commChangeNoteLngOffset')),
     };
   }
-  const th = (brg - 90) * Math.PI / 180;              // left of travel
+  // Signed angle from the direction of travel: positive left, negative right. It was a
+  // hardcoded 90 (square left) -- the quarter the cumulative-time kite now sits in, so the
+  // callout covered it. -230 -- the same place as +130 -- puts it behind and to the left,
+  // clear of that kite's quarter and of the nav kite ahead-right.
+  const away = (typeof tune === 'function') ? tune('commCalloutAngleDeg') : -230;
+  const th = (brg - (Number.isFinite(away) ? away : -230)) * Math.PI / 180;
   const cosLat = Math.max(0.1, Math.cos(wp.lat * Math.PI / 180));
   return {
     lat: r5(wp.lat + D * Math.cos(th)),
@@ -3547,13 +3552,24 @@ function drawLegs() {
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
-    // Cumulative inbound time: < [time], position driven by leg.cumLabel
-    // (default: at B waypoint, same perpendicular side as main kite).
+    // Cumulative inbound time: < [time], position driven by leg.cumLabel. By default it
+    // takes the side AWAY from the nav kite (cumKiteOppositeNav): sharing a side stacked
+    // the two against each other at the waypoint, and a glance had to separate them.
+    // Sign only -- the distance is cumPerpDef either way, so both stay clear of the disc.
     const defCum = { a: 0, _default: 1, _m: 1 };
+    // Default placement of the cumulative kite around its waypoint: an angle FROM the nav
+    // kite's side (cumKiteAngleDeg), turned towards the direction of flight. The nav kite
+    // sits at +n, so 0 lands on top of it, 180 opposite, 90 ahead along the leg. Distance
+    // is cumPerpDef whatever the angle, so the tip clears the disc from every direction.
+    // Declared out here because the RETURN cum kite mirrors it, and that is drawn in the
+    // return block below -- inside the inbound block it was out of scope there.
+    const cumAngRad = ((typeof tune === 'function' ? tune('cumKiteAngleDeg') : 180) || 0) * Math.PI / 180;
+    const cumUnitPerp = Math.cos(cumAngRad);        // component along the leg's normal
+    const cumUnitAlong = Math.sin(cumAngRad);       // ...and along the leg itself
     if (showCumTime && !preClock) {
       const cumP = leg.cumLabel || defCum;
-      const cumPerp  = cumP._default ? cumPerpDef : (cumP.p || 0) * zoomScale;
-      const cumAlong = (cumP.a || 0) * zoomScale;
+      const cumPerp  = cumP._default ? cumUnitPerp * cumPerpDef : (cumP.p || 0) * zoomScale;
+      const cumAlong = cumP._default ? cumUnitAlong * cumPerpDef : (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       drawCumTimeArrow(cumX, cumY,
@@ -3576,8 +3592,9 @@ function drawLegs() {
         // as the inbound kite so its drag math is identical; default sits on
         // the opposite perpendicular side (-driftPerp).
         const cumRetP = leg.cumLabelRet || defCum;
-        const cumRetPerp  = cumRetP._default ? -cumPerpDef : (cumRetP.p || 0) * zoomScale;
-        const cumRetAlong = (cumRetP.a || 0) * zoomScale;
+        // The return kite mirrors it (angle + 180), so the pair never share a place.
+        const cumRetPerp  = cumRetP._default ? -cumUnitPerp * cumPerpDef : (cumRetP.p || 0) * zoomScale;
+        const cumRetAlong = cumRetP._default ? -cumUnitAlong * cumPerpDef : (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         drawCumTimeArrow(cumRetX, cumRetY,
@@ -4275,8 +4292,10 @@ function commCalloutDragging(noteIndex) {
   const active = (typeof drag !== 'undefined' && drag && drag.moved ? drag : null) ||
     (typeof touchDrag !== 'undefined' && touchDrag && touchDrag.moved ? touchDrag : null);
   if (!active) return false;
-  // The callout itself is being dragged.
-  if (active.kind === 'note' && active.i === noteIndex) return true;
+  // Dragging the callout ITSELF keeps it painted: it is the thing being aimed, and a label
+  // you cannot see is a label you cannot place. Only the waypoint end hides it, because
+  // there the sweeping arrow covers the ground the point is being dragged towards.
+  if (active.kind === 'note') return false;
   // ...or the waypoint it points at is. Matched on the name the waypoint had when the drag
   // STARTED (drag.origName): applyNavSnap clears wp.name the moment the point leaves its
   // snap position, so by the first frame of the drag the live name is '' -- the one moment
