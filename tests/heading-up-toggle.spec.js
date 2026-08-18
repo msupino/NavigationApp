@@ -143,9 +143,15 @@ test('it sits directly above the follow lock', async ({ page }) => {
       const row = el && el.closest('.leaflet-control');
       return row ? Array.prototype.indexOf.call(corner.children, row) : -1;
     };
-    return { orient: rowOf('#orient-toggle'), follow: rowOf('#follow-lock'), fab: rowOf('.assistant-fab') };
+    return {
+      orient: rowOf('#orient-toggle'),
+      follow: rowOf('#follow-lock'),
+      dial: rowOf('#rotate-dial'),
+    };
   });
+  // Measured against the rotation dial, not the assistant launcher: that ships hidden
+  // (featureAssistant), so a spec about the in-flight column must not assume it is there.
   expect(order.orient).toBe(0);
   expect(order.orient).toBeLessThan(order.follow);
-  expect(order.follow).toBeLessThan(order.fab);
+  expect(order.follow).toBeLessThan(order.dial);
 });

@@ -3,9 +3,10 @@
 // feed into the model's context, so instruction-shaped text in a NOTAM body could
 // rewrite a route the pilot only asked about.
 const { test, expect } = require('./_setup');
+const { enableAssistant } = require('./_assistant-on');
 
-async function boot(page) {
-  await page.goto('?lang=en&nogist');
+async function boot(page) {  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   // The assistant exposes its gated runner once it has wired up.
   await page.waitForFunction(() => typeof NavAid === 'object' && NavAid &&
     NavAid.assistant && typeof NavAid.assistant._runTool === 'function');
