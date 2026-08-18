@@ -1214,18 +1214,13 @@ function fplArrivalLocal(depTimeLocal, eetMinutes) {
 }
 function fplMailPreamble(res, o) {
   if (!res || !S.fplMailTitle) return '';
-  // Point names and the route list are isolated with FSI (first-strong: the run decides its
-  // own direction). In a Hebrew mail an un-isolated Latin list reads back to front -- the
-  // separators belong to the RTL paragraph, so 'SFAIM - APOLN - ARENA' displays as
-  // 'ARENA - APOLN - SFAIM', which is a different route.
-  const dep = fplFsi(fplPointLabel(res.dep)), dest = fplFsi(fplPointLabel(res.dest));
+  const dep = fplPointLabel(res.dep), dest = fplPointLabel(res.dest);
   const depT = String((o && o.depTimeLocal) || '').trim();
   const arrT = fplArrivalLocal(depT, res.eetMinutes);
   const pts = Array.isArray(res.expandedPoints) ? res.expandedPoints.map(fplPointLabel) : [];
-  const route = fplFsi(pts.join(' - '));
   const lines = [S.fplMailTitle, ''];
   if (depT) lines.push(S.fplMailDeparture(dep, depT), '');
-  if (pts.length) lines.push(S.fplMailRoute(route), '');
+  if (pts.length) lines.push(S.fplMailRoute(pts.join(' - ')), '');
   if (arrT) lines.push(S.fplMailArrival(dest, arrT), '');
   return lines.join('\n') + '\n';
 }
@@ -1240,12 +1235,7 @@ function fplMailPreamble(res, o) {
 // form -- still gets the block byte for byte. A client that ignores isolates shows exactly
 // what it showed before, so this cannot make the mail worse.
 const LRI = '\u2066';        // LEFT-TO-RIGHT ISOLATE
-const FSI = '\u2068';        // FIRST-STRONG ISOLATE: the run picks its own direction
 const PDI = '\u2069';        // POP DIRECTIONAL ISOLATE
-function fplFsi(text) {
-  const t = String(text || '');
-  return t ? FSI + t + PDI : t;
-}
 function fplLtrIsolate(text) {
   const t = String(text || '');
   return t ? LRI + t + PDI : t;

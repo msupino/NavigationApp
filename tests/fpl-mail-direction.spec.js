@@ -1,12 +1,17 @@
 // @ts-check
-// A filed mail is Hebrew prose above a Latin ICAO block, and a plain-text mail client takes
-// the whole body's direction from its first strong character. So in a Hebrew session the
-// (FPL-...) lines came out right-aligned, with '-LLHZ0805)' displayed as '(LLHZ0805-', and the
-// route list read back to front — 'SFAIM - APOLN - ARENA' shown as 'ARENA - APOLN - SFAIM',
-// which is a different route. Unicode isolates fix both without touching the codes.
+// A filed mail is Hebrew prose above a Latin ICAO block, and a plain-text mail client takes the
+// whole body's direction from its first strong character. So in a Hebrew session the (FPL-...)
+// lines came out right-aligned, with '-LLHZ0805)' displayed as '(LLHZ0805-'. A left-to-right
+// isolate fixes that without touching the codes.
+//
+// The PREAMBLE needs nothing: every point in the datasets has a Hebrew name, so a Hebrew mail's
+// route list is Hebrew throughout, and even an all-Latin list keeps its order — the neutrals
+// between two left-to-right runs take their direction (UBA rule N1), so 'A - B - C' does not
+// reverse. An earlier version of this fix wrapped the list too, on a reordering that does not
+// happen.
 const { test, expect } = require('./_setup');
 
-const LRI = '⁦', FSI = '⁨', PDI = '⁩';
+const LRI = '⁦', FSI = '⁨', PDI = '⁩';   // U+2066, U+2068, U+2069
 
 const RES = {
   dep: 'LLHZ', dest: 'LLHZ', dof: '260818', to: 'ais@iaa.gov.il', eetMinutes: 30,
@@ -45,15 +50,14 @@ for (const lang of ['he', 'en']) {
     expect(inner).not.toContain(PDI);
   });
 
-  test(`${lang}: the route list keeps its order`, async ({ page }) => {
+  test(`${lang}: the route list is printed plainly, in the order flown`, async ({ page }) => {
     await boot(page, lang);
     const b = await body(page, lang);
     // The names follow the session language (a Hebrew mail names the points in Hebrew), so
     // ask the app what it would print rather than hard-coding either language's spelling.
     const list = await page.evaluate((r) => r.expandedPoints.map(fplPointLabel).join(' - '), RES);
-    expect(b).toContain(FSI + list + PDI);
-    // ...and in the order flown, first point first.
-    expect(b.indexOf(list.split(' - ')[0])).toBeLessThan(b.indexOf(list.split(' - ')[2]));
+    expect(b).toContain(list);
+    expect(b).not.toContain(FSI);          // no marks in the prose: nothing there needs them
   });
 }
 
