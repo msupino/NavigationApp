@@ -1,9 +1,8 @@
 // @ts-check
-// Reported: moving an existing frequency callout makes it disappear until the waypoint is
-// pressed. The callout is hidden FOR the drag (see freq-arrow-hidden-while-dragging), and
-// every draw() in the release path still ran with the drag state set — so the repaint that
-// should have brought it back was the one repaint that could not. Nothing redrew afterwards
-// until some later interaction did.
+// Dragging a waypoint hides its callout for the duration (see freq-arrow-hidden-while-
+// dragging). It then stayed hidden after the finger came up: every draw() in the release
+// path ran with the drag state still set, so the repaint that should have brought it back
+// was the one repaint that could not, and nothing redrew until some later interaction did.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -43,10 +42,10 @@ test('the callout is back as soon as the drag ends — no extra click needed', a
   expect(seeded).toBeGreaterThan(0);
 
   const during = await page.evaluate(() => {
-    const idx = state.notes.findIndex(n => n.cc);
-    const note = state.notes[idx];
-    const p0 = map.latLngToContainerPoint([note.lat, note.lng]);
-    map.fire('mousedown', { containerPoint: p0, latlng: L.latLng(note.lat, note.lng) });
+    const wp = state.waypoints[0];
+    window.__wp0 = { lat: wp.lat, lng: wp.lng };
+    const p0 = map.latLngToContainerPoint([wp.lat, wp.lng]);
+    map.fire('mousedown', { containerPoint: p0, latlng: L.latLng(wp.lat, wp.lng) });
     const p1 = L.point(p0.x + 70, p0.y + 50);
     map.fire('mousemove', { containerPoint: p1, latlng: map.containerPointToLatLng(p1) });
     let n = 0;
@@ -58,15 +57,20 @@ test('the callout is back as soon as the drag ends — no extra click needed', a
   });
   expect(during).toBe(0);                       // hidden for the drag, as designed
 
-  await page.evaluate(() => { endMouseDrag(); });
+  // Back onto the comm-change point before letting go: dropping a waypoint AWAY from it
+  // breaks the link and the callout is meant to stay gone, which would prove nothing here.
+  await page.evaluate(() => {
+    const p = map.latLngToContainerPoint([window.__wp0.lat, window.__wp0.lng]);
+    map.fire('mousemove', { containerPoint: p, latlng: L.latLng(window.__wp0.lat, window.__wp0.lng) });
+    endMouseDrag();
+  });
   expect(await paintedNextFrame(page)).toBeGreaterThan(0);   // ...and back on release
 });
 
 test('the same on the touch path', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
-    const idx = state.notes.findIndex(n => n.cc);
-    touchDrag = { kind: 'note', i: idx, moved: true, offLat: 0, offLng: 0 };
+    touchDrag = { kind: 'wp', i: 0, moved: true, offLat: 0, offLng: 0 };
     draw();
   });
   expect(await page.evaluate(() => {

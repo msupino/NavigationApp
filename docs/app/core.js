@@ -224,7 +224,9 @@ NavAid.tuningDefaults = {
   // hardcoded 90 (square left), which is the quarter the cumulative-time kite now occupies
   // -- the callout covered it. -150 puts it right and behind, clear of both that kite and
   // the nav kite ahead-right.
-  commCalloutAngleDeg: { value: -150, min: -180, max: 180, step: 5, label: 'Freq callout angle from track (deg, +left)' },
+  // Range runs past a half turn on purpose: -230 and +130 are the same place, and a pilot
+  // dialling this in should not have to do the arithmetic to stay inside a bound.
+  commCalloutAngleDeg: { value: -230, min: -359, max: 359, step: 5, label: 'Freq callout angle from track (deg, +left)' },
   cumKiteAngleDeg: { value: 180, min: 0, max: 359, step: 5, label: 'Cum kite angle from nav kite (deg)' },
   cumKiteFillColor: { value: '#00ff00', type: 'color', label: 'Cum kite fill color' },
   returnCumKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return cum kite fill color' },

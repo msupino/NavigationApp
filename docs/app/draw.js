@@ -3160,10 +3160,10 @@ function commCalloutDefaultTail(wp, idx, wpsOverride) {
   }
   // Signed angle from the direction of travel: positive left, negative right. It was a
   // hardcoded 90 (square left) -- the quarter the cumulative-time kite now sits in, so the
-  // callout covered it. -150 puts it right and behind, clear of that kite and of the nav
-  // kite ahead-right.
-  const away = (typeof tune === 'function') ? tune('commCalloutAngleDeg') : -150;
-  const th = (brg - (Number.isFinite(away) ? away : -150)) * Math.PI / 180;
+  // callout covered it. -230 -- the same place as +130 -- puts it behind and to the left,
+  // clear of that kite's quarter and of the nav kite ahead-right.
+  const away = (typeof tune === 'function') ? tune('commCalloutAngleDeg') : -230;
+  const th = (brg - (Number.isFinite(away) ? away : -230)) * Math.PI / 180;
   const cosLat = Math.max(0.1, Math.cos(wp.lat * Math.PI / 180));
   return {
     lat: r5(wp.lat + D * Math.cos(th)),
@@ -4292,8 +4292,10 @@ function commCalloutDragging(noteIndex) {
   const active = (typeof drag !== 'undefined' && drag && drag.moved ? drag : null) ||
     (typeof touchDrag !== 'undefined' && touchDrag && touchDrag.moved ? touchDrag : null);
   if (!active) return false;
-  // The callout itself is being dragged.
-  if (active.kind === 'note' && active.i === noteIndex) return true;
+  // Dragging the callout ITSELF keeps it painted: it is the thing being aimed, and a label
+  // you cannot see is a label you cannot place. Only the waypoint end hides it, because
+  // there the sweeping arrow covers the ground the point is being dragged towards.
+  if (active.kind === 'note') return false;
   // ...or the waypoint it points at is. Matched on the name the waypoint had when the drag
   // STARTED (drag.origName): applyNavSnap clears wp.name the moment the point leaves its
   // snap position, so by the first frame of the drag the live name is '' -- the one moment

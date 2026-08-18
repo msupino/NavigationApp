@@ -134,8 +134,11 @@ test.describe('the frequency callout has its own angle', () => {
       const rel = -(((out - brg + 540) % 360) - 180);
       return { ang, rel };
     });
-    expect(out.ang).toBe(-150);
-    expect(Math.round(out.rel)).toBe(-150);             // placed where the knob says
+    expect(out.ang).toBe(-230);
+    // The knob may run past a half turn; the measurement wraps to (-180, 180], so compare
+    // the two in the same terms rather than expecting -230 to come back verbatim.
+    const wrapped = ((out.ang + 540) % 360) - 180;
+    expect(Math.round(out.rel)).toBe(Math.round(wrapped));
   });
 
   test('the knob moves it', async ({ page }) => {
@@ -146,7 +149,7 @@ test.describe('the frequency callout has its own angle', () => {
       const tail = commCalloutDefaultTail(wp, 1);
       const brg = geo(state.waypoints[0], wp).brg;
       const out = geo(wp, { lat: tail.lat, lng: tail.lng }).brg;
-      setTune('commCalloutAngleDeg', -150);
+      setTune('commCalloutAngleDeg', -230);
       return -(((out - brg + 540) % 360) - 180);
     });
     expect(Math.round(rel)).toBe(90);                   // back to square left
