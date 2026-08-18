@@ -25,6 +25,10 @@ async function boot(page) {
   });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof notamPrefKey === 'function' && window.notams !== null);
+  // This spec is about the heli CHART's own NOTAM preference, and that chart ships out of the
+  // picker (layerEnabledHelicopters is false). Put it back for the duration: the per-chart
+  // rule is what is under test, not which charts a deployment happens to offer.
+  await page.evaluate(() => { setTune('layerEnabledHelicopters', true); rebuildLayerPicker(); });
 }
 
 const setLayer = (page, name) => page.evaluate(async (n) => {
@@ -159,6 +163,9 @@ async function bootUl(page) {
     status: 200, contentType: 'application/json', body: JSON.stringify(UL_FEED) }));
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof activeNotams === 'function' && Array.isArray(window.notams) && window.notams.length === 2);
+  // As in boot() above: the heli chart ships out of the picker, and these cases are about
+  // which NOTAMs each chart shows.
+  await page.evaluate(() => { setTune('layerEnabledHelicopters', true); rebuildLayerPicker(); });
 }
 
 const idsOn = (page, layer) => page.evaluate(async (n) => {

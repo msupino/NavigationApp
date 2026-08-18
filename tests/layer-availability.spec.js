@@ -1,7 +1,8 @@
 // @ts-check
 // Base layers can be pulled from (or restored to) the shipped app through the gist: each
-// non-CVFR layer hangs on a layerEnabled* tunable. All ship offered; the maintainer pulls
-// one with a gist edit (layerEnabled<Name>: false), not a build.
+// non-CVFR layer hangs on a layerEnabled* tunable. Helicopters ships OFF -- its chart and
+// dataset are the thinnest of the set -- and the rest ship offered; either can be flipped
+// from the gist without a build.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -16,12 +17,24 @@ const pickerNames = page => page.evaluate(() =>
   Array.from(document.querySelectorAll('#layer-select option'))
     .filter(o => !o.disabled).map(o => o.value));
 
-test('every layer is offered by default', async ({ page }) => {
+test('the shipped layers are offered, and Helicopters is not', async ({ page }) => {
   await boot(page);
   const names = await pickerNames(page);
-  for (const n of ['CVFR', 'Low Alt', 'Helicopters', 'Navigation', 'Satellite', 'OpenStreetMap']) {
+  for (const n of ['CVFR', 'Low Alt', 'Navigation', 'Satellite', 'OpenStreetMap']) {
     expect(names).toContain(n);
   }
+  expect(names).not.toContain('Helicopters');
+});
+
+test('the gist can put Helicopters back', async ({ page }) => {
+  await boot(page);
+  const names = await page.evaluate(() => {
+    setTune('layerEnabledHelicopters', true);
+    rebuildLayerPicker();                       // what the post-gist hook calls
+    return Array.from(document.querySelectorAll('#layer-select option'))
+      .filter(o => !o.disabled).map(o => o.value);
+  });
+  expect(names).toContain('Helicopters');
 });
 
 test('the gist can pull layers', async ({ page }) => {

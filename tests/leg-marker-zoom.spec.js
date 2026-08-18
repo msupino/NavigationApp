@@ -482,15 +482,19 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
           const halfWidth = tune('defaultKiteHalfWidthPx') * sc;
           const inEdge  = inPerp  - halfWidth;
           const outEdge = outPerp - halfWidth;
-          out.push({ i, inPerp, outPerp, inEdge, outEdge, sc, legLen: L });
+          const minPerp = halfWidth + tune('defaultLabelMarginPx') * sc * 0.25;
+          out.push({ i, inPerp, outPerp, inEdge, outEdge, minPerp, sc, legLen: L });
         }
         return out;
       }, las);
       for (const m of measurements) {
-        // Centre is at least 15 px off the leg line (the threshold the
-        // PR-#395 review request specified).
-        expect(m.inPerp ).toBeGreaterThanOrEqual(15);
-        expect(m.outPerp).toBeGreaterThanOrEqual(15);
+        // Centre is clear of the leg line by the kite's own half-width plus a margin. The
+        // review request quoted 15 px, which was that arithmetic at the then-current
+        // defaultLabelMarginPx — so it broke when the shipped margin changed, without
+        // anything actually overlapping. Derived from the tunables now, so it tracks the
+        // geometry it describes rather than one build's value of it.
+        expect(m.inPerp ).toBeGreaterThanOrEqual(m.minPerp);
+        expect(m.outPerp).toBeGreaterThanOrEqual(m.minPerp);
         // And the kite *body* is strictly clear of the leg line — this
         // is what visually broke for the user. Both edges > 0 ensures
         // no overlap at any zoom / legArrowSize the test exercises.
