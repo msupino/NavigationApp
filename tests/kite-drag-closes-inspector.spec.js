@@ -183,3 +183,36 @@ test('pressing an already-selected note opens nothing until the release', async 
   expect(out.afterDown).toBe(false);
   expect(out.afterUp).toBe(true);
 });
+
+// Touch must follow the same rule as the mouse: a panel the pilot already had open is not
+// taken away by a drag. The touch path hides the panel FOR the drag, so by the release the
+// hidden class can no longer answer "was it up before?" — the answer is stamped at touchstart.
+test('touch keeps a pre-gesture panel open, as the mouse path does', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const insp = document.getElementById('inspector');
+    state.selected = { type: 'wp', index: 0 };
+    showInspector();
+    const openBefore = !insp.classList.contains('hidden');
+    touchDrag = { kind: 'cumlabel', i: 0, moved: true, startX: 10, startY: 10, inspWasOpen: true };
+    setInspectorDragHidden(true);                 // as a real touchmove does
+    endTouch();
+    return { openBefore, openAfter: !insp.classList.contains('hidden'),
+             dragHidden: insp.classList.contains('insp-drag-hidden') };
+  });
+  expect(out.openBefore).toBe(true);
+  expect(out.openAfter).toBe(true);
+  expect(out.dragHidden).toBe(false);
+});
+
+test('touch still leaves a shut panel shut after a drag', async ({ page }) => {
+  await boot(page);
+  const after = await page.evaluate(() => {
+    const insp = document.getElementById('inspector');
+    state.selected = null; showInspector();
+    touchDrag = { kind: 'cumlabel', i: 0, moved: true, startX: 10, startY: 10, inspWasOpen: false };
+    endTouch();
+    return !insp.classList.contains('hidden');
+  });
+  expect(after).toBe(false);
+});
