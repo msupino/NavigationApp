@@ -1156,6 +1156,13 @@ var gpsAlertLegIndex = 0;         // forward-only pointer into state.legs/state.
 var _gpsAlertMinDistNm = Infinity;
 var _gpsAlertLegFired = false;    // leg-approach alert already sent for gpsAlertLegIndex
 var _gpsAlertAltDeviated = false; // currently inside an altitude-deviation episode
+// How many altitude calls this leg has already made. The episode latch alone stops a
+// CONTINUOUS deviation repeating, but an aircraft riding the tolerance -- a bumpy leg, a
+// slow drift, a climb settling -- crosses the line again and again, and each crossing is a
+// fresh episode and a fresh alarm. After a couple of calls the pilot knows; more of them is
+// just noise in the cockpit, and noise is what gets alerts switched off.
+var _gpsAlertAltCount = 0;
+var GPS_ALT_MAX_PER_LEG = 2;
 // Physical capture-circle latch for TOP. The cone tracker can select the just-completed
 // final leg again after gpsAlertLegIndex advances past the route, so the pointer alone is
 // not a one-shot guard. Keep the captured coordinates latched until the aircraft actually
@@ -1183,6 +1190,7 @@ function gpsResetLegAlerts() {
   _gpsAlertMinDistNm = Infinity;
   _gpsAlertLegFired = false;
   _gpsAlertAltDeviated = false;
+  _gpsAlertAltCount = 0;
   _gpsAlertConfirmed = false;
   _gpsTopCapturePoint = null;
   _gpsLastTopAt = 0;
@@ -1420,6 +1428,7 @@ function gpsCheckLegAlerts() {
       gpsAlertLegIndex = coneLeg;
       _gpsAlertLegFired = false;
       _gpsAlertAltDeviated = false;
+      _gpsAlertAltCount = 0;              // a new leg owes its own calls
       _gpsAlertMinDistNm = Infinity;
     }
     // Being inside a cone IS confirmation: it is a positional fact about a bounded region,
@@ -1546,12 +1555,17 @@ function gpsCheckLegAlerts() {
     if (off >= GPS_ALT_TOLERANCE_FT) {
       if (!_gpsAlertAltDeviated) {
         _gpsAlertAltDeviated = true;
-        gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
-          (S && S.watchAlertAltBody)
-            ? S.watchAlertAltBody(Math.round(flownAlt), Math.round(planned))
-            : (Math.round(flownAlt) + ' ft, planned ' + Math.round(planned) + ' ft'),
-          (S && S.speakAlertAlt)
-            ? S.speakAlertAlt(Math.round(flownAlt), Math.round(planned)) : null);
+        // Latched either way: crossing back and forth still counts as episodes, so the
+        // cap cannot be dodged by the aircraft settling briefly inside tolerance.
+        _gpsAlertAltCount++;
+        if (_gpsAlertAltCount <= GPS_ALT_MAX_PER_LEG) {
+          gpsSendWatchAlert((S && S.watchAlertAltTitle) || 'Altitude',
+            (S && S.watchAlertAltBody)
+              ? S.watchAlertAltBody(Math.round(flownAlt), Math.round(planned))
+              : (Math.round(flownAlt) + ' ft, planned ' + Math.round(planned) + ' ft'),
+            (S && S.speakAlertAlt)
+              ? S.speakAlertAlt(Math.round(flownAlt), Math.round(planned)) : null);
+        }
       }
     } else {
       _gpsAlertAltDeviated = false;
@@ -1598,6 +1612,7 @@ function gpsCheckLegAlerts() {
     _gpsAlertMinDistNm = Infinity;
     _gpsAlertLegFired = false;
     _gpsAlertAltDeviated = false;
+    _gpsAlertAltCount = 0;
   }
 }
 
