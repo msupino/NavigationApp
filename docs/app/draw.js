@@ -3158,7 +3158,12 @@ function commCalloutDefaultTail(wp, idx, wpsOverride) {
       lng: r5(wp.lng + tune('commChangeNoteLngOffset')),
     };
   }
-  const th = (brg - 90) * Math.PI / 180;              // left of travel
+  // Signed angle from the direction of travel: positive left, negative right. It was a
+  // hardcoded 90 (square left) -- the quarter the cumulative-time kite now sits in, so the
+  // callout covered it. -150 puts it right and behind, clear of that kite and of the nav
+  // kite ahead-right.
+  const away = (typeof tune === 'function') ? tune('commCalloutAngleDeg') : -150;
+  const th = (brg - (Number.isFinite(away) ? away : -150)) * Math.PI / 180;
   const cosLat = Math.max(0.1, Math.cos(wp.lat * Math.PI / 180));
   return {
     lat: r5(wp.lat + D * Math.cos(th)),

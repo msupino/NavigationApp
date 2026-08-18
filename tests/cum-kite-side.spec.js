@@ -31,11 +31,6 @@ const sides = (page) => page.evaluate(() => {
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   const nx = -dy, ny = dx;                       // the leg frame the drawing code uses
-  const sc = legZoomScale() || 1;
-  const perpOf = (label, anchor, def) => {
-    const p = label && !label._default ? (label.p || 0) * sc : null;
-    return p !== null ? p : def;
-  };
   // Read the defaults straight from the same helpers the draw code uses.
   const drift = legDefaultLabelPerp(len);
   const cumDef = cumDefaultLabelPerp();
@@ -119,4 +114,41 @@ test('a dragged kite is untouched by the setting', async ({ page }) => {
     return { placed, afterFlip };
   });
   expect(out.afterFlip).toEqual(out.placed);
+});
+
+
+// The frequency callout used to be pinned 90 degrees left of track -- the quarter the
+// cumulative kite now occupies -- so it covered the time it was meant to sit beside.
+test.describe('the frequency callout has its own angle', () => {
+  test('defaults right and behind, clear of the cumulative kite', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(() => {
+      const ang = tune('commCalloutAngleDeg');
+      const wp = state.waypoints[1];
+      const tail = commCalloutDefaultTail(wp, 1);
+      const brg = geo(state.waypoints[0], wp).brg;
+      // Bearing from the waypoint to where the callout was placed.
+      const out = geo(wp, { lat: tail.lat, lng: tail.lng }).brg;
+      // The knob reads + as LEFT of track; a raw compass delta is + clockwise (right),
+      // so the measurement is negated to speak the same language as the setting.
+      const rel = -(((out - brg + 540) % 360) - 180);
+      return { ang, rel };
+    });
+    expect(out.ang).toBe(-150);
+    expect(Math.round(out.rel)).toBe(-150);             // placed where the knob says
+  });
+
+  test('the knob moves it', async ({ page }) => {
+    await boot(page);
+    const rel = await page.evaluate(() => {
+      setTune('commCalloutAngleDeg', 90);
+      const wp = state.waypoints[1];
+      const tail = commCalloutDefaultTail(wp, 1);
+      const brg = geo(state.waypoints[0], wp).brg;
+      const out = geo(wp, { lat: tail.lat, lng: tail.lng }).brg;
+      setTune('commCalloutAngleDeg', -150);
+      return -(((out - brg + 540) % 360) - 180);
+    });
+    expect(Math.round(rel)).toBe(90);                   // back to square left
+  });
 });
