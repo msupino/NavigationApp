@@ -2459,10 +2459,12 @@ function setInspectorDragHidden(on) {
 // The waypoint has been locked for a while; the rest were not, which is the same hazard
 // with a smaller target. The page frame is print layout, not the route, so it stays free.
 const LOCKABLE_DRAG_KINDS = ['wp', 'note', 'label', 'cumlabel', 'cumlabelret'];
-// Grabbing a kite opens its leg's panel -- a press on one IS a request to inspect that leg.
-// Once the press turns into a drag it is not: the pilot is placing a label, and the panel
-// covers the chart being edited. So a moved kite drag ends with the panel shut and nothing
-// selected, exactly as a moved waypoint drag does.
+// A press on a kite may become either a drag or a tap, and which it is is not known until
+// the release. So it opens nothing on the way down: the leg is selected (the highlight is
+// the feedback a press needs) and the panel waits. On release, a tap opens it -- pressing a
+// kite is how a leg is inspected -- and a drag leaves it shut with nothing selected, the way
+// a moved waypoint drag does. Opening on the press and closing on the release, as this first
+// did, just flashed the panel across the chart.
 const KITE_DRAG_KINDS = ['label', 'cumlabel', 'cumlabelret'];
 function dragLockedNow(kind) {
   if (LOCKABLE_DRAG_KINDS.indexOf(kind) === -1) return false;
@@ -3837,7 +3839,7 @@ map.on('mousedown', e => {
     drag = { kind: 'cumlabel', i: cum.i };
     state.selected = { type: 'leg', index: cum.i };
     map.dragging.disable();
-    showInspector(); draw();
+    draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
   const cumRet = state.mode !== 'add' ? hitCumLabelRet(p.x, p.y) : null;
@@ -3847,7 +3849,7 @@ map.on('mousedown', e => {
     drag = { kind: 'cumlabelret', i: cumRet.i };
     state.selected = { type: 'leg', index: cumRet.i };
     map.dragging.disable();
-    showInspector(); draw();
+    draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
   const lab = state.mode !== 'add' ? hitLegLabel(p.x, p.y) : null;
@@ -3858,7 +3860,7 @@ map.on('mousedown', e => {
              ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
     map.dragging.disable();
-    showInspector(); draw();
+    draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
   const leg = hitLeg(p.x, p.y);
@@ -4042,9 +4044,9 @@ function endMouseDrag() {
       const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
       if (!drag.moved || inspOpen) showInspector();
     }
-    if (drag.moved && KITE_DRAG_KINDS.indexOf(drag.kind) !== -1) {
-      state.selected = null;
-      showInspector();            // hidden: see KITE_DRAG_KINDS
+    if (KITE_DRAG_KINDS.indexOf(drag.kind) !== -1) {
+      if (drag.moved) state.selected = null;
+      showInspector();            // a tap opens it, a drag shuts it: see KITE_DRAG_KINDS
     }
     if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
@@ -4453,7 +4455,9 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag.startY = p.y;
     map.dragging.disable();
     e.preventDefault();                // suppress pan + the synthetic click
-    showInspector(); draw();
+    // Kites open nothing here -- endTouch decides, once tap and drag can be told apart.
+    if (KITE_DRAG_KINDS.indexOf(touchDrag.kind) === -1) showInspector();
+    draw();
   }
 }, { passive: false });
 
@@ -4525,6 +4529,7 @@ function endTouch() {
      KITE_DRAG_KINDS.indexOf(touchDrag.kind) !== -1));
   setInspectorDragHidden(false);
   if (wasDrag) { state.selected = null; showInspector(); }
+  else if (touchDrag && KITE_DRAG_KINDS.indexOf(touchDrag.kind) !== -1) showInspector();  // a tap
   if (touchDrag) {
     settleAddModeWaypointTap(touchDrag);
     if (touchDrag.kind === 'wp' && touchDrag.moved) {

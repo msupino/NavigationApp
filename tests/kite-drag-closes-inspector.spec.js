@@ -1,9 +1,9 @@
 // @ts-check
 // Reported: dragging a nav kite or a cumulative-time kite left the inspector open over the
-// chart. Grabbing a kite opens its leg's panel — a press on one is a request to inspect the
-// leg — but the moment that press becomes a drag it is not: the pilot is placing a label and
-// the panel is covering the ground being worked on. A moved kite drag now ends shut, the way
-// a moved waypoint drag already did. A press that never moves still opens the panel.
+// chart. A press cannot be told from a drag until the release, so the panel now waits for it:
+// nothing opens on the way down, a tap opens it (pressing a kite is how a leg is inspected),
+// and a drag ends shut with nothing selected, as a moved waypoint drag already did. Opening
+// on the press and closing on the release — the first attempt — flashed the panel instead.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -46,18 +46,36 @@ const pressDragRelease = (page, x, y, dx, dy) => page.evaluate(([px, py, mx, my]
   endMouseDrag();
 }, [x, y, dx, dy]);
 
-test('a press on the cumulative kite opens the leg panel', async ({ page }) => {
+test('a tap on the cumulative kite opens the leg panel — on release, not before', async ({ page }) => {
   await boot(page);
   const c = await cumCentre(page);
-  await pressDragRelease(page, c.x, c.y, 0, 0);
+  const whileDown = await page.evaluate(([x, y]) => {
+    const p0 = L.point(x, y);
+    map.fire('mousedown', { containerPoint: p0, latlng: map.containerPointToLatLng(p0) });
+    return !document.getElementById('inspector').classList.contains('hidden');
+  }, [c.x, c.y]);
+  expect(whileDown).toBe(false);          // no flash on the way down
+  await page.evaluate(() => endMouseDrag());
   expect(await inspectorOpen(page)).toBe(true);
   expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('leg');
 });
 
-test('dragging the cumulative kite leaves it shut', async ({ page }) => {
+test('dragging the cumulative kite never opens it at all', async ({ page }) => {
   await boot(page);
   const c = await cumCentre(page);
-  await pressDragRelease(page, c.x, c.y, 45, -35);
+  const seenOpen = await page.evaluate(([x, y]) => {
+    const p0 = L.point(x, y);
+    let open = false;
+    const check = () => { open = open || !document.getElementById('inspector').classList.contains('hidden'); };
+    map.fire('mousedown', { containerPoint: p0, latlng: map.containerPointToLatLng(p0) });
+    check();
+    const p1 = L.point(x + 45, y - 35);
+    map.fire('mousemove', { containerPoint: p1, latlng: map.containerPointToLatLng(p1) });
+    check();
+    endMouseDrag();
+    return open;
+  }, [c.x, c.y]);
+  expect(seenOpen).toBe(false);
   expect(await inspectorOpen(page)).toBe(false);
   expect(await page.evaluate(() => state.selected)).toBeNull();
 });
