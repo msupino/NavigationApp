@@ -71,3 +71,38 @@ test('an oversized language picker shrinks instead of wrapping', async ({ page }
   expect(after.links).toBeGreaterThan(after.toggle + 20);
   expect(m.links).toBeGreaterThan(0);
 });
+
+// The GPS labels change with state ('Start recording' → 'Stop recording', 'Show location' →
+// 'Hide location'). The simulator button carries no label of its own, so it must not move
+// when its neighbours' do — it was being pushed onto a second line the moment a recording
+// started, which is a control changing place for a reason the pilot cannot see.
+for (const lang of ['en', 'he']) {
+  test(`${lang}: the simulator button does not move when the GPS labels change`, async ({ page }) => {
+    await page.goto(`?lang=${lang}&nogist`);
+    await page.waitForSelector('#toolbar');
+    const tops = await page.evaluate(() => {
+      document.getElementById('toolbar').classList.add('collapsed');
+      const top = (s) => Math.round(document.querySelector(s).getBoundingClientRect().top);
+      // Where the icon sits, and whether that is the row's FIRST line. Comparing the icon
+      // against itself across states is not enough: it can sit on the second line in every
+      // state and still be in the wrong place.
+      const snap = () => {
+        const sim = top('#sim-trigger');
+        const first = Math.min(sim, top('#gps-record'), top('#gps-live'));
+        return { sim, onFirstLine: sim === first };
+      };
+      const label = (sel, text) => { document.querySelector(sel + ' .footer-link-text').textContent = text; };
+      const idle = snap();
+      label('#gps-record', S.tbGpsStop);            // recording
+      const recording = snap();
+      label('#gps-live', S.tbGpsLiveStop);          // ...and showing location
+      const live = snap();
+      return { idle, recording, live };
+    });
+    expect(tops.idle.onFirstLine).toBe(true);
+    expect(tops.recording.onFirstLine).toBe(true);
+    expect(tops.live.onFirstLine).toBe(true);
+    expect(tops.recording.sim).toBe(tops.idle.sim);
+    expect(tops.live.sim).toBe(tops.idle.sim);
+  });
+}

@@ -1814,9 +1814,12 @@ window.S = Object.assign({
   // Footer-button labels carry NO icon prefix: the button's own
   // .footer-link-icon span renders the glyph, so an emoji in the label
   // showed a double icon in the mobile footer menu.
-  tbGpsRecord: 'Start recording',
+  // Short enough that the icon and both GPS buttons keep one line inside the closed menu card
+  // on a phone -- 'Start recording'/'Stop recording' pushed the row to two lines once labels
+  // stopped being cut short. The full sentence still lives in the title/aria strings.
+  tbGpsRecord: 'Record',
   tbGpsRecordTitle: 'Start recording your flown track from the device GPS; Stop saves it to your routes',
-  tbGpsStop: 'Stop recording',
+  tbGpsStop: 'Stop',
   tbGpsLive: 'Show location',
   tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
   tbGpsLiveStop: 'Hide location',
