@@ -3,6 +3,7 @@
 // transposed coordinate accepted from the assistant, and a boot that stops halfway when the
 // browser refuses storage.
 const { test, expect } = require('./_setup');
+const { enableAssistant } = require('./_assistant-on');
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMCAYAAAB7P3qAAAAAAElFTkSuQmCC',
@@ -32,8 +33,8 @@ async function bootWx(page) {
     for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
     }
-  });
-  await page.goto('?lang=en&nogist');
+  });  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => document.querySelectorAll('#wx-time option').length > 1);
 }
 
@@ -99,8 +100,8 @@ test('near midnight the dropdown seeds tomorrow, not a stale afternoon chart', a
       { valid: '00:00', day: '22/06/2026', png: 'ims/sigwx/b.png' },
       { valid: '03:00', day: '22/06/2026', png: 'ims/sigwx/c.png' },
     ] }),
-  }));
-  await page.goto('?lang=en&nogist');
+  }));  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => document.querySelectorAll('#wx-time option').length === 3);
   const seeded = await page.evaluate(() => {
     const sel = document.getElementById('wx-time');
@@ -110,8 +111,8 @@ test('near midnight the dropdown seeds tomorrow, not a stale afternoon chart', a
 });
 
 // --- assistant.js: a transposed coordinate is a typo, not a route ---------------------
-test('the assistant refuses transposed coordinates', async ({ page }) => {
-  await page.goto('?lang=en&nogist');
+test('the assistant refuses transposed coordinates', async ({ page }) => {  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => window.NavAid && NavAid.assistant &&
     typeof NavAid.assistant._runTool === 'function');
   const r = await page.evaluate(async () => {
@@ -151,8 +152,8 @@ test('blocked site data does not abort the rest of ui.js', async ({ page }) => {
     });
   });
   const errors = [];
-  page.on('pageerror', e => errors.push(String(e.message || e)));
-  await page.goto('?lang=en&nogist');
+  page.on('pageerror', e => errors.push(String(e.message || e)));  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
   await page.waitForFunction(() => typeof map !== 'undefined');
   const state1 = await page.evaluate(() => ({
     // Declared AFTER the reads that used to throw, in file order — their presence is what

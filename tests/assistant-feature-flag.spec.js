@@ -1,8 +1,8 @@
 // @ts-check
 // The assistant's launcher sits in the bottom-right map controls, where a thumb reaching
-// for zoom or the follow lock can find it. `featureAssistant` (tuning gist, default on)
-// takes the button and the panel off the map entirely — it is a planning-desk tool, and a
-// cockpit may not want it on the glass at all.
+// for zoom or the follow lock finds it. `featureAssistant` ships OFF: the assistant is a
+// planning-desk tool and the map is what a pilot is reading, so it is opted into rather
+// than out of. Switching it on brings back the button and the panel.
 const { test, expect } = require('./_setup');
 
 const present = (page) => page.evaluate(() => ({
@@ -12,18 +12,29 @@ const present = (page) => page.evaluate(() => ({
   row: !!document.querySelector('.assistant-fab-control'),
 }));
 
-test('on by default: the launcher is there', async ({ page }) => {
+test('off by default: nothing on the map', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => !!document.querySelector('.assistant-fab'));
+  await page.waitForFunction(() => typeof tune === 'function' && typeof refreshAssistantFeature === 'function');
+  expect(await page.evaluate(() => tune('featureAssistant'))).toBe(false);
   const p = await present(page);
-  expect(p.fab).toBe(true);
-  expect(await page.evaluate(() => tune('featureAssistant'))).toBe(true);
+  expect(p.fab).toBe(false);
+  expect(p.panel).toBe(false);
+  expect(p.row).toBe(false);          // no empty control row holding a slot either
 });
 
-test('switched off, the button and the panel go — row and all', async ({ page }) => {
+test('switched on, the launcher appears', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => !!document.querySelector('.assistant-fab') &&
-    typeof refreshAssistantFeature === 'function');
+  await page.waitForFunction(() => typeof refreshAssistantFeature === 'function');
+  await page.evaluate(() => { setTune('featureAssistant', true); refreshAssistantFeature(); });
+  const p = await present(page);
+  expect(p.fab).toBe(true);
+  expect(p.row).toBe(true);
+});
+
+test('switched off again, the button and the panel go — row and all', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof refreshAssistantFeature === 'function');
+  await page.evaluate(() => { setTune('featureAssistant', true); refreshAssistantFeature(); });
   await page.evaluate(() => { setTune('featureAssistant', false); refreshAssistantFeature(); });
   const gone = await present(page);
   expect(gone.fab).toBe(false);
@@ -34,7 +45,6 @@ test('switched off, the button and the panel go — row and all', async ({ page 
 test('switching it back on rebuilds it', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof refreshAssistantFeature === 'function');
-  await page.evaluate(() => { setTune('featureAssistant', false); refreshAssistantFeature(); });
   expect((await present(page)).fab).toBe(false);
   await page.evaluate(() => { setTune('featureAssistant', true); refreshAssistantFeature(); });
   const back = await present(page);
@@ -42,11 +52,10 @@ test('switching it back on rebuilds it', async ({ page }) => {
   expect(back.row).toBe(true);
 });
 
-test('with it off, nothing else in the corner stack moves up wrongly', async ({ page }) => {
+test('with it off, the rest of the corner stack is untouched', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => !!document.querySelector('.assistant-fab') &&
-    typeof refreshAssistantFeature === 'function');
-  await page.evaluate(() => { setTune('featureAssistant', false); refreshAssistantFeature(); });
+  await page.waitForFunction(() => typeof refreshAssistantFeature === 'function' &&
+    !!document.querySelector('.leaflet-control-zoom'));
   const stack = await page.evaluate(() => {
     const corner = document.querySelector('.leaflet-bottom.leaflet-right');
     return {

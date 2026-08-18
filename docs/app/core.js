@@ -571,10 +571,10 @@ NavAid.tuningDefaults = {
   // location). Set true to have a tap open it in flight, the way it used to.
   featureInspectorWhileTracking: { value: false, type: 'bool', label: 'Feature: inspector while tracking' },
   // The assistant's launcher sits in the bottom-right map controls, where a thumb reaching
-  // for zoom or the follow lock can find it. Off here removes the button and the panel
-  // entirely -- the assistant is a planning-desk tool, and a cockpit may not want it on the
-  // glass at all.
-  featureAssistant: { value: true, type: 'bool', label: 'Feature: AI assistant button' },
+  // for zoom or the follow lock finds it. Ships OFF: the assistant is a planning-desk tool
+  // and the map is where a pilot is reading, so it is opted into rather than out of. On
+  // brings back the button and the panel with nothing else to configure.
+  featureAssistant: { value: false, type: 'bool', label: 'Feature: AI assistant button' },
   // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
   // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
   // it, let alone weigh it. Both live here so they can be tuned from the gist without a
