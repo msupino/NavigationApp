@@ -557,6 +557,10 @@ function draw() {
   // what a pilot is actually looking at even with every segment drawn.
   if (typeof drawGraphLegs === 'function') drawGraphLegs();
   drawNavWaypoints();
+  // Review overlay (?hotspots=1): which points the app considers junctions, on the whole
+  // chart rather than only where a route happens to pass. Above the nav dots it rings, below
+  // everything a pilot actually flies.
+  if (typeof drawHotspotOverlay === 'function') drawHotspotOverlay();
   drawReportingBadges();
   drawCommChangeRings();
   drawAirfields();
@@ -4990,6 +4994,63 @@ function drawPageFrame() {
     octx.stroke();
   }
   octx.restore();
+}
+
+// --- hotspots review overlay (?hotspots=1) ------------------------------------
+// Rings every waypoint the app treats as a junction, across the whole chart. On the route a
+// hotspot already rings itself, but that only ever shows the handful a given route passes --
+// the question this answers is "which points ARE hotspots", which is a property of the graph
+// and cannot be read off one flight plan.
+//
+// A review tool, like ?graphlegs=1: no toolbar entry, nothing persisted, invisible unless the
+// flag is in the URL, and it draws whether or not the nav-waypoint layer is switched on --
+// the layer being off is not a reason to hide the thing being reviewed.
+function hotspotsOverlayEnabled() {
+  try { return new URLSearchParams(location.search).get('hotspots') === '1'; }
+  catch (e) { return false; }
+}
+function drawHotspotOverlay() {
+  if (!hotspotsOverlayEnabled() || !navWP || !navWP.length) return;
+  const dotRadius = tune('navWaypointRadiusPx');
+  const gap = tune('waypointHotspotRingGapPx');
+  const labels = map.getZoom() >= tune('navWpLabelMinZoom');
+  octx.save();
+  octx.lineWidth = tune('waypointHotspotRingWidthPx');
+  octx.strokeStyle = tune('waypointHotspotRingColor');
+  octx.font = `bold ${tune('navWaypointLabelFontPx')}px sans-serif`;
+  octx.textAlign = 'left';
+  octx.textBaseline = 'middle';
+  let n = 0;
+  for (const wp of navWP) {
+    if (!waypointHotspot(wp)) continue;
+    n++;
+    const s = proj(wp);
+    octx.beginPath();
+    octx.arc(s.x, s.y, dotRadius + gap, 0, Math.PI * 2);
+    octx.stroke();
+    // With the nav layer off there is no dot underneath, so the ring would be an empty circle
+    // on the chart: fill it in the hotspot colour so the point reads as a point.
+    if (!showNavWP) {
+      octx.fillStyle = tune('waypointHotspotFillColor');
+      octx.beginPath();
+      octx.arc(s.x, s.y, dotRadius, 0, Math.PI * 2);
+      octx.fill();
+      if (labels) {
+        const label = referenceOverlayLabel(wp, 'navwp');
+        const off = tune('navWaypointLabelOffsetPx') + gap;
+        octx.lineWidth = tune('navWaypointLabelHaloPx');
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+        octx.strokeText(label, s.x + off, s.y);
+        octx.fillStyle = tune('inkColor');
+        octx.fillText(label, s.x + off, s.y);
+        octx.strokeStyle = tune('waypointHotspotRingColor');
+        octx.lineWidth = tune('waypointHotspotRingWidthPx');
+      }
+    }
+  }
+  octx.restore();
+  // What the overlay is for: the count, so a dataset change can be seen without counting rings.
+  window.__hotspotOverlayCount = n;
 }
 
 // --- graph-legs review overlay (?graphlegs=1) ---------------------------------
