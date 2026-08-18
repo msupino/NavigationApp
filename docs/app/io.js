@@ -8925,7 +8925,10 @@ function showFplDialog() {
 
     // Pilot details, shown. They persist, so this is a once-per-device chore.
     const pic = input(profile.pic, 'text');
-    const license = input(profile.license, 'text');
+    // A licence number is digits, like the mobile below it: 'tel' brings up the phone keypad
+    // instead of a full keyboard, and does it without type="number"'s spinner arrows or its
+    // habit of eating a leading zero.
+    const license = input(profile.license, 'tel', { inputmode: 'numeric' });
     const cell = input(profile.cell, 'tel');
     pic.id = 'fpl-pic';
     license.id = 'fpl-license';

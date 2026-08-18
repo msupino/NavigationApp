@@ -122,11 +122,12 @@ NavAid.tuningDefaults = {
   // Which base layers the picker offers, gist-controlled booleans: true = offered,
   // false = hidden from the picker, the satellite modal and the mosaic. CVFR is not on
   // the list -- it is the fallback layer everything else degrades to, so the app never
-  // lets it be configured away. All ship offered; pulling one (e.g. Helicopters, whose
-  // chart and dataset are the thinnest) is a gist edit, not a build:
-  //   "layerEnabledHelicopters": false
+  // lets it be configured away. Helicopters ships OFF: its chart and dataset are the thinnest
+  // of the set, and it was carried as a gist override long enough to be the settled answer
+  // rather than a deployment's opinion. Either value can still be flipped from the gist:
+  //   "layerEnabledHelicopters": true
   layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
-  layerEnabledHelicopters: { value: true, type: 'bool', label: 'Offer the Helicopters layer' },
+  layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
   layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
   layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
   layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
@@ -194,7 +195,7 @@ NavAid.tuningDefaults = {
   windArrowHaloColor: { value: '#ffffff', type: 'color', label: 'Wind arrow halo color' },
   windTextHaloColor: { value: '#ffffff', type: 'color', label: 'Wind text halo color' },
 
-  defaultLabelMarginPx: { value: 30, min: 0, max: 120, step: 1, label: 'Default marker margin (scaled with the kite)' },
+  defaultLabelMarginPx: { value: 20, min: 0, max: 120, step: 1, label: 'Default marker margin (scaled with the kite)' },
   defaultKiteHalfWidthPx: { value: 23, min: 1, max: 80, step: 1, label: 'Default kite half-width' },
 
   legKiteFillColor: { value: '#00ff00', type: 'color', label: 'Leg kite fill color' },
