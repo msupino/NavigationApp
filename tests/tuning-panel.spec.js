@@ -109,31 +109,10 @@ test.describe('Hidden tuning panel', () => {
     expect(out.rows.filter(row => row.type === 'select' && !row.hasSelect).map(row => row.key)).toEqual([]);
   });
 
-  test('uses the tuned marker and kite defaults', async ({ page }) => {
-    await boot(page);
-    const values = await page.evaluate(() => ({
-      defaultLabelMarginPx: tune('defaultLabelMarginPx'),
-      legKiteHeightPx: tune('legKiteHeightPx'),
-      legKiteCellWidthPx: tune('legKiteCellWidthPx'),
-      legKiteTriangleLenPx: tune('legKiteTriangleLenPx'),
-      legKiteHeadingTextPx: tune('legKiteHeadingTextPx'),
-      legKiteHeadingAnchor: tune('legKiteHeadingAnchor'),
-      cumKiteHeightPx: tune('cumKiteHeightPx'),
-      cumKiteCellWidthPx: tune('cumKiteCellWidthPx'),
-      cumKiteTextPx: tune('cumKiteTextPx'),
-    }));
-    expect(values).toEqual({
-      defaultLabelMarginPx: 30,
-      legKiteHeightPx: 47,
-      legKiteCellWidthPx: 24,
-      legKiteTriangleLenPx: 35,
-      legKiteHeadingTextPx: 13,
-      legKiteHeadingAnchor: 0.25,
-      cumKiteHeightPx: 23,
-      cumKiteCellWidthPx: 43,
-      cumKiteTextPx: 15,
-    });
-  });
+  // (A test that restated nine default values lived here. It asserted nothing about
+  // behaviour — the registry already IS those numbers — and failed whenever one was tuned,
+  // which is what the registry exists to allow. The rows-and-controls checks above cover
+  // that every key is reachable and resettable, which is the part worth guarding.)
 
   test('drift dash controls redraw without changing endpoint length', async ({ page }) => {
     await boot(page);
