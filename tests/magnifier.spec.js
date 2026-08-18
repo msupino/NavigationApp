@@ -9,7 +9,9 @@ const magnifierTileReadyMs = deployedPreview ? 35_000 : (process.env.CI ? 25_000
 const magnifierCalibTestMs = deployedPreview ? 120_000 : (process.env.CI ? 120_000 : 60_000);
 // Tile-pane readiness for z=8 (pan / margin / Perfecting tests).
 const magnifierPaneTileMs = deployedPreview ? 45_000 : (process.env.CI ? 35_000 : 18_000);
-const CHART_TILE_RE = /^https?:\/\/([^/]*\.)?flight-maps\.com\/tiles\//;
+// Chart tiles from either source: the live site draws from flight-maps.com, every other
+// deployment -- this harness included -- from our own mirror (tiles-live-site-only.spec.js).
+const CHART_TILE_RE = /^https?:\/\/(([^/]*\.)?flight-maps\.com\/tiles\/|navaid-tiles\.supino\.org\/)/;
 const TILE_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
   'base64');
@@ -23,17 +25,24 @@ async function fulfillTile(route, delayMs = 0) {
   });
 }
 
+// The chart tile host depends on where the app is served: the live site draws from
+// flight-maps.com, everywhere else (including this harness) from our own mirror. Both count
+// as chart tiles here -- this spec is about how MANY the magnifier asks for, not whose they are.
 function isChartTileUrl(url) {
   try {
     const { hostname } = new URL(url);
-    return hostname === 'flight-maps.com' || hostname.endsWith('.flight-maps.com');
+    return hostname === 'flight-maps.com' || hostname.endsWith('.flight-maps.com') ||
+           hostname === 'navaid-tiles.supino.org';
   } catch (_) {
     return false;
   }
 }
 
+// Both tile URL shapes end in /<z>/<x>/<y>.png -- flight-maps.com/tiles/<kind>/z/x/y.png and
+// navaid-tiles.supino.org/<Chart>/z/x/y.png -- so read the zoom from the tail, not from a
+// path segment that only one of them has.
 function chartTileZoom(url) {
-  const m = url.match(/\/tiles\/[^/]+\/(\d+)\//);
+  const m = url.match(/\/(\d+)\/(\d+)\/(\d+)\.png/);
   return m ? parseInt(m[1], 10) : null;
 }
 
