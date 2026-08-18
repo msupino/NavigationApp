@@ -720,12 +720,26 @@
       <button id="gps-record" type="button" class="footer-link footer-link-button gps-footer-btn"
               data-i18n-title="tbGpsRecordTitle" data-i18n-aria="tbGpsRecord">
         <span class="footer-link-icon gps-footer-icon" aria-hidden="true">⏺</span>
-        <span class="footer-link-text" data-i18n="tbGpsRecord"></span>
+        <!-- The label changes with state ('Start recording' <-> 'Stop recording') and the two
+             are different widths, so the button used to change size -- and the row to reflow --
+             on every toggle. BOTH labels are stacked in one grid cell: the visible one, plus an
+             invisible copy of each state, so the button always measures the wider of the two
+             whichever is showing, and nothing has to be trimmed to keep it still. applyI18n
+             fills them like any other string, so a translation sizes the button too. -->
+        <span class="footer-link-labels">
+          <span class="footer-link-text" data-i18n="tbGpsRecord"></span>
+          <span class="footer-link-sizer" aria-hidden="true" data-i18n="tbGpsRecord"></span>
+          <span class="footer-link-sizer" aria-hidden="true" data-i18n="tbGpsStop"></span>
+        </span>
       </button>
       <button id="gps-live" type="button" class="footer-link footer-link-button gps-footer-btn" aria-pressed="false"
               data-i18n-title="tbGpsLiveTitle" data-i18n-aria="tbGpsLive">
         <span class="footer-link-icon gps-footer-icon" aria-hidden="true">📍</span>
-        <span class="footer-link-text" data-i18n="tbGpsLive"></span>
+        <span class="footer-link-labels">
+          <span class="footer-link-text" data-i18n="tbGpsLive"></span>
+          <span class="footer-link-sizer" aria-hidden="true" data-i18n="tbGpsLive"></span>
+          <span class="footer-link-sizer" aria-hidden="true" data-i18n="tbGpsLiveStop"></span>
+        </span>
       </button>
       <!-- Grouped with the GPS buttons, not a sibling after them: that keeps it on
            the SAME wrap-eligible flex item as far as #footer-links is concerned, so
