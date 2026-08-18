@@ -6530,6 +6530,7 @@ function createTuningPanel() {
       // (for toggles the current user hasn't explicitly set).
       if (typeof NavAid.applyDefaultVisibility === 'function') NavAid.applyDefaultVisibility();
       if (typeof refreshShowReturnFeature === 'function') refreshShowReturnFeature();
+      if (typeof refreshAssistantFeature === 'function') refreshAssistantFeature();
       if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
       redrawAfterTune();
       return;
@@ -7121,6 +7122,7 @@ if (typeof loadRemoteConfig === "function") {
     if (NavAid && typeof NavAid.applyDefaultVisibility === "function") NavAid.applyDefaultVisibility();
     // Same reason: the gist may have switched the return path back on.
     if (typeof refreshShowReturnFeature === "function") refreshShowReturnFeature();
+    if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     // The gist may have turned base layers on or off -- rebuild the picker to match.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();

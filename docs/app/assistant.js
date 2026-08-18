@@ -1178,7 +1178,34 @@
   // Retire the legacy single Base URL before anything can read it or send to it.
   migrateLegacyBaseUrl();
 
+  // Switched off from the tuning gist: no launcher, no panel, nothing on the map. Checked
+  // at build time AND re-checked when the gist lands, since the gist arrives after boot.
+  function assistantEnabled() {
+    return typeof tune !== 'function' || tune('featureAssistant') !== false;
+  }
+  // Remove what has already been built, or put it back, to match the switch.
+  function refreshAssistantFeature() {
+    const on = assistantEnabled();
+    if (!on) {
+      if (fab && fab.parentNode) {
+        // The launcher is a Leaflet control: drop the whole control row, not just the
+        // button, or an empty box keeps its place in the corner stack.
+        const row = fab.closest('.leaflet-control') || fab;
+        if (row.parentNode) row.parentNode.removeChild(row);
+      }
+      if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+      built = false; fab = null; panel = null;
+      return;
+    }
+    if (!built) build();
+  }
+  NS.assistant.refreshFeature = refreshAssistantFeature;
+  window.refreshAssistantFeature = refreshAssistantFeature;
+
   // Build the FAB on load so it's discoverable; the panel stays hidden.
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
-  else build();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { if (assistantEnabled()) build(); });
+  } else if (assistantEnabled()) {
+    build();
+  }
 })();
