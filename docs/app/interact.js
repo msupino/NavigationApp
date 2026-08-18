@@ -4046,13 +4046,12 @@ function endMouseDrag() {
       if (!drag.moved || inspOpen) showInspector();
     }
     if (drag.kind !== 'wp' && TAP_OPENS_INSPECTOR_KINDS.indexOf(drag.kind) !== -1) {
-      // The waypoint rule above, applied to everything else that can be pressed: a tap opens
-      // the panel, a drag leaves a shut panel shut, and a panel that was already open before
-      // the gesture stays open and refreshes -- dragging a label is no reason to take away
-      // something the pilot was reading.
+      // Byte for byte the waypoint rule above: a tap opens the panel, a drag leaves a shut
+      // panel shut, and a panel that was already open before the gesture refreshes rather
+      // than vanishing. The selection is left alone -- a drag of the comm-change tail keeps
+      // its waypoint selected, which is what carries the freq note through the gesture.
       const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
-      if (drag.moved && !inspOpen) state.selected = null;
-      showInspector();
+      if (!drag.moved || inspOpen) showInspector();
     }
     if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();

@@ -2,7 +2,7 @@
 // Reported: dragging a nav kite or a cumulative-time kite left the inspector open over the
 // chart. A press cannot be told from a drag until the release, so the panel now waits for it:
 // nothing opens on the way down, a tap opens it (pressing a kite is how a leg is inspected),
-// and a drag ends shut with nothing selected, as a moved waypoint drag already did. Opening
+// and a drag ends with the panel still shut, as a moved waypoint drag already did. Opening
 // on the press and closing on the release — the first attempt — flashed the panel instead.
 const { test, expect } = require('./_setup');
 
@@ -77,7 +77,9 @@ test('dragging the cumulative kite never opens it at all', async ({ page }) => {
   }, [c.x, c.y]);
   expect(seenOpen).toBe(false);
   expect(await inspectorOpen(page)).toBe(false);
-  expect(await page.evaluate(() => state.selected)).toBeNull();
+  // The leg stays selected, as a dragged waypoint stays selected on this path -- the
+  // highlight is how the pilot sees what was just moved. Only the panel is withheld.
+  expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('leg');
 });
 
 test('dragging a nav kite leaves it shut too', async ({ page }) => {
