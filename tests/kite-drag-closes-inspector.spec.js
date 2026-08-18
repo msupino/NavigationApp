@@ -161,3 +161,25 @@ test('no press anywhere opens the panel before the release', async ({ page }) =>
     expect(openDuring).toBe(false);
   }
 });
+
+// Notes have a second grab path (interact.js grabSelected): pressing a note that is ALREADY
+// selected picks it straight up, and that path opened the panel on the press too.
+test('pressing an already-selected note opens nothing until the release', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const insp = document.getElementById('inspector');
+    state.notes.push({ lat: 32.15, lng: 34.95, text: 'X', color: '#000', shape: 'rect' });
+    state.selected = { type: 'note', index: state.notes.length - 1 };
+    draw();
+    showInspector();
+    insp.classList.add('hidden');                       // start shut, note still selected
+    const q = proj(state.notes[state.notes.length - 1]);
+    const p0 = L.point(q.x, q.y);
+    map.fire('mousedown', { containerPoint: p0, latlng: map.containerPointToLatLng(p0) });
+    const afterDown = !insp.classList.contains('hidden');
+    endMouseDrag();                                     // released without moving: a tap
+    return { afterDown, afterUp: !insp.classList.contains('hidden') };
+  });
+  expect(out.afterDown).toBe(false);
+  expect(out.afterUp).toBe(true);
+});

@@ -3613,7 +3613,7 @@ function grabSelected(px, py, latlng) {
                offLat: state.notes[noteHit].lat - latlng.lat,
                offLng: state.notes[noteHit].lng - latlng.lng };
       map.dragging.disable();
-      showInspector(); draw();
+      draw();                     // panel waits for the release: see TAP_OPENS_INSPECTOR_KINDS
       return true;
     }
   }
