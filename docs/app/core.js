@@ -50,8 +50,10 @@ NavAid.tuningDefaults = {
   // and a phone in a metal cockpit is not. See gpsCompassTrue.
   // How long an in-flight notification stays in the shade before the app withdraws it.
   // Android keeps notifications until they are swiped, so without this a sortie ends with
-  // a stack of stale calls. 0 = keep them, the old behaviour.
-  alertNotifyTtlSec: { value: 120, min: 0, max: 3600, step: 10, label: 'Alert notification life (s)' },
+  // a stack of stale calls. Short on purpose: the alert has already made its noise and, in
+  // the APK, spoken it -- the shade entry is a glance-at-it-now copy, not a log. 0 = keep
+  // them, the old behaviour.
+  alertNotifyTtlSec: { value: 15, min: 0, max: 3600, step: 5, label: 'Alert notification life (s)' },
   compassFallback: { value: true, type: 'bool', label: 'Compass heading when stopped' },
   // How far the heading must move before a heading-up map is rotated. Every rotation
   // redraws the whole chart, and a degree of GPS scatter is not worth that -- nor the

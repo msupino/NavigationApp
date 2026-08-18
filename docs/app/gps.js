@@ -1790,7 +1790,7 @@ var _watchAlertId = 1;
 // posted -- cancel by id (native), close the notification object (web) -- which also means
 // a notification already dismissed by the pilot costs nothing.
 function gpsNotifyTtlMs() {
-  const sec = (typeof tune === 'function') ? tune('alertNotifyTtlSec') : 120;
+  const sec = (typeof tune === 'function') ? tune('alertNotifyTtlSec') : 15;
   return Math.max(0, sec) * 1000;
 }
 function gpsExpireNative(nn, id) {

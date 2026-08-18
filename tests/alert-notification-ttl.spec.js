@@ -46,13 +46,13 @@ const withNative = (page) => page.evaluate(() => {
 });
 
 test('a native alert is withdrawn once its life is up', async ({ page }) => {
-  await boot(page, 120);
+  await boot(page, 15);
   await withNative(page);
   const out = await page.evaluate(() => {
     gpsSendWatchAlert('TOP', 'overhead BASAN');
     const posted = window.__scheduled.map(n => ({ id: n.id, autoCancel: n.autoCancel }));
     const beforeFire = window.__cancelled.length;
-    window.__fireTimers(120000);                 // the TTL timer comes due
+    window.__fireTimers(15000);                 // the TTL timer comes due
     return { posted, beforeFire, cancelled: window.__cancelled.map(n => n.id) };
   });
   expect(out.posted.length).toBe(1);
@@ -62,12 +62,12 @@ test('a native alert is withdrawn once its life is up', async ({ page }) => {
 });
 
 test('each alert withdraws its own, not the last one twice', async ({ page }) => {
-  await boot(page, 120);
+  await boot(page, 15);
   await withNative(page);
   const out = await page.evaluate(() => {
     gpsSendWatchAlert('Next leg', 'BASAN in 2 min');
     gpsSendWatchAlert('Altitude', '2400 ft, planned 2000 ft');
-    window.__fireTimers(120000);
+    window.__fireTimers(15000);
     return { posted: window.__scheduled.map(n => n.id), cancelled: window.__cancelled.map(n => n.id) };
   });
   expect(out.posted.length).toBe(2);
