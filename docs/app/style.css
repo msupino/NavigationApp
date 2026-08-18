@@ -579,15 +579,24 @@ html[dir="rtl"] .tb-section.open .tb-section-head::after { transform: rotate(-90
    ~50px tall, so a closed menu ate a quarter of a phone screen. The handle, the ☰ and
    the language picker are all small controls -- put them on ONE row and let the links
    wrap underneath. */
+/* Closed card: a two-row GRID, not a wrapping flex row. The drag handle, the hamburger and
+   the language picker occupy one row BY CONSTRUCTION -- as flex items they wrapped the moment
+   a platform's font metrics made the picker a few pixels wider than the card's cap, which put
+   the language on a line of its own and made a closed menu three rows tall on a phone. The
+   picker's column is the flexible one, so a tight card shrinks it instead of breaking the row. */
 #toolbar.collapsed {
-  flex-flow: row wrap;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
-  justify-content: flex-start;
+  justify-items: center;
   column-gap: 6px;
   /* Sized to the CONTROLS, not to the links: at 300px the closed menu still reached most
      of the way across a phone and covered the Zulu clock. The links wrap underneath. */
   width: max-content;
-  max-width: min(96vw, 232px);
+  /* 232 px left the Hebrew row one pixel short of fitting the icon and both labels, so it
+     wrapped a button for the sake of that pixel. Eight more keeps the card clear of the Zulu
+     clock at 360 px and lets the short-label languages stay on one line. */
+  max-width: min(96vw, 240px);
   padding: 4px 6px;
 }
 /* In Hebrew the clock mirrors to the LEFT while the toolbar stayed left too, so the closed
@@ -611,7 +620,8 @@ html[dir="rtl"] #toolbar.collapsed {
 }
 #toolbar.collapsed > #footer-links > * { padding-top: 2px; padding-bottom: 2px; }
 #toolbar.collapsed > #footer-links {
-  flex: 0 1 100%;          /* own row, below the controls */
+  grid-column: 1 / -1;     /* own row, below the controls */
+  flex: 0 1 100%;
   margin-top: 0;
   padding-top: 2px;
   flex-wrap: wrap;
@@ -1993,18 +2003,31 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
      hidden". Tightening the gap here (only at this width, where the card is actually
      tight) is what actually buys the room back, not just satisfying a test's own
      panel-width assertion the way nesting sim into the group alone did last time. */
+  /* Two equal columns and a fixed icon cell fitted the row at any label length -- by
+     cutting the labels: 'Show my location' arrived as 'Show my...', which is the one thing
+     these two buttons cannot afford to be ambiguous about mid-flight. They lay out as a
+     wrapping row instead, each button as wide as its own text, so a label that does not fit
+     beside its neighbour takes the next line whole rather than losing its ending. */
   #toolbar > #footer-links .footer-gps-group {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
     width: 100%;
     max-width: 100%;
     gap: 4px;
   }
+  #toolbar > #footer-links .gps-footer-btn {
+    flex: 0 1 auto;
+  }
   #toolbar > #footer-links .gps-footer-btn .footer-link-text {
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
   }
+  /* Here the labels show, so both states measure: the button is as wide as its wider label
+     whichever is displayed, and toggling it cannot reflow the row. */
+  #toolbar > #footer-links .gps-footer-btn .footer-link-sizer { display: block; }
   /* Bare icon-width (14px, zero padding) rendered every measurable property
      correctly -- right colour, right opacity, right position -- and was still
      reported as "I don't see the sim button on mobile at all": technically painted
@@ -2016,6 +2039,12 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
     width: 44px;
     padding: 0 8px;
     justify-content: center;
+    /* First in the row, whatever the GPS labels are doing. The labels change with state --
+       'Start recording' becomes 'Stop recording', 'Show location' becomes 'Hide location' --
+       and as the last item the icon was pushed onto a second line the moment a recording
+       started, so a button with no label of its own moved because its neighbours had. Ahead
+       of them it stays put, and any wrapping happens between the two labelled buttons. */
+    order: -1;
   }
 }
 #toolbar .footer-link {
@@ -2047,6 +2076,16 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   background: transparent;
   color: #e8e8e8;
 }
+/* Both states of a GPS button's label, stacked in one grid cell: the visible one and an
+   invisible sizer holding the other. The button measures the wider of the two, so toggling
+   the label cannot change its width or reflow the row around it. */
+.footer-link-labels { display: grid; }
+.footer-link-labels > * { grid-area: 1 / 1; white-space: nowrap; }
+/* Off unless the labels themselves are showing: the desktop footer is icon-only
+   (#toolbar .footer-link-text is display:none there), and a sizer left measuring in that
+   layout made the button wider than its icon and swallowed the next button's clicks. */
+.footer-link-sizer { display: none; visibility: hidden; pointer-events: none; }
+
 /* GPS record / show-my-location moved to the footer (near the simulator). */
 #toolbar button.gps-footer-btn[aria-pressed="true"] { color: #6fb0ff; }
 /* The desktop footer is icon-only, so a small colour shift was not enough to

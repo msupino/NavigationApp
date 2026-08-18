@@ -360,11 +360,11 @@ test('toolbar GPS button toggles recording and updates its label', async ({ page
   await expect(btn).toBeVisible();
   await btn.click();
   expect(await page.evaluate(() => gpsRecording)).toBe(true);
-  await expect(btn).toContainText('Stop recording');
+  await expect(btn.locator('.footer-link-text')).toHaveText('Stop');
   await page.evaluate(() => { const f=(a,b)=>window.__geoCb({coords:{latitude:a,longitude:b,accuracy:8,heading:null,altitude:null},timestamp:Date.now()}); f(32.0,34.0); f(32.1,34.0); });
   await btn.click();
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
-  await expect(btn).toContainText('Start recording');
+  await expect(btn.locator('.footer-link-text')).toHaveText('Record');
 });
 
 test('dark mode clearly fills active live-location and recording controls', async ({ page }) => {
@@ -447,7 +447,7 @@ test('GPS error resets recording state and button label', async ({ page }) => {
   expect(await page.evaluate(() => gpsRecording)).toBe(true);
   await page.evaluate(() => window.__errCb && window.__errCb({ code: 1, message: 'denied' }));
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
-  await expect(btn).toContainText('Start recording');
+  await expect(btn.locator('.footer-link-text')).toHaveText('Record');
 });
 
 test('the Record button label is driven together with the REC indicator', async ({ page }) => {
@@ -462,19 +462,19 @@ test('the Record button label is driven together with the REC indicator', async 
   const dot = page.locator('#gps-rec-indicator');
   // Drive start/stop directly (not via the click handler): the label must
   // follow gpsRecording from updateGpsRecIndicator, in lockstep with the dot —
-  // so it can't get stuck on "Start recording" while the dot is flashing.
+  // so it can't get stuck on "Record" while the dot is flashing.
   await page.evaluate(() => startGpsRecording());
   await expect(dot).toBeVisible();
-  await expect(btn).toContainText('Stop recording');
+  await expect(btn.locator('.footer-link-text')).toHaveText('Stop');
   await page.evaluate(() => stopGpsRecording());
   await expect(dot).toBeHidden();
-  await expect(btn).toContainText('Start recording');
+  await expect(btn.locator('.footer-link-text')).toHaveText('Record');
 });
 
 test('a watch that throws on start rolls back — no phantom recording', async ({ page }) => {
   await page.addInitScript(() => {
     // Simulate a native/plugin watch registration that throws synchronously
-    // (the APK symptom: red indicator on, button stuck on "Start recording").
+    // (the APK symptom: red indicator on, button stuck on "Record").
     navigator.geolocation.watchPosition = () => { throw new Error('watch registration failed'); };
     navigator.geolocation.clearWatch = () => {};
   });
@@ -485,7 +485,7 @@ test('a watch that throws on start rolls back — no phantom recording', async (
   await btn.click();
   expect(await page.evaluate(() => gpsRecording)).toBe(false);   // rolled back
   await expect(page.locator('#gps-rec-indicator')).toBeHidden();  // dot cleared, not phantom-on
-  await expect(btn).toContainText('Start recording');             // label consistent with state
+  await expect(btn.locator('.footer-link-text')).toHaveText('Record');             // label consistent with state
 });
 
 test('native addWatcher returning a bare id (not a Promise) still registers', async ({ page }) => {
