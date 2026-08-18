@@ -3906,8 +3906,18 @@ function showFlightPlan() {
       .map(th => (th.dataset && th.dataset.csv) || th.textContent || '')
       .filter(h => h.trim() !== '');
     const columnCount = visibleHeaders.length;
+    // A spreadsheet EVALUATES any cell that opens with =, +, - or @, so a waypoint named
+    // =WEBSERVICE(...) -- a name can arrive from an imported route or a share link, and is
+    // never validated beyond "is a string" -- becomes a live formula the moment the pilot
+    // opens the export. Quoting is not a defence: it is CSV syntax, and the formula runs
+    // inside the quotes. Such cells are prefixed with an apostrophe, which every
+    // formula-evaluating spreadsheet reads as "this is text" and does not display.
+    // Real numbers are left alone: -5 is a value, not an attack, and prefixing it would
+    // turn every negative figure in the plan into text.
+    const NUMERIC = /^[-+]?(\d+(\.\d+)?|\.\d+)([eE][-+]?\d+)?$/;
     const csvCell = value => {
-      const s = String(value == null ? '' : value).replace(/\r?\n|\r/g, ' ').trim();
+      let s = String(value == null ? '' : value).replace(/\r?\n|\r/g, ' ').trim();
+      if (/^[=+\-@\t\r]/.test(s) && !NUMERIC.test(s)) s = "'" + s;
       return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
     const rowValues = row => {

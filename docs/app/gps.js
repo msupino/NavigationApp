@@ -203,8 +203,15 @@ function onLivePosition(pos) {
   // routinely omits it -- reported live as "the broken line in front of the
   // plane is showing true north"). NaN correctly fails Number.isFinite() and
   // lets drawHeadingLine's/drawOwnShip's own frozen-last-heading fallback run.
+  // A bearing between two fixes only means something if the aircraft actually went from one
+  // to the other. Parked, geo() still returns a finite number -- 0 for two identical points,
+  // an arbitrary one for a metre of GPS jitter -- and that number used to win over the
+  // compass from the second stationary fix onwards, swinging a phone pointing 090 round to
+  // "355" and taking the heading-up map with it. Below the same movement threshold the track
+  // recorder uses, there is no derived course and the compass answers instead.
+  const movedM = _gpsLivePrev ? _gpsMetres(_gpsLivePrev, p) : 0;
   let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
-            : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : NaN);
+            : ((_gpsLivePrev && movedM >= gpsMinMoveM()) ? geo(_gpsLivePrev, p).brg : NaN);
   // ...and where even that is missing (stationary: no course, and no previous fix to take a
   // bearing from), the phone's own compass, if it is pointing at anything. See gpsCompassTrue.
   let hdgFromCompass = false;
@@ -728,10 +735,14 @@ function onGpsPosition(pos) {
                alt: c.altitude != null ? c.altitude : null,
                acc: c.accuracy != null ? c.accuracy : null };
   const prev = gpsTrack[gpsTrack.length - 1];
-  if (prev && _gpsMetres(prev, pt) < gpsMinMoveM()) return;          // de-jitter
+  // De-jitter decides whether this fix becomes a POINT ON THE LINE, and nothing more. It
+  // used to return outright, so a stationary or slow-taxiing aircraft -- every fix inside
+  // the threshold -- stopped updating altitude, speed, heading and the alert checks, and the
+  // readout eventually called its own live recording stale.
+  const jitter = !!(prev && _gpsMetres(prev, pt) < gpsMinMoveM());
   // At the cap, stop growing the track but keep the live display (own-ship,
   // GS/alt, readout, recenter) updating instead of freezing.
-  if (gpsTrack.length < GPS_MAX_POINTS) gpsTrack.push(pt);
+  if (!jitter && gpsTrack.length < GPS_MAX_POINTS) gpsTrack.push(pt);
   // Ground speed: device value (m/s) when present, else derived from the last
   // fix; altitude in feet. Both feed the live readout.
   let gsMs = (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed : null;
@@ -746,7 +757,7 @@ function onGpsPosition(pos) {
   // NaN (not 0 -- see onLivePosition's identical fallback for why) when neither
   // is available.
   let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
-            : (prev ? geo(prev, pt).brg : NaN);
+            : ((prev && !jitter) ? geo(prev, pt).brg : NaN);   // see onLivePosition
   let hdgFromCompass = false;
   if (!Number.isFinite(hdg)) {
     const comp = gpsCompassTrue(gpsLastGS);
