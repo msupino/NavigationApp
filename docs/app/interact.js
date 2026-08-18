@@ -4458,6 +4458,11 @@ mapEl.addEventListener('touchstart', e => {
     // (largest) jump through and only started counting afterwards.
     touchDrag.startX = p.x;
     touchDrag.startY = p.y;
+    // Whether the pilot already had the panel up before this gesture. It is hidden for the
+    // duration of a drag, so by release the class alone cannot answer -- and the mouse path
+    // preserves a pre-gesture panel, which left tablets losing the inspector after every
+    // label nudge while desktops kept it.
+    touchDrag.inspWasOpen = !document.getElementById('inspector').classList.contains('hidden');
     map.dragging.disable();
     e.preventDefault();                // suppress pan + the synthetic click
     // Nothing opens here -- endTouch decides, once tap and drag can be told apart.
@@ -4532,8 +4537,10 @@ function endTouch() {
     (touchDrag.kind === 'wp' || touchDrag.kind === 'note' ||
      KITE_DRAG_KINDS.indexOf(touchDrag.kind) !== -1));
   setInspectorDragHidden(false);
-  if (wasDrag) { state.selected = null; showInspector(); }
-  else if (touchDrag && TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1) showInspector();
+  // ...unless it was already open before the finger landed, in which case it is something
+  // the pilot was reading and a drag does not take it away -- the mouse path's rule.
+  if (wasDrag && !touchDrag.inspWasOpen) { state.selected = null; showInspector(); }
+  else if (touchDrag && (wasDrag || TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1)) showInspector();
   if (touchDrag) {
     settleAddModeWaypointTap(touchDrag);
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
