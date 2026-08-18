@@ -65,9 +65,11 @@ test.describe('local MBTiles layer switch', () => {
     }));
     expect(out.enabled).toBe(false);
     expect(out.stored).toBeNull();
-    expect(out.cvfr).toContain('https://flight-maps.com/tiles/cvfr/');
-    expect(out.nav).toContain('https://flight-maps.com/tiles/nav/');
-    expect(out.lowAlt).toContain('https://flight-maps.com/tiles/la/');
-    expect(out.helicopters).toContain('https://flight-maps.com/tiles/il-hel/');
+    // Remote, not packaged -- and off the live site 'remote' means OUR mirror, never
+    // flight-maps.com (tiles-live-site-only.spec.js). The harness is 127.0.0.1.
+    expect(out.cvfr).toContain('navaid-tiles.supino.org/CVFR/');
+    expect(out.nav).toContain('navaid-tiles.supino.org/Israel-Navigation/');
+    expect(out.lowAlt).toContain('navaid-tiles.supino.org/LSA-Low-Altitude/');
+    expect(out.helicopters).toContain('navaid-tiles.supino.org/Israel-Helicopters/');
   });
 });

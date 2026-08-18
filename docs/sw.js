@@ -4,7 +4,15 @@ const CACHE = 'navaid-v6';
 // Offline chart packs (offline-tiles.js): a dedicated bucket so the activate
 // cleanup never wipes a 100+ MB user download on a service-worker upgrade.
 const TILE_CACHE = 'navaid-tiles-v1';
+// Chart tiles come from the third party on the live site and from our own mirror everywhere
+// else (see liveChartTilesAllowed in core.js), so an offline pack is keyed by whichever host
+// the map will actually request. Both are served from the pack.
 const TILE_HOST = 'flight-maps.com';
+const MIRROR_TILE_HOST = 'navaid-tiles.supino.org';
+function isChartTileRequest(url) {
+  if (url.host === TILE_HOST) return url.pathname.indexOf('/tiles/') === 0;
+  return url.host === MIRROR_TILE_HOST;
+}
 // Tiles are the hottest request path (pans fetch dozens in a burst), so the
 // SW only proxies them when a pack actually exists — otherwise the fetch
 // handler returns without respondWith and the browser's native network path
@@ -131,7 +139,7 @@ self.addEventListener('fetch', e => {
   // once and reused — tiles are the hottest request path (pans/zooms fetch
   // dozens per frame burst) and a caches.open() per request measurably slows
   // tile-heavy interactions (magnifier pan perf test).
-  if (url.host === TILE_HOST && url.pathname.indexOf('/tiles/') === 0) {
+  if (isChartTileRequest(url)) {
     if (tilePackReady === false) return;   // known no pack -> native network path, zero SW overhead
     e.respondWith((async () => {
       if (tilePackReady === null) { try { await self._tilePackProbe; } catch (err) {} }
