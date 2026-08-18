@@ -8,9 +8,13 @@ const { test, expect } = require('./_setup');
 const GIST = { waypointFillColor: '#123456', legKiteHeightPx: 41, layerEnabledHelicopters: false };
 
 // Serve a gist, and count how many times it is actually fetched.
+// Anchored at the scheme and host: an unanchored pattern would also match a URL that merely
+// mentions the gist host somewhere in its query string.
+const GIST_URL = /^https:\/\/gist\.githubusercontent\.com\//;
+
 async function withGist(page, body) {
   let hits = 0;
-  await page.route(/gist\.githubusercontent\.com/, route => {
+  await page.route(GIST_URL, route => {
     hits++;
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
@@ -34,10 +38,10 @@ test('the next load is already configured before the fetch answers', async ({ pa
   await expect.poll(() => page.evaluate(() => tune('legKiteHeightPx'))).toBe(41);
 
   // Second visit: hold the gist response open, so anything correct on screen came from cache.
-  await page.unroute(/gist\.githubusercontent\.com/);
+  await page.unroute(GIST_URL);
   let release;
   const held = new Promise(r => { release = r; });
-  await page.route(/gist\.githubusercontent\.com/, async route => {
+  await page.route(GIST_URL, async route => {
     await held;
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(GIST) });
   });
@@ -62,10 +66,10 @@ test('a changed gist still wins over the cache', async ({ page }) => {
 
   // Hold the new gist until the cached value has been read, or the network wins the race and
   // the test proves nothing about which came first.
-  await page.unroute(/gist\.githubusercontent\.com/);
+  await page.unroute(GIST_URL);
   let release;
   const held = new Promise(r => { release = r; });
-  await page.route(/gist\.githubusercontent\.com/, async route => {
+  await page.route(GIST_URL, async route => {
     await held;
     return route.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify({ ...GIST, legKiteHeightPx: 55 }) });
