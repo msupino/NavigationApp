@@ -1214,15 +1214,41 @@ function fplArrivalLocal(depTimeLocal, eetMinutes) {
 }
 function fplMailPreamble(res, o) {
   if (!res || !S.fplMailTitle) return '';
-  const dep = fplPointLabel(res.dep), dest = fplPointLabel(res.dest);
+  // Point names and the route list are isolated with FSI (first-strong: the run decides its
+  // own direction). In a Hebrew mail an un-isolated Latin list reads back to front -- the
+  // separators belong to the RTL paragraph, so 'SFAIM - APOLN - ARENA' displays as
+  // 'ARENA - APOLN - SFAIM', which is a different route.
+  const dep = fplFsi(fplPointLabel(res.dep)), dest = fplFsi(fplPointLabel(res.dest));
   const depT = String((o && o.depTimeLocal) || '').trim();
   const arrT = fplArrivalLocal(depT, res.eetMinutes);
   const pts = Array.isArray(res.expandedPoints) ? res.expandedPoints.map(fplPointLabel) : [];
+  const route = fplFsi(pts.join(' - '));
   const lines = [S.fplMailTitle, ''];
   if (depT) lines.push(S.fplMailDeparture(dep, depT), '');
-  if (pts.length) lines.push(S.fplMailRoute(pts.join(' - ')), '');
+  if (pts.length) lines.push(S.fplMailRoute(route), '');
   if (arrT) lines.push(S.fplMailArrival(dest, arrT), '');
   return lines.join('\n') + '\n';
+}
+// The ICAO block is Latin text in a mail whose first words are Hebrew, and a plain-text mail
+// client takes the whole body's direction from the first strong character: the (FPL-...) lines
+// came out right-aligned, with a line like `-LLHZ0805)` rendered as `(LLHZ0805-`. Reported
+// from a filed plan.
+//
+// The block is wrapped in a left-to-right ISOLATE (U+2066 ... U+2069) rather than having marks
+// sprinkled through it: the isolate characters sit OUTSIDE the parentheses, so anything that
+// extracts from '(FPL-' to its closing ')' -- a desk's parser, a copy-paste into a filing
+// form -- still gets the block byte for byte. A client that ignores isolates shows exactly
+// what it showed before, so this cannot make the mail worse.
+const LRI = '\u2066';        // LEFT-TO-RIGHT ISOLATE
+const FSI = '\u2068';        // FIRST-STRONG ISOLATE: the run picks its own direction
+const PDI = '\u2069';        // POP DIRECTIONAL ISOLATE
+function fplFsi(text) {
+  const t = String(text || '');
+  return t ? FSI + t + PDI : t;
+}
+function fplLtrIsolate(text) {
+  const t = String(text || '');
+  return t ? LRI + t + PDI : t;
 }
 function fplMailtoUrl(res, opts) {
   const o = opts || {};
@@ -1233,7 +1259,7 @@ function fplMailtoUrl(res, opts) {
   const subject = 'FPL ' + (o.reg ? fplRegistration(o.reg) + ' ' : '') +
     res.dep + '-' + res.dest + ' ' + res.dof + (dep ? ' ' + dep : '');
   const q = ['subject=' + encodeURIComponent(subject),
-    'body=' + encodeURIComponent(fplMailPreamble(res, o) + res.text)];
+    'body=' + encodeURIComponent(fplMailPreamble(res, o) + fplLtrIsolate(res.text))];
   const reply = String(o.replyTo || '').trim();
   if (reply && FPL_EMAIL_RE.test(reply)) {
     q.push('cc=' + fplMailtoAddress(reply));
