@@ -48,6 +48,12 @@ NavAid.tuningDefaults = {
   // Use the phone's compass for the own-ship heading where the GPS gives no course
   // (stationary, taxiing). Never above taxi speed: in flight the GPS course is the truth,
   // and a phone in a metal cockpit is not. See gpsCompassTrue.
+  // How long an in-flight notification stays in the shade before the app withdraws it.
+  // Android keeps notifications until they are swiped, so without this a sortie ends with
+  // a stack of stale calls. Short on purpose: the alert has already made its noise and, in
+  // the APK, spoken it -- the shade entry is a glance-at-it-now copy, not a log. 0 = keep
+  // them, the old behaviour.
+  alertNotifyTtlSec: { value: 15, min: 0, max: 3600, step: 5, label: 'Alert notification life (s)' },
   compassFallback: { value: true, type: 'bool', label: 'Compass heading when stopped' },
   // How far the heading must move before a heading-up map is rotated. Every rotation
   // redraws the whole chart, and a degree of GPS scatter is not worth that -- nor the
@@ -624,7 +630,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
