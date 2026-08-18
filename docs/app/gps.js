@@ -1780,6 +1780,43 @@ function gpsRequestNotifyPermission() {
   return Promise.resolve();
 }
 var _watchAlertId = 1;
+// An in-flight alert is about NOW: approaching a waypoint, overhead it, off plan. Ten
+// minutes later it is history, but Android keeps a notification in the shade until someone
+// swipes it -- so a two-hour sortie lands with a stack of stale calls to clear, and the one
+// that matters is buried among them. Each is therefore withdrawn after alertNotifyTtlSec.
+//
+// There is no "expire" field to set: Android's own timeoutAfter is not exposed by the
+// plugin, and the web Notification API has nothing at all. So each path withdraws what it
+// posted -- cancel by id (native), close the notification object (web) -- which also means
+// a notification already dismissed by the pilot costs nothing.
+function gpsNotifyTtlMs() {
+  const sec = (typeof tune === 'function') ? tune('alertNotifyTtlSec') : 120;
+  return Math.max(0, sec) * 1000;
+}
+function gpsExpireNative(nn, id) {
+  const ms = gpsNotifyTtlMs();
+  if (!ms || !nn || typeof nn.cancel !== 'function') return;
+  setTimeout(function () {
+    try { nn.cancel({ notifications: [{ id: id }] }); } catch (e) { /* already gone */ }
+  }, ms);
+}
+function gpsExpireWeb(n) {
+  const ms = gpsNotifyTtlMs();
+  if (!ms || !n || typeof n.close !== 'function') return;
+  setTimeout(function () { try { n.close(); } catch (e) { /* already gone */ } }, ms);
+}
+// The service-worker path posts through the registration, so the handle comes back from
+// getNotifications() rather than from showNotification() itself.
+function gpsExpireSwTag(reg, tag) {
+  const ms = gpsNotifyTtlMs();
+  if (!ms || !reg || typeof reg.getNotifications !== 'function') return;
+  setTimeout(function () {
+    Promise.resolve(reg.getNotifications({ tag: tag })).then(function (list) {
+      (list || []).forEach(function (n) { try { n.close(); } catch (e) { /* */ } });
+    }).catch(function () { /* nothing to withdraw */ });
+  }, ms);
+}
+
 function gpsSendWatchAlert(title, body, speech) {
   // Speech first, and independent: it is fire-and-forget, and the notification below has
   // its own return paths (native plugin, service worker, plain constructor) that must not
@@ -1787,14 +1824,19 @@ function gpsSendWatchAlert(title, body, speech) {
   gpsSpeak(speech);
   const nn = _nativeNotify();
   if (nn) {
-    nn.schedule({ notifications: [{ id: _watchAlertId++, title: title, body: body,
+    const id = _watchAlertId++;
+    nn.schedule({ notifications: [{ id: id, title: title, body: body,
+      autoCancel: true,                 // tapping it clears it, rather than leaving it up
       schedule: { at: new Date(Date.now() + 100) } }] }).catch(function () {});
+    gpsExpireNative(nn, id);
     return;
   }
   if (!_gpsIsMobileDevice()) return;
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const tag = 'navaid-alert-' + (_watchAlertId++);
   const plain = function () {
-    try { new Notification(title, { body: body }); } catch (e) { /* unsupported context */ }
+    try { gpsExpireWeb(new Notification(title, { body: body, tag: tag })); }
+    catch (e) { /* unsupported context */ }
   };
   const sw = (typeof navigator !== 'undefined') ? navigator.serviceWorker : null;
   if (!sw || typeof sw.ready === 'undefined') { plain(); return; }
@@ -1811,8 +1853,11 @@ function gpsSendWatchAlert(title, body, speech) {
     if (settled) return;
     settled = true;
     clearTimeout(timeout);
-    if (reg && typeof reg.showNotification === 'function') reg.showNotification(title, { body: body }).catch(plain);
-    else plain();
+    if (reg && typeof reg.showNotification === 'function') {
+      reg.showNotification(title, { body: body, tag: tag })
+        .then(function () { gpsExpireSwTag(reg, tag); })
+        .catch(plain);
+    } else plain();
   }).catch(function () {
     if (settled) return;
     settled = true;
