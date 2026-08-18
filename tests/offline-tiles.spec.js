@@ -1,6 +1,6 @@
 // @ts-check
 // Offline chart packs (offline-tiles.js + sw.js tile branch): tiles are
-// fetched from the CORS mirror but stored under the live flight-maps URL so
+// fetched from the CORS mirror but stored under the URL the map itself requests, so
 // the SW can serve the map's own tile requests cache-first when offline.
 const { test, expect } = require('./_setup');
 
@@ -32,18 +32,22 @@ test('offlineTileList covers the chart bounds at each zoom', async ({ page }) =>
   expect(r.sample.z).toBe(7);
 });
 
-test('downloadPack stores mirror tiles under the live flight-maps URL', async ({ page }) => {
+test('downloadPack stores tiles under the URL the map will request', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     // chart layer active by default (CVFR)
     const res = await NavAidOfflineTiles.downloadPack(() => {}, 7, 7);
     const cache = await caches.open(NavAidOfflineTiles.TILE_CACHE);
     const keys = (await cache.keys()).map(k => k.url);
-    return { res, n: keys.length, allLive: keys.every(u => u.indexOf('https://flight-maps.com/tiles/cvfr/7/') === 0) };
+    // Whatever the active layer's own URL is -- flight-maps.com on the live site, our mirror
+    // everywhere else -- because that is what the service worker will be asked for.
+    const want = layers.CVFR._url.replace('{z}', '7');
+    const prefix = want.slice(0, want.indexOf('/7/') + 3);
+    return { res, n: keys.length, prefix, allLive: keys.every(u => u.indexOf(prefix) === 0) };
   });
   expect(r.res.ok).toBeGreaterThan(0);
   expect(r.n).toBe(r.res.ok);          // every fetched tile stored
-  expect(r.allLive).toBe(true);        // keyed by the LIVE tile URL, not the mirror
+  expect(r.allLive).toBe(true);        // keyed by the URL the map requests, not the fetch URL
 });
 
 test('deletePack removes the offline tiles; packSize reports the count', async ({ page }) => {

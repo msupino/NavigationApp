@@ -147,7 +147,9 @@ test.describe('Inspector panel', () => {
     await page.route(/World_Imagery\/MapServer\/tile\//, route => route.fulfill({
       status: 200, contentType: 'image/png', body: MAP_TILE_PNG,
     }));
-    await page.route(/^https?:\/\/([^/]*\.)?flight-maps\.com\/tiles\//,
+    // Either chart host: the live site draws from flight-maps.com, every other deployment
+    // (this harness included) from our own mirror.
+    await page.route(/^https?:\/\/(([^/]*\.)?flight-maps\.com\/tiles\/|navaid-tiles\.supino\.org\/)/,
       route => route.fulfill({
         status: 200, contentType: 'image/png', body: MAP_TILE_PNG,
       }));
@@ -208,7 +210,9 @@ test.describe('Inspector panel', () => {
       if (!window.__satModalMap) return null;
       let out = null;
       window.__satModalMap.eachLayer(layer => {
-        if (layer && layer._url && layer._url.indexOf('/tiles/cvfr/') !== -1) {
+        // The CVFR chart layer, whichever host serves it here: '/tiles/cvfr/' on the live
+        // site, '/CVFR/' on our mirror everywhere else.
+        if (layer && layer._url && /\/tiles\/cvfr\/|\/CVFR\//.test(layer._url)) {
           out = {
             zoom: window.__satModalMap.getZoom(),
             maxZoom: layer.options.maxZoom,

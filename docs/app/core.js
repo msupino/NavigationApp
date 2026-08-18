@@ -3606,26 +3606,49 @@ const LOCAL_CHART_TILES = localChartTilesEnabled();
 NavAid.localChartTiles = LOCAL_CHART_TILES;
 const LOCAL_FM_ATTR =
   'Local MBTiles © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
-function chartTileUrl(kind, remoteUrl) {
-  return LOCAL_CHART_TILES ? 'tiles/' + kind + '/{z}/{x}/{y}.png' : remoteUrl;
+// flight-maps.com is a third party's server and the charts are served there as a courtesy.
+// Only the live site may draw from it: every other deployment of this code -- a PR preview,
+// staging, a developer's laptop, a fork -- draws the same charts from our own CORS mirror
+// instead. A preview left on the third party's tiles puts a reviewer's panning, and every
+// automated visit to that URL, on someone else's bandwidth under our name.
+function liveChartTilesAllowed() {
+  try {
+    if (location.hostname !== 'navaid.supino.org') return false;
+    const path = location.pathname || '/';
+    // Same origin, different builds: /pr/<n>/ previews and /staging/ are not the live site.
+    return !(path.indexOf('/pr/') === 0 || path.indexOf('/staging/') === 0);
+  } catch (e) {
+    return false;                      // cannot tell -> do not use the third party's server
+  }
+}
+const LIVE_CHART_TILES = liveChartTilesAllowed();
+NavAid.liveChartTiles = LIVE_CHART_TILES;
+function chartTileUrl(kind, remoteUrl, mirrorUrl) {
+  if (LOCAL_CHART_TILES) return 'tiles/' + kind + '/{z}/{x}/{y}.png';
+  return LIVE_CHART_TILES ? remoteUrl : mirrorUrl;
 }
 function chartTileOptions(options) {
-  return LOCAL_CHART_TILES
-    ? { ...options, attribution: LOCAL_FM_ATTR, corsOk: true, localTiles: true }
-    : options;
+  if (LOCAL_CHART_TILES) return { ...options, attribution: LOCAL_FM_ATTR, corsOk: true, localTiles: true };
+  // Off the live site the displayed tile IS the mirror, which serves CORS `*` -- so the
+  // export path can read it straight from the canvas instead of re-fetching every tile.
+  return LIVE_CHART_TILES ? options : { ...options, corsOk: true };
 }
 
 const layers = {
-  'CVFR': L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png'),
+  'CVFR': L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+    NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png'),
     chartTileOptions({ ...TILE, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' })),
-  'Navigation': L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png'),
+  'Navigation': L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+    NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png'),
     chartTileOptions({ ...TILE, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' })),
-  'Low Alt': L.tileLayer(chartTileUrl('la', 'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png'),
+  'Low Alt': L.tileLayer(chartTileUrl('la', 'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
+    NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png'),
     chartTileOptions({ ...TILE, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' })),
-  'Helicopters': L.tileLayer(chartTileUrl('il-hel', 'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png'),
+  'Helicopters': L.tileLayer(chartTileUrl('il-hel', 'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+    NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png'),
     chartTileOptions({ ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' })),
   'Satellite': L.tileLayer(
