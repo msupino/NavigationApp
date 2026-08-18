@@ -2459,6 +2459,11 @@ function setInspectorDragHidden(on) {
 // The waypoint has been locked for a while; the rest were not, which is the same hazard
 // with a smaller target. The page frame is print layout, not the route, so it stays free.
 const LOCKABLE_DRAG_KINDS = ['wp', 'note', 'label', 'cumlabel', 'cumlabelret'];
+// Grabbing a kite opens its leg's panel -- a press on one IS a request to inspect that leg.
+// Once the press turns into a drag it is not: the pilot is placing a label, and the panel
+// covers the chart being edited. So a moved kite drag ends with the panel shut and nothing
+// selected, exactly as a moved waypoint drag does.
+const KITE_DRAG_KINDS = ['label', 'cumlabel', 'cumlabelret'];
 function dragLockedNow(kind) {
   if (LOCKABLE_DRAG_KINDS.indexOf(kind) === -1) return false;
   return typeof gpsMapLocked === 'function' && gpsMapLocked();
@@ -4037,6 +4042,10 @@ function endMouseDrag() {
       const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
       if (!drag.moved || inspOpen) showInspector();
     }
+    if (drag.moved && KITE_DRAG_KINDS.indexOf(drag.kind) !== -1) {
+      state.selected = null;
+      showInspector();            // hidden: see KITE_DRAG_KINDS
+    }
     if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
     clearDragAndRedraw();
@@ -4512,7 +4521,8 @@ function endTouch() {
   // highlighted point with no panel explains nothing). A tap that never moved is the
   // opposite -- that IS the request -- and keeps its panel.
   const wasDrag = !!(touchDrag && touchDrag.moved &&
-    (touchDrag.kind === 'wp' || touchDrag.kind === 'note' || touchDrag.kind === 'label'));
+    (touchDrag.kind === 'wp' || touchDrag.kind === 'note' ||
+     KITE_DRAG_KINDS.indexOf(touchDrag.kind) !== -1));
   setInspectorDragHidden(false);
   if (wasDrag) { state.selected = null; showInspector(); }
   if (touchDrag) {
