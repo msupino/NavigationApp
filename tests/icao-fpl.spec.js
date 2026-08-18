@@ -2515,3 +2515,31 @@ test('Advanced: each ↻ lines up with its own control', async ({ page }) => {
     }
   }
 });
+
+// A licence number is digits. It used to be a plain text field, so a phone offered the full
+// keyboard for it while the mobile field right below offered the keypad. Same treatment now —
+// 'tel' rather than type="number", which would add spinner arrows and drop a leading zero.
+test('the licence field asks for digits, like the mobile field below it', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { showFlightPlan(); document.getElementById('fpl-open').click(); });
+  const f = await page.evaluate(() => {
+    const one = (id) => {
+      const el = document.getElementById(id);
+      return { type: el.type, inputMode: el.getAttribute('inputmode') };
+    };
+    return { license: one('fpl-license'), cell: one('fpl-cell') };
+  });
+  expect(f.license.type).toBe('tel');
+  expect(f.license.inputMode).toBe('numeric');
+  expect(f.cell.type).toBe('tel');
+});
+
+test('a licence with a leading zero survives being typed', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { showFlightPlan(); document.getElementById('fpl-open').click(); });
+  await page.fill('#fpl-license', '0451');
+  expect(await page.inputValue('#fpl-license')).toBe('0451');   // type="number" would keep it too,
+                                                                // but its spinner would not
+});
