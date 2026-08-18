@@ -93,6 +93,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.searchShown$/,       'docked-search dismissal, per screen size'],
   [/^navaid\.magnifier/,          'loupe state, per device'],
   [/^navaid\.notamViewTime$/,     'transient timeline scrub'],
+  [/^navaid\.gistCache$/,         'a copy of the remote config, refetched on every load'],
   [/^navaid\.tracks\./,          'which recorded tracks are drawn locally'],
   [/^navaid\.plateAirfield$/,     'last plate viewed, per device'],
   [/^navaid\.windField(Alt|Opacity)$/, 'transient overlay state'],

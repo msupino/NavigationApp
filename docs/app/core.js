@@ -845,6 +845,37 @@ NavAid.gistDisabled = (function () {
     return p.has('nogist') || p.get('gist') === '0';
   } catch (e) { return false; }
 }());
+// Applies one gist object over the defaults. Unknown keys are ignored: the gist outlives any
+// one build, and a key this build has never heard of must not become a tunable by arriving.
+function applyRemoteConfigValues(o) {
+  if (!o || typeof o !== 'object') return 0;
+  let n = 0;
+  for (const k in o) {
+    if (!NavAid.tuningDefaults[k]) continue;
+    setTune(k, o[k]);                          // per-spec validation + clamp
+    if (NavAid.tuning[k] !== undefined) n++;
+  }
+  return n;
+}
+// The gist arrives over the network, so the first paint used to be the SHIPPED defaults and
+// everything the gist changes -- colours, sizes, which layers are on -- visibly jumped a
+// moment later. The last gist seen on this device is kept here and applied synchronously at
+// boot, so a returning pilot's first frame is already the configured one; the fetch below
+// still runs and corrects it if the gist has since changed. A first-ever visit has nothing
+// cached and behaves exactly as before.
+const GIST_CACHE_KEY = 'navaid.gistCache';
+function applyCachedRemoteConfig() {
+  if (!NavAid.configUrl || NavAid.gistDisabled) return 0;
+  try {
+    const raw = localStorage.getItem(GIST_CACHE_KEY);
+    if (!raw) return 0;
+    return applyRemoteConfigValues(JSON.parse(raw));
+  } catch (e) {
+    return 0;                                  // unreadable/corrupt cache -> shipped defaults
+  }
+}
+NavAid.gistWarmStart = applyCachedRemoteConfig();
+
 async function loadRemoteConfig() {
   if (!NavAid.configUrl || NavAid.gistDisabled) return 0;
   try {
@@ -857,13 +888,10 @@ async function loadRemoteConfig() {
     if (!r.ok) return 0;
     const o = await r.json();
     if (!o || typeof o !== 'object') return 0;
-    let n = 0;
-    for (const k in o) {
-      if (!NavAid.tuningDefaults[k]) continue;   // ignore keys we don't know
-      setTune(k, o[k]);                          // per-spec validation + clamp
-      if (NavAid.tuning[k] !== undefined) n++;
-    }
-    return n;
+    // Cache what the server said, not what this build understood: a key added in a later
+    // build must still be there for it, and the file is a few KB.
+    try { localStorage.setItem(GIST_CACHE_KEY, JSON.stringify(o)); } catch (e) { /* full/blocked */ }
+    return applyRemoteConfigValues(o);
   } catch (e) {
     return 0;                                    // network/parse error → defaults
   }
