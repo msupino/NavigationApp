@@ -132,3 +132,30 @@ test('a panel already open before the drag stays open', async ({ page }) => {
   }, [c.x, c.y]);
   expect(out).toBe(true);
 });
+
+// The complaint that started this: on the touch path the panel opened on the press and was
+// hidden again on the first movement, so every drag flashed it across the map. Nothing may
+// open mid-gesture, for anything draggable.
+test('no press anywhere opens the panel before the release', async ({ page }) => {
+  await boot(page);
+  const c = await cumCentre(page);
+  const spots = await page.evaluate(([cx, cy]) => {
+    const wp = proj(state.waypoints[0]);
+    return { wp: { x: wp.x, y: wp.y }, cum: { x: cx, y: cy } };
+  }, [c.x, c.y]);
+  for (const spot of [spots.wp, spots.cum]) {
+    const openDuring = await page.evaluate(([x, y]) => {
+      const insp = document.getElementById('inspector');
+      state.selected = null; showInspector();          // start from a shut panel
+      const p0 = L.point(x, y);
+      map.fire('mousedown', { containerPoint: p0, latlng: map.containerPointToLatLng(p0) });
+      const afterDown = !insp.classList.contains('hidden');
+      const p1 = L.point(x + 50, y + 40);
+      map.fire('mousemove', { containerPoint: p1, latlng: map.containerPointToLatLng(p1) });
+      const afterMove = !insp.classList.contains('hidden');
+      endMouseDrag();
+      return afterDown || afterMove;
+    }, [spot.x, spot.y]);
+    expect(openDuring).toBe(false);
+  }
+});

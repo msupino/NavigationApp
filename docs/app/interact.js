@@ -2459,13 +2459,14 @@ function setInspectorDragHidden(on) {
 // The waypoint has been locked for a while; the rest were not, which is the same hazard
 // with a smaller target. The page frame is print layout, not the route, so it stays free.
 const LOCKABLE_DRAG_KINDS = ['wp', 'note', 'label', 'cumlabel', 'cumlabelret'];
-// A press on a kite may become either a drag or a tap, and which it is is not known until
-// the release. So it opens nothing on the way down: the leg is selected (the highlight is
-// the feedback a press needs) and the panel waits. On release, a tap opens it -- pressing a
-// kite is how a leg is inspected -- and a drag leaves it shut with nothing selected, the way
-// a moved waypoint drag does. Opening on the press and closing on the release, as this first
-// did, just flashed the panel across the chart.
+// A press on any of these may become either a drag or a tap, and which it is is not known
+// until the release. So it opens nothing on the way down: the thing under the finger is
+// selected (that highlight is the feedback a press needs) and the panel waits. On release, a
+// tap opens it; a drag leaves a shut panel shut. Opening on the press and hiding it again on
+// the first movement -- what the touch path used to do for waypoints, and what an earlier
+// pass here did for kites -- flashes the panel across the chart on every drag.
 const KITE_DRAG_KINDS = ['label', 'cumlabel', 'cumlabelret'];
+const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick'].concat(KITE_DRAG_KINDS);
 function dragLockedNow(kind) {
   if (LOCKABLE_DRAG_KINDS.indexOf(kind) === -1) return false;
   return typeof gpsMapLocked === 'function' && gpsMapLocked();
@@ -3792,7 +3793,7 @@ map.on('mousedown', e => {
       offLng: state.notes[note].lng - e.latlng.lng,
     };
     map.dragging.disable();
-    showInspector(); draw();
+    draw();                       // panel waits for the release: see TAP_OPENS_INSPECTOR_KINDS
     return;
   }
   const coincident = coincidentWaypointIndices(wpHits);
@@ -3869,7 +3870,7 @@ map.on('mousedown', e => {
     state.selected = { type: 'leg', index: leg };
     drag = { kind: 'legclick' };
     map.dragging.disable();
-    showInspector(); draw();
+    draw();                       // panel waits for the release, as every other press does
     return;
   }
   // Outside edit mode, a click on a VOR / airfield / nav-WP marker opens its
@@ -4044,10 +4045,11 @@ function endMouseDrag() {
       const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
       if (!drag.moved || inspOpen) showInspector();
     }
-    if (KITE_DRAG_KINDS.indexOf(drag.kind) !== -1) {
-      // Waypoint rule, to the letter: a tap opens the panel, a drag leaves a shut panel
-      // shut, and a panel that was already open before the gesture stays open and refreshes
-      // (dragging a kite is no reason to take away something the pilot was reading).
+    if (drag.kind !== 'wp' && TAP_OPENS_INSPECTOR_KINDS.indexOf(drag.kind) !== -1) {
+      // The waypoint rule above, applied to everything else that can be pressed: a tap opens
+      // the panel, a drag leaves a shut panel shut, and a panel that was already open before
+      // the gesture stays open and refreshes -- dragging a label is no reason to take away
+      // something the pilot was reading.
       const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
       if (drag.moved && !inspOpen) state.selected = null;
       showInspector();
@@ -4459,8 +4461,7 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag.startY = p.y;
     map.dragging.disable();
     e.preventDefault();                // suppress pan + the synthetic click
-    // Kites open nothing here -- endTouch decides, once tap and drag can be told apart.
-    if (KITE_DRAG_KINDS.indexOf(touchDrag.kind) === -1) showInspector();
+    // Nothing opens here -- endTouch decides, once tap and drag can be told apart.
     draw();
   }
 }, { passive: false });
@@ -4494,7 +4495,7 @@ mapEl.addEventListener('touchmove', e => {
       const other = state.waypoints[j];
       if (other) { other.lat = wp.lat; other.lng = wp.lng; other.name = wp.name; }
     }
-    draw(); showInspector();
+    draw();
   } else if (touchDrag.kind === 'note') {
     touchDrag.moved = true;
     setInspectorDragHidden(true);
@@ -4533,7 +4534,7 @@ function endTouch() {
      KITE_DRAG_KINDS.indexOf(touchDrag.kind) !== -1));
   setInspectorDragHidden(false);
   if (wasDrag) { state.selected = null; showInspector(); }
-  else if (touchDrag && KITE_DRAG_KINDS.indexOf(touchDrag.kind) !== -1) showInspector();  // a tap
+  else if (touchDrag && TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1) showInspector();
   if (touchDrag) {
     settleAddModeWaypointTap(touchDrag);
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
