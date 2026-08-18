@@ -611,7 +611,9 @@ test('GPS error resets the live-location button too', async ({ page }) => {
   await page.evaluate(() => window.__errCb && window.__errCb({ code: 1, message: 'denied' }));
   expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
   await expect(btn).toHaveAttribute('aria-pressed', 'false');
-  await expect(btn).toContainText('Show');
+  // The VISIBLE label: the button also carries invisible copies of both states, so matching
+  // on the button's text would pass even with the wrong one showing.
+  await expect(btn.locator('.footer-link-text')).toHaveText('Location');
 });
 
 test('recording holds a screen wake lock, releases on stop, re-arms on visibility', async ({ page }) => {

@@ -1019,7 +1019,9 @@ window.S = {
   magLoading: 'משכלל…',
   // תוויות כפתורי הפוטר ללא אימוג'י — האייקון מגיע מ-.footer-link-icon
   // (אימוג'י בתווית הכפיל את האייקון בתפריט הנייד).
-  tbGpsRecord: 'התחל הקלטה',
+  // קצר מספיק כדי שהאייקון ושני כפתורי ה-GPS יישארו בשורה אחת בכרטיס התפריט הסגור בטלפון,
+  // גם בגופן מערכת גדול. המשפט המלא נשאר בכותרת (title) ובתווית הנגישות.
+  tbGpsRecord: 'הקלטה',
   tbGpsRecordTitle: 'התחל להקליט את המסלול בפועל מ-GPS המכשיר; עצירה שומרת אותו במסלולים',
   errTrackExportFailed: 'לא ניתן לקרוא את הרצועה מהמסלולים השמורים.',
   trackExportConfirm: function(name) { return 'לייצא את הרצועה "' + name + '"?'; },
@@ -1029,10 +1031,10 @@ window.S = {
   gpsLiveNotifText: 'מציג את מיקומך על המפה',
   gpsRecNotifTitle: 'הקלטת GPS ב-NavAid',
   gpsRecNotifText: 'מקליט את המסלול שלך — הקש לחזרה',
-  tbGpsStop: 'עצור הקלטה',
-  tbGpsLive: 'הצג מיקום',
+  tbGpsStop: 'עצור',
+  tbGpsLive: 'מיקום',
   tbGpsLiveTitle: 'הצגת המיקום החי שלך על המפה (GPS, ללא הקלטה)',
-  tbGpsLiveStop: 'הסתר מיקום',
+  tbGpsLiveStop: 'הסתר',
   gpsUnsupported: 'GPS אינו זמין בדפדפן זה.',
   gpsFixStale: 'קליטת GPS מלפני',
   wpLabel: 'צד״ר',
