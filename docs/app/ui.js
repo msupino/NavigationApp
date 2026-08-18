@@ -262,6 +262,77 @@ function reloadLayerDatasets() {
   });
 }
 
+// --- north up / heading up — above the follow lock --------------------
+// A paper chart is read north-up; a moving map in the cockpit is easier to read heading-up,
+// because what is ahead on the glass is what is ahead through the windscreen. The rotation
+// dial can already point the map anywhere; this is the one setting a pilot actually wants
+// mid-flight, so it gets a button of its own rather than a dial to aim.
+//
+// Only while a real fix is driving the own-ship: with no heading there is nothing to hold
+// the map to, and a stale bearing frozen from the last fix would be worse than north-up.
+const HEADING_UP_KEY = 'navaid.headingUp';
+let headingUpOn = false;
+try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unavailable */ }
+
+const orientCtrl = L.control({ position: 'bottomright' });
+orientCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control orient-ctrl');
+  wrap.innerHTML = '<button id="orient-toggle" type="button" aria-pressed="false"></button>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+orientCtrl.addTo(map);
+const orientBtn = document.getElementById('orient-toggle');
+
+// Point the map so the aircraft's track is up the screen. Leaflet's bearing is the angle
+// the MAP is rotated by, so holding a heading of h up means rotating by 360 - h.
+function applyHeadingUp() {
+  if (!headingUpOn || typeof map.setBearing !== 'function') return;
+  const hdg = (typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.hdg))
+    ? gpsOwn.hdg : null;
+  if (hdg == null) return;                       // no heading yet: leave the map as it is
+  const want = ((360 - hdg) % 360 + 360) % 360;
+  const now = map.getBearing ? map.getBearing() : 0;
+  // A degree of GPS scatter is not worth redrawing the whole chart for -- and rotating on
+  // every fix makes the map shimmer. Move when the difference is worth the redraw.
+  const diff = Math.abs(((want - now + 540) % 360) - 180);
+  if (diff < (typeof tune === 'function' ? tune('headingUpMinDeltaDeg') : 2)) return;
+  map.setBearing(want);
+}
+window.applyHeadingUp = applyHeadingUp;
+
+function refreshOrientControl() {
+  const wrap = orientBtn && orientBtn.parentNode;
+  if (!wrap) return;
+  const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
+  wrap.style.display = tracking ? '' : 'none';
+  // Directly above the follow lock, which itself sits above the assistant launcher.
+  const corner = wrap.parentNode;
+  if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+  orientBtn.textContent = headingUpOn ? '\u2708\ufe0f' : '\u2b06\ufe0f';   // aircraft vs north arrow
+  orientBtn.classList.toggle('orient-on', headingUpOn);
+  orientBtn.setAttribute('aria-pressed', headingUpOn ? 'true' : 'false');
+  const label = headingUpOn ? (S.orientHeadingUp || 'Heading up — tap for north up')
+                            : (S.orientNorthUp || 'North up — tap to hold your heading up');
+  orientBtn.title = label;
+  orientBtn.setAttribute('aria-label', label);
+}
+window.refreshOrientControl = refreshOrientControl;
+
+orientBtn.onclick = () => {
+  headingUpOn = !headingUpOn;
+  try { localStorage.setItem(HEADING_UP_KEY, headingUpOn ? '1' : '0'); } catch (e) { /* */ }
+  if (headingUpOn) {
+    applyHeadingUp();
+  } else if (typeof map.setBearing === 'function') {
+    map.setBearing(0);                           // back to a paper-chart view
+  }
+  refreshOrientControl();
+  if (typeof refreshDial === 'function') refreshDial();
+};
+refreshOrientControl();
+
 // --- follow lock — a map control next to the rotation dial -----------
 // A standing choice, not a per-fix one: ON keeps the aircraft centred (after the pan/zoom
 // grace, see followResumeMs), OFF leaves the map where the pilot put it. It only appears
