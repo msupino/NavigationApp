@@ -458,7 +458,10 @@ function refreshGpsFollowControl() {
   wrap.style.display = tracking ? '' : 'none';
   orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
-  followBtn.textContent = on ? '🔒' : '🔓';
+  // A gun sight, not a padlock: this one locks the MAP ONTO the aircraft, and the padlock now
+  // belongs to the edit lock below, which is a lock in the ordinary sense -- it refuses input.
+  // Two padlocks in one column meant neither said which lock it was.
+  followBtn.textContent = on ? '\ud83c\udfaf' : '\u2b55';     // target / empty ring
   followBtn.classList.toggle('follow-on', on);
   followBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
   const label = on ? (S.followLockOn || 'Following the aircraft — tap to leave the map put')
@@ -508,8 +511,8 @@ function refreshEditLockControl() {
   orderMapControls(editLockBtn.parentNode && editLockBtn.parentNode.parentNode);
   const auto = editLockAutoNow();
   const on = auto || window.editLocked === true;
-  // A pin holds the route where it is; a pencil says it can still be edited.
-  editLockBtn.textContent = on ? '📌' : '✏️';
+  // The padlock, in its ordinary sense: shut, nothing on the route moves; open, it does.
+  editLockBtn.textContent = on ? '\ud83d\udd12' : '\ud83d\udd13';
   editLockBtn.classList.toggle('editlock-on', on);
   editLockBtn.classList.toggle('editlock-auto', auto);
   editLockBtn.setAttribute('aria-pressed', on ? 'true' : 'false');

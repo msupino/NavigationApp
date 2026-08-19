@@ -117,13 +117,13 @@ test.describe('the button follows the automatic lock too', () => {
     await page.evaluate(() => startLiveLocation());
     const live = await state_(page);
     expect(live.pressed).toBe('true');
-    expect(live.icon).toBe('📌');
+    expect(live.icon).toBe('\u{1F512}');
     expect(live.locked).toBe(true);
     expect(live.label).toMatch(/while a position/i);
     await page.evaluate(() => stopLiveLocation());
     const after = await state_(page);
     expect(after.pressed).toBe('false');       // back to the pilot's own choice
-    expect(after.icon).toBe('✏️');
+    expect(after.icon).toBe('\u{1F513}');
   });
 
   // The pilot's own choice is remembered underneath: a route locked on the ground is still
@@ -152,4 +152,21 @@ test.describe('the button follows the automatic lock too', () => {
     expect(out.locked).toBe(true);
     expect(out.pressed).toBe('true');
   });
+});
+
+// The two locks sat in one column wearing the same padlock, which said nothing about which
+// lock was which. The padlock belongs to the one that refuses input; the follow lock gets a
+// gun sight, because it locks the map ONTO the aircraft.
+test('the two locks do not wear the same icon', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startLiveLocation());       // both controls visible
+  const icons = await page.evaluate(() => ({
+    edit: document.getElementById('edit-lock').textContent,
+    follow: document.getElementById('follow-lock').textContent,
+  }));
+  expect(icons.edit).not.toBe(icons.follow);
+  expect(icons.follow).toBe('\u{1F3AF}');              // 🎯 locked onto the aircraft
+  await page.click('#follow-lock');
+  expect(await page.evaluate(() => document.getElementById('follow-lock').textContent))
+    .toBe('⭕');                                   // ⭕ nothing held
 });
