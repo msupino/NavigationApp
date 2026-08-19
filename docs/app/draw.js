@@ -2832,7 +2832,14 @@ function commStaticCalloutDefaults(name) {
   const cc = commChangeMap && key ? commChangeMap[key] : null;
   const fallback = (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change';
   const opt = commCallSignOptions(key)[0];
-  if (opt) return { freqName: opt.id || opt.label || fallback, freq: opt.freq || '' };
+  // In Hebrew, the station's Hebrew name (commCallSignLabel already resolves it): the catalog
+  // carries one for every call sign, and the callout was showing the English catalog id in a
+  // Hebrew session. In English the id is what the chart prints -- TEYMAN, not Teyman -- so it
+  // stays exactly as it was.
+  if (opt) {
+    const he = (typeof commUseHebrewLabels === 'function') && commUseHebrewLabels();
+    return { freqName: (he ? opt.label : opt.id) || opt.label || fallback, freq: opt.freq || '' };
+  }
   const raw = cc && (cc.to || cc.from || cc.note || cc.name || key);
   const d = splitCommCalloutText(raw || key || fallback);
   return { freqName: d.name || fallback, freq: d.freq };

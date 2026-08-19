@@ -1046,7 +1046,9 @@ window.S = {
   // left is one Hebrew word and a single Latin run, which orders correctly either way.
   watchAlertAtisBody: function (field, freq) { return 'ATIS ' + field + ' ' + freq; },
   speakAlertAtis: function (field, freqDigits) {
-    return 'ATIS ל' + field + ', ' + freqDigits;
+    // No preposition: "ATIS ל" + a spelled code reads as an extra letter -- the lamed sounds
+    // exactly like the L that follows it, so LLIB came out "ATIS L L L I B".
+    return 'ATIS, ' + field + ', ' + freqDigits;
   },
   atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS אינו זמין בדפדפן זה.',
@@ -1100,9 +1102,7 @@ window.S = {
       const t = [];
       if (hms.h) t.push(hms.h === 1 ? 'שעה' : hms.h + ' שעות');
       if (hms.m) t.push(hms.m === 1 ? 'דקה' : hms.m + ' דקות');
-      // שניות נאמרות רק כשאין יחידה גדולה יותר לצדן -- "12 דקות 30" זה מה שאומרים בפועל.
-      if (hms.s && !hms.h && !hms.m) t.push(hms.s + ' שניות');
-      else if (hms.s) t.push(String(hms.s));
+      if (hms.s) t.push(hms.s + ' שניות');
       if (t.length) parts.push(t.join(' '));
     }
     if (parts.length) s += ' הקטע הבא ' + parts.join(', ') + '.';
@@ -1113,7 +1113,9 @@ window.S = {
     const bits = [];
     if (station) bits.push(String(station).replace(/_/g, ' '));
     if (freqDigits) bits.push(freqDigits);
-    return bits.length ? ('טופ. עבור אל ' + bits.join(', ') + '.') : 'טופ.';
+    // "עבור אל" tells the pilot to change frequency; that is ATC's call, not the app's. The
+    // alert names what comes next and leaves the decision where it belongs.
+    return bits.length ? ('טופ. התדר הבא: ' + bits.join(', ') + '.') : 'טופ.';
   },
   spokenDecimal: 'נקודה',
   speakAlertAlt: function(actual, planned) {

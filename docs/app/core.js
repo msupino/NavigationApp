@@ -1882,8 +1882,10 @@ window.S = Object.assign({
   // Short on purpose: a notification is read at a glance in the cockpit, and the minutes were
   // the part nobody needed -- the alert only fires when it is time.
   watchAlertAtisBody: function (field, freq) { return field + ' ATIS ' + freq; },
+  // No "for": the alert names the station and its frequency, and the extra word is one more
+  // thing to listen past in a cockpit.
   speakAlertAtis: function (field, freqDigits) {
-    return 'A T I S for ' + field + ', ' + freqDigits;
+    return 'A T I S, ' + field + ', ' + freqDigits;
   },
   atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS is not available in this browser.',
@@ -1963,10 +1965,9 @@ window.S = Object.assign({
       const t = [];
       if (hms.h) t.push(hms.h + (hms.h === 1 ? ' hour' : ' hours'));
       if (hms.m) t.push(hms.m + (hms.m === 1 ? ' minute' : ' minutes'));
-      // Seconds are spoken only when there is no larger unit beside them: "12 minutes 30" is
-      // how a pilot says it, and the word costs airtime for something already obvious.
-      if (hms.s && !hms.h && !hms.m) t.push(hms.s + ' seconds');
-      else if (hms.s) t.push(String(hms.s));
+      // Spoken in full. Dropping the word (just "5 minutes 15") was tried and sounds wrong
+      // read aloud -- a bare number after a unit lands as an unfinished sentence.
+      if (hms.s) t.push(hms.s + ' seconds');
       if (t.length) parts.push(t.join(' '));
     }
     if (parts.length) s += ' Next leg ' + parts.join(', ') + '.';
@@ -1980,7 +1981,9 @@ window.S = Object.assign({
     const bits = [];
     if (station) bits.push(String(station).replace(/_/g, ' '));
     if (freqDigits) bits.push(freqDigits);
-    return bits.length ? ('Top. Contact ' + bits.join(', ') + '.') : 'Top.';
+    // "Contact X" is an instruction to change frequency, and that is ATC's call. The alert
+    // names what comes next; the pilot and the controller decide when.
+    return bits.length ? ('Top. Next frequency: ' + bits.join(', ') + '.') : 'Top.';
   },
   spokenDecimal: 'decimal',
   speakAlertAlt: function(actual, planned) {

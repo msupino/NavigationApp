@@ -3209,8 +3209,14 @@ document.getElementById('limit-kites-cb').onchange = e => {
     cb.setAttribute('aria-pressed', String(connected));
   }
   function setFollowState() {
-    followCb.setAttribute('aria-pressed', String(!!simFollow));
+    // Reads the map's lock, and keeps the legacy simFollow global in step for anything still
+    // looking at it -- including the stored key, so an old preference is not silently dropped.
+    const on = (typeof gpsFollow === 'undefined') ? !!window.simFollow : !!gpsFollow;
+    window.simFollow = on;
+    try { localStorage.setItem(SIM_FOLLOW_KEY, on ? '1' : '0'); } catch (e) { /* */ }
+    followCb.setAttribute('aria-pressed', String(on));
   }
+  window.__simSetFollowState = setFollowState;
 
   // Restore persisted state into UI controls.
   if (simUrl) urlInp.value = simUrl;
@@ -3239,18 +3245,11 @@ document.getElementById('limit-kites-cb').onchange = e => {
     showUrlProblem(problem);         // simStop clears status, so explain after stopping
   };
 
+  // The panel's Follow and the map's lock are one setting shown twice. They used to be two
+  // flags, so whichever the pilot touched last was overridden by the other.
   followCb.onclick = () => {
-    window.simFollow = !simFollow;
+    if (typeof gpsSetFollow === 'function') gpsSetFollow(!gpsFollow);
     setFollowState();
-    try { localStorage.setItem(SIM_FOLLOW_KEY, simFollow ? '1' : '0'); } catch (e) { /* */ }
-    // Two switches for one behaviour is how the map's follow lock ended up doing nothing in
-    // sim: the panel had its own flag and recentred past the lock. Turning Follow on here also
-    // releases the lock, so the panel and the button cannot disagree about what the map does.
-    if (window.simFollow && typeof gpsFollow !== 'undefined' && !gpsFollow) {
-      window.gpsFollow = true;
-      try { localStorage.setItem('navaid.gpsFollow', '1'); } catch (e) { /* */ }
-      if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
-    }
   };
 
   // One-shot recenter on the live aircraft (distinct from continuous Follow).

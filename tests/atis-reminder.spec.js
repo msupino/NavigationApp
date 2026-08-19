@@ -77,7 +77,9 @@ test('the reminder fires inside the lead time, once, and names the frequency', a
   // Short: the field and the frequency, nothing else. A notification is read at a glance, and
   // the lead time is why it fired rather than something to read back off the screen.
   expect(out.body).not.toMatch(/\bmin\b/);
-  expect(out.body.length).toBeLessThan(30);
+  // Short: the field and the frequency. Long enough for a spelled-out field name ("Tel Aviv /
+  // Ben Gurion ATIS 132.50"), short enough that it is still one glance.
+  expect(out.body.length).toBeLessThan(45);
 });
 
 test('it stays quiet while the destination is still far out', async ({ page }) => {
@@ -252,7 +254,67 @@ test('the field is spelled out letter by letter', async ({ page }) => {
     reg: gpsSpokenCode('4X-ABC', 'en'),
     empty: gpsSpokenCode('', 'en'),
   }));
-  expect(out.icao).toBe('L L H A');
-  expect(out.reg).toBe('four X A B C');       // digits keep their words, the hyphen is dropped
+  // Commas, not spaces: every engine tried runs "L L I B" back together into "lib".
+  expect(out.icao).toBe('L, L, H, A');
+  expect(out.reg).toBe('four, X, A, B, C');   // digits keep their words, the hyphen is dropped
   expect(out.empty).toBe('');
+});
+
+// The approach alert names the same kinds of places the ATIS one does, so it spells them the
+// same way — but a real name must be left alone: "Herzliya" spelled out is worse than useless.
+test('codes are spelled, names are spoken', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => ({
+    icao: gpsSpokenPlace('LLIB', 'en'),
+    point: gpsSpokenPlace('DEROR', 'en'),
+    name: gpsSpokenPlace('Herzliya', 'en'),
+    hebrew: gpsSpokenPlace('הרצליה', 'he'),
+    mixed: gpsSpokenPlace('Rosh Pina', 'en'),
+    empty: gpsSpokenPlace('', 'en'),
+  }));
+  expect(out.icao).toBe('L, L, I, B');
+  expect(out.point).toBe('D, E, R, O, R');
+  expect(out.name).toBe('Herzliya');
+  expect(out.hebrew).toBe('הרצליה');
+  expect(out.mixed).toBe('Rosh Pina');
+  expect(out.empty).toBe('');
+});
+
+// The Hebrew speech used to read "ATIS ל" + the spelled code, and the lamed sounds exactly
+// like the L after it: LLIB came out as "ATIS L L L I B".
+test('the Hebrew speech does not grow an extra letter', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof S === 'object' && S && typeof S.speakAlertAtis === 'function');
+  const spoken = await page.evaluate(() => S.speakAlertAtis('L, L, I, B', 'one three five'));
+  expect(spoken).toBe('ATIS, L, L, I, B, one three five');
+  expect(spoken).not.toMatch(/ל[A-Z]/);        // no preposition glued to a spelled letter
+});
+
+// The field is named the way a pilot would say it in the interface language, and only spelled
+// out when the dataset has no name for it: "Rosh Pina" / "ראש פינה", not L, L, I, B.
+for (const [lang, want] of [['en', 'Rosh Pina'], ['he', 'ראש פינה']]) {
+  test(`${lang}: the ATIS alert calls the field by name`, async ({ page }) => {
+    await page.goto(`?lang=${lang}&nogist`);
+    await page.waitForFunction(() => typeof gpsDestinationAtis === 'function' &&
+      Array.isArray(airfields) && airfields.length > 0);
+    const out = await page.evaluate(() => {
+      const af = airfields.find(a => a.name === 'LLIB');
+      state.waypoints = [{ lat: af.lat - 0.3, lng: af.lng, name: 'A' },
+                         { lat: af.lat, lng: af.lng, name: af.name }];
+      state.legs = []; syncLegs();
+      const a = gpsDestinationAtis();
+      return { field: a.field, label: a.label, body: S.watchAlertAtisBody(a.label, a.freq) };
+    });
+    expect(out.field).toBe('LLIB');            // the code is still there for anything that needs it
+    expect(out.label).toContain(want);
+    expect(out.body).toContain(want);
+    expect(out.body).not.toContain('LLIB');    // the code is not read out as well
+  });
+}
+
+test('a field with no name falls back to the spelled code', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof gpsSpokenPlace === 'function');
+  // What the alert does when label === field: spell it, rather than pronounce a code.
+  expect(await page.evaluate(() => gpsSpokenPlace('LLXX', 'en'))).toBe('L, L, X, X');
 });

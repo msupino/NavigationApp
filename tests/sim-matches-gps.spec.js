@@ -181,17 +181,51 @@ test('the follow lock and heading-up work off a simulator feed', async ({ page }
   expect(out.rotated).toBe(270);                    // heading 090 -> map bearing 270
 });
 
-// Two switches for one behaviour is how the lock ended up doing nothing: the panel had its own
-// flag and recentred past the button. Turning the panel's Follow on releases the lock too.
-test('the sim panel Follow and the map lock cannot disagree', async ({ page }) => {
+// The panel's Follow and the map's lock are ONE setting shown twice. They were two flags, and
+// the sim poll required both -- so with the panel's flag off, the map lock could never resume
+// following after a pan: "the lock doesn't restore location after 5 seconds".
+test('the sim panel Follow and the map lock are the same switch', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
-    window.gpsFollow = false; window.simFollow = false;
-    document.getElementById('sim-follow-cb').onclick();
-    return { simFollow: window.simFollow, gpsFollow: window.gpsFollow,
-             stored: localStorage.getItem('navaid.gpsFollow') };
+    gpsSetFollow(false);
+    const offBoth = { gps: gpsFollow, sim: window.simFollow,
+                      pressed: document.getElementById('sim-follow-cb').getAttribute('aria-pressed') };
+    document.getElementById('sim-follow-cb').onclick();        // panel -> lock
+    const viaPanel = { gps: gpsFollow, sim: window.simFollow };
+    gpsSetFollow(false);                                       // lock -> panel
+    const viaButton = { sim: window.simFollow,
+                        pressed: document.getElementById('sim-follow-cb').getAttribute('aria-pressed') };
+    return { offBoth, viaPanel, viaButton };
   });
-  expect(out.simFollow).toBe(true);
-  expect(out.gpsFollow).toBe(true);
-  expect(out.stored).toBe('1');
+  expect(out.offBoth).toEqual({ gps: false, sim: false, pressed: 'false' });
+  expect(out.viaPanel).toEqual({ gps: true, sim: true });
+  expect(out.viaButton).toEqual({ sim: false, pressed: 'false' });
+});
+
+test('the lock resumes following once the pan grace has passed', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    window.simOn = true;
+    simRefreshFlightControls();          // what simStart() does: wires the pan/zoom grace too
+    window.simAircraft = { lat: 32.60, lng: 35.00, hdg: 90 };
+    gpsSetFollow(true);
+    const feed = () => {
+      gpsOwn = { lat: simAircraft.lat, lng: simAircraft.lng, hdg: simAircraft.hdg, t: Date.now() };
+      if (gpsFollow && !gpsFollowSuspended()) gpsFollowRecenter(simAircraft.lat, simAircraft.lng);
+    };
+    // The pilot drags the map away: following pauses for followResumeMs.
+    map.getContainer().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    map.setView([31.5, 34.4], map.getZoom());
+    simAircraft.lat = 32.70;
+    feed();
+    const held = +map.getCenter().lat.toFixed(2);
+    // ...and once the grace has passed, the next sample takes it back. No button to press.
+    _gpsUserMovedAt = Date.now() - (tune('followResumeMs') + 500);
+    feed();
+    const resumed = +map.getCenter().lat.toFixed(2);
+    window.simOn = false;
+    return { held, resumed };
+  });
+  expect(out.held).toBeCloseTo(31.5, 1);      // the sample did not snatch the view back
+  expect(out.resumed).toBeCloseTo(32.70, 1);  // ...and then it did, on its own
 });

@@ -384,6 +384,10 @@ function gpsSetFollow(on) {
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
+  // The simulator panel shows the same setting; keep its checkbox honest.
+  if (typeof window !== 'undefined' && typeof window.__simSetFollowState === 'function') {
+    window.__simSetFollowState();
+  }
 }
 // A pan or zoom by hand is a request to look at something, and the next fix used to undo
 // it: at 1 Hz the map snapped back before the pilot had read anything. Following pauses
@@ -433,6 +437,7 @@ function gpsWatchUserMapMoves() {
     el.addEventListener(ev, note, { passive: true, capture: true });
   }
 }
+if (typeof window !== 'undefined') window.gpsWatchUserMapMoves = gpsWatchUserMapMoves;
 var gpsStartT = 0;
 var gpsLastGS = null;   // current ground speed (kt), null if unknown
 var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
@@ -1482,7 +1487,13 @@ function gpsDestinationAtis() {
   // it.
   const published = String(af.atis);
   const short = (typeof atisShortFreq === 'function') ? atisShortFreq(published) : '';
-  return { field: af.name || dest.name || '', freq: short || published, published, wp: dest };
+  // Two names for the field: the ICAO code, and what to call it in the interface language.
+  // Say the name in either language -- "Rosh Pina" and "ראש פינה" are what a pilot calls the
+  // place, and a spelled code is what you fall back to when the dataset has no name for it.
+  const he = (typeof window !== 'undefined' && window.__navLang === 'he');
+  const code = af.name || dest.name || '';
+  const label = (he ? (af.he || af.en) : (af.en || af.he)) || code;
+  return { field: code, label, freq: short || published, published, wp: dest };
 }
 // Distance (NM) from a point to the end of the route, walked leg by leg. Straight-line to the
 // destination would understate a route that turns -- and the reminder is about how much TIME
@@ -1624,11 +1635,12 @@ function gpsCheckLegAlerts() {
             : { h: 0, m: _hms[0], s: _hms[1] };
         }
       }
+      const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
       gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
         (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime)
           : ('Approaching ' + label),
         (S && S.speakAlertLeg)
-          ? S.speakAlertLeg(label, nextLegAlt,
+          ? S.speakAlertLeg(gpsSpokenPlace(label, lang), nextLegAlt,
               nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, (typeof window !== 'undefined' && window.__navLang) || 'en'),
               nextLegHms)
           : null);
@@ -1651,11 +1663,14 @@ function gpsCheckLegAlerts() {
         const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
         // Field and frequency, nothing else. The lead time is why the alert fired, not
         // something the pilot has to read back off the screen.
+        // Spoken the way it is written: the code spelled out, a name said as a name.
+        const spokenField = (atis.label === atis.field)
+          ? gpsSpokenPlace(atis.field, lang) : atis.label;
         gpsSendWatchAlert((S && S.watchAlertAtisTitle) || 'ATIS',
-          (S && S.watchAlertAtisBody) ? S.watchAlertAtisBody(atis.field, atis.freq)
-            : (atis.field + ' ATIS ' + atis.freq),
+          (S && S.watchAlertAtisBody) ? S.watchAlertAtisBody(atis.label, atis.freq)
+            : (atis.label + ' ATIS ' + atis.freq),
           (S && S.speakAlertAtis)
-            ? S.speakAlertAtis(gpsSpokenCode(atis.field, lang), gpsSpokenDigits(atis.freq, lang))
+            ? S.speakAlertAtis(spokenField, gpsSpokenDigits(atis.freq, lang))
             : null);
       }
     }
@@ -1771,9 +1786,24 @@ function gpsSpokenCode(value, lang) {
     else if (/[A-Z]/.test(ch)) out.push(ch);
     // punctuation and spaces are dropped: a hyphen is not something to say
   }
-  return out.join(' ');
+  // Commas, not spaces. Space-separated letters are run back together by every engine tried --
+  // "L L I B" comes out as "lib" -- and a comma is the one separator that reliably makes a
+  // speech engine pause between them.
+  return out.join(', ');
 }
 window.gpsSpokenCode = gpsSpokenCode;
+
+// A place name for speech. An ICAO code or a reporting-point code is spelled (LLIB -> "L, L,
+// I, B", which is what a controller says and what a pilot hears); a real name is left alone,
+// because "Herzliya" spelled out would be worse than useless. The test is the shape of the
+// word: all-caps letters and digits with no lower case is a code, anything else is a name.
+function gpsSpokenPlace(text, lang) {
+  const t = String(text == null ? '' : text).trim();
+  if (!t) return '';
+  return /^[A-Z0-9][A-Z0-9\- ]*$/.test(t) && /[A-Z]/.test(t)
+    ? gpsSpokenCode(t, lang) : t;
+}
+window.gpsSpokenPlace = gpsSpokenPlace;
 
 // Native TTS, same access pattern as _nativeNotify()/_bgGeo(): the injected Capacitor
 // bridge exposes any synced plugin at window.Capacitor.Plugins.*. On the website (no

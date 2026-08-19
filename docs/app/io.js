@@ -8339,7 +8339,10 @@ async function _simFetch() {
     // here went round every one of them -- the two map buttons did nothing at all in sim.
     // simFollow is the sim panel's own switch and gpsFollow is the map button; both have to
     // be on, and they are kept in step by the panel (see setFollowState in ui.js).
-    if (simFollow && (typeof gpsFollow === 'undefined' || gpsFollow) &&
+    // gpsFollow alone: the map's lock is the one switch. Requiring the sim panel's own flag as
+    // well meant the lock could never resume following after a pan when that flag was off --
+    // the button looked live and did nothing, five seconds later included.
+    if ((typeof gpsFollow === 'undefined' || gpsFollow) &&
         (typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended())) {
       if (typeof gpsFollowRecenter === 'function') {
         gpsFollowRecenter(window.simAircraft.lat, window.simAircraft.lng);
@@ -8379,6 +8382,10 @@ if (typeof window !== 'undefined') window.refreshSimTrigger = refreshSimTrigger;
 // itself on start/stop; the simulator has to do the same, or connecting leaves the column
 // hidden until an unrelated redraw happens to refresh it.
 function simRefreshFlightControls() {
+  // The pan/zoom grace is wired by the real-fix paths (startLiveLocation / startGpsRecording).
+  // Without it here, a sim session had no grace at all: the next sample snatched the view back
+  // the instant the pilot dragged the map to look at something.
+  if (typeof gpsWatchUserMapMoves === 'function') gpsWatchUserMapMoves();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
