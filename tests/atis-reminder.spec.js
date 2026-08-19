@@ -138,3 +138,45 @@ test('no ATIS at the destination means no marker at all', async ({ page }) => {
   });
   expect(drawn).toBeNull();
 });
+
+// Reported: the marker appeared and then vanished. Clearing one leg's speed removed it
+// entirely — every leg had to have a speed or atisAlertPoint() gave up, so an ordinary edit
+// deleted the marker with no explanation. A leg without a speed now falls back to the route
+// default, which is off by the difference between two cruise speeds rather than absent.
+test('a leg with no speed falls back to the default instead of deleting the marker', async ({ page }) => {
+  await boot(page);
+  await routeTo(page, 'LLBG');
+  const out = await page.evaluate(() => {
+    gpsLiveOn = true;
+    const before = atisAlertPoint();
+    state.legs.forEach(l => { l.flightSpeed = NaN; });      // as clearing the field does
+    const after = atisAlertPoint();
+    gpsLiveOn = false;
+    return { before: !!before, after: !!after, dflt: tune('defaultLegSpeedKt') };
+  });
+  expect(out.before).toBe(true);
+  expect(out.after).toBe(true);          // still shown, using the route default
+  expect(out.dflt).toBeGreaterThan(0);
+});
+
+// A bare "ATIS" made you open the airfield to find out what you would be tuning.
+test('the marker carries the frequency, shortened from the published wording', async ({ page }) => {
+  await boot(page);
+  const short = await page.evaluate(() => ({
+    pair: atisShortFreq('Arrival 132.50 MHz / Departure 132.80 MHz'),
+    plain: atisShortFreq('132.55 MHz'),
+    none: atisShortFreq(''),
+  }));
+  expect(short.pair).toBe('132.50');     // the one an arriving pilot tunes
+  expect(short.plain).toBe('132.55');
+  expect(short.none).toBe('');
+});
+
+test('the marker is drawn big enough to read', async ({ page }) => {
+  await boot(page);
+  const sizes = await page.evaluate(() => ({
+    radius: tune('atisMarkerRadiusPx'), font: tune('atisMarkerFontPx'),
+  }));
+  expect(sizes.radius).toBeGreaterThanOrEqual(10);
+  expect(sizes.font).toBeGreaterThanOrEqual(12);
+});

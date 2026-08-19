@@ -2480,8 +2480,12 @@ function atisAlertPoint() {
   // Backwards from the destination, leg by leg, spending the lead time as we go.
   for (let i = legs.length - 1; i >= 0; i--) {
     const a = wps[i], b = wps[i + 1];
-    const speed = legs[i] && legs[i].flightSpeed > 0 ? legs[i].flightSpeed : null;
-    if (!a || !b || !speed) return null;              // no speed: no honest answer
+    // A leg with no speed of its own falls back to the route default rather than deleting the
+    // marker: clearing one speed field made the whole thing vanish with no explanation, which
+    // is worse than an estimate that is off by the difference between two cruise speeds.
+    const speed = (legs[i] && legs[i].flightSpeed > 0) ? legs[i].flightSpeed
+      : ((typeof tune === 'function') ? tune('defaultLegSpeedKt') : 0);
+    if (!a || !b || !(speed > 0)) return null;
     const legS = (geo(a, b).dist / speed) * 3600;
     if (remainingS <= legS) {
       const t = legS > 0 ? 1 - (remainingS / legS) : 0;   // fraction along a->b
@@ -2491,6 +2495,13 @@ function atisAlertPoint() {
   }
   // The whole route is shorter than the lead time: the reminder is due at the start.
   return { lat: wps[0].lat, lng: wps[0].lng, leadS, atStart: true };
+}
+// "Arrival 132.50 MHz / Departure 132.80 MHz" -> "132.50". The dataset carries the published
+// wording, which is right in the inspector and far too long for a map label; the first
+// frequency in it is the one a pilot arriving will tune.
+function atisShortFreq(text) {
+  const m = String(text || '').match(/\d{3}(?:\.\d{1,3})?/);
+  return m ? m[0] : '';
 }
 function drawAtisMarker() {
   const p = atisAlertPoint();
@@ -2512,8 +2523,14 @@ function drawAtisMarker() {
   octx.moveTo(s.x, s.y - r);
   octx.lineTo(s.x, s.y - r - 6);
   octx.stroke();
-  const label = (typeof S === 'object' && S && S.atisMarkerLabel) || 'ATIS';
-  octx.font = 'bold 11px sans-serif';
+  // The frequency on the marker, not just the word: the point of seeing it on the map before
+  // the flight is knowing WHAT you will be tuning and roughly where, and a bare "ATIS" makes
+  // you open the airfield to find out.
+  const base = (typeof S === 'object' && S && S.atisMarkerLabel) || 'ATIS';
+  const atis = (typeof gpsDestinationAtis === 'function') ? gpsDestinationAtis() : null;
+  const freq = atis ? atisShortFreq(atis.freq) : '';
+  const label = freq ? base + ' ' + freq : base;
+  octx.font = 'bold ' + tune('atisMarkerFontPx') + 'px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'bottom';
   octx.lineWidth = tune('overlayLabelHaloWidthPx');
@@ -2526,6 +2543,7 @@ function drawAtisMarker() {
 if (typeof window !== 'undefined') {
   window.atisAlertPoint = atisAlertPoint;
   window.drawAtisMarker = drawAtisMarker;
+  window.atisShortFreq = atisShortFreq;
 }
 
 function drawCommChangeRings() {
