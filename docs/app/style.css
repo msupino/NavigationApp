@@ -2641,27 +2641,13 @@ body.theme-light .shortcuts-help-keys kbd {
   white-space: normal;
   line-height: 1.35;
 }
-/* Active state for the toggle buttons (Connect / Follow) + a brief flash for
-   the one-shot Center button, so it's clear when they fire. */
+/* Active state for the panel's one toggle (Connect), so it is clear it has fired. Follow and
+   Center used to live here too -- they are map buttons now, beside the rotation dial. */
 .modal.sim-modal > button[aria-pressed="true"] {
   background: #2e7d32;
   border-color: #2e7d32;
   color: #fff;
   font-weight: 700;
-}
-.modal.sim-modal > button.sim-flash {
-  animation: sim-flash 0.5s ease-out;
-}
-@keyframes sim-flash {
-  0% { background: #2e7d32; border-color: #2e7d32; color: #fff; }
-  100% { }
-}
-.modal.sim-modal > button.sim-flash-nodata {
-  animation: sim-flash-nodata 0.5s ease-out;
-}
-@keyframes sim-flash-nodata {
-  0% { background: #8a6d3b; border-color: #8a6d3b; color: #fff; }
-  100% { }
 }
 /* Flight Plan variant: transparent backdrop that doesn't capture events,
    so the map underneath stays draggable / pannable while the plan is open. */

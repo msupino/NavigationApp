@@ -30,7 +30,6 @@ test('developer guide documents persisted navaid.* keys used by app code', () =>
     'navaid.navDataPrefix',
     'navaid.simUrl',
     'navaid.simOn',
-    'navaid.simFollow',
     'navaid.openChartModal',
   ];
   for (const key of required) {

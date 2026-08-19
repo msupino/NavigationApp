@@ -972,10 +972,6 @@ window.S = {
   tbSimLocalhostNative: '⚠ localhost הוא המכשיר הזה. הזינו את כתובת הגשר ברשת המקומית של מחשב הסימולטור.',
   tbSimMixedContent: '⚠ החיבור נחסם: NavAid משתמש ב־HTTPS והגשר ב־HTTP. הזינו כתובת HTTPS של גשר או מנהרה.',
   tbSimNativeHttp: '⚠ גרסת היישומון הזו אינה יכולה להשתמש בגשר HTTP מקומי. הזינו כתובת HTTPS של גשר או מנהרה.',
-  tbSimFollow: 'עקוב אחר המטוס',
-  tbSimFollowTitle: 'שמור את המפה ממורכזת על מיקום המטוס',
-  tbSimCenter: 'מרכז על המטוס',
-  tbSimCenterTitle: 'מרכז את המפה על המטוס פעם אחת',
   tbSimStatusOk: '✅ מחובר',
   tbSimStatusErr: '⚠ אין נתונים',
   tbViewSource: 'GitHub',
@@ -1049,7 +1045,12 @@ window.S = {
   // a notification laid out left-to-right showed it as "דקות לפני 7" -- the number stranded at
   // the wrong end. The minutes are gone anyway (the alert fires when it is time), so what is
   // left is one Hebrew word and a single Latin run, which orders correctly either way.
-  watchAlertAtisBody: function (field, freq) { return 'ATIS ' + field + ' ' + freq; },
+  // "ATIS" is Latin, so the notification's paragraph direction comes out LTR -- and bidi then
+  // pulled the frequency across the Hebrew field name: "ATIS 132.45 ראש פינה". Isolating the
+  // name makes it one atom of that LTR line, so the three parts stay in the order written.
+  watchAlertAtisBody: function (field, freq) {
+    return 'ATIS \u2068' + field + '\u2069 ' + freq;
+  },
   speakAlertAtis: function (field, freqDigits) {
     // No preposition: "ATIS ל" + a spelled code reads as an extra letter -- the lamed sounds
     // exactly like the L that follows it, so LLIB came out "ATIS L L L I B".
@@ -1062,19 +1063,16 @@ window.S = {
   gpsNoTrack: 'לא הוקלט מסלול.',
   gpsError: 'שגיאת GPS: ',
   watchAlertLegTitle: 'קטע הבא',
-  watchAlertLegBody: function(wp, alt, hdg, time) {
+  watchAlertLegBody: function(wp, alt, hdg, time, freq) {
     const parts = [];
     if (alt != null) parts.push(alt + ' רגל');
     if (hdg != null) parts.push(hdg + '°');
     if (time != null) parts.push(time);
-    return 'מתקרב אל ' + wp + (parts.length ? ' — הקטע הבא: ' + parts.join(', ') : '');
+    return 'מתקרב אל ' + wp + (freq ? ' ' + freq : '') +
+      (parts.length ? ' — הקטע הבא: ' + parts.join(', ') : '');
   },
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
-  watchAlertCommTitle: 'התדר הבא',
-  watchAlertCommBody: function(station, freq) {
-    return [station, freq].filter(Boolean).join(' ');
-  },
   watchAlertAltTitle: 'גובה',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' רגל — מתוכנן ' + planned + ' רגל';
@@ -1096,8 +1094,10 @@ window.S = {
     return 'מגמה ' + heading + '° ישירות אל ' + wp;
   },
   // ראו את ההערה בגרסה האנגלית: אלה הניסוחים המדוברים, ולא גוף ההתראה.
-  speakAlertLeg: function(wp, alt, hdgDigits, hms) {
+  speakAlertLeg: function(wp, alt, hdgDigits, hms, freqDigits) {
     let s = 'מתקרב אל ' + wp + '.';
+    // ראו את ההערה בגרסה האנגלית: התדר נאמר לפני נתוני הקטע הבא.
+    if (freqDigits) s += ' תדר ' + freqDigits + '.';
     const parts = [];
     if (alt != null) parts.push(alt + ' רגל');
     // "מגמה", not the written UI's "כיוון". Unvocalized כיוון is a homograph: a TTS engine
@@ -1118,14 +1118,6 @@ window.S = {
     return s;
   },
   speakAlertTop: function() { return 'טופ.'; },
-  speakAlertComm: function(station, freqDigits) {
-    const bits = [];
-    if (station) bits.push(String(station).replace(/_/g, ' '));
-    if (freqDigits) bits.push(freqDigits);
-    // "עבור אל" tells the pilot to change frequency; that is ATC's call, not the app's. The
-    // alert names what comes next and leaves the decision where it belongs.
-    return bits.length ? ('התדר הבא: ' + bits.join(', ') + '.') : '';
-  },
   spokenDecimal: 'נקודה',
   speakAlertAlt: function(actual, planned) {
     return 'גובה ' + actual + ' רגל, מתוכנן ' + planned + '.';

@@ -159,7 +159,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     `showReporting`, `showMsa`, `showWind`, `showSigmet`,
     `yellowAlpha`, `wpSize`, `legArrowSize`, `legLineWidth`,
     `driftLineWidth`, `limitLegKites`, `forceSnap`, `magVar`,
-    `pageSize`, `pageOrient`, `simUrl`, `simOn`, `simFollow`.
+    `pageSize`, `pageOrient`, `simUrl`, `simOn`.
 - **Interaction (mouse):** Leaflet `mousedown` → hit-test in priority
   order **waypoint > note > leg-label > leg**. On a hit,
   `map.dragging.disable()` and own the drag; otherwise let Leaflet pan.
@@ -804,7 +804,10 @@ as a machine-readable registry.
   `navaid.openChartModal` restore transient UI state within a tab visit.
 - `navaid.simUrl` — simulator bridge base URL.
 - `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
-- `navaid.simFollow` — `'0'` / `'1'` for simulator-follow mode.
+- `navaid.gpsFollow` — `'0'` / `'1'` for the map's follow lock. One switch for both a
+  real fix and the simulator: the sim panel used to carry its own copy
+  (`navaid.simFollow`, since removed), and requiring both meant the lock could not
+  resume following after a pan.
 - `navaid.tracks.shown` — JSON array of shown recorded-track ids
   (`gps.js`). Only one track is shown at a time, so this holds 0 or 1 id;
   an older multi-id list is healed to a single id on load.

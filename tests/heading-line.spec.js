@@ -262,3 +262,47 @@ test('the simulator feed\'s magnetic heading is converted to true for the geomet
   });
   expect(out).toBe(95);
 });
+
+// Two things about the mark labels themselves, both reported off a Hebrew session:
+// the digits and the unit came out reversed ("nm 5"), and the two sets of marks are the
+// same shape at a glance, so nothing but colour tells 5 NM from 5 minutes.
+async function markLabels(page) {
+  return page.evaluate(() => {
+    const calls = [];
+    const orig = octx.fillText.bind(octx);
+    octx.fillText = function (t, x, y) { calls.push({ text: t, color: String(octx.fillStyle) }); return orig(t, x, y); };
+    try {
+      window.gpsLiveOn = true;
+      window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
+      drawOwnShip(window.gpsOwn, window.gpsOwn.hdg, 90);
+    } finally { octx.fillText = orig; }
+    return calls;
+  });
+}
+
+test('a mark label reads left to right even in a Hebrew session', async ({ page }) => {
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => typeof drawOwnShip === 'function' && typeof octx !== 'undefined');
+  await page.evaluate(() => map.setView([32.1, 34.9], 9));
+  const calls = await markLabels(page);
+  const nm = calls.find(c => c.text.includes('nm'));
+  const min = calls.find(c => c.text.includes('min'));
+  expect(nm).toBeTruthy();
+  expect(min).toBeTruthy();
+  // The isolate is what stops bidi splitting "5 nm" into two runs and reordering them: the
+  // canvas paragraph direction follows the interface language, and in Hebrew that is RTL.
+  expect(nm.text).toMatch(/^\u2066\d+ nm\u2069$/);
+  expect(min.text).toMatch(/^\u2066\d+ min\u2069$/);
+});
+
+test('distance and time marks are drawn in different colours', async ({ page }) => {
+  await boot(page);
+  const calls = await markLabels(page);
+  const nm = calls.find(c => c.text.includes('nm'));
+  const min = calls.find(c => c.text.includes('min'));
+  const want = await page.evaluate(() => ({
+    nm: tune('liveHeadingNmTextColor'), min: tune('liveHeadingMinTextColor') }));
+  expect(nm.color.toLowerCase()).toBe(want.nm.toLowerCase());
+  expect(min.color.toLowerCase()).toBe(want.min.toLowerCase());
+  expect(want.nm.toLowerCase()).not.toBe(want.min.toLowerCase());
+});
