@@ -344,6 +344,223 @@ function drawProfileMarkers() {
   for (const t of prof.tocs) mark(t, S.toc || 'TOC', tune('profileTocColor'));
 }
 
+// Terrain shading, against the altitude you are planning to fly.
+//
+// Colouring every hill by its height was the first attempt, and it was the wrong picture: the
+// CVFR chart underneath already shows relief, so a second brown wash on top hid the chart to
+// repeat what it said. What a pilot cannot read off the chart is whether the ground reaches
+// the altitude THIS flight is planned at -- so that is the only thing painted:
+//
+//   red    ground at or above the planned altitude
+//   amber  ground within msaBufferFt below it (the clearance the MSA figures use)
+//   -      everything else: nothing at all, chart untouched
+//
+// On a route planned well above the terrain the layer paints nothing, which is the correct
+// answer and leaves the map clean. The altitude compared against is the selected leg's, else
+// the lowest planned altitude on the route: the one that decides whether the plan is flyable.
+//
+// SAFETY: a planning aid from a coarse grid (~1 km cells, MAX elevation per cell), not a
+// terrain-awareness system. It cannot show a mast, a ridge narrower than a cell, or anything
+// outside the covered box.
+function terrainReferenceAltFt() {
+  if (typeof state === 'undefined' || !Array.isArray(state.legs) || !state.legs.length) return null;
+  const sel = state.selected;
+  if (sel && sel.type === 'leg' && state.legs[sel.index]) {
+    const a = state.legs[sel.index].inboundAltitude;
+    if (Number.isFinite(a)) return a;
+  }
+  let min = null;
+  for (const l of state.legs) {
+    const a = l && l.inboundAltitude;
+    if (!Number.isFinite(a)) continue;
+    if (min == null || a < min) min = a;
+  }
+  return min;
+}
+function terrainShadeColor(groundFt, refFt) {
+  // terrainWarnClearanceFt, not msaBufferFt. MSA is terrain + 1000 ft -- an obstacle-clearance
+  // planning figure, not a limit -- and using it here painted every everyday CVFR leg: the
+  // LLHZ->LLHA coast run at 1000 ft passes over ~200 ft of ground and came out flagged end to
+  // end. Red means the ground is AT the planned altitude; amber means it is close enough that
+  // the margin is thin. The inspector's MSA row is unchanged and still uses msaBufferFt.
+  const clearance = (typeof tune === 'function') ? tune('terrainWarnClearanceFt') : 500;
+  const alpha = tune('terrainTintAlpha');
+  if (groundFt >= refFt) return colorWithAlpha(tune('terrainAlertColor'), alpha);
+  if (groundFt + clearance >= refFt) return colorWithAlpha(tune('terrainCautionColor'), alpha * 0.75);
+  return null;
+}
+function drawTerrainTint() {
+  if (typeof terrainHasCoverage !== 'function' || !terrainHasCoverage()) return;
+  const g = terrainGrid;
+  if (!g || !Array.isArray(g.data) || !g.rows || !g.cols) return;
+  const ref = terrainReferenceAltFt();
+  if (!Number.isFinite(ref)) return;             // no planned altitude -> nothing to compare
+  if (map.getZoom() < tune('terrainTintMinZoom')) return;
+  const latStep = (g.north - g.south) / g.rows;
+  const lngStep = (g.east - g.west) / g.cols;
+  const b = map.getBounds().pad(0.15);
+  const r0 = Math.max(0, Math.floor((g.north - Math.min(g.north, b.getNorth())) / latStep));
+  const r1 = Math.min(g.rows - 1, Math.ceil((g.north - Math.max(g.south, b.getSouth())) / latStep));
+  const c0 = Math.max(0, Math.floor((Math.max(g.west, b.getWest()) - g.west) / lngStep));
+  const c1 = Math.min(g.cols - 1, Math.ceil((Math.min(g.east, b.getEast()) - g.west) / lngStep));
+  const toFt = g.units === 'm' ? 3.28084 : 1;
+  // Zoomed out, one grid cell is a pixel or two. Cells are merged into blocks big enough to
+  // see, carrying the HIGHEST ground in the block -- rounding terrain down at a glance is the
+  // one direction this must never round.
+  const cellPx = (() => {
+    const a = proj({ lat: g.north, lng: g.west });
+    const d = proj({ lat: g.north - latStep, lng: g.west + lngStep });
+    return Math.max(0.001, Math.hypot(d.x - a.x, d.y - a.y));
+  })();
+  const step = Math.max(1, Math.ceil(tune('terrainTintMinCellPx') / cellPx));
+  const blockMax = (r, c) => {
+    let m = null;
+    for (let rr = r; rr < Math.min(r + step, g.rows); rr++) {
+      const row = g.data[rr];
+      if (!row) continue;
+      for (let cc = c; cc < Math.min(c + step, g.cols); cc++) {
+        const v = row[cc];
+        if (v == null || !Number.isFinite(v)) continue;
+        if (m == null || v > m) m = v;
+      }
+    }
+    return m;
+  };
+  octx.save();
+  let drawn = 0;
+  for (let r = r0; r <= r1; r += step) {
+    for (let c = c0; c <= c1; c += step) {
+      const v = blockMax(r, c);
+      if (v == null) continue;                    // a hole stays uncoloured
+      const fill = terrainShadeColor(v * toFt, ref);
+      if (!fill) continue;                        // ground safely below: chart left alone
+      const north = g.north - r * latStep;
+      const south = north - latStep * step;
+      const west = g.west + c * lngStep;
+      const east = west + lngStep * step;
+      const p1 = proj({ lat: north, lng: west });
+      const p2 = proj({ lat: north, lng: east });
+      const p3 = proj({ lat: south, lng: east });
+      const p4 = proj({ lat: south, lng: west });
+      octx.fillStyle = fill;
+      octx.beginPath();
+      octx.moveTo(p1.x, p1.y); octx.lineTo(p2.x, p2.y);
+      octx.lineTo(p3.x, p3.y); octx.lineTo(p4.x, p4.y);
+      octx.closePath();
+      octx.fill();
+      drawn++;
+    }
+  }
+  octx.restore();
+  window.__terrainTintCells = drawn;              // test hook: blocks actually painted
+}
+if (typeof window !== 'undefined') {
+  window.drawTerrainTint = drawTerrainTint;
+  window.terrainShadeColor = terrainShadeColor;
+  window.terrainReferenceAltFt = terrainReferenceAltFt;
+}
+
+// Which legs the plan does not clear: planned altitude below that leg's own MSA (terrain +
+// msaBufferFt, the same figure the leg inspector shows). Drawn as a casing UNDER the route so
+// the line, its kites and its labels stay exactly as they were -- this marks the plan, it does
+// not redraw it -- and the waypoints at either end of such a leg get a ring, because those are
+// the points a pilot reads when deciding what altitude to file.
+function terrainUnclearedLegs() {
+  const out = [];
+  if (typeof state === 'undefined' || !Array.isArray(state.legs)) return out;
+  if (typeof terrainMaxAlongLeg !== 'function') return out;
+  const clearance = (typeof tune === 'function') ? tune('terrainWarnClearanceFt') : 500;
+  for (let i = 0; i < state.legs.length; i++) {
+    const leg = state.legs[i];
+    const planned = leg && leg.inboundAltitude;
+    if (!Number.isFinite(planned)) continue;      // nothing typed: nothing to contradict
+    const ground = terrainMaxAlongLeg(state.waypoints[i], state.waypoints[i + 1]);
+    if (!Number.isFinite(ground)) continue;       // no terrain answer for this leg
+    // Measured against the GROUND plus a VFR margin, not against MSA. Flagging every leg
+    // planned below terrain + 1000 ft marks routes flown every day, and a warning that fires
+    // on the ordinary case is one nobody reads on the day it matters.
+    // Two levels, as the shading has: the ground actually above the plan is a different fact
+    // from a thin margin over it, and one colour for both makes the serious case ordinary.
+    if (planned < ground) out.push({ i, planned, ground, level: 'alert' });
+    else if (planned < ground + clearance) out.push({ i, planned, ground, level: 'caution' });
+  }
+  return out;
+}
+function drawTerrainWarnings() {
+  if (typeof terrainHasCoverage !== 'function' || !terrainHasCoverage()) return;
+  const bad = terrainUnclearedLegs();
+  window.__terrainWarnLegs = bad.map(b => b.i);   // test hook
+  if (!bad.length) return;
+  const alpha = tune('terrainLegWarnAlpha');
+  const alertColour = colorWithAlpha(tune('terrainAlertColor'), alpha);
+  const cautionColour = colorWithAlpha(tune('terrainCautionColor'), alpha);
+  octx.save();
+  octx.lineWidth = tune('terrainLegWarnWidthPx');
+  octx.lineCap = 'round';
+  const wpSeen = new Map();
+  for (const b of bad) {
+    const a = state.waypoints[b.i], c = state.waypoints[b.i + 1];
+    if (!a || !c) continue;
+    const p = proj(a), q = proj(c);
+    octx.strokeStyle = b.level === 'alert' ? alertColour : cautionColour;
+    octx.beginPath();
+    octx.moveTo(p.x, p.y);
+    octx.lineTo(q.x, q.y);
+    octx.stroke();
+    // A waypoint on both a red and an amber leg reads as red: the worse fact wins.
+    for (const idx of [b.i, b.i + 1]) {
+      if (b.level === 'alert' || !wpSeen.has(idx)) wpSeen.set(idx, b.level);
+    }
+  }
+  octx.lineWidth = tune('terrainWpWarnRingPx');
+  for (const [idx, level] of wpSeen) {
+    octx.strokeStyle = level === 'alert' ? alertColour : cautionColour;
+    const wp = state.waypoints[idx];
+    if (!wp) continue;
+    const s = proj(wp);
+    const r = (typeof waypointDiscRadiusPx === 'function' ? waypointDiscRadiusPx() : 9) +
+      tune('terrainWpWarnRingPx');
+    octx.beginPath();
+    octx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    octx.stroke();
+  }
+  octx.restore();
+}
+if (typeof window !== 'undefined') {
+  window.drawTerrainWarnings = drawTerrainWarnings;
+  window.terrainUnclearedLegs = terrainUnclearedLegs;
+}
+
+// The terrain under a route profile: max elevation (ft) sampled at N points along the flown
+// distance, as {d, ft} pairs. Returns null when the elevation grid has no coverage, and
+// leaves ft null for individual samples outside it -- a gap in the silhouette is honest,
+// whereas joining across it would draw ground that was never measured.
+//
+// The profile is drawn from `wpCum` (cumulative NM per waypoint), so distance maps back to a
+// position by finding the segment that contains it and interpolating between its ends. That
+// is the same straight line drawLegs() paints, so silhouette and map agree.
+function profileTerrainSamples(prof) {
+  if (typeof terrainHasCoverage !== 'function' || !terrainHasCoverage()) return null;
+  if (!prof || !Array.isArray(prof.wpCum) || prof.wpCum.length < 2 || !(prof.totalDist > 0)) return null;
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const idx = Array.isArray(prof.wpIndexes) ? prof.wpIndexes : [];
+  const n = Math.max(2, Math.round(tune('profileTerrainSamples')));
+  const out = [];
+  let seg = 0;
+  for (let i = 0; i <= n; i++) {
+    const d = prof.totalDist * (i / n);
+    while (seg < prof.wpCum.length - 2 && d > prof.wpCum[seg + 1]) seg++;
+    const a = wps[idx[seg]], b = wps[idx[seg + 1]];
+    if (!a || !b) { out.push({ d, ft: null }); continue; }
+    const span = prof.wpCum[seg + 1] - prof.wpCum[seg];
+    const t = span > 0 ? Math.min(1, Math.max(0, (d - prof.wpCum[seg]) / span)) : 0;
+    const ft = terrainMaxAtLatLng(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t);
+    out.push({ d, ft: Number.isFinite(ft) ? ft : null });
+  }
+  return out;
+}
+if (typeof window !== 'undefined') window.profileTerrainSamples = profileTerrainSamples;
+
 // Render the altitude-vs-distance profile strip onto a canvas context within
 // (x,y,w,h). Used by the Flight Plan modal (#672).
 function drawVerticalProfile(ctx, x, y, w, h) {
@@ -353,7 +570,15 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const prof = routeProfile(undefined, visibleIndexes);
   if (!prof.pts.length || prof.totalDist <= 0) return;
   const alts = prof.pts.map(p => p.alt);
-  const maxA = Math.max.apply(null, alts) * 1.1 + 100;
+  // Terrain first: it decides the vertical scale as much as the plan does. A route planned
+  // at 2000 ft over ground that reaches 3000 would otherwise draw a silhouette clipped flat
+  // at the top of the strip -- the one case the picture exists to show.
+  const terrain = (typeof profileTerrainSamples === 'function') ? profileTerrainSamples(prof) : null;
+  const terrainFt = terrain ? terrain.filter(t => t.ft != null).map(t => t.ft) : [];
+  const msaBuf = (typeof tune === 'function') ? tune('msaBufferFt') : 1000;
+  const headroom = (typeof tune === 'function') ? tune('profileHeadroomFt') : 400;
+  const topOfTerrain = terrainFt.length ? Math.max.apply(null, terrainFt) + msaBuf + headroom : 0;
+  const maxA = Math.max(Math.max.apply(null, alts) * 1.1 + 100, topOfTerrain);
   const minA = Math.min(0, Math.min.apply(null, alts));
   // Reserve a strip at the bottom for the X axis (NM + time per waypoint) and
   // a margin on the left for the altitude (Y) axis labels.
@@ -394,6 +619,37 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   ctx.strokeStyle = tune('profileGroundColor');
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x0, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
+  // Terrain, under everything the plan draws: filled to the baseline, in runs so a gap in
+  // coverage stays a gap rather than a straight line across unmeasured ground. The
+  // safe-altitude line above it is that terrain plus the same buffer legMsaFt() uses, so the
+  // picture and the leg inspector cannot disagree about what is safe.
+  if (terrain) {
+    const runs = [];
+    let run = [];
+    for (const t of terrain) {
+      if (t.ft == null) { if (run.length) runs.push(run); run = []; continue; }
+      run.push(t);
+    }
+    if (run.length) runs.push(run);
+    for (const r of runs) {
+      if (r.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(px(r[0].d), py(minA));
+      for (const t of r) ctx.lineTo(px(t.d), py(t.ft));
+      ctx.lineTo(px(r[r.length - 1].d), py(minA));
+      ctx.closePath();
+      ctx.fillStyle = colorWithAlpha(tune('profileTerrainColor'), 0.85);
+      ctx.fill();
+      ctx.setLineDash([4, 3]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = colorWithAlpha(tune('profileMsaColor'), 0.9);
+      ctx.beginPath();
+      ctx.moveTo(px(r[0].d), py(r[0].ft + msaBuf));
+      for (const t of r) ctx.lineTo(px(t.d), py(t.ft + msaBuf));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
   // profile polyline + fill
   ctx.beginPath();
   ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
@@ -552,6 +808,9 @@ function draw() {
     document.body.classList.toggle('gps-tracking-active', gpsMapLocked());
   }
   octx.clearRect(0, 0, vw(), vh());
+  // Ground colouring first: it is the chart's own backdrop, so everything else -- airspace,
+  // the route, the overlays -- draws on top of it rather than being tinted by it.
+  if (window.showMsa) { drawTerrainTint(); drawTerrainWarnings(); }
   drawAreas();                  // airspace bubbles under the waypoints
   // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
   // what a pilot is actually looking at even with every segment drawn.
