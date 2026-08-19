@@ -135,3 +135,63 @@ test('connecting the simulator brings the column up; disconnecting takes it away
   await page.evaluate(() => { window.simOn = false; simRefreshFlightControls(); });
   expect(await shown()).toEqual([false, false, false]);
 });
+
+// Reported: the orientation and follow-lock buttons did nothing in sim. The sim poll called
+// map.setView() directly, which goes round the follow lock, its pan grace and the heading-up
+// rotation — all of which live in the helpers the real-fix path uses.
+test('the follow lock and heading-up work off a simulator feed', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    window.simOn = true; window.simFollow = true;
+    window.simAircraft = { lat: 32.60, lng: 35.00, hdg: 90, alt: 2000, gs: 100 };
+    // What the sim poll now does with a fresh sample.
+    const feed = () => {
+      gpsOwn = { lat: simAircraft.lat, lng: simAircraft.lng, hdg: simAircraft.hdg, t: Date.now() };
+      if (simFollow && gpsFollow && !gpsFollowSuspended()) gpsFollowRecenter(simAircraft.lat, simAircraft.lng);
+      gpsApplyHeadingUp();
+    };
+
+    map.setView([32.0, 34.5], 10);
+    window.gpsFollow = true; window.headingUpOn = false;
+    feed();
+    const followed = { lat: +map.getCenter().lat.toFixed(3), bearing: Math.round(mapBearing()) };
+
+    // Lock off: the map must stay where the pilot put it.
+    window.gpsFollow = false;
+    map.setView([32.0, 34.5], 10);
+    simAircraft.lat = 32.75;
+    feed();
+    const locked = +map.getCenter().lat.toFixed(3);
+
+    // Heading up: the chart turns to put the track at the top (bearing = 360 - heading).
+    // Through the button, not by assigning window.headingUpOn -- that is a module binding, and
+    // a window property of the same name is a different variable applyHeadingUp never reads.
+    window.gpsFollow = true;
+    document.getElementById('orient-toggle').click();
+    simAircraft.hdg = 90;
+    feed();
+    const rotated = Math.round(mapBearing());
+    document.getElementById('orient-toggle').click();     // back to north-up
+    map.setBearing(0);
+    window.simOn = false;
+    return { followed, locked, rotated };
+  });
+  expect(out.followed.lat).toBeCloseTo(32.60, 1);   // the map moved to the aircraft
+  expect(out.locked).toBeCloseTo(32.0, 1);          // ...and did not, with the lock off
+  expect(out.rotated).toBe(270);                    // heading 090 -> map bearing 270
+});
+
+// Two switches for one behaviour is how the lock ended up doing nothing: the panel had its own
+// flag and recentred past the button. Turning the panel's Follow on releases the lock too.
+test('the sim panel Follow and the map lock cannot disagree', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    window.gpsFollow = false; window.simFollow = false;
+    document.getElementById('sim-follow-cb').onclick();
+    return { simFollow: window.simFollow, gpsFollow: window.gpsFollow,
+             stored: localStorage.getItem('navaid.gpsFollow') };
+  });
+  expect(out.simFollow).toBe(true);
+  expect(out.gpsFollow).toBe(true);
+  expect(out.stored).toBe('1');
+});

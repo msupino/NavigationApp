@@ -335,6 +335,14 @@ voiceBtn.onclick = () => {
   window.voiceAlerts = !(window.voiceAlerts === true);
   try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
   refreshVoiceControl();
+  // Say which way it went. A speaker icon that has just changed state tells you nothing you
+  // can check -- there is no sound to hear until the next alert, which may be ten minutes off,
+  // so a pilot pressing it in flight has no way to know whether they just enabled or silenced
+  // it. The toast is the confirmation; it costs one line and disappears on its own.
+  if (typeof showToast === 'function') {
+    showToast(window.voiceAlerts ? (S.voiceOnToast || 'Audio alerts on')
+                                 : (S.voiceOffToast || 'Audio alerts off'));
+  }
 };
 
 const orientCtrl = L.control({ position: 'bottomright' });
@@ -3235,6 +3243,14 @@ document.getElementById('limit-kites-cb').onchange = e => {
     window.simFollow = !simFollow;
     setFollowState();
     try { localStorage.setItem(SIM_FOLLOW_KEY, simFollow ? '1' : '0'); } catch (e) { /* */ }
+    // Two switches for one behaviour is how the map's follow lock ended up doing nothing in
+    // sim: the panel had its own flag and recentred past the lock. Turning Follow on here also
+    // releases the lock, so the panel and the button cannot disagree about what the map does.
+    if (window.simFollow && typeof gpsFollow !== 'undefined' && !gpsFollow) {
+      window.gpsFollow = true;
+      try { localStorage.setItem('navaid.gpsFollow', '1'); } catch (e) { /* */ }
+      if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+    }
   };
 
   // One-shot recenter on the live aircraft (distinct from continuous Follow).

@@ -8334,7 +8334,20 @@ async function _simFetch() {
       // "show alt like gps mode shows alt in sim mode".
       if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
     }
-    if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
+    // Through the same helpers the real-fix path uses, not a bare setView: the follow lock,
+    // its pan/zoom grace and the heading-up rotation all live in those, and calling setView
+    // here went round every one of them -- the two map buttons did nothing at all in sim.
+    // simFollow is the sim panel's own switch and gpsFollow is the map button; both have to
+    // be on, and they are kept in step by the panel (see setFollowState in ui.js).
+    if (simFollow && (typeof gpsFollow === 'undefined' || gpsFollow) &&
+        (typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended())) {
+      if (typeof gpsFollowRecenter === 'function') {
+        gpsFollowRecenter(window.simAircraft.lat, window.simAircraft.lng);
+      } else {
+        map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
+      }
+    }
+    if (typeof gpsApplyHeadingUp === 'function') gpsApplyHeadingUp();
     draw();
   } catch (e) {
     if (session === _simSession) _simSetStatus(false);

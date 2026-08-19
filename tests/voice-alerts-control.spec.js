@@ -92,3 +92,27 @@ test('the choice survives a reload', async ({ page }) => {
   await page.waitForFunction(() => typeof window.voiceAlerts === 'boolean');
   expect(await page.evaluate(() => window.voiceAlerts)).toBe(true);
 });
+
+// Pressing it has no audible result until the next alert, which may be ten minutes away — so
+// without a word on screen a pilot cannot tell whether they just enabled or silenced it.
+test('it says which way it went', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startLiveLocation());
+  await page.click('#voice-toggle');
+  await expect(page.locator('.toast')).toHaveText(/audio alerts on/i);
+  await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
+  await page.click('#voice-toggle');
+  await expect(page.locator('.toast')).toHaveText(/audio alerts off/i);
+});
+
+test('and says it in Hebrew too', async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 18; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => !!document.getElementById('voice-toggle'));
+  await page.evaluate(() => startLiveLocation());
+  await page.click('#voice-toggle');
+  await expect(page.locator('.toast')).toHaveText(/התראות קוליות פעילות/);
+});
