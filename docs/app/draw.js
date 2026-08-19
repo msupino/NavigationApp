@@ -562,6 +562,7 @@ function draw() {
   // everything a pilot actually flies.
   if (typeof drawHotspotOverlay === 'function') drawHotspotOverlay();
   drawReportingBadges();
+  if (typeof drawAtisMarker === 'function') drawAtisMarker();
   drawCommChangeRings();
   drawAirfields();
   drawVors();
@@ -2460,6 +2461,73 @@ function drawReportingBadges() {
 // come from the same navWP dataset, so navWP must be loaded when this layer
 // is enabled (toggle handler + boot ensure that). When both layers are on,
 // the dot is drawn by drawNavWaypoints() and the ring here — once each.
+// Where the ATIS reminder will fire: walk back from the destination by the lead time at the
+// legs' planned speeds, and mark that point on the route. It answers "when does this happen"
+// before the flight rather than during it, which is when a pilot can still do something about
+// it -- move the point by changing the lead time, or by planning a slower leg.
+//
+// Only drawn while a fix is driving the map (recording or Location), because that is when the
+// reminder can actually fire: a marker for an alert that is not armed would be a promise the
+// app is not keeping.
+function atisAlertPoint() {
+  if (typeof gpsTrackingLive !== 'function' || !gpsTrackingLive()) return null;
+  if (typeof gpsDestinationAtis !== 'function' || !gpsDestinationAtis()) return null;
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const legs = (typeof state !== 'undefined' && state.legs) || [];
+  if (wps.length < 2 || !legs.length) return null;
+  const leadS = (typeof tune === 'function') ? tune('atisLeadSec') : 600;
+  let remainingS = leadS;
+  // Backwards from the destination, leg by leg, spending the lead time as we go.
+  for (let i = legs.length - 1; i >= 0; i--) {
+    const a = wps[i], b = wps[i + 1];
+    const speed = legs[i] && legs[i].flightSpeed > 0 ? legs[i].flightSpeed : null;
+    if (!a || !b || !speed) return null;              // no speed: no honest answer
+    const legS = (geo(a, b).dist / speed) * 3600;
+    if (remainingS <= legS) {
+      const t = legS > 0 ? 1 - (remainingS / legS) : 0;   // fraction along a->b
+      return { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t, leadS };
+    }
+    remainingS -= legS;
+  }
+  // The whole route is shorter than the lead time: the reminder is due at the start.
+  return { lat: wps[0].lat, lng: wps[0].lng, leadS, atStart: true };
+}
+function drawAtisMarker() {
+  const p = atisAlertPoint();
+  window.__atisMarker = p ? { lat: p.lat, lng: p.lng } : null;   // test hook
+  if (!p) return;
+  const s = proj(p);
+  const r = tune('atisMarkerRadiusPx');
+  octx.save();
+  octx.strokeStyle = tune('atisMarkerColor');
+  octx.fillStyle = colorWithAlpha(tune('atisMarkerColor'), 0.25);
+  octx.lineWidth = 2;
+  octx.beginPath();
+  octx.arc(s.x, s.y, r, 0, Math.PI * 2);
+  octx.fill();
+  octx.stroke();
+  // A short tick out of the top of the circle, so the label has something to sit on and the
+  // marker cannot be mistaken for a waypoint disc.
+  octx.beginPath();
+  octx.moveTo(s.x, s.y - r);
+  octx.lineTo(s.x, s.y - r - 6);
+  octx.stroke();
+  const label = (typeof S === 'object' && S && S.atisMarkerLabel) || 'ATIS';
+  octx.font = 'bold 11px sans-serif';
+  octx.textAlign = 'center';
+  octx.textBaseline = 'bottom';
+  octx.lineWidth = tune('overlayLabelHaloWidthPx');
+  octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+  octx.strokeText(label, s.x, s.y - r - 8);
+  octx.fillStyle = tune('inkColor');
+  octx.fillText(label, s.x, s.y - r - 8);
+  octx.restore();
+}
+if (typeof window !== 'undefined') {
+  window.atisAlertPoint = atisAlertPoint;
+  window.drawAtisMarker = drawAtisMarker;
+}
+
 function drawCommChangeRings() {
   // Test-inspection hook (issue #399): every comm-change ring drawn this
   // frame is recorded here so Playwright can assert "ring drew at X"

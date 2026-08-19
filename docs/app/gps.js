@@ -1173,6 +1173,9 @@ if (typeof document !== 'undefined') {
 var GPS_LEG_ETA_S = 120;          // shipped default; legEtaLeadSec overrides it live
 // Read through tune() at the point of use, not once at load: a gist override that landed
 // after boot would otherwise be ignored until a reload.
+function gpsAtisLeadS() {
+  return (typeof tune === 'function') ? tune('atisLeadSec') : 600;
+}
 function gpsLegEtaLeadS() { return (typeof tune === 'function') ? tune('legEtaLeadSec') : GPS_LEG_ETA_S; }
 function gpsLegCaptureNm() { return (typeof tune === 'function') ? tune('legCaptureNm') : GPS_LEG_CAPTURE_NM; }
 function gpsAltToleranceFt() { return (typeof tune === 'function') ? tune('altToleranceFt') : GPS_ALT_TOLERANCE_FT; }
@@ -1215,6 +1218,9 @@ var _gpsTopCapturePoint = null;   // {lat,lng} while still inside the last TOP c
 // the "passed abeam, never got close" branch advances the pointer (still needed to
 // keep tracking) but does not confirm it.
 var _gpsAlertConfirmed = false;
+// The ATIS reminder fires once per arrival: a hold, a go-around or a lap of the circuit must
+// not repeat it, and it is reset with the rest of the alert state when tracking restarts.
+var _gpsAtisAlerted = false;
 
 // Called whenever tracking (re)starts, so a pointer left over from a previous flight or
 // route can't silently suppress real alerts on this one. Plain reset to leg 0 -- correct
@@ -1226,6 +1232,7 @@ function gpsResetLegAlerts() {
   _gpsAlertAltDeviated = false;
   _gpsAlertAltCount = 0;
   _gpsAlertConfirmed = false;
+  _gpsAtisAlerted = false;
   _gpsTopCapturePoint = null;
   _gpsLastTopAt = 0;
   // Cone/off-route state belongs to the same episode: a fresh session must not inherit a
@@ -1437,6 +1444,28 @@ function gpsCheckRouteUnknown(insideCone) {
       : null);
 }
 
+// The destination's ATIS, when it publishes one. Reads the same airfields.json row the
+// inspector shows, so what is announced is what the field publishes -- nothing is invented for
+// a field that has no ATIS, which is most of them.
+function gpsDestinationAtis() {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const dest = wps[wps.length - 1];
+  if (!dest || typeof airfieldAtWaypoint !== 'function') return null;
+  const af = airfieldAtWaypoint(dest);
+  if (!af || !af.atis) return null;
+  return { field: af.name || dest.name || '', freq: String(af.atis), wp: dest };
+}
+// Distance (NM) from a point to the end of the route, walked leg by leg. Straight-line to the
+// destination would understate a route that turns -- and the reminder is about how much TIME
+// is left, which only the flown distance can answer.
+function gpsDistanceToDestinationNm(from, fromLegIdx) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  if (!from || wps.length < 2) return null;
+  const i = Number.isInteger(fromLegIdx) ? Math.max(0, Math.min(fromLegIdx, wps.length - 2)) : 0;
+  let total = geo(from, wps[i + 1]).dist;
+  for (let k = i + 1; k < wps.length - 1; k++) total += geo(wps[k], wps[k + 1]).dist;
+  return total;
+}
 function gpsCheckLegAlerts() {
   if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
   const wps = state.waypoints || [];
@@ -1574,6 +1603,31 @@ function gpsCheckLegAlerts() {
               nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, (typeof window !== 'undefined' && window.__navLang) || 'en'),
               nextLegHms)
           : null);
+    }
+  }
+
+  // ATIS, a set time out from the destination. Timed rather than distance-based on purpose:
+  // the reminder exists so there is room to tune, hear a full cycle and copy the numbers
+  // before the arrival gets busy, and that is a duration whatever the groundspeed. Planned
+  // speed, like every other alert here, so a headwind cannot silently make it late.
+  //
+  // Once per arrival: a hold, a go-around or a lap of the circuit must not repeat it.
+  if (_gpsAlertConfirmed && !_gpsAtisAlerted && planSpeed) {
+    const atis = gpsDestinationAtis();
+    if (atis) {
+      const toGo = gpsDistanceToDestinationNm(gpsOwn, gpsAlertLegIndex);
+      const etaDestS = Number.isFinite(toGo) ? (toGo / planSpeed) * 3600 : null;
+      if (etaDestS != null && etaDestS <= gpsAtisLeadS()) {
+        _gpsAtisAlerted = true;
+        const mins = Math.max(1, Math.round(etaDestS / 60));
+        const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+        gpsSendWatchAlert((S && S.watchAlertAtisTitle) || 'ATIS',
+          (S && S.watchAlertAtisBody) ? S.watchAlertAtisBody(atis.field, atis.freq, mins)
+            : (atis.field + ' ATIS ' + atis.freq),
+          (S && S.speakAlertAtis)
+            ? S.speakAlertAtis(atis.field, gpsSpokenDigits(atis.freq, lang), mins)
+            : null);
+      }
     }
   }
 

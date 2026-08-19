@@ -1035,6 +1035,14 @@ window.S = {
   tbGpsLive: 'מיקום',
   tbGpsLiveTitle: 'הצגת המיקום החי שלך על המפה (GPS, ללא הקלטה)',
   tbGpsLiveStop: 'הסתר',
+  watchAlertAtisTitle: 'ATIS',
+  watchAlertAtisBody: function (field, freq, mins) {
+    return field + ' ATIS ' + freq + ' — ' + mins + ' דקות לפני';
+  },
+  speakAlertAtis: function (field, freqDigits, mins) {
+    return 'ATIS ל' + field + ', ' + freqDigits + '. ' + mins + ' דקות לפני הנחיתה.';
+  },
+  atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS אינו זמין בדפדפן זה.',
   gpsFixStale: 'קליטת GPS מלפני',
   wpLabel: 'צד״ר',

@@ -59,6 +59,12 @@ NavAid.tuningDefaults = {
   // how tight an altitude tolerance can be before it cries wolf.
   altToleranceFt: { value: 100, min: 20, max: 1000, step: 10, label: 'Altitude alert tolerance (ft)' },
   altMaxAlertsPerLeg: { value: 2, min: 0, max: 10, step: 1, label: 'Altitude alerts per leg (0 = off)' },
+  // How long before the destination the ATIS reminder fires. Time, not distance: the point is
+  // to have enough of it to tune, listen through a full cycle and copy the numbers before the
+  // arrival gets busy, and that is a duration regardless of groundspeed.
+  atisLeadSec: { value: 600, min: 60, max: 1800, step: 30, label: 'ATIS reminder lead (s)' },
+  atisMarkerColor: { value: '#1f6fd0', type: 'color', label: 'ATIS reminder marker colour' },
+  atisMarkerRadiusPx: { value: 7, min: 3, max: 20, step: 1, label: 'ATIS reminder marker radius (px)' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, seconds ahead' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (deg)' },
@@ -668,7 +674,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -1856,6 +1862,15 @@ window.S = Object.assign({
   tbGpsLive: 'Location',
   tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
   tbGpsLiveStop: 'Hide',
+  // ATIS reminder: fires once, a set time out from the destination.
+  watchAlertAtisTitle: 'ATIS',
+  watchAlertAtisBody: function (field, freq, mins) {
+    return field + ' ATIS ' + freq + ' — ' + mins + ' min out';
+  },
+  speakAlertAtis: function (field, freqDigits, mins) {
+    return 'A T I S for ' + field + ', ' + freqDigits + '. ' + mins + ' minutes out.';
+  },
+  atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS is not available in this browser.',
   // Prefixes an age in seconds: "GPS fix 47s" — the fix is that old, not that recent.
   gpsFixStale: 'GPS fix',
