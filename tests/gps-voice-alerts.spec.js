@@ -491,102 +491,82 @@ test.describe('the voice-alerts setting', () => {
   });
 });
 
-// The frequency for the next sector comes a short time BEFORE the waypoint that changes it:
-// overhead the point the call is already being made, which is too late to go looking for a
-// number. A minute out there is time to set the standby box and be ready.
-test.describe('the frequency call, ahead of the waypoint', () => {
+// A frequency change always happens AT a waypoint, so it rides in the call that names that
+// waypoint. It used to be a second alert of its own a minute later -- two notifications about
+// the same point, one interruption too many -- and before that it rode on TOP, which is
+// overhead the point and too late to go looking for a number.
+test.describe('the frequency rides in the waypoint call', () => {
   // ALPHA -> BRAVO, 6 NM at the default 90 kt. `at` is a latitude on that line.
-  const flyTo = (page, at, lang) => page.evaluate(async (lat) => {
+  const flyTo = (page, at, withNote) => page.evaluate(([lat, note]) => {
     window.voiceAlerts = true;
     state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
                        { lat: 32.10, lng: 34.0, name: 'BRAVO' }];
     syncLegs();
     // The route's own note is the source of truth -- it is what is drawn on the map.
-    state.notes = [{ lat: 32.10, lng: 34.0, cc: 'BRAVO', freqName: 'PLUTO_EAST', freq: '118.4' }];
+    state.notes = note
+      ? [{ lat: 32.10, lng: 34.0, cc: 'BRAVO', freqName: 'PLUTO_EAST', freq: '118.4' }] : [];
     gpsAlertLegIndex = 0;
     window._gpsAlertConfirmed = true;
     gpsOwn = { lat, lng: 34.0, t: Date.now() };
     gpsLastAlt = null;
     gpsCheckLegAlerts();
-    await window.__gpsSpeakChain;
-    return window.__spoken.map(s2 => s2.text);
-  }, at);
+    return window.__gpsSpeakChain.then(() => window.__spoken.map(s2 => s2.text));
+  }, [at, withNote]);
 
-  test('speaks the station and frequency, digit by digit, a minute out', async ({ page }) => {
+  test('one call names the point and the frequency, digit by digit', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
-    const spoken = await flyTo(page, 32.078);          // ~1.3 NM to run: inside the lead
-    const call = spoken.find(t => /frequency/i.test(t));
+    const spoken = await flyTo(page, 32.07, true);     // ~2 NM to run: inside the 2-min lead
+    const call = spoken.find(t => /Approaching/.test(t));
     expect(call).toBeTruthy();
-    expect(call).toContain('Pluto East');             // the catalog's name, never PLUTO_EAST
+    expect(call).toContain('B, R, A, V, O');           // a bare code is spelled, as everywhere
     expect(call).toContain('one one eight decimal four');
-    expect(call).not.toContain('118.4');              // never read as a bare number
-    expect(call).not.toMatch(/^Top\./);              // it is its own alert, not part of TOP
+    expect(call).not.toContain('118.4');               // never read as a bare number
+    // One alert, not two: the frequency is part of the waypoint call.
+    expect(spoken.filter(t => /Approaching/.test(t)).length).toBe(1);
+    expect(spoken.some(t => /Pluto East/i.test(t))).toBe(false);
   });
 
-  test('further out than the lead time, nothing is said yet', async ({ page }) => {
+  test('the frequency comes before the next leg numbers', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
-    const spoken = await flyTo(page, 32.02);           // ~4.8 NM: over three minutes out
-    expect(spoken.find(t => /frequency/i.test(t))).toBeFalsy();
+    const spoken = await flyTo(page, 32.07, true);
+    const call = spoken.find(t => /Approaching/.test(t));
+    // It is the one thing in the call that has to be acted on BEFORE the waypoint.
+    expect(call.indexOf('Frequency')).toBeGreaterThan(-1);
+    if (call.includes('Next leg')) {
+      expect(call.indexOf('Frequency')).toBeLessThan(call.indexOf('Next leg'));
+    }
   });
 
-  test('once per waypoint, however many fixes arrive', async ({ page }) => {
+  test('a waypoint with no frequency change says nothing about frequencies', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
-    await flyTo(page, 32.078);
-    const spoken = await page.evaluate(async () => {
-      gpsOwn = { lat: 32.085, lng: 34.0, t: Date.now() };
-      gpsCheckLegAlerts();
-      await window.__gpsSpeakChain;
-      return window.__spoken.map(s2 => s2.text);
-    });
-    expect(spoken.filter(t => /frequency/i.test(t)).length).toBe(1);
+    const spoken = await flyTo(page, 32.07, false);
+    const call = spoken.find(t => /Approaching/.test(t));
+    expect(call).toBeTruthy();
+    expect(call).not.toMatch(/frequency/i);
   });
 
-  test('TOP itself is just TOP again', async ({ page }) => {
+  test('TOP itself is just TOP', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
-    const spoken = await flyTo(page, 32.10);           // overhead BRAVO
-    const top = spoken.find(t => /^Top\./.test(t));
-    expect(top).toBe('Top.');
+    const spoken = await flyTo(page, 32.10, true);     // overhead BRAVO
+    expect(spoken.find(t => /^Top\./.test(t))).toBe('Top.');
   });
 
-  test('a waypoint with no comm change says nothing extra', async ({ page }) => {
-    await stubTts(page);
-    await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
-    const spoken = await page.evaluate(async () => {
-      window.voiceAlerts = true;
-      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
-                         { lat: 32.10, lng: 34.0, name: 'BRAVO' }];
-      syncLegs();
-      state.notes = [];
-      gpsAlertLegIndex = 0;
-      window._gpsAlertConfirmed = true;
-      gpsOwn = { lat: 32.078, lng: 34.0, t: Date.now() };
-      gpsLastAlt = null;
-      gpsCheckLegAlerts();
-      await window.__gpsSpeakChain;
-      return window.__spoken.map(s2 => s2.text);
-    });
-    expect(spoken.find(t => /frequency/i.test(t))).toBeFalsy();
-  });
-
-  // The note stores whatever the callout was created with -- usually the catalog id -- so
-  // without the lookup a Hebrew session heard "Pluto East" inside a Hebrew sentence.
-  test('speaks the Hebrew station name when the UI is Hebrew', async ({ page }) => {
+  test('the Hebrew call carries the frequency too', async ({ page }) => {
     await stubTts(page, { languages: ['en-US', 'he-IL'] });
     await page.goto('?lang=he&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
-    const spoken = await flyTo(page, 32.078);
-    const call = spoken.find(t => /התדר הבא/.test(t));
+    const spoken = await flyTo(page, 32.07, true);
+    const call = spoken.find(t => /מתקרב/.test(t));
     expect(call).toBeTruthy();
-    expect(call).toContain('פלוטו מזרח');
+    expect(call).toContain('תדר');
     expect(call).toContain('נקודה');     // the decimal, spoken
     expect(call).not.toContain('118.4');
   });

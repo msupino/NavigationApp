@@ -193,15 +193,25 @@ test('the marker is drawn big enough to read', async ({ page }) => {
 });
 
 // The Hebrew body used to end with "<n> דקות לפני" after a Latin run, and a notification laid
-// out left-to-right stranded the number at the wrong end: "דקות לפני 7". What is left is one
-// Hebrew word and a single Latin run, which orders correctly whichever way the client lays it.
+// out left-to-right stranded the number at the wrong end: "דקות לפני 7". The minutes are gone,
+// but the same class of bug came back once the field was named rather than spelled: "ATIS" is
+// Latin, so the line lays out left-to-right, and bidi pulled the frequency across the Hebrew
+// name — reported as "ATIS 132.45 ראש פינה". Isolating the name makes it one atom of that
+// line, so the three parts stay in the order they are written in.
 test('the Hebrew alert reads correctly and stays short', async ({ page }) => {
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => typeof S === 'object' && S && typeof S.watchAlertAtisBody === 'function');
-  const body = await page.evaluate(() => S.watchAlertAtisBody('LLBG', '132.50'));
-  expect(body).toBe('ATIS LLBG 132.50');
-  expect(body).not.toMatch(/דקות/);
-  expect(body.length).toBeLessThan(30);
+  const out = await page.evaluate(() => ({
+    code: S.watchAlertAtisBody('LLBG', '132.50'),
+    named: S.watchAlertAtisBody('ראש פינה', '132.45'),
+  }));
+  // The isolate is invisible; strip it to compare what a reader actually sees.
+  const plain = (t) => t.replace(/[\u2066-\u2069]/g, '');
+  expect(plain(out.code)).toBe('ATIS LLBG 132.50');
+  expect(plain(out.named)).toBe('ATIS ראש פינה 132.45');
+  expect(out.named).toMatch(/\u2068ראש פינה\u2069/);   // the name, isolated from the digits
+  expect(out.code).not.toMatch(/דקות/);
+  expect(plain(out.code).length).toBeLessThan(30);
 });
 
 // Reported: still not visible. It was drawn BEFORE the route and the waypoint discs, so the

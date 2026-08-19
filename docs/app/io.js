@@ -8337,11 +8337,10 @@ async function _simFetch() {
     // Through the same helpers the real-fix path uses, not a bare setView: the follow lock,
     // its pan/zoom grace and the heading-up rotation all live in those, and calling setView
     // here went round every one of them -- the two map buttons did nothing at all in sim.
-    // simFollow is the sim panel's own switch and gpsFollow is the map button; both have to
-    // be on, and they are kept in step by the panel (see setFollowState in ui.js).
-    // gpsFollow alone: the map's lock is the one switch. Requiring the sim panel's own flag as
-    // well meant the lock could never resume following after a pan when that flag was off --
-    // the button looked live and did nothing, five seconds later included.
+    // gpsFollow alone: the map's lock is the one switch. The sim panel used to carry a second
+    // copy of it, and requiring both meant the lock could never resume following after a pan
+    // when the panel's flag was off -- the button looked live and did nothing. The panel's
+    // duplicates are gone; the map buttons are the controls.
     if ((typeof gpsFollow === 'undefined' || gpsFollow) &&
         (typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended())) {
       if (typeof gpsFollowRecenter === 'function') {

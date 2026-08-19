@@ -2968,7 +2968,6 @@ const VOICE_ALERTS_KEY = 'navaid.voiceAlerts';
 const LIMIT_KITES_KEY = 'navaid.limitLegKites';
 const SIM_URL_KEY  = 'navaid.simUrl';
 const SIM_ON_KEY   = 'navaid.simOn';
-const SIM_FOLLOW_KEY = 'navaid.simFollow';
 try {
   const sr = lsGet(RETURN_KEY);
   if (sr !== null) window.showReturn =sr === '1';
@@ -2984,8 +2983,6 @@ try {
   if (su) window.simUrl = su;
   const son = lsGet(SIM_ON_KEY);
   if (son !== null) window.simOn = son === '1';
-  const sf = lsGet(SIM_FOLLOW_KEY);
-  if (sf !== null) window.simFollow = sf === '1';
 } catch (e) { /* storage unavailable */ }
 // The return path can be switched off wholesale from the tuning gist (featureShowReturn).
 // Hidden AND forced off, not merely hidden: a stored 'on' from before it was disabled would
@@ -3115,11 +3112,10 @@ document.getElementById('limit-kites-cb').onchange = e => {
 (function () {
   const cb     = document.getElementById('sim-connect-cb');
   const urlInp = document.getElementById('sim-url');
-  const followCb = document.getElementById('sim-follow-cb');
   const statusEl = document.getElementById('sim-status');
   const helpEl = document.getElementById('sim-url-help');
   const discoverBtn = document.getElementById('sim-discover');
-  if (!cb || !urlInp || !followCb || !statusEl || !helpEl) return;
+  if (!cb || !urlInp || !statusEl || !helpEl) return;
 
   function simPlatformKind() {
     if (typeof isNativeCapacitorShell === 'function' && isNativeCapacitorShell()) {
@@ -3232,20 +3228,9 @@ document.getElementById('limit-kites-cb').onchange = e => {
                                : (S.tbSimConnect || 'Connect to simulator');
     cb.setAttribute('aria-pressed', String(connected));
   }
-  function setFollowState() {
-    // Reads the map's lock, and keeps the legacy simFollow global in step for anything still
-    // looking at it -- including the stored key, so an old preference is not silently dropped.
-    const on = (typeof gpsFollow === 'undefined') ? !!window.simFollow : !!gpsFollow;
-    window.simFollow = on;
-    try { localStorage.setItem(SIM_FOLLOW_KEY, on ? '1' : '0'); } catch (e) { /* */ }
-    followCb.setAttribute('aria-pressed', String(on));
-  }
-  window.__simSetFollowState = setFollowState;
-
   // Restore persisted state into UI controls.
   if (simUrl) urlInp.value = simUrl;
   setConnectLabel();
-  setFollowState();
 
   // io.js's _simSetStatus reads window._simStatusEl at poll time.
   window._simStatusEl = statusEl;
@@ -3267,27 +3252,6 @@ document.getElementById('limit-kites-cb').onchange = e => {
     setConnectLabel();
     if (typeof window.simStop === 'function') simStop();
     showUrlProblem(problem);         // simStop clears status, so explain after stopping
-  };
-
-  // The panel's Follow and the map's lock are one setting shown twice. They used to be two
-  // flags, so whichever the pilot touched last was overridden by the other.
-  followCb.onclick = () => {
-    if (typeof gpsSetFollow === 'function') gpsSetFollow(!gpsFollow);
-    setFollowState();
-  };
-
-  // One-shot recenter on the live aircraft (distinct from continuous Follow).
-  const centerBtn = document.getElementById('sim-center');
-  if (centerBtn) centerBtn.onclick = () => {
-    const a = window.simAircraft;
-    const have = a && Number.isFinite(a.lat) && Number.isFinite(a.lng);
-    if (have) map.setView([a.lat, a.lng], map.getZoom());
-    // Always flash so the one-shot click gives visible feedback — green when it
-    // recentered, a muted "no-data" flash when there's no live position yet.
-    centerBtn.classList.remove('sim-flash', 'sim-flash-nodata');
-    void centerBtn.offsetWidth;                   // restart the animation
-    centerBtn.classList.add(have ? 'sim-flash' : 'sim-flash-nodata');
-    setTimeout(() => centerBtn.classList.remove('sim-flash', 'sim-flash-nodata'), 600);
   };
 
   cb.onclick = () => {
