@@ -513,3 +513,45 @@ test.describe('commfail_overlay field', () => {
     }
   });
 });
+
+// A canvas takes its paragraph direction from the interface language, so in Hebrew the map is
+// laid out RTL and bidi reorders any label made of a Latin run followed by another run:
+// "LLIB / ראש פינה" was drawn as "ראש פינה / LLIB". The code belongs first — that is the order
+// the chart prints and the order the label is composed in.
+test.describe('map labels keep the code before the name in Hebrew', () => {
+  async function drawnLabels(page) {
+    return page.evaluate(() => {
+      const seen = [];
+      const orig = octx.fillText.bind(octx);
+      octx.fillText = function (t, x, y) { seen.push(String(t)); return orig(t, x, y); };
+      try { draw(); } finally { octx.fillText = orig; }
+      return seen;
+    });
+  }
+
+  test('the airfield label is isolated left to right', async ({ page }) => {
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof draw === 'function' && typeof octx !== 'undefined'
+      && Array.isArray(window.airfields) && airfields.length > 0);
+    await page.evaluate(() => { map.setView([32.98, 35.57], 12); showAirfields = true; });
+    const labels = await drawnLabels(page);
+    const llib = labels.find(t => t.includes('LLIB'));
+    expect(llib).toBeTruthy();
+    expect(llib).toContain('ראש פינה');            // both halves still drawn
+    expect(llib.startsWith('⁦')).toBe(true);  // ...as one left-to-right unit
+    expect(llib.endsWith('⁩')).toBe(true);
+  });
+
+  // The same string goes into the inspector's title INPUT, where an invisible control
+  // character would be saved into a value the pilot edits.
+  test('the inspector title carries no isolate characters', async ({ page }) => {
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof referenceInspectorTitle === 'function'
+      && Array.isArray(window.airfields) && airfields.length > 0);
+    const title = await page.evaluate(() => {
+      const af = airfields.find(a => a.name === 'LLIB') || airfields[0];
+      return referenceInspectorTitle(af, 'airfield');
+    });
+    expect(title).not.toMatch(/[⁦-⁩]/);
+  });
+});
