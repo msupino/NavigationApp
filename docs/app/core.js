@@ -455,6 +455,24 @@ NavAid.tuningDefaults = {
   profileGridColor: { value: '#7896b4', type: 'color', label: 'Profile grid color' },
   profileAxisColor: { value: '#5a6b7d', type: 'color', label: 'Profile axis color' },
   profileGroundColor: { value: '#3a4654', type: 'color', label: 'Profile ground line color' },
+  // Terrain under the profile line (#673's grid, drawn where the plan is read). Sample count
+  // is the silhouette's resolution: the shipped grid is ~1.2 km per cell, so past a few
+  // hundred samples the extra points redraw the same cell.
+  profileTerrainColor: { value: '#6b5a44', type: 'color', label: 'Profile terrain fill' },
+  // Hypsometric map tint, from the same grid the MSA figures come from. Banding rather than a
+  // smooth ramp: a chart reader looks for "which step am I in", and a continuous gradient
+  // makes 1400 ft and 1600 ft indistinguishable at a glance.
+  terrainTintAlpha: { value: 0.35, min: 0, max: 1, step: 0.05, label: 'Terrain tint opacity' },
+  terrainBandFt: { value: 500, min: 100, max: 2000, step: 50, label: 'Terrain tint band (ft)' },
+  terrainLowColor: { value: '#e8f0d8', type: 'color', label: 'Terrain tint: low ground' },
+  terrainHighColor: { value: '#8d5524', type: 'color', label: 'Terrain tint: high ground' },
+  terrainTintMaxFt: { value: 3500, min: 500, max: 15000, step: 100, label: 'Terrain tint: top of the colour ramp (ft)' },
+  // 10, not the map's own minimum of 8: at 8 the whole country is on screen and the grid is
+  // ~15 000 cells, which reads as a brown wash over the chart rather than as ground.
+  terrainTintMinZoom: { value: 10, min: 5, max: 14, step: 1, label: 'Terrain tint: minimum zoom' },
+  profileMsaColor: { value: '#d7263d', type: 'color', label: 'Profile safe-altitude line' },
+  profileTerrainSamples: { value: 240, min: 40, max: 1000, step: 20, label: 'Profile terrain samples' },
+  profileHeadroomFt: { value: 400, min: 0, max: 5000, step: 100, label: 'Profile headroom above terrain (ft)' },
   profileTextColor: { value: '#8aa0b4', type: 'color', label: 'Profile axis text color' },
   profileNmTextColor: { value: '#cdd8e3', type: 'color', label: 'Profile NM text color' },
   profileTimeTextColor: { value: '#7fa8d0', type: 'color', label: 'Profile time text color' },
@@ -717,7 +735,8 @@ NavAid.tuningGroups = [
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
-  { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
+  { name: 'Terrain', keys: ['terrainTintAlpha', 'terrainBandFt', 'terrainLowColor', 'terrainHighColor', 'terrainTintMaxFt', 'terrainTintMinZoom'] },   // msaBufferFt lives in the Navigation group
+  { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
@@ -971,8 +990,8 @@ window.S = Object.assign({
   pwxUnavailable: 'Wind/temp charts are temporarily unavailable.',
   wxPwxUnavailableWatermark: 'Wind/temp — Unavailable',
   wxSigwxUnavailableWatermark: 'SIGWX — Unavailable',
-  tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
-  tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
+  tbShowMsa: 'Terrain + MSA',                       // hypsometric tint + the leg MSA row
+  tbShowMsaTitle: 'Shade the map by ground elevation, and show each leg\'s minimum safe altitude in the inspector',
   report: 'Reporting',
   reportingMandatory: '📍 Mandatory report',
   reportingOnRequest: '📍 Report on request',
@@ -1607,6 +1626,7 @@ window.S = Object.assign({
   tbGrpSafety: 'Safety',
   tbGrpTimed: 'NOTAMs & wind',
   tbGrpWxCharts: 'Weather charts',
+  tbGrpTerrain: 'Terrain',
   tbGrpAirspace: 'Airspace',
   tbGrpPlates: 'Airfield plates',
   tbPlateOpacity: 'Plate opacity',

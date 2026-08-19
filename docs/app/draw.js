@@ -344,6 +344,114 @@ function drawProfileMarkers() {
   for (const t of prof.tocs) mark(t, S.toc || 'TOC', tune('profileTocColor'));
 }
 
+// Hypsometric tint: the elevation grid painted onto the map, cell by cell, in bands. This is
+// the same grid the MSA figures come from -- "Terrain + MSA" shows you the ground those
+// numbers are computed from instead of asking you to take them on trust.
+//
+// Banded rather than a smooth ramp on purpose: a chart reader asks "which step am I in", and
+// a continuous gradient makes 1400 ft and 1600 ft look identical. Cells are drawn as
+// projected quads, so the tint rotates and scales with the map like everything else.
+//
+// SAFETY: a planning aid from a coarse grid (~1 km cells, max elevation per cell), not a
+// terrain-awareness system. It cannot show a mast, a ridge narrower than a cell, or anything
+// outside the covered box.
+// #rrggbb -> [r,g,b]. colorWithAlpha() below does the same parse but returns a string; the
+// ramp needs the numbers to interpolate between two colours.
+function _terrainRgb(hex) {
+  const m = typeof hex === 'string' && hex.match(/^#([0-9a-f]{6})$/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function terrainTintColor(ft) {
+  const band = Math.max(50, tune('terrainBandFt'));
+  const top = Math.max(band, tune('terrainTintMaxFt'));
+  const stepped = Math.min(top, Math.floor(Math.max(0, ft) / band) * band);
+  const t = top > 0 ? stepped / top : 0;
+  const lo = _terrainRgb(tune('terrainLowColor')), hi = _terrainRgb(tune('terrainHighColor'));
+  if (!lo || !hi) return null;
+  const mix = (a, b) => Math.round(a + (b - a) * t);
+  return 'rgba(' + mix(lo[0], hi[0]) + ',' + mix(lo[1], hi[1]) + ',' + mix(lo[2], hi[2]) + ',' +
+    tune('terrainTintAlpha') + ')';
+}
+function drawTerrainTint() {
+  if (typeof terrainHasCoverage !== 'function' || !terrainHasCoverage()) return;
+  const g = terrainGrid;
+  if (!g || !Array.isArray(g.data) || !g.rows || !g.cols) return;
+  // Below this zoom a cell is a couple of pixels and the whole country is a brown wash that
+  // hides the chart underneath -- which is the one thing a chart overlay must not do.
+  if (map.getZoom() < tune('terrainTintMinZoom')) return;
+  const latStep = (g.north - g.south) / g.rows;
+  const lngStep = (g.east - g.west) / g.cols;
+  // Only the cells the viewport can actually see: the full grid is 17 000 quads, and a
+  // zoomed-in map needs a few dozen of them.
+  const b = map.getBounds().pad(0.15);
+  const r0 = Math.max(0, Math.floor((g.north - Math.min(g.north, b.getNorth())) / latStep));
+  const r1 = Math.min(g.rows - 1, Math.ceil((g.north - Math.max(g.south, b.getSouth())) / latStep));
+  const c0 = Math.max(0, Math.floor((Math.max(g.west, b.getWest()) - g.west) / lngStep));
+  const c1 = Math.min(g.cols - 1, Math.ceil((Math.min(g.east, b.getEast()) - g.west) / lngStep));
+  const toFt = g.units === 'm' ? 3.28084 : 1;
+  octx.save();
+  for (let r = r0; r <= r1; r++) {
+    const row = g.data[r];
+    if (!row) continue;
+    for (let c = c0; c <= c1; c++) {
+      const v = row[c];
+      if (v == null || !Number.isFinite(v)) continue;      // a hole stays uncoloured
+      const fill = terrainTintColor(v * toFt);
+      if (!fill) continue;
+      const north = g.north - r * latStep, south = north - latStep;
+      const west = g.west + c * lngStep, east = west + lngStep;
+      const p1 = proj({ lat: north, lng: west });
+      const p2 = proj({ lat: north, lng: east });
+      const p3 = proj({ lat: south, lng: east });
+      const p4 = proj({ lat: south, lng: west });
+      octx.fillStyle = fill;
+      octx.beginPath();
+      octx.moveTo(p1.x, p1.y); octx.lineTo(p2.x, p2.y);
+      octx.lineTo(p3.x, p3.y); octx.lineTo(p4.x, p4.y);
+      octx.closePath();
+      octx.fill();
+    }
+  }
+  octx.restore();
+  window.__terrainTintCells = (r1 - r0 + 1) * (c1 - c0 + 1);   // test hook
+}
+if (typeof window !== 'undefined') {
+  window.drawTerrainTint = drawTerrainTint;
+  window.terrainTintColor = terrainTintColor;
+}
+
+// The terrain under a route profile: max elevation (ft) sampled at N points along the flown
+// distance, as {d, ft} pairs. Returns null when the elevation grid has no coverage, and
+// leaves ft null for individual samples outside it -- a gap in the silhouette is honest,
+// whereas joining across it would draw ground that was never measured.
+//
+// The profile is drawn from `wpCum` (cumulative NM per waypoint), so distance maps back to a
+// position by finding the segment that contains it and interpolating between its ends. That
+// is the same straight line drawLegs() paints, so silhouette and map agree.
+function profileTerrainSamples(prof) {
+  if (typeof terrainHasCoverage !== 'function' || !terrainHasCoverage()) return null;
+  if (!prof || !Array.isArray(prof.wpCum) || prof.wpCum.length < 2 || !(prof.totalDist > 0)) return null;
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const idx = Array.isArray(prof.wpIndexes) ? prof.wpIndexes : [];
+  const n = Math.max(2, Math.round(tune('profileTerrainSamples')));
+  const out = [];
+  let seg = 0;
+  for (let i = 0; i <= n; i++) {
+    const d = prof.totalDist * (i / n);
+    while (seg < prof.wpCum.length - 2 && d > prof.wpCum[seg + 1]) seg++;
+    const a = wps[idx[seg]], b = wps[idx[seg + 1]];
+    if (!a || !b) { out.push({ d, ft: null }); continue; }
+    const span = prof.wpCum[seg + 1] - prof.wpCum[seg];
+    const t = span > 0 ? Math.min(1, Math.max(0, (d - prof.wpCum[seg]) / span)) : 0;
+    const ft = terrainMaxAtLatLng(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t);
+    out.push({ d, ft: Number.isFinite(ft) ? ft : null });
+  }
+  return out;
+}
+if (typeof window !== 'undefined') window.profileTerrainSamples = profileTerrainSamples;
+
 // Render the altitude-vs-distance profile strip onto a canvas context within
 // (x,y,w,h). Used by the Flight Plan modal (#672).
 function drawVerticalProfile(ctx, x, y, w, h) {
@@ -353,7 +461,15 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const prof = routeProfile(undefined, visibleIndexes);
   if (!prof.pts.length || prof.totalDist <= 0) return;
   const alts = prof.pts.map(p => p.alt);
-  const maxA = Math.max.apply(null, alts) * 1.1 + 100;
+  // Terrain first: it decides the vertical scale as much as the plan does. A route planned
+  // at 2000 ft over ground that reaches 3000 would otherwise draw a silhouette clipped flat
+  // at the top of the strip -- the one case the picture exists to show.
+  const terrain = (typeof profileTerrainSamples === 'function') ? profileTerrainSamples(prof) : null;
+  const terrainFt = terrain ? terrain.filter(t => t.ft != null).map(t => t.ft) : [];
+  const msaBuf = (typeof tune === 'function') ? tune('msaBufferFt') : 1000;
+  const headroom = (typeof tune === 'function') ? tune('profileHeadroomFt') : 400;
+  const topOfTerrain = terrainFt.length ? Math.max.apply(null, terrainFt) + msaBuf + headroom : 0;
+  const maxA = Math.max(Math.max.apply(null, alts) * 1.1 + 100, topOfTerrain);
   const minA = Math.min(0, Math.min.apply(null, alts));
   // Reserve a strip at the bottom for the X axis (NM + time per waypoint) and
   // a margin on the left for the altitude (Y) axis labels.
@@ -394,6 +510,37 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   ctx.strokeStyle = tune('profileGroundColor');
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x0, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
+  // Terrain, under everything the plan draws: filled to the baseline, in runs so a gap in
+  // coverage stays a gap rather than a straight line across unmeasured ground. The
+  // safe-altitude line above it is that terrain plus the same buffer legMsaFt() uses, so the
+  // picture and the leg inspector cannot disagree about what is safe.
+  if (terrain) {
+    const runs = [];
+    let run = [];
+    for (const t of terrain) {
+      if (t.ft == null) { if (run.length) runs.push(run); run = []; continue; }
+      run.push(t);
+    }
+    if (run.length) runs.push(run);
+    for (const r of runs) {
+      if (r.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(px(r[0].d), py(minA));
+      for (const t of r) ctx.lineTo(px(t.d), py(t.ft));
+      ctx.lineTo(px(r[r.length - 1].d), py(minA));
+      ctx.closePath();
+      ctx.fillStyle = colorWithAlpha(tune('profileTerrainColor'), 0.85);
+      ctx.fill();
+      ctx.setLineDash([4, 3]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = colorWithAlpha(tune('profileMsaColor'), 0.9);
+      ctx.beginPath();
+      ctx.moveTo(px(r[0].d), py(r[0].ft + msaBuf));
+      for (const t of r) ctx.lineTo(px(t.d), py(t.ft + msaBuf));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
   // profile polyline + fill
   ctx.beginPath();
   ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
@@ -552,6 +699,9 @@ function draw() {
     document.body.classList.toggle('gps-tracking-active', gpsMapLocked());
   }
   octx.clearRect(0, 0, vw(), vh());
+  // Ground colouring first: it is the chart's own backdrop, so everything else -- airspace,
+  // the route, the overlays -- draws on top of it rather than being tinted by it.
+  if (window.showMsa) drawTerrainTint();
   drawAreas();                  // airspace bubbles under the waypoints
   // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
   // what a pilot is actually looking at even with every segment drawn.
