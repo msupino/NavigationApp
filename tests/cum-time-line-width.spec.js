@@ -426,6 +426,11 @@ test.describe('Cumulative-time kite', () => {
     await boot(page);
     await loadRoute(page);
     const before = await page.evaluate(() => {
+      // This case is about the LABEL OFFSETS surviving a reversal, measured as screen
+      // positions. Reverse also turns the map 180 degrees now (reverse-rotates-map.spec.js),
+      // which moves every screen coordinate on purpose -- so the rotation is switched off
+      // here to keep the measurement about the thing under test.
+      setTune('reverseRotatesMap', false);
       window.showReturn = true;
       window.showCumTime = true;
       state.legs[0].cumLabel = { a: 18, p: 12, _m: 1 };
