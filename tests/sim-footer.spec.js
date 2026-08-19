@@ -31,13 +31,18 @@ test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }
   await page.locator('#sim-modal #sim-center').click();
   await expect(page.locator('#sim-modal #sim-center')).toHaveClass(/sim-flash/);
 
-  // Follow is a toggle with a visible active (aria-pressed) state.
+  // Follow is a toggle with a visible active (aria-pressed) state. It is a VIEW of the map's
+  // own follow lock (gpsFollow, on by default and remembered per device) rather than a second
+  // switch of its own: two switches for one behaviour meant the map lock could not resume
+  // following after a pan while the panel's copy was off.
   const follow = page.locator('#sim-modal #sim-follow-cb');
-  await expect(follow).toHaveAttribute('aria-pressed', 'false');
-  await follow.click();
   await expect(follow).toHaveAttribute('aria-pressed', 'true');
   await follow.click();
   await expect(follow).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => gpsFollow)).toBe(false);
+  await follow.click();
+  await expect(follow).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => gpsFollow)).toBe(true);
 
   // Esc closes.
   await page.keyboard.press('Escape');
