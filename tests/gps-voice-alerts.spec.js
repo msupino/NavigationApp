@@ -441,28 +441,21 @@ test.describe('alerts speak their own phrasing', () => {
   });
 });
 
-// AMENDMENT: the toggle row is always visible, on the website too -- browser speech is a
-// testing aid (see the web-speech-fallback describe above), not something hidden away.
-test.describe('the voice-alerts toggle', () => {
-  test('is visible on the website and defaults to off', async ({ page }) => {
+// AMENDMENT: the View/Set checkbox is gone -- the control is a button on the map, where a
+// pilot can reach it in flight (voice-alerts-control.spec.js covers the button itself). What
+// belongs here is the state it drives: the default, persistence, and the gist's say in it.
+test.describe('the voice-alerts setting', () => {
+  test('defaults to off', async ({ page }) => {
     await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => !!document.getElementById('voice-alerts-cb'));
-    const out = await page.evaluate(() => {
-      const cb = document.getElementById('voice-alerts-cb');
-      const row = cb.closest('label');
-      return { checked: cb.checked, on: window.voiceAlerts === true,
-               rowShown: getComputedStyle(row).display !== 'none' };
-    });
-    expect(out.checked).toBe(false);
-    expect(out.on).toBe(false);
-    expect(out.rowShown).toBe(true);   // visible on the website too -- it's a testing aid, not a dead switch
+    await page.waitForFunction(() => typeof window.voiceAlerts === 'boolean');
+    expect(await page.evaluate(() => window.voiceAlerts)).toBe(false);
   });
 
-  test('toggling it persists', async ({ page }) => {
+  test('turning it on persists', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => !!document.getElementById('voice-alerts-cb'));
-    await page.evaluate(() => { document.getElementById('voice-alerts-cb').click(); });
+    await page.waitForFunction(() => !!document.getElementById('voice-toggle'));
+    await page.evaluate(() => { startLiveLocation(); document.getElementById('voice-toggle').click(); });
     const after = await page.evaluate(() => ({
       on: window.voiceAlerts, stored: localStorage.getItem('navaid.voiceAlerts'),
     }));
@@ -471,34 +464,30 @@ test.describe('the voice-alerts toggle', () => {
   });
 
   // The row was in defaultVisibilityMap but its tune key was never registered, so tune()
-  // returned 0 and the gist could only ever push the toggle off.
+  // returned 0 and the gist could only ever push the toggle off. With the checkbox gone the
+  // row applies the value itself -- a map that only knew how to tick checkboxes would have
+  // dropped this default on the floor.
   test('the gist can turn it on for a pilot who never chose', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => typeof tune === 'function' &&
-      !!document.getElementById('voice-alerts-cb'));
+    await page.waitForFunction(() => typeof tune === 'function' && typeof NavAid.applyDefaultVisibility === 'function');
     expect(await page.evaluate(() => tune('defaultVoiceAlerts'))).toBe(false);
     const on = await page.evaluate(() => {
       setTune('defaultVoiceAlerts', true);
       NavAid.applyDefaultVisibility();
-      return { checked: document.getElementById('voice-alerts-cb').checked,
-               flag: window.voiceAlerts === true,
+      return { flag: window.voiceAlerts === true,
                // Still gist-controlled next load: nothing was written as a user choice.
                stored: localStorage.getItem('navaid.voiceAlerts') };
     });
-    expect(on).toEqual({ checked: true, flag: true, stored: null });
+    expect(on).toEqual({ flag: true, stored: null });
   });
 
   test('a stored preference is restored on load', async ({ page }) => {
     await stubTts(page);
     await page.addInitScript(() => localStorage.setItem('navaid.voiceAlerts', '1'));
     await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => !!document.getElementById('voice-alerts-cb'));
-    const out = await page.evaluate(() => ({
-      on: window.voiceAlerts, checked: document.getElementById('voice-alerts-cb').checked,
-    }));
-    expect(out.on).toBe(true);
-    expect(out.checked).toBe(true);
+    await page.waitForFunction(() => typeof window.voiceAlerts === 'boolean');
+    expect(await page.evaluate(() => window.voiceAlerts)).toBe(true);
   });
 });
 

@@ -1098,7 +1098,9 @@ window.S = {
       const t = [];
       if (hms.h) t.push(hms.h === 1 ? 'שעה' : hms.h + ' שעות');
       if (hms.m) t.push(hms.m === 1 ? 'דקה' : hms.m + ' דקות');
-      if (hms.s) t.push(hms.s + ' שניות');
+      // שניות נאמרות רק כשאין יחידה גדולה יותר לצדן -- "12 דקות 30" זה מה שאומרים בפועל.
+      if (hms.s && !hms.h && !hms.m) t.push(hms.s + ' שניות');
+      else if (hms.s) t.push(String(hms.s));
       if (t.length) parts.push(t.join(' '));
     }
     if (parts.length) s += ' הקטע הבא ' + parts.join(', ') + '.';

@@ -14,8 +14,16 @@ var gpsWakeLock = null;     // Screen Wake Lock sentinel held while recording
 // is exactly the edge case that can spuriously fire/miss the leg-approach and TOP alerts
 // (see gpsCheckLegAlerts's own _gpsAlertMinDistNm comment). This gates the MOVE; whether a
 // tap also opens the inspector is gpsTrackingLive's business, below.
-function gpsMapLocked() {
+// A position is driving the map: a recording, Location, or a connected simulator. Everything
+// that exists BECAUSE the aircraft is moving hangs on this -- the in-flight control column,
+// the ATIS marker, the layout lock -- because from the map's point of view a sim feed and a
+// real fix are the same thing, and testing a flight in the sim should show what the flight
+// will show.
+function gpsPositionLive() {
   return !!(gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn));
+}
+function gpsMapLocked() {
+  return gpsPositionLive();
 }
 // Airborne on a REAL fix -- recording a track, or just showing the position. Deliberately
 // not the simulator: a sim session is someone at a desk, where opening a waypoint is the
@@ -1647,7 +1655,7 @@ function gpsCheckLegAlerts() {
           (S && S.watchAlertAtisBody) ? S.watchAlertAtisBody(atis.field, atis.freq)
             : (atis.field + ' ATIS ' + atis.freq),
           (S && S.speakAlertAtis)
-            ? S.speakAlertAtis(atis.field, gpsSpokenDigits(atis.freq, lang))
+            ? S.speakAlertAtis(gpsSpokenCode(atis.field, lang), gpsSpokenDigits(atis.freq, lang))
             : null);
       }
     }
@@ -1746,6 +1754,26 @@ function gpsSpokenDigits(value, lang) {
   return out.join(' ');
 }
 window.gpsSpokenDigits = gpsSpokenDigits;
+
+// An ICAO code is letters, not a word: "LLHA" read as one runs together into something a
+// pilot has to decode, and the whole point of speaking an alert is that it lands without
+// being decoded. Spelled out, with digits read individually the way frequencies already are,
+// so "LLHA" becomes "L L H A" and "4X-ABC" becomes "4 X A B C".
+function gpsSpokenCode(value, lang) {
+  if (value == null) return '';
+  const digits = _GPS_DIGIT_WORDS[lang] || _GPS_DIGIT_WORDS.en;
+  const out = [];
+  const s = String(value).toUpperCase();
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    const d = ch.charCodeAt(0) - 48;
+    if (d >= 0 && d <= 9) out.push(digits[d]);
+    else if (/[A-Z]/.test(ch)) out.push(ch);
+    // punctuation and spaces are dropped: a hyphen is not something to say
+  }
+  return out.join(' ');
+}
+window.gpsSpokenCode = gpsSpokenCode;
 
 // Native TTS, same access pattern as _nativeNotify()/_bgGeo(): the injected Capacitor
 // bridge exposes any synced plugin at window.Capacitor.Plugins.*. On the website (no

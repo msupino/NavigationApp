@@ -242,3 +242,17 @@ test('on a route shorter than the lead, the marker clears the departure waypoint
   expect(out.atStart).toBe(true);
   expect(out.gap).toBeGreaterThan(out.disc);     // outside the waypoint's own circle
 });
+
+// Codes are spelled, not pronounced: "LLHA" read as a word is something a pilot has to decode,
+// and the whole point of speaking an alert is that it lands without decoding.
+test('the field is spelled out letter by letter', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => ({
+    icao: gpsSpokenCode('LLHA', 'en'),
+    reg: gpsSpokenCode('4X-ABC', 'en'),
+    empty: gpsSpokenCode('', 'en'),
+  }));
+  expect(out.icao).toBe('L L H A');
+  expect(out.reg).toBe('four X A B C');       // digits keep their words, the hyphen is dropped
+  expect(out.empty).toBe('');
+});

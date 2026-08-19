@@ -66,18 +66,21 @@ test('tapping it speaks or silences, and says which it is', async ({ page }) => 
   expect(on.label).toMatch(/spoken/i);
 });
 
-test('the button and the View/Set checkbox are the same switch', async ({ page }) => {
+// The View/Set checkbox is gone: this button IS the control, so nothing else has to be kept
+// in step with it. What still matters is that the stored key is the same one the rest of the
+// app reads, so an existing preference carries over.
+test('it drives the same setting the app already stored', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => startLiveLocation());
   await page.click('#voice-toggle');
-  expect(await page.evaluate(() => document.getElementById('voice-alerts-cb').checked)).toBe(true);
-  const back = await page.evaluate(() => {
-    const cb = document.getElementById('voice-alerts-cb');
-    cb.checked = false; cb.onchange({ target: cb });
-    return { global: window.voiceAlerts, pressed: document.getElementById('voice-toggle').getAttribute('aria-pressed') };
-  });
-  expect(back.global).toBe(false);
-  expect(back.pressed).toBe('false');            // the map button followed the menu
+  const out = await page.evaluate(() => ({
+    global: window.voiceAlerts, stored: localStorage.getItem('navaid.voiceAlerts'),
+    speaks: typeof gpsVoiceAlertsOn === 'function' ? gpsVoiceAlertsOn() : null,
+  }));
+  expect(out.global).toBe(true);
+  expect(out.stored).toBe('1');
+  expect(out.speaks).toBe(true);          // the alert path reads the same flag
+  expect(await page.evaluate(() => !!document.getElementById('voice-alerts-cb'))).toBe(false);
 });
 
 test('the choice survives a reload', async ({ page }) => {

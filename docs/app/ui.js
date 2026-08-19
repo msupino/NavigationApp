@@ -292,7 +292,7 @@ const voiceBtn = document.getElementById('voice-toggle');
 function refreshVoiceControl() {
   const wrap = voiceBtn && voiceBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
+  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
   wrap.style.display = tracking ? '' : 'none';
   // Top of the in-flight column: above the orientation button, which puts itself above the
   // follow lock. Re-asserted on every refresh, because each control claims its own slot and
@@ -315,8 +315,6 @@ refreshVoiceControl();
 voiceBtn.onclick = () => {
   window.voiceAlerts = !(window.voiceAlerts === true);
   try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
-  const cb = document.getElementById('voice-alerts-cb');
-  if (cb) cb.checked = window.voiceAlerts === true;      // the menu checkbox is the same switch
   refreshVoiceControl();
 };
 
@@ -351,7 +349,7 @@ window.applyHeadingUp = applyHeadingUp;
 function refreshOrientControl() {
   const wrap = orientBtn && orientBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
+  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
   wrap.style.display = tracking ? '' : 'none';
   // Directly above the follow lock, which itself sits above the assistant launcher.
   const corner = wrap.parentNode;
@@ -423,7 +421,7 @@ const followBtn = document.getElementById('follow-lock');
 function refreshGpsFollowControl() {
   const wrap = followBtn && followBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
+  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
   wrap.style.display = tracking ? '' : 'none';
   // Top of the bottom-right stack: above the assistant's launcher, which puts itself
   // above the zoom buttons. Re-asserted on every refresh rather than once at boot,
@@ -3055,12 +3053,9 @@ document.getElementById('limit-kites-cb').checked = limitLegKites;
 // Voice alerts: default off (it talks out loud in a cockpit -- opt in, never a surprise
 // on first upgrade). Visible on the website too, as a testing aid.
 if (typeof window.voiceAlerts !== 'boolean') window.voiceAlerts = false;
-document.getElementById('voice-alerts-cb').checked = window.voiceAlerts === true;
-document.getElementById('voice-alerts-cb').onchange = e => {
-  window.voiceAlerts = e.target.checked;
-  try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
-  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
-};
+// The View/Set checkbox is gone -- the map button is the control, where a pilot can reach it
+// in flight. The stored key and the default are unchanged, so an existing choice carries over.
+if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
 document.getElementById('cumtime-cb').onchange = e => {
   window.showCumTime = e.target.checked;
   try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }
@@ -8176,7 +8171,12 @@ NavAid.defaultVisibilityMap = [
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
-  ['voice-alerts-cb', 'navaid.voiceAlerts', 'defaultVoiceAlerts'],
+  // No checkbox any more (the map button replaced it), so this row carries its own applier:
+  // the gist default still has to reach the global the button reads.
+  [null, 'navaid.voiceAlerts', 'defaultVoiceAlerts', (on) => {
+    window.voiceAlerts = on;
+    if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
+  }],
   ['commchange-cb', 'navaid.showFreqChanges', 'defaultShowCommChange'],
   ['mid-cb', 'navaid.showMidLeg', 'defaultShowMidLeg'],
   ['diff-cb', 'navaid.highlightDiff', 'defaultHighlightDiff'],
@@ -8203,9 +8203,9 @@ NavAid.defaultVisibilityMap = [
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;
-  for (const [cbId, lsKeyRaw, tuneKey] of NavAid.defaultVisibilityMap) {
-    const cb = document.getElementById(cbId);
-    if (!cb) continue;                                   // not wired yet
+  for (const [cbId, lsKeyRaw, tuneKey, applyFn] of NavAid.defaultVisibilityMap) {
+    const cb = cbId ? document.getElementById(cbId) : null;
+    if (!cb && typeof applyFn !== 'function') continue;  // not wired yet
     // A row may carry a function when its key depends on state (the NOTAM
     // overlay is remembered per chart).
     const lsKey = typeof lsKeyRaw === 'function' ? lsKeyRaw() : lsKeyRaw;
@@ -8213,6 +8213,8 @@ NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
     try { stored = lsGet(lsKey); } catch (e) { /* */ }
     if (stored !== null) continue;                       // user set this — leave it
     const desired = !!tune(tuneKey);
+    // A control with no checkbox (the voice-alerts map button) applies the value itself.
+    if (!cb) { applyFn(desired); continue; }
     if (cb.checked === desired) continue;                // already matches
     cb.checked = desired;
     cb.dispatchEvent(new Event('change'));               // run the real loader

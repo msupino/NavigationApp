@@ -1961,7 +1961,10 @@ window.S = Object.assign({
       const t = [];
       if (hms.h) t.push(hms.h + (hms.h === 1 ? ' hour' : ' hours'));
       if (hms.m) t.push(hms.m + (hms.m === 1 ? ' minute' : ' minutes'));
-      if (hms.s) t.push(hms.s + ' seconds');
+      // Seconds are spoken only when there is no larger unit beside them: "12 minutes 30" is
+      // how a pilot says it, and the word costs airtime for something already obvious.
+      if (hms.s && !hms.h && !hms.m) t.push(hms.s + ' seconds');
+      else if (hms.s) t.push(String(hms.s));
       if (t.length) parts.push(t.join(' '));
     }
     if (parts.length) s += ' Next leg ' + parts.join(', ') + '.';

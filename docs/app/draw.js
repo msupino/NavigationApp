@@ -2479,7 +2479,10 @@ function drawReportingBadges() {
 // reminder can actually fire: a marker for an alert that is not armed would be a promise the
 // app is not keeping.
 function atisAlertPoint() {
-  if (typeof gpsTrackingLive !== 'function' || !gpsTrackingLive()) return null;
+  // Any live position, the simulator included: from the map's point of view a sim feed and a
+  // real fix are the same thing, and a flight tested in the sim must show what the flight will
+  // show -- reported as the marker being missing in sim mode.
+  if (typeof gpsPositionLive !== 'function' || !gpsPositionLive()) return null;
   if (typeof gpsDestinationAtis !== 'function' || !gpsDestinationAtis()) return null;
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
   const legs = (typeof state !== 'undefined' && state.legs) || [];
