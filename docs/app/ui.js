@@ -449,17 +449,13 @@ followCtrl.onAdd = function () {
 };
 followCtrl.addTo(map);
 const followBtn = document.getElementById('follow-lock');
-// Always on the map, unlike the voice and orientation buttons beside it. Those do nothing
-// without a position to announce or point at, but the lock is a standing preference: a pilot
-// sets it on the ground, before there is any fix, and the setting is what the first fix then
-// obeys. Hiding it until tracking started meant the only way to see or change it was to be
-// already flying.
-//
-// Icon and switch move together -- one function owns both, so it can never say one thing
-// while the map does another.
+// Shown only while tracking, and only in step with the switch itself: one function owns
+// both, so the icon can never say one thing while the map does another.
 function refreshGpsFollowControl() {
   const wrap = followBtn && followBtn.parentNode;
   if (!wrap) return;
+  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
+  wrap.style.display = tracking ? '' : 'none';
   orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
   followBtn.textContent = on ? '🔒' : '🔓';
