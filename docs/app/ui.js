@@ -2737,6 +2737,15 @@ document.getElementById('clear').onclick = () => {
   // the Route direction picker stayed lit and kept whatever direction the deleted route
   // had been filtered to. There is no route to have a direction.
   syncLegs();
+  // A rotated map belongs to the route that was drawn on it -- most often turned by Reverse,
+  // which now flips the chart with the plan. With the route gone the angle describes
+  // nothing, and the next route starts drawn on a chart that is quietly 180 degrees out.
+  // Heading-up is left alone: there the bearing comes from the aircraft, not from the plan.
+  if (!headingUpOn && typeof map.setBearing === 'function' &&
+      (typeof mapBearing !== 'function' || mapBearing() !== 0)) {
+    map.setBearing(0);
+    if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  }
   showInspector(); draw();
 };
 document.getElementById('tool-reset-all-wp-names').onclick = () => {
@@ -3523,6 +3532,10 @@ if (msaCb) {
     try { localStorage.setItem(MSA_KEY, window.showMsa ? '1' : '0'); }
     catch (err) { /* storage unavailable */ }
     refreshInspectorIfVisible();   // rebuild so the MSA row appears/clears
+    // ...and repaint, because this toggle now draws the terrain tint as well. Without it the
+    // map only caught up on the next pan or zoom, which reads exactly like a toggle that
+    // does nothing at all.
+    if (typeof draw === 'function') draw();
   };
 }
 // --- route-wide wind inputs (#722) ----------------------------------

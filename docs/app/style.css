@@ -4462,6 +4462,12 @@ body.theme-light #toolbar button.danger:hover {
    beat the desktop media rule that flattens them in dark). */
 body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
 body.theme-light #toolbar .tb-layer-frame { border-color: #b8c0cc; }
+/* The rules that trail a group / frame title are drawn as a ::after block, and only the
+   standalone .tb-group-separator had a light-theme colour -- so on a light background those
+   two lines stayed dark-theme charcoal while every other separator went pale grey. Same
+   colour for all three now, which is what "looks like the other separators" means. */
+body.theme-light #toolbar .tb-group::after,
+body.theme-light #toolbar .tb-frame-title::after { background: #d8dde5; }
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #export-select:hover,
