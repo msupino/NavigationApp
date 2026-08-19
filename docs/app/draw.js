@@ -209,6 +209,20 @@ let lastOwnHeadingDeg = null;
 // confidently at a stale course, and switching sim↔live leaks one source's
 // heading into the other.
 function resetHeadingPredictor() { lastOwnHeadingDeg = null; }
+// A canvas takes its paragraph direction from the interface language, so in Hebrew everything
+// drawn on the map is laid out RTL -- and bidi then reorders any label that is a Latin or
+// numeric run followed by another run. "5 nm" came out "nm 5"; "LLIB / ראש פינה" came out
+// "ראש פינה / LLIB". Both are composed left to right on purpose: a reading off an instrument,
+// and a chart code before the name it belongs to. The isolate pins that one label without
+// touching the direction of anything around it.
+//
+// Canvas only. The same strings go into inspector inputs, where an invisible control character
+// would end up in a value the pilot edits and saves.
+function ltrIsolate(text) {
+  const t = String(text == null ? '' : text);
+  return t ? '\u2066' + t + '\u2069' : t;
+}
+
 function drawHeadingLine(pos, hdg, gsKt) {
   if (!pos) return;
   const h = Number.isFinite(hdg) ? hdg : lastOwnHeadingDeg;
@@ -281,22 +295,14 @@ function drawHeadingLine(pos, hdg, gsKt) {
     octx.fillText(secondaryLabel, lx, ly2);
   }
 
-  // A number with a Latin unit, drawn on a canvas whose paragraph direction follows the
-  // interface language. In Hebrew that base direction is RTL, and bidi then reorders the two
-  // runs of "5 nm" -- the digits and the unit are separate runs either side of a neutral
-  // space, so they came out as "nm 5". These labels are readings off an instrument, not
-  // prose: they are always left to right, in either language. The isolate says exactly that
-  // and leaves the surrounding text alone.
-  const ltr = (t) => '\u2066' + t + '\u2069';
-
   // Fixed-distance marks: "N nm" ("2 nm"/"5 nm"/"10 nm"). No secondary derived row --
   // a time-to-reach subtext was tried and reported as unwanted clutter ("it shows
   // 1:20 as well"); just the marks themselves.
-  for (const nm of HEADING_LINE_MARKS_NM) drawMark(nm, ltr(nm + ' nm'), null, tune('liveHeadingNmTextColor'));
+  for (const nm of HEADING_LINE_MARKS_NM) drawMark(nm, ltrIsolate(nm + ' nm'), null, tune('liveHeadingNmTextColor'));
   // Fixed-time marks: "N min". Needs a groundspeed to place at all (their distance is
   // derived from it); no secondary distance row either, same reasoning as above.
   if (haveSpeed) {
-    for (const min of HEADING_LINE_MARKS_MIN) drawMark(nmAtMin(min), ltr(min + ' min'), null, tune('liveHeadingMinTextColor'));
+    for (const min of HEADING_LINE_MARKS_MIN) drawMark(nmAtMin(min), ltrIsolate(min + ' min'), null, tune('liveHeadingMinTextColor'));
   }
   // Heading value at the far end of the line, past the last tick's own labels
   // rather than stacked on top of them. Magnetic + padded to 3 digits, same as
@@ -2524,7 +2530,7 @@ function drawAirfields() {
     octx.strokeStyle = tune('airfieldOutlineColor');
     octx.stroke();
     if (showLabels) {
-      const label = referenceOverlayLabel(af, 'airfield');
+      const label = ltrIsolate(referenceOverlayLabel(af, 'airfield'));
       octx.lineWidth = tune('airfieldLabelHaloPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, s.x + r + labelOffset, s.y);
@@ -2557,7 +2563,7 @@ function drawNavWaypoints() {
     octx.fill();
     octx.stroke();
     if (showLabels) {
-      const label = referenceOverlayLabel(wp, 'navwp');
+      const label = ltrIsolate(referenceOverlayLabel(wp, 'navwp'));
       octx.lineWidth = tune('navWaypointLabelHaloPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, s.x + labelOffset, s.y);

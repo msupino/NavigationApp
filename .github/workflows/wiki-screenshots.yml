@@ -39,7 +39,12 @@ jobs:
           restore-keys: playwright-${{ runner.os }}-
 
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        # `--with-deps` shells out to apt-get, and a stalled archive.ubuntu.com has burned
+        # several 20-minute jobs (four in one afternoon): the browser cache hits, then apt
+        # sits there until the job cap kills it, and the shard reports as a test failure it
+        # never got far enough to have. The runner image already carries the system libraries
+        # chromium needs, so cap the apt attempt and fall back to the browsers alone.
+        run: timeout 5m npx playwright install --with-deps chromium || npx playwright install chromium
 
       - name: Clone wiki
         run: |
