@@ -62,7 +62,6 @@ NavAid.tuningDefaults = {
   // How long before the destination the ATIS reminder fires. Time, not distance: the point is
   // to have enough of it to tune, listen through a full cycle and copy the numbers before the
   // arrival gets busy, and that is a duration regardless of groundspeed.
-  commLeadSec: { value: 60, min: 15, max: 300, step: 15, label: 'Frequency call, seconds ahead' },
   atisLeadSec: { value: 600, min: 60, max: 1800, step: 30, label: 'ATIS reminder lead (s)' },
   atisMarkerColor: { value: '#1f6fd0', type: 'color', label: 'ATIS reminder marker colour' },
   atisMarkerRadiusPx: { value: 10, min: 3, max: 30, step: 1, label: 'ATIS reminder marker radius (px)' },
@@ -729,7 +728,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'commLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -1961,22 +1960,19 @@ window.S = Object.assign({
   // only source of truth" rule the ETA trigger itself already follows. Any of the three may
   // be null (last leg: no next leg at all; no altitude entered; no planned speed to time
   // it with) and is simply left out, never guessed.
-  watchAlertLegBody: function(wp, alt, hdg, time) {
+  // `freq` is set only when this waypoint changes frequency -- see the comment at the call
+  // site for why that rides here rather than in an alert of its own.
+  watchAlertLegBody: function(wp, alt, hdg, time, freq) {
     const parts = [];
     if (alt != null) parts.push(alt + ' ft');
     if (hdg != null) parts.push(hdg + '°');
     if (time != null) parts.push(time);
-    return 'Approaching ' + wp + (parts.length ? ' — next leg: ' + parts.join(', ') : '');
+    return 'Approaching ' + wp + (freq ? ' ' + freq : '') +
+      (parts.length ? ' — next leg: ' + parts.join(', ') : '');
   },
   // The overhead-the-waypoint moment -- CVFR radio phraseology's own "TOP <point>" call.
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
-  // Written form of the same call. Short on purpose: it is read on a watch face, in the
-  // minute before a waypoint, by someone who is flying.
-  watchAlertCommTitle: 'Next frequency',
-  watchAlertCommBody: function(station, freq) {
-    return [station, freq].filter(Boolean).join(' ');
-  },
   watchAlertAltTitle: 'Altitude',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';
@@ -2010,8 +2006,11 @@ window.S = Object.assign({
   // the heading already split into digits (see gpsSpokenDigits), and give a time in whole
   // minutes. A missing field is left out here exactly as it is left out of the
   // notification: never guessed.
-  speakAlertLeg: function(wp, alt, hdgDigits, hms) {
+  speakAlertLeg: function(wp, alt, hdgDigits, hms, freqDigits) {
     let s = 'Approaching ' + wp + '.';
+    // First, before the next leg's numbers: it is the one thing here that has to be acted
+    // on before the waypoint rather than after it.
+    if (freqDigits) s += ' Frequency ' + freqDigits + '.';
     const parts = [];
     if (alt != null) parts.push(alt + ' feet');
     if (hdgDigits != null) parts.push('heading ' + hdgDigits);
@@ -2033,14 +2032,6 @@ window.S = Object.assign({
   // Shortly before a waypoint that changes frequency. Either half may be missing -- a
   // callout can name a station with no frequency, or a frequency with no station -- and
   // whichever is present is still worth hearing.
-  speakAlertComm: function(station, freqDigits) {
-    const bits = [];
-    if (station) bits.push(String(station).replace(/_/g, ' '));
-    if (freqDigits) bits.push(freqDigits);
-    // "Contact X" is an instruction to change frequency, and that is ATC's call. The alert
-    // names what comes next; the pilot and the controller decide when.
-    return bits.length ? ('Next frequency: ' + bits.join(', ') + '.') : '';
-  },
   spokenDecimal: 'decimal',
   speakAlertAlt: function(actual, planned) {
     return 'Altitude ' + actual + ' feet, planned ' + planned + '.';
