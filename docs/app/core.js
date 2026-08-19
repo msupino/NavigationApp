@@ -467,9 +467,10 @@ NavAid.tuningDefaults = {
   terrainLowColor: { value: '#e8f0d8', type: 'color', label: 'Terrain tint: low ground' },
   terrainHighColor: { value: '#8d5524', type: 'color', label: 'Terrain tint: high ground' },
   terrainTintMaxFt: { value: 3500, min: 500, max: 15000, step: 100, label: 'Terrain tint: top of the colour ramp (ft)' },
-  // 10, not the map's own minimum of 8: at 8 the whole country is on screen and the grid is
-  // ~15 000 cells, which reads as a brown wash over the chart rather than as ground.
-  terrainTintMinZoom: { value: 10, min: 5, max: 14, step: 1, label: 'Terrain tint: minimum zoom' },
+  // The tint draws at every zoom the map offers; cells are merged into blocks of at least
+  // terrainTintMinCellPx so a zoomed-out view stays cheap and legible instead of vanishing.
+  terrainTintMinZoom: { value: 0, min: 0, max: 14, step: 1, label: 'Terrain tint: minimum zoom (0 = always)' },
+  terrainTintMinCellPx: { value: 7, min: 2, max: 40, step: 1, label: 'Terrain tint: smallest painted block (px)' },
   profileMsaColor: { value: '#d7263d', type: 'color', label: 'Profile safe-altitude line' },
   profileTerrainSamples: { value: 240, min: 40, max: 1000, step: 20, label: 'Profile terrain samples' },
   profileHeadroomFt: { value: 400, min: 0, max: 5000, step: 100, label: 'Profile headroom above terrain (ft)' },
@@ -735,7 +736,7 @@ NavAid.tuningGroups = [
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
-  { name: 'Terrain', keys: ['terrainTintAlpha', 'terrainBandFt', 'terrainLowColor', 'terrainHighColor', 'terrainTintMaxFt', 'terrainTintMinZoom'] },   // msaBufferFt lives in the Navigation group
+  { name: 'Terrain', keys: ['terrainTintAlpha', 'terrainBandFt', 'terrainLowColor', 'terrainHighColor', 'terrainTintMaxFt', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },

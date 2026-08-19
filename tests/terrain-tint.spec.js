@@ -53,25 +53,57 @@ test('the tint is banded, so neighbouring heights in one band share a colour', a
   expect(out.sea).not.toBe(out.nextBand);
 });
 
-test('it stays off the chart when zoomed out, where it would be a brown wash', async ({ page }) => {
-  await boot(page);                                    // boots at zoom 10
-  // The map's own minimum zoom is 8, so "zoom out until it disappears" cannot be written as
-  // a setView; raise the threshold above the current zoom instead, which is the same test of
-  // the same guard.
-  const off = await page.evaluate(() => {
-    setTune('terrainTintMinZoom', 12);
-    let fills = 0;
-    const real = octx.fill.bind(octx);
-    octx.fill = (...a) => { fills++; return real(...a); };
-    drawTerrainTint();
-    octx.fill = real;
-    return fills;
+// The whole-route view (zoom 8-9) is exactly where a pilot looks, and a zoom floor made it
+// the one view that drew nothing at all — reported as "doesn't seem to do anything". Cells
+// are merged into legible blocks there instead of being skipped.
+test('it draws at every zoom, including the whole-route view', async ({ page }) => {
+  await boot(page);
+  const perZoom = await page.evaluate(async () => {
+    const out = {};
+    for (const z of [8, 9, 10, 12, 13]) {
+      map.setView([32.7, 35.2], z);
+      await new Promise(r => setTimeout(r, 60));
+      drawTerrainTint();
+      out[z] = window.__terrainTintCells;
+    }
+    return out;
   });
-  expect(off).toBe(0);
-  // ...and the shipped threshold is above the map's minimum, so the whole-country view is
-  // never painted: at zoom 8 the grid is ~15 000 cells and hides the chart underneath.
-  const shipped = await page.evaluate(() => NavAid.tuningDefaults.terrainTintMinZoom.value);
-  expect(shipped).toBeGreaterThan(8);
+  for (const [z, n] of Object.entries(perZoom)) expect(n, 'zoom ' + z).toBeGreaterThan(50);
+});
+
+test('zoomed out it merges cells rather than drawing thousands of invisible ones', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    map.setView([32.7, 35.2], 8);
+    await new Promise(r => setTimeout(r, 60));
+    drawTerrainTint();
+    const merged = window.__terrainTintCells;
+    setTune('terrainTintMinCellPx', 2);          // ask for near-raw cells
+    drawTerrainTint();
+    return { merged, raw: window.__terrainTintCells };
+  });
+  expect(out.merged).toBeLessThan(out.raw);      // blocks, not one quad per grid cell
+});
+
+test('a block carries the HIGHEST ground in it, never the lowest', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    // Two bands apart, so rounding the wrong way would be visible as a colour.
+    setTune('terrainBandFt', 500);
+    return { high: terrainTintColor(1600), low: terrainTintColor(200) };
+  });
+  expect(out.high).not.toBe(out.low);
+});
+
+test('the knob can still switch it off below a zoom', async ({ page }) => {
+  await boot(page);
+  const off = await page.evaluate(() => {
+    setTune('terrainTintMinZoom', 14);
+    window.__terrainTintCells = -1;               // so an early return is distinguishable
+    drawTerrainTint();
+    return window.__terrainTintCells;
+  });
+  expect(off).toBe(-1);            // returned before painting anything
 });
 
 test('no coverage means no tint, not a flat colour', async ({ page }) => {

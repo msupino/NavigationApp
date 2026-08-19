@@ -378,8 +378,6 @@ function drawTerrainTint() {
   if (typeof terrainHasCoverage !== 'function' || !terrainHasCoverage()) return;
   const g = terrainGrid;
   if (!g || !Array.isArray(g.data) || !g.rows || !g.cols) return;
-  // Below this zoom a cell is a couple of pixels and the whole country is a brown wash that
-  // hides the chart underneath -- which is the one thing a chart overlay must not do.
   if (map.getZoom() < tune('terrainTintMinZoom')) return;
   const latStep = (g.north - g.south) / g.rows;
   const lngStep = (g.east - g.west) / g.cols;
@@ -391,17 +389,43 @@ function drawTerrainTint() {
   const c0 = Math.max(0, Math.floor((Math.max(g.west, b.getWest()) - g.west) / lngStep));
   const c1 = Math.min(g.cols - 1, Math.ceil((Math.min(g.east, b.getEast()) - g.west) / lngStep));
   const toFt = g.units === 'm' ? 3.28084 : 1;
+  // Zoomed out, one grid cell is a pixel or two: drawing them one by one costs thousands of
+  // quads for a picture nobody can resolve. Cells are merged into blocks big enough to see
+  // instead, carrying the HIGHEST elevation in the block -- rounding terrain down at a glance
+  // is the one direction this must never round. That keeps the tint working at every zoom,
+  // which a floor did not: the whole-route view (zoom 8-9) is exactly where a pilot looks,
+  // and it was the view that drew nothing at all.
+  const cellPx = (() => {
+    const a = proj({ lat: g.north, lng: g.west });
+    const b = proj({ lat: g.north - latStep, lng: g.west + lngStep });
+    return Math.max(0.001, Math.hypot(b.x - a.x, b.y - a.y));
+  })();
+  const step = Math.max(1, Math.ceil(tune('terrainTintMinCellPx') / cellPx));
+  const blockMax = (r, c) => {
+    let m = null;
+    for (let rr = r; rr < Math.min(r + step, g.rows); rr++) {
+      const row = g.data[rr];
+      if (!row) continue;
+      for (let cc = c; cc < Math.min(c + step, g.cols); cc++) {
+        const v = row[cc];
+        if (v == null || !Number.isFinite(v)) continue;
+        if (m == null || v > m) m = v;
+      }
+    }
+    return m;
+  };
   octx.save();
-  for (let r = r0; r <= r1; r++) {
-    const row = g.data[r];
-    if (!row) continue;
-    for (let c = c0; c <= c1; c++) {
-      const v = row[c];
-      if (v == null || !Number.isFinite(v)) continue;      // a hole stays uncoloured
+  let drawn = 0;
+  for (let r = r0; r <= r1; r += step) {
+    for (let c = c0; c <= c1; c += step) {
+      const v = blockMax(r, c);
+      if (v == null) continue;                              // a hole stays uncoloured
       const fill = terrainTintColor(v * toFt);
       if (!fill) continue;
-      const north = g.north - r * latStep, south = north - latStep;
-      const west = g.west + c * lngStep, east = west + lngStep;
+      const north = g.north - r * latStep;
+      const south = north - latStep * step;
+      const west = g.west + c * lngStep;
+      const east = west + lngStep * step;
       const p1 = proj({ lat: north, lng: west });
       const p2 = proj({ lat: north, lng: east });
       const p3 = proj({ lat: south, lng: east });
@@ -412,10 +436,11 @@ function drawTerrainTint() {
       octx.lineTo(p3.x, p3.y); octx.lineTo(p4.x, p4.y);
       octx.closePath();
       octx.fill();
+      drawn++;
     }
   }
   octx.restore();
-  window.__terrainTintCells = (r1 - r0 + 1) * (c1 - c0 + 1);   // test hook
+  window.__terrainTintCells = drawn;          // test hook: blocks actually painted
 }
 if (typeof window !== 'undefined') {
   window.drawTerrainTint = drawTerrainTint;
