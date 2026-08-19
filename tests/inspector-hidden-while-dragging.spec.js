@@ -117,3 +117,41 @@ test('a tap that never moves opens the panel on release', async ({ page }) => {
   expect(await hidden(page)).toBe(false);
   expect(await page.evaluate(() => document.getElementById('inspector').classList.contains('insp-drag-hidden'))).toBe(false);
 });
+
+// Reported from a phone: "browsing map on mobile is popping up inspector all the time".
+// Pressing a leg line does not drag anything — the map pans under the finger — so the touch
+// handler kept its hands off it entirely, and never noticed the finger had travelled. The
+// release then read as a tap on the leg and opened its panel, on every pan that happened to
+// start on the route.
+test.describe('panning the chart is not a request to inspect', () => {
+  // Container coordinates, offset by the map's own box, exactly like at() above.
+  const legMidpoint = (page) => page.evaluate(() => {
+    const a = map.latLngToContainerPoint([state.waypoints[0].lat, state.waypoints[0].lng]);
+    const b = map.latLngToContainerPoint([state.waypoints[1].lat, state.waypoints[1].lng]);
+    const box = map.getContainer().getBoundingClientRect();
+    return { x: Math.round(box.left + (a.x + b.x) / 2), y: Math.round(box.top + (a.y + b.y) / 2) };
+  });
+
+  test('a pan that starts on a leg leaves the panel shut', async ({ page }) => {
+    await boot(page);
+    const mid = await legMidpoint(page);
+    await touch(page, 'touchstart', mid.x, mid.y);
+    await touch(page, 'touchmove', mid.x + 80, mid.y + 60);
+    await touch(page, 'touchend', mid.x + 80, mid.y + 60);
+    expect(await hidden(page)).toBe(true);
+    // ...and the leg it passed over is not left highlighted with nothing to explain it.
+    expect(await page.evaluate(() => state.selected)).toBe(null);
+  });
+
+  // The other half of the same rule: a genuine tap on a leg still opens it. That is how a leg
+  // is inspected on a touch screen.
+  test('a tap on a leg still opens it', async ({ page }) => {
+    await boot(page);
+    const mid = await legMidpoint(page);
+    await touch(page, 'touchstart', mid.x, mid.y);
+    await touch(page, 'touchmove', mid.x + 2, mid.y + 1);      // a fingertip is never still
+    await touch(page, 'touchend', mid.x + 2, mid.y + 1);
+    expect(await hidden(page)).toBe(false);
+    expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('leg');
+  });
+});

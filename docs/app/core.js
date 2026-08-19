@@ -1649,6 +1649,14 @@ window.S = Object.assign({
   orientNorthUp: 'North up — tap to hold your heading up',
   orientRotated: 'Map rotated — tap for north up',
   orientHeadingUp: 'Heading up — tap for north up',
+  // The edit lock: nothing on the route can be dragged while it is on. Wording says what the
+  // chart is doing, then what a tap changes, like the other in-flight buttons.
+  editLockOn: 'Route is locked — tap to allow moving points and labels',
+  editLockOff: 'Points and labels can be dragged — tap to lock the route',
+  editLockAuto: 'Route is locked while a position is showing — tap to allow moving it',
+  editLockBlockedToast: 'Route is locked — unlock it to edit',
+  editLockOnToast: 'Route locked',
+  editLockOffToast: 'Route unlocked',
   followLockOn: 'Following your aircraft — tap to leave the map where you put it',
   followLockOff: 'Map stays where you put it — tap to follow your aircraft',
   expandMenu: 'Expand menu',
@@ -2190,6 +2198,10 @@ var showReturn = false;     // outbound (return) markers — off by default
 var legDirFilter = 'both';
 var showMidLeg = false;
 var showCumTime = true;     // cumulative-time kites — on by default
+// Route layout is locked against dragging: waypoints, kites, notes and comm callouts all stay
+// where they are. Restored per device from navaid.editLocked (ui.js), and separate from the
+// automatic lock that applies whenever a fix is driving the map (dragLockedNow in interact.js).
+var editLocked = false;
 var highlightDiff = false;  // purple halo on legs that change altitude
 var limitLegKites = true;   // keep dragged leg markers between their two waypoints
 var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
