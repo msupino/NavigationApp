@@ -1453,7 +1453,13 @@ function gpsDestinationAtis() {
   if (!dest || typeof airfieldAtWaypoint !== 'function') return null;
   const af = airfieldAtWaypoint(dest);
   if (!af || !af.atis) return null;
-  return { field: af.name || dest.name || '', freq: String(af.atis), wp: dest };
+  // The dataset carries the published wording ("Arrival 132.50 MHz / Departure 132.80 MHz"),
+  // which belongs in the inspector and is far too long for an alert read at a glance. `freq`
+  // is the arriving pilot's frequency; `published` keeps the full text for anywhere that wants
+  // it.
+  const published = String(af.atis);
+  const short = (typeof atisShortFreq === 'function') ? atisShortFreq(published) : '';
+  return { field: af.name || dest.name || '', freq: short || published, published, wp: dest };
 }
 // Distance (NM) from a point to the end of the route, walked leg by leg. Straight-line to the
 // destination would understate a route that turns -- and the reminder is about how much TIME
@@ -1619,13 +1625,14 @@ function gpsCheckLegAlerts() {
       const etaDestS = Number.isFinite(toGo) ? (toGo / planSpeed) * 3600 : null;
       if (etaDestS != null && etaDestS <= gpsAtisLeadS()) {
         _gpsAtisAlerted = true;
-        const mins = Math.max(1, Math.round(etaDestS / 60));
         const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+        // Field and frequency, nothing else. The lead time is why the alert fired, not
+        // something the pilot has to read back off the screen.
         gpsSendWatchAlert((S && S.watchAlertAtisTitle) || 'ATIS',
-          (S && S.watchAlertAtisBody) ? S.watchAlertAtisBody(atis.field, atis.freq, mins)
+          (S && S.watchAlertAtisBody) ? S.watchAlertAtisBody(atis.field, atis.freq)
             : (atis.field + ' ATIS ' + atis.freq),
           (S && S.speakAlertAtis)
-            ? S.speakAlertAtis(atis.field, gpsSpokenDigits(atis.freq, lang), mins)
+            ? S.speakAlertAtis(atis.field, gpsSpokenDigits(atis.freq, lang))
             : null);
       }
     }

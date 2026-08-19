@@ -66,6 +66,11 @@ NavAid.tuningDefaults = {
   atisMarkerColor: { value: '#1f6fd0', type: 'color', label: 'ATIS reminder marker colour' },
   atisMarkerRadiusPx: { value: 10, min: 3, max: 30, step: 1, label: 'ATIS reminder marker radius (px)' },
   atisMarkerFontPx: { value: 13, min: 8, max: 28, step: 1, label: 'ATIS reminder marker label (px)' },
+  // The magnetic heading printed past the end of the own-ship predictor line. The same number
+  // is already in the footer readout, right next to the speed and altitude it belongs with,
+  // and out on the line it sat over the chart at the busiest moment. Off by default; the
+  // distance and time ticks on the line are unaffected.
+  liveHeadingEndLabel: { value: false, type: 'bool', label: 'Heading number at the end of the predictor line' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, seconds ahead' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (deg)' },
@@ -675,7 +680,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -1865,11 +1870,11 @@ window.S = Object.assign({
   tbGpsLiveStop: 'Hide',
   // ATIS reminder: fires once, a set time out from the destination.
   watchAlertAtisTitle: 'ATIS',
-  watchAlertAtisBody: function (field, freq, mins) {
-    return field + ' ATIS ' + freq + ' — ' + mins + ' min out';
-  },
-  speakAlertAtis: function (field, freqDigits, mins) {
-    return 'A T I S for ' + field + ', ' + freqDigits + '. ' + mins + ' minutes out.';
+  // Short on purpose: a notification is read at a glance in the cockpit, and the minutes were
+  // the part nobody needed -- the alert only fires when it is time.
+  watchAlertAtisBody: function (field, freq) { return field + ' ATIS ' + freq; },
+  speakAlertAtis: function (field, freqDigits) {
+    return 'A T I S for ' + field + ', ' + freqDigits;
   },
   atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS is not available in this browser.',

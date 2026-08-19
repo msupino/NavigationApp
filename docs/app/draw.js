@@ -301,11 +301,17 @@ function drawHeadingLine(pos, hdg, gsKt) {
   const hMag = typeof toMagnetic === 'function' ? toMagnetic(h) : h;
   const headingLabel = (typeof pad3 === 'function' ? pad3(Math.round(((hMag % 360) + 360) % 360)) :
     Math.round(hMag)) + '°';
-  octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
-  octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
-  octx.strokeText(headingLabel, headEnd.x, headEnd.y);
-  octx.fillStyle = tune('liveHeadingTextColor');
-  octx.fillText(headingLabel, headEnd.x, headEnd.y);
+  // Not drawn by default: the same magnetic heading is in the footer readout beside the speed
+  // and altitude it belongs with, and out here it printed over the chart at the far end of the
+  // line -- furthest from where the pilot is looking, on top of the ground being flown into.
+  // liveHeadingEndLabel puts it back. The distance and time ticks are untouched either way.
+  if (typeof tune === 'function' && tune('liveHeadingEndLabel') === true) {
+    octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
+    octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
+    octx.strokeText(headingLabel, headEnd.x, headEnd.y);
+    octx.fillStyle = tune('liveHeadingTextColor');
+    octx.fillText(headingLabel, headEnd.x, headEnd.y);
+  }
   octx.restore();
   if (typeof window !== 'undefined')
     window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(),

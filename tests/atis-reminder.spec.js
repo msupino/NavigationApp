@@ -74,6 +74,10 @@ test('the reminder fires inside the lead time, once, and names the frequency', a
   expect(out.count).toBe(1);                        // once per arrival
   expect(out.body).toContain('132');
   expect(out.speech).toMatch(/A T I S/);            // spoken as letters, not "atis"
+  // Short: the field and the frequency, nothing else. A notification is read at a glance, and
+  // the lead time is why it fired rather than something to read back off the screen.
+  expect(out.body).not.toMatch(/\bmin\b/);
+  expect(out.body.length).toBeLessThan(30);
 });
 
 test('it stays quiet while the destination is still far out', async ({ page }) => {
@@ -179,4 +183,16 @@ test('the marker is drawn big enough to read', async ({ page }) => {
   }));
   expect(sizes.radius).toBeGreaterThanOrEqual(10);
   expect(sizes.font).toBeGreaterThanOrEqual(12);
+});
+
+// The Hebrew body used to end with "<n> דקות לפני" after a Latin run, and a notification laid
+// out left-to-right stranded the number at the wrong end: "דקות לפני 7". What is left is one
+// Hebrew word and a single Latin run, which orders correctly whichever way the client lays it.
+test('the Hebrew alert reads correctly and stays short', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof S === 'object' && S && typeof S.watchAlertAtisBody === 'function');
+  const body = await page.evaluate(() => S.watchAlertAtisBody('LLBG', '132.50'));
+  expect(body).toBe('ATIS LLBG 132.50');
+  expect(body).not.toMatch(/דקות/);
+  expect(body.length).toBeLessThan(30);
 });

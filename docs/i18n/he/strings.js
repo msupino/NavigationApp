@@ -1036,11 +1036,13 @@ window.S = {
   tbGpsLiveTitle: 'הצגת המיקום החי שלך על המפה (GPS, ללא הקלטה)',
   tbGpsLiveStop: 'הסתר',
   watchAlertAtisTitle: 'ATIS',
-  watchAlertAtisBody: function (field, freq, mins) {
-    return field + ' ATIS ' + freq + ' — ' + mins + ' דקות לפני';
-  },
-  speakAlertAtis: function (field, freqDigits, mins) {
-    return 'ATIS ל' + field + ', ' + freqDigits + '. ' + mins + ' דקות לפני הנחיתה.';
+  // Hebrew first, Latin tail: the old wording ended with "<n> דקות לפני" after a Latin run, and
+  // a notification laid out left-to-right showed it as "דקות לפני 7" -- the number stranded at
+  // the wrong end. The minutes are gone anyway (the alert fires when it is time), so what is
+  // left is one Hebrew word and a single Latin run, which orders correctly either way.
+  watchAlertAtisBody: function (field, freq) { return 'ATIS ' + field + ' ' + freq; },
+  speakAlertAtis: function (field, freqDigits) {
+    return 'ATIS ל' + field + ', ' + freqDigits;
   },
   atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS אינו זמין בדפדפן זה.',
