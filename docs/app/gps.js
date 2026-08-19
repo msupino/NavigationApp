@@ -1457,8 +1457,7 @@ function gpsCheckRouteUnknown(insideCone) {
   }
   _gpsConeAlertedHdg = hdg;
   _gpsConeAlertedAt = now;
-  const label = (typeof waypointDisplayLabel === 'function')
-    ? waypointDisplayLabel(rec.wp, rec.index) : (rec.wp.name || '');
+  const label = gpsPlaceLabel(rec.wp, rec.index);
   const hdg3 = (typeof pad3 === 'function') ? pad3(hdg) : String(hdg);
   const nm = Math.round(rec.distNm * 10) / 10;
   gpsSendWatchAlert(
@@ -1582,8 +1581,7 @@ function gpsCheckLegAlerts() {
     const etaS = (dist / planSpeed) * 3600;
     if (etaS <= etaThreshold) {
       _gpsAlertLegFired = true;
-      const label = (typeof waypointDisplayLabel === 'function')
-        ? waypointDisplayLabel(next, gpsAlertLegIndex + 1) : (next.name || '');
+      const label = gpsPlaceLabel(next, gpsAlertLegIndex + 1);
       // What to fly on the leg AFTER this waypoint -- the one starting here, not the one
       // just being finished -- so the alert doubles as prep for the turn, not just a
       // "you're nearly there" ping. Either can be unavailable (last leg: no next leg at
@@ -1823,20 +1821,33 @@ function gpsSpokenPlace(text, lang) {
 }
 window.gpsSpokenPlace = gpsSpokenPlace;
 
-// The map draws an airfield by its ICAO code, because that is what the chart prints -- but
-// spelling "L, L, I, B" at someone whose destination is Rosh Pina is not how anyone flying
-// there refers to it. Speech therefore takes the dataset's name for the field in the
-// interface language, exactly as the ATIS reminder does, and falls back to spelling the code
-// only when the dataset has no name at all. Nav waypoints need none of this: navName()
+// What to CALL a waypoint in an alert. The map draws an airfield by its ICAO code, because
+// that is what the chart prints -- but an alert is a sentence, and "מתקרב אל LLIB" is a
+// Hebrew sentence with an English word in it. Alerts therefore use the dataset's name for the
+// field in the interface language, exactly as the ATIS reminder does, and fall back to the
+// code only when the dataset has no name at all. Nav waypoints need none of this: navName()
 // already returned them in the right language, and a reporting point genuinely IS its code.
-function gpsSpokenWaypoint(wp, label, lang) {
+//
+// This is the WRITTEN form, shared by every alert that names a place; gpsSpokenWaypoint()
+// below is its spoken counterpart.
+function gpsAirfieldName(wp, lang) {
   const af = (wp && typeof airfieldAtWaypoint === 'function') ? airfieldAtWaypoint(wp) : null;
-  if (af) {
-    const he = String(lang || '').toLowerCase().slice(0, 2) === 'he';
-    const name = (he ? (af.he || af.en) : (af.en || af.he)) || '';
-    if (name) return name;
-  }
-  return gpsSpokenPlace(label, lang);
+  if (!af) return '';
+  const he = String(lang || '').toLowerCase().slice(0, 2) === 'he';
+  return (he ? (af.he || af.en) : (af.en || af.he)) || '';
+}
+function gpsPlaceLabel(wp, idx) {
+  const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+  return gpsAirfieldName(wp, lang) ||
+    ((typeof waypointDisplayLabel === 'function') ? waypointDisplayLabel(wp, idx)
+      : ((wp && wp.name) || ''));
+}
+window.gpsPlaceLabel = gpsPlaceLabel;
+
+// The spoken form of the same place: a name is said as a name, a bare code is spelled
+// ("L, L, I, B", which is what a controller says and what a pilot hears).
+function gpsSpokenWaypoint(wp, label, lang) {
+  return gpsAirfieldName(wp, lang) || gpsSpokenPlace(label, lang);
 }
 window.gpsSpokenWaypoint = gpsSpokenWaypoint;
 
@@ -2156,8 +2167,7 @@ function gpsCheckDrift() {
   // read off a compass/HSI against the planned course.
   const trackErrorDeg = _gpsAngleDiff(flown.brg, leg.brg);
   if (Math.abs(trackErrorDeg) < gpsDriftErrorDeg()) return;
-  const label = (typeof waypointDisplayLabel === 'function')
-    ? waypointDisplayLabel(end, gpsAlertLegIndex + 1) : (end.name || '');
+  const label = gpsPlaceLabel(end, gpsAlertLegIndex + 1);
   if (flown.dist < leg.dist / 2) {
     // Before the leg's midpoint: worth rejoining the original line. Classic "double the
     // error" intercept. Give the pilot the resulting magnetic heading to fly, not the
