@@ -126,14 +126,21 @@ test('the in-flight column keeps a fixed order however often it refreshes', asyn
 
 test('connecting the simulator brings the column up; disconnecting takes it away', async ({ page }) => {
   await boot(page);
-  const shown = () => page.evaluate(() => ['voice-toggle', 'orient-toggle', 'follow-lock']
+  // The follow lock is deliberately not in this list: it is a standing preference and stays on
+  // the map with or without a position (see follow-lock-control.spec.js). These two have
+  // nothing to announce or point at without one.
+  const shown = () => page.evaluate(() => ['voice-toggle', 'orient-toggle']
     .map(id => getComputedStyle(document.getElementById(id).parentNode).display !== 'none'));
-  expect(await shown()).toEqual([false, false, false]);
+  const lock = () => page.evaluate(() =>
+    getComputedStyle(document.getElementById('follow-lock').parentNode).display !== 'none');
+  expect(await shown()).toEqual([false, false]);
+  expect(await lock()).toBe(true);
   // simStart()/simStop() without a bridge to poll: the state change is what is under test.
   await page.evaluate(() => { window.simOn = true; simRefreshFlightControls(); });
-  expect(await shown()).toEqual([true, true, true]);
+  expect(await shown()).toEqual([true, true]);
   await page.evaluate(() => { window.simOn = false; simRefreshFlightControls(); });
-  expect(await shown()).toEqual([false, false, false]);
+  expect(await shown()).toEqual([false, false]);
+  expect(await lock()).toBe(true);
 });
 
 // Reported: the orientation and follow-lock buttons did nothing in sim. The sim poll called

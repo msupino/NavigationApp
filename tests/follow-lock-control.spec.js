@@ -25,13 +25,29 @@ const centre = (page) => page.evaluate(() => ({ lat: map.getCenter().lat, lng: m
 const shown = (page) => page.evaluate(() =>
   getComputedStyle(document.getElementById('follow-lock').parentNode).display !== 'none');
 
-test('the switch appears only while a fix is driving the map', async ({ page }) => {
+// Unlike the voice and orientation buttons beside it, this one is always there: it is a
+// standing preference a pilot sets on the ground, and the first fix obeys whatever it says.
+// While it only appeared once tracking had started, the only way to change it was to be
+// already flying.
+test('the switch is on the map whether or not anything is being tracked', async ({ page }) => {
   await boot(page);
-  expect(await shown(page)).toBe(false);          // nothing to follow yet
+  expect(await shown(page)).toBe(true);           // before any fix
   await page.evaluate(() => startLiveLocation());
   expect(await shown(page)).toBe(true);
   await page.evaluate(() => stopLiveLocation());
-  expect(await shown(page)).toBe(false);
+  expect(await shown(page)).toBe(true);           // ...and after tracking stops
+});
+
+test('set on the ground, it is what the first fix obeys', async ({ page }) => {
+  await boot(page);
+  await page.click('#follow-lock');               // off, before tracking starts
+  expect(await page.evaluate(() => gpsFollow)).toBe(false);
+  await page.evaluate(() => startLiveLocation());
+  const before = await centre(page);
+  await fix(page, 32.00, 34.00);
+  const after = await centre(page);
+  expect(after.lat).toBeCloseTo(before.lat, 4);   // the fix did not take the map
+  expect(after.lng).toBeCloseTo(before.lng, 4);
 });
 
 test('on by default, and it says which state it is in', async ({ page }) => {
