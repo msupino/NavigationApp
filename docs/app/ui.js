@@ -542,7 +542,7 @@ editLockBtn.onclick = () => {
     window.editUnlockOverride = wasLocked;
     refreshEditLockControl();
     if (typeof showToast === 'function') {
-      showToast(wasLocked ? (S.editLockFlightOffToast || 'Route unlocked for this flight')
+      showToast(wasLocked ? (S.editLockOffToast || 'Route unlocked')
                           : (S.editLockOnToast || 'Route locked'));
     }
     return;

@@ -144,7 +144,7 @@ test.describe('the button follows the automatic lock too', () => {
     await page.evaluate(() => startLiveLocation());
     expect(await page.evaluate(() => dragLockedNow('wp'))).toBe(true);
     await page.click('#edit-lock');
-    await expect(page.locator('.toast')).toHaveText(/this flight/i);
+    await expect(page.locator('.toast')).toHaveText(/route unlocked/i);
     const open_ = await page.evaluate(() => ({
       locked: dragLockedNow('wp'),
       pressed: document.getElementById('edit-lock').getAttribute('aria-pressed'),
