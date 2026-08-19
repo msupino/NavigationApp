@@ -137,20 +137,44 @@ test.describe('the button follows the automatic lock too', () => {
     expect(out.locked).toBe(true);
   });
 
-  // In the air the lock is not the pilot's to lift — a nudge rewrites the plan the alerts are
-  // measuring against — so the tap explains itself instead of flipping a hidden preference.
-  test('tapping while tracking says why, and changes nothing', async ({ page }) => {
+  // The in-flight lock is a default, not a rule: a diversion gets planned in the air, and a
+  // pilot who means to move a waypoint has to be able to. One tap lifts it.
+  test('a tap in the air lifts the lock, and another puts it back', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => startLiveLocation());
+    expect(await page.evaluate(() => dragLockedNow('wp'))).toBe(true);
     await page.click('#edit-lock');
-    await expect(page.locator('.toast')).toHaveText(/while a position/i);
-    const out = await page.evaluate(() => ({
-      pref: window.editLocked === true, locked: dragLockedNow('wp'),
+    await expect(page.locator('.toast')).toHaveText(/this flight/i);
+    const open_ = await page.evaluate(() => ({
+      locked: dragLockedNow('wp'),
       pressed: document.getElementById('edit-lock').getAttribute('aria-pressed'),
+      stored: localStorage.getItem('navaid.editLocked'),
     }));
-    expect(out.pref).toBe(false);
-    expect(out.locked).toBe(true);
-    expect(out.pressed).toBe('true');
+    expect(open_.locked).toBe(false);
+    expect(open_.pressed).toBe('false');
+    expect(open_.stored).toBe(null);        // an exception, not a new preference
+    await page.click('#edit-lock');
+    expect(await page.evaluate(() => dragLockedNow('wp'))).toBe(true);
+  });
+
+  // Unlocking really does let the waypoint move — the point of the exception.
+  test('unlocked in the air, a waypoint drag moves it', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => startLiveLocation());
+    const before = await page.evaluate(() => ({ ...state.waypoints[0] }));
+    await page.click('#edit-lock');
+    const after = await dragWaypoint(page, 0, 60, 40);
+    expect(Math.abs(after.lat - before.lat) + Math.abs(after.lng - before.lng)).toBeGreaterThan(0);
+  });
+
+  // The exception lasts one session: the next flight starts locked whatever happened on the
+  // last one, because that is the state a pilot who never touches the button should get.
+  test('the next session starts locked again', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => startLiveLocation());
+    await page.click('#edit-lock');                  // unlocked for this flight
+    await page.evaluate(() => { stopLiveLocation(); startLiveLocation(); });
+    expect(await page.evaluate(() => dragLockedNow('wp'))).toBe(true);
   });
 });
 

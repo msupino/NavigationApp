@@ -803,8 +803,9 @@ as a machine-readable registry.
 - Session keys: `navaid.selected`, `navaid.fpOpen`, and
   `navaid.openChartModal` restore transient UI state within a tab visit.
 - `navaid.editLocked` — `'0'` / `'1'` for the map's edit lock: while on, nothing on the
-  route can be dragged. Separate from the automatic lock that applies whenever a fix is
-  driving the map.
+  route can be dragged. The route also locks automatically whenever a fix is driving the
+  map; one tap lifts that for the current session only (`window.editUnlockOverride`, never
+  stored, cleared at every start of tracking), so the next flight begins locked again.
 - `navaid.simUrl` — simulator bridge base URL.
 - `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
 - `navaid.gpsFollow` — `'0'` / `'1'` for the map's follow lock. One switch for both a

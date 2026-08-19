@@ -298,6 +298,9 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  // A route unlocked by hand during the last session locks again for this one -- see
+  // routeEditLocked() in ui.js.
+  if (typeof window !== 'undefined') window.editUnlockOverride = false;
   gpsStartCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();

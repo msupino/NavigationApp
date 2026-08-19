@@ -1653,8 +1653,8 @@ window.S = Object.assign({
   // chart is doing, then what a tap changes, like the other in-flight buttons.
   editLockOn: 'Route is locked — tap to allow moving points and labels',
   editLockOff: 'Points and labels can be dragged — tap to lock the route',
-  editLockAuto: 'Route is locked while a position is showing',
-  editLockAutoToast: 'Locked while a position is showing',
+  editLockAuto: 'Route is locked while a position is showing — tap to allow moving it',
+  editLockFlightOffToast: 'Route unlocked for this flight',
   editLockOnToast: 'Route locked',
   editLockOffToast: 'Route unlocked',
   followLockOn: 'Following your aircraft — tap to leave the map where you put it',

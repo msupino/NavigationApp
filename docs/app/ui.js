@@ -501,23 +501,32 @@ editLockCtrl.onAdd = function () {
 editLockCtrl.addTo(map);
 const editLockBtn = document.getElementById('edit-lock');
 // The button shows whether the route CAN be moved, not merely whether the pilot pressed it.
-// Starting a recording or Location locks the route on its own (dragLockedNow), and a button
-// still showing a pencil while every drag is being refused is a button that lies.
+// Starting a recording or Location locks the route on its own, and a button still showing an
+// open padlock while every drag is being refused is a button that lies.
 function editLockAutoNow() {
   return typeof gpsMapLocked === 'function' && gpsMapLocked();
 }
+// The in-flight lock is a default, not a rule: a diversion gets planned in the air, and a
+// pilot who means to move a waypoint has to be able to. The exception is deliberate (one tap)
+// and lasts only this session -- window.editUnlockOverride is never stored, and every start of
+// tracking clears it -- so the next flight begins locked again whatever happened on this one.
+function routeEditLocked() {
+  if (window.editUnlockOverride === true) return false;
+  return editLockAutoNow() || window.editLocked === true;
+}
+window.routeEditLocked = routeEditLocked;
 function refreshEditLockControl() {
   if (!editLockBtn) return;
   orderMapControls(editLockBtn.parentNode && editLockBtn.parentNode.parentNode);
   const auto = editLockAutoNow();
-  const on = auto || window.editLocked === true;
+  const on = routeEditLocked();
   // The padlock, in its ordinary sense: shut, nothing on the route moves; open, it does.
   editLockBtn.textContent = on ? '\ud83d\udd12' : '\ud83d\udd13';
   editLockBtn.classList.toggle('editlock-on', on);
-  editLockBtn.classList.toggle('editlock-auto', auto);
+  editLockBtn.classList.toggle('editlock-auto', auto && on);
   editLockBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  const label = auto
-    ? (S.editLockAuto || 'Route is locked while a position is showing')
+  const label = (auto && on)
+    ? (S.editLockAuto || 'Route is locked while a position is showing — tap to allow moving it')
     : (on ? (S.editLockOn || 'Route is locked — tap to allow moving points and labels')
           : (S.editLockOff || 'Points and labels can be dragged — tap to lock the route'));
   editLockBtn.title = label;
@@ -526,16 +535,20 @@ function refreshEditLockControl() {
 window.refreshEditLockControl = refreshEditLockControl;
 refreshEditLockControl();
 editLockBtn.onclick = () => {
-  // While a position is driving the map the lock is not the pilot's to lift: a nudge in the
-  // air rewrites the plan the alerts are measuring against. Say so rather than flipping a
-  // preference that would change nothing visible until the flight ends.
+  const wasLocked = routeEditLocked();
   if (editLockAutoNow()) {
+    // Airborne: the stored preference is not what is holding the route, so flipping it would
+    // change nothing the pilot can see. The session-only override is.
+    window.editUnlockOverride = wasLocked;
+    refreshEditLockControl();
     if (typeof showToast === 'function') {
-      showToast(S.editLockAutoToast || 'Locked while a position is showing');
+      showToast(wasLocked ? (S.editLockFlightOffToast || 'Route unlocked for this flight')
+                          : (S.editLockOnToast || 'Route locked'));
     }
     return;
   }
-  window.editLocked = !(window.editLocked === true);
+  window.editLocked = !wasLocked;
+  window.editUnlockOverride = false;
   try { localStorage.setItem(EDIT_LOCK_KEY, window.editLocked ? '1' : '0'); } catch (err) { /* */ }
   refreshEditLockControl();
   // Nothing on the chart changes appearance when the lock flips, so without this the only way
