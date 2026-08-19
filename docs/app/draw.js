@@ -344,61 +344,68 @@ function drawProfileMarkers() {
   for (const t of prof.tocs) mark(t, S.toc || 'TOC', tune('profileTocColor'));
 }
 
-// Hypsometric tint: the elevation grid painted onto the map, cell by cell, in bands. This is
-// the same grid the MSA figures come from -- "Terrain + MSA" shows you the ground those
-// numbers are computed from instead of asking you to take them on trust.
+// Terrain shading, against the altitude you are planning to fly.
 //
-// Banded rather than a smooth ramp on purpose: a chart reader asks "which step am I in", and
-// a continuous gradient makes 1400 ft and 1600 ft look identical. Cells are drawn as
-// projected quads, so the tint rotates and scales with the map like everything else.
+// Colouring every hill by its height was the first attempt, and it was the wrong picture: the
+// CVFR chart underneath already shows relief, so a second brown wash on top hid the chart to
+// repeat what it said. What a pilot cannot read off the chart is whether the ground reaches
+// the altitude THIS flight is planned at -- so that is the only thing painted:
 //
-// SAFETY: a planning aid from a coarse grid (~1 km cells, max elevation per cell), not a
+//   red    ground at or above the planned altitude
+//   amber  ground within msaBufferFt below it (the clearance the MSA figures use)
+//   -      everything else: nothing at all, chart untouched
+//
+// On a route planned well above the terrain the layer paints nothing, which is the correct
+// answer and leaves the map clean. The altitude compared against is the selected leg's, else
+// the lowest planned altitude on the route: the one that decides whether the plan is flyable.
+//
+// SAFETY: a planning aid from a coarse grid (~1 km cells, MAX elevation per cell), not a
 // terrain-awareness system. It cannot show a mast, a ridge narrower than a cell, or anything
 // outside the covered box.
-// #rrggbb -> [r,g,b]. colorWithAlpha() below does the same parse but returns a string; the
-// ramp needs the numbers to interpolate between two colours.
-function _terrainRgb(hex) {
-  const m = typeof hex === 'string' && hex.match(/^#([0-9a-f]{6})$/i);
-  if (!m) return null;
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+function terrainReferenceAltFt() {
+  if (typeof state === 'undefined' || !Array.isArray(state.legs) || !state.legs.length) return null;
+  const sel = state.selected;
+  if (sel && sel.type === 'leg' && state.legs[sel.index]) {
+    const a = state.legs[sel.index].inboundAltitude;
+    if (Number.isFinite(a)) return a;
+  }
+  let min = null;
+  for (const l of state.legs) {
+    const a = l && l.inboundAltitude;
+    if (!Number.isFinite(a)) continue;
+    if (min == null || a < min) min = a;
+  }
+  return min;
 }
-function terrainTintColor(ft) {
-  const band = Math.max(50, tune('terrainBandFt'));
-  const top = Math.max(band, tune('terrainTintMaxFt'));
-  const stepped = Math.min(top, Math.floor(Math.max(0, ft) / band) * band);
-  const t = top > 0 ? stepped / top : 0;
-  const lo = _terrainRgb(tune('terrainLowColor')), hi = _terrainRgb(tune('terrainHighColor'));
-  if (!lo || !hi) return null;
-  const mix = (a, b) => Math.round(a + (b - a) * t);
-  return 'rgba(' + mix(lo[0], hi[0]) + ',' + mix(lo[1], hi[1]) + ',' + mix(lo[2], hi[2]) + ',' +
-    tune('terrainTintAlpha') + ')';
+function terrainShadeColor(groundFt, refFt) {
+  const buffer = (typeof tune === 'function') ? tune('msaBufferFt') : 1000;
+  const alpha = tune('terrainTintAlpha');
+  if (groundFt >= refFt) return colorWithAlpha(tune('terrainAlertColor'), alpha);
+  if (groundFt + buffer >= refFt) return colorWithAlpha(tune('terrainCautionColor'), alpha * 0.75);
+  return null;
 }
 function drawTerrainTint() {
   if (typeof terrainHasCoverage !== 'function' || !terrainHasCoverage()) return;
   const g = terrainGrid;
   if (!g || !Array.isArray(g.data) || !g.rows || !g.cols) return;
+  const ref = terrainReferenceAltFt();
+  if (!Number.isFinite(ref)) return;             // no planned altitude -> nothing to compare
   if (map.getZoom() < tune('terrainTintMinZoom')) return;
   const latStep = (g.north - g.south) / g.rows;
   const lngStep = (g.east - g.west) / g.cols;
-  // Only the cells the viewport can actually see: the full grid is 17 000 quads, and a
-  // zoomed-in map needs a few dozen of them.
   const b = map.getBounds().pad(0.15);
   const r0 = Math.max(0, Math.floor((g.north - Math.min(g.north, b.getNorth())) / latStep));
   const r1 = Math.min(g.rows - 1, Math.ceil((g.north - Math.max(g.south, b.getSouth())) / latStep));
   const c0 = Math.max(0, Math.floor((Math.max(g.west, b.getWest()) - g.west) / lngStep));
   const c1 = Math.min(g.cols - 1, Math.ceil((Math.min(g.east, b.getEast()) - g.west) / lngStep));
   const toFt = g.units === 'm' ? 3.28084 : 1;
-  // Zoomed out, one grid cell is a pixel or two: drawing them one by one costs thousands of
-  // quads for a picture nobody can resolve. Cells are merged into blocks big enough to see
-  // instead, carrying the HIGHEST elevation in the block -- rounding terrain down at a glance
-  // is the one direction this must never round. That keeps the tint working at every zoom,
-  // which a floor did not: the whole-route view (zoom 8-9) is exactly where a pilot looks,
-  // and it was the view that drew nothing at all.
+  // Zoomed out, one grid cell is a pixel or two. Cells are merged into blocks big enough to
+  // see, carrying the HIGHEST ground in the block -- rounding terrain down at a glance is the
+  // one direction this must never round.
   const cellPx = (() => {
     const a = proj({ lat: g.north, lng: g.west });
-    const b = proj({ lat: g.north - latStep, lng: g.west + lngStep });
-    return Math.max(0.001, Math.hypot(b.x - a.x, b.y - a.y));
+    const d = proj({ lat: g.north - latStep, lng: g.west + lngStep });
+    return Math.max(0.001, Math.hypot(d.x - a.x, d.y - a.y));
   })();
   const step = Math.max(1, Math.ceil(tune('terrainTintMinCellPx') / cellPx));
   const blockMax = (r, c) => {
@@ -419,9 +426,9 @@ function drawTerrainTint() {
   for (let r = r0; r <= r1; r += step) {
     for (let c = c0; c <= c1; c += step) {
       const v = blockMax(r, c);
-      if (v == null) continue;                              // a hole stays uncoloured
-      const fill = terrainTintColor(v * toFt);
-      if (!fill) continue;
+      if (v == null) continue;                    // a hole stays uncoloured
+      const fill = terrainShadeColor(v * toFt, ref);
+      if (!fill) continue;                        // ground safely below: chart left alone
       const north = g.north - r * latStep;
       const south = north - latStep * step;
       const west = g.west + c * lngStep;
@@ -440,11 +447,70 @@ function drawTerrainTint() {
     }
   }
   octx.restore();
-  window.__terrainTintCells = drawn;          // test hook: blocks actually painted
+  window.__terrainTintCells = drawn;              // test hook: blocks actually painted
 }
 if (typeof window !== 'undefined') {
   window.drawTerrainTint = drawTerrainTint;
-  window.terrainTintColor = terrainTintColor;
+  window.terrainShadeColor = terrainShadeColor;
+  window.terrainReferenceAltFt = terrainReferenceAltFt;
+}
+
+// Which legs the plan does not clear: planned altitude below that leg's own MSA (terrain +
+// msaBufferFt, the same figure the leg inspector shows). Drawn as a casing UNDER the route so
+// the line, its kites and its labels stay exactly as they were -- this marks the plan, it does
+// not redraw it -- and the waypoints at either end of such a leg get a ring, because those are
+// the points a pilot reads when deciding what altitude to file.
+function terrainUnclearedLegs() {
+  const out = [];
+  if (typeof state === 'undefined' || !Array.isArray(state.legs)) return out;
+  if (typeof legMsaFt !== 'function') return out;
+  for (let i = 0; i < state.legs.length; i++) {
+    const leg = state.legs[i];
+    const planned = leg && leg.inboundAltitude;
+    if (!Number.isFinite(planned)) continue;      // nothing typed: nothing to contradict
+    const msa = legMsaFt(i);
+    if (!Number.isFinite(msa)) continue;          // no terrain answer for this leg
+    if (planned < msa) out.push({ i, planned, msa });
+  }
+  return out;
+}
+function drawTerrainWarnings() {
+  if (typeof terrainHasCoverage !== 'function' || !terrainHasCoverage()) return;
+  const bad = terrainUnclearedLegs();
+  window.__terrainWarnLegs = bad.map(b => b.i);   // test hook
+  if (!bad.length) return;
+  const colour = colorWithAlpha(tune('terrainAlertColor'), tune('terrainLegWarnAlpha'));
+  octx.save();
+  octx.strokeStyle = colour;
+  octx.lineWidth = tune('terrainLegWarnWidthPx');
+  octx.lineCap = 'round';
+  const wpSeen = new Set();
+  for (const b of bad) {
+    const a = state.waypoints[b.i], c = state.waypoints[b.i + 1];
+    if (!a || !c) continue;
+    const p = proj(a), q = proj(c);
+    octx.beginPath();
+    octx.moveTo(p.x, p.y);
+    octx.lineTo(q.x, q.y);
+    octx.stroke();
+    wpSeen.add(b.i); wpSeen.add(b.i + 1);
+  }
+  octx.lineWidth = tune('terrainWpWarnRingPx');
+  for (const idx of wpSeen) {
+    const wp = state.waypoints[idx];
+    if (!wp) continue;
+    const s = proj(wp);
+    const r = (typeof waypointDiscRadiusPx === 'function' ? waypointDiscRadiusPx() : 9) +
+      tune('terrainWpWarnRingPx');
+    octx.beginPath();
+    octx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    octx.stroke();
+  }
+  octx.restore();
+}
+if (typeof window !== 'undefined') {
+  window.drawTerrainWarnings = drawTerrainWarnings;
+  window.terrainUnclearedLegs = terrainUnclearedLegs;
 }
 
 // The terrain under a route profile: max elevation (ft) sampled at N points along the flown
@@ -726,7 +792,7 @@ function draw() {
   octx.clearRect(0, 0, vw(), vh());
   // Ground colouring first: it is the chart's own backdrop, so everything else -- airspace,
   // the route, the overlays -- draws on top of it rather than being tinted by it.
-  if (window.showMsa) drawTerrainTint();
+  if (window.showMsa) { drawTerrainTint(); drawTerrainWarnings(); }
   drawAreas();                  // airspace bubbles under the waypoints
   // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
   // what a pilot is actually looking at even with every segment drawn.

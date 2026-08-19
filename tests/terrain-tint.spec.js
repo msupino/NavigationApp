@@ -1,8 +1,12 @@
 // @ts-check
 // "Show MSA" used to sit in View/Set and draw nothing on the map: its only effect was one
-// read-only row in the leg inspector, so a pilot toggling it saw no change at all. It is now
-// "Terrain + MSA" in Extra layers, and it paints the elevation grid the MSA figures are
-// computed from — banded, so you can read which step of ground you are over.
+// read-only row in the leg inspector, so a pilot toggling it saw no change at all.
+//
+// It is now "Terrain vs altitude" in Extra layers. The first attempt painted every hill by
+// height, which was the wrong picture — the chart underneath already shows relief, so a second
+// brown wash hid the chart to repeat what it said. It paints only the ground that reaches the
+// altitude being planned: red at or above it, amber inside the safety buffer below it, and
+// nothing anywhere else. A route planned well clear of the terrain paints nothing at all.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -12,6 +16,15 @@ async function boot(page) {
   await page.waitForFunction(() => terrainHasCoverage());
   await page.evaluate(() => { map.setView([32.8, 35.3], 10); });
 }
+
+// A route with a planned altitude, which is what the shading is measured against.
+const planRoute = (page, altFt) => page.evaluate((alt) => {
+  state.waypoints = [{ lat: 32.70, lng: 35.10, name: 'A' }, { lat: 32.95, lng: 35.50, name: 'B' }];
+  state.legs = []; syncLegs();
+  state.legs.forEach(l => { l.inboundAltitude = alt; l.flightSpeed = 100; });
+  state.selected = null;
+  draw();
+}, altFt);
 
 // Count the quads the tint actually filled this frame.
 const quads = (page) => page.evaluate(() => {
@@ -33,24 +46,62 @@ test('the toggle lives in Extra layers, not View/Set', async ({ page }) => {
   expect(where.group).toBe(true);
 });
 
-test('with it on, the ground is painted', async ({ page }) => {
+test('ground at the planned altitude is painted; ground well below it is not', async ({ page }) => {
   await boot(page);
-  expect(await quads(page)).toBeGreaterThan(20);
+  await planRoute(page, 500);              // below the Galilee ridges: they threaten this plan
+  const low = await quads(page);
+  await planRoute(page, 9000);             // nothing in Israel reaches this
+  const high = await quads(page);
+  expect(low).toBeGreaterThan(20);
+  expect(high).toBe(0);                    // the chart is left alone, which is the point
 });
 
-test('the tint is banded, so neighbouring heights in one band share a colour', async ({ page }) => {
+test('with no planned altitude there is nothing to compare, so nothing is drawn', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.70, lng: 35.10, name: 'A' }, { lat: 32.95, lng: 35.50, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.inboundAltitude = NaN; });
+    draw();
+  });
+  expect(await quads(page)).toBe(0);
+});
+
+test('red for ground at or above the plan, amber for the buffer below it', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
-    setTune('terrainBandFt', 500);
+    const buf = tune('msaBufferFt');
     return {
-      sameBand: [terrainTintColor(600), terrainTintColor(900)],
-      nextBand: terrainTintColor(1100),
-      sea: terrainTintColor(0),
+      above: terrainShadeColor(2100, 2000),
+      atIt: terrainShadeColor(2000, 2000),
+      inBuffer: terrainShadeColor(2000 - buf + 100, 2000),
+      clear: terrainShadeColor(2000 - buf - 500, 2000),
+      alert: tune('terrainAlertColor'), caution: tune('terrainCautionColor'),
     };
   });
-  expect(out.sameBand[0]).toBe(out.sameBand[1]);      // 600 and 900 are both the 500 band
-  expect(out.nextBand).not.toBe(out.sameBand[0]);     // 1100 is the next step up
-  expect(out.sea).not.toBe(out.nextBand);
+  expect(out.above).toContain('rgba');
+  expect(out.atIt).toBe(out.above);
+  expect(out.inBuffer).not.toBe(out.above);
+  expect(out.inBuffer).toContain('rgba');
+  expect(out.clear).toBeNull();            // safely below: nothing painted
+});
+
+test('the selected leg decides the altitude, else the lowest on the route', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.7, lng: 35.1, name: 'A' }, { lat: 32.8, lng: 35.3, name: 'B' },
+                       { lat: 32.95, lng: 35.5, name: 'C' }];
+    state.legs = []; syncLegs();
+    state.legs[0].inboundAltitude = 4500;
+    state.legs[1].inboundAltitude = 2000;
+    state.selected = null;
+    const lowest = terrainReferenceAltFt();
+    state.selected = { type: 'leg', index: 0 };
+    const selected = terrainReferenceAltFt();
+    return { lowest, selected };
+  });
+  expect(out.lowest).toBe(2000);           // the leg that decides whether the plan is flyable
+  expect(out.selected).toBe(4500);         // ...unless you are looking at one
 });
 
 // The whole-route view (zoom 8-9) is exactly where a pilot looks, and a zoom floor made it
@@ -58,6 +109,7 @@ test('the tint is banded, so neighbouring heights in one band share a colour', a
 // are merged into legible blocks there instead of being skipped.
 test('it draws at every zoom, including the whole-route view', async ({ page }) => {
   await boot(page);
+  await planRoute(page, 500);              // a plan the ridges threaten, so there is something to draw
   const perZoom = await page.evaluate(async () => {
     const out = {};
     for (const z of [8, 9, 10, 12, 13]) {
@@ -73,6 +125,7 @@ test('it draws at every zoom, including the whole-route view', async ({ page }) 
 
 test('zoomed out it merges cells rather than drawing thousands of invisible ones', async ({ page }) => {
   await boot(page);
+  await planRoute(page, 500);
   const out = await page.evaluate(async () => {
     map.setView([32.7, 35.2], 8);
     await new Promise(r => setTimeout(r, 60));
@@ -83,16 +136,6 @@ test('zoomed out it merges cells rather than drawing thousands of invisible ones
     return { merged, raw: window.__terrainTintCells };
   });
   expect(out.merged).toBeLessThan(out.raw);      // blocks, not one quad per grid cell
-});
-
-test('a block carries the HIGHEST ground in it, never the lowest', async ({ page }) => {
-  await boot(page);
-  const out = await page.evaluate(() => {
-    // Two bands apart, so rounding the wrong way would be visible as a colour.
-    setTune('terrainBandFt', 500);
-    return { high: terrainTintColor(1600), low: terrainTintColor(200) };
-  });
-  expect(out.high).not.toBe(out.low);
 });
 
 test('the knob can still switch it off below a zoom', async ({ page }) => {
@@ -139,6 +182,7 @@ test('the leg inspector still carries the MSA row it always did', async ({ page 
 // toggle drew nothing on the map, and indistinguishable from a dead control now that it does.
 test('ticking the toggle paints immediately, without waiting for a pan', async ({ page }) => {
   await boot(page);
+  await planRoute(page, 500);
   const out = await page.evaluate(() => {
     window.showMsa = false;
     const cb = document.getElementById('msa-cb');

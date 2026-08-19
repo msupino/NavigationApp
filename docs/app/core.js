@@ -459,14 +459,19 @@ NavAid.tuningDefaults = {
   // is the silhouette's resolution: the shipped grid is ~1.2 km per cell, so past a few
   // hundred samples the extra points redraw the same cell.
   profileTerrainColor: { value: '#6b5a44', type: 'color', label: 'Profile terrain fill' },
-  // Hypsometric map tint, from the same grid the MSA figures come from. Banding rather than a
-  // smooth ramp: a chart reader looks for "which step am I in", and a continuous gradient
-  // makes 1400 ft and 1600 ft indistinguishable at a glance.
-  terrainTintAlpha: { value: 0.35, min: 0, max: 1, step: 0.05, label: 'Terrain tint opacity' },
-  terrainBandFt: { value: 500, min: 100, max: 2000, step: 50, label: 'Terrain tint band (ft)' },
-  terrainLowColor: { value: '#e8f0d8', type: 'color', label: 'Terrain tint: low ground' },
-  terrainHighColor: { value: '#8d5524', type: 'color', label: 'Terrain tint: high ground' },
-  terrainTintMaxFt: { value: 3500, min: 500, max: 15000, step: 100, label: 'Terrain tint: top of the colour ramp (ft)' },
+  // Terrain shading is about ONE question: does the ground threaten the altitude I am planning
+  // to fly? Colouring every hill by height only repeats what the chart underneath already
+  // says, in a second brown that hides it. So nothing is painted except the ground that is at
+  // or near the planned altitude -- on a normal route that is nothing at all, and where it
+  // does paint, it is the part worth looking at.
+  terrainTintAlpha: { value: 0.45, min: 0, max: 1, step: 0.05, label: 'Terrain shading opacity' },
+  terrainAlertColor: { value: '#d7263d', type: 'color', label: 'Terrain at or above the planned altitude' },
+  terrainCautionColor: { value: '#e8a33d', type: 'color', label: 'Terrain within the safety buffer below it' },
+  // A leg planned below its own safe altitude, and the waypoints at either end of one. Drawn
+  // under the route so the line itself stays crisp: this marks the plan, it does not replace it.
+  terrainLegWarnWidthPx: { value: 9, min: 2, max: 30, step: 1, label: 'Below-MSA leg casing width (px)' },
+  terrainLegWarnAlpha: { value: 0.55, min: 0, max: 1, step: 0.05, label: 'Below-MSA leg casing opacity' },
+  terrainWpWarnRingPx: { value: 4, min: 1, max: 20, step: 1, label: 'Below-MSA waypoint ring width (px)' },
   // The tint draws at every zoom the map offers; cells are merged into blocks of at least
   // terrainTintMinCellPx so a zoomed-out view stays cheap and legible instead of vanishing.
   terrainTintMinZoom: { value: 0, min: 0, max: 14, step: 1, label: 'Terrain tint: minimum zoom (0 = always)' },
@@ -736,7 +741,7 @@ NavAid.tuningGroups = [
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
-  { name: 'Terrain', keys: ['terrainTintAlpha', 'terrainBandFt', 'terrainLowColor', 'terrainHighColor', 'terrainTintMaxFt', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
+  { name: 'Terrain', keys: ['terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
@@ -991,8 +996,8 @@ window.S = Object.assign({
   pwxUnavailable: 'Wind/temp charts are temporarily unavailable.',
   wxPwxUnavailableWatermark: 'Wind/temp — Unavailable',
   wxSigwxUnavailableWatermark: 'SIGWX — Unavailable',
-  tbShowMsa: 'Terrain + MSA',                       // hypsometric tint + the leg MSA row
-  tbShowMsaTitle: 'Shade the map by ground elevation, and show each leg\'s minimum safe altitude in the inspector',
+  tbShowMsa: 'Terrain vs altitude',                 // clearance shading + the leg MSA row
+  tbShowMsaTitle: 'Shade only the ground that reaches your planned altitude, and show each leg\'s minimum safe altitude in the inspector',
   report: 'Reporting',
   reportingMandatory: '📍 Mandatory report',
   reportingOnRequest: '📍 Report on request',
