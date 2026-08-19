@@ -1267,9 +1267,12 @@ function appendAddToRouteButton(body, pt) {
   btn.textContent = already ? (S.alreadyOnRoute || '✓ Already on the route')
     : empty ? (S.startRouteHere || '➕ Start route here')
             : (S.addToRoute || '➕ Add to route');
-  btn.disabled = !!already;
+  // Adding from the inspector is the same edit as adding by tap, so the lock reaches it too --
+  // shown as unavailable rather than refusing after the press.
+  const locked = typeof routeEditLocked === 'function' && routeEditLocked();
+  btn.disabled = !!already || locked;
   btn.onclick = () => {
-    if (already) return;
+    if (already || locked) return;
     const prevTail = state.waypoints[state.waypoints.length - 1];
     state.waypoints.push({ lat: r5(pt.lat), lng: r5(pt.lng), name: pt.name || '' });
     syncLegs();
@@ -4093,6 +4096,10 @@ map.on('click', e => {
   // something, and got an unwanted point plus add mode armed. The affordance now lives
   // exactly as long as the instruction that explains it; afterwards, add mode is entered
   // deliberately (Edit menu, or the A key) and a plain click does nothing, as before.
+  // A locked route takes no new points: setMode refuses to arm the tool, and this is the other
+  // half of it -- a mode entered before the lock (or the first-click priming above) must not
+  // drop a waypoint either.
+  if (typeof routeEditLocked === 'function' && routeEditLocked()) return;
   if (!state.mode && routePrimingArmed()) {
     if (typeof setMode === 'function') setMode('add');
   }

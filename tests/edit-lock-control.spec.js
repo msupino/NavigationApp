@@ -194,3 +194,65 @@ test('the two locks do not wear the same icon', async ({ page }) => {
   expect(await page.evaluate(() => document.getElementById('follow-lock').textContent))
     .toBe('⭕');                                   // ⭕ nothing held
 });
+
+// Reported: "i can still add new points when locked, it should exit edit mode when locked".
+// A locked route does not grow either — adding a point changes the plan exactly as much as
+// dragging one — and a tool that arms and then refuses every click is worse than one that
+// will not arm.
+test.describe('a locked route takes no new points', () => {
+  const count = (page) => page.evaluate(() => state.waypoints.length);
+  const clickMap = (page, dx, dy) => page.evaluate(([mx, my]) => {
+    const p = map.latLngToContainerPoint([state.waypoints[0].lat, state.waypoints[0].lng]);
+    const pt = L.point(p.x + mx, p.y + my);
+    map.fire('click', { containerPoint: pt, latlng: map.containerPointToLatLng(pt) });
+  }, [dx, dy]);
+
+  test('the add tool will not arm, and says why', async ({ page }) => {
+    await boot(page);
+    await page.click('#edit-lock');
+    await page.evaluate(() => {
+      document.querySelectorAll('.toast').forEach(t => t.remove());   // the lock's own toast
+      setMode('add');
+    });
+    await expect(page.locator('.toast')).toHaveText(/locked/i);
+    expect(await page.evaluate(() => state.mode)).toBe(null);
+  });
+
+  test('a map tap adds nothing while locked', async ({ page }) => {
+    await boot(page);
+    const before = await count(page);
+    await page.click('#edit-lock');
+    await clickMap(page, 120, 90);
+    expect(await count(page)).toBe(before);
+  });
+
+  // The other half: a tool armed BEFORE the lock is dropped with it, rather than left
+  // pointing at a chart that will refuse the next tap.
+  test('locking drops a tool that was already armed', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => setMode('add'));
+    expect(await page.evaluate(() => state.mode)).toBe('add');
+    await page.click('#edit-lock');
+    expect(await page.evaluate(() => state.mode)).toBe(null);
+  });
+
+  // Including when the lock arrives on its own, because a recording started.
+  test('starting to show a position drops the tool too', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => setMode('add'));
+    await page.evaluate(() => startLiveLocation());
+    expect(await page.evaluate(() => state.mode)).toBe(null);
+    // ...and unlocking by hand lets the tool arm again, mid-flight.
+    await page.click('#edit-lock');
+    await page.evaluate(() => setMode('add'));
+    expect(await page.evaluate(() => state.mode)).toBe('add');
+  });
+
+  test('unlocked, the same tap still adds a point', async ({ page }) => {
+    await boot(page);
+    const before = await count(page);
+    await page.evaluate(() => setMode('add'));
+    await clickMap(page, 120, 90);
+    expect(await count(page)).toBe(before + 1);
+  });
+});

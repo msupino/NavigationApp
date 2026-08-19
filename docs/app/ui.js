@@ -67,6 +67,15 @@ function refreshModeChip() {
 function setMode(mode) {
   // Clicking the currently-active mode button toggles back to inspect (null).
   if (state.mode === mode) mode = null;
+  // A locked route does not grow either: adding a point changes the plan exactly as much as
+  // dragging one, and a tool that arms and then silently refuses every click is worse than one
+  // that will not arm. Leaving a mode is always allowed.
+  if (mode && typeof routeEditLocked === 'function' && routeEditLocked()) {
+    if (typeof showToast === 'function') {
+      showToast(S.editLockBlockedToast || 'Route is locked');
+    }
+    mode = null;
+  }
   state.mode = mode;
   const addBtn = document.getElementById('tool-add');
   const noteBtn = document.getElementById('tool-note');
@@ -517,6 +526,14 @@ function routeEditLocked() {
 window.routeEditLocked = routeEditLocked;
 function refreshEditLockControl() {
   if (!editLockBtn) return;
+  // Locking with a map tool armed leaves the pilot pointing at a chart that will refuse the
+  // next tap. Drop the tool with the lock -- including when the lock arrives on its own,
+  // because a recording started.
+  if (typeof routeEditLocked === 'function' && routeEditLocked() &&
+      typeof state !== 'undefined' && (state.mode === 'add' || state.mode === 'note')) {
+    setMode(null);
+    if (typeof draw === 'function') draw();
+  }
   orderMapControls(editLockBtn.parentNode && editLockBtn.parentNode.parentNode);
   const auto = editLockAutoNow();
   const on = routeEditLocked();
