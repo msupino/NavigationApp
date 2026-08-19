@@ -67,10 +67,12 @@ test('with no planned altitude there is nothing to compare, so nothing is drawn'
   expect(await quads(page)).toBe(0);
 });
 
-test('red for ground at or above the plan, amber for the buffer below it', async ({ page }) => {
+test('red for ground at or above the plan, amber for the clearance below it', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
-    const buf = tune('msaBufferFt');
+    // terrainWarnClearanceFt, not msaBufferFt: MSA is terrain + 1000 ft, and using it here
+    // flagged every everyday CVFR leg.
+    const buf = tune('terrainWarnClearanceFt');
     return {
       above: terrainShadeColor(2100, 2000),
       atIt: terrainShadeColor(2000, 2000),

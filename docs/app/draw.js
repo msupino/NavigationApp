@@ -378,10 +378,15 @@ function terrainReferenceAltFt() {
   return min;
 }
 function terrainShadeColor(groundFt, refFt) {
-  const buffer = (typeof tune === 'function') ? tune('msaBufferFt') : 1000;
+  // terrainWarnClearanceFt, not msaBufferFt. MSA is terrain + 1000 ft -- an obstacle-clearance
+  // planning figure, not a limit -- and using it here painted every everyday CVFR leg: the
+  // LLHZ->LLHA coast run at 1000 ft passes over ~200 ft of ground and came out flagged end to
+  // end. Red means the ground is AT the planned altitude; amber means it is close enough that
+  // the margin is thin. The inspector's MSA row is unchanged and still uses msaBufferFt.
+  const clearance = (typeof tune === 'function') ? tune('terrainWarnClearanceFt') : 500;
   const alpha = tune('terrainTintAlpha');
   if (groundFt >= refFt) return colorWithAlpha(tune('terrainAlertColor'), alpha);
-  if (groundFt + buffer >= refFt) return colorWithAlpha(tune('terrainCautionColor'), alpha * 0.75);
+  if (groundFt + clearance >= refFt) return colorWithAlpha(tune('terrainCautionColor'), alpha * 0.75);
   return null;
 }
 function drawTerrainTint() {
@@ -463,14 +468,21 @@ if (typeof window !== 'undefined') {
 function terrainUnclearedLegs() {
   const out = [];
   if (typeof state === 'undefined' || !Array.isArray(state.legs)) return out;
-  if (typeof legMsaFt !== 'function') return out;
+  if (typeof terrainMaxAlongLeg !== 'function') return out;
+  const clearance = (typeof tune === 'function') ? tune('terrainWarnClearanceFt') : 500;
   for (let i = 0; i < state.legs.length; i++) {
     const leg = state.legs[i];
     const planned = leg && leg.inboundAltitude;
     if (!Number.isFinite(planned)) continue;      // nothing typed: nothing to contradict
-    const msa = legMsaFt(i);
-    if (!Number.isFinite(msa)) continue;          // no terrain answer for this leg
-    if (planned < msa) out.push({ i, planned, msa });
+    const ground = terrainMaxAlongLeg(state.waypoints[i], state.waypoints[i + 1]);
+    if (!Number.isFinite(ground)) continue;       // no terrain answer for this leg
+    // Measured against the GROUND plus a VFR margin, not against MSA. Flagging every leg
+    // planned below terrain + 1000 ft marks routes flown every day, and a warning that fires
+    // on the ordinary case is one nobody reads on the day it matters.
+    // Two levels, as the shading has: the ground actually above the plan is a different fact
+    // from a thin margin over it, and one colour for both makes the serious case ordinary.
+    if (planned < ground) out.push({ i, planned, ground, level: 'alert' });
+    else if (planned < ground + clearance) out.push({ i, planned, ground, level: 'caution' });
   }
   return out;
 }
@@ -479,24 +491,30 @@ function drawTerrainWarnings() {
   const bad = terrainUnclearedLegs();
   window.__terrainWarnLegs = bad.map(b => b.i);   // test hook
   if (!bad.length) return;
-  const colour = colorWithAlpha(tune('terrainAlertColor'), tune('terrainLegWarnAlpha'));
+  const alpha = tune('terrainLegWarnAlpha');
+  const alertColour = colorWithAlpha(tune('terrainAlertColor'), alpha);
+  const cautionColour = colorWithAlpha(tune('terrainCautionColor'), alpha);
   octx.save();
-  octx.strokeStyle = colour;
   octx.lineWidth = tune('terrainLegWarnWidthPx');
   octx.lineCap = 'round';
-  const wpSeen = new Set();
+  const wpSeen = new Map();
   for (const b of bad) {
     const a = state.waypoints[b.i], c = state.waypoints[b.i + 1];
     if (!a || !c) continue;
     const p = proj(a), q = proj(c);
+    octx.strokeStyle = b.level === 'alert' ? alertColour : cautionColour;
     octx.beginPath();
     octx.moveTo(p.x, p.y);
     octx.lineTo(q.x, q.y);
     octx.stroke();
-    wpSeen.add(b.i); wpSeen.add(b.i + 1);
+    // A waypoint on both a red and an amber leg reads as red: the worse fact wins.
+    for (const idx of [b.i, b.i + 1]) {
+      if (b.level === 'alert' || !wpSeen.has(idx)) wpSeen.set(idx, b.level);
+    }
   }
   octx.lineWidth = tune('terrainWpWarnRingPx');
-  for (const idx of wpSeen) {
+  for (const [idx, level] of wpSeen) {
+    octx.strokeStyle = level === 'alert' ? alertColour : cautionColour;
     const wp = state.waypoints[idx];
     if (!wp) continue;
     const s = proj(wp);
