@@ -1267,9 +1267,12 @@ function appendAddToRouteButton(body, pt) {
   btn.textContent = already ? (S.alreadyOnRoute || '✓ Already on the route')
     : empty ? (S.startRouteHere || '➕ Start route here')
             : (S.addToRoute || '➕ Add to route');
-  btn.disabled = !!already;
+  // Adding from the inspector is the same edit as adding by tap, so the lock reaches it too --
+  // shown as unavailable rather than refusing after the press.
+  const locked = typeof routeEditLocked === 'function' && routeEditLocked();
+  btn.disabled = !!already || locked;
   btn.onclick = () => {
-    if (already) return;
+    if (already || locked) return;
     const prevTail = state.waypoints[state.waypoints.length - 1];
     state.waypoints.push({ lat: r5(pt.lat), lng: r5(pt.lng), name: pt.name || '' });
     syncLegs();
@@ -2474,6 +2477,10 @@ const KITE_DRAG_KINDS = ['label', 'cumlabel', 'cumlabelret'];
 const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick'].concat(KITE_DRAG_KINDS);
 function dragLockedNow(kind) {
   if (LOCKABLE_DRAG_KINDS.indexOf(kind) === -1) return false;
+  // The map's edit lock owns this: the pilot's stored choice, the automatic lock whenever a
+  // position drives the map, and the one-tap exception to it (see routeEditLocked in ui.js).
+  if (typeof routeEditLocked === 'function') return routeEditLocked();
+  if (typeof editLocked !== 'undefined' && editLocked) return true;
   return typeof gpsMapLocked === 'function' && gpsMapLocked();
 }
 
@@ -4089,6 +4096,10 @@ map.on('click', e => {
   // something, and got an unwanted point plus add mode armed. The affordance now lives
   // exactly as long as the instruction that explains it; afterwards, add mode is entered
   // deliberately (Edit menu, or the A key) and a plain click does nothing, as before.
+  // A locked route takes no new points: setMode refuses to arm the tool, and this is the other
+  // half of it -- a mode entered before the lock (or the first-click priming above) must not
+  // drop a waypoint either.
+  if (typeof routeEditLocked === 'function' && routeEditLocked()) return;
   if (!state.mode && routePrimingArmed()) {
     if (typeof setMode === 'function') setMode('add');
   }
@@ -4426,7 +4437,7 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag = { kind: 'cumlabelret', i: cumRet.i };
     state.selected = { type: 'leg', index: cumRet.i };
   } else if (leg >= 0) {
-    touchDrag = { kind: 'legtap' };
+    touchDrag = { kind: 'legtap', prevSelected: state.selected };
     state.selected = { type: 'leg', index: leg };
   } else if (onPage) {
     touchDrag = { kind: 'page', lx: p.x, ly: p.y };
@@ -4476,7 +4487,20 @@ mapEl.addEventListener('touchstart', e => {
 }, { passive: false });
 
 mapEl.addEventListener('touchmove', e => {
-  if (!touchDrag || touchDrag.kind === 'legtap' || e.touches.length !== 1) return;
+  // A press on a leg line does not drag anything -- the map pans under the finger instead --
+  // so this handler deliberately keeps its hands off it: no preventDefault, nothing moved.
+  // But it still has to NOTICE, because the release opens the leg inspector for a tap, and
+  // browsing the chart with a finger that happened to land on the route was opening the panel
+  // on every pan. Travel past the same slop the other drags use makes it a pan, not a tap.
+  if (touchDrag && touchDrag.kind === 'legtap') {
+    if (e.touches.length === 1 && touchDrag.startX != null && !touchDrag.moved) {
+      const q = touchXY(e.touches[0]);
+      const far = Math.hypot(q.x - touchDrag.startX, q.y - touchDrag.startY);
+      if (far >= (typeof tune === 'function' ? tune('touchDragPx') : 10)) touchDrag.moved = true;
+    }
+    return;
+  }
+  if (!touchDrag || e.touches.length !== 1) return;
   e.preventDefault();
   const p = touchXY(e.touches[0]);
   // A fingertip is ~10 mm across and never lands still, so a plain tap arrives with a few
@@ -4492,8 +4516,10 @@ mapEl.addEventListener('touchmove', e => {
   const ll = map.containerPointToLatLng([p.x, p.y]);
   if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
   // Same lock as the mouse path -- see there for why leaving touchDrag.moved false is what
-  // keeps a plain tap opening the inspector as normal.
-  if (dragLockedNow(touchDrag.kind)) return;
+  // keeps a plain tap opening the inspector as normal. Past the slop it is no longer a plain
+  // tap, though: the pilot is dragging across a locked chart, and the release must not open
+  // the panel just because the lock stopped the drag from doing anything.
+  if (dragLockedNow(touchDrag.kind)) { touchDrag.moved = true; return; }
   if (touchDrag.kind === 'wp') {
     if (!touchDrag.moved) setInspectorDragHidden(true);   // first real movement, not a tap
     touchDrag.moved = true;
@@ -4545,7 +4571,15 @@ function endTouch() {
   // ...unless it was already open before the finger landed, in which case it is something
   // the pilot was reading and a drag does not take it away -- the mouse path's rule.
   if (wasDrag && !touchDrag.inspWasOpen) { state.selected = null; showInspector(); }
-  else if (touchDrag && (wasDrag || TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1)) showInspector();
+  else if (touchDrag && (wasDrag ||
+      (!touchDrag.moved && TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1))) showInspector();
+  // Pressing a leg selects it, which is right for a tap and wrong for a pan: the pilot was
+  // moving the chart, and a highlighted leg with no panel explains nothing. Put back whatever
+  // was selected when the finger landed.
+  if (touchDrag && touchDrag.kind === 'legtap' && touchDrag.moved) {
+    state.selected = touchDrag.prevSelected || null;
+    draw();
+  }
   if (touchDrag) {
     settleAddModeWaypointTap(touchDrag);
     if (touchDrag.kind === 'wp' && touchDrag.moved) {

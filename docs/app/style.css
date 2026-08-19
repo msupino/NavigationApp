@@ -1165,6 +1165,23 @@ body.theme-dark #map-crosshair::after {
    engaged rather than the one that reads as normal. */
 .follow-ctrl button.follow-on { background: #d8f0d8; border-color: #4a8a4a; }
 
+/* edit lock — same square as the rest of the column */
+.editlock-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
+.editlock-ctrl button {
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid #9a9a9a;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  touch-action: manipulation;
+}
+/* Locked is the state that refuses input, so it is the one that reads as engaged. */
+.editlock-ctrl button.editlock-on { background: #f3e2c7; border-color: #a5772c; }
+
 /* rotate dial — Google-Maps-style compass needle by the zoom buttons */
 .rotate-ctrl {
   display: flex;

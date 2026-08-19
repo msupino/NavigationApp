@@ -8386,6 +8386,7 @@ function simRefreshFlightControls() {
   // the instant the pilot dragged the map to look at something.
   if (typeof gpsWatchUserMapMoves === 'function') gpsWatchUserMapMoves();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
+  if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof scheduleDraw === 'function') scheduleDraw();   // the ATIS marker follows too

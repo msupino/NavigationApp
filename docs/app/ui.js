@@ -67,6 +67,15 @@ function refreshModeChip() {
 function setMode(mode) {
   // Clicking the currently-active mode button toggles back to inspect (null).
   if (state.mode === mode) mode = null;
+  // A locked route does not grow either: adding a point changes the plan exactly as much as
+  // dragging one, and a tool that arms and then silently refuses every click is worse than one
+  // that will not arm. Leaving a mode is always allowed.
+  if (mode && typeof routeEditLocked === 'function' && routeEditLocked()) {
+    if (typeof showToast === 'function') {
+      showToast(S.editLockBlockedToast || 'Route is locked');
+    }
+    mode = null;
+  }
   state.mode = mode;
   const addBtn = document.getElementById('tool-add');
   const noteBtn = document.getElementById('tool-note');
@@ -279,7 +288,7 @@ try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unav
 // visibly swapped places as state changed -- reported as "buttons keep switching location".
 // One rank per control, applied by one function: the DOM order follows the ranks, whoever
 // refreshes and in whatever order.
-const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
+const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'editlock-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
 function orderMapControls(corner) {
   if (!corner) return;
   const rank = (el) => {
@@ -458,7 +467,10 @@ function refreshGpsFollowControl() {
   wrap.style.display = tracking ? '' : 'none';
   orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
-  followBtn.textContent = on ? '🔒' : '🔓';
+  // A gun sight, not a padlock: this one locks the MAP ONTO the aircraft, and the padlock now
+  // belongs to the edit lock below, which is a lock in the ordinary sense -- it refuses input.
+  // Two padlocks in one column meant neither said which lock it was.
+  followBtn.textContent = on ? '\ud83c\udfaf' : '\u2b55';     // target / empty ring
   followBtn.classList.toggle('follow-on', on);
   followBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
   const label = on ? (S.followLockOn || 'Following the aircraft — tap to leave the map put')
@@ -477,6 +489,92 @@ followBtn.onclick = () => {
   }
 };
 refreshGpsFollowControl();
+
+// --- edit lock — nothing on the route moves while it is on -----------
+// Distinct from the follow lock above: that one is about what the MAP does, this one is about
+// what the ROUTE allows. A finger on a phone hits a waypoint disc or a kite as easily as the
+// chart behind it, and a nudge rewrites the plan the alerts are measuring against. Locking
+// while airborne already happened automatically (see dragLockedNow); this is the same thing on
+// purpose, on the ground, for a plan that is finished and only being read.
+//
+// Always visible, unlike the three above: it is a standing choice about the route, not a
+// control that needs a position to mean anything.
+const editLockCtrl = L.control({ position: 'bottomright' });
+editLockCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control editlock-ctrl');
+  wrap.innerHTML = '<button id="edit-lock" type="button" aria-pressed="false"></button>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+editLockCtrl.addTo(map);
+const editLockBtn = document.getElementById('edit-lock');
+// The button shows whether the route CAN be moved, not merely whether the pilot pressed it.
+// Starting a recording or Location locks the route on its own, and a button still showing an
+// open padlock while every drag is being refused is a button that lies.
+function editLockAutoNow() {
+  return typeof gpsMapLocked === 'function' && gpsMapLocked();
+}
+// The in-flight lock is a default, not a rule: a diversion gets planned in the air, and a
+// pilot who means to move a waypoint has to be able to. The exception is deliberate (one tap)
+// and lasts only this session -- window.editUnlockOverride is never stored, and every start of
+// tracking clears it -- so the next flight begins locked again whatever happened on this one.
+function routeEditLocked() {
+  if (window.editUnlockOverride === true) return false;
+  return editLockAutoNow() || window.editLocked === true;
+}
+window.routeEditLocked = routeEditLocked;
+function refreshEditLockControl() {
+  if (!editLockBtn) return;
+  // Locking with a map tool armed leaves the pilot pointing at a chart that will refuse the
+  // next tap. Drop the tool with the lock -- including when the lock arrives on its own,
+  // because a recording started.
+  if (typeof routeEditLocked === 'function' && routeEditLocked() &&
+      typeof state !== 'undefined' && (state.mode === 'add' || state.mode === 'note')) {
+    setMode(null);
+    if (typeof draw === 'function') draw();
+  }
+  orderMapControls(editLockBtn.parentNode && editLockBtn.parentNode.parentNode);
+  const auto = editLockAutoNow();
+  const on = routeEditLocked();
+  // The padlock, in its ordinary sense: shut, nothing on the route moves; open, it does.
+  editLockBtn.textContent = on ? '\ud83d\udd12' : '\ud83d\udd13';
+  editLockBtn.classList.toggle('editlock-on', on);
+  editLockBtn.classList.toggle('editlock-auto', auto && on);
+  editLockBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const label = (auto && on)
+    ? (S.editLockAuto || 'Route is locked while a position is showing — tap to allow moving it')
+    : (on ? (S.editLockOn || 'Route is locked — tap to allow moving points and labels')
+          : (S.editLockOff || 'Points and labels can be dragged — tap to lock the route'));
+  editLockBtn.title = label;
+  editLockBtn.setAttribute('aria-label', label);
+}
+window.refreshEditLockControl = refreshEditLockControl;
+refreshEditLockControl();
+editLockBtn.onclick = () => {
+  const wasLocked = routeEditLocked();
+  if (editLockAutoNow()) {
+    // Airborne: the stored preference is not what is holding the route, so flipping it would
+    // change nothing the pilot can see. The session-only override is.
+    window.editUnlockOverride = wasLocked;
+    refreshEditLockControl();
+    if (typeof showToast === 'function') {
+      showToast(wasLocked ? (S.editLockOffToast || 'Route unlocked')
+                          : (S.editLockOnToast || 'Route locked'));
+    }
+    return;
+  }
+  window.editLocked = !wasLocked;
+  window.editUnlockOverride = false;
+  try { localStorage.setItem(EDIT_LOCK_KEY, window.editLocked ? '1' : '0'); } catch (err) { /* */ }
+  refreshEditLockControl();
+  // Nothing on the chart changes appearance when the lock flips, so without this the only way
+  // to find out which way it went is to try dragging something.
+  if (typeof showToast === 'function') {
+    showToast(window.editLocked ? (S.editLockOnToast || 'Route locked')
+                                : (S.editLockOffToast || 'Route unlocked'));
+  }
+};
 
 // --- rotate dial — a map control next to the zoom buttons -----------
 const rotateCtrl = L.control({ position: 'bottomright' });
@@ -2965,6 +3063,7 @@ const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY  = 'navaid.showCumTime';
 const LEG_DIR_KEY  = 'navaid.legDirFilter';
 const VOICE_ALERTS_KEY = 'navaid.voiceAlerts';
+const EDIT_LOCK_KEY = 'navaid.editLocked';
 const LIMIT_KITES_KEY = 'navaid.limitLegKites';
 const SIM_URL_KEY  = 'navaid.simUrl';
 const SIM_ON_KEY   = 'navaid.simOn';
@@ -2977,6 +3076,8 @@ try {
   if (sc !== null) window.showCumTime = sc === '1';
   const sva = lsGet(VOICE_ALERTS_KEY);
   if (sva !== null) window.voiceAlerts = sva === '1';
+  const sel = lsGet(EDIT_LOCK_KEY);
+  if (sel !== null) window.editLocked = sel === '1';
   const slk = lsGet(LIMIT_KITES_KEY);
   if (slk !== null) window.limitLegKites = slk === '1';
   const su = lsGet(SIM_URL_KEY);
@@ -3097,6 +3198,7 @@ if (typeof window.voiceAlerts !== 'boolean') window.voiceAlerts = false;
 // The View/Set checkbox is gone -- the map button is the control, where a pilot can reach it
 // in flight. The stored key and the default are unchanged, so an existing choice carries over.
 if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
+if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
 document.getElementById('cumtime-cb').onchange = e => {
   window.showCumTime = e.target.checked;
   try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }

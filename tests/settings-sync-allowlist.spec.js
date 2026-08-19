@@ -105,6 +105,10 @@ const NOT_A_SYNCED_SETTING = [
   // Whether the map chases the aircraft depends on how the device is mounted -- a phone
   // clamped in front of you wants following, the desktop it was planned on does not.
   [/^navaid\.gpsFollow$/,         'following the aircraft is a property of the device you fly with'],
+  // The route lock guards against a thumb on a kneeboard, which is a hazard of the phone in
+  // the cockpit and not of the desktop the route was planned at. Syncing it would arrive as a
+  // planning session that silently refuses every drag.
+  [/^navaid\.editLocked$/,        'locking the route against stray taps is a property of the device you fly with'],
   // Same reason: north-up on the desktop you plan at, heading-up on the phone clamped in
   // front of you. It follows the device, not the pilot.
   [/^navaid\.headingUp$/,         'map orientation is a property of the device you fly with'],
