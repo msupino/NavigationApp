@@ -59,6 +59,19 @@ NavAid.tuningDefaults = {
   // how tight an altitude tolerance can be before it cries wolf.
   altToleranceFt: { value: 100, min: 20, max: 1000, step: 10, label: 'Altitude alert tolerance (ft)' },
   altMaxAlertsPerLeg: { value: 2, min: 0, max: 10, step: 1, label: 'Altitude alerts per leg (0 = off)' },
+  // How long before the destination the ATIS reminder fires. Time, not distance: the point is
+  // to have enough of it to tune, listen through a full cycle and copy the numbers before the
+  // arrival gets busy, and that is a duration regardless of groundspeed.
+  commLeadSec: { value: 60, min: 15, max: 300, step: 15, label: 'Frequency call, seconds ahead' },
+  atisLeadSec: { value: 600, min: 60, max: 1800, step: 30, label: 'ATIS reminder lead (s)' },
+  atisMarkerColor: { value: '#1f6fd0', type: 'color', label: 'ATIS reminder marker colour' },
+  atisMarkerRadiusPx: { value: 10, min: 3, max: 30, step: 1, label: 'ATIS reminder marker radius (px)' },
+  atisMarkerFontPx: { value: 13, min: 8, max: 28, step: 1, label: 'ATIS reminder marker label (px)' },
+  // The magnetic heading printed past the end of the own-ship predictor line. The same number
+  // is already in the footer readout, right next to the speed and altitude it belongs with,
+  // and out on the line it sat over the chart at the busiest moment. Off by default; the
+  // distance and time ticks on the line are unaffected.
+  liveHeadingEndLabel: { value: false, type: 'bool', label: 'Heading number at the end of the predictor line' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, seconds ahead' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (deg)' },
@@ -70,6 +83,11 @@ NavAid.tuningDefaults = {
   gpsMaxAccuracyM: { value: 100, min: 10, max: 500, step: 5, label: 'Reject fixes worse than (m)' },
   gpsMinMoveM: { value: 10, min: 0, max: 100, step: 1, label: 'Ignore movement under (m)' },
   gpsStaleSec: { value: 20, min: 5, max: 300, step: 5, label: 'Fix goes stale after (s)' },
+  // How often the pressure/temperature behind the altimetry correction is refetched. The model
+  // itself publishes every 15 minutes, so asking more often buys nothing but requests; the
+  // distance is the other trigger, because pressure changes with where you are as well as when.
+  qnhMaxAgeMin: { value: 15, min: 1, max: 180, step: 1, label: 'QNH refetch after (min)' },
+  qnhMoveNm: { value: 5, min: 1, max: 200, step: 1, label: 'QNH refetch after moving (NM)' },
   compassMaxKt: { value: 3, min: 0, max: 40, step: 1, label: 'Compass stands in below (kt)' },
   alertNotifyTtlSec: { value: 15, min: 0, max: 3600, step: 5, label: 'Alert notification life (s)' },
   compassFallback: { value: true, type: 'bool', label: 'Compass heading when stopped' },
@@ -707,7 +725,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'commLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -1617,6 +1635,14 @@ window.S = Object.assign({
   gotoTitle: 'Click to go to coordinates',
   gotoError: 'Type the digits, or paste a coordinate like 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
+  followOnToast: 'Following the aircraft',
+  followOffToast: 'Map stays put',
+  orientHeadingToast: 'Heading up',
+  orientNorthToast: 'North up',
+  voiceOnToast: 'Audio alerts on',
+  voiceOffToast: 'Audio alerts off',
+  voiceOnTitle: 'Alerts are spoken — tap to silence them',
+  voiceOffTitle: 'Alerts are silent — tap to have them spoken',
   orientNorthUp: 'North up — tap to hold your heading up',
   orientRotated: 'Map rotated — tap for north up',
   orientHeadingUp: 'Heading up — tap for north up',
@@ -1897,6 +1923,17 @@ window.S = Object.assign({
   tbGpsLive: 'Location',
   tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
   tbGpsLiveStop: 'Hide',
+  // ATIS reminder: fires once, a set time out from the destination.
+  watchAlertAtisTitle: 'ATIS',
+  // Short on purpose: a notification is read at a glance in the cockpit, and the minutes were
+  // the part nobody needed -- the alert only fires when it is time.
+  watchAlertAtisBody: function (field, freq) { return field + ' ATIS ' + freq; },
+  // No "for": the alert names the station and its frequency, and the extra word is one more
+  // thing to listen past in a cockpit.
+  speakAlertAtis: function (field, freqDigits) {
+    return 'A T I S, ' + field + ', ' + freqDigits;
+  },
+  atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS is not available in this browser.',
   // Prefixes an age in seconds: "GPS fix 47s" — the fix is that old, not that recent.
   gpsFixStale: 'GPS fix',
@@ -1930,6 +1967,12 @@ window.S = Object.assign({
   // The overhead-the-waypoint moment -- CVFR radio phraseology's own "TOP <point>" call.
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
+  // Written form of the same call. Short on purpose: it is read on a watch face, in the
+  // minute before a waypoint, by someone who is flying.
+  watchAlertCommTitle: 'Next frequency',
+  watchAlertCommBody: function(station, freq) {
+    return [station, freq].filter(Boolean).join(' ');
+  },
   watchAlertAltTitle: 'Altitude',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';
@@ -1974,6 +2017,8 @@ window.S = Object.assign({
       const t = [];
       if (hms.h) t.push(hms.h + (hms.h === 1 ? ' hour' : ' hours'));
       if (hms.m) t.push(hms.m + (hms.m === 1 ? ' minute' : ' minutes'));
+      // Spoken in full. Dropping the word (just "5 minutes 15") was tried and sounds wrong
+      // read aloud -- a bare number after a unit lands as an unfinished sentence.
       if (hms.s) t.push(hms.s + ' seconds');
       if (t.length) parts.push(t.join(' '));
     }
@@ -1981,14 +2026,16 @@ window.S = Object.assign({
     return s;
   },
   speakAlertTop: function() { return 'Top.'; },
-  // Spoken at TOP when that waypoint changes frequency. Either half may be missing -- a
+  // Shortly before a waypoint that changes frequency. Either half may be missing -- a
   // callout can name a station with no frequency, or a frequency with no station -- and
   // whichever is present is still worth hearing.
-  speakAlertTopComm: function(station, freqDigits) {
+  speakAlertComm: function(station, freqDigits) {
     const bits = [];
     if (station) bits.push(String(station).replace(/_/g, ' '));
     if (freqDigits) bits.push(freqDigits);
-    return bits.length ? ('Top. Contact ' + bits.join(', ') + '.') : 'Top.';
+    // "Contact X" is an instruction to change frequency, and that is ATC's call. The alert
+    // names what comes next; the pilot and the controller decide when.
+    return bits.length ? ('Next frequency: ' + bits.join(', ') + '.') : '';
   },
   spokenDecimal: 'decimal',
   speakAlertAlt: function(actual, planned) {

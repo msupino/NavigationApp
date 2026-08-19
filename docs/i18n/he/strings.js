@@ -652,6 +652,14 @@ window.S = {
   gotoTitle: 'לחץ כדי לנווט לקואורדינטות',
   gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
+  followOnToast: 'עוקב אחרי המטוס',
+  followOffToast: 'המפה נשארת במקומה',
+  orientHeadingToast: 'מגמה למעלה',
+  orientNorthToast: 'צפון למעלה',
+  voiceOnToast: 'התראות קוליות פעילות',
+  voiceOffToast: 'התראות קוליות כבויות',
+  voiceOnTitle: 'ההתראות מוקראות — הקישו כדי להשתיק',
+  voiceOffTitle: 'ההתראות שקטות — הקישו כדי שיוקראו',
   orientNorthUp: 'צפון למעלה — הקישו כדי לשמור על המגמה למעלה',
   orientRotated: 'המפה מסובבת — הקישו לצפון למעלה',
   orientHeadingUp: 'מגמה למעלה — הקישו לצפון למעלה',
@@ -1036,6 +1044,18 @@ window.S = {
   tbGpsLive: 'מיקום',
   tbGpsLiveTitle: 'הצגת המיקום החי שלך על המפה (GPS, ללא הקלטה)',
   tbGpsLiveStop: 'הסתר',
+  watchAlertAtisTitle: 'ATIS',
+  // Hebrew first, Latin tail: the old wording ended with "<n> דקות לפני" after a Latin run, and
+  // a notification laid out left-to-right showed it as "דקות לפני 7" -- the number stranded at
+  // the wrong end. The minutes are gone anyway (the alert fires when it is time), so what is
+  // left is one Hebrew word and a single Latin run, which orders correctly either way.
+  watchAlertAtisBody: function (field, freq) { return 'ATIS ' + field + ' ' + freq; },
+  speakAlertAtis: function (field, freqDigits) {
+    // No preposition: "ATIS ל" + a spelled code reads as an extra letter -- the lamed sounds
+    // exactly like the L that follows it, so LLIB came out "ATIS L L L I B".
+    return 'ATIS, ' + field + ', ' + freqDigits;
+  },
+  atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS אינו זמין בדפדפן זה.',
   gpsFixStale: 'קליטת GPS מלפני',
   wpLabel: 'צד״ר',
@@ -1051,6 +1071,10 @@ window.S = {
   },
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
+  watchAlertCommTitle: 'התדר הבא',
+  watchAlertCommBody: function(station, freq) {
+    return [station, freq].filter(Boolean).join(' ');
+  },
   watchAlertAltTitle: 'גובה',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' רגל — מתוכנן ' + planned + ' רגל';
@@ -1094,11 +1118,13 @@ window.S = {
     return s;
   },
   speakAlertTop: function() { return 'טופ.'; },
-  speakAlertTopComm: function(station, freqDigits) {
+  speakAlertComm: function(station, freqDigits) {
     const bits = [];
     if (station) bits.push(String(station).replace(/_/g, ' '));
     if (freqDigits) bits.push(freqDigits);
-    return bits.length ? ('טופ. עבור אל ' + bits.join(', ') + '.') : 'טופ.';
+    // "עבור אל" tells the pilot to change frequency; that is ATC's call, not the app's. The
+    // alert names what comes next and leaves the decision where it belongs.
+    return bits.length ? ('התדר הבא: ' + bits.join(', ') + '.') : '';
   },
   spokenDecimal: 'נקודה',
   speakAlertAlt: function(actual, planned) {

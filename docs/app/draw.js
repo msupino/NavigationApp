@@ -301,11 +301,17 @@ function drawHeadingLine(pos, hdg, gsKt) {
   const hMag = typeof toMagnetic === 'function' ? toMagnetic(h) : h;
   const headingLabel = (typeof pad3 === 'function' ? pad3(Math.round(((hMag % 360) + 360) % 360)) :
     Math.round(hMag)) + '°';
-  octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
-  octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
-  octx.strokeText(headingLabel, headEnd.x, headEnd.y);
-  octx.fillStyle = tune('liveHeadingTextColor');
-  octx.fillText(headingLabel, headEnd.x, headEnd.y);
+  // Not drawn by default: the same magnetic heading is in the footer readout beside the speed
+  // and altitude it belongs with, and out here it printed over the chart at the far end of the
+  // line -- furthest from where the pilot is looking, on top of the ground being flown into.
+  // liveHeadingEndLabel puts it back. The distance and time ticks are untouched either way.
+  if (typeof tune === 'function' && tune('liveHeadingEndLabel') === true) {
+    octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
+    octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
+    octx.strokeText(headingLabel, headEnd.x, headEnd.y);
+    octx.fillStyle = tune('liveHeadingTextColor');
+    octx.fillText(headingLabel, headEnd.x, headEnd.y);
+  }
   octx.restore();
   if (typeof window !== 'undefined')
     window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(),
@@ -827,6 +833,10 @@ function draw() {
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
   drawLegs();
   drawWaypoints();
+  // After the route and its discs, not before: drawn underneath, the line ran straight through
+  // the marker and a route shorter than the lead time hid it completely under the departure
+  // waypoint -- reported as "I still don't see the ATIS marker".
+  if (typeof drawAtisMarker === 'function') drawAtisMarker();
   // NOTAM airport count badges on top of waypoints so a route waypoint on the
   // field doesn't cover them (and they stay clickable).
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
@@ -2719,6 +2729,106 @@ function drawReportingBadges() {
 // come from the same navWP dataset, so navWP must be loaded when this layer
 // is enabled (toggle handler + boot ensure that). When both layers are on,
 // the dot is drawn by drawNavWaypoints() and the ring here — once each.
+// Where the ATIS reminder will fire: walk back from the destination by the lead time at the
+// legs' planned speeds, and mark that point on the route. It answers "when does this happen"
+// before the flight rather than during it, which is when a pilot can still do something about
+// it -- move the point by changing the lead time, or by planning a slower leg.
+//
+// Only drawn while a fix is driving the map (recording or Location), because that is when the
+// reminder can actually fire: a marker for an alert that is not armed would be a promise the
+// app is not keeping.
+function atisAlertPoint() {
+  // Any live position, the simulator included: from the map's point of view a sim feed and a
+  // real fix are the same thing, and a flight tested in the sim must show what the flight will
+  // show -- reported as the marker being missing in sim mode.
+  if (typeof gpsPositionLive !== 'function' || !gpsPositionLive()) return null;
+  if (typeof gpsDestinationAtis !== 'function' || !gpsDestinationAtis()) return null;
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const legs = (typeof state !== 'undefined' && state.legs) || [];
+  if (wps.length < 2 || !legs.length) return null;
+  const leadS = (typeof tune === 'function') ? tune('atisLeadSec') : 600;
+  let remainingS = leadS;
+  // Backwards from the destination, leg by leg, spending the lead time as we go.
+  for (let i = legs.length - 1; i >= 0; i--) {
+    const a = wps[i], b = wps[i + 1];
+    // A leg with no speed of its own falls back to the route default rather than deleting the
+    // marker: clearing one speed field made the whole thing vanish with no explanation, which
+    // is worse than an estimate that is off by the difference between two cruise speeds.
+    const speed = (legs[i] && legs[i].flightSpeed > 0) ? legs[i].flightSpeed
+      : ((typeof tune === 'function') ? tune('defaultLegSpeedKt') : 0);
+    if (!a || !b || !(speed > 0)) return null;
+    const legS = (geo(a, b).dist / speed) * 3600;
+    if (remainingS <= legS) {
+      const t = legS > 0 ? 1 - (remainingS / legS) : 0;   // fraction along a->b
+      return { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t, leadS };
+    }
+    remainingS -= legS;
+  }
+  // The whole route is shorter than the lead time: the reminder is due before the flight even
+  // starts. Marked at the first waypoint, flagged so the drawing can keep it clear of that
+  // waypoint's own disc instead of hiding underneath it.
+  return { lat: wps[0].lat, lng: wps[0].lng, leadS, atStart: true };
+}
+// "Arrival 132.50 MHz / Departure 132.80 MHz" -> "132.50". The dataset carries the published
+// wording, which is right in the inspector and far too long for a map label; the first
+// frequency in it is the one a pilot arriving will tune.
+function atisShortFreq(text) {
+  const m = String(text || '').match(/\d{3}(?:\.\d{1,3})?/);
+  return m ? m[0] : '';
+}
+function drawAtisMarker() {
+  const p = atisAlertPoint();
+  window.__atisMarker = p ? { lat: p.lat, lng: p.lng } : null;   // test hook
+  if (!p) return;
+  const s = proj(p);
+  const r = tune('atisMarkerRadiusPx');
+  // Sitting exactly on the departure waypoint, the marker would be inside that waypoint's disc.
+  // Offset it clear, along the first leg, so both stay readable.
+  if (p.atStart && state.waypoints && state.waypoints[1]) {
+    const b = proj(state.waypoints[1]);
+    const dx = b.x - s.x, dy = b.y - s.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const push = (typeof waypointDiscRadiusPx === 'function' ? waypointDiscRadiusPx() : 9) + r + 4;
+    s.x += (dx / len) * push;
+    s.y += (dy / len) * push;
+  }
+  octx.save();
+  octx.strokeStyle = tune('atisMarkerColor');
+  octx.fillStyle = colorWithAlpha(tune('atisMarkerColor'), 0.25);
+  octx.lineWidth = 2;
+  octx.beginPath();
+  octx.arc(s.x, s.y, r, 0, Math.PI * 2);
+  octx.fill();
+  octx.stroke();
+  // A short tick out of the top of the circle, so the label has something to sit on and the
+  // marker cannot be mistaken for a waypoint disc.
+  octx.beginPath();
+  octx.moveTo(s.x, s.y - r);
+  octx.lineTo(s.x, s.y - r - 6);
+  octx.stroke();
+  // The frequency on the marker, not just the word: the point of seeing it on the map before
+  // the flight is knowing WHAT you will be tuning and roughly where, and a bare "ATIS" makes
+  // you open the airfield to find out.
+  const base = (typeof S === 'object' && S && S.atisMarkerLabel) || 'ATIS';
+  const atis = (typeof gpsDestinationAtis === 'function') ? gpsDestinationAtis() : null;
+  const freq = atis ? atisShortFreq(atis.freq) : '';
+  const label = freq ? base + ' ' + freq : base;
+  octx.font = 'bold ' + tune('atisMarkerFontPx') + 'px sans-serif';
+  octx.textAlign = 'center';
+  octx.textBaseline = 'bottom';
+  octx.lineWidth = tune('overlayLabelHaloWidthPx');
+  octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+  octx.strokeText(label, s.x, s.y - r - 8);
+  octx.fillStyle = tune('inkColor');
+  octx.fillText(label, s.x, s.y - r - 8);
+  octx.restore();
+}
+if (typeof window !== 'undefined') {
+  window.atisAlertPoint = atisAlertPoint;
+  window.drawAtisMarker = drawAtisMarker;
+  window.atisShortFreq = atisShortFreq;
+}
+
 function drawCommChangeRings() {
   // Test-inspection hook (issue #399): every comm-change ring drawn this
   // frame is recorded here so Playwright can assert "ring drew at X"
@@ -2981,7 +3091,14 @@ function commStaticCalloutDefaults(name) {
   const cc = commChangeMap && key ? commChangeMap[key] : null;
   const fallback = (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change';
   const opt = commCallSignOptions(key)[0];
-  if (opt) return { freqName: opt.id || opt.label || fallback, freq: opt.freq || '' };
+  // In Hebrew, the station's Hebrew name (commCallSignLabel already resolves it): the catalog
+  // carries one for every call sign, and the callout was showing the English catalog id in a
+  // Hebrew session. In English the id is what the chart prints -- TEYMAN, not Teyman -- so it
+  // stays exactly as it was.
+  if (opt) {
+    const he = (typeof commUseHebrewLabels === 'function') && commUseHebrewLabels();
+    return { freqName: (he ? opt.label : opt.id) || opt.label || fallback, freq: opt.freq || '' };
+  }
   const raw = cc && (cc.to || cc.from || cc.note || cc.name || key);
   const d = splitCommCalloutText(raw || key || fallback);
   return { freqName: d.name || fallback, freq: d.freq };

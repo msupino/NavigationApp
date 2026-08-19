@@ -8334,7 +8334,23 @@ async function _simFetch() {
       // "show alt like gps mode shows alt in sim mode".
       if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
     }
-    if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
+    // Through the same helpers the real-fix path uses, not a bare setView: the follow lock,
+    // its pan/zoom grace and the heading-up rotation all live in those, and calling setView
+    // here went round every one of them -- the two map buttons did nothing at all in sim.
+    // simFollow is the sim panel's own switch and gpsFollow is the map button; both have to
+    // be on, and they are kept in step by the panel (see setFollowState in ui.js).
+    // gpsFollow alone: the map's lock is the one switch. Requiring the sim panel's own flag as
+    // well meant the lock could never resume following after a pan when that flag was off --
+    // the button looked live and did nothing, five seconds later included.
+    if ((typeof gpsFollow === 'undefined' || gpsFollow) &&
+        (typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended())) {
+      if (typeof gpsFollowRecenter === 'function') {
+        gpsFollowRecenter(window.simAircraft.lat, window.simAircraft.lng);
+      } else {
+        map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
+      }
+    }
+    if (typeof gpsApplyHeadingUp === 'function') gpsApplyHeadingUp();
     draw();
   } catch (e) {
     if (session === _simSession) _simSetStatus(false);
@@ -8362,11 +8378,30 @@ function refreshSimTrigger() {
 }
 if (typeof window !== 'undefined') window.refreshSimTrigger = refreshSimTrigger;
 
+// The map controls that exist only while something is flying the route. gps.js calls these
+// itself on start/stop; the simulator has to do the same, or connecting leaves the column
+// hidden until an unrelated redraw happens to refresh it.
+function simRefreshFlightControls() {
+  // The pan/zoom grace is wired by the real-fix paths (startLiveLocation / startGpsRecording).
+  // Without it here, a sim session had no grace at all: the next sample snatched the view back
+  // the instant the pilot dragged the map to look at something.
+  if (typeof gpsWatchUserMapMoves === 'function') gpsWatchUserMapMoves();
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof scheduleDraw === 'function') scheduleDraw();   // the ATIS marker follows too
+}
+
 function simStart() {
   if (_simInterval) return;
   _simSession++;                 // anything still in flight belongs to the previous session
   simOn = true;
   refreshSimTrigger();
+  // The in-flight column follows ANY live position now (gpsPositionLive), and the simulator
+  // is one -- but nothing here told those controls the state had changed, so they only
+  // appeared after some other refresh happened to run. Reported as the buttons not appearing
+  // on connect.
+  simRefreshFlightControls();
   window.simAircraft = null;
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
   // blind reset to leg 0 -- see the identical comment at startLiveLocation() in gps.js
@@ -8391,6 +8426,8 @@ function simStart() {
 function simStop() {
   simOn = false;
   refreshSimTrigger();
+  simRefreshFlightControls();          // ...and away again on disconnect
+
   if (typeof gpsMaybeStopDriftTimer === 'function') gpsMaybeStopDriftTimer();
   _simSession++;                 // invalidate any in-flight poll's result
   window.simAircraft = null;
