@@ -274,6 +274,29 @@ const HEADING_UP_KEY = 'navaid.headingUp';
 let headingUpOn = false;
 try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unavailable */ }
 
+// The bottom-right column, top to bottom. Every control in it used to insert itself as
+// firstChild on every refresh, so whichever refreshed last owned the top and the buttons
+// visibly swapped places as state changed -- reported as "buttons keep switching location".
+// One rank per control, applied by one function: the DOM order follows the ranks, whoever
+// refreshes and in whatever order.
+const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
+function orderMapControls(corner) {
+  if (!corner) return;
+  const rank = (el) => {
+    for (let i = 0; i < MAP_CONTROL_ORDER.length; i++) {
+      if (el.classList && el.classList.contains(MAP_CONTROL_ORDER[i])) return i;
+    }
+    return MAP_CONTROL_ORDER.length;      // anything unknown (zoom, scale) keeps the bottom
+  };
+  const rows = Array.prototype.slice.call(corner.children);
+  const sorted = rows.slice().sort((a, b) => rank(a) - rank(b));
+  // Only touch the DOM when the order actually differs: this runs on every fix.
+  for (let i = 0; i < sorted.length; i++) {
+    if (rows[i] !== sorted[i]) { sorted.forEach(el => corner.appendChild(el)); return; }
+  }
+}
+window.orderMapControls = orderMapControls;
+
 // Voice alerts, as a map control rather than only a checkbox buried in View/Set: it is a
 // thing a pilot turns on WHILE flying (the cabin got noisy, or a passenger is asleep), and a
 // toggle you have to open a menu for is one you leave where it is. Same square as the
@@ -294,11 +317,7 @@ function refreshVoiceControl() {
   if (!wrap) return;
   const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
   wrap.style.display = tracking ? '' : 'none';
-  // Top of the in-flight column: above the orientation button, which puts itself above the
-  // follow lock. Re-asserted on every refresh, because each control claims its own slot and
-  // whichever ran last would otherwise own the top.
-  const corner = wrap.parentNode;
-  if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+  orderMapControls(wrap.parentNode);
   const on = window.voiceAlerts === true;
   voiceBtn.textContent = on ? '\ud83d\udd0a' : '\ud83d\udd07';     // speaker on / muted
   voiceBtn.classList.toggle('voice-on', on);
@@ -351,9 +370,7 @@ function refreshOrientControl() {
   if (!wrap) return;
   const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
   wrap.style.display = tracking ? '' : 'none';
-  // Directly above the follow lock, which itself sits above the assistant launcher.
-  const corner = wrap.parentNode;
-  if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+  orderMapControls(wrap.parentNode);
   // Three states, not two: the dial can leave the chart pointing anywhere, and a button
   // that still claimed "north up" over a map turned 40 degrees would be describing
   // something else. Rotated-by-hand reads as its own state, and tapping straightens up.
@@ -423,12 +440,7 @@ function refreshGpsFollowControl() {
   if (!wrap) return;
   const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
   wrap.style.display = tracking ? '' : 'none';
-  // Top of the bottom-right stack: above the assistant's launcher, which puts itself
-  // above the zoom buttons. Re-asserted on every refresh rather than once at boot,
-  // because the assistant builds its control on DOMContentLoaded -- whichever ran last
-  // would otherwise own the top slot. In flight this is the button being reached for.
-  const corner = wrap.parentNode;
-  if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+  orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
   followBtn.textContent = on ? '🔒' : '🔓';
   followBtn.classList.toggle('follow-on', on);

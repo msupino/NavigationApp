@@ -99,3 +99,39 @@ test('the inspector rule is the one deliberate difference', async ({ page }) => 
   expect(out.sim).toBe(true);     // at a desk, opening a waypoint is the point
   expect(out.live).toBe(false);   // in the air it covers the map you are flying by
 });
+
+// Reported: "buttons keep switching location" and "lock map button is missing". Each control
+// used to insert itself as the corner's firstChild on every refresh, so whichever refreshed
+// last owned the top and the column reshuffled as state changed — and a button could end up
+// below the fold. One rank list, applied by one function, whoever refreshes.
+test('the in-flight column keeps a fixed order however often it refreshes', async ({ page }) => {
+  await boot(page);
+  const order = () => page.evaluate(() => {
+    const corner = document.querySelector('.leaflet-bottom.leaflet-right');
+    return Array.prototype.map.call(corner.children, el => el.className)
+      .filter(c => /voice-ctrl|orient-ctrl|follow-ctrl|rotate-ctrl/.test(c))
+      .map(c => c.replace('leaflet-control ', ''));
+  });
+  await page.evaluate(() => startLiveLocation());
+  const first = await order();
+  expect(first).toEqual(['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'rotate-ctrl']);
+
+  // Refresh them in the awkward order — the one that used to leave the last caller on top.
+  await page.evaluate(() => {
+    refreshGpsFollowControl(); refreshOrientControl(); refreshVoiceControl();
+    refreshVoiceControl(); refreshGpsFollowControl();
+  });
+  expect(await order()).toEqual(first);
+});
+
+test('connecting the simulator brings the column up; disconnecting takes it away', async ({ page }) => {
+  await boot(page);
+  const shown = () => page.evaluate(() => ['voice-toggle', 'orient-toggle', 'follow-lock']
+    .map(id => getComputedStyle(document.getElementById(id).parentNode).display !== 'none'));
+  expect(await shown()).toEqual([false, false, false]);
+  // simStart()/simStop() without a bridge to poll: the state change is what is under test.
+  await page.evaluate(() => { window.simOn = true; simRefreshFlightControls(); });
+  expect(await shown()).toEqual([true, true, true]);
+  await page.evaluate(() => { window.simOn = false; simRefreshFlightControls(); });
+  expect(await shown()).toEqual([false, false, false]);
+});

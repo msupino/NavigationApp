@@ -8362,11 +8362,26 @@ function refreshSimTrigger() {
 }
 if (typeof window !== 'undefined') window.refreshSimTrigger = refreshSimTrigger;
 
+// The map controls that exist only while something is flying the route. gps.js calls these
+// itself on start/stop; the simulator has to do the same, or connecting leaves the column
+// hidden until an unrelated redraw happens to refresh it.
+function simRefreshFlightControls() {
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
+  if (typeof scheduleDraw === 'function') scheduleDraw();   // the ATIS marker follows too
+}
+
 function simStart() {
   if (_simInterval) return;
   _simSession++;                 // anything still in flight belongs to the previous session
   simOn = true;
   refreshSimTrigger();
+  // The in-flight column follows ANY live position now (gpsPositionLive), and the simulator
+  // is one -- but nothing here told those controls the state had changed, so they only
+  // appeared after some other refresh happened to run. Reported as the buttons not appearing
+  // on connect.
+  simRefreshFlightControls();
   window.simAircraft = null;
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
   // blind reset to leg 0 -- see the identical comment at startLiveLocation() in gps.js
@@ -8391,6 +8406,8 @@ function simStart() {
 function simStop() {
   simOn = false;
   refreshSimTrigger();
+  simRefreshFlightControls();          // ...and away again on disconnect
+
   if (typeof gpsMaybeStopDriftTimer === 'function') gpsMaybeStopDriftTimer();
   _simSession++;                 // invalidate any in-flight poll's result
   window.simAircraft = null;
