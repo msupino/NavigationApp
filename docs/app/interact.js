@@ -2474,6 +2474,9 @@ const KITE_DRAG_KINDS = ['label', 'cumlabel', 'cumlabelret'];
 const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick'].concat(KITE_DRAG_KINDS);
 function dragLockedNow(kind) {
   if (LOCKABLE_DRAG_KINDS.indexOf(kind) === -1) return false;
+  // Two ways to be locked: the pilot asked for it (the edit lock on the map), or a position is
+  // driving the map and the route is not to be edited under the alerts measuring against it.
+  if (typeof editLocked !== 'undefined' && editLocked) return true;
   return typeof gpsMapLocked === 'function' && gpsMapLocked();
 }
 

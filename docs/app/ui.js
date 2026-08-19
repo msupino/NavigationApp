@@ -279,7 +279,7 @@ try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unav
 // visibly swapped places as state changed -- reported as "buttons keep switching location".
 // One rank per control, applied by one function: the DOM order follows the ranks, whoever
 // refreshes and in whatever order.
-const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
+const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'editlock-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
 function orderMapControls(corner) {
   if (!corner) return;
   const rank = (el) => {
@@ -477,6 +477,52 @@ followBtn.onclick = () => {
   }
 };
 refreshGpsFollowControl();
+
+// --- edit lock — nothing on the route moves while it is on -----------
+// Distinct from the follow lock above: that one is about what the MAP does, this one is about
+// what the ROUTE allows. A finger on a phone hits a waypoint disc or a kite as easily as the
+// chart behind it, and a nudge rewrites the plan the alerts are measuring against. Locking
+// while airborne already happened automatically (see dragLockedNow); this is the same thing on
+// purpose, on the ground, for a plan that is finished and only being read.
+//
+// Always visible, unlike the three above: it is a standing choice about the route, not a
+// control that needs a position to mean anything.
+const editLockCtrl = L.control({ position: 'bottomright' });
+editLockCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control editlock-ctrl');
+  wrap.innerHTML = '<button id="edit-lock" type="button" aria-pressed="false"></button>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+editLockCtrl.addTo(map);
+const editLockBtn = document.getElementById('edit-lock');
+function refreshEditLockControl() {
+  if (!editLockBtn) return;
+  orderMapControls(editLockBtn.parentNode && editLockBtn.parentNode.parentNode);
+  const on = window.editLocked === true;
+  // A pin holds the route where it is; a pencil says it can still be edited.
+  editLockBtn.textContent = on ? '📌' : '✏️';
+  editLockBtn.classList.toggle('editlock-on', on);
+  editLockBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const label = on ? (S.editLockOn || 'Route is locked — tap to allow moving points and labels')
+                   : (S.editLockOff || 'Points and labels can be dragged — tap to lock the route');
+  editLockBtn.title = label;
+  editLockBtn.setAttribute('aria-label', label);
+}
+window.refreshEditLockControl = refreshEditLockControl;
+refreshEditLockControl();
+editLockBtn.onclick = () => {
+  window.editLocked = !(window.editLocked === true);
+  try { localStorage.setItem(EDIT_LOCK_KEY, window.editLocked ? '1' : '0'); } catch (err) { /* */ }
+  refreshEditLockControl();
+  // Nothing on the chart changes appearance when the lock flips, so without this the only way
+  // to find out which way it went is to try dragging something.
+  if (typeof showToast === 'function') {
+    showToast(window.editLocked ? (S.editLockOnToast || 'Route locked')
+                                : (S.editLockOffToast || 'Route unlocked'));
+  }
+};
 
 // --- rotate dial — a map control next to the zoom buttons -----------
 const rotateCtrl = L.control({ position: 'bottomright' });
@@ -2965,6 +3011,7 @@ const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY  = 'navaid.showCumTime';
 const LEG_DIR_KEY  = 'navaid.legDirFilter';
 const VOICE_ALERTS_KEY = 'navaid.voiceAlerts';
+const EDIT_LOCK_KEY = 'navaid.editLocked';
 const LIMIT_KITES_KEY = 'navaid.limitLegKites';
 const SIM_URL_KEY  = 'navaid.simUrl';
 const SIM_ON_KEY   = 'navaid.simOn';
@@ -2977,6 +3024,8 @@ try {
   if (sc !== null) window.showCumTime = sc === '1';
   const sva = lsGet(VOICE_ALERTS_KEY);
   if (sva !== null) window.voiceAlerts = sva === '1';
+  const sel = lsGet(EDIT_LOCK_KEY);
+  if (sel !== null) window.editLocked = sel === '1';
   const slk = lsGet(LIMIT_KITES_KEY);
   if (slk !== null) window.limitLegKites = slk === '1';
   const su = lsGet(SIM_URL_KEY);
@@ -3097,6 +3146,7 @@ if (typeof window.voiceAlerts !== 'boolean') window.voiceAlerts = false;
 // The View/Set checkbox is gone -- the map button is the control, where a pilot can reach it
 // in flight. The stored key and the default are unchanged, so an existing choice carries over.
 if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
+if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
 document.getElementById('cumtime-cb').onchange = e => {
   window.showCumTime = e.target.checked;
   try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }

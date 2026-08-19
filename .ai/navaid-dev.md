@@ -802,6 +802,9 @@ as a machine-readable registry.
 - `navaid.apkReloadedForBuild` — native-shell reload bookkeeping, device-local.
 - Session keys: `navaid.selected`, `navaid.fpOpen`, and
   `navaid.openChartModal` restore transient UI state within a tab visit.
+- `navaid.editLocked` — `'0'` / `'1'` for the map's edit lock: while on, nothing on the
+  route can be dragged. Separate from the automatic lock that applies whenever a fix is
+  driving the map.
 - `navaid.simUrl` — simulator bridge base URL.
 - `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
 - `navaid.gpsFollow` — `'0'` / `'1'` for the map's follow lock. One switch for both a
