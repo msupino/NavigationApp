@@ -68,3 +68,28 @@ test('heading-up mode is left to drive the bearing itself', async ({ page }) => 
   });
   expect(after).toBe(30);
 });
+
+// A rotated map belongs to the route drawn on it — usually turned by Reverse, which flips the
+// chart with the plan. Once the route is cleared the angle describes nothing, and the next
+// route would be drawn on a chart quietly 180° out.
+test('clearing the map straightens it back to north', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { map.setBearing(200); });
+  page.on('dialog', d => d.accept());
+  await page.evaluate(() => document.getElementById('clear').click());
+  expect(await bearing(page)).toBe(0);
+  expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
+});
+
+test('...but not while heading-up is driving the bearing', async ({ page }) => {
+  await boot(page);
+  page.on('dialog', d => d.accept());
+  const after = await page.evaluate(() => {
+    map.setBearing(75);
+    headingUpOn = true;
+    document.getElementById('clear').click();
+    headingUpOn = false;
+    return Math.round(mapBearing());
+  });
+  expect(after).toBe(75);
+});
