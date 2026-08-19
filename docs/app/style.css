@@ -1107,6 +1107,24 @@ body.theme-dark #map-crosshair::after {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.85);
 }
 
+/* voice alerts — top of the in-flight column, same square as the rest of it. A pilot turns
+   this on mid-flight (the cabin got loud, a passenger is asleep), so it cannot live only in a
+   menu they would have to open. */
+.voice-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
+.voice-ctrl button {
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid #9a9a9a;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  touch-action: manipulation;
+}
+.voice-ctrl button.voice-on { background: #d8f0d8; border-color: #4a8a4a; }
+
 /* north-up / heading-up toggle — directly above the follow lock, same square so the two
    read as one column of in-flight controls. */
 .orient-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }

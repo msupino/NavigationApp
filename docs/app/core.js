@@ -82,6 +82,11 @@ NavAid.tuningDefaults = {
   gpsMaxAccuracyM: { value: 100, min: 10, max: 500, step: 5, label: 'Reject fixes worse than (m)' },
   gpsMinMoveM: { value: 10, min: 0, max: 100, step: 1, label: 'Ignore movement under (m)' },
   gpsStaleSec: { value: 20, min: 5, max: 300, step: 5, label: 'Fix goes stale after (s)' },
+  // How often the pressure/temperature behind the altimetry correction is refetched. The model
+  // itself publishes every 15 minutes, so asking more often buys nothing but requests; the
+  // distance is the other trigger, because pressure changes with where you are as well as when.
+  qnhMaxAgeMin: { value: 15, min: 1, max: 180, step: 1, label: 'QNH refetch after (min)' },
+  qnhMoveNm: { value: 5, min: 1, max: 200, step: 1, label: 'QNH refetch after moving (NM)' },
   compassMaxKt: { value: 3, min: 0, max: 40, step: 1, label: 'Compass stands in below (kt)' },
   alertNotifyTtlSec: { value: 15, min: 0, max: 3600, step: 5, label: 'Alert notification life (s)' },
   compassFallback: { value: true, type: 'bool', label: 'Compass heading when stopped' },
@@ -680,7 +685,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'gpsReadoutFontPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -1589,6 +1594,8 @@ window.S = Object.assign({
   gotoTitle: 'Click to go to coordinates',
   gotoError: 'Type the digits, or paste a coordinate like 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
+  voiceOnTitle: 'Alerts are spoken — tap to silence them',
+  voiceOffTitle: 'Alerts are silent — tap to have them spoken',
   orientNorthUp: 'North up — tap to hold your heading up',
   orientRotated: 'Map rotated — tap for north up',
   orientHeadingUp: 'Heading up — tap for north up',

@@ -293,6 +293,7 @@ function startLiveLocation() {
   gpsStartCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
   gpsWatchUserMapMoves();
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
@@ -345,6 +346,7 @@ function stopLiveLocation() {
   if (!gpsRecording) gpsStopCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
@@ -373,6 +375,7 @@ function gpsSetFollow(on) {
   if (gpsFollow && gpsOwn) { _gpsUserMovedAt = 0; gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng); }
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
 }
 // A pan or zoom by hand is a request to look at something, and the next fix used to undo
 // it: at 1 Hz the map snapped back before the pilot had read anything. Following pauses
@@ -534,7 +537,18 @@ function gpsCompassTrue(groundSpeedKt) {
 var gpsQnh = null;          // { inHg, hPa, tempC, elevFt, lat, lng, at } or null
 var _gpsQnhFetching = false;
 var GPS_QNH_TTL_MS = 15 * 60 * 1000;    // model output updates every 15 min
-var GPS_QNH_MOVE_NM = 25;               // ...or once the aircraft has moved this far
+var GPS_QNH_MOVE_NM = 5;                // ...or once the aircraft has moved this far
+// Read through tune() at the point of use, like the other in-flight constants, so a value
+// pushed from the gist takes effect without a reload. The constants above stay as the
+// shipped fallback for a build with no registry.
+function gpsQnhTtlMs() {
+  const m = (typeof tune === 'function') ? Number(tune('qnhMaxAgeMin')) : NaN;
+  return Number.isFinite(m) && m > 0 ? m * 60 * 1000 : GPS_QNH_TTL_MS;
+}
+function gpsQnhMoveNm() {
+  const nm = (typeof tune === 'function') ? Number(tune('qnhMoveNm')) : NaN;
+  return Number.isFinite(nm) && nm > 0 ? nm : GPS_QNH_MOVE_NM;
+}
 const HPA_PER_INHG = 33.8639;
 
 function gpsAltimetryOn() {
@@ -550,10 +564,10 @@ function gpsFormatInHg(inHg) {
 // Is the cached reading still good for this position?
 function _gpsQnhFresh(lat, lng) {
   if (!gpsQnh) return false;
-  if (Date.now() - gpsQnh.at > GPS_QNH_TTL_MS) return false;
+  if (Date.now() - gpsQnh.at > gpsQnhTtlMs()) return false;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
   const d = (typeof geo === 'function') ? geo(gpsQnh, { lat, lng }).dist : 0;
-  return !Number.isFinite(d) || d <= GPS_QNH_MOVE_NM;
+  return !Number.isFinite(d) || d <= gpsQnhMoveNm();
 }
 // Sea-level pressure and surface temperature for the position, from Open-Meteo (the
 // forecast source this app already uses; no key, and it answers cross-origin). Best
@@ -839,6 +853,7 @@ function updateGpsRecIndicator() {
   // The follow switch lives or dies with tracking; this runs on every start and stop.
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   const el = document.getElementById('gps-rec-indicator');
   if (el) el.hidden = !gpsRecording;
   const btn = document.getElementById('gps-record');

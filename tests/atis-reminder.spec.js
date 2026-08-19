@@ -196,3 +196,49 @@ test('the Hebrew alert reads correctly and stays short', async ({ page }) => {
   expect(body).not.toMatch(/דקות/);
   expect(body.length).toBeLessThan(30);
 });
+
+// Reported: still not visible. It was drawn BEFORE the route and the waypoint discs, so the
+// line ran through it — and on a route shorter than the lead time it landed exactly under the
+// departure waypoint, completely hidden.
+test('the marker is drawn after the route, not under it', async ({ page }) => {
+  await boot(page);
+  await routeTo(page, 'LLBG');
+  const order = await page.evaluate(() => {
+    gpsLiveOn = true;
+    const seq = [];
+    const realWp = window.drawWaypoints, realAtis = window.drawAtisMarker;
+    window.drawWaypoints = (...a) => { seq.push('waypoints'); return realWp.apply(null, a); };
+    window.drawAtisMarker = (...a) => { seq.push('atis'); return realAtis.apply(null, a); };
+    draw();
+    window.drawWaypoints = realWp; window.drawAtisMarker = realAtis;
+    gpsLiveOn = false;
+    return seq;
+  });
+  expect(order.indexOf('atis')).toBeGreaterThan(order.indexOf('waypoints'));
+});
+
+test('on a route shorter than the lead, the marker clears the departure waypoint', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const af = airfields.find(a => a.name === 'LLBG');
+    // ~8 NM: at 100 kt that is under 5 minutes, so a 10-minute lead is due before departure.
+    state.waypoints = [{ lat: af.lat - 0.13, lng: af.lng, name: 'START' },
+                       { lat: af.lat, lng: af.lng, name: 'LLBG' }];
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 100; });
+    gpsLiveOn = true;
+    const p = atisAlertPoint();
+    // Where it actually paints, after the offset that keeps it out of the disc.
+    let painted = null;
+    const realArc = octx.arc.bind(octx);
+    octx.arc = (x, y, rr, ...rest) => { if (painted === null && rr === tune('atisMarkerRadiusPx')) painted = { x, y }; return realArc(x, y, rr, ...rest); };
+    drawAtisMarker();
+    octx.arc = realArc;
+    const wp = proj(state.waypoints[0]);
+    gpsLiveOn = false;
+    return { atStart: !!(p && p.atStart), gap: painted ? Math.hypot(painted.x - wp.x, painted.y - wp.y) : 0,
+             disc: waypointDiscRadiusPx() };
+  });
+  expect(out.atStart).toBe(true);
+  expect(out.gap).toBeGreaterThan(out.disc);     // outside the waypoint's own circle
+});

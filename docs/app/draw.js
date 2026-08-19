@@ -568,13 +568,16 @@ function draw() {
   // everything a pilot actually flies.
   if (typeof drawHotspotOverlay === 'function') drawHotspotOverlay();
   drawReportingBadges();
-  if (typeof drawAtisMarker === 'function') drawAtisMarker();
   drawCommChangeRings();
   drawAirfields();
   drawVors();
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
   drawLegs();
   drawWaypoints();
+  // After the route and its discs, not before: drawn underneath, the line ran straight through
+  // the marker and a route shorter than the lead time hid it completely under the departure
+  // waypoint -- reported as "I still don't see the ATIS marker".
+  if (typeof drawAtisMarker === 'function') drawAtisMarker();
   // NOTAM airport count badges on top of waypoints so a route waypoint on the
   // field doesn't cover them (and they stay clickable).
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
@@ -2499,7 +2502,9 @@ function atisAlertPoint() {
     }
     remainingS -= legS;
   }
-  // The whole route is shorter than the lead time: the reminder is due at the start.
+  // The whole route is shorter than the lead time: the reminder is due before the flight even
+  // starts. Marked at the first waypoint, flagged so the drawing can keep it clear of that
+  // waypoint's own disc instead of hiding underneath it.
   return { lat: wps[0].lat, lng: wps[0].lng, leadS, atStart: true };
 }
 // "Arrival 132.50 MHz / Departure 132.80 MHz" -> "132.50". The dataset carries the published
@@ -2515,6 +2520,16 @@ function drawAtisMarker() {
   if (!p) return;
   const s = proj(p);
   const r = tune('atisMarkerRadiusPx');
+  // Sitting exactly on the departure waypoint, the marker would be inside that waypoint's disc.
+  // Offset it clear, along the first leg, so both stay readable.
+  if (p.atStart && state.waypoints && state.waypoints[1]) {
+    const b = proj(state.waypoints[1]);
+    const dx = b.x - s.x, dy = b.y - s.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const push = (typeof waypointDiscRadiusPx === 'function' ? waypointDiscRadiusPx() : 9) + r + 4;
+    s.x += (dx / len) * push;
+    s.y += (dy / len) * push;
+  }
   octx.save();
   octx.strokeStyle = tune('atisMarkerColor');
   octx.fillStyle = colorWithAlpha(tune('atisMarkerColor'), 0.25);

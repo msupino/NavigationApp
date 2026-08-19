@@ -274,6 +274,52 @@ const HEADING_UP_KEY = 'navaid.headingUp';
 let headingUpOn = false;
 try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unavailable */ }
 
+// Voice alerts, as a map control rather than only a checkbox buried in View/Set: it is a
+// thing a pilot turns on WHILE flying (the cabin got noisy, or a passenger is asleep), and a
+// toggle you have to open a menu for is one you leave where it is. Same square as the
+// orientation and follow-lock buttons, directly above them, and shown on the same condition:
+// only while a fix is driving the map, since there is nothing to announce otherwise.
+const voiceCtrl = L.control({ position: 'bottomright' });
+voiceCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control voice-ctrl');
+  wrap.innerHTML = '<button id="voice-toggle" type="button" aria-pressed="false"></button>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+voiceCtrl.addTo(map);
+const voiceBtn = document.getElementById('voice-toggle');
+function refreshVoiceControl() {
+  const wrap = voiceBtn && voiceBtn.parentNode;
+  if (!wrap) return;
+  const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
+  wrap.style.display = tracking ? '' : 'none';
+  // Top of the in-flight column: above the orientation button, which puts itself above the
+  // follow lock. Re-asserted on every refresh, because each control claims its own slot and
+  // whichever ran last would otherwise own the top.
+  const corner = wrap.parentNode;
+  if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+  const on = window.voiceAlerts === true;
+  voiceBtn.textContent = on ? '\ud83d\udd0a' : '\ud83d\udd07';     // speaker on / muted
+  voiceBtn.classList.toggle('voice-on', on);
+  voiceBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const label = on ? (S.voiceOnTitle || 'Alerts are spoken — tap to silence them')
+                   : (S.voiceOffTitle || 'Alerts are silent — tap to have them spoken');
+  voiceBtn.title = label;
+  voiceBtn.setAttribute('aria-label', label);
+}
+window.refreshVoiceControl = refreshVoiceControl;
+// Hidden until a fix is driving the map -- without this first call the button is visible from
+// boot, since nothing has set its display yet.
+refreshVoiceControl();
+voiceBtn.onclick = () => {
+  window.voiceAlerts = !(window.voiceAlerts === true);
+  try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
+  const cb = document.getElementById('voice-alerts-cb');
+  if (cb) cb.checked = window.voiceAlerts === true;      // the menu checkbox is the same switch
+  refreshVoiceControl();
+};
+
 const orientCtrl = L.control({ position: 'bottomright' });
 orientCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control orient-ctrl');
@@ -3013,6 +3059,7 @@ document.getElementById('voice-alerts-cb').checked = window.voiceAlerts === true
 document.getElementById('voice-alerts-cb').onchange = e => {
   window.voiceAlerts = e.target.checked;
   try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
 };
 document.getElementById('cumtime-cb').onchange = e => {
   window.showCumTime = e.target.checked;
