@@ -3448,6 +3448,10 @@ if (msaCb) {
     try { localStorage.setItem(MSA_KEY, window.showMsa ? '1' : '0'); }
     catch (err) { /* storage unavailable */ }
     refreshInspectorIfVisible();   // rebuild so the MSA row appears/clears
+    // ...and repaint, because this toggle now draws the terrain tint as well. Without it the
+    // map only caught up on the next pan or zoom, which reads exactly like a toggle that
+    // does nothing at all.
+    if (typeof draw === 'function') draw();
   };
 }
 // --- route-wide wind inputs (#722) ----------------------------------

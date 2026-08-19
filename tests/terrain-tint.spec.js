@@ -134,3 +134,20 @@ test('the leg inspector still carries the MSA row it always did', async ({ page 
   });
   expect(hasRow).toBe(true);
 });
+
+// Ticking the box has to repaint. It used to only rebuild the inspector — correct when the
+// toggle drew nothing on the map, and indistinguishable from a dead control now that it does.
+test('ticking the toggle paints immediately, without waiting for a pan', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    window.showMsa = false;
+    const cb = document.getElementById('msa-cb');
+    cb.checked = false;
+    window.__terrainTintCells = 0;
+    cb.checked = true;
+    cb.onchange({ target: cb });          // exactly what a click does
+    return { on: !!window.showMsa, cells: window.__terrainTintCells };
+  });
+  expect(out.on).toBe(true);
+  expect(out.cells).toBeGreaterThan(50);
+});
