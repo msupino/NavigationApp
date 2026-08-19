@@ -27,7 +27,8 @@ const routeTo = (page, icao) => page.evaluate((code) => {
   return { atis: gpsDestinationAtis(), legNm: geo(state.waypoints[0], state.waypoints[1]).dist };
 }, icao);
 
-const alerts = [];
+// Alerts are collected in the PAGE (window.__alerts), not here: gpsSendWatchAlert runs in the
+// browser, so a Node-side array would only ever stay empty.
 async function captureAlerts(page) {
   await page.evaluate(() => {
     window.__alerts = [];
@@ -81,11 +82,10 @@ test('it stays quiet while the destination is still far out', async ({ page }) =
   await captureAlerts(page);
   const count = await page.evaluate(() => {
     setTune('atisLeadSec', 300);                    // 5 min at 100 kt = 8.3 NM
-    const dest = state.waypoints[1], start = state.waypoints[0];
+    const start = state.waypoints[0];
     gpsOwn = { lat: start.lat, lng: start.lng, hdg: 0, t: Date.now() };   // ~33 NM out
     gpsAlertLegIndex = 0; _gpsAlertConfirmed = true; _gpsAtisAlerted = false;
     gpsCheckLegAlerts();
-    void dest;
     return window.__alerts.filter(a => a.title === 'ATIS').length;
   });
   expect(count).toBe(0);
