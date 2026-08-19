@@ -455,6 +455,45 @@ NavAid.tuningDefaults = {
   profileGridColor: { value: '#7896b4', type: 'color', label: 'Profile grid color' },
   profileAxisColor: { value: '#5a6b7d', type: 'color', label: 'Profile axis color' },
   profileGroundColor: { value: '#3a4654', type: 'color', label: 'Profile ground line color' },
+  // Terrain under the profile line (#673's grid, drawn where the plan is read). Sample count
+  // is the silhouette's resolution: the shipped grid is ~1.2 km per cell, so past a few
+  // hundred samples the extra points redraw the same cell.
+  profileTerrainColor: { value: '#6b5a44', type: 'color', label: 'Profile terrain fill' },
+  // Terrain shading is about ONE question: does the ground threaten the altitude I am planning
+  // to fly? Colouring every hill by height only repeats what the chart underneath already
+  // says, in a second brown that hides it. So nothing is painted except the ground that is at
+  // or near the planned altitude -- on a normal route that is nothing at all, and where it
+  // does paint, it is the part worth looking at.
+  terrainTintAlpha: { value: 0.45, min: 0, max: 1, step: 0.05, label: 'Terrain shading opacity' },
+  // How much air below the planned altitude still counts as clear, in the terms the VFR rules
+  // are written in: 500 ft above the surface outside congested areas, 1000 ft above the
+  // highest obstacle within 2000 ft horizontally over congested ones. 500 is the shipped
+  // value -- the rule that applies to most of a cross-country leg -- and a pilot flying over
+  // built-up ground can set 1000 and see the stricter picture.
+  //
+  // Deliberately NOT msaBufferFt: that is terrain + 1000 ft for every leg regardless, and
+  // using it as the red line flagged routes flown every day -- the LLHZ->LLHA coast run at
+  // 1000 ft passes over ~200 ft of ground and came out marked end to end. A warning that
+  // fires on the ordinary case is the one nobody reads on the day it matters.
+  //
+  // The grid's own resolution helps here: each cell carries the MAX elevation over roughly a
+  // kilometre, so sampling along the leg approximates "the highest thing within about 2000 ft
+  // of track" rather than the elevation of a single point under it.
+  terrainWarnClearanceFt: { value: 500, min: 0, max: 3000, step: 50, label: 'Terrain clearance: 500 open / 1000 congested (ft)' },
+  terrainAlertColor: { value: '#d7263d', type: 'color', label: 'Terrain at or above the planned altitude' },
+  terrainCautionColor: { value: '#e8a33d', type: 'color', label: 'Terrain within the warning clearance below it' },
+  // A leg planned below its own safe altitude, and the waypoints at either end of one. Drawn
+  // under the route so the line itself stays crisp: this marks the plan, it does not replace it.
+  terrainLegWarnWidthPx: { value: 9, min: 2, max: 30, step: 1, label: 'Below-MSA leg casing width (px)' },
+  terrainLegWarnAlpha: { value: 0.55, min: 0, max: 1, step: 0.05, label: 'Below-MSA leg casing opacity' },
+  terrainWpWarnRingPx: { value: 4, min: 1, max: 20, step: 1, label: 'Below-MSA waypoint ring width (px)' },
+  // The tint draws at every zoom the map offers; cells are merged into blocks of at least
+  // terrainTintMinCellPx so a zoomed-out view stays cheap and legible instead of vanishing.
+  terrainTintMinZoom: { value: 0, min: 0, max: 14, step: 1, label: 'Terrain tint: minimum zoom (0 = always)' },
+  terrainTintMinCellPx: { value: 7, min: 2, max: 40, step: 1, label: 'Terrain tint: smallest painted block (px)' },
+  profileMsaColor: { value: '#d7263d', type: 'color', label: 'Profile safe-altitude line' },
+  profileTerrainSamples: { value: 240, min: 40, max: 1000, step: 20, label: 'Profile terrain samples' },
+  profileHeadroomFt: { value: 400, min: 0, max: 5000, step: 100, label: 'Profile headroom above terrain (ft)' },
   profileTextColor: { value: '#8aa0b4', type: 'color', label: 'Profile axis text color' },
   profileNmTextColor: { value: '#cdd8e3', type: 'color', label: 'Profile NM text color' },
   profileTimeTextColor: { value: '#7fa8d0', type: 'color', label: 'Profile time text color' },
@@ -717,7 +756,8 @@ NavAid.tuningGroups = [
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
-  { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
+  { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
+  { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
@@ -971,8 +1011,8 @@ window.S = Object.assign({
   pwxUnavailable: 'Wind/temp charts are temporarily unavailable.',
   wxPwxUnavailableWatermark: 'Wind/temp — Unavailable',
   wxSigwxUnavailableWatermark: 'SIGWX — Unavailable',
-  tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
-  tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
+  tbShowMsa: 'Terrain vs altitude',                 // clearance shading + the leg MSA row
+  tbShowMsaTitle: 'Shade only the ground that reaches your planned altitude, and show each leg\'s minimum safe altitude in the inspector',
   report: 'Reporting',
   reportingMandatory: '📍 Mandatory report',
   reportingOnRequest: '📍 Report on request',
@@ -1607,6 +1647,7 @@ window.S = Object.assign({
   tbGrpSafety: 'Safety',
   tbGrpTimed: 'NOTAMs & wind',
   tbGrpWxCharts: 'Weather charts',
+  tbGrpTerrain: 'Terrain',
   tbGrpAirspace: 'Airspace',
   tbGrpPlates: 'Airfield plates',
   tbPlateOpacity: 'Plate opacity',

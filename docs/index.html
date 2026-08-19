@@ -294,9 +294,6 @@
           <input type="checkbox" id="limit-kites-cb" checked> <span data-i18n="tbLimitLegKites"></span>
         </label>
         <div class="tb-group" data-i18n="tbGrpSafety"></div>
-        <label class="navtoggle" data-i18n-title="tbShowMsaTitle">
-          <input type="checkbox" id="msa-cb"> <span data-i18n="tbShowMsa"></span>
-        </label>
         <label class="navtoggle" data-i18n-title="tbShowReportingTitle">
           <input type="checkbox" id="reporting-cb"> <span data-i18n="tbShowReporting"></span>
         </label>
@@ -533,6 +530,17 @@
         </div>
         <!-- LSA airspace bubbles overlay toggle (Low Alt layer only; hidden on
              others). The bubble list button lives in the Charts section. -->
+        <!-- Terrain: hypsometric tint from the elevation grid, plus the per-leg MSA row in
+             the inspector. It lived in View/Set as "Show MSA", where it drew nothing on the
+             map at all -- a safety toggle whose only effect was one inspector row. -->
+        <div class="tb-layer-frame">
+        <div class="tb-frame-title" data-i18n="tbGrpTerrain"></div>
+        <div id="terrain-group" class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbShowMsaTitle">
+            <input type="checkbox" id="msa-cb"> <span data-i18n="tbShowMsa"></span>
+          </label>
+        </div>
+        </div>
         <div class="tb-layer-frame">
         <div class="tb-frame-title" data-i18n="tbGrpAirspace"></div>
         <div id="lsa-group" class="tb-group-box" hidden>
