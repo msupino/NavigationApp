@@ -151,3 +151,27 @@ test('ticking the toggle paints immediately, without waiting for a pan', async (
   expect(out.on).toBe(true);
   expect(out.cells).toBeGreaterThan(50);
 });
+
+// The rule that trails a group / frame title is a ::after block, and only the standalone
+// .tb-group-separator had a light-theme colour — so on a light background those lines stayed
+// dark-theme charcoal while every other separator went pale grey. Reported as "the line above
+// Terrain doesn't look like the other separators".
+test('in light theme every toolbar separator is the same colour', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForSelector('#msa-cb', { state: 'attached' });
+  const colours = await page.evaluate(() => {
+    document.body.classList.add('theme-light');
+    const after = (sel) => {
+      const el = document.querySelector(sel);
+      return el ? getComputedStyle(el, '::after').backgroundColor : null;
+    };
+    const sep = document.querySelector('#toolbar .tb-group-separator');
+    return {
+      frameTitle: after('#toolbar .tb-frame-title'),
+      group: after('#toolbar .tb-group'),
+      separator: sep ? getComputedStyle(sep).backgroundColor : null,
+    };
+  });
+  expect(colours.frameTitle).toBe(colours.separator);
+  expect(colours.group).toBe(colours.separator);
+});
