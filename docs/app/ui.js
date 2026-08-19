@@ -400,14 +400,22 @@ orientBtn.onclick = () => {
   const bearing = (typeof mapBearing === 'function') ? ((Math.round(mapBearing()) % 360) + 360) % 360 : 0;
   // From a hand-rotated chart the useful next step is straightening up, not jumping
   // into heading-up: the pilot who turned the dial is looking at something.
+  // Same reason as the voice button: the icon changes, but on a chart that is already north-up
+  // (or already turning with the aircraft) there is nothing visible to confirm WHICH state was
+  // just chosen. One line, gone on its own.
+  let toast = null;
   if (!headingUpOn && bearing !== 0) {
     if (typeof map.setBearing === 'function') map.setBearing(0);
+    toast = S.orientNorthToast || 'North up';
   } else {
     headingUpOn = !headingUpOn;
     try { localStorage.setItem(HEADING_UP_KEY, headingUpOn ? '1' : '0'); } catch (e) { /* */ }
     if (headingUpOn) applyHeadingUp();
     else if (typeof map.setBearing === 'function') map.setBearing(0);
+    toast = headingUpOn ? (S.orientHeadingToast || 'Heading up')
+                        : (S.orientNorthToast || 'North up');
   }
+  if (toast && typeof showToast === 'function') showToast(toast);
   refreshOrientControl();
   if (typeof refreshDial === 'function') refreshDial();
 };
@@ -459,7 +467,14 @@ function refreshGpsFollowControl() {
   followBtn.setAttribute('aria-label', label);
 }
 followBtn.onclick = () => {
-  if (typeof gpsSetFollow === 'function') gpsSetFollow(!gpsFollow);
+  const on = !gpsFollow;
+  if (typeof gpsSetFollow === 'function') gpsSetFollow(on);
+  // Turning it ON recentres, which is its own confirmation; turning it OFF looks like nothing
+  // happening -- exactly when the pilot needs to know the map will now stay put.
+  if (typeof showToast === 'function') {
+    showToast(on ? (S.followOnToast || 'Following the aircraft')
+                 : (S.followOffToast || 'Map stays put'));
+  }
 };
 refreshGpsFollowControl();
 

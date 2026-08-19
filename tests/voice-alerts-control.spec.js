@@ -116,3 +116,37 @@ test('and says it in Hebrew too', async ({ page }) => {
   await page.click('#voice-toggle');
   await expect(page.locator('.toast')).toHaveText(/התראות קוליות פעילות/);
 });
+
+// The other two in-flight buttons say which way they went, for the same reason: pressing them
+// on a chart that is already north-up (or already centred) changes an icon and nothing else.
+test('the follow lock says what it did', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { startLiveLocation(); gpsSetFollow(true); });
+  await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
+  await page.click('#follow-lock');
+  await expect(page.locator('.toast')).toHaveText(/map stays put/i);
+  await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
+  await page.click('#follow-lock');
+  await expect(page.locator('.toast')).toHaveText(/following the aircraft/i);
+});
+
+test('the orientation button names the state it just chose', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startLiveLocation());
+  await page.click('#orient-toggle');
+  await expect(page.locator('.toast')).toHaveText(/heading up/i);
+  await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
+  await page.click('#orient-toggle');
+  await expect(page.locator('.toast')).toHaveText(/north up/i);
+});
+
+// A hand-rotated chart straightens up rather than jumping into heading-up, and the toast has
+// to say that — not "heading up", which is not what happened.
+test('straightening a rotated chart says north up', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { startLiveLocation(); map.setBearing(40); });
+  await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
+  await page.click('#orient-toggle');
+  await expect(page.locator('.toast')).toHaveText(/north up/i);
+  expect(await page.evaluate(() => Math.round(mapBearing()))).toBe(0);
+});

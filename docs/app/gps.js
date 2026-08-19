@@ -1205,6 +1205,7 @@ function gpsAtisLeadS() {
   return (typeof tune === 'function') ? tune('atisLeadSec') : 600;
 }
 function gpsLegEtaLeadS() { return (typeof tune === 'function') ? tune('legEtaLeadSec') : GPS_LEG_ETA_S; }
+function gpsCommLeadS() { return (typeof tune === 'function') ? tune('commLeadSec') : 60; }
 function gpsLegCaptureNm() { return (typeof tune === 'function') ? tune('legCaptureNm') : GPS_LEG_CAPTURE_NM; }
 function gpsAltToleranceFt() { return (typeof tune === 'function') ? tune('altToleranceFt') : GPS_ALT_TOLERANCE_FT; }
 function gpsAltMaxPerLeg() { return (typeof tune === 'function') ? tune('altMaxAlertsPerLeg') : GPS_ALT_MAX_PER_LEG; }
@@ -1220,6 +1221,7 @@ var GPS_ALT_TOLERANCE_FT = 100;
 var gpsAlertLegIndex = 0;         // forward-only pointer into state.legs/state.waypoints
 var _gpsAlertMinDistNm = Infinity;
 var _gpsAlertLegFired = false;    // leg-approach alert already sent for gpsAlertLegIndex
+var _gpsCommAlerted = false;      // frequency call already sent for the waypoint ahead
 var _gpsAlertAltDeviated = false; // currently inside an altitude-deviation episode
 // How many altitude calls this leg has already made. The episode latch alone stops a
 // CONTINUOUS deviation repeating, but an aircraft riding the tolerance -- a bumpy leg, a
@@ -1640,10 +1642,33 @@ function gpsCheckLegAlerts() {
         (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime)
           : ('Approaching ' + label),
         (S && S.speakAlertLeg)
-          ? S.speakAlertLeg(gpsSpokenPlace(label, lang), nextLegAlt,
+          ? S.speakAlertLeg(gpsSpokenWaypoint(next, label, lang), nextLegAlt,
               nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, (typeof window !== 'undefined' && window.__navLang) || 'en'),
               nextLegHms)
           : null);
+    }
+  }
+
+  // The frequency for the NEXT sector, a short time before the waypoint that changes it.
+  // It used to ride on TOP, which is too late to be useful: overhead the point the pilot is
+  // already making the call. A minute out there is time to find the frequency, set it in the
+  // standby box and be ready -- and the change itself still happens when ATC says so, which
+  // is why the wording names the frequency rather than instructing anyone to switch.
+  //
+  // Its own latch and its own lead time, deliberately separate from the leg-approach call:
+  // that one is about flying the next leg (two minutes out, so there is room to plan the
+  // turn), this one is about the radio.
+  if (_gpsAlertConfirmed && !_gpsCommAlerted && planSpeed) {
+    const ccAt = gpsCommChangeAt(next);
+    if (ccAt && (dist / planSpeed) * 3600 <= gpsCommLeadS()) {
+      _gpsCommAlerted = true;
+      const ccLang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+      const ccStation = gpsSpokenStation(ccAt.freqName);
+      gpsSendWatchAlert((S && S.watchAlertCommTitle) || 'Next frequency',
+        (S && S.watchAlertCommBody) ? S.watchAlertCommBody(ccStation, ccAt.freq)
+          : (ccStation + ' ' + ccAt.freq).trim(),
+        (S && S.speakAlertComm)
+          ? S.speakAlertComm(ccStation, gpsSpokenFreq(ccAt.freq, ccLang)) : null);
     }
   }
 
@@ -1729,21 +1754,14 @@ function gpsCheckLegAlerts() {
       // Passing a waypoint is also the moment the drift check must go quiet for a while:
       // see _gpsLastTopAt in gpsCheckDrift.
       _gpsLastTopAt = Date.now();
-      // A waypoint that changes frequency is exactly where the pilot is about to make a
-      // call, so TOP carries it: the notification already shows the callout on the map,
-      // and hearing it saves looking down at the one moment the eyes are outside.
-      const ccAt = gpsCommChangeAt(next);
-      const ccLang = (typeof window !== 'undefined' && window.__navLang) || 'en';
-      const ccFreq = ccAt ? gpsSpokenFreq(ccAt.freq, ccLang) : '';
       gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
         (S && S.watchAlertTopBody) || 'TOP',
-        (ccAt && S && S.speakAlertTopComm)
-          ? S.speakAlertTopComm(ccAt.freqName, ccFreq)
-          : ((S && S.speakAlertTop) ? S.speakAlertTop() : null));
+        (S && S.speakAlertTop) ? S.speakAlertTop() : null);
     }
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;
     _gpsAlertLegFired = false;
+    _gpsCommAlerted = false;
     _gpsAlertAltDeviated = false;
     _gpsAlertAltCount = 0;
   }
@@ -1804,6 +1822,38 @@ function gpsSpokenPlace(text, lang) {
     ? gpsSpokenCode(t, lang) : t;
 }
 window.gpsSpokenPlace = gpsSpokenPlace;
+
+// The map draws an airfield by its ICAO code, because that is what the chart prints -- but
+// spelling "L, L, I, B" at someone whose destination is Rosh Pina is not how anyone flying
+// there refers to it. Speech therefore takes the dataset's name for the field in the
+// interface language, exactly as the ATIS reminder does, and falls back to spelling the code
+// only when the dataset has no name at all. Nav waypoints need none of this: navName()
+// already returned them in the right language, and a reporting point genuinely IS its code.
+function gpsSpokenWaypoint(wp, label, lang) {
+  const af = (wp && typeof airfieldAtWaypoint === 'function') ? airfieldAtWaypoint(wp) : null;
+  if (af) {
+    const he = String(lang || '').toLowerCase().slice(0, 2) === 'he';
+    const name = (he ? (af.he || af.en) : (af.en || af.he)) || '';
+    if (name) return name;
+  }
+  return gpsSpokenPlace(label, lang);
+}
+window.gpsSpokenWaypoint = gpsSpokenWaypoint;
+
+// A call sign for speech. Notes store whatever the callout was created with -- often the
+// catalog id (BEN_GURION) -- so a Hebrew session was hearing English station names read out
+// of an otherwise Hebrew sentence. The catalog carries a Hebrew name for every call sign;
+// this is the same lookup the map label uses, so what is heard matches what is drawn.
+function gpsSpokenStation(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return '';
+  if (typeof commCatalogCallSignRow === 'function' && typeof commCallSignLabel === 'function') {
+    const row = commCatalogCallSignRow(raw);
+    if (row) return commCallSignLabel(raw, row);
+  }
+  return raw.replace(/_/g, ' ');
+}
+window.gpsSpokenStation = gpsSpokenStation;
 
 // Native TTS, same access pattern as _nativeNotify()/_bgGeo(): the injected Capacitor
 // bridge exposes any synced plugin at window.Capacitor.Plugins.*. On the website (no

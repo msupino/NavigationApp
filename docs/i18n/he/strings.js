@@ -652,6 +652,10 @@ window.S = {
   gotoTitle: 'לחץ כדי לנווט לקואורדינטות',
   gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
+  followOnToast: 'עוקב אחרי המטוס',
+  followOffToast: 'המפה נשארת במקומה',
+  orientHeadingToast: 'מגמה למעלה',
+  orientNorthToast: 'צפון למעלה',
   voiceOnToast: 'התראות קוליות פעילות',
   voiceOffToast: 'התראות קוליות כבויות',
   voiceOnTitle: 'ההתראות מוקראות — הקישו כדי להשתיק',
@@ -1066,6 +1070,10 @@ window.S = {
   },
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
+  watchAlertCommTitle: 'התדר הבא',
+  watchAlertCommBody: function(station, freq) {
+    return [station, freq].filter(Boolean).join(' ');
+  },
   watchAlertAltTitle: 'גובה',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' רגל — מתוכנן ' + planned + ' רגל';
@@ -1109,13 +1117,13 @@ window.S = {
     return s;
   },
   speakAlertTop: function() { return 'טופ.'; },
-  speakAlertTopComm: function(station, freqDigits) {
+  speakAlertComm: function(station, freqDigits) {
     const bits = [];
     if (station) bits.push(String(station).replace(/_/g, ' '));
     if (freqDigits) bits.push(freqDigits);
     // "עבור אל" tells the pilot to change frequency; that is ATC's call, not the app's. The
     // alert names what comes next and leaves the decision where it belongs.
-    return bits.length ? ('טופ. התדר הבא: ' + bits.join(', ') + '.') : 'טופ.';
+    return bits.length ? ('התדר הבא: ' + bits.join(', ') + '.') : '';
   },
   spokenDecimal: 'נקודה',
   speakAlertAlt: function(actual, planned) {
