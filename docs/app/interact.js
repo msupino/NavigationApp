@@ -1077,10 +1077,15 @@ function deleteWaypoint(k) {
   }
   if (ccName && Array.isArray(state.notes) &&
       !state.waypoints.some(w => canonicalNavWaypointName(w && w.name) === ccName)) {
-    state.notes = state.notes.filter(n =>
-      !(n && n.cc && canonicalNavWaypointName(n.cc) === ccName));
     if (typeof unsuppressCommChange === 'function') unsuppressCommChange(ccName);
   }
+  // Drop any comm-change callout that no longer has a waypoint under it. Matching on the
+  // deleted waypoint's CURRENT name is not enough: a waypoint dropped onto another one
+  // adopts that one's name during the drag, so by the time it is deleted here it no longer
+  // answers to the comm-change point it was seeded from -- and its callout was left behind
+  // on a point with no waypoint at all. This asks the same question the seeder asks (is
+  // there still a waypoint AT that point), so the name it happens to carry does not matter.
+  if (typeof pruneStaleCommChangeNotes === 'function') pruneStaleCommChangeNotes();
   // Re-anchor BEFORE syncLegs: its index prune would drop an anchor that is only
   // temporarily out of range (its segment usually still exists under a new index).
   // waypoints and legs are already consistent here, so nearest-leg is well defined.
