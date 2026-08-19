@@ -151,7 +151,8 @@ test('it sits directly above the follow lock', async ({ page }) => {
   });
   // Measured against the rotation dial, not the assistant launcher: that ships hidden
   // (featureAssistant), so a spec about the in-flight column must not assume it is there.
-  expect(order.orient).toBe(0);
+  // Relative, not absolute: the voice-alerts button now takes the top slot, and pinning an
+  // index here would break again the next time the column gains a control.
   expect(order.orient).toBeLessThan(order.follow);
   expect(order.follow).toBeLessThan(order.dial);
 });

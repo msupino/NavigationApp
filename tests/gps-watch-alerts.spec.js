@@ -1427,3 +1427,51 @@ test.describe('drift stays quiet while the turn onto a new leg settles', () => {
     expect(n).toBeGreaterThan(0);
   });
 });
+
+// The map draws an airfield by its ICAO code because that is what the chart prints, but an
+// alert is a sentence: "מתקרב אל LLIB" is a Hebrew sentence with an English word in it.
+test.describe('alerts name an airfield the way the pilot does', () => {
+  const approach = (page) => page.evaluate(async () => {
+    state.waypoints = [{ lat: 32.90, lng: 35.55, name: 'ALPHA' },
+                       { lat: 32.9814, lng: 35.5719, name: 'LLIB' }];
+    syncLegs();
+    gpsAlertLegIndex = 0;
+    window._gpsAlertConfirmed = true;
+    gpsOwn = { lat: 32.94, lng: 35.56, t: Date.now() };
+    gpsLastAlt = null;
+    gpsCheckLegAlerts();
+    return window.__notifications.map(a => a.body);
+  });
+
+  test('the Hebrew notification says the Hebrew name', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const bodies = await approach(page);
+    const leg = bodies.find(b => /מתקרב/.test(b));
+    expect(leg).toBeTruthy();
+    expect(leg).toContain('ראש פינה');
+    expect(leg).not.toContain('LLIB');
+  });
+
+  test('the English notification says the English name', async ({ page }) => {
+    await stubWebNotify(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const bodies = await approach(page);
+    const leg = bodies.find(b => /Approaching/.test(b));
+    expect(leg).toMatch(/Rosh Pina/i);
+  });
+
+  // A point in no dataset has no name to use instead, so its own label stands. (A point that
+  // IS in the nav dataset is already localised by navName -- BOREN reads בית אורן in Hebrew.)
+  test('a point in no dataset keeps its label', async ({ page }) => {
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof gpsPlaceLabel === 'function');
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 30.4, lng: 34.2, name: 'ZZQQ' }];
+      return gpsPlaceLabel(state.waypoints[0], 0);
+    });
+    expect(out).toBe('ZZQQ');
+  });
+});

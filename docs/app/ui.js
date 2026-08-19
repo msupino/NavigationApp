@@ -274,6 +274,77 @@ const HEADING_UP_KEY = 'navaid.headingUp';
 let headingUpOn = false;
 try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unavailable */ }
 
+// The bottom-right column, top to bottom. Every control in it used to insert itself as
+// firstChild on every refresh, so whichever refreshed last owned the top and the buttons
+// visibly swapped places as state changed -- reported as "buttons keep switching location".
+// One rank per control, applied by one function: the DOM order follows the ranks, whoever
+// refreshes and in whatever order.
+const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
+function orderMapControls(corner) {
+  if (!corner) return;
+  const rank = (el) => {
+    for (let i = 0; i < MAP_CONTROL_ORDER.length; i++) {
+      if (el.classList && el.classList.contains(MAP_CONTROL_ORDER[i])) return i;
+    }
+    return MAP_CONTROL_ORDER.length;      // anything unknown (zoom, scale) keeps the bottom
+  };
+  const rows = Array.prototype.slice.call(corner.children);
+  const sorted = rows.slice().sort((a, b) => rank(a) - rank(b));
+  // Only touch the DOM when the order actually differs: this runs on every fix.
+  for (let i = 0; i < sorted.length; i++) {
+    if (rows[i] !== sorted[i]) { sorted.forEach(el => corner.appendChild(el)); return; }
+  }
+}
+window.orderMapControls = orderMapControls;
+
+// Voice alerts, as a map control rather than only a checkbox buried in View/Set: it is a
+// thing a pilot turns on WHILE flying (the cabin got noisy, or a passenger is asleep), and a
+// toggle you have to open a menu for is one you leave where it is. Same square as the
+// orientation and follow-lock buttons, directly above them, and shown on the same condition:
+// only while a fix is driving the map, since there is nothing to announce otherwise.
+const voiceCtrl = L.control({ position: 'bottomright' });
+voiceCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control voice-ctrl');
+  wrap.innerHTML = '<button id="voice-toggle" type="button" aria-pressed="false"></button>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+voiceCtrl.addTo(map);
+const voiceBtn = document.getElementById('voice-toggle');
+function refreshVoiceControl() {
+  const wrap = voiceBtn && voiceBtn.parentNode;
+  if (!wrap) return;
+  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
+  wrap.style.display = tracking ? '' : 'none';
+  orderMapControls(wrap.parentNode);
+  const on = window.voiceAlerts === true;
+  voiceBtn.textContent = on ? '\ud83d\udd0a' : '\ud83d\udd07';     // speaker on / muted
+  voiceBtn.classList.toggle('voice-on', on);
+  voiceBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const label = on ? (S.voiceOnTitle || 'Alerts are spoken — tap to silence them')
+                   : (S.voiceOffTitle || 'Alerts are silent — tap to have them spoken');
+  voiceBtn.title = label;
+  voiceBtn.setAttribute('aria-label', label);
+}
+window.refreshVoiceControl = refreshVoiceControl;
+// Hidden until a fix is driving the map -- without this first call the button is visible from
+// boot, since nothing has set its display yet.
+refreshVoiceControl();
+voiceBtn.onclick = () => {
+  window.voiceAlerts = !(window.voiceAlerts === true);
+  try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
+  refreshVoiceControl();
+  // Say which way it went. A speaker icon that has just changed state tells you nothing you
+  // can check -- there is no sound to hear until the next alert, which may be ten minutes off,
+  // so a pilot pressing it in flight has no way to know whether they just enabled or silenced
+  // it. The toast is the confirmation; it costs one line and disappears on its own.
+  if (typeof showToast === 'function') {
+    showToast(window.voiceAlerts ? (S.voiceOnToast || 'Audio alerts on')
+                                 : (S.voiceOffToast || 'Audio alerts off'));
+  }
+};
+
 const orientCtrl = L.control({ position: 'bottomright' });
 orientCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control orient-ctrl');
@@ -305,11 +376,9 @@ window.applyHeadingUp = applyHeadingUp;
 function refreshOrientControl() {
   const wrap = orientBtn && orientBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
+  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
   wrap.style.display = tracking ? '' : 'none';
-  // Directly above the follow lock, which itself sits above the assistant launcher.
-  const corner = wrap.parentNode;
-  if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+  orderMapControls(wrap.parentNode);
   // Three states, not two: the dial can leave the chart pointing anywhere, and a button
   // that still claimed "north up" over a map turned 40 degrees would be describing
   // something else. Rotated-by-hand reads as its own state, and tapping straightens up.
@@ -331,14 +400,22 @@ orientBtn.onclick = () => {
   const bearing = (typeof mapBearing === 'function') ? ((Math.round(mapBearing()) % 360) + 360) % 360 : 0;
   // From a hand-rotated chart the useful next step is straightening up, not jumping
   // into heading-up: the pilot who turned the dial is looking at something.
+  // Same reason as the voice button: the icon changes, but on a chart that is already north-up
+  // (or already turning with the aircraft) there is nothing visible to confirm WHICH state was
+  // just chosen. One line, gone on its own.
+  let toast = null;
   if (!headingUpOn && bearing !== 0) {
     if (typeof map.setBearing === 'function') map.setBearing(0);
+    toast = S.orientNorthToast || 'North up';
   } else {
     headingUpOn = !headingUpOn;
     try { localStorage.setItem(HEADING_UP_KEY, headingUpOn ? '1' : '0'); } catch (e) { /* */ }
     if (headingUpOn) applyHeadingUp();
     else if (typeof map.setBearing === 'function') map.setBearing(0);
+    toast = headingUpOn ? (S.orientHeadingToast || 'Heading up')
+                        : (S.orientNorthToast || 'North up');
   }
+  if (toast && typeof showToast === 'function') showToast(toast);
   refreshOrientControl();
   if (typeof refreshDial === 'function') refreshDial();
 };
@@ -377,14 +454,9 @@ const followBtn = document.getElementById('follow-lock');
 function refreshGpsFollowControl() {
   const wrap = followBtn && followBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsTrackingLive === 'function' ? gpsTrackingLive() : false;
+  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
   wrap.style.display = tracking ? '' : 'none';
-  // Top of the bottom-right stack: above the assistant's launcher, which puts itself
-  // above the zoom buttons. Re-asserted on every refresh rather than once at boot,
-  // because the assistant builds its control on DOMContentLoaded -- whichever ran last
-  // would otherwise own the top slot. In flight this is the button being reached for.
-  const corner = wrap.parentNode;
-  if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+  orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
   followBtn.textContent = on ? '🔒' : '🔓';
   followBtn.classList.toggle('follow-on', on);
@@ -395,7 +467,14 @@ function refreshGpsFollowControl() {
   followBtn.setAttribute('aria-label', label);
 }
 followBtn.onclick = () => {
-  if (typeof gpsSetFollow === 'function') gpsSetFollow(!gpsFollow);
+  const on = !gpsFollow;
+  if (typeof gpsSetFollow === 'function') gpsSetFollow(on);
+  // Turning it ON recentres, which is its own confirmation; turning it OFF looks like nothing
+  // happening -- exactly when the pilot needs to know the map will now stay put.
+  if (typeof showToast === 'function') {
+    showToast(on ? (S.followOnToast || 'Following the aircraft')
+                 : (S.followOffToast || 'Map stays put'));
+  }
 };
 refreshGpsFollowControl();
 
@@ -3018,11 +3097,9 @@ document.getElementById('limit-kites-cb').checked = limitLegKites;
 // Voice alerts: default off (it talks out loud in a cockpit -- opt in, never a surprise
 // on first upgrade). Visible on the website too, as a testing aid.
 if (typeof window.voiceAlerts !== 'boolean') window.voiceAlerts = false;
-document.getElementById('voice-alerts-cb').checked = window.voiceAlerts === true;
-document.getElementById('voice-alerts-cb').onchange = e => {
-  window.voiceAlerts = e.target.checked;
-  try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
-};
+// The View/Set checkbox is gone -- the map button is the control, where a pilot can reach it
+// in flight. The stored key and the default are unchanged, so an existing choice carries over.
+if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
 document.getElementById('cumtime-cb').onchange = e => {
   window.showCumTime = e.target.checked;
   try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }
@@ -3156,8 +3233,14 @@ document.getElementById('limit-kites-cb').onchange = e => {
     cb.setAttribute('aria-pressed', String(connected));
   }
   function setFollowState() {
-    followCb.setAttribute('aria-pressed', String(!!simFollow));
+    // Reads the map's lock, and keeps the legacy simFollow global in step for anything still
+    // looking at it -- including the stored key, so an old preference is not silently dropped.
+    const on = (typeof gpsFollow === 'undefined') ? !!window.simFollow : !!gpsFollow;
+    window.simFollow = on;
+    try { localStorage.setItem(SIM_FOLLOW_KEY, on ? '1' : '0'); } catch (e) { /* */ }
+    followCb.setAttribute('aria-pressed', String(on));
   }
+  window.__simSetFollowState = setFollowState;
 
   // Restore persisted state into UI controls.
   if (simUrl) urlInp.value = simUrl;
@@ -3186,10 +3269,11 @@ document.getElementById('limit-kites-cb').onchange = e => {
     showUrlProblem(problem);         // simStop clears status, so explain after stopping
   };
 
+  // The panel's Follow and the map's lock are one setting shown twice. They used to be two
+  // flags, so whichever the pilot touched last was overridden by the other.
   followCb.onclick = () => {
-    window.simFollow = !simFollow;
+    if (typeof gpsSetFollow === 'function') gpsSetFollow(!gpsFollow);
     setFollowState();
-    try { localStorage.setItem(SIM_FOLLOW_KEY, simFollow ? '1' : '0'); } catch (e) { /* */ }
   };
 
   // One-shot recenter on the live aircraft (distinct from continuous Follow).
@@ -8142,7 +8226,12 @@ NavAid.defaultVisibilityMap = [
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
-  ['voice-alerts-cb', 'navaid.voiceAlerts', 'defaultVoiceAlerts'],
+  // No checkbox any more (the map button replaced it), so this row carries its own applier:
+  // the gist default still has to reach the global the button reads.
+  [null, 'navaid.voiceAlerts', 'defaultVoiceAlerts', (on) => {
+    window.voiceAlerts = on;
+    if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
+  }],
   ['commchange-cb', 'navaid.showFreqChanges', 'defaultShowCommChange'],
   ['mid-cb', 'navaid.showMidLeg', 'defaultShowMidLeg'],
   ['diff-cb', 'navaid.highlightDiff', 'defaultHighlightDiff'],
@@ -8169,9 +8258,9 @@ NavAid.defaultVisibilityMap = [
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;
-  for (const [cbId, lsKeyRaw, tuneKey] of NavAid.defaultVisibilityMap) {
-    const cb = document.getElementById(cbId);
-    if (!cb) continue;                                   // not wired yet
+  for (const [cbId, lsKeyRaw, tuneKey, applyFn] of NavAid.defaultVisibilityMap) {
+    const cb = cbId ? document.getElementById(cbId) : null;
+    if (!cb && typeof applyFn !== 'function') continue;  // not wired yet
     // A row may carry a function when its key depends on state (the NOTAM
     // overlay is remembered per chart).
     const lsKey = typeof lsKeyRaw === 'function' ? lsKeyRaw() : lsKeyRaw;
@@ -8179,6 +8268,8 @@ NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
     try { stored = lsGet(lsKey); } catch (e) { /* */ }
     if (stored !== null) continue;                       // user set this — leave it
     const desired = !!tune(tuneKey);
+    // A control with no checkbox (the voice-alerts map button) applies the value itself.
+    if (!cb) { applyFn(desired); continue; }
     if (cb.checked === desired) continue;                // already matches
     cb.checked = desired;
     cb.dispatchEvent(new Event('change'));               // run the real loader

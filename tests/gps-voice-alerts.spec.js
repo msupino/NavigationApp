@@ -441,28 +441,21 @@ test.describe('alerts speak their own phrasing', () => {
   });
 });
 
-// AMENDMENT: the toggle row is always visible, on the website too -- browser speech is a
-// testing aid (see the web-speech-fallback describe above), not something hidden away.
-test.describe('the voice-alerts toggle', () => {
-  test('is visible on the website and defaults to off', async ({ page }) => {
+// AMENDMENT: the View/Set checkbox is gone -- the control is a button on the map, where a
+// pilot can reach it in flight (voice-alerts-control.spec.js covers the button itself). What
+// belongs here is the state it drives: the default, persistence, and the gist's say in it.
+test.describe('the voice-alerts setting', () => {
+  test('defaults to off', async ({ page }) => {
     await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => !!document.getElementById('voice-alerts-cb'));
-    const out = await page.evaluate(() => {
-      const cb = document.getElementById('voice-alerts-cb');
-      const row = cb.closest('label');
-      return { checked: cb.checked, on: window.voiceAlerts === true,
-               rowShown: getComputedStyle(row).display !== 'none' };
-    });
-    expect(out.checked).toBe(false);
-    expect(out.on).toBe(false);
-    expect(out.rowShown).toBe(true);   // visible on the website too -- it's a testing aid, not a dead switch
+    await page.waitForFunction(() => typeof window.voiceAlerts === 'boolean');
+    expect(await page.evaluate(() => window.voiceAlerts)).toBe(false);
   });
 
-  test('toggling it persists', async ({ page }) => {
+  test('turning it on persists', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => !!document.getElementById('voice-alerts-cb'));
-    await page.evaluate(() => { document.getElementById('voice-alerts-cb').click(); });
+    await page.waitForFunction(() => !!document.getElementById('voice-toggle'));
+    await page.evaluate(() => { startLiveLocation(); document.getElementById('voice-toggle').click(); });
     const after = await page.evaluate(() => ({
       on: window.voiceAlerts, stored: localStorage.getItem('navaid.voiceAlerts'),
     }));
@@ -471,110 +464,213 @@ test.describe('the voice-alerts toggle', () => {
   });
 
   // The row was in defaultVisibilityMap but its tune key was never registered, so tune()
-  // returned 0 and the gist could only ever push the toggle off.
+  // returned 0 and the gist could only ever push the toggle off. With the checkbox gone the
+  // row applies the value itself -- a map that only knew how to tick checkboxes would have
+  // dropped this default on the floor.
   test('the gist can turn it on for a pilot who never chose', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => typeof tune === 'function' &&
-      !!document.getElementById('voice-alerts-cb'));
+    await page.waitForFunction(() => typeof tune === 'function' && typeof NavAid.applyDefaultVisibility === 'function');
     expect(await page.evaluate(() => tune('defaultVoiceAlerts'))).toBe(false);
     const on = await page.evaluate(() => {
       setTune('defaultVoiceAlerts', true);
       NavAid.applyDefaultVisibility();
-      return { checked: document.getElementById('voice-alerts-cb').checked,
-               flag: window.voiceAlerts === true,
+      return { flag: window.voiceAlerts === true,
                // Still gist-controlled next load: nothing was written as a user choice.
                stored: localStorage.getItem('navaid.voiceAlerts') };
     });
-    expect(on).toEqual({ checked: true, flag: true, stored: null });
+    expect(on).toEqual({ flag: true, stored: null });
   });
 
   test('a stored preference is restored on load', async ({ page }) => {
     await stubTts(page);
     await page.addInitScript(() => localStorage.setItem('navaid.voiceAlerts', '1'));
     await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => !!document.getElementById('voice-alerts-cb'));
-    const out = await page.evaluate(() => ({
-      on: window.voiceAlerts, checked: document.getElementById('voice-alerts-cb').checked,
-    }));
-    expect(out.on).toBe(true);
-    expect(out.checked).toBe(true);
+    await page.waitForFunction(() => typeof window.voiceAlerts === 'boolean');
+    expect(await page.evaluate(() => window.voiceAlerts)).toBe(true);
   });
 });
 
-// A waypoint that changes frequency is exactly where the pilot is about to make a call, so
-// TOP carries it -- hearing it saves looking down at the one moment the eyes are outside.
-test.describe('TOP reads out the comm change', () => {
-  test('speaks the station and frequency, digit by digit', async ({ page }) => {
+// The frequency for the next sector comes a short time BEFORE the waypoint that changes it:
+// overhead the point the call is already being made, which is too late to go looking for a
+// number. A minute out there is time to set the standby box and be ready.
+test.describe('the frequency call, ahead of the waypoint', () => {
+  // ALPHA -> BRAVO, 6 NM at the default 90 kt. `at` is a latitude on that line.
+  const flyTo = (page, at, lang) => page.evaluate(async (lat) => {
+    window.voiceAlerts = true;
+    state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
+                       { lat: 32.10, lng: 34.0, name: 'BRAVO' }];
+    syncLegs();
+    // The route's own note is the source of truth -- it is what is drawn on the map.
+    state.notes = [{ lat: 32.10, lng: 34.0, cc: 'BRAVO', freqName: 'PLUTO_EAST', freq: '118.4' }];
+    gpsAlertLegIndex = 0;
+    window._gpsAlertConfirmed = true;
+    gpsOwn = { lat, lng: 34.0, t: Date.now() };
+    gpsLastAlt = null;
+    gpsCheckLegAlerts();
+    await window.__gpsSpeakChain;
+    return window.__spoken.map(s2 => s2.text);
+  }, at);
+
+  test('speaks the station and frequency, digit by digit, a minute out', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
-    const spoken = await page.evaluate(async () => {
-      window.voiceAlerts = true;
-      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
-                         { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
-      syncLegs();
-      // The route's own note is the source of truth -- it is what is drawn on the map.
-      state.notes = [{ lat: 32.008, lng: 34.0, cc: 'BRAVO',
-                       freqName: 'PLUTO_EAST', freq: '118.4' }];
-      gpsAlertLegIndex = 0;
-      window._gpsAlertConfirmed = true;
-      gpsOwn = { lat: 32.008, lng: 34.0, t: Date.now() };
-      gpsLastAlt = null;
-      gpsCheckLegAlerts();
-      await window.__gpsSpeakChain;
-      return window.__spoken.map(s => s.text);
-    });
-    const top = spoken.find(t => /^Top\./.test(t));
-    expect(top).toBeTruthy();
-    expect(top).toContain('PLUTO EAST');            // underscores never spoken
-    expect(top).toContain('one one eight decimal four');
-    expect(top).not.toContain('118.4');             // never read as a bare number
+    const spoken = await flyTo(page, 32.078);          // ~1.3 NM to run: inside the lead
+    const call = spoken.find(t => /frequency/i.test(t));
+    expect(call).toBeTruthy();
+    expect(call).toContain('Pluto East');             // the catalog's name, never PLUTO_EAST
+    expect(call).toContain('one one eight decimal four');
+    expect(call).not.toContain('118.4');              // never read as a bare number
+    expect(call).not.toMatch(/^Top\./);              // it is its own alert, not part of TOP
   });
 
-  test('a waypoint with no comm change still just says Top', async ({ page }) => {
+  test('further out than the lead time, nothing is said yet', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const spoken = await flyTo(page, 32.02);           // ~4.8 NM: over three minutes out
+    expect(spoken.find(t => /frequency/i.test(t))).toBeFalsy();
+  });
+
+  test('once per waypoint, however many fixes arrive', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    await flyTo(page, 32.078);
+    const spoken = await page.evaluate(async () => {
+      gpsOwn = { lat: 32.085, lng: 34.0, t: Date.now() };
+      gpsCheckLegAlerts();
+      await window.__gpsSpeakChain;
+      return window.__spoken.map(s2 => s2.text);
+    });
+    expect(spoken.filter(t => /frequency/i.test(t)).length).toBe(1);
+  });
+
+  test('TOP itself is just TOP again', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const spoken = await flyTo(page, 32.10);           // overhead BRAVO
+    const top = spoken.find(t => /^Top\./.test(t));
+    expect(top).toBe('Top.');
+  });
+
+  test('a waypoint with no comm change says nothing extra', async ({ page }) => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
     const spoken = await page.evaluate(async () => {
       window.voiceAlerts = true;
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
-                         { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+                         { lat: 32.10, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       state.notes = [];
       gpsAlertLegIndex = 0;
       window._gpsAlertConfirmed = true;
-      gpsOwn = { lat: 32.008, lng: 34.0, t: Date.now() };
+      gpsOwn = { lat: 32.078, lng: 34.0, t: Date.now() };
       gpsLastAlt = null;
       gpsCheckLegAlerts();
       await window.__gpsSpeakChain;
-      return window.__spoken.map(s => s.text);
+      return window.__spoken.map(s2 => s2.text);
     });
-    expect(spoken).toContain('Top.');
+    expect(spoken.find(t => /frequency/i.test(t))).toBeFalsy();
   });
 
-  test('speaks the Hebrew form when the UI is Hebrew', async ({ page }) => {
+  // The note stores whatever the callout was created with -- usually the catalog id -- so
+  // without the lookup a Hebrew session heard "Pluto East" inside a Hebrew sentence.
+  test('speaks the Hebrew station name when the UI is Hebrew', async ({ page }) => {
     await stubTts(page, { languages: ['en-US', 'he-IL'] });
     await page.goto('?lang=he&nogist');
     await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
-    const spoken = await page.evaluate(async () => {
+    const spoken = await flyTo(page, 32.078);
+    const call = spoken.find(t => /התדר הבא/.test(t));
+    expect(call).toBeTruthy();
+    expect(call).toContain('פלוטו מזרח');
+    expect(call).toContain('נקודה');     // the decimal, spoken
+    expect(call).not.toContain('118.4');
+  });
+});
+
+// The chart prints an airfield's ICAO code and so does the map, but nobody flying to Rosh
+// Pina calls it "L, L, I, B" -- and spelling it is exactly what an approach alert was doing.
+test.describe('an airfield is spoken by name', () => {
+  const approach = (page) => page.evaluate(async () => {
+    window.voiceAlerts = true;
+    state.waypoints = [{ lat: 32.90, lng: 35.55, name: 'ALPHA' },
+                       { lat: 32.9814, lng: 35.5719, name: 'LLIB' }];
+    syncLegs();
+    gpsAlertLegIndex = 0;
+    window._gpsAlertConfirmed = true;
+    gpsOwn = { lat: 32.94, lng: 35.56, t: Date.now() };
+    gpsLastAlt = null;
+    gpsCheckLegAlerts();
+    await window.__gpsSpeakChain;
+    return window.__spoken.map(s2 => s2.text);
+  });
+
+  test('English says the name, not the spelled code', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const spoken = await approach(page);
+    const call = spoken.find(t => /Approaching/.test(t));
+    expect(call).toBeTruthy();
+    expect(call).toMatch(/Rosh Pina/i);
+    expect(call).not.toContain('L, L, I, B');
+  });
+
+  test('Hebrew says the Hebrew name', async ({ page }) => {
+    await stubTts(page, { languages: ['en-US', 'he-IL'] });
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof gpsCheckLegAlerts === 'function');
+    const spoken = await approach(page);
+    const call = spoken.find(t => /מתקרב/.test(t));
+    expect(call).toBeTruthy();
+    expect(call).toContain('ראש פינה');
+    expect(call).not.toContain('L, L, I, B');
+  });
+
+  // A reporting point genuinely IS its code: there is no name to say instead, and spelling
+  // it is what a controller does.
+  test('a nav waypoint with no name is still spelled', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSpokenWaypoint === 'function');
+    const out = await page.evaluate(() =>
+      gpsSpokenWaypoint({ lat: 31.0, lng: 34.5, name: 'BOREN' }, 'BOREN', 'en'));
+    expect(out).toBe('B, O, R, E, N');
+  });
+});
+
+// What is heard and what is read must name the same place. Off-route and off-course used to
+// speak the raw map label, so a code was read as a word while the notification showed it.
+test.describe('text and speech name the same place', () => {
+  test('off course spells a code and shows it', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const out = await page.evaluate(async () => {
       window.voiceAlerts = true;
-      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' },
-                         { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
+      window.__alerts = [];
+      const send = window.gpsSendWatchAlert;
+      window.gpsSendWatchAlert = (t, b, sp) => { window.__alerts.push({ b, sp }); return send(t, b, sp); };
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ZZQQ' },
+                         { lat: 32.2, lng: 34.0, name: 'ZZRR' }];
       syncLegs();
-      state.notes = [{ lat: 32.008, lng: 34.0, cc: 'BRAVO',
-                       freqName: 'PLUTO_EAST', freq: '118.4' }];
       gpsAlertLegIndex = 0;
       window._gpsAlertConfirmed = true;
-      gpsOwn = { lat: 32.008, lng: 34.0, t: Date.now() };
-      gpsLastAlt = null;
-      gpsCheckLegAlerts();
+      // Well off the line, before the midpoint: the intercept branch.
+      gpsOwn = { lat: 32.05, lng: 34.06, t: Date.now() };
+      window._gpsLastTopAt = 0;
+      window._gpsLastDriftAt = 0;
+      gpsCheckDrift();
       await window.__gpsSpeakChain;
-      return window.__spoken.map(s => s.text);
+      return window.__alerts;
     });
-    const top = spoken.find(t => /טופ/.test(t));
-    expect(top).toBeTruthy();
-    expect(top).toContain('נקודה');     // the decimal, spoken
-    expect(top).not.toContain('118.4');
+    const drift = out.find(a => /course|Heading/i.test(a.b));
+    expect(drift).toBeTruthy();
+    expect(drift.b).toContain('ZZRR');          // written: the label, as drawn
+    expect(drift.sp).toContain('Z, Z, R, R');   // spoken: spelled, never read as a word
   });
 });

@@ -14,8 +14,16 @@ var gpsWakeLock = null;     // Screen Wake Lock sentinel held while recording
 // is exactly the edge case that can spuriously fire/miss the leg-approach and TOP alerts
 // (see gpsCheckLegAlerts's own _gpsAlertMinDistNm comment). This gates the MOVE; whether a
 // tap also opens the inspector is gpsTrackingLive's business, below.
-function gpsMapLocked() {
+// A position is driving the map: a recording, Location, or a connected simulator. Everything
+// that exists BECAUSE the aircraft is moving hangs on this -- the in-flight control column,
+// the ATIS marker, the layout lock -- because from the map's point of view a sim feed and a
+// real fix are the same thing, and testing a flight in the sim should show what the flight
+// will show.
+function gpsPositionLive() {
   return !!(gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn));
+}
+function gpsMapLocked() {
+  return gpsPositionLive();
 }
 // Airborne on a REAL fix -- recording a track, or just showing the position. Deliberately
 // not the simulator: a sim session is someone at a desk, where opening a waypoint is the
@@ -293,6 +301,7 @@ function startLiveLocation() {
   gpsStartCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
   gpsWatchUserMapMoves();
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
@@ -345,6 +354,7 @@ function stopLiveLocation() {
   if (!gpsRecording) gpsStopCompass();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
@@ -373,6 +383,11 @@ function gpsSetFollow(on) {
   if (gpsFollow && gpsOwn) { _gpsUserMovedAt = 0; gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng); }
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
+  // The simulator panel shows the same setting; keep its checkbox honest.
+  if (typeof window !== 'undefined' && typeof window.__simSetFollowState === 'function') {
+    window.__simSetFollowState();
+  }
 }
 // A pan or zoom by hand is a request to look at something, and the next fix used to undo
 // it: at 1 Hz the map snapped back before the pilot had read anything. Following pauses
@@ -422,6 +437,7 @@ function gpsWatchUserMapMoves() {
     el.addEventListener(ev, note, { passive: true, capture: true });
   }
 }
+if (typeof window !== 'undefined') window.gpsWatchUserMapMoves = gpsWatchUserMapMoves;
 var gpsStartT = 0;
 var gpsLastGS = null;   // current ground speed (kt), null if unknown
 var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
@@ -534,7 +550,18 @@ function gpsCompassTrue(groundSpeedKt) {
 var gpsQnh = null;          // { inHg, hPa, tempC, elevFt, lat, lng, at } or null
 var _gpsQnhFetching = false;
 var GPS_QNH_TTL_MS = 15 * 60 * 1000;    // model output updates every 15 min
-var GPS_QNH_MOVE_NM = 25;               // ...or once the aircraft has moved this far
+var GPS_QNH_MOVE_NM = 5;                // ...or once the aircraft has moved this far
+// Read through tune() at the point of use, like the other in-flight constants, so a value
+// pushed from the gist takes effect without a reload. The constants above stay as the
+// shipped fallback for a build with no registry.
+function gpsQnhTtlMs() {
+  const m = (typeof tune === 'function') ? Number(tune('qnhMaxAgeMin')) : NaN;
+  return Number.isFinite(m) && m > 0 ? m * 60 * 1000 : GPS_QNH_TTL_MS;
+}
+function gpsQnhMoveNm() {
+  const nm = (typeof tune === 'function') ? Number(tune('qnhMoveNm')) : NaN;
+  return Number.isFinite(nm) && nm > 0 ? nm : GPS_QNH_MOVE_NM;
+}
 const HPA_PER_INHG = 33.8639;
 
 function gpsAltimetryOn() {
@@ -550,10 +577,10 @@ function gpsFormatInHg(inHg) {
 // Is the cached reading still good for this position?
 function _gpsQnhFresh(lat, lng) {
   if (!gpsQnh) return false;
-  if (Date.now() - gpsQnh.at > GPS_QNH_TTL_MS) return false;
+  if (Date.now() - gpsQnh.at > gpsQnhTtlMs()) return false;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
   const d = (typeof geo === 'function') ? geo(gpsQnh, { lat, lng }).dist : 0;
-  return !Number.isFinite(d) || d <= GPS_QNH_MOVE_NM;
+  return !Number.isFinite(d) || d <= gpsQnhMoveNm();
 }
 // Sea-level pressure and surface temperature for the position, from Open-Meteo (the
 // forecast source this app already uses; no key, and it answers cross-origin). Best
@@ -839,6 +866,7 @@ function updateGpsRecIndicator() {
   // The follow switch lives or dies with tracking; this runs on every start and stop.
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   const el = document.getElementById('gps-rec-indicator');
   if (el) el.hidden = !gpsRecording;
   const btn = document.getElementById('gps-record');
@@ -1173,7 +1201,11 @@ if (typeof document !== 'undefined') {
 var GPS_LEG_ETA_S = 120;          // shipped default; legEtaLeadSec overrides it live
 // Read through tune() at the point of use, not once at load: a gist override that landed
 // after boot would otherwise be ignored until a reload.
+function gpsAtisLeadS() {
+  return (typeof tune === 'function') ? tune('atisLeadSec') : 600;
+}
 function gpsLegEtaLeadS() { return (typeof tune === 'function') ? tune('legEtaLeadSec') : GPS_LEG_ETA_S; }
+function gpsCommLeadS() { return (typeof tune === 'function') ? tune('commLeadSec') : 60; }
 function gpsLegCaptureNm() { return (typeof tune === 'function') ? tune('legCaptureNm') : GPS_LEG_CAPTURE_NM; }
 function gpsAltToleranceFt() { return (typeof tune === 'function') ? tune('altToleranceFt') : GPS_ALT_TOLERANCE_FT; }
 function gpsAltMaxPerLeg() { return (typeof tune === 'function') ? tune('altMaxAlertsPerLeg') : GPS_ALT_MAX_PER_LEG; }
@@ -1189,6 +1221,7 @@ var GPS_ALT_TOLERANCE_FT = 100;
 var gpsAlertLegIndex = 0;         // forward-only pointer into state.legs/state.waypoints
 var _gpsAlertMinDistNm = Infinity;
 var _gpsAlertLegFired = false;    // leg-approach alert already sent for gpsAlertLegIndex
+var _gpsCommAlerted = false;      // frequency call already sent for the waypoint ahead
 var _gpsAlertAltDeviated = false; // currently inside an altitude-deviation episode
 // How many altitude calls this leg has already made. The episode latch alone stops a
 // CONTINUOUS deviation repeating, but an aircraft riding the tolerance -- a bumpy leg, a
@@ -1215,6 +1248,9 @@ var _gpsTopCapturePoint = null;   // {lat,lng} while still inside the last TOP c
 // the "passed abeam, never got close" branch advances the pointer (still needed to
 // keep tracking) but does not confirm it.
 var _gpsAlertConfirmed = false;
+// The ATIS reminder fires once per arrival: a hold, a go-around or a lap of the circuit must
+// not repeat it, and it is reset with the rest of the alert state when tracking restarts.
+var _gpsAtisAlerted = false;
 
 // Called whenever tracking (re)starts, so a pointer left over from a previous flight or
 // route can't silently suppress real alerts on this one. Plain reset to leg 0 -- correct
@@ -1226,6 +1262,7 @@ function gpsResetLegAlerts() {
   _gpsAlertAltDeviated = false;
   _gpsAlertAltCount = 0;
   _gpsAlertConfirmed = false;
+  _gpsAtisAlerted = false;
   _gpsTopCapturePoint = null;
   _gpsLastTopAt = 0;
   // Cone/off-route state belongs to the same episode: a fresh session must not inherit a
@@ -1420,8 +1457,7 @@ function gpsCheckRouteUnknown(insideCone) {
   }
   _gpsConeAlertedHdg = hdg;
   _gpsConeAlertedAt = now;
-  const label = (typeof waypointDisplayLabel === 'function')
-    ? waypointDisplayLabel(rec.wp, rec.index) : (rec.wp.name || '');
+  const label = gpsPlaceLabel(rec.wp, rec.index);
   const hdg3 = (typeof pad3 === 'function') ? pad3(hdg) : String(hdg);
   const nm = Math.round(rec.distNm * 10) / 10;
   gpsSendWatchAlert(
@@ -1431,12 +1467,47 @@ function gpsCheckRouteUnknown(insideCone) {
     // Spoken form only once the voice feature is present -- these two land independently,
     // and an undefined helper here would take the notification down with it.
     (S && S.speakAlertOffRoute && typeof gpsSpokenDigits === 'function')
-      ? S.speakAlertOffRoute(label,
+      ? S.speakAlertOffRoute(gpsSpokenWaypoint(rec.wp, label,
+            (typeof window !== 'undefined' && window.__navLang) || 'en'),
           gpsSpokenDigits(hdg3, (typeof window !== 'undefined' && window.__navLang) || 'en'),
           nm, rec.turn)
       : null);
 }
 
+// The destination's ATIS, when it publishes one. Reads the same airfields.json row the
+// inspector shows, so what is announced is what the field publishes -- nothing is invented for
+// a field that has no ATIS, which is most of them.
+function gpsDestinationAtis() {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const dest = wps[wps.length - 1];
+  if (!dest || typeof airfieldAtWaypoint !== 'function') return null;
+  const af = airfieldAtWaypoint(dest);
+  if (!af || !af.atis) return null;
+  // The dataset carries the published wording ("Arrival 132.50 MHz / Departure 132.80 MHz"),
+  // which belongs in the inspector and is far too long for an alert read at a glance. `freq`
+  // is the arriving pilot's frequency; `published` keeps the full text for anywhere that wants
+  // it.
+  const published = String(af.atis);
+  const short = (typeof atisShortFreq === 'function') ? atisShortFreq(published) : '';
+  // Two names for the field: the ICAO code, and what to call it in the interface language.
+  // Say the name in either language -- "Rosh Pina" and "ראש פינה" are what a pilot calls the
+  // place, and a spelled code is what you fall back to when the dataset has no name for it.
+  const he = (typeof window !== 'undefined' && window.__navLang === 'he');
+  const code = af.name || dest.name || '';
+  const label = (he ? (af.he || af.en) : (af.en || af.he)) || code;
+  return { field: code, label, freq: short || published, published, wp: dest };
+}
+// Distance (NM) from a point to the end of the route, walked leg by leg. Straight-line to the
+// destination would understate a route that turns -- and the reminder is about how much TIME
+// is left, which only the flown distance can answer.
+function gpsDistanceToDestinationNm(from, fromLegIdx) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  if (!from || wps.length < 2) return null;
+  const i = Number.isInteger(fromLegIdx) ? Math.max(0, Math.min(fromLegIdx, wps.length - 2)) : 0;
+  let total = geo(from, wps[i + 1]).dist;
+  for (let k = i + 1; k < wps.length - 1; k++) total += geo(wps[k], wps[k + 1]).dist;
+  return total;
+}
 function gpsCheckLegAlerts() {
   if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
   const wps = state.waypoints || [];
@@ -1511,8 +1582,7 @@ function gpsCheckLegAlerts() {
     const etaS = (dist / planSpeed) * 3600;
     if (etaS <= etaThreshold) {
       _gpsAlertLegFired = true;
-      const label = (typeof waypointDisplayLabel === 'function')
-        ? waypointDisplayLabel(next, gpsAlertLegIndex + 1) : (next.name || '');
+      const label = gpsPlaceLabel(next, gpsAlertLegIndex + 1);
       // What to fly on the leg AFTER this waypoint -- the one starting here, not the one
       // just being finished -- so the alert doubles as prep for the turn, not just a
       // "you're nearly there" ping. Either can be unavailable (last leg: no next leg at
@@ -1566,14 +1636,67 @@ function gpsCheckLegAlerts() {
             : { h: 0, m: _hms[0], s: _hms[1] };
         }
       }
+      const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
       gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
         (S && S.watchAlertLegBody) ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime)
           : ('Approaching ' + label),
         (S && S.speakAlertLeg)
-          ? S.speakAlertLeg(label, nextLegAlt,
+          ? S.speakAlertLeg(gpsSpokenWaypoint(next, label, lang), nextLegAlt,
               nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, (typeof window !== 'undefined' && window.__navLang) || 'en'),
               nextLegHms)
           : null);
+    }
+  }
+
+  // The frequency for the NEXT sector, a short time before the waypoint that changes it.
+  // It used to ride on TOP, which is too late to be useful: overhead the point the pilot is
+  // already making the call. A minute out there is time to find the frequency, set it in the
+  // standby box and be ready -- and the change itself still happens when ATC says so, which
+  // is why the wording names the frequency rather than instructing anyone to switch.
+  //
+  // Its own latch and its own lead time, deliberately separate from the leg-approach call:
+  // that one is about flying the next leg (two minutes out, so there is room to plan the
+  // turn), this one is about the radio.
+  if (_gpsAlertConfirmed && !_gpsCommAlerted && planSpeed) {
+    const ccAt = gpsCommChangeAt(next);
+    if (ccAt && (dist / planSpeed) * 3600 <= gpsCommLeadS()) {
+      _gpsCommAlerted = true;
+      const ccLang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+      const ccStation = gpsSpokenStation(ccAt.freqName);
+      gpsSendWatchAlert((S && S.watchAlertCommTitle) || 'Next frequency',
+        (S && S.watchAlertCommBody) ? S.watchAlertCommBody(ccStation, ccAt.freq)
+          : (ccStation + ' ' + ccAt.freq).trim(),
+        (S && S.speakAlertComm)
+          ? S.speakAlertComm(ccStation, gpsSpokenFreq(ccAt.freq, ccLang)) : null);
+    }
+  }
+
+  // ATIS, a set time out from the destination. Timed rather than distance-based on purpose:
+  // the reminder exists so there is room to tune, hear a full cycle and copy the numbers
+  // before the arrival gets busy, and that is a duration whatever the groundspeed. Planned
+  // speed, like every other alert here, so a headwind cannot silently make it late.
+  //
+  // Once per arrival: a hold, a go-around or a lap of the circuit must not repeat it.
+  if (_gpsAlertConfirmed && !_gpsAtisAlerted && planSpeed) {
+    const atis = gpsDestinationAtis();
+    if (atis) {
+      const toGo = gpsDistanceToDestinationNm(gpsOwn, gpsAlertLegIndex);
+      const etaDestS = Number.isFinite(toGo) ? (toGo / planSpeed) * 3600 : null;
+      if (etaDestS != null && etaDestS <= gpsAtisLeadS()) {
+        _gpsAtisAlerted = true;
+        const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+        // Field and frequency, nothing else. The lead time is why the alert fired, not
+        // something the pilot has to read back off the screen.
+        // Spoken the way it is written: the code spelled out, a name said as a name.
+        const spokenField = (atis.label === atis.field)
+          ? gpsSpokenPlace(atis.field, lang) : atis.label;
+        gpsSendWatchAlert((S && S.watchAlertAtisTitle) || 'ATIS',
+          (S && S.watchAlertAtisBody) ? S.watchAlertAtisBody(atis.label, atis.freq)
+            : (atis.label + ' ATIS ' + atis.freq),
+          (S && S.speakAlertAtis)
+            ? S.speakAlertAtis(spokenField, gpsSpokenFreq(atis.freq, lang))
+            : null);
+      }
     }
   }
 
@@ -1630,21 +1753,14 @@ function gpsCheckLegAlerts() {
       // Passing a waypoint is also the moment the drift check must go quiet for a while:
       // see _gpsLastTopAt in gpsCheckDrift.
       _gpsLastTopAt = Date.now();
-      // A waypoint that changes frequency is exactly where the pilot is about to make a
-      // call, so TOP carries it: the notification already shows the callout on the map,
-      // and hearing it saves looking down at the one moment the eyes are outside.
-      const ccAt = gpsCommChangeAt(next);
-      const ccLang = (typeof window !== 'undefined' && window.__navLang) || 'en';
-      const ccFreq = ccAt ? gpsSpokenFreq(ccAt.freq, ccLang) : '';
       gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
         (S && S.watchAlertTopBody) || 'TOP',
-        (ccAt && S && S.speakAlertTopComm)
-          ? S.speakAlertTopComm(ccAt.freqName, ccFreq)
-          : ((S && S.speakAlertTop) ? S.speakAlertTop() : null));
+        (S && S.speakAlertTop) ? S.speakAlertTop() : null);
     }
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;
     _gpsAlertLegFired = false;
+    _gpsCommAlerted = false;
     _gpsAlertAltDeviated = false;
     _gpsAlertAltCount = 0;
   }
@@ -1670,6 +1786,86 @@ function gpsSpokenDigits(value, lang) {
   return out.join(' ');
 }
 window.gpsSpokenDigits = gpsSpokenDigits;
+
+// An ICAO code is letters, not a word: "LLHA" read as one runs together into something a
+// pilot has to decode, and the whole point of speaking an alert is that it lands without
+// being decoded. Spelled out, with digits read individually the way frequencies already are,
+// so "LLHA" becomes "L L H A" and "4X-ABC" becomes "4 X A B C".
+function gpsSpokenCode(value, lang) {
+  if (value == null) return '';
+  const digits = _GPS_DIGIT_WORDS[lang] || _GPS_DIGIT_WORDS.en;
+  const out = [];
+  const s = String(value).toUpperCase();
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    const d = ch.charCodeAt(0) - 48;
+    if (d >= 0 && d <= 9) out.push(digits[d]);
+    else if (/[A-Z]/.test(ch)) out.push(ch);
+    // punctuation and spaces are dropped: a hyphen is not something to say
+  }
+  // Commas, not spaces. Space-separated letters are run back together by every engine tried --
+  // "L L I B" comes out as "lib" -- and a comma is the one separator that reliably makes a
+  // speech engine pause between them.
+  return out.join(', ');
+}
+window.gpsSpokenCode = gpsSpokenCode;
+
+// A place name for speech. An ICAO code or a reporting-point code is spelled (LLIB -> "L, L,
+// I, B", which is what a controller says and what a pilot hears); a real name is left alone,
+// because "Herzliya" spelled out would be worse than useless. The test is the shape of the
+// word: all-caps letters and digits with no lower case is a code, anything else is a name.
+function gpsSpokenPlace(text, lang) {
+  const t = String(text == null ? '' : text).trim();
+  if (!t) return '';
+  return /^[A-Z0-9][A-Z0-9\- ]*$/.test(t) && /[A-Z]/.test(t)
+    ? gpsSpokenCode(t, lang) : t;
+}
+window.gpsSpokenPlace = gpsSpokenPlace;
+
+// What to CALL a waypoint in an alert. The map draws an airfield by its ICAO code, because
+// that is what the chart prints -- but an alert is a sentence, and "מתקרב אל LLIB" is a
+// Hebrew sentence with an English word in it. Alerts therefore use the dataset's name for the
+// field in the interface language, exactly as the ATIS reminder does, and fall back to the
+// code only when the dataset has no name at all. Nav waypoints need none of this: navName()
+// already returned them in the right language, and a reporting point genuinely IS its code.
+//
+// This is the WRITTEN form, shared by every alert that names a place; gpsSpokenWaypoint()
+// below is its spoken counterpart.
+function gpsAirfieldName(wp, lang) {
+  const af = (wp && typeof airfieldAtWaypoint === 'function') ? airfieldAtWaypoint(wp) : null;
+  if (!af) return '';
+  const he = String(lang || '').toLowerCase().slice(0, 2) === 'he';
+  return (he ? (af.he || af.en) : (af.en || af.he)) || '';
+}
+function gpsPlaceLabel(wp, idx) {
+  const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+  return gpsAirfieldName(wp, lang) ||
+    ((typeof waypointDisplayLabel === 'function') ? waypointDisplayLabel(wp, idx)
+      : ((wp && wp.name) || ''));
+}
+window.gpsPlaceLabel = gpsPlaceLabel;
+
+// The spoken form of the same place: a name is said as a name, a bare code is spelled
+// ("L, L, I, B", which is what a controller says and what a pilot hears).
+function gpsSpokenWaypoint(wp, label, lang) {
+  return gpsAirfieldName(wp, lang) || gpsSpokenPlace(label, lang);
+}
+window.gpsSpokenWaypoint = gpsSpokenWaypoint;
+
+// A call sign for speech. Notes store whatever the callout was created with -- often the
+// catalog id (BEN_GURION) -- so a Hebrew session was hearing English station names read out
+// of an otherwise Hebrew sentence. The catalog carries a Hebrew name for every call sign;
+// this is the same lookup the map label uses, so what is heard matches what is drawn.
+function gpsSpokenStation(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return '';
+  if (typeof commCatalogCallSignRow === 'function' && typeof commCallSignLabel === 'function') {
+    const row = commCatalogCallSignRow(raw);
+    if (row) return commCallSignLabel(raw, row);
+  }
+  return raw.replace(/_/g, ' ');
+}
+window.gpsSpokenStation = gpsSpokenStation;
 
 // Native TTS, same access pattern as _nativeNotify()/_bgGeo(): the injected Capacitor
 // bridge exposes any synced plugin at window.Capacitor.Plugins.*. On the website (no
@@ -1972,8 +2168,11 @@ function gpsCheckDrift() {
   // read off a compass/HSI against the planned course.
   const trackErrorDeg = _gpsAngleDiff(flown.brg, leg.brg);
   if (Math.abs(trackErrorDeg) < gpsDriftErrorDeg()) return;
-  const label = (typeof waypointDisplayLabel === 'function')
-    ? waypointDisplayLabel(end, gpsAlertLegIndex + 1) : (end.name || '');
+  const label = gpsPlaceLabel(end, gpsAlertLegIndex + 1);
+  // Written and spoken forms of the same place: the notification shows the label, speech
+  // spells a bare code rather than reading it as a word (see gpsSpokenWaypoint).
+  const spokenLabel = gpsSpokenWaypoint(end, label,
+    (typeof window !== 'undefined' && window.__navLang) || 'en');
   if (flown.dist < leg.dist / 2) {
     // Before the leg's midpoint: worth rejoining the original line. Classic "double the
     // error" intercept. Give the pilot the resulting magnetic heading to fly, not the
@@ -1986,7 +2185,7 @@ function gpsCheckDrift() {
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, interceptHdg, label)
         : (driftOut + '° off course, heading ' + interceptHdg + '° to intercept toward ' + label),
-      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, spokenHdg, label) : null);
+      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, spokenHdg, spokenLabel) : null);
   } else {
     // Past the midpoint: rejoining the original line buys nothing this close to the
     // waypoint -- report the magnetic heading direct to it instead of a relative angle.
@@ -1998,6 +2197,6 @@ function gpsCheckDrift() {
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(directHdg, label)
         : ('Heading ' + directHdg + '° direct ' + label),
-      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(spokenHdg, label) : null);
+      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(spokenHdg, spokenLabel) : null);
   }
 }

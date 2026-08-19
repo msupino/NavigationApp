@@ -18,6 +18,10 @@ const SAME_IN_BOTH = [
   'vorRadialDme', 'windFetchOk',               // "R-123° / 4 NM", "5 hPa ← .."
   'routeLibraryExportJson',                    // JSON, beside the GPX button
   'watchAlertTopTitle',                         // "NavAid — TOP" -- CVFR radio phraseology
+  // The Hebrew ATIS alert is deliberately "ATIS <field> <freq>": ATIS is what the service is
+  // called in Hebrew too, and the field name arrives as an argument (ראש פינה), not in the
+  // template. A Hebrew word here would be an invention, not a translation.
+  'watchAlertAtisTitle', 'watchAlertAtisBody', 'speakAlertAtis', 'atisMarkerLabel',
 ];
 
 test('every English string key has a Hebrew one', async ({ page }) => {
