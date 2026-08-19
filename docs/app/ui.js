@@ -2618,6 +2618,17 @@ document.getElementById('reverse').onclick = () => {
     state.selected = Object.assign({}, sel, { index: state.waypoints.length - 1 - sel.index });
   }
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+  // Turn the chart round with the route. What was ahead of the aircraft is now behind it,
+  // and a map left facing the old way shows the flight that is no longer planned -- the
+  // pilot has to rotate it by hand every single time. Skipped while heading-up is driving
+  // the bearing from the fix: there the map's direction belongs to the aircraft, not to the
+  // plan, and a manual turn would be undone by the next position anyway.
+  if (typeof tune === 'function' && tune('reverseRotatesMap') === true &&
+      !headingUpOn && typeof map.setBearing === 'function') {
+    const now = (typeof mapBearing === 'function') ? mapBearing() : 0;
+    map.setBearing((((now + 180) % 360) + 360) % 360);
+    if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  }
   showInspector(); draw();
   // The published network is DIRECTED: plenty of corridors are one-way, and a reversed
   // route can quietly contain segments that are not flyable the other way. The app cannot
