@@ -1467,7 +1467,8 @@ function gpsCheckRouteUnknown(insideCone) {
     // Spoken form only once the voice feature is present -- these two land independently,
     // and an undefined helper here would take the notification down with it.
     (S && S.speakAlertOffRoute && typeof gpsSpokenDigits === 'function')
-      ? S.speakAlertOffRoute(label,
+      ? S.speakAlertOffRoute(gpsSpokenWaypoint(rec.wp, label,
+            (typeof window !== 'undefined' && window.__navLang) || 'en'),
           gpsSpokenDigits(hdg3, (typeof window !== 'undefined' && window.__navLang) || 'en'),
           nm, rec.turn)
       : null);
@@ -1693,7 +1694,7 @@ function gpsCheckLegAlerts() {
           (S && S.watchAlertAtisBody) ? S.watchAlertAtisBody(atis.label, atis.freq)
             : (atis.label + ' ATIS ' + atis.freq),
           (S && S.speakAlertAtis)
-            ? S.speakAlertAtis(spokenField, gpsSpokenDigits(atis.freq, lang))
+            ? S.speakAlertAtis(spokenField, gpsSpokenFreq(atis.freq, lang))
             : null);
       }
     }
@@ -2168,6 +2169,10 @@ function gpsCheckDrift() {
   const trackErrorDeg = _gpsAngleDiff(flown.brg, leg.brg);
   if (Math.abs(trackErrorDeg) < gpsDriftErrorDeg()) return;
   const label = gpsPlaceLabel(end, gpsAlertLegIndex + 1);
+  // Written and spoken forms of the same place: the notification shows the label, speech
+  // spells a bare code rather than reading it as a word (see gpsSpokenWaypoint).
+  const spokenLabel = gpsSpokenWaypoint(end, label,
+    (typeof window !== 'undefined' && window.__navLang) || 'en');
   if (flown.dist < leg.dist / 2) {
     // Before the leg's midpoint: worth rejoining the original line. Classic "double the
     // error" intercept. Give the pilot the resulting magnetic heading to fly, not the
@@ -2180,7 +2185,7 @@ function gpsCheckDrift() {
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftBody) ? S.watchAlertDriftBody(driftOut, interceptHdg, label)
         : (driftOut + '° off course, heading ' + interceptHdg + '° to intercept toward ' + label),
-      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, spokenHdg, label) : null);
+      (S && S.speakAlertDrift) ? S.speakAlertDrift(driftOut, spokenHdg, spokenLabel) : null);
   } else {
     // Past the midpoint: rejoining the original line buys nothing this close to the
     // waypoint -- report the magnetic heading direct to it instead of a relative angle.
@@ -2192,6 +2197,6 @@ function gpsCheckDrift() {
     gpsSendWatchAlert((S && S.watchAlertDriftTitle) || 'Off course',
       (S && S.watchAlertDriftDirectBody) ? S.watchAlertDriftDirectBody(directHdg, label)
         : ('Heading ' + directHdg + '° direct ' + label),
-      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(spokenHdg, label) : null);
+      (S && S.speakAlertDriftDirect) ? S.speakAlertDriftDirect(spokenHdg, spokenLabel) : null);
   }
 }

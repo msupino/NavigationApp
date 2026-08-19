@@ -642,3 +642,35 @@ test.describe('an airfield is spoken by name', () => {
     expect(out).toBe('B, O, R, E, N');
   });
 });
+
+// What is heard and what is read must name the same place. Off-route and off-course used to
+// speak the raw map label, so a code was read as a word while the notification showed it.
+test.describe('text and speech name the same place', () => {
+  test('off course spells a code and shows it', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsCheckDrift === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      window.__alerts = [];
+      const send = window.gpsSendWatchAlert;
+      window.gpsSendWatchAlert = (t, b, sp) => { window.__alerts.push({ b, sp }); return send(t, b, sp); };
+      state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ZZQQ' },
+                         { lat: 32.2, lng: 34.0, name: 'ZZRR' }];
+      syncLegs();
+      gpsAlertLegIndex = 0;
+      window._gpsAlertConfirmed = true;
+      // Well off the line, before the midpoint: the intercept branch.
+      gpsOwn = { lat: 32.05, lng: 34.06, t: Date.now() };
+      window._gpsLastTopAt = 0;
+      window._gpsLastDriftAt = 0;
+      gpsCheckDrift();
+      await window.__gpsSpeakChain;
+      return window.__alerts;
+    });
+    const drift = out.find(a => /course|Heading/i.test(a.b));
+    expect(drift).toBeTruthy();
+    expect(drift.b).toContain('ZZRR');          // written: the label, as drawn
+    expect(drift.sp).toContain('Z, Z, R, R');   // spoken: spelled, never read as a word
+  });
+});

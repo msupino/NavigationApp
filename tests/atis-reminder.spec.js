@@ -74,6 +74,11 @@ test('the reminder fires inside the lead time, once, and names the frequency', a
   expect(out.count).toBe(1);                        // once per arrival
   expect(out.body).toContain('132');
   expect(out.speech).toMatch(/A T I S/);            // spoken as letters, not "atis"
+  // The frequency is spoken the way the comm call speaks one: digit by digit AND with the
+  // decimal. It was going through the plain digit helper, which drops punctuation -- "132.50"
+  // came out "one three two five zero", which is a frequency tuned wrong.
+  expect(out.speech).toContain('decimal');
+  expect(out.speech).not.toContain('132.5');       // never read as a bare number
   // Short: the field and the frequency, nothing else. A notification is read at a glance, and
   // the lead time is why it fired rather than something to read back off the screen.
   expect(out.body).not.toMatch(/\bmin\b/);
