@@ -468,6 +468,10 @@ NavAid.tuningDefaults = {
   liveAircraftOutlineColor: { value: '#ffffff', type: 'color', label: 'Live aircraft outline color' },
   liveHeadingLineColor: { value: '#e53935', type: 'color', label: 'Live heading line color' },
   liveHeadingTextColor: { value: '#ffffff', type: 'color', label: 'Live heading label color' },
+  // Distance and time marks sit on the same line and read alike at a glance ("5 nm" / "5 min"
+  // are the same shape) -- two colours are what tells them apart without reading them.
+  liveHeadingNmTextColor: { value: '#ffffff', type: 'color', label: 'Heading line NM mark color' },
+  liveHeadingMinTextColor: { value: '#ffd166', type: 'color', label: 'Heading line minute mark color' },
 
   profileBgColor: { value: '#1d2733', type: 'color', label: 'Profile background color' },
   profileGridColor: { value: '#7896b4', type: 'color', label: 'Profile grid color' },
@@ -773,7 +777,7 @@ NavAid.tuningGroups = [
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
-  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
+  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
   { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
@@ -2110,10 +2114,6 @@ window.S = Object.assign({
   tbSimLocalhostNative: '⚠ localhost means this device. Enter the simulator computer’s LAN bridge URL.',
   tbSimMixedContent: '⚠ Blocked: NavAid uses HTTPS but this bridge uses HTTP. Enter an HTTPS bridge or tunnel URL.',
   tbSimNativeHttp: '⚠ This native build cannot use a local HTTP bridge. Enter an HTTPS bridge or tunnel URL.',
-  tbSimFollow: 'Follow aircraft',
-  tbSimFollowTitle: 'Keep the map centred on the live aircraft position',
-  tbSimCenter: 'Center on aircraft',
-  tbSimCenterTitle: 'Recenter the map on the live aircraft once',
   tbSimStatusOk: '✅ Connected',
   tbSimStatusErr: '⚠ No data',
   tbViewSource: 'GitHub',
@@ -2314,7 +2314,6 @@ var magnifierSize = 400;    // magnifier diameter (px)
 var simOn = false;                        // polling active
 var simUrl = 'http://localhost:2020';     // bridge base URL
 var simAircraft = null;                   // last received {lat,lng,alt,hdg,ias} or null
-var simFollow = false;                    // keep map centred on aircraft
 let pageSize = null;        // null | 'A3' | 'A4'
 // `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
 // land on the same binding the toggle reads. Default 'portrait' since most

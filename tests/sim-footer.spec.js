@@ -18,31 +18,15 @@ test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }
   // Opening reveals the sim controls.
   await trigger.click();
   await expect(page.locator('#sim-modal')).toBeVisible();
-  // Browser mode keeps the three normal actions visible; native discovery is hidden.
+  // Connecting is all the panel does. Follow and Center were copies of controls that now sit
+  // on the map itself, beside the rotation dial, where they work for GPS and sim alike --
+  // and while they were duplicated, the panel's copy could countermand the map button.
   await expect(page.locator(
-    '#sim-modal .modal.sim-modal > button:not(.sim-modal-close):visible')).toHaveCount(3);
+    '#sim-modal .modal.sim-modal > button:not(.sim-modal-close):visible')).toHaveCount(1);
   await expect(page.locator('#sim-modal #sim-connect-cb')).toBeVisible();
-  await expect(page.locator('#sim-modal #sim-follow-cb')).toBeVisible();
-  await expect(page.locator('#sim-modal #sim-center')).toBeVisible();
   await expect(page.locator('#sim-modal #sim-url')).toBeVisible();
-
-  // Center is a one-shot — clicking flashes for feedback even with no live
-  // aircraft (muted no-data flash).
-  await page.locator('#sim-modal #sim-center').click();
-  await expect(page.locator('#sim-modal #sim-center')).toHaveClass(/sim-flash/);
-
-  // Follow is a toggle with a visible active (aria-pressed) state. It is a VIEW of the map's
-  // own follow lock (gpsFollow, on by default and remembered per device) rather than a second
-  // switch of its own: two switches for one behaviour meant the map lock could not resume
-  // following after a pan while the panel's copy was off.
-  const follow = page.locator('#sim-modal #sim-follow-cb');
-  await expect(follow).toHaveAttribute('aria-pressed', 'true');
-  await follow.click();
-  await expect(follow).toHaveAttribute('aria-pressed', 'false');
-  expect(await page.evaluate(() => gpsFollow)).toBe(false);
-  await follow.click();
-  await expect(follow).toHaveAttribute('aria-pressed', 'true');
-  expect(await page.evaluate(() => gpsFollow)).toBe(true);
+  await expect(page.locator('#sim-modal #sim-follow-cb')).toHaveCount(0);
+  await expect(page.locator('#sim-modal #sim-center')).toHaveCount(0);
 
   // Esc closes.
   await page.keyboard.press('Escape');

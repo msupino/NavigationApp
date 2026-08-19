@@ -181,25 +181,20 @@ test('the follow lock and heading-up work off a simulator feed', async ({ page }
   expect(out.rotated).toBe(270);                    // heading 090 -> map bearing 270
 });
 
-// The panel's Follow and the map's lock are ONE setting shown twice. They were two flags, and
-// the sim poll required both -- so with the panel's flag off, the map lock could never resume
-// following after a pan: "the lock doesn't restore location after 5 seconds".
-test('the sim panel Follow and the map lock are the same switch', async ({ page }) => {
+// The panel's Follow and Center were copies of the map's own controls, and the sim poll
+// required BOTH the panel's flag and the map lock -- so with the panel's flag off the lock
+// could never resume following after a pan ("the lock doesn't restore location after 5
+// seconds"). The copies are gone: the map buttons are the controls, in sim as in GPS.
+test('the sim panel carries no follow or centre control of its own', async ({ page }) => {
   await boot(page);
-  const out = await page.evaluate(() => {
-    gpsSetFollow(false);
-    const offBoth = { gps: gpsFollow, sim: window.simFollow,
-                      pressed: document.getElementById('sim-follow-cb').getAttribute('aria-pressed') };
-    document.getElementById('sim-follow-cb').onclick();        // panel -> lock
-    const viaPanel = { gps: gpsFollow, sim: window.simFollow };
-    gpsSetFollow(false);                                       // lock -> panel
-    const viaButton = { sim: window.simFollow,
-                        pressed: document.getElementById('sim-follow-cb').getAttribute('aria-pressed') };
-    return { offBoth, viaPanel, viaButton };
-  });
-  expect(out.offBoth).toEqual({ gps: false, sim: false, pressed: 'false' });
-  expect(out.viaPanel).toEqual({ gps: true, sim: true });
-  expect(out.viaButton).toEqual({ sim: false, pressed: 'false' });
+  const out = await page.evaluate(() => ({
+    panelFollow: !!document.getElementById('sim-follow-cb'),
+    panelCenter: !!document.getElementById('sim-center'),
+    mapLock: !!document.getElementById('follow-lock'),
+  }));
+  expect(out.panelFollow).toBe(false);
+  expect(out.panelCenter).toBe(false);
+  expect(out.mapLock).toBe(true);        // the one that remains, on the map
 });
 
 test('the lock resumes following once the pan grace has passed', async ({ page }) => {

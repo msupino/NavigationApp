@@ -256,7 +256,7 @@ function drawHeadingLine(pos, hdg, gsKt) {
   octx.font = 'bold ' + labelPx + 'px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
-  function drawMark(nm, primaryLabel, secondaryLabel) {
+  function drawMark(nm, primaryLabel, secondaryLabel, textColor) {
     const m = atNm(nm);
     octx.beginPath();
     octx.moveTo(m.x - px * tick, m.y - py * tick);
@@ -268,7 +268,7 @@ function drawHeadingLine(pos, hdg, gsKt) {
     octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
     octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
     octx.strokeText(primaryLabel, lx, ly);
-    octx.fillStyle = tune('liveHeadingTextColor');
+    octx.fillStyle = textColor || tune('liveHeadingTextColor');
     octx.fillText(primaryLabel, lx, ly);
     if (secondaryLabel == null) return;
     // Second row, straight below in screen space -- readable regardless of which
@@ -277,18 +277,26 @@ function drawHeadingLine(pos, hdg, gsKt) {
     octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
     octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
     octx.strokeText(secondaryLabel, lx, ly2);
-    octx.fillStyle = tune('liveHeadingTextColor');
+    octx.fillStyle = textColor || tune('liveHeadingTextColor');
     octx.fillText(secondaryLabel, lx, ly2);
   }
+
+  // A number with a Latin unit, drawn on a canvas whose paragraph direction follows the
+  // interface language. In Hebrew that base direction is RTL, and bidi then reorders the two
+  // runs of "5 nm" -- the digits and the unit are separate runs either side of a neutral
+  // space, so they came out as "nm 5". These labels are readings off an instrument, not
+  // prose: they are always left to right, in either language. The isolate says exactly that
+  // and leaves the surrounding text alone.
+  const ltr = (t) => '\u2066' + t + '\u2069';
 
   // Fixed-distance marks: "N nm" ("2 nm"/"5 nm"/"10 nm"). No secondary derived row --
   // a time-to-reach subtext was tried and reported as unwanted clutter ("it shows
   // 1:20 as well"); just the marks themselves.
-  for (const nm of HEADING_LINE_MARKS_NM) drawMark(nm, nm + ' nm', null);
+  for (const nm of HEADING_LINE_MARKS_NM) drawMark(nm, ltr(nm + ' nm'), null, tune('liveHeadingNmTextColor'));
   // Fixed-time marks: "N min". Needs a groundspeed to place at all (their distance is
   // derived from it); no secondary distance row either, same reasoning as above.
   if (haveSpeed) {
-    for (const min of HEADING_LINE_MARKS_MIN) drawMark(nmAtMin(min), min + ' min', null);
+    for (const min of HEADING_LINE_MARKS_MIN) drawMark(nmAtMin(min), ltr(min + ' min'), null, tune('liveHeadingMinTextColor'));
   }
   // Heading value at the far end of the line, past the last tick's own labels
   // rather than stacked on top of them. Magnetic + padded to 3 digits, same as
