@@ -497,22 +497,41 @@ editLockCtrl.onAdd = function () {
 };
 editLockCtrl.addTo(map);
 const editLockBtn = document.getElementById('edit-lock');
+// The button shows whether the route CAN be moved, not merely whether the pilot pressed it.
+// Starting a recording or Location locks the route on its own (dragLockedNow), and a button
+// still showing a pencil while every drag is being refused is a button that lies.
+function editLockAutoNow() {
+  return typeof gpsMapLocked === 'function' && gpsMapLocked();
+}
 function refreshEditLockControl() {
   if (!editLockBtn) return;
   orderMapControls(editLockBtn.parentNode && editLockBtn.parentNode.parentNode);
-  const on = window.editLocked === true;
+  const auto = editLockAutoNow();
+  const on = auto || window.editLocked === true;
   // A pin holds the route where it is; a pencil says it can still be edited.
   editLockBtn.textContent = on ? '📌' : '✏️';
   editLockBtn.classList.toggle('editlock-on', on);
+  editLockBtn.classList.toggle('editlock-auto', auto);
   editLockBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  const label = on ? (S.editLockOn || 'Route is locked — tap to allow moving points and labels')
-                   : (S.editLockOff || 'Points and labels can be dragged — tap to lock the route');
+  const label = auto
+    ? (S.editLockAuto || 'Route is locked while a position is showing')
+    : (on ? (S.editLockOn || 'Route is locked — tap to allow moving points and labels')
+          : (S.editLockOff || 'Points and labels can be dragged — tap to lock the route'));
   editLockBtn.title = label;
   editLockBtn.setAttribute('aria-label', label);
 }
 window.refreshEditLockControl = refreshEditLockControl;
 refreshEditLockControl();
 editLockBtn.onclick = () => {
+  // While a position is driving the map the lock is not the pilot's to lift: a nudge in the
+  // air rewrites the plan the alerts are measuring against. Say so rather than flipping a
+  // preference that would change nothing visible until the flight ends.
+  if (editLockAutoNow()) {
+    if (typeof showToast === 'function') {
+      showToast(S.editLockAutoToast || 'Locked while a position is showing');
+    }
+    return;
+  }
   window.editLocked = !(window.editLocked === true);
   try { localStorage.setItem(EDIT_LOCK_KEY, window.editLocked ? '1' : '0'); } catch (err) { /* */ }
   refreshEditLockControl();

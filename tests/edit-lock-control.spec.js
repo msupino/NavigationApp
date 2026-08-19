@@ -8,6 +8,13 @@
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
+  // Headless Chromium refuses geolocation, and the error callback ends the session a moment
+  // after it starts -- which unlocks the route mid-test. A watch that simply never calls back
+  // is what a phone sitting still looks like.
+  await page.addInitScript(() => {
+    navigator.geolocation.watchPosition = () => 7;
+    navigator.geolocation.clearWatch = () => {};
+  });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof draw === 'function' && typeof dragLockedNow === 'function'
     && !!document.getElementById('edit-lock'));
@@ -92,4 +99,57 @@ test('a live position still locks the route on its own', async ({ page }) => {
   expect(await page.evaluate(() => dragLockedNow('wp'))).toBe(false);
   await page.evaluate(() => { window.gpsLiveOn = true; });
   expect(await page.evaluate(() => dragLockedNow('wp'))).toBe(true);
+});
+
+// Reported: starting a recording or Location locks the route on its own, and the button went
+// on showing a pencil while every drag was being refused — a button that lies about what the
+// chart will do.
+test.describe('the button follows the automatic lock too', () => {
+  const state_ = (page) => page.evaluate(() => {
+    const b = document.getElementById('edit-lock');
+    return { icon: b.textContent, pressed: b.getAttribute('aria-pressed'),
+             label: b.getAttribute('aria-label'), locked: dragLockedNow('wp') };
+  });
+
+  test('showing a position pins it, and stopping releases it', async ({ page }) => {
+    await boot(page);
+    expect((await state_(page)).pressed).toBe('false');
+    await page.evaluate(() => startLiveLocation());
+    const live = await state_(page);
+    expect(live.pressed).toBe('true');
+    expect(live.icon).toBe('📌');
+    expect(live.locked).toBe(true);
+    expect(live.label).toMatch(/while a position/i);
+    await page.evaluate(() => stopLiveLocation());
+    const after = await state_(page);
+    expect(after.pressed).toBe('false');       // back to the pilot's own choice
+    expect(after.icon).toBe('✏️');
+  });
+
+  // The pilot's own choice is remembered underneath: a route locked on the ground is still
+  // locked when the flight ends.
+  test('a lock set by hand survives a tracking session', async ({ page }) => {
+    await boot(page);
+    await page.click('#edit-lock');
+    await page.evaluate(() => { startLiveLocation(); stopLiveLocation(); });
+    const out = await state_(page);
+    expect(out.pressed).toBe('true');
+    expect(out.locked).toBe(true);
+  });
+
+  // In the air the lock is not the pilot's to lift — a nudge rewrites the plan the alerts are
+  // measuring against — so the tap explains itself instead of flipping a hidden preference.
+  test('tapping while tracking says why, and changes nothing', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => startLiveLocation());
+    await page.click('#edit-lock');
+    await expect(page.locator('.toast')).toHaveText(/while a position/i);
+    const out = await page.evaluate(() => ({
+      pref: window.editLocked === true, locked: dragLockedNow('wp'),
+      pressed: document.getElementById('edit-lock').getAttribute('aria-pressed'),
+    }));
+    expect(out.pref).toBe(false);
+    expect(out.locked).toBe(true);
+    expect(out.pressed).toBe('true');
+  });
 });

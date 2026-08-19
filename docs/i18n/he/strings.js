@@ -665,6 +665,8 @@ window.S = {
   orientHeadingUp: 'מגמה למעלה — הקישו לצפון למעלה',
   editLockOn: 'המסלול נעול — הקש כדי לאפשר הזזת נקודות ותוויות',
   editLockOff: 'ניתן להזיז נקודות ותוויות — הקש כדי לנעול את המסלול',
+  editLockAuto: 'המסלול נעול כל עוד מוצג מיקום',
+  editLockAutoToast: 'נעול כל עוד מוצג מיקום',
   editLockOnToast: 'המסלול נעול',
   editLockOffToast: 'המסלול פתוח לעריכה',
   followLockOn: 'עוקב אחרי המטוס — הקישו כדי להשאיר את המפה במקומה',
