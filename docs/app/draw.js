@@ -855,6 +855,7 @@ function draw() {
   // field doesn't cover them (and they stay clickable).
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
   drawNotes();
+  flushKites();      // both kinds of kite, above the callouts -- see queueKite
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
@@ -3953,7 +3954,7 @@ function drawLegs() {
     // already gated by legAllowsReturn).
     const inboundBlocked = typeof legAltitudeIsBlocked === 'function' &&
       legAltitudeIsBlocked(leg, 'inboundAltitude');
-    if (!inboundBlocked && !kiteOff) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
+    if (!inboundBlocked && !kiteOff) queueLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
@@ -3975,7 +3976,7 @@ function drawLegs() {
       const cumAlong = cumP._default ? cumDef.along : (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
-      drawCumTimeArrow(cumX, cumY,
+      queueCumTimeArrow(cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
         cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
     }
@@ -3985,7 +3986,7 @@ function drawLegs() {
     const returnOn = showReturn &&
       (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn());
     if (returnOn && legAllowsReturn(i)) {
-      if (!kiteOff) drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
+      if (!kiteOff) queueLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
         tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
@@ -4000,7 +4001,7 @@ function drawLegs() {
         const cumRetAlong = cumRetP._default ? -cumDef.along : (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
-        drawCumTimeArrow(cumRetX, cumRetY,
+        queueCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
           cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
       }
@@ -4166,6 +4167,21 @@ function needsHalo(i, which) {
 // rectangle cell showing the running total time from departure to this leg.
 // Drawn on the opposite perpendicular side from the main inbound kite so both
 // markers are always visible without overlap.
+// Both kites are painted LAST, above the notes. A frequency-change callout is a filled box on
+// a tail, and where it lands on the same stretch of leg it covered them -- so the numbers a
+// pilot is still scanning for (what to fly, and when they reach the point) were hidden behind
+// a label they had already read. Each queues during the leg pass and is flushed after
+// drawNotes(); queued rather than drawn twice, because the fills are semi-transparent and a
+// second pass would darken them.
+let _kiteQueue = [];
+function queueKite(fn, args) { _kiteQueue.push([fn, args]); }
+function queueCumTimeArrow(...args) { queueKite(drawCumTimeArrow, args); }
+function queueLegArrow(...args) { queueKite(drawLegArrow, args); }
+function flushKites() {
+  const queued = _kiteQueue;
+  _kiteQueue = [];
+  for (const [fn, args] of queued) fn(...args);
+}
 function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   sc = sc ?? 1;
   // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
