@@ -60,3 +60,29 @@ test('an unknown plate keeps its file-name label', async ({ page }) => {
   expect(out.title).toBe('airport Annex Zzz');
   expect(out.annex).toBe('');
 });
+
+// The designations come off the network and end up in a checked-in file, a workflow step
+// summary and a button in the cockpit. CodeQL flagged that path, and it is right to: the
+// script treats the index as text and nothing else.
+test('the shipped designations carry no control, bidi or markdown characters', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof loadPlateTitles === 'function');
+  const bad = await page.evaluate(async () => {
+    const titles = await loadPlateTitles();
+    const ctrl = new RegExp('[\\u0000-\\u001f\\u007f-\\u009f\\u202a-\\u202e\\u2066-\\u2069]');
+    const markup = new RegExp('[`*_<>|\\\\]');
+    const out = [];
+    for (const [file, row] of Object.entries(titles)) {
+      for (const key of ['annex', 'he', 'en']) {
+        const v = row[key];
+        if (typeof v !== 'string') { out.push(file + '.' + key + ' is not a string'); continue; }
+        if (ctrl.test(v)) out.push(file + '.' + key + ' control/bidi');
+        if (markup.test(v)) out.push(file + '.' + key + ' markup');
+        if (v.length > 120) out.push(file + '.' + key + ' too long');
+      }
+      if (row.modified && !/^\d{4}-\d{2}-\d{2}$/.test(row.modified)) out.push(file + '.modified');
+    }
+    return out;
+  });
+  expect(bad).toEqual([]);
+});

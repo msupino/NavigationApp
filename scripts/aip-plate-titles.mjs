@@ -35,10 +35,12 @@ function indexByHash(doc) {
   const walk = (node, lang) => {
     if (Array.isArray(node)) { node.forEach(n => walk(n, lang)); return; }
     if (!node || typeof node !== 'object') return;
-    if (node.HASH && node.TITLE) {
+    // The hash is the join key and is compared against one we compute ourselves, so it has to
+    // look like one: 128 hex characters, nothing else.
+    if (typeof node.HASH === 'string' && /^[0-9a-f]{128}$/.test(node.HASH) && node.TITLE) {
       const row = out.get(node.HASH) || {};
-      row[lang] = String(node.TITLE).trim();
-      if (node.LAST_MODIFIED) row.modified = String(node.LAST_MODIFIED).slice(0, 10);
+      row[lang] = cleanText(node.TITLE);
+      if (node.LAST_MODIFIED) row.modified = cleanDate(node.LAST_MODIFIED);
       out.set(node.HASH, row);
     }
     for (const v of Object.values(node)) walk(v, lang);
@@ -65,6 +67,27 @@ function splitTitle(full) {
 
 const sha512 = (buf) => createHash('sha512').update(buf).digest('hex');
 
+// Everything below this line came off the network and ends up in a checked-in file, in a
+// workflow step summary and, eventually, on a button in the cockpit. Treat it as text and
+// nothing else: no control characters (which would corrupt the JSON's neighbours), no bidi
+// overrides (which can make a label read as something it is not), no unbounded length, and
+// nothing that would be read as markdown in the step summary.
+const MAX_TITLE = 120;
+function cleanText(value) {
+  return String(value == null ? '' : value)
+    // C0/C1 controls and the bidi overrides -- U+2066..U+2069 and U+202A..U+202E
+    .replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '')
+    .replace(/[`*_<>|\\]/g, ' ')          // markdown/HTML furniture, for the step summary
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_TITLE);
+}
+// A date or nothing. The index prints "2026-08-06 08:45:29+00:00"; only the day is used.
+function cleanDate(value) {
+  const m = String(value == null ? '' : value).match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+
 async function main() {
   const doc = await fetchIndex();
   const byHash = indexByHash(doc);
@@ -78,10 +101,10 @@ async function main() {
     const he = row.he ? splitTitle(row.he) : null;
     const en = row.en ? splitTitle(row.en) : null;
     titles[f] = {
-      annex: (he && he.annex) || '',
-      he: (he && he.title) || '',
-      en: (en && en.title) || '',
-      modified: row.modified || '',
+      annex: cleanText(he && he.annex),
+      he: cleanText(he && he.title),
+      en: cleanText(en && en.title),
+      modified: cleanDate(row.modified),
     };
   }
   await writeFile(OUT, JSON.stringify(titles, null, 1) + '\n');

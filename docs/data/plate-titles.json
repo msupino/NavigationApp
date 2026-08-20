@@ -1,13 +1,13 @@
 {
  "LLAR_airport_Chart.pdf": {
   "annex": "נספח א",
-  "he": "_ תרשים המנחת",
+  "he": "תרשים המנחת",
   "en": "",
   "modified": "2021-08-21"
  },
  "LLAR_airport_Circuit.pdf": {
   "annex": "נספח ב",
-  "he": "_ תרשים ההקפה",
+  "he": "תרשים ההקפה",
   "en": "",
   "modified": "2021-08-21"
  },
@@ -61,19 +61,19 @@
  },
  "LLBO_Ground_Diagram.pdf": {
   "annex": "נספח א",
-  "he": "_ תרשים המנחת",
+  "he": "תרשים המנחת",
   "en": "",
   "modified": "2021-08-21"
  },
  "LLBO_airport_Circuit.pdf": {
   "annex": "נספח ב",
-  "he": "_ תרשים ההקפה",
+  "he": "תרשים ההקפה",
   "en": "",
   "modified": "2021-08-21"
  },
  "LLBO_airport_Routes.pdf": {
   "annex": "נספח ג",
-  "he": "_ כניסה ויציאה לנתיבי CVFR",
+  "he": "כניסה ויציאה לנתיבי CVFR",
   "en": "",
   "modified": "2021-08-21"
  },
@@ -115,7 +115,7 @@
  },
  "LLES_airport_Text.pdf": {
   "annex": "נספח ג",
-  "he": "_ תרשים עזיבה והצטרפות לכטבם",
+  "he": "תרשים עזיבה והצטרפות לכטבם",
   "en": "",
   "modified": "2021-08-21"
  },
@@ -127,13 +127,13 @@
  },
  "LLEY_airport_CVFR.pdf": {
   "annex": "נספח ג",
-  "he": "_ כניסה ויציאה לנתיבי CVFR",
+  "he": "כניסה ויציאה לנתיבי CVFR",
   "en": "",
   "modified": "2021-08-21"
  },
  "LLEY_airport_Circuit.pdf": {
   "annex": "נספח ב",
-  "he": "_ תרשים ההקפה",
+  "he": "תרשים ההקפה",
   "en": "",
   "modified": "2021-08-21"
  },
@@ -415,13 +415,13 @@
  },
  "LLRS_airport_Annex Alef.pdf": {
   "annex": "נספח א",
-  "he": "_ - תרשים המנחת",
+  "he": "תרשים המנחת",
   "en": "",
   "modified": "2024-10-31"
  },
  "LLRS_airport_Annex Bet.pdf": {
   "annex": "נספח ב",
-  "he": "_ - תרשים הקפה",
+  "he": "תרשים הקפה",
   "en": "",
   "modified": "2024-10-31"
  },
