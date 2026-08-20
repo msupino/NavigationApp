@@ -303,3 +303,51 @@ test.describe('a cancelled press is not a tap', () => {
     expect(await hidden(page)).toBe(true);
   });
 });
+
+// Reported three times over, in three different shapes: holding a waypoint to move it opened
+// its inspector. The last shape is the plain one — the pilot holds on, the point does not
+// travel far enough to count as moved, and the release reads as a request to inspect. A tap
+// is quick; anything held is an attempt to move something.
+test.describe('a held press is a grab, not a tap', () => {
+  const press = async (page, at, holdMs, dx = 0, dy = 0) => {
+    await page.evaluate(() => { state.selected = null; showInspector(); draw(); });
+    await touch(page, 'touchstart', at.x, at.y);
+    if (holdMs) await page.waitForTimeout(holdMs);
+    if (dx || dy) await touch(page, 'touchmove', at.x + dx, at.y + dy);
+    await touch(page, 'touchend', at.x + dx, at.y + dy);
+  };
+
+  test('a quick tap still opens the waypoint', async ({ page }) => {
+    await boot(page);
+    await press(page, await at(page, 0), 0);
+    expect(await hidden(page)).toBe(false);
+  });
+
+  test('holding it opens nothing, even if the finger never travels', async ({ page }) => {
+    await boot(page);
+    await press(page, await at(page, 0), 600);
+    expect(await hidden(page)).toBe(true);
+    expect(await page.evaluate(() => state.selected)).toBe(null);
+  });
+
+  test('holding then nudging inside the slop opens nothing either', async ({ page }) => {
+    await boot(page);
+    await press(page, await at(page, 0), 600, 5, 3);
+    expect(await hidden(page)).toBe(true);
+  });
+
+  // A leg is not draggable, so pressing one is a tap however long it is held -- that is how a
+  // leg is inspected, and there is nothing to grab.
+  test('a long press on a leg still opens it', async ({ page }) => {
+    await boot(page);
+    const mid = await page.evaluate(() => {
+      const a = map.latLngToContainerPoint([state.waypoints[0].lat, state.waypoints[0].lng]);
+      const b = map.latLngToContainerPoint([state.waypoints[1].lat, state.waypoints[1].lng]);
+      const box = map.getContainer().getBoundingClientRect();
+      return { x: Math.round(box.left + (a.x + b.x) / 2), y: Math.round(box.top + (a.y + b.y) / 2) };
+    });
+    await press(page, mid, 600);
+    expect(await hidden(page)).toBe(false);
+    expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('leg');
+  });
+});

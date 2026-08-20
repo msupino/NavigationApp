@@ -4483,6 +4483,7 @@ mapEl.addEventListener('touchstart', e => {
   if (touchDrag) {
     touchDrag.wasDoubleTap = wasDoubleTap;
     touchDrag.selectionBefore = selectionBeforeTouch;
+    touchDrag.pressedAt = Date.now();          // tap or grab is decided by how long it lasts
     // Where the finger LANDED -- the threshold below measures from here. Seeding it from
     // the first touchmove instead made that move measure zero, so the guard let the first
     // (largest) jump through and only started counting afterwards.
@@ -4581,6 +4582,11 @@ mapEl.addEventListener('touchmove', e => {
 let _tapOpened = null;
 const DOUBLE_TAP_MS = 350;
 const DOUBLE_TAP_PX = 40;
+// A press long enough to be a GRAB is not a tap, even when the finger ends up back where it
+// started. Reported twice: holding a waypoint to move it opened its inspector -- the pilot
+// held on, the point did not travel far enough to count as moved, and the release read as a
+// request to inspect. A tap is quick; anything held is an attempt to move something.
+const TAP_MAX_MS = 300;
 function noteTapOpened(x, y, prev) {
   _tapOpened = (x == null) ? null : { t: Date.now(), x, y, prev: prev || null };
 }
@@ -4626,9 +4632,12 @@ function endTouch(evOrCancelled) {
   // the pilot was reading and a drag does not take it away -- the mouse path's rule.
   // The second tap of a double tap opens nothing: the gesture is a zoom, and the first tap's
   // panel has already been put back where it was.
+  const held = !!touchDrag && Number.isFinite(touchDrag.pressedAt) &&
+    (Date.now() - touchDrag.pressedAt) > TAP_MAX_MS &&
+    KITE_DRAG_KINDS.concat(['wp', 'note']).indexOf(touchDrag.kind) !== -1;
   const isTap = !!touchDrag && !touchDrag.moved && !touchDrag.wasDoubleTap && !cancelled &&
-    TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1;
-  if (touchDrag && (touchDrag.wasDoubleTap || (cancelled && !touchDrag.moved))) {
+    !held && TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1;
+  if (touchDrag && (touchDrag.wasDoubleTap || held || (cancelled && !touchDrag.moved))) {
     // Put back what was showing before the finger landed: a cancelled press selected the
     // waypoint under it on the way down, and a highlighted point with no panel explains
     // nothing.
