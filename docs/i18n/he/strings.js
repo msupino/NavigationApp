@@ -257,6 +257,10 @@ window.S = {
   // Wrap the Latin date/time in an LTR isolate (LRI/PDI) so the RTL context
   // does not reorder it (e.g. strand the trailing Z or swap date and time).
   notamUpdated: function(t) { return 'עודכן \u2066' + t + '\u2069'; },
+  notamShowAll: 'כולל שטרם נכנסו לתוקף',
+  notamShowAllTitle: 'הצג גם התראות שטרם החלו או שכבר הסתיימו',
+  notamStartsAt: (t) => 'מ־' + t,
+  notamEnded: 'הסתיים',
   notamRaw: 'גולמי',
   notamDecoded: 'מפוענח',
   notamFilterLabel: 'סינון NOTAM לפי שדה תעופה',
