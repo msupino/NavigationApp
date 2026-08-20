@@ -209,3 +209,52 @@ test.describe('a pinch is not a tap', () => {
     expect(await hidden(page)).toBe(false);
   });
 });
+
+// The other half of the same report: a DOUBLE tap is how a phone zooms in, and its first tap
+// is a tap — it opened whatever was under it, over the chart being zoomed into. A double tap
+// is only recognisable from its second tap, so the first one's effect is undone when that
+// arrives.
+test.describe('a double tap is a zoom, not two taps', () => {
+  const wpPoint = (page, i) => page.evaluate((idx) => {
+    const p = map.latLngToContainerPoint([state.waypoints[idx].lat, state.waypoints[idx].lng]);
+    const b = map.getContainer().getBoundingClientRect();
+    return { x: Math.round(b.left + p.x), y: Math.round(b.top + p.y) };
+  }, i);
+  const tap = async (page, at) => {
+    await touch(page, 'touchstart', at.x, at.y);
+    await touch(page, 'touchend', at.x, at.y);
+  };
+
+  test('double-tapping a waypoint leaves the panel shut', async ({ page }) => {
+    await boot(page);
+    const at = await wpPoint(page, 0);
+    await tap(page, at);
+    expect(await hidden(page)).toBe(false);      // the first tap does open it...
+    await page.waitForTimeout(120);
+    await tap(page, at);
+    expect(await hidden(page)).toBe(true);       // ...and the second takes it away again
+    expect(await page.evaluate(() => state.selected)).toBe(null);
+  });
+
+  // Two taps far enough apart in time are two taps, not a zoom.
+  test('a slow second tap is still a tap', async ({ page }) => {
+    await boot(page);
+    const at = await wpPoint(page, 0);
+    await tap(page, at);
+    await page.waitForTimeout(500);
+    await tap(page, at);
+    expect(await hidden(page)).toBe(false);
+  });
+
+  // ...and so are two taps in different places.
+  test('a second tap somewhere else is still a tap', async ({ page }) => {
+    await boot(page);
+    const a = await wpPoint(page, 0);
+    const b = await wpPoint(page, 1);
+    await tap(page, a);
+    await page.waitForTimeout(80);
+    await tap(page, b);
+    expect(await hidden(page)).toBe(false);
+    expect(await page.evaluate(() => state.selected && state.selected.index)).toBe(1);
+  });
+});

@@ -4344,6 +4344,10 @@ function touchXY(t) {
 mapEl.addEventListener('touchstart', e => {
   if (e.touches.length !== 1) return;
   const p = touchXY(e.touches[0]);
+  // Second tap of a double tap: the first tap's panel goes back where it was, and this touch
+  // is marked so its own release opens nothing either -- the gesture is a zoom, not a tap.
+  const wasDoubleTap = undoTapOpenIfDoubleTap(p.x, p.y);
+  const selectionBeforeTouch = state.selected;
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
   const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
@@ -4477,6 +4481,8 @@ mapEl.addEventListener('touchstart', e => {
   }
 
   if (touchDrag) {
+    touchDrag.wasDoubleTap = wasDoubleTap;
+    touchDrag.selectionBefore = selectionBeforeTouch;
     // Where the finger LANDED -- the threshold below measures from here. Seeding it from
     // the first touchmove instead made that move measure zero, so the guard let the first
     // (largest) jump through and only started counting afterwards.
@@ -4567,6 +4573,31 @@ mapEl.addEventListener('touchmove', e => {
   }
 }, { passive: false });
 
+// The first tap of a DOUBLE tap is a tap: it opens whatever is under it. On a phone that is
+// how a pilot zooms in on a waypoint, and the panel opened over the chart they were zooming
+// into -- reported after the pinch fix as "still opens inspector". A double tap is only
+// recognisable from its second tap, so the first one's effect is remembered and undone when
+// that arrives: Leaflet's own double-tap window, and a distance a thumb can hold.
+let _tapOpened = null;
+const DOUBLE_TAP_MS = 350;
+const DOUBLE_TAP_PX = 40;
+function noteTapOpened(x, y, prev) {
+  _tapOpened = (x == null) ? null : { t: Date.now(), x, y, prev: prev || null };
+}
+// True when this touch is the second tap of a double tap. The first tap's panel is put back
+// where it was here, so the caller only has to leave the panel alone.
+function undoTapOpenIfDoubleTap(x, y) {
+  const rec = _tapOpened;
+  _tapOpened = null;
+  if (!rec) return false;
+  if (Date.now() - rec.t > DOUBLE_TAP_MS) return false;
+  if (Math.hypot(x - rec.x, y - rec.y) > DOUBLE_TAP_PX) return false;
+  state.selected = rec.prev;
+  showInspector();
+  draw();
+  return true;
+}
+
 function endTouch() {
   // A pinch is not a tap either. The two-finger paths deliberately move nothing -- touchmove
   // returns early unless exactly one finger is down -- so a zoom that happened to start on a
@@ -4586,9 +4617,19 @@ function endTouch() {
   setInspectorDragHidden(false);
   // ...unless it was already open before the finger landed, in which case it is something
   // the pilot was reading and a drag does not take it away -- the mouse path's rule.
-  if (wasDrag && !touchDrag.inspWasOpen) { state.selected = null; showInspector(); }
-  else if (touchDrag && (wasDrag ||
-      (!touchDrag.moved && TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1))) showInspector();
+  // The second tap of a double tap opens nothing: the gesture is a zoom, and the first tap's
+  // panel has already been put back where it was.
+  const isTap = !!touchDrag && !touchDrag.moved && !touchDrag.wasDoubleTap &&
+    TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1;
+  if (touchDrag && touchDrag.wasDoubleTap) {
+    state.selected = touchDrag.selectionBefore || null;
+    showInspector();
+  } else if (wasDrag && !touchDrag.inspWasOpen) { state.selected = null; showInspector(); }
+  else if (touchDrag && (wasDrag || isTap)) showInspector();
+  // A tap that DID open something is remembered, so the second tap of a double tap can put it
+  // back -- see undoTapOpenIfDoubleTap.
+  if (isTap) noteTapOpened(touchDrag.startX, touchDrag.startY, touchDrag.selectionBefore);
+  else if (touchDrag && !touchDrag.wasDoubleTap) noteTapOpened(null);
   // Pressing a leg selects it, which is right for a tap and wrong for a pan: the pilot was
   // moving the chart, and a highlighted leg with no panel explains nothing. Put back whatever
   // was selected when the finger landed.
