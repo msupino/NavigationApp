@@ -204,3 +204,37 @@ test('plates are listed in annex order', async ({ page }) => {
   // Hebrew numerals, not letters in Unicode order: יא is eleven, and its parts sort after it.
   expect(order.join(' ')).toContain("י' יא' יא'-1 יא'-2 יב'");
 });
+
+// Reported twice, on two different buttons: an inspector control styled light unconditionally
+// is a white slab in a black panel. These are the panel's own buttons, so they follow the
+// panel's theme.
+test('inspector buttons follow the dark theme', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showInspector === 'function' && Array.isArray(window.airfields));
+  const out = await page.evaluate(async () => {
+    document.body.classList.remove('theme-light');
+    document.body.classList.add('theme-dark');
+    if (!window.airfields || !window.airfields.length) await loadAirfields();
+    const af = airfields.find(a => a.plates && a.plates.length);
+    state.waypoints = [{ lat: af.lat, lng: af.lng, name: af.name }];
+    syncLegs();
+    state.selected = { type: 'wp', index: 0 };
+    showInspector();
+    const lum = (rgb) => {
+      const m = rgb.match(/\d+/g).map(Number);
+      return (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255;
+    };
+    const read = (sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      return { bg: lum(cs.backgroundColor), fg: lum(cs.color) };
+    };
+    return { charts: read('.insp-charts-btn'), safe: read('.insp-btn.insp-btn-safe') };
+  });
+  for (const [name, v] of Object.entries(out)) {
+    if (!v) continue;
+    expect(v.bg, `${name} background`).toBeLessThan(0.6);   // a dark surface...
+    expect(v.fg, `${name} text`).toBeGreaterThan(0.5);      // ...with light text on it
+  }
+});

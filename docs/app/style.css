@@ -1960,15 +1960,26 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 /* Only genuinely destructive actions get the alarm red. Everything else (add a
    frequency change, reset a name, use as reference) is a normal action and was
    reading as dangerous because all three shared one style. */
+/* Dark by default, like the panel it sits in. It was styled light unconditionally, so in dark
+   mode "+ התחל מסלול כאן" was a white slab in a black inspector. */
 .insp-btn.insp-btn-safe {
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #4b4646;
+}
+.insp-btn.insp-btn-safe:hover { background: #3a3636; border-color: #1d6fe0; }
+.insp-btn.insp-btn-safe:disabled:hover { background: #2f2b2b; border-color: #4b4646; }
+body.theme-light .insp-btn.insp-btn-safe {
   color: #1f252c;
   background: #eef1f5;
-  border: 1px solid #c9d2dd;
+  border-color: #c9d2dd;
 }
-.insp-btn.insp-btn-safe:hover { background: #e2e7ee; }
-.insp-btn.insp-btn-safe:disabled:hover { background: #eef1f5; }
+body.theme-light .insp-btn.insp-btn-safe:hover { background: #e2e7ee; border-color: #c9d2dd; }
+body.theme-light .insp-btn.insp-btn-safe:disabled:hover { background: #eef1f5; }
 /* A latched state, not an action: the turning-point button stays lit while the waypoint
    IS the turn, so the inspector shows at a glance which one is marked. */
+/* Amber reads as "latched" on either background, so this one keeps its colour in both
+   themes -- only its text has to stay legible on it. */
 .insp-btn.insp-btn-on {
   color: #1f252c;
   background: #ffd98a;
