@@ -179,3 +179,24 @@ test('Rosh Pina has a comm-failure overlay, georeferenced onto its own field', a
   expect((ne[0] - sw[0]) * 60).toBeGreaterThan(3);
   expect((ne[0] - sw[0]) * 60).toBeLessThan(6);
 });
+
+// The CVFR entry/exit plate (נספח ג') is the one a pilot flies to reach the field, and Rosh
+// Pina had every other layer but not that one.
+test('Rosh Pina has its CVFR entry/exit overlay', async ({ page }) => {
+  await boot(page);
+  const af = await page.evaluate(async () => {
+    if (typeof loadAirfields === 'function' && !window.airfields) await loadAirfields();
+    return (window.airfields || []).find(a => a.name === 'LLIB') || null;
+  });
+  expect(af.cvfr_overlay).toBeTruthy();
+  expect(af.cvfr_overlay.png).toBe('LLIB_cvfr.png');
+  const { sw, ne } = af.cvfr_overlay;
+  expect(af.lat).toBeGreaterThan(sw[0]);
+  expect(af.lat).toBeLessThan(ne[0]);
+  expect(af.lng).toBeGreaterThan(sw[1]);
+  expect(af.lng).toBeLessThan(ne[1]);
+  // The entry/exit chart covers the routes in, so it is wider than the circuit plate beside
+  // it -- but still a plate, not a country: ~26' of latitude at 1:250,000.
+  expect((ne[0] - sw[0]) * 60).toBeGreaterThan(20);
+  expect((ne[0] - sw[0]) * 60).toBeLessThan(35);
+});
