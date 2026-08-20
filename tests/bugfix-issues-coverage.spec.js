@@ -62,29 +62,29 @@ test.describe('#224 — fit-to-screen maxZoom cap', () => {
 // #226: charts modal a11y, RTL indent, drag-clamp regressions.
 // ---------------------------------------------------------------------------
 test.describe('#226 — charts modal regressions', () => {
-  test('charts headers are keyboard-reachable (role=button, tabIndex=0)', async ({ page }) => {
+  // The accordion these two were written for is gone: a field is a real <button> that opens
+  // its own screen, so it is keyboard-reachable by being what it is, and there is nothing to
+  // expand.
+  test('a charts field tile is a real button, reachable from the keyboard', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
     await page.locator('#charts').click();
     await page.locator('.modal-back').waitFor({ timeout: 5000 });
 
-    const head = page.locator('.charts-airport-header').first();
-    expect(await head.getAttribute('role')).toBe('button');
-    expect(await head.getAttribute('tabindex')).toBe('0');
+    const head = page.locator('.charts-field').first();
+    expect(await head.evaluate(el => el.tagName)).toBe('BUTTON');
+    expect(await head.evaluate(el => el.disabled)).toBe(false);
   });
 
-  test('Enter on a charts header toggles aria-expanded', async ({ page }) => {
+  test('Enter on a field tile opens that field', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
     await page.locator('#charts').click();
     await page.locator('.modal-back').waitFor();
 
-    const head = page.locator('.charts-airport-header').first();
-    const before = await head.getAttribute('aria-expanded');
-    await head.focus();
+    await page.locator('.charts-field').first().focus();
     await page.keyboard.press('Enter');
-    const after = await head.getAttribute('aria-expanded');
-    expect(after).not.toBe(before);
+    await expect(page.locator('.charts-airport[data-icao]')).toBeVisible();
   });
 
   test('charts body uses padding-inline-start, not physical padding-left', async ({ page }) => {

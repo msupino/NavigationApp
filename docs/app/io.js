@@ -5987,6 +5987,64 @@ function loadPlatesManifest() {
     .catch(() => (_platesManifest = {}));
   return _platesManifestPromise;
 }
+// The plate's own designation, as the CAA publishes it: "נספח ד' — הצטרפות בתקלת קשר
+// מנתיבי CVFR". Written by scripts/aip-plate-titles.mjs from the CAA's index; a plate the
+// index does not know falls back to its file name (prettyPlateLabel), which is what every
+// chip used to show.
+let _plateTitles = null;
+let _plateTitlesPromise = null;
+function loadPlateTitles() {
+  if (_plateTitles) return Promise.resolve(_plateTitles);
+  if (_plateTitlesPromise) return _plateTitlesPromise;
+  const url = new URL('data/plate-titles.json?v=' + PLATES_VER, document.baseURI).href;
+  _plateTitlesPromise = fetch(url, { credentials: 'omit' })
+    .then(r => (r.ok ? r.json() : {}))
+    .then(m => (_plateTitles = m || {}))
+    .catch(() => (_plateTitles = {}));
+  return _plateTitlesPromise;
+}
+window.loadPlateTitles = loadPlateTitles;
+// What to print on the chip, in the interface language. The domestic AIP is Hebrew-only, so
+// an English session still gets the Hebrew designation for most fields -- it is what the
+// plate is called, and what a controller will say.
+function plateDesignation(filename) {
+  const row = (_plateTitles && _plateTitles[filename]) || null;
+  if (!row) return { annex: '', title: prettyPlateLabel(filename), modified: '' };
+  const he = (typeof window !== 'undefined' && window.__navLang === 'he');
+  const title = (he ? (row.he || row.en) : (row.en || row.he)) || prettyPlateLabel(filename);
+  return { annex: row.annex || '', title, modified: row.modified || '' };
+}
+// "נספח ד'" -> "ד'": the word is the same on every badge in the column, so it is the letter
+// that does the work.
+// Annexes run א, ב, ג … י, יא, יב — Hebrew letters, not a Latin sort. Ordering them by string
+// puts יא before ב and א' before א. This is the number a pilot asks for ("give me נספח ד'"),
+// so the list has to run in that order.
+const HEB_LETTERS = 'אבגדהוזחטיכלמנסעפצקרשת';
+function annexOrder(annex) {
+  const raw = String(annex || '').replace(/^נספח\s*/, '').replace(/['"״׳]/g, '').trim();
+  if (!raw) return Number.MAX_SAFE_INTEGER;          // no annex number: after the numbered ones
+  const m = raw.match(/^([\u05d0-\u05ea]{1,3})(?:\s*-\s*(\d+))?/);
+  if (!m) return Number.MAX_SAFE_INTEGER;
+  // Hebrew numerals: single letters are 1..10 by position, and the teens are י + a letter
+  // (יא = 11, יב = 12 …), which is how the annexes themselves are numbered.
+  const letters = m[1];
+  let value;
+  if (letters.length === 1) value = HEB_LETTERS.indexOf(letters) + 1;
+  else value = 10 + HEB_LETTERS.indexOf(letters.slice(1)) + 1;
+  if (value <= 0) return Number.MAX_SAFE_INTEGER;
+  return value * 100 + (m[2] ? Number(m[2]) : 0);    // נספח יא'-2 sorts just after נספח יא'
+}
+function plateAnnexBadge(annex) {
+  return String(annex || '').replace(/^נספח\s*/, '').trim();
+}
+// The date the CAA last amended this plate, shown as 2026-08. Not "8/26": that reads as an
+// amendment NUMBER (which is what a plate prints in its corner, and is not what this is), and
+// in a Hebrew line bidi turned it round into "21/8".
+function plateAmendment(modified) {
+  const m = String(modified || '').match(/^(\d{4})-(\d{2})/);
+  return m ? m[1] + '-' + m[2] : '';
+}
+
 // URL of one rendered plate page (1-based).
 function platePngUrl(filename, page) {
   const base = filename.replace(/\.pdf$/i, '');
@@ -7259,6 +7317,7 @@ function showChartsModal(focusIcao) {
   // Warm the plate manifest while the user scans the list, so the first open
   // already knows the page count.
   if (typeof loadPlatesManifest === 'function') loadPlatesManifest().catch(() => {});
+  if (typeof loadPlateTitles === 'function') loadPlateTitles().catch(() => {});
   const modal = createDraggableModal(S.plates, 'modal wide',
     () => clearOpenChartModal('airport-charts'),
     { nonBlocking: true, chartKind: 'airport-charts' });
@@ -7280,97 +7339,261 @@ function showChartsModal(focusIcao) {
     other: S.plateCategoryOther,
   };
 
-  function renderList(afs, focusIcao) {
+  // Two screens, not twenty accordions. Every plate app a pilot already uses -- ForeFlight's
+  // binders, Garmin's smart binders -- puts the field on one side and that field's charts on
+  // the other, one tap apart. What we had was a scrolling column of collapsed sections with a
+  // chevron each: on a phone that is a lot of small targets between the pilot and the chart,
+  // and every field's list looked the same until it was opened.
+  //
+  // Screen one picks the field (big tiles, the route's own fields first, a filter box when
+  // there are many). Screen two is that field's plates and nothing else, with a back button
+  // the size of a thumb.
+  let openIcao = null;
+
+  function localFieldName(af) {
+    const heUi = (typeof window !== 'undefined' && window.__navLang === 'he');
+    return ((heUi ? (af.he || af.en) : (af.en || af.he)) || '').trim();
+  }
+
+  // The fields this flight actually touches, in route order -- the ones a pilot opening this
+  // panel mid-planning wants, without hunting for them alphabetically.
+  function routeIcaos() {
+    const names = ((typeof state !== 'undefined' && state.waypoints) || [])
+      .map(w => String((w && w.name) || '').trim().toUpperCase());
+    return names.filter((n, i) => /^LL[A-Z]{2}$/.test(n) && names.indexOf(n) === i);
+  }
+
+  function fieldTile(af) {
+    const tile = document.createElement('button');
+    tile.className = 'charts-field';
+    tile.dataset.icao = af.name;
+    const name = document.createElement('span');
+    name.className = 'charts-field-name';
+    name.textContent = localFieldName(af) || af.name;
+    const code = document.createElement('span');
+    code.className = 'charts-field-code';
+    code.textContent = af.name;
+    code.dir = 'ltr';
+    const count = document.createElement('span');
+    count.className = 'charts-field-count';
+    count.textContent = String(af.plates.length);
+    count.dir = 'ltr';
+    tile.appendChild(name);
+    tile.appendChild(code);
+    tile.appendChild(count);
+    tile.onclick = () => { openIcao = af.name; render(); af.plates.forEach(prefetchPlate); };
+    return tile;
+  }
+
+  function renderFields(withPlates) {
     platesSection.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'charts-fields-screen';
+
+    const filter = document.createElement('input');
+    filter.type = 'search';
+    filter.className = 'charts-filter';
+    filter.id = 'charts-filter';
+    filter.placeholder = S.chartsFilterPlaceholder || 'Search airfield';
+    filter.setAttribute('aria-label', S.chartsFilterPlaceholder || 'Search airfield');
+    wrap.appendChild(filter);
+
+    const groups = document.createElement('div');
+    groups.className = 'charts-fields-groups';
+    wrap.appendChild(groups);
+    platesSection.appendChild(wrap);
+
+    function paint(q) {
+      groups.innerHTML = '';
+      const needle = String(q || '').trim().toLowerCase();
+      const match = (af) => !needle ||
+        af.name.toLowerCase().includes(needle) ||
+        localFieldName(af).toLowerCase().includes(needle) ||
+        String(af.he || '').includes(needle) || String(af.en || '').toLowerCase().includes(needle);
+      const shown = withPlates.filter(match);
+      const onRoute = routeIcaos();
+      const mine = shown.filter(af => onRoute.includes(af.name));
+      const rest = shown.filter(af => !onRoute.includes(af.name));
+      const section = (label, list) => {
+        if (!list.length) return;
+        if (label) {
+          const h = document.createElement('div');
+          h.className = 'charts-fields-label';
+          h.textContent = label;
+          groups.appendChild(h);
+        }
+        const grid = document.createElement('div');
+        grid.className = 'charts-fields-grid';
+        list.forEach(af => grid.appendChild(fieldTile(af)));
+        groups.appendChild(grid);
+      };
+      section(mine.length ? (S.chartsOnRoute || 'On your route') : '', mine);
+      section(mine.length ? (S.chartsAllFields || 'All airfields') : '', rest);
+      if (!shown.length) {
+        const none = document.createElement('p');
+        none.textContent = S.platesNone;
+        groups.appendChild(none);
+      }
+    }
+    paint('');
+    filter.oninput = () => paint(filter.value);
+  }
+
+  function plateRow(fn) {
+    const d = plateDesignation(fn);
+    const row = document.createElement('button');
+    row.className = 'plate-row';
+    const badge = document.createElement('span');
+    badge.className = 'plate-annex';
+    const letter = plateAnnexBadge(d.annex);
+    if (letter) badge.textContent = letter;
+    else badge.classList.add('plate-annex-empty');
+    const label = document.createElement('span');
+    label.className = 'plate-row-title';
+    label.textContent = d.title;
+    row.appendChild(badge);
+    row.appendChild(label);
+    const amd = plateAmendment(d.modified);
+    if (amd) {
+      const when = document.createElement('span');
+      when.className = 'plate-row-amd';
+      when.textContent = amd;
+      when.dir = 'ltr';           // a date reads left to right in either language
+      when.title = S.plateAmendedOn ? S.plateAmendedOn(d.modified) : d.modified;
+      row.appendChild(when);
+    }
+    row.onclick = () => showPlateViewer(fn, d.title);
+    // Prefetch on intent (hover / keyboard focus) so the click loads from cache. One-shot per
+    // row via prefetchPlate's dedupe.
+    const warm = () => prefetchPlate(fn);
+    row.addEventListener('pointerenter', warm);
+    row.addEventListener('focus', warm);
+    return row;
+  }
+
+  function renderField(af, withPlates) {
+    platesSection.innerHTML = '';
+    const section = document.createElement('div');
+    section.className = 'charts-airport';
+    section.dataset.icao = af.name;
+
+    const bar = document.createElement('div');
+    bar.className = 'charts-field-bar';
+    const back = document.createElement('button');
+    back.className = 'charts-back';
+    back.textContent = (S.chartsBack || 'All airfields');
+    back.onclick = () => { openIcao = null; render(); };
+    const header = document.createElement('div');
+    header.className = 'charts-airport-header';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'charts-airport-name';
+    nameEl.textContent = localFieldName(af) || af.name;
+    const codeEl = document.createElement('span');
+    codeEl.className = 'charts-airport-code';
+    codeEl.textContent = af.name;
+    codeEl.dir = 'ltr';               // the ICAO code is Latin in either language
+    header.appendChild(nameEl);
+    if (localFieldName(af)) header.appendChild(codeEl);
+    bar.appendChild(back);
+    bar.appendChild(header);
+    section.appendChild(bar);
+
+    const groups = {};
+    for (const fn of af.plates) {
+      const cat = plateCategory(fn);
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(fn);
+    }
+    const cats = catOrder.filter(c => groups[c]);
+    const body = document.createElement('div');
+    body.className = 'charts-airport-body open';
+    // A category filter only where there is something to filter: at a domestic field every
+    // plate is filed under the same category, so a row of one chip would be furniture.
+    let active = 'all';
+    const list = document.createElement('div');
+    if (cats.length > 1) {
+      const chips = document.createElement('div');
+      chips.className = 'charts-cat-chips';
+      const mk = (key, label) => {
+        const c = document.createElement('button');
+        c.className = 'charts-cat-chip' + (key === active ? ' on' : '');
+        c.textContent = label;
+        c.onclick = () => {
+          active = key;
+          [...chips.children].forEach(x => x.classList.toggle('on', x === c));
+          paintList();
+        };
+        return c;
+      };
+      chips.appendChild(mk('all', S.chartsAllPlates || 'All'));
+      cats.forEach(cat => chips.appendChild(mk(cat, catLabel[cat])));
+      body.appendChild(chips);
+    }
+    function paintList() {
+      list.innerHTML = '';
+      for (const cat of cats) {
+        if (active !== 'all' && active !== cat) continue;
+        const catDiv = document.createElement('div');
+        catDiv.className = 'charts-cat';
+        if (cats.length > 1 && active === 'all') {
+          const catLbl = document.createElement('span');
+          catLbl.className = 'charts-cat-label';
+          catLbl.textContent = catLabel[cat];
+          catDiv.appendChild(catLbl);
+        }
+        groups[cat]
+          .slice()
+          .sort((a, b) => annexOrder(plateDesignation(a).annex) - annexOrder(plateDesignation(b).annex)
+            || a.localeCompare(b))
+          .forEach(fn => catDiv.appendChild(plateRow(fn)));
+        list.appendChild(catDiv);
+      }
+    }
+    paintList();
+    body.appendChild(list);
+    section.appendChild(body);
+    platesSection.appendChild(section);
+    void withPlates;
+  }
+
+  function render() {
+    const afs = airfields || [];
     const withPlates = afs.filter(af => af.plates && af.plates.length)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => localFieldName(a).localeCompare(localFieldName(b), undefined, { sensitivity: 'base' })
+        || a.name.localeCompare(b.name));
     if (!withPlates.length) {
+      platesSection.innerHTML = '';
       const none = document.createElement('p');
       none.textContent = S.platesNone;
       platesSection.appendChild(none);
       return;
     }
-    let focusSection = null;
-    for (const af of withPlates) {
-      const section = document.createElement('div');
-      section.className = 'charts-airport';
-      section.dataset.icao = af.name;
-      const header = document.createElement('div');
-      header.className = 'charts-airport-header';
-      header.textContent = af.name + (af.en ? ' — ' + af.en : '');
-      // Keyboard + screen-reader parity with the toolbar's .tb-section-head
-      // pattern: tabbable, announced as a button, with explicit expanded
-      // state. The pane it controls is display:none until 'open', so without
-      // this the plate chips inside would be unreachable from the keyboard.
-      header.tabIndex = 0;
-      header.setAttribute('role', 'button');
-      header.setAttribute('aria-expanded', 'false');
-      const pane = document.createElement('div');
-      pane.className = 'charts-airport-body';
-      function toggle() {
-        const open = pane.classList.toggle('open');
-        header.classList.toggle('open', open);
-        header.setAttribute('aria-expanded', open ? 'true' : 'false');
-        // Touch-friendly warm: hover/focus never fires on a tap, so prefetch
-        // this airfield's plates when its section is expanded (deduped by
-        // prefetchPlate, so it won't refetch ones already warmed by hover).
-        if (open) af.plates.forEach(prefetchPlate);
-      }
-      header.addEventListener('click', toggle);
-      header.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
-      });
-      section.appendChild(header);
+    const open = openIcao && withPlates.find(af => af.name === openIcao);
+    if (open) renderField(open, withPlates);
+    else renderFields(withPlates);
+  }
 
-      const groups = {};
-      for (const fn of af.plates) {
-        const cat = plateCategory(fn);
-        if (!groups[cat]) groups[cat] = [];
-        groups[cat].push(fn);
-      }
-      for (const cat of catOrder) {
-        if (!groups[cat]) continue;
-        const catDiv = document.createElement('div');
-        catDiv.className = 'charts-cat';
-        const catLbl = document.createElement('span');
-        catLbl.className = 'charts-cat-label';
-        catLbl.textContent = catLabel[cat];
-        catDiv.appendChild(catLbl);
-        for (const fn of groups[cat]) {
-          const chip = document.createElement('button');
-          chip.className = 'plate-chip';
-          chip.textContent = prettyPlateLabel(fn);
-          chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
-          // Prefetch on intent (hover / keyboard focus) so the click loads from
-          // cache. One-shot per chip via prefetchPlate's dedupe.
-          const warm = () => prefetchPlate(fn);
-          chip.addEventListener('pointerenter', warm);
-          chip.addEventListener('focus', warm);
-          catDiv.appendChild(chip);
-        }
-        pane.appendChild(catDiv);
-      }
-      // Auto-expand + remember the airfield opened from the inspector button.
-      if (focusIcao && af.name === focusIcao) {
-        pane.classList.add('open');
-        header.classList.add('open');
-        header.setAttribute('aria-expanded', 'true');
-        focusSection = section;
-        af.plates.forEach(prefetchPlate);   // warm the auto-opened airfield's plates
-      }
-      section.appendChild(pane);
-      platesSection.appendChild(section);
-    }
-    if (focusSection) requestAnimationFrame(() => focusSection.scrollIntoView({ block: 'start' }));
+  function renderList(afs, focusIcao) {
+    void afs;
+    // Opened from an airfield's Charts button: go straight to that field's plates, which is
+    // the whole reason the button carries an ICAO.
+    if (focusIcao) openIcao = focusIcao;
+    render();
   }
 
   if (airfields) {
     renderList(airfields, focusIcao);
+    // The designations arrive a moment after the list on a cold cache; redraw once, so the
+    // rows do not sit there showing file names.
+    if (typeof loadPlateTitles === 'function') {
+      loadPlateTitles().then(() => { if (airfields) renderList(airfields, focusIcao); }).catch(() => {});
+    }
   } else {
     const loading = document.createElement('p');
     loading.textContent = '…';
     platesSection.appendChild(loading);
-    loadAirfields().then(() => { if (airfields) renderList(airfields, focusIcao); });
+    Promise.all([loadAirfields(), loadPlateTitles().catch(() => {})])
+      .then(() => { if (airfields) renderList(airfields, focusIcao); });
   }
 
   scrollArea.appendChild(body);

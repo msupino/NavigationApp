@@ -1960,15 +1960,26 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 /* Only genuinely destructive actions get the alarm red. Everything else (add a
    frequency change, reset a name, use as reference) is a normal action and was
    reading as dangerous because all three shared one style. */
+/* Dark by default, like the panel it sits in. It was styled light unconditionally, so in dark
+   mode "+ התחל מסלול כאן" was a white slab in a black inspector. */
 .insp-btn.insp-btn-safe {
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #4b4646;
+}
+.insp-btn.insp-btn-safe:hover { background: #3a3636; border-color: #1d6fe0; }
+.insp-btn.insp-btn-safe:disabled:hover { background: #2f2b2b; border-color: #4b4646; }
+body.theme-light .insp-btn.insp-btn-safe {
   color: #1f252c;
   background: #eef1f5;
-  border: 1px solid #c9d2dd;
+  border-color: #c9d2dd;
 }
-.insp-btn.insp-btn-safe:hover { background: #e2e7ee; }
-.insp-btn.insp-btn-safe:disabled:hover { background: #eef1f5; }
+body.theme-light .insp-btn.insp-btn-safe:hover { background: #e2e7ee; border-color: #c9d2dd; }
+body.theme-light .insp-btn.insp-btn-safe:disabled:hover { background: #eef1f5; }
 /* A latched state, not an action: the turning-point button stays lit while the waypoint
    IS the turn, so the inspector shows at a glance which one is marked. */
+/* Amber reads as "latched" on either background, so this one keeps its colour in both
+   themes -- only its text has to stay legible on it. */
 .insp-btn.insp-btn-on {
   color: #1f252c;
   background: #ffd98a;
@@ -3267,6 +3278,252 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   white-space: nowrap;
 }
 .plate-chip:hover { background: #3a3636; border-color: #1d6fe0; }
+
+/* One row per plate in the airport-charts menu: the annex letter in a badge, the plate's own
+   designation, and the amendment it carries. A row rather than a chip because the designation
+   is a phrase ("הצטרפות בתקלת קשר מנתיבי CVFR"), not a word, and because a 44 px row is what a
+   thumb can hit on a kneeboard. */
+.charts-cat { display: flex; flex-direction: column; gap: 2px; }
+.plate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.plate-row:hover, .plate-row:focus-visible { background: #3a3636; border-color: #1d6fe0; }
+.plate-annex {
+  flex: 0 0 auto;
+  min-width: 30px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #cfe4ff;
+  background: #24303f;
+  border: 1px solid #35506f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+/* A plate with no annex number of its own (the text chart, an approach plate) keeps the
+   badge's width so every title in the column still starts on the same line. */
+.plate-annex-empty { background: transparent; border-color: transparent; }
+.plate-row-title { flex: 1 1 auto; line-height: 1.3; }
+.plate-row-amd { flex: 0 0 auto; font-size: 11px; color: #9aa4b0; font-variant-numeric: tabular-nums; }
+/* The inspector's "Airport charts" button. It had no rule of its own, so it rendered as a
+   default browser button -- white with dark text -- which in dark mode looked like a light-mode
+   control dropped into the panel. */
+.insp-charts-btn {
+  font: inherit;
+  font-size: 13px;
+  min-height: 36px;
+  padding: 7px 12px;
+  color: #cfe4ff;
+  background: #24303f;
+  border: 1px solid #35506f;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.insp-charts-btn:hover, .insp-charts-btn:focus-visible { background: #2d3d52; border-color: #1d6fe0; }
+body.theme-light .insp-charts-btn {
+  color: #16406e;
+  background: #dbe8fb;
+  border-color: #9dbde8;
+}
+body.theme-light .insp-charts-btn:hover, body.theme-light .insp-charts-btn:focus-visible { background: #cbdcf7; }
+
+/* Airport charts: two screens rather than twenty accordions. Screen one is a grid of fields,
+   screen two is one field's plates. Every target here is thumb-sized -- this is read on a
+   kneeboard, often in turbulence. */
+.charts-filter {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 15px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  color: #e8e8e8;
+  background: #232020;
+  border: 1px solid #443f3f;
+  border-radius: 6px;
+}
+.charts-fields-label {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9aa4b0;
+  margin: 10px 2px 6px;
+}
+.charts-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.charts-field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 8px;
+  min-height: 64px;
+  text-align: start;
+  font: inherit;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.charts-field:hover, .charts-field:focus-visible { background: #3a3636; border-color: #1d6fe0; }
+.charts-field-name { font-size: 16px; font-weight: 700; line-height: 1.2; }
+.charts-field-code { grid-column: 1; font-size: 12px; color: #9aa4b0; letter-spacing: 0.04em; }
+/* How many plates the field has: the one number that says whether it is worth opening. */
+.charts-field-count {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  min-width: 28px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #cfe4ff;
+  background: #24303f;
+  border: 1px solid #35506f;
+  border-radius: 12px;
+  padding: 2px 8px;
+}
+/* The way back stays on screen. The plate list scrolls inside the modal, and at Ben Gurion
+   (44 plates) the back button was somewhere above the fold by the time the pilot decided
+   they were in the wrong field. */
+.charts-field-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -2px 10px;
+  padding: 6px 2px;
+  background: #201d1d;
+  border-bottom: 1px solid #3a3636;
+}
+body.theme-light .charts-field-bar { background: #fafcff; border-bottom-color: #d8dde5; }
+/* Same for the field filter: it is the way out of a long list of fields. */
+.charts-filter { position: sticky; top: 0; z-index: 2; }
+.charts-back {
+  font: inherit;
+  font-size: 14px;
+  min-height: 40px;
+  padding: 8px 12px;
+  color: #cfe4ff;
+  background: #24303f;
+  border: 1px solid #35506f;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.charts-back:hover, .charts-back:focus-visible { background: #2d3d52; }
+.charts-cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.charts-cat-chip {
+  font: inherit;
+  font-size: 13px;
+  min-height: 36px;
+  padding: 6px 12px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 18px;
+  cursor: pointer;
+}
+.charts-cat-chip.on { background: #24303f; border-color: #35506f; color: #cfe4ff; font-weight: 700; }
+/* One row per plate: annex badge, the plate's own designation, the date it was last amended.
+   A row rather than a chip because a designation is a phrase, not a word. */
+.charts-cat { display: flex; flex-direction: column; gap: 2px; }
+.plate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  font: inherit;
+  font-size: 15px;
+  text-align: start;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.plate-row:hover, .plate-row:focus-visible { background: #3a3636; border-color: #1d6fe0; }
+.plate-annex {
+  flex: 0 0 auto;
+  min-width: 34px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: #cfe4ff;
+  background: #24303f;
+  border: 1px solid #35506f;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+/* A plate with no annex number of its own (a text chart, an approach plate) keeps the badge's
+   width so every title in the column still starts on the same line. */
+.plate-annex-empty { background: transparent; border-color: transparent; }
+.plate-row-title { flex: 1 1 auto; line-height: 1.3; }
+.plate-row-amd { flex: 0 0 auto; font-size: 11px; color: #9aa4b0; font-variant-numeric: tabular-nums; }
+
+/* Light theme. The charts panel is read on a kneeboard in daylight as often as at night, and
+   the dark tiles above are unreadable against a white modal. */
+body.theme-light .charts-filter {
+  color: #1f252c;
+  background: #ffffff;
+  border-color: #c6ccd6;
+}
+body.theme-light .charts-fields-label { color: #647184; }
+body.theme-light .charts-field,
+body.theme-light .plate-row {
+  color: #1f252c;
+  background: #ffffff;
+  border-color: #c6ccd6;
+}
+body.theme-light .charts-field:hover, body.theme-light .charts-field:focus-visible,
+body.theme-light .plate-row:hover, body.theme-light .plate-row:focus-visible {
+  background: #eef4ff;
+  border-color: #1d6fe0;
+}
+body.theme-light .charts-field-code,
+body.theme-light .charts-airport-code,
+body.theme-light .plate-row-amd { color: #647184; }
+body.theme-light .charts-field-count,
+body.theme-light .plate-annex,
+body.theme-light .charts-back,
+body.theme-light .charts-cat-chip.on {
+  color: #16406e;
+  background: #dbe8fb;
+  border-color: #9dbde8;
+}
+body.theme-light .plate-annex-empty { background: transparent; border-color: transparent; }
+body.theme-light .charts-back:hover, body.theme-light .charts-back:focus-visible { background: #cbdcf7; }
+body.theme-light .charts-cat-chip {
+  color: #1f252c;
+  background: #ffffff;
+  border-color: #c6ccd6;
+}
+
+/* The airfield header: its name in the pilot's language, its ICAO code beside it in a quieter
+   weight. The code used to lead, which read backwards in a Hebrew session. */
+.charts-airport-header { display: flex; align-items: baseline; gap: 8px; }
+.charts-airport-name { font-weight: 700; font-size: 17px; }
+.charts-airport-code { font-size: 12px; color: #9aa4b0; letter-spacing: 0.04em; }
 
 .plate-chip-small { font-size: 10px; padding: 2px 5px; background: none; border-color: transparent; color: #1d6fe0; cursor: pointer; }
 .plate-chip-small:hover { text-decoration: underline; }

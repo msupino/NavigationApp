@@ -56,24 +56,22 @@ test('the toolbar caret points the way the menu opens, in both languages', async
   expect(he.content).toContain('◀');      // mirrored, not left pointing right
 });
 
-test('the Charts airfield caret mirrors too, and points down when open', async ({ page }) => {
-  const probe = async (lang) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('?lang=' + lang + '&nogist');
-    await page.waitForFunction(() => typeof showChartsModal === 'function');
-    return page.evaluate(async () => {
-      document.querySelectorAll('.modal-back').forEach(e => e.remove());
-      showChartsModal();
-      await new Promise(r => setTimeout(r, 500));
-      const head = document.querySelector('.charts-airport-header');
-      if (!head) return null;
-      const closed = getComputedStyle(head, '::before');
-      const shut = { content: closed.content.replace(/"/g, ''), transform: closed.transform };
-      return { shut, dir: document.documentElement.dir };
-    });
-  };
-  const en = await probe('en');
-  const he = await probe('he');
-  expect(en.shut.content).toContain('▶');
-  expect(he.shut.content).toContain('◀');
+// The Charts list had a mirrored caret per airfield, which this pinned. There is no caret and
+// no accordion now: a field is a tile that opens its own screen, and the only thing that has
+// to mirror is the back button's arrow, which is text and follows the paragraph direction.
+test('the Charts field tiles carry no caret to mirror', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showChartsModal === 'function');
+  const out = await page.evaluate(async () => {
+    document.querySelectorAll('.modal-back').forEach(e => e.remove());
+    showChartsModal();
+    await new Promise(r => setTimeout(r, 500));
+    const tile = document.querySelector('.charts-field');
+    if (!tile) return null;
+    return { content: getComputedStyle(tile, '::before').content, dir: document.documentElement.dir };
+  });
+  expect(out).not.toBeNull();
+  expect(out.dir).toBe('rtl');
+  expect(['none', 'normal', '']).toContain(out.content);
 });

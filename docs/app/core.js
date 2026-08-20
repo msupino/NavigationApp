@@ -986,7 +986,7 @@ window.S = Object.assign({
   // the ?v= cache-busts all three kinds, which now come from the same file.
   routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
-  airfieldsUrl: 'data/airfields.json?v=33',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=35',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
   vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations (#404 follow-up)
@@ -1879,6 +1879,12 @@ window.S = Object.assign({
   plateLoading: 'Loading…',
   loadingCharts: 'Loading charts…',
   plateLoadError: 'Failed to load chart.',
+  chartsBack: '← All airfields',
+  chartsFilterPlaceholder: 'Search airfield',
+  chartsOnRoute: 'On your route',
+  chartsAllFields: 'All airfields',
+  chartsAllPlates: 'All',
+  plateAmendedOn: (d) => 'Amended ' + d,
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP.',
   updateAvailable: 'New NavAid build available. Hard refresh or reload to update.',
   updateReload: 'Reload',
