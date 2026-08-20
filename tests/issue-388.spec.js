@@ -153,7 +153,11 @@ test.describe('issue #388 — review cleanup', () => {
     async ({ page }) => {
       const addBtn = page.locator('#tool-add');
       const noteBtn = page.locator('#tool-note');
-      // Boot wiring sets aria-pressed="false" on both up front.
+      // A fresh session PRIMES the map -- a click drops the first waypoint -- and Add is lit
+      // to say so (see route-priming-escape.spec.js). Put the priming away first; from there
+      // this is about what setMode() does. Done in-page rather than with Escape, which would
+      // also close the menu these buttons live in.
+      await page.evaluate(() => { if (typeof dismissRoutePriming === 'function') dismissRoutePriming(); });
       await expect(addBtn).toHaveAttribute('aria-pressed', 'false');
       await expect(noteBtn).toHaveAttribute('aria-pressed', 'false');
 
