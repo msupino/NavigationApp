@@ -4598,7 +4598,14 @@ function undoTapOpenIfDoubleTap(x, y) {
   return true;
 }
 
-function endTouch() {
+// `cancelled` is true when the browser took the touch away rather than the pilot lifting it:
+// a long press on a phone raises the OS's own text-selection / context gesture and fires
+// touchcancel, and the sequence looks from here like a press that never moved -- a tap. That
+// is how "holding a waypoint to move it" ended up opening its inspector instead. A cancelled
+// touch is not a tap: nothing opens, and whatever was showing stays as it was.
+function endTouch(evOrCancelled) {
+  const cancelled = evOrCancelled === true ||
+    !!(evOrCancelled && evOrCancelled.type === 'touchcancel');
   // A pinch is not a tap either. The two-finger paths deliberately move nothing -- touchmove
   // returns early unless exactly one finger is down -- so a zoom that happened to start on a
   // waypoint left `moved` false and the release read as a tap on it, opening the inspector
@@ -4619,9 +4626,12 @@ function endTouch() {
   // the pilot was reading and a drag does not take it away -- the mouse path's rule.
   // The second tap of a double tap opens nothing: the gesture is a zoom, and the first tap's
   // panel has already been put back where it was.
-  const isTap = !!touchDrag && !touchDrag.moved && !touchDrag.wasDoubleTap &&
+  const isTap = !!touchDrag && !touchDrag.moved && !touchDrag.wasDoubleTap && !cancelled &&
     TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1;
-  if (touchDrag && touchDrag.wasDoubleTap) {
+  if (touchDrag && (touchDrag.wasDoubleTap || (cancelled && !touchDrag.moved))) {
+    // Put back what was showing before the finger landed: a cancelled press selected the
+    // waypoint under it on the way down, and a highlighted point with no panel explains
+    // nothing.
     state.selected = touchDrag.selectionBefore || null;
     showInspector();
   } else if (wasDrag && !touchDrag.inspWasOpen) { state.selected = null; showInspector(); }

@@ -258,3 +258,48 @@ test.describe('a double tap is a zoom, not two taps', () => {
     expect(await page.evaluate(() => state.selected && state.selected.index)).toBe(1);
   });
 });
+
+// Reported: "holding the map on a waypoint to move it opens inspector". A long press on a
+// phone raises the OS's own text-selection / context gesture, which fires touchcancel — and a
+// cancelled press looks from here exactly like a press that never moved, i.e. a tap.
+test.describe('a cancelled press is not a tap', () => {
+  const cancel = (page, x, y) => page.evaluate(([px, py]) => {
+    const el = map.getContainer();
+    const init = { clientX: px, clientY: py, pageX: px, pageY: py, identifier: 1, target: el };
+    el.dispatchEvent(new TouchEvent('touchcancel', { bubbles: true, cancelable: true,
+      touches: [], targetTouches: [], changedTouches: [new Touch(init)] }));
+  }, [x, y]);
+
+  test('the browser taking the touch away opens nothing', async ({ page }) => {
+    await boot(page);
+    const p = await at(page, 0);
+    await touch(page, 'touchstart', p.x, p.y);
+    await cancel(page, p.x, p.y);
+    expect(await hidden(page)).toBe(true);
+    expect(await page.evaluate(() => state.selected)).toBe(null);
+  });
+
+  // A single waypoint with no route yet behaves the same — that is where it was reported.
+  test('same with one waypoint and no route', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => { state.waypoints = [state.waypoints[0]]; syncLegs(); draw(); });
+    const p = await at(page, 0);
+    await touch(page, 'touchstart', p.x, p.y);
+    await cancel(page, p.x, p.y);
+    expect(await hidden(page)).toBe(true);
+  });
+
+  // A drag that is cancelled mid-flight keeps what it moved: the pilot did move the point,
+  // and only the panel decision changes.
+  test('a move already made survives the cancel', async ({ page }) => {
+    await boot(page);
+    const before = await page.evaluate(() => ({ ...state.waypoints[0] }));
+    const p = await at(page, 0);
+    await touch(page, 'touchstart', p.x, p.y);
+    await touch(page, 'touchmove', p.x + 70, p.y + 50);
+    await cancel(page, p.x + 70, p.y + 50);
+    const after = await page.evaluate(() => ({ ...state.waypoints[0] }));
+    expect(Math.abs(after.lat - before.lat) + Math.abs(after.lng - before.lng)).toBeGreaterThan(0);
+    expect(await hidden(page)).toBe(true);
+  });
+});
