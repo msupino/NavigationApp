@@ -71,7 +71,8 @@ test('opacity slider drives overlay opacity', async ({ page }) => {
     const valEl  = document.getElementById('plate-opacity-val');
     slider.value = '0.3';
     slider.dispatchEvent(new Event('input'));
-    const img = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer');
+    // A rotated overlay wraps its <img> in a div and Leaflet sets the opacity there.
+    const img = document.querySelector('.leaflet-overlay-pane .leaflet-image-layer');
     return {
       opacity: parseFloat(img.style.opacity),
       label: valEl.textContent,
@@ -91,7 +92,8 @@ test('opacity reset restores the tuned default', async ({ page }) => {
     slider.value = '0.3';
     slider.dispatchEvent(new Event('input'));
     document.getElementById('plate-opacity-reset').click();
-    const img = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer');
+    // A rotated overlay wraps its <img> in a div and Leaflet sets the opacity there.
+    const img = document.querySelector('.leaflet-overlay-pane .leaflet-image-layer');
     return {
       sliderVal: slider.value,
       opacity: parseFloat(img.style.opacity),

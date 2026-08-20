@@ -84,7 +84,8 @@ test('the shared plate-opacity slider drives whichever plate is showing', async 
     const slider = document.getElementById('plate-opacity');
     slider.value = '0.3';
     slider.dispatchEvent(new Event('input'));
-    const img = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer');
+    // A rotated overlay wraps its <img> in a div and Leaflet sets the opacity there.
+    const img = document.querySelector('.leaflet-overlay-pane .leaflet-image-layer');
     return { opacity: parseFloat(img.style.opacity), label: document.getElementById('plate-opacity-val').textContent };
   });
   expect(result.opacity).toBeCloseTo(0.3, 2);
@@ -94,7 +95,8 @@ test('the shared plate-opacity slider drives whichever plate is showing', async 
   const afterSwitch = await page.evaluate(() => {
     document.getElementById('heli-cb').checked = true;
     document.getElementById('heli-cb').dispatchEvent(new Event('change', { bubbles: true }));
-    const img = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer');
+    // A rotated overlay wraps its <img> in a div and Leaflet sets the opacity there.
+    const img = document.querySelector('.leaflet-overlay-pane .leaflet-image-layer');
     return img ? parseFloat(img.style.opacity) : null;
   });
   expect(afterSwitch).toBeCloseTo(0.3, 2);
