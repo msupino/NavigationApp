@@ -855,6 +855,7 @@ function draw() {
   // field doesn't cover them (and they stay clickable).
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
   drawNotes();
+  flushCumTimeArrows();      // above the callouts -- see queueCumTimeArrow
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
@@ -3975,7 +3976,7 @@ function drawLegs() {
       const cumAlong = cumP._default ? cumDef.along : (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
-      drawCumTimeArrow(cumX, cumY,
+      queueCumTimeArrow(cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
         cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
     }
@@ -4000,7 +4001,7 @@ function drawLegs() {
         const cumRetAlong = cumRetP._default ? -cumDef.along : (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
-        drawCumTimeArrow(cumRetX, cumRetY,
+        queueCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
           cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
       }
@@ -4166,6 +4167,18 @@ function needsHalo(i, which) {
 // rectangle cell showing the running total time from departure to this leg.
 // Drawn on the opposite perpendicular side from the main inbound kite so both
 // markers are always visible without overlap.
+// The cumulative-time kite is painted LAST, above the notes. A frequency-change callout is a
+// filled box on a tail, and where the two land on the same stretch of leg the callout covered
+// the kite -- so the one number a pilot is scanning for on that leg (when they reach the
+// point) was hidden by a label they had already read. Both are drawn during their own passes;
+// the kites queue here and are flushed after drawNotes().
+let _cumKiteQueue = [];
+function queueCumTimeArrow(...args) { _cumKiteQueue.push(args); }
+function flushCumTimeArrows() {
+  const queued = _cumKiteQueue;
+  _cumKiteQueue = [];
+  for (const args of queued) drawCumTimeArrow(...args);
+}
 function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   sc = sc ?? 1;
   // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
