@@ -4172,6 +4172,14 @@ window.addEventListener('keydown', e => {
       e.preventDefault();
       if (typeof setMode === 'function') setMode(null);
       draw();
+      return;
+    }
+    // Nothing selected, no mode -- but the map may still be PRIMED on a fresh session, where
+    // a click drops the first waypoint. That is a mode in everything but name, so Escape
+    // leaves it too rather than doing nothing at all.
+    if (typeof dismissRoutePriming === 'function' && dismissRoutePriming()) {
+      e.preventDefault();
+      draw();
     }
     return;
   }
