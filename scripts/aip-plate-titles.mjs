@@ -12,6 +12,7 @@
 // is one the CAA has amended since we last fetched it — reported, so the daily job can raise
 // it rather than let the shipped copy quietly rot.
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -67,11 +68,20 @@ function splitTitle(full) {
 
 const sha512 = (buf) => createHash('sha512').update(buf).digest('hex');
 
-// Everything below this line came off the network and ends up in a checked-in file, in a
-// workflow step summary and, eventually, on a button in the cockpit. Treat it as text and
-// nothing else: no control characters (which would corrupt the JSON's neighbours), no bidi
-// overrides (which can make a label read as something it is not), no unbounded length, and
-// nothing that would be read as markdown in the step summary.
+// --- fallback: read the plate's own header ------------------------------------------------
+// Two thirds of the plates we ship no longer match the index by hash -- the CAA has amended
+// them since they were fetched -- and those would otherwise show a file name in the menu. The
+// plate itself carries its designation in the band above the map frame: the annex number in
+// one corner, the subject under it, the field's name in the other corner. Read that, and mark
+// it as coming from the PDF so it is clear which titles are authoritative.
+//
+// Deliberately conservative: anything that looks like furniture (a frequency, an elevation, a
+// coordinate, the field's own name) is dropped rather than guessed at.
+// Everything below this line came off the network or out of a PDF and ends up in a checked-in
+// file, in a workflow step summary and, eventually, on a button in the cockpit. Treat it as
+// text and nothing else: no control characters (which would corrupt the JSON's neighbours), no
+// bidi overrides (which can make a label read as something it is not), no unbounded length,
+// and nothing that would be read as markdown in the step summary.
 const MAX_TITLE = 120;
 function cleanText(value) {
   return String(value == null ? '' : value)
@@ -88,7 +98,73 @@ function cleanDate(value) {
   return m ? m[1] : '';
 }
 
+function pdfHeaderLines(path) {
+  // -layout, not -bbox: the bbox dump gives Hebrew words in VISUAL order, so "נספח ג'" comes
+  // back as "'ג חפסנ". The layout dump keeps logical order, which is what we can read.
+  const out = spawnSync('pdftotext', ['-f', '1', '-l', '1', '-layout', path, '-'],
+    { encoding: 'utf8', maxBuffer: 8 << 20 });
+  if (out.status !== 0 || !out.stdout) return [];
+  return out.stdout.split('\n').map(l => l.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim())
+    .filter(Boolean).slice(0, 8);
+}
+
+const HEB = /[\u0590-\u05ff]/;
+// Frequencies, elevations, coordinates, phone numbers, the tower box -- everything an IAA
+// plate prints in the same band as its designation.
+const FURNITURE = /(\d{3}\.\d|\bft\b|ELEV|ATIS|TWR|MHZ|VAR|\d{1,3}\s*°|QNH|GND|BRG|DIST IN|ALT IN|SCALE|CHANGES|תדרים|מגדל|טלפון|פרק|בפמ)/i;
+
+// The designation, read off the plate itself. Only the IAA annex sheets are attempted: they
+// print "נספח X" and the subject beside it, in a fixed band. An approach plate laid out in the
+// Jeppesen style has no such header, and guessing at one produced lines like
+// "ISRAEL 16 MAY 24 APPROACH TA 18 000" -- worse than the file name it replaced.
+function designationFromPdf(path, fieldNames) {
+  const lines = pdfHeaderLines(path);
+  const annexLine = lines.findIndex(l => /נספח/.test(l));
+  if (annexLine === -1) return null;
+  const am = lines[annexLine].match(/נספח\s*[\u05d0-\u05ea]{1,3}\s*['"״׳]?(?:\s*-\s*\d)?/);
+  const annex = am ? am[0].replace(/\s+/g, ' ').trim() : '';
+  const parts = [];
+  for (const line of lines.slice(annexLine, annexLine + 3)) {
+    const rest = am ? line.replace(am[0], ' ') : line;
+    for (const frag of rest.split(/\s{2,}|\|/)) {
+      const f = cleanText(frag).replace(/^[-–—_\s'"״׳]+|[-–—_\s]+$/g, '');
+      if (f.length < 4) continue;
+      if (FURNITURE.test(f)) continue;
+      if (fieldNames.some(n => n && (f.includes(n) || n.includes(f)))) continue;
+      if (/^\(?LL[A-Z]{2}\)?$/.test(f)) continue;
+      if (!HEB.test(f) && !/^[A-Za-z][A-Za-z0-9 ()\/-]{3,}$/.test(f)) continue;
+      parts.push(f);
+    }
+  }
+  // Two words minimum: the header band is full of stray fragments ("Dead", cut from "Dead
+  // Sea"), and half a word on a button is worse than the file name it replaced. The annex
+  // number alone is still worth keeping -- it is what the pilot asks for.
+  const joined = cleanText(parts.slice(0, 2).join(' '));
+  const title = /\s/.test(joined) ? joined : '';
+  if (!annex && !title) return null;
+  return { annex, title };
+}
+
+// Every plate prints its field's name in a corner; the menu shows it in the section header
+// anyway, so it is dropped from the designation. Read from the dataset by the file's ICAO
+// prefix, which is how the plates are named.
+let _fields = null;
+async function loadFields() {
+  if (_fields) return _fields;
+  try {
+    const raw = JSON.parse(await readFile('docs/data/airfields.json', 'utf8'));
+    const rows = Array.isArray(raw) ? raw : (raw.airfields || []);
+    _fields = new Map(rows.map(r => [r.name, [r.he, r.en, r.name].filter(Boolean)]));
+  } catch { _fields = new Map(); }
+  return _fields;
+}
+function fieldNames(file) {
+  const icao = String(file).slice(0, 4).toUpperCase();
+  return (_fields && _fields.get(icao)) || [];
+}
+
 async function main() {
+  await loadFields();
   const doc = await fetchIndex();
   const byHash = indexByHash(doc);
   const files = (await readdir(BYOP)).filter(f => f.toLowerCase().endsWith('.pdf')).sort();
@@ -97,7 +173,15 @@ async function main() {
   for (const f of files) {
     const hash = sha512(await readFile(join(BYOP, f)));
     const row = byHash.get(hash);
-    if (!row) { stale.push(f); continue; }
+    if (!row) {
+      // Amended upstream since we fetched it, so the index cannot name it. Read the plate's
+      // own header instead -- a designation the pilot recognises beats a file name, even when
+      // the copy is a revision behind. `source` says which is which.
+      stale.push(f);
+      const own = designationFromPdf(join(BYOP, f), fieldNames(f));
+      if (own) titles[f] = { annex: own.annex, he: own.title, en: '', modified: '', source: 'pdf' };
+      continue;
+    }
     const he = row.he ? splitTitle(row.he) : null;
     const en = row.en ? splitTitle(row.en) : null;
     titles[f] = {
@@ -105,11 +189,14 @@ async function main() {
       he: cleanText(he && he.title),
       en: cleanText(en && en.title),
       modified: cleanDate(row.modified),
+      source: 'aip',
     };
   }
   await writeFile(OUT, JSON.stringify(titles, null, 1) + '\n');
+  const fromPdf = Object.values(titles).filter(t => t.source === 'pdf').length;
   const lines = [
-    `titles written for ${Object.keys(titles).length} of ${files.length} plates -> ${OUT}`,
+    `titles written for ${Object.keys(titles).length} of ${files.length} plates -> ${OUT}`
+      + (fromPdf ? ` (${fromPdf} read off the plate itself, the rest from the index)` : ''),
     stale.length
       ? `${stale.length} shipped plates are not in the current index (amended upstream since we fetched them):\n  ` + stale.join('\n  ')
       : 'every shipped plate matches the current index',

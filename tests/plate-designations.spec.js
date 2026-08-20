@@ -168,3 +168,39 @@ test.describe('the charts menu is two screens, not twenty accordions', () => {
     expect(first).toBe(2);
   });
 });
+
+// The charts panel is read on a kneeboard in daylight as often as at night.
+test('the menu follows the light theme', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showChartsModal === 'function');
+  const out = await page.evaluate(async () => {
+    document.body.classList.add('theme-light');
+    showChartsModal();
+    await new Promise(r => setTimeout(r, 400));
+    const tile = document.querySelector('.charts-field');
+    const cs = getComputedStyle(tile);
+    const lum = (rgb) => {
+      const [r, g, b] = rgb.match(/\d+/g).map(Number);
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    };
+    return { bg: lum(cs.backgroundColor), fg: lum(cs.color) };
+  });
+  expect(out.bg).toBeGreaterThan(0.8);     // a light tile...
+  expect(out.fg).toBeLessThan(0.35);       // ...with dark text on it
+});
+
+// Annexes run א, ב, ג … י, יא, יב. A string sort puts יא before ב, and the annex number is
+// what a pilot asks for by name.
+test('plates are listed in annex order', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showChartsModal === 'function');
+  await page.evaluate(() => showChartsModal('LLHZ'));
+  await page.waitForSelector('.charts-airport[data-icao="LLHZ"] .plate-row');
+  const order = await page.evaluate(() =>
+    [...document.querySelectorAll('.charts-airport[data-icao="LLHZ"] .plate-annex')]
+      .map(b => b.textContent).filter(Boolean));
+  const rank = await page.evaluate((list) => list.map(a => annexOrder(a)), order);
+  expect(rank).toEqual([...rank].sort((a, b) => a - b));
+  // Hebrew numerals, not letters in Unicode order: יא is eleven, and its parts sort after it.
+  expect(order.join(' ')).toContain("י' יא' יא'-1 יא'-2 יב'");
+});

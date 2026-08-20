@@ -6016,6 +6016,24 @@ function plateDesignation(filename) {
 }
 // "נספח ד'" -> "ד'": the word is the same on every badge in the column, so it is the letter
 // that does the work.
+// Annexes run א, ב, ג … י, יא, יב — Hebrew letters, not a Latin sort. Ordering them by string
+// puts יא before ב and א' before א. This is the number a pilot asks for ("give me נספח ד'"),
+// so the list has to run in that order.
+const HEB_LETTERS = 'אבגדהוזחטיכלמנסעפצקרשת';
+function annexOrder(annex) {
+  const raw = String(annex || '').replace(/^נספח\s*/, '').replace(/['"״׳]/g, '').trim();
+  if (!raw) return Number.MAX_SAFE_INTEGER;          // no annex number: after the numbered ones
+  const m = raw.match(/^([\u05d0-\u05ea]{1,3})(?:\s*-\s*(\d+))?/);
+  if (!m) return Number.MAX_SAFE_INTEGER;
+  // Hebrew numerals: single letters are 1..10 by position, and the teens are י + a letter
+  // (יא = 11, יב = 12 …), which is how the annexes themselves are numbered.
+  const letters = m[1];
+  let value;
+  if (letters.length === 1) value = HEB_LETTERS.indexOf(letters) + 1;
+  else value = 10 + HEB_LETTERS.indexOf(letters.slice(1)) + 1;
+  if (value <= 0) return Number.MAX_SAFE_INTEGER;
+  return value * 100 + (m[2] ? Number(m[2]) : 0);    // נספח יא'-2 sorts just after נספח יא'
+}
 function plateAnnexBadge(annex) {
   return String(annex || '').replace(/^נספח\s*/, '').trim();
 }
@@ -7523,7 +7541,11 @@ function showChartsModal(focusIcao) {
           catLbl.textContent = catLabel[cat];
           catDiv.appendChild(catLbl);
         }
-        groups[cat].forEach(fn => catDiv.appendChild(plateRow(fn)));
+        groups[cat]
+          .slice()
+          .sort((a, b) => annexOrder(plateDesignation(a).annex) - annexOrder(plateDesignation(b).annex)
+            || a.localeCompare(b))
+          .forEach(fn => catDiv.appendChild(plateRow(fn)));
         list.appendChild(catDiv);
       }
     }

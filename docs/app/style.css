@@ -3430,6 +3430,44 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .plate-row-title { flex: 1 1 auto; line-height: 1.3; }
 .plate-row-amd { flex: 0 0 auto; font-size: 11px; color: #9aa4b0; font-variant-numeric: tabular-nums; }
 
+/* Light theme. The charts panel is read on a kneeboard in daylight as often as at night, and
+   the dark tiles above are unreadable against a white modal. */
+body.theme-light .charts-filter {
+  color: #1f252c;
+  background: #ffffff;
+  border-color: #c6ccd6;
+}
+body.theme-light .charts-fields-label { color: #647184; }
+body.theme-light .charts-field,
+body.theme-light .plate-row {
+  color: #1f252c;
+  background: #ffffff;
+  border-color: #c6ccd6;
+}
+body.theme-light .charts-field:hover, body.theme-light .charts-field:focus-visible,
+body.theme-light .plate-row:hover, body.theme-light .plate-row:focus-visible {
+  background: #eef4ff;
+  border-color: #1d6fe0;
+}
+body.theme-light .charts-field-code,
+body.theme-light .charts-airport-code,
+body.theme-light .plate-row-amd { color: #647184; }
+body.theme-light .charts-field-count,
+body.theme-light .plate-annex,
+body.theme-light .charts-back,
+body.theme-light .charts-cat-chip.on {
+  color: #16406e;
+  background: #dbe8fb;
+  border-color: #9dbde8;
+}
+body.theme-light .plate-annex-empty { background: transparent; border-color: transparent; }
+body.theme-light .charts-back:hover, body.theme-light .charts-back:focus-visible { background: #cbdcf7; }
+body.theme-light .charts-cat-chip {
+  color: #1f252c;
+  background: #ffffff;
+  border-color: #c6ccd6;
+}
+
 /* The airfield header: its name in the pilot's language, its ICAO code beside it in a quieter
    weight. The code used to lead, which read backwards in a Hebrew session. */
 .charts-airport-header { display: flex; align-items: baseline; gap: 8px; }
