@@ -5296,6 +5296,7 @@ function exportPNG(mode) {
       drawLegs();
       drawWaypoints();
       drawNotes();
+      if (typeof flushKites === 'function') flushKites();   // above the callouts
       drawPlanCard();        // flight-plan card placed in the export modal (#378)
       o.restore();
     } finally {
