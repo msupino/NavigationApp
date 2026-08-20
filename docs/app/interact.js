@@ -4342,6 +4342,7 @@ function touchXY(t) {
 }
 
 mapEl.addEventListener('touchstart', e => {
+  touchLog('touchstart', 'fingers=' + e.touches.length);
   if (e.touches.length !== 1) return;
   const p = touchXY(e.touches[0]);
   // Second tap of a double tap: the first tap's panel goes back where it was, and this touch
@@ -4484,6 +4485,7 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag.wasDoubleTap = wasDoubleTap;
     touchDrag.selectionBefore = selectionBeforeTouch;
     touchDrag.pressedAt = Date.now();          // tap or grab is decided by how long it lasts
+    touchLog('  grabbed', 'kind=' + touchDrag.kind + (touchDrag.wasDoubleTap ? ' dbltap' : ''));
     // Where the finger LANDED -- the threshold below measures from here. Seeding it from
     // the first touchmove instead made that move measure zero, so the guard let the first
     // (largest) jump through and only started counting afterwards.
@@ -4502,6 +4504,7 @@ mapEl.addEventListener('touchstart', e => {
 }, { passive: false });
 
 mapEl.addEventListener('touchmove', e => {
+  if (touchDrag && !touchDrag.moved) touchLog('touchmove', 'fingers=' + e.touches.length);
   // A press on a leg line does not drag anything -- the map pans under the finger instead --
   // so this handler deliberately keeps its hands off it: no preventDefault, nothing moved.
   // But it still has to NOTICE, because the release opens the leg inspector for a tap, and
@@ -4582,6 +4585,42 @@ mapEl.addEventListener('touchmove', e => {
 let _tapOpened = null;
 const DOUBLE_TAP_MS = 350;
 const DOUBLE_TAP_PX = 40;
+// --- touch diagnostics (?touchlog=1) ------------------------------------------------------
+// Four fixes into "holding a waypoint opens the inspector" it became clear that guessing at
+// what a phone sends is the wrong way round: what a device does with a long press (does it
+// cancel? does it fire a second touchstart? how long is the sequence?) differs between
+// Android, iOS and every WebView in between. This prints the actual sequence on screen, on
+// the device where it goes wrong, so the next fix answers a measurement rather than a guess.
+//
+// Off unless asked for by URL, so it cannot cost anything in flight.
+function touchLogOn() {
+  try { return new URLSearchParams(location.search).get('touchlog') === '1'; }
+  catch (e) { return false; }
+}
+let _touchLogEl = null;
+const _touchLog = [];
+function touchLog(what, detail) {
+  if (!touchLogOn()) return;
+  const t = new Date();
+  const stamp = String(t.getSeconds()).padStart(2, '0') + '.' +
+    String(t.getMilliseconds()).padStart(3, '0');
+  _touchLog.push(stamp + '  ' + what + (detail ? '  ' + detail : ''));
+  while (_touchLog.length > 14) _touchLog.shift();
+  if (!_touchLogEl) {
+    _touchLogEl = document.createElement('div');
+    _touchLogEl.id = 'touch-log';
+    // Bottom-left, above the footer, and deliberately not interactive: it must never eat the
+    // very touches it is there to record.
+    _touchLogEl.style.cssText = 'position:fixed;left:6px;bottom:64px;z-index:4000;' +
+      'max-width:min(94vw,460px);max-height:42vh;overflow:hidden;pointer-events:none;' +
+      'font:11px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre;' +
+      'color:#e8e8e8;background:rgba(20,18,18,0.88);border:1px solid #4b4646;' +
+      'border-radius:6px;padding:6px 8px;direction:ltr;text-align:left';
+    document.body.appendChild(_touchLogEl);
+  }
+  _touchLogEl.textContent = _touchLog.join('\n');
+}
+
 // A press long enough to be a GRAB is not a tap, even when the finger ends up back where it
 // started. Reported twice: holding a waypoint to move it opened its inspector -- the pilot
 // held on, the point did not travel far enough to count as moved, and the release read as a
@@ -4632,6 +4671,10 @@ function endTouch(evOrCancelled) {
   // the pilot was reading and a drag does not take it away -- the mouse path's rule.
   // The second tap of a double tap opens nothing: the gesture is a zoom, and the first tap's
   // panel has already been put back where it was.
+  touchLog(cancelled ? 'touchcancel' : 'touchend',
+    touchDrag ? ('kind=' + touchDrag.kind + ' moved=' + !!touchDrag.moved +
+      ' held=' + (Number.isFinite(touchDrag.pressedAt) ? (Date.now() - touchDrag.pressedAt) + 'ms' : '?'))
+      : 'no drag');
   const held = !!touchDrag && Number.isFinite(touchDrag.pressedAt) &&
     (Date.now() - touchDrag.pressedAt) > TAP_MAX_MS &&
     KITE_DRAG_KINDS.concat(['wp', 'note']).indexOf(touchDrag.kind) !== -1;
@@ -4647,6 +4690,8 @@ function endTouch(evOrCancelled) {
   else if (touchDrag && (wasDrag || isTap)) showInspector();
   // A tap that DID open something is remembered, so the second tap of a double tap can put it
   // back -- see undoTapOpenIfDoubleTap.
+  touchLog('  decided', 'tap=' + isTap + ' drag=' + wasDrag + ' held=' + held +
+    ' panel=' + (document.getElementById('inspector').classList.contains('hidden') ? 'shut' : 'OPEN'));
   if (isTap) noteTapOpened(touchDrag.startX, touchDrag.startY, touchDrag.selectionBefore);
   else if (touchDrag && !touchDrag.wasDoubleTap) noteTapOpened(null);
   // Pressing a leg selects it, which is right for a tap and wrong for a pan: the pilot was
