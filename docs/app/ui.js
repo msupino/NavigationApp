@@ -46,7 +46,25 @@ function refreshPrimingCursor() {
   if (!m) return;
   const armed = typeof routePrimingArmed === 'function' && routePrimingArmed();
   m.classList.toggle('priming', !!armed);
+  // While primed, a click adds a waypoint -- which is what Add does. The button said
+  // otherwise: the map behaved like a mode nobody had entered, so there was nothing lit to
+  // explain the crosshair and nothing to press to leave. Show it as the mode it behaves like.
+  const addBtn = document.getElementById('tool-add');
+  if (addBtn && !state.mode) {
+    addBtn.classList.toggle('active', !!armed);
+    addBtn.setAttribute('aria-pressed', String(!!armed));
+  }
 }
+// Put the priming away: the hint goes, the crosshair goes, and a plain click is a plain click
+// again. Escape does this, like it leaves any other mode.
+function dismissRoutePriming() {
+  const el = document.getElementById('empty-route-hint');
+  if (!el) return false;
+  el.remove();
+  refreshPrimingCursor();
+  return true;
+}
+window.dismissRoutePriming = dismissRoutePriming;
 
 function refreshModeChip() {
   let chip = document.getElementById('mode-chip');
