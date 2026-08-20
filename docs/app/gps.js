@@ -6,7 +6,7 @@ var gpsRecording = false;
 var gpsTrack = [];          // [{lat,lng,t,alt,acc}]
 var gpsWatchId = null;
 var gpsOwn = null;          // {lat,lng,hdg} last fix for own-ship rendering
-var gpsWakeLock = null;     // Screen Wake Lock sentinel held while recording
+var gpsWakeLock = null;     // Screen Wake Lock sentinel held while a position is on screen
 
 // True while any own-ship position source is live: real GPS (recording or just showing
 // location) or a connected simulator. interact.js's waypoint-drag handlers check this to
@@ -43,11 +43,20 @@ function inspectorAllowedNow() {
 // Wake Lock is auto-released by the browser when the tab is hidden; we re-acquire
 // on visibilitychange (see listener at end of file). Best-effort: silently
 // no-op where unsupported (older Safari) or denied by policy.
+// Recording OR just showing the position: both are the pilot watching the chart move, and a
+// screen that blanks every 30 seconds is one the pilot has to keep waking with a hand that is
+// otherwise flying. Not the simulator -- that is a desk, where the ordinary screen timeout is
+// the right behaviour.
+function gpsWakeLockWanted() {
+  return !!(gpsRecording || gpsLiveOn);
+}
 function gpsAcquireWakeLock() {
-  if (gpsWakeLock || !gpsRecording) return;
+  if (gpsWakeLock || !gpsWakeLockWanted()) return;
   if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return;
   navigator.wakeLock.request('screen').then(function (wl) {
-    if (!gpsRecording) { wl.release().catch(function () {}); return; }
+    // The request is async: by the time it resolves the pilot may have stopped, and a lock
+    // nobody asked for any more would hold the screen on for the rest of the flight.
+    if (!gpsWakeLockWanted()) { wl.release().catch(function () {}); return; }
     gpsWakeLock = wl;
     wl.addEventListener('release', function () { gpsWakeLock = null; });
   }).catch(function () { /* denied / no user gesture — ignore */ });
@@ -298,6 +307,7 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  gpsAcquireWakeLock();
   // A route unlocked by hand during the last session locks again for this one -- see
   // routeEditLocked() in ui.js.
   if (typeof window !== 'undefined') window.editUnlockOverride = false;
@@ -356,6 +366,7 @@ function stopLiveLocation() {
   gpsLiveWatchId = null;
   gpsLiveOn = false;
   if (!gpsRecording) gpsStopCompass();
+  if (!gpsRecording) gpsReleaseWakeLock();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
@@ -1176,7 +1187,7 @@ function stopGpsRecording() {
   gpsRecording = false;
   if (!gpsLiveOn) gpsStopCompass();
   updateGpsRecIndicator();
-  gpsReleaseWakeLock();
+  if (!gpsLiveOn) gpsReleaseWakeLock();     // Location may still be showing
   gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;
   gpsMaybeStopDriftTimer();
@@ -1185,10 +1196,10 @@ function stopGpsRecording() {
 }
 
 // The browser drops the wake lock whenever the tab is backgrounded; re-arm it
-// when the page becomes visible again and a recording is still in progress.
+// when the page becomes visible again and a position is still on screen.
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden && gpsRecording) gpsAcquireWakeLock();
+    if (!document.hidden && gpsWakeLockWanted()) gpsAcquireWakeLock();
   });
 }
 

@@ -832,3 +832,88 @@ test('the readout carries the magnetic heading beside speed and altitude', async
   });
   await expect(readout).toContainText('°');
 });
+
+// Showing the position is the pilot watching the chart move, exactly like a recording is: a
+// screen that blanks every 30 seconds is one that has to be woken with a hand that is
+// otherwise flying. The lock is held for either, and only let go when neither is running.
+test.describe('the screen stays awake while a position is on screen', () => {
+  async function bootWake(page) {
+    await page.addInitScript(() => {
+      window.__geoCb = null;
+      navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 11; };
+      navigator.geolocation.clearWatch = () => {};
+      window.__wlReq = 0; window.__wlRel = 0;
+      Object.defineProperty(navigator, 'wakeLock', {
+        configurable: true,
+        value: {
+          request() {
+            window.__wlReq++;
+            return Promise.resolve({
+              release() { window.__wlRel++; return Promise.resolve(); },
+              addEventListener() {},
+            });
+          },
+        },
+      });
+    });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  }
+
+  test('Location alone holds it, and stopping lets it go', async ({ page }) => {
+    await bootWake(page);
+    await page.evaluate(() => startLiveLocation());
+    await page.waitForFunction(() => window.__wlReq === 1 && gpsWakeLock != null);
+    await page.evaluate(() => stopLiveLocation());
+    await page.waitForFunction(() => gpsWakeLock == null);
+    expect(await page.evaluate(() => window.__wlRel)).toBe(1);
+  });
+
+  // Stopping one while the other is still running must not blank the screen mid-flight.
+  test('stopping the recording keeps it while Location is still showing', async ({ page }) => {
+    await bootWake(page);
+    await page.evaluate(() => { startLiveLocation(); startGpsRecording(); });
+    await page.waitForFunction(() => gpsWakeLock != null);
+    await page.evaluate(() => stopGpsRecording());
+    expect(await page.evaluate(() => gpsWakeLock != null)).toBe(true);
+    await page.evaluate(() => stopLiveLocation());
+    await page.waitForFunction(() => gpsWakeLock == null);
+  });
+
+  test('and the other way round', async ({ page }) => {
+    await bootWake(page);
+    await page.evaluate(() => { startLiveLocation(); startGpsRecording(); });
+    await page.waitForFunction(() => gpsWakeLock != null);
+    await page.evaluate(() => stopLiveLocation());
+    expect(await page.evaluate(() => gpsWakeLock != null)).toBe(true);
+  });
+
+  test('coming back to the foreground re-arms it for Location too', async ({ page }) => {
+    await bootWake(page);
+    await page.evaluate(() => startLiveLocation());
+    await page.waitForFunction(() => gpsWakeLock != null);
+    await page.evaluate(() => { gpsWakeLock = null; });          // what the browser does when backgrounded
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await page.waitForFunction(() => window.__wlReq === 2 && gpsWakeLock != null);
+  });
+
+  // The request is async: a pilot who stops before it resolves must not be left holding a lock
+  // for the rest of the flight.
+  test('a lock that arrives after the stop is let go at once', async ({ page }) => {
+    await bootWake(page);
+    await page.evaluate(() => {
+      let resolveIt = null;
+      navigator.wakeLock.request = () => {
+        window.__wlReq++;
+        return new Promise((r) => { resolveIt = () => r({
+          release() { window.__wlRel++; return Promise.resolve(); }, addEventListener() {} }); });
+      };
+      window.__settle = () => resolveIt();
+      startLiveLocation();
+      stopLiveLocation();
+    });
+    await page.evaluate(() => window.__settle());
+    await page.waitForFunction(() => window.__wlRel === 1);
+    expect(await page.evaluate(() => gpsWakeLock)).toBe(null);
+  });
+});

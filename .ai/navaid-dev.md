@@ -594,8 +594,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   Before the leg midpoint, they give an intercept heading. After the midpoint,
   they give a heading direct to the next waypoint. They never leave a relative
   correction for the pilot to apply.
-  Recording takes a **screen wake lock** while it runs (`gpsAcquireWakeLock()`
-  in `gps.js`), releases it on Stop, and re-acquires it when the page becomes
+  Recording **or** showing Location takes a **screen wake lock** while it runs
+  (`gpsAcquireWakeLock()` / `gpsWakeLockWanted()` in `gps.js`), releases it only
+  when neither is running, and re-acquires it when the page becomes
   visible again — browsers drop the sentinel while the tab is hidden, so a
   backgrounded browser tab can still leave gaps. The native app uses background
   geolocation instead, which is a separate capability.
