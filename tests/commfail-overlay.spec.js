@@ -152,3 +152,27 @@ test('commfail overlay PNG URLs resolve through commfailImgBase()', async ({ pag
     expect(u).toMatch(/\/commfail-img\/[A-Z]{4}_commfail.png/);
   }
 });
+
+// Reported from the cockpit: Rosh Pina's radio-failure joining plate (נספח ד') was in the
+// plate list but not on the map — the layer only carried LLHA and LLHZ, so switching it on
+// at LLIB drew nothing at all.
+test('Rosh Pina has a comm-failure overlay, georeferenced onto its own field', async ({ page }) => {
+  await boot(page);
+  const af = await page.evaluate(async () => {
+    if (typeof loadAirfields === 'function' && !window.airfields) await loadAirfields();
+    return (window.airfields || []).find(a => a.name === 'LLIB') || null;
+  });
+  expect(af).toBeTruthy();
+  expect(af.commfail_overlay).toBeTruthy();
+  expect(af.commfail_overlay.png).toBe('LLIB_commfail.png');
+  const { sw, ne } = af.commfail_overlay;
+  // The box has to contain the field itself — the plate is the joining chart FOR Rosh Pina.
+  expect(af.lat).toBeGreaterThan(sw[0]);
+  expect(af.lat).toBeLessThan(ne[0]);
+  expect(af.lng).toBeGreaterThan(sw[1]);
+  expect(af.lng).toBeLessThan(ne[1]);
+  // ...and be about the size the plate covers (~4' of latitude at 1:65,000), not the whole
+  // country: a plate stretched over a wrong box lines up only at its centre.
+  expect((ne[0] - sw[0]) * 60).toBeGreaterThan(3);
+  expect((ne[0] - sw[0]) * 60).toBeLessThan(6);
+});
