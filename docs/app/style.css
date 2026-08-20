@@ -3307,6 +3307,28 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .plate-annex-empty { background: transparent; border-color: transparent; }
 .plate-row-title { flex: 1 1 auto; line-height: 1.3; }
 .plate-row-amd { flex: 0 0 auto; font-size: 11px; color: #9aa4b0; font-variant-numeric: tabular-nums; }
+/* The inspector's "Airport charts" button. It had no rule of its own, so it rendered as a
+   default browser button -- white with dark text -- which in dark mode looked like a light-mode
+   control dropped into the panel. */
+.insp-charts-btn {
+  font: inherit;
+  font-size: 13px;
+  min-height: 36px;
+  padding: 7px 12px;
+  color: #cfe4ff;
+  background: #24303f;
+  border: 1px solid #35506f;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.insp-charts-btn:hover, .insp-charts-btn:focus-visible { background: #2d3d52; border-color: #1d6fe0; }
+body.theme-light .insp-charts-btn {
+  color: #16406e;
+  background: #dbe8fb;
+  border-color: #9dbde8;
+}
+body.theme-light .insp-charts-btn:hover, body.theme-light .insp-charts-btn:focus-visible { background: #cbdcf7; }
+
 /* Airport charts: two screens rather than twenty accordions. Screen one is a grid of fields,
    screen two is one field's plates. Every target here is thumb-sized -- this is read on a
    kneeboard, often in turbulence. */

@@ -31,6 +31,53 @@ async function fetchIndex() {
 
 // The tree is {aip: {he|en: {AIP: {id: {TITLE, FILES:[...], SUB: {...}}}}}}; FILES entries
 // carry HASH, TITLE and LAST_MODIFIED. Flatten to hash -> {he, en, modified}.
+// A second key, for the plates whose hash no longer matches: (ICAO, annex number). The index
+// groups files under a node titled "חיפה - LLHA", and our file names carry the annex in
+// transliteration ("LLHA_airport_Annex Alef.pdf"). That pair identifies the plate even when our
+// copy of the PDF is a revision behind -- which is the case for two thirds of what we ship, and
+// is exactly when a designation is most useful: the pilot still wants to know it is תרשים השדה.
+const ANNEX_WORD_TO_LETTER = {
+  alef: 'א', bet: 'ב', gimel: 'ג', daled: 'ד', dalet: 'ד', he: 'ה', vav: 'ו', zayin: 'ז',
+  chet: 'ח', tet: 'ט', yud: 'י', kaf: 'כ', lamed: 'ל',
+};
+// "LLHA_airport_Annex Yud Bet.pdf" -> "יב"; "…Annex Bet 2.pdf" -> "ב-2".
+function annexKeyFromFile(file) {
+  const m = String(file).match(/Annex ([A-Za-z]+(?: [A-Za-z]+)?)(?: (\d))?/i);
+  if (!m) return '';
+  const words = m[1].toLowerCase().split(/\s+/).map(w => ANNEX_WORD_TO_LETTER[w]);
+  if (words.some(w => !w)) return '';
+  return words.join('') + (m[2] ? '-' + m[2] : '');
+}
+// "נספח יא'-2" -> "יא-2"
+function annexKeyFromTitle(annex) {
+  const raw = String(annex || '').replace(/^נספח\s*/, '').replace(/['"״׳\s]/g, '');
+  const m = raw.match(/^([\u05d0-\u05ea]{1,3})(?:-(\d))?/);
+  return m ? m[1] + (m[2] ? '-' + m[2] : '') : '';
+}
+// ICAO of the node a file hangs under: its title ends with the code ("ראש פינה - LLIB").
+function indexByAnnex(doc) {
+  const out = new Map();
+  const walk = (node) => {
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (!node || typeof node !== 'object') return;
+    const title = String(node.TITLE || '');
+    const icao = (title.match(/\b(LL[A-Z]{2})\b/) || [])[1];
+    if (icao && Array.isArray(node.FILES)) {
+      for (const f of node.FILES) {
+        const parts = splitTitle(cleanText(f.TITLE));
+        const key = icao + '|' + annexKeyFromTitle(parts.annex);
+        if (!annexKeyFromTitle(parts.annex)) continue;
+        // Only when it is unambiguous: a renumbered annex must not inherit another's name.
+        if (out.has(key)) out.set(key, null);
+        else out.set(key, { he: parts.title, modified: cleanDate(f.LAST_MODIFIED) });
+      }
+    }
+    for (const v of Object.values(node)) walk(v);
+  };
+  walk(doc?.aip?.he);
+  return out;
+}
+
 function indexByHash(doc) {
   const out = new Map();
   const walk = (node, lang) => {
@@ -83,14 +130,21 @@ const sha512 = (buf) => createHash('sha512').update(buf).digest('hex');
 // bidi overrides (which can make a label read as something it is not), no unbounded length,
 // and nothing that would be read as markdown in the step summary.
 const MAX_TITLE = 120;
+// An ALLOWLIST, not a blocklist: a designation is Hebrew letters, Latin letters, digits and a
+// short list of punctuation that appears in real plate titles ("נספח יא'-2", "RNP Z RWY 30",
+// "Aerodrome chart - ICAO"). Everything else is dropped rather than reasoned about -- control
+// characters would corrupt the JSON's neighbours, bidi overrides can make a label read as
+// something it is not, and markdown furniture is interpreted when the step summary renders.
+const ALLOWED_CHAR = /[\u05d0-\u05ea0-9A-Za-z ()\-/.,:'"״׳&+]/;
 function cleanText(value) {
-  return String(value == null ? '' : value)
-    // C0/C1 controls and the bidi overrides -- U+2066..U+2069 and U+202A..U+202E
-    .replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '')
-    .replace(/[`*_<>|\\]/g, ' ')          // markdown/HTML furniture, for the step summary
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, MAX_TITLE);
+  const src = String(value == null ? '' : value);
+  let out = '';
+  for (const ch of src) {
+    if (out.length >= MAX_TITLE) break;
+    if (ALLOWED_CHAR.test(ch)) out += ch;
+    else if (out && !out.endsWith(' ')) out += ' ';
+  }
+  return out.replace(/\s+/g, ' ').trim();
 }
 // A date or nothing. The index prints "2026-08-06 08:45:29+00:00"; only the day is used.
 function cleanDate(value) {
@@ -167,6 +221,7 @@ async function main() {
   await loadFields();
   const doc = await fetchIndex();
   const byHash = indexByHash(doc);
+  const byAnnex = indexByAnnex(doc);
   const files = (await readdir(BYOP)).filter(f => f.toLowerCase().endsWith('.pdf')).sort();
   const titles = {};
   const stale = [];
@@ -174,10 +229,18 @@ async function main() {
     const hash = sha512(await readFile(join(BYOP, f)));
     const row = byHash.get(hash);
     if (!row) {
-      // Amended upstream since we fetched it, so the index cannot name it. Read the plate's
-      // own header instead -- a designation the pilot recognises beats a file name, even when
-      // the copy is a revision behind. `source` says which is which.
+      // Amended upstream since we fetched it, so the hash cannot find it. Try the (ICAO,
+      // annex) key next -- the CAA's own designation for that annex, even though our PDF is a
+      // revision behind -- and only then fall back to reading the plate's own header.
       stale.push(f);
+      const icao = String(f).slice(0, 4).toUpperCase();
+      const key = annexKeyFromFile(f);
+      const byKey = key ? byAnnex.get(icao + '|' + key) : null;
+      if (byKey) {
+        titles[f] = { annex: 'נספח ' + key.replace('-', "'-"), he: byKey.he, en: '',
+          modified: '', source: 'aip-annex' };
+        continue;
+      }
       const own = designationFromPdf(join(BYOP, f), fieldNames(f));
       if (own) titles[f] = { annex: own.annex, he: own.title, en: '', modified: '', source: 'pdf' };
       continue;
@@ -192,11 +255,28 @@ async function main() {
       source: 'aip',
     };
   }
-  await writeFile(OUT, JSON.stringify(titles, null, 1) + '\n');
-  const fromPdf = Object.values(titles).filter(t => t.source === 'pdf').length;
+  // One more pass at the boundary, so what reaches the disk is provably the shape declared
+  // above whatever route a value took to get here.
+  const safe = {};
+  for (const [file, row] of Object.entries(titles)) {
+    // Our own file names, nothing else. They carry spaces, plus signs and brackets --
+    // "LLBG_SID_12-26-30 (Pidet+Ripud).pdf" -- so the set is explicit rather than tidy.
+    if (!/^[A-Za-z0-9 _.,()+\-]+\.pdf$/.test(file)) continue;
+    safe[file] = {
+      annex: cleanText(row.annex),
+      he: cleanText(row.he),
+      en: cleanText(row.en),
+      modified: cleanDate(row.modified),
+      source: ['pdf', 'aip-annex'].includes(row.source) ? row.source : 'aip',
+    };
+  }
+  await writeFile(OUT, JSON.stringify(safe, null, 1) + '\n');
+  const fromPdf = Object.values(safe).filter(t => t.source === 'pdf').length;
+  const byAnnexCount = Object.values(safe).filter(t => t.source === 'aip-annex').length;
   const lines = [
-    `titles written for ${Object.keys(titles).length} of ${files.length} plates -> ${OUT}`
-      + (fromPdf ? ` (${fromPdf} read off the plate itself, the rest from the index)` : ''),
+    `titles written for ${Object.keys(safe).length} of ${files.length} plates -> ${OUT}`
+      + ` (${Object.values(safe).filter(t => t.source === 'aip').length} matched by hash, `
+      + `${byAnnexCount} by annex number, ${fromPdf} read off the plate itself)`,
     stale.length
       ? `${stale.length} shipped plates are not in the current index (amended upstream since we fetched them):\n  ` + stale.join('\n  ')
       : 'every shipped plate matches the current index',

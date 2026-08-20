@@ -197,17 +197,17 @@
  },
  "LLHA_airport_Annex Alef.pdf": {
   "annex": "נספח א",
-  "he": "AERODROME CHART - ICAO",
+  "he": "תרשים השדה",
   "en": "",
   "modified": "",
-  "source": "pdf"
+  "source": "aip-annex"
  },
  "LLHA_airport_Annex Bet 2.pdf": {
-  "annex": "נספח ב",
-  "he": "",
+  "annex": "נספח ב'-2",
+  "he": "תרשים החניה - רחבה N",
   "en": "",
   "modified": "",
-  "source": "pdf"
+  "source": "aip-annex"
  },
  "LLHA_airport_Annex Bet 3.pdf": {
   "annex": "נספח ב'-3",
@@ -225,10 +225,10 @@
  },
  "LLHA_airport_Annex Bet.pdf": {
   "annex": "נספח ב",
-  "he": "AIRCRAFT PARKING CHART APRON G - ICAO",
+  "he": "תרשים החניה",
   "en": "",
   "modified": "",
-  "source": "pdf"
+  "source": "aip-annex"
  },
  "LLHA_airport_Annex Chet.pdf": {
   "annex": "נספח ח'",
@@ -258,6 +258,13 @@
   "modified": "2025-05-15",
   "source": "aip"
  },
+ "LLHA_airport_Annex Tet.pdf": {
+  "annex": "נספח ט",
+  "he": "מפת מכשולים מסלול 15-33",
+  "en": "",
+  "modified": "",
+  "source": "aip-annex"
+ },
  "LLHA_airport_Annex Zayin.pdf": {
   "annex": "נספח ז'",
   "he": "תרשים ההקפה",
@@ -267,10 +274,10 @@
  },
  "LLHZ_airport_Annex Alef.pdf": {
   "annex": "נספח א",
-  "he": "",
+  "he": "תרשים השדה",
   "en": "",
   "modified": "",
-  "source": "pdf"
+  "source": "aip-annex"
  },
  "LLHZ_airport_Annex Chet.pdf": {
   "annex": "נספח ח'",
@@ -512,10 +519,10 @@
  },
  "LLMZ_airport_Annex Alef.pdf": {
   "annex": "נספח א",
-  "he": "",
+  "he": "תרשים המנחת",
   "en": "",
   "modified": "",
-  "source": "pdf"
+  "source": "aip-annex"
  },
  "LLMZ_airport_Annex Bet.pdf": {
   "annex": "נספח ב'",
