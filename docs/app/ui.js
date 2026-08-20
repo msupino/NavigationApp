@@ -4420,9 +4420,20 @@ function showNotamModal(only) {
   close.setAttribute('aria-label', 'Close');
   box.appendChild(close);
   // `only` = subset clicked on the map. Empty/absent → full active list.
-  const shown = (Array.isArray(only) && only.length)
-    ? only
-    : ((typeof activeNotams === 'function') ? activeNotams() : (Array.isArray(notams) ? notams : []));
+  // Which NOTAMs the list is about. "Active" is what a pilot flying now wants and stays the
+  // default; "All" includes the ones that have not started yet or have already ended -- a
+  // NOTAM that begins in twenty minutes is invisible otherwise, which is exactly when it is
+  // worth reading (reported: an aerodrome closure starting in 11 minutes "doesn't exist").
+  // A single-NOTAM view (a map click) is neither: it shows what was clicked.
+  const clicked = (Array.isArray(only) && only.length) ? only : null;
+  let timeFrame = 'active';
+  const feedFor = (frame) => {
+    if (clicked) return clicked;
+    if (frame === 'all') return Array.isArray(notams) ? notams.slice() : [];
+    return (typeof activeNotams === 'function') ? activeNotams()
+      : (Array.isArray(notams) ? notams : []);
+  };
+  let shown = feedFor(timeFrame);
   const h = document.createElement('h3');
   // Title scope: when the shown set is one airfield, name it; otherwise LLLL
   // (FIR-wide / mixed). Updates when the filter narrows the list.
@@ -4517,10 +4528,31 @@ function showNotamModal(only) {
           if (typeof flashNotam === 'function') flashNotam(n.id);
         };
       }
+      // A NOTAM in the "All" view that is not in force yet says so, with the time it starts;
+      // one that has ended says that. Without it the extra rows are indistinguishable from
+      // the ones that matter right now.
+      if (timeFrame === 'all' && typeof notamActive === 'function' && !notamActive(n)) {
+        const when = document.createElement('span');
+        when.className = 'notam-when';
+        const startMs = Date.parse(n.start || '');
+        const future = Number.isFinite(startMs) && startMs > Date.now();
+        const stamp = (v) => {
+          const d = new Date(v);
+          return isNaN(d) ? '' : d.toISOString().slice(5, 16).replace('T', ' ') + 'Z';
+        };
+        when.textContent = future
+          ? (S.notamStartsAt ? S.notamStartsAt(stamp(startMs)) : 'from ' + stamp(startMs))
+          : (S.notamEnded || 'ended');
+        when.classList.toggle('notam-when-past', !future);
+        it.appendChild(when);
+      }
       list.appendChild(it);
     }
   };
-  if (shown.length > 1) {
+  // The row renders for any list view, even when only one NOTAM is in force -- that is
+  // exactly when the time-frame toggle matters, since the rest are waiting to start. A
+  // single-NOTAM view (a map click) has nothing to narrow and gets no row.
+  if (!clicked || shown.length > 1) {
     // Freetext search sits with the airfield dropdown; it renders even for a
     // single-airfield feed (the dropdown alone used to gate the whole row) --
     // but not for a single-NOTAM view (a map click), where there is nothing
@@ -4534,6 +4566,26 @@ function showNotamModal(only) {
     find.setAttribute('aria-label', find.placeholder);
     find.addEventListener('input', () => { filterText = find.value; renderList(); });
     fw.appendChild(find);
+    if (!clicked) {
+      const frame = document.createElement('label');
+      frame.className = 'notam-timeframe';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'notam-timeframe-cb';
+      cb.id = 'notam-show-all';
+      cb.checked = false;
+      const txt = document.createElement('span');
+      txt.textContent = S.notamShowAll || 'Include not yet active';
+      frame.title = S.notamShowAllTitle || '';
+      frame.appendChild(cb);
+      frame.appendChild(txt);
+      cb.addEventListener('change', () => {
+        timeFrame = cb.checked ? 'all' : 'active';
+        shown = feedFor(timeFrame);
+        renderList();
+      });
+      fw.appendChild(frame);
+    }
     if (codes.length > 1) {
     const sel = document.createElement('select');
     sel.className = 'notam-filter-sel'; sel.dir = 'ltr';
