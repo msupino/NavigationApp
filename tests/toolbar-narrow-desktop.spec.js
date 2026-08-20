@@ -178,3 +178,47 @@ test('a dropdown nudge does not survive a resize', async ({ page }) => {
   expect(r.right).toBeLessThanOrEqual(r.vw + 1);
   expect(r.left).toBeGreaterThanOrEqual(-1);
 });
+
+// A sweep for the same class of bug elsewhere in the menu: any row whose contents are wider
+// than the row itself is squeezing one of its own controls (the slider loses that travel) or
+// painting text past its edge.
+test('no menu row overflows its own box', async ({ page }) => {
+  for (const width of [1000, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await boot(page, width);
+    const bad = await page.evaluate(() => {
+      document.querySelectorAll('.tb-section').forEach(s => s.classList.add('open'));
+      document.querySelectorAll('#toolbar [hidden]').forEach(e => { e.hidden = false; });
+      const out = [];
+      document.querySelectorAll('#toolbar .navtoggle').forEach(r => {
+        if (!r.offsetParent) return;
+        if (r.scrollWidth > r.clientWidth + 1) {
+          out.push({ row: (r.textContent || '').trim().slice(0, 24),
+                     scrollW: r.scrollWidth, clientW: r.clientWidth });
+        }
+      });
+      return out;
+    });
+    expect(bad, `at ${width}px`).toEqual([]);
+  }
+});
+
+// The readout the sweep was written for: the look-ahead time at its longest value must fit
+// the box it is given, or it paints under the reset button beside it.
+test('the look-ahead readout fits its own box at every value', async ({ page }) => {
+  await boot(page, 1000);
+  const bad = await page.evaluate(() => {
+    const sec = document.querySelector('.tb-section[data-sec="weather"]');
+    sec.classList.add('open');
+    document.getElementById('windfield-controls').hidden = false;
+    document.getElementById('notam-controls').hidden = false;
+    const el = document.getElementById('lookahead-time-val');
+    const out = [];
+    for (const t of ['now', '+1h · 12-31 12:00Z', '+24h · 12-31 12:00Z', '+72h · 12-31 12:00Z']) {
+      el.textContent = t;
+      if (el.scrollWidth > el.clientWidth + 1) out.push({ t, sw: el.scrollWidth, cw: el.clientWidth });
+    }
+    return out;
+  });
+  expect(bad).toEqual([]);
+});
