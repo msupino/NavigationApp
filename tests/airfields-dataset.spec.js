@@ -400,14 +400,19 @@ test.describe('training_overlay field', () => {
       if (!to) continue;
       expect(typeof to.png, `${af.name} training png`).toBe('string');
       expect(to.png).toMatch(/^[A-Z]{4}_training\.png$/);
-      expect(Array.isArray(to.sw) && to.sw.length === 2).toBe(true);
-      expect(Array.isArray(to.ne) && to.ne.length === 2).toBe(true);
-      expect(to.sw[0]).toBeLessThan(to.ne[0]);     // sw lat < ne lat
-      expect(to.sw[1]).toBeLessThan(to.ne[1]);     // sw lng < ne lng
-      expect(to.sw[0]).toBeGreaterThan(29);
-      expect(to.ne[0]).toBeLessThan(34);
-      expect(to.sw[1]).toBeGreaterThan(34);
-      expect(to.ne[1]).toBeLessThan(36);
+      const { sw, ne, rotated } = overlayCorners(to);
+      if (rotated) {
+        for (const c of [to.tl, to.tr, to.bl]) expect(Array.isArray(c) && c.length === 2).toBe(true);
+      } else {
+        expect(Array.isArray(to.sw) && to.sw.length === 2).toBe(true);
+        expect(Array.isArray(to.ne) && to.ne.length === 2).toBe(true);
+      }
+      expect(sw[0]).toBeLessThan(ne[0]);
+      expect(sw[1]).toBeLessThan(ne[1]);
+      expect(sw[0]).toBeGreaterThan(29);
+      expect(ne[0]).toBeLessThan(34);
+      expect(sw[1]).toBeGreaterThan(34);
+      expect(ne[1]).toBeLessThan(36);
     }
   });
 

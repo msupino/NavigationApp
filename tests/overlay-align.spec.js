@@ -57,7 +57,10 @@ test('selecting an overlay and panning saves a shifted rect override', async ({ 
     // select LLHZ training by clicking its centre
     const af = airfields.find(a => a.name === 'LLHZ');
     const to = af.training_overlay;
-    const c = [(to.sw[0] + to.ne[0]) / 2, (to.sw[1] + to.ne[1]) / 2];
+    // Either shape: a plate drawn off north carries rotated corners instead of a box.
+    const c = to.tl
+      ? [(to.tl[0] + to.bl[0]) / 2, (to.tl[1] + to.tr[1]) / 2]
+      : [(to.sw[0] + to.ne[0]) / 2, (to.sw[1] + to.ne[1]) / 2];
     map.setView(c, 10);
     map.fire('click', { latlng: L.latLng(c[0], c[1]),
                         originalEvent: { target: document.body } });
@@ -80,10 +83,15 @@ test('selecting an overlay and panning saves a shifted rect override', async ({ 
   expect(out.sel).toContain('LLHZ_training.png');
   expect(out.hadCtr).toBe(true);
   expect(out.ov).toBeTruthy();
-  expect(out.ov.sw).toBeTruthy();
-  // centre moved +0.03 lat / +0.02 lng
-  const newCenterLat = (out.ov.sw[0] + out.ov.ne[0]) / 2;
-  const newCenterLng = (out.ov.sw[1] + out.ov.ne[1]) / 2;
+  // The saved override keeps the overlay's own shape: a plate drawn off north stays rotated
+  // (tl/tr/bl) instead of being flattened into a box by a nudge.
+  expect(out.ov.sw || out.ov.tl).toBeTruthy();
+  const newCenterLat = out.ov.tl
+    ? (out.ov.tl[0] + out.ov.tr[0] + out.ov.bl[0] + (out.ov.tr[0] + out.ov.bl[0] - out.ov.tl[0])) / 4
+    : (out.ov.sw[0] + out.ov.ne[0]) / 2;
+  const newCenterLng = out.ov.tl
+    ? (out.ov.tl[1] + out.ov.tr[1] + out.ov.bl[1] + (out.ov.tr[1] + out.ov.bl[1] - out.ov.tl[1])) / 4
+    : (out.ov.sw[1] + out.ov.ne[1]) / 2;
   expect(newCenterLat).toBeCloseTo(out.baseCenter[0] + 0.03, 2);
   expect(newCenterLng).toBeCloseTo(out.baseCenter[1] + 0.02, 2);
 });
