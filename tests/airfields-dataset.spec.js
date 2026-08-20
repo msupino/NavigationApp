@@ -29,6 +29,19 @@ function loadData() {
   return JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
 }
 
+// An overlay is either axis-aligned (sw/ne) or rotated (tl/tr/bl): a plate drawn off north --
+// several are, by a degree or two -- cannot be expressed as a north-up box, and forcing one
+// puts the sheet down turned and displaced. Both forms have to pass the same sanity checks.
+function overlayCorners(co) {
+  if (co.tl && co.tr && co.bl) {
+    const lats = [co.tl[0], co.tr[0], co.bl[0]];
+    const lngs = [co.tl[1], co.tr[1], co.bl[1]];
+    return { sw: [Math.min(...lats), Math.min(...lngs)], ne: [Math.max(...lats), Math.max(...lngs)],
+      rotated: true };
+  }
+  return { sw: co.sw, ne: co.ne, rotated: false };
+}
+
 test.describe('#412 — airfields.json (chart-sourced)', () => {
   test('parses and exposes the expected entry count', async () => {
     const d = loadData();
@@ -415,7 +428,7 @@ test.describe('cvfr_overlay field', () => {
   // CVFR route overlays, mirroring circuit_overlay and training_overlay.
   // Coverage: LLAR, LLEY, LLFK, LLHZ, LLKS, LLMG, LLMZ. (Comm-failure entry
   // plates live in commfail_overlay, a separate layer.)
-  const COVERAGE = ['LLAR', 'LLEY', 'LLFK', 'LLHZ', 'LLKS', 'LLMG', 'LLMZ'];
+  const COVERAGE = ['LLAR', 'LLEY', 'LLFK', 'LLHZ', 'LLIB', 'LLKS', 'LLMG', 'LLMZ'];
 
   test('every cvfr_overlay has correct shape and Israel-envelope bounds', async () => {
     const d = loadData();
@@ -424,14 +437,19 @@ test.describe('cvfr_overlay field', () => {
       if (!co) continue;
       expect(typeof co.png, `${af.name} cvfr png`).toBe('string');
       expect(co.png).toMatch(/^[A-Z]{4}_cvfr\.png$/);
-      expect(Array.isArray(co.sw) && co.sw.length === 2).toBe(true);
-      expect(Array.isArray(co.ne) && co.ne.length === 2).toBe(true);
-      expect(co.sw[0]).toBeLessThan(co.ne[0]);     // sw lat < ne lat
-      expect(co.sw[1]).toBeLessThan(co.ne[1]);     // sw lng < ne lng
-      expect(co.sw[0]).toBeGreaterThan(29);
-      expect(co.ne[0]).toBeLessThan(34);
-      expect(co.sw[1]).toBeGreaterThan(34);
-      expect(co.ne[1]).toBeLessThan(36);
+      const { sw, ne, rotated } = overlayCorners(co);
+      if (rotated) {
+        for (const c of [co.tl, co.tr, co.bl]) expect(Array.isArray(c) && c.length === 2).toBe(true);
+      } else {
+        expect(Array.isArray(co.sw) && co.sw.length === 2).toBe(true);
+        expect(Array.isArray(co.ne) && co.ne.length === 2).toBe(true);
+      }
+      expect(sw[0]).toBeLessThan(ne[0]);     // south of north
+      expect(sw[1]).toBeLessThan(ne[1]);     // west of east
+      expect(sw[0]).toBeGreaterThan(29);
+      expect(ne[0]).toBeLessThan(34);
+      expect(sw[1]).toBeGreaterThan(34);
+      expect(ne[1]).toBeLessThan(36);
     }
   });
 
@@ -483,7 +501,7 @@ test.describe('heli_overlay field', () => {
 test.describe('commfail_overlay field', () => {
   // Radio comm-failure entry overlays, mirroring cvfr_overlay.
   // Coverage: LLHA (dedicated plate), LLHZ (reuses its CVFR-routes plate).
-  const COVERAGE = ['LLHA', 'LLHZ'];
+  const COVERAGE = ['LLHA', 'LLHZ', 'LLIB'];
 
   test('every commfail_overlay has correct shape and Israel-envelope bounds', async () => {
     const d = loadData();
@@ -492,14 +510,19 @@ test.describe('commfail_overlay field', () => {
       if (!co) continue;
       expect(typeof co.png, `${af.name} commfail png`).toBe('string');
       expect(co.png).toMatch(/^[A-Z]{4}_commfail\.png$/);
-      expect(Array.isArray(co.sw) && co.sw.length === 2).toBe(true);
-      expect(Array.isArray(co.ne) && co.ne.length === 2).toBe(true);
-      expect(co.sw[0]).toBeLessThan(co.ne[0]);     // sw lat < ne lat
-      expect(co.sw[1]).toBeLessThan(co.ne[1]);     // sw lng < ne lng
-      expect(co.sw[0]).toBeGreaterThan(29);
-      expect(co.ne[0]).toBeLessThan(34);
-      expect(co.sw[1]).toBeGreaterThan(34);
-      expect(co.ne[1]).toBeLessThan(36);
+      const { sw, ne, rotated } = overlayCorners(co);
+      if (rotated) {
+        for (const c of [co.tl, co.tr, co.bl]) expect(Array.isArray(c) && c.length === 2).toBe(true);
+      } else {
+        expect(Array.isArray(co.sw) && co.sw.length === 2).toBe(true);
+        expect(Array.isArray(co.ne) && co.ne.length === 2).toBe(true);
+      }
+      expect(sw[0]).toBeLessThan(ne[0]);     // south of north
+      expect(sw[1]).toBeLessThan(ne[1]);     // west of east
+      expect(sw[0]).toBeGreaterThan(29);
+      expect(ne[0]).toBeLessThan(34);
+      expect(sw[1]).toBeGreaterThan(34);
+      expect(ne[1]).toBeLessThan(36);
     }
   });
 
