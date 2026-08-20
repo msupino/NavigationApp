@@ -3399,7 +3399,25 @@ body.theme-light .insp-charts-btn:hover, body.theme-light .insp-charts-btn:focus
   border-radius: 12px;
   padding: 2px 8px;
 }
-.charts-field-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+/* The way back stays on screen. The plate list scrolls inside the modal, and at Ben Gurion
+   (44 plates) the back button was somewhere above the fold by the time the pilot decided
+   they were in the wrong field. */
+.charts-field-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -2px 10px;
+  padding: 6px 2px;
+  background: #201d1d;
+  border-bottom: 1px solid #3a3636;
+}
+body.theme-light .charts-field-bar { background: #fafcff; border-bottom-color: #d8dde5; }
+/* Same for the field filter: it is the way out of a long list of fields. */
+.charts-filter { position: sticky; top: 0; z-index: 2; }
 .charts-back {
   font: inherit;
   font-size: 14px;

@@ -4559,7 +4559,19 @@ function showNotamModal(only) {
   const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
   // Let closeOpenChartModals() (other charts opening) close this one too.
   back._navaidClose = dismiss;
-  function onKey(ev) { if (ev.key === 'Escape') dismiss(); }
+  // Escape closes THIS modal and stops there. Without the stopPropagation the same keypress
+  // carried on to the window-level handler in interact.js, which -- finding no modal left,
+  // because this one had already removed itself -- went on to clear the selection and close
+  // the inspector underneath. Reported: closing a NOTAM opened from an airfield's inspector
+  // took the inspector with it.
+  function onKey(ev) {
+    if (ev.key !== 'Escape') return;
+    const modals = document.querySelectorAll('.modal-back');
+    if (modals.length && modals[modals.length - 1] !== back) return;   // something is on top
+    ev.preventDefault();
+    ev.stopPropagation();
+    dismiss();
+  }
   close.onclick = dismiss;
   back.addEventListener('click', e => { if (e.target === back) dismiss(); });
   document.addEventListener('keydown', onKey);

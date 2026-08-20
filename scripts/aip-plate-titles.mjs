@@ -108,6 +108,11 @@ function splitTitle(full) {
   // with a stray "א'".
   const m = t.match(/^(.*?)\s*[-–]\s*(נספח\s*[\u05d0-\u05ea]{1,3}\s*['"״׳]?(?:\s*-\s*\d)?)\s*[-–]?\s*(.*)$/);
   if (m) return { annex: m[2].trim(), title: (m[3] || '').trim() || m[1].trim() };
+  // "מנחת באר-שבע - LLBS - דפי מלל": the field's name and code lead the title of every text
+  // page, and both are already on the screen -- the section header IS the field. What the
+  // pilot is looking for is the two words at the end.
+  const coded = t.match(/^.*?\s*[-–]\s*LL[A-Z]{2}\s*[-–]\s*(.+)$/);
+  if (coded) return { annex: '', title: coded[1].trim() };
   const dash = t.match(/^(.*?)\s*[-–]\s*(.+)$/);
   if (dash && /^[A-Z]{4}$/.test(dash[2].trim())) return { annex: '', title: dash[1].trim() };
   return { annex: '', title: t };

@@ -238,3 +238,61 @@ test('inspector buttons follow the dark theme', async ({ page }) => {
     expect(v.fg, `${name} text`).toBeGreaterThan(0.5);      // ...with light text on it
   }
 });
+
+// Reported: at a field with many plates the list scrolls and the way back goes with it.
+test('the back button stays on screen while the plates scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 640 });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showChartsModal === 'function');
+  await page.evaluate(() => showChartsModal('LLBG'));
+  await page.waitForSelector('.charts-airport[data-icao="LLBG"] .plate-row');
+  const sticky = await page.evaluate(() => getComputedStyle(document.querySelector('.charts-field-bar')).position);
+  expect(sticky).toBe('sticky');
+  const before = await page.locator('.charts-back').boundingBox();
+  await page.evaluate(() => {
+    const sc = document.querySelector('.fp-scroll');
+    sc.scrollTop = sc.scrollHeight;
+  });
+  await page.waitForTimeout(150);
+  const after = await page.locator('.charts-back').boundingBox();
+  expect(after).not.toBeNull();
+  // It has not scrolled away with the list.
+  expect(Math.abs(after.y - before.y)).toBeLessThan(8);
+});
+
+// Reported: closing a NOTAM opened from an airfield's inspector took the inspector with it.
+// The modal's own Escape handler removed it, and the same keypress then reached the window
+// handler, which — finding no modal left — cleared the selection underneath.
+test('Escape on a NOTAM closes the NOTAM and leaves the inspector', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showNotamModal === 'function'
+    && Array.isArray(window.airfields) && window.airfields.length > 0);
+  const out = await page.evaluate(() => {
+    const insp = document.getElementById('inspector');
+    state.selected = { type: 'airfield', index: airfields.findIndex(a => a.plates && a.plates.length) };
+    showInspector();
+    showNotamModal([{ icao: 'LLIB', id: 'A1/26', raw: 'X', text: 'x' }]);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    return { inspectorHidden: insp.classList.contains('hidden'),
+             stillSelected: !!state.selected,
+             modals: document.querySelectorAll('.modal-back').length };
+  });
+  expect(out.modals).toBe(0);              // the NOTAM went
+  expect(out.inspectorHidden).toBe(false); // the inspector stayed
+  expect(out.stillSelected).toBe(true);
+});
+
+// A second Escape, with nothing on top, is the one that closes the inspector.
+test('a second Escape then closes the inspector', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showInspector === 'function'
+    && Array.isArray(window.airfields) && window.airfields.length > 0);
+  const hidden = await page.evaluate(() => {
+    const insp = document.getElementById('inspector');
+    state.selected = { type: 'airfield', index: 0 };
+    showInspector();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    return insp.classList.contains('hidden');
+  });
+  expect(hidden).toBe(true);
+});
