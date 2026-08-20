@@ -2237,6 +2237,34 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
   font-size: 13px;
 }
 .notam-updated { font-size: 11px; opacity: 0.7; margin: 0 0 8px; }
+/* NOTAM time frame: "Active" is the default and "All" adds the ones not in force yet. The
+   rows it adds carry when they start, so the extra items are distinguishable from the ones
+   that matter now. */
+.notam-timeframe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #cfd6de;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.notam-timeframe input { margin: 0; }
+.notam-when {
+  margin-inline-start: 6px;
+  font-size: 11px;
+  color: #cfe4ff;
+  background: #24303f;
+  border: 1px solid #35506f;
+  border-radius: 10px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+.notam-when-past { color: #d9c3a3; background: #3a2f22; border-color: #6b5433; }
+body.theme-light .notam-timeframe { color: #47505c; }
+body.theme-light .notam-when { color: #16406e; background: #dbe8fb; border-color: #9dbde8; }
+body.theme-light .notam-when-past { color: #6b4c14; background: #f6ead2; border-color: #d3b477; }
+
 .notam-filter { margin: 0 0 8px; display: flex; gap: 6px; flex-wrap: wrap; }
 .notam-filter-sel {
   font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 5px;
