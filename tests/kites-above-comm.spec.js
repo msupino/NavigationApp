@@ -1,8 +1,8 @@
 // @ts-check
-// Reported: a frequency-change callout covered the cumulative-time kite. Both sit on the leg,
-// and the callout is a filled box on a tail — where they overlap, the number a pilot is
-// scanning for on that leg (when they reach the point) was hidden behind a label they had
-// already read. The kite is painted last now.
+// Reported: a frequency-change callout covered the kites. All three sit on the leg, and the
+// callout is a filled box on a tail — where they overlap, the numbers a pilot is still
+// scanning for (what to fly, and when they reach the point) were hidden behind a label they
+// had already read. Both kites are painted last now.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -50,7 +50,7 @@ test('every queued kite is flushed — none are lost on the way', async ({ page 
     const orig = window.drawCumTimeArrow;
     window.drawCumTimeArrow = function (...a) { painted++; return orig.apply(null, a); };
     try { draw(); } finally { window.drawCumTimeArrow = orig; }
-    return { painted, queued: _cumKiteQueue.length };
+    return { painted, queued: _kiteQueue.length };
   });
   expect(out.painted).toBeGreaterThan(0);      // the outbound leg's kite
   expect(out.queued).toBe(0);                  // and nothing left waiting
@@ -68,7 +68,7 @@ test('the export paints them in the same order', async ({ page }) => {
     window.drawNotes = function (...a) { seen.push('notes'); return origNotes.apply(null, a); };
     try {
       drawLegs(); drawWaypoints(); drawNotes();
-      if (typeof flushCumTimeArrows === 'function') flushCumTimeArrows();
+      if (typeof flushKites === 'function') flushKites();
     } finally {
       window.drawCumTimeArrow = origKite;
       window.drawNotes = origNotes;
@@ -76,4 +76,38 @@ test('the export paints them in the same order', async ({ page }) => {
     return seen;
   });
   expect(order.lastIndexOf('notes')).toBeLessThan(order.indexOf('kite'));
+});
+
+// The nav kite is the one carrying the heading and altitude to fly; it had the same problem.
+test('the nav kite is painted after the notes too', async ({ page }) => {
+  await boot(page);
+  const order = await page.evaluate(() => {
+    const seen = [];
+    const origArrow = window.drawLegArrow;
+    const origNotes = window.drawNotes;
+    window.drawLegArrow = function (...a) { seen.push('nav'); return origArrow.apply(null, a); };
+    window.drawNotes = function (...a) { seen.push('notes'); return origNotes.apply(null, a); };
+    try { draw(); } finally {
+      window.drawLegArrow = origArrow;
+      window.drawNotes = origNotes;
+    }
+    return seen;
+  });
+  expect(order).toContain('nav');
+  expect(order.lastIndexOf('notes')).toBeLessThan(order.indexOf('nav'));
+});
+
+test('both kinds of kite flush, and the queue is left empty', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    let nav = 0; let cum = 0;
+    const oa = window.drawLegArrow; const oc = window.drawCumTimeArrow;
+    window.drawLegArrow = function (...a) { nav++; return oa.apply(null, a); };
+    window.drawCumTimeArrow = function (...a) { cum++; return oc.apply(null, a); };
+    try { draw(); } finally { window.drawLegArrow = oa; window.drawCumTimeArrow = oc; }
+    return { nav, cum, queued: _kiteQueue.length };
+  });
+  expect(out.nav).toBeGreaterThan(0);
+  expect(out.cum).toBeGreaterThan(0);
+  expect(out.queued).toBe(0);
 });

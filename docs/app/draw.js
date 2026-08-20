@@ -855,7 +855,7 @@ function draw() {
   // field doesn't cover them (and they stay clickable).
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
   drawNotes();
-  flushCumTimeArrows();      // above the callouts -- see queueCumTimeArrow
+  flushKites();      // both kinds of kite, above the callouts -- see queueKite
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
@@ -3954,7 +3954,7 @@ function drawLegs() {
     // already gated by legAllowsReturn).
     const inboundBlocked = typeof legAltitudeIsBlocked === 'function' &&
       legAltitudeIsBlocked(leg, 'inboundAltitude');
-    if (!inboundBlocked && !kiteOff) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
+    if (!inboundBlocked && !kiteOff) queueLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
@@ -3986,7 +3986,7 @@ function drawLegs() {
     const returnOn = showReturn &&
       (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn());
     if (returnOn && legAllowsReturn(i)) {
-      if (!kiteOff) drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
+      if (!kiteOff) queueLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
         tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
@@ -4167,17 +4167,20 @@ function needsHalo(i, which) {
 // rectangle cell showing the running total time from departure to this leg.
 // Drawn on the opposite perpendicular side from the main inbound kite so both
 // markers are always visible without overlap.
-// The cumulative-time kite is painted LAST, above the notes. A frequency-change callout is a
-// filled box on a tail, and where the two land on the same stretch of leg the callout covered
-// the kite -- so the one number a pilot is scanning for on that leg (when they reach the
-// point) was hidden by a label they had already read. Both are drawn during their own passes;
-// the kites queue here and are flushed after drawNotes().
-let _cumKiteQueue = [];
-function queueCumTimeArrow(...args) { _cumKiteQueue.push(args); }
-function flushCumTimeArrows() {
-  const queued = _cumKiteQueue;
-  _cumKiteQueue = [];
-  for (const args of queued) drawCumTimeArrow(...args);
+// Both kites are painted LAST, above the notes. A frequency-change callout is a filled box on
+// a tail, and where it lands on the same stretch of leg it covered them -- so the numbers a
+// pilot is still scanning for (what to fly, and when they reach the point) were hidden behind
+// a label they had already read. Each queues during the leg pass and is flushed after
+// drawNotes(); queued rather than drawn twice, because the fills are semi-transparent and a
+// second pass would darken them.
+let _kiteQueue = [];
+function queueKite(fn, args) { _kiteQueue.push([fn, args]); }
+function queueCumTimeArrow(...args) { queueKite(drawCumTimeArrow, args); }
+function queueLegArrow(...args) { queueKite(drawLegArrow, args); }
+function flushKites() {
+  const queued = _kiteQueue;
+  _kiteQueue = [];
+  for (const [fn, args] of queued) fn(...args);
 }
 function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   sc = sc ?? 1;
