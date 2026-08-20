@@ -1,11 +1,4 @@
 {
- "LLAR_airport_CVFR.pdf": {
-  "annex": "נספח ג'",
-  "he": "",
-  "en": "",
-  "modified": "",
-  "source": "pdf"
- },
  "LLAR_airport_Chart.pdf": {
   "annex": "נספח א",
   "he": "תרשים המנחת",
@@ -215,13 +208,6 @@
   "en": "",
   "modified": "2025-05-15",
   "source": "aip"
- },
- "LLHA_airport_Annex Bet 4.pdf": {
-  "annex": "נספח ב",
-  "he": "AIRCRAFT PARKING CHART - ICAO",
-  "en": "",
-  "modified": "",
-  "source": "pdf"
  },
  "LLHA_airport_Annex Bet.pdf": {
   "annex": "נספח ב",
@@ -537,13 +523,6 @@
   "en": "",
   "modified": "2023-05-17",
   "source": "aip"
- },
- "LLMZ_airport_CVFR.pdf": {
-  "annex": "נספח ג'",
-  "he": "כניסה ויציאה נתיבי CVFR",
-  "en": "",
-  "modified": "",
-  "source": "pdf"
  },
  "LLRS_airport_Annex Alef.pdf": {
   "annex": "נספח א",
