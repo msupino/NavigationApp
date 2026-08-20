@@ -1879,6 +1879,7 @@ window.S = Object.assign({
   plateLoading: 'Loading…',
   loadingCharts: 'Loading charts…',
   plateLoadError: 'Failed to load chart.',
+  plateAmendedOn: (d) => 'Amended ' + d,
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP.',
   updateAvailable: 'New NavAid build available. Hard refresh or reload to update.',
   updateReload: 'Reload',

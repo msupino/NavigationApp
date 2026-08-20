@@ -6019,10 +6019,12 @@ function plateDesignation(filename) {
 function plateAnnexBadge(annex) {
   return String(annex || '').replace(/^נספח\s*/, '').trim();
 }
-// 2026-08-06 -> 8/26, the way an amendment is written on the plate itself.
+// The date the CAA last amended this plate, shown as 2026-08. Not "8/26": that reads as an
+// amendment NUMBER (which is what a plate prints in its corner, and is not what this is), and
+// in a Hebrew line bidi turned it round into "21/8".
 function plateAmendment(modified) {
   const m = String(modified || '').match(/^(\d{4})-(\d{2})/);
-  return m ? String(Number(m[2])) + '/' + m[1].slice(2) : '';
+  return m ? m[1] + '-' + m[2] : '';
 }
 
 // URL of one rendered plate page (1-based).
@@ -7336,7 +7338,21 @@ function showChartsModal(focusIcao) {
       section.dataset.icao = af.name;
       const header = document.createElement('div');
       header.className = 'charts-airport-header';
-      header.textContent = af.name + (af.en ? ' — ' + af.en : '');
+      // The field's name in the interface language, then its code. It used to print the code
+      // and the English name only, so a Hebrew session read "LLIB — Rosh Pina / Mahanayim"
+      // for a field the pilot calls ראש פינה.
+      const heUi = (typeof window !== 'undefined' && window.__navLang === 'he');
+      const localName = (heUi ? (af.he || af.en) : (af.en || af.he)) || '';
+      header.textContent = '';
+      const nameEl = document.createElement('span');
+      nameEl.className = 'charts-airport-name';
+      nameEl.textContent = localName || af.name;
+      const codeEl = document.createElement('span');
+      codeEl.className = 'charts-airport-code';
+      codeEl.textContent = af.name;
+      codeEl.dir = 'ltr';               // the ICAO code is Latin in either language
+      header.appendChild(nameEl);
+      if (localName) header.appendChild(codeEl);
       // Keyboard + screen-reader parity with the toolbar's .tb-section-head
       // pattern: tabbable, announced as a button, with explicit expanded
       // state. The pane it controls is display:none until 'open', so without
@@ -7403,6 +7419,8 @@ function showChartsModal(focusIcao) {
             const when = document.createElement('span');
             when.className = 'plate-row-amd';
             when.textContent = amd;
+            when.dir = 'ltr';           // a date reads left to right in either language
+            when.title = S.plateAmendedOn ? S.plateAmendedOn(d.modified) : d.modified;
             row.appendChild(when);
           }
           row.onclick = () => showPlateViewer(fn, d.title);

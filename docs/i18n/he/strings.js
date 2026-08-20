@@ -879,6 +879,7 @@ window.S = {
   plateLoading: 'טוען…',
   loadingCharts: 'טוען מפות…',
   plateLoadError: 'טעינת הדפית נכשלה.',
+  plateAmendedOn: (d) => 'עודכן ' + d,
   plateAttribution: 'דפיות © רשות התעופה האזרחית / משרד התחבורה — מפורסם ב-AIP.',
   tbLightMode: 'מצב בהיר',
   tbDarkMode: 'מצב כהה',

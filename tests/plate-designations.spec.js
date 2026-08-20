@@ -32,12 +32,36 @@ test('a Hebrew session shows the CAA designation, not the file name', async ({ p
   expect(list.every(r => !/airport|Annex [A-Z]/.test(r.title))).toBe(true);
 });
 
-test('the amendment the plate carries is on the row', async ({ page }) => {
+test('the date the plate was last amended is on the row, and reads the same way round in Hebrew', async ({ page }) => {
   await openCharts(page, 'he');
   const list = await rows(page);
   const chart = list.find(r => r.annex === "א'");
   expect(chart).toBeTruthy();
-  expect(chart.amd).toMatch(/^\d{1,2}\/\d{2}$/);   // 8/26, the way a plate writes it
+  // 2026-08, not "8/26": that reads as an amendment NUMBER, which this is not, and bidi turned
+  // it round into "21/8" in a Hebrew line.
+  expect(chart.amd).toMatch(/^\d{4}-\d{2}$/);
+  expect(await page.evaluate(() =>
+    document.querySelector('.charts-airport[data-icao="LLIB"] .plate-row-amd').dir)).toBe('ltr');
+});
+
+// Reported: a Hebrew session read "LLIB — Rosh Pina / Mahanayim" for a field the pilot calls
+// ראש פינה.
+test('the airfield header leads with the name in the interface language', async ({ page }) => {
+  await openCharts(page, 'he');
+  const head = await page.evaluate(() => {
+    const h = document.querySelector('.charts-airport[data-icao="LLIB"] .charts-airport-header');
+    return { name: h.querySelector('.charts-airport-name').textContent,
+             code: h.querySelector('.charts-airport-code').textContent };
+  });
+  expect(head.name).toBe('ראש פינה');
+  expect(head.code).toBe('LLIB');
+});
+
+test('an English session leads with the English name', async ({ page }) => {
+  await openCharts(page, 'en');
+  const name = await page.evaluate(() =>
+    document.querySelector('.charts-airport[data-icao="LLIB"] .charts-airport-name').textContent);
+  expect(name).toMatch(/Rosh Pina/);
 });
 
 // The domestic AIP is Hebrew-only, so an English session still gets the Hebrew designation —
