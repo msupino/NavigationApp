@@ -110,3 +110,61 @@ test('the shipped designations carry no control, bidi or markdown characters', a
   });
   expect(bad).toEqual([]);
 });
+
+// Reported: "the menu itself is not usable ... bigger buttons, not >". It was a scrolling
+// column of collapsed sections with a chevron each — a lot of small targets between the pilot
+// and the chart. Two screens now, the way every plate app a pilot already uses does it: pick
+// the field, then its plates.
+test.describe('the charts menu is two screens, not twenty accordions', () => {
+  const open = async (page, lang) => {
+    await page.goto(`?lang=${lang || 'he'}&nogist`);
+    await page.waitForFunction(() => typeof showChartsModal === 'function');
+    await page.evaluate(() => showChartsModal());
+    await page.waitForSelector('.charts-fields-grid .charts-field');
+  };
+
+  test('it opens on a grid of fields, with no accordions to expand', async ({ page }) => {
+    await open(page);
+    expect(await page.locator('.charts-field').count()).toBeGreaterThan(3);
+    await expect(page.locator('.charts-airport-body')).toHaveCount(0);
+    // Every tile is a thumb-sized target, not a line of text with a chevron.
+    const box = await page.locator('.charts-field').first().boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(56);
+  });
+
+  test('a tile opens that field and only that field, with a way back', async ({ page }) => {
+    await open(page);
+    await page.locator('.charts-field[data-icao="LLIB"]').click();
+    await expect(page.locator('.charts-airport[data-icao="LLIB"] .plate-row').first()).toBeVisible();
+    await expect(page.locator('.charts-fields-grid')).toHaveCount(0);
+    await page.locator('.charts-back').click();
+    await expect(page.locator('.charts-fields-grid')).toBeVisible();
+  });
+
+  test('the filter finds a field by its Hebrew name or its code', async ({ page }) => {
+    await open(page);
+    await page.fill('#charts-filter', 'ראש');
+    await expect(page.locator('.charts-field[data-icao="LLIB"]')).toBeVisible();
+    expect(await page.locator('.charts-field').count()).toBeLessThan(4);
+    await page.fill('#charts-filter', 'llhz');
+    await expect(page.locator('.charts-field[data-icao="LLHZ"]')).toBeVisible();
+  });
+
+  // The fields this flight touches come first: a pilot opening this mid-planning wants them,
+  // not an alphabetical hunt.
+  test('the route’s own fields are listed first', async ({ page }) => {
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof showChartsModal === 'function');
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.98, lng: 35.57, name: 'LLIB' }];
+      syncLegs();
+      showChartsModal();
+    });
+    await page.waitForSelector('.charts-fields-grid .charts-field');
+    const first = await page.evaluate(() =>
+      [...document.querySelectorAll('.charts-fields-grid')][0].querySelectorAll('.charts-field').length);
+    const label = await page.locator('.charts-fields-label').first().textContent();
+    expect(label).toContain('במסלול');
+    expect(first).toBe(2);
+  });
+});

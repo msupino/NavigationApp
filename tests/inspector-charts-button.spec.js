@@ -27,9 +27,12 @@ test('inspector charts button opens the Charts modal expanded to that airfield',
   await expect(btn).toBeVisible();
   await btn.click();
 
-  // Charts modal opens with that airfield's section expanded.
+  // Charts modal opens straight on that airfield's plates -- that is the whole reason the
+  // button carries an ICAO. No field grid to walk through first.
   const section = page.locator(`.charts-airport[data-icao="${icao}"]`);
   await expect(section).toBeVisible();
-  await expect(section.locator('.charts-airport-header')).toHaveClass(/open/);
   await expect(section.locator('.plate-row').first()).toBeVisible();
+  await expect(page.locator('.charts-fields-grid')).toHaveCount(0);
+  // ...and a thumb-sized way back to the field list.
+  await expect(section.locator('.charts-back')).toBeVisible();
 });
