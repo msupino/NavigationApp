@@ -673,12 +673,19 @@ html[dir="rtl"] #toolbar.collapsed {
    clipped; the menu is content-sized, so the row simply gets a little wider. */
 #toolbar #wp-size-val,
 #toolbar #leg-arrow-size-val { min-width: max-content; }
+/* ...and because the suffix makes the row wider than the menu body at selector 1, the row is
+   allowed to wrap rather than squeezing the slider: label + slider on one line, the readout
+   and its reset on the next. The row's contents overflowed their own box by ~15px otherwise,
+   which stole that much travel from the slider at exactly the value the suffix appears. */
+#toolbar .navtoggle-wrap { flex-wrap: wrap; row-gap: 2px; }
+#toolbar .navtoggle-wrap input[type="range"] { flex: 1 1 90px; }
 
 /* Look-ahead time readouts vary in length as the slider moves ("now" →
    "+72h · 12-31 12:00Z"); a fixed width keeps the row — and the whole
-   content-sized dropdown menu — from growing and jumping mid-drag. Sized to
-   the longest value (~114px measured at 11px). */
-#toolbar #lookahead-time-val { width: 120px; }
+   content-sized dropdown menu — from growing and jumping mid-drag. Measured
+   at 126px for the longest value, so 128 leaves the text inside its own box:
+   at 120 it painted six pixels past the edge, under the reset button. */
+#toolbar #lookahead-time-val { width: 128px; }
 #toolbar .slider-reset {
   flex-shrink: 0;
   font-size: 12px;
