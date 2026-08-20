@@ -81,7 +81,7 @@ test('opacity slider drives overlay opacity', async ({ page }) => {
   expect(result.label).toBe('30%');
 });
 
-test('opacity reset restores default 0.6', async ({ page }) => {
+test('opacity reset restores the tuned default', async ({ page }) => {
   await boot(page);
   await page.locator('#commfail-cb').check();
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
@@ -98,9 +98,12 @@ test('opacity reset restores default 0.6', async ({ page }) => {
       label: document.getElementById('plate-opacity-val').textContent,
     };
   });
-  expect(parseFloat(result.sliderVal)).toBeCloseTo(0.6, 2);
-  expect(result.opacity).toBeCloseTo(0.6, 2);
-  expect(result.label).toBe('60%');
+  // Reset goes back to overlayOpacity, the one tunable behind the shared slider -- not to a
+  // number frozen into the test (see tests/overlay-opacity-tunables.spec.js).
+  const want = await page.evaluate(() => overlayDefaultOpacity());
+  expect(parseFloat(result.sliderVal)).toBeCloseTo(want, 2);
+  expect(result.opacity).toBeCloseTo(want, 2);
+  expect(result.label).toBe(Math.round(want * 100) + '%');
 });
 
 test('toggle state and opacity persist across reload', async ({ page }) => {
