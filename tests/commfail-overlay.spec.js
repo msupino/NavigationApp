@@ -168,16 +168,20 @@ test('Rosh Pina has a comm-failure overlay, georeferenced onto its own field', a
   expect(af).toBeTruthy();
   expect(af.commfail_overlay).toBeTruthy();
   expect(af.commfail_overlay.png).toBe('LLIB_commfail.png');
-  const { sw, ne } = af.commfail_overlay;
-  // The box has to contain the field itself — the plate is the joining chart FOR Rosh Pina.
-  expect(af.lat).toBeGreaterThan(sw[0]);
-  expect(af.lat).toBeLessThan(ne[0]);
-  expect(af.lng).toBeGreaterThan(sw[1]);
-  expect(af.lng).toBeLessThan(ne[1]);
-  // ...and be about the size the plate covers (~4' of latitude at 1:65,000), not the whole
+  const { tl, tr, bl } = af.commfail_overlay;
+  // Rotated corners, not a north-up box: the sheet is drawn ~1.9° off north, and an
+  // axis-aligned box put it south and east of where it belongs, turned.
+  expect(tl && tr && bl).toBeTruthy();
+  expect(Math.abs(tl[0] - tr[0])).toBeGreaterThan(0.0005);   // the top edge is not level
+  // The plate has to contain the field it is the joining chart FOR.
+  expect(af.lat).toBeLessThan(tl[0]);
+  expect(af.lat).toBeGreaterThan(bl[0]);
+  expect(af.lng).toBeGreaterThan(tl[1]);
+  expect(af.lng).toBeLessThan(tr[1]);
+  // ...and be about the size the plate covers (~5' of latitude at 1:65,000), not the whole
   // country: a plate stretched over a wrong box lines up only at its centre.
-  expect((ne[0] - sw[0]) * 60).toBeGreaterThan(3);
-  expect((ne[0] - sw[0]) * 60).toBeLessThan(6);
+  expect((tl[0] - bl[0]) * 60).toBeGreaterThan(3);
+  expect((tl[0] - bl[0]) * 60).toBeLessThan(7);
 });
 
 // The CVFR entry/exit plate (נספח ג') is the one a pilot flies to reach the field, and Rosh
@@ -190,13 +194,15 @@ test('Rosh Pina has its CVFR entry/exit overlay', async ({ page }) => {
   });
   expect(af.cvfr_overlay).toBeTruthy();
   expect(af.cvfr_overlay.png).toBe('LLIB_cvfr.png');
-  const { sw, ne } = af.cvfr_overlay;
-  expect(af.lat).toBeGreaterThan(sw[0]);
-  expect(af.lat).toBeLessThan(ne[0]);
-  expect(af.lng).toBeGreaterThan(sw[1]);
-  expect(af.lng).toBeLessThan(ne[1]);
+  const { tl, tr, bl } = af.cvfr_overlay;
+  expect(tl && tr && bl).toBeTruthy();
+  expect(Math.abs(tl[0] - tr[0])).toBeGreaterThan(0.0005);   // drawn ~1.4° off north
+  expect(af.lat).toBeLessThan(tl[0]);
+  expect(af.lat).toBeGreaterThan(bl[0]);
+  expect(af.lng).toBeGreaterThan(tl[1]);
+  expect(af.lng).toBeLessThan(tr[1]);
   // The entry/exit chart covers the routes in, so it is wider than the circuit plate beside
   // it -- but still a plate, not a country: ~26' of latitude at 1:250,000.
-  expect((ne[0] - sw[0]) * 60).toBeGreaterThan(20);
-  expect((ne[0] - sw[0]) * 60).toBeLessThan(35);
+  expect((tl[0] - bl[0]) * 60).toBeGreaterThan(20);
+  expect((tl[0] - bl[0]) * 60).toBeLessThan(35);
 });
