@@ -81,7 +81,7 @@ test('opacity slider drives overlay opacity', async ({ page }) => {
   expect(result.label).toBe('30%');
 });
 
-test('opacity reset restores default 0.6', async ({ page }) => {
+test('opacity reset restores the tuned default', async ({ page }) => {
   await boot(page);
   await page.locator('#commfail-cb').check();
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
@@ -98,9 +98,12 @@ test('opacity reset restores default 0.6', async ({ page }) => {
       label: document.getElementById('plate-opacity-val').textContent,
     };
   });
-  expect(parseFloat(result.sliderVal)).toBeCloseTo(0.6, 2);
-  expect(result.opacity).toBeCloseTo(0.6, 2);
-  expect(result.label).toBe('60%');
+  // Reset goes back to overlayOpacity, the one tunable behind the shared slider -- not to a
+  // number frozen into the test (see tests/overlay-opacity-tunables.spec.js).
+  const want = await page.evaluate(() => overlayDefaultOpacity());
+  expect(parseFloat(result.sliderVal)).toBeCloseTo(want, 2);
+  expect(result.opacity).toBeCloseTo(want, 2);
+  expect(result.label).toBe(Math.round(want * 100) + '%');
 });
 
 test('toggle state and opacity persist across reload', async ({ page }) => {
@@ -151,4 +154,49 @@ test('commfail overlay PNG URLs resolve through commfailImgBase()', async ({ pag
   for (const u of urls) {
     expect(u).toMatch(/\/commfail-img\/[A-Z]{4}_commfail.png/);
   }
+});
+
+// Reported from the cockpit: Rosh Pina's radio-failure joining plate (נספח ד') was in the
+// plate list but not on the map — the layer only carried LLHA and LLHZ, so switching it on
+// at LLIB drew nothing at all.
+test('Rosh Pina has a comm-failure overlay, georeferenced onto its own field', async ({ page }) => {
+  await boot(page);
+  const af = await page.evaluate(async () => {
+    if (typeof loadAirfields === 'function' && !window.airfields) await loadAirfields();
+    return (window.airfields || []).find(a => a.name === 'LLIB') || null;
+  });
+  expect(af).toBeTruthy();
+  expect(af.commfail_overlay).toBeTruthy();
+  expect(af.commfail_overlay.png).toBe('LLIB_commfail.png');
+  const { sw, ne } = af.commfail_overlay;
+  // The box has to contain the field itself — the plate is the joining chart FOR Rosh Pina.
+  expect(af.lat).toBeGreaterThan(sw[0]);
+  expect(af.lat).toBeLessThan(ne[0]);
+  expect(af.lng).toBeGreaterThan(sw[1]);
+  expect(af.lng).toBeLessThan(ne[1]);
+  // ...and be about the size the plate covers (~4' of latitude at 1:65,000), not the whole
+  // country: a plate stretched over a wrong box lines up only at its centre.
+  expect((ne[0] - sw[0]) * 60).toBeGreaterThan(3);
+  expect((ne[0] - sw[0]) * 60).toBeLessThan(6);
+});
+
+// The CVFR entry/exit plate (נספח ג') is the one a pilot flies to reach the field, and Rosh
+// Pina had every other layer but not that one.
+test('Rosh Pina has its CVFR entry/exit overlay', async ({ page }) => {
+  await boot(page);
+  const af = await page.evaluate(async () => {
+    if (typeof loadAirfields === 'function' && !window.airfields) await loadAirfields();
+    return (window.airfields || []).find(a => a.name === 'LLIB') || null;
+  });
+  expect(af.cvfr_overlay).toBeTruthy();
+  expect(af.cvfr_overlay.png).toBe('LLIB_cvfr.png');
+  const { sw, ne } = af.cvfr_overlay;
+  expect(af.lat).toBeGreaterThan(sw[0]);
+  expect(af.lat).toBeLessThan(ne[0]);
+  expect(af.lng).toBeGreaterThan(sw[1]);
+  expect(af.lng).toBeLessThan(ne[1]);
+  // The entry/exit chart covers the routes in, so it is wider than the circuit plate beside
+  // it -- but still a plate, not a country: ~26' of latitude at 1:250,000.
+  expect((ne[0] - sw[0]) * 60).toBeGreaterThan(20);
+  expect((ne[0] - sw[0]) * 60).toBeLessThan(35);
 });

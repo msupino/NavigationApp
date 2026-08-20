@@ -4559,7 +4559,19 @@ function showNotamModal(only) {
   const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
   // Let closeOpenChartModals() (other charts opening) close this one too.
   back._navaidClose = dismiss;
-  function onKey(ev) { if (ev.key === 'Escape') dismiss(); }
+  // Escape closes THIS modal and stops there. Without the stopPropagation the same keypress
+  // carried on to the window-level handler in interact.js, which -- finding no modal left,
+  // because this one had already removed itself -- went on to clear the selection and close
+  // the inspector underneath. Reported: closing a NOTAM opened from an airfield's inspector
+  // took the inspector with it.
+  function onKey(ev) {
+    if (ev.key !== 'Escape') return;
+    const modals = document.querySelectorAll('.modal-back');
+    if (modals.length && modals[modals.length - 1] !== back) return;   // something is on top
+    ev.preventDefault();
+    ev.stopPropagation();
+    dismiss();
+  }
   close.onclick = dismiss;
   back.addEventListener('click', e => { if (e.target === back) dismiss(); });
   document.addEventListener('keydown', onKey);
@@ -4644,11 +4656,18 @@ function lsNum(key, fallback) {
   return isNaN(v) ? fallback : v;
 }
 const CIRCUIT_OPACITY_KEY = 'navaid.circuitOpacity';
-const CIRCUIT_DEFAULT_OPACITY = 0.6;
+// One slider drives every overlay -- the plates and the annex layers alike, since
+// buildOverlayLayer creates them all with plateOpacity -- so there is one default behind it,
+// set from the gist. Read at the point of use, like the other tunables, so a value pushed from
+// the gist applies without a reload; a slider the pilot has moved still wins.
+function overlayDefaultOpacity() {
+  const v = (typeof tune === 'function') ? Number(tune('overlayOpacity')) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : 0.8;
+}
 
 window.showCircuit = lsGet(CIRCUIT_SHOW_KEY) === '1';
 window.circuitLayerGroup = null;
-let circuitOpacity = lsNum(CIRCUIT_OPACITY_KEY, CIRCUIT_DEFAULT_OPACITY);
+let circuitOpacity = lsNum(CIRCUIT_OPACITY_KEY, overlayDefaultOpacity());
 
 // Unlike byop plates (a single copy at the deployed root — see plateBase()),
 // circuit-img PNGs are committed to the repo and ship WITH every preview
@@ -4683,11 +4702,10 @@ function applyCircuitOpacity(v) {
 // ── Training-area overlay ─────────────────────────────────────────────────────
 const TRAINING_SHOW_KEY    = 'navaid.showTraining';
 const TRAINING_OPACITY_KEY = 'navaid.trainingOpacity';
-const TRAINING_DEFAULT_OPACITY = 0.6;
 
 window.showTraining = lsGet(TRAINING_SHOW_KEY) === '1';
 window.trainingLayerGroup = null;
-let trainingOpacity = lsNum(TRAINING_OPACITY_KEY, TRAINING_DEFAULT_OPACITY);
+let trainingOpacity = lsNum(TRAINING_OPACITY_KEY, overlayDefaultOpacity());
 
 // Same resolution rule as circuitImgBase(): training-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
@@ -4719,11 +4737,10 @@ function applyTrainingOpacity(v) {
 // ── CVFR routes / comm-failure overlay ────────────────────────────────────────
 const CVFR_SHOW_KEY    = 'navaid.showCvfr';
 const CVFR_OPACITY_KEY = 'navaid.cvfrOpacity';
-const CVFR_DEFAULT_OPACITY = 0.6;
 
 window.showCvfr = lsGet(CVFR_SHOW_KEY) === '1';
 window.cvfrLayerGroup = null;
-let cvfrOpacity = lsNum(CVFR_OPACITY_KEY, CVFR_DEFAULT_OPACITY);
+let cvfrOpacity = lsNum(CVFR_OPACITY_KEY, overlayDefaultOpacity());
 
 // Same resolution rule as trainingImgBase(): cvfr-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
@@ -4755,11 +4772,10 @@ function applyCvfrOpacity(v) {
 // ── Helicopter routes overlay ─────────────────────────────────────────────────
 const HELI_SHOW_KEY    = 'navaid.showHeli';
 const HELI_OPACITY_KEY = 'navaid.heliOpacity';
-const HELI_DEFAULT_OPACITY = 0.6;
 
 window.showHeli = lsGet(HELI_SHOW_KEY) === '1';
 window.heliLayerGroup = null;
-let heliOpacity = lsNum(HELI_OPACITY_KEY, HELI_DEFAULT_OPACITY);
+let heliOpacity = lsNum(HELI_OPACITY_KEY, overlayDefaultOpacity());
 
 // Same resolution rule as cvfrImgBase(): heli-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
@@ -4791,11 +4807,10 @@ function applyHeliOpacity(v) {
 // ── Comm-failure entry overlay ────────────────────────────────────────────────
 const COMMFAIL_SHOW_KEY    = 'navaid.showCommfail';
 const COMMFAIL_OPACITY_KEY = 'navaid.commfailOpacity';
-const COMMFAIL_DEFAULT_OPACITY = 0.6;
 
 window.showCommfail = lsGet(COMMFAIL_SHOW_KEY) === '1';
 window.commfailLayerGroup = null;
-let commfailOpacity = lsNum(COMMFAIL_OPACITY_KEY, COMMFAIL_DEFAULT_OPACITY);
+let commfailOpacity = lsNum(COMMFAIL_OPACITY_KEY, overlayDefaultOpacity());
 
 // Same resolution rule as cvfrImgBase(): commfail-img PNGs ship with every
 // preview, so resolve them relative to the document base without stripping.
@@ -5239,7 +5254,6 @@ window.overlayAlign = overlayAlign;
 // frame drives whichever plate is showing. All plate imageOverlays are created
 // with `plateOpacity`, and this applies live to every plate layer group.
 const PLATE_OPACITY_KEY = 'navaid.plateOpacity';
-const PLATE_DEFAULT_OPACITY = 0.6;
 let plateOpacity = (() => {
   const v = parseFloat(lsGet(PLATE_OPACITY_KEY));
   if (!isNaN(v)) return v;
@@ -5253,7 +5267,7 @@ let plateOpacity = (() => {
       return ov;
     }
   }
-  return PLATE_DEFAULT_OPACITY;
+  return overlayDefaultOpacity();
 })();
 function applyPlateOpacity(v) {
   plateOpacity = v;
@@ -5425,9 +5439,9 @@ function chartsLoadingUntilReady(group) {
   if (opReset) {
     opReset.onclick = function () {
       if (!opEl) return;
-      opEl.value = String(CIRCUIT_DEFAULT_OPACITY);
-      try { localStorage.setItem(CIRCUIT_OPACITY_KEY, String(CIRCUIT_DEFAULT_OPACITY)); } catch (_) {}
-      applyCircuitOpacity(CIRCUIT_DEFAULT_OPACITY);
+      opEl.value = String(overlayDefaultOpacity());
+      try { localStorage.setItem(CIRCUIT_OPACITY_KEY, String(overlayDefaultOpacity())); } catch (_) {}
+      applyCircuitOpacity(overlayDefaultOpacity());
     };
   }
 })();
@@ -5474,9 +5488,9 @@ function chartsLoadingUntilReady(group) {
   if (opReset) {
     opReset.onclick = function () {
       if (!opEl) return;
-      opEl.value = String(TRAINING_DEFAULT_OPACITY);
-      try { localStorage.setItem(TRAINING_OPACITY_KEY, String(TRAINING_DEFAULT_OPACITY)); } catch (_) {}
-      applyTrainingOpacity(TRAINING_DEFAULT_OPACITY);
+      opEl.value = String(overlayDefaultOpacity());
+      try { localStorage.setItem(TRAINING_OPACITY_KEY, String(overlayDefaultOpacity())); } catch (_) {}
+      applyTrainingOpacity(overlayDefaultOpacity());
     };
   }
 })();
@@ -5523,9 +5537,9 @@ function chartsLoadingUntilReady(group) {
   if (opReset) {
     opReset.onclick = function () {
       if (!opEl) return;
-      opEl.value = String(CVFR_DEFAULT_OPACITY);
-      try { localStorage.setItem(CVFR_OPACITY_KEY, String(CVFR_DEFAULT_OPACITY)); } catch (_) {}
-      applyCvfrOpacity(CVFR_DEFAULT_OPACITY);
+      opEl.value = String(overlayDefaultOpacity());
+      try { localStorage.setItem(CVFR_OPACITY_KEY, String(overlayDefaultOpacity())); } catch (_) {}
+      applyCvfrOpacity(overlayDefaultOpacity());
     };
   }
 })();
@@ -5572,9 +5586,9 @@ function chartsLoadingUntilReady(group) {
   if (opReset) {
     opReset.onclick = function () {
       if (!opEl) return;
-      opEl.value = String(HELI_DEFAULT_OPACITY);
-      try { localStorage.setItem(HELI_OPACITY_KEY, String(HELI_DEFAULT_OPACITY)); } catch (_) {}
-      applyHeliOpacity(HELI_DEFAULT_OPACITY);
+      opEl.value = String(overlayDefaultOpacity());
+      try { localStorage.setItem(HELI_OPACITY_KEY, String(overlayDefaultOpacity())); } catch (_) {}
+      applyHeliOpacity(overlayDefaultOpacity());
     };
   }
 })();
@@ -5621,9 +5635,9 @@ function chartsLoadingUntilReady(group) {
   if (opReset) {
     opReset.onclick = function () {
       if (!opEl) return;
-      opEl.value = String(COMMFAIL_DEFAULT_OPACITY);
-      try { localStorage.setItem(COMMFAIL_OPACITY_KEY, String(COMMFAIL_DEFAULT_OPACITY)); } catch (_) {}
-      applyCommfailOpacity(COMMFAIL_DEFAULT_OPACITY);
+      opEl.value = String(overlayDefaultOpacity());
+      try { localStorage.setItem(COMMFAIL_OPACITY_KEY, String(overlayDefaultOpacity())); } catch (_) {}
+      applyCommfailOpacity(overlayDefaultOpacity());
     };
   }
 })();
@@ -5663,9 +5677,9 @@ function chartsLoadingUntilReady(group) {
   if (opReset) {
     opReset.onclick = function () {
       if (!opEl) return;
-      opEl.value = String(PLATE_DEFAULT_OPACITY);
-      try { localStorage.setItem(PLATE_OPACITY_KEY, String(PLATE_DEFAULT_OPACITY)); } catch (_) {}
-      applyPlateOpacity(PLATE_DEFAULT_OPACITY);
+      opEl.value = String(overlayDefaultOpacity());
+      try { localStorage.setItem(PLATE_OPACITY_KEY, String(overlayDefaultOpacity())); } catch (_) {}
+      applyPlateOpacity(overlayDefaultOpacity());
     };
   }
 })();

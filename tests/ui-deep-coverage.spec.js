@@ -426,25 +426,26 @@ test.describe('Inspector panel', () => {
 // Charts modal navigation
 // ---------------------------------------------------------------------------
 test.describe('Charts modal navigation', () => {
-  test('opens with at least one airport row', async ({ page }) => {
+  test('opens with at least one airfield tile', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
     await clickToolbarControl(page, '#charts');
     await page.locator('.modal-back').waitFor({ timeout: 5000 });
 
-    const rows = page.locator('.charts-airport-header');
-    expect(await rows.count()).toBeGreaterThan(0);
+    const tiles = page.locator('.charts-field');
+    expect(await tiles.count()).toBeGreaterThan(0);
   });
 
-  test('clicking an airport header toggles its body open', async ({ page }) => {
+  test('a field tile opens that field, and back returns to the grid', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
     await clickToolbarControl(page, '#charts');
     await page.locator('.modal-back').waitFor();
 
-    const head = page.locator('.charts-airport-header').first();
-    await head.click();
-    expect(await head.getAttribute('aria-expanded')).toBe('true');
+    await page.locator('.charts-field').first().click();
+    await expect(page.locator('.charts-airport[data-icao]')).toBeVisible();
+    await page.locator('.charts-back').click();
+    await expect(page.locator('.charts-fields-grid')).toBeVisible();
   });
 
   test('clicking a plate chip opens the plate viewer', async ({ page }) => {
@@ -454,11 +455,10 @@ test.describe('Charts modal navigation', () => {
     await page.locator('.modal-back').waitFor();
 
     // Find an airport with plates and open it.
-    const head = page.locator('.charts-airport-header').first();
-    await head.click();
+    await page.locator('.charts-field').first().click();
 
-    // Plate chips render as buttons inside .charts-cat blocks.
-    const chip = page.locator('.charts-modal-body .plate-chip').first();
+    // Plate rows render as buttons inside .charts-cat blocks.
+    const chip = page.locator('.charts-modal-body .plate-row').first();
     if (await chip.count()) {
       await chip.click();
       // Plate viewer opens as a new modal-back; charts modal stays open
@@ -470,7 +470,7 @@ test.describe('Charts modal navigation', () => {
   test('Charts section modals reopen after refresh', async ({ page }) => {
     await boot(page);
     const cases = [
-      { button: '#charts', marker: '.charts-airport-header' },
+      { button: '#charts', marker: '.charts-field' },
       { button: '#freq-table', marker: '.charts-freq-title h3' },
       { button: '#alt-pairs', marker: '.charts-alt-title' },
       { button: '#route-templates', marker: '.route-template-modal' },
@@ -503,7 +503,7 @@ test.describe('Charts modal navigation', () => {
       draw();
     });
     const cases = [
-      { button: '#charts', kind: 'airport-charts', marker: '.charts-airport-header' },
+      { button: '#charts', kind: 'airport-charts', marker: '.charts-field' },
       { button: '#plan', kind: 'flight-plan', marker: '.flight-table' },
       { button: '#freq-table', kind: 'freq-table', marker: '.charts-freq-title h3' },
       { button: '#plan', kind: 'flight-plan', marker: '.flight-table' },
@@ -531,7 +531,7 @@ test.describe('Charts modal navigation', () => {
   test('Charts section modals allow toolbar language change', async ({ page }) => {
     await boot(page);
     const cases = [
-      { button: '#charts', marker: '.charts-airport-header' },
+      { button: '#charts', marker: '.charts-field' },
       { button: '#freq-table', marker: '.charts-freq-title h3' },
       { button: '#alt-pairs', marker: '.charts-alt-title' },
       { button: '#route-templates', marker: '.route-template-modal' },

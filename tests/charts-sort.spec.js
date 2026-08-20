@@ -4,18 +4,18 @@
 // airfields.json row order, so the list is predictable to scan.
 const { test, expect } = require('./_setup');
 
-test.describe('Charts modal — alphabetical airfield order', () => {
-  test('airfield sections are sorted alphabetically by ICAO', async ({ page }) => {
+test.describe('Charts modal — airfield order', () => {
+  // Sorted by the name the pilot reads, not by ICAO: the tiles lead with the name, and a list
+  // ordered by a code the eye is not scanning is not ordered at all.
+  test('airfield tiles are sorted by the name shown on them', async ({ page }) => {
     await page.goto('?lang=en');
     await page.waitForFunction(() => typeof showChartsModal === 'function');
     await page.evaluate(() => showChartsModal());
+    await page.waitForSelector('.charts-fields-grid .charts-field');
 
-    const headers = await page.locator('.charts-airport-header').allTextContents();
-    expect(headers.length).toBeGreaterThan(1);
-
-    // Header text is "ICAO — English name"; the ICAO is the leading token.
-    const icaos = headers.map(h => h.trim().split(/\s|—/)[0]);
-    const sorted = [...icaos].sort((a, b) => a.localeCompare(b));
-    expect(icaos).toEqual(sorted);
+    const names = await page.locator('.charts-field .charts-field-name').allTextContents();
+    expect(names.length).toBeGreaterThan(1);
+    const sorted = [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    expect(names).toEqual(sorted);
   });
 });

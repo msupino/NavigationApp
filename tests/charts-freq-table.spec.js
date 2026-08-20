@@ -120,7 +120,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(herzliya).toHaveClass(/is-default/);
     await expect(page.locator('.charts-freq-input[data-call-sign="AZAM"]'))
       .toHaveCount(0);
-    await expect(page.locator('.charts-airport-header')).toHaveCount(0);
+    await expect(page.locator('.charts-field')).toHaveCount(0);
     await expect(page.locator('.charts-alt-title')).toHaveCount(0);
   });
 
@@ -142,7 +142,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(page.locator('.charts-alt-table thead th').nth(3)).toHaveText('Direction');
     await expect(page.locator('.charts-alt-table tbody tr')).toHaveCount(4);
     await expect(page.locator('.charts-freq-title')).toHaveCount(0);
-    await expect(page.locator('.charts-airport-header')).toHaveCount(0);
+    await expect(page.locator('.charts-field')).toHaveCount(0);
 
     const aakkoRow = page.locator('.charts-alt-table tbody tr', { hasText: 'AAKKO ↔ SMRAT' });
     const desheRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DESHE ↔ ZALMN' });
@@ -480,7 +480,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await installCommChangeFixture(page);
     await boot(page);
     await page.locator('#charts').click();
-    await expect(page.locator('.charts-airport-header').first()).toBeVisible();
+    await expect(page.locator('.charts-field').first()).toBeVisible();
     await expect(page.locator('.charts-freq-title')).toHaveCount(0);
     await expect(page.locator('.charts-freq-table')).toHaveCount(0);
     await expect(page.locator('.charts-alt-title')).toHaveCount(0);

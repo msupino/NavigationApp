@@ -1,0 +1,597 @@
+{
+ "LLAR_airport_CVFR.pdf": {
+  "annex": "נספח ג'",
+  "he": "",
+  "en": "",
+  "modified": "",
+  "source": "pdf"
+ },
+ "LLAR_airport_Chart.pdf": {
+  "annex": "נספח א",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "2021-08-21",
+  "source": "aip"
+ },
+ "LLAR_airport_Circuit.pdf": {
+  "annex": "נספח ב",
+  "he": "תרשים ההקפה",
+  "en": "",
+  "modified": "2021-08-21",
+  "source": "aip"
+ },
+ "LLBG_APPROACH_ILS 21.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Instrument approach chart (IAC) - ICAO ILS RWY 21",
+  "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLBG_APPROACH_ILS 26.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Instrument approach chart (IAC) - ICAO ILS RWY 26",
+  "modified": "2023-11-02",
+  "source": "aip"
+ },
+ "LLBG_APPROACH_LOC 21.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Instrument approach chart (IAC) - ICAO LOC RWY 21",
+  "modified": "2024-08-12",
+  "source": "aip"
+ },
+ "LLBG_APPROACH_RNP 08.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Instrument approach chart (IAC) - ICAO RNP RWY 08",
+  "modified": "2024-08-12",
+  "source": "aip"
+ },
+ "LLBG_SID_12-26-30 (Pidet+Ripud).pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 PIDET 2C, 1E, 1F, RIPUD 1E, 1F",
+  "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLBG_STAR_08-1_V1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Standard Arrival Chart Instrument (STAR) - ICAO RWY 08 PURLA 1A",
+  "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLBG_STAR_12-1_V1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Standard Arrival chart instrument (STAR) - ICAO RWY 12 AMMIT 1B, SALAM 2B",
+  "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLBG_VAC_30-2_V1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Visual approach chart GAVRI approach RWY 30",
+  "modified": "2023-11-02",
+  "source": "aip"
+ },
+ "LLBO_Ground_Diagram.pdf": {
+  "annex": "נספח א",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "2021-08-21",
+  "source": "aip"
+ },
+ "LLBO_airport_Circuit.pdf": {
+  "annex": "נספח ב",
+  "he": "תרשים ההקפה",
+  "en": "",
+  "modified": "2021-08-21",
+  "source": "aip"
+ },
+ "LLBO_airport_Routes.pdf": {
+  "annex": "נספח ג",
+  "he": "כניסה ויציאה לנתיבי CVFR",
+  "en": "",
+  "modified": "2021-08-21",
+  "source": "aip"
+ },
+ "LLBS_airport_Annex Alef.pdf": {
+  "annex": "נספח א'",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLBS_airport_Annex Bet.pdf": {
+  "annex": "נספח ב'",
+  "he": "תרשים ההקפה",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLBS_airport_Annex Daled.pdf": {
+  "annex": "נספח ד'",
+  "he": "אזורי אימון",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLBS_airport_Annex Gimel.pdf": {
+  "annex": "נספח ג'",
+  "he": "נתיבי כניסה ויציאה",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLBS_airport_Chart.pdf": {
+  "annex": "",
+  "he": "דפי מלל",
+  "en": "",
+  "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLES_airport_Chart.pdf": {
+  "annex": "",
+  "he": "דפי מלל",
+  "en": "",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLES_airport_Text.pdf": {
+  "annex": "נספח ג",
+  "he": "תרשים עזיבה והצטרפות לכטבם",
+  "en": "",
+  "modified": "2021-08-21",
+  "source": "aip"
+ },
+ "LLEY_airport_Annex Alef.pdf": {
+  "annex": "נספח א'",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLEY_airport_CVFR.pdf": {
+  "annex": "נספח ג",
+  "he": "כניסה ויציאה לנתיבי CVFR",
+  "en": "",
+  "modified": "2021-08-21",
+  "source": "aip"
+ },
+ "LLEY_airport_Circuit.pdf": {
+  "annex": "נספח ב",
+  "he": "תרשים ההקפה",
+  "en": "",
+  "modified": "2021-08-21",
+  "source": "aip"
+ },
+ "LLFK_airport_Annex Alef.pdf": {
+  "annex": "נספח א'",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLFK_airport_CVFR.pdf": {
+  "annex": "נספח ג'",
+  "he": "כניסה ויציאה לנתיבי CVFR",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLFK_airport_Circuit.pdf": {
+  "annex": "נספח ב'",
+  "he": "תרשים ההקפה",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLFK_airport_Text.pdf": {
+  "annex": "נספח ה'",
+  "he": "הצטרפות ועזיבה - כטבם",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHA_airport_Annex Alef.pdf": {
+  "annex": "נספח א",
+  "he": "תרשים השדה",
+  "en": "",
+  "modified": "",
+  "source": "aip-annex"
+ },
+ "LLHA_airport_Annex Bet 2.pdf": {
+  "annex": "נספח ב'-2",
+  "he": "תרשים החניה - רחבה N",
+  "en": "",
+  "modified": "",
+  "source": "aip-annex"
+ },
+ "LLHA_airport_Annex Bet 3.pdf": {
+  "annex": "נספח ב'-3",
+  "he": "תרשים החניה - רחבה Z",
+  "en": "",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLHA_airport_Annex Bet 4.pdf": {
+  "annex": "נספח ב",
+  "he": "AIRCRAFT PARKING CHART - ICAO",
+  "en": "",
+  "modified": "",
+  "source": "pdf"
+ },
+ "LLHA_airport_Annex Bet.pdf": {
+  "annex": "נספח ב",
+  "he": "תרשים החניה",
+  "en": "",
+  "modified": "",
+  "source": "aip-annex"
+ },
+ "LLHA_airport_Annex Chet.pdf": {
+  "annex": "נספח ח'",
+  "he": "הצטרפות בתקלת קשר מנתיבי CVFR",
+  "en": "",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLHA_airport_Annex Daled.pdf": {
+  "annex": "נספח ד'",
+  "he": "נתיבי כניסה ויציאה בגובה נמוך",
+  "en": "",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLHA_airport_Annex Gimel.pdf": {
+  "annex": "נספח ג'",
+  "he": "נתיבי כניסה-יציאה (CVFR)",
+  "en": "",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLHA_airport_Annex He.pdf": {
+  "annex": "נספח ה'",
+  "he": "אזורי האימון",
+  "en": "",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLHA_airport_Annex Tet.pdf": {
+  "annex": "נספח ט",
+  "he": "מפת מכשולים מסלול 15-33",
+  "en": "",
+  "modified": "",
+  "source": "aip-annex"
+ },
+ "LLHA_airport_Annex Zayin.pdf": {
+  "annex": "נספח ז'",
+  "he": "תרשים ההקפה",
+  "en": "",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Alef.pdf": {
+  "annex": "נספח א",
+  "he": "תרשים השדה",
+  "en": "",
+  "modified": "",
+  "source": "aip-annex"
+ },
+ "LLHZ_airport_Annex Chet.pdf": {
+  "annex": "נספח ח'",
+  "he": "יציאה לנתיבי ATS",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Gimel.pdf": {
+  "annex": "נספח ג'",
+  "he": "כניסה ויציאה לנתיבי התובלה הנמוכים",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex He.pdf": {
+  "annex": "נספח ה'",
+  "he": "נתיבי יציאה וכניסה גובה נמוך",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Tet.pdf": {
+  "annex": "נספח ט'",
+  "he": "עמדות חנייה ברחבות C ,B ,A",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Yud Alef 2.pdf": {
+  "annex": "נספח יא'-2",
+  "he": "עמדות חנייה ברחבה D",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Yud Alef 3.pdf": {
+  "annex": "נספח יא'",
+  "he": "עמדות חנייה ברחבה G",
+  "en": "",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Yud Alef.pdf": {
+  "annex": "נספח יא'-1",
+  "he": "עמדות חנייה ברחבה E",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Yud Bet.pdf": {
+  "annex": "נספח יב'",
+  "he": "תרשים ההקפה",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Yud Gimel.pdf": {
+  "annex": "נספח יג'",
+  "he": "הצטרפות באובדן קשר מנתיבי CVFR",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Yud.pdf": {
+  "annex": "נספח י'",
+  "he": "עמדות חנייה ברחבה F",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHZ_airport_Annex Zayin.pdf": {
+  "annex": "נספח ז'",
+  "he": "אזורי האימון",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Alef.pdf": {
+  "annex": "נספח א'",
+  "he": "תרשים השדה",
+  "en": "",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Bet.pdf": {
+  "annex": "נספח ב'",
+  "he": "תרשים עמדות חנייה",
+  "en": "",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Chet.pdf": {
+  "annex": "נספח ח'",
+  "he": "אזורי דאיה מקומית",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Daled.pdf": {
+  "annex": "נספח ד'",
+  "he": "הצטרפות בתקלת קשר מנתיבי CVFR",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Gimel.pdf": {
+  "annex": "נספח ג'",
+  "he": "נתיבי כניסה ויציאה",
+  "en": "",
+  "modified": "2023-11-02",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex He.pdf": {
+  "annex": "נספח ה'",
+  "he": "תרשים ההקפה",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Vav.pdf": {
+  "annex": "נספח ו'",
+  "he": "STANDARD INSTRUMENT DEPARTURE RWY 15 and 33",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Yud Alef.pdf": {
+  "annex": "נספח יא'",
+  "he": "Visual appraoch chart",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Yud Bet.pdf": {
+  "annex": "נספח יב'",
+  "he": "Hot-Spots",
+  "en": "",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Yud.pdf": {
+  "annex": "נספח י'",
+  "he": "אזורי אימון",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLIB_airport_Annex Zayin.pdf": {
+  "annex": "נספח ז'",
+  "he": "תהליך גישה VOR",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLIB_airport_Chart.pdf": {
+  "annex": "",
+  "he": "דברי מלל",
+  "en": "",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLKS_Ground_Diagram.pdf": {
+  "annex": "נספח א'",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "2022-04-13",
+  "source": "aip"
+ },
+ "LLKS_airport_CVFR.pdf": {
+  "annex": "נספח ב'",
+  "he": "הקפה ונתיבי כניסה-יציאה CVFR",
+  "en": "",
+  "modified": "2021-11-02",
+  "source": "aip"
+ },
+ "LLKZ_airport_Annex Alef.pdf": {
+  "annex": "נספח א'",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLKZ_airport_Chart.pdf": {
+  "annex": "",
+  "he": "דפי מלל",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLKZ_airport_Circuit.pdf": {
+  "annex": "נספח ב'",
+  "he": "תרשים הקפה",
+  "en": "",
+  "modified": "2022-04-13",
+  "source": "aip"
+ },
+ "LLMG_airport_Annex Alef.pdf": {
+  "annex": "נספח א'",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLMG_airport_Annex Daled.pdf": {
+  "annex": "נספח ד'",
+  "he": "אזורי אימון",
+  "en": "",
+  "modified": "2023-11-02",
+  "source": "aip"
+ },
+ "LLMG_airport_CVFR.pdf": {
+  "annex": "נספח ג'",
+  "he": "נתיבי כניסה ויציאה - CVFR",
+  "en": "",
+  "modified": "2022-04-13",
+  "source": "aip"
+ },
+ "LLMG_airport_Chart.pdf": {
+  "annex": "",
+  "he": "דפי מלל",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLMG_airport_Circuit.pdf": {
+  "annex": "נספח ב'",
+  "he": "תרשים ההקפה",
+  "en": "",
+  "modified": "2022-04-13",
+  "source": "aip"
+ },
+ "LLMG_departure_CVFR.pdf": {
+  "annex": "נספח ה'",
+  "he": "הצטרפות ועזיבה - כטבם",
+  "en": "",
+  "modified": "2022-04-13",
+  "source": "aip"
+ },
+ "LLMZ_airport_Annex Alef.pdf": {
+  "annex": "נספח א",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "",
+  "source": "aip-annex"
+ },
+ "LLMZ_airport_Annex Bet.pdf": {
+  "annex": "נספח ב'",
+  "he": "תרשים הקפה",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLMZ_airport_Annex Gimel.pdf": {
+  "annex": "נספח ג'",
+  "he": "נתיבי כניסה ויציאה",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLMZ_airport_CVFR.pdf": {
+  "annex": "נספח ג'",
+  "he": "כניסה ויציאה נתיבי CVFR",
+  "en": "",
+  "modified": "",
+  "source": "pdf"
+ },
+ "LLRS_airport_Annex Alef.pdf": {
+  "annex": "נספח א",
+  "he": "תרשים המנחת",
+  "en": "",
+  "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLRS_airport_Annex Bet.pdf": {
+  "annex": "נספח ב",
+  "he": "תרשים הקפה",
+  "en": "",
+  "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLRS_airport_Annex Daled.pdf": {
+  "annex": "נספח ד'",
+  "he": "אזורי אימון והמתנה - אזמ",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLRS_airport_Annex Gimel.pdf": {
+  "annex": "נספח ג'",
+  "he": "נתיבי כניסה ויציאה אזמ",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLRS_airport_Annex He.pdf": {
+  "annex": "נספח ה'",
+  "he": "כניסה מנתיב התובלה הנמוך מצפון",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLRS_airport_Annex Vav.pdf": {
+  "annex": "נספח ו'",
+  "he": "משוח נחיתה למסוקים",
+  "en": "",
+  "modified": "2023-05-17",
+  "source": "aip"
+ },
+ "LLRS_airport_Chart.pdf": {
+  "annex": "",
+  "he": "דפי מלל",
+  "en": "",
+  "modified": "2025-09-30",
+  "source": "aip"
+ }
+}

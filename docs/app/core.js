@@ -546,6 +546,11 @@ NavAid.tuningDefaults = {
   notamRouteWidthPx: { value: 3, min: 1, max: 6, step: 0.5, label: 'NOTAM closed-route line width (px)' },
   notamDivertColor: { value: '#0891b2', type: 'color', label: 'NOTAM diverted-route color' },
 
+  // Every overlay plate laid over the chart -- the airfield plates and the annex layers in
+  // Extra layers (circuit, training, CVFR, helicopter, comm-failure joining) -- is drawn at
+  // this opacity. One slider drives them all, so one default sits behind it; it was six copies
+  // of the same hard-coded 0.6 with no way to change it short of editing the source.
+  overlayOpacity: { value: 0.8, min: 0.2, max: 1, step: 0.05, label: 'Overlay plate opacity' },
   imsPwxOpacity: { value: 0.6, min: 0.2, max: 1, step: 0.05, label: 'IMS PWX overlay default opacity' },
   imsPwxLatOffset: { value: 0.005, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay latitude nudge (°)' },
   imsPwxLngOffset: { value: -0.015, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay longitude nudge (°)' },
@@ -782,6 +787,7 @@ NavAid.tuningGroups = [
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
+  { name: 'Overlay opacity', keys: ['overlayOpacity'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
@@ -980,7 +986,7 @@ window.S = Object.assign({
   // the ?v= cache-busts all three kinds, which now come from the same file.
   routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
-  airfieldsUrl: 'data/airfields.json?v=33',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=35',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
   vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations (#404 follow-up)
@@ -1873,6 +1879,12 @@ window.S = Object.assign({
   plateLoading: 'Loading…',
   loadingCharts: 'Loading charts…',
   plateLoadError: 'Failed to load chart.',
+  chartsBack: '← All airfields',
+  chartsFilterPlaceholder: 'Search airfield',
+  chartsOnRoute: 'On your route',
+  chartsAllFields: 'All airfields',
+  chartsAllPlates: 'All',
+  plateAmendedOn: (d) => 'Amended ' + d,
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP.',
   updateAvailable: 'New NavAid build available. Hard refresh or reload to update.',
   updateReload: 'Reload',
