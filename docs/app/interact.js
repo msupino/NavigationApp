@@ -4568,6 +4568,14 @@ mapEl.addEventListener('touchmove', e => {
 }, { passive: false });
 
 function endTouch() {
+  // A pinch is not a tap either. The two-finger paths deliberately move nothing -- touchmove
+  // returns early unless exactly one finger is down -- so a zoom that happened to start on a
+  // waypoint left `moved` false and the release read as a tap on it, opening the inspector
+  // over the chart the pilot was zooming into. Same rule the map pan already follows: the
+  // finger came down to do something else.
+  if (touchDrag && typeof touchGestureInProgress === 'function' && touchGestureInProgress()) {
+    touchDrag.moved = true;
+  }
   // A drag is not a request to inspect: the finger came down to MOVE something, so the
   // panel that was hidden for the drag stays shut, and the selection goes with it (a
   // highlighted point with no panel explains nothing). A tap that never moved is the

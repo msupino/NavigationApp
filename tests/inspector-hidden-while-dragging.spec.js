@@ -155,3 +155,57 @@ test.describe('panning the chart is not a request to inspect', () => {
     expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('leg');
   });
 });
+
+// Reported from a phone: pinching to zoom with a finger on a waypoint opened that waypoint's
+// inspector. The two-finger paths deliberately move nothing — touchmove returns early unless
+// exactly one finger is down — so the release read as a tap. Same rule the map pan already
+// follows: the finger came down to do something else.
+test.describe('a pinch is not a tap', () => {
+  const multi = (page, type, pts) => page.evaluate(([t, list]) => {
+    const el = map.getContainer();
+    const touches = list.map((p, i) => new Touch({
+      identifier: i, target: el, clientX: p.x, clientY: p.y, pageX: p.x, pageY: p.y }));
+    el.dispatchEvent(new TouchEvent(t, { bubbles: true, cancelable: true,
+      touches: t === 'touchend' ? [] : touches, targetTouches: touches, changedTouches: touches }));
+  }, [type, pts]);
+
+  const wpPoint = (page, i) => page.evaluate((idx) => {
+    const p = map.latLngToContainerPoint([state.waypoints[idx].lat, state.waypoints[idx].lng]);
+    const b = map.getContainer().getBoundingClientRect();
+    return { x: Math.round(b.left + p.x), y: Math.round(b.top + p.y) };
+  }, i);
+
+  test('zooming with a finger on a waypoint leaves the panel shut', async ({ page }) => {
+    await boot(page);
+    const at = await wpPoint(page, 0);
+    await multi(page, 'touchstart', [at]);
+    await multi(page, 'touchstart', [at, { x: at.x + 60, y: at.y + 40 }]);
+    await multi(page, 'touchmove', [{ x: at.x - 20, y: at.y - 10 }, { x: at.x + 110, y: at.y + 90 }]);
+    await multi(page, 'touchend', [{ x: at.x - 20, y: at.y - 10 }]);
+    expect(await hidden(page)).toBe(true);
+    expect(await page.evaluate(() => state.selected)).toBe(null);
+  });
+
+  test('the waypoint itself does not move during the pinch', async ({ page }) => {
+    await boot(page);
+    const before = await page.evaluate(() => ({ ...state.waypoints[0] }));
+    const at = await wpPoint(page, 0);
+    await multi(page, 'touchstart', [at]);
+    await multi(page, 'touchstart', [at, { x: at.x + 60, y: at.y + 40 }]);
+    await multi(page, 'touchmove', [{ x: at.x - 40, y: at.y - 30 }, { x: at.x + 140, y: at.y + 120 }]);
+    await multi(page, 'touchend', [{ x: at.x - 40, y: at.y - 30 }]);
+    const after = await page.evaluate(() => ({ ...state.waypoints[0] }));
+    expect(after.lat).toBeCloseTo(before.lat, 6);
+    expect(after.lng).toBeCloseTo(before.lng, 6);
+  });
+
+  // A single-finger tap on the same waypoint still opens it — that is how a waypoint is
+  // inspected on a touch screen.
+  test('a plain tap still opens the waypoint', async ({ page }) => {
+    await boot(page);
+    const at = await wpPoint(page, 0);
+    await touch(page, 'touchstart', at.x, at.y);
+    await touch(page, 'touchend', at.x, at.y);
+    expect(await hidden(page)).toBe(false);
+  });
+});
