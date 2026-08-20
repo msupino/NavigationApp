@@ -1,0 +1,62 @@
+name: AIP plate designations
+
+# The CAA amends plates continuously and tells nobody: of the plates we ship, every Ramon one
+# and most of Ben Gurion's have been superseded since they were fetched by hand. Their own AIP
+# app reads a public index that keys every file by the SHA-512 of the PDF, so a daily pass can
+# say exactly which of our copies are stale — and refresh the designations the charts menu
+# prints while it is there.
+#
+# Read-only against the CAA: one GET a day, identifying itself honestly. It opens a PR rather
+# than pushing, because a plate is a flight document and a human should look before it ships.
+
+on:
+  schedule:
+    - cron: '17 4 * * *'     # daily, off the hour so it doesn't pile onto everyone else's :00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: aip-plates
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Read the CAA index and refresh plate designations
+        run: node scripts/aip-plate-titles.mjs
+
+      - name: Open a PR if anything changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- docs/data/plate-titles.json; then
+            echo "designations unchanged"
+            exit 0
+          fi
+          BRANCH="aip/plate-designations-$(date -u +%Y%m%d)"
+          git config user.email 'actions@github.com'
+          git config user.name 'aip-bot'
+          git checkout -q -B "$BRANCH"
+          git add docs/data/plate-titles.json
+          git commit -q -m "chore(plates): refresh plate designations from the CAA index
+
+          Written by scripts/aip-plate-titles.mjs from the CAA's own AIP index. The step
+          summary of the run lists the plates we ship that the index no longer knows — those
+          have been amended upstream and our copies are stale."
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number')" ]; then
+            gh pr create --base dev --head "$BRANCH" \
+              --title "chore(plates): refresh plate designations from the CAA index" \
+              --body "Daily pass over the CAA's AIP index. Designations that changed are in the diff; plates of ours the index no longer knows (amended upstream) are listed in the run's step summary."
+          fi

@@ -5987,6 +5987,44 @@ function loadPlatesManifest() {
     .catch(() => (_platesManifest = {}));
   return _platesManifestPromise;
 }
+// The plate's own designation, as the CAA publishes it: "נספח ד' — הצטרפות בתקלת קשר
+// מנתיבי CVFR". Written by scripts/aip-plate-titles.mjs from the CAA's index; a plate the
+// index does not know falls back to its file name (prettyPlateLabel), which is what every
+// chip used to show.
+let _plateTitles = null;
+let _plateTitlesPromise = null;
+function loadPlateTitles() {
+  if (_plateTitles) return Promise.resolve(_plateTitles);
+  if (_plateTitlesPromise) return _plateTitlesPromise;
+  const url = new URL('data/plate-titles.json?v=' + PLATES_VER, document.baseURI).href;
+  _plateTitlesPromise = fetch(url, { credentials: 'omit' })
+    .then(r => (r.ok ? r.json() : {}))
+    .then(m => (_plateTitles = m || {}))
+    .catch(() => (_plateTitles = {}));
+  return _plateTitlesPromise;
+}
+window.loadPlateTitles = loadPlateTitles;
+// What to print on the chip, in the interface language. The domestic AIP is Hebrew-only, so
+// an English session still gets the Hebrew designation for most fields -- it is what the
+// plate is called, and what a controller will say.
+function plateDesignation(filename) {
+  const row = (_plateTitles && _plateTitles[filename]) || null;
+  if (!row) return { annex: '', title: prettyPlateLabel(filename), modified: '' };
+  const he = (typeof window !== 'undefined' && window.__navLang === 'he');
+  const title = (he ? (row.he || row.en) : (row.en || row.he)) || prettyPlateLabel(filename);
+  return { annex: row.annex || '', title, modified: row.modified || '' };
+}
+// "נספח ד'" -> "ד'": the word is the same on every badge in the column, so it is the letter
+// that does the work.
+function plateAnnexBadge(annex) {
+  return String(annex || '').replace(/^נספח\s*/, '').trim();
+}
+// 2026-08-06 -> 8/26, the way an amendment is written on the plate itself.
+function plateAmendment(modified) {
+  const m = String(modified || '').match(/^(\d{4})-(\d{2})/);
+  return m ? String(Number(m[2])) + '/' + m[1].slice(2) : '';
+}
+
 // URL of one rendered plate page (1-based).
 function platePngUrl(filename, page) {
   const base = filename.replace(/\.pdf$/i, '');
@@ -7259,6 +7297,7 @@ function showChartsModal(focusIcao) {
   // Warm the plate manifest while the user scans the list, so the first open
   // already knows the page count.
   if (typeof loadPlatesManifest === 'function') loadPlatesManifest().catch(() => {});
+  if (typeof loadPlateTitles === 'function') loadPlateTitles().catch(() => {});
   const modal = createDraggableModal(S.plates, 'modal wide',
     () => clearOpenChartModal('airport-charts'),
     { nonBlocking: true, chartKind: 'airport-charts' });
@@ -7328,25 +7367,51 @@ function showChartsModal(focusIcao) {
         if (!groups[cat]) groups[cat] = [];
         groups[cat].push(fn);
       }
-      for (const cat of catOrder) {
-        if (!groups[cat]) continue;
+      // A row per plate: the annex letter in a badge, the plate's own designation, and the
+      // amendment it carries. The chips used to be built from the file name ("airport Annex
+      // Alef"), which is our storage convention -- a pilot looking for the radio-failure
+      // joining chart had to know that it is Annex Daled at Rosh Pina and Annex Yud Gimel at
+      // Herzliya. The category headers stay only where they separate anything: at a domestic
+      // field every plate is filed under the same category, so the header was a label on the
+      // whole list.
+      const cats = catOrder.filter(c => groups[c]);
+      for (const cat of cats) {
         const catDiv = document.createElement('div');
         catDiv.className = 'charts-cat';
-        const catLbl = document.createElement('span');
-        catLbl.className = 'charts-cat-label';
-        catLbl.textContent = catLabel[cat];
-        catDiv.appendChild(catLbl);
+        if (cats.length > 1) {
+          const catLbl = document.createElement('span');
+          catLbl.className = 'charts-cat-label';
+          catLbl.textContent = catLabel[cat];
+          catDiv.appendChild(catLbl);
+        }
         for (const fn of groups[cat]) {
-          const chip = document.createElement('button');
-          chip.className = 'plate-chip';
-          chip.textContent = prettyPlateLabel(fn);
-          chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+          const d = plateDesignation(fn);
+          const row = document.createElement('button');
+          row.className = 'plate-row';
+          const badge = document.createElement('span');
+          badge.className = 'plate-annex';
+          const letter = plateAnnexBadge(d.annex);
+          if (letter) badge.textContent = letter;
+          else badge.classList.add('plate-annex-empty');
+          const label = document.createElement('span');
+          label.className = 'plate-row-title';
+          label.textContent = d.title;
+          row.appendChild(badge);
+          row.appendChild(label);
+          const amd = plateAmendment(d.modified);
+          if (amd) {
+            const when = document.createElement('span');
+            when.className = 'plate-row-amd';
+            when.textContent = amd;
+            row.appendChild(when);
+          }
+          row.onclick = () => showPlateViewer(fn, d.title);
           // Prefetch on intent (hover / keyboard focus) so the click loads from
-          // cache. One-shot per chip via prefetchPlate's dedupe.
+          // cache. One-shot per row via prefetchPlate's dedupe.
           const warm = () => prefetchPlate(fn);
-          chip.addEventListener('pointerenter', warm);
-          chip.addEventListener('focus', warm);
-          catDiv.appendChild(chip);
+          row.addEventListener('pointerenter', warm);
+          row.addEventListener('focus', warm);
+          catDiv.appendChild(row);
         }
         pane.appendChild(catDiv);
       }
@@ -7366,11 +7431,17 @@ function showChartsModal(focusIcao) {
 
   if (airfields) {
     renderList(airfields, focusIcao);
+    // The designations arrive a moment after the list on a cold cache; redraw once, so the
+    // rows do not sit there showing file names.
+    if (typeof loadPlateTitles === 'function') {
+      loadPlateTitles().then(() => { if (airfields) renderList(airfields, focusIcao); }).catch(() => {});
+    }
   } else {
     const loading = document.createElement('p');
     loading.textContent = '…';
     platesSection.appendChild(loading);
-    loadAirfields().then(() => { if (airfields) renderList(airfields, focusIcao); });
+    Promise.all([loadAirfields(), loadPlateTitles().catch(() => {})])
+      .then(() => { if (airfields) renderList(airfields, focusIcao); });
   }
 
   scrollArea.appendChild(body);

@@ -3268,6 +3268,46 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 }
 .plate-chip:hover { background: #3a3636; border-color: #1d6fe0; }
 
+/* One row per plate in the airport-charts menu: the annex letter in a badge, the plate's own
+   designation, and the amendment it carries. A row rather than a chip because the designation
+   is a phrase ("הצטרפות בתקלת קשר מנתיבי CVFR"), not a word, and because a 44 px row is what a
+   thumb can hit on a kneeboard. */
+.charts-cat { display: flex; flex-direction: column; gap: 2px; }
+.plate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.plate-row:hover, .plate-row:focus-visible { background: #3a3636; border-color: #1d6fe0; }
+.plate-annex {
+  flex: 0 0 auto;
+  min-width: 30px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #cfe4ff;
+  background: #24303f;
+  border: 1px solid #35506f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+/* A plate with no annex number of its own (the text chart, an approach plate) keeps the
+   badge's width so every title in the column still starts on the same line. */
+.plate-annex-empty { background: transparent; border-color: transparent; }
+.plate-row-title { flex: 1 1 auto; line-height: 1.3; }
+.plate-row-amd { flex: 0 0 auto; font-size: 11px; color: #9aa4b0; font-variant-numeric: tabular-nums; }
+
 .plate-chip-small { font-size: 10px; padding: 2px 5px; background: none; border-color: transparent; color: #1d6fe0; cursor: pointer; }
 .plate-chip-small:hover { text-decoration: underline; }
 

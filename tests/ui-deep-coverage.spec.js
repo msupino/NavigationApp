@@ -457,8 +457,8 @@ test.describe('Charts modal navigation', () => {
     const head = page.locator('.charts-airport-header').first();
     await head.click();
 
-    // Plate chips render as buttons inside .charts-cat blocks.
-    const chip = page.locator('.charts-modal-body .plate-chip').first();
+    // Plate rows render as buttons inside .charts-cat blocks.
+    const chip = page.locator('.charts-modal-body .plate-row').first();
     if (await chip.count()) {
       await chip.click();
       // Plate viewer opens as a new modal-back; charts modal stays open

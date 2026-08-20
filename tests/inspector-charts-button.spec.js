@@ -22,7 +22,7 @@ test('inspector charts button opens the Charts modal expanded to that airfield',
   test.skip(!icao, 'no airfield with plates');
 
   // No plate chips in the inspector — just the charts button.
-  await expect(page.locator('#insp-body .plate-chip')).toHaveCount(0);
+  await expect(page.locator('#insp-body .plate-row')).toHaveCount(0);
   const btn = page.locator('#insp-body .insp-charts-btn');
   await expect(btn).toBeVisible();
   await btn.click();
@@ -31,5 +31,5 @@ test('inspector charts button opens the Charts modal expanded to that airfield',
   const section = page.locator(`.charts-airport[data-icao="${icao}"]`);
   await expect(section).toBeVisible();
   await expect(section.locator('.charts-airport-header')).toHaveClass(/open/);
-  await expect(section.locator('.plate-chip').first()).toBeVisible();
+  await expect(section.locator('.plate-row').first()).toBeVisible();
 });
