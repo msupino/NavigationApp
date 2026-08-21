@@ -43,7 +43,8 @@ test('on by default, and it says which state it is in', async ({ page }) => {
   });
   expect(on.follow).toBe(true);
   expect(on.pressed).toBe('true');
-  expect(on.label).toMatch(/following/i);
+  expect(on.label).toMatch(/^following/i);        // "Following your aircraft -- tap to stop"
+
   await page.click('#follow-lock');
   const off = await page.evaluate(() => {
     const b = document.getElementById('follow-lock');
@@ -51,7 +52,7 @@ test('on by default, and it says which state it is in', async ({ page }) => {
   });
   expect(off.follow).toBe(false);
   expect(off.pressed).toBe('false');
-  expect(off.label).toMatch(/stays/i);
+  expect(off.label).toMatch(/^not following/i);   // and the off state says so plainly
 });
 
 test('switched off, no fix ever moves the map — not even the first', async ({ page }) => {
