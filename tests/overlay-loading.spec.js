@@ -58,3 +58,33 @@ test('it follows the light theme', async ({ page }) => {
   });
   expect(lum).toBeGreaterThan(0.8);
 });
+
+// The wait a pilot notices most is the FIRST one: app shell, Leaflet, then the chart tiles.
+// Nothing of ours has run at that point, so the marker is written into the HTML and taken
+// down once the map has something on it.
+test.describe('the first load says it is loading', () => {
+  test('the marker is in the HTML itself, before any script runs', async ({ page }) => {
+    // Relative, so it resolves against this run's baseURL: a deployed PR preview lives under
+    // /pr/<n>/, where an absolute '/index.html' fetches the production site instead.
+    const html = await (await page.request.get('index.html')).text();
+    expect(html).toContain('id="boot-loading"');
+    // Styled inline: the stylesheet has not arrived either.
+    expect(html).toMatch(/id="boot-loading"[\s\S]{0,400}position:fixed/);
+  });
+
+  test('it goes once the map has painted', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof map !== 'undefined');
+    await expect(page.locator('#boot-loading')).toHaveCount(0, { timeout: 15000 });
+  });
+
+  // A tile server that never answers must not leave the app looking dead when it is
+  // perfectly usable offline.
+  test('a chart that never loads still clears it', async ({ page }) => {
+    await page.route('**/tiles/**', route => route.abort());
+    await page.route('**/*.png', route => route.abort());
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof clearBootLoading === 'function');
+    await expect(page.locator('#boot-loading')).toHaveCount(0, { timeout: 20000 });
+  });
+});
