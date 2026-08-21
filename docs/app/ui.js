@@ -7492,7 +7492,9 @@ function armAndroidBackButton() {
     // Nothing left to close: this press leaves NavAid. Asked every time, because the press
     // that ends a flight looks exactly like the press that closed a panel.
     const msg = (S && S.exitConfirm) || 'Close NavAid?';
-    let leave = true;
+    // A WebView that refuses confirm() must not trap the pilot in the app: if the question
+    // cannot be asked, Back does what Back has always done.
+    let leave;
     try { leave = window.confirm(msg); } catch (e) { leave = true; }
     if (!leave) return;
     if (typeof flushPersist === 'function') flushPersist();
