@@ -144,6 +144,34 @@ test.describe('the first load says it is loading', () => {
     await expect(page.locator('#boot-loading')).toHaveCount(0, { timeout: 15000 });
   });
 
+  // On a warm cache the map paints in a few hundred ms and the mark used to flash by
+  // half-drawn. It is now held for bootLogoMinMs, which is a floor and not an addition: a
+  // map that takes longer than that still clears the moment it arrives.
+  test('the mark is held long enough to be seen', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof clearBootLoading === 'function');
+    const held = await page.evaluate(async () => {
+      const gone = () => !document.getElementById('boot-loading');
+      while (!gone()) await new Promise((r) => setTimeout(r, 50));
+      return window.bootLoadingHeldFor();
+    });
+    // The 250ms fade-out runs after the hold, so the element outlives the floor slightly.
+    expect(held).toBeGreaterThanOrEqual(2000);
+  });
+
+  // The floor is read when the map reports itself ready, not when the page loaded, so a gist
+  // override or a value typed into the tuning panel takes effect on the very next start.
+  test('the hold is a tunable, in the group the panel shows', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof tune === 'function');
+    const t = await page.evaluate(() => ({
+      value: tune('bootLogoMinMs'),
+      declared: !!NavAid.tuningDefaults.bootLogoMinMs,
+      grouped: NavAid.tuningGroups.filter(g => g.keys.includes('bootLogoMinMs')).length,
+    }));
+    expect(t).toEqual({ value: 2000, declared: true, grouped: 1 });
+  });
+
   // A tile server that never answers must not leave the app looking dead when it is
   // perfectly usable offline.
   test('a chart that never loads still clears it', async ({ page }) => {
