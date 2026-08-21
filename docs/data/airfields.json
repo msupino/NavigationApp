@@ -80,6 +80,7 @@
         "LLBO_airport_Circuit.pdf",
         "LLBO_airport_Routes.pdf"
       ],
+      "cvfr_overlay": { "png": "LLBO_cvfr.png", "sw": [32.54467, 34.84634], "ne": [32.76999, 35.03317] },
       "circuit_overlay": {
         "png": "LLBO_circuit.png",
         "tl": [
@@ -318,6 +319,7 @@
       "runways": [
         "15/33"
       ],
+      "cvfr_overlay": { "png": "LLHA_cvfr.png", "sw": [32.66213, 34.95078], "ne": [32.96003, 35.20581] },
       "circuit_overlay": {
         "png": "LLHA_circuit.png",
         "sw": [
@@ -750,6 +752,7 @@
         "LLRS_airport_Annex Vav.pdf",
         "LLRS_airport_Chart.pdf"
       ],
+      "cvfr_overlay": { "png": "LLRS_cvfr.png", "tl": [32.00538, 34.94517], "tr": [31.73483, 34.94517], "bl": [32.00538, 34.5042] },
       "circuit_overlay": {
         "png": "LLRS_circuit.png",
         "tl": [
