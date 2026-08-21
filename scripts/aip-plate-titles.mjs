@@ -78,6 +78,91 @@ function indexByAnnex(doc) {
   return out;
 }
 
+// A third key, for the text pages. They carry no annex number -- their titles read
+// "מנחת באר-שבע - LLBS - דפי מלל" -- so neither the hash (our copy is often a revision behind)
+// nor the annex key can find them, and the menu fell back to the file name: a pilot looking
+// for the field's written pages saw "airport Chart". One text page per field, so (ICAO, text
+// page) identifies it; anything ambiguous is skipped, as everywhere else here.
+function indexTextPages(doc) {
+  const out = new Map();
+  const walk = (node) => {
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node.FILES)) {
+      for (const f of node.FILES) {
+        // The ICAO is in the FILE's own title here, not the node's: the text pages hang under
+        // grouping nodes ("מנחתים", "מנחתי מסוקים") rather than under each field.
+        const raw = cleanText(f.TITLE);
+        const icao = (raw.match(/\b(LL[A-Z]{2})\b/) || [])[1];
+        if (!icao) continue;
+        const parts = splitTitle(raw);
+        if (parts.annex) continue;                       // an annex sheet, not the text pages
+        if (!/מלל/.test(parts.title)) continue;
+        if (out.has(icao)) out.set(icao, null);          // two candidates: name neither
+        else out.set(icao, { he: parts.title, modified: cleanDate(f.LAST_MODIFIED) });
+      }
+    }
+    for (const v of Object.values(node)) walk(v);
+  };
+  walk(doc?.aip?.he);
+  return out;
+}
+
+// English titles, for the three aerodromes the CAA publishes in English (LLBG, LLHA, LLER).
+// Our copies of those plates are usually a revision behind, so the hash cannot pair them --
+// but each plate prints its English title in its own header, and the index says which titles
+// exist for that field. Pairing the two gives the CAA's own English wording rather than a
+// translation of ours.
+function indexEnglishTitles(doc) {
+  const out = new Map();
+  const walk = (node) => {
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (!node || typeof node !== 'object') return;
+    const icao = (String(node.TITLE || '').match(/\b(LL[A-Z]{2})\b/) || [])[1];
+    if (icao && Array.isArray(node.FILES)) {
+      const list = out.get(icao) || [];
+      for (const f of node.FILES) list.push(cleanText(f.TITLE));
+      out.set(icao, list);
+    }
+    for (const v of Object.values(node)) walk(v);
+  };
+  walk(doc?.aip?.en);
+  return out;
+}
+
+// "AIRCRAFT PARKING CHART - APRON N - ICAO" -> [AIRCRAFT, PARKING, CHART, APRON-N]
+// The apron letter is the whole difference between four otherwise identical titles at Haifa,
+// and a bare "N" is exactly what a word tokeniser throws away.
+const EN_STOP = new Set(['ICAO', 'THE', 'OF', 'IN', 'AND', 'A', 'FOR']);
+function enTokens(text) {
+  const up = String(text || '').toUpperCase().replace(/APRON\s+([A-Z])\b/g, 'APRON-$1');
+  return (up.match(/[A-Z0-9][A-Z0-9-]*/g) || [])
+    .filter(w => w.length > 1 && !EN_STOP.has(w));
+}
+// The plate's own first-page header, as one upper-case string.
+function pdfHeaderText(path) {
+  const out = spawnSync('pdftotext', ['-f', '1', '-l', '1', '-layout', path, '-'],
+    { encoding: 'utf8', maxBuffer: 8 << 20 });
+  if (out.status !== 0 || !out.stdout) return '';
+  return out.stdout.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 10).join(' ').toUpperCase();
+}
+// The most SPECIFIC published title the header contains. "AERODROME CHART" is a subset of
+// "AERODROME OBSTACLE CHART - TYPE A RWY 15-33", so the longer match wins; anything the
+// header does not nearly contain is not claimed at all.
+function englishTitleFor(path, candidates) {
+  if (!candidates || !candidates.length) return '';
+  const have = new Set(enTokens(pdfHeaderText(path)));
+  let best = '';
+  let bestLen = 0;
+  for (const cand of candidates) {
+    const ct = enTokens(cand);
+    if (!ct.length) continue;
+    const hit = ct.filter(w => have.has(w)).length / ct.length;
+    if (hit >= 0.8 && ct.length > bestLen) { best = cand; bestLen = ct.length; }
+  }
+  return best;
+}
+
 function indexByHash(doc) {
   const out = new Map();
   const walk = (node, lang) => {
@@ -227,6 +312,8 @@ async function main() {
   const doc = await fetchIndex();
   const byHash = indexByHash(doc);
   const byAnnex = indexByAnnex(doc);
+  const byText = indexTextPages(doc);
+  const byEnglish = indexEnglishTitles(doc);
   const files = (await readdir(BYOP)).filter(f => f.toLowerCase().endsWith('.pdf')).sort();
   const titles = {};
   const stale = [];
@@ -246,6 +333,14 @@ async function main() {
           modified: '', source: 'aip-annex' };
         continue;
       }
+      // The field's written pages: no annex number to key on, one per field.
+      if (/_airport_(Chart|Text)\.pdf$/i.test(f)) {
+        const text = byText.get(icao);
+        if (text && !key) {
+          titles[f] = { annex: '', he: text.he, en: '', modified: '', source: 'aip-text' };
+          continue;
+        }
+      }
       const own = designationFromPdf(join(BYOP, f), fieldNames(f));
       if (own) titles[f] = { annex: own.annex, he: own.title, en: '', modified: '', source: 'pdf' };
       continue;
@@ -260,6 +355,25 @@ async function main() {
       source: 'aip',
     };
   }
+  // English, for the fields that have it. Done after the main pass so it fills in whichever
+  // rows are still without one, however they were named.
+  const claimed = new Map();
+  for (const [file, row] of Object.entries(titles)) {
+    if (row.en) continue;
+    const icao = String(file).slice(0, 4).toUpperCase();
+    const cands = byEnglish.get(icao);
+    if (!cands) continue;
+    const en = englishTitleFor(join(BYOP, file), cands);
+    if (!en) continue;
+    // The apron plates at Haifa differ by one letter, and where a plate prints its apron as
+    // artwork rather than text two of them read the same. A title claimed twice names
+    // neither: a plate labelled as its neighbour is worse than one labelled in Hebrew.
+    const key = icao + '|' + en;
+    if (claimed.has(key)) { titles[claimed.get(key)].en = ''; continue; }
+    claimed.set(key, file);
+    row.en = en;
+  }
+
   // One more pass at the boundary, so what reaches the disk is provably the shape declared
   // above whatever route a value took to get here.
   const safe = {};
@@ -272,7 +386,7 @@ async function main() {
       he: cleanText(row.he),
       en: cleanText(row.en),
       modified: cleanDate(row.modified),
-      source: ['pdf', 'aip-annex'].includes(row.source) ? row.source : 'aip',
+      source: ['pdf', 'aip-annex', 'aip-text'].includes(row.source) ? row.source : 'aip',
     };
   }
   await writeFile(OUT, JSON.stringify(safe, null, 1) + '\n');
