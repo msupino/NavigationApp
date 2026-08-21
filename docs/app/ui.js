@@ -4700,6 +4700,29 @@ function overlayGeom(ov) {
 // Counted rather than flagged: the layer is loading until the last of its plates is in.
 let _overlayLoading = 0;
 let _overlayLoadingEl = null;
+// The boot marker in index.html comes down when the map has something on it -- the first
+// chart tiles painted, not merely the DOM built, because a blank chart is what the wait
+// actually looks like. Belt and braces: a timeout clears it whatever happens, since a marker
+// that outlives its reason is worse than none (a tile server that never answers would
+// otherwise leave the app looking dead when it is perfectly usable offline).
+function clearBootLoading() {
+  const el = document.getElementById('boot-loading');
+  if (!el) return;
+  el.style.opacity = '0';
+  el.style.transition = 'opacity 0.2s ease';
+  setTimeout(() => el.remove(), 250);
+}
+window.clearBootLoading = clearBootLoading;
+(function armBootLoading() {
+  if (!document.getElementById('boot-loading')) return;
+  let done = false;
+  const finish = () => { if (!done) { done = true; clearBootLoading(); } };
+  map.whenReady(() => {
+    map.eachLayer(l => { if (l && typeof l.once === 'function' && l._url) l.once('load', finish); });
+  });
+  setTimeout(finish, 6000);
+})();
+
 function overlayLoadingTick(delta) {
   _overlayLoading = Math.max(0, _overlayLoading + delta);
   if (!_overlayLoadingEl) {
@@ -7443,6 +7466,74 @@ function checkApkForUpdate(opts) {
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows
 // the install control in the address bar — no in-app button needed.
+// --- Android Back, in the APK ---------------------------------------------------------
+// A phone's Back button is one press away from the pilot's thumb for the whole flight, and in
+// a WebView with no history it closes the app outright. Back should mean "go back one step"
+// while there is a step to go back to, and only then ask before leaving.
+//
+// APK only: in a browser, Back is the browser's to handle, and beforeunload can raise nothing
+// but a generic dialog nobody worded.
+function backButtonStep() {
+  // Innermost first, the way the pilot stacked them: a plate over the charts list over the
+  // map. Each returns true when it consumed the press.
+  const top = document.querySelector('.modal-back:last-of-type');
+  if (top) {
+    if (typeof top._navaidClose === 'function') top._navaidClose();
+    else top.remove();
+    return true;
+  }
+  if (typeof fpOpen !== 'undefined' && fpOpen && typeof closeFlightPlan === 'function') {
+    closeFlightPlan();
+    return true;
+  }
+  const insp = document.getElementById('inspector');
+  if (insp && !insp.classList.contains('hidden')) {
+    state.selected = null;
+    showInspector();
+    if (typeof draw === 'function') draw();
+    return true;
+  }
+  if (typeof state !== 'undefined' && (state.mode === 'add' || state.mode === 'note')) {
+    setMode(null);
+    if (typeof draw === 'function') draw();
+    return true;
+  }
+  if (typeof window.closeToolbarMenus === 'function' &&
+      document.querySelector('#toolbar .tb-section.open')) {
+    window.closeToolbarMenus();
+    return true;
+  }
+  return false;
+}
+
+function armAndroidBackButton(attempt) {
+  if (!isNativeCapacitorShell()) return;
+  const app = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if (!app || typeof app.addListener !== 'function') {
+    // The APK loads the live site, so this file can run before the native bridge has finished
+    // injecting its plugins. Giving up on the first look meant Back stayed unhandled for the
+    // whole session -- try again for a few seconds, then leave it alone.
+    const n = (attempt || 0) + 1;
+    if (n <= 20) setTimeout(() => armAndroidBackButton(n), 250);
+    return;
+  }
+  app.addListener('backButton', () => {
+    if (backButtonStep()) return;                       // something on screen to close first
+    // Nothing left to close: this press leaves NavAid. Asked every time, because the press
+    // that ends a flight looks exactly like the press that closed a panel.
+    const msg = (S && S.exitConfirm) || 'Close NavAid?';
+    // A WebView that refuses confirm() must not trap the pilot in the app: if the question
+    // cannot be asked, Back does what Back has always done.
+    let leave;
+    try { leave = window.confirm(msg); } catch (e) { leave = true; }
+    if (!leave) return;
+    if (typeof flushPersist === 'function') flushPersist();
+    if (typeof app.exitApp === 'function') app.exitApp();
+  });
+}
+window.backButtonStep = backButtonStep;
+window.armAndroidBackButton = armAndroidBackButton;
+
 function isNativeCapacitorShell() {
   return location.hostname === 'app.navaid.local' ||
     location.protocol === 'capacitor:' ||
@@ -7474,6 +7565,9 @@ if (isNativeCapacitorShell() && !isNativeLocalOrigin()) {
   document.addEventListener('visibilitychange', check);
   window.addEventListener('focus', check);
 }
+
+// Android Back, in the APK: close what is open, and ask before the press that leaves.
+armAndroidBackButton();
 
 // Preload the terrain grid so MSA / terrain-clearance (#673) is ready when a
 // leg inspector opens. No-op (coverage:false) until a real DEM is bundled.

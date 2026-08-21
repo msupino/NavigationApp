@@ -881,6 +881,7 @@ window.S = {
   updateReload: 'טען מחדש',
   updateDismiss: 'סגור',
   overlayLoading: 'טוען תרשימים…',
+  exitConfirm: 'לסגור את NavAid?',
   plateLoading: 'טוען…',
   loadingCharts: 'טוען מפות…',
   plateLoadError: 'טעינת הדפית נכשלה.',
