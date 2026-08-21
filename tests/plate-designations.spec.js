@@ -246,7 +246,9 @@ test('the back button stays on screen while the plates scroll', async ({ page })
   await page.waitForFunction(() => typeof showChartsModal === 'function');
   await page.evaluate(() => showChartsModal('LLBG'));
   await page.waitForSelector('.charts-airport[data-icao="LLBG"] .plate-row');
-  const sticky = await page.evaluate(() => getComputedStyle(document.querySelector('.charts-field-bar')).position);
+  // The bar and the category chips are stuck as one block (see charts-menu-frame.spec.js),
+  // so it is the head around them that holds them on screen.
+  const sticky = await page.evaluate(() => getComputedStyle(document.querySelector('.charts-field-head')).position);
   expect(sticky).toBe('sticky');
   const before = await page.locator('.charts-back').boundingBox();
   await page.evaluate(() => {
