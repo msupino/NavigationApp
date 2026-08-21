@@ -4694,6 +4694,27 @@ function overlayGeom(ov) {
 }
 // Build the Leaflet layer for one overlay (axis-aligned or rotated), tagged so
 // the align editor can find/select it.
+// An overlay plate is a ~700 KB scan, and a whole layer is one per airfield. On a phone over
+// cellular that is seconds of nothing happening after the toggle -- the plate viewer says
+// "Loading…" while it waits, and these said nothing at all, so the switch looked broken.
+// Counted rather than flagged: the layer is loading until the last of its plates is in.
+let _overlayLoading = 0;
+let _overlayLoadingEl = null;
+function overlayLoadingTick(delta) {
+  _overlayLoading = Math.max(0, _overlayLoading + delta);
+  if (!_overlayLoadingEl) {
+    _overlayLoadingEl = document.createElement('div');
+    _overlayLoadingEl.className = 'overlay-loading';
+    _overlayLoadingEl.setAttribute('role', 'status');
+    _overlayLoadingEl.setAttribute('aria-live', 'polite');
+    document.body.appendChild(_overlayLoadingEl);
+  }
+  const on = _overlayLoading > 0;
+  _overlayLoadingEl.textContent = on ? (S.overlayLoading || 'Loading charts…') : '';
+  _overlayLoadingEl.classList.toggle('show', on);
+}
+window.overlayLoadingCount = () => _overlayLoading;
+
 function buildOverlayLayer(base, ov, ver, type) {
   const url = base + encodeURIComponent(ov.png) + '?v=' + ver;
   const g = overlayGeom(ov);
@@ -4705,6 +4726,13 @@ function buildOverlayLayer(base, ov, ver, type) {
   layer._ovType = type;
   layer._ovUrl = url;
   layer._ovData = ov;
+  // Leaflet fires these on the <img> it manages, for both overlay kinds. `error` counts as
+  // done: a plate that will never arrive must not leave the marker up for the whole session.
+  let settled = false;
+  const done = () => { if (!settled) { settled = true; overlayLoadingTick(-1); } };
+  overlayLoadingTick(1);
+  layer.on('load', done);
+  layer.on('error', done);
   return layer;
 }
 

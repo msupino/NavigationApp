@@ -32,6 +32,12 @@ jobs:
         with:
           node-version: 22
 
+      # The English titles and the read-off-the-plate fallback both shell out to pdftotext.
+      # Without it the job ran, succeeded, and quietly published a file with every English
+      # title missing -- the daily refresh undoing work rather than doing any.
+      - name: Install poppler (pdftotext)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+
       - name: Read the CAA index and refresh plate designations
         run: node scripts/aip-plate-titles.mjs
 
