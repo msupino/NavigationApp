@@ -611,6 +611,22 @@ test('every field with a CVFR route plate has a CVFR overlay', async () => {
   expect(missing).toEqual([]);
 });
 
+test('LLRS CVFR overlay keeps its reviewed rotated anchors', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const root = path.join(__dirname, '..');
+  const data = JSON.parse(fs.readFileSync(path.join(root, 'docs/data/airfields.json'), 'utf8'));
+  const fields = Array.isArray(data) ? data : data.airfields;
+  const llrs = fields.find(f => f.name === 'LLRS');
+
+  expect(llrs.cvfr_overlay).toEqual({
+    png: 'LLRS_cvfr.png',
+    tl: [32.01458, 34.98322],
+    tr: [31.82413, 34.98434],
+    bl: [32.01318, 34.65388],
+  });
+});
+
 // A plate is placed by its own graticule, so the box it produces has to hold the airfield
 // the dataset already knows, and has to keep the shape of the paper: a degree of longitude
 // covers cos(latitude) as much ground as a degree of latitude, and an overlay that ignores
