@@ -883,7 +883,6 @@ window.S = {
   overlayLoading: 'טוען תרשימים…',
   exitConfirm: 'לסגור את NavAid?',
   plateLoading: 'טוען…',
-  loadingCharts: 'טוען מפות…',
   plateLoadError: 'טעינת הדפית נכשלה.',
   chartsBack: '→ כל השדות',
   chartsFilterPlaceholder: 'חיפוש שדה',

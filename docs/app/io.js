@@ -7319,7 +7319,9 @@ function showChartsModal(focusIcao) {
   // already knows the page count.
   if (typeof loadPlatesManifest === 'function') loadPlatesManifest().catch(() => {});
   if (typeof loadPlateTitles === 'function') loadPlateTitles().catch(() => {});
-  const modal = createDraggableModal(S.plates, 'modal wide',
+  // Fixed width: the two screens (all fields, then one field's plates) hold different
+  // content, and a box that resized between them made the pilot re-find every control.
+  const modal = createDraggableModal(S.plates, 'modal wide charts-modal',
     () => clearOpenChartModal('airport-charts'),
     { nonBlocking: true, chartKind: 'airport-charts' });
   const scrollArea = document.createElement('div');
@@ -7478,6 +7480,11 @@ function showChartsModal(focusIcao) {
     section.className = 'charts-airport';
     section.dataset.icao = af.name;
 
+    // The way back and the category chips are one block that stays on screen: two sticky
+    // elements stacked would need the first one's height as the second one's `top`, which
+    // changes with the field name's wrapping.
+    const head = document.createElement('div');
+    head.className = 'charts-field-head';
     const bar = document.createElement('div');
     bar.className = 'charts-field-bar';
     const back = document.createElement('button');
@@ -7497,7 +7504,8 @@ function showChartsModal(focusIcao) {
     if (localFieldName(af)) header.appendChild(codeEl);
     bar.appendChild(back);
     bar.appendChild(header);
-    section.appendChild(bar);
+    head.appendChild(bar);
+    section.appendChild(head);
 
     const groups = {};
     for (const fn of af.plates) {
@@ -7528,7 +7536,7 @@ function showChartsModal(focusIcao) {
       };
       chips.appendChild(mk('all', S.chartsAllPlates || 'All'));
       cats.forEach(cat => chips.appendChild(mk(cat, catLabel[cat])));
-      body.appendChild(chips);
+      head.appendChild(chips);
     }
     function paintList() {
       list.innerHTML = '';

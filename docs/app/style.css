@@ -3141,6 +3141,10 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   flex: 1;
   min-height: 0;
 }
+/* One width for both screens of the charts window: the list of fields and one field's
+   plates hold different content, and a box that resized between them moved every control
+   out from under the thumb that was reaching for it. */
+.modal.wide.charts-modal { width: min(560px, 92vw); min-width: 0; }
 .modal.wide.charts-alt-modal {
   width: min(760px, 92vw);
   height: min(560px, 84vh);
@@ -3453,20 +3457,22 @@ body.theme-light .insp-charts-btn:hover, body.theme-light .insp-charts-btn:focus
 /* The way back stays on screen. The plate list scrolls inside the modal, and at Ben Gurion
    (44 plates) the back button was somewhere above the fold by the time the pilot decided
    they were in the wrong field. */
+.charts-field-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -2px 10px;
+  padding: 6px 2px 0;
+  background: #201d1d;
+  border-bottom: 1px solid #3a3636;
+}
 .charts-field-bar {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  margin: 0 -2px 10px;
-  padding: 6px 2px;
-  background: #201d1d;
-  border-bottom: 1px solid #3a3636;
 }
-body.theme-light .charts-field-bar { background: #fafcff; border-bottom-color: #d8dde5; }
+body.theme-light .charts-field-head { background: #fafcff; border-bottom-color: #d8dde5; }
 /* Same for the field filter: it is the way out of a long list of fields. */
 .charts-filter { position: sticky; top: 0; z-index: 2; }
 .charts-back {
@@ -3481,7 +3487,8 @@ body.theme-light .charts-field-bar { background: #fafcff; border-bottom-color: #
   cursor: pointer;
 }
 .charts-back:hover, .charts-back:focus-visible { background: #2d3d52; }
-.charts-cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+/* Inside the sticky head, so the categories stay reachable however far the list scrolls. */
+.charts-cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .charts-cat-chip {
   font: inherit;
   font-size: 13px;
