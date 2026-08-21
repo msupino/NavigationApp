@@ -1880,6 +1880,7 @@ window.S = Object.assign({
   plateOpenTab: 'Open in new tab',
   plateClose: 'Close',
   platesNone: 'No charts available — see official AIP',
+  overlayLoading: 'Loading charts…',
   plateLoading: 'Loading…',
   loadingCharts: 'Loading charts…',
   plateLoadError: 'Failed to load chart.',
