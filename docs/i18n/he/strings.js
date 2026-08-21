@@ -880,6 +880,7 @@ window.S = {
   updateAvailable: 'קיימת גרסה חדשה של NavAid. בצע רענון קשיח או טען מחדש כדי לעדכן.',
   updateReload: 'טען מחדש',
   updateDismiss: 'סגור',
+  overlayLoading: 'טוען תרשימים…',
   plateLoading: 'טוען…',
   loadingCharts: 'טוען מפות…',
   plateLoadError: 'טעינת הדפית נכשלה.',

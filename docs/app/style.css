@@ -5196,6 +5196,34 @@ body.theme-light #tuning-panel summary {
 #page-orient.portrait { opacity: 0.9; }
 
 /* Toast — bottom-center transient message for non-blocking confirmations. */
+/* "Loading charts…" while an Extra-layers plate set is on the wire. Sits where the toast does
+   but above it in the corner, so a toast fired at the same moment does not cover it, and it
+   never takes input -- the pilot is meant to carry on panning while it loads. */
+.overlay-loading {
+  position: fixed;
+  bottom: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4999;
+  padding: 6px 14px;
+  background: rgba(20, 18, 18, 0.92);
+  color: #e8e8e8;
+  border: 1px solid #443f3f;
+  border-radius: 6px;
+  font-size: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.overlay-loading.show { opacity: 1; }
+body.theme-light .overlay-loading {
+  color: #1f252c;
+  background: rgba(250, 252, 255, 0.96);
+  border-color: #c6ccd6;
+  box-shadow: 0 6px 18px rgba(31, 37, 44, 0.18);
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
