@@ -155,3 +155,199 @@ test.describe('panning the chart is not a request to inspect', () => {
     expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('leg');
   });
 });
+
+// Reported from a phone: pinching to zoom with a finger on a waypoint opened that waypoint's
+// inspector. The two-finger paths deliberately move nothing — touchmove returns early unless
+// exactly one finger is down — so the release read as a tap. Same rule the map pan already
+// follows: the finger came down to do something else.
+test.describe('a pinch is not a tap', () => {
+  const multi = (page, type, pts) => page.evaluate(([t, list]) => {
+    const el = map.getContainer();
+    const touches = list.map((p, i) => new Touch({
+      identifier: i, target: el, clientX: p.x, clientY: p.y, pageX: p.x, pageY: p.y }));
+    el.dispatchEvent(new TouchEvent(t, { bubbles: true, cancelable: true,
+      touches: t === 'touchend' ? [] : touches, targetTouches: touches, changedTouches: touches }));
+  }, [type, pts]);
+
+  const wpPoint = (page, i) => page.evaluate((idx) => {
+    const p = map.latLngToContainerPoint([state.waypoints[idx].lat, state.waypoints[idx].lng]);
+    const b = map.getContainer().getBoundingClientRect();
+    return { x: Math.round(b.left + p.x), y: Math.round(b.top + p.y) };
+  }, i);
+
+  test('zooming with a finger on a waypoint leaves the panel shut', async ({ page }) => {
+    await boot(page);
+    const at = await wpPoint(page, 0);
+    await multi(page, 'touchstart', [at]);
+    await multi(page, 'touchstart', [at, { x: at.x + 60, y: at.y + 40 }]);
+    await multi(page, 'touchmove', [{ x: at.x - 20, y: at.y - 10 }, { x: at.x + 110, y: at.y + 90 }]);
+    await multi(page, 'touchend', [{ x: at.x - 20, y: at.y - 10 }]);
+    expect(await hidden(page)).toBe(true);
+    expect(await page.evaluate(() => state.selected)).toBe(null);
+  });
+
+  test('the waypoint itself does not move during the pinch', async ({ page }) => {
+    await boot(page);
+    const before = await page.evaluate(() => ({ ...state.waypoints[0] }));
+    const at = await wpPoint(page, 0);
+    await multi(page, 'touchstart', [at]);
+    await multi(page, 'touchstart', [at, { x: at.x + 60, y: at.y + 40 }]);
+    await multi(page, 'touchmove', [{ x: at.x - 40, y: at.y - 30 }, { x: at.x + 140, y: at.y + 120 }]);
+    await multi(page, 'touchend', [{ x: at.x - 40, y: at.y - 30 }]);
+    const after = await page.evaluate(() => ({ ...state.waypoints[0] }));
+    expect(after.lat).toBeCloseTo(before.lat, 6);
+    expect(after.lng).toBeCloseTo(before.lng, 6);
+  });
+
+  // A single-finger tap on the same waypoint still opens it — that is how a waypoint is
+  // inspected on a touch screen.
+  test('a plain tap still opens the waypoint', async ({ page }) => {
+    await boot(page);
+    const at = await wpPoint(page, 0);
+    await touch(page, 'touchstart', at.x, at.y);
+    await touch(page, 'touchend', at.x, at.y);
+    expect(await hidden(page)).toBe(false);
+  });
+});
+
+// The other half of the same report: a DOUBLE tap is how a phone zooms in, and its first tap
+// is a tap — it opened whatever was under it, over the chart being zoomed into. A double tap
+// is only recognisable from its second tap, so the first one's effect is undone when that
+// arrives.
+test.describe('a double tap is a zoom, not two taps', () => {
+  const wpPoint = (page, i) => page.evaluate((idx) => {
+    const p = map.latLngToContainerPoint([state.waypoints[idx].lat, state.waypoints[idx].lng]);
+    const b = map.getContainer().getBoundingClientRect();
+    return { x: Math.round(b.left + p.x), y: Math.round(b.top + p.y) };
+  }, i);
+  const tap = async (page, at) => {
+    await touch(page, 'touchstart', at.x, at.y);
+    await touch(page, 'touchend', at.x, at.y);
+  };
+
+  test('double-tapping a waypoint leaves the panel shut', async ({ page }) => {
+    await boot(page);
+    const at = await wpPoint(page, 0);
+    await tap(page, at);
+    expect(await hidden(page)).toBe(false);      // the first tap does open it...
+    await page.waitForTimeout(120);
+    await tap(page, at);
+    expect(await hidden(page)).toBe(true);       // ...and the second takes it away again
+    expect(await page.evaluate(() => state.selected)).toBe(null);
+  });
+
+  // Two taps far enough apart in time are two taps, not a zoom.
+  test('a slow second tap is still a tap', async ({ page }) => {
+    await boot(page);
+    const at = await wpPoint(page, 0);
+    await tap(page, at);
+    await page.waitForTimeout(500);
+    await tap(page, at);
+    expect(await hidden(page)).toBe(false);
+  });
+
+  // ...and so are two taps in different places.
+  test('a second tap somewhere else is still a tap', async ({ page }) => {
+    await boot(page);
+    const a = await wpPoint(page, 0);
+    const b = await wpPoint(page, 1);
+    await tap(page, a);
+    await page.waitForTimeout(80);
+    await tap(page, b);
+    expect(await hidden(page)).toBe(false);
+    expect(await page.evaluate(() => state.selected && state.selected.index)).toBe(1);
+  });
+});
+
+// Reported: "holding the map on a waypoint to move it opens inspector". A long press on a
+// phone raises the OS's own text-selection / context gesture, which fires touchcancel — and a
+// cancelled press looks from here exactly like a press that never moved, i.e. a tap.
+test.describe('a cancelled press is not a tap', () => {
+  const cancel = (page, x, y) => page.evaluate(([px, py]) => {
+    const el = map.getContainer();
+    const init = { clientX: px, clientY: py, pageX: px, pageY: py, identifier: 1, target: el };
+    el.dispatchEvent(new TouchEvent('touchcancel', { bubbles: true, cancelable: true,
+      touches: [], targetTouches: [], changedTouches: [new Touch(init)] }));
+  }, [x, y]);
+
+  test('the browser taking the touch away opens nothing', async ({ page }) => {
+    await boot(page);
+    const p = await at(page, 0);
+    await touch(page, 'touchstart', p.x, p.y);
+    await cancel(page, p.x, p.y);
+    expect(await hidden(page)).toBe(true);
+    expect(await page.evaluate(() => state.selected)).toBe(null);
+  });
+
+  // A single waypoint with no route yet behaves the same — that is where it was reported.
+  test('same with one waypoint and no route', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => { state.waypoints = [state.waypoints[0]]; syncLegs(); draw(); });
+    const p = await at(page, 0);
+    await touch(page, 'touchstart', p.x, p.y);
+    await cancel(page, p.x, p.y);
+    expect(await hidden(page)).toBe(true);
+  });
+
+  // A drag that is cancelled mid-flight keeps what it moved: the pilot did move the point,
+  // and only the panel decision changes.
+  test('a move already made survives the cancel', async ({ page }) => {
+    await boot(page);
+    const before = await page.evaluate(() => ({ ...state.waypoints[0] }));
+    const p = await at(page, 0);
+    await touch(page, 'touchstart', p.x, p.y);
+    await touch(page, 'touchmove', p.x + 70, p.y + 50);
+    await cancel(page, p.x + 70, p.y + 50);
+    const after = await page.evaluate(() => ({ ...state.waypoints[0] }));
+    expect(Math.abs(after.lat - before.lat) + Math.abs(after.lng - before.lng)).toBeGreaterThan(0);
+    expect(await hidden(page)).toBe(true);
+  });
+});
+
+// Reported three times over, in three different shapes: holding a waypoint to move it opened
+// its inspector. The last shape is the plain one — the pilot holds on, the point does not
+// travel far enough to count as moved, and the release reads as a request to inspect. A tap
+// is quick; anything held is an attempt to move something.
+test.describe('a held press is a grab, not a tap', () => {
+  const press = async (page, at, holdMs, dx = 0, dy = 0) => {
+    await page.evaluate(() => { state.selected = null; showInspector(); draw(); });
+    await touch(page, 'touchstart', at.x, at.y);
+    if (holdMs) await page.waitForTimeout(holdMs);
+    if (dx || dy) await touch(page, 'touchmove', at.x + dx, at.y + dy);
+    await touch(page, 'touchend', at.x + dx, at.y + dy);
+  };
+
+  test('a quick tap still opens the waypoint', async ({ page }) => {
+    await boot(page);
+    await press(page, await at(page, 0), 0);
+    expect(await hidden(page)).toBe(false);
+  });
+
+  test('holding it opens nothing, even if the finger never travels', async ({ page }) => {
+    await boot(page);
+    await press(page, await at(page, 0), 600);
+    expect(await hidden(page)).toBe(true);
+    expect(await page.evaluate(() => state.selected)).toBe(null);
+  });
+
+  test('holding then nudging inside the slop opens nothing either', async ({ page }) => {
+    await boot(page);
+    await press(page, await at(page, 0), 600, 5, 3);
+    expect(await hidden(page)).toBe(true);
+  });
+
+  // A leg is not draggable, so pressing one is a tap however long it is held -- that is how a
+  // leg is inspected, and there is nothing to grab.
+  test('a long press on a leg still opens it', async ({ page }) => {
+    await boot(page);
+    const mid = await page.evaluate(() => {
+      const a = map.latLngToContainerPoint([state.waypoints[0].lat, state.waypoints[0].lng]);
+      const b = map.latLngToContainerPoint([state.waypoints[1].lat, state.waypoints[1].lng]);
+      const box = map.getContainer().getBoundingClientRect();
+      return { x: Math.round(box.left + (a.x + b.x) / 2), y: Math.round(box.top + (a.y + b.y) / 2) };
+    });
+    await press(page, mid, 600);
+    expect(await hidden(page)).toBe(false);
+    expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('leg');
+  });
+});
