@@ -64,7 +64,9 @@ test('it follows the light theme', async ({ page }) => {
 // down once the map has something on it.
 test.describe('the first load says it is loading', () => {
   test('the marker is in the HTML itself, before any script runs', async ({ page }) => {
-    const html = await (await page.request.get('/index.html')).text();
+    // Relative, so it resolves against this run's baseURL: a deployed PR preview lives under
+    // /pr/<n>/, where an absolute '/index.html' fetches the production site instead.
+    const html = await (await page.request.get('index.html')).text();
     expect(html).toContain('id="boot-loading"');
     // Styled inline: the stylesheet has not arrived either.
     expect(html).toMatch(/id="boot-loading"[\s\S]{0,400}position:fixed/);
