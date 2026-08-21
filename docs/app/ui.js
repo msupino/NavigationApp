@@ -383,6 +383,38 @@ orientCtrl.onAdd = function () {
 orientCtrl.addTo(map);
 const orientBtn = document.getElementById('orient-toggle');
 
+// The two in-flight controls draw their own icons rather than borrowing emoji, which
+// rendered differently on every phone and said nothing about aviation. The follow button
+// wears the VOR symbol the map itself uses for a station -- a ring, four ticks and a filled
+// centre -- because that is exactly what it does: hold the chart on one point. The
+// orientation button is a compass needle that points where the aircraft is going, the
+// convention ForeFlight, Garmin Pilot and Google Maps all settled on.
+const VOR_ON_COLOR = '#c8442e';        // lit: the map is held on the aircraft
+const VOR_OFF_COLOR = '#7a7a7a';       // grey: the map stays where the pilot put it
+function vorIconSvg(color) {
+  return '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">'
+    + '<circle cx="12" cy="12" r="7" fill="none" stroke="' + color + '" stroke-width="2"/>'
+    + '<path d="M12 5V2 M12 19v3 M5 12H2 M19 12h3" stroke="' + color
+    + '" stroke-width="2" stroke-linecap="round"/>'
+    + '<circle cx="12" cy="12" r="2.4" fill="' + color + '"/></svg>';
+}
+// `deg` turns the needle: the track being flown when the chart is north-up, and north
+// itself when the chart is turned to the track, so the needle always points at something
+// real on the screen. `hdg` is the track in degrees, written under the needle while a fix
+// is driving the map -- the number a pilot reads back.
+function compassIconSvg(deg, hdg) {
+  const readout = Number.isFinite(hdg)
+    ? '<span class="orient-hdg">' + String(Math.round(hdg) % 360).padStart(3, '0') + '\u00b0</span>'
+    : '';
+  return '<span class="orient-face">'
+    + '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">'
+    + '<circle cx="12" cy="12" r="9.2" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>'
+    + '<g transform="rotate(' + (Math.round(deg) || 0) + ' 12 12)">'
+    + '<path d="M12 3.4 L15.4 13 L12 11 L8.6 13 Z" fill="' + VOR_ON_COLOR + '"/>'
+    + '<path d="M12 20.6 L8.6 13.6 L12 15.4 L15.4 13.6 Z" fill="#9a9a9a"/>'
+    + '</g></svg>' + readout + '</span>';
+}
+
 // Point the map so the aircraft's track is up the screen. Leaflet's bearing is the angle
 // the MAP is rotated by, so holding a heading of h up means rotating by 360 - h.
 function applyHeadingUp() {
@@ -411,7 +443,11 @@ function refreshOrientControl() {
   // something else. Rotated-by-hand reads as its own state, and tapping straightens up.
   const bearing = (typeof mapBearing === 'function') ? Math.round(mapBearing()) : 0;
   const rotated = !headingUpOn && ((bearing % 360) + 360) % 360 !== 0;
-  orientBtn.textContent = headingUpOn ? '\u2708\ufe0f' : (rotated ? '\u21ba' : '\u2b06\ufe0f');
+  // Heading-up turns the chart, so north is what moves: point the needle at north. North-up
+  // leaves the chart still, so the needle points where the aircraft is going.
+  const trk = (typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.hdg)) ? gpsOwn.hdg : null;
+  const needle = headingUpOn ? ((bearing % 360) + 360) % 360 : (trk == null ? 0 : trk);
+  orientBtn.innerHTML = compassIconSvg(needle, trk);
   orientBtn.classList.toggle('orient-on', headingUpOn);
   orientBtn.classList.toggle('orient-rotated', rotated);
   orientBtn.setAttribute('aria-pressed', headingUpOn ? 'true' : 'false');
@@ -485,10 +521,10 @@ function refreshGpsFollowControl() {
   wrap.style.display = tracking ? '' : 'none';
   orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
-  // A gun sight, not a padlock: this one locks the MAP ONTO the aircraft, and the padlock now
-  // belongs to the edit lock below, which is a lock in the ordinary sense -- it refuses input.
-  // Two padlocks in one column meant neither said which lock it was.
-  followBtn.textContent = on ? '\ud83c\udfaf' : '\u2b55';     // target / empty ring
+  // The VOR symbol, not a padlock: this one holds the MAP ONTO the aircraft, and the padlock
+  // belongs to the edit lock below, which is a lock in the ordinary sense -- it refuses
+  // input. Red and lit when it is holding, grey when the map is the pilot's to move.
+  followBtn.innerHTML = vorIconSvg(on ? VOR_ON_COLOR : VOR_OFF_COLOR);
   followBtn.classList.toggle('follow-on', on);
   followBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
   const label = on ? (S.followLockOn || 'Following the aircraft — tap to stop following')
@@ -4713,10 +4749,28 @@ function clearBootLoading() {
   setTimeout(() => el.remove(), 250);
 }
 window.clearBootLoading = clearBootLoading;
+// The mark is also held for a moment even when the map is ready at once: on a warm cache it
+// painted and vanished inside a few hundred ms, which reads as a flicker rather than as the
+// app opening. bootLogoMinMs is a floor on how long it shows, never an addition to a slow
+// start -- a map that takes four seconds still clears the moment it arrives.
+let _bootLoadingSince = Date.now();
+window.bootLoadingHeldFor = () => Date.now() - _bootLoadingSince;
 (function armBootLoading() {
   if (!document.getElementById('boot-loading')) return;
   let done = false;
-  const finish = () => { if (!done) { done = true; clearBootLoading(); } };
+  const finish = () => {
+    if (done) return;
+    done = true;
+    const left = (typeof tune === 'function' ? tune('bootLogoMinMs') : 2000) -
+      (Date.now() - _bootLoadingSince);
+    if (left <= 0) { clearBootLoading(); return; }
+    // From here the wait is for looks, not for the app: the map is up behind the screen.
+    // Keep showing the mark, but stop swallowing taps -- a pilot who taps during it is
+    // talking to an app that is ready to answer.
+    const el = document.getElementById('boot-loading');
+    if (el) el.style.pointerEvents = 'none';
+    setTimeout(clearBootLoading, left);
+  };
   map.whenReady(() => {
     map.eachLayer(l => { if (l && typeof l.once === 'function' && l._url) l.once('load', finish); });
   });

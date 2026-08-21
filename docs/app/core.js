@@ -40,6 +40,10 @@ NavAid.tuningDefaults = {
   geoidUndulationFt: { value: 59, min: 0, max: 200, step: 1, label: 'Geoid height above ellipsoid (ft)' },
   // How long a pan or zoom by hand keeps the map, before following the own-ship resumes.
   followResumeMs: { value: 5000, min: 0, max: 60000, step: 500, label: 'Resume following after (ms)' },
+  // The shortest time the loading screen stays up. On a warm cache the map paints in a few
+  // hundred ms and the mark flashed by half-drawn; holding it makes opening the app look
+  // deliberate rather than glitchy. It never adds to a slow start -- it is a floor, not a wait.
+  bootLogoMinMs: { value: 2000, min: 0, max: 10000, step: 100, label: 'Loading screen shown for at least (ms)' },
   // The live speed / altitude / heading line. It sat at 11 px -- footer-decoration size --
   // while being the one thing read at arm's length in a bumpy cockpit, in sunlight, on a
   // kneeboard. Bigger by default, and tunable from there.
@@ -754,7 +758,7 @@ NavAid.tuningGroups = [
   { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },
   { name: 'Wind', keys: ['windDir', 'windSpeed'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
-  { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'touchDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx'] },
+  { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'touchDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx', 'bootLogoMinMs'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
   { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },

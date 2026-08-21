@@ -144,6 +144,55 @@ test.describe('the first load says it is loading', () => {
     await expect(page.locator('#boot-loading')).toHaveCount(0, { timeout: 15000 });
   });
 
+  // On a warm cache the map paints in a few hundred ms and the mark used to flash by
+  // half-drawn. It is now held for bootLogoMinMs, which is a floor and not an addition: a
+  // map that takes longer than that still clears the moment it arrives.
+  test('the mark is held long enough to be seen', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof clearBootLoading === 'function');
+    const held = await page.evaluate(async () => {
+      const gone = () => !document.getElementById('boot-loading');
+      while (!gone()) await new Promise((r) => setTimeout(r, 50));
+      return window.bootLoadingHeldFor();
+    });
+    // The 250ms fade-out runs after the hold, so the element outlives the floor slightly.
+    expect(held).toBeGreaterThanOrEqual(2000);
+  });
+
+  // The hold is for looks, so it must not cost the pilot a tap: once the map is up behind
+  // it, the screen stops taking pointer events even though it is still on show. Without
+  // this it swallowed the first tap of every quick start.
+  test('a tap during the hold reaches the app', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof map !== 'undefined');
+    const passthrough = await page.evaluate(async () => {
+      const el = () => document.getElementById('boot-loading');
+      // Wait for the screen to still be up but no longer interactive.
+      for (let i = 0; i < 200 && el(); i++) {
+        if (getComputedStyle(el()).pointerEvents === 'none') {
+          const mid = { x: innerWidth / 2, y: innerHeight / 2 };
+          return document.elementFromPoint(mid.x, mid.y) !== el();
+        }
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      return 'screen went before the map was up';
+    });
+    expect(passthrough).toBe(true);
+  });
+
+  // The floor is read when the map reports itself ready, not when the page loaded, so a gist
+  // override or a value typed into the tuning panel takes effect on the very next start.
+  test('the hold is a tunable, in the group the panel shows', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof tune === 'function');
+    const t = await page.evaluate(() => ({
+      value: tune('bootLogoMinMs'),
+      declared: !!NavAid.tuningDefaults.bootLogoMinMs,
+      grouped: NavAid.tuningGroups.filter(g => g.keys.includes('bootLogoMinMs')).length,
+    }));
+    expect(t).toEqual({ value: 2000, declared: true, grouped: 1 });
+  });
+
   // A tile server that never answers must not leave the app looking dead when it is
   // perfectly usable offline.
   test('a chart that never loads still clears it', async ({ page }) => {
