@@ -185,14 +185,15 @@ test('the two locks do not wear the same icon', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => startLiveLocation());       // both controls visible
   const icons = await page.evaluate(() => ({
-    edit: document.getElementById('edit-lock').textContent,
-    follow: document.getElementById('follow-lock').textContent,
+    edit: document.getElementById('edit-lock').textContent.trim(),
+    follow: document.getElementById('follow-lock').innerHTML,
   }));
   expect(icons.edit).not.toBe(icons.follow);
-  expect(icons.follow).toBe('\u{1F3AF}');              // 🎯 locked onto the aircraft
+  // The VOR symbol the map draws for a station, in the colour that says it is holding.
+  expect(icons.follow).toContain('#c8442e');
   await page.click('#follow-lock');
-  expect(await page.evaluate(() => document.getElementById('follow-lock').textContent))
-    .toBe('⭕');                                   // ⭕ nothing held
+  expect(await page.evaluate(() => document.getElementById('follow-lock').innerHTML))
+    .toContain('#7a7a7a');                         // grey: the map is the pilot's to move
 });
 
 // Reported: "i can still add new points when locked, it should exit edit mode when locked".

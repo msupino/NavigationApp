@@ -259,6 +259,9 @@ function onLivePosition(pos) {
   gpsRefreshQnh(p.lat, p.lng);
   gpsCheckLegAlerts();
   if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+  // The compass needle and the track written under it are read from this fix, so they have
+  // to be redrawn with it -- not only when the map is rotated or tracking starts.
+  if (typeof refreshOrientControl === 'function') refreshOrientControl();
   scheduleDraw();
   if (typeof map !== 'undefined') {
     // The FIRST fix centres: there is nothing on screen to preserve yet, and a pilot who
