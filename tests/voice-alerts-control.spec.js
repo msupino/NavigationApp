@@ -124,7 +124,7 @@ test('the follow lock says what it did', async ({ page }) => {
   await page.evaluate(() => { startLiveLocation(); gpsSetFollow(true); });
   await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
   await page.click('#follow-lock');
-  await expect(page.locator('.toast')).toHaveText(/map stays put/i);
+  await expect(page.locator('.toast')).toHaveText(/not following/i);
   await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
   await page.click('#follow-lock');
   await expect(page.locator('.toast')).toHaveText(/following the aircraft/i);
