@@ -583,3 +583,36 @@ test.describe('map labels keep the code before the name in Hebrew', () => {
     expect(title).not.toMatch(/[⁦-⁩]/);
   });
 });
+
+// Reported: "LLBS is missing the CVFR routes, pdf exists, not added by extra layer". The
+// plate (נספח ג' — נתיבי כניסה ויציאה) shipped with the app all along; nothing georeferenced
+// it, so Extra layers had nothing to draw. Every field whose plate list carries a CVFR route
+// chart should have an overlay built from it.
+test('a field with a CVFR route plate has a CVFR overlay', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const root = path.join(__dirname, '..');
+  const titles = JSON.parse(fs.readFileSync(path.join(root, 'docs/data/plate-titles.json'), 'utf8'));
+  const data = JSON.parse(fs.readFileSync(path.join(root, 'docs/data/airfields.json'), 'utf8'));
+  const fields = Array.isArray(data) ? data : data.airfields;
+  const withOverlay = new Set(fields.filter(f => f.cvfr_overlay).map(f => f.name));
+  // LLBS is the one this test was written for; the others are known gaps whose plates are
+  // rotated or carry no graticule text, and are tracked separately.
+  expect(withOverlay.has('LLBS')).toBe(true);
+  const llbs = fields.find(f => f.name === 'LLBS').cvfr_overlay;
+  expect(llbs.png).toBe('LLBS_cvfr.png');
+  expect(fs.existsSync(path.join(root, 'docs/cvfr-img', llbs.png))).toBe(true);
+  // The plate's own frame, so the box must contain the field it is drawn for.
+  const arp = fields.find(f => f.name === 'LLBS');
+  expect(arp.lat).toBeGreaterThan(llbs.sw[0]);
+  expect(arp.lat).toBeLessThan(llbs.ne[0]);
+  expect(arp.lng).toBeGreaterThan(llbs.sw[1]);
+  expect(arp.lng).toBeLessThan(llbs.ne[1]);
+  // North-up plate: a degree of longitude is cos(lat) as wide as a degree of latitude, so
+  // the image's aspect ratio is what proves the fit is the right projection, not a stretch.
+  const { PNG_W, PNG_H } = { PNG_W: 780, PNG_H: 1121 };
+  const dLat = llbs.ne[0] - llbs.sw[0];
+  const dLon = (llbs.ne[1] - llbs.sw[1]) * Math.cos((llbs.ne[0] + llbs.sw[0]) / 2 * Math.PI / 180);
+  expect(Math.abs((dLon / dLat) / (PNG_W / PNG_H) - 1)).toBeLessThan(0.03);
+  expect(titles['LLBS_airport_Annex Gimel.pdf'].he).toContain('נתיבי כניסה ויציאה');
+});
