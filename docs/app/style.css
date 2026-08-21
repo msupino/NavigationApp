@@ -1147,7 +1147,17 @@ body.theme-dark #map-crosshair::after {
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
   touch-action: manipulation;
 }
-.orient-ctrl button.orient-on { background: #d8f0d8; border-color: #4a8a4a; }
+.orient-ctrl button.orient-on { background: #ffe3de; border-color: #c8442e; }
+/* The needle and the track it reads out share the square: the number sits under the face,
+   small enough not to crowd it and large enough to read at arm's length. */
+.orient-ctrl button .orient-face { position: relative; display: block; line-height: 0; }
+.orient-ctrl button .orient-hdg {
+  position: absolute; left: 0; right: 0; bottom: -10px;
+  font: 700 9px/1 system-ui, sans-serif; color: #333; text-align: center;
+}
+/* With the track written underneath, the pair is centred as a pair: the needle lifts by
+   half the readout so the two together sit in the middle of the square. */
+.orient-ctrl button:has(.orient-hdg) .orient-face { transform: translateY(-4px); }
 /* Hand-rotated: neither north-up nor heading-up. Marked so the button is not silently
    claiming an orientation the chart does not have. */
 .orient-ctrl button.orient-rotated { background: #fdf0d5; border-color: #b8860b; }
@@ -1170,7 +1180,13 @@ body.theme-dark #map-crosshair::after {
 }
 /* Following is the state that changes the map under you, so it is the one that reads as
    engaged rather than the one that reads as normal. */
-.follow-ctrl button.follow-on { background: #d8f0d8; border-color: #4a8a4a; }
+.follow-ctrl button.follow-on { background: #ffe3de; border-color: #c8442e; }
+/* Drawn marks, not text: without this the SVG rides the button's text baseline and sits
+   high in the square instead of in the middle of it. */
+.follow-ctrl button, .orient-ctrl button {
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.follow-ctrl button svg, .orient-ctrl button svg { display: block; }
 
 /* edit lock — same square as the rest of the column */
 .editlock-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
