@@ -328,3 +328,67 @@ test('a field with only written pages still shows them in the menu', async ({ pa
   expect(titles.some(t => /מלל/.test(t))).toBe(true);
   expect(titles.some(t => /airport/i.test(t))).toBe(false);
 });
+
+// The CAA publishes English titles for the three international aerodromes (LLBG, LLHA, LLER)
+// and Hebrew only for the rest. Our copies of those plates are usually a revision behind, so
+// the hash cannot pair them — but each plate prints its English title in its own header, and
+// the index says which titles exist for that field.
+test('the international fields carry the CAA’s own English titles', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof loadPlateTitles === 'function');
+  const out = await page.evaluate(async () => {
+    const t = await loadPlateTitles();
+    return {
+      haifaChart: t['LLHA_airport_Annex Alef.pdf'],
+      haifaCircuit: t['LLHA_airport_Annex Zayin.pdf'],
+      haifaObstacle: t['LLHA_airport_Annex Tet.pdf'],
+      apronG: t['LLHA_airport_Annex Bet.pdf'],
+      apronN: t['LLHA_airport_Annex Bet 2.pdf'],
+      // a domestic field has no English published at all
+      roshPina: t['LLIB_airport_Annex He.pdf'],
+    };
+  });
+  expect(out.haifaChart.en).toBe('AERODROME CHART - ICAO');
+  expect(out.haifaCircuit.en).toBe('VISUAL CIRCUIT CHART');
+  expect(out.haifaObstacle.en).toContain('OBSTACLE');
+  // The apron letter is the whole difference between four otherwise identical titles.
+  expect(out.apronG.en).toContain('APRON G');
+  expect(out.apronN.en).toContain('APRON N');
+  expect(out.roshPina.en).toBe('');
+});
+
+// An English session shows the English title where one exists, and the Hebrew designation
+// where the AIP has none — which is every domestic field.
+test('an English session prefers the published English title', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof plateDesignation === 'function');
+  const out = await page.evaluate(async () => {
+    await loadPlateTitles();
+    return {
+      haifa: plateDesignation('LLHA_airport_Annex Zayin.pdf').title,
+      roshPina: plateDesignation('LLIB_airport_Annex He.pdf').title,
+    };
+  });
+  expect(out.haifa).toBe('VISUAL CIRCUIT CHART');
+  expect(out.roshPina).toBe('תרשים ההקפה');
+});
+
+// A title that two plates both claim names neither: a plate labelled as its neighbour is
+// worse than one labelled in Hebrew.
+test('an ambiguous English title is not claimed', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof loadPlateTitles === 'function');
+  const dupes = await page.evaluate(async () => {
+    const t = await loadPlateTitles();
+    const seen = new Map();
+    const bad = [];
+    for (const [file, row] of Object.entries(t)) {
+      if (!row.en) continue;
+      const key = file.slice(0, 4) + '|' + row.en;
+      if (seen.has(key)) bad.push([seen.get(key), file, row.en]);
+      else seen.set(key, file);
+    }
+    return bad;
+  });
+  expect(dupes).toEqual([]);
+});

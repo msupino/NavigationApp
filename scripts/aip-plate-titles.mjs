@@ -108,6 +108,61 @@ function indexTextPages(doc) {
   return out;
 }
 
+// English titles, for the three aerodromes the CAA publishes in English (LLBG, LLHA, LLER).
+// Our copies of those plates are usually a revision behind, so the hash cannot pair them --
+// but each plate prints its English title in its own header, and the index says which titles
+// exist for that field. Pairing the two gives the CAA's own English wording rather than a
+// translation of ours.
+function indexEnglishTitles(doc) {
+  const out = new Map();
+  const walk = (node) => {
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (!node || typeof node !== 'object') return;
+    const icao = (String(node.TITLE || '').match(/\b(LL[A-Z]{2})\b/) || [])[1];
+    if (icao && Array.isArray(node.FILES)) {
+      const list = out.get(icao) || [];
+      for (const f of node.FILES) list.push(cleanText(f.TITLE));
+      out.set(icao, list);
+    }
+    for (const v of Object.values(node)) walk(v);
+  };
+  walk(doc?.aip?.en);
+  return out;
+}
+
+// "AIRCRAFT PARKING CHART - APRON N - ICAO" -> [AIRCRAFT, PARKING, CHART, APRON-N]
+// The apron letter is the whole difference between four otherwise identical titles at Haifa,
+// and a bare "N" is exactly what a word tokeniser throws away.
+const EN_STOP = new Set(['ICAO', 'THE', 'OF', 'IN', 'AND', 'A', 'FOR']);
+function enTokens(text) {
+  const up = String(text || '').toUpperCase().replace(/APRON\s+([A-Z])\b/g, 'APRON-$1');
+  return (up.match(/[A-Z0-9][A-Z0-9-]*/g) || [])
+    .filter(w => w.length > 1 && !EN_STOP.has(w));
+}
+// The plate's own first-page header, as one upper-case string.
+function pdfHeaderText(path) {
+  const out = spawnSync('pdftotext', ['-f', '1', '-l', '1', '-layout', path, '-'],
+    { encoding: 'utf8', maxBuffer: 8 << 20 });
+  if (out.status !== 0 || !out.stdout) return '';
+  return out.stdout.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 10).join(' ').toUpperCase();
+}
+// The most SPECIFIC published title the header contains. "AERODROME CHART" is a subset of
+// "AERODROME OBSTACLE CHART - TYPE A RWY 15-33", so the longer match wins; anything the
+// header does not nearly contain is not claimed at all.
+function englishTitleFor(path, candidates) {
+  if (!candidates || !candidates.length) return '';
+  const have = new Set(enTokens(pdfHeaderText(path)));
+  let best = '';
+  let bestLen = 0;
+  for (const cand of candidates) {
+    const ct = enTokens(cand);
+    if (!ct.length) continue;
+    const hit = ct.filter(w => have.has(w)).length / ct.length;
+    if (hit >= 0.8 && ct.length > bestLen) { best = cand; bestLen = ct.length; }
+  }
+  return best;
+}
+
 function indexByHash(doc) {
   const out = new Map();
   const walk = (node, lang) => {
@@ -258,6 +313,7 @@ async function main() {
   const byHash = indexByHash(doc);
   const byAnnex = indexByAnnex(doc);
   const byText = indexTextPages(doc);
+  const byEnglish = indexEnglishTitles(doc);
   const files = (await readdir(BYOP)).filter(f => f.toLowerCase().endsWith('.pdf')).sort();
   const titles = {};
   const stale = [];
@@ -299,6 +355,25 @@ async function main() {
       source: 'aip',
     };
   }
+  // English, for the fields that have it. Done after the main pass so it fills in whichever
+  // rows are still without one, however they were named.
+  const claimed = new Map();
+  for (const [file, row] of Object.entries(titles)) {
+    if (row.en) continue;
+    const icao = String(file).slice(0, 4).toUpperCase();
+    const cands = byEnglish.get(icao);
+    if (!cands) continue;
+    const en = englishTitleFor(join(BYOP, file), cands);
+    if (!en) continue;
+    // The apron plates at Haifa differ by one letter, and where a plate prints its apron as
+    // artwork rather than text two of them read the same. A title claimed twice names
+    // neither: a plate labelled as its neighbour is worse than one labelled in Hebrew.
+    const key = icao + '|' + en;
+    if (claimed.has(key)) { titles[claimed.get(key)].en = ''; continue; }
+    claimed.set(key, file);
+    row.en = en;
+  }
+
   // One more pass at the boundary, so what reaches the disk is provably the shape declared
   // above whatever route a value took to get here.
   const safe = {};

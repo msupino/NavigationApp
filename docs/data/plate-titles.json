@@ -79,7 +79,7 @@
  "LLBG_airport_Chart.pdf": {
   "annex": "",
   "he": "דברי מלל",
-  "en": "",
+  "en": "Aerodrome Chart - ICAO",
   "modified": "",
   "source": "aip-text"
  },
@@ -149,7 +149,7 @@
  "LLER_airport_Chart.pdf": {
   "annex": "",
   "he": "דברי מלל",
-  "en": "",
+  "en": "AERODROME CHART - ICAO",
   "modified": "",
   "source": "aip-text"
  },
@@ -233,14 +233,14 @@
  "LLHA_airport_Annex Alef.pdf": {
   "annex": "נספח א",
   "he": "תרשים השדה",
-  "en": "",
+  "en": "AERODROME CHART - ICAO",
   "modified": "",
   "source": "aip-annex"
  },
  "LLHA_airport_Annex Bet 2.pdf": {
   "annex": "נספח ב'-2",
   "he": "תרשים החניה - רחבה N",
-  "en": "",
+  "en": "AIRCRAFT PARKING CHART - APRON N - ICAO",
   "modified": "",
   "source": "aip-annex"
  },
@@ -261,7 +261,7 @@
  "LLHA_airport_Annex Bet.pdf": {
   "annex": "נספח ב",
   "he": "תרשים החניה",
-  "en": "",
+  "en": "AIRCRAFT PARKING CHART - APRON G",
   "modified": "",
   "source": "aip-annex"
  },
@@ -296,14 +296,14 @@
  "LLHA_airport_Annex Tet.pdf": {
   "annex": "נספח ט",
   "he": "מפת מכשולים מסלול 15-33",
-  "en": "",
+  "en": "AERODROME OBSTACLE CHART - TYPE A RWY 15-33 - ICAO",
   "modified": "",
   "source": "aip-annex"
  },
  "LLHA_airport_Annex Zayin.pdf": {
   "annex": "נספח ז'",
   "he": "תרשים ההקפה",
-  "en": "",
+  "en": "VISUAL CIRCUIT CHART",
   "modified": "2025-05-15",
   "source": "aip"
  },
