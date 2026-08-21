@@ -1,11 +1,4 @@
 {
- "LLAR_airport_CVFR.pdf": {
-  "annex": "נספח ג'",
-  "he": "",
-  "en": "",
-  "modified": "",
-  "source": "pdf"
- },
  "LLAR_airport_Chart.pdf": {
   "annex": "נספח א",
   "he": "תרשים המנחת",
@@ -79,7 +72,7 @@
  "LLBG_airport_Chart.pdf": {
   "annex": "",
   "he": "דברי מלל",
-  "en": "Aerodrome Chart - ICAO",
+  "en": "",
   "modified": "",
   "source": "aip-text"
  },
@@ -149,7 +142,7 @@
  "LLER_airport_Chart.pdf": {
   "annex": "",
   "he": "דברי מלל",
-  "en": "AERODROME CHART - ICAO",
+  "en": "",
   "modified": "",
   "source": "aip-text"
  },
@@ -233,14 +226,14 @@
  "LLHA_airport_Annex Alef.pdf": {
   "annex": "נספח א",
   "he": "תרשים השדה",
-  "en": "AERODROME CHART - ICAO",
+  "en": "",
   "modified": "",
   "source": "aip-annex"
  },
  "LLHA_airport_Annex Bet 2.pdf": {
   "annex": "נספח ב'-2",
   "he": "תרשים החניה - רחבה N",
-  "en": "AIRCRAFT PARKING CHART - APRON N - ICAO",
+  "en": "",
   "modified": "",
   "source": "aip-annex"
  },
@@ -251,17 +244,10 @@
   "modified": "2025-05-15",
   "source": "aip"
  },
- "LLHA_airport_Annex Bet 4.pdf": {
-  "annex": "נספח ב",
-  "he": "AIRCRAFT PARKING CHART - ICAO",
-  "en": "",
-  "modified": "",
-  "source": "pdf"
- },
  "LLHA_airport_Annex Bet.pdf": {
   "annex": "נספח ב",
   "he": "תרשים החניה",
-  "en": "AIRCRAFT PARKING CHART - APRON G",
+  "en": "",
   "modified": "",
   "source": "aip-annex"
  },
@@ -296,14 +282,14 @@
  "LLHA_airport_Annex Tet.pdf": {
   "annex": "נספח ט",
   "he": "מפת מכשולים מסלול 15-33",
-  "en": "AERODROME OBSTACLE CHART - TYPE A RWY 15-33 - ICAO",
+  "en": "",
   "modified": "",
   "source": "aip-annex"
  },
  "LLHA_airport_Annex Zayin.pdf": {
   "annex": "נספח ז'",
   "he": "תרשים ההקפה",
-  "en": "VISUAL CIRCUIT CHART",
+  "en": "",
   "modified": "2025-05-15",
   "source": "aip"
  },
@@ -593,13 +579,6 @@
   "en": "",
   "modified": "2023-05-17",
   "source": "aip"
- },
- "LLMZ_airport_CVFR.pdf": {
-  "annex": "נספח ג'",
-  "he": "כניסה ויציאה נתיבי CVFR",
-  "en": "",
-  "modified": "",
-  "source": "pdf"
  },
  "LLMZ_airport_Chart.pdf": {
   "annex": "",
