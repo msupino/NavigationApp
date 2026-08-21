@@ -40,6 +40,21 @@ test.describe('dev workflow guards', () => {
     expect(yml).toContain('if [ "$NEW_HEAD" != "$OLD_HEAD" ]');
   });
 
+  // The run failed at update-branch with HTTP 403 "user doesn't have permission to update
+  // head repository": that call writes to dev, and the workflow only asked for read. It had
+  // already created the PR by then, so the whole promotion looked broken over one step.
+  test('Auto PR may write to the branch it updates, and survives being refused', () => {
+    const yml = workflow('auto-pr-dev-to-main.yml');
+    const perms = yml.slice(yml.indexOf('permissions:'), yml.indexOf('jobs:'))
+      .split('\n').filter(l => !l.trim().startsWith('#'));      // the comment quotes the 403
+    expect(perms).toContain('  contents: write');
+    expect(perms).not.toContain('  contents: read');
+    // Refused is not fatal: the PR exists and its checks still need dispatching.
+    expect(yml).toContain('if ! gh api');
+    expect(yml).toContain('BEHIND=0');
+    expect(yml).toContain('[ "$BEHIND" -eq 0 ] && break');
+  });
+
   test('Auto PR dispatches checks only for a new promotion and arms once', () => {
     const yml = workflow('auto-pr-dev-to-main.yml');
     expect(yml).not.toContain('git push origin dev');
