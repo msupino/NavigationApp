@@ -491,8 +491,8 @@ function refreshGpsFollowControl() {
   followBtn.textContent = on ? '\ud83c\udfaf' : '\u2b55';     // target / empty ring
   followBtn.classList.toggle('follow-on', on);
   followBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  const label = on ? (S.followLockOn || 'Following the aircraft — tap to leave the map put')
-                   : (S.followLockOff || 'Map stays put — tap to follow the aircraft');
+  const label = on ? (S.followLockOn || 'Following the aircraft — tap to stop following')
+                   : (S.followLockOff || 'Not following — tap to follow the aircraft');
   followBtn.title = label;
   followBtn.setAttribute('aria-label', label);
 }
@@ -500,10 +500,10 @@ followBtn.onclick = () => {
   const on = !gpsFollow;
   if (typeof gpsSetFollow === 'function') gpsSetFollow(on);
   // Turning it ON recentres, which is its own confirmation; turning it OFF looks like nothing
-  // happening -- exactly when the pilot needs to know the map will now stay put.
+  // happening -- exactly when the pilot needs to know no fix will move the map from now on.
   if (typeof showToast === 'function') {
     showToast(on ? (S.followOnToast || 'Following the aircraft')
-                 : (S.followOffToast || 'Map stays put'));
+                 : (S.followOffToast || 'Not following — pan freely'));
   }
 };
 refreshGpsFollowControl();

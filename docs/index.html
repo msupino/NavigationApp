@@ -114,28 +114,42 @@
        animates before the stylesheet has arrived, which is the whole point of it. The mark is
        NavAid's own aircraft, with a second, smaller one flying a circuit around it. -->
   <style>
-    #boot-loading .boot-mark { position: relative; width: 132px; height: 132px; }
-    #boot-loading .boot-logo {
-      position: absolute; inset: 24px; width: 84px; height: 84px;
+    /* One 3D scene: the mark stands flat facing the camera, the circuit is a real circle
+       lying in a tilted plane around it, so the browser foreshortens the path into an
+       ellipse and hides the aircraft behind the mark on the far side of the turn. */
+    #boot-loading .boot-mark {
+      position: relative; width: 150px; height: 150px;
+      perspective: 320px; perspective-origin: 50% 44%;
     }
-    /* The orbit is the ring that turns; the aircraft rides at the top of it, nose along the
-       path, so it banks around the mark rather than sliding sideways. */
+    #boot-loading .boot-stage {
+      position: absolute; inset: 0; transform-style: preserve-3d;
+    }
+    #boot-loading .boot-logo {
+      position: absolute; inset: 33px; width: 84px; height: 84px;
+    }
+    /* The circuit: tilted once, then spun in its own plane. Both transforms live in the
+       keyframes because a transform property is replaced wholesale, not added to. */
     #boot-loading .boot-orbit {
-      position: absolute; inset: 0;
-      animation: boot-orbit 3.2s linear infinite;
+      position: absolute; inset: 0; transform-style: preserve-3d;
+      transform: rotateX(58deg) rotateZ(0deg);
+      animation: boot-orbit 3.6s linear infinite;
     }
     #boot-loading .boot-plane {
-      position: absolute; top: -2px; left: 50%;
-      width: 22px; height: 22px; margin-left: -11px;
-      transform: rotate(90deg);
-      opacity: 0.92;
+      position: absolute; top: -9px; left: 50%;
+      width: 26px; height: 26px; margin-left: -13px;
+      /* Nose along the path, banked into the turn like the aircraft it draws. */
+      transform: rotateZ(90deg) rotateY(24deg);
     }
     #boot-loading .boot-ring {
-      position: absolute; inset: 6px;
+      position: absolute; inset: 8px;
       border: 1px dashed #3c3838; border-radius: 50%;
+      transform: rotateX(58deg);
     }
-    @keyframes boot-orbit { to { transform: rotate(360deg); } }
-    /* A pilot who has asked not to see motion gets the mark and the ring, no flight. */
+    @keyframes boot-orbit {
+      from { transform: rotateX(58deg) rotateZ(0deg); }
+      to   { transform: rotateX(58deg) rotateZ(360deg); }
+    }
+    /* A pilot who has asked not to see motion gets the mark and the circuit, no flight. */
     @media (prefers-reduced-motion: reduce) {
       #boot-loading .boot-orbit { animation: none; }
     }
@@ -180,21 +194,23 @@
               justify-content:center;flex-direction:column;gap:14px;
               background:#201d1d;color:#e8e8e8;font:14px/1.4 system-ui,sans-serif">
     <div class="boot-mark">
-      <div class="boot-ring"></div>
-      <!-- NavAid's own mark (docs/favicon.svg), inline: a boot screen cannot wait for a
-           second request to say the app is starting. -->
-      <svg class="boot-logo" viewBox="0 0 64 64" aria-hidden="true">
-        <rect width="64" height="64" rx="13" fill="#2b2626"/>
-        <path fill="#f4f1ec" d="M32 8c2.2 0 3.4 2.6 3.4 6.6v9.2l21.2 12.8v5.4L35.4 33
-             v11.8l6.6 5v4.6L32 52l-10 2.4v-4.6l6.6-5V33L7.4 42V36.6l21.2-12.8v-9.2
-             C28.6 10.6 29.8 8 32 8z"/>
-      </svg>
-      <div class="boot-orbit">
-        <svg class="boot-plane" viewBox="0 0 64 64" aria-hidden="true">
-          <path fill="#cfe4ff" d="M32 8c2.2 0 3.4 2.6 3.4 6.6v9.2l21.2 12.8v5.4L35.4 33
+      <div class="boot-stage">
+        <div class="boot-ring"></div>
+        <!-- NavAid's own mark (docs/favicon.svg), inline: a boot screen cannot wait for a
+             second request to say the app is starting. -->
+        <svg class="boot-logo" viewBox="0 0 64 64" aria-hidden="true">
+          <rect width="64" height="64" rx="13" fill="#2b2626"/>
+          <path fill="#f4f1ec" d="M32 8c2.2 0 3.4 2.6 3.4 6.6v9.2l21.2 12.8v5.4L35.4 33
                v11.8l6.6 5v4.6L32 52l-10 2.4v-4.6l6.6-5V33L7.4 42V36.6l21.2-12.8v-9.2
                C28.6 10.6 29.8 8 32 8z"/>
         </svg>
+        <div class="boot-orbit">
+          <svg class="boot-plane" viewBox="0 0 64 64" aria-hidden="true">
+            <path fill="#cfe4ff" d="M32 8c2.2 0 3.4 2.6 3.4 6.6v9.2l21.2 12.8v5.4L35.4 33
+                 v11.8l6.6 5v4.6L32 52l-10 2.4v-4.6l6.6-5V33L7.4 42V36.6l21.2-12.8v-9.2
+                 C28.6 10.6 29.8 8 32 8z"/>
+          </svg>
+        </div>
       </div>
     </div>
     <div>NavAid</div>

@@ -86,6 +86,32 @@ test.describe('the first load says it is loading', () => {
     expect(html.indexOf('@keyframes boot-orbit')).toBeLessThan(html.indexOf('id="boot-loading"'));
   });
 
+  // The circuit is a real circle in a tilted plane, not an ellipse drawn by hand: the
+  // browser foreshortens it and hides the aircraft behind the mark on the far side.
+  test('the circuit is flown in three dimensions', async ({ page }) => {
+    const html = await (await page.request.get('index.html')).text();
+    const style = html.match(/<style>[\s\S]*?boot-orbit[\s\S]*?<\/style>/)[0];
+    const boot = html.slice(html.indexOf('<div id="boot-loading"'));
+    await page.setContent(style + boot.slice(0, boot.indexOf('</div>', boot.indexOf('NavAid')) + 12));
+    const scene = await page.evaluate(() => {
+      const mark = document.querySelector('#boot-loading .boot-mark');
+      const stage = document.querySelector('#boot-loading .boot-stage');
+      const orbit = document.querySelector('#boot-loading .boot-orbit');
+      const cs = getComputedStyle;
+      return {
+        perspective: cs(mark).perspective,
+        stage3d: cs(stage).transformStyle,
+        orbit3d: cs(orbit).transformStyle,
+        // A tilt shows up as a 4x4 matrix; a flat spin stays a 2D matrix().
+        matrix: cs(orbit).transform.slice(0, 9),
+      };
+    });
+    expect(scene.perspective).not.toBe('none');
+    expect(scene.stage3d).toBe('preserve-3d');
+    expect(scene.orbit3d).toBe('preserve-3d');
+    expect(scene.matrix).toBe('matrix3d(');
+  });
+
   test('the aircraft actually goes round, and stops for reduced motion', async ({ page }) => {
     // The screen is served, then dropped into a blank page: on this machine the real boot
     // clears in a few hundred ms, which is too short to watch an orbit in.
