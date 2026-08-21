@@ -307,8 +307,26 @@ function fieldNames(file) {
   return (_fields && _fields.get(icao)) || [];
 }
 
+// What we published last time. A run that cannot see as much as the last one -- pdftotext
+// missing, the index briefly thinner, a plate temporarily unreadable -- must not publish the
+// gap: it would take a title away from a row that had one, and the daily job would spend its
+// time undoing yesterday's work.
+async function previousTitles() {
+  try { return JSON.parse(await readFile(OUT, 'utf8')); }
+  catch { return {}; }
+}
+function haveTool(name) {
+  const probe = spawnSync(name, ['-v'], { encoding: 'utf8' });
+  return !(probe.error && probe.error.code === 'ENOENT');
+}
+
 async function main() {
   await loadFields();
+  const before = await previousTitles();
+  if (!haveTool('pdftotext')) {
+    console.warn('pdftotext not found: English titles and plate-header fallbacks are ' +
+      'carried over from the last run rather than recomputed.');
+  }
   const doc = await fetchIndex();
   const byHash = indexByHash(doc);
   const byAnnex = indexByAnnex(doc);
@@ -389,13 +407,29 @@ async function main() {
       source: ['pdf', 'aip-annex', 'aip-text'].includes(row.source) ? row.source : 'aip',
     };
   }
-  await writeFile(OUT, JSON.stringify(safe, null, 1) + '\n');
+  // Carry forward anything this run could not work out for itself. A designation only
+  // disappears when the CAA stops publishing the plate, never because a tool was missing.
+  let carried = 0;
+  for (const [file, row] of Object.entries(before)) {
+    const now = safe[file];
+    if (!now) { safe[file] = row; carried++; continue; }
+    for (const key of ['annex', 'he', 'en']) {
+      if (!now[key] && row[key]) { now[key] = row[key]; carried++; }
+    }
+    if (!now.modified && row.modified) now.modified = row.modified;
+  }
+  // Sorted by file name, always: a carried-forward row would otherwise land at the end and
+  // the daily job's diff would be a reshuffle rather than the one line that changed.
+  const ordered = {};
+  for (const k of Object.keys(safe).sort()) ordered[k] = safe[k];
+  await writeFile(OUT, JSON.stringify(ordered, null, 1) + '\n');
   const fromPdf = Object.values(safe).filter(t => t.source === 'pdf').length;
   const byAnnexCount = Object.values(safe).filter(t => t.source === 'aip-annex').length;
   const lines = [
     `titles written for ${Object.keys(safe).length} of ${files.length} plates -> ${OUT}`
       + ` (${Object.values(safe).filter(t => t.source === 'aip').length} matched by hash, `
       + `${byAnnexCount} by annex number, ${fromPdf} read off the plate itself)`,
+    carried ? `${carried} field(s) carried over from the last run (nothing this run could see)` : '',
     stale.length
       ? `${stale.length} shipped plates are not in the current index (amended upstream since we fetched them):\n  ` + stale.join('\n  ')
       : 'every shipped plate matches the current index',
