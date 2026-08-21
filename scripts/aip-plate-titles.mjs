@@ -78,6 +78,36 @@ function indexByAnnex(doc) {
   return out;
 }
 
+// A third key, for the text pages. They carry no annex number -- their titles read
+// "מנחת באר-שבע - LLBS - דפי מלל" -- so neither the hash (our copy is often a revision behind)
+// nor the annex key can find them, and the menu fell back to the file name: a pilot looking
+// for the field's written pages saw "airport Chart". One text page per field, so (ICAO, text
+// page) identifies it; anything ambiguous is skipped, as everywhere else here.
+function indexTextPages(doc) {
+  const out = new Map();
+  const walk = (node) => {
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node.FILES)) {
+      for (const f of node.FILES) {
+        // The ICAO is in the FILE's own title here, not the node's: the text pages hang under
+        // grouping nodes ("מנחתים", "מנחתי מסוקים") rather than under each field.
+        const raw = cleanText(f.TITLE);
+        const icao = (raw.match(/\b(LL[A-Z]{2})\b/) || [])[1];
+        if (!icao) continue;
+        const parts = splitTitle(raw);
+        if (parts.annex) continue;                       // an annex sheet, not the text pages
+        if (!/מלל/.test(parts.title)) continue;
+        if (out.has(icao)) out.set(icao, null);          // two candidates: name neither
+        else out.set(icao, { he: parts.title, modified: cleanDate(f.LAST_MODIFIED) });
+      }
+    }
+    for (const v of Object.values(node)) walk(v);
+  };
+  walk(doc?.aip?.he);
+  return out;
+}
+
 function indexByHash(doc) {
   const out = new Map();
   const walk = (node, lang) => {
@@ -227,6 +257,7 @@ async function main() {
   const doc = await fetchIndex();
   const byHash = indexByHash(doc);
   const byAnnex = indexByAnnex(doc);
+  const byText = indexTextPages(doc);
   const files = (await readdir(BYOP)).filter(f => f.toLowerCase().endsWith('.pdf')).sort();
   const titles = {};
   const stale = [];
@@ -245,6 +276,14 @@ async function main() {
         titles[f] = { annex: 'נספח ' + key.replace('-', "'-"), he: byKey.he, en: '',
           modified: '', source: 'aip-annex' };
         continue;
+      }
+      // The field's written pages: no annex number to key on, one per field.
+      if (/_airport_(Chart|Text)\.pdf$/i.test(f)) {
+        const text = byText.get(icao);
+        if (text && !key) {
+          titles[f] = { annex: '', he: text.he, en: '', modified: '', source: 'aip-text' };
+          continue;
+        }
       }
       const own = designationFromPdf(join(BYOP, f), fieldNames(f));
       if (own) titles[f] = { annex: own.annex, he: own.title, en: '', modified: '', source: 'pdf' };
@@ -272,7 +311,7 @@ async function main() {
       he: cleanText(row.he),
       en: cleanText(row.en),
       modified: cleanDate(row.modified),
-      source: ['pdf', 'aip-annex'].includes(row.source) ? row.source : 'aip',
+      source: ['pdf', 'aip-annex', 'aip-text'].includes(row.source) ? row.source : 'aip',
     };
   }
   await writeFile(OUT, JSON.stringify(safe, null, 1) + '\n');

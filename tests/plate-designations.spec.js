@@ -296,3 +296,35 @@ test('a second Escape then closes the inspector', async ({ page }) => {
   });
   expect(hidden).toBe(true);
 });
+
+// Reported: the written pages showed as "airport Chart" in a Hebrew session. Their titles
+// carry no annex number ("מנחת באר-שבע - LLBS - דפי מלל"), and they hang under grouping nodes
+// rather than under each field, so neither the hash nor the annex key found them — and the
+// row fell back to the file name.
+test('the written pages are named, not left as a file name', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof loadPlateTitles === 'function');
+  const out = await page.evaluate(async () => {
+    await loadPlateTitles();
+    const files = ['LLHZ_airport_Chart.pdf', 'LLHA_airport_Chart.pdf', 'LLBO_airport_Chart.pdf',
+                   'LLEY_airport_Chart.pdf', 'LLFK_airport_Chart.pdf', 'LLKS_airport_Chart.pdf',
+                   'LLMZ_airport_Chart.pdf', 'LLBS_airport_Chart.pdf'];
+    return files.map(f => ({ f, title: plateDesignation(f).title }));
+  });
+  for (const row of out) {
+    expect(row.title, row.f).toMatch(/מלל/);
+    expect(row.title, row.f).not.toMatch(/airport|Chart/i);
+  }
+});
+
+test('a field with only written pages still shows them in the menu', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showChartsModal === 'function');
+  await page.evaluate(() => showChartsModal('LLHZ'));
+  await page.waitForSelector('.charts-airport[data-icao="LLHZ"] .plate-row');
+  const titles = await page.evaluate(() =>
+    [...document.querySelectorAll('.charts-airport[data-icao="LLHZ"] .plate-row-title')]
+      .map(t => t.textContent));
+  expect(titles.some(t => /מלל/.test(t))).toBe(true);
+  expect(titles.some(t => /airport/i.test(t))).toBe(false);
+});
