@@ -1887,7 +1887,6 @@ window.S = Object.assign({
   overlayLoading: 'Loading charts…',
   exitConfirm: 'Close NavAid?',
   plateLoading: 'Loading…',
-  loadingCharts: 'Loading charts…',
   plateLoadError: 'Failed to load chart.',
   chartsBack: '← All airfields',
   chartsFilterPlaceholder: 'Search airfield',
