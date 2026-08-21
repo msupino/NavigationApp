@@ -5538,24 +5538,18 @@ const lsaListBtn = document.getElementById('lsa-list-btn');
 if (lsaListBtn) lsaListBtn.onclick = showLsaChart;
 refreshLsaListBtn();
 
-// Persistent "Loading charts…" indicator shown while an Extra-layers plate
-// overlay is fetching its airfield data / building its image layers, so the
-// toggle doesn't sit silent before anything appears. Dismissed once the layer
-// is on the map (charts start rendering).
-let _chartsLoadingEl = null;
+// Shown while an Extra-layers plate overlay is fetching its airfield data / building its
+// image layers, so the toggle doesn't sit silent before anything appears.
+//
+// This used to be a toast of its own, which meant a pilot turning on a layer saw TWO
+// notices in two wordings for one wait: this one, and the marker the plates themselves
+// raise as each image loads. It now feeds that same counted marker, so the wait is
+// announced once and stays up until the last plate is in.
+let _chartsLoadingOn = false;
 function chartsLoading(on) {
-  if (on) {
-    if (_chartsLoadingEl) return;
-    const el = document.createElement('div');
-    el.className = 'toast show charts-loading';
-    el.textContent = S.loadingCharts || 'Loading charts…';
-    document.body.appendChild(el);
-    _chartsLoadingEl = el;
-  } else if (_chartsLoadingEl) {
-    const el = _chartsLoadingEl; _chartsLoadingEl = null;
-    el.classList.remove('show');
-    setTimeout(() => el.remove(), 250);
-  }
+  if (!!on === _chartsLoadingOn) return;
+  _chartsLoadingOn = !!on;
+  overlayLoadingTick(on ? 1 : -1);
 }
 // Keep the indicator up until the overlay group's images have actually loaded
 // (the perceptible wait is the chart PNGs, not just adding the layer), then
