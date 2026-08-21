@@ -159,6 +159,27 @@ test.describe('the first load says it is loading', () => {
     expect(held).toBeGreaterThanOrEqual(2000);
   });
 
+  // The hold is for looks, so it must not cost the pilot a tap: once the map is up behind
+  // it, the screen stops taking pointer events even though it is still on show. Without
+  // this it swallowed the first tap of every quick start.
+  test('a tap during the hold reaches the app', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof map !== 'undefined');
+    const passthrough = await page.evaluate(async () => {
+      const el = () => document.getElementById('boot-loading');
+      // Wait for the screen to still be up but no longer interactive.
+      for (let i = 0; i < 200 && el(); i++) {
+        if (getComputedStyle(el()).pointerEvents === 'none') {
+          const mid = { x: innerWidth / 2, y: innerHeight / 2 };
+          return document.elementFromPoint(mid.x, mid.y) !== el();
+        }
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      return 'screen went before the map was up';
+    });
+    expect(passthrough).toBe(true);
+  });
+
   // The floor is read when the map reports itself ready, not when the page loaded, so a gist
   // override or a value typed into the tuning panel takes effect on the very next start.
   test('the hold is a tunable, in the group the panel shows', async ({ page }) => {

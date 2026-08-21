@@ -4727,8 +4727,13 @@ window.bootLoadingHeldFor = () => Date.now() - _bootLoadingSince;
     done = true;
     const left = (typeof tune === 'function' ? tune('bootLogoMinMs') : 2000) -
       (Date.now() - _bootLoadingSince);
-    if (left > 0) setTimeout(clearBootLoading, left);
-    else clearBootLoading();
+    if (left <= 0) { clearBootLoading(); return; }
+    // From here the wait is for looks, not for the app: the map is up behind the screen.
+    // Keep showing the mark, but stop swallowing taps -- a pilot who taps during it is
+    // talking to an app that is ready to answer.
+    const el = document.getElementById('boot-loading');
+    if (el) el.style.pointerEvents = 'none';
+    setTimeout(clearBootLoading, left);
   };
   map.whenReady(() => {
     map.eachLayer(l => { if (l && typeof l.once === 'function' && l._url) l.once('load', finish); });
