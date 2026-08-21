@@ -51,8 +51,14 @@ test.describe('Capacitor mobile wrapper', () => {
     const androidGradle = readText('mobile/android/app/build.gradle');
 
     expect(mobilePackage.dependencies['@capacitor-community/background-geolocation']).toBeTruthy();
-    expect(androidGradle).toContain('versionCode 5');
-    expect(androidGradle).toContain('versionName "1.5"');
+    // The version moves with every APK release, so pin the SHAPE, not the number: a test that
+    // has to be edited for each build is a test nobody reads.
+    const code = androidGradle.match(/versionCode\s+(\d+)/);
+    const name = androidGradle.match(/versionName\s+"([\d.]+)"/);
+    expect(code, 'versionCode must be declared').toBeTruthy();
+    expect(name, 'versionName must be declared').toBeTruthy();
+    expect(Number(code[1])).toBeGreaterThanOrEqual(5);
+    expect(name[1]).toMatch(/^\d+\.\d+$/);
     expect(config.ios.includePlugins).toEqual([
       '@capacitor-community/text-to-speech',
       '@capacitor/local-notifications',

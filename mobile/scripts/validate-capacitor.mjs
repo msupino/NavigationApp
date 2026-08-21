@@ -92,8 +92,21 @@ if (fs.existsSync(androidGradle)) {
   const text = fs.readFileSync(androidGradle, 'utf8');
   if (!text.includes('namespace = "org.supino.navaid"')) fail('Android namespace drifted');
   if (!text.includes('applicationId "org.supino.navaid"')) fail('Android applicationId drifted');
-  if (!text.includes('versionCode 5') || !text.includes('versionName "1.5"')) {
-    fail('Android release version must match v1.5');
+  // The version moves with every APK release, so check the SHAPE and that the two agree --
+  // a literal pinned here fails every release for the one reason that is not a mistake, and
+  // the fix is always to edit the literal. What actually breaks an install is a versionCode
+  // that does not rise, or a name that does not match it.
+  const code = text.match(/versionCode\s+(\d+)/);
+  const name = text.match(/versionName\s+"(\d+)\.(\d+)"/);
+  if (!code || !name) {
+    fail('Android versionCode / versionName must both be declared');
+  } else {
+    // They are released together (v1.5 shipped as code 5), so a name that has drifted from
+    // its code means one of them was bumped and the other forgotten.
+    if (Number(code[1]) < 5) fail('Android versionCode must not go backwards');
+    if (Number(name[2]) !== Number(code[1])) {
+      fail(`Android versionName "${name[1]}.${name[2]}" does not match versionCode ${code[1]}`);
+    }
   }
 }
 

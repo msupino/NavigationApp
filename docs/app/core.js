@@ -1881,6 +1881,7 @@ window.S = Object.assign({
   plateClose: 'Close',
   platesNone: 'No charts available — see official AIP',
   overlayLoading: 'Loading charts…',
+  exitConfirm: 'Close NavAid?',
   plateLoading: 'Loading…',
   loadingCharts: 'Loading charts…',
   plateLoadError: 'Failed to load chart.',
