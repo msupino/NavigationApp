@@ -86,3 +86,23 @@ test('a browser session arms no back handler', async ({ page }) => {
   });
   expect(armed).toBe(0);
 });
+
+// The APK loads the live site, so ui.js can run before the native bridge has injected its
+// plugins. Giving up on the first look left Back unhandled for the whole session.
+test('it waits for the bridge rather than giving up on the first look', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__backHandlers = [];
+    // A bridge that arrives late, as the WebView's does.
+    window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'android', Plugins: {} };
+    setTimeout(() => {
+      window.Capacitor.Plugins.App = {
+        addListener: (n, fn) => { if (n === 'backButton') window.__backHandlers.push(fn); },
+        exitApp: () => { window.__exited = (window.__exited || 0) + 1; },
+      };
+    }, 600);
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof armAndroidBackButton === 'function');
+  await expect.poll(() => page.evaluate(() => window.__backHandlers.length), { timeout: 8000 })
+    .toBeGreaterThan(0);
+});

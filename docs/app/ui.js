@@ -7483,10 +7483,17 @@ function backButtonStep() {
   return false;
 }
 
-function armAndroidBackButton() {
+function armAndroidBackButton(attempt) {
   if (!isNativeCapacitorShell()) return;
   const app = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
-  if (!app || typeof app.addListener !== 'function') return;
+  if (!app || typeof app.addListener !== 'function') {
+    // The APK loads the live site, so this file can run before the native bridge has finished
+    // injecting its plugins. Giving up on the first look meant Back stayed unhandled for the
+    // whole session -- try again for a few seconds, then leave it alone.
+    const n = (attempt || 0) + 1;
+    if (n <= 20) setTimeout(() => armAndroidBackButton(n), 250);
+    return;
+  }
   app.addListener('backButton', () => {
     if (backButtonStep()) return;                       // something on screen to close first
     // Nothing left to close: this press leaves NavAid. Asked every time, because the press
