@@ -16,6 +16,7 @@
     "@capacitor-community/background-geolocation": "^1.2.26",
     "@capacitor-community/text-to-speech": "^8.0.2",
     "@capacitor/android": "8.4.0",
+    "@capacitor/app": "^8.0.1",
     "@capacitor/core": "8.4.0",
     "@capacitor/ios": "8.4.0",
     "@capacitor/local-notifications": "^8.2.1",
