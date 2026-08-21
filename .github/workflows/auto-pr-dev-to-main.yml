@@ -9,7 +9,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # `update-branch` below merges main into dev when the promotion PR falls behind, and that
+  # writes to the head branch -- with `contents: read` the API answers 403 "user doesn't have
+  # permission to update head repository" and the whole run fails after the PR is created.
+  contents: write
   pull-requests: write
   # A promotion PR created with GITHUB_TOKEN may not emit usable downstream
   # workflow events. Dispatch its required checks and merge watcher directly.
@@ -74,11 +77,18 @@ jobs:
           BEHIND=$(gh api "repos/${{ github.repository }}/compare/main...dev" --jq '.behind_by')
           if [ "$BEHIND" -gt 0 ]; then
             OLD_HEAD=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
-            gh api \
+            # Falling behind is not worth losing the rest of the run over: the PR exists, its
+            # checks still need dispatching, and a human can merge main into dev by hand. Say
+            # so and carry on rather than exiting non-zero here.
+            if ! gh api \
               --method PUT \
               "repos/${{ github.repository }}/pulls/$PR/update-branch" \
-              -f expected_head_sha="$OLD_HEAD"
+              -f expected_head_sha="$OLD_HEAD"; then
+              echo "Could not update dev from main automatically -- merge it by hand." >&2
+              BEHIND=0
+            fi
             for attempt in $(seq 1 30); do
+              [ "$BEHIND" -eq 0 ] && break
               NEW_HEAD=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
               if [ "$NEW_HEAD" != "$OLD_HEAD" ]; then
                 echo "Promotion PR #$PR updated dev from $OLD_HEAD to $NEW_HEAD"
