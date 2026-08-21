@@ -72,6 +72,46 @@ test.describe('the first load says it is loading', () => {
     expect(html).toMatch(/id="boot-loading"[\s\S]{0,400}position:fixed/);
   });
 
+  // Not a generic spinner: the app says who it is while it starts, and the second aircraft
+  // flying a circuit around the mark says it is still working. Both are inline in the HTML
+  // for the same reason the marker itself is -- nothing else has loaded yet.
+  test('it shows the NavAid mark with an aircraft flying round it', async ({ page }) => {
+    const html = await (await page.request.get('index.html')).text();
+    const boot = html.slice(html.indexOf('id="boot-loading"'));
+    expect(boot).toContain('boot-logo');        // the mark, inline as SVG
+    expect(boot).toContain('boot-plane');       // the one flying round it
+    expect(boot).toMatch(/<svg[^>]*class="boot-logo"/);
+    // The keyframes are in the head's inline <style>, ahead of the marker.
+    expect(html.indexOf('@keyframes boot-orbit')).toBeGreaterThan(-1);
+    expect(html.indexOf('@keyframes boot-orbit')).toBeLessThan(html.indexOf('id="boot-loading"'));
+  });
+
+  test('the aircraft actually goes round, and stops for reduced motion', async ({ page }) => {
+    // The screen is served, then dropped into a blank page: on this machine the real boot
+    // clears in a few hundred ms, which is too short to watch an orbit in.
+    const html = await (await page.request.get('index.html')).text();
+    const style = html.match(/<style>[\s\S]*?boot-orbit[\s\S]*?<\/style>/)[0];
+    const boot = html.slice(html.indexOf('<div id="boot-loading"'));
+    const screen = boot.slice(0, boot.indexOf('</div>', boot.indexOf('NavAid')) + 12);
+    const where = async () => page.evaluate(() => {
+      const r = document.querySelector('#boot-loading .boot-plane').getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y) };
+    });
+
+    await page.setContent(style + screen);
+    const first = await where();
+    await page.waitForTimeout(500);            // well under one 3.2s lap
+    const later = await where();
+    expect(first.x !== later.x || first.y !== later.y).toBe(true);
+
+    // A pilot who has asked the phone for no animation gets a still screen, not a lap.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setContent(style + screen);
+    const still = await where();
+    await page.waitForTimeout(500);
+    expect(await where()).toEqual(still);
+  });
+
   test('it goes once the map has painted', async ({ page }) => {
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => typeof map !== 'undefined');
