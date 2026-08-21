@@ -110,6 +110,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css"
         integrity="sha384-Qm8XP6jA/vqgUN+6tu/z6ZsIHXhzrR9iXidnm7fEzyTqGgWfekx335Jj55dexNPB" crossorigin="anonymous">
   <link rel="stylesheet" href="app/style.css?v=src">
+  <!-- The boot marker's spinner (see #boot-loading in the body): inline in the head so it
+       animates before the stylesheet has arrived, which is the whole point of it. -->
+  <style>@keyframes boot-spin { to { transform: rotate(360deg); } }</style>
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -140,6 +143,19 @@
       Ben Gurion (LLBG), Haifa (LLHA), Megiddo (LLMG), Eilat / Ramon (LLER)
       and Sde Teiman (LLSD), and chart nav-waypoints across Israeli airspace.</p>
   </header>
+  <!-- Boot marker. Written into the HTML rather than created by script: the wait a pilot
+       notices most is the FIRST one -- app shell, Leaflet, the chart tiles -- and by
+       definition none of our JS has run yet to draw anything. Styled inline for the same
+       reason: it has to be visible before the stylesheet arrives. Removed by ui.js once the
+       first chart tiles are painted. -->
+  <div id="boot-loading" role="status" aria-live="polite"
+       style="position:fixed;inset:0;z-index:6000;display:flex;align-items:center;
+              justify-content:center;flex-direction:column;gap:14px;
+              background:#201d1d;color:#e8e8e8;font:14px/1.4 system-ui,sans-serif">
+    <div style="width:34px;height:34px;border:3px solid #443f3f;border-top-color:#cfe4ff;
+                border-radius:50%;animation:boot-spin 0.9s linear infinite"></div>
+    <div>NavAid</div>
+  </div>
   <div id="map"></div>
   <canvas id="overlay"></canvas>
   <!-- GPS recording indicator: a red dot in a square, shown top-right only while

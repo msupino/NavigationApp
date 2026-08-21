@@ -4700,6 +4700,29 @@ function overlayGeom(ov) {
 // Counted rather than flagged: the layer is loading until the last of its plates is in.
 let _overlayLoading = 0;
 let _overlayLoadingEl = null;
+// The boot marker in index.html comes down when the map has something on it -- the first
+// chart tiles painted, not merely the DOM built, because a blank chart is what the wait
+// actually looks like. Belt and braces: a timeout clears it whatever happens, since a marker
+// that outlives its reason is worse than none (a tile server that never answers would
+// otherwise leave the app looking dead when it is perfectly usable offline).
+function clearBootLoading() {
+  const el = document.getElementById('boot-loading');
+  if (!el) return;
+  el.style.opacity = '0';
+  el.style.transition = 'opacity 0.2s ease';
+  setTimeout(() => el.remove(), 250);
+}
+window.clearBootLoading = clearBootLoading;
+(function armBootLoading() {
+  if (!document.getElementById('boot-loading')) return;
+  let done = false;
+  const finish = () => { if (!done) { done = true; clearBootLoading(); } };
+  map.whenReady(() => {
+    map.eachLayer(l => { if (l && typeof l.once === 'function' && l._url) l.once('load', finish); });
+  });
+  setTimeout(finish, 6000);
+})();
+
 function overlayLoadingTick(delta) {
   _overlayLoading = Math.max(0, _overlayLoading + delta);
   if (!_overlayLoadingEl) {
