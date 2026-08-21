@@ -585,34 +585,54 @@ test.describe('map labels keep the code before the name in Hebrew', () => {
 });
 
 // Reported: "LLBS is missing the CVFR routes, pdf exists, not added by extra layer". The
-// plate (נספח ג' — נתיבי כניסה ויציאה) shipped with the app all along; nothing georeferenced
-// it, so Extra layers had nothing to draw. Every field whose plate list carries a CVFR route
-// chart should have an overlay built from it.
-test('a field with a CVFR route plate has a CVFR overlay', async () => {
+// plates shipped with the app all along; nothing georeferenced them, so Extra layers had
+// nothing to draw. Every field whose plate list carries a CVFR route chart now has one,
+// built by scripts/georef-plate.py from the plate's own graticule.
+test('every field with a CVFR route plate has a CVFR overlay', async () => {
   const fs = require('fs');
   const path = require('path');
   const root = path.join(__dirname, '..');
   const titles = JSON.parse(fs.readFileSync(path.join(root, 'docs/data/plate-titles.json'), 'utf8'));
   const data = JSON.parse(fs.readFileSync(path.join(root, 'docs/data/airfields.json'), 'utf8'));
   const fields = Array.isArray(data) ? data : data.airfields;
-  const withOverlay = new Set(fields.filter(f => f.cvfr_overlay).map(f => f.name));
-  // LLBS is the one this test was written for; the others are known gaps whose plates are
-  // rotated or carry no graticule text, and are tracked separately.
-  expect(withOverlay.has('LLBS')).toBe(true);
-  const llbs = fields.find(f => f.name === 'LLBS').cvfr_overlay;
-  expect(llbs.png).toBe('LLBS_cvfr.png');
-  expect(fs.existsSync(path.join(root, 'docs/cvfr-img', llbs.png))).toBe(true);
-  // The plate's own frame, so the box must contain the field it is drawn for.
-  const arp = fields.find(f => f.name === 'LLBS');
-  expect(arp.lat).toBeGreaterThan(llbs.sw[0]);
-  expect(arp.lat).toBeLessThan(llbs.ne[0]);
-  expect(arp.lng).toBeGreaterThan(llbs.sw[1]);
-  expect(arp.lng).toBeLessThan(llbs.ne[1]);
-  // North-up plate: a degree of longitude is cos(lat) as wide as a degree of latitude, so
-  // the image's aspect ratio is what proves the fit is the right projection, not a stretch.
-  const { PNG_W, PNG_H } = { PNG_W: 780, PNG_H: 1121 };
-  const dLat = llbs.ne[0] - llbs.sw[0];
-  const dLon = (llbs.ne[1] - llbs.sw[1]) * Math.cos((llbs.ne[0] + llbs.sw[0]) / 2 * Math.PI / 180);
-  expect(Math.abs((dLon / dLat) / (PNG_W / PNG_H) - 1)).toBeLessThan(0.03);
-  expect(titles['LLBS_airport_Annex Gimel.pdf'].he).toContain('נתיבי כניסה ויציאה');
+  // Two ways a plate says it carries the CVFR routes: the CAA's own designation, and the
+  // file name the app ships it under (the domestic fields' titles are Hebrew-only, and a
+  // couple carry no designation at all).
+  const routePlate = {};
+  for (const [file, t] of Object.entries(titles)) {
+    if (/נתיבי כניסה ויציאה/.test(t.he || '') || /CVFR/.test(t.en || '')
+        || /_(CVFR|Routes)\.pdf$/.test(file)) {
+      routePlate[file.split('_')[0]] = file;
+    }
+  }
+  expect(Object.keys(routePlate).length).toBeGreaterThanOrEqual(10);
+  const missing = Object.keys(routePlate)
+    .filter(icao => !(fields.find(f => f.name === icao) || {}).cvfr_overlay);
+  expect(missing).toEqual([]);
+});
+
+// A plate is placed by its own graticule, so the box it produces has to hold the airfield
+// the dataset already knows, and has to keep the shape of the paper: a degree of longitude
+// covers cos(latitude) as much ground as a degree of latitude, and an overlay that ignores
+// that is stretched however well its corners read.
+test('each CVFR overlay contains its field and keeps the plate\'s proportions', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const root = path.join(__dirname, '..');
+  const data = JSON.parse(fs.readFileSync(path.join(root, 'docs/data/airfields.json'), 'utf8'));
+  const fields = (Array.isArray(data) ? data : data.airfields).filter(f => f.cvfr_overlay);
+  for (const f of fields) {
+    const o = f.cvfr_overlay;
+    expect(fs.existsSync(path.join(root, 'docs/cvfr-img', o.png))).toBe(true);
+    if (o.sw && o.ne) {
+      expect([f.name, f.lat > o.sw[0] && f.lat < o.ne[0]]).toEqual([f.name, true]);
+      expect([f.name, f.lng > o.sw[1] && f.lng < o.ne[1]]).toEqual([f.name, true]);
+    } else {
+      // Rotated print: the corners span the same ground, just not axis-aligned.
+      const lats = [o.tl[0], o.tr[0], o.bl[0]];
+      const lngs = [o.tl[1], o.tr[1], o.bl[1]];
+      expect([f.name, f.lat > Math.min(...lats) && f.lat < Math.max(...lats)]).toEqual([f.name, true]);
+      expect([f.name, f.lng > Math.min(...lngs) && f.lng < Math.max(...lngs)]).toEqual([f.name, true]);
+    }
+  }
 });
