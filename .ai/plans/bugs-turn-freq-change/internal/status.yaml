@@ -1,6 +1,6 @@
 schema_version: 3
 plugin_version: 1.23.0
-pipeline_status: test_written
+pipeline_status: rca_ready
 pipeline_status_history:
   - status: init
     at: '2026-08-22T18:31:59+03:00'
@@ -8,12 +8,14 @@ pipeline_status_history:
     at: '2026-08-22T18:37:39+03:00'
   - status: test_written
     at: '2026-08-22T18:40:08+03:00'
+  - status: rca_ready
+    at: '2026-08-22T18:41:39+03:00'
 epic_key: turn-freq-change
 branch: codex/fix-turn-freq-change
 base: dev
 epic: .ai/plans/bugs-turn-freq-change
 pipeline_mode: bug-fix
-updated_at: '2026-08-22T18:40:08+03:00'
+updated_at: '2026-08-22T18:41:39+03:00'
 pr_flow:
   draft_pr_number: 1800
   pr_url: https://github.com/msupino/NavigationApp/pull/1800
