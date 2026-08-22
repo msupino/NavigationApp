@@ -18,12 +18,11 @@ Rules:
 - Before pushing, verify the active GitHub user is `msupino`; after push/PR
   work, restore the previously active local account.
 - The app uses ordered plain scripts sharing one global scope:
-  `docs/app/core.js` → `docs/app/terrain.js` → `docs/app/draw.js` →
-  `docs/app/interact.js` → `docs/app/io.js` →
-  `docs/app/alt-pair-directions.js` → `docs/app/gdrive.js` →
-  `docs/app/ui.js`.
+  `core` → `route-graph-shapes` → `terrain` → `draw` → `interact` → `io` →
+  `alt-pair-directions` → `gdrive` → `gps` → `ui` → `editor` → `assistant` →
+  `offline-tiles`. See `.ai/architecture.md` for dependency contracts.
 - After editing any `.js`, run `node --check` on it.
-- Keep all `?v=N` placeholders in `docs/index.html` consistent. Do not bump
+- Keep all literal `?v=src` placeholders in `docs/index.html` consistent. Do not bump
   them per commit; Deploy rewrites them to the branch short SHA at upload time.
   Dataset URLs in app code are rewritten by Deploy where applicable.
 - `NavAid.version` stays `1.0` in source. Deploy appends `-<short-sha>`, so
