@@ -13,7 +13,7 @@ async function boot(page) {
     Array.isArray(window.GDRIVE_SETTINGS_KEYS));
 }
 
-test('collect includes AI model/provider but excludes credentials and device-local keys', async ({ page }) => {
+test('collect includes the flight profile and AI choices but excludes credentials', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     localStorage.setItem('navaid.showDrift', '0');                    // synced (toggle)
@@ -21,6 +21,9 @@ test('collect includes AI model/provider but excludes credentials and device-loc
     localStorage.setItem('navaid.ai.key.anthropic', 'sk-ant-abc');   // device-local secret
     localStorage.setItem('navaid.ai.provider', 'anthropic');          // synced
     localStorage.setItem('navaid.ai.model.anthropic', 'claude-3-5'); // synced
+    localStorage.setItem('navaid.fpl.pic', 'Test Pilot');             // synced profile
+    localStorage.setItem('navaid.fpl.license', '123456');             // synced profile
+    localStorage.setItem('navaid.fpl.aisEmail', 'other@example.com'); // excluded routing
     localStorage.setItem('navaid.ai.baseUrl', 'https://x.com');       // excluded — routing
     localStorage.setItem('navaid.ai.panelPos', '10,20');              // excluded — geometry
     localStorage.setItem('navaid.inspPos', '10,20');                  // device-local
@@ -33,6 +36,9 @@ test('collect includes AI model/provider but excludes credentials and device-loc
   expect(out['navaid.ai.key.anthropic']).toBeUndefined();
   expect(out['navaid.ai.provider']).toBe('anthropic');
   expect(out['navaid.ai.model.anthropic']).toBe('claude-3-5');
+  expect(out['navaid.fpl.pic']).toBe('Test Pilot');
+  expect(out['navaid.fpl.license']).toBe('123456');
+  expect(out['navaid.fpl.aisEmail']).toBeUndefined();
   expect(out['navaid.ai.baseUrl']).toBeUndefined();
   expect(out['navaid.ai.panelPos']).toBeUndefined();
   expect(out['navaid.inspPos']).toBeUndefined();
@@ -643,7 +649,7 @@ test('an unchanged established device writes nothing when the remote already mat
   expect(r.values['navaid.layer']).toBe('nav');
 });
 
-test('an established device removes legacy credentials and identity fields from Drive', async ({ page }) => {
+test('an established device removes legacy credentials but preserves the flight profile', async ({ page }) => {
   await bootSync(page, {
     updatedAt: 5000,
     values: {
@@ -662,9 +668,10 @@ test('an established device removes legacy credentials and identity fields from 
     const res = await _gdriveSyncSettingsOnce();
     return { res, uploaded: window.__uploaded };
   });
-  expect(out.res.applied).toBe(false);
+  expect(out.res.applied).toBe(true);
   expect(out.uploaded.updatedAt).toBeGreaterThan(5000);
   expect(out.uploaded.values['navaid.layer']).toBe('nav');
   expect(Object.keys(out.uploaded.values).some(k => k.startsWith('navaid.ai.key.'))).toBe(false);
-  expect(Object.keys(out.uploaded.values).some(k => k.startsWith('navaid.fpl.'))).toBe(false);
+  expect(out.uploaded.values['navaid.fpl.pic']).toBe('Legacy Pilot');
+  expect(out.uploaded.values['navaid.fpl.cell']).toBe('0500000000');
 });

@@ -292,8 +292,8 @@ function gdriveSync() {
 // navaid.ai.panelSize), toolbar section state (navaid.sec.*), local-tile
 // flags, and the in-progress working route (navaid.route, which the route
 // library already covers).
-// Provider/model choices are portable. Credentials and flight-plan identity/contact
-// fields remain device-local.
+// Provider/model choices and the flight-plan profile are portable. AI credentials and
+// fields that choose a data recipient remain device-local.
 const GDRIVE_SETTINGS_FILE = 'navaid-settings.json';
 const GDRIVE_SETTINGS_KEYS = [
   // base layer + page setup
@@ -336,6 +336,12 @@ const GDRIVE_SETTINGS_KEYS = [
   // cruise/climb numbers with the aircraft profile.
   'navaid.vorFreqOverrides', 'navaid.vorRef', 'navaid.navDataPrefix',
   'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed',
+  // The pilot/aircraft profile follows the user across devices when settings sync is
+  // explicitly enabled. The filing destination (aisEmail) stays device-local because it
+  // decides where a plan is sent.
+  ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
+    'endurance', 'persons', 'kind', 'replyTo',
+    'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
   // AI assistant: active provider and per-provider model. API keys stay on the device.
   // navaid.ai.baseUrl.<provider> excluded — it decides where data is sent.
   // Per PROVIDER now, and still device-local: a synced proxy URL would carry a synced key to
@@ -728,10 +734,10 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
         remote.values && typeof remote.values === 'object');
       const remoteValues = remoteOk ? remote.values : null;
       const remoteAt = remoteOk ? (+remote.updatedAt || 0) : 0;
-      // Older releases copied credentials and flight-plan identity/contact fields into
-      // this blob. Any successful sync rewrites the remote file without those fields.
+      // Older releases copied AI credentials into this blob. Any successful sync rewrites
+      // the remote file without them. Flight-plan profile fields are intentionally portable.
       const remoteNeedsSensitiveScrub = !!(remoteValues && Object.keys(remoteValues).some(k =>
-        k.startsWith('navaid.ai.key.') || k.startsWith('navaid.fpl.')));
+        k.startsWith('navaid.ai.key.')));
       const local = _localSettingsBlob(remoteAt);
 
       const push = (values, stamp, snapshot) =>

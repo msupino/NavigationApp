@@ -408,9 +408,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   be resized down to a compact few-row view for filtered results.
 - **Route templates never carry altitudes.** `route-templates.json`
   entries define only waypoints + `defaultSpeed`; leg altitudes are
-  resolved from the active `<prefix>-leg-altitude.json` dataset.
+  resolved from the active `<prefix>-route-graph.json` edges.
   Do not add `inboundAltitude` / `outboundAltitude` to a template — they
-  must come from the altitude dataset so a route stays consistent with
+  must come from the route graph so a route stays consistent with
   the chart. Templates are listed alphabetically by name.
 - **Reverse:** flips waypoint order, swaps each leg's
   inbound/outbound altitude, swap+negates `inLabel` / `outLabel`.
@@ -442,7 +442,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   V/S input persists at `navaid.profileVS` and moves the climb ramp and its TOC
   marker.
 - **Show Nav Waypoints** (default **on**): the active
-  `<prefix>-nav-waypoints.json` is fetched once at boot; CVFR currently has
+  `<prefix>-route-graph.json` is fetched once at boot; CVFR currently has
   172 points and renders white-fill / black-stroke 3.5 px
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export. Source: IAA CVFR chart page 113 (2025 edition) — see the
@@ -457,9 +457,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `showChartsModal()`, which lists every airfield in
   `airfields.json` that carries a non-empty `plates[]` as a
   collapsible section (header `ICAO — English name`, plate chips
-  grouped by `plateCategory()`). `🧭 Alt pairs` opens the
-  active `<prefix>-leg-altitude.json` editing table; each direction, each row, and the full
-  page have reset controls that restore values to the loaded origin data.
+  grouped by `plateCategory()`). `🧭 Alt pairs` opens an editing table
+  projected from the active route graph. Each direction, row, and full-page
+  reset restores values from the loaded graph.
   **Airfields are listed alphabetically by ICAO** — `renderList()` sorts `withPlates` via
   `a.name.localeCompare(b.name)` before rendering, so JSON row order
   never leaks into the UI. Keep that sort when touching the list.
@@ -661,8 +661,11 @@ as a machine-readable registry.
 - `navaid.mapOpacity.v2` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
 - `navaid.legArrowSize` — leg-arrow size slider value.
-- `navaid.legLineWidth3` — route-line width scale (default 0.5, range 0.1–0.9). Bumped twice: `legLineWidth` → `legLineWidth2` when the default/range first changed, then → `legLineWidth3` when the range narrowed again to 0.1–0.9. A legacy value is adopted when it falls inside the current range (see `adoptRangedNumber`), so only genuinely out-of-range settings fall back to the default instead of being silently clamped.
-- `navaid.driftLineWidth2` — drift-line width scale (default 1, range 0.2–1.8). Versioned when the range narrowed from 0.5–6; legacy values inside the new range are adopted.
+- `navaid.legLineWidth3` — route-line width scale (default 0.5, range 0.1–0.9).
+  It was versioned as the allowed range changed. `adoptRangedNumber()` adopts a
+  legacy value inside the current range; only an out-of-range value uses the default.
+- `navaid.driftLineWidth2` — drift-line width scale (default 1, range 0.2–1.8).
+  It was versioned when the range narrowed; valid legacy values are adopted.
 - `navaid.showReturn` — `'0'` / `'1'` for the return-leg overlay.
 - `navaid.showMidLeg` — `'0'` / `'1'` for the mid-leg distance badge.
 - `navaid.showCumTime` — `'0'` / `'1'` for cumulative-time kites.
@@ -702,16 +705,15 @@ as a machine-readable registry.
 - `navaid.profileVS` — vertical-profile climb rate input, used for timing and
   the TOC ramp distance. (The profile draws a departure TOC only; there is no
   TOD — see the vertical-profile entry above.)
-- `navaid.ai.provider` — active AI-assistant LLM provider id (`gemini` |
-  `anthropic` | `openrouter` | `deepseek`; default `gemini`; `assistant.js`).
-- `navaid.ai.key.<provider>` — the user's own API key per provider (BYOK).
-  Never leaves the browser except in the request to that provider. It is not
-  included in Drive settings sync and must be entered separately on each device.
-- `navaid.ai.model.<provider>` — model id per provider (defaults:
+- `navaid.ai.provider` — reserved AI-assistant provider id. The assistant is
+  disabled by default (`featureAssistant: false`), so this setting is dormant
+  unless the feature is explicitly enabled by tuning.
+- `navaid.ai.key.<provider>` — reserved BYOK credential for the disabled assistant.
+  It is unused in the default app and excluded from Drive settings sync.
+- `navaid.ai.model.<provider>` — reserved model id per provider (defaults:
   `gemini-2.5-flash` / `claude-sonnet-5` / `openai/gpt-4o-mini` /
   `deepseek-chat`).
-- `navaid.ai.baseUrl` — base-URL override for the OpenAI-compatible providers
-  (OpenRouter / DeepSeek), e.g. to route through a CORS proxy.
+- `navaid.ai.baseUrl` — reserved endpoint override for OpenAI-compatible providers.
 - `navaid.routes` — saved-route library entries and tombstones. An entry
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified
@@ -722,7 +724,8 @@ as a machine-readable registry.
   optional Drive **settings** sync. The synced blob lives in Drive app-data as
   `navaid-settings.json` (separate from `navaid-routes.json`); the allowlist is
   `GDRIVE_SETTINGS_KEYS` in `gdrive.js` and deliberately excludes API keys,
-  flight-plan identity/contact fields, panel geometry, and the working route.
+  panel geometry, and the working route. The flight-plan pilot, aircraft,
+  licence and contact profile is included when the user enables settings sync.
   It also excludes, as a rule, **any key
   that decides where data is sent** — `navaid.ai.baseUrl`, and
   `navaid.fpl.aisEmail` (the address a flight plan is filed to: an override
@@ -796,8 +799,9 @@ as a machine-readable registry.
   absent, `dist` is hidden by default; an explicit empty array means the user
   chose All columns. Missing keys are shown, so newly added columns default
   visible.
-- `navaid.fpl.<field>` — flight-plan pilot/aircraft/contact form values. All are
-  device-local because settings sync must not copy identity or contact data into Drive.
+- `navaid.fpl.<field>` — flight-plan pilot/aircraft/contact form values. Settings
+  sync includes the profile so it follows the user across connected devices;
+  `aisEmail` remains device-local because it controls the filing destination.
 - `navaid.imsPwx`, `navaid.sigwxOv`, `navaid.showNotam.<prefix>`, and the
   related opacity keys — current chart/overlay choices (per-chart families are
   enumerated from the active CVFR/LSA/heli prefixes by tests).
@@ -1001,7 +1005,8 @@ downloadable `route.json`.
     freq-change editor to the waypoint pane whenever the selected
     waypoint has a linked callout note (matched by canonical name).
     The editor (shared with the note inspector via `appendFreqEdit()`)
-    includes an inline Auto checkbox, a call-sign dropdown that selects the resolved route-default call sign when Auto is checked, editable frequency,
+    includes an inline Auto checkbox and a call-sign dropdown. Auto selects the
+    resolved route-default call sign. The editor also includes an editable frequency
     and `↻ Reset callout location` button. When no linked note exists (overlay off or not
     seeded), legacy datasets with `from` / `to` strings still show that
     read-only pair

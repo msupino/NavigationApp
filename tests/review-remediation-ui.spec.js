@@ -18,11 +18,17 @@ test('flight-plan speed and altitude inputs have useful accessible names', async
     state.waypoints = [{ lat: 32, lng: 34.8, name: 'A' },
       { lat: 32.1, lng: 34.9, name: 'B' }];
     syncLegs();
+    showReturn = true;
     showFlightPlan();
   });
-  await expect(page.locator('.flight-table tbody .plan-num').nth(0))
+  const tables = page.locator('.fp-scroll > .flight-table');
+  await expect(tables.nth(0).locator('tbody .plan-num').nth(0))
     .toHaveAccessibleName('Leg speed 1');
-  await expect(page.locator('.flight-table tbody .plan-num').nth(1))
+  await expect(tables.nth(0).locator('tbody .plan-num').nth(1))
+    .toHaveAccessibleName('Leg altitude 1');
+  await expect(tables.nth(1).locator('tbody .plan-num').nth(0))
+    .toHaveAccessibleName('Leg speed 1');
+  await expect(tables.nth(1).locator('tbody .plan-num').nth(1))
     .toHaveAccessibleName('Leg altitude 1');
 });
 

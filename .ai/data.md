@@ -103,7 +103,7 @@ The active `<prefix>-route-graph.json` stores per-direction values in each
 
 Use `null` for no known value in a direction, and mark blocked/one-way paths
 with the existing schema. Do not infer altitudes from route templates once the
-leg is known; migrate the value into the matching prefixed dataset and strip it
+leg is known; migrate the value into the matching route-graph edge and strip it
 from the template.
 
 The altitude-pairs chart is an editing/viewing surface for this dataset. If you
@@ -119,8 +119,8 @@ Rules:
 - Use canonical waypoint codes.
 - Keep user-editable display names out unless necessary.
 - Keep speed/profile defaults in the template.
-- Store leg altitudes in the matching prefixed dataset, not in the template, when the leg
-  is a known CVFR segment.
+- Store leg altitudes in the matching route-graph edge, not in the template,
+  when the leg is a known chart segment.
 - A template also keeps minimal `notes` (freq-change callouts: `cc`,
   `freqName`, optional `freqAuto`) and `commChangeSuppressions`; it does not
   store coordinates, literal frequencies, or per-leg altitudes.

@@ -56,6 +56,22 @@ test('turning off a still-loading plate group settles every loading token', asyn
   await expect(page.locator('.overlay-loading')).not.toHaveClass(/show/);
 });
 
+test('one plate group cannot release another group loading marker', async ({ page }) => {
+  await boot(page);
+  const counts = await page.evaluate(() => {
+    chartsLoading(true, 'circuit');
+    chartsLoading(true, 'training');
+    const both = overlayLoadingCount();
+    chartsLoading(false, 'circuit');
+    const trainingOnly = overlayLoadingCount();
+    chartsLoading(false, 'training');
+    return { both, trainingOnly, none: overlayLoadingCount() };
+  });
+  expect(counts.both).toBeGreaterThan(0);
+  expect(counts.trainingOnly).toBe(counts.both);
+  expect(counts.none).toBe(0);
+});
+
 // It must not take input: the pilot carries on panning while the charts load.
 test('the marker never takes a touch', async ({ page }) => {
   await boot(page);

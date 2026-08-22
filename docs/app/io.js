@@ -3753,7 +3753,8 @@ function showFlightPlan() {
       tr.appendChild(fpCell('hdg', hdgCell));
       const distCell = planCell(dist.toFixed(1));
       tr.appendChild(fpCell('dist', distCell));
-      const speedCell = numCell(leg.outboundSpeed, 1, inp => {
+      const speedCell = numCell(leg.outboundSpeed, 1,
+        (S.fpSpeedInput || 'Leg speed') + ' ' + (i + 1), inp => {
         const v = +inp.value;
         if (v > 0) {
           const oldVal = leg.outboundSpeed;
@@ -3768,7 +3769,8 @@ function showFlightPlan() {
       });
       rSpeedInputs[i] = speedCell.querySelector('.plan-num');
       tr.appendChild(fpCell('speed', speedCell));
-      const altCell = numCell(leg.outboundAltitude, -2000, inp => {
+      const altCell = numCell(leg.outboundAltitude, -2000,
+        (S.fpAltitudeInput || 'Leg altitude') + ' ' + (i + 1), inp => {
         const raw = inp.value.trim();
         const oldVal = leg.outboundAltitude;
         if (!raw) {

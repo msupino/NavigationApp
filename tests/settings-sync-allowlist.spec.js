@@ -119,7 +119,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.ai\.panelSize$/,    'assistant panel dimensions, per device'],
   [/^navaid\.ai\.key(\.|$)/,    'provider credential — settings sync must not copy secrets into Drive'],
   [/^navaid\.ai\.model\.$/,     'composed model-key base — concrete model choices are allowlisted'],
-  [/^navaid\.fpl\./,            'flight-plan identity and contact data stays on the device'],
+  [/^navaid\.fpl\.aisEmail$/,   'the filing destination decides where data is sent'],
   // Covered by another mechanism.
   [/^navaid\.route$/,            'the working route; the library covers saved ones'],
   [/^navaid\.routes$/,           'the route library, synced as its own file'],
@@ -193,11 +193,15 @@ test('the allowlist syncs AI choices but excludes credentials, baseUrl and panel
 // go unnoticed. aisEmail is the address the plan is FILED to (fplBuild prefers it over
 // the published FPL_FILE_TO), so a settings blob that could set it would send the plan
 // somewhere other than AIS while the pilot believes it was filed. Assert it by name.
-test('flight-plan identity and contact fields are never synced', () => {
+test('flight-plan profile syncs but the filing destination does not', () => {
   const src = fs.readFileSync(path.join(APP_DIR, 'gdrive.js'), 'utf8');
   const m = src.match(/\.\.\.\[([^\]]+)\]\.map\(f => 'navaid\.fpl\.' \+ f\)/);
-  expect(m).toBeNull();
-  expect(allowlist().some(k => k.startsWith('navaid.fpl.'))).toBe(false);
+  expect(m).not.toBeNull();
+  const fields = [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]);
+  expect(fields).toContain('pic');
+  expect(fields).toContain('license');
+  expect(fields).toContain('replyTo');
+  expect(fields).not.toContain('aisEmail');
 });
 
 test('the sweep reads the allowlist file too, minus the array', () => {
