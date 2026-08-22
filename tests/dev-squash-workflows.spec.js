@@ -27,10 +27,17 @@ test.describe('dev workflow guards', () => {
   test('Draft auto-merge deletes merged local topics but preserves long-lived and fork refs', () => {
     const yml = workflow('draft-auto-merge.yml');
     expect(yml).toContain("HEAD_REPO=$(gh pr view \"$PR\" --json headRepository");
+    expect(yml).toContain("HEAD_SHA=$(gh pr view \"$PR\" --json headRefOid");
     expect(yml).toMatch(/main\|dev\) DELETE= ;;/);
     expect(yml).toContain('[ -n "$DELETE" ] && [ "$HEAD_REPO" = "$GITHUB_REPOSITORY" ]');
-    expect(yml).toContain('git/ref/heads/$HEAD_REF');
-    expect(yml).toContain('-X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$HEAD_REF"');
+    expect(yml).toContain('git ls-remote --exit-code --heads origin');
+    expect(yml).toContain('"refs/heads/$HEAD_REF"');
+    expect(yml).toContain('[ "$CURRENT_SHA" = "$HEAD_SHA" ]');
+    expect(yml).toContain('[ "$REF_STATUS" -eq 2 ]');
+    expect(yml).toContain('Could not inspect merged branch $HEAD_REF before deletion');
+    expect(yml).toContain('--force-with-lease="refs/heads/$HEAD_REF:$HEAD_SHA"');
+    expect(yml).toContain('origin ":refs/heads/$HEAD_REF"');
+    expect(yml).not.toContain('git/refs/heads/$HEAD_REF');
   });
 
   test('Auto PR aligns and promotes dev without a bot-authored back-merge PR', () => {

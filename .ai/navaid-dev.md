@@ -889,8 +889,8 @@ downloadable `route.json`.
   dispatches because its creation event may be suppressed. An existing PR uses
   normal synchronize checks and keeps its armed auto-merge request, avoiding
   duplicate cancelled checks on the same `dev` SHA.
-  The watcher explicitly deletes a merged same-repository topic branch. It never deletes
-  `dev`, `main`, or a fork-owned ref.
+  The watcher deletes a merged same-repository topic branch with an atomic SHA lease.
+  It reports failures and never deletes `dev`, `main`, an advanced branch, or a fork ref.
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
 - **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites
