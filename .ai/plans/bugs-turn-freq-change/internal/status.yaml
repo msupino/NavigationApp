@@ -9,4 +9,11 @@ branch: codex/fix-turn-freq-change
 base: dev
 epic: .ai/plans/bugs-turn-freq-change
 pipeline_mode: bug-fix
-updated_at: '2026-08-22T18:31:59+03:00'
+updated_at: '2026-08-22T18:37:36+03:00'
+pr_flow:
+  draft_pr_number: 1800
+  pr_url: https://github.com/msupino/NavigationApp/pull/1800
+  base_branch: dev
+  code_review_iteration: 0
+  acknowledged_issue_comments: []
+tier: lean
