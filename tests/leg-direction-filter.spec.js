@@ -158,7 +158,9 @@ test('return direction hides outbound hotspot projection, recognizes geometric t
     // BEFORE -> TURN leg, so TURN is the route's geometry-proven turning waypoint.
     state.waypoints = [
       { lat: 32.55, lng: 34.85, name: 'START' },
-      { lat: hadra.lat, lng: hadra.lng, name: hadra.name },
+      // Imported routes may carry the same named reporting point at older chart
+      // coordinates. Direction filtering must still bind the reference by name.
+      { lat: hadra.lat + 0.001, lng: hadra.lng - 0.001, name: hadra.name },
       { lat: 32.38, lng: 34.98, name: 'BEFORE' },
       { lat: 32.34, lng: 35.03, name: 'TURN' },
       { lat: 32.38, lng: 34.98, name: 'BEFORE' },
@@ -189,6 +191,9 @@ test('return direction hides outbound hotspot projection, recognizes geometric t
     syncLegs();
     draw();
     const projectedWhenAlsoVisible = window.__hotspotOverlayCount;
+    const visiblePoint = proj(hadra);
+    const navReferenceHitsWhenAlsoVisible = hitNavWpMarkerCandidates(
+      visiblePoint.x, visiblePoint.y).map(h => h.type);
 
     // A route waypoint at an airfield remains the editable route candidate.
     // Its inspector follows the standalone airfield rule: no turning-point control.
@@ -206,6 +211,7 @@ test('return direction hides outbound hotspot projection, recognizes geometric t
       turnPressed,
       turnSelected,
       projectedWhenAlsoVisible,
+      navReferenceHitsWhenAlsoVisible,
       routeWaypointResolvesToAirfield: !!airfieldAtWaypoint(state.waypoints[5]),
       airfieldHasTurnButton: !!document.getElementById('insp-turn-btn'),
     };
@@ -218,8 +224,100 @@ test('return direction hides outbound hotspot projection, recognizes geometric t
   expect.soft(out.turnPressed).toBe('true');
   expect.soft(out.turnSelected).toBe(true);
   expect.soft(out.projectedWhenAlsoVisible).toBe(1);
+  expect.soft(out.navReferenceHitsWhenAlsoVisible).toEqual(['navwp']);
   expect(out.routeWaypointResolvesToAirfield).toBe(true);
   expect.soft(out.airfieldHasTurnButton).toBe(false);
+});
+
+test('hidden reference matching falls back to coordinates when names differ', async ({ page }) => {
+  await page.goto('?lang=en&nogist&hotspots=1');
+  await page.waitForFunction(() => typeof legRetraceTurnIndex === 'function' &&
+    typeof hitNavWpMarkerCandidates === 'function' && Array.isArray(navWP) && navWP.length > 0);
+  const out = await page.evaluate(() => {
+    const hadra = navWP.find(w => w.name === 'HADRA');
+    state.waypoints = [
+      { lat: 32.55, lng: 34.85, name: 'START' },
+      { lat: hadra.lat, lng: hadra.lng, name: 'OLD IMPORT NAME' },
+      { lat: 32.38, lng: 34.98, name: 'BEFORE' },
+      { lat: 32.34, lng: 35.03, name: 'TURN' },
+      { lat: 32.38, lng: 34.98, name: 'BEFORE' },
+      { lat: 32.30, lng: 34.90, name: 'HOME' },
+    ];
+    state.legs = [];
+    syncLegs();
+    window.legDirFilter = 'back';
+    window.navWP = [hadra];
+    window.showNavWP = true;
+    draw();
+    const p = proj(hadra);
+    return {
+      hidden: routePointOnlyInHiddenDirection(hadra),
+      projected: window.__hotspotOverlayCount,
+      hits: hitNavWpMarkerCandidates(p.x, p.y),
+    };
+  });
+  expect(out).toEqual({ hidden: true, projected: 0, hits: [] });
+});
+
+test('the supplied LLHZ loop hides direction-only hotspots in both selections', async ({ page }) => {
+  await page.goto('?lang=en&nogist&hotspots=1');
+  await page.waitForFunction(() => Array.isArray(navWP) && navWP.length > 0 &&
+    typeof routeNoteDirVisible === 'function');
+  const out = await page.evaluate(() => {
+    state.waypoints = [
+      ['LLHZ', 32.17944, 34.83444], ['SFAIM', 32.21056, 34.80722],
+      ['TYONA', 32.00472, 34.72722], ['NTAIM', 31.94361, 34.78083],
+      ['YAVNE', 31.87194, 34.75694], ['ZASHD', 31.82611, 34.70833],
+      ['YAVNE', 31.87194, 34.75694], ['NTAIM', 31.94361, 34.78083],
+      ['TYONA', 32.00472, 34.72722], ['HTZUK', 32.14556, 34.77833],
+      ['KNTRY', 32.14083, 34.80139], ['LLHZ', 32.17944, 34.83444],
+    ].map(([name, lat, lng]) => ({ name, lat, lng }));
+    state.legs = [];
+    state.notes = [
+      { lat: 32.12305, lng: 34.78239, text: 'Freq change', cc: 'SFAIM', freq: '118.40' },
+      { lat: 32.22145, lng: 34.75415, text: 'Freq change', cc: 'KNTRY', freq: '122.20' },
+      { lat: 31.91716, lng: 34.7027, text: 'Freq change', cc: 'TYONA', freq: '118.40' },
+    ];
+    syncLegs();
+    const routeRefs = new Set(['SFAIM', 'TYONA', 'NTAIM', 'HTZUK', 'KNTRY']);
+    window.navWP = navWP.filter(wp => routeRefs.has(wp.name));
+    const at = filter => {
+      window.legDirFilter = filter;
+      draw();
+      const commHits = window.navWP.filter(wp => {
+        if (!commChangeMap || !commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) {
+          return false;
+        }
+        const p = proj(wp);
+        return hitCommChangeMarkerCandidates(p.x, p.y)
+          .some(hit => window.navWP[hit.index] && window.navWP[hit.index].name === wp.name);
+      }).map(wp => wp.name);
+      return {
+        routeHotspots: window.__hotspotWaypointIndexes.map(i => state.waypoints[i].name),
+        projectedHotspots: window.navWP.filter(wp => waypointHotspot(wp) &&
+          !routePointOnlyInHiddenDirection(wp)).map(wp => wp.name).sort(),
+        notes: state.notes.filter(routeNoteDirVisible).map(n => n.cc).sort(),
+        commRings: Array.from(window.__commChangeRingsDrawn).sort(),
+        commHits: commHits.sort(),
+      };
+    };
+    return { turn: legRetraceTurnIndex(), outbound: at('out'), returning: at('back') };
+  });
+  expect(out.turn).toBe(5);
+  expect(out.outbound).toEqual({
+    routeHotspots: ['SFAIM', 'TYONA', 'NTAIM'],
+    projectedHotspots: ['NTAIM', 'SFAIM', 'TYONA'],
+    notes: ['SFAIM', 'TYONA'],
+    commRings: ['NTAIM', 'SFAIM', 'TYONA'],
+    commHits: ['NTAIM', 'SFAIM', 'TYONA'],
+  });
+  expect(out.returning).toEqual({
+    routeHotspots: ['NTAIM', 'TYONA', 'HTZUK'],
+    projectedHotspots: ['HTZUK', 'NTAIM', 'TYONA'],
+    notes: ['KNTRY', 'TYONA'],
+    commRings: ['KNTRY', 'NTAIM', 'TYONA'],
+    commHits: ['KNTRY', 'NTAIM', 'TYONA'],
+  });
 });
 
 test('route summary and open flight plan show only the selected half', async ({ page }) => {
