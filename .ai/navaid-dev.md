@@ -349,6 +349,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   manual callout with editable call-sign text and frequency.
   Suppressions are cleared when the waypoint is removed, moves away from
   the comm-change point, the route is cleared, or a new file is loaded.
+  The effective turning waypoint cannot carry a frequency-change callout:
+  reconciliation removes both automatic and manual callouts there without
+  creating a permanent suppression, and the inspector and `Z` shortcut do not
+  offer to recreate one while that waypoint remains the turn.
 - **Map legend:** a Leaflet control (bottom-left, floating over the map) with
   entries for airfield triangles, waypoint circles, and freq-change red rings.
   The markup lives in `index.html` so `applyI18n()` fills its text at boot;
