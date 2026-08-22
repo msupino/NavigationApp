@@ -4,6 +4,40 @@
 // looked like it had no opener at all.
 const { test, expect } = require('./_setup');
 
+const mobileChromeGeometry = page => page.evaluate(() => {
+  const rect = id => {
+    const r = document.getElementById(id).getBoundingClientRect();
+    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom,
+      width: r.width, height: r.height };
+  };
+  const legend = rect('map-legend');
+  const toolbar = rect('toolbar');
+  const visibleContent = [...document.querySelectorAll('#map-legend > *')]
+    .filter(el => getComputedStyle(el).visibility !== 'hidden' &&
+      getComputedStyle(el).display !== 'none')
+    .map(el => el.getBoundingClientRect());
+  const content = visibleContent.length ? {
+    left: Math.min(...visibleContent.map(r => r.left)),
+    right: Math.max(...visibleContent.map(r => r.right)),
+  } : { left: legend.left, right: legend.right };
+  const intersects = legend.left < toolbar.right && legend.right > toolbar.left &&
+    legend.top < toolbar.bottom && legend.bottom > toolbar.top;
+  return { legend, toolbar, content, intersects,
+    viewport: { width: window.innerWidth, height: window.innerHeight } };
+});
+
+function expectLegendUsable({ legend, content, intersects, viewport }) {
+  expect(legend.left).toBeGreaterThanOrEqual(-1);
+  expect(legend.top).toBeGreaterThanOrEqual(-1);
+  expect(legend.right).toBeLessThanOrEqual(viewport.width + 1);
+  expect(legend.bottom).toBeLessThanOrEqual(viewport.height + 1);
+  expect(content.left).toBeGreaterThanOrEqual(-1);
+  expect(content.right).toBeLessThanOrEqual(viewport.width + 1);
+  expect(content.left).toBeGreaterThanOrEqual(legend.left - 1);
+  expect(content.right).toBeLessThanOrEqual(legend.right + 1);
+  expect(intersects).toBe(false);
+}
+
 test('the mobile menu toggle renders three spaced bars', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('?lang=en&nogist');
@@ -38,6 +72,100 @@ test('the toggle opens the menus a first-time phone user needs', async ({ page }
   const visibleAfter = await page.evaluate(() =>
     [...document.querySelectorAll('#toolbar .tb-section-head')].filter(h => h.getBoundingClientRect().height > 0).length);
   expect(visibleAfter).toBeGreaterThan(5);
+});
+
+for (const lang of ['en', 'he']) {
+  test(`the complete ${lang} legend stays visible beside the expanded short-phone toolbar`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 664 });
+    await page.addInitScript(() => localStorage.setItem('navaid.toolbarCollapsed', '0'));
+    await page.goto(`?lang=${lang}&nogist`);
+    await page.waitForFunction(() => {
+      const toolbar = document.getElementById('toolbar');
+      const legend = document.getElementById('map-legend');
+      return !document.documentElement.classList.contains('app-booting') &&
+        toolbar && legend && !toolbar.classList.contains('collapsed') &&
+        legend.getBoundingClientRect().height > 0;
+    });
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.18, lng: 34.84, name: 'LLHZ' },
+        { lat: 32.21, lng: 34.81, name: 'SFAIM' },
+        { lat: 32.00, lng: 34.73, name: 'TYONA' },
+      ];
+      state.legs = [];
+      syncLegs();
+      draw();
+    });
+    expectLegendUsable(await mobileChromeGeometry(page));
+  });
+}
+
+test('an untouched desktop legend keeps its Leaflet bottom anchor after resize', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() =>
+    !document.documentElement.classList.contains('app-booting') &&
+    document.getElementById('map-legend').getBoundingClientRect().height > 0);
+  const before = await page.locator('#map-legend').boundingBox();
+  expect(before).not.toBeNull();
+  const beforeGap = 800 - (before.y + before.height);
+  expect(await page.locator('#map-legend').evaluate(el => el.style.position)).toBe('');
+  await page.setViewportSize({ width: 1200, height: 1000 });
+  await expect.poll(async () => {
+    const box = await page.locator('#map-legend').boundingBox();
+    return Math.abs((1000 - (box.y + box.height)) - beforeGap);
+  }).toBeLessThan(3);
+  expect(await page.locator('#map-legend').evaluate(el => el.style.position)).toBe('');
+});
+
+test('a dragged legend is reconciled and remains persistent after a live phone resize', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem('navaid.toolbarCollapsed', '0'));
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => {
+    const toolbar = document.getElementById('toolbar');
+    return !document.documentElement.classList.contains('app-booting') &&
+      toolbar && !toolbar.classList.contains('collapsed') &&
+      document.getElementById('map-legend').getBoundingClientRect().height > 0;
+  });
+
+  const legend = page.locator('#map-legend');
+  const before = await legend.boundingBox();
+  if (!before) throw new Error('legend has no box');
+  await page.mouse.move(before.x + 20, before.y + 8);
+  await page.mouse.down();
+  await page.mouse.move(360, 820, { steps: 8 });
+  await page.mouse.up();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.en'))).toBeTruthy();
+
+  await page.setViewportSize({ width: 390, height: 664 });
+  if (await page.locator('#toolbar').evaluate(el => el.classList.contains('collapsed'))) {
+    await page.click('#toolbar-toggle');
+  }
+  await page.waitForFunction(() =>
+    !document.getElementById('toolbar').classList.contains('collapsed'));
+  let priorGeometry = '';
+  await expect.poll(async () => {
+    const { legend: l, intersects, viewport: v } = await mobileChromeGeometry(page);
+    const geometry = [l.left, l.top, l.width, l.height].map(Math.round).join(':');
+    const stable = geometry === priorGeometry;
+    priorGeometry = geometry;
+    return stable && l.left >= -1 && l.top >= -1 && l.right <= v.width + 1 &&
+      l.bottom <= v.height + 1 && !intersects;
+  }, { intervals: [50, 50, 100] }).toBe(true);
+  expectLegendUsable(await mobileChromeGeometry(page));
+  const reconciled = await legend.boundingBox();
+  if (!reconciled) throw new Error('legend has no reconciled box');
+
+  await page.reload();
+  await page.waitForFunction(() =>
+    !document.documentElement.classList.contains('app-booting') &&
+    document.getElementById('map-legend')?.getBoundingClientRect().height > 0);
+  expectLegendUsable(await mobileChromeGeometry(page));
+  const restored = await legend.boundingBox();
+  if (!restored) throw new Error('legend has no restored box');
+  expect(Math.abs(restored.x - reconciled.x)).toBeLessThan(3);
+  expect(Math.abs(restored.y - reconciled.y)).toBeLessThan(3);
 });
 
 test('an unset altitude is not clipped: dash on a phone, the word on desktop', async ({ page }) => {
