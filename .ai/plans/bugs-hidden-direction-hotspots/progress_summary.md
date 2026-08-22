@@ -1,7 +1,7 @@
 ---
 name: hide hotspots from the unselected route direction
 status: implementation complete
-updated_at: '2026-08-22T21:15:00+03:00'
+updated_at: '2026-08-22T21:24:00+03:00'
 ---
 
 # hide hotspots from the unselected route direction
@@ -12,6 +12,7 @@ updated_at: '2026-08-22T21:15:00+03:00'
 |---|---|
 | Reproduce shifted named hotspot | ✅ complete |
 | Implement canonical-name matching | ✅ complete |
+| Cover the supplied LLHZ loop and frequency ring | ✅ complete |
 | Review and verify | 🔄 in progress |
 
 ## Artifacts

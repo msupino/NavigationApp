@@ -17,10 +17,10 @@ branch: codex/fix-hidden-direction-hotspots
 base: dev
 epic: .ai/plans/bugs-hidden-direction-hotspots
 pipeline_mode: bug-fix
-updated_at: '2026-08-22T21:15:00+03:00'
+updated_at: '2026-08-22T21:24:00+03:00'
 pr_flow:
-  draft_pr_number: null
-  pr_url: null
+  draft_pr_number: 1807
+  pr_url: https://github.com/msupino/NavigationApp/pull/1807
   base_branch: dev
   code_review_iteration: 0
   acknowledged_issue_comments: []

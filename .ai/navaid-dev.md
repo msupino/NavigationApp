@@ -140,6 +140,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     and share links. The selected outbound/return direction also suppresses a graph hotspot
     when every matching route occurrence is hidden. Matching uses the canonical waypoint
     name as well as coordinates because imported routes can retain older chart positions.
+    The same direction gate hides that point's frequency-change ring and hit target.
     Standalone reference waypoints remain read-only. An ordinary route waypoint whose next
     leg retraces an earlier leg shows the
     effective turning-point state in its inspector. A route waypoint that resolves to an
