@@ -144,6 +144,84 @@ test('waypoints, anchored notes and hit targets follow the selected direction', 
   expect(out.hiddenHit).toEqual([]);
 });
 
+test('return direction hides outbound hotspot projection, recognizes geometric turn, and omits airfield turn control', async ({ page }) => {
+  await page.goto('?lang=en&nogist&hotspots=1');
+  await page.waitForFunction(() => typeof legRetraceTurnIndex === 'function' &&
+    typeof hitNavWpMarkerCandidates === 'function' && Array.isArray(navWP) && navWP.length > 0 &&
+    Array.isArray(airfields) && airfields.length > 0);
+
+  const out = await page.evaluate(() => {
+    const hadra = navWP.find(w => w.name === 'HADRA');
+    if (!hadra || !waypointHotspot(hadra)) throw new Error('HADRA hotspot fixture missing');
+
+    // HADRA belongs only to the outbound half. TURN -> BEFORE reverses the preceding
+    // BEFORE -> TURN leg, so TURN is the route's geometry-proven turning waypoint.
+    state.waypoints = [
+      { lat: 32.55, lng: 34.85, name: 'START' },
+      { lat: hadra.lat, lng: hadra.lng, name: hadra.name },
+      { lat: 32.38, lng: 34.98, name: 'BEFORE' },
+      { lat: 32.34, lng: 35.03, name: 'TURN' },
+      { lat: 32.38, lng: 34.98, name: 'BEFORE' },
+      { lat: 32.30, lng: 34.90, name: 'HOME' },
+    ];
+    state.legs = [];
+    syncLegs();
+    window.legDirFilter = 'back';
+
+    // Isolate the review overlay and nav-reference hit path to the hidden hotspot.
+    window.navWP = [hadra];
+    window.showNavWP = true;
+    draw();
+    const visibleRouteHotspots = window.__hotspotWaypointIndexes.slice();
+    const projectedHotspots = window.__hotspotOverlayCount;
+    const p = proj(hadra);
+    const hits = hitNavWpMarkerCandidates(p.x, p.y).map(h => h.type);
+
+    state.selected = { type: 'wp', index: 3 };
+    showInspector();
+    const turnBtn = document.getElementById('insp-turn-btn');
+    const turnPressed = turnBtn.getAttribute('aria-pressed');
+    const turnSelected = turnBtn.classList.contains('insp-btn-on');
+
+    // If the same chart hotspot also occurs on the visible return half, keep its
+    // projection. Only points whose every route occurrence is hidden are suppressed.
+    state.waypoints[5] = { lat: hadra.lat, lng: hadra.lng, name: hadra.name };
+    syncLegs();
+    draw();
+    const projectedWhenAlsoVisible = window.__hotspotOverlayCount;
+
+    // A route waypoint at an airfield remains the editable route candidate.
+    // Its inspector follows the standalone airfield rule: no turning-point control.
+    // Keep it on the visible return half so direction filtering is not the reason.
+    const af = airfields[0];
+    state.waypoints[5] = { lat: af.lat, lng: af.lng, name: af.name };
+    syncLegs();
+    state.selected = { type: 'wp', index: 5 };
+    showInspector();
+    return {
+      turnIndex: legRetraceTurnIndex(),
+      visibleRouteHotspots,
+      projectedHotspots,
+      navReferenceHits: hits,
+      turnPressed,
+      turnSelected,
+      projectedWhenAlsoVisible,
+      routeWaypointResolvesToAirfield: !!airfieldAtWaypoint(state.waypoints[5]),
+      airfieldHasTurnButton: !!document.getElementById('insp-turn-btn'),
+    };
+  });
+
+  expect(out.turnIndex).toBe(3);
+  expect(out.visibleRouteHotspots).toEqual([]);
+  expect.soft(out.projectedHotspots).toBe(0);
+  expect.soft(out.navReferenceHits).toEqual([]);
+  expect.soft(out.turnPressed).toBe('true');
+  expect.soft(out.turnSelected).toBe(true);
+  expect.soft(out.projectedWhenAlsoVisible).toBe(1);
+  expect(out.routeWaypointResolvesToAirfield).toBe(true);
+  expect.soft(out.airfieldHasTurnButton).toBe(false);
+});
+
 test('route summary and open flight plan show only the selected half', async ({ page }) => {
   await boot(page);
   const outbound = await page.evaluate(() => {

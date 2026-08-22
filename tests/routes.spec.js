@@ -506,6 +506,7 @@ test.describe('Point selection chooser', () => {
     await llha.click();
     expect(await page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 10 });
     await expect(page.locator('#insp-title')).toHaveValue(/LLHA.*Haifa/);
+    await expect(page.locator('#insp-turn-btn')).toHaveCount(0);
   });
 
   test('unnamed route points retain their generated chooser number', async ({ page }) => {

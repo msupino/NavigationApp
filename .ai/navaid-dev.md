@@ -137,7 +137,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     prevents the generated defaults drifting from the graph. The route-waypoint inspector
     toggle stores an explicit `hotspot` boolean, so a pilot can enable any waypoint or
     disable a default hotspot. Explicit overrides persist in saved routes, route files,
-    and share links. Standalone reference waypoints remain read-only.
+    and share links. The selected outbound/return direction also suppresses a graph hotspot
+    when every matching route occurrence is hidden. Standalone reference waypoints remain
+    read-only. An ordinary route waypoint whose next leg retraces an earlier leg shows the
+    effective turning-point state in its inspector. A route waypoint that resolves to an
+    airfield does not show the turning-point control.
   - `state.legs[i]` = `{inboundAltitude, outboundAltitude, flightSpeed,
     inLabel, outLabel, hideDrift?, showDrift?}`. `inLabel` / `outLabel` are `{a, p}` offsets
     (along-leg / perpendicular, screen px) so markers can be dragged
