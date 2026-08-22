@@ -427,6 +427,8 @@ function hitCommChangeMarkerCandidates(px, py) {
   for (let i = navWP.length - 1; i >= 0; i--) {
     const wp = navWP[i];
     if (!wp || !commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
+    if (typeof routePointOnlyInHiddenDirection === 'function' &&
+        routePointOnlyInHiddenDirection(wp)) continue;
     const s = proj(wp);
     if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'navwp', index: i });
   }

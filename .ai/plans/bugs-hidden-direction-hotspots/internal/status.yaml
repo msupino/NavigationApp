@@ -1,0 +1,27 @@
+schema_version: 3
+plugin_version: 1.23.0
+pipeline_status: implementing
+pipeline_status_history:
+  - status: init
+    at: '2026-08-22T21:05:00+03:00'
+  - status: investigated
+    at: '2026-08-22T21:10:00+03:00'
+  - status: test_written
+    at: '2026-08-22T21:12:00+03:00'
+  - status: rca_ready
+    at: '2026-08-22T21:13:00+03:00'
+  - status: implementing
+    at: '2026-08-22T21:15:00+03:00'
+epic_key: hidden-direction-hotspots
+branch: codex/fix-hidden-direction-hotspots
+base: dev
+epic: .ai/plans/bugs-hidden-direction-hotspots
+pipeline_mode: bug-fix
+updated_at: '2026-08-22T21:24:00+03:00'
+pr_flow:
+  draft_pr_number: 1807
+  pr_url: https://github.com/msupino/NavigationApp/pull/1807
+  base_branch: dev
+  code_review_iteration: 0
+  acknowledged_issue_comments: []
+tier: lean
