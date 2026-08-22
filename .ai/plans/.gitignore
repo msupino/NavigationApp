@@ -1,3 +1,7 @@
 !bugs-mobile-legend/
 !bugs-mobile-legend/**
 bugs-mobile-legend/internal/code-review/
+
+!bugs-heli-nav-source/
+!bugs-heli-nav-source/**
+bugs-heli-nav-source/internal/code-review/

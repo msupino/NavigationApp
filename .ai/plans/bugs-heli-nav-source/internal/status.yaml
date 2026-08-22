@@ -1,0 +1,12 @@
+schema_version: 3
+plugin_version: 1.23.0
+pipeline_status: init
+pipeline_status_history:
+  - status: init
+    at: '2026-08-22T22:06:06+03:00'
+epic_key: heli-nav-source
+branch: codex/fix-heli-nav-source
+base: dev
+epic: .ai/plans/bugs-heli-nav-source
+pipeline_mode: bug-fix
+updated_at: '2026-08-22T22:06:06+03:00'
