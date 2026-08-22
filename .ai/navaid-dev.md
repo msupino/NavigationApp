@@ -357,7 +357,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   entries for airfield triangles, waypoint circles, and freq-change red rings.
   The markup lives in `index.html` so `applyI18n()` fills its text at boot;
   `ui.js` reparents the element into the control at startup. Not drawn by
-  `draw()` or `exportPNG()`, so PNG exports stay chart-only.
+  `draw()` or `exportPNG()`, so PNG exports stay chart-only. On phones, its
+  dragged position is re-clamped after toolbar layout or viewport changes.
+  When the expanded toolbar leaves no full-width gap, the legend narrows and
+  wraps its labels so it remains visible beside the toolbar.
 - **Boot screen:** inline markup and styles in `index.html` show the NavAid mark,
   a rotating aircraft, and a visible localized `Loading…` / `טוען…` status before
   external styles or application scripts finish loading. The language bootstrap
