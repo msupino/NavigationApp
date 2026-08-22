@@ -1,0 +1,12 @@
+schema_version: 3
+plugin_version: 1.23.0
+pipeline_status: init
+pipeline_status_history:
+  - status: init
+    at: '2026-08-22T18:31:59+03:00'
+epic_key: turn-freq-change
+branch: codex/fix-turn-freq-change
+base: dev
+epic: .ai/plans/bugs-turn-freq-change
+pipeline_mode: bug-fix
+updated_at: '2026-08-22T18:31:59+03:00'
