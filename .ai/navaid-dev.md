@@ -882,9 +882,10 @@ downloadable `route.json`.
   (`git rm REVIEW.md && git commit`). It must not land in production.
 - **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites
   each branch's `docs/index.html` `?v=src` markers, `NavAid.version`,
-  every app/i18n `data/*.json?v=src` literal, and the service-worker cache
-  name to that branch's short commit SHA after checkout. Source `?v=src`
-  values are just placeholders; you don't need to bump them per commit.
+  every app/i18n `data/*.json?v=<source-value>` URL, and the service-worker
+  cache name to that branch's short commit SHA after checkout. Only
+  `docs/index.html` requires literal `?v=src`. Existing app/i18n data URL
+  values may remain; do not bump them only for deployment cache invalidation.
   CI lint still enforces that every `?v=` value in the source HTML agrees.
   At runtime, `ui.js` registers `sw.js`, forces one update check on load,
   then re-checks on window focus, visible-tab restore, toolbar/menu
