@@ -70,7 +70,8 @@ for (const lang of ['en', 'he']) {
     await page.waitForFunction(() => {
       const toolbar = document.getElementById('toolbar');
       const legend = document.getElementById('map-legend');
-      return toolbar && legend && !toolbar.classList.contains('collapsed') &&
+      return !document.documentElement.classList.contains('app-booting') &&
+        toolbar && legend && !toolbar.classList.contains('collapsed') &&
         legend.getBoundingClientRect().height > 0;
     });
     expectLegendUsable(await mobileChromeGeometry(page));
@@ -83,7 +84,8 @@ test('a dragged legend is reconciled and remains persistent after a live phone r
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => {
     const toolbar = document.getElementById('toolbar');
-    return toolbar && !toolbar.classList.contains('collapsed') &&
+    return !document.documentElement.classList.contains('app-booting') &&
+      toolbar && !toolbar.classList.contains('collapsed') &&
       document.getElementById('map-legend').getBoundingClientRect().height > 0;
   });
 
@@ -97,17 +99,27 @@ test('a dragged legend is reconciled and remains persistent after a live phone r
   expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.en'))).toBeTruthy();
 
   await page.setViewportSize({ width: 390, height: 664 });
+  if (await page.locator('#toolbar').evaluate(el => el.classList.contains('collapsed'))) {
+    await page.click('#toolbar-toggle');
+  }
+  await page.waitForFunction(() =>
+    !document.getElementById('toolbar').classList.contains('collapsed'));
+  let priorGeometry = '';
   await expect.poll(async () => {
     const { legend: l, intersects, viewport: v } = await mobileChromeGeometry(page);
-    return l.left >= -1 && l.top >= -1 && l.right <= v.width + 1 &&
+    const geometry = [l.left, l.top, l.width, l.height].map(Math.round).join(':');
+    const stable = geometry === priorGeometry;
+    priorGeometry = geometry;
+    return stable && l.left >= -1 && l.top >= -1 && l.right <= v.width + 1 &&
       l.bottom <= v.height + 1 && !intersects;
-  }).toBe(true);
+  }, { intervals: [50, 50, 100] }).toBe(true);
   expectLegendUsable(await mobileChromeGeometry(page));
   const reconciled = await legend.boundingBox();
   if (!reconciled) throw new Error('legend has no reconciled box');
 
   await page.reload();
   await page.waitForFunction(() =>
+    !document.documentElement.classList.contains('app-booting') &&
     document.getElementById('map-legend')?.getBoundingClientRect().height > 0);
   expectLegendUsable(await mobileChromeGeometry(page));
   const restored = await legend.boundingBox();

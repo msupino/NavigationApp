@@ -1,7 +1,7 @@
 ---
 name: keep the legend visible on phones
-status: draft
-updated_at: '2026-08-22T19:29:17+03:00'
+status: implementation complete
+updated_at: '2026-08-22T20:50:00+03:00'
 ---
 
 # keep the legend visible on phones
@@ -14,7 +14,8 @@ On a short phone viewport, the expanded floating toolbar covers more than 100 px
 
 | Task | Status |
 |---|---|
-| T-1: Implement and verify the fix | ⬜ pending |
+| T-1: Implement the responsive legend placement | ✅ complete |
+| T-2: Review and verify the PR | 🔄 in progress |
 
 ## Artifacts
 - [investigation.md](investigation.md)

@@ -891,60 +891,120 @@ legendCtrl.addTo(map);
   const box = document.getElementById('map-legend');
   if (!box) return;
   const KEY = 'navaid.legendPos';
-  // The card must not come to rest under the menu bar. It carries the route totals as
-  // its top row, so that is exactly the line the toolbar hid -- the always-visible
-  // number ended up the invisible one. Only pushes DOWN, and only while the card
-  // actually overlaps the bar horizontally, so the rest of the map stays fair game.
-  function clearOfToolbar(x, y) {
-    const w = box.offsetWidth, h = box.offsetHeight;
-    // The docked search sits directly under the bar, i.e. exactly where a card
-    // pushed clear of the bar lands — and it paints above the legend, so the card
-    // ended up unreachable there. Both count as chrome to be pushed past, lowest
-    // obstacle last so a stack of them resolves in one pass.
-    const chrome = ['toolbar', 'search-overlay']
+  const GAP = 6;
+
+  function viewportRect() {
+    const vv = window.visualViewport;
+    return {
+      left: vv ? vv.offsetLeft : 0,
+      top: vv ? vv.offsetTop : 0,
+      right: vv ? vv.offsetLeft + vv.width : window.innerWidth,
+      bottom: vv ? vv.offsetTop + vv.height : window.innerHeight,
+    };
+  }
+
+  function chromeRects() {
+    return ['toolbar', 'search-overlay']
       .map(id => document.getElementById(id))
       .filter(el => el && !el.classList.contains('hidden'))
       .map(el => el.getBoundingClientRect())
-      .filter(r => r.height)                       // hidden (print, mobile modal)
-      .sort((a, b) => a.bottom - b.bottom);
-    for (const t of chrome) {
-      const horizontallyClear = x + w < t.left || x > t.right;
-      // Leave the position alone unless the card would actually SIT ON the bar: clear to
-      // its side, fully above it, or fully below it are all fine. Testing only "above"
-      // pinned every card below the bar to bottom+6 -- it could be dragged up but never
-      // back down again.
-      const verticallyClear = y + h < t.top || y > t.bottom;
-      if (!horizontallyClear && !verticallyClear) y = t.bottom + 6;
-    }
-    return y;
+      .filter(r => r.width && r.height);
   }
-  function applyPos(x, y) {
-    const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
-    const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
-    y = clearOfToolbar(Math.max(0, Math.min(maxX, x)), y);
+
+  function overlaps(x, y, w, h, obstacle) {
+    return x < obstacle.right && x + w > obstacle.left &&
+      y < obstacle.bottom && y + h > obstacle.top;
+  }
+
+  function choosePosition(wantX, wantY, obstacles) {
+    const vp = viewportRect();
+    const w = box.offsetWidth, h = box.offsetHeight;
+    const clampX = x => Math.max(vp.left, Math.min(vp.right - w, x));
+    const clampY = y => Math.max(vp.top, Math.min(vp.bottom - h, y));
+    const xs = [wantX, vp.left, vp.right - w];
+    const ys = [wantY, vp.top, vp.bottom - h];
+    obstacles.forEach(r => {
+      xs.push(r.left - w - GAP, r.right + GAP);
+      ys.push(r.top - h - GAP, r.bottom + GAP);
+    });
+    const candidates = [];
+    xs.forEach(x => ys.forEach(y => {
+      const cx = clampX(x), cy = clampY(y);
+      if (!obstacles.some(r => overlaps(cx, cy, w, h, r))) {
+        candidates.push({ x: cx, y: cy,
+          score: Math.pow(cx - wantX, 2) + Math.pow(cy - wantY, 2) });
+      }
+    }));
+    candidates.sort((a, b) => a.score - b.score);
+    return candidates[0] || { x: clampX(wantX), y: clampY(wantY) };
+  }
+
+  function persistPosition() {
+    const r = box.getBoundingClientRect();
+    try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify({ x: r.left, y: r.top })); }
+    catch (e) { /* storage unavailable */ }
+  }
+
+  function applyPos(x, y, persist) {
+    box.style.maxWidth = '';
+    const obstacles = chromeRects();
+    let pos = choosePosition(x, y, obstacles);
+    const naturalWidth = box.offsetWidth;
+    if (obstacles.some(r => overlaps(pos.x, pos.y, naturalWidth, box.offsetHeight, r)) &&
+        window.innerWidth <= 680) {
+      const vp = viewportRect();
+      const sideWidth = obstacles.reduce((best, r) => Math.max(best,
+        r.left - vp.left - GAP, vp.right - r.right - GAP), 0);
+      if (sideWidth > 0 && sideWidth < naturalWidth) box.style.maxWidth = sideWidth + 'px';
+      pos = choosePosition(x, y, obstacles);
+    }
     box.style.position = 'fixed';
-    box.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
-    box.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
+    box.style.left = pos.x + 'px';
+    box.style.top = pos.y + 'px';
     box.style.right = 'auto';
     box.style.bottom = 'auto';
     box.style.margin = '0';
+    if (persist) persistPosition();
   }
   try {
     const p = JSON.parse(navLangPosRead(KEY) || 'null');
-    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y, true);
   } catch (e) { /* storage unavailable */ }
+  window.reconcileLegendPosition = function (opts = {}) {
+    if (document.documentElement.classList.contains('app-booting')) return;
+    const r = box.getBoundingClientRect();
+    applyPos(r.left, r.top, opts.persist !== false);
+  };
+  const bootObserver = new MutationObserver(() => {
+    if (!document.documentElement.classList.contains('app-booting')) {
+      window.reconcileLegendPosition();
+      bootObserver.disconnect();
+    }
+  });
+  if (document.documentElement.classList.contains('app-booting')) {
+    bootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  }
+  let resizeFrame = 0;
+  const onViewportResize = () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => window.reconcileLegendPosition());
+  };
+  window.addEventListener('resize', onViewportResize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportResize);
+  const toolbar = document.getElementById('toolbar');
+  if (toolbar && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(onViewportResize).observe(toolbar);
+  }
   function start(cx, cy) {
     const r = box.getBoundingClientRect();
     const off = { x: cx - r.left, y: cy - r.top };
     box.classList.add('dragging');
-    const move = (mx, my) => applyPos(mx - off.x, my - off.y);
+    const move = (mx, my) => applyPos(mx - off.x, my - off.y, false);
     const mm = ev => move(ev.clientX, ev.clientY);
     const tm = ev => { if (ev.touches.length === 1) { ev.preventDefault(); move(ev.touches[0].clientX, ev.touches[0].clientY); } };
     const end = () => {
       box.classList.remove('dragging');
-      const r2 = box.getBoundingClientRect();
-      try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify({ x: r2.left, y: r2.top })); }
-      catch (e) { /* storage unavailable */ }
+      persistPosition();
       document.removeEventListener('mousemove', mm);
       document.removeEventListener('mouseup', end);
       window.removeEventListener('touchmove', tm);
@@ -6523,6 +6583,9 @@ function refreshMapAfterToolbarModeChange() {
     bar.style.left = c.x + 'px';
     bar.style.top = c.y + 'px';
     bar.style.right = 'auto';
+    if (typeof window.reconcileLegendPosition === 'function') {
+      window.reconcileLegendPosition();
+    }
   }
 
   function restorePos() {
@@ -6601,6 +6664,9 @@ function refreshMapAfterToolbarModeChange() {
     if (bar.style.left) {                 // size changed -> keep on screen
       requestAnimationFrame(() =>
         setPos(parseFloat(bar.style.left), parseFloat(bar.style.top)));
+    }
+    if (typeof window.reconcileLegendPosition === 'function') {
+      window.reconcileLegendPosition();
     }
   }
   toggle.addEventListener('click',
