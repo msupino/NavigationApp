@@ -81,6 +81,7 @@ jobs:
           fi
           BASE=$(gh pr view "$PR" --json baseRefName --jq '.baseRefName')
           HEAD_REF=$(gh pr view "$PR" --json headRefName --jq '.headRefName')
+          HEAD_REPO=$(gh pr view "$PR" --json headRepository --jq '.headRepository.nameWithOwner')
           # A feature PR into dev is squashed: one commit per change, and dev is the only
           # place that history is read. The dev -> main PROMO must NOT be squashed. A squash
           # gives main dev's content with none of its ancestry, so git stops knowing that main
@@ -126,11 +127,64 @@ jobs:
             case "$MERGE_STATE" in
               MERGED)
                 echo "PR #$PR merged on iteration $i."
+                # Read the final merged head, not the head from when this watcher
+                # started. A PR may receive reviewed fix pushes during a long watch.
+                HEAD_SHA=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
                 # Explicit dispatch — workflow_run chain is silently
                 # suppressed when the upstream completion was driven by
                 # GITHUB_TOKEN. workflow_dispatch is exempt from
                 # anti-recursion (per GitHub docs), so this fires reliably.
                 FAILED=0
+                # GitHub does not apply --delete-branch when a bot merely arms
+                # auto-merge and the merge happens later. Delete the merged
+                # same-repository topic ref explicitly. DELETE is empty for the
+                # long-lived main/dev branches, and fork refs are not ours to delete.
+                # Re-check the ref SHA first, then use an atomic force-with-lease
+                # deletion. Never delete a branch that advanced or was recreated
+                # while this watcher was waiting for the merge.
+                if [ -n "$DELETE" ] && [ "$HEAD_REPO" = "$GITHUB_REPOSITORY" ]; then
+                  REF_ERR=$(mktemp)
+                  set +e
+                  REF_LINE=$(git ls-remote --exit-code --heads origin \
+                    "refs/heads/$HEAD_REF" 2>"$REF_ERR")
+                  REF_STATUS=$?
+                  set -e
+                  if [ "$REF_STATUS" -eq 0 ]; then
+                    CURRENT_SHA=${REF_LINE%%[[:space:]]*}
+                    if [ "$CURRENT_SHA" = "$HEAD_SHA" ]; then
+                      if ! git push --force-with-lease="refs/heads/$HEAD_REF:$HEAD_SHA" \
+                        origin ":refs/heads/$HEAD_REF"; then
+                        # The ref may have disappeared or advanced between the probe
+                        # and the leased delete. Re-probe so those safe races do not
+                        # turn a successful merge into a false workflow failure.
+                        set +e
+                        AFTER_LINE=$(git ls-remote --exit-code --heads origin \
+                          "refs/heads/$HEAD_REF" 2>"$REF_ERR")
+                        AFTER_STATUS=$?
+                        set -e
+                        AFTER_SHA=${AFTER_LINE%%[[:space:]]*}
+                        if [ "$AFTER_STATUS" -eq 2 ]; then
+                          echo "$HEAD_REF was deleted concurrently."
+                        elif [ "$AFTER_STATUS" -eq 0 ] && [ "$AFTER_SHA" != "$HEAD_SHA" ]; then
+                          echo "::warning::Keeping $HEAD_REF because it advanced during deletion."
+                        else
+                          cat "$REF_ERR"
+                          echo "::error::Merged PR #$PR but failed to delete $HEAD_REF"
+                          FAILED=1
+                        fi
+                      fi
+                    else
+                      echo "::warning::Keeping $HEAD_REF because it advanced after PR #$PR merged."
+                    fi
+                  elif [ "$REF_STATUS" -eq 2 ]; then
+                    echo "$HEAD_REF was already deleted."
+                  else
+                    cat "$REF_ERR"
+                    echo "::error::Could not inspect merged branch $HEAD_REF before deletion"
+                    FAILED=1
+                  fi
+                  rm -f "$REF_ERR"
+                fi
                 gh workflow run Deploy --ref "$BASE" || {
                   echo "::error::Failed to dispatch Deploy on $BASE"; FAILED=1;
                 }
