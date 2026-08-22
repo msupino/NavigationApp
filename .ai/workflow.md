@@ -159,9 +159,9 @@ An existing promotion PR uses its normal synchronize checks and keeps its
 already-armed auto-merge request, avoiding duplicate cancelled checks on one
 SHA. No preliminary `main` to `dev` sync PR or first-time-contributor approval
 is needed.
-After the watcher observes a merged same-repository topic PR, it deletes that topic branch
-with an atomic SHA lease only if the ref still points to the reviewed PR head. It reports
-probe or deletion failures.
+After the watcher observes a merged same-repository topic PR, it reads the final PR head.
+It deletes the topic branch with an atomic SHA lease only while that ref is unchanged.
+The watcher reports probe or deletion failures.
 The long-lived `dev` and `main` branches and fork-owned refs are never deleted.
 
 ## Squash Policy
