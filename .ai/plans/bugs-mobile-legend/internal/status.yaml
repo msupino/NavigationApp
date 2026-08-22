@@ -1,0 +1,12 @@
+schema_version: 3
+plugin_version: 1.23.0
+pipeline_status: init
+pipeline_status_history:
+  - status: init
+    at: '2026-08-22T19:16:23+03:00'
+epic_key: mobile-legend
+branch: codex/fix-mobile-legend
+base: dev
+epic: .ai/plans/bugs-mobile-legend
+pipeline_mode: bug-fix
+updated_at: '2026-08-22T19:16:23+03:00'
