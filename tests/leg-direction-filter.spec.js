@@ -431,19 +431,38 @@ test.describe('the turn point seeds no automatic frequency change', () => {
     expect(ccs.length).toBeGreaterThan(0); // but the route still has its other callouts
   });
 
-  test('a hand-added note at the turn point survives', async ({ page }) => {
+  test('reconciliation removes every turn callout and preserves unrelated notes', async ({ page }) => {
     await boot(page);
-    const kept = await page.evaluate(async (wps) => {
-      if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+    const out = await page.evaluate(async (wps) => {
+      await Promise.all([loadNavWaypoints(), loadCommChange()]);
       state.waypoints = wps.map(w => ({ ...w }));
-      // freqAuto absent == the pilot put this one there deliberately.
-      state.notes = [{ lat: 31.94361, lng: 34.78083, cc: 'NTAIM',
-                       freqName: 'TEL_NOF', freq: '129.05', text: 'freq' }];
+      const unrelatedCallout = { lat: 32.21056, lng: 34.80722, cc: 'SFAIM',
+        freqName: 'HERZLIYA', freq: '123.45', text: 'keep callout' };
+      const ordinaryNote = { lat: 32.1, lng: 34.8, text: 'keep ordinary note', color: '#fff' };
+      state.notes = [
+        { lat: 31.94361, lng: 34.78083, cc: 'NTAIM',
+          freqName: 'TEL_NOF', freq: '129.05', text: 'automatic', freqAuto: true },
+        { lat: 31.944, lng: 34.781, cc: 'NTAIM',
+          freqName: 'PILOT', freq: '130.00', text: 'manual' },
+        unrelatedCallout,
+        ordinaryNote,
+      ];
+      state.commChangeSuppressions = [];
       syncLegs();
       seedCommChangeNotes();
-      return state.notes.some(n => n && n.cc === 'NTAIM');
+      return {
+        turn: legRetraceTurnIndex(),
+        turnCallouts: state.notes.filter(n => n && n.cc === 'NTAIM').length,
+        unrelatedKept: state.notes.includes(unrelatedCallout),
+        ordinaryKept: state.notes.includes(ordinaryNote),
+        suppressions: state.commChangeSuppressions.slice(),
+      };
     }, OUT_AND_BACK);
-    expect(kept).toBe(true);
+    expect(out.turn).toBe(3);
+    expect(out.turnCallouts).toBe(0);
+    expect(out.unrelatedKept).toBe(true);
+    expect(out.ordinaryKept).toBe(true);
+    expect(out.suppressions).toEqual([]);
   });
 
   test('a straight route that never turns keeps every frequency change', async ({ page }) => {
@@ -582,20 +601,94 @@ test.describe('manual turning point', () => {
     expect(kept.turn).toBe(2);
   });
 
-  test('the inspector button marks the selected waypoint', async ({ page }) => {
+  test('the inspector marks the turn and immediately removes its callout', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    await page.evaluate(async () => {
+      await Promise.all([loadNavWaypoints(), loadCommChange()]);
+      state.notes = [
+        { lat: 32.00472, lng: 34.72722, cc: 'TYONA',
+          freqName: 'PILOT', freq: '130.00', text: 'remove me' },
+        { lat: 32.1, lng: 34.8, text: 'keep me', color: '#fff' },
+      ];
+      state.selected = { type: 'wp', index: 2 };
+      showInspector();
+    });
+    const idleStyle = await page.locator('#insp-turn-btn').evaluate(el => {
+      const css = getComputedStyle(el);
+      return { color: css.color, background: css.backgroundColor,
+        border: css.borderColor, weight: Number(css.fontWeight) || 400 };
+    });
+    await page.locator('#insp-turn-btn').click();
+    const out = await page.evaluate(() => ({
+      marked: !!state.waypoints[2].turn,
+      pressed: document.getElementById('insp-turn-btn').getAttribute('aria-pressed'),
+      turnCallout: state.notes.some(n => n && n.cc === 'TYONA'),
+      ordinaryKept: state.notes.some(n => n && n.text === 'keep me'),
+      canAdd: !!document.querySelector('.add-freq-change-btn'),
+      style: (() => {
+        const css = getComputedStyle(document.getElementById('insp-turn-btn'));
+        return { color: css.color, background: css.backgroundColor,
+          border: css.borderColor, weight: Number(css.fontWeight) || 400 };
+      })(),
+    }));
+    expect(out.marked).toBe(true);
+    expect(out.pressed).toBe('true');   // relabels to "clear" once set
+    expect(out.turnCallout).toBe(false);
+    expect(out.ordinaryKept).toBe(true);
+    expect(out.canAdd).toBe(false);
+    expect(out.style.color).toBe(idleStyle.color);
+    expect(out.style.background).toBe(idleStyle.background);
+    expect(out.style.border).toBe(idleStyle.border);
+    expect(out.style.weight).toBeGreaterThan(idleStyle.weight);
+  });
+
+  test('set and unset use emphasis without destructive action colors', async ({ page }) => {
     await boot(page);
     await loop(page);
     await page.evaluate(() => {
       state.selected = { type: 'wp', index: 2 };
       showInspector();
     });
+    const idle = await page.locator('#insp-turn-btn').evaluate(el => {
+      const css = getComputedStyle(el);
+      return { color: css.color, background: css.backgroundColor,
+        border: css.borderColor, weight: Number(css.fontWeight) || 400 };
+    });
+    const destructive = await page.locator('.insp-actions .insp-btn:not(.insp-btn-safe)').first()
+      .evaluate(el => getComputedStyle(el).backgroundColor);
+    expect(idle.background).not.toBe(destructive);
     await page.locator('#insp-turn-btn').click();
+    const selected = await page.locator('#insp-turn-btn').evaluate(el => {
+      const css = getComputedStyle(el);
+      return { color: css.color, background: css.backgroundColor,
+        border: css.borderColor, weight: Number(css.fontWeight) || 400 };
+    });
+    expect(selected.color).toBe(idle.color);
+    expect(selected.background).toBe(idle.background);
+    expect(selected.border).toBe(idle.border);
+    expect(selected.weight).toBeGreaterThan(idle.weight);
+  });
+
+  test('Z cannot recreate a callout at the effective turn', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    await page.evaluate(async () => {
+      await Promise.all([loadNavWaypoints(), loadCommChange()]);
+      setTurnWaypoint(2);
+      state.notes = [];
+      state.selected = { type: 'wp', index: 2 };
+      showInspector();
+    });
+    await page.keyboard.press('z');
     const out = await page.evaluate(() => ({
-      marked: !!state.waypoints[2].turn,
-      pressed: document.getElementById('insp-turn-btn').getAttribute('aria-pressed'),
+      turn: legRetraceTurnIndex(),
+      turnCallout: state.notes.some(n => n && n.cc === 'TYONA'),
+      canAdd: !!document.querySelector('.add-freq-change-btn'),
     }));
-    expect(out.marked).toBe(true);
-    expect(out.pressed).toBe('true');   // relabels to "clear" once set
+    expect(out.turn).toBe(2);
+    expect(out.turnCallout).toBe(false);
+    expect(out.canAdd).toBe(false);
   });
 });
 
