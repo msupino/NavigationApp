@@ -200,6 +200,9 @@ function tryRestoreInspectorSelection(sel) {
 }
 function addCommChangeNoteForWaypoint(wp, ccKey) {
   if (!wp || !ccKey || !Array.isArray(state.notes)) return -1;
+  const wpIdx = Array.isArray(state.waypoints) ? state.waypoints.indexOf(wp) : -1;
+  if (wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
+      legRetraceTurnIndex() === wpIdx) return -1;
   if (isKnownCommChangeKey(ccKey) && typeof unsuppressCommChange === 'function') {
     unsuppressCommChange(ccKey);
   }
@@ -263,6 +266,9 @@ function isKnownCommChangeKey(ccKey) {
 }
 function appendAddFreqChangeButton(body, wp, ccKey) {
   if (!body || !wp || !ccKey || !showCommChange) return;
+  const wpIdx = Array.isArray(state.waypoints) ? state.waypoints.indexOf(wp) : -1;
+  if (wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
+      legRetraceTurnIndex() === wpIdx) return;
   const add = document.createElement('button');
   add.className = 'insp-btn add-freq-change-btn';
   add.textContent = S.addFreqChange || 'Add frequency change';
@@ -3015,6 +3021,7 @@ function showInspector() {
       turnBtn.setAttribute('aria-pressed', effectiveTurn ? 'true' : 'false');
       turnBtn.onclick = () => {
         setTurnWaypoint(idx);
+        if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
         if (typeof persist === 'function') persist();
         if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
         if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
