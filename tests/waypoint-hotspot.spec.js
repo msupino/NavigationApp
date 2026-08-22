@@ -227,5 +227,5 @@ test('Hebrew inspector localizes the hotspot toggle', async ({ page }) => {
     showInspector();
   });
   await expect(page.locator('#insp-hotspot-btn')).toContainText('בטל נקודה חמה');
-  await expect(page.locator('#hotspot-cb').locator('xpath=..')).toContainText('נקודות חמות');
+  await expect(page.locator('#hotspot-cb').locator('xpath=..')).toContainText('הצג נוקודות חמות');
 });
