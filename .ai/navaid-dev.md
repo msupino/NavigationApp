@@ -137,7 +137,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     prevents the generated defaults drifting from the graph. The route-waypoint inspector
     toggle stores an explicit `hotspot` boolean, so a pilot can enable any waypoint or
     disable a default hotspot. Explicit overrides persist in saved routes, route files,
-    and share links. The Route info `Hotspots` checkbox hides or shows all route hotspot
+    and share links. The Route info `Show hotspots` checkbox hides or shows all route hotspot
     styling without changing those waypoint choices. Its `defaultShowHotspots` tune controls
     the initial value and defaults to on. The selected outbound/return direction also
     suppresses a graph hotspot
