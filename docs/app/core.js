@@ -2574,9 +2574,13 @@ function routeOccupiesPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DEG)
 function routePointOnlyInHiddenDirection(point, eps = SAME_REFERENCE_POINT_DEG) {
   if (!point || !state || !Array.isArray(state.waypoints) ||
       typeof legDirWaypointVisible !== 'function') return false;
+  const pointName = canonicalNavWaypointName(point.name).toUpperCase();
   let matched = false;
   for (let i = 0; i < state.waypoints.length; i++) {
-    if (!sameMapPoint(state.waypoints[i], point, eps)) continue;
+    const routeWp = state.waypoints[i];
+    const sameName = pointName &&
+      canonicalNavWaypointName(routeWp && routeWp.name).toUpperCase() === pointName;
+    if (!sameName && !sameMapPoint(routeWp, point, eps)) continue;
     matched = true;
     if (legDirWaypointVisible(i)) return false;
   }
