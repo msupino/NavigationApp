@@ -66,8 +66,9 @@
     <em>your own</em> Google Drive. If you separately enable “Sync settings too”,
     portable preferences are stored in <code>navaid-settings.json</code>. This includes
     the flight-plan pilot, aircraft, licence and contact profile so it is available on
-    your other connected devices. AI API keys and the flight-plan filing destination are
-    never included.</p>
+    your other connected devices. Current versions exclude AI API keys and the
+    flight-plan filing destination. If an older version copied an AI key into the
+    settings file, the next successful settings sync removes that legacy copy.</p>
     <ul>
       <li>This permission gives NavAid access <strong>only</strong> to the file it creates
         in that hidden app folder. NavAid <strong>cannot see, read, or modify any other
@@ -123,8 +124,9 @@
     המסלולים השמורים שלך, בתיקייה מוסתרת וייעודית לאפליקציה בתוך Google Drive
     <em>שלך</em>. אם הפעלת בנפרד ״סנכרן גם הגדרות״, העדפות ניידות נשמרות
     ב-<code>navaid-settings.json</code>. הן כוללות את פרטי הטייס, המטוס, הרישיון
-    והקשר של תכנית הטיסה, כדי שיהיו זמינים במכשירים מחוברים אחרים. מפתחות API של
-    כלי ה-AI וכתובת היעד להגשת תכנית הטיסה לעולם אינם נכללים.</p>
+    והקשר של תכנית הטיסה, כדי שיהיו זמינים במכשירים מחוברים אחרים. הגרסאות הנוכחיות
+    אינן כוללות מפתחות API של כלי ה-AI או את כתובת היעד להגשת תכנית הטיסה. אם גרסה
+    ישנה העתיקה מפתח AI לקובץ ההגדרות, הסנכרון המוצלח הבא יסיר את העותק הישן.</p>
     <ul>
       <li>הרשאה זו מעניקה ל-NavAid גישה <strong>אך ורק</strong> לקובץ שהיא יוצרת באותה
         תיקיית אפליקציה מוסתרת. ‏NavAid <strong>אינה יכולה לראות, לקרוא או לשנות קבצים

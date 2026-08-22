@@ -21,7 +21,7 @@ For each segment, `inboundAltitude` means `from -> to` and
 in the reverse order, swap the stored values.
 
 Each entry in `cvfr-route-graph.json` under `edges.<from>[]` is one adjacency.
-The two altitude fields describe the directions relative to that stored edge:
+The two altitude fields describe directions relative to that stored edge.
 
 Some CVFR paths are one-way. In `docs/data/cvfr-route-graph.json`, one-way rows
 set `oneWay: true` and use `null` for the disallowed direction; the non-null
@@ -92,7 +92,7 @@ shape of the review output.
   `AFFEK-LLHA` from `3000/4500` to `2000/1500`.
 - Keep route endpoints stable; if a point moves in `cvfr-route-graph.json` or
   `airfields.json`, rerun green-route detection rather than patching
-  coordinates into the altitude file.
+  coordinates into the route-graph edge.
 
 ## Known Tricky Areas
 

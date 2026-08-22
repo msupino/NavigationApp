@@ -1647,10 +1647,9 @@ window.notamBadgeNotamsAt = notamBadgeNotamsAt;
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads the nav-waypoints projection of docs/data/cvfr-route-graph.json on first
 // activation. Format:
-// { waypoints:[{ name, en, he, lat, lng }] } — 172 published reporting
-// points sourced from the IAA CVFR chart page 113 (2025 edition); see
-// issue #406. Validated strictly by validateNavWaypoints() (issue
-// #101): every documented field must be present and well-typed;
+// { waypoints:[{ name, en, he, lat, lng }] } — 170 active reporting points
+// projected from 172 CVFR-layer members sourced from IAA CVFR chart page 113
+// (2025 edition). validateNavWaypoints() requires every documented field;
 // extras are silently allowed for forward-compat.
 // --- per-layer dataset resolution ----------------------------------
 // Each base layer can have its own data files (waypoints, comm-change, …).
@@ -1840,7 +1839,7 @@ async function loadNavWaypoints() {
   } catch (e) {
     // Leave navWP === null so a subsequent toggle / search / snap call can
     // retry — assigning [] would make the early-return guard short-circuit
-    // forever and disable nav waypoints for the whole session (issue #72).
+    // forever and disable nav waypoints for the whole session.
     console.warn('Failed to load nav waypoints:', e);
     return [];
   }
@@ -2019,12 +2018,9 @@ function lsaAreasAtLatLng(latlng) {
 // Lazy-loads the comm-change projection of docs/data/cvfr-route-graph.json — { callSigns:{...},
 // points:[{name, commChange, callSigns, routeHints, note, source}] }.
 // Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
-// + inspector badge. On 404 or schema error we install an EMPTY map ({})
-// instead of leaving commChangeMap null — the dataset is intentionally
-// optional, and a missing file must not disable the rest of the nav-WP
-// overlay (issue #399). The map is only rebuilt if a future call observes
-// `commChangeMap === null` (i.e. nothing was installed yet), so a one-time
-// 404 doesn't trigger retry storms.
+// + inspector badge. A schema error installs an empty map because invalid data
+// will not improve on retry. A fetch failure leaves commChangeMap null so a
+// later call can retry; concurrent callers still share the in-flight request.
 async function loadCommChange() {
   if (commChangeMap !== null) return commChangeMap;
   const gen = _layerGen;
@@ -2337,7 +2333,7 @@ function nearestReference(latlng, options = {}) {
 //    near any):
 //    clear it so the circle reverts to the sequence number.
 // Airfields take priority because they're a much smaller set of strongly-
-// known landmarks (16 vs 172 nav-WPs); if both overlays sit on the same
+// known landmarks (16 vs 170 active nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
 function applyNavSnap(latlng, currentName, excludeLl) {
   const autoSnapped = isAutoSnapName(currentName);
@@ -2352,7 +2348,7 @@ function applyNavSnap(latlng, currentName, excludeLl) {
   // of click precision.
   // #106: force-snap lifts the radius. Airfield-first priority is fine inside
   // the 18 px radius (both rarely sit there together), but at infinite radius
-  // it would make the 16-airfield set always win and leave the 172 nav-WPs
+  // it would make the 16-airfield set always win and leave the nav-WPs
   // unreachable. So in force-snap mode pick the globally nearest across both
   // visible sets by screen distance instead of short-circuiting on airfields.
   const snap = nearestReference(latlng, {
@@ -2377,7 +2373,7 @@ function applyNavSnap(latlng, currentName, excludeLl) {
 // drives the Airport charts modal (io.js: the per-airfield list, its prefetch
 // and the overlay) -- the "data-only for now" this comment used to claim
 // stopped being true when that shipped. Validated strictly by
-// validateAirfields() (issue #101): every documented field must be
+// validateAirfields(): every documented field must be
 // present and well-typed; extras are silently allowed for forward-compat.
 async function loadAirfields() {
   if (airfields !== null) return airfields;
@@ -2413,12 +2409,12 @@ async function loadAirfields() {
   } catch (e) {
     // Leave airfields === null so a subsequent toggle / search call can
     // retry — assigning [] would make the early-return guard short-circuit
-    // forever and disable the overlay for the whole session (issue #72).
+    // forever and disable the overlay for the whole session.
     console.warn('Failed to load airfields:', e);
     return [];
   }
 }
-// --- VOR/DME stations (issue #404 follow-up) ------------------------
+// --- VOR/DME stations ------------------------------------------------
 // Lazy-loads docs/data/vor.json: { vors:[{ ident, name, he?, freq, lat, lng,
 // aipName?, type?, ch?, hours?, elevFt?, coverageNm?, remarks?, dmeOnly? }].
 // Used by the overlay markers, the selectable reference for radial/DME
@@ -2738,7 +2734,7 @@ function drawReportingBadges() {
   octx.lineWidth = 1;
 }
 
-// Comm-change rings (issue #399 / #484). Drawn independently of the nav-WP
+// Comm-change rings. Drawn independently of the nav-WP
 // dot layer: the "Show Comm Changes" toggle marks frequency-boundary points
 // whether or not the full 173-dot reporting-point overlay is on. Positions
 // come from the same navWP dataset, so navWP must be loaded when this layer
@@ -2845,7 +2841,7 @@ if (typeof window !== 'undefined') {
 }
 
 function drawCommChangeRings() {
-  // Test-inspection hook (issue #399): every comm-change ring drawn this
+  // Test-inspection hook: every comm-change ring drawn this
   // frame is recorded here so Playwright can assert "ring drew at X"
   // without snapshotting overlay pixels. Built fresh every draw() so it
   // never accumulates stale names after a toggle off / pan away.
@@ -2887,7 +2883,7 @@ function drawCommChangeRings() {
   window.__commChangeRingRadii = ringRadii;
 }
 
-// Issue #487: auto-seed a real note near any route waypoint that sits on a
+// Auto-seed a real note near any route waypoint that sits on a
 // comm-change reporting point, so the frequency change shows on the printed
 // plan. The note is a normal `state.notes` object (movable / editable /
 // deletable) tagged with `cc: <ICAO>` for idempotency — a point is seeded

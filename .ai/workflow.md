@@ -13,7 +13,10 @@ git fetch origin --prune
 git checkout dev
 git branch --set-upstream-to=origin/dev dev
 git pull --ff-only origin dev
-git merge-base --is-ancestor origin/main dev
+if ! git merge-base --is-ancestor origin/main dev; then
+  echo "origin/dev does not contain origin/main; use a reviewed maintenance PR"
+  exit 1
+fi
 git checkout -b <branch>
 ```
 

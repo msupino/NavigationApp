@@ -2228,7 +2228,7 @@ var editLocked = false;
 var highlightDiff = false;  // purple halo on legs that change altitude
 var limitLegKites = true;   // keep dragged leg markers between their two waypoints
 var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
-var showReporting = false;  // mandatory reporting badges (opt-in, default off) — issue #404
+var showReporting = false;  // mandatory reporting badges (opt-in, default off)
 var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.
@@ -2255,7 +2255,7 @@ var airfields = null;       // same null/[]/populated convention as navWP —
                             // optional per the chart-rebuild (#412): ARPs
                             // surfaced from the IAA chart with no published
                             // BYOP enrichment ship as bare {name,he,lat,lng}.
-var showCommChange = true;   // Comm-change ring overlay + callouts (default on) — issue #399/#487.
+var showCommChange = true;   // Comm-change ring overlay + callouts (default on).
 var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // retry on next toggle); {} or populated = last
                             // fetch resolved. Keyed by nav-WP `name` for
@@ -2334,7 +2334,7 @@ var magnifierOn = false;    // magnifying-glass toggle
 var magnifierZoom = 2;      // default zoom factor
 var magnifierSize = 400;    // magnifier diameter (px)
 
-// --- Simulator live aircraft (issue #691) ----------------------------
+// --- Simulator live aircraft -----------------------------------------
 // Polls a local SimConnect HTTP bridge (e.g. Little NavMap / MSFS).
 // Response JSON: { latitude, longitude, altitude, heading, ias }
 var simOn = false;                        // polling active
@@ -2402,11 +2402,11 @@ const NOTE_DEFAULT_COLOR = DEFAULT_LABEL_FILL_COLOR;   // matches the existing y
 // `legLabelCenter` (interact.js) handle the sentinel; the drag handlers
 // materialise the current rendered `p` into the stored offset on
 // drag-start so the user-dragged path keeps the existing
-// size-independent `{ a, p, _m: 1 }` shape unchanged (issue #394).
+// size-independent `{ a, p, _m: 1 }` shape unchanged.
 //
 // `_m: 1` continues to mark the label as migrated, so the legacy-pixel
 // path in `_normalizeLegLabel` (io.js) leaves sentinels untouched on
-// reload. See `_normalizeLegLabel` for the pre-#393 raw-pixel migration.
+// reload. See `_normalizeLegLabel` for the legacy raw-pixel migration.
 function _defaultLegLabels() {
   return {
     inLabel:  { a: 0, _default: 1, _m: 1 },
@@ -3638,13 +3638,13 @@ function fmtLatLng(v, pos, neg) {
   return `${dd}°${m.toFixed(1).padStart(4, '0')}'${hemi}`;
 }
 
-// Go-to sanity box (issue #497): a generous Israel-area bound. Parsed
+// Go-to sanity box: a generous Israel-area bound. Parsed
 // coordinates outside this are rejected so a typo can't fling the map to
 // the other side of the planet.
 const GOTO_LAT_MIN = 28, GOTO_LAT_MAX = 34;
 const GOTO_LNG_MIN = 33, GOTO_LNG_MAX = 37;
 
-// Parse a free-text coordinate string into { lat, lng } or null (issue #497).
+// Parse a free-text coordinate string into { lat, lng } or null.
 // Tolerant of three notations, in priority order:
 //   1. DMS / DM with hemisphere letters:  32°00'17"N 34°43'38"E  /  32 00.3 N ...
 //   2. Signed decimal degrees:            32.005, 34.727  /  32.005 34.727

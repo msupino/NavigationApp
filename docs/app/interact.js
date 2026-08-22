@@ -757,7 +757,7 @@ function legLabelDragGrab(legIdx, which, px, py) {
 function setLegLabelFromPoint(dragState, px, py) {
   const leg = state.legs[dragState.i];
   const o = leg && (dragState.which === 'in' ? leg.inLabel : leg.outLabel);
-  if (!o) return false;                // malformed leg / label — issue #82
+  if (!o) return false;                // malformed leg / label
   const f = legFrame(dragState.i);
   if (!f) return false;                // degenerate leg — nothing to drag along
   const sc = legZoomScale() || 1;
@@ -1164,7 +1164,7 @@ function deleteSelectedWpOrNote() {
   }
 }
 
-// Issue #418: resolve a waypoint to its nearest reference point
+// Resolve a waypoint to its nearest reference point
 // (airfield or nav waypoint) within the same ~18 px snap distance the
 // drop / drag path uses (`applyNavSnap`). Airfields take priority over
 // nav-WPs because they are a smaller, strongly-known set of landmarks
@@ -1185,7 +1185,7 @@ function findSnappedReference(wp) {
   return hit && hit.ref ? Object.assign({ kind: hit.kind }, hit.ref) : null;
 }
 
-// Issue #418: inspector waypoint-name reset handler. Restores the
+// Inspector waypoint-name reset handler. Restores the
 // snapped reference code if the waypoint sits on one; otherwise clears
 // the name so the dimmed sequence placeholder (`S.wpPrefix` + N) shows.
 function resetWpName(idx) {
@@ -1201,7 +1201,7 @@ function resetWpName(idx) {
 window.resetWpName = resetWpName;
 window.findSnappedReference = findSnappedReference;
 
-// Issue #418: Build toolbar — same naming rules as `resetWpName` for
+// Build toolbar — same naming rules as `resetWpName` for
 // every waypoint in one shot (confirm in ui.js).
 function resetAllWpNames() {
   for (let i = 0; i < state.waypoints.length; i++) {
@@ -2904,7 +2904,7 @@ function showInspector() {
       appendSatelliteSnippet(body, wp, title.value);
       appendVorRadialRow(body, wp.lat, wp.lng);
     }
-    // Reporting-type badge (issue #404). The chart's סוג דיווח class lives
+    // Reporting-type badge. The chart's סוג דיווח class lives
     // inline on the nav-WP (`report`). Surfaces mandatory (חובה) vs on-request
     // (דרישה) for a route waypoint that matches a known reporting point.
     if (typeof reportingFor === 'function') {
@@ -2917,7 +2917,7 @@ function showInspector() {
         body.appendChild(row);
       }
     }
-    // Comm-change badge/editor (issue #399 + manual callouts). Known
+    // Comm-change badge/editor, including manual callouts. Known
     // comm-change points show the chart badge; any named waypoint without a
     // linked callout can still add a manual frequency-change arrow.
     if (showCommChange) {
@@ -2985,7 +2985,7 @@ function showInspector() {
       draw(); showInspector();
     };
     body.appendChild(del);
-    // Issue #418: waypoint-name reset — snaps the stored name back to
+    // Waypoint-name reset — snaps the stored name back to
     // the nearest reference code, or clears it when off-grid (placeholder).
     const resetName = document.createElement('button');
     resetName.className = 'insp-btn';
@@ -3736,7 +3736,7 @@ map.on('mousedown', e => {
   pendingOverlayAction = null;
   const p = e.containerPoint;
   // Hit-test priority matches paint order so the topmost element wins:
-  // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
+  // notes are drawn above waypoints (draw.js), so test notes first.
   const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
   const wpHits = hitWaypointCandidates(p.x, p.y);
   // A click inside a waypoint dot is unambiguously that waypoint, even though
@@ -3979,7 +3979,7 @@ map.on('mousemove', e => {
 
 // Re-enable map dragging on release anywhere, not just inside the map.
 // Listening to map.on('mouseup') alone misses releases over the toolbar /
-// browser chrome and leaves the map permanently unpannable (issue #70).
+// browser chrome and leaves the map permanently unpannable.
 // Anything hidden FOR the drag -- the frequency callout whose end is moving (draw.js's
 // commCalloutDragging) -- is only restored by a repaint that happens after the drag state
 // is gone. Every draw() inside the release path still sees `drag`/`touchDrag` set, so the
@@ -4201,7 +4201,7 @@ window.addEventListener('keydown', e => {
     if (typeof undo === 'function') undo();
     return;
   }
-  // Issue #420: '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
+  // '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
   // Suppressed in inputs (handled by the early return above) so typing a
   // literal '?' in a waypoint name or note still works. Most browsers
   // surface this key as `e.key === '?'`, but some keyboard layouts /
@@ -4213,7 +4213,7 @@ window.addEventListener('keydown', e => {
     if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
     return;
   }
-  // Issue #413: F (no modifier) fits the active paper frame when one is
+  // F (no modifier) fits the active paper frame when one is
   // selected, otherwise it re-runs fit-to-route. Ctrl/Cmd-F is the search
   // overlay shortcut handled in ui.js — bail out so we don't shadow it.
   if (shortcutPlain(e, 'KeyF', 'f')) {
@@ -4350,7 +4350,7 @@ mapEl.addEventListener('touchstart', e => {
   const wasDoubleTap = undoTapOpenIfDoubleTap(p.x, p.y);
   const selectionBeforeTouch = state.selected;
   // Hit-test priority matches paint order so the topmost element wins:
-  // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
+  // notes are drawn above waypoints (draw.js), so test notes first.
   const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
   const wpHits = hitWaypointCandidates(p.x, p.y);
   // A click inside a waypoint dot is unambiguously that waypoint, even though

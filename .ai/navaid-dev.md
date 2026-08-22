@@ -85,14 +85,15 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `app/` — the app source. Plain scripts load in order and share one global
   scope (no build step, no modules):
   `app/core.js` (migration, state model, geo helpers, Leaflet map,
-  overlay canvas) → `app/terrain.js` (terrain / MSA helpers) →
-  `app/draw.js` (route / nav-waypoint / note rendering, page frame) →
-  `app/interact.js` (hit-testing, inspector, mouse/touch) →
-  `app/io.js` (save/load, page setup, flight plan, PNG export,
-  persistence) → `app/alt-pair-directions.js` (altitude-pair direction
-  helpers) → `app/gdrive.js` (optional Drive route library) →
-  `app/ui.js` (toolbar wiring, drag, boot, PWA). Order matters — later
-  files use globals from earlier ones. Default English UI strings live in
+  overlay canvas) → `app/route-graph-shapes.js` (graph projections) →
+  `app/terrain.js` (terrain / MSA helpers) → `app/draw.js` (rendering) →
+  `app/interact.js` (hit-testing, inspector, mouse/touch) → `app/io.js`
+  (save/load, flight plan and export) → `app/alt-pair-directions.js` →
+  `app/gdrive.js` (optional Drive library) → `app/gps.js` (GPS/simulator) →
+  `app/ui.js` (toolbar wiring and boot) → `app/editor.js` (graph editor) →
+  `app/assistant.js` (disabled-by-default assistant) → `app/offline-tiles.js`.
+  Order matters because later files use globals from earlier ones.
+  Default English UI strings live in
   `app/core.js` (`window.S`): **sentence case** (first word + proper nouns /
   acronyms such as BYOP, CVFR, JSON); spell *waypoint* in full in prose.
   Hebrew overrides: `i18n/he/strings.js`.
@@ -945,8 +946,9 @@ downloadable `route.json`.
   readable without the old proxy path.
 - `cvfr-route-graph.json` — the Israeli CVFR reporting points and route edges.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
-  edition), supplied upstream as `113_waypoints.csv`. The CSV is the
-  sole source of truth — the legacy KMZ dataset
+  edition), supplied upstream as `113_waypoints.csv`. The CSV is the source of
+  truth for waypoint node identity and labels; graph edges and metadata use
+  their chart-specific sources. The legacy KMZ dataset
   (`CVFR WAYPOINTS 0225.kmz`) was replaced in issue #406 because it
   carried ~91 stale codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B
   Maarav/Mizrah`, etc.) and had several reporting points off the
@@ -956,8 +958,8 @@ downloadable `route.json`.
   CSV `Name` column. CSV rows where `Reporting == ARP` are skipped
   here — airfield ARPs live in `airfields.json` with richer data
   (runways, plates, English label). To refresh, replace the source table with
-  the latest chart edition and regenerate the graph's `nodes`, preserving
-  canonical codes and edge references; then diff the graph for sanity.
+  the latest chart edition. Regenerate the graph nodes while preserving canonical
+  codes and edge references. Then diff the graph for sanity.
 - `cvfr-route-graph.json` edges also carry candidate altitude pairs for detected green
   CVFR route segments. Coordinates are intentionally not duplicated in edges:
   endpoints resolve by graph node code or against `airfields.json`.
@@ -990,8 +992,9 @@ downloadable `route.json`.
     at boot (parallel with `loadNavWaypoints` / `loadAirfields` in
     `ui.js`), validates it with `validateCommChange()` in `io.js`, and
     builds the module-level `commChangeMap` keyed by `name` for O(1)
-    lookup. A 404 / schema error degrades to `commChangeMap = {}` so
-    a missing dataset never disables the rest of the nav-WP overlay.
+    lookup. A schema error degrades to `commChangeMap = {}` so invalid data
+    never disables the rest of the nav-WP overlay. A fetch failure keeps the
+    state unset and retryable on the next load.
   - **Render:** `drawNavWaypoints` in `draw.js` augments every white
     nav-WP dot whose `name` has `commChange: true` with a red outer
     ring (radius 6 px, 1.8 px stroke, `#e74c3c`). Gated by the global

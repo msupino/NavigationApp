@@ -59,15 +59,18 @@ The NOTAM layer is fed by a scheduled Action, not a hand-maintained file:
 
 ## Nav Waypoints
 
-`cvfr-route-graph.json` contains published reporting points keyed by code under
-`nodes`:
+`cvfr-route-graph.json` contains 172 CVFR-layer waypoint members keyed by code
+under `nodes`. The runtime projection renders the 170 active members. The graph
+also carries 22 minimal airfield endpoint nodes so route edges remain connected:
 
 ```json
 { "name": "ZLHAV", "en": "Lehavim Junction", "he": "צומת להבים", "lat": 31.3725, "lng": 34.79333, "report": "mandatory" }
 ```
 
-The IAA CVFR waypoint reference table is the source of truth. Airfield ARPs do
-not belong here; richer airfield records belong in `airfields.json`.
+The IAA CVFR waypoint reference table is the source of truth for waypoint nodes.
+Airfield nodes in this graph contain only topology identity and coordinates;
+richer ARP, runway, plate, frequency and elevation records belong in
+`airfields.json`.
 
 When updating:
 

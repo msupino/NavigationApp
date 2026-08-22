@@ -655,7 +655,7 @@ function refreshDial() {
 }
 rotHdg.addEventListener('change', () => {
   // Empty / non-numeric input would flow through as NaN and could persist
-  // 'NaN' to localStorage, breaking rotation until reload (issue #75).
+  // 'NaN' to localStorage, breaking rotation until reload.
   // Snap the field back to the current dial value and bail out instead.
   const raw = parseInt(rotHdg.value, 10);
   if (!Number.isFinite(raw)) { refreshDial(); return; }
@@ -1019,7 +1019,7 @@ function refreshWindReadout() {
   windReadoutBox.classList.toggle('show', !!on);
   windReadoutBox.setAttribute('aria-hidden', on ? 'false' : 'true');
 }
-// The readout doubles as a "go to coordinates" input (issue #497): it stays
+// The readout doubles as a "go to coordinates" input: it stays
 // visible showing the map centre, follows the mouse on hover, and turns into
 // an editable field on click. Make it interactive and keep clicks/scroll from
 // leaking through to the map underneath.
@@ -1243,7 +1243,7 @@ coordBox.addEventListener('focusout', e => {
 });
 
 const BEARING_KEY = 'navaid.bearing';
-// `navaid.view` — issue #413: persist center+zoom (and bearing) across
+// `navaid.view` persists center+zoom (and bearing) across
 // reloads so a refresh / language switch / PWA wake-up doesn't snap back
 // to the auto-fit view. Bearing is also written here so a single payload
 // captures the entire viewport state atomically; the legacy
@@ -1251,7 +1251,7 @@ const BEARING_KEY = 'navaid.bearing';
 // any tooling that reads it.
 const VIEW_KEY = 'navaid.view';
 // Sanity bbox for restored coords — anything outside is "wildly outside
-// Israel" per issue #413 and is treated as stale.
+// Israel" and is treated as stale.
 const VIEW_LAT_MIN = 28, VIEW_LAT_MAX = 34;
 const VIEW_LNG_MIN = 33, VIEW_LNG_MAX = 36;
 function readSavedView() {
@@ -1293,7 +1293,7 @@ map.on('rotate', () => {
   bearingSaveTimer = setTimeout(() => {
     bearingSaveTimer = null;
     const b = mapBearing();
-    if (!Number.isFinite(b)) return;     // never persist 'NaN' (issue #75)
+    if (!Number.isFinite(b)) return;     // never persist 'NaN'
     try { localStorage.setItem(BEARING_KEY, String(b)); }
     catch (err) { /* storage unavailable */ }
   }, 400);
@@ -5548,14 +5548,29 @@ refreshLsaListBtn();
 // announced once and stays up until the last plate is in.
 let _chartsLoadingOn = false;
 const _chartsLoadingOwners = new Set();
-function chartsLoading(on, owner) {
-  const key = owner || 'charts';
-  if (on) _chartsLoadingOwners.add(key);
-  else _chartsLoadingOwners.delete(key);
+let _chartsLoadingGeneration = 0;
+function chartsLoadingRefresh() {
   const active = _chartsLoadingOwners.size > 0;
   if (active === _chartsLoadingOn) return;
   _chartsLoadingOn = active;
   overlayLoadingTick(active ? 1 : -1);
+}
+function chartsLoading(on, owner) {
+  const key = owner || 'charts';
+  if (on) _chartsLoadingOwners.add(key);
+  else _chartsLoadingOwners.delete(key);
+  chartsLoadingRefresh();
+}
+function chartsLoadingStart(group) {
+  const owner = { group, generation: ++_chartsLoadingGeneration };
+  chartsLoading(true, owner);
+  return owner;
+}
+function chartsLoadingCancelGroup(group) {
+  for (const owner of _chartsLoadingOwners) {
+    if (owner && owner.group === group) _chartsLoadingOwners.delete(owner);
+  }
+  chartsLoadingRefresh();
 }
 // Keep the indicator up until the overlay group's images have actually loaded
 // (the perceptible wait is the chart PNGs, not just adding the layer), then
@@ -5587,17 +5602,17 @@ function chartsLoadingUntilReady(group, owner) {
       try { localStorage.setItem(CIRCUIT_SHOW_KEY, showCircuit ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showCircuit;
       if (showCircuit) {
-        if (!airfields || !circuitLayerGroup) chartsLoading(true, 'circuit');
+        const loadingOwner = chartsLoadingStart('circuit');
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showCircuit) { chartsLoading(false, 'circuit'); return; }
+        if (!window.showCircuit) { chartsLoading(false, loadingOwner); return; }
         loadCircuitOverlays();
         if (circuitLayerGroup) circuitLayerGroup.addTo(map);
-        chartsLoadingUntilReady(circuitLayerGroup, 'circuit');
+        chartsLoadingUntilReady(circuitLayerGroup, loadingOwner);
       } else {
         if (circuitLayerGroup) circuitLayerGroup.remove();
-        chartsLoading(false, 'circuit');
+        chartsLoadingCancelGroup('circuit');
       }
     };
   }
@@ -5637,17 +5652,17 @@ function chartsLoadingUntilReady(group, owner) {
       try { localStorage.setItem(TRAINING_SHOW_KEY, showTraining ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showTraining;
       if (showTraining) {
-        if (!airfields || !trainingLayerGroup) chartsLoading(true, 'training');
+        const loadingOwner = chartsLoadingStart('training');
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showTraining) { chartsLoading(false, 'training'); return; }
+        if (!window.showTraining) { chartsLoading(false, loadingOwner); return; }
         loadTrainingOverlays();
         if (trainingLayerGroup) trainingLayerGroup.addTo(map);
-        chartsLoadingUntilReady(trainingLayerGroup, 'training');
+        chartsLoadingUntilReady(trainingLayerGroup, loadingOwner);
       } else {
         if (trainingLayerGroup) trainingLayerGroup.remove();
-        chartsLoading(false, 'training');
+        chartsLoadingCancelGroup('training');
       }
     };
   }
@@ -5687,17 +5702,17 @@ function chartsLoadingUntilReady(group, owner) {
       try { localStorage.setItem(CVFR_SHOW_KEY, showCvfr ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showCvfr;
       if (showCvfr) {
-        if (!airfields || !cvfrLayerGroup) chartsLoading(true, 'cvfr');
+        const loadingOwner = chartsLoadingStart('cvfr');
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showCvfr) { chartsLoading(false, 'cvfr'); return; }
+        if (!window.showCvfr) { chartsLoading(false, loadingOwner); return; }
         loadCvfrOverlays();
         if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
-        chartsLoadingUntilReady(cvfrLayerGroup, 'cvfr');
+        chartsLoadingUntilReady(cvfrLayerGroup, loadingOwner);
       } else {
         if (cvfrLayerGroup) cvfrLayerGroup.remove();
-        chartsLoading(false, 'cvfr');
+        chartsLoadingCancelGroup('cvfr');
       }
     };
   }
@@ -5737,17 +5752,17 @@ function chartsLoadingUntilReady(group, owner) {
       try { localStorage.setItem(HELI_SHOW_KEY, showHeli ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showHeli;
       if (showHeli) {
-        if (!airfields || !heliLayerGroup) chartsLoading(true, 'heli');
+        const loadingOwner = chartsLoadingStart('heli');
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showHeli) { chartsLoading(false, 'heli'); return; }
+        if (!window.showHeli) { chartsLoading(false, loadingOwner); return; }
         loadHeliOverlays();
         if (heliLayerGroup) heliLayerGroup.addTo(map);
-        chartsLoadingUntilReady(heliLayerGroup, 'heli');
+        chartsLoadingUntilReady(heliLayerGroup, loadingOwner);
       } else {
         if (heliLayerGroup) heliLayerGroup.remove();
-        chartsLoading(false, 'heli');
+        chartsLoadingCancelGroup('heli');
       }
     };
   }
@@ -5787,17 +5802,17 @@ function chartsLoadingUntilReady(group, owner) {
       try { localStorage.setItem(COMMFAIL_SHOW_KEY, showCommfail ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showCommfail;
       if (showCommfail) {
-        if (!airfields || !commfailLayerGroup) chartsLoading(true, 'commfail');
+        const loadingOwner = chartsLoadingStart('commfail');
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showCommfail) { chartsLoading(false, 'commfail'); return; }
+        if (!window.showCommfail) { chartsLoading(false, loadingOwner); return; }
         loadCommfailOverlays();
         if (commfailLayerGroup) commfailLayerGroup.addTo(map);
-        chartsLoadingUntilReady(commfailLayerGroup, 'commfail');
+        chartsLoadingUntilReady(commfailLayerGroup, loadingOwner);
       } else {
         if (commfailLayerGroup) commfailLayerGroup.remove();
-        chartsLoading(false, 'commfail');
+        chartsLoadingCancelGroup('commfail');
       }
     };
   }
@@ -5948,7 +5963,7 @@ document.getElementById('force-snap-cb').onchange = e => {
   try { localStorage.setItem(FORCE_SNAP_KEY, forceSnap ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
 };
-// Comm-change overlay toggle (issue #399). The dataset lives in
+// Comm-change overlay toggle. The dataset lives in
 // the route graph's comm-change nodes and rings are drawn on top of the nav-WP dots
 // in draw.js. This key intentionally replaced the legacy
 // navaid.showCommChange key so users who had stored the old default-off
@@ -5963,7 +5978,7 @@ document.getElementById('commchange-cb').onchange = async e => {
   window.showCommChange = e.target.checked;
   try { localStorage.setItem(COMMCHANGE_KEY, showCommChange ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
-  // Rings draw independently of the nav-WP dot layer (issue #484) but reuse
+  // Rings draw independently of the nav-WP dot layer but reuse
   // its positions, so load navWP too even when that layer is off.
   if (showCommChange) await Promise.all([loadCommChange(), loadNavWaypoints()]);
   let changed = false;
@@ -7225,7 +7240,7 @@ try {
     ? readStoredInspectorSelection() : null;
   retryPendingInspectorSelection();
 } catch (e) {}
-// Issue #413 — restore the persisted viewport (center + zoom + bearing) so
+// Restore the persisted viewport (center + zoom + bearing) so
 // a reload lands on the user's last view. Falls back to fitView() only
 // when no valid saved view exists. The bearing was already applied above
 // from `navaid.view` (or `navaid.bearing`), so we only re-apply center +
@@ -7291,10 +7306,10 @@ loadLegAltitudes().then(() => {
     refreshInspectorIfVisible();
   }
 });
-// Comm-change dataset (issue #399): parallel fetch so the rings appear
+// Comm-change dataset: parallel fetch so the rings appear
 // on first paint and the inspector badge is available immediately for
 // a selection restored from sessionStorage. Rings draw independently of
-// the nav-WP dot layer (issue #484), so when comm-change is on we also
+// the nav-WP dot layer, so when comm-change is on we also
 // load navWP positions even if that layer is off.
 loadCommChange().then(() => showCommChange ? loadNavWaypoints() : null)
   .then(() => {

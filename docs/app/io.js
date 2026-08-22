@@ -283,6 +283,7 @@ function showShortcutsHelp() {
   back.addEventListener('click', e => {
     if (e.target === back) closeShortcutsHelp();
   });
+  back._navaidClose = closeShortcutsHelp;
   document.body.appendChild(back);
   _shortcutsHelpBack = back;
 
@@ -334,7 +335,7 @@ function _appendKeyCombo(parent, keys) {
 // `flghtSpeed` used to silently default; now it surfaces an alert that
 // names the offending field path so the JSON author can find it. Extra /
 // unknown fields at any level are silently allowed for forward-compat
-// with future schema additions (issue #101). Plain JS — no deps.
+// with future schema additions. Plain JS — no deps.
 function _vKind(value) {
   if (Array.isArray(value)) return 'array';
   if (value === null) return 'null';
@@ -473,7 +474,7 @@ function validateRoute(d) {
           }
         }
       }
-      // Issue #394: `_default: 1` is the sentinel form written by
+      // `_default: 1` is the sentinel form written by
       // `_defaultLegLabels()` for an unmodified kite — its perpendicular
       // is computed at render time from the live leg length, so the
       // stored shape has no `p`. Accept either the sentinel form
@@ -633,7 +634,7 @@ function validateVors(d) {
 // the comm-change point to a call-sign ID. Only `points[].name` and
 // `points[].commChange` are required for the renderer; everything else is
 // metadata / inspector content. Unknown keys at any level are tolerated
-// (forward-compat). Issue #399.
+// (forward-compatible).
 function validateCommChange(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
@@ -811,9 +812,9 @@ function validateLegAltitudes(d) {
 // lng, en?, elev_ft?, atis?, clearance?, plates?:[string], runways?:[string] }] }. Mirrors
 // validateNavWaypoints; the loader in draw.js bails out with an alert that
 // names the offending field path so the JSON author can find the typo.
-// Extras at any level are silently allowed for forward-compat (issue #101).
+// Extras at any level are silently allowed for forward compatibility.
 //
-// Issue #412: `en`, `elev_ft`, `atis`, `clearance`, `plates`, and `runways` are now OPTIONAL
+// `en`, `elev_ft`, `atis`, `clearance`, `plates`, and `runways` are optional
 // per-entry — the chart's published ARP list (#411) carries airfields whose
 // BYOP plate / elevation / runway enrichment is not yet in the repo, and
 // dropping them just because we don't have a plate folder yet would lose
@@ -2078,7 +2079,7 @@ function exportPln() {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
 
-// --- X-Plane FDR export (issue #701) ----------------------------------------
+// --- X-Plane FDR export -----------------------------------------------------
 // Exports the route as an X-Plane Flight Data Recorder replay file.
 // Each leg is sampled at 1-second intervals; position is linearly interpolated
 // along the leg, altitude blends smoothly between legs, and roll/pitch/VVI
@@ -2476,7 +2477,7 @@ function load(file) {
       if (typeof showToast === 'function') showToast(routeLibraryImportMessage(res));
       return;
     }
-    // Strict schema check before applying any state — issue #101. Any
+    // Strict schema check before applying any state. Any
     // missing / mistyped field bails out with a field-path-naming alert
     // so the JSON author can find the typo. Extras are silently allowed.
     const verr = validateRoute(d);
@@ -4215,7 +4216,7 @@ function showFlightPlan() {
     closeFlightPlan();
     // The global window-level Escape handler in interact.js otherwise runs
     // after this one and toggles the magnifier off whenever the plan is
-    // closed while the loupe is open (issue #388 M3 follow-up). Stop the
+    // closed while the loupe is open. Stop the
     // event from bubbling past `document` so the loupe — which has no
     // logical relationship to the plan modal — keeps its current state.
     e.stopPropagation();
@@ -5117,7 +5118,7 @@ function exportPNG(mode) {
   // route overlay is composited using live proj() after the awaited tiles
   // resolve; if the user panned / zoomed / rotated during "Saving…", the
   // overlay would drift relative to the captured tile bounding box and the
-  // saved PNG would be misaligned (issue #74). Remember each handler's
+  // saved PNG would be misaligned. Remember each handler's
   // pre-export state so we restore exactly what the user had.
   const _handlers = ['dragging', 'scrollWheelZoom', 'doubleClickZoom',
                      'touchZoom', 'boxZoom', 'keyboard', 'touchRotate'];
@@ -5723,7 +5724,7 @@ function writeRoute() {
   else localStorage.setItem(STORE_KEY, JSON.stringify(routeSnapshotForStorage()));
 }
 function persist() {
-  // When boot detected a corrupt saved blob (issue #73), refuse to overwrite
+  // When boot detects a corrupt saved blob, refuse to overwrite
   // it with the empty in-memory state — that's silent data loss. Once the
   // user adds a waypoint / note the state is no longer empty and the normal
   // save path resumes, replacing the corrupt blob with their new work.
@@ -5866,7 +5867,7 @@ function undo() {
 //   false      — no saved route (clean first-time boot, safe to persist).
 //   'corrupt'  — a saved blob exists but is unparseable or has bad coords;
 //                state is left empty and the blob is preserved on disk so
-//                the user can copy it out (issue #73).
+//                the user can copy it out.
 function restoreRoute() {
   let raw = null;
   try {
@@ -5882,7 +5883,7 @@ function restoreRoute() {
     NavAid.corruptCacheError = e.message;
     return 'corrupt';                     // bad JSON — preserve raw blob (#73)
   }
-  // Strict schema check — issue #101. Legacy saved blobs lacking a newer
+  // Strict schema check. Legacy saved blobs lacking a newer
   // field (e.g. notes added later) will fail here. The caller treats
   // 'corrupt' as the preserve-on-failure path from #73: the raw blob is
   // left untouched in localStorage and the boot continues with empty
@@ -5902,7 +5903,7 @@ function restoreRoute() {
     ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
   }));
   // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
-  // scale proportionally with zoom. Pre-#393 blobs lack `_m` and hold raw
+  // scale proportionally with zoom. Legacy blobs lack `_m` and hold raw
   // pixel offsets, which `_normalizeLegLabel` divides by `legacyArrowSize`
   // (one-shot, idempotent — the `_m: 1` stamp blocks any re-migration). If
   // the saved blob carries its own legArrowSize we honour it; otherwise we
@@ -8426,7 +8427,7 @@ map.on('move zoom moveend zoomend rotate layeradd', () => {
   scheduleMagRebuild();
 });
 
-// --- Simulator live aircraft (issue #691) ----------------------------
+// --- Simulator live aircraft -----------------------------------------
 let _simInterval = null;
 // Status element is set by ui.js via window._simStatusEl after DOM is ready.
 

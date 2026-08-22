@@ -75,6 +75,17 @@ test('a later toast does not hide the actual top modal from Back', async ({ page
   expect(await page.evaluate(() => window.__exited)).toBe(0);
 });
 
+test('back closes shortcuts through cleanup and allows them to reopen', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => showShortcutsHelp());
+  await expect(page.locator('.modal-back.shortcuts-help')).toHaveCount(1);
+  await back(page, false);
+  await expect(page.locator('.modal-back.shortcuts-help')).toHaveCount(0);
+  expect(await page.evaluate(() => _shortcutsHelpBack)).toBeNull();
+  await page.evaluate(() => showShortcutsHelp());
+  await expect(page.locator('.modal-back.shortcuts-help')).toHaveCount(1);
+});
+
 test('back leaves a map tool before it leaves the app', async ({ page }) => {
   await bootNative(page);
   await page.evaluate(() => setMode('add'));

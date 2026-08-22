@@ -99,6 +99,18 @@ class GeorefPlateTest(unittest.TestCase):
         palette.save.assert_called_once_with(
             'docs/cvfr-img/TEST_cvfr.png', optimize=True)
 
+    def test_manual_dry_run_does_not_require_poppler(self):
+        with mock.patch('shutil.which', return_value=None), \
+                mock.patch('builtins.open', mock.mock_open(
+                    read_data=json.dumps({'airfields': []}))), \
+                mock.patch.object(GEOREF, 'georef_manual', return_value=self.safe_fit()):
+            status = GEOREF.main([
+                'plate.pdf', 'TEST', '--png', 'plate.png',
+                '--lon', '34:36=20', '34:48=80',
+                '--lat', '32:00=80', '32:12=20',
+            ])
+        self.assertEqual(status, 0)
+
 
 if __name__ == '__main__':
     unittest.main()

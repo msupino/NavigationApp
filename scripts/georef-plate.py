@@ -319,7 +319,12 @@ def main(argv):
     ap.add_argument('--width', type=int, default=780, help='overlay width in px')
     a = ap.parse_args(argv)
 
-    missing = [name for name in ('pdftotext', 'pdfinfo', 'pdftoppm') if not shutil.which(name)]
+    required = []
+    if not (a.lon and a.lat):
+        required.extend(('pdftotext', 'pdfinfo'))
+    if a.write:
+        required.append('pdftoppm')
+    missing = [name for name in required if not shutil.which(name)]
     if missing:
         print('missing required Poppler command(s): ' + ', '.join(missing), file=sys.stderr)
         return 2
