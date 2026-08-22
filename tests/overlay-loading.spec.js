@@ -86,6 +86,18 @@ test.describe('the first load says it is loading', () => {
     expect(html.indexOf('@keyframes boot-orbit')).toBeLessThan(html.indexOf('id="boot-loading"'));
   });
 
+  test('it explains the wait in the selected language before app scripts finish', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await expect(page.locator('#boot-loading .boot-message-en')).toHaveText('Loading…');
+    await expect(page.locator('#boot-loading .boot-message-en')).toBeVisible();
+    await expect(page.locator('#boot-loading .boot-message-he')).toBeHidden();
+
+    await page.goto('?lang=he&nogist');
+    await expect(page.locator('#boot-loading .boot-message-he')).toHaveText('טוען…');
+    await expect(page.locator('#boot-loading .boot-message-he')).toBeVisible();
+    await expect(page.locator('#boot-loading .boot-message-en')).toBeHidden();
+  });
+
   // The circuit is a real circle in a tilted plane, not an ellipse drawn by hand: the
   // browser foreshortens it and hides the aircraft behind the mark on the far side.
   test('the circuit is flown in three dimensions', async ({ page }) => {
