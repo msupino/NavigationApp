@@ -1,0 +1,30 @@
+schema_version: 3
+plugin_version: 1.23.0
+pipeline_status: verifying
+pipeline_status_history:
+  - status: init
+    at: '2026-08-22T16:05:16+03:00'
+  - status: investigated
+    at: '2026-08-22T16:14:12+03:00'
+  - status: test_written
+    at: '2026-08-22T16:17:50+03:00'
+  - status: rca_ready
+    at: '2026-08-22T16:24:33+03:00'
+  - status: implementing
+    at: '2026-08-22T17:49:16+03:00'
+  - status: verifying
+    at: '2026-08-22T18:06:57+03:00'
+epic_key: return-route-turning-point
+branch: codex/fix-return-route-turning-point
+base: dev
+epic: .ai/plans/bugs-return-route-turning-point
+pipeline_mode: bug-fix
+updated_at: '2026-08-22T18:09:41+03:00'
+pr_flow:
+  draft_pr_number: 1797
+  pr_url: https://github.com/msupino/NavigationApp/pull/1797
+  base_branch: dev
+  code_review_iteration: 3
+  acknowledged_issue_comments: []
+tier: lean
+current_phase: implement

@@ -386,6 +386,8 @@ function hitAirfieldMarkerCandidates(px, py) {
   if (!showAirfields || !airfields || !airfields.length) return hits;
   const r = tune('airfieldMarkerRadiusPx') + tune('hitWaypointExtraPx');
   for (let i = airfields.length - 1; i >= 0; i--) {
+    if (typeof routePointOnlyInHiddenDirection === 'function' &&
+        routePointOnlyInHiddenDirection(airfields[i])) continue;
     const s = proj(airfields[i]);
     if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'airfield', index: i, chartPoint: true });
   }
@@ -400,6 +402,8 @@ function hitNavWpMarkerCandidates(px, py) {
   if (!showNavWP || !navWP || !navWP.length) return hits;
   const r = tune('navWaypointRadiusPx') + tune('hitWaypointExtraPx');
   for (let i = navWP.length - 1; i >= 0; i--) {
+    if (typeof routePointOnlyInHiddenDirection === 'function' &&
+        routePointOnlyInHiddenDirection(navWP[i])) continue;
     const s = proj(navWP[i]);
     // `chartPoint` marks a real chart-point marker. Comm-change rings report the same
     // 'navwp' type (they are drawn on these dots), so type alone cannot tell them
@@ -2993,28 +2997,32 @@ function showInspector() {
     if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
     resetName.onclick = () => resetWpName(state.selected.index);
     body.appendChild(resetName);
-    // Where the route turns for home. A loop repeats no waypoint, so no leg retraces and
-    // the geometry cannot find the far end -- the pilot marks it. Offered on every
-    // waypoint rather than only on loops: a route can be edited into and out of that shape,
-    // and a control that appears and vanishes is harder to find than one that is simply there.
-    const idx = state.selected.index;
-    const isTurn = !!(state.waypoints[idx] && state.waypoints[idx].turn);
-    const turnBtn = document.createElement('button');
-    turnBtn.className = 'insp-btn' + (isTurn ? ' insp-btn-on' : '');
-    turnBtn.id = 'insp-turn-btn';
-    turnBtn.textContent = isTurn ? (S.inspTurnClear || '↻ Clear turning point')
-                                 : (S.inspTurnSet || '↻ Mark as turning point');
-    if (S.inspTurnTitle) turnBtn.title = S.inspTurnTitle;
-    turnBtn.setAttribute('aria-pressed', isTurn ? 'true' : 'false');
-    turnBtn.onclick = () => {
-      setTurnWaypoint(idx);
-      if (typeof persist === 'function') persist();
-      if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
-      if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
-      draw();
-      showInspector();      // relabel to what the button now does
-    };
-    body.appendChild(turnBtn);
+    // Airfields do not expose the route-only turning-point action, including when the
+    // overlap chooser keeps a coincident route waypoint as the editable selection.
+    if (!afInsp) {
+      // Geometry-derived turns use the same selected treatment as manual turns. The action
+      // remains available so a pilot can persist an explicit turn for non-retracing loops.
+      const idx = state.selected.index;
+      const manualTurn = !!(state.waypoints[idx] && state.waypoints[idx].turn);
+      const effectiveTurn = typeof legRetraceTurnIndex === 'function' &&
+        legRetraceTurnIndex() === idx;
+      const turnBtn = document.createElement('button');
+      turnBtn.className = 'insp-btn' + (effectiveTurn ? ' insp-btn-on' : '');
+      turnBtn.id = 'insp-turn-btn';
+      turnBtn.textContent = manualTurn ? (S.inspTurnClear || '↻ Clear turning point')
+                                       : (S.inspTurnSet || '↻ Mark as turning point');
+      if (S.inspTurnTitle) turnBtn.title = S.inspTurnTitle;
+      turnBtn.setAttribute('aria-pressed', effectiveTurn ? 'true' : 'false');
+      turnBtn.onclick = () => {
+        setTurnWaypoint(idx);
+        if (typeof persist === 'function') persist();
+        if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+        if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
+        draw();
+        showInspector();      // relabel to what the button now does
+      };
+      body.appendChild(turnBtn);
+    }
   }
   finalizeInspectorActions(body);
   persistInspectorSelection();

@@ -5399,10 +5399,9 @@ function drawPageFrame() {
 }
 
 // --- hotspots review overlay (?hotspots=1) ------------------------------------
-// Rings every waypoint the app treats as a junction, across the whole chart. On the route a
-// hotspot already rings itself, but that only ever shows the handful a given route passes --
-// the question this answers is "which points ARE hotspots", which is a property of the graph
-// and cannot be read off one flight plan.
+// Rings every waypoint the app treats as a junction across the chart, except a route-bound
+// hotspot that belongs only to the hidden outbound/return half. On the route a hotspot rings
+// itself; the selected direction remains the visibility source of truth for that point.
 //
 // A review tool, like ?graphlegs=1: no toolbar entry, nothing persisted, invisible unless the
 // flag is in the URL, and it draws whether or not the nav-waypoint layer is switched on --
@@ -5425,6 +5424,8 @@ function drawHotspotOverlay() {
   let n = 0;
   for (const wp of navWP) {
     if (!waypointHotspot(wp)) continue;
+    if (typeof routePointOnlyInHiddenDirection === 'function' &&
+        routePointOnlyInHiddenDirection(wp)) continue;
     n++;
     const s = proj(wp);
     octx.beginPath();
