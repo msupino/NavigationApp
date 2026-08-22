@@ -4,6 +4,28 @@
 // looked like it had no opener at all.
 const { test, expect } = require('./_setup');
 
+const mobileChromeGeometry = page => page.evaluate(() => {
+  const rect = id => {
+    const r = document.getElementById(id).getBoundingClientRect();
+    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom,
+      width: r.width, height: r.height };
+  };
+  const legend = rect('map-legend');
+  const toolbar = rect('toolbar');
+  const intersects = legend.left < toolbar.right && legend.right > toolbar.left &&
+    legend.top < toolbar.bottom && legend.bottom > toolbar.top;
+  return { legend, toolbar, intersects,
+    viewport: { width: window.innerWidth, height: window.innerHeight } };
+});
+
+function expectLegendUsable({ legend, intersects, viewport }) {
+  expect(legend.left).toBeGreaterThanOrEqual(-1);
+  expect(legend.top).toBeGreaterThanOrEqual(-1);
+  expect(legend.right).toBeLessThanOrEqual(viewport.width + 1);
+  expect(legend.bottom).toBeLessThanOrEqual(viewport.height + 1);
+  expect(intersects).toBe(false);
+}
+
 test('the mobile menu toggle renders three spaced bars', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('?lang=en&nogist');
@@ -38,6 +60,60 @@ test('the toggle opens the menus a first-time phone user needs', async ({ page }
   const visibleAfter = await page.evaluate(() =>
     [...document.querySelectorAll('#toolbar .tb-section-head')].filter(h => h.getBoundingClientRect().height > 0).length);
   expect(visibleAfter).toBeGreaterThan(5);
+});
+
+for (const lang of ['en', 'he']) {
+  test(`the complete ${lang} legend stays visible beside the expanded short-phone toolbar`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 664 });
+    await page.addInitScript(() => localStorage.setItem('navaid.toolbarCollapsed', '0'));
+    await page.goto(`?lang=${lang}&nogist`);
+    await page.waitForFunction(() => {
+      const toolbar = document.getElementById('toolbar');
+      const legend = document.getElementById('map-legend');
+      return toolbar && legend && !toolbar.classList.contains('collapsed') &&
+        legend.getBoundingClientRect().height > 0;
+    });
+    expectLegendUsable(await mobileChromeGeometry(page));
+  });
+}
+
+test('a dragged legend is reconciled and remains persistent after a live phone resize', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem('navaid.toolbarCollapsed', '0'));
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => {
+    const toolbar = document.getElementById('toolbar');
+    return toolbar && !toolbar.classList.contains('collapsed') &&
+      document.getElementById('map-legend').getBoundingClientRect().height > 0;
+  });
+
+  const legend = page.locator('#map-legend');
+  const before = await legend.boundingBox();
+  if (!before) throw new Error('legend has no box');
+  await page.mouse.move(before.x + 20, before.y + 8);
+  await page.mouse.down();
+  await page.mouse.move(360, 820, { steps: 8 });
+  await page.mouse.up();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.en'))).toBeTruthy();
+
+  await page.setViewportSize({ width: 390, height: 664 });
+  await expect.poll(async () => {
+    const { legend: l, intersects, viewport: v } = await mobileChromeGeometry(page);
+    return l.left >= -1 && l.top >= -1 && l.right <= v.width + 1 &&
+      l.bottom <= v.height + 1 && !intersects;
+  }).toBe(true);
+  expectLegendUsable(await mobileChromeGeometry(page));
+  const reconciled = await legend.boundingBox();
+  if (!reconciled) throw new Error('legend has no reconciled box');
+
+  await page.reload();
+  await page.waitForFunction(() =>
+    document.getElementById('map-legend')?.getBoundingClientRect().height > 0);
+  expectLegendUsable(await mobileChromeGeometry(page));
+  const restored = await legend.boundingBox();
+  if (!restored) throw new Error('legend has no restored box');
+  expect(Math.abs(restored.x - reconciled.x)).toBeLessThan(3);
+  expect(Math.abs(restored.y - reconciled.y)).toBeLessThan(3);
 });
 
 test('an unset altitude is not clipped: dash on a phone, the word on desktop', async ({ page }) => {
