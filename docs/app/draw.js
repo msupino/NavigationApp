@@ -3690,11 +3690,36 @@ function pruneStaleCommChangeNotes() {
   }
   return true;
 }
+function pruneTurnCommChangeNotes() {
+  if (!Array.isArray(state.notes) || !Array.isArray(state.waypoints)) return false;
+  const turnIdx = (typeof legRetraceTurnIndex === 'function') ? legRetraceTurnIndex() : -1;
+  const turnWp = turnIdx >= 0 ? state.waypoints[turnIdx] : null;
+  if (!turnWp) return false;
+  const selectedNote = state.selected && state.selected.type === 'note'
+    ? state.notes[state.selected.index] : null;
+  const selectedFreqNote = state.selected && state.selected.type === 'wp' &&
+    Number.isInteger(state.selected.freqNoteIndex)
+    ? state.notes[state.selected.freqNoteIndex] : null;
+  const kept = state.notes.filter(n => !(n && n.cc && commChangeWaypointInRange(turnWp, n.cc)));
+  if (kept.length === state.notes.length) return false;
+  state.notes = kept;
+  if (selectedNote) {
+    const idx = state.notes.indexOf(selectedNote);
+    state.selected = idx >= 0 ? { type: 'note', index: idx } : null;
+  } else if (state.selected && state.selected.type === 'wp' &&
+      Number.isInteger(state.selected.freqNoteIndex)) {
+    const idx = state.notes.indexOf(selectedFreqNote);
+    if (idx >= 0) state.selected.freqNoteIndex = idx;
+    else delete state.selected.freqNoteIndex;
+  }
+  return true;
+}
 function seedCommChangeNotes() {
-  if (!showCommChange) return false;
-  if (!commChangeMap || typeof state === 'undefined' ||
+  if (typeof state === 'undefined' ||
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
-  let changed = pruneStaleCommChangeNotes();
+  let changed = pruneTurnCommChangeNotes();
+  if (!showCommChange || !commChangeMap) return changed;
+  if (pruneStaleCommChangeNotes()) changed = true;
   if (pruneStaleCommChangeSuppressions()) changed = true;
   const { defaults: routeDefaults, hinted } = commRouteCalloutDefaultsMap();
   // The frequency actually in effect as the route is walked in order. Two DIFFERENT
@@ -3741,16 +3766,10 @@ function seedCommChangeNotes() {
     }
     if (!nm || !cc || !cc.commChange) continue;
     if (!commChangeWaypointInRange(wp, nm)) continue;
-    // The turnaround is where the route reverses, not where it crosses into another
-    // sector: the aircraft leaves on the same frequency it arrived on, so an automatic
-    // callout there is a radio call that is not made. Reported from a real route, where
-    // NTAIM -- flown out to and straight back from -- was seeding one. Only the AUTOMATIC
-    // note is withheld: a pilot who does have a call to make there can still add one, and
-    // an existing hand-made note is left alone by the `existing` branch below.
-    if (wpIdx === turnWpIdx && !state.notes.some(n => n && n.cc &&
-        canonicalNavWaypointName(n.cc) === nm && !n.freqAuto)) {
-      continue;
-    }
+    // The aircraft leaves the turn on the same frequency it arrived on. Reconciliation
+    // above removes both automatic and manual callouts there, and this guard prevents
+    // the seeding pass from recreating one.
+    if (wpIdx === turnWpIdx) continue;
     const callout = routeDefaults[nm] || commStaticCalloutDefaults(nm);
     const calloutFreq = commFormatFreq(callout.freq);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
