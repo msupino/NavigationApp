@@ -2863,6 +2863,8 @@ function drawCommChangeRings() {
     // ring to enclose the disc (+ its 3px stroke) so it stays visible outside.
     for (const wp of navWP) {
       if (!commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
+      if (typeof routePointOnlyInHiddenDirection === 'function' &&
+          routePointOnlyInHiddenDirection(wp)) continue;
       const s = proj(wp);                // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
       let radius = tune('commChangeRingRadiusPx');
