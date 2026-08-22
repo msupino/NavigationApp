@@ -145,6 +145,10 @@
       border: 1px dashed #3c3838; border-radius: 50%;
       transform: rotateX(58deg);
     }
+    #boot-loading .boot-title { font-size: 18px; font-weight: 650; }
+    #boot-loading .boot-message { color: #c9d9e9; font-size: 15px; }
+    html[lang="he"] #boot-loading .boot-message-en,
+    html[lang="en"] #boot-loading .boot-message-he { display: none; }
     @keyframes boot-orbit {
       from { transform: rotateX(58deg) rotateZ(0deg); }
       to   { transform: rotateX(58deg) rotateZ(360deg); }
@@ -218,7 +222,11 @@
         </div>
       </div>
     </div>
-    <div>NavAid</div>
+    <div class="boot-title">NavAid</div>
+    <div class="boot-message">
+      <span class="boot-message-en" lang="en">Loading…</span>
+      <span class="boot-message-he" lang="he">טוען…</span>
+    </div>
   </div>
   <div id="map"></div>
   <canvas id="overlay"></canvas>
