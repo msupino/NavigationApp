@@ -42,6 +42,72 @@ test('HADRA defaults on and route waypoint inspector exposes the pressed toggle'
   expect(result.text).toContain('Clear hotspot');
 });
 
+test('global hotspot visibility persists without clearing inspector choices', async ({ page }) => {
+  await boot(page);
+  await setRoute(page);
+  const globalToggle = page.locator('#hotspot-cb');
+  await expect(globalToggle).toBeChecked();
+  await expect(globalToggle.locator('xpath=..')).toContainText('Show hotspots');
+  expect(await page.evaluate(() => ({
+    defaultValue: NavAid.tuningDefaults.defaultShowHotspots.value,
+    drawn: window.__hotspotWaypointIndexes,
+  }))).toEqual({ defaultValue: true, drawn: [1] });
+
+  await page.evaluate(() => {
+    const cb = document.getElementById('hotspot-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change'));
+  });
+  expect(await page.evaluate(() => ({
+    shown: showHotspots,
+    stored: localStorage.getItem('navaid.showHotspots'),
+    effective: waypointHotspot(state.waypoints[1]),
+    drawn: window.__hotspotWaypointIndexes,
+  }))).toEqual({ shown: false, stored: '0', effective: true, drawn: [] });
+
+  await page.evaluate(() => {
+    state.selected = { type: 'wp', index: 0 };
+    showInspector();
+  });
+  await page.locator('#insp-hotspot-btn').click();
+  expect(await page.evaluate(() => ({
+    override: state.waypoints[0].hotspot,
+    shown: showHotspots,
+    drawn: window.__hotspotWaypointIndexes,
+  }))).toEqual({ override: true, shown: false, drawn: [] });
+
+  await page.reload();
+  await page.waitForFunction(() => typeof waypointHotspot === 'function' && state.waypoints.length === 3);
+  await expect(globalToggle).not.toBeChecked();
+  expect(await page.evaluate(() => ({
+    override: state.waypoints[0].hotspot,
+    effective: state.waypoints.map(waypointHotspot),
+    drawn: window.__hotspotWaypointIndexes,
+  }))).toEqual({ override: true, effective: [true, true, false], drawn: [] });
+
+  await page.evaluate(() => {
+    const cb = document.getElementById('hotspot-cb');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+  });
+  expect(await page.evaluate(() => window.__hotspotWaypointIndexes)).toEqual([0, 1]);
+});
+
+test('tunable hotspot default controls a device with no saved preference', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    localStorage.removeItem('navaid.showHotspots');
+    NavAid.tuning.defaultShowHotspots = false;
+    NavAid.applyDefaultVisibility();
+    return {
+      checked: document.getElementById('hotspot-cb').checked,
+      shown: showHotspots,
+      stored: localStorage.getItem('navaid.showHotspots'),
+    };
+  });
+  expect(result).toEqual({ checked: false, shown: false, stored: null });
+});
+
 test('default hotspots exactly match waypoint graph junctions with more than two bidirectional neighbours', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -162,4 +228,5 @@ test('Hebrew inspector localizes the hotspot toggle', async ({ page }) => {
     showInspector();
   });
   await expect(page.locator('#insp-hotspot-btn')).toContainText('בטל נקודה חמה');
+  await expect(page.locator('#hotspot-cb').locator('xpath=..')).toContainText('הצג נוקודות חמות');
 });

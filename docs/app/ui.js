@@ -3625,6 +3625,18 @@ document.getElementById('wpname-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+const HOTSPOT_KEY = 'navaid.showHotspots';
+try {
+  const sh = lsGet(HOTSPOT_KEY);
+  if (sh !== null) window.showHotspots = sh === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('hotspot-cb').checked = showHotspots;
+document.getElementById('hotspot-cb').onchange = e => {
+  window.showHotspots = e.target.checked;
+  try { localStorage.setItem(HOTSPOT_KEY, showHotspots ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
 const DIFF_KEY = 'navaid.highlightDiff';
 try {
   const sd = lsGet(DIFF_KEY);
@@ -8652,6 +8664,7 @@ NavAid.defaultVisibilityMap = [
   ['navwp-cb', 'navaid.showNavWP', 'defaultShowNavWP'],
   ['airfield-cb', 'navaid.showAirfields', 'defaultShowAirfields'],
   ['vor-cb', 'navaid.showVorStations', 'defaultShowVor'],
+  ['hotspot-cb', 'navaid.showHotspots', 'defaultShowHotspots'],
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
