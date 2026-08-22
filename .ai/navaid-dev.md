@@ -355,6 +355,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   The markup lives in `index.html` so `applyI18n()` fills its text at boot;
   `ui.js` reparents the element into the control at startup. Not drawn by
   `draw()` or `exportPNG()`, so PNG exports stay chart-only.
+- **Boot screen:** inline markup and styles in `index.html` show the NavAid mark,
+  a rotating aircraft, and a visible localized `Loading…` / `טוען…` status before
+  external styles or application scripts finish loading. The language bootstrap
+  sets `html[lang]` first, so CSS exposes only the selected language. Reduced-motion
+  users keep the static mark and message without the orbit animation.
 - **Hidden developer tuning panel:** open with `?tune=1`
   (`?lang=en&tune=1`, `/pr/NNN/?lang=en&tune=1`, etc.);
   `?tune=0` / `false` / `no` explicitly disables it. The registry
