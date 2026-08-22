@@ -47,6 +47,7 @@ test('global hotspot visibility persists without clearing inspector choices', as
   await setRoute(page);
   const globalToggle = page.locator('#hotspot-cb');
   await expect(globalToggle).toBeChecked();
+  await expect(globalToggle.locator('xpath=..')).toContainText('Show hotspots');
   expect(await page.evaluate(() => ({
     defaultValue: NavAid.tuningDefaults.defaultShowHotspots.value,
     drawn: window.__hotspotWaypointIndexes,

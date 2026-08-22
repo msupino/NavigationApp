@@ -1005,7 +1005,7 @@ window.S = Object.assign({
   summaryWaypoints: 'Waypoints',                    // stats panel total
   tbAddWp: '✏️ Add waypoint (A)',                    // toolbar Edit button
   tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
-  tbShowHotspots: 'Hotspots',                       // Route hotspot visibility toggle
+  tbShowHotspots: 'Show hotspots',                  // Route hotspot visibility toggle
   tbShowHotspotsTitle: 'Show hotspot highlighting without changing waypoint hotspot settings',
   tbShowWpNames: 'Show waypoint names',             // Display toggle
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
