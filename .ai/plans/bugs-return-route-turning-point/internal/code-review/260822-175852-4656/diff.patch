@@ -1,0 +1,601 @@
+diff --git a/.ai/navaid-dev.md b/.ai/navaid-dev.md
+index 7492d69a2..3c51ff644 100644
+--- a/.ai/navaid-dev.md
++++ b/.ai/navaid-dev.md
+@@ -137,7 +137,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
+     prevents the generated defaults drifting from the graph. The route-waypoint inspector
+     toggle stores an explicit `hotspot` boolean, so a pilot can enable any waypoint or
+     disable a default hotspot. Explicit overrides persist in saved routes, route files,
+-    and share links. Standalone reference waypoints remain read-only.
++    and share links. The selected outbound/return direction also suppresses a graph hotspot
++    when every matching route occurrence is hidden. Standalone reference waypoints remain
++    read-only. An ordinary route waypoint whose next leg retraces an earlier leg shows the
++    effective turning-point state in its inspector. A route waypoint that resolves to an
++    airfield does not show the turning-point control.
+   - `state.legs[i]` = `{inboundAltitude, outboundAltitude, flightSpeed,
+     inLabel, outLabel, hideDrift?, showDrift?}`. `inLabel` / `outLabel` are `{a, p}` offsets
+     (along-leg / perpendicular, screen px) so markers can be dragged
+diff --git a/.ai/plans/.gitignore b/.ai/plans/.gitignore
+new file mode 100644
+index 000000000..df5fdd191
+--- /dev/null
++++ b/.ai/plans/.gitignore
+@@ -0,0 +1,3 @@
++!bugs-return-route-turning-point/
++!bugs-return-route-turning-point/**
++bugs-return-route-turning-point/internal/code-review/
+diff --git a/.ai/plans/bugs-return-route-turning-point/frontend/fe-resolution.md b/.ai/plans/bugs-return-route-turning-point/frontend/fe-resolution.md
+new file mode 100644
+index 000000000..43cf30c54
+--- /dev/null
++++ b/.ai/plans/bugs-return-route-turning-point/frontend/fe-resolution.md
+@@ -0,0 +1,53 @@
++# FE grounding — return-route hotspot and turning-point state
++
++## What this change touches
++
++- The route map overlay and matching Leaflet hit surface, from the effective
++  turn and direction predicates in `docs/app/core.js:4517-4574` through
++  `drawHotspotOverlay()` in `docs/app/draw.js:5414-5455` and
++  `hitNavWpMarkerCandidates()` in `docs/app/interact.js:398-408`.
++- The existing waypoint-inspector action area rendered by `showInspector()` in
++  `docs/app/interact.js:2487-3016`.
++
++## What the app already ships
++
++- `legRetraceTurnIndex()` and `legDirWaypointVisible()` provide the effective
++  turn and selected-direction waypoint slice (`docs/app/core.js:4517-4574`).
++- `drawWaypoints()` already uses the direction predicate before painting route
++  waypoint discs and hotspot rings (`docs/app/draw.js:4388-4415`).
++- The inspector already has a turning-point button, selected styling, and
++  `aria-pressed` state (`docs/app/interact.js:2996-3016`,
++  `docs/app/style.css:2009`).
++- `airfieldAtWaypoint()` and the existing `afInsp` value identify route
++  waypoints that use airfield-enriched inspector content.
++
++## What binds
++
++- Reuse the existing route-direction predicates for route-bound hotspot
++  visibility; do not add a second turn algorithm.
++- Keep marker painting and marker hit testing symmetric so a marker that is not
++  drawn cannot remain selectable.
++- Reuse the existing `insp-btn-on` and `aria-pressed` treatment for the
++  geometry-derived effective turn. No new control or visual signal is needed.
++- Do not append the turning-point control when `afInsp` resolves. A route
++  waypoint at an airfield follows the standalone-airfield inspector rule.
++
++## Conflicts
++
++- The requested return-view behavior hides a graph hotspot when its matching
++  route occurrence is in the hidden half. The current `?hotspots=1` comment at
++  `docs/app/draw.js:5401-5413` defines that review overlay as whole-chart and
++  route-independent. The requested route-aware exception changes that review
++  tool contract; the approval gate must choose it explicitly.
++
++## Unclear
++
++- A geometry-derived turn is effective but not a persisted manual override.
++  The button can show selected while retaining its existing action to pin a
++  manual turn; changing labels or disabling the action would add unrequested UI
++  scope.
++
++**Grounded by**: code walk (3 files → map overlay/hit surface and waypoint
++inspector) · KB unavailable because NavAid matches no registered product
++fingerprint · DS MCP not needed because the app already ships every affected
++control and visual treatment
+diff --git a/.ai/plans/bugs-return-route-turning-point/internal/decisions.md b/.ai/plans/bugs-return-route-turning-point/internal/decisions.md
+new file mode 100644
+index 000000000..108689e51
+--- /dev/null
++++ b/.ai/plans/bugs-return-route-turning-point/internal/decisions.md
+@@ -0,0 +1,3 @@
++## RCA approved
++
++User approved implementation by asking to babysit PR #1797. The route-aware hotspot exception and the airfield inspector exclusion are accepted as described in the RCA.
+diff --git a/.ai/plans/bugs-return-route-turning-point/internal/status.yaml b/.ai/plans/bugs-return-route-turning-point/internal/status.yaml
+new file mode 100644
+index 000000000..fd62e8a0c
+--- /dev/null
++++ b/.ai/plans/bugs-return-route-turning-point/internal/status.yaml
+@@ -0,0 +1,28 @@
++schema_version: 3
++plugin_version: 1.23.0
++pipeline_status: implementing
++pipeline_status_history:
++  - status: init
++    at: '2026-08-22T16:05:16+03:00'
++  - status: investigated
++    at: '2026-08-22T16:14:12+03:00'
++  - status: test_written
++    at: '2026-08-22T16:17:50+03:00'
++  - status: rca_ready
++    at: '2026-08-22T16:24:33+03:00'
++  - status: implementing
++    at: '2026-08-22T17:49:16+03:00'
++epic_key: return-route-turning-point
++branch: codex/fix-return-route-turning-point
++base: dev
++epic: .ai/plans/bugs-return-route-turning-point
++pipeline_mode: bug-fix
++updated_at: '2026-08-22T17:58:42+03:00'
++pr_flow:
++  draft_pr_number: 1797
++  pr_url: https://github.com/msupino/NavigationApp/pull/1797
++  base_branch: dev
++  code_review_iteration: 2
++  acknowledged_issue_comments: []
++tier: lean
++current_phase: implement
+diff --git a/.ai/plans/bugs-return-route-turning-point/investigation.md b/.ai/plans/bugs-return-route-turning-point/investigation.md
+new file mode 100644
+index 000000000..1f469cd29
+--- /dev/null
++++ b/.ai/plans/bugs-return-route-turning-point/investigation.md
+@@ -0,0 +1,91 @@
++---
++status: draft
++---
++
++# Investigation Report
++
++**Ticket**: n/a
++**Service(s)**: NavAid static web app
++**Environment**: local
++**Bug surface**: frontend
++**Tier**: lean
++**Confidence**: HIGH
++
++## Root Cause
++
++The direction slice is correctly enforced for route waypoint discs and their direct hit targets, but two sibling navigation-reference paths bypass it: `drawHotspotOverlay()` iterates every graph hotspot without checking whether the coincident route waypoint is hidden (`docs/app/draw.js:5426-5432`), while `hitNavWpMarkerCandidates()` exposes every navigation waypoint even when `drawNavWaypoints()` suppresses that marker because the route occupies the point (`docs/app/interact.js:398-408` versus `docs/app/draw.js:2541-2553`). Consequently a hidden outbound hotspot can leave a review-overlay ring and a selectable, never-drawn navigation-reference hit target in the return-only view.
++
++The route geometry already derives the effective turn as the start of the first retraced leg (`docs/app/core.js:4517-4531`), but the route-waypoint inspector marks its control selected only from the serialized `wp.turn` override (`docs/app/interact.js:3000-3008`). The same route-waypoint branch resolves `afInsp = airfieldAtWaypoint(wp)` at `docs/app/interact.js:2866-2869`, yet appends the turning-point button unconditionally. Per the corrected requirement, `afInsp` is the intended exclusion predicate for this control: ordinary non-airfield route waypoints may show it, while a route waypoint resolving to an airfield must not. Standalone `type:'airfield'` inspection already omits it.
++
++## Evidence Chain
++
++| Layer | File | Finding |
++|-------|------|---------|
++| Direction state / business logic | `docs/app/core.js:4487-4574` | `legIsRetrace()` and `legRetraceTurnIndex()` correctly identify a waypoint whose outgoing leg reverses an earlier leg; `legDirWaypointVisible()` correctly partitions waypoint indexes around that turn. |
++| Route rendering | `docs/app/draw.js:4388-4415` | Route waypoint discs and hotspot rings share `legDirWaypointVisible()`, so this primary path is correct. |
++| Hotspot reference rendering — **ROOT CAUSE** | `docs/app/draw.js:5414-5455` | The `?hotspots=1` projection loops over every `navWP` hotspot and paints its ring without reconciling graph points with the selected route-direction slice. |
++| Reference interaction — **ROOT CAUSE** | `docs/app/interact.js:398-408` | Navigation-reference hit testing does not mirror `drawNavWaypoints()`'s `routeOccupiesPoint()` suppression, leaving a selectable nav-WP candidate at a location where no nav-WP dot is drawn. |
++| Turning-point inspector — **ROOT CAUSE** | `docs/app/interact.js:2865-3017` | The route-waypoint branch already computes `afInsp`, but appends the turning-point control for both ordinary route points and route points at airfields; its selected state also reads only `wp.turn` instead of the effective derived index. |
++| Standalone airfield inspector | `docs/app/interact.js:2811-2823` | A standalone `type:'airfield'` inspector already has no turn control. No change to this branch is needed. |
++| Overlap chooser identity | `docs/app/interact.js:578-603` | When a named route waypoint and an airfield coincide, the chooser removes the separate airfield candidate, annotates the route candidate with `mergedReference`, and deliberately keeps the route object. |
++| Selection normalization | `docs/app/interact.js:605-613` | Selecting that merged row stores only `{type:'wp', index}`. Therefore selection type alone cannot identify the user-reported route-airfield case; the inspector must use its resolved `afInsp`. |
++| Airfield resolution | `docs/app/draw.js:2490-2500` | `airfieldAtWaypoint()` first matches the route waypoint's ICAO name, then falls back to ARP proximity, covering named/coincident and legacy-renamed route-airfield points. This is the existing reliable domain predicate. |
++| Existing chooser regression | `tests/routes.spec.js:473-509` | The LLHA overlap case proves the merged “Route waypoint / Airfield / Haifa” row resolves to `{type:'wp', index:10}` and therefore reaches the route-waypoint branch where `afInsp` must suppress the control. |
++| Local runtime evidence | `http://127.0.0.1:8127/?lang=en&nogist` | Direct LLHA selection produced `{type:'airfield'}` with no `#insp-turn-btn`. Feeding coincident `{type:'wp'}` and `{type:'airfield'}` candidates through `showPointChoice()` produced `{type:'wp'}` with `airfieldAtWaypoint(wp)` resolving LLHA and `#insp-turn-btn` still present. That present button is the corrected user-reported defect. |
++
++## Data Flow
++
++```mermaid
++graph LR
++    A[Route-direction selector] --> B[legDirFilter]
++    B --> C[legRetraceTurnIndex]
++    C --> D[legDirWaypointVisible]
++    D --> E[Route waypoint draw and hit test]
++    F[Graph nav waypoints] --> G[drawHotspotOverlay]
++    F --> H[hitNavWpMarkerCandidates]
++    G -->|missing route-direction reconciliation| I[Hidden hotspot ring]
++    H -->|missing drawn-marker suppression| J[Phantom nav-WP hit]
++    K[Standalone airfield candidate] --> L[type: airfield inspector]
++    M[Coincident route waypoint + airfield] --> N[collapseNamedRouteReferenceCandidates]
++    N --> O[type: wp inspector]
++    O --> S[airfieldAtWaypoint resolves afInsp]
++    C --> P[Effective geometric turn]
++    O -->|ordinary route point| Q[Show control using effective turn]
++    S -->|airfield route point| R[Must omit turning-point control]
++    L --> R
++```
++
++## Affected Files
++
++- `docs/app/draw.js:5414-5455` — hotspot review-overlay rendering must suppress a graph hotspot when its coincident route occurrence belongs only to the hidden direction.
++- `docs/app/interact.js:398-408` — navigation-reference hit testing must mirror marker rendering/suppression so an undrawn graph point is not selectable.
++- `docs/app/interact.js:2811-3017` — leave the standalone airfield branch and route geometry unchanged; in the route-waypoint branch, append the turn control only when `afInsp` is null, and for those ordinary route points derive selected state by calling the existing `legRetraceTurnIndex()` source of truth.
++- `tests/leg-direction-filter.spec.js:147-196` — extend the new regression to pin the airfield exclusion boundary alongside hidden hotspot visuals/hits and derived-turn route-inspector state.
++- `tests/routes.spec.js:473-509` — extend the existing merged-airfield chooser regression to assert that LLHA's route-enriched airfield inspector omits `#insp-turn-btn` despite the resulting selection remaining `type:'wp'`.
++
++## Related Tests
++
++- `tests/leg-direction-filter.spec.js:147-210` — the newly written red regression covers hidden hotspot projection/hits, a geometry-derived turn on an ordinary non-airfield `type:'wp'`, and the route-airfield exclusion boundary.
++- `tests/leg-direction-filter.spec.js:558-570` — verifies the inspector after an explicit manual mark on a non-airfield route point; it does not exercise `afInsp`.
++- `tests/hotspots-overlay.spec.js:26-63` — verifies the global graph hotspot count, layer independence, and explicit overrides without any route, turning point, or direction filter.
++- `tests/routes.spec.js:473-509` — correctly pins the merged chooser identity as `type:'wp'`, but currently checks only chooser text/title and misses the unwanted turn control in that merged route-airfield inspector.
++- `tests/ui-deep-coverage.spec.js:401-410` — confirms the separate standalone-airfield inspection path; it is not the failing case because that branch already omits the control.
++
++## Test Gap
++
++**Missing test**: `tests/routes.spec.js::merged route-airfield inspector omits the turning-point control`
++**What it should assert**: In the existing LLHA overlap-chooser scenario, after selecting the single merged “Route waypoint / Airfield” row, assert `state.selected.type === 'wp'`, `airfieldAtWaypoint(state.waypoints[state.selected.index])` resolves LLHA, and `#insp-turn-btn` is absent; retain the direction-filter regression's positive assertion that an ordinary non-airfield geometric turn does show the selected control.
++**Why it would have caught this**: It exercises the exact branch combination that standalone-airfield and ordinary-route tests miss: route selection identity with airfield inspector enrichment, where `afInsp` must suppress only this control.
++
++## Tier
++
++**Value**: lean
++**Rationale**: The corrected feedback remains a bounded frontend fix: `afInsp` is already computed in the affected route-waypoint inspector and provides the required exclusion without changing route geometry or direction behavior.
++
++## Architecture Impact
++
++**Value**: `none`
++
++## Confidence Notes
++
++HIGH: The chooser, selection, and inspector paths are unambiguous. The local probe reproduces the unwanted button specifically on merged LLHA, and `airfieldAtWaypoint()`/`afInsp` is already the inspector's canonical name-or-position resolution for that route-airfield case.
+diff --git a/.ai/plans/bugs-return-route-turning-point/progress_summary.md b/.ai/plans/bugs-return-route-turning-point/progress_summary.md
+new file mode 100644
+index 000000000..2d015f3e1
+--- /dev/null
++++ b/.ai/plans/bugs-return-route-turning-point/progress_summary.md
+@@ -0,0 +1,22 @@
++---
++name: Return-route hotspots and turning-point inspector state
++status: draft
++updated_at: '2026-08-22T16:24:29+03:00'
++---
++
++# Return-route hotspots and turning-point inspector state
++
++## Overview
++
++In Return-only view, a hotspot that belongs to the hidden outbound route half can remain projected and selectable through the graph-reference paths. The waypoint where the next leg reverses the preceding leg correctly drives route slicing, but its inspector button does not appear selected unless a redundant manual `turn` flag was stored.
++
++## Progress
++
++| Task | Status |
++|---|---|
++| T-1: Implement and verify the fix | ⬜ pending |
++
++## Artifacts
++- [investigation.md](investigation.md)
++- [rca-report.md](rca-report.md)
++- [frontend/fe-resolution.md](frontend/fe-resolution.md)
+diff --git a/.ai/plans/bugs-return-route-turning-point/rca-report.md b/.ai/plans/bugs-return-route-turning-point/rca-report.md
+new file mode 100644
+index 000000000..667e05ade
+--- /dev/null
++++ b/.ai/plans/bugs-return-route-turning-point/rca-report.md
+@@ -0,0 +1,124 @@
++---
++status: approved
++---
++
++# RCA — return-route-turning-point: Return-route hotspots and turning-point inspector state
++
++**Tier**: lean · **Confidence**: HIGH · **Service(s)**: NavAid static web app
++
++## What's happening
++
++In Return-only view, a hotspot that belongs to the hidden outbound route half
++can remain projected and selectable through the graph-reference paths. The
++waypoint where the next leg reverses the preceding leg correctly drives route
++slicing, but its inspector button does not appear selected unless a redundant
++manual `turn` flag was stored. A route waypoint that resolves to an airfield
++also incorrectly receives the turning-point control; airfield inspectors must
++not expose that route-only action.
++
++## Root cause
++
++`drawHotspotOverlay()` and navigation-reference hit testing bypass the
++route-direction visibility/suppression rules (`docs/app/draw.js:5414-5455`,
++`docs/app/interact.js:398-408`). Separately, `showInspector()` reads only the
++persisted `wp.turn` flag instead of the effective `legRetraceTurnIndex()` used
++by route slicing (`docs/app/interact.js:2996-3016`). That route-waypoint branch
++already computes `afInsp = airfieldAtWaypoint(wp)`, but does not use it to omit
++the turning-point control for a named or coincident airfield.
++
++## Design system
++
++### What this change touches
++
++- The route map overlay and matching Leaflet hit surface, from the effective
++  turn and direction predicates in `docs/app/core.js:4517-4574` through
++  `drawHotspotOverlay()` in `docs/app/draw.js:5414-5455` and
++  `hitNavWpMarkerCandidates()` in `docs/app/interact.js:398-408`.
++- The existing waypoint-inspector action area rendered by `showInspector()` in
++  `docs/app/interact.js:2487-3016`.
++
++### What the app already ships
++
++- `legRetraceTurnIndex()` and `legDirWaypointVisible()` provide the effective
++  turn and selected-direction waypoint slice (`docs/app/core.js:4517-4574`).
++- `drawWaypoints()` already uses the direction predicate before painting route
++  waypoint discs and hotspot rings (`docs/app/draw.js:4388-4415`).
++- The inspector already has a turning-point button, selected styling, and
++  `aria-pressed` state (`docs/app/interact.js:2996-3016`,
++  `docs/app/style.css:2009`).
++- `airfieldAtWaypoint()` and the existing `afInsp` value are the canonical
++  predicates for a route waypoint that resolves to an airfield.
++
++### What binds
++
++- Reuse the existing route-direction predicates for route-bound hotspot
++  visibility; do not add a second turn algorithm.
++- Keep marker painting and marker hit testing symmetric so a marker that is not
++  drawn cannot remain selectable.
++- Reuse the existing `insp-btn-on` and `aria-pressed` treatment for the
++  geometry-derived effective turn. No new control or visual signal is needed.
++- Append that control only for ordinary non-airfield route waypoints. A route
++  waypoint enriched with airfield data follows the standalone-airfield rule
++  and omits the turning-point control.
++
++### Conflicts
++
++- The requested return-view behavior hides a graph hotspot when its matching
++  route occurrence is in the hidden half. The current `?hotspots=1` comment at
++  `docs/app/draw.js:5401-5413` defines that review overlay as whole-chart and
++  route-independent. The requested route-aware exception changes that review
++  tool contract; the approval gate must choose it explicitly.
++
++### Unclear
++
++- A geometry-derived turn is effective but not a persisted manual override.
++  The button can show selected while retaining its existing action to pin a
++  manual turn; changing labels or disabling the action would add unrequested UI
++  scope.
++
++**Grounded by**: code walk (3 files → map overlay/hit surface and waypoint
++inspector) · KB unavailable because NavAid matches no registered product
++fingerprint · DS MCP not needed because the app already ships every affected
++control and visual treatment
++
++## Suggested fix
++
++- `docs/app/core.js` — add one shared predicate that detects a reference point
++  whose matching route occurrences all belong to the hidden direction.
++- `docs/app/draw.js` — apply that predicate to the hotspot review projection
++  and update its contract comment for the route-aware exception.
++- `docs/app/interact.js` — suppress nav/airfield reference hits only when every
++  matching route occurrence is hidden, preserving visible merged-reference
++  metadata. Derive ordinary waypoint inspector selected/ARIA state from the
++  effective turn while retaining the manual override action, and omit that
++  control when the selected route waypoint resolves to an airfield.
++- `tests/leg-direction-filter.spec.js` — turn the confirmed red scenario green
++  for hotspot projection, hit testing, and derived-turn inspector state.
++- `.ai/navaid-dev.md` — document the selected-direction hotspot and effective
++  turn invariant.
++
++**Expected shape**: 5 existing files, about 100 changed lines · extend the
++existing direction helpers, render/hit paths, inspector, focused spec, and
++developer guide · new test files: 0
++
++## Failing test (written, red)
++
++`tests/leg-direction-filter.spec.js::return direction hides outbound hotspot projection, recognizes geometric turn, and omits airfield turn control`
++(e2e) — asserts that the hidden hotspot has no projection or nav-reference hit
++and that the geometry-derived turn button is selected and `aria-pressed=true`
++for an ordinary waypoint. It also asserts that a route waypoint resolving to
++an airfield has no turning-point control.
++
++## Verification plan
++
++- Focused browser: the new regression plus adjacent direction/hotspot tests.
++- Syntax/lint: `node --check` on every changed JavaScript file and
++  `git diff --check`.
++- E2E + live env: yes — rendered canvas, hit testing, and inspector DOM state
++  are browser behaviors; local focused Playwright plus the PR CI/deployed E2E
++  matrix will verify them.
++- New executables: none.
++
++## Deferred / follow-ups
++
++none
+diff --git a/docs/app/core.js b/docs/app/core.js
+index 262e87a29..4cb6e26d6 100644
+--- a/docs/app/core.js
++++ b/docs/app/core.js
+@@ -2568,6 +2568,20 @@ function routeWaypointAtPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DE
+ function routeOccupiesPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DEG) {
+   return routeWaypointAtPoint(point, skipIdx, eps) !== -1;
+ }
++// True when `point` belongs to the route, but every occurrence is outside the
++// selected outbound/return slice. Reference overlays use this to avoid leaving
++// a hotspot visible after its route waypoint has been filtered from the map.
++function routePointOnlyInHiddenDirection(point, eps = SAME_REFERENCE_POINT_DEG) {
++  if (!point || !state || !Array.isArray(state.waypoints) ||
++      typeof legDirWaypointVisible !== 'function') return false;
++  let matched = false;
++  for (let i = 0; i < state.waypoints.length; i++) {
++    if (!sameMapPoint(state.waypoints[i], point, eps)) continue;
++    matched = true;
++    if (legDirWaypointVisible(i)) return false;
++  }
++  return matched;
++}
+ // Is `point` where waypoint `i`'s NEIGHBOUR sits? Two waypoints at one place only make a
+ // zero-length leg when they are adjacent, and dropping a waypoint on the one next to it is
+ // the deliberate delete gesture. Landing on any OTHER waypoint is an ordinary route that
+diff --git a/docs/app/draw.js b/docs/app/draw.js
+index ecfbeed49..049a7bded 100644
+--- a/docs/app/draw.js
++++ b/docs/app/draw.js
+@@ -5399,10 +5399,9 @@ function drawPageFrame() {
+ }
+ 
+ // --- hotspots review overlay (?hotspots=1) ------------------------------------
+-// Rings every waypoint the app treats as a junction, across the whole chart. On the route a
+-// hotspot already rings itself, but that only ever shows the handful a given route passes --
+-// the question this answers is "which points ARE hotspots", which is a property of the graph
+-// and cannot be read off one flight plan.
++// Rings every waypoint the app treats as a junction across the chart, except a route-bound
++// hotspot that belongs only to the hidden outbound/return half. On the route a hotspot rings
++// itself; the selected direction remains the visibility source of truth for that point.
+ //
+ // A review tool, like ?graphlegs=1: no toolbar entry, nothing persisted, invisible unless the
+ // flag is in the URL, and it draws whether or not the nav-waypoint layer is switched on --
+@@ -5425,6 +5424,8 @@ function drawHotspotOverlay() {
+   let n = 0;
+   for (const wp of navWP) {
+     if (!waypointHotspot(wp)) continue;
++    if (typeof routePointOnlyInHiddenDirection === 'function' &&
++        routePointOnlyInHiddenDirection(wp)) continue;
+     n++;
+     const s = proj(wp);
+     octx.beginPath();
+diff --git a/docs/app/interact.js b/docs/app/interact.js
+index 0e905e13c..fa6190e14 100644
+--- a/docs/app/interact.js
++++ b/docs/app/interact.js
+@@ -386,6 +386,8 @@ function hitAirfieldMarkerCandidates(px, py) {
+   if (!showAirfields || !airfields || !airfields.length) return hits;
+   const r = tune('airfieldMarkerRadiusPx') + tune('hitWaypointExtraPx');
+   for (let i = airfields.length - 1; i >= 0; i--) {
++    if (typeof routePointOnlyInHiddenDirection === 'function' &&
++        routePointOnlyInHiddenDirection(airfields[i])) continue;
+     const s = proj(airfields[i]);
+     if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'airfield', index: i, chartPoint: true });
+   }
+@@ -400,6 +402,8 @@ function hitNavWpMarkerCandidates(px, py) {
+   if (!showNavWP || !navWP || !navWP.length) return hits;
+   const r = tune('navWaypointRadiusPx') + tune('hitWaypointExtraPx');
+   for (let i = navWP.length - 1; i >= 0; i--) {
++    if (typeof routePointOnlyInHiddenDirection === 'function' &&
++        routePointOnlyInHiddenDirection(navWP[i])) continue;
+     const s = proj(navWP[i]);
+     // `chartPoint` marks a real chart-point marker. Comm-change rings report the same
+     // 'navwp' type (they are drawn on these dots), so type alone cannot tell them
+@@ -2993,28 +2997,32 @@ function showInspector() {
+     if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
+     resetName.onclick = () => resetWpName(state.selected.index);
+     body.appendChild(resetName);
+-    // Where the route turns for home. A loop repeats no waypoint, so no leg retraces and
+-    // the geometry cannot find the far end -- the pilot marks it. Offered on every
+-    // waypoint rather than only on loops: a route can be edited into and out of that shape,
+-    // and a control that appears and vanishes is harder to find than one that is simply there.
+-    const idx = state.selected.index;
+-    const isTurn = !!(state.waypoints[idx] && state.waypoints[idx].turn);
+-    const turnBtn = document.createElement('button');
+-    turnBtn.className = 'insp-btn' + (isTurn ? ' insp-btn-on' : '');
+-    turnBtn.id = 'insp-turn-btn';
+-    turnBtn.textContent = isTurn ? (S.inspTurnClear || '↻ Clear turning point')
+-                                 : (S.inspTurnSet || '↻ Mark as turning point');
+-    if (S.inspTurnTitle) turnBtn.title = S.inspTurnTitle;
+-    turnBtn.setAttribute('aria-pressed', isTurn ? 'true' : 'false');
+-    turnBtn.onclick = () => {
+-      setTurnWaypoint(idx);
+-      if (typeof persist === 'function') persist();
+-      if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+-      if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
+-      draw();
+-      showInspector();      // relabel to what the button now does
+-    };
+-    body.appendChild(turnBtn);
++    // Airfields do not expose the route-only turning-point action, including when the
++    // overlap chooser keeps a coincident route waypoint as the editable selection.
++    if (!afInsp) {
++      // Geometry-derived turns use the same selected treatment as manual turns. The action
++      // remains available so a pilot can persist an explicit turn for non-retracing loops.
++      const idx = state.selected.index;
++      const manualTurn = !!(state.waypoints[idx] && state.waypoints[idx].turn);
++      const effectiveTurn = typeof legRetraceTurnIndex === 'function' &&
++        legRetraceTurnIndex() === idx;
++      const turnBtn = document.createElement('button');
++      turnBtn.className = 'insp-btn' + (effectiveTurn ? ' insp-btn-on' : '');
++      turnBtn.id = 'insp-turn-btn';
++      turnBtn.textContent = manualTurn ? (S.inspTurnClear || '↻ Clear turning point')
++                                       : (S.inspTurnSet || '↻ Mark as turning point');
++      if (S.inspTurnTitle) turnBtn.title = S.inspTurnTitle;
++      turnBtn.setAttribute('aria-pressed', effectiveTurn ? 'true' : 'false');
++      turnBtn.onclick = () => {
++        setTurnWaypoint(idx);
++        if (typeof persist === 'function') persist();
++        if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
++        if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
++        draw();
++        showInspector();      // relabel to what the button now does
++      };
++      body.appendChild(turnBtn);
++    }
+   }
+   finalizeInspectorActions(body);
+   persistInspectorSelection();
+diff --git a/tests/leg-direction-filter.spec.js b/tests/leg-direction-filter.spec.js
+index 4e3d94fc1..e0aa93cab 100644
+--- a/tests/leg-direction-filter.spec.js
++++ b/tests/leg-direction-filter.spec.js
+@@ -144,6 +144,84 @@ test('waypoints, anchored notes and hit targets follow the selected direction',
+   expect(out.hiddenHit).toEqual([]);
+ });
+ 
++test('return direction hides outbound hotspot projection, recognizes geometric turn, and omits airfield turn control', async ({ page }) => {
++  await page.goto('?lang=en&nogist&hotspots=1');
++  await page.waitForFunction(() => typeof legRetraceTurnIndex === 'function' &&
++    typeof hitNavWpMarkerCandidates === 'function' && Array.isArray(navWP) && navWP.length > 0 &&
++    Array.isArray(airfields) && airfields.length > 0);
++
++  const out = await page.evaluate(() => {
++    const hadra = navWP.find(w => w.name === 'HADRA');
++    if (!hadra || !waypointHotspot(hadra)) throw new Error('HADRA hotspot fixture missing');
++
++    // HADRA belongs only to the outbound half. TURN -> BEFORE reverses the preceding
++    // BEFORE -> TURN leg, so TURN is the route's geometry-proven turning waypoint.
++    state.waypoints = [
++      { lat: 32.55, lng: 34.85, name: 'START' },
++      { lat: hadra.lat, lng: hadra.lng, name: hadra.name },
++      { lat: 32.38, lng: 34.98, name: 'BEFORE' },
++      { lat: 32.34, lng: 35.03, name: 'TURN' },
++      { lat: 32.38, lng: 34.98, name: 'BEFORE' },
++      { lat: 32.30, lng: 34.90, name: 'HOME' },
++    ];
++    state.legs = [];
++    syncLegs();
++    window.legDirFilter = 'back';
++
++    // Isolate the review overlay and nav-reference hit path to the hidden hotspot.
++    window.navWP = [hadra];
++    window.showNavWP = true;
++    draw();
++    const visibleRouteHotspots = window.__hotspotWaypointIndexes.slice();
++    const projectedHotspots = window.__hotspotOverlayCount;
++    const p = proj(hadra);
++    const hits = hitNavWpMarkerCandidates(p.x, p.y).map(h => h.type);
++
++    state.selected = { type: 'wp', index: 3 };
++    showInspector();
++    const turnBtn = document.getElementById('insp-turn-btn');
++    const turnPressed = turnBtn.getAttribute('aria-pressed');
++    const turnSelected = turnBtn.classList.contains('insp-btn-on');
++
++    // If the same chart hotspot also occurs on the visible return half, keep its
++    // projection. Only points whose every route occurrence is hidden are suppressed.
++    state.waypoints[5] = { lat: hadra.lat, lng: hadra.lng, name: hadra.name };
++    syncLegs();
++    draw();
++    const projectedWhenAlsoVisible = window.__hotspotOverlayCount;
++
++    // A route waypoint at an airfield is still the editable route candidate in the merged
++    // chooser, but its inspector follows the standalone airfield rule: no turning-point
++    // control. Keep it on the visible return half so direction filtering is not the reason.
++    const af = airfields[0];
++    state.waypoints[5] = { lat: af.lat, lng: af.lng, name: af.name };
++    syncLegs();
++    state.selected = { type: 'wp', index: 5 };
++    showInspector();
++    return {
++      turnIndex: legRetraceTurnIndex(),
++      visibleRouteHotspots,
++      projectedHotspots,
++      navReferenceHits: hits,
++      turnPressed,
++      turnSelected,
++      projectedWhenAlsoVisible,
++      routeWaypointResolvesToAirfield: !!airfieldAtWaypoint(state.waypoints[5]),
++      airfieldHasTurnButton: !!document.getElementById('insp-turn-btn'),
++    };
++  });
++
++  expect(out.turnIndex).toBe(3);
++  expect(out.visibleRouteHotspots).toEqual([]);
++  expect.soft(out.projectedHotspots).toBe(0);
++  expect.soft(out.navReferenceHits).toEqual([]);
++  expect.soft(out.turnPressed).toBe('true');
++  expect.soft(out.turnSelected).toBe(true);
++  expect.soft(out.projectedWhenAlsoVisible).toBe(1);
++  expect(out.routeWaypointResolvesToAirfield).toBe(true);
++  expect.soft(out.airfieldHasTurnButton).toBe(false);
++});
++
+ test('route summary and open flight plan show only the selected half', async ({ page }) => {
+   await boot(page);
+   const outbound = await page.evaluate(() => {

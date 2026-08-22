@@ -2568,6 +2568,20 @@ function routeWaypointAtPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DE
 function routeOccupiesPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DEG) {
   return routeWaypointAtPoint(point, skipIdx, eps) !== -1;
 }
+// True when `point` belongs to the route, but every occurrence is outside the
+// selected outbound/return slice. Reference overlays use this to avoid leaving
+// a hotspot visible after its route waypoint has been filtered from the map.
+function routePointOnlyInHiddenDirection(point, eps = SAME_REFERENCE_POINT_DEG) {
+  if (!point || !state || !Array.isArray(state.waypoints) ||
+      typeof legDirWaypointVisible !== 'function') return false;
+  let matched = false;
+  for (let i = 0; i < state.waypoints.length; i++) {
+    if (!sameMapPoint(state.waypoints[i], point, eps)) continue;
+    matched = true;
+    if (legDirWaypointVisible(i)) return false;
+  }
+  return matched;
+}
 // Is `point` where waypoint `i`'s NEIGHBOUR sits? Two waypoints at one place only make a
 // zero-length leg when they are adjacent, and dropping a waypoint on the one next to it is
 // the deliberate delete gesture. Landing on any OTHER waypoint is an ordinary route that
