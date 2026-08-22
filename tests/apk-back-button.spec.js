@@ -54,6 +54,73 @@ test('back closes an open chart modal first', async ({ page }) => {
   expect(await page.evaluate(() => window.__exited)).toBe(0);
 });
 
+test('back closes the flight plan through its cleanup and allows it to reopen', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => showFlightPlan());
+  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
+  await back(page, false);
+  expect(await page.evaluate(() => ({ fpOpen, hasRefresh: !!refreshFlightPlan,
+    connected: !!(flightPlanBack && flightPlanBack.isConnected) })))
+    .toEqual({ fpOpen: false, hasRefresh: false, connected: false });
+  await page.evaluate(() => showFlightPlan());
+  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
+});
+
+test('a later toast does not hide the actual top modal from Back', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => { showChartsModal(); showToast('later notice'); });
+  await expect(page.locator('.modal-back')).toHaveCount(1);
+  await back(page, false);
+  await expect(page.locator('.modal-back')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__exited)).toBe(0);
+});
+
+test('back closes shortcuts through cleanup and allows them to reopen', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => showShortcutsHelp());
+  await expect(page.locator('.modal-back.shortcuts-help')).toHaveCount(1);
+  await back(page, false);
+  await expect(page.locator('.modal-back.shortcuts-help')).toHaveCount(0);
+  expect(await page.evaluate(() => _shortcutsHelpBack)).toBeNull();
+  await page.evaluate(() => showShortcutsHelp());
+  await expect(page.locator('.modal-back.shortcuts-help')).toHaveCount(1);
+});
+
+test('back closes a plate through cleanup so one Escape closes the reopened viewer', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => showPlateViewer('dummy.pdf', 'Dummy'));
+  await expect(page.locator('.modal-back.plate-viewer')).toHaveCount(1);
+  await back(page, false);
+  await expect(page.locator('.modal-back.plate-viewer')).toHaveCount(0);
+
+  await page.evaluate(() => showPlateViewer('dummy.pdf', 'Dummy'));
+  await expect(page.locator('.modal-back.plate-viewer')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.modal-back.plate-viewer')).toHaveCount(0);
+});
+
+test('back cancels the export preview through cleanup and leaves no stale Escape handler', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => {
+    const toolbarToggle = document.getElementById('navwp-cb');
+    if (toolbarToggle) toolbarToggle.checked = false;
+    window.showNavWP = false;
+    showExportModal();
+    const previewToggle = document.getElementById('export-navwp-cb');
+    previewToggle.checked = true;
+    previewToggle.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(await page.evaluate(() => showNavWP)).toBe(true);
+  await back(page, false);
+  await expect(page.locator('.modal-back.export-options')).toHaveCount(0);
+  expect(await page.evaluate(() => showNavWP)).toBe(false);
+
+  await page.evaluate(() => showExportModal());
+  await expect(page.locator('.modal-back.export-options')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.modal-back.export-options')).toHaveCount(0);
+});
+
 test('back leaves a map tool before it leaves the app', async ({ page }) => {
   await bootNative(page);
   await page.evaluate(() => setMode('add'));

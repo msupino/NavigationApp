@@ -332,7 +332,7 @@ function drawHeadingLine(pos, hdg, gsKt) {
       minMarks: haveSpeed ? HEADING_LINE_MARKS_MIN.slice() : [], headingLabel };
 }
 
-// TOC / TOD markers along the route (#672). A small dot + label at the point
+// TOC / TOD markers along the route. A small dot + label at the point
 // where climb/descent meets cruise on each affected leg.
 function drawProfileMarkers() {
   if (typeof routeProfile !== 'function' || (state.legs || []).length === 0) return;
@@ -582,7 +582,7 @@ function profileTerrainSamples(prof) {
 if (typeof window !== 'undefined') window.profileTerrainSamples = profileTerrainSamples;
 
 // Render the altitude-vs-distance profile strip onto a canvas context within
-// (x,y,w,h). Used by the Flight Plan modal (#672).
+// (x,y,w,h). Used by the Flight Plan modal.
 function drawVerticalProfile(ctx, x, y, w, h) {
   if (typeof routeProfile !== 'function') return;
   const visibleIndexes = typeof legDirVisibleIndexes === 'function'
@@ -856,20 +856,20 @@ function draw() {
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
   drawNotes();
   flushKites();      // both kinds of kite, above the callouts -- see queueKite
-  if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
+  if (window.showProfile) drawProfileMarkers();
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
   if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg, simAircraft.ias);  // sim own-ship
   drawInfo();
   drawPageFrame();
-  drawPlanCard();          // flight-plan card placed for PNG export (#378)
-  // #78: keep the Flight Plan modal live with the route. The hook is null
+  drawPlanCard();          // flight-plan card placed for PNG export
+  // Keep the Flight Plan modal live with the route. The hook is null
   // when the modal isn't open, or after refresh detects a structural change
   // and closes it.
   if (refreshFlightPlan) refreshFlightPlan();
   // Keep the open print panel's route-gated "Place flight plan" checkbox live.
   if (typeof updateExportPlanCb === 'function') updateExportPlanCb();
-  // #214: skip persist during a PNG export. The export modal flips overlay
+  // Skip persist during a PNG export. The export modal flips overlay
   // toggles for the preview render, then restores them; without this guard
   // the debounced persist() would write the preview-state mutation to
   // localStorage if the user reopened the modal mid-export.
@@ -1531,7 +1531,7 @@ function drawNotamAirportMarkers() {
 }
 
 // Hit-test a map click against drawn NOTAMs, so areas/lines/badges open their
-// text (#959 follow-up: "notam on map should be clickable to view its info").
+// text so a NOTAM on the map can be opened to view its information.
 // All tests run in canvas/screen space via proj(), matching how drawNotams()
 // renders, so what you see is what you can click.
 function notamPointInPoly(pt, poly) {       // poly: [{x,y}], ray-cast
@@ -1647,10 +1647,9 @@ window.notamBadgeNotamsAt = notamBadgeNotamsAt;
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads the nav-waypoints projection of docs/data/cvfr-route-graph.json on first
 // activation. Format:
-// { waypoints:[{ name, en, he, lat, lng }] } — 172 published reporting
-// points sourced from the IAA CVFR chart page 113 (2025 edition); see
-// issue #406. Validated strictly by validateNavWaypoints() (issue
-// #101): every documented field must be present and well-typed;
+// { waypoints:[{ name, en, he, lat, lng }] } contains 170 active reporting points.
+// They project from 172 CVFR-layer members sourced from IAA CVFR chart page 113
+// (2025 edition). validateNavWaypoints() requires every documented field;
 // extras are silently allowed for forward-compat.
 // --- per-layer dataset resolution ----------------------------------
 // Each base layer can have its own data files (waypoints, comm-change, …).
@@ -1840,7 +1839,7 @@ async function loadNavWaypoints() {
   } catch (e) {
     // Leave navWP === null so a subsequent toggle / search / snap call can
     // retry — assigning [] would make the early-return guard short-circuit
-    // forever and disable nav waypoints for the whole session (issue #72).
+    // forever and disable nav waypoints for the whole session.
     console.warn('Failed to load nav waypoints:', e);
     return [];
   }
@@ -2019,12 +2018,9 @@ function lsaAreasAtLatLng(latlng) {
 // Lazy-loads the comm-change projection of docs/data/cvfr-route-graph.json — { callSigns:{...},
 // points:[{name, commChange, callSigns, routeHints, note, source}] }.
 // Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
-// + inspector badge. On 404 or schema error we install an EMPTY map ({})
-// instead of leaving commChangeMap null — the dataset is intentionally
-// optional, and a missing file must not disable the rest of the nav-WP
-// overlay (issue #399). The map is only rebuilt if a future call observes
-// `commChangeMap === null` (i.e. nothing was installed yet), so a one-time
-// 404 doesn't trigger retry storms.
+// + inspector badge. A schema error installs an empty map because invalid data
+// will not improve on retry. A fetch failure leaves commChangeMap null so a
+// later call can retry; concurrent callers still share the in-flight request.
 async function loadCommChange() {
   if (commChangeMap !== null) return commChangeMap;
   const gen = _layerGen;
@@ -2337,7 +2333,7 @@ function nearestReference(latlng, options = {}) {
 //    near any):
 //    clear it so the circle reverts to the sequence number.
 // Airfields take priority because they're a much smaller set of strongly-
-// known landmarks (16 vs 172 nav-WPs); if both overlays sit on the same
+// known landmarks (16 vs 170 active nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
 function applyNavSnap(latlng, currentName, excludeLl) {
   const autoSnapped = isAutoSnapName(currentName);
@@ -2346,13 +2342,13 @@ function applyNavSnap(latlng, currentName, excludeLl) {
     return { lat: latlng.lat, lng: latlng.lng,
              name: autoSnapped ? '' : (currentName || '') };
   }
-  // #106: Force-snap mode lifts the 18 px radius so every click resolves to
+  // Force-snap mode lifts the 18 px radius so every click resolves to
   // the absolute nearest known point. Useful when the chart has many close
   // reporting points and the user wants the published coordinate regardless
   // of click precision.
-  // #106: force-snap lifts the radius. Airfield-first priority is fine inside
+  // Force-snap lifts the radius. Airfield-first priority is fine inside
   // the 18 px radius (both rarely sit there together), but at infinite radius
-  // it would make the 16-airfield set always win and leave the 172 nav-WPs
+  // it would make the 16-airfield set always win and leave the nav-WPs
   // unreachable. So in force-snap mode pick the globally nearest across both
   // visible sets by screen distance instead of short-circuiting on airfields.
   const snap = nearestReference(latlng, {
@@ -2377,7 +2373,7 @@ function applyNavSnap(latlng, currentName, excludeLl) {
 // drives the Airport charts modal (io.js: the per-airfield list, its prefetch
 // and the overlay) -- the "data-only for now" this comment used to claim
 // stopped being true when that shipped. Validated strictly by
-// validateAirfields() (issue #101): every documented field must be
+// validateAirfields(): every documented field must be
 // present and well-typed; extras are silently allowed for forward-compat.
 async function loadAirfields() {
   if (airfields !== null) return airfields;
@@ -2413,12 +2409,12 @@ async function loadAirfields() {
   } catch (e) {
     // Leave airfields === null so a subsequent toggle / search call can
     // retry — assigning [] would make the early-return guard short-circuit
-    // forever and disable the overlay for the whole session (issue #72).
+    // forever and disable the overlay for the whole session.
     console.warn('Failed to load airfields:', e);
     return [];
   }
 }
-// --- VOR/DME stations (issue #404 follow-up) ------------------------
+// --- VOR/DME stations ------------------------------------------------
 // Lazy-loads docs/data/vor.json: { vors:[{ ident, name, he?, freq, lat, lng,
 // aipName?, type?, ch?, hours?, elevFt?, coverageNm?, remarks?, dmeOnly? }].
 // Used by the overlay markers, the selectable reference for radial/DME
@@ -2689,7 +2685,7 @@ function drawVors(force) {
   octx.lineWidth = 1;
 }
 
-// --- reporting-type overlay (issue #404 / PR #405 design) ------------
+// --- reporting-type overlay -------------------------------------------
 // The CVFR chart's סוג דיווח class lives inline on each nav-waypoint as
 // `report` ('mandatory' = חובה, 'onRequest' = דרישה). reportingFor() resolves
 // a route-waypoint or nav-WP name (code or either locale label) to its class.
@@ -2738,7 +2734,7 @@ function drawReportingBadges() {
   octx.lineWidth = 1;
 }
 
-// Comm-change rings (issue #399 / #484). Drawn independently of the nav-WP
+// Comm-change rings. Drawn independently of the nav-WP
 // dot layer: the "Show Comm Changes" toggle marks frequency-boundary points
 // whether or not the full 173-dot reporting-point overlay is on. Positions
 // come from the same navWP dataset, so navWP must be loaded when this layer
@@ -2845,12 +2841,12 @@ if (typeof window !== 'undefined') {
 }
 
 function drawCommChangeRings() {
-  // Test-inspection hook (issue #399): every comm-change ring drawn this
+  // Test-inspection hook: every comm-change ring drawn this
   // frame is recorded here so Playwright can assert "ring drew at X"
   // without snapshotting overlay pixels. Built fresh every draw() so it
   // never accumulates stale names after a toggle off / pan away.
   const ringsDrawn = new Set();
-  const ringRadii = {};                  // #488 test hook: name -> drawn radius
+  const ringRadii = {};                  // test hook: name -> drawn radius
   // commChangeMap may be null briefly during boot — guard so a fast first
   // paint can't NPE before loadCommChange resolves. The red rings are an
   // on-screen affordance only — omit them from the PNG export (NavAid.exporting).
@@ -2859,7 +2855,7 @@ function drawCommChangeRings() {
     const ringWidth = tune('commChangeRingWidthPx');
     octx.strokeStyle = tune('commChangeRingColor');
     octx.lineWidth = ringWidth;
-    // #488: if a route waypoint sits on the point, drawWaypoints() paints a
+    // If a route waypoint sits on the point, drawWaypoints() paints a
     // filled disc over this ring later in the frame — and with "show waypoint
     // names" on, waypointGeom() enlarges that disc to fit its label. Grow the
     // ring to enclose the disc (+ its 3px stroke) so it stays visible outside.
@@ -2887,7 +2883,7 @@ function drawCommChangeRings() {
   window.__commChangeRingRadii = ringRadii;
 }
 
-// Issue #487: auto-seed a real note near any route waypoint that sits on a
+// Auto-seed a real note near any route waypoint that sits on a
 // comm-change reporting point, so the frequency change shows on the printed
 // plan. The note is a normal `state.notes` object (movable / editable /
 // deletable) tagged with `cc: <ICAO>` for idempotency — a point is seeded
@@ -3924,13 +3920,13 @@ function drawLegs() {
           outLabel: { a: 0, _default: 1, _m: 1 } };
     const inP = leg.inLabel || defaults.inLabel;
     const outP = leg.outLabel || defaults.outLabel;
-    // Issue #394: a default (unmodified) kite sits just outside the drift
+    // A default (unmodified) kite sits just outside the drift
     // cone instead of at a fixed per-zoom pixel offset. The cone's
     // perpendicular extent at the leg midpoint comes from the configured
     // drift angle; a margin keeps the kite visibly clear of the dashed
     // drift lines at every zoom / leg length. User-dragged offsets
     // (no `_default` flag) keep the existing `p * legZoomScale()` path so
-    // hand-positioned kites round-trip exactly as PR #393 designed.
+    // hand-positioned kites round-trip exactly according to the stored-offset design.
     const driftPerp = legDefaultLabelPerp(len);
     const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
@@ -4008,7 +4004,7 @@ function drawLegs() {
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
 
-    // Wind arrow (#722): show the wind that applies to each leg — the
+    // Wind arrow: show the wind that applies to each leg — the
     // route-wide wind, or a per-leg override where one is set. A leg that
     // overrides the route wind is drawn slightly bolder so the difference is
     // visible at a glance. Drawn at 30% along the leg (clear of the midpoint

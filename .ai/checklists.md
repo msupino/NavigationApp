@@ -32,8 +32,8 @@ Use these as quick pre-commit reminders.
 - Run focused dataset tests.
 - Update source-of-truth notes in `.ai/data.md` or `.ai/navaid-dev.md` if the source
   changed.
-- Keep route templates free of leg altitude values that belong in
-  active `<prefix>-leg-altitude.json`.
+- Keep route templates free of leg altitude values that belong on the
+  matching edge in the active `<prefix>-route-graph.json`.
 
 ## Branch / PR
 

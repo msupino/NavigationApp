@@ -757,7 +757,7 @@ function legLabelDragGrab(legIdx, which, px, py) {
 function setLegLabelFromPoint(dragState, px, py) {
   const leg = state.legs[dragState.i];
   const o = leg && (dragState.which === 'in' ? leg.inLabel : leg.outLabel);
-  if (!o) return false;                // malformed leg / label — issue #82
+  if (!o) return false;                // malformed leg / label
   const f = legFrame(dragState.i);
   if (!f) return false;                // degenerate leg — nothing to drag along
   const sc = legZoomScale() || 1;
@@ -773,7 +773,7 @@ function legLabelCenter(i, which) {
   const o = (which === 'in' ? state.legs[i].inLabel : state.legs[i].outLabel)
             || { a: 0, p: 0 };
   const sc = legZoomScale();
-  // Issue #394: a default (unmodified) label has no stored `p`; its
+  // A default (unmodified) label has no stored `p`; its
   // perpendicular is computed at render time from the live leg length
   // so it stays just outside the 10° drift cone. Mirror the renderer's
   // math here so the kite is grabbable at exactly its visible position.
@@ -792,11 +792,11 @@ function legLabelCenter(i, which) {
            y: f.my + f.dy * along + f.ny * perp };
 }
 
-// Issue #394: when the user starts dragging a default (unmodified)
+// When the user starts dragging a default (unmodified)
 // kite, freeze the currently-rendered offset into the stored
 // `{ a, p, _m: 1 }` form (drop `_default`) so subsequent drag deltas
 // have a real starting point. Keeps the user-dragged path identical
-// to PR #393's design — only the seed value comes from the drift-cone
+// to the stored-offset design — only the seed value comes from the drift-cone
 // formula instead of a fixed `±44 / legArrowSize`.
 function _materialiseDefaultLegLabel(legIdx, which) {
   const leg = state.legs[legIdx];
@@ -1164,7 +1164,7 @@ function deleteSelectedWpOrNote() {
   }
 }
 
-// Issue #418: resolve a waypoint to its nearest reference point
+// Resolve a waypoint to its nearest reference point
 // (airfield or nav waypoint) within the same ~18 px snap distance the
 // drop / drag path uses (`applyNavSnap`). Airfields take priority over
 // nav-WPs because they are a smaller, strongly-known set of landmarks
@@ -1185,7 +1185,7 @@ function findSnappedReference(wp) {
   return hit && hit.ref ? Object.assign({ kind: hit.kind }, hit.ref) : null;
 }
 
-// Issue #418: inspector waypoint-name reset handler. Restores the
+// Inspector waypoint-name reset handler. Restores the
 // snapped reference code if the waypoint sits on one; otherwise clears
 // the name so the dimmed sequence placeholder (`S.wpPrefix` + N) shows.
 function resetWpName(idx) {
@@ -1201,7 +1201,7 @@ function resetWpName(idx) {
 window.resetWpName = resetWpName;
 window.findSnappedReference = findSnappedReference;
 
-// Issue #418: Build toolbar — same naming rules as `resetWpName` for
+// Build toolbar — same naming rules as `resetWpName` for
 // every waypoint in one shot (confirm in ui.js).
 function resetAllWpNames() {
   for (let i = 0; i < state.waypoints.length; i++) {
@@ -2327,7 +2327,7 @@ function appendAirfieldDetailRows(body, af, label) {
   appendAirfieldPlates(body, af);
 }
 
-// Live METAR / TAF for an ICAO-coded airfield (#670). Fetched on demand from
+// Live METAR / TAF for an ICAO-coded airfield. Fetched on demand from
 // the published wx feed; shows decoded text with a toggle to the raw report.
 function appendAirfieldWeather(body, af) {
   const icao = String(af && af.name || '').toUpperCase();
@@ -2520,7 +2520,7 @@ function showInspector() {
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
-    // Wind (#722): per-leg override of the route-wide wind. Blank inputs
+    // Wind: per-leg override of the route-wide wind. Blank inputs
     // fall back to state.wind (shown as the placeholder); an explicit
     // speed of 0 marks the leg calm. The "With wind" row is a live readout
     // of the wind-triangle result (HDG/GS/WCA/time) — updated in place,
@@ -2569,7 +2569,7 @@ function showInspector() {
       : ((typeof legAltitudeForLeg === 'function') ? legAltitudeForLeg(idx) : null);
     const knownIn  = known && Number.isFinite(known.inboundAltitude)  ? known.inboundAltitude  : undefined;
     const knownOut = known && Number.isFinite(known.outboundAltitude) ? known.outboundAltitude : undefined;
-    // Minimum safe altitude (#673) row, updated in place as the altitudes
+    // Minimum safe altitude row, updated in place as the altitudes
     // change — no full inspector rebuild, so the number spinner / typing keep
     // focus while the red flag and value track live.
     let msaRow = null;
@@ -2634,7 +2634,7 @@ function showInspector() {
     reset.className = 'insp-btn';
     // Fallback to a glyph if the locale strings haven't been loaded yet —
     // Hebrew users used to see literal "undefined" on this button until
-    // resetLegMarkers landed in he/strings.js (PR review #4).
+    // Keep the Hebrew reset-label translation in he/strings.js.
     reset.textContent = S.resetLegMarkers || '↻';
     reset.title = S.resetLegMarkersTitle || 'Reset marker position';
     reset.setAttribute('aria-label', reset.title);
@@ -2904,7 +2904,7 @@ function showInspector() {
       appendSatelliteSnippet(body, wp, title.value);
       appendVorRadialRow(body, wp.lat, wp.lng);
     }
-    // Reporting-type badge (issue #404). The chart's סוג דיווח class lives
+    // Reporting-type badge. The chart's סוג דיווח class lives
     // inline on the nav-WP (`report`). Surfaces mandatory (חובה) vs on-request
     // (דרישה) for a route waypoint that matches a known reporting point.
     if (typeof reportingFor === 'function') {
@@ -2917,7 +2917,7 @@ function showInspector() {
         body.appendChild(row);
       }
     }
-    // Comm-change badge/editor (issue #399 + manual callouts). Known
+    // Comm-change badge/editor, including manual callouts. Known
     // comm-change points show the chart badge; any named waypoint without a
     // linked callout can still add a manual frequency-change arrow.
     if (showCommChange) {
@@ -2985,7 +2985,7 @@ function showInspector() {
       draw(); showInspector();
     };
     body.appendChild(del);
-    // Issue #418: waypoint-name reset — snaps the stored name back to
+    // Waypoint-name reset — snaps the stored name back to
     // the nearest reference code, or clears it when off-grid (placeholder).
     const resetName = document.createElement('button');
     resetName.className = 'insp-btn';
@@ -3147,7 +3147,7 @@ function numberRow(label, value, onChange, opts = {}) {
   // Endless 0–359 spinner wrap (attached first so it cleans the value before
   // the commit handler below reads it).
   if (opts.wrapStep) wrapDirectionInput(inp);
-  // Dim resettable fields while they still hold the default value (#722
+  // Dim resettable fields while they still hold the default value
   // follow-up): charted leg altitudes and inherited wind values read muted so
   // values the user typed stand out. Recomputed on every keystroke and reset.
   const hasDefaultStyle = opts.mutedWhenDefault || opts.undoValue !== undefined;
@@ -3242,7 +3242,7 @@ function textRow(label, value) {
 
 // Freq-change editor rows for a comm-change callout note: call-sign select
 // (or read-only name), frequency input, and a reset-location button. Shared
-// by the note inspector and the waypoint inspector (#530 — united) so a
+// by the note inspector and the waypoint inspector so a
 // freq-change point is edited from one panel either way.
 function appendFreqEdit(body, note, editOptions) {
   if (!note.freqName) {
@@ -3708,7 +3708,7 @@ function addModeExtendThroughWaypoint(i) {
   const src = state.waypoints[i];
   if (!src) return false;
   const tail = state.waypoints[state.waypoints.length - 1];
-  // #104's rule, unchanged: repeating the point the next leg would START from is the one case
+  // Repeating the point the next leg would start from is the one case
   // that makes a zero-length leg. Pressing the last waypoint therefore does nothing.
   if (tail && typeof sameMapPoint === 'function' && sameMapPoint(tail, src)) return false;
   state.waypoints.push({ lat: src.lat, lng: src.lng, name: src.name });
@@ -3736,7 +3736,7 @@ map.on('mousedown', e => {
   pendingOverlayAction = null;
   const p = e.containerPoint;
   // Hit-test priority matches paint order so the topmost element wins:
-  // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
+  // notes are drawn above waypoints (draw.js), so test notes first.
   const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
   const wpHits = hitWaypointCandidates(p.x, p.y);
   // A click inside a waypoint dot is unambiguously that waypoint, even though
@@ -3979,7 +3979,7 @@ map.on('mousemove', e => {
 
 // Re-enable map dragging on release anywhere, not just inside the map.
 // Listening to map.on('mouseup') alone misses releases over the toolbar /
-// browser chrome and leaves the map permanently unpannable (issue #70).
+// browser chrome and leaves the map permanently unpannable.
 // Anything hidden FOR the drag -- the frequency callout whose end is moving (draw.js's
 // commCalloutDragging) -- is only restored by a repaint that happens after the drag state
 // is gone. Every draw() inside the release path still sees `drag`/`touchDrag` set, so the
@@ -4035,7 +4035,7 @@ function endMouseDrag() {
         syncLegs();
       }
     }
-    // #487: a waypoint drag may have landed (snapped) on a comm-change point.
+    // A waypoint drag may have landed (snapped) on a comm-change point.
     // Seed its note now that the position is committed, then repaint.
     let changed = false;
     if (drag.kind === 'wp' && drag.moved) {
@@ -4105,7 +4105,7 @@ map.on('click', e => {
   }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
-    // #104: ignore the click when it lands on the point the next leg would START from --
+    // Ignore the click when it lands on the point the next leg would start from --
     // that, and only that, produces a duplicate at the same coords and a leg with zero
     // distance. Any EARLIER waypoint is fair game: clicking the departure field again is how
     // a local sortie is closed into a circular route, and a route may pass a point twice.
@@ -4116,7 +4116,7 @@ map.on('click', e => {
     const tail0 = state.waypoints[state.waypoints.length - 1];
     state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
     syncLegs();
-    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
+    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     // Auto-route: splice the published corridor between the old tail and the new point.
     // Async by nature (the graph loads lazily); the direct leg shows first and the
     // corridor points slot in when the chain resolves -- one draw, one undo state.
@@ -4201,7 +4201,7 @@ window.addEventListener('keydown', e => {
     if (typeof undo === 'function') undo();
     return;
   }
-  // Issue #420: '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
+  // '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
   // Suppressed in inputs (handled by the early return above) so typing a
   // literal '?' in a waypoint name or note still works. Most browsers
   // surface this key as `e.key === '?'`, but some keyboard layouts /
@@ -4213,7 +4213,7 @@ window.addEventListener('keydown', e => {
     if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
     return;
   }
-  // Issue #413: F (no modifier) fits the active paper frame when one is
+  // F (no modifier) fits the active paper frame when one is
   // selected, otherwise it re-runs fit-to-route. Ctrl/Cmd-F is the search
   // overlay shortcut handled in ui.js — bail out so we don't shadow it.
   if (shortcutPlain(e, 'KeyF', 'f')) {
@@ -4350,7 +4350,7 @@ mapEl.addEventListener('touchstart', e => {
   const wasDoubleTap = undoTapOpenIfDoubleTap(p.x, p.y);
   const selectionBeforeTouch = state.selected;
   // Hit-test priority matches paint order so the topmost element wins:
-  // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
+  // notes are drawn above waypoints (draw.js), so test notes first.
   const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
   const wpHits = hitWaypointCandidates(p.x, p.y);
   // A click inside a waypoint dot is unambiguously that waypoint, even though
@@ -4736,7 +4736,7 @@ function endTouch(evOrCancelled) {
       clearDragAndRedraw('touch');
       return;
     }
-    // #487: seed a comm-change note if a touch waypoint-drag landed on one.
+    // Seed a comm-change note if a touch waypoint-drag landed on one.
     let changed = false;
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
       changed = applyLegAltitudesToRoute();

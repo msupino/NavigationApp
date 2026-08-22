@@ -4,25 +4,22 @@
 
 Default base branch is `dev`.
 
-Before creating a feature branch, bring `dev` level with `main` first — always,
-not only when something looks stale. A branch cut from a `dev` that is behind
-`main` is born conflicting with production, and the conflict surfaces at promo
-time instead of now:
+Before creating a feature branch, update local `dev`. Verify that it already contains
+`main`; promotion automation normally keeps this true. An ordinary task must not repair
+a protected branch with a direct push. Use this sequence:
 
 ```bash
 git fetch origin --prune
 git checkout dev
 git branch --set-upstream-to=origin/dev dev
 git pull --ff-only origin dev
-git merge --ff-only origin/main || git merge --no-edit origin/main   # dev is shared: merge, never rebase
-git push origin dev
+git merge-base --is-ancestor origin/main dev || exit 1
 git checkout -b <branch>
 ```
 
-`git merge`, not `git rebase`: `dev` is a shared branch that `main` is promoted
-from, so rewriting its history would orphan every open PR based on it and every
-clone that has it. Fast-forward when `dev` has nothing of its own; a merge
-commit otherwise — which is what the promotion history already looks like.
+If the ancestry check fails, stop. Create a reviewed maintenance branch from `dev`, merge
+`origin/main` into that feature branch, and open a PR targeting `dev`. Never rebase or
+direct-push shared `dev` to repair promotion history.
 
 Before each production promotion, automation uses the open `dev` → `main`
 PR's Update branch operation to bring the previous promotion merge commit

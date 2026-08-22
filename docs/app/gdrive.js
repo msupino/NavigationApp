@@ -1,4 +1,4 @@
-/* NavAid — optional Google Drive sync for the saved-route library (#677).
+/* NavAid — optional Google Drive sync for the saved-route library.
  *
  * Fully client-side: Google Identity Services (token flow) + the Drive REST
  * API from the browser. No backend. Routes are stored as a single JSON file
@@ -292,8 +292,8 @@ function gdriveSync() {
 // navaid.ai.panelSize), toolbar section state (navaid.sec.*), local-tile
 // flags, and the in-progress working route (navaid.route, which the route
 // library already covers).
-// navaid.ai.provider, navaid.ai.key.*, and navaid.ai.model.* ARE synced —
-// enter the key once and it follows you across devices.
+// Provider/model choices and the flight-plan profile are portable. AI credentials and
+// fields that choose a data recipient remain device-local.
 const GDRIVE_SETTINGS_FILE = 'navaid-settings.json';
 const GDRIVE_SETTINGS_KEYS = [
   // base layer + page setup
@@ -336,37 +336,24 @@ const GDRIVE_SETTINGS_KEYS = [
   // cruise/climb numbers with the aircraft profile.
   'navaid.vorFreqOverrides', 'navaid.vorRef', 'navaid.navDataPrefix',
   'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed',
-  // The FPL profile: aircraft and pilot details worth having on every device.
-  // Written by fplProfileWrite() as navaid.fpl.<field>.
-  // replyTo IS here; aisEmail is not. The difference is what a wrong value does:
-  //   replyTo is the pilot's own address, cc'd so the approval reaches them. A wrong one
-  //     means they do not get their copy. It cannot misdirect the plan -- AIS is still
-  //     the recipient -- and writing this blob needs the Google account whose mailbox
-  //     already holds every plan the pilot sent, so a hostile value buys an attacker
-  //     nothing they could not already read. It is also required to file, so keeping it
-  //     device-local would block a pilot on a second device until they retype it.
-  //   aisEmail decides where the plan GOES: fplFilingAddress() prefers it over the
-  //     published FPL_FILE_TO, so syncing it would make the recipient settable from the
-  //     settings blob, and an override on one device would file from every device. The
-  //     mail client does show To: before the pilot sends, so this is easy to miss rather
-  //     than impossible to see -- but a recipient has no business in a synced blob.
-  //     Same rule that keeps navaid.ai.baseUrl out: never sync a key that decides
-  //     where data is sent.
+  // The pilot/aircraft profile follows the user across devices when settings sync is
+  // explicitly enabled. The filing destination (aisEmail) stays device-local because it
+  // decides where a plan is sent.
   ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
     'endurance', 'persons', 'kind', 'replyTo',
     'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
-  // AI assistant: active provider, per-provider API key, per-provider model.
-  // navaid.ai.baseUrl.<provider> excluded — decides where data is sent (see aisEmail note).
+  // AI assistant: active provider and per-provider model. API keys stay on the device.
+  // navaid.ai.baseUrl.<provider> excluded — it decides where data is sent.
   // Per PROVIDER now, and still device-local: a synced proxy URL would carry a synced key to
   // a host the other device never agreed to. This allowlist is exact-match, so the new
   // per-provider keys are excluded by construction; that is deliberate, not an oversight.
   // navaid.ai.panelPos/Size excluded — device-local geometry.
   'navaid.ai.provider',
-  'navaid.ai.key.gemini',      'navaid.ai.model.gemini',
-  'navaid.ai.key.anthropic',   'navaid.ai.model.anthropic',
-  'navaid.ai.key.openrouter',  'navaid.ai.model.openrouter',
-  'navaid.ai.key.deepseek',    'navaid.ai.model.deepseek',
-  'navaid.ai.key.orcarouter',  'navaid.ai.model.orcarouter',
+  'navaid.ai.model.gemini',
+  'navaid.ai.model.anthropic',
+  'navaid.ai.model.openrouter',
+  'navaid.ai.model.deepseek',
+  'navaid.ai.model.orcarouter',
 ];
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
 const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';
@@ -747,6 +734,10 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
         remote.values && typeof remote.values === 'object');
       const remoteValues = remoteOk ? remote.values : null;
       const remoteAt = remoteOk ? (+remote.updatedAt || 0) : 0;
+      // Older releases copied AI credentials into this blob. Any successful sync rewrites
+      // the remote file without them. Flight-plan profile fields are intentionally portable.
+      const remoteNeedsSensitiveScrub = !!(remoteValues && Object.keys(remoteValues).some(k =>
+        k.startsWith('navaid.ai.key.')));
       const local = _localSettingsBlob(remoteAt);
 
       const push = (values, stamp, snapshot) =>
@@ -844,13 +835,20 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
         // Remote wins. applySyncableSettings throws if a write was rejected, so a
         // partial apply never reaches the bookkeeping below.
         const changed = applySyncableSettings(remoteValues);
-        _recordSettingsSynced(collectSyncableSettings(), remoteAt);
+        const cleanValues = collectSyncableSettings();
+        if (remoteNeedsSensitiveScrub) {
+          const stamp = _nextSettingsStamp(remoteAt);
+          const publish = _settingsPublishValues(cleanValues, local.snapValues, remoteValues);
+          return push(publish, stamp, cleanValues).then(() => ({ applied: changed }));
+        }
+        _recordSettingsSynced(cleanValues, remoteAt);
         return { applied: changed };
       }
 
       // Local wins (or there is no remote yet).
       const publish = _settingsPublishValues(local.values, local.snapValues, remoteValues);
-      if (remoteOk && !local.changedLocally && _sameSettingsValues(publish, remoteValues)) {
+      if (remoteOk && !remoteNeedsSensitiveScrub && !local.changedLocally &&
+          _sameSettingsValues(publish, remoteValues)) {
         // Already identical — record parity and write nothing. Re-publishing here
         // is what used to overwrite the peer's blob on every no-op sync.
         _recordSettingsSynced(local.values, Math.max(remoteAt, local.updatedAt));

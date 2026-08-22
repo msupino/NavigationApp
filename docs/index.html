@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en" dir="ltr" class="app-booting">
 <head>
   <meta charset="utf-8">
   <meta name="viewport"
@@ -264,6 +264,18 @@
           var params = new URLSearchParams(location.search);
           params.set('lang', sel.value);
           location.href = '?' + params.toString();
+        });
+        // Browsers may restore a form control's live value from the back-forward cache after
+        // the document scripts set it. Reconcile the visible picker with the restored page.
+        window.addEventListener('pageshow', function () {
+          var p = new URLSearchParams(location.search).get('lang');
+          var lang = (p === 'en' || p === 'he') ? p : window.__navLang;
+          sel.value = lang;
+        });
+        // ui.js removes this as soon as setup completes. Keep a load-time fallback so a
+        // non-critical setup exception cannot leave the toolbar hidden indefinitely.
+        window.addEventListener('load', function () {
+          document.documentElement.classList.remove('app-booting');
         });
       }());
     </script>
