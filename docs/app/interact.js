@@ -2327,7 +2327,7 @@ function appendAirfieldDetailRows(body, af, label) {
   appendAirfieldPlates(body, af);
 }
 
-// Live METAR / TAF for an ICAO-coded airfield (#670). Fetched on demand from
+// Live METAR / TAF for an ICAO-coded airfield. Fetched on demand from
 // the published wx feed; shows decoded text with a toggle to the raw report.
 function appendAirfieldWeather(body, af) {
   const icao = String(af && af.name || '').toUpperCase();
@@ -2520,7 +2520,7 @@ function showInspector() {
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
-    // Wind (#722): per-leg override of the route-wide wind. Blank inputs
+    // Wind: per-leg override of the route-wide wind. Blank inputs
     // fall back to state.wind (shown as the placeholder); an explicit
     // speed of 0 marks the leg calm. The "With wind" row is a live readout
     // of the wind-triangle result (HDG/GS/WCA/time) — updated in place,
@@ -2569,7 +2569,7 @@ function showInspector() {
       : ((typeof legAltitudeForLeg === 'function') ? legAltitudeForLeg(idx) : null);
     const knownIn  = known && Number.isFinite(known.inboundAltitude)  ? known.inboundAltitude  : undefined;
     const knownOut = known && Number.isFinite(known.outboundAltitude) ? known.outboundAltitude : undefined;
-    // Minimum safe altitude (#673) row, updated in place as the altitudes
+    // Minimum safe altitude row, updated in place as the altitudes
     // change — no full inspector rebuild, so the number spinner / typing keep
     // focus while the red flag and value track live.
     let msaRow = null;
@@ -2634,7 +2634,7 @@ function showInspector() {
     reset.className = 'insp-btn';
     // Fallback to a glyph if the locale strings haven't been loaded yet —
     // Hebrew users used to see literal "undefined" on this button until
-    // resetLegMarkers landed in he/strings.js (PR review #4).
+    // Keep the Hebrew reset-label translation in he/strings.js.
     reset.textContent = S.resetLegMarkers || '↻';
     reset.title = S.resetLegMarkersTitle || 'Reset marker position';
     reset.setAttribute('aria-label', reset.title);
@@ -3147,7 +3147,7 @@ function numberRow(label, value, onChange, opts = {}) {
   // Endless 0–359 spinner wrap (attached first so it cleans the value before
   // the commit handler below reads it).
   if (opts.wrapStep) wrapDirectionInput(inp);
-  // Dim resettable fields while they still hold the default value (#722
+  // Dim resettable fields while they still hold the default value
   // follow-up): charted leg altitudes and inherited wind values read muted so
   // values the user typed stand out. Recomputed on every keystroke and reset.
   const hasDefaultStyle = opts.mutedWhenDefault || opts.undoValue !== undefined;
@@ -3242,7 +3242,7 @@ function textRow(label, value) {
 
 // Freq-change editor rows for a comm-change callout note: call-sign select
 // (or read-only name), frequency input, and a reset-location button. Shared
-// by the note inspector and the waypoint inspector (#530 — united) so a
+// by the note inspector and the waypoint inspector so a
 // freq-change point is edited from one panel either way.
 function appendFreqEdit(body, note, editOptions) {
   if (!note.freqName) {
@@ -3708,7 +3708,7 @@ function addModeExtendThroughWaypoint(i) {
   const src = state.waypoints[i];
   if (!src) return false;
   const tail = state.waypoints[state.waypoints.length - 1];
-  // #104's rule, unchanged: repeating the point the next leg would START from is the one case
+  // Repeating the point the next leg would start from is the one case
   // that makes a zero-length leg. Pressing the last waypoint therefore does nothing.
   if (tail && typeof sameMapPoint === 'function' && sameMapPoint(tail, src)) return false;
   state.waypoints.push({ lat: src.lat, lng: src.lng, name: src.name });
@@ -4035,7 +4035,7 @@ function endMouseDrag() {
         syncLegs();
       }
     }
-    // #487: a waypoint drag may have landed (snapped) on a comm-change point.
+    // A waypoint drag may have landed (snapped) on a comm-change point.
     // Seed its note now that the position is committed, then repaint.
     let changed = false;
     if (drag.kind === 'wp' && drag.moved) {
@@ -4105,7 +4105,7 @@ map.on('click', e => {
   }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
-    // #104: ignore the click when it lands on the point the next leg would START from --
+    // Ignore the click when it lands on the point the next leg would start from --
     // that, and only that, produces a duplicate at the same coords and a leg with zero
     // distance. Any EARLIER waypoint is fair game: clicking the departure field again is how
     // a local sortie is closed into a circular route, and a route may pass a point twice.
@@ -4116,7 +4116,7 @@ map.on('click', e => {
     const tail0 = state.waypoints[state.waypoints.length - 1];
     state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
     syncLegs();
-    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
+    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     // Auto-route: splice the published corridor between the old tail and the new point.
     // Async by nature (the graph loads lazily); the direct leg shows first and the
     // corridor points slot in when the chain resolves -- one draw, one undo state.
@@ -4736,7 +4736,7 @@ function endTouch(evOrCancelled) {
       clearDragAndRedraw('touch');
       return;
     }
-    // #487: seed a comm-change note if a touch waypoint-drag landed on one.
+    // Seed a comm-change note if a touch waypoint-drag landed on one.
     let changed = false;
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
       changed = applyLegAltitudesToRoute();

@@ -86,6 +86,19 @@ test('back closes shortcuts through cleanup and allows them to reopen', async ({
   await expect(page.locator('.modal-back.shortcuts-help')).toHaveCount(1);
 });
 
+test('back closes a plate through cleanup so one Escape closes the reopened viewer', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => showPlateViewer('dummy.pdf', 'Dummy'));
+  await expect(page.locator('.modal-back.plate-viewer')).toHaveCount(1);
+  await back(page, false);
+  await expect(page.locator('.modal-back.plate-viewer')).toHaveCount(0);
+
+  await page.evaluate(() => showPlateViewer('dummy.pdf', 'Dummy'));
+  await expect(page.locator('.modal-back.plate-viewer')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.modal-back.plate-viewer')).toHaveCount(0);
+});
+
 test('back leaves a map tool before it leaves the app', async ({ page }) => {
   await bootNative(page);
   await page.evaluate(() => setMode('add'));

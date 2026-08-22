@@ -993,7 +993,7 @@ window.S = Object.assign({
   airfieldsUrl: 'data/airfields.json?v=39',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
-  vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations (#404 follow-up)
+  vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms
@@ -2211,7 +2211,7 @@ const state = {
   commChangeSuppressions: [], // canonical comm-change callouts the user deleted
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
-  wind: { dir: tune('windDir'), speed: tune('windSpeed') }, // route-wide wind (#722): dir °true FROM, kt; 0 = calm; default is tunable
+  wind: { dir: tune('windDir'), speed: tune('windSpeed') }, // route-wide wind: dir °true FROM, kt; 0 = calm; default is tunable
 };
 var showReturn = false;     // outbound (return) markers — off by default
 // Which direction's leg kites to draw: 'both' | 'out' | 'back'. An out-and-back route
@@ -2244,7 +2244,7 @@ var autoRouteCorridors = false;
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
 var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref
-var forceSnap = false;      // #106: when on, every click snaps to the
+var forceSnap = false;      // when on, every click snaps to the
                             // absolute nearest airfield / nav-WP regardless
                             // of click distance (otherwise: 18 px radius).
 var airfields = null;       // same null/[]/populated convention as navWP —
@@ -2252,7 +2252,7 @@ var airfields = null;       // same null/[]/populated convention as navWP —
                             // { name, he, lat, lng, en?, elev_ft?, atis?, clearance?, plates:[], runways:[]|null }.
                             // `en`, `elev_ft`, `atis`, `clearance`,
                             // `plates`, and `runways` are
-                            // optional per the chart-rebuild (#412): ARPs
+                            // optional after chart rebuilds: ARPs
                             // surfaced from the IAA chart with no published
                             // BYOP enrichment ship as bare {name,he,lat,lng}.
 var showCommChange = true;   // Comm-change ring overlay + callouts (default on).
@@ -2291,7 +2291,7 @@ var routeAltPrefix = null;
 // routes menu. Session-only (not persisted across reload).
 var currentRouteLibraryId = null;
 var showDrift = true;       // 10-degree drift reference lines
-var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
+var showWind = false;       // wind effect: inputs + arrows + readout — opt-in
 var sigmets = null;         // null = not loaded; [] or populated once fetched
 var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showNotam = false;      // NOTAM overlay — opt-in
@@ -2347,7 +2347,7 @@ let pageSize = null;        // null | 'A3' | 'A4'
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
 var aircraft = null;               // null | {gph, taxiGal}
-// Flight-plan card placed on the PNG export (#378). null = off; otherwise
+// Flight-plan card placed on the PNG export. null = off; otherwise
 // { x, y } top-left in container pixels. planCardRect holds the last rendered
 // bounds for hit-testing the drag.
 var planCard = null;
@@ -2599,7 +2599,7 @@ function toMagnetic(deg) {
   const mv = typeof tune === 'function' ? tune('magneticVariationDeg') : magVar;
   return ((Math.round(deg + mv) % 360) + 360) % 360;
 }
-// --- wind triangle (#722) -------------------------------------------
+// --- wind triangle --------------------------------------------------
 // Resolve the wind that applies to a leg: an explicit per-leg override (with
 // either field falling back to the route wind) beats the route-wide wind.
 // Returns null for calm (speed <= 0) so callers can skip the no-op math.
@@ -2638,7 +2638,7 @@ function windTriangle(courseTrue, tas, wind) {
     gs,
   };
 }
-// Winds-aloft level mapping (#722): Open-Meteo serves wind/temperature on
+// Winds-aloft level mapping: Open-Meteo serves wind/temperature on
 // these pressure levels (hPa). Map a planned altitude to the nearest one so a
 // CVFR leg at ~3000 ft pulls ~900 hPa, ~5000 ft pulls ~850 hPa, etc.
 const OPEN_METEO_LEVELS_HPA =
@@ -3368,7 +3368,7 @@ function toHMS(hours) {
   return m + ':' + String(s).padStart(2, '0');
 }
 
-// --- vertical profile: top-of-climb / top-of-descent (#672) -------------
+// --- vertical profile: top-of-climb / top-of-descent --------------------
 // Default GA climb/descent performance (C172-ish) lives in the tune registry.
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
 function routeEndpointElev(i) {
@@ -3468,7 +3468,7 @@ function routeProfile(ac, legIndexes) {
   return out;
 }
 
-// --- airfield METAR / TAF (#670) ---------------------------------------
+// --- airfield METAR / TAF ----------------------------------------------
 // NOAA AWC's METAR/TAF API blocks direct browser fetches and public proxies
 // proved unreliable, so a scheduled GitHub Action fetches it server-side and
 // publishes wx.json (all Israeli fields) to the `wx-data` branch, served by

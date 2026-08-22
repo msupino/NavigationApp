@@ -417,7 +417,7 @@ function validateRoute(d) {
       }
     }
   }
-  // Route-wide wind (#722) — optional { dir (°true, FROM), speed (kt) }.
+  // Route-wide wind — optional { dir (°true, FROM), speed (kt) }.
   if (Object.prototype.hasOwnProperty.call(d, 'wind')) {
     if (_vKind(d.wind) !== 'object') {
       errs.push('root.wind: expected object, got ' + _vKind(d.wind));
@@ -456,12 +456,12 @@ function validateRoute(d) {
       _vRouteAltitude(l, 'inboundAltitude', p, errs);
       _vRouteAltitude(l, 'outboundAltitude', p, errs);
       _v(l, 'flightSpeed',      'number', p, errs);
-      // #212: hasOwnProperty (not 'in') so inherited Object.prototype keys
+      // Use hasOwnProperty (not 'in') so inherited Object.prototype keys
       // can never satisfy the optional check.
       if (Object.prototype.hasOwnProperty.call(l, 'outboundSpeed')) {
         _v(l, 'outboundSpeed', 'number', p, errs);
       }
-      // Per-leg wind override (#722) — optional; dir / speed each optional
+      // Per-leg wind override — optional; dir / speed each optional
       // (a partial override falls back to the route wind for the other half).
       if (Object.prototype.hasOwnProperty.call(l, 'wind')) {
         if (_vKind(l.wind) !== 'object') {
@@ -815,7 +815,7 @@ function validateLegAltitudes(d) {
 // Extras at any level are silently allowed for forward compatibility.
 //
 // `en`, `elev_ft`, `atis`, `clearance`, `plates`, and `runways` are optional
-// per-entry — the chart's published ARP list (#411) carries airfields whose
+// per-entry — the chart's published ARP list carries airfields whose
 // BYOP plate / elevation / runway enrichment is not yet in the repo, and
 // dropping them just because we don't have a plate folder yet would lose
 // real waypoints. When present they're still strictly type-checked.
@@ -884,7 +884,7 @@ function validateAirfields(d) {
 // should be the size the file was *saved* under; if the file does not
 // carry that field we fall back to the current `legArrowSize` (which
 // matches the user's current display environment — the safest default
-// per the PR-review #3 recommendation).
+// so imported values remain plain data rather than formulas).
 function _normalizeLegLabel(raw, legacyArrowSize) {
   if (!raw) return raw;
   if (raw._m) {
@@ -975,7 +975,7 @@ function routeSnapshotForStorage() {
   };
 }
 // Serializable, schema-clean snapshot of the current route. Shared by the
-// JSON file export (save), the route library (#677), and any other route
+// JSON file export (save), the route library, and any other route
 // persistence — keep this the single source of the on-disk route shape.
 // A per-leg reference-VOR override (#... the Radial/DME source for one leg) as it
 // travels on the wire: an ident string or nothing. An unknown ident is kept rather
@@ -1032,7 +1032,7 @@ function serializeRoute() {
     notes: state.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
       shape: n.shape || 'rect',
-      ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
+      ...(n.cc ? { cc: n.cc } : {}),   // preserve comm-change seed tag
       ...(n.freqName ? { freqName: n.freqName } : {}),
       ...(n.freq ? { freq: n.freq } : {}),
       ...(n.freqAuto === true ? { freqAuto: true } : {}),
@@ -1042,7 +1042,7 @@ function serializeRoute() {
   };
   if (commChangeSuppressions.length) data.commChangeSuppressions = commChangeSuppressions;
   const wind = encodeWind(state.wind);
-  if (wind && wind.speed > 0) data.wind = wind;     // calm = omit (#722)
+  if (wind && wind.speed > 0) data.wind = wind;     // calm = omit
   const bearing = currentMapBearing();
   if (bearing) data.bearing = bearing;              // north-up = 0 = omit
   return data;
@@ -2440,7 +2440,7 @@ function looksLikeRouteLibrary(d) {
 }
 
 function load(file) {
-  // #146: hard cap on file size before we even read it. Route JSON is
+  // Hard-cap file size before reading it. Route JSON is
   // typically <100 KB; 2 MB leaves room for big routes / future fields and
   // still aborts a user mis-pick (e.g. a PDF / image) instantly.
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
@@ -2492,7 +2492,7 @@ function load(file) {
 
 // Apply a parsed, validated route blob (the shape serializeRoute() emits) to
 // the live state and redraw. Shared by file import (load) and the route
-// library (#677). Caller is responsible for validateRoute() first.
+// library. Caller is responsible for validateRoute() first.
 function applyRouteData(d) {
   routeAltPrefix = null;    // replacing the route unpins its altitude layer
   currentRouteLibraryId = null;   // default: loaded route isn't a library entry
@@ -2533,7 +2533,7 @@ function applyRouteData(d) {
   state.notes = d.notes.map(n => ({
     lat: r5(n.lat), lng: r5(n.lng),
     text: n.text, color: n.color, shape: n.shape,
-    ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
+    ...(n.cc ? { cc: n.cc } : {}),   // preserve comm-change seed tag
     ...(n.freqName ? { freqName: n.freqName } : {}),
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
@@ -2563,14 +2563,14 @@ function applyRouteData(d) {
   draw();
 }
 
-// --- route library (#677) — multiple named routes in localStorage --------
+// --- route library — multiple named routes in localStorage ----------------
 // Device-local only (no backend). Each entry: { id, name, savedAt, data }
 // where `data` is a serializeRoute() blob.
 const ROUTE_LIBRARY_KEY = 'navaid.routes';
 // A corrupt (unparseable / non-array) library blob must not be treated as an
 // empty library: save / import / GPS-save would then persist [] over it and
 // silently erase the user's raw saved routes. Mirror the main route store's
-// #73 protection — preserve the raw blob, flag it, and block writes until the
+// Preserve a corrupt raw blob, flag it, and block writes until the
 // user recovers (export raw) or explicitly clears it (persist with force).
 function loadRouteLibrary() {
   const raw = localStorage.getItem(ROUTE_LIBRARY_KEY);
@@ -2898,10 +2898,10 @@ function wpLabel(i) {
   return waypointDisplayLabel(wp, i);
 }
 
-// #86: Flight Plan modal state and Escape-to-close handling.
+// Flight Plan modal state and Escape-to-close handling.
 let flightPlanBack = null;
 let refreshFlightPlan = null;
-let drawProfileStripIfOpen = null;   // set while the flight-plan modal is open (#672)
+let drawProfileStripIfOpen = null;   // set while the flight-plan modal is open
 let flightPlanEscape = null;
 let flightPlanCleanup = null;             // tears down drag listeners attached
                                           // outside the modal subtree (window).
@@ -2947,7 +2947,7 @@ function closeFlightPlan() {
 }
 
 function showFlightPlan() {
-  if (refreshFlightPlan) return;        // #78: dedupe — modal already open
+  if (refreshFlightPlan) return;        // dedupe — modal already open
   if (state.legs.length === 0) {
     alert(S.errNoLegs);
     return;
@@ -3087,7 +3087,7 @@ function showFlightPlan() {
   }
   box.appendChild(fpAircraft);
 
-  // Vertical profile strip (#672) — altitude vs distance with TOC/TOD.
+  // Vertical profile strip — altitude vs distance with TOC/TOD.
   const profWrap = document.createElement('div');
   profWrap.className = 'fp-profile';
   const profLbl = document.createElement('div');
@@ -3096,7 +3096,7 @@ function showFlightPlan() {
   profTitle.textContent = S.profileTitle || 'Vertical profile';
   profLbl.appendChild(profTitle);
   // V/S input — vertical speed (ft/min) driving the climb/descent ramp slope.
-  // Default 500; persisted so the pilot's preferred rate sticks (#672).
+  // Default 500; persisted so the pilot's preferred rate sticks.
   if (!(window.profileVS > 0)) {
     let stored = 0;
     try { stored = parseInt(localStorage.getItem('navaid.profileVS'), 10); } catch (e) { /* ignore */ }
@@ -3364,7 +3364,7 @@ function showFlightPlan() {
     inp.type = 'text';
     inp.className = 'plan-name';
     inp.maxLength = 10;
-    // #81: show the locale-resolved label so the cell matches the map.
+    // Show the locale-resolved label so the cell matches the map.
     normalizeWaypointSequenceName(state.waypoints[wpIdx]);
     inp.value = navName((state.waypoints[wpIdx].name || '').trim());
     inp.placeholder = waypointDisplayLabel(state.waypoints[wpIdx], wpIdx);
@@ -3488,7 +3488,7 @@ function showFlightPlan() {
         draw();
         refresh();
         if (retRefresh) retRefresh();
-        // Keep an open leg inspector in sync with the edit (#672 follow-up).
+        // Keep an open leg inspector in sync with the edit.
         refreshInspectorIfVisible();
       }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
@@ -3628,7 +3628,7 @@ function showFlightPlan() {
     const firstVisible = visibleIndexes.length ? visibleIndexes[0] : 0;
     const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[firstVisible]) ? ac.taxiGal : 0;
     if (taxiFuel) tf = taxiFuel;
-    // Per-leg time/fuel accounting for climb & descent (#672); falls back to
+    // Per-leg time/fuel accounting for climb and descent; falls back to
     // flat cruise per leg when the profile engine is unavailable.
     const prof = typeof routeProfile === 'function' ? routeProfile(ac) : null;
     if (typeof drawProfileStripIfOpen === 'function') drawProfileStripIfOpen();
@@ -3969,7 +3969,7 @@ function showFlightPlan() {
     URL.revokeObjectURL(a.href);
   }
 
-  // #674 \u2014 kneeboard nav-log: open a clean, print-ready document (header +
+  // Kneeboard nav-log: open a clean, print-ready document (header +
   // per-leg table(s) + frequency list) in a new window and trigger print, so
   // the pilot saves a PDF via the browser. Renders Hebrew RTL natively.
   function exportNavLog() {
@@ -4174,7 +4174,7 @@ function showFlightPlan() {
   addModalCloseX(box, closeFlightPlan);
 
   back.appendChild(box);
-  // Close via the Close button or Escape (#86).
+  // Close via the Close button or Escape.
   document.body.appendChild(back);
   flightPlanBack = back;
   // Keyboard reach, minus the Tab trap: this panel is deliberately non-blocking (the
@@ -4184,7 +4184,7 @@ function showFlightPlan() {
   flightPlanPrevFocus = document.activeElement;
   const fpCloseX = box.querySelector('.modal-close-x');
   if (fpCloseX) { try { fpCloseX.focus(); } catch (e) { /* */ } }
-  // #78: keep the modal in sync with the live route. draw() calls this after
+  // Keep the modal in sync with the live route. draw() calls this after
   // each redraw so dragging a waypoint or reversing the route updates dist /
   // hdg / time / total. A leg-count change (delete wp, import, clear) tears
   // the modal down and re-opens it on the next tick so input handlers rebind
@@ -4230,7 +4230,7 @@ function showFlightPlan() {
   // refresh() ran above before the modal was mounted, so the profile canvas
   // was still disconnected and drawProfileStripIfOpen() bailed out — the
   // strip stayed blank until the first edit. Now that `back` is in the DOM,
-  // draw it once (rAF so the canvas has its laid-out clientWidth). #672
+  // Draw it once after layout so the canvas has its clientWidth.
   if (typeof drawProfileStripIfOpen === 'function') {
     requestAnimationFrame(drawProfileStripIfOpen);
   }
@@ -4263,7 +4263,7 @@ function chooseOrientation(size, onPick) {
   addModalCloseX(box, () => { document.removeEventListener('keydown', onEsc); back.remove(); });
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
-  // #86: Escape closes the picker (counts as cancel).
+  // Escape closes the picker (counts as cancel).
   function onEsc(e) { if (e.key === 'Escape') close(); }
   function close() {
     document.removeEventListener('keydown', onEsc);
@@ -4508,7 +4508,7 @@ function showExportModal() {
   afLabel.appendChild(document.createTextNode(S.exportShowAirfields));
   body.appendChild(afLabel);
 
-  // Place flight-plan table on the export (#378). Drag it on the live map.
+  // Place the flight-plan table on the export. Drag it on the live map.
   const planLabel = document.createElement('label');
   planLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   planLabel.title = S.exportPlanPlaceTitle || '';
@@ -5304,7 +5304,7 @@ function exportPNG(mode) {
       drawWaypoints();
       drawNotes();
       if (typeof flushKites === 'function') flushKites();   // above the callouts
-      drawPlanCard();        // flight-plan card placed in the export modal (#378)
+      drawPlanCard();        // flight-plan card placed in the export modal
       o.restore();
     } finally {
       octx = prevOctx;
@@ -5366,7 +5366,7 @@ function exportPNG(mode) {
       if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
   }).catch(err => {
-    // #215: a sync throw in the .then body (e.g. drawImage on a malformed
+    // A synchronous throw in the .then body (for example drawImage on a malformed
     // bitmap) would otherwise leave the button disabled forever. Restore
     // the UI so the user can retry, and surface the failure.
     console.warn('PNG export pipeline failed:', err);
@@ -5633,7 +5633,7 @@ async function flyRoute() {
   function onPick(mode) {
     if (mode === 'web') {
       if (!confirm(S.geWebConfirm)) return;
-      // #145: validate the first waypoint's coords before string-concat so a
+      // Validate the first waypoint's coords before string concatenation so a
       // malformed lat/lng (e.g. from a tampered import) can't leak into the
       // URL. heading()/altM() are already bounded numerics by construction.
       const lat = Number(wps[0].lat), lng = Number(wps[0].lng);
@@ -5705,7 +5705,7 @@ async function flyRoute() {
 // --- route persistence ----------------------------------------------
 const STORE_KEY = 'navaid.route';
 let persistTimer = null;
-let quotaWarned = false;                // #80: stop scheduling after a quota fail
+let quotaWarned = false;                // stop scheduling after a quota failure
 // An empty route is stored as the *absence* of the key, not an empty object, so
 // a fresh boot (or a clear-store reload) leaves navaid.route truly cleared
 // rather than re-writing "{waypoints:[]…}".
@@ -5739,7 +5739,7 @@ function persist() {
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(function tick() {
     // Export started after this timer was scheduled. Don't write (the export mutates
-    // state, and #214 is that those mutations must not reach storage) -- but don't drop
+    // state; those mutations must not reach storage. Do not drop
     // the write either: RE-ARM and let the same pending timer land once the export ends.
     // Returning outright would lose whatever the pilot changed just before exporting
     // unless something happened to call persist() again afterwards, and clearing the
@@ -5751,7 +5751,7 @@ function persist() {
       // center / zoom are not restored (load fits the route) — not saved.
       writeRoute();
     } catch (e) {
-      // #80: a full quota used to fail silently. Surface it once so the
+      // A full quota used to fail silently. Surface it once so the
       // user knows to export the route; other storage-unavailable errors
       // (private mode, disabled storage) stay silent as before.
       if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
@@ -5881,11 +5881,11 @@ function restoreRoute() {
     d = JSON.parse(raw);
   } catch (e) {
     NavAid.corruptCacheError = e.message;
-    return 'corrupt';                     // bad JSON — preserve raw blob (#73)
+    return 'corrupt';                     // bad JSON — preserve raw blob
   }
   // Strict schema check. Legacy saved blobs lacking a newer
   // field (e.g. notes added later) will fail here. The caller treats
-  // 'corrupt' as the preserve-on-failure path from #73: the raw blob is
+  // 'corrupt' as the preserve-on-failure path: the raw blob is
   // left untouched in localStorage and the boot continues with empty
   // state, so no user work is lost (they can hand-edit / re-import).
   const verr = validateRoute(d);
@@ -5902,12 +5902,12 @@ function restoreRoute() {
     ...(w.turn ? { turn: 1 } : {}),
     ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
   }));
-  // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
+  // Normalise inLabel/outLabel offsets to a zoom-12 reference so they
   // scale proportionally with zoom. Legacy blobs lack `_m` and hold raw
   // pixel offsets, which `_normalizeLegLabel` divides by `legacyArrowSize`
   // (one-shot, idempotent — the `_m: 1` stamp blocks any re-migration). If
   // the saved blob carries its own legArrowSize we honour it; otherwise we
-  // fall back to the current setting (PR-review #3).
+  // fall back to the current setting.
   const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
     ? d.legArrowSize : legArrowSize;
   state.legs = d.legs.map(l => ({
@@ -5958,7 +5958,7 @@ function restoreRoute() {
   return true;
 }
 
-// --- Airfield plates viewer (#105) -----------------------------------
+// --- Airfield plates viewer ------------------------------------------
 // Plate PDFs (~133 MB) ship as a SINGLE copy at the deployed artifact root;
 // staging / PR / branch previews don't carry their own copy and resolve
 // plates against that shared root. Deriving the base from location at load
@@ -6154,6 +6154,7 @@ function showPlateViewer(filename, label) {
     window.removeEventListener('keydown', onEsc, true);
     back.remove();
   }
+  back._navaidClose = teardown;
   addModalCloseX(box, teardown);
 
   // The plate viewer opens on top of the Charts modal. Both the Charts
@@ -7622,7 +7623,7 @@ function showChartsModal(focusIcao) {
   modal.show();
 }
 
-// --- shareable route link (#162) -----------------------------------
+// --- shareable route link ------------------------------------------
 // Encodes the current route into the URL so a pilot can paste a link
 // into WhatsApp / Telegram and the receiver opens the same route.
 //
@@ -7776,7 +7777,7 @@ function decodeShareUrl(search) {
     // size-independent default with `_m: 1` so the offsets render at the
     // same on-screen position as a freshly-created leg, independent of
     // legArrowSize, and so the migration in restoreRoute() / load() never
-    // touches them on a later round-trip (PR-review #3 + #5).
+    // touches them on a later round trip.
     const d = _defaultLegLabels();
     return {
       inboundAltitude: ia,
@@ -7981,7 +7982,7 @@ function rebuildMagnifier() {
   // dots / lines drifted off the terrain whenever the map was rotated.
   const _pane = _readMagPaneMatrix();
 
-  // #483: Leaflet can have multiple `.leaflet-tile-container` levels visible
+  // Leaflet can have multiple `.leaflet-tile-container` levels visible
   // during a zoom transition or past maxNativeZoom. Each level has its own
   // CSS transform. We must preserve this hierarchy in the loupe, otherwise
   // tiles from different levels drift apart.

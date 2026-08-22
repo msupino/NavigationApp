@@ -19,7 +19,7 @@ After both decisions, PNGs not referenced by either live manifest are pruned.
   the runtime graph; waypoint, leg-altitude, and communication-change views are
   projections of this one source.
 - `route-templates.json` - ready-made route templates. Do not duplicate leg
-  altitude values here when they belong in a leg-altitude dataset.
+  altitude values here when they belong on an edge in the active route graph.
 - `vor.json` - VOR stations used by radial/DME readouts.
 - `terrain.json` - coarse elevation grid for MSA warnings.
 - `wx.json` - weather metadata/source configuration.

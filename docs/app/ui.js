@@ -871,7 +871,7 @@ setInterval(refreshZuluClock, 1000);
 // --- map legend (bottom-left) ---------------------------------------
 // The legend markup lives in index.html so applyI18n() fills its text at
 // boot; here we lift that element into a Leaflet control so it floats over
-// the map (a chart legend) instead of sitting inside the View menu (#526).
+// the map (a chart legend) instead of sitting inside the View menu.
 // Bottom-left (above the coord readout) keeps it clear of the inspector
 // (top-right), the toolbar (top-left) and the rotate dial (bottom-right).
 const legendCtrl = L.control({ position: 'bottomleft' });
@@ -964,7 +964,7 @@ legendCtrl.addTo(map);
 // --- live mouse coordinate readout ---------------------------------
 // Bottom-right, sat to the LEFT of the zoom +/- + rotate-dial column (CSS
 // offsets it clear of those buttons) so it no longer collides with the
-// bottom-left legend (#526). Updates on every map mousemove with the same
+// bottom-left legend. Updates on every map mousemove with the same
 // DM format the inspector uses for waypoints (fmtLatLng).
 const coordCtrl = L.control({ position: 'bottomright' });
 coordCtrl.onAdd = function () {
@@ -997,7 +997,7 @@ vorReadoutCtrl.onAdd = function () {
 vorReadoutCtrl.addTo(map);
 const vorReadoutBox = document.getElementById('vor-readout');
 
-// Route-wide wind readout (#722) — bottom-right corner, above the coord/VOR
+// Route-wide wind readout — bottom-right corner, above the coord/VOR
 // readouts. Shown only when the wind is non-calm.
 const windReadoutCtrl = L.control({ position: 'bottomright' });
 windReadoutCtrl.onAdd = function () {
@@ -1474,7 +1474,7 @@ async function buildRouteFromQuery(raw) {
   state.wind = { dir: 270, speed: 0 };     // search-built route carries no wind — don't inherit the previous route's
   state.selected = null;
   syncLegs();
-  if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
+  if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   wpSearch.value = '';
   hideSearchOverlay();
   showInspector();
@@ -2119,7 +2119,7 @@ function showRouteLibraryModal(focusSave) {
 
   body.append(saveRow, list, tools);
 
-  // Corrupt library (issue mirror of #73): loadRouteLibrary() sets the flag.
+  // loadRouteLibrary() sets this flag when the saved library is corrupt.
   // Surface it with recovery actions and note that saving is blocked
   // (persistRouteLibrary refuses to overwrite the raw blob).
   loadRouteLibrary();
@@ -2151,7 +2151,7 @@ function showRouteLibraryModal(focusSave) {
     body.prepend(warn);
   }
 
-  // Optional Google Drive sync (#677 follow-up). Only shown when an OAuth
+  // Optional Google Drive sync. Only shown when an OAuth
   // client ID is configured (gdrive.js); otherwise the feature stays dormant.
   if (typeof gdriveConfigured === 'function' && gdriveConfigured()) {
     const gd = document.createElement('div');
@@ -2316,7 +2316,7 @@ function runSearch() {
     items: (typeof activeNotams === 'function') ? activeNotams() : [], routable: false,
     match: n => hit(n.id, q) || hit(n.icao, q) || hit(n.text, q),
   });
-  // #124: split the 12 slots across sources so one broad match cannot fill them all.
+  // Split the 12 slots across sources so one broad match cannot fill them all.
   const hits = [];
   const perSource = [];
   for (const so of src) perSource.push(so.items.filter(so.match).map(e => ({ kind: so.kind, entry: e, src: so })));
@@ -3637,7 +3637,7 @@ document.getElementById('reporting-cb').onchange = async e => {
   if (showReporting && navWP === null) await loadNavWaypoints();
   draw();
 };
-// Minimum safe altitude row in the leg inspector (#673). Off by default —
+// Minimum safe altitude row in the leg inspector. Off by default —
 // it is a planning aid, not a terrain-warning system, so users opt in.
 const MSA_KEY = 'navaid.showMsa';
 try {
@@ -3658,7 +3658,7 @@ if (msaCb) {
     if (typeof draw === 'function') draw();
   };
 }
-// --- route-wide wind inputs (#722) ----------------------------------
+// --- route-wide wind inputs -----------------------------------------
 // The wind lives in state.wind (persisted with the route, not in its own
 // localStorage key — it's a property of the flight, like speed/altitude).
 // The two View inputs drive it; the corner readout + every leg redraw react.
@@ -3669,7 +3669,7 @@ if (msaCb) {
 function windDefault() { return { dir: tune('windDir'), speed: tune('windSpeed') }; }
 function refreshWindInputs() { refreshWindReadout(); }
 window.refreshWindInputs = refreshWindInputs;
-// "Show wind effect" toggle (#722) gates the wind inputs, the per-leg map
+// "Show wind effect" toggles the wind inputs, the per-leg map
 // arrows, the corner readout, and the inspector wind rows. Off by default —
 // it's a planning aid, not part of the core route picture.
 const WIND_KEY = 'navaid.showWind';
@@ -3705,7 +3705,7 @@ if (showWindCb) {
 }
 refreshWindInputVisibility();
 refreshWindInputs();
-// --- Open-Meteo winds-aloft fetch (#722) ----------------------------
+// --- Open-Meteo winds-aloft fetch -----------------------------------
 // Pull a real per-leg winds-aloft forecast (free, no key) and
 // store each leg's own wind. Numeric source — the IMS aviation page only
 // publishes chart images.
@@ -6441,7 +6441,7 @@ document.getElementById('print').onclick = showExportModal;
 createMagnifier();
 document.getElementById('tool-magnifier').onclick = toggleMagnifier;
 document.getElementById('tool-reset-all-markers').onclick = () => {
-  // PR review #14: confirm before wiping every manual leg-marker offset —
+  // Confirm before wiping every manual leg-marker offset —
   // this button is in the always-visible Build section so an accidental
   // click on a hand-tuned route was costly.
   if (!confirm(S.resetAllConfirm || 'Reset all marker positions?')) return;
@@ -7207,7 +7207,7 @@ createTuningPanel();
 // --- boot ------------------------------------------------------------
 resizeOverlay();
 setMode(null);
-// #162: if the URL carries share-link params (?r=…&n=…&l=…) the receiver
+// If the URL carries share-link params (?r=…&n=…&l=…), the receiver
 // gets the shared route. URL wins over localStorage so a paste of someone
 // else's link doesn't appear to do nothing for a user who has their own
 // saved route. If the share-link parse fails we fall through to restore.
@@ -7216,7 +7216,7 @@ let _restoreResult = null;
 if (!_sharedLoaded) {
   // restoreRoute() returns 'corrupt' when the saved blob exists but is
   // unparseable / has invalid coords. Set a flag so persist() refuses to
-  // overwrite the (potentially recoverable) blob with empty state — see #73.
+  // overwrite the potentially recoverable blob with empty state.
   _restoreResult = restoreRoute();
   if (_restoreResult === 'corrupt') {
     NavAid.corruptCache = true;
@@ -7645,7 +7645,7 @@ if (isNativeCapacitorShell() && !isNativeLocalOrigin()) {
 // Android Back, in the APK: close what is open, and ask before the press that leaves.
 armAndroidBackButton();
 
-// Preload the terrain grid so MSA / terrain-clearance (#673) is ready when a
+// Preload the terrain grid so MSA / terrain clearance is ready when a
 // leg inspector opens. No-op (coverage:false) until a real DEM is bundled.
 if (typeof loadTerrain === "function") loadTerrain();
 // CTR boundary points: the route clock starts there, not at the field.
@@ -8133,7 +8133,7 @@ const NavWxAvailability = (function () {
     note.hidden = true;
     note.textContent = S.sigwxMissing || 'Chart not available for this time yet.';
     // Read the png path from the trusted manifest by index — never from the
-    // DOM-held select value (avoids CodeQL js/xss-through-dom #64).
+    // Avoid a DOM-held select value flowing into an HTML sink.
     const load = () => {
       const t = manifest.times[sel.selectedIndex];
       if (!t) return;

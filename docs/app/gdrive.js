@@ -1,4 +1,4 @@
-/* NavAid — optional Google Drive sync for the saved-route library (#677).
+/* NavAid — optional Google Drive sync for the saved-route library.
  *
  * Fully client-side: Google Identity Services (token flow) + the Drive REST
  * API from the browser. No backend. Routes are stored as a single JSON file

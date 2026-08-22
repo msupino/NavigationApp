@@ -444,8 +444,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   marker.
 - **Show Nav Waypoints** (default **on**): the active
   `<prefix>-route-graph.json` is fetched once at boot; CVFR currently has
-  172 points and renders white-fill / black-stroke 3.5 px
-  dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
+  172 layer-member rows. The runtime renders the 170 active members as
+  white-fill / black-stroke 3.5 px dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export. Source: IAA CVFR chart page 113 (2025 edition) — see the
   Notes / pending section.
 - **Charts / frequency modals:** `📡 Freq table` opens
