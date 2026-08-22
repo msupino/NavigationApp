@@ -158,7 +158,9 @@ test('return direction hides outbound hotspot projection, recognizes geometric t
     // BEFORE -> TURN leg, so TURN is the route's geometry-proven turning waypoint.
     state.waypoints = [
       { lat: 32.55, lng: 34.85, name: 'START' },
-      { lat: hadra.lat, lng: hadra.lng, name: hadra.name },
+      // Imported routes may carry the same named reporting point at older chart
+      // coordinates. Direction filtering must still bind the reference by name.
+      { lat: hadra.lat + 0.001, lng: hadra.lng - 0.001, name: hadra.name },
       { lat: 32.38, lng: 34.98, name: 'BEFORE' },
       { lat: 32.34, lng: 35.03, name: 'TURN' },
       { lat: 32.38, lng: 34.98, name: 'BEFORE' },
