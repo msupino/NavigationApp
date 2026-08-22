@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 ---
 
 # RCA — mobile-legend: keep the legend visible on phones
@@ -12,7 +12,7 @@ On a short phone viewport, the expanded floating toolbar covers more than 100 px
 
 ## Root cause
 
-`makeLegendDraggable()` in `docs/app/ui.js` clamps and avoids the toolbar only at startup and while the legend itself is dragged. Toolbar expansion/movement and viewport or visual-viewport resizing do not reconcile the legend, and the existing toolbar-avoidance helper can move only vertically even when the short column cannot fit both controls.
+`makeLegendDraggable()` clamps only at startup and during a legend drag. Toolbar and viewport changes do not reconcile the legend. The existing avoidance helper can move only vertically, even when the short column cannot fit both controls.
 
 ## Suggested fix
 
@@ -21,11 +21,11 @@ On a short phone viewport, the expanded floating toolbar covers more than 100 px
 - `tests/mobile-menu-affordance.spec.js` — keep the three written geometry regressions for English, Hebrew, and dragged-then-resized behavior, including reload persistence.
 - `.ai/navaid-dev.md` — document responsive legend containment and toolbar collision avoidance.
 
-**Expected shape**: 4 files, ~120 lines · extend the existing legend drag/positioning code and mobile browser spec; CSS remains optional within this bound · new test files: 0
+**Expected shape**: 4 files, about 120 lines. Extend the existing legend positioning code and mobile browser spec. CSS remains optional. New test files: 0.
 
 ## Failing test (written, red)
 
-`tests/mobile-menu-affordance.spec.js` (browser integration) — three focused cases assert full viewport containment and no toolbar intersection for English and Hebrew at `390×664`, plus live resize and reload persistence after a drag. All three fail on the current implementation.
+`tests/mobile-menu-affordance.spec.js` contains three focused browser cases. They cover English and Hebrew at `390×664`, live resize, and reload persistence. All three fail before implementation.
 
 ## Verification plan
 

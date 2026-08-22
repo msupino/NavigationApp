@@ -11,7 +11,7 @@ status: approved
 - **Bug surface:** frontend
 - **Affected service:** the static NavAid web application in `docs/`
 
-The defect reproduces from the checked-out `origin/dev` snapshot without any network or backend dependency. The legend is laid out correctly at the bottom-left while the phone toolbar is collapsed, but the layout has no reconciliation path when the toolbar grows or the usable viewport shrinks. The toolbar then paints over the legend, or a previously dragged legend remains outside the new viewport.
+The defect reproduces from the checked-out `origin/dev` snapshot without a backend dependency. The collapsed phone toolbar leaves the bottom-left legend unobstructed. The layout does not reconcile when the toolbar grows or the usable viewport shrinks. The toolbar then covers the legend. A previously dragged legend can also remain outside the new viewport.
 
 ## Reproduction and evidence
 
@@ -43,13 +43,13 @@ The legend has two positioning modes, and neither is reconciled against all mobi
 3. `clearOfToolbar()` can only move an overlapping legend downward. On a short phone the expanded toolbar plus the `152 px` legend do not fit vertically in that column. `clearOfToolbar()` first returns `toolbar.bottom + 6`, then `applyPos()` clamps that value back to `maxY`; this can reintroduce the same overlap. It does not search for a horizontal or otherwise nearest non-overlapping placement.
 4. The toolbar is intentionally above Leaflet controls, so any overlap hides legend content. That stacking order is not itself erroneous; the missing placement reconciliation is.
 
-The route-summary row makes the legend taller but is not the cause: the card deliberately reserves the row even with no route so it does not resize under the cursor. Similarly, the VOR row changes content visibility but does not create the missing relayout hook.
+The route-summary row makes the legend taller but is not the cause. The card reserves that row so it does not resize under the cursor. Similarly, the VOR row changes content visibility but does not create the missing relayout hook.
 
 ## Safe-area and viewport findings
 
 - The legend clamp uses the layout viewport (`window.innerWidth/innerHeight`) only.
 - There is no legend use of `window.visualViewport` or CSS `env(safe-area-inset-*)`.
-- The page does not request `viewport-fit=cover`, so a safe-area inset is not an independently reproduced cause in desktop Chromium. However, the current code has no explicit usable-viewport abstraction; if an installed/mobile browser exposes a smaller visual viewport or overlays browser/native chrome, the same stale/clipped-position class remains possible.
+- The page does not request `viewport-fit=cover`. Therefore, desktop Chromium did not reproduce a safe-area inset defect. The current code also lacks a usable-viewport abstraction. Smaller visual viewports or overlaid browser chrome can still produce stale or clipped positions.
 - The toolbar partly avoids dynamic-browser-chrome problems with `100dvh`; the legend's JavaScript does not have an equivalent live usable-height update.
 
 The minimal regression should assert observable in-viewport/non-overlap behavior rather than pinning a specific safe-area implementation.
@@ -71,7 +71,7 @@ The minimal regression should assert observable in-viewport/non-overlap behavior
 
 Add focused Playwright coverage that fails on this snapshot and proves:
 
-1. At a supported short phone viewport such as `390 x 664`, boot with the toolbar expanded and assert the complete legend rectangle is inside the viewport and does not intersect the toolbar rectangle. Run the same assertion in English and Hebrew.
+1. At `390 x 664`, boot with the toolbar expanded. Assert that the complete legend remains inside the viewport and outside the toolbar. Run the assertion in English and Hebrew.
 2. Start in a taller phone viewport, drag the legend near the bottom, then resize to a shorter phone viewport (representing mobile browser resize/orientation). Assert all four legend edges are within the new viewport and it does not intersect the toolbar.
 3. Preserve the existing drag persistence behavior and the tall-phone/desktop placement. The test should compare geometry, not hard-code one exact target coordinate, so RTL and future text metrics remain valid.
 
@@ -79,4 +79,4 @@ The current `mobile-menu-affordance.spec.js` test only checks legend versus attr
 
 ## Suggested implementation boundary
 
-Keep one legend-position reconciler in `docs/app/ui.js` and call it after any event that changes the usable rectangle or an obstacle: initial layout, toolbar collapse/expand or movement, and viewport/visual-viewport resize. It must choose a fully in-viewport non-overlapping position when one exists and retain a usable deterministic fallback on very constrained viewports. Avoid changing the shared desktop menubar layout or the language-specific persistence keys.
+Keep one legend-position reconciler in `docs/app/ui.js`. Invoke it after toolbar layout, movement, and usable-viewport changes. Choose a fully visible non-overlapping position when possible. Use a deterministic constrained fallback otherwise. Preserve the desktop menubar layout and the language-specific persistence keys.

@@ -892,6 +892,7 @@ legendCtrl.addTo(map);
   if (!box) return;
   const KEY = 'navaid.legendPos';
   const GAP = 6;
+  let positioned = false;
 
   function viewportRect() {
     const vv = window.visualViewport;
@@ -947,6 +948,7 @@ legendCtrl.addTo(map);
 
   function applyPos(x, y, persist) {
     box.style.maxWidth = '';
+    box.classList.remove('map-legend-constrained');
     const obstacles = chromeRects();
     let pos = choosePosition(x, y, obstacles);
     const naturalWidth = box.offsetWidth;
@@ -955,9 +957,13 @@ legendCtrl.addTo(map);
       const vp = viewportRect();
       const sideWidth = obstacles.reduce((best, r) => Math.max(best,
         r.left - vp.left - GAP, vp.right - r.right - GAP), 0);
-      if (sideWidth > 0 && sideWidth < naturalWidth) box.style.maxWidth = sideWidth + 'px';
+      if (sideWidth > 0 && sideWidth < naturalWidth) {
+        box.style.maxWidth = sideWidth + 'px';
+        box.classList.add('map-legend-constrained');
+      }
       pos = choosePosition(x, y, obstacles);
     }
+    positioned = true;
     box.style.position = 'fixed';
     box.style.left = pos.x + 'px';
     box.style.top = pos.y + 'px';
@@ -973,6 +979,12 @@ legendCtrl.addTo(map);
   window.reconcileLegendPosition = function (opts = {}) {
     if (document.documentElement.classList.contains('app-booting')) return;
     const r = box.getBoundingClientRect();
+    const vp = viewportRect();
+    const outside = r.left < vp.left || r.top < vp.top ||
+      r.right > vp.right || r.bottom > vp.bottom;
+    const obstructed = chromeRects().some(obstacle =>
+      overlaps(r.left, r.top, r.width, r.height, obstacle));
+    if (!positioned && !outside && !obstructed) return;
     applyPos(r.left, r.top, opts.persist !== false);
   };
   const bootObserver = new MutationObserver(() => {
@@ -6584,7 +6596,7 @@ function refreshMapAfterToolbarModeChange() {
     bar.style.top = c.y + 'px';
     bar.style.right = 'auto';
     if (typeof window.reconcileLegendPosition === 'function') {
-      window.reconcileLegendPosition();
+      window.reconcileLegendPosition({ persist: false });
     }
   }
 
@@ -6622,6 +6634,9 @@ function refreshMapAfterToolbarModeChange() {
     const r = bar.getBoundingClientRect();
     try { localStorage.setItem(posKey(), JSON.stringify({ x: r.left, y: r.top })); }
     catch (e) { /* storage unavailable */ }
+    if (typeof window.reconcileLegendPosition === 'function') {
+      window.reconcileLegendPosition();
+    }
   }
 
   handle.addEventListener('mousedown', e => {
