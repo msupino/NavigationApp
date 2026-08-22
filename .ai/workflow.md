@@ -4,19 +4,16 @@
 
 Default base branch is `dev`.
 
-Before creating a feature branch, update local `dev` and verify that it already contains
-`main`. Promotion automation normally keeps this true. An ordinary task must not repair a
-protected branch with a direct push:
+Before creating a feature branch, update local `dev`. Verify that it already contains
+`main`; promotion automation normally keeps this true. An ordinary task must not repair
+a protected branch with a direct push:
 
 ```bash
 git fetch origin --prune
 git checkout dev
 git branch --set-upstream-to=origin/dev dev
 git pull --ff-only origin dev
-if ! git merge-base --is-ancestor origin/main dev; then
-  echo "origin/dev does not contain origin/main; use a reviewed maintenance PR"
-  exit 1
-fi
+git merge-base --is-ancestor origin/main dev
 git checkout -b <branch>
 ```
 

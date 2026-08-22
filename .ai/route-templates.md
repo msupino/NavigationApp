@@ -17,10 +17,10 @@ notes, wind, and comm-change suppressions. A template intentionally does not.
   coordinates and not localized labels. Coordinates are resolved from
   the active `<prefix>-route-graph.json` / `airfields.json` at build time.
 - `notes` — **lean** freq-change callouts keyed by `cc` (waypoint code) with
-  `freqName` (+ optional `freqAuto`). No `freq`, `lat`, or `lng` — frequency
-  is derived from the active route graph's communication metadata, and the
-  callout position is derived from that waypoint at build time (the same
-  default offset as auto-seeding).
+  `freqName` (+ optional `freqAuto`). Do not store `freq`, `lat`, or `lng`.
+  Frequency comes from the active route graph's communication metadata.
+  Callout position comes from that waypoint at build time and uses the
+  same default offset as auto-seeding.
   `text`/`color`/`shape` default to the standard freq-change box.
 - `commChangeSuppressions` — array of waypoint codes whose auto comm-change note
   should be suppressed on build (so seeding doesn't re-add them).

@@ -353,9 +353,19 @@ def main(argv):
     tmp = '/tmp/georef-plate'
     for f in glob.glob(tmp + '*.png'):
         os.remove(f)
-    subprocess.run(['pdftoppm', '-png', '-r', '220', a.pdf, tmp, '-f', '1', '-l', '1'],
-                   capture_output=True)
-    hi = _I.open(sorted(glob.glob(tmp + '*.png'))[0]).convert('RGB')
+    try:
+        subprocess.run(
+            ['pdftoppm', '-png', '-r', '220', a.pdf, tmp, '-f', '1', '-l', '1'],
+            capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or '').strip() or f'exit status {exc.returncode}'
+        print('pdftoppm failed: ' + detail, file=sys.stderr)
+        return 2
+    rendered = sorted(glob.glob(tmp + '*.png'))
+    if len(rendered) != 1:
+        print(f'pdftoppm produced {len(rendered)} page images; expected 1', file=sys.stderr)
+        return 2
+    hi = _I.open(rendered[0]).convert('RGB')
     k = hi.size[0] / _I.open(png).size[0]
     l, t, r, b = out['frame']
     crop = hi.crop((round(l*k), round(t*k), round(r*k), round(b*k)))

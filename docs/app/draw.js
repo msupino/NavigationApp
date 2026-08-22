@@ -1647,8 +1647,8 @@ window.notamBadgeNotamsAt = notamBadgeNotamsAt;
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads the nav-waypoints projection of docs/data/cvfr-route-graph.json on first
 // activation. Format:
-// { waypoints:[{ name, en, he, lat, lng }] } — 170 active reporting points
-// projected from 172 CVFR-layer members sourced from IAA CVFR chart page 113
+// { waypoints:[{ name, en, he, lat, lng }] } contains 170 active reporting points.
+// They project from 172 CVFR-layer members sourced from IAA CVFR chart page 113
 // (2025 edition). validateNavWaypoints() requires every documented field;
 // extras are silently allowed for forward-compat.
 // --- per-layer dataset resolution ----------------------------------

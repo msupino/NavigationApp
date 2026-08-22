@@ -4269,6 +4269,7 @@ function chooseOrientation(size, onPick) {
     document.removeEventListener('keydown', onEsc);
     back.remove();
   }
+  back._navaidClose = close;
   for (const [label, val] of [[S.landscape, 'landscape'], [S.portrait, 'portrait']]) {
     const b = document.createElement('button');
     b.textContent = label;
@@ -4339,6 +4340,7 @@ function showSigmetDecoded() {
   title.textContent = S.sigmetModalTitle || 'Active SIGMETs';
   box.appendChild(title);
   function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  back._navaidClose = close;
   // Capture phase + stopPropagation: this dialog is opened from the flight-plan
   // panel, whose own document-level Escape listener would otherwise close it too.
   function onEsc(e) {
@@ -4430,7 +4432,7 @@ function showExportModal() {
   title.textContent = S.exportModalTitle;
   box.appendChild(title);
 
-  addModalCloseX(box, () => { restoreOrig(); close(); });
+  addModalCloseX(box, dismissExport);
 
   // Drag to reposition the modal via the title bar.
   let drag = null;
@@ -4493,6 +4495,7 @@ function showExportModal() {
   navWpLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const navWpCb = document.createElement('input');
   navWpCb.type = 'checkbox';
+  navWpCb.id = 'export-navwp-cb';
   navWpCb.checked = false;
   navWpLabel.appendChild(navWpCb);
   navWpLabel.appendChild(document.createTextNode(S.exportShowNavWP));
@@ -4911,6 +4914,11 @@ function showExportModal() {
     if (window.__exportSyncPlaceThrough === syncPlaceThrough) window.__exportSyncPlaceThrough = null;
     back.remove();
   }
+  function dismissExport() {
+    restoreOrig();
+    close();
+  }
+  back._navaidClose = dismissExport;
   function onEsc(e) {
     if (e.key !== 'Escape') return;
     // The panel is click-through, so another modal can be opened on top of it. Only
@@ -4919,7 +4927,7 @@ function showExportModal() {
     // modals in this file use).
     const backs = document.querySelectorAll('.modal-back');
     if (backs.length && backs[backs.length - 1] !== back) return;
-    restoreOrig(); close();
+    dismissExport();
   }
 
   exportBtn.onclick = () => {
@@ -4933,8 +4941,7 @@ function showExportModal() {
     exportPNG('print');
   };
   cancelBtn.onclick = function () {
-    restoreOrig();
-    close();
+    dismissExport();
   };
 
   btns.appendChild(exportBtn);
@@ -4946,7 +4953,7 @@ function showExportModal() {
   // Dismissing via the backdrop must undo the preview like Cancel/Escape/X do;
   // closing without restoreOrig() left the panel's overlay/layer/opacity preview
   // applied permanently.
-  back.onclick = e => { if (e.target === back) { restoreOrig(); close(); } };
+  back.onclick = e => { if (e.target === back) dismissExport(); };
   document.body.appendChild(back);
   updateExportPageWarn();   // now in the DOM — set the initial warning state
   updateExportPlanCb();     // and the initial plan-checkbox enabled state + label
@@ -5682,8 +5689,9 @@ async function flyRoute() {
   speedRow.append(speedLabel, speedSel);
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
-  function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
+  function onEsc(e) { if (e.key === 'Escape') close(); }
   function close() { document.removeEventListener('keydown', onEsc); back.remove(); }
+  back._navaidClose = close;
   for (const [label, mode] of [[S.geModeWeb, 'web'], [S.geModeApp, 'app']]) {
     const b = document.createElement('button');
     b.textContent = label;

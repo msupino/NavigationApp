@@ -99,6 +99,28 @@ test('back closes a plate through cleanup so one Escape closes the reopened view
   await expect(page.locator('.modal-back.plate-viewer')).toHaveCount(0);
 });
 
+test('back cancels the export preview through cleanup and leaves no stale Escape handler', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => {
+    const toolbarToggle = document.getElementById('navwp-cb');
+    if (toolbarToggle) toolbarToggle.checked = false;
+    window.showNavWP = false;
+    showExportModal();
+    const previewToggle = document.getElementById('export-navwp-cb');
+    previewToggle.checked = true;
+    previewToggle.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(await page.evaluate(() => showNavWP)).toBe(true);
+  await back(page, false);
+  await expect(page.locator('.modal-back.export-options')).toHaveCount(0);
+  expect(await page.evaluate(() => showNavWP)).toBe(false);
+
+  await page.evaluate(() => showExportModal());
+  await expect(page.locator('.modal-back.export-options')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.modal-back.export-options')).toHaveCount(0);
+});
+
 test('back leaves a map tool before it leaves the app', async ({ page }) => {
   await bootNative(page);
   await page.evaluate(() => setMode('add'));

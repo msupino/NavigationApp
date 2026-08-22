@@ -61,7 +61,7 @@ The NOTAM layer is fed by a scheduled Action, not a hand-maintained file:
 
 `cvfr-route-graph.json` contains 172 CVFR-layer waypoint members keyed by code
 under `nodes`. The runtime projection renders the 170 active members. The graph
-also carries 22 minimal airfield endpoint nodes so route edges remain connected:
+also carries 22 minimal airfield endpoint nodes. They keep route edges connected:
 
 ```json
 { "name": "ZLHAV", "en": "Lehavim Junction", "he": "צומת להבים", "lat": 31.3725, "lng": 34.79333, "report": "mandatory" }

@@ -111,6 +111,20 @@ class GeorefPlateTest(unittest.TestCase):
             ])
         self.assertEqual(status, 0)
 
+    def test_write_path_reports_renderer_failure_without_opening_an_image(self):
+        failure = GEOREF.subprocess.CalledProcessError(
+            1, ['pdftoppm'], stderr='broken PDF')
+        with mock.patch('shutil.which', return_value='/usr/bin/tool'), \
+                mock.patch('builtins.open', mock.mock_open(
+                    read_data=json.dumps({'airfields': []}))), \
+                mock.patch.object(GEOREF, 'georef', return_value=self.safe_fit()), \
+                mock.patch('glob.glob', return_value=[]), \
+                mock.patch('subprocess.run', side_effect=failure), \
+                mock.patch.object(GEOREF.Image, 'open') as image_open:
+            status = GEOREF.main(['plate.pdf', 'TEST', '--png', 'plate.png', '--write'])
+        self.assertEqual(status, 2)
+        image_open.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

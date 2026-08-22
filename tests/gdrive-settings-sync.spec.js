@@ -653,7 +653,7 @@ test('an established device removes legacy credentials but preserves the flight 
   await bootSync(page, {
     updatedAt: 5000,
     values: {
-      'navaid.layer': 'nav',
+      'navaid.layer': null,
       'navaid.ai.key.anthropic': 'legacy-secret',
       'navaid.fpl.pic': 'Legacy Pilot',
       'navaid.fpl.cell': '0500000000',
@@ -670,7 +670,7 @@ test('an established device removes legacy credentials but preserves the flight 
   });
   expect(out.res.applied).toBe(true);
   expect(out.uploaded.updatedAt).toBeGreaterThan(5000);
-  expect(out.uploaded.values['navaid.layer']).toBe('nav');
+  expect(out.uploaded.values['navaid.layer']).toBeNull();
   expect(Object.keys(out.uploaded.values).some(k => k.startsWith('navaid.ai.key.'))).toBe(false);
   expect(out.uploaded.values['navaid.fpl.pic']).toBe('Legacy Pilot');
   expect(out.uploaded.values['navaid.fpl.cell']).toBe('0500000000');

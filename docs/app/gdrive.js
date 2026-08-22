@@ -838,7 +838,8 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
         const cleanValues = collectSyncableSettings();
         if (remoteNeedsSensitiveScrub) {
           const stamp = _nextSettingsStamp(remoteAt);
-          return push(cleanValues, stamp, cleanValues).then(() => ({ applied: changed }));
+          const publish = _settingsPublishValues(cleanValues, local.snapValues, remoteValues);
+          return push(publish, stamp, cleanValues).then(() => ({ applied: changed }));
         }
         _recordSettingsSynced(cleanValues, remoteAt);
         return { applied: changed };

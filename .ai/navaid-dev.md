@@ -84,14 +84,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   accidentally leave one stale.
 - `app/` — the app source. Plain scripts load in order and share one global
   scope (no build step, no modules):
-  `app/core.js` (migration, state model, geo helpers, Leaflet map,
-  overlay canvas) → `app/route-graph-shapes.js` (graph projections) →
-  `app/terrain.js` (terrain / MSA helpers) → `app/draw.js` (rendering) →
-  `app/interact.js` (hit-testing, inspector, mouse/touch) → `app/io.js`
-  (save/load, flight plan and export) → `app/alt-pair-directions.js` →
-  `app/gdrive.js` (optional Drive library) → `app/gps.js` (GPS/simulator) →
-  `app/ui.js` (toolbar wiring and boot) → `app/editor.js` (graph editor) →
-  `app/assistant.js` (disabled-by-default assistant) → `app/offline-tiles.js`.
+  `app/core.js` initializes migration, state, geo helpers, Leaflet, and the overlay canvas.
+  It is followed by `app/route-graph-shapes.js`, `app/terrain.js`, and `app/draw.js`.
+  Next are `app/interact.js`, `app/io.js`, and `app/alt-pair-directions.js`.
+  The final sequence is `app/gdrive.js`, `app/gps.js`, `app/ui.js`,
+  `app/editor.js`, `app/assistant.js`, and `app/offline-tiles.js`.
   Order matters because later files use globals from earlier ones.
   Default English UI strings live in
   `app/core.js` (`window.S`): **sentence case** (first word + proper nouns /
