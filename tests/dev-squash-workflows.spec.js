@@ -24,6 +24,15 @@ test.describe('dev workflow guards', () => {
     expect(yml).toMatch(/case "\$BASE" in main\) METHOD=--merge/);
   });
 
+  test('Draft auto-merge deletes merged local topics but preserves long-lived and fork refs', () => {
+    const yml = workflow('draft-auto-merge.yml');
+    expect(yml).toContain("HEAD_REPO=$(gh pr view \"$PR\" --json headRepository");
+    expect(yml).toMatch(/main\|dev\) DELETE= ;;/);
+    expect(yml).toContain('[ -n "$DELETE" ] && [ "$HEAD_REPO" = "$GITHUB_REPOSITORY" ]');
+    expect(yml).toContain('git/ref/heads/$HEAD_REF');
+    expect(yml).toContain('-X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$HEAD_REF"');
+  });
+
   test('Auto PR aligns and promotes dev without a bot-authored back-merge PR', () => {
     const yml = workflow('auto-pr-dev-to-main.yml');
     expect(yml).not.toContain('pull_request:');

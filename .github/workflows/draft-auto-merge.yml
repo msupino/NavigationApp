@@ -81,6 +81,7 @@ jobs:
           fi
           BASE=$(gh pr view "$PR" --json baseRefName --jq '.baseRefName')
           HEAD_REF=$(gh pr view "$PR" --json headRefName --jq '.headRefName')
+          HEAD_REPO=$(gh pr view "$PR" --json headRepository --jq '.headRepository.nameWithOwner')
           # A feature PR into dev is squashed: one commit per change, and dev is the only
           # place that history is read. The dev -> main PROMO must NOT be squashed. A squash
           # gives main dev's content with none of its ancestry, so git stops knowing that main
@@ -131,6 +132,17 @@ jobs:
                 # GITHUB_TOKEN. workflow_dispatch is exempt from
                 # anti-recursion (per GitHub docs), so this fires reliably.
                 FAILED=0
+                # GitHub does not apply --delete-branch when a bot merely arms
+                # auto-merge and the merge happens later. Delete the merged
+                # same-repository topic ref explicitly. DELETE is empty for the
+                # long-lived main/dev branches, and fork refs are not ours to delete.
+                if [ -n "$DELETE" ] && [ "$HEAD_REPO" = "$GITHUB_REPOSITORY" ] &&
+                   gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$HEAD_REF" >/dev/null 2>&1; then
+                  gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$HEAD_REF" || {
+                    echo "::error::Merged PR #$PR but failed to delete $HEAD_REF"
+                    FAILED=1
+                  }
+                fi
                 gh workflow run Deploy --ref "$BASE" || {
                   echo "::error::Failed to dispatch Deploy on $BASE"; FAILED=1;
                 }
