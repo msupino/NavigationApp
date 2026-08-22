@@ -406,8 +406,7 @@ test.describe('turnaround split', () => {
 // the aircraft leaves on the same frequency it arrived on, so an automatic callout there
 // is a radio call that is not made. Reported from the route below, where NTAIM -- flown
 // out to and straight back from -- was seeding one.
-test.describe('the turn point seeds no automatic frequency change', () => {
-  const OUT_AND_BACK = [
+const OUT_AND_BACK = [
     { lat: 32.17648, lng: 34.83524, name: '' },
     { lat: 32.21056, lng: 34.80722, name: 'SFAIM' },
     { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
@@ -415,7 +414,8 @@ test.describe('the turn point seeds no automatic frequency change', () => {
     { lat: 32.00472, lng: 34.72722, name: 'TYONA' },
     { lat: 32.14556, lng: 34.77833, name: 'HTZUK' },
     { lat: 32.14083, lng: 34.80139, name: 'KNTRY' },
-  ];
+];
+test.describe('the turn point seeds no automatic frequency change', () => {
 
   test('NTAIM gets no auto note, while the other comm points still do', async ({ page }) => {
     await boot(page);
@@ -431,19 +431,31 @@ test.describe('the turn point seeds no automatic frequency change', () => {
     expect(ccs.length).toBeGreaterThan(0); // but the route still has its other callouts
   });
 
-  test('a hand-added note at the turn point survives', async ({ page }) => {
+  test('reconciliation removes every turn callout and preserves unrelated notes', async ({ page }) => {
     await boot(page);
-    const kept = await page.evaluate(async (wps) => {
-      if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+    const out = await page.evaluate(async (wps) => {
+      await Promise.all([loadNavWaypoints(), loadCommChange()]);
       state.waypoints = wps.map(w => ({ ...w }));
-      // freqAuto absent == the pilot put this one there deliberately.
-      state.notes = [{ lat: 31.94361, lng: 34.78083, cc: 'NTAIM',
-                       freqName: 'TEL_NOF', freq: '129.05', text: 'freq' }];
+      const unrelatedCallout = { lat: 32.21056, lng: 34.80722, cc: 'SFAIM',
+        freqName: 'HERZLIYA', freq: '123.45', text: 'keep callout' };
+      const ordinaryNote = { lat: 32.1, lng: 34.8, text: 'keep ordinary note', color: '#fff' };
+      state.notes = [
+        { lat: 31.94361, lng: 34.78083, cc: 'NTAIM',
+          freqName: 'TEL_NOF', freq: '129.05', text: 'automatic', freqAuto: true },
+        { lat: 31.944, lng: 34.781, cc: 'NTAIM',
+          freqName: 'PILOT', freq: '130.00', text: 'manual' },
+        unrelatedCallout,
+        ordinaryNote,
+      ];
+      state.commChangeSuppressions = [];
       syncLegs();
       seedCommChangeNotes();
-      return state.notes.some(n => n && n.cc === 'NTAIM');
+      return [legRetraceTurnIndex(),
+        state.notes.filter(n => n && n.cc === 'NTAIM').length,
+        state.notes.includes(unrelatedCallout), state.notes.includes(ordinaryNote),
+        state.commChangeSuppressions.slice()];
     }, OUT_AND_BACK);
-    expect(kept).toBe(true);
+    expect(out).toEqual([3, 0, true, true, []]);
   });
 
   test('a straight route that never turns keeps every frequency change', async ({ page }) => {
@@ -455,6 +467,7 @@ test.describe('the turn point seeds no automatic frequency change', () => {
     // fallback used for kite filtering must never reach the comm-change logic.
     expect(out.retraceTurn).toBe(-1);
   });
+
 });
 
 test.describe('the picker dims when there is no turn', () => {
@@ -582,20 +595,142 @@ test.describe('manual turning point', () => {
     expect(kept.turn).toBe(2);
   });
 
-  test('the inspector button marks the selected waypoint', async ({ page }) => {
+  test('import and manual or derived-turn startup remove persisted callouts safely', async ({ page }) => {
     await boot(page);
     await loop(page);
-    await page.evaluate(() => {
+    const out = await page.evaluate(({ loopWps, derivedWps }) => {
+      setTurnWaypoint(2);
+      state.notes = [
+        { lat: 32.00472, lng: 34.72722, cc: 'TYONA',
+          freqName: 'PILOT', freq: '130.00', text: 'remove me' },
+        { lat: 32.1, lng: 34.8, text: 'keep me', color: '#fff' },
+      ];
+      const blob = serializeRoute();
+      state.selected = { type: 'note', index: 0 };
+      applyRouteData(blob);
+      const imported = {
+        turnCallout: state.notes.some(n => n && n.cc === 'TYONA'),
+        ordinaryKept: state.notes.some(n => n && n.text === 'keep me'),
+      };
+      localStorage.setItem('navaid.route', JSON.stringify(blob));
+      state.waypoints = loopWps.map(w => ({ ...w }));
+      state.legs = [];
+      state.notes = [{ lat: 0, lng: 0, text: 'old selection' }];
+      state.selected = { type: 'note', index: 0 };
+      const restored = restoreRoute();
+      draw();
+      const removedSelection = state.selected;
+      // A selected unrelated note after the removed callout must follow its object
+      // to the new index instead of silently selecting the wrong note or disappearing.
+      state.selected = { type: 'note', index: 1 };
+      restoreRoute();
+      draw();
+      const shiftedSelection = state.selected && {
+        ...state.selected,
+        text: state.notes[state.selected.index] && state.notes[state.selected.index].text,
+      };
+      const manual = [restored, state.notes.some(n => n && n.cc === 'TYONA'),
+        state.notes.some(n => n && n.text === 'keep me'), removedSelection, shiftedSelection];
+      state.waypoints = derivedWps.map(w => ({ ...w }));
+      state.legs = [];
+      syncLegs();
+      state.notes = [{ lat: 31.94361, lng: 34.78083, cc: 'NTAIM', text: 'remove derived' }];
+      localStorage.setItem('navaid.route', JSON.stringify(serializeRoute()));
+      state.waypoints = []; state.legs = []; state.notes = [];
+      const derivedRestored = restoreRoute();
+      draw();
+      return { imported, manual,
+        derived: [derivedRestored, legRetraceTurnIndex(),
+          state.notes.some(n => n && n.cc === 'NTAIM')],
+      };
+    }, { loopWps: LOOP, derivedWps: OUT_AND_BACK });
+    expect(out.imported).toEqual({ turnCallout: false, ordinaryKept: true });
+    expect(out.manual).toEqual([true, false, true, null,
+      { type: 'note', index: 0, text: 'keep me' }]);
+    expect(out.derived).toEqual([true, 3, false]);
+  });
+
+  test('moving or clearing the turn re-seeds its old frequency point', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(async () => {
+      await Promise.all([loadNavWaypoints(), loadCommChange()]);
+    });
+    await loop(page);
+    const out = await page.evaluate(() => {
+      const setAndReconcile = idx => {
+        setTurnWaypoint(idx);
+        seedCommChangeNotes();
+      };
+      setAndReconcile(1);                 // SFAIM is the turn: no callout
+      const atTurn = state.notes.some(n => n && n.cc === 'SFAIM');
+      setAndReconcile(2);                 // move turn to TYONA
+      const afterMove = state.notes.some(n => n && n.cc === 'SFAIM');
+
+      setAndReconcile(1);                 // move back, then clear SFAIM
+      setAndReconcile(1);
+      return [atTurn, afterMove, state.notes.some(n => n && n.cc === 'SFAIM'),
+        state.commChangeSuppressions.includes('SFAIM')];
+    });
+    expect(out).toEqual([false, true, true, false]);
+  });
+
+  test('the inspector marks the turn and immediately removes its callout', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    await page.evaluate(async () => {
+      await Promise.all([loadNavWaypoints(), loadCommChange()]);
+      state.notes = [
+        { lat: 32.00472, lng: 34.72722, cc: 'TYONA',
+          freqName: 'PILOT', freq: '130.00', text: 'remove me' },
+        { lat: 32.1, lng: 34.8, text: 'keep me', color: '#fff' },
+      ];
       state.selected = { type: 'wp', index: 2 };
       showInspector();
     });
+    const idleStyle = await page.locator('#insp-turn-btn').evaluate(el => {
+      const css = getComputedStyle(el);
+      return [css.color, css.backgroundColor, css.borderColor, Number(css.fontWeight) || 400];
+    });
+    const destructive = await page.locator('.insp-actions .insp-btn:not(.insp-btn-safe)').first()
+      .evaluate(el => getComputedStyle(el).backgroundColor);
+    expect(idleStyle[1]).not.toBe(destructive);
     await page.locator('#insp-turn-btn').click();
     const out = await page.evaluate(() => ({
       marked: !!state.waypoints[2].turn,
       pressed: document.getElementById('insp-turn-btn').getAttribute('aria-pressed'),
+      turnCallout: state.notes.some(n => n && n.cc === 'TYONA'),
+      ordinaryKept: state.notes.some(n => n && n.text === 'keep me'),
+      canAdd: !!document.querySelector('.add-freq-change-btn'),
+      style: (() => {
+        const css = getComputedStyle(document.getElementById('insp-turn-btn'));
+        return [css.color, css.backgroundColor, css.borderColor,
+          Number(css.fontWeight) || 400];
+      })(),
     }));
     expect(out.marked).toBe(true);
     expect(out.pressed).toBe('true');   // relabels to "clear" once set
+    expect(out.turnCallout).toBe(false);
+    expect(out.ordinaryKept).toBe(true);
+    expect(out.canAdd).toBe(false);
+    expect(out.style.slice(0, 3)).toEqual(idleStyle.slice(0, 3));
+    expect(out.style[3]).toBeGreaterThan(idleStyle[3]);
+  });
+
+  test('Z cannot recreate a callout at the effective turn', async ({ page }) => {
+    await boot(page);
+    await loop(page);
+    await page.evaluate(async () => {
+      await Promise.all([loadNavWaypoints(), loadCommChange()]);
+      setTurnWaypoint(2);
+      state.notes = [];
+      state.selected = { type: 'wp', index: 2 };
+      showInspector();
+    });
+    await page.keyboard.press('z');
+    const out = await page.evaluate(() => [legRetraceTurnIndex(),
+      state.notes.some(n => n && n.cc === 'TYONA'),
+      !!document.querySelector('.add-freq-change-btn')]);
+    expect(out).toEqual([2, false, false]);
   });
 });
 
