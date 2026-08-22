@@ -772,17 +772,17 @@ test.describe('manual turning point', () => {
     expect(out).toEqual([false, true, true, false]);
   });
 
-  test('the inspector marks the turn and immediately removes its callout', async ({ page }) => {
+  test('the inspector removes a turn callout and restores it when unmarked', async ({ page }) => {
     await boot(page);
     await loop(page);
     await page.evaluate(async () => {
       await Promise.all([loadNavWaypoints(), loadCommChange()]);
       state.notes = [
-        { lat: 32.00472, lng: 34.72722, cc: 'TYONA',
+        { lat: 32.21056, lng: 34.80722, cc: 'SFAIM',
           freqName: 'PILOT', freq: '130.00', text: 'remove me' },
         { lat: 32.1, lng: 34.8, text: 'keep me', color: '#fff' },
       ];
-      state.selected = { type: 'wp', index: 2 };
+      state.selected = { type: 'wp', index: 1 };
       showInspector();
     });
     const idleStyle = await page.locator('#insp-turn-btn').evaluate(el => {
@@ -794,9 +794,9 @@ test.describe('manual turning point', () => {
     expect(idleStyle[1]).not.toBe(destructive);
     await page.locator('#insp-turn-btn').click();
     const out = await page.evaluate(() => ({
-      marked: !!state.waypoints[2].turn,
+      marked: !!state.waypoints[1].turn,
       pressed: document.getElementById('insp-turn-btn').getAttribute('aria-pressed'),
-      turnCallout: state.notes.some(n => n && n.cc === 'TYONA'),
+      turnCallout: state.notes.some(n => n && n.cc === 'SFAIM'),
       ordinaryKept: state.notes.some(n => n && n.text === 'keep me'),
       canAdd: !!document.querySelector('.add-freq-change-btn'),
       style: (() => {
@@ -812,6 +812,13 @@ test.describe('manual turning point', () => {
     expect(out.canAdd).toBe(false);
     expect(out.style.slice(0, 3)).toEqual(idleStyle.slice(0, 3));
     expect(out.style[3]).toBeGreaterThan(idleStyle[3]);
+
+    await page.locator('#insp-turn-btn').click();
+    expect(await page.evaluate(() => ({
+      marked: !!state.waypoints[1].turn,
+      pressed: document.getElementById('insp-turn-btn').getAttribute('aria-pressed'),
+      mandatoryCallout: state.notes.some(n => n && n.cc === 'SFAIM'),
+    }))).toEqual({ marked: false, pressed: 'false', mandatoryCallout: true });
   });
 
   test('Z cannot recreate a callout at the effective turn', async ({ page }) => {

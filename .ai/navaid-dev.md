@@ -137,7 +137,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     prevents the generated defaults drifting from the graph. The route-waypoint inspector
     toggle stores an explicit `hotspot` boolean, so a pilot can enable any waypoint or
     disable a default hotspot. Explicit overrides persist in saved routes, route files,
-    and share links. The selected outbound/return direction also suppresses a graph hotspot
+    and share links. The Route info `Hotspots` checkbox hides or shows all route hotspot
+    styling without changing those waypoint choices. Its `defaultShowHotspots` tune controls
+    the initial value and defaults to on. The selected outbound/return direction also
+    suppresses a graph hotspot
     when every matching route occurrence is hidden. Matching uses the canonical waypoint
     name as well as coordinates because imported routes can retain older chart positions.
     The same direction gate hides that point's frequency-change ring and hit target.
@@ -156,7 +159,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   - `state.mode` = `'add' | 'note' | null` (null = inspect);
     `state.selected` = `{type:'wp'|'leg'|'note', index}` or `null`.
   - Top-level globals: `showReturn`, `showMidLeg`, `showCumTime`,
-    `highlightDiff`, `showNavWP`, `navWP`, `showWpNames`,
+    `highlightDiff`, `showNavWP`, `navWP`, `showHotspots`, `showWpNames`,
     `wpNameAngle`, `showAirfields`, `showVorStations`, `vorRef`,
     `showReporting`, `showMsa`, `showWind`, `showSigmet`,
     `yellowAlpha`, `wpSize`, `legArrowSize`, `legLineWidth`,
@@ -711,6 +714,8 @@ as a machine-readable registry.
   for locally edited airport frequency defaults.
 - `navaid.vorFreqOverrides` — object keyed by VOR ident for locally edited
   VOR frequency defaults.
+- `navaid.showHotspots` — `'0'` / `'1'` for route-hotspot highlighting. This does not
+  clear the per-waypoint `hotspot` choice stored in `navaid.route`.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).

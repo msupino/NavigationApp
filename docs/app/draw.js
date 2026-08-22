@@ -4420,7 +4420,7 @@ function drawWaypoints() {
                      state.selected.index === i;
     const { label, fontPx, r } = waypointGeom(i);
     const radius = selected ? r + tune('waypointSelectedRadiusAddPx') : r;
-    const hotspot = waypointHotspot(wp);
+    const hotspot = showHotspots && waypointHotspot(wp);
 
     if (hotspot) {
       window.__hotspotWaypointIndexes.push(i);

@@ -19,6 +19,8 @@ window.S = {
   summaryWaypoints: 'ציוני דרך',                     // פאנל סטטיסטיקה
   tbAddWp: '✏️ הוסף ציון דרך (A)',                   // כפתור עריכה בסרגל
   tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
+  tbShowHotspots: 'נקודות חמות',
+  tbShowHotspotsTitle: 'הצג הדגשת נקודות חמות מבלי לשנות את הגדרות ציוני הדרך',
   tbShowWpNames: 'הצג שמות ציוני דרך',              // מתג בקטע תצוגה
   tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
   sliderStandardSuffix: '(תקני)',
