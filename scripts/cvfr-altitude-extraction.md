@@ -23,6 +23,15 @@ in the reverse order, swap the stored values.
 Each entry in `cvfr-route-graph.json` under `edges.<from>[]` is one adjacency.
 The two altitude fields describe directions relative to that stored edge.
 
+Every segment must have reciprocal adjacency entries. When changing
+`edges.<from>[] -> to`, also update `edges.<to>[] -> from` and swap
+`inboundAltitude` with `outboundAltitude`. For a one-way segment, retain both
+entries, set `oneWay: true` on both, and put `blocked: true` on the adjacency
+whose `from -> to` direction is disallowed. The blocked direction's
+`inboundAltitude` is `null`; the reciprocal entry therefore has a null
+`outboundAltitude`. Run the reciprocal-edge assertion in
+`tests/route-graph.spec.js` after every graph edit.
+
 Some CVFR paths are one-way. In `docs/data/cvfr-route-graph.json`, one-way rows
 set `oneWay: true` and use `null` for the disallowed direction; the non-null
 altitude is the allowed direction.
@@ -71,8 +80,11 @@ shape of the review output.
 7. Manually assign each altitude pair from same-route yellow arrows, using the
    rules below.
 8. Keep `status: "candidate"` unless the value has maintainer-provided evidence
-   or a second independent manual review. `DESHE-ZALMN` is currently the only
-   `reviewed` row because it came from a maintainer screenshot.
+   or a second independent manual review. Record that evidence in
+   `scripts/cvfr-altitude-extraction-notes.json`; do not infer review status
+   from a historical count or example segment.
+9. Update both reciprocal graph entries as described above, then run the
+   reciprocal-edge assertion in `tests/route-graph.spec.js`.
 
 ## Review Rules
 

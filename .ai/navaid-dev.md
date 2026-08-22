@@ -929,10 +929,9 @@ downloadable `route.json`.
   consumed by humans and each commit must actually publish.
 - Cache-bust check (also enforced by CI's `lint` job): every `?v=` in
   `docs/index.html` must agree (regex `\?v=[A-Za-z0-9]+`, so it
-  matches both the integer placeholder and the SHA value that Deploy
-  rewrites in). The actual cache-bust value users see is the short
-  commit SHA injected by Deploy at upload time. See AGENTS.md for the
-  full rule.
+  matches both the literal `src` source placeholder and the alphanumeric SHA
+  value that Deploy rewrites in). Deploy injects the short commit SHA as the
+  user-visible cache-bust value. See AGENTS.md for the full rule.
 
 ## Notes / pending
 
