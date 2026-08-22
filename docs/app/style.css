@@ -22,6 +22,9 @@ html, body {
   color: #e8e8e8;
 }
 
+html.app-booting #toolbar,
+html.app-booting .leaflet-control-container { visibility: hidden; }
+
 #map {
   position: absolute;
   inset: 0;

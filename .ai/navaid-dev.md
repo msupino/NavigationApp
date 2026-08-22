@@ -84,15 +84,13 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   accidentally leave one stale.
 - `app/` — the app source. Plain scripts load in order and share one global
   scope (no build step, no modules):
-  `app/core.js` (migration, state model, geo helpers, Leaflet map,
-  overlay canvas) → `app/terrain.js` (terrain / MSA helpers) →
-  `app/draw.js` (route / nav-waypoint / note rendering, page frame) →
-  `app/interact.js` (hit-testing, inspector, mouse/touch) →
-  `app/io.js` (save/load, page setup, flight plan, PNG export,
-  persistence) → `app/alt-pair-directions.js` (altitude-pair direction
-  helpers) → `app/gdrive.js` (optional Drive route library) →
-  `app/ui.js` (toolbar wiring, drag, boot, PWA). Order matters — later
-  files use globals from earlier ones. Default English UI strings live in
+  `app/core.js` initializes migration, state, geo helpers, Leaflet, and the overlay canvas.
+  It is followed by `app/route-graph-shapes.js`, `app/terrain.js`, and `app/draw.js`.
+  Next are `app/interact.js`, `app/io.js`, and `app/alt-pair-directions.js`.
+  The final sequence is `app/gdrive.js`, `app/gps.js`, `app/ui.js`,
+  `app/editor.js`, `app/assistant.js`, and `app/offline-tiles.js`.
+  Order matters because later files use globals from earlier ones.
+  Default English UI strings live in
   `app/core.js` (`window.S`): **sentence case** (first word + proper nouns /
   acronyms such as BYOP, CVFR, JSON); spell *waypoint* in full in prose.
   Hebrew overrides: `i18n/he/strings.js`.
@@ -104,14 +102,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `../mobile/` — Capacitor native iOS / Android remote-URL shell. It keeps its
   own tooling, uses the small `mobile/shell` webDir, and opens
   `https://navaid.supino.org`; it must not introduce a build step for Pages.
-- `data/cvfr-nav-waypoints.json` — 172 published Israeli CVFR reporting points
-  under `waypoints`, with `{name, en, he, lat, lng, report}`. **Source:** IAA CVFR
-  chart waypoint reference table (page 113, 2025 edition), shipped as
-  `113_waypoints.csv` upstream. CSV → JSON migration in issue #406 /
-  PR `feat/unified-waypoints`. ARP rows in the CSV are intentionally
-  skipped here — airfield ARPs live in `data/airfields.json` with richer
-  data (runways, plates, English label). Updating: drop the CSV into
-  the build script and regenerate.
+- `data/<prefix>-route-graph.json` — the CVFR, LSA and Helicopters route graphs.
+  Each graph owns canonical `nodes`, directional `edges`, and `commMeta`; the
+  waypoint, altitude-pair and communication-change UI layers are projections.
+  The CVFR point source is the IAA chart waypoint reference table (page 113,
+  2025 edition). Airfield ARPs remain in `data/airfields.json`.
 - `.gitattributes` — forces images out of LFS so Pages serves them.
 - `legacy/map.jpg`, `legacy/build_map.py` — legacy from the pre-Leaflet
   static-chart version. **Unused**, safe to delete.
@@ -298,8 +293,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   arrows: the arrow point stays on the waypoint, the stored note coordinate
   is the movable far tail, and the name/frequency are drawn above/below the
   arrow rather than inside a note box. Selecting the callout opens inspector
-  fields for name + frequency. If `docs/data/cvfr-comm-change.json` defines a root
-  `callSigns` catalog and a point's `callSigns` array, the inspector also
+  fields for name + frequency. If the active route graph defines a root
+  `callSigns` catalog and a node's `callSigns` array, the inspector also
   shows a call-sign dropdown; choosing an option copies its default primary
   frequency into the editable frequency field. Call-sign names use the
   catalog's `he` translation when the app is in Hebrew, falling back to
@@ -411,9 +406,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   be resized down to a compact few-row view for filtered results.
 - **Route templates never carry altitudes.** `route-templates.json`
   entries define only waypoints + `defaultSpeed`; leg altitudes are
-  resolved from the active `<prefix>-leg-altitude.json` dataset.
+  resolved from the active `<prefix>-route-graph.json` edges.
   Do not add `inboundAltitude` / `outboundAltitude` to a template — they
-  must come from the altitude dataset so a route stays consistent with
+  must come from the route graph so a route stays consistent with
   the chart. Templates are listed alphabetically by name.
 - **Reverse:** flips waypoint order, swaps each leg's
   inbound/outbound altitude, swap+negates `inLabel` / `outLabel`.
@@ -445,9 +440,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   V/S input persists at `navaid.profileVS` and moves the climb ramp and its TOC
   marker.
 - **Show Nav Waypoints** (default **on**): the active
-  `<prefix>-nav-waypoints.json` is fetched once at boot; CVFR currently has
-  172 points and renders white-fill / black-stroke 3.5 px
-  dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
+  `<prefix>-route-graph.json` is fetched once at boot; CVFR currently has
+  172 layer-member rows. The runtime renders the 170 active members as
+  white-fill / black-stroke 3.5 px dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export. Source: IAA CVFR chart page 113 (2025 edition) — see the
   Notes / pending section.
 - **Charts / frequency modals:** `📡 Freq table` opens
@@ -460,9 +455,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `showChartsModal()`, which lists every airfield in
   `airfields.json` that carries a non-empty `plates[]` as a
   collapsible section (header `ICAO — English name`, plate chips
-  grouped by `plateCategory()`). `🧭 Alt pairs` opens the
-  active `<prefix>-leg-altitude.json` editing table; each direction, each row, and the full
-  page have reset controls that restore values to the loaded origin data.
+  grouped by `plateCategory()`). `🧭 Alt pairs` opens an editing table
+  projected from the active route graph. Each direction, row, and full-page
+  reset restores values from the loaded graph.
   **Airfields are listed alphabetically by ICAO** — `renderList()` sorts `withPlates` via
   `a.name.localeCompare(b.name)` before rendering, so JSON row order
   never leaks into the UI. Keep that sort when touching the list.
@@ -664,8 +659,11 @@ as a machine-readable registry.
 - `navaid.mapOpacity.v2` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
 - `navaid.legArrowSize` — leg-arrow size slider value.
-- `navaid.legLineWidth3` — route-line width scale (default 0.5, range 0.1–0.9). Bumped twice: `legLineWidth` → `legLineWidth2` when the default/range first changed, then → `legLineWidth3` when the range narrowed again to 0.1–0.9. A legacy value is adopted when it falls inside the current range (see `adoptRangedNumber`), so only genuinely out-of-range settings fall back to the default instead of being silently clamped.
-- `navaid.driftLineWidth2` — drift-line width scale (default 1, range 0.2–1.8). Versioned when the range narrowed from 0.5–6; legacy values inside the new range are adopted.
+- `navaid.legLineWidth3` — route-line width scale (default 0.5, range 0.1–0.9).
+  It was versioned as the allowed range changed. `adoptRangedNumber()` adopts a
+  legacy value inside the current range; only an out-of-range value uses the default.
+- `navaid.driftLineWidth2` — drift-line width scale (default 1, range 0.2–1.8).
+  It was versioned when the range narrowed; valid legacy values are adopted.
 - `navaid.showReturn` — `'0'` / `'1'` for the return-leg overlay.
 - `navaid.showMidLeg` — `'0'` / `'1'` for the mid-leg distance badge.
 - `navaid.showCumTime` — `'0'` / `'1'` for cumulative-time kites.
@@ -705,15 +703,15 @@ as a machine-readable registry.
 - `navaid.profileVS` — vertical-profile climb rate input, used for timing and
   the TOC ramp distance. (The profile draws a departure TOC only; there is no
   TOD — see the vertical-profile entry above.)
-- `navaid.ai.provider` — active AI-assistant LLM provider id (`gemini` |
-  `anthropic` | `openrouter` | `deepseek`; default `gemini`; `assistant.js`).
-- `navaid.ai.key.<provider>` — the user's own API key per provider (BYOK).
-  Never leaves the browser except in the request to that provider.
-- `navaid.ai.model.<provider>` — model id per provider (defaults:
+- `navaid.ai.provider` — reserved AI-assistant provider id. The assistant is
+  disabled by default (`featureAssistant: false`), so this setting is dormant
+  unless the feature is explicitly enabled by tuning.
+- `navaid.ai.key.<provider>` — reserved BYOK credential for the disabled assistant.
+  It is unused in the default app and excluded from Drive settings sync.
+- `navaid.ai.model.<provider>` — reserved model id per provider (defaults:
   `gemini-2.5-flash` / `claude-sonnet-5` / `openai/gpt-4o-mini` /
   `deepseek-chat`).
-- `navaid.ai.baseUrl` — base-URL override for the OpenAI-compatible providers
-  (OpenRouter / DeepSeek), e.g. to route through a CORS proxy.
+- `navaid.ai.baseUrl` — reserved endpoint override for OpenAI-compatible providers.
 - `navaid.routes` — saved-route library entries and tombstones. An entry
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified
@@ -724,13 +722,13 @@ as a machine-readable registry.
   optional Drive **settings** sync. The synced blob lives in Drive app-data as
   `navaid-settings.json` (separate from `navaid-routes.json`); the allowlist is
   `GDRIVE_SETTINGS_KEYS` in `gdrive.js` and deliberately excludes API keys,
-  panel geometry, and the working route. It also excludes, as a rule, **any key
+  panel geometry, and the working route. The flight-plan pilot, aircraft,
+  licence and contact profile is included when the user enables settings sync.
+  It also excludes, as a rule, **any key
   that decides where data is sent** — `navaid.ai.baseUrl`, and
   `navaid.fpl.aisEmail` (the address a flight plan is filed to: an override
-  synced from a settings blob would redirect every device's plan). The pilot's
-  own `navaid.fpl.replyTo` IS synced: it is cc'd, so a wrong value costs them
-  their copy but cannot misdirect the plan, and it is required to file — keeping
-  it device-local would block a second device. `tests/settings-sync-allowlist.spec.js`
+  synced from a settings blob would redirect every device's plan).
+  `tests/settings-sync-allowlist.spec.js`
   enforces this: every `navaid.*` literal must be synced or declared in
   `NOT_A_SYNCED_SETTING` with a reason. Protocol details that a second
   reader/writer of that file MUST honour:
@@ -799,9 +797,9 @@ as a machine-readable registry.
   absent, `dist` is hidden by default; an explicit empty array means the user
   chose All columns. Missing keys are shown, so newly added columns default
   visible.
-- `navaid.fpl.<field>` — flight-plan pilot/aircraft/contact form values;
-  `replyTo` may sync, while `aisEmail` is device-local because it controls the
-  filing destination. See the allowlist test for the exact decision.
+- `navaid.fpl.<field>` — flight-plan pilot/aircraft/contact form values. Settings
+  sync includes the profile so it follows the user across connected devices;
+  `aisEmail` remains device-local because it controls the filing destination.
 - `navaid.imsPwx`, `navaid.sigwxOv`, `navaid.showNotam.<prefix>`, and the
   related opacity keys — current chart/overlay choices (per-chart families are
   enumerated from the active CVFR/LSA/heli prefixes by tests).
@@ -883,10 +881,11 @@ downloadable `route.json`.
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
 - **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites
-  each branch's `docs/index.html` `?v=N` markers, `NavAid.version`,
-  every app/i18n `data/*.json?v=N` literal, and the service-worker cache
-  name to that branch's short commit SHA after checkout. Source `?v=N`
-  values are just placeholders; you don't need to bump them per commit.
+  each branch's `docs/index.html` `?v=src` markers, `NavAid.version`,
+  every app/i18n `data/*.json?v=<source-value>` URL, and the service-worker
+  cache name to that branch's short commit SHA after checkout. Only
+  `docs/index.html` requires literal `?v=src`. Existing app/i18n data URL
+  values may remain; do not bump them only for deployment cache invalidation.
   CI lint still enforces that every `?v=` value in the source HTML agrees.
   At runtime, `ui.js` registers `sw.js`, forces one update check on load,
   then re-checks on window focus, visible-tab restore, toolbar/menu
@@ -930,10 +929,9 @@ downloadable `route.json`.
   consumed by humans and each commit must actually publish.
 - Cache-bust check (also enforced by CI's `lint` job): every `?v=` in
   `docs/index.html` must agree (regex `\?v=[A-Za-z0-9]+`, so it
-  matches both the integer placeholder and the SHA value that Deploy
-  rewrites in). The actual cache-bust value users see is the short
-  commit SHA injected by Deploy at upload time. See AGENTS.md for the
-  full rule.
+  matches both the literal `src` source placeholder and the alphanumeric SHA
+  value that Deploy rewrites in). Deploy injects the short commit SHA as the
+  user-visible cache-bust value. See AGENTS.md for the full rule.
 
 ## Notes / pending
 
@@ -943,10 +941,11 @@ downloadable `route.json`.
   `msupino/NavigationApp-tiles`, served from
   `https://navaid-tiles.supino.org`, so canvas tile fetches remain
   readable without the old proxy path.
-- `cvfr-nav-waypoints.json` — 172 Israeli CVFR reporting points.
+- `cvfr-route-graph.json` — the Israeli CVFR reporting points and route edges.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
-  edition), supplied upstream as `113_waypoints.csv`. The CSV is the
-  sole source of truth — the legacy KMZ dataset
+  edition), supplied upstream as `113_waypoints.csv`. The CSV is the source of
+  truth for waypoint node identity and labels; graph edges and metadata use
+  their chart-specific sources. The legacy KMZ dataset
   (`CVFR WAYPOINTS 0225.kmz`) was replaced in issue #406 because it
   carried ~91 stale codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B
   Maarav/Mizrah`, etc.) and had several reporting points off the
@@ -955,34 +954,30 @@ downloadable `route.json`.
   lng, report}`: `name` = 5-letter chart code, `he` = Hebrew place name from
   CSV `Name` column. CSV rows where `Reporting == ARP` are skipped
   here — airfield ARPs live in `airfields.json` with richer data
-  (runways, plates, English label). To refresh: replace the CSV with
-  the latest chart edition, regenerate the JSON keeping the same
-  `{waypoints: [{name, en, he, lat, lng, report}]}` shape and field
-  mapping (CSV `Code` → `name`, CSV `Name` → `he`, decimal
-  columns → `lat`/`lng` rounded to 5 dp), and diff for sanity. The
-  exact migration is documented in the body of the PR that introduced
-  it (#406).
-- `proposed-altitudes.json` — candidate altitude pairs for detected green
-  CVFR route segments. Coordinates are intentionally not duplicated here:
-  segment endpoints resolve by `from` / `to` against `cvfr-nav-waypoints.json`
-  and `airfields.json`. `inboundAltitude` means `from -> to`;
+  (runways, plates, English label). To refresh, replace the source table with
+  the latest chart edition. Regenerate the graph nodes while preserving canonical
+  codes and edge references. Then diff the graph for sanity.
+- `cvfr-route-graph.json` edges also carry candidate altitude pairs for detected green
+  CVFR route segments. Coordinates are intentionally not duplicated in edges:
+  endpoints resolve by graph node code or against `airfields.json`.
+  `inboundAltitude` means `from -> to`;
   `outboundAltitude` means `to -> from`; `oneWay: true` rows use `null`
   for the disallowed direction. The extraction/review trail lives in
   `scripts/cvfr-altitude-extraction.md`, with a machine-readable review ledger
-  in `scripts/cvfr-altitude-extraction-notes.json`. The app loads this file as
-  a runtime reference for freshly-created legs only; saved/imported route leg
+  in `scripts/cvfr-altitude-extraction-notes.json`. The app projects these edge
+  values for freshly-created legs only; saved/imported route leg
   values stay authoritative, and manual altitude edits clear the auto-fill
   marker. Equal inbound/outbound values are allowed when the chart publishes
   the same altitude both directions, including double-ended yellow altitude
   tags. When refreshing from new PDFs, use the guide's same-route review rules
   before trusting OCR or nearest yellow signs, especially around Haifa / LLHA,
   Herzliya, Beer Sheba, the coastal strip, and Arad / Metzada.
-- `cvfr-comm-change.json` — dataset of CVFR reporting points where pilots
+- `cvfr-route-graph.json` communication metadata marks reporting points where pilots
   must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
   on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).
-  Schema: `{version, source, _definition, _NOTE, _TODO, callSigns,
-  points:[{name, commChange, callSigns, routeHints, note, source}]}`.
-  `name` matches an ICAO 5-letter code in `cvfr-nav-waypoints.json`; airfield
+  Call-sign definitions live in the graph's `callSigns` catalog; point-specific
+  fields live on the corresponding node. Node codes match published reporting
+  point identifiers; airfield
   endpoints may use 4-letter LLxx ICAO codes where the frequency point is
   the field itself. A point's `callSigns` array contains catalog IDs from
   the root `callSigns` object. Optional `routeHints` entries map adjacent
@@ -994,8 +989,9 @@ downloadable `route.json`.
     at boot (parallel with `loadNavWaypoints` / `loadAirfields` in
     `ui.js`), validates it with `validateCommChange()` in `io.js`, and
     builds the module-level `commChangeMap` keyed by `name` for O(1)
-    lookup. A 404 / schema error degrades to `commChangeMap = {}` so
-    a missing dataset never disables the rest of the nav-WP overlay.
+    lookup. A schema error degrades to `commChangeMap = {}` so invalid data
+    never disables the rest of the nav-WP overlay. A fetch failure keeps the
+    state unset and retryable on the next load.
   - **Render:** `drawNavWaypoints` in `draw.js` augments every white
     nav-WP dot whose `name` has `commChange: true` with a red outer
     ring (radius 6 px, 1.8 px stroke, `#e74c3c`). Gated by the global
@@ -1009,7 +1005,8 @@ downloadable `route.json`.
     freq-change editor to the waypoint pane whenever the selected
     waypoint has a linked callout note (matched by canonical name).
     The editor (shared with the note inspector via `appendFreqEdit()`)
-    includes an inline Auto checkbox, a call-sign dropdown that selects the resolved route-default call sign when Auto is checked, editable frequency,
+    includes an inline Auto checkbox and a call-sign dropdown. Auto selects the
+    resolved route-default call sign. The editor also includes an editable frequency
     and `↻ Reset callout location` button. When no linked note exists (overlay off or not
     seeded), legacy datasets with `from` / `to` strings still show that
     read-only pair

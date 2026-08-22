@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "purpose": "Developer review ledger for regenerating docs/data/cvfr-leg-altitude.json from CVFR PDF/chart imagery. This file is not loaded by the app.",
-  "relatedDataset": "docs/data/cvfr-leg-altitude.json",
+  "purpose": "Developer review ledger for updating altitude fields in docs/data/cvfr-route-graph.json from CVFR PDF/chart imagery. This file is not loaded by the app.",
+  "relatedDataset": "docs/data/cvfr-route-graph.json",
   "sourceCharts": [
     {
       "id": "north",
@@ -44,7 +44,7 @@
     "signLabels": "/tmp/navaid-altitude-signs/labels.txt"
   },
   "reviewRules": [
-    "Use docs/data/cvfr-nav-waypoints.json and docs/data/airfields.json as the coordinate source; do not duplicate coordinates in the altitude dataset.",
+    "Use docs/data/cvfr-route-graph.json nodes and docs/data/airfields.json as the coordinate source; do not duplicate coordinates in edge records.",
     "Green-route candidates came from sampling chart pixels between known endpoints; keep detection.greenScore/maxGap/samples for triage, not as proof of altitude.",
     "Candidate sign direction IN means the yellow arrow points from segment.from to segment.to; OUT means the reverse direction.",
     "In dense terminal areas, prefer the continuous green route and printed route number over nearest-pixel distance to a yellow sign.",

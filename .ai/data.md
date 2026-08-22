@@ -12,15 +12,14 @@ After both decisions, PNGs not referenced by either live manifest are pruned.
 
 - `airfields.json` - airfields, ARPs, names, runways, plates, frequencies,
   ATIS/clearance, and metadata used by inspectors and charts.
-- `cvfr-nav-waypoints.json`, `lsa-nav-waypoints.json`,
-  `heli-nav-waypoints.json` - layer-specific reporting points. The active
-  `navDataPrefix` selects the runtime file.
-- `cvfr-leg-altitude.json`, `lsa-leg-altitude.json`,
-  `heli-leg-altitude.json` - layer-specific known altitude pairs.
+- `cvfr-route-graph.json`, `lsa-route-graph.json`, and
+  `heli-route-graph.json` - the layer-specific route graphs. Each graph stores
+  canonical point records under `nodes`, directed adjacency under `edges`, and
+  communication metadata under `commMeta`. The active `navDataPrefix` selects
+  the runtime graph; waypoint, leg-altitude, and communication-change views are
+  projections of this one source.
 - `route-templates.json` - ready-made route templates. Do not duplicate leg
-  altitude values here when they belong in a leg-altitude dataset.
-- `cvfr-comm-change.json`, `lsa-comm-change.json`,
-  `heli-comm-change.json` - frequency-change boundaries and defaults.
+  altitude values here when they belong on an edge in the active route graph.
 - `vor.json` - VOR stations used by radial/DME readouts.
 - `terrain.json` - coarse elevation grid for MSA warnings.
 - `wx.json` - weather metadata/source configuration.
@@ -60,20 +59,23 @@ The NOTAM layer is fed by a scheduled Action, not a hand-maintained file:
 
 ## Nav Waypoints
 
-`cvfr-nav-waypoints.json` currently contains 172 published reporting points
-under `waypoints`:
+`cvfr-route-graph.json` contains 172 CVFR-layer waypoint members keyed by code
+under `nodes`. The runtime projection renders the 170 active members. The graph
+also carries 22 minimal airfield endpoint nodes. They keep route edges connected:
 
 ```json
 { "name": "ZLHAV", "en": "Lehavim Junction", "he": "צומת להבים", "lat": 31.3725, "lng": 34.79333, "report": "mandatory" }
 ```
 
-The IAA CVFR waypoint reference table is the source of truth. Airfield ARPs do
-not belong here; richer airfield records belong in `airfields.json`.
+The IAA CVFR waypoint reference table is the source of truth for waypoint nodes.
+Airfield nodes in this graph contain only topology identity and coordinates;
+richer ARP, runway, plate, frequency and elevation records belong in
+`airfields.json`.
 
 When updating:
 
-1. Regenerate from the published table.
-2. Keep `{ name, en, he, lat, lng, report }` and the top-level report metadata.
+1. Regenerate the CVFR graph from the published sources.
+2. Keep canonical node identity, labels, coordinates, kind, layers and report metadata.
 3. Round coordinates consistently.
 4. Diff code/name changes manually.
 5. Run waypoint/dataset tests.
@@ -99,12 +101,12 @@ npx playwright test tests/airfields-dataset.spec.js tests/airfield-arp.spec.js
 
 ## Leg Altitudes
 
-The active `<prefix>-leg-altitude.json` stores per-direction values for its
-chart family.
+The active `<prefix>-route-graph.json` stores per-direction values in each
+`edges.<from>[]` entry for its chart family.
 
 Use `null` for no known value in a direction, and mark blocked/one-way paths
 with the existing schema. Do not infer altitudes from route templates once the
-leg is known; migrate the value into the matching prefixed dataset and strip it
+leg is known; migrate the value into the matching route-graph edge and strip it
 from the template.
 
 The altitude-pairs chart is an editing/viewing surface for this dataset. If you
@@ -120,8 +122,8 @@ Rules:
 - Use canonical waypoint codes.
 - Keep user-editable display names out unless necessary.
 - Keep speed/profile defaults in the template.
-- Store leg altitudes in the matching prefixed dataset, not in the template, when the leg
-  is a known CVFR segment.
+- Store leg altitudes in the matching route-graph edge, not in the template,
+  when the leg is a known chart segment.
 - A template also keeps minimal `notes` (freq-change callouts: `cc`,
   `freqName`, optional `freqAuto`) and `commChangeSuppressions`; it does not
   store coordinates, literal frequencies, or per-leg altitudes.

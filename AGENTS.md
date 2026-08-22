@@ -10,9 +10,9 @@ NavAid is a static web app deployed via GitHub Pages from a workflow.
 - `mobile/` — Capacitor workspace for native iOS / Android packaging.
   Its tiny `shell/` web payload opens `https://navaid.supino.org` through
   Capacitor (`webDir: "shell"`); native tooling stays out of the static app.
-- `the nav-waypoints projection of docs/data/cvfr-route-graph.json` — 172 Israeli CVFR reporting points
- (`{name, en, he, lat, lng, report}`); shipped, lazily fetched by the "Show/pin
- navigation waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
+- `the nav-waypoints projection of docs/data/cvfr-route-graph.json` — 172 CVFR-layer
+ members, of which 170 active Israeli CVFR reporting points are shipped and lazily
+ fetched by the "Show/pin navigation waypoints" toggle. Sourced from the IAA CVFR chart waypoint
  reference table (page 113, 2025 edition) — see `.ai/navaid-dev.md` for refresh
  procedure.
 - `.github/workflows/deploy.yml` — Pages build + deploy.
@@ -53,19 +53,17 @@ both branches and assembles a single Pages site:
   same Deploy step rewrites `NavAid.version` in `docs/app/core.js` from
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
   deployed commit without manually increasing the source version number.
-- **Before creating a feature branch from `dev`, update `dev` first — and
-  bring it level with `main`.** Fetch `origin`, check out `dev`,
-  fast-forward it to `origin/dev`, then merge `origin/main` into it (a
-  fast-forward when `dev` has nothing of its own) and push, before branching
-  from that tip. A branch cut from a `dev` that is behind `main` is born
-  conflicting with production and only shows it at promo time. Merge, never
-  rebase: `dev` is shared, so rewriting its history orphans every open PR
-  based on it. See `.ai/workflow.md` for the commands. Before each production promotion, automation uses the
+- **Before creating a feature branch from `dev`, update local `dev` and verify
+  that it already contains `main`.** Fetch `origin`, check out `dev`,
+  fast-forward it to `origin/dev`, then run the ancestry check in
+  `.ai/workflow.md`. If it fails, use a reviewed feature-branch PR to bring
+  `main` into `dev`; do not repair a protected branch with a direct push.
+  Before each production promotion, automation uses the
   open `dev` → `main` PR's Update branch operation to bring the previous
   promotion merge commit back into `dev`; no separate sync PR is needed.
-  If `main` contains production-only file changes, stop and use
-  a reviewed maintenance PR. Never directly push protected branches as
-  routine recovery.
+  If `main` contains production-only file changes, stop and use a reviewed
+  maintenance PR. Never rebase shared `dev` or directly push protected branches
+  as routine recovery.
 - **Before `git commit`, verify the current branch** (`git branch
   --show-current`, and `git status` if needed). If it is not the branch
   the user intended for this work, or you are unsure, **ask the user**

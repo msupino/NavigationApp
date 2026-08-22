@@ -114,12 +114,12 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.headingUp$/,         'map orientation is a property of the device you fly with'],
   // navaid.ai.baseUrl decides where data is sent — same rule as aisEmail.
   // navaid.ai.panelSize is device-local geometry (panelPos is caught by /Pos$/).
-  // navaid.ai.key.*/model.* base strings (with trailing '.') are composed at
-  // runtime; the full per-provider literals are in the allowlist instead.
+  // AI keys are credentials and stay device-local. Model choices remain portable.
   [/^navaid\.ai\.baseUrl(\.|$)/,  'endpoint URL, now per provider — decides where data is sent; must not be settable via sync'],
   [/^navaid\.ai\.panelSize$/,    'assistant panel dimensions, per device'],
-  [/^navaid\.ai\.(key|model)\.$/,'composed-key base string — per-provider literals are in the allowlist'],
-  [/^navaid\.fpl\.aisEmail$/,    'the address the flight plan is filed to — a synced blob must not be able to redirect it'],
+  [/^navaid\.ai\.key(\.|$)/,    'provider credential — settings sync must not copy secrets into Drive'],
+  [/^navaid\.ai\.model\.$/,     'composed model-key base — concrete model choices are allowlisted'],
+  [/^navaid\.fpl\.aisEmail$/,   'the filing destination decides where data is sent'],
   // Covered by another mechanism.
   [/^navaid\.route$/,            'the working route; the library covers saved ones'],
   [/^navaid\.routes$/,           'the route library, synced as its own file'],
@@ -178,11 +178,11 @@ function allKeyLiterals() {
   return [...out];
 }
 
-test('the allowlist contains AI keys but excludes baseUrl and panel geometry', () => {
+test('the allowlist syncs AI choices but excludes credentials, baseUrl and panel geometry', () => {
   const keys = allowlist();
   expect(keys).toContain('navaid.ai.provider');
-  expect(keys).toContain('navaid.ai.key.anthropic');
   expect(keys).toContain('navaid.ai.model.anthropic');
+  expect(keys.some(k => k.startsWith('navaid.ai.key.'))).toBe(false);
   expect(keys).not.toContain('navaid.ai.baseUrl');
   expect(keys.some(k => /Pos$/.test(k))).toBe(false);
   expect(keys).toContain('navaid.layer');
@@ -193,26 +193,15 @@ test('the allowlist contains AI keys but excludes baseUrl and panel geometry', (
 // go unnoticed. aisEmail is the address the plan is FILED to (fplBuild prefers it over
 // the published FPL_FILE_TO), so a settings blob that could set it would send the plan
 // somewhere other than AIS while the pilot believes it was filed. Assert it by name.
-test('the address a flight plan is filed to is never synced', () => {
-  // The block is written as ...['reg', ...].map(f => 'navaid.fpl.' + f), so allowlist()
-  // sees the bare field names, not composed keys — asserting on 'navaid.fpl.aisEmail'
-  // would pass whether or not the field is there. Read the field list itself.
+test('flight-plan profile syncs but the filing destination does not', () => {
   const src = fs.readFileSync(path.join(APP_DIR, 'gdrive.js'), 'utf8');
   const m = src.match(/\.\.\.\[([^\]]+)\]\.map\(f => 'navaid\.fpl\.' \+ f\)/);
   expect(m).not.toBeNull();
   const fields = [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]);
-  // aisEmail is the address the plan is FILED to (fplBuild prefers p.aisEmail over the
-  // published FPL_FILE_TO). Synced, a settings blob could send the plan somewhere other
-  // than AIS while the pilot believes it was filed — and nothing would alert if the
-  // flight went down.
-  expect(fields).not.toContain('aisEmail');
-  // replyTo is deliberately still synced: it is the pilot's own address and a wrong one
-  // cannot misdirect the plan, only cost them their copy. Asserted so the fix is not
-  // "applied" by dropping every address.
+  expect(fields).toContain('pic');
+  expect(fields).toContain('license');
   expect(fields).toContain('replyTo');
-  // The rest of the profile is meant to travel — catch the fix being "applied" by
-  // deleting the whole block.
-  expect(fields).toContain('reg');
+  expect(fields).not.toContain('aisEmail');
 });
 
 test('the sweep reads the allowlist file too, minus the array', () => {

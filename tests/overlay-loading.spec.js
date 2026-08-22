@@ -38,6 +38,73 @@ test('a plate that never arrives does not leave the marker up', async ({ page })
   expect(await page.evaluate(() => overlayLoadingCount())).toBe(0);
 });
 
+test('turning off a still-loading plate group settles every loading token', async ({ page }) => {
+  await page.route('**/circuit-img/*.png', () => new Promise(() => {}));
+  await boot(page);
+  await page.evaluate(() => {
+    const cb = document.getElementById('circuit-cb');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+  });
+  await expect.poll(() => page.evaluate(() => overlayLoadingCount())).toBeGreaterThan(0);
+  await page.evaluate(() => {
+    const cb = document.getElementById('circuit-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change'));
+  });
+  await expect.poll(() => page.evaluate(() => overlayLoadingCount())).toBe(0);
+  await expect(page.locator('.overlay-loading')).not.toHaveClass(/show/);
+});
+
+test('one plate group cannot release another group loading marker', async ({ page }) => {
+  await boot(page);
+  const counts = await page.evaluate(() => {
+    chartsLoading(true, 'circuit');
+    chartsLoading(true, 'training');
+    const both = overlayLoadingCount();
+    chartsLoading(false, 'circuit');
+    const trainingOnly = overlayLoadingCount();
+    chartsLoading(false, 'training');
+    return { both, trainingOnly, none: overlayLoadingCount() };
+  });
+  expect(counts.both).toBeGreaterThan(0);
+  expect(counts.trainingOnly).toBe(counts.both);
+  expect(counts.none).toBe(0);
+});
+
+test('a stale completion cannot release a newer load of the same group', async ({ page }) => {
+  await boot(page);
+  const counts = await page.evaluate(() => {
+    const stale = chartsLoadingStart('circuit');
+    chartsLoadingCancelGroup('circuit');
+    const current = chartsLoadingStart('circuit');
+    chartsLoading(false, stale);
+    const afterStale = overlayLoadingCount();
+    chartsLoading(false, current);
+    return { afterStale, none: overlayLoadingCount() };
+  });
+  expect(counts.afterStale).toBeGreaterThan(0);
+  expect(counts.none).toBe(0);
+});
+
+test('re-enabling an existing group starts a new loading hold', async ({ page }) => {
+  await page.route('**/circuit-img/*.png', () => new Promise(() => {}));
+  await boot(page);
+  const toggle = checked => page.evaluate(value => {
+    const cb = document.getElementById('circuit-cb');
+    cb.checked = value;
+    cb.dispatchEvent(new Event('change'));
+  }, checked);
+  await toggle(true);
+  await expect.poll(() => page.evaluate(() => overlayLoadingCount())).toBeGreaterThan(0);
+  await toggle(false);
+  await expect.poll(() => page.evaluate(() => overlayLoadingCount())).toBe(0);
+  await toggle(true);
+  await expect.poll(() => page.evaluate(() => overlayLoadingCount())).toBeGreaterThan(0);
+  await toggle(false);
+  await expect.poll(() => page.evaluate(() => overlayLoadingCount())).toBe(0);
+});
+
 // It must not take input: the pilot carries on panning while the charts load.
 test('the marker never takes a touch', async ({ page }) => {
   await boot(page);

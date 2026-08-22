@@ -47,7 +47,7 @@
   <!-- English -->
   <div data-lang="en">
     <h1>NavAid — Privacy Policy</h1>
-    <p class="muted">Last updated: 8 June 2026</p>
+    <p class="muted">Last updated: 22 August 2026</p>
 
     <p><strong>NavAid</strong> is a free, open-source CVFR flight-route planner that runs
     entirely in your web browser. There is no NavAid server and no NavAid account — the
@@ -56,19 +56,25 @@
     <h2>What we collect</h2>
     <p><strong>Nothing is sent to us.</strong> NavAid has no backend and no analytics
     operated by NavAid. Your routes, waypoints, notes and settings are stored only in your
-    browser's local storage on your own device.</p>
+    browser's local storage on your own device unless you explicitly enable one of the
+    optional Google Drive sync features described below.</p>
 
     <h2>Google Drive (optional)</h2>
     <p>If — and only if — you choose to connect Google Drive, NavAid uses the
-    <code>drive.appdata</code> permission to store a single file
-    (<code>navaid-routes.json</code>) containing your saved routes in a hidden,
-    application-specific folder in <em>your own</em> Google Drive.</p>
+    <code>drive.appdata</code> permission to store <code>navaid-routes.json</code>,
+    containing your saved routes, in a hidden application-specific folder in
+    <em>your own</em> Google Drive. If you separately enable “Sync settings too”,
+    portable preferences are stored in <code>navaid-settings.json</code>. This includes
+    the flight-plan pilot, aircraft, licence and contact profile so it is available on
+    your other connected devices. Current versions exclude AI API keys and the
+    flight-plan filing destination. If an older version copied an AI key into the
+    settings file, the next successful settings sync removes that legacy copy.</p>
     <ul>
-      <li>This permission gives NavAid access <strong>only</strong> to the file it creates
-        in that hidden app folder. NavAid <strong>cannot see, read, or modify any other
+      <li>This permission gives NavAid access <strong>only</strong> to the files it creates
+        in that hidden app-data folder. NavAid <strong>cannot see, read, or modify any other
         files</strong> in your Google Drive.</li>
-      <li>The data stays in your Google account. NavAid does not transmit it to any
-        NavAid-operated server or any third party.</li>
+      <li>The selected data is sent to your own Google Drive at your request. NavAid does
+        not send it to a NavAid-operated server or an unrelated third party.</li>
       <li>Authorization happens through Google's standard sign-in; NavAid never sees your
         Google password. Access tokens are kept in memory for the session only.</li>
       <li>You can disconnect at any time, and you can delete the stored data from
@@ -100,7 +106,7 @@
   <!-- Hebrew -->
   <div data-lang="he" dir="rtl">
     <h1>NavAid — מדיניות פרטיות</h1>
-    <p class="muted">עודכן לאחרונה: 8 ביוני 2026</p>
+    <p class="muted">עודכן לאחרונה: 22 באוגוסט 2026</p>
 
     <p><strong>NavAid</strong> הוא מתכנן מסלולי טיסה CVFR חופשי ובקוד פתוח, הפועל כולו
     בדפדפן שלך. אין שרת של NavAid ואין חשבון NavAid — האפליקציה מורכבת מקבצים סטטיים
@@ -109,19 +115,24 @@
     <h2>מה אנו אוספים</h2>
     <p><strong>שום דבר אינו נשלח אלינו.</strong> ל-NavAid אין צד-שרת ואין כלי ניתוח
     נתונים (analytics) המופעל על ידי NavAid. המסלולים, נקודות הציון, ההערות וההגדרות שלך
-    נשמרים אך ורק באחסון המקומי של הדפדפן, על המכשיר שלך.</p>
+    נשמרים באחסון המקומי של הדפדפן, על המכשיר שלך, אלא אם הפעלת במפורש אחת
+    מאפשרויות הסנכרון האופציונליות עם Google Drive המתוארות להלן.</p>
 
     <h2>Google Drive (אופציונלי)</h2>
     <p>אם — ורק אם — תבחר לחבר את Google Drive, ‏NavAid משתמשת בהרשאת
-    <code>drive.appdata</code> כדי לשמור קובץ יחיד (<code>navaid-routes.json</code>)
-    המכיל את המסלולים השמורים שלך, בתיקייה מוסתרת וייעודית לאפליקציה בתוך
-    Google Drive <em>שלך</em>.</p>
+    <code>drive.appdata</code> כדי לשמור את <code>navaid-routes.json</code>, המכיל את
+    המסלולים השמורים שלך, בתיקייה מוסתרת וייעודית לאפליקציה בתוך Google Drive
+    <em>שלך</em>. אם הפעלת בנפרד ״סנכרן גם הגדרות״, העדפות ניידות נשמרות
+    ב-<code>navaid-settings.json</code>. הן כוללות את פרטי הטייס, המטוס, הרישיון
+    והקשר של תכנית הטיסה, כדי שיהיו זמינים במכשירים מחוברים אחרים. הגרסאות הנוכחיות
+    אינן כוללות מפתחות API של כלי ה-AI או את כתובת היעד להגשת תכנית הטיסה. אם גרסה
+    ישנה העתיקה מפתח AI לקובץ ההגדרות, הסנכרון המוצלח הבא יסיר את העותק הישן.</p>
     <ul>
-      <li>הרשאה זו מעניקה ל-NavAid גישה <strong>אך ורק</strong> לקובץ שהיא יוצרת באותה
-        תיקיית אפליקציה מוסתרת. ‏NavAid <strong>אינה יכולה לראות, לקרוא או לשנות קבצים
+      <li>הרשאה זו מעניקה ל-NavAid גישה <strong>אך ורק</strong> לקבצים שהיא יוצרת באותה
+        תיקיית נתוני אפליקציה מוסתרת. ‏NavAid <strong>אינה יכולה לראות, לקרוא או לשנות קבצים
         אחרים</strong> ב-Google Drive שלך.</li>
-      <li>הנתונים נשארים בחשבון Google שלך. ‏NavAid אינה מעבירה אותם לשום שרת המופעל על
-        ידי NavAid ולא לצד שלישי כלשהו.</li>
+      <li>הנתונים שנבחרו נשלחים ל-Google Drive הפרטי שלך לפי בקשתך. ‏NavAid אינה
+        שולחת אותם לשרת המופעל על ידי NavAid או לצד שלישי שאינו קשור.</li>
       <li>האימות מתבצע דרך מנגנון ההתחברות הסטנדרטי של Google; ‏NavAid לעולם אינה רואה את
         סיסמת Google שלך. אסימוני הגישה נשמרים בזיכרון למשך ההפעלה (session) בלבד.</li>
       <li>ניתן לנתק בכל עת, וניתן למחוק את הנתונים השמורים דרך

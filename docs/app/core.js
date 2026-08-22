@@ -480,7 +480,7 @@ NavAid.tuningDefaults = {
   profileGridColor: { value: '#7896b4', type: 'color', label: 'Profile grid color' },
   profileAxisColor: { value: '#5a6b7d', type: 'color', label: 'Profile axis color' },
   profileGroundColor: { value: '#3a4654', type: 'color', label: 'Profile ground line color' },
-  // Terrain under the profile line (#673's grid, drawn where the plan is read). Sample count
+  // Terrain under the profile line, drawn where the plan is read. Sample count
   // is the silhouette's resolution: the shipped grid is ~1.2 km per cell, so past a few
   // hundred samples the extra points redraw the same cell.
   profileTerrainColor: { value: '#6b5a44', type: 'color', label: 'Profile terrain fill' },
@@ -993,7 +993,7 @@ window.S = Object.assign({
   airfieldsUrl: 'data/airfields.json?v=39',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
-  vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations (#404 follow-up)
+  vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms
@@ -1304,6 +1304,8 @@ window.S = Object.assign({
   fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
   fpColumns: 'Columns',
   fpColumnsAll: 'All columns',
+  fpSpeedInput: 'Leg speed',
+  fpAltitudeInput: 'Leg altitude',
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
   exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
@@ -2142,7 +2144,7 @@ window.S = Object.assign({
   tbTerms: 'Terms',
   tbIssues: 'Issues / Requests',
 
-  // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+  // --- Keyboard-shortcuts cheat-sheet ---------------------------------
   // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.
   // Suppressed while focused in an input / textarea / contenteditable so
   // typing a literal '?' in a waypoint name / note still works.
@@ -2209,7 +2211,7 @@ const state = {
   commChangeSuppressions: [], // canonical comm-change callouts the user deleted
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
-  wind: { dir: tune('windDir'), speed: tune('windSpeed') }, // route-wide wind (#722): dir °true FROM, kt; 0 = calm; default is tunable
+  wind: { dir: tune('windDir'), speed: tune('windSpeed') }, // route-wide wind: dir °true FROM, kt; 0 = calm; default is tunable
 };
 var showReturn = false;     // outbound (return) markers — off by default
 // Which direction's leg kites to draw: 'both' | 'out' | 'back'. An out-and-back route
@@ -2226,7 +2228,7 @@ var editLocked = false;
 var highlightDiff = false;  // purple halo on legs that change altitude
 var limitLegKites = true;   // keep dragged leg markers between their two waypoints
 var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
-var showReporting = false;  // mandatory reporting badges (opt-in, default off) — issue #404
+var showReporting = false;  // mandatory reporting badges (opt-in, default off)
 var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.
@@ -2242,7 +2244,7 @@ var autoRouteCorridors = false;
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
 var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref
-var forceSnap = false;      // #106: when on, every click snaps to the
+var forceSnap = false;      // when on, every click snaps to the
                             // absolute nearest airfield / nav-WP regardless
                             // of click distance (otherwise: 18 px radius).
 var airfields = null;       // same null/[]/populated convention as navWP —
@@ -2250,10 +2252,10 @@ var airfields = null;       // same null/[]/populated convention as navWP —
                             // { name, he, lat, lng, en?, elev_ft?, atis?, clearance?, plates:[], runways:[]|null }.
                             // `en`, `elev_ft`, `atis`, `clearance`,
                             // `plates`, and `runways` are
-                            // optional per the chart-rebuild (#412): ARPs
+                            // optional after chart rebuilds: ARPs
                             // surfaced from the IAA chart with no published
                             // BYOP enrichment ship as bare {name,he,lat,lng}.
-var showCommChange = true;   // Comm-change ring overlay + callouts (default on) — issue #399/#487.
+var showCommChange = true;   // Comm-change ring overlay + callouts (default on).
 var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // retry on next toggle); {} or populated = last
                             // fetch resolved. Keyed by nav-WP `name` for
@@ -2289,7 +2291,7 @@ var routeAltPrefix = null;
 // routes menu. Session-only (not persisted across reload).
 var currentRouteLibraryId = null;
 var showDrift = true;       // 10-degree drift reference lines
-var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
+var showWind = false;       // wind effect: inputs + arrows + readout — opt-in
 var sigmets = null;         // null = not loaded; [] or populated once fetched
 var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showNotam = false;      // NOTAM overlay — opt-in
@@ -2332,7 +2334,7 @@ var magnifierOn = false;    // magnifying-glass toggle
 var magnifierZoom = 2;      // default zoom factor
 var magnifierSize = 400;    // magnifier diameter (px)
 
-// --- Simulator live aircraft (issue #691) ----------------------------
+// --- Simulator live aircraft -----------------------------------------
 // Polls a local SimConnect HTTP bridge (e.g. Little NavMap / MSFS).
 // Response JSON: { latitude, longitude, altitude, heading, ias }
 var simOn = false;                        // polling active
@@ -2345,7 +2347,7 @@ let pageSize = null;        // null | 'A3' | 'A4'
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
 var aircraft = null;               // null | {gph, taxiGal}
-// Flight-plan card placed on the PNG export (#378). null = off; otherwise
+// Flight-plan card placed on the PNG export. null = off; otherwise
 // { x, y } top-left in container pixels. planCardRect holds the last rendered
 // bounds for hit-testing the drag.
 var planCard = null;
@@ -2400,11 +2402,11 @@ const NOTE_DEFAULT_COLOR = DEFAULT_LABEL_FILL_COLOR;   // matches the existing y
 // `legLabelCenter` (interact.js) handle the sentinel; the drag handlers
 // materialise the current rendered `p` into the stored offset on
 // drag-start so the user-dragged path keeps the existing
-// size-independent `{ a, p, _m: 1 }` shape unchanged (issue #394).
+// size-independent `{ a, p, _m: 1 }` shape unchanged.
 //
 // `_m: 1` continues to mark the label as migrated, so the legacy-pixel
 // path in `_normalizeLegLabel` (io.js) leaves sentinels untouched on
-// reload. See `_normalizeLegLabel` for the pre-#393 raw-pixel migration.
+// reload. See `_normalizeLegLabel` for the legacy raw-pixel migration.
 function _defaultLegLabels() {
   return {
     inLabel:  { a: 0, _default: 1, _m: 1 },
@@ -2597,7 +2599,7 @@ function toMagnetic(deg) {
   const mv = typeof tune === 'function' ? tune('magneticVariationDeg') : magVar;
   return ((Math.round(deg + mv) % 360) + 360) % 360;
 }
-// --- wind triangle (#722) -------------------------------------------
+// --- wind triangle --------------------------------------------------
 // Resolve the wind that applies to a leg: an explicit per-leg override (with
 // either field falling back to the route wind) beats the route-wide wind.
 // Returns null for calm (speed <= 0) so callers can skip the no-op math.
@@ -2636,7 +2638,7 @@ function windTriangle(courseTrue, tas, wind) {
     gs,
   };
 }
-// Winds-aloft level mapping (#722): Open-Meteo serves wind/temperature on
+// Winds-aloft level mapping: Open-Meteo serves wind/temperature on
 // these pressure levels (hPa). Map a planned altitude to the nearest one so a
 // CVFR leg at ~3000 ft pulls ~900 hPa, ~5000 ft pulls ~850 hPa, etc.
 const OPEN_METEO_LEVELS_HPA =
@@ -3366,7 +3368,7 @@ function toHMS(hours) {
   return m + ':' + String(s).padStart(2, '0');
 }
 
-// --- vertical profile: top-of-climb / top-of-descent (#672) -------------
+// --- vertical profile: top-of-climb / top-of-descent --------------------
 // Default GA climb/descent performance (C172-ish) lives in the tune registry.
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
 function routeEndpointElev(i) {
@@ -3466,7 +3468,7 @@ function routeProfile(ac, legIndexes) {
   return out;
 }
 
-// --- airfield METAR / TAF (#670) ---------------------------------------
+// --- airfield METAR / TAF ----------------------------------------------
 // NOAA AWC's METAR/TAF API blocks direct browser fetches and public proxies
 // proved unreliable, so a scheduled GitHub Action fetches it server-side and
 // publishes wx.json (all Israeli fields) to the `wx-data` branch, served by
@@ -3636,13 +3638,13 @@ function fmtLatLng(v, pos, neg) {
   return `${dd}°${m.toFixed(1).padStart(4, '0')}'${hemi}`;
 }
 
-// Go-to sanity box (issue #497): a generous Israel-area bound. Parsed
+// Go-to sanity box: a generous Israel-area bound. Parsed
 // coordinates outside this are rejected so a typo can't fling the map to
 // the other side of the planet.
 const GOTO_LAT_MIN = 28, GOTO_LAT_MAX = 34;
 const GOTO_LNG_MIN = 33, GOTO_LNG_MAX = 37;
 
-// Parse a free-text coordinate string into { lat, lng } or null (issue #497).
+// Parse a free-text coordinate string into { lat, lng } or null.
 // Tolerant of three notations, in priority order:
 //   1. DMS / DM with hemisphere letters:  32°00'17"N 34°43'38"E  /  32 00.3 N ...
 //   2. Signed decimal degrees:            32.005, 34.727  /  32.005 34.727
