@@ -1,0 +1,113 @@
+diff --git a/docs/app/core.js b/docs/app/core.js
+index 4cb6e26d..1b3b0bb7 100644
+--- a/docs/app/core.js
++++ b/docs/app/core.js
+@@ -4060,6 +4060,11 @@ function syncLegs() {
+   if (Array.isArray(state.notes)) {
+     state.notes = state.notes.filter(n => !n || !n.rp || n.rp.leg < need);
+   }
++  // Route replacement and startup restore both finish here after waypoints, legs,
++  // notes, and suppressions have been installed. Reconcile at this shared boundary so
++  // a persisted callout cannot survive at a newly effective turn, and so moving or
++  // clearing that turn can re-seed the old point without a permanent suppression.
++  if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+   applyLegAltitudesToRoute();
+   // A newly added leg should pick up live wind when the wind display is on
+   // (the handler is debounced and no-ops when the wind display is off).
+diff --git a/tests/leg-direction-filter.spec.js b/tests/leg-direction-filter.spec.js
+index 81a1e4d1..4c46c345 100644
+--- a/tests/leg-direction-filter.spec.js
++++ b/tests/leg-direction-filter.spec.js
+@@ -601,6 +601,92 @@ test.describe('manual turning point', () => {
+     expect(kept.turn).toBe(2);
+   });
+ 
++  test('route import and startup restore immediately remove a persisted turn callout', async ({ page }) => {
++    await boot(page);
++    await loop(page);
++    const out = await page.evaluate((wps) => {
++      setTurnWaypoint(2);
++      state.notes = [
++        { lat: 32.00472, lng: 34.72722, cc: 'TYONA',
++          freqName: 'PILOT', freq: '130.00', text: 'remove me' },
++        { lat: 32.1, lng: 34.8, text: 'keep me', color: '#fff' },
++      ];
++      const blob = serializeRoute();
++
++      state.selected = { type: 'note', index: 0 };
++      applyRouteData(blob);
++      const imported = {
++        turnCallout: state.notes.some(n => n && n.cc === 'TYONA'),
++        ordinaryKept: state.notes.some(n => n && n.text === 'keep me'),
++      };
++
++      localStorage.setItem('navaid.route', JSON.stringify(blob));
++      state.waypoints = wps.map(w => ({ ...w }));
++      state.legs = [];
++      state.notes = [{ lat: 0, lng: 0, text: 'old selection' }];
++      state.selected = { type: 'note', index: 0 };
++      const restored = restoreRoute();
++      const removedSelection = state.selected;
++
++      // A selected unrelated note after the removed callout must follow its object
++      // to the new index instead of silently selecting the wrong note or disappearing.
++      state.selected = { type: 'note', index: 1 };
++      restoreRoute();
++      const shiftedSelection = state.selected && {
++        ...state.selected,
++        text: state.notes[state.selected.index] && state.notes[state.selected.index].text,
++      };
++      return {
++        imported,
++        restored,
++        restoredTurnCallout: state.notes.some(n => n && n.cc === 'TYONA'),
++        restoredOrdinaryKept: state.notes.some(n => n && n.text === 'keep me'),
++        removedSelection,
++        shiftedSelection,
++      };
++    }, LOOP);
++    expect(out.imported).toEqual({ turnCallout: false, ordinaryKept: true });
++    expect(out.restored).toBe(true);
++    expect(out.restoredTurnCallout).toBe(false);
++    expect(out.restoredOrdinaryKept).toBe(true);
++    expect(out.removedSelection).toBeNull();
++    expect(out.shiftedSelection).toEqual({ type: 'note', index: 0, text: 'keep me' });
++  });
++
++  test('moving or clearing the turn re-seeds its old frequency point', async ({ page }) => {
++    await boot(page);
++    await page.evaluate(async () => {
++      await Promise.all([loadNavWaypoints(), loadCommChange()]);
++    });
++    await loop(page);
++    const out = await page.evaluate(() => {
++      setTurnWaypoint(1);                 // SFAIM is the turn: no callout
++      syncLegs();
++      const atTurn = state.notes.some(n => n && n.cc === 'SFAIM');
++
++      setTurnWaypoint(2);                 // move turn to TYONA
++      syncLegs();
++      const afterMove = state.notes.some(n => n && n.cc === 'SFAIM');
++
++      setTurnWaypoint(1);                 // move back, then clear SFAIM
++      syncLegs();
++      setTurnWaypoint(1);
++      syncLegs();
++      return {
++        atTurn,
++        afterMove,
++        afterClear: state.notes.some(n => n && n.cc === 'SFAIM'),
++        suppressed: state.commChangeSuppressions.includes('SFAIM'),
++      };
++    });
++    expect(out).toEqual({
++      atTurn: false,
++      afterMove: true,
++      afterClear: true,
++      suppressed: false,
++    });
++  });
++
+   test('the inspector marks the turn and immediately removes its callout', async ({ page }) => {
+     await boot(page);
+     await loop(page);

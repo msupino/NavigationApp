@@ -816,6 +816,8 @@ function drawVerticalProfile(ctx, x, y, w, h) {
 }
 
 function draw() {
+  // Import and startup both render only after their complete route state is installed.
+  pruneTurnCommChangeNotes();
   // Reclaims the legend's screen space on a phone while a position source is live
   // (recording, live location, or a connected simulator) -- reported live as "legend
   // should be hidden, to make screen place". Kept in sync here (every redraw, which

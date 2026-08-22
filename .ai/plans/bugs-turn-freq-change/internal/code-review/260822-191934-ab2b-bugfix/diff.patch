@@ -1,0 +1,522 @@
+diff --git a/.ai/navaid-dev.md b/.ai/navaid-dev.md
+index 3c51ff64..50c8c531 100644
+--- a/.ai/navaid-dev.md
++++ b/.ai/navaid-dev.md
+@@ -349,6 +349,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
+   manual callout with editable call-sign text and frequency.
+   Suppressions are cleared when the waypoint is removed, moves away from
+   the comm-change point, the route is cleared, or a new file is loaded.
++  The effective turning waypoint cannot carry a frequency-change callout:
++  reconciliation removes both automatic and manual callouts there without
++  creating a permanent suppression, and the inspector and `Z` shortcut do not
++  offer to recreate one while that waypoint remains the turn.
+ - **Map legend:** a Leaflet control (bottom-left, floating over the map) with
+   entries for airfield triangles, waypoint circles, and freq-change red rings.
+   The markup lives in `index.html` so `applyI18n()` fills its text at boot;
+diff --git a/.ai/plans/.gitignore b/.ai/plans/.gitignore
+index e69de29b..0856b266 100644
+--- a/.ai/plans/.gitignore
++++ b/.ai/plans/.gitignore
+@@ -0,0 +1,3 @@
++!bugs-turn-freq-change/
++!bugs-turn-freq-change/**
++bugs-turn-freq-change/internal/code-review/
+diff --git a/.ai/plans/bugs-turn-freq-change/internal/decisions.md b/.ai/plans/bugs-turn-freq-change/internal/decisions.md
+new file mode 100644
+index 00000000..ddee77d9
+--- /dev/null
++++ b/.ai/plans/bugs-turn-freq-change/internal/decisions.md
+@@ -0,0 +1,7 @@
++## rca_approved
++
++User approved the revised RCA, including bold non-destructive set/unset styling and autonomous PR babysitting.
++
++## Fix Commit
++
++Fix implemented by task-implementor — commit `69420ee346a0fd2831aa38408ff0b38eaea67158`.
+diff --git a/.ai/plans/bugs-turn-freq-change/internal/status.yaml b/.ai/plans/bugs-turn-freq-change/internal/status.yaml
+new file mode 100644
+index 00000000..582d1950
+--- /dev/null
++++ b/.ai/plans/bugs-turn-freq-change/internal/status.yaml
+@@ -0,0 +1,30 @@
++schema_version: 3
++plugin_version: 1.23.0
++pipeline_status: code_review
++pipeline_status_history:
++  - status: init
++    at: '2026-08-22T18:31:59+03:00'
++  - status: investigated
++    at: '2026-08-22T18:37:39+03:00'
++  - status: test_written
++    at: '2026-08-22T18:40:08+03:00'
++  - status: rca_ready
++    at: '2026-08-22T18:41:39+03:00'
++  - status: implementing
++    at: '2026-08-22T19:14:41+03:00'
++  - status: code_review
++    at: '2026-08-22T19:19:06+03:00'
++epic_key: turn-freq-change
++branch: codex/fix-turn-freq-change
++base: dev
++epic: .ai/plans/bugs-turn-freq-change
++pipeline_mode: bug-fix
++updated_at: '2026-08-22T19:19:06+03:00'
++pr_flow:
++  draft_pr_number: 1800
++  pr_url: https://github.com/msupino/NavigationApp/pull/1800
++  base_branch: dev
++  code_review_iteration: 1
++  acknowledged_issue_comments: []
++tier: lean
++current_phase: review
+diff --git a/.ai/plans/bugs-turn-freq-change/investigation.md b/.ai/plans/bugs-turn-freq-change/investigation.md
+new file mode 100644
+index 00000000..c62443da
+--- /dev/null
++++ b/.ai/plans/bugs-turn-freq-change/investigation.md
+@@ -0,0 +1,102 @@
++---
++status: approved
++---
++
++# Investigation Report
++
++**Ticket**: #1799 — Remove frequency change at the turning waypoint  
++**Service(s)**: NavAid static web app  
++**Environment**: local source review at `origin/dev@1253522c35d123fad7992a3299770a494359dc5a`  
++**Bug surface**: frontend  
++**Tier**: lean  
++**Confidence**: HIGH
++
++## Root Cause
++
++`seedCommChangeNotes()` already asks `legRetraceTurnIndex()` for the route's effective turning waypoint, so both a manually marked turn and a geometry-derived first retraced leg reach the same index. The defect is in what the seeder does with that index.
++
++At `docs/app/draw.js:3744-3753`, the turning-point branch only skips creating an automatic callout. It deliberately lets an existing hand-created or hand-edited callout fall through to the normal `existing` branch, and an automatic callout that was seeded before the route acquired its return leg is not removed either: with no manual note the early `continue` prevents the later removal logic from seeing it. The current test at `tests/leg-direction-filter.spec.js:434-447` explicitly locks in the now-obsolete behavior that a hand-added note at the turn survives.
++
++There is a second timing gap for manual turns. `setTurnWaypoint()` changes only waypoint flags (`docs/app/core.js:4550-4555`), and the inspector click handler does not reconcile communication callouts afterward (`docs/app/interact.js:3016-3023`). Therefore marking an existing route waypoint as the turn leaves its callout visible immediately. Geometry-derived turns usually reach `seedCommChangeNotes()` after route add/drag paths, but still hit the faulty skip logic above.
++
++Finally, after removal the waypoint inspector and the `Z` shortcut can recreate a manual callout because `appendAddFreqChangeButton()` / `addCommChangeNoteForWaypoint()` do not know that the selected waypoint is the effective turn (`docs/app/interact.js:201-276`, `2924-2966`, `4291-4300`). That violates the issue's invariant that the effective turn carries neither an automatic nor a manual callout.
++
++## Expected Behavior
++
++- Resolve the effective turn exclusively through `legRetraceTurnIndex()`. Its existing precedence already covers both cases: the single persisted `wp.turn` wins, otherwise the start of the first retraced leg is the turn.
++- Whenever callouts are reconciled, remove every `state.notes` entry whose canonical `cc` key belongs to the effective turning waypoint, regardless of `freqAuto` being `true`, `false`, or absent.
++- Marking a waypoint through the turning-point inspector must perform that removal immediately, before repainting and persisting the resulting state.
++- A turning waypoint must not offer or accept the manual “Add frequency change” action (button or `Z` shortcut). The published comm-change reference/badge may remain read-only; the prohibited object is the route's draggable note/callout.
++- Turn-based removal is conditional route reconciliation, not a pilot suppression. Do not add the key to `state.commChangeSuppressions`; if the turn is later cleared or moved, normal seeding may restore the point's route-default callout.
++- Preserve all unrelated communication-change notes and ordinary notes byte-for-byte. If the removed callout was selected, clear/reindex `state.selected` safely so it cannot point at a different note after the array changes.
++
++## Evidence Chain
++
++| Layer | File / function | Finding |
++|---|---|---|
++| Effective turn source | `docs/app/core.js:4531-4545`, `legRetraceTurnIndex()` | Manual `wp.turn` takes precedence; otherwise the first retraced leg yields its starting waypoint. This is already the correct shared definition for manual and derived turns. |
++| Manual turn mutation | `docs/app/core.js:4550-4555`, `setTurnWaypoint()` | Sets/clears the single turn flag but does not reconcile callout notes. |
++| Callout reconciliation — **root cause** | `docs/app/draw.js:3693-3829`, `seedCommChangeNotes()` | Computes `turnWpIdx`, but the turn branch only withholds a new automatic note. It preserves a manual note by design and fails to delete an already-seeded automatic note before continuing. |
++| Existing note branch | `docs/app/draw.js:3754-3800` | Removes only an automatic note made redundant by an equal, explicitly hinted frequency. It is not reached for the auto-note-at-turn case and intentionally never removes manual notes. |
++| Manual inspector action — **root cause** | `docs/app/interact.js:3000-3024` | The turn button calls `setTurnWaypoint()`, persists, and redraws without removing/reconciling the selected waypoint's callout. |
++| Manual callout creation — **root cause** | `docs/app/interact.js:201-276`, `2924-2966`, `4291-4300` | Button and keyboard paths can add a callout to any named route waypoint, including the effective turn. |
++| Selection coupling | `docs/app/interact.js:72-107` | A callout hit is represented as the linked waypoint plus `freqNoteIndex`; deleting notes must invalidate/recompute that cached index. |
++| Persisted state | `docs/app/io.js:1002-1038`, `2503-2539`, `5910-5958` | Both `wp.turn` and `cc`/`freqAuto` notes round-trip, so a stale turn callout can survive save/load until reconciliation; the fix must clean loaded state without inventing a permanent suppression. |
++| Existing regression contradicts requirement | `tests/leg-direction-filter.spec.js:409-457` | Covers derived NTAIM turn and other callouts, but explicitly expects a manual turn callout to survive. |
++| Existing manual-turn tests | `tests/leg-direction-filter.spec.js:510-620` | Verify manual turn geometry, persistence, and inspector state, but have no frequency-change note in the scenario. |
++
++## Data Flow
++
++```mermaid
++graph LR
++    A[Route edit or loaded route] --> B[legRetraceTurnIndex]
++    C[Inspector marks wp.turn] --> B
++    B --> D[Effective turn index]
++    A --> E[seedCommChangeNotes]
++    D --> E
++    E -->|current: continue only| F[Existing turn callout survives]
++    C -->|current: no reconciliation| F
++    G[Inspector Add / Z] -->|current: no turn guard| F
++    E --> H[Other callouts and route defaults]
++    I[Required reconciliation] --> J[Remove callouts linked to turn only]
++    J --> H
++```
++
++## Affected Files
++
++- `docs/app/draw.js` — change `seedCommChangeNotes()` (or a small helper it owns) from “do not auto-seed at turn” to “remove all linked callouts at the effective turn,” while retaining the existing route-frequency walk for every other waypoint and repairing selection after note removal.
++- `docs/app/interact.js` — make the turn-button action reconcile/removal immediately; prevent the Add button and `Z` shortcut from recreating a callout at the effective turn.
++- `tests/leg-direction-filter.spec.js` — replace the obsolete “hand-added note survives” assertion and add focused manual/derived-turn regressions with preservation checks for unrelated callouts.
++- `.ai/navaid-dev.md` — update the comm-change behavior description: an effective turning point never carries a route callout, whether automatic or manual; turn removal is not persisted as suppression.
++
++No data file, translation, storage schema, or native-wrapper change is required.
++
++## Related Tests
++
++- `tests/leg-direction-filter.spec.js:420-432` proves a completed geometry-derived out-and-back does not freshly seed NTAIM and retains other callouts.
++- `tests/leg-direction-filter.spec.js:434-447` currently proves the opposite of issue #1799 for manual notes and must be replaced.
++- `tests/leg-direction-filter.spec.js:526-553` proves `legRetraceTurnIndex()` covers explicit manual turns used by the direction filter.
++- `tests/leg-direction-filter.spec.js:574-585` proves the turn flag survives a route serialization round trip.
++- `tests/comm-change.spec.js:744-786` covers coordinate-resolved seeding/pruning for renamed waypoints; turn cleanup should use the same canonical/range resolution rather than name-only assumptions.
++
++## Precise Missing Regression
++
++Add focused browser coverage with two scenarios:
++
++1. **Geometry-derived turn:** first seed both an automatic and a hand-edited/manual callout while the comm-change waypoint is not yet the turn; then extend/reconcile the route so its next leg retraces the preceding leg. Assert the effective turn index is that waypoint, every callout for its canonical `cc` key is gone, and a separate comm-change callout plus an ordinary note are unchanged. This must fail today because the automatic note hits the early `continue` and the manual note is intentionally preserved.
++2. **Manually marked turn:** build a non-retracing loop containing a comm-change waypoint with an existing manual callout, select it, and click `#insp-turn-btn`. Assert the turn becomes selected and the callout disappears immediately; reopen the inspector and assert there is no Add frequency-change control, then exercise `Z` and assert it still cannot recreate the callout. Assert unrelated notes remain. This must fail today because the button only changes `wp.turn` and both add paths accept the turn.
++
++Keep the straight-route assertion: when `legRetraceTurnIndex()` is `-1`, no communication change is removed. Also verify moving/clearing the turn does not leave a new `commChangeSuppressions` entry, so normal auto-seeding remains possible.
++
++## Tier
++
++**Value**: lean  
++**Rationale**: This is a bounded frontend state-reconciliation bug with a high-confidence source and existing primitives. The fix should touch two application files, one focused browser spec, and the developer guide; it introduces no schema, dependency, or architecture change.
++
++## Architecture Impact
++
++**Value**: none
++
++## Confidence Notes
++
++HIGH. The issue acceptance criteria explicitly supersede the existing test's manual-note exception. Both manual and derived turn detection converge on `legRetraceTurnIndex()`, and the failing lifecycle paths are visible directly in `seedCommChangeNotes()` and the inspector click/add handlers. A local Playwright invocation was not possible in this isolated worktree because it has no installed `@playwright/test`; this does not reduce root-cause confidence because the current test source explicitly asserts the unwanted survival behavior.
+diff --git a/.ai/plans/bugs-turn-freq-change/progress_summary.md b/.ai/plans/bugs-turn-freq-change/progress_summary.md
+new file mode 100644
+index 00000000..20eceaa5
+--- /dev/null
++++ b/.ai/plans/bugs-turn-freq-change/progress_summary.md
+@@ -0,0 +1,21 @@
++---
++name: remove frequency changes at turning points
++status: draft
++updated_at: '2026-08-22T19:14:41+03:00'
++---
++
++# remove frequency changes at turning points
++
++## Overview
++
++NavAid correctly identifies a route's effective turning waypoint, but an existing frequency-change callout can remain there. Marking the point manually also leaves the callout in place, and the inspector or `Z` shortcut can recreate it. The inspector's current selected-state color also makes a non-destructive set/unset action look like a separate color-coded action.
++
++## Progress
++
++| Task | Status |
++|---|---|
++| T-1: Implement and verify the fix | 🔄 in-progress |
++
++## Artifacts
++- [investigation.md](investigation.md)
++- [rca-report.md](rca-report.md)
+diff --git a/.ai/plans/bugs-turn-freq-change/rca-report.md b/.ai/plans/bugs-turn-freq-change/rca-report.md
+new file mode 100644
+index 00000000..5cc082fe
+--- /dev/null
++++ b/.ai/plans/bugs-turn-freq-change/rca-report.md
+@@ -0,0 +1,40 @@
++---
++status: approved
++---
++
++# RCA — turn-freq-change: remove frequency changes at turning points
++
++**Tier**: lean   ·   **Confidence**: HIGH   ·   **Service(s)**: NavAid static web app
++
++## What's happening
++
++NavAid correctly identifies a route's effective turning waypoint, but an existing frequency-change callout can remain there. Marking the point manually also leaves the callout in place, and the inspector or `Z` shortcut can recreate it. The inspector's current selected-state color also makes a non-destructive set/unset action look like a separate color-coded action.
++
++## Root cause
++
++`seedCommChangeNotes()` in `docs/app/draw.js:3693-3829` only skips fresh automatic creation at the effective turn; it deliberately preserves existing automatic and manual notes. `setTurnWaypoint()` and the inspector/add-keyboard paths in `docs/app/core.js:4550-4555` and `docs/app/interact.js:201-276,3000-3024,4291-4300` do not enforce the same invariant immediately.
++
++## Suggested fix
++
++- `docs/app/draw.js` — reconcile every frequency-change note against `legRetraceTurnIndex()`, removing all callouts linked to the effective turn without creating a permanent suppression. Preserve unrelated notes and repair note selection after removal.
++- `docs/app/interact.js` — reconcile immediately after marking a turn, and prevent the inspector action and `Z` shortcut from adding a callout at the effective turn.
++- `docs/app/style.css` — keep destructive actions red, but make the shared set/unset selected state bold without changing its safe foreground, background, or border colors.
++- `tests/leg-direction-filter.spec.js` — replace the obsolete manual-note-survives expectation with derived-turn, manual-turn, preservation, and keyboard regressions.
++- `.ai/navaid-dev.md` — document that an effective turning point cannot carry an automatic or manual route frequency-change callout.
++
++**Expected shape**: 5 files, ~115 lines · extend the existing callout reconciliation, inspector action/state style, focused browser spec, and developer guide · new test files: 0
++
++## Failing test (written, red)
++
++`tests/leg-direction-filter.spec.js` (browser integration) — three focused cases assert that derived and manually marked turns remove their callouts, preserve unrelated notes, hide the add control, reject `Z`, and use bold rather than a color change for the selected state. All three fail on the current implementation for the expected obsolete behavior.
++
++## Verification plan
++
++- Unit/integration: run the focused `tests/leg-direction-filter.spec.js` cases and adjacent frequency-change cases.
++- Syntax/lint: run `node --check` on every changed shipped JavaScript file and `git diff --check`.
++- E2E + live env: CI/deployed E2E, because the fix changes inspector and keyboard behavior in the browser.
++- New executable(s): none.
++
++## Deferred / follow-ups
++
++none
+diff --git a/docs/app/draw.js b/docs/app/draw.js
+index 049a7bde..ec25f234 100644
+--- a/docs/app/draw.js
++++ b/docs/app/draw.js
+@@ -3690,11 +3690,36 @@ function pruneStaleCommChangeNotes() {
+   }
+   return true;
+ }
++function pruneTurnCommChangeNotes() {
++  if (!Array.isArray(state.notes) || !Array.isArray(state.waypoints)) return false;
++  const turnIdx = (typeof legRetraceTurnIndex === 'function') ? legRetraceTurnIndex() : -1;
++  const turnWp = turnIdx >= 0 ? state.waypoints[turnIdx] : null;
++  if (!turnWp) return false;
++  const selectedNote = state.selected && state.selected.type === 'note'
++    ? state.notes[state.selected.index] : null;
++  const selectedFreqNote = state.selected && state.selected.type === 'wp' &&
++    Number.isInteger(state.selected.freqNoteIndex)
++    ? state.notes[state.selected.freqNoteIndex] : null;
++  const kept = state.notes.filter(n => !(n && n.cc && commChangeWaypointInRange(turnWp, n.cc)));
++  if (kept.length === state.notes.length) return false;
++  state.notes = kept;
++  if (selectedNote) {
++    const idx = state.notes.indexOf(selectedNote);
++    state.selected = idx >= 0 ? { type: 'note', index: idx } : null;
++  } else if (state.selected && state.selected.type === 'wp' &&
++      Number.isInteger(state.selected.freqNoteIndex)) {
++    const idx = state.notes.indexOf(selectedFreqNote);
++    if (idx >= 0) state.selected.freqNoteIndex = idx;
++    else delete state.selected.freqNoteIndex;
++  }
++  return true;
++}
+ function seedCommChangeNotes() {
+-  if (!showCommChange) return false;
+-  if (!commChangeMap || typeof state === 'undefined' ||
++  if (typeof state === 'undefined' ||
+       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
+-  let changed = pruneStaleCommChangeNotes();
++  let changed = pruneTurnCommChangeNotes();
++  if (!showCommChange || !commChangeMap) return changed;
++  if (pruneStaleCommChangeNotes()) changed = true;
+   if (pruneStaleCommChangeSuppressions()) changed = true;
+   const { defaults: routeDefaults, hinted } = commRouteCalloutDefaultsMap();
+   // The frequency actually in effect as the route is walked in order. Two DIFFERENT
+@@ -3741,16 +3766,10 @@ function seedCommChangeNotes() {
+     }
+     if (!nm || !cc || !cc.commChange) continue;
+     if (!commChangeWaypointInRange(wp, nm)) continue;
+-    // The turnaround is where the route reverses, not where it crosses into another
+-    // sector: the aircraft leaves on the same frequency it arrived on, so an automatic
+-    // callout there is a radio call that is not made. Reported from a real route, where
+-    // NTAIM -- flown out to and straight back from -- was seeding one. Only the AUTOMATIC
+-    // note is withheld: a pilot who does have a call to make there can still add one, and
+-    // an existing hand-made note is left alone by the `existing` branch below.
+-    if (wpIdx === turnWpIdx && !state.notes.some(n => n && n.cc &&
+-        canonicalNavWaypointName(n.cc) === nm && !n.freqAuto)) {
+-      continue;
+-    }
++    // The aircraft leaves the turn on the same frequency it arrived on. Reconciliation
++    // above removes both automatic and manual callouts there, and this guard prevents
++    // the seeding pass from recreating one.
++    if (wpIdx === turnWpIdx) continue;
+     const callout = routeDefaults[nm] || commStaticCalloutDefaults(nm);
+     const calloutFreq = commFormatFreq(callout.freq);
+     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
+diff --git a/docs/app/interact.js b/docs/app/interact.js
+index fa6190e1..6310d53b 100644
+--- a/docs/app/interact.js
++++ b/docs/app/interact.js
+@@ -200,6 +200,9 @@ function tryRestoreInspectorSelection(sel) {
+ }
+ function addCommChangeNoteForWaypoint(wp, ccKey) {
+   if (!wp || !ccKey || !Array.isArray(state.notes)) return -1;
++  const wpIdx = Array.isArray(state.waypoints) ? state.waypoints.indexOf(wp) : -1;
++  if (wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
++      legRetraceTurnIndex() === wpIdx) return -1;
+   if (isKnownCommChangeKey(ccKey) && typeof unsuppressCommChange === 'function') {
+     unsuppressCommChange(ccKey);
+   }
+@@ -263,6 +266,9 @@ function isKnownCommChangeKey(ccKey) {
+ }
+ function appendAddFreqChangeButton(body, wp, ccKey) {
+   if (!body || !wp || !ccKey || !showCommChange) return;
++  const wpIdx = Array.isArray(state.waypoints) ? state.waypoints.indexOf(wp) : -1;
++  if (wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
++      legRetraceTurnIndex() === wpIdx) return;
+   const add = document.createElement('button');
+   add.className = 'insp-btn add-freq-change-btn';
+   add.textContent = S.addFreqChange || 'Add frequency change';
+@@ -3015,6 +3021,7 @@ function showInspector() {
+       turnBtn.setAttribute('aria-pressed', effectiveTurn ? 'true' : 'false');
+       turnBtn.onclick = () => {
+         setTurnWaypoint(idx);
++        if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+         if (typeof persist === 'function') persist();
+         if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+         if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
+diff --git a/docs/app/style.css b/docs/app/style.css
+index d1f996b4..91165a53 100644
+--- a/docs/app/style.css
++++ b/docs/app/style.css
+@@ -2002,16 +2002,11 @@ body.theme-light .insp-btn.insp-btn-safe {
+ }
+ body.theme-light .insp-btn.insp-btn-safe:hover { background: #e2e7ee; border-color: #c9d2dd; }
+ body.theme-light .insp-btn.insp-btn-safe:disabled:hover { background: #eef1f5; }
+-/* A latched state, not an action: the turning-point button stays lit while the waypoint
+-   IS the turn, so the inspector shows at a glance which one is marked. */
+-/* Amber reads as "latched" on either background, so this one keeps its colour in both
+-   themes -- only its text has to stay legible on it. */
++/* A latched state is emphasis, not an alarm: set/unset actions keep the same safe
++   colours in both themes while bold text shows which state is active. */
+ .insp-btn.insp-btn-on {
+-  color: #1f252c;
+-  background: #ffd98a;
+-  border: 1px solid #d7a93c;
++  font-weight: 900;
+ }
+-.insp-btn.insp-btn-on:hover { background: #f5c862; }
+ .insp-btn:disabled {
+   opacity: 0.48;
+   cursor: default;
+diff --git a/tests/leg-direction-filter.spec.js b/tests/leg-direction-filter.spec.js
+index 14c08179..81a1e4d1 100644
+--- a/tests/leg-direction-filter.spec.js
++++ b/tests/leg-direction-filter.spec.js
+@@ -431,19 +431,38 @@ test.describe('the turn point seeds no automatic frequency change', () => {
+     expect(ccs.length).toBeGreaterThan(0); // but the route still has its other callouts
+   });
+ 
+-  test('a hand-added note at the turn point survives', async ({ page }) => {
++  test('reconciliation removes every turn callout and preserves unrelated notes', async ({ page }) => {
+     await boot(page);
+-    const kept = await page.evaluate(async (wps) => {
+-      if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
++    const out = await page.evaluate(async (wps) => {
++      await Promise.all([loadNavWaypoints(), loadCommChange()]);
+       state.waypoints = wps.map(w => ({ ...w }));
+-      // freqAuto absent == the pilot put this one there deliberately.
+-      state.notes = [{ lat: 31.94361, lng: 34.78083, cc: 'NTAIM',
+-                       freqName: 'TEL_NOF', freq: '129.05', text: 'freq' }];
++      const unrelatedCallout = { lat: 32.21056, lng: 34.80722, cc: 'SFAIM',
++        freqName: 'HERZLIYA', freq: '123.45', text: 'keep callout' };
++      const ordinaryNote = { lat: 32.1, lng: 34.8, text: 'keep ordinary note', color: '#fff' };
++      state.notes = [
++        { lat: 31.94361, lng: 34.78083, cc: 'NTAIM',
++          freqName: 'TEL_NOF', freq: '129.05', text: 'automatic', freqAuto: true },
++        { lat: 31.944, lng: 34.781, cc: 'NTAIM',
++          freqName: 'PILOT', freq: '130.00', text: 'manual' },
++        unrelatedCallout,
++        ordinaryNote,
++      ];
++      state.commChangeSuppressions = [];
+       syncLegs();
+       seedCommChangeNotes();
+-      return state.notes.some(n => n && n.cc === 'NTAIM');
++      return {
++        turn: legRetraceTurnIndex(),
++        turnCallouts: state.notes.filter(n => n && n.cc === 'NTAIM').length,
++        unrelatedKept: state.notes.includes(unrelatedCallout),
++        ordinaryKept: state.notes.includes(ordinaryNote),
++        suppressions: state.commChangeSuppressions.slice(),
++      };
+     }, OUT_AND_BACK);
+-    expect(kept).toBe(true);
++    expect(out.turn).toBe(3);
++    expect(out.turnCallouts).toBe(0);
++    expect(out.unrelatedKept).toBe(true);
++    expect(out.ordinaryKept).toBe(true);
++    expect(out.suppressions).toEqual([]);
+   });
+ 
+   test('a straight route that never turns keeps every frequency change', async ({ page }) => {
+@@ -582,20 +601,94 @@ test.describe('manual turning point', () => {
+     expect(kept.turn).toBe(2);
+   });
+ 
+-  test('the inspector button marks the selected waypoint', async ({ page }) => {
++  test('the inspector marks the turn and immediately removes its callout', async ({ page }) => {
+     await boot(page);
+     await loop(page);
+-    await page.evaluate(() => {
++    await page.evaluate(async () => {
++      await Promise.all([loadNavWaypoints(), loadCommChange()]);
++      state.notes = [
++        { lat: 32.00472, lng: 34.72722, cc: 'TYONA',
++          freqName: 'PILOT', freq: '130.00', text: 'remove me' },
++        { lat: 32.1, lng: 34.8, text: 'keep me', color: '#fff' },
++      ];
+       state.selected = { type: 'wp', index: 2 };
+       showInspector();
+     });
++    const idleStyle = await page.locator('#insp-turn-btn').evaluate(el => {
++      const css = getComputedStyle(el);
++      return { color: css.color, background: css.backgroundColor,
++        border: css.borderColor, weight: Number(css.fontWeight) || 400 };
++    });
+     await page.locator('#insp-turn-btn').click();
+     const out = await page.evaluate(() => ({
+       marked: !!state.waypoints[2].turn,
+       pressed: document.getElementById('insp-turn-btn').getAttribute('aria-pressed'),
++      turnCallout: state.notes.some(n => n && n.cc === 'TYONA'),
++      ordinaryKept: state.notes.some(n => n && n.text === 'keep me'),
++      canAdd: !!document.querySelector('.add-freq-change-btn'),
++      style: (() => {
++        const css = getComputedStyle(document.getElementById('insp-turn-btn'));
++        return { color: css.color, background: css.backgroundColor,
++          border: css.borderColor, weight: Number(css.fontWeight) || 400 };
++      })(),
+     }));
+     expect(out.marked).toBe(true);
+     expect(out.pressed).toBe('true');   // relabels to "clear" once set
++    expect(out.turnCallout).toBe(false);
++    expect(out.ordinaryKept).toBe(true);
++    expect(out.canAdd).toBe(false);
++    expect(out.style.color).toBe(idleStyle.color);
++    expect(out.style.background).toBe(idleStyle.background);
++    expect(out.style.border).toBe(idleStyle.border);
++    expect(out.style.weight).toBeGreaterThan(idleStyle.weight);
++  });
++
++  test('set and unset use emphasis without destructive action colors', async ({ page }) => {
++    await boot(page);
++    await loop(page);
++    await page.evaluate(() => {
++      state.selected = { type: 'wp', index: 2 };
++      showInspector();
++    });
++    const idle = await page.locator('#insp-turn-btn').evaluate(el => {
++      const css = getComputedStyle(el);
++      return { color: css.color, background: css.backgroundColor,
++        border: css.borderColor, weight: Number(css.fontWeight) || 400 };
++    });
++    const destructive = await page.locator('.insp-actions .insp-btn:not(.insp-btn-safe)').first()
++      .evaluate(el => getComputedStyle(el).backgroundColor);
++    expect(idle.background).not.toBe(destructive);
++    await page.locator('#insp-turn-btn').click();
++    const selected = await page.locator('#insp-turn-btn').evaluate(el => {
++      const css = getComputedStyle(el);
++      return { color: css.color, background: css.backgroundColor,
++        border: css.borderColor, weight: Number(css.fontWeight) || 400 };
++    });
++    expect(selected.color).toBe(idle.color);
++    expect(selected.background).toBe(idle.background);
++    expect(selected.border).toBe(idle.border);
++    expect(selected.weight).toBeGreaterThan(idle.weight);
++  });
++
++  test('Z cannot recreate a callout at the effective turn', async ({ page }) => {
++    await boot(page);
++    await loop(page);
++    await page.evaluate(async () => {
++      await Promise.all([loadNavWaypoints(), loadCommChange()]);
++      setTurnWaypoint(2);
++      state.notes = [];
++      state.selected = { type: 'wp', index: 2 };
++      showInspector();
++    });
++    await page.keyboard.press('z');
++    const out = await page.evaluate(() => ({
++      turn: legRetraceTurnIndex(),
++      turnCallout: state.notes.some(n => n && n.cc === 'TYONA'),
++      canAdd: !!document.querySelector('.add-freq-change-btn'),
++    }));
++    expect(out.turn).toBe(2);
++    expect(out.turnCallout).toBe(false);
++    expect(out.canAdd).toBe(false);
+   });
+ });
+ 
