@@ -104,14 +104,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `../mobile/` — Capacitor native iOS / Android remote-URL shell. It keeps its
   own tooling, uses the small `mobile/shell` webDir, and opens
   `https://navaid.supino.org`; it must not introduce a build step for Pages.
-- `data/cvfr-nav-waypoints.json` — 172 published Israeli CVFR reporting points
-  under `waypoints`, with `{name, en, he, lat, lng, report}`. **Source:** IAA CVFR
-  chart waypoint reference table (page 113, 2025 edition), shipped as
-  `113_waypoints.csv` upstream. CSV → JSON migration in issue #406 /
-  PR `feat/unified-waypoints`. ARP rows in the CSV are intentionally
-  skipped here — airfield ARPs live in `data/airfields.json` with richer
-  data (runways, plates, English label). Updating: drop the CSV into
-  the build script and regenerate.
+- `data/<prefix>-route-graph.json` — the CVFR, LSA and Helicopters route graphs.
+  Each graph owns canonical `nodes`, directional `edges`, and `commMeta`; the
+  waypoint, altitude-pair and communication-change UI layers are projections.
+  The CVFR point source is the IAA chart waypoint reference table (page 113,
+  2025 edition). Airfield ARPs remain in `data/airfields.json`.
 - `.gitattributes` — forces images out of LFS so Pages serves them.
 - `legacy/map.jpg`, `legacy/build_map.py` — legacy from the pre-Leaflet
   static-chart version. **Unused**, safe to delete.
@@ -298,8 +295,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   arrows: the arrow point stays on the waypoint, the stored note coordinate
   is the movable far tail, and the name/frequency are drawn above/below the
   arrow rather than inside a note box. Selecting the callout opens inspector
-  fields for name + frequency. If `docs/data/cvfr-comm-change.json` defines a root
-  `callSigns` catalog and a point's `callSigns` array, the inspector also
+  fields for name + frequency. If the active route graph defines a root
+  `callSigns` catalog and a node's `callSigns` array, the inspector also
   shows a call-sign dropdown; choosing an option copies its default primary
   frequency into the editable frequency field. Call-sign names use the
   catalog's `he` translation when the app is in Hebrew, falling back to
@@ -708,7 +705,8 @@ as a machine-readable registry.
 - `navaid.ai.provider` — active AI-assistant LLM provider id (`gemini` |
   `anthropic` | `openrouter` | `deepseek`; default `gemini`; `assistant.js`).
 - `navaid.ai.key.<provider>` — the user's own API key per provider (BYOK).
-  Never leaves the browser except in the request to that provider.
+  Never leaves the browser except in the request to that provider. It is not
+  included in Drive settings sync and must be entered separately on each device.
 - `navaid.ai.model.<provider>` — model id per provider (defaults:
   `gemini-2.5-flash` / `claude-sonnet-5` / `openai/gpt-4o-mini` /
   `deepseek-chat`).
@@ -724,13 +722,12 @@ as a machine-readable registry.
   optional Drive **settings** sync. The synced blob lives in Drive app-data as
   `navaid-settings.json` (separate from `navaid-routes.json`); the allowlist is
   `GDRIVE_SETTINGS_KEYS` in `gdrive.js` and deliberately excludes API keys,
-  panel geometry, and the working route. It also excludes, as a rule, **any key
+  flight-plan identity/contact fields, panel geometry, and the working route.
+  It also excludes, as a rule, **any key
   that decides where data is sent** — `navaid.ai.baseUrl`, and
   `navaid.fpl.aisEmail` (the address a flight plan is filed to: an override
-  synced from a settings blob would redirect every device's plan). The pilot's
-  own `navaid.fpl.replyTo` IS synced: it is cc'd, so a wrong value costs them
-  their copy but cannot misdirect the plan, and it is required to file — keeping
-  it device-local would block a second device. `tests/settings-sync-allowlist.spec.js`
+  synced from a settings blob would redirect every device's plan).
+  `tests/settings-sync-allowlist.spec.js`
   enforces this: every `navaid.*` literal must be synced or declared in
   `NOT_A_SYNCED_SETTING` with a reason. Protocol details that a second
   reader/writer of that file MUST honour:
@@ -799,9 +796,8 @@ as a machine-readable registry.
   absent, `dist` is hidden by default; an explicit empty array means the user
   chose All columns. Missing keys are shown, so newly added columns default
   visible.
-- `navaid.fpl.<field>` — flight-plan pilot/aircraft/contact form values;
-  `replyTo` may sync, while `aisEmail` is device-local because it controls the
-  filing destination. See the allowlist test for the exact decision.
+- `navaid.fpl.<field>` — flight-plan pilot/aircraft/contact form values. All are
+  device-local because settings sync must not copy identity or contact data into Drive.
 - `navaid.imsPwx`, `navaid.sigwxOv`, `navaid.showNotam.<prefix>`, and the
   related opacity keys — current chart/overlay choices (per-chart families are
   enumerated from the active CVFR/LSA/heli prefixes by tests).
@@ -943,7 +939,7 @@ downloadable `route.json`.
   `msupino/NavigationApp-tiles`, served from
   `https://navaid-tiles.supino.org`, so canvas tile fetches remain
   readable without the old proxy path.
-- `cvfr-nav-waypoints.json` — 172 Israeli CVFR reporting points.
+- `cvfr-route-graph.json` — the Israeli CVFR reporting points and route edges.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the
   sole source of truth — the legacy KMZ dataset
@@ -955,34 +951,30 @@ downloadable `route.json`.
   lng, report}`: `name` = 5-letter chart code, `he` = Hebrew place name from
   CSV `Name` column. CSV rows where `Reporting == ARP` are skipped
   here — airfield ARPs live in `airfields.json` with richer data
-  (runways, plates, English label). To refresh: replace the CSV with
-  the latest chart edition, regenerate the JSON keeping the same
-  `{waypoints: [{name, en, he, lat, lng, report}]}` shape and field
-  mapping (CSV `Code` → `name`, CSV `Name` → `he`, decimal
-  columns → `lat`/`lng` rounded to 5 dp), and diff for sanity. The
-  exact migration is documented in the body of the PR that introduced
-  it (#406).
-- `proposed-altitudes.json` — candidate altitude pairs for detected green
-  CVFR route segments. Coordinates are intentionally not duplicated here:
-  segment endpoints resolve by `from` / `to` against `cvfr-nav-waypoints.json`
-  and `airfields.json`. `inboundAltitude` means `from -> to`;
+  (runways, plates, English label). To refresh, replace the source table with
+  the latest chart edition and regenerate the graph's `nodes`, preserving
+  canonical codes and edge references; then diff the graph for sanity.
+- `cvfr-route-graph.json` edges also carry candidate altitude pairs for detected green
+  CVFR route segments. Coordinates are intentionally not duplicated in edges:
+  endpoints resolve by graph node code or against `airfields.json`.
+  `inboundAltitude` means `from -> to`;
   `outboundAltitude` means `to -> from`; `oneWay: true` rows use `null`
   for the disallowed direction. The extraction/review trail lives in
   `scripts/cvfr-altitude-extraction.md`, with a machine-readable review ledger
-  in `scripts/cvfr-altitude-extraction-notes.json`. The app loads this file as
-  a runtime reference for freshly-created legs only; saved/imported route leg
+  in `scripts/cvfr-altitude-extraction-notes.json`. The app projects these edge
+  values for freshly-created legs only; saved/imported route leg
   values stay authoritative, and manual altitude edits clear the auto-fill
   marker. Equal inbound/outbound values are allowed when the chart publishes
   the same altitude both directions, including double-ended yellow altitude
   tags. When refreshing from new PDFs, use the guide's same-route review rules
   before trusting OCR or nearest yellow signs, especially around Haifa / LLHA,
   Herzliya, Beer Sheba, the coastal strip, and Arad / Metzada.
-- `cvfr-comm-change.json` — dataset of CVFR reporting points where pilots
+- `cvfr-route-graph.json` communication metadata marks reporting points where pilots
   must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
   on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).
-  Schema: `{version, source, _definition, _NOTE, _TODO, callSigns,
-  points:[{name, commChange, callSigns, routeHints, note, source}]}`.
-  `name` matches an ICAO 5-letter code in `cvfr-nav-waypoints.json`; airfield
+  Call-sign definitions live in the graph's `callSigns` catalog; point-specific
+  fields live on the corresponding node. Node codes match published reporting
+  point identifiers; airfield
   endpoints may use 4-letter LLxx ICAO codes where the frequency point is
   the field itself. A point's `callSigns` array contains catalog IDs from
   the root `callSigns` object. Optional `routeHints` entries map adjacent

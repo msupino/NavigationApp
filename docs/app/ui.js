@@ -2684,7 +2684,7 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
   menu.addEventListener('click', () => setOpen(false));
 })();
 
-// Issue #420: keyboard-shortcuts cheat-sheet trigger. The '?' key shortcut
+// Keyboard-shortcuts cheat-sheet trigger. The '?' key shortcut
 // is wired in interact.js; this button gives non-keyboard users (touch /
 // mouse) a discoverable entry point.
 {
@@ -4810,6 +4810,7 @@ function buildOverlayLayer(base, ov, ver, type) {
   overlayLoadingTick(1);
   layer.on('load', done);
   layer.on('error', done);
+  layer.on('remove', done);       // removal cancels the request; no load/error follows
   return layer;
 }
 
@@ -5591,6 +5592,7 @@ function chartsLoadingUntilReady(group) {
         chartsLoadingUntilReady(circuitLayerGroup);
       } else {
         if (circuitLayerGroup) circuitLayerGroup.remove();
+        chartsLoading(false);
       }
     };
   }
@@ -5640,6 +5642,7 @@ function chartsLoadingUntilReady(group) {
         chartsLoadingUntilReady(trainingLayerGroup);
       } else {
         if (trainingLayerGroup) trainingLayerGroup.remove();
+        chartsLoading(false);
       }
     };
   }
@@ -5689,6 +5692,7 @@ function chartsLoadingUntilReady(group) {
         chartsLoadingUntilReady(cvfrLayerGroup);
       } else {
         if (cvfrLayerGroup) cvfrLayerGroup.remove();
+        chartsLoading(false);
       }
     };
   }
@@ -5738,6 +5742,7 @@ function chartsLoadingUntilReady(group) {
         chartsLoadingUntilReady(heliLayerGroup);
       } else {
         if (heliLayerGroup) heliLayerGroup.remove();
+        chartsLoading(false);
       }
     };
   }
@@ -5787,6 +5792,7 @@ function chartsLoadingUntilReady(group) {
         chartsLoadingUntilReady(commfailLayerGroup);
       } else {
         if (commfailLayerGroup) commfailLayerGroup.remove();
+        chartsLoading(false);
       }
     };
   }
@@ -7524,7 +7530,9 @@ function checkApkForUpdate(opts) {
 function backButtonStep() {
   // Innermost first, the way the pilot stacked them: a plate over the charts list over the
   // map. Each returns true when it consumed the press.
-  const top = document.querySelector('.modal-back:last-of-type');
+  const modals = Array.from(document.querySelectorAll('.modal-back'));
+  const top = modals.reverse().find(el => !el.hidden &&
+    getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
   if (top) {
     if (typeof top._navaidClose === 'function') top._navaidClose();
     else top.remove();
@@ -8614,3 +8622,5 @@ if (!window.__navaidHintWrapped) {
     return r;
   };
 }
+
+document.documentElement.classList.remove('app-booting');

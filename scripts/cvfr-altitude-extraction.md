@@ -1,8 +1,9 @@
 # CVFR Altitude Extraction Notes
 
-This is the breadcrumb trail for regenerating `docs/data/cvfr-leg-altitude.json`
-from the Israeli CVFR map PDFs. The app does not load this file; it is here so
-the next chart pass starts from the review method instead of rediscovering it.
+This is the breadcrumb trail for updating the altitude fields in
+`docs/data/cvfr-route-graph.json` from the Israeli CVFR map PDFs. The graph is
+the runtime source of truth; waypoint and altitude datasets are projections
+created in memory by the app.
 
 ## Inputs
 
@@ -10,9 +11,8 @@ the next chart pass starts from the review method instead of rediscovering it.
   `https://www.gov.il/BlobFolder/generalpage/idcunim-2025/he/%D7%91'-03%20CVFR%20%D7%A6%D7%A4%D7%95%D7%A0%D7%99-.pdf`
 - South chart: `CVFR South 2023`
   `https://www.gov.il/BlobFolder/generalpage/updates-2023/he/aip_CVFR_South_2023.pdf`
-- Point coordinates come from `docs/data/cvfr-nav-waypoints.json` and
-  `docs/data/airfields.json`. Do not duplicate point coordinates in
-  `docs/data/cvfr-leg-altitude.json`.
+- Point coordinates come from `docs/data/cvfr-route-graph.json` (`nodes`) and
+  `docs/data/airfields.json`. Do not duplicate point coordinates in edge records.
 
 ## Direction Convention
 
@@ -20,23 +20,10 @@ For each segment, `inboundAltitude` means `from -> to` and
 `outboundAltitude` means `to -> from`. If the app later looks up a route leg
 in the reverse order, swap the stored values.
 
-`docs/data/cvfr-leg-altitude.json` also carries a top-level `directionPool` array. Each
-entry is one allowed directed altitude claim, keyed by the source segment and
-source field:
+Each entry in `cvfr-route-graph.json` under `edges.<from>[]` is one adjacency.
+The two altitude fields describe the directions relative to that stored edge:
 
-```json
-{ "from": "NMASD", "to": "NITZA", "altitude": 800,
-  "segment": "NMASD-NITZA", "field": "inboundAltitude" }
-```
-
-This keeps the app-compatible pair format while making the chart direction
-explicit for inference and review. Regenerate it after segment edits with:
-
-```sh
-node scripts/sync-leg-altitude-directions.js
-```
-
-Some CVFR paths are one-way. In `docs/data/cvfr-leg-altitude.json`, one-way rows
+Some CVFR paths are one-way. In `docs/data/cvfr-route-graph.json`, one-way rows
 set `oneWay: true` and use `null` for the disallowed direction; the non-null
 altitude is the allowed direction.
 
@@ -72,8 +59,8 @@ shape of the review output.
 ## Process
 
 1. Download the current north/south PDFs and render them at high resolution.
-2. Use `docs/data/cvfr-nav-waypoints.json` and `docs/data/airfields.json` as the only point
-   source. Candidate segment endpoints are point ids, not copied coordinates.
+2. Use `docs/data/cvfr-route-graph.json` nodes and `docs/data/airfields.json` as the only
+   point source. Candidate edge endpoints are point ids, not copied coordinates.
 3. Detect likely green CVFR route segments by sampling the chart between known
    endpoints. Store `detection.greenScore`, `detection.maxGap`, and
    `detection.samples` for triage only.
@@ -103,7 +90,7 @@ shape of the review output.
   even when they are closer to the review line.
 - Treat OCR as a hint, not proof. Full-crop review corrected bad early OCR on
   `AFFEK-LLHA` from `3000/4500` to `2000/1500`.
-- Keep route endpoints stable; if a point moves in `cvfr-nav-waypoints.json` or
+- Keep route endpoints stable; if a point moves in `cvfr-route-graph.json` or
   `airfields.json`, rerun green-route detection rather than patching
   coordinates into the altitude file.
 

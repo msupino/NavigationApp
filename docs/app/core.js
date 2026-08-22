@@ -480,7 +480,7 @@ NavAid.tuningDefaults = {
   profileGridColor: { value: '#7896b4', type: 'color', label: 'Profile grid color' },
   profileAxisColor: { value: '#5a6b7d', type: 'color', label: 'Profile axis color' },
   profileGroundColor: { value: '#3a4654', type: 'color', label: 'Profile ground line color' },
-  // Terrain under the profile line (#673's grid, drawn where the plan is read). Sample count
+  // Terrain under the profile line, drawn where the plan is read. Sample count
   // is the silhouette's resolution: the shipped grid is ~1.2 km per cell, so past a few
   // hundred samples the extra points redraw the same cell.
   profileTerrainColor: { value: '#6b5a44', type: 'color', label: 'Profile terrain fill' },
@@ -1304,6 +1304,8 @@ window.S = Object.assign({
   fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
   fpColumns: 'Columns',
   fpColumnsAll: 'All columns',
+  fpSpeedInput: 'Leg speed',
+  fpAltitudeInput: 'Leg altitude',
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
   exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
@@ -2142,7 +2144,7 @@ window.S = Object.assign({
   tbTerms: 'Terms',
   tbIssues: 'Issues / Requests',
 
-  // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+  // --- Keyboard-shortcuts cheat-sheet ---------------------------------
   // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.
   // Suppressed while focused in an input / textarea / contenteditable so
   // typing a literal '?' in a waypoint name / note still works.

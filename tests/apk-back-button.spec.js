@@ -54,6 +54,27 @@ test('back closes an open chart modal first', async ({ page }) => {
   expect(await page.evaluate(() => window.__exited)).toBe(0);
 });
 
+test('back closes the flight plan through its cleanup and allows it to reopen', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => showFlightPlan());
+  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
+  await back(page, false);
+  expect(await page.evaluate(() => ({ fpOpen, hasRefresh: !!refreshFlightPlan,
+    connected: !!(flightPlanBack && flightPlanBack.isConnected) })))
+    .toEqual({ fpOpen: false, hasRefresh: false, connected: false });
+  await page.evaluate(() => showFlightPlan());
+  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
+});
+
+test('a later toast does not hide the actual top modal from Back', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => { showChartsModal(); showToast('later notice'); });
+  await expect(page.locator('.modal-back')).toHaveCount(1);
+  await back(page, false);
+  await expect(page.locator('.modal-back')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__exited)).toBe(0);
+});
+
 test('back leaves a map tool before it leaves the app', async ({ page }) => {
   await bootNative(page);
   await page.evaluate(() => setMode('add'));

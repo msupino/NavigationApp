@@ -36,8 +36,8 @@ Prereqs: Android SDK at `~/Library/Android/sdk`, **JDK 21** (Capacitor 8
 fails on older with `invalid source release: 21`; Homebrew:
 `/opt/homebrew/opt/openjdk@21`).
 
-The current package version is **1.5** (`versionCode 5`), with release tag
-`android-v1.5.0`. Publish the draft only after this version reaches `main`.
+The current package version is **1.7** (`versionCode 7`). Release tags use the
+matching `android-vX.Y.Z` form. Publish a draft only after that version reaches `main`.
 
 ```sh
 cd mobile/android
@@ -56,14 +56,14 @@ in `mobile/android/local.properties` (gitignored).
 `app/build.gradle` reads `mobile/android/keystore.properties` (gitignored):
 
 ```properties
-storeFile=/Users/marco/keystores/navaid-release.jks
+storeFile=/absolute/path/to/your/navaid-release.jks
 storePassword=…
 keyAlias=navaid
 keyPassword=…
 ```
 
-The keystore lives at `~/keystores/navaid-release.jks` (password in
-`~/keystores/navaid-release-password.txt` — move it to a password manager).
+Keep the keystore and its passwords outside the repository, preferably in a password
+manager or protected signing service. Do not document maintainer-specific secret paths.
 **Back the keystore up**: updates must be signed with the same key; losing it
 means every phone must uninstall/reinstall. Without `keystore.properties`,
 `assembleRelease` still builds, just unsigned (CI-safe). Debug builds use the

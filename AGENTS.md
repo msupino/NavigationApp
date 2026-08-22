@@ -53,19 +53,17 @@ both branches and assembles a single Pages site:
   same Deploy step rewrites `NavAid.version` in `docs/app/core.js` from
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
   deployed commit without manually increasing the source version number.
-- **Before creating a feature branch from `dev`, update `dev` first — and
-  bring it level with `main`.** Fetch `origin`, check out `dev`,
-  fast-forward it to `origin/dev`, then merge `origin/main` into it (a
-  fast-forward when `dev` has nothing of its own) and push, before branching
-  from that tip. A branch cut from a `dev` that is behind `main` is born
-  conflicting with production and only shows it at promo time. Merge, never
-  rebase: `dev` is shared, so rewriting its history orphans every open PR
-  based on it. See `.ai/workflow.md` for the commands. Before each production promotion, automation uses the
+- **Before creating a feature branch from `dev`, update local `dev` and verify
+  that it already contains `main`.** Fetch `origin`, check out `dev`,
+  fast-forward it to `origin/dev`, then run the ancestry check in
+  `.ai/workflow.md`. If it fails, use a reviewed feature-branch PR to bring
+  `main` into `dev`; do not repair a protected branch with a direct push.
+  Before each production promotion, automation uses the
   open `dev` → `main` PR's Update branch operation to bring the previous
   promotion merge commit back into `dev`; no separate sync PR is needed.
-  If `main` contains production-only file changes, stop and use
-  a reviewed maintenance PR. Never directly push protected branches as
-  routine recovery.
+  If `main` contains production-only file changes, stop and use a reviewed
+  maintenance PR. Never rebase shared `dev` or directly push protected branches
+  as routine recovery.
 - **Before `git commit`, verify the current branch** (`git branch
   --show-current`, and `git status` if needed). If it is not the branch
   the user intended for this work, or you are unsure, **ask the user**

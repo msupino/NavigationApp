@@ -152,7 +152,7 @@ function prepareChartModal(kind) {
   return true;
 }
 
-// --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+// --- Keyboard-shortcuts cheat-sheet ---------------------------------
 // Single source of truth for the visible cheat-sheet rows. Each row's
 // `keys` array is rendered as <kbd> chips so the rendering is locale-
 // agnostic; the `descKey` is looked up in S so each locale controls the
@@ -874,7 +874,7 @@ function validateAirfields(d) {
 // --- save / load -----------------------------------------------------
 // Per-leg label normaliser used by every route-ingest path (load() file
 // import, restoreRoute() localStorage boot, decodeShareUrl() short URL).
-// Pre-#393 blobs stored offsets in raw screen pixels at the save-time
+// Legacy blobs stored offsets in raw screen pixels at the save-time
 // `legArrowSize`; the new render math multiplies stored offsets by
 // `legZoomScale() = max(0.35, 2^(zoom-12)) * legArrowSize`, so an
 // unmigrated raw value renders at legArrowSize^2 of the intended position.
@@ -888,9 +888,9 @@ function _normalizeLegLabel(raw, legacyArrowSize) {
   if (!raw) return raw;
   if (raw._m) {
     // Already-migrated label. Preserve the `_default: 1` sentinel
-    // (issue #394) so the renderer keeps computing the drift-aware
+    // so the renderer keeps computing the drift-aware
     // perpendicular at draw time; everything else round-trips as the
-    // size-independent `{ a, p }` pair PR #393 introduced.
+    // size-independent `{ a, p }` stored-offset pair.
     const out = { a: raw.a, _m: 1 };
     if (raw._default) out._default = 1;
     else out.p = raw.p;
@@ -2958,6 +2958,7 @@ function showFlightPlan() {
   // the plan is open. The modal box itself opts back into pointer events.
   const back = document.createElement('div');
   back.className = 'modal-back flight-plan';
+  back._navaidClose = closeFlightPlan;
   const box = document.createElement('div');
   box.className = 'modal wide';
   // The inspector is pinned top-right at z-index 2320, above this modal's 2000, so an
@@ -3379,12 +3380,13 @@ function showFlightPlan() {
   }
   // Speed / Alt cells are editable number inputs. Commit on `change`
   // (blur / Enter), matching the inspector's number fields.
-  function numCell(value, min, onCommit) {
+  function numCell(value, min, accessibleName, onCommit) {
     const td = document.createElement('td');
     const inp = document.createElement('input');
     inp.type = 'number';
     inp.className = 'plan-num';
     inp.min = min;
+    inp.setAttribute('aria-label', accessibleName);
     inp.value = altitudeInputValue(value);
     inp.onchange = () => onCommit(inp);
     td.appendChild(inp);
@@ -3475,7 +3477,8 @@ function showFlightPlan() {
     tr.appendChild(fpCell('hdg', hdgCell));
     const distCell = planCell(dist.toFixed(1));
     tr.appendChild(fpCell('dist', distCell));
-    const speedCell = numCell(leg.flightSpeed, 1, inp => {
+    const speedCell = numCell(leg.flightSpeed, 1,
+      (S.fpSpeedInput || 'Leg speed') + ' ' + (i + 1), inp => {
       const v = +inp.value;
       if (v > 0) {
         const oldVal = leg.flightSpeed;
@@ -3491,7 +3494,8 @@ function showFlightPlan() {
     });
     speedInputs[i] = speedCell.querySelector('.plan-num');
     tr.appendChild(fpCell('speed', speedCell));
-    const altCell = numCell(leg.inboundAltitude, -2000, inp => {
+    const altCell = numCell(leg.inboundAltitude, -2000,
+      (S.fpAltitudeInput || 'Leg altitude') + ' ' + (i + 1), inp => {
       const raw = inp.value.trim();
       const oldVal = leg.inboundAltitude;
       if (!raw) {

@@ -38,6 +38,24 @@ test('a plate that never arrives does not leave the marker up', async ({ page })
   expect(await page.evaluate(() => overlayLoadingCount())).toBe(0);
 });
 
+test('turning off a still-loading plate group settles every loading token', async ({ page }) => {
+  await page.route('**/circuit-img/*.png', () => new Promise(() => {}));
+  await boot(page);
+  await page.evaluate(() => {
+    const cb = document.getElementById('circuit-cb');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+  });
+  await expect.poll(() => page.evaluate(() => overlayLoadingCount())).toBeGreaterThan(0);
+  await page.evaluate(() => {
+    const cb = document.getElementById('circuit-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change'));
+  });
+  await expect.poll(() => page.evaluate(() => overlayLoadingCount())).toBe(0);
+  await expect(page.locator('.overlay-loading')).not.toHaveClass(/show/);
+});
+
 // It must not take input: the pilot carries on panning while the charts load.
 test('the marker never takes a touch', async ({ page }) => {
   await boot(page);

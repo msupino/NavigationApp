@@ -10,13 +10,18 @@ The order matters:
 
 1. `docs/app/core.js` - constants, global state, migrations, geometry helpers,
    map/layer setup, default English strings.
-2. `docs/app/terrain.js` - terrain-grid and MSA helpers.
-3. `docs/app/draw.js` - canvas rendering, overlays, dataset lookups.
-4. `docs/app/interact.js` - hit testing, gestures, inspector, modals.
-5. `docs/app/io.js` - route save/load, flight plan, exports, chart modals.
-6. `docs/app/alt-pair-directions.js` - altitude-pair direction helpers.
-7. `docs/app/gdrive.js` - optional Google Drive route library integration.
-8. `docs/app/ui.js` - toolbar wiring, persistence toggles, boot.
+2. `docs/app/route-graph-shapes.js` - shared route-graph schema helpers.
+3. `docs/app/terrain.js` - terrain-grid and MSA helpers.
+4. `docs/app/draw.js` - canvas rendering, overlays, dataset lookups.
+5. `docs/app/interact.js` - hit testing, gestures, inspector, modals.
+6. `docs/app/io.js` - route save/load, flight plan, exports, chart modals.
+7. `docs/app/alt-pair-directions.js` - altitude-pair direction helpers.
+8. `docs/app/gdrive.js` - optional Google Drive route library integration.
+9. `docs/app/gps.js` - device GPS, simulator state and flight alerts.
+10. `docs/app/ui.js` - toolbar wiring, persistence toggles, boot.
+11. `docs/app/editor.js` - route-graph editing helpers.
+12. `docs/app/assistant.js` - optional AI assistant.
+13. `docs/app/offline-tiles.js` - native/offline chart-pack controls.
 
 Do not introduce modules, bundlers, transpilers, or new runtime dependencies
 without explicit approval.

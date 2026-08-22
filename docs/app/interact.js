@@ -773,7 +773,7 @@ function legLabelCenter(i, which) {
   const o = (which === 'in' ? state.legs[i].inLabel : state.legs[i].outLabel)
             || { a: 0, p: 0 };
   const sc = legZoomScale();
-  // Issue #394: a default (unmodified) label has no stored `p`; its
+  // A default (unmodified) label has no stored `p`; its
   // perpendicular is computed at render time from the live leg length
   // so it stays just outside the 10° drift cone. Mirror the renderer's
   // math here so the kite is grabbable at exactly its visible position.
@@ -792,11 +792,11 @@ function legLabelCenter(i, which) {
            y: f.my + f.dy * along + f.ny * perp };
 }
 
-// Issue #394: when the user starts dragging a default (unmodified)
+// When the user starts dragging a default (unmodified)
 // kite, freeze the currently-rendered offset into the stored
 // `{ a, p, _m: 1 }` form (drop `_default`) so subsequent drag deltas
 // have a real starting point. Keeps the user-dragged path identical
-// to PR #393's design — only the seed value comes from the drift-cone
+// to the stored-offset design — only the seed value comes from the drift-cone
 // formula instead of a fixed `±44 / legArrowSize`.
 function _materialiseDefaultLegLabel(legIdx, which) {
   const leg = state.legs[legIdx];

@@ -2689,7 +2689,7 @@ function drawVors(force) {
   octx.lineWidth = 1;
 }
 
-// --- reporting-type overlay (issue #404 / PR #405 design) ------------
+// --- reporting-type overlay -------------------------------------------
 // The CVFR chart's סוג דיווח class lives inline on each nav-waypoint as
 // `report` ('mandatory' = חובה, 'onRequest' = דרישה). reportingFor() resolves
 // a route-waypoint or nav-WP name (code or either locale label) to its class.
@@ -3924,13 +3924,13 @@ function drawLegs() {
           outLabel: { a: 0, _default: 1, _m: 1 } };
     const inP = leg.inLabel || defaults.inLabel;
     const outP = leg.outLabel || defaults.outLabel;
-    // Issue #394: a default (unmodified) kite sits just outside the drift
+    // A default (unmodified) kite sits just outside the drift
     // cone instead of at a fixed per-zoom pixel offset. The cone's
     // perpendicular extent at the leg midpoint comes from the configured
     // drift angle; a margin keeps the kite visibly clear of the dashed
     // drift lines at every zoom / leg length. User-dragged offsets
     // (no `_default` flag) keep the existing `p * legZoomScale()` path so
-    // hand-positioned kites round-trip exactly as PR #393 designed.
+    // hand-positioned kites round-trip exactly according to the stored-offset design.
     const driftPerp = legDefaultLabelPerp(len);
     const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;

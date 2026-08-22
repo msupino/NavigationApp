@@ -17,11 +17,21 @@ Two numbers say whether the result can be trusted, and both are printed:
                 latitude, so a correct fit sits at 1.00. A stretch or a misread axis does not.
   arp_frac      where the dataset already says the airfield is, as a fraction of the frame:
                 compare it with where the plate draws the field.
+
+Install the pinned Python packages with
+`python3 -m pip install -r scripts/requirements-georef.txt`. The `pdftotext`, `pdfinfo`,
+and `pdftoppm` commands come from Poppler (`brew install poppler` on macOS).
 """
 
 import math, re, subprocess
-import numpy as np
-from PIL import Image
+try:
+    import numpy as np
+    from PIL import Image
+except ModuleNotFoundError as exc:
+    raise SystemExit(
+        f"Missing Python dependency {exc.name!r}; run "
+        "python3 -m pip install -r scripts/requirements-georef.txt"
+    ) from exc
 
 DMS = re.compile(r"^(\d{2})°(\d{2})['’]?([NEWS]?)$")
 
@@ -252,8 +262,53 @@ def _anchor(arg):
     return int(d) + int(m)/60.0, float(px)
 
 
+def validate_fit(out):
+    """Return human-readable reasons a generated overlay must not be written."""
+    errors = []
+    if not isinstance(out, dict) or 'error' in out:
+        return [str((out or {}).get('error', 'missing fit result'))]
+
+    def finite_seq(value, size):
+        return isinstance(value, (list, tuple)) and len(value) == size and all(
+            isinstance(v, (int, float)) and math.isfinite(v) for v in value)
+
+    frame_value = out.get('frame')
+    if not finite_seq(frame_value, 4) or not (
+            frame_value[0] < frame_value[2] and frame_value[1] < frame_value[3]):
+        errors.append('frame must have finite increasing left/top/right/bottom bounds')
+
+    residuals = out.get('resid_deg')
+    if not finite_seq(residuals, 2) or any(abs(v) > 0.01 for v in residuals):
+        errors.append('longitude/latitude fit residuals must each be at most 0.01°')
+
+    conformality = out.get('conformality')
+    if not isinstance(conformality, (int, float)) or not math.isfinite(conformality) or not (
+            0.8 <= conformality <= 1.2):
+        errors.append('conformality must be within 0.80–1.20')
+
+    arp = out.get('arp_frac')
+    if arp is not None and (not finite_seq(arp, 2) or any(v < 0 or v > 1 for v in arp)):
+        errors.append('airfield reference point must fall inside the plate')
+
+    if finite_seq(out.get('sw'), 2) and finite_seq(out.get('ne'), 2):
+        sw, ne = out['sw'], out['ne']
+        if not (sw[0] < ne[0] and sw[1] < ne[1]):
+            errors.append('south-west/north-east bounds are reversed or empty')
+    elif all(finite_seq(out.get(k), 2) for k in ('tl', 'tr', 'bl')):
+        tl, tr, bl = out['tl'], out['tr'], out['bl']
+        width = math.hypot((tr[0] - tl[0]) * 111.0,
+                           (tr[1] - tl[1]) * 111.0 * math.cos(math.radians(tl[0])))
+        height = math.hypot((bl[0] - tl[0]) * 111.0,
+                            (bl[1] - tl[1]) * 111.0 * math.cos(math.radians(tl[0])))
+        if width <= 0.01 or height <= 0.01:
+            errors.append('rotated plate bounds are empty')
+    else:
+        errors.append('fit must contain either sw/ne or tl/tr/bl bounds')
+    return errors
+
+
 def main(argv):
-    import argparse, glob, json, os, subprocess
+    import argparse, glob, json, os, shutil, subprocess, sys
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument('pdf')
     ap.add_argument('icao')
@@ -263,6 +318,11 @@ def main(argv):
     ap.add_argument('--write', action='store_true', help='write docs/cvfr-img/<ICAO>_cvfr.png')
     ap.add_argument('--width', type=int, default=780, help='overlay width in px')
     a = ap.parse_args(argv)
+
+    missing = [name for name in ('pdftotext', 'pdfinfo', 'pdftoppm') if not shutil.which(name)]
+    if missing:
+        print('missing required Poppler command(s): ' + ', '.join(missing), file=sys.stderr)
+        return 2
 
     png = a.png or a.pdf[:-4] + '-p01.png'
     data = json.load(open('docs/data/airfields.json', encoding='utf-8'))
@@ -278,6 +338,11 @@ def main(argv):
     print(json.dumps(out, indent=1, default=float))
     if 'error' in out or not a.write:
         return 0 if 'error' not in out else 1
+
+    fit_errors = validate_fit(out)
+    if fit_errors:
+        print('refusing --write: ' + '; '.join(fit_errors), file=sys.stderr)
+        return 2
 
     from PIL import Image as _I
     tmp = '/tmp/georef-plate'

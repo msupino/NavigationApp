@@ -13,12 +13,12 @@ async function boot(page) {
     Array.isArray(window.GDRIVE_SETTINGS_KEYS));
 }
 
-test('collect includes AI key/model/provider; excludes baseUrl and device-local keys', async ({ page }) => {
+test('collect includes AI model/provider but excludes credentials and device-local keys', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     localStorage.setItem('navaid.showDrift', '0');                    // synced (toggle)
     localStorage.setItem('navaid.layer', 'nav');                      // synced
-    localStorage.setItem('navaid.ai.key.anthropic', 'sk-ant-abc');   // synced
+    localStorage.setItem('navaid.ai.key.anthropic', 'sk-ant-abc');   // device-local secret
     localStorage.setItem('navaid.ai.provider', 'anthropic');          // synced
     localStorage.setItem('navaid.ai.model.anthropic', 'claude-3-5'); // synced
     localStorage.setItem('navaid.ai.baseUrl', 'https://x.com');       // excluded — routing
@@ -30,7 +30,7 @@ test('collect includes AI key/model/provider; excludes baseUrl and device-local 
   });
   expect(out['navaid.showDrift']).toBe('0');
   expect(out['navaid.layer']).toBe('nav');
-  expect(out['navaid.ai.key.anthropic']).toBe('sk-ant-abc');
+  expect(out['navaid.ai.key.anthropic']).toBeUndefined();
   expect(out['navaid.ai.provider']).toBe('anthropic');
   expect(out['navaid.ai.model.anthropic']).toBe('claude-3-5');
   expect(out['navaid.ai.baseUrl']).toBeUndefined();
@@ -40,11 +40,11 @@ test('collect includes AI key/model/provider; excludes baseUrl and device-local 
   expect(out['navaid.sec.build']).toBeUndefined();
 });
 
-test('the allowlist contains AI keys but not baseUrl or panel geometry', async ({ page }) => {
+test('the allowlist contains AI choices but not credentials, baseUrl or panel geometry', async ({ page }) => {
   await boot(page);
   const keys = await page.evaluate(() => window.GDRIVE_SETTINGS_KEYS);
   expect(keys).toContain('navaid.ai.provider');
-  expect(keys).toContain('navaid.ai.key.anthropic');
+  expect(keys.some(k => k.startsWith('navaid.ai.key.'))).toBe(false);
   expect(keys).toContain('navaid.ai.model.anthropic');
   expect(keys).not.toContain('navaid.ai.baseUrl');
   expect(keys.some(k => /Pos$/.test(k))).toBe(false);
@@ -57,7 +57,7 @@ test('apply writes allowlisted keys and ignores foreign keys in the blob', async
   const out = await page.evaluate(() => {
     const changed = applySyncableSettings({
       'navaid.showMsa': '1',                      // allowlisted → applied
-      'navaid.ai.key.anthropic': 'sk-synced',     // allowlisted → applied
+      'navaid.ai.key.anthropic': 'sk-synced',     // credential → ignored
       'navaid.ai.baseUrl': 'https://evil.com',    // not allowlisted → ignored
       'navaid.evilKey': 'boom',                   // foreign → ignored
     });
@@ -71,7 +71,7 @@ test('apply writes allowlisted keys and ignores foreign keys in the blob', async
   });
   expect(out.changed).toBe(true);
   expect(out.msa).toBe('1');
-  expect(out.key).toBe('sk-synced');
+  expect(out.key).toBeNull();
   expect(out.baseUrl).toBeNull();
   expect(out.evil).toBeNull();
 });
@@ -641,4 +641,30 @@ test('an unchanged established device writes nothing when the remote already mat
   expect(out.res.applied).toBe(false);
   expect(out.uploaded).toBeNull();     // parity → no PATCH (used to overwrite the peer)
   expect(r.values['navaid.layer']).toBe('nav');
+});
+
+test('an established device removes legacy credentials and identity fields from Drive', async ({ page }) => {
+  await bootSync(page, {
+    updatedAt: 5000,
+    values: {
+      'navaid.layer': 'nav',
+      'navaid.ai.key.anthropic': 'legacy-secret',
+      'navaid.fpl.pic': 'Legacy Pilot',
+      'navaid.fpl.cell': '0500000000',
+    },
+  });
+  const out = await page.evaluate(async () => {
+    localStorage.setItem('navaid.layer', 'nav');
+    const values = collectSyncableSettings();
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify(values));
+    localStorage.setItem('navaid.settingsSnapKeys', JSON.stringify(GDRIVE_SETTINGS_KEYS));
+    localStorage.setItem('navaid.settingsSyncedAt', '4000');
+    const res = await _gdriveSyncSettingsOnce();
+    return { res, uploaded: window.__uploaded };
+  });
+  expect(out.res.applied).toBe(false);
+  expect(out.uploaded.updatedAt).toBeGreaterThan(5000);
+  expect(out.uploaded.values['navaid.layer']).toBe('nav');
+  expect(Object.keys(out.uploaded.values).some(k => k.startsWith('navaid.ai.key.'))).toBe(false);
+  expect(Object.keys(out.uploaded.values).some(k => k.startsWith('navaid.fpl.'))).toBe(false);
 });

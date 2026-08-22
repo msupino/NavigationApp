@@ -157,6 +157,18 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Set up Python for georeference checks
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: pip
+          cache-dependency-path: scripts/requirements-georef.txt
+
+      - name: Validate georeference generator
+        run: |
+          python3 -m pip install -r scripts/requirements-georef.txt
+          python3 -m unittest scripts/test_georef_plate.py
+
       - name: JS syntax check (node --check)
         run: |
           set -e
