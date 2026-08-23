@@ -1,11 +1,17 @@
 const { test, expect } = require('./_setup');
+const { arp } = require('./_airfieldArp');
+
+const LLHZ = arp('LLHZ');
+const LLIB = arp('LLIB');
 
 async function boot(page, lang = 'en') {
   await page.goto('?lang=' + lang + '&nogist');
   await page.waitForFunction(() => typeof exportFms === 'function' &&
     typeof syncLegs === 'function' && typeof loadAirfields === 'function');
-  await page.evaluate(async () => {
+  await page.evaluate(async ([llhz, llib]) => {
     await loadAirfields();
+    window.__LLHZ = llhz;
+    window.__LLIB = llib;
     URL.createObjectURL = blob => {
       window.__fmsBlob = blob;
       return 'blob:fms-test';
@@ -14,17 +20,17 @@ async function boot(page, lang = 'en') {
     HTMLAnchorElement.prototype.click = function () {
       window.__fmsFilename = this.download;
     };
-  });
+  }, [LLHZ, LLIB]);
 }
 
 test('exports the complete route in X-Plane 1100 FMS format', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
     state.waypoints = [
-      { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+      { ...window.__LLHZ },
       { lat: 32.21861, lng: 34.8825, name: 'BAZRA' },
       { lat: 32.21861, lng: 34.8825, name: 'BAZRA' },
-      { lat: 32.98056, lng: 35.57083, name: 'renamed destination' },
+      { ...window.__LLIB, name: 'renamed destination' },
     ];
     state.legs = [];
     syncLegs();
@@ -39,17 +45,20 @@ test('exports the complete route in X-Plane 1100 FMS format', async ({ page }) =
       type: window.__fmsBlob.type,
       filename: window.__fmsFilename,
       unchanged: before === JSON.stringify(state.waypoints),
+      expectedCycle: xplaneAiracCycle(new Date()),
     };
   });
 
   const lines = result.text.trim().split('\n');
   expect(lines.slice(0, 2)).toEqual(['I', '1100 Version']);
-  expect(lines[2]).toMatch(/^CYCLE \d{4}$/);
+  expect(lines[2]).toBe('CYCLE ' + result.expectedCycle);
   expect(lines.slice(3, 6)).toEqual(['ADEP LLHZ', 'ADES LLIB', 'NUMENR 4']);
-  expect(lines[6]).toBe('1 LLHZ ADEP 4500.000000 32.179440 34.834440');
+  expect(lines[6]).toBe('1 LLHZ ADEP 4500.000000 ' +
+    LLHZ.lat.toFixed(6) + ' ' + LLHZ.lng.toFixed(6));
   expect(lines[7]).toBe('28 BAZRA DRCT 4500.000000 32.218610 34.882500');
   expect(lines[8]).toBe('28 BAZRA DRCT 3500.000000 32.218610 34.882500');
-  expect(lines[9]).toBe('1 LLIB ADES 3500.000000 32.980560 35.570830');
+  expect(lines[9]).toBe('1 LLIB ADES 3500.000000 ' +
+    LLIB.lat.toFixed(6) + ' ' + LLIB.lng.toFixed(6));
   expect(result.type).toContain('text/plain');
   expect(result.filename).toMatch(/\.fms$/);
   expect(result.unchanged).toBe(true);
