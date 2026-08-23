@@ -3014,12 +3014,20 @@ function showInspector() {
       const manualTurn = !!(state.waypoints[idx] && state.waypoints[idx].turn);
       const effectiveTurn = typeof legRetraceTurnIndex === 'function' &&
         legRetraceTurnIndex() === idx;
+      // Only an out-and-back has a far end: a route that lands somewhere other than where it
+      // started has no return to separate from its outbound. Clearing an existing mark stays
+      // available, so a route edited into a one-way trip is not left holding a turn nothing
+      // can use.
+      const homeAgain = typeof routeReturnsHome === 'function' ? routeReturnsHome() : true;
       const turnBtn = document.createElement('button');
       turnBtn.className = 'insp-btn' + (effectiveTurn ? ' insp-btn-on' : '');
       turnBtn.id = 'insp-turn-btn';
       turnBtn.textContent = manualTurn ? (S.inspTurnClear || '↻ Clear turning point')
                                        : (S.inspTurnSet || '↻ Mark as turning point');
-      if (S.inspTurnTitle) turnBtn.title = S.inspTurnTitle;
+      turnBtn.disabled = !homeAgain && !manualTurn;
+      turnBtn.title = turnBtn.disabled
+        ? (S.inspTurnNeedsSameField || 'Available on a route that returns to the airfield it started from.')
+        : (S.inspTurnTitle || '');
       turnBtn.setAttribute('aria-pressed', effectiveTurn ? 'true' : 'false');
       turnBtn.onclick = () => {
         setTurnWaypoint(idx);

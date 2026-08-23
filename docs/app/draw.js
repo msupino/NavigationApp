@@ -2508,6 +2508,20 @@ function airfieldAtWaypoint(wp) {
   ) || null;
 }
 
+
+// A turning point only means something on an out-and-back: the route leaves an airfield and
+// comes home to the same one, and the turn is where it starts back. On a route that ends
+// somewhere else there is no "return" to separate from an "outbound", so the inspector dims
+// the action rather than letting a pilot mark a far end that nothing can use.
+function routeReturnsHome() {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  if (wps.length < 3) return false;
+  const first = airfieldAtWaypoint(wps[0]);
+  const last = airfieldAtWaypoint(wps[wps.length - 1]);
+  return !!(first && last && first.name === last.name);
+}
+window.routeReturnsHome = routeReturnsHome;
+
 // Distinct from nav-WPs: airfields are rendered as a blue-filled upward
 // triangle (▲) outline, sized to ~7 px at typical zooms. The ICAO and
 // localised name appear next to the marker at zoom ≥ 10. Suppressed when

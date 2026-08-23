@@ -2894,9 +2894,25 @@ function refreshPrintFit() {
   const warn = document.getElementById('print-clip-warn');
   const fitBtn = document.getElementById('print-fit');
   if (!warn || !fitBtn) return;
-  const noFrame = !pageSize || !state.waypoints || !state.waypoints.length;
-  const fit = noFrame ? { fits: true } : routePageFit();
-  if (noFrame || fit.fits) {
+  const hasRoute = !!(state.waypoints && state.waypoints.length);
+  // With no page chosen there is nothing to overflow, but there is still something to do:
+  // Fit picks the smallest page that holds the route. It used to sit greyed out until a
+  // size had been chosen by hand, which is the wrong way round -- choosing the size is the
+  // job the button does.
+  if (!hasRoute) {
+    warn.hidden = true;
+    fitBtn.hidden = false;
+    fitBtn.disabled = true;
+    return;
+  }
+  if (!pageSize) {
+    warn.hidden = true;
+    fitBtn.hidden = false;
+    fitBtn.disabled = !fitPageToRoute(false);     // enabled if any page can hold it
+    return;
+  }
+  const fit = routePageFit();
+  if (fit.fits) {
     warn.hidden = true;
     fitBtn.hidden = false;
     fitBtn.disabled = true;
