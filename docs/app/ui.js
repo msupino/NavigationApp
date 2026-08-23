@@ -1000,6 +1000,7 @@ legendCtrl.addTo(map);
   // even the collapsed one can -- so returning to the spot it actually occupied is what puts
   // the card back where the eye left it.
   let shovedFrom = null;
+  let returningHome = false;      // true while applyPos is putting the card back
   function persistPosition() {
     const r = box.getBoundingClientRect();
     shovedFrom = null;                 // a drag is a new decision: nothing to return to
@@ -1009,6 +1010,11 @@ legendCtrl.addTo(map);
   }
 
   function applyPos(x, y, persist) {
+    // Whatever moves the card, remember where it was standing first. The come-home logic
+    // used to record that only on the path it expected chrome to take; a runner whose
+    // toolbar resizes in two steps took another, so nothing was remembered and the card
+    // stayed where the shove left it.
+    const was = box.getBoundingClientRect();
     box.style.maxWidth = '';
     box.classList.remove('map-legend-constrained');
     const obstacles = chromeRects();
@@ -1032,11 +1038,20 @@ legendCtrl.addTo(map);
     box.style.right = 'auto';
     box.style.bottom = 'auto';
     box.style.margin = '0';
+    if (!persist && !returningHome && !box.classList.contains('dragging') && shovedFrom === null) {
+      const moved = Math.round(was.left) !== Math.round(parseFloat(box.style.left)) ||
+        Math.round(was.top) !== Math.round(parseFloat(box.style.top));
+      if (moved && was.width && was.height) shovedFrom = { x: was.left, y: was.top };
+    }
     if (persist) persistPosition();
   }
   try {
     const p = JSON.parse(navLangPosRead(KEY) || 'null');
-    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) { home = { x: p.x, y: p.y }; applyPos(p.x, p.y, false); }
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+      home = { x: p.x, y: p.y };
+      applyPos(p.x, p.y, false);
+      shovedFrom = null;              // restoring the stored spot is not a shove
+    }
   } catch (e) { /* storage unavailable */ }
   window.reconcileLegendPosition = function (opts = {}) {
     if (document.documentElement.classList.contains('app-booting')) return;
@@ -1051,14 +1066,21 @@ legendCtrl.addTo(map);
     // the card back when the toolbar collapses.
     if (!obstructed && !outside && shovedFrom) {
       const target = shovedFrom;
-      // Still covered? Keep the memory and try again next time. Clearing it here threw the
-      // spot away on the second reconcile of the SAME opening -- by then the card was out of
-      // the way, so nothing looked obstructed, while the place it came from still was.
+      // Try to go back, and keep the memory until the card is actually THERE. The toolbar
+      // collapses over several frames, so an early attempt reads a rect that is still tall,
+      // choosePosition bounces the card away again, and a memory cleared on that attempt
+      // would strand it. Clearing only on arrival lets the next reconcile finish the job.
       if (!obstacles.some(o => overlaps(target.x, target.y, r.width, r.height, o))) {
-        shovedFrom = null;
-        if (Math.round(r.left) !== Math.round(target.x) ||
-            Math.round(r.top) !== Math.round(target.y)) {
+        if (Math.round(r.left) === Math.round(target.x) &&
+            Math.round(r.top) === Math.round(target.y)) {
+          shovedFrom = null;                     // home already: nothing left to remember
+        } else {
+          returningHome = true;
           applyPos(target.x, target.y, false);
+          returningHome = false;
+          const now = box.getBoundingClientRect();
+          if (Math.round(now.left) === Math.round(target.x) &&
+              Math.round(now.top) === Math.round(target.y)) shovedFrom = null;
           return;
         }
       }
@@ -1066,7 +1088,6 @@ legendCtrl.addTo(map);
     if (!positioned && !outside && !obstructed) return;
     // A shove is temporary. Only a drag decides where the legend lives, so only a drag
     // writes to storage -- callers asking to persist a reflow are ignored.
-    if (obstructed && !shovedFrom) shovedFrom = { x: r.left, y: r.top };
     applyPos(r.left, r.top, false);
     void opts;
   };
