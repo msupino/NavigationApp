@@ -73,8 +73,8 @@ test('dragging the card by its title does not toggle it', async ({ page }) => {
   await page.mouse.down();
   await page.mouse.move(box.x + 10, box.y - 100, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(200);
-  expect((await state(page)).collapsed).toBe(false);
+  // It must STAY open: poll for a while so a late toggle would be caught rather than missed.
+  await expect.poll(async () => (await state(page)).collapsed, { timeout: 1500 }).toBe(false);
 });
 
 // The chevron is the affordance: it points the way the card will open.

@@ -28,22 +28,22 @@ test('an opened toolbar moves the legend but does not adopt the move', async ({ 
   await boot(page, { x: 12, y: 150 });
   const placed = await at(page);
   await page.locator('#toolbar-toggle').click();
-  await page.waitForTimeout(400);
-  const shoved = await at(page);
-  expect(shoved.y).not.toBe(placed.y);                 // it got out of the way...
-  expect(shoved.stored).toEqual(placed.stored);        // ...without rewriting where it lives
+  await expect.poll(async () => (await at(page)).y, { timeout: 5000 })
+    .not.toBe(placed.y);                               // it got out of the way...
+  expect((await at(page)).stored).toEqual(placed.stored);  // ...without rewriting where it lives
 });
 
 test('it comes home when the toolbar closes', async ({ page }) => {
   await boot(page, { x: 12, y: 150 });
   const placed = await at(page);
   await page.locator('#toolbar-toggle').click();
-  await page.waitForTimeout(400);
+  // Wait for the shove itself rather than a stopwatch: the reconcile runs off a
+  // ResizeObserver and a frame, and a loaded CI runner takes longer than a laptop.
+  await expect.poll(async () => (await at(page)).y, { timeout: 5000 })
+    .not.toBe(placed.y);
   await page.locator('#toolbar-toggle').click();
-  await page.waitForTimeout(500);
-  const back = await at(page);
-  expect(back.y).toBe(placed.y);
-  expect(back.x).toBe(placed.x);
+  await expect.poll(async () => (await at(page)).y, { timeout: 5000 }).toBe(placed.y);
+  expect((await at(page)).x).toBe(placed.x);
 });
 
 // The walk: open the menu, change a layer, close, repeat. The card used to be a little
@@ -53,14 +53,12 @@ test('repeated trips to the layer picker leave it where it started', async ({ pa
   const placed = await at(page);
   for (const layer of ['Low Alt', 'Satellite', 'CVFR']) {
     await page.locator('#toolbar-toggle').click();
-    await page.waitForTimeout(350);
+    await expect.poll(async () => (await at(page)).y, { timeout: 5000 }).not.toBe(placed.y);
     await page.evaluate((v) => { const s = document.getElementById('layer-select'); s.value = v; s.onchange(); }, layer);
-    await page.waitForTimeout(350);
     await page.locator('#toolbar-toggle').click();
-    await page.waitForTimeout(450);
+    await expect.poll(async () => (await at(page)).y, { timeout: 5000 }).toBe(placed.y);
   }
-  const end = await at(page);
-  expect(end).toEqual(placed);
+  expect(await at(page)).toEqual(placed);
 });
 
 test('dragging it still decides where it lives', async ({ page }) => {
