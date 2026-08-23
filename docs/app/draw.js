@@ -2185,6 +2185,14 @@ function waypointHotspot(wp) {
   return DEFAULT_HOTSPOT_WAYPOINTS.has(canonicalNavWaypointName(wp.name).toUpperCase());
 }
 
+// Route hotspot visibility is tri-state: an inspector choice always wins,
+// while the global option controls only graph-derived defaults.
+function routeWaypointHotspot(wp) {
+  if (!wp) return false;
+  if (Object.prototype.hasOwnProperty.call(wp, 'hotspot')) return wp.hotspot === true;
+  return showHotspots && waypointHotspot(wp);
+}
+
 function escapeRegExp(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -4420,7 +4428,7 @@ function drawWaypoints() {
                      state.selected.index === i;
     const { label, fontPx, r } = waypointGeom(i);
     const radius = selected ? r + tune('waypointSelectedRadiusAddPx') : r;
-    const hotspot = showHotspots && waypointHotspot(wp);
+    const hotspot = routeWaypointHotspot(wp);
 
     if (hotspot) {
       window.__hotspotWaypointIndexes.push(i);

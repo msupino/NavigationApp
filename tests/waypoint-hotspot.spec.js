@@ -42,16 +42,38 @@ test('HADRA defaults on and route waypoint inspector exposes the pressed toggle'
   expect(result.text).toContain('Clear hotspot');
 });
 
-test('global hotspot visibility persists without clearing inspector choices', async ({ page }) => {
+test('global hotspot visibility controls only defaults while inspector overrides stay authoritative', async ({ page }) => {
   await boot(page);
   await setRoute(page);
   const globalToggle = page.locator('#hotspot-cb');
   await expect(globalToggle).toBeChecked();
   await expect(globalToggle.locator('xpath=..')).toContainText('Show hotspots');
+  await page.evaluate(() => {
+    state.waypoints[0].hotspot = true;
+    state.waypoints[2].hotspot = false;
+    persist();
+    draw();
+    state.selected = { type: 'wp', index: 1 };
+    showInspector();
+  });
   expect(await page.evaluate(() => ({
     defaultValue: NavAid.tuningDefaults.defaultShowHotspots.value,
     drawn: window.__hotspotWaypointIndexes,
-  }))).toEqual({ defaultValue: true, drawn: [1] });
+    overrides: state.waypoints.map(wp => ({
+      own: Object.prototype.hasOwnProperty.call(wp, 'hotspot'),
+      value: wp.hotspot,
+    })),
+  }))).toEqual({
+    defaultValue: true,
+    drawn: [0, 1],
+    overrides: [
+      { own: true, value: true },
+      { own: false, value: undefined },
+      { own: true, value: false },
+    ],
+  });
+  await expect(page.locator('#insp-hotspot-btn')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#insp-hotspot-btn')).toContainText('Clear hotspot');
 
   await page.evaluate(() => {
     const cb = document.getElementById('hotspot-cb');
@@ -61,36 +83,101 @@ test('global hotspot visibility persists without clearing inspector choices', as
   expect(await page.evaluate(() => ({
     shown: showHotspots,
     stored: localStorage.getItem('navaid.showHotspots'),
-    effective: waypointHotspot(state.waypoints[1]),
     drawn: window.__hotspotWaypointIndexes,
-  }))).toEqual({ shown: false, stored: '0', effective: true, drawn: [] });
+    overrides: state.waypoints.map(wp => Object.prototype.hasOwnProperty.call(wp, 'hotspot')),
+  }))).toEqual({ shown: false, stored: '0', drawn: [0], overrides: [true, false, true] });
+  await expect(page.locator('#insp-hotspot-btn')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#insp-hotspot-btn')).toContainText('Mark as hotspot');
 
-  await page.evaluate(() => {
-    state.selected = { type: 'wp', index: 0 };
-    showInspector();
-  });
   await page.locator('#insp-hotspot-btn').click();
   expect(await page.evaluate(() => ({
-    override: state.waypoints[0].hotspot,
+    override: state.waypoints[1].hotspot,
     shown: showHotspots,
     drawn: window.__hotspotWaypointIndexes,
-  }))).toEqual({ override: true, shown: false, drawn: [] });
+  }))).toEqual({ override: true, shown: false, drawn: [0, 1] });
+  await expect(page.locator('#insp-hotspot-btn')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('#insp-hotspot-btn').click();
+  expect(await page.evaluate(() => ({
+    override: state.waypoints[1].hotspot,
+    drawn: window.__hotspotWaypointIndexes,
+  }))).toEqual({ override: false, drawn: [0] });
+
+  await page.evaluate(() => {
+    delete state.waypoints[1].hotspot;
+    persist();
+    draw();
+    showInspector();
+    const cb = document.getElementById('hotspot-cb');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+  });
+  expect(await page.evaluate(() => ({
+    shown: showHotspots,
+    drawn: window.__hotspotWaypointIndexes,
+    overrides: state.waypoints.map(wp => ({
+      own: Object.prototype.hasOwnProperty.call(wp, 'hotspot'),
+      value: wp.hotspot,
+    })),
+  }))).toEqual({
+    shown: true,
+    drawn: [0, 1],
+    overrides: [
+      { own: true, value: true },
+      { own: false, value: undefined },
+      { own: true, value: false },
+    ],
+  });
+  await expect(page.locator('#insp-hotspot-btn')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.evaluate(() => {
+    const cb = document.getElementById('hotspot-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change'));
+  });
+  await expect(page.locator('#insp-hotspot-btn')).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => window.__hotspotWaypointIndexes)).toEqual([0]);
 
   await page.reload();
   await page.waitForFunction(() => typeof waypointHotspot === 'function' && state.waypoints.length === 3);
   await expect(globalToggle).not.toBeChecked();
   expect(await page.evaluate(() => ({
-    override: state.waypoints[0].hotspot,
-    effective: state.waypoints.map(waypointHotspot),
     drawn: window.__hotspotWaypointIndexes,
-  }))).toEqual({ override: true, effective: [true, true, false], drawn: [] });
-
-  await page.evaluate(() => {
-    const cb = document.getElementById('hotspot-cb');
-    cb.checked = true;
-    cb.dispatchEvent(new Event('change'));
+    overrides: state.waypoints.map(wp => ({
+      own: Object.prototype.hasOwnProperty.call(wp, 'hotspot'),
+      value: wp.hotspot,
+    })),
+  }))).toEqual({
+    drawn: [0],
+    overrides: [
+      { own: true, value: true },
+      { own: false, value: undefined },
+      { own: true, value: false },
+    ],
   });
-  expect(await page.evaluate(() => window.__hotspotWaypointIndexes)).toEqual([0, 1]);
+});
+
+test('global hotspot visibility does not reopen a hidden waypoint inspector', async ({ page }) => {
+  await boot(page);
+  await setRoute(page);
+  const result = await page.evaluate(() => {
+    state.selected = { type: 'wp', index: 1 };
+    showInspector();
+    document.getElementById('inspector').classList.add('hidden');
+    const cb = document.getElementById('hotspot-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change'));
+    return {
+      inspectorHidden: document.getElementById('inspector').classList.contains('hidden'),
+      selected: state.selected,
+      drawn: window.__hotspotWaypointIndexes,
+    };
+  });
+  expect(result).toEqual({
+    inspectorHidden: true,
+    selected: { type: 'wp', index: 1 },
+    drawn: [],
+  });
 });
 
 test('tunable hotspot default controls a device with no saved preference', async ({ page }) => {
