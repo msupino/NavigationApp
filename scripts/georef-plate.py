@@ -80,7 +80,7 @@ def axis(vals):
         return (along, mx, bx, rx) if along == 'cx' else (along, my, by, ry)
     return best[0], best[1], best[2], best[3]
 
-def frame(png, scale, lo, hi):
+def frame(png):
     a = np.array(Image.open(png).convert('L')); H, W = a.shape
     dark = a < 100
     def runs(idx):
@@ -155,7 +155,7 @@ def georef(pdf, png, arp):
     pw, ph = (float(v) for v in re.search(r'Page size:\s+([\d.]+) x ([\d.]+)', page).groups())
     im = Image.open(png); W, H = im.size
     scale = W / pw
-    rows, cols, _, _ = frame(png, scale, None, None)
+    rows, cols, _, _ = frame(png)
     xs = [l['cx']*scale for l in ls]; ys = [l['cy']*scale for l in ls]
     xlab = [l['cx']*scale for l in (lat if lat_key=='cx' else lon)]
     ylab = [l['cy']*scale for l in (lat if lat_key=='cy' else lon)]
@@ -220,7 +220,7 @@ def georef(pdf, png, arp):
 
 
 
-def georef_manual(pdf, png, lon_px, lat_px, arp):
+def georef_manual(png, lon_px, lat_px, arp):
     """Same fit, from label centres measured by hand.
 
     Some plates draw their degree labels as outlines, so there is no text to read: measure
@@ -228,7 +228,7 @@ def georef_manual(pdf, png, lon_px, lat_px, arp):
     text and pulls its centre off the tick -- trim that before measuring.
     """
     import numpy as _np
-    rows, cols, W, H = frame(png, 1, None, None)
+    rows, cols, W, H = frame(png)
     xs = sorted(lon_px.values()); ys = sorted(lat_px.values())
     left  = max([c for c in cols if c <= min(xs)] or [cols[0]])
     right = min([c for c in cols if c >= max(xs)] or [cols[-1]])
@@ -336,7 +336,7 @@ def main(argv):
     arp = (field['lat'], field['lng']) if field else None
 
     if a.lon and a.lat:
-        out = georef_manual(a.pdf, png, dict(_anchor(x) for x in a.lon),
+        out = georef_manual(png, dict(_anchor(x) for x in a.lon),
                             dict(_anchor(x) for x in a.lat), arp)
     else:
         out = georef(a.pdf, png, arp)
