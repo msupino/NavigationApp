@@ -12,8 +12,6 @@ async function boot(page) {
   await page.evaluate(() => localStorage.removeItem('navaid.routeLibrary'));
 }
 
-const fix = (lat, lng, t) => ({ lat, lng, t });
-
 test('a real track is taken, and its numbers are numbers', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
