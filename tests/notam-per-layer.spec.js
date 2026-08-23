@@ -137,6 +137,10 @@ test('the "Nav waypoints from" override decides the key on a base map', async ({
     sel.value = 'Satellite'; sel.onchange();
     await new Promise(r => setTimeout(r, 200));
     const before = notamPrefKey();
+    // Helicopters ships off, and the picker only lists charts the app offers -- turn it on
+    // the way a gist would before choosing it. See navwp-source-offered.spec.js.
+    setTune('layerEnabledHelicopters', true);
+    if (typeof window.rebuildNavWpSource === 'function') window.rebuildNavWpSource();
     const src = document.getElementById('navwp-source');
     src.value = 'heli';
     src.onchange({ target: src });
