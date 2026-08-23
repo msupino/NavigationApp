@@ -567,6 +567,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   When the placed card uses a reference VOR, PNG/print rendering always includes the
   VOR station ident and frequency. Export ignores the normal on-screen VOR label zoom
   threshold for that forced VOR layer; ordinary map rendering still respects it.
+- **X-Plane exports:** `FMS — X-Plane flight plan` writes the complete stored
+  route in X-Plane's v11/1100 `.fms` format. X-Plane loads it as a route to fly.
+  Recognized airfields use airport rows; other NavAid points use their exact
+  coordinates. `FDR — X-Plane replay` remains a sampled recorded-flight file
+  that X-Plane loads through **Load Flight**. Exact return reversals preserve the
+  turning waypoint instead of collapsing the replay path before it.
 - **GPS track recorder:** the `📍 Record GPS track` toggle in the View/Set
   toolbar section records the flown path from the device GPS (live own-ship
   dot + breadcrumb trail on the map). On Stop it auto-saves a timestamped
