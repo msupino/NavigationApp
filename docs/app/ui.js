@@ -844,6 +844,7 @@ setInterval(refreshZuluClock, 1000);
     const p = JSON.parse(navLangPosRead(KEY) || 'null');
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
   } catch (e) { /* storage unavailable */ }
+
   function start(cx, cy) {
     const r = box.getBoundingClientRect();
     const off = { x: cx - r.left, y: cy - r.top };
@@ -893,6 +894,33 @@ legendCtrl.addTo(map);
 (function makeLegendDraggable() {
   const box = document.getElementById('map-legend');
   if (!box) return;
+  // On a phone the card is most of the bottom-left quarter of the screen, over the chart a
+  // pilot is trying to read, and it says the same six things on every flight. It starts
+  // collapsed to its title there -- tap to open, tap to close -- and the choice is kept per
+  // device. Desktop is unchanged: there is room, and it stays open.
+  const COLLAPSE_KEY = 'navaid.legendCollapsed';
+  const legendIsPhone = () => window.innerWidth <= 680;
+  function setLegendCollapsed(on, persist) {
+    box.classList.toggle('map-legend-collapsed', !!on);
+    const title = box.querySelector('.map-legend-title');
+    if (title) {
+      title.setAttribute('role', 'button');
+      title.setAttribute('tabindex', '0');
+      title.setAttribute('aria-expanded', on ? 'false' : 'true');
+    }
+    if (persist) {
+      try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+    }
+    // Its size just changed, so make sure it is still on screen and clear of the chrome.
+    if (typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
+  }
+  (function initLegendCollapsed() {
+    let stored = null;
+    try { stored = localStorage.getItem(COLLAPSE_KEY); } catch (e) { /* storage unavailable */ }
+    setLegendCollapsed(stored === null ? legendIsPhone() : stored === '1', false);
+  })();
+  window.setLegendCollapsed = setLegendCollapsed;
+
   const KEY = 'navaid.legendPos';
   const GAP = 6;
   let positioned = false;
@@ -943,9 +971,15 @@ legendCtrl.addTo(map);
     return candidates[0] || { x: clampX(wantX), y: clampY(wantY) };
   }
 
+  // Where the PILOT put it. Chrome that comes and goes -- an opened toolbar, the search
+  // overlay -- may shove the card aside, but that shove is not a decision: it is undone
+  // when the obstruction goes, and it is never written to storage. Saving it was why the
+  // legend walked down the screen on a phone, a step per time the toolbar was opened.
+  let home = null;
   function persistPosition() {
     const r = box.getBoundingClientRect();
-    try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify({ x: r.left, y: r.top })); }
+    home = { x: r.left, y: r.top };
+    try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify(home)); }
     catch (e) { /* storage unavailable */ }
   }
 
@@ -977,7 +1011,7 @@ legendCtrl.addTo(map);
   }
   try {
     const p = JSON.parse(navLangPosRead(KEY) || 'null');
-    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y, true);
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) { home = { x: p.x, y: p.y }; applyPos(p.x, p.y, false); }
   } catch (e) { /* storage unavailable */ }
   window.reconcileLegendPosition = function (opts = {}) {
     if (document.documentElement.classList.contains('app-booting')) return;
@@ -985,10 +1019,22 @@ legendCtrl.addTo(map);
     const vp = viewportRect();
     const outside = r.left < vp.left || r.top < vp.top ||
       r.right > vp.right || r.bottom > vp.bottom;
-    const obstructed = chromeRects().some(obstacle =>
+    const obstacles = chromeRects();
+    const obstructed = obstacles.some(obstacle =>
       overlaps(r.left, r.top, r.width, r.height, obstacle));
+    // Nothing in the way: go back to where it was put, if it is free again. This is what
+    // brings the card home when the toolbar collapses.
+    if (!obstructed && !outside && home &&
+        (Math.round(r.left) !== Math.round(home.x) || Math.round(r.top) !== Math.round(home.y)) &&
+        !obstacles.some(o => overlaps(home.x, home.y, r.width, r.height, o))) {
+      applyPos(home.x, home.y, false);
+      return;
+    }
     if (!positioned && !outside && !obstructed) return;
-    applyPos(r.left, r.top, opts.persist !== false);
+    // A shove is temporary. Only a drag decides where the legend lives, so only a drag
+    // writes to storage -- callers asking to persist a reflow are ignored.
+    applyPos(r.left, r.top, false);
+    void opts;
   };
   const bootObserver = new MutationObserver(() => {
     if (!document.documentElement.classList.contains('app-booting')) {
@@ -1014,11 +1060,29 @@ legendCtrl.addTo(map);
     const r = box.getBoundingClientRect();
     const off = { x: cx - r.left, y: cy - r.top };
     box.classList.add('dragging');
-    const move = (mx, my) => applyPos(mx - off.x, my - off.y, false);
+    let travelled = 0;
+    const move = (mx, my) => {
+      travelled = Math.max(travelled, Math.hypot(mx - cx, my - cy));
+      applyPos(mx - off.x, my - off.y, false);
+    };
     const mm = ev => move(ev.clientX, ev.clientY);
     const tm = ev => { if (ev.touches.length === 1) { ev.preventDefault(); move(ev.touches[0].clientX, ev.touches[0].clientY); } };
-    const end = () => {
+    const end = (ev) => {
       box.classList.remove('dragging');
+      // A press that never moved is a tap on the title, not a drag: open or close the card
+      // instead of writing a position it never left.
+      if (travelled < 4) {
+        const t = (ev && (ev.target || (ev.changedTouches && ev.changedTouches[0] &&
+          document.elementFromPoint(ev.changedTouches[0].clientX, ev.changedTouches[0].clientY))));
+        if (t && t.closest && t.closest('.map-legend-title')) {
+          setLegendCollapsed(!box.classList.contains('map-legend-collapsed'), true);
+          document.removeEventListener('mousemove', mm);
+          document.removeEventListener('mouseup', end);
+          window.removeEventListener('touchmove', tm);
+          window.removeEventListener('touchend', end);
+          return;
+        }
+      }
       persistPosition();
       document.removeEventListener('mousemove', mm);
       document.removeEventListener('mouseup', end);
