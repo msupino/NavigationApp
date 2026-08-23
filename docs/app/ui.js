@@ -3007,6 +3007,7 @@ document.getElementById('export-select').onchange = e => {
   }
   else if (v === 'gpx') exportGpx();
   else if (v === 'pln') exportPln();
+  else if (v === 'fms') exportFms();
   else if (v === 'fdr') exportFdr();
 };
 document.getElementById('load').onclick = () => document.getElementById('file').click();

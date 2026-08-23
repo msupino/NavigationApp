@@ -69,3 +69,33 @@ test('FDR altitude rises toward the planned leg altitude', async ({ page }) => {
   expect(Math.max(...alts)).toBeGreaterThan(4900);
   expect(Math.max(...alts)).toBeLessThan(5100);
 });
+
+test('FDR replay reaches an exact out-and-back turning waypoint', async ({ page }) => {
+  await boot(page);
+  const rows = await page.evaluate(async () => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.8, name: 'A' },
+      { lat: 32.2, lng: 34.8, name: 'TURN' },
+      { lat: 32.0, lng: 34.8, name: 'A' },
+    ];
+    state.legs = [];
+    syncLegs();
+    state.legs.forEach(leg => {
+      leg.flightSpeed = 90;
+      leg.inboundAltitude = 3000;
+    });
+    exportFdr();
+    const text = await window.__readFdr();
+    return text.split('\n').filter(line => line.startsWith('DATA,'))
+      .map(line => line.replace(/^DATA,\s*/, '').split(',').map(Number));
+  });
+
+  expect(rows.length).toBeGreaterThan(900);
+  expect(Math.max(...rows.map(row => row[2]))).toBeGreaterThan(32.1995);
+  const last = rows[rows.length - 1];
+  expect(last[1]).toBeCloseTo(34.8, 4);
+  expect(last[2]).toBeCloseTo(32.0, 4);
+  expect(last[0]).toBeGreaterThan(900);
+  expect(rows.every(row => row.every(Number.isFinite))).toBe(true);
+  expect(rows.every(row => row[4] >= 0 && row[4] < 360)).toBe(true);
+});

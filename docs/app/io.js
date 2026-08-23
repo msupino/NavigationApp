@@ -2015,6 +2015,20 @@ function fsxLatLngAlt(lat, lng, altFt) {
   const altStr = '+' + String(a).padStart(6, '0') + '.00';
   return dms(lat, 'N', 'S') + ',' + dms(lng, 'E', 'W') + ',' + altStr;
 }
+function routeWaypointExportId(i) {
+  return (wpLabel(i).replace(/[^A-Za-z0-9]/g, '').toUpperCase() ||
+    ('WP' + (i + 1))).slice(0, 12);
+}
+function routeWaypointExportAltitudeFt(i) {
+  const legIdx = Math.min(i, state.legs.length - 1);
+  return routeExportAltitudeFt(legIdx,
+    { departureFieldFt: exportFieldElevFt(state.waypoints[legIdx] || state.waypoints[i]) }).ft;
+}
+function xplaneWaypointId(i) {
+  const waypointName = state.waypoints[i] && state.waypoints[i].name;
+  return (String(waypointName || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase() ||
+    ('WP' + (i + 1))).slice(0, 12);
+}
 function exportPln() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
@@ -2024,13 +2038,8 @@ function exportPln() {
   const esc = s => String(s).replace(/[<>&"]/g,
     c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
   // FSX waypoint ids must be free of spaces / punctuation.
-  const idOf = i => (wpLabel(i).replace(/[^A-Za-z0-9]/g, '').toUpperCase() ||
-    ('WP' + (i + 1))).slice(0, 12);
-  const altFt = i => {
-    const legIdx = Math.min(i, state.legs.length - 1);
-    return routeExportAltitudeFt(legIdx,
-      { departureFieldFt: exportFieldElevFt(wps[legIdx] || wps[i]) }).ft;
-  };
+  const idOf = routeWaypointExportId;
+  const altFt = routeWaypointExportAltitudeFt;
   const firstAlt = altFt(0);
   let pts = '';
   for (let i = 0; i < wps.length; i++) {
@@ -2075,6 +2084,72 @@ function exportPln() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = routeFileSlug() + '-' + fileStamp() + '.pln';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
+}
+
+// --- X-Plane FMS export -----------------------------------------------------
+// X-Plane 12 reads the current v11/1100 text format. NavAid's reporting
+// points are coordinate waypoints because they may not exist in X-Plane's
+// navigation database; recognized airfields keep their ICAO identifiers.
+function xplaneAiracCycle(date = new Date()) {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const cycleMs = 28 * dayMs;
+  const anchorMs = Date.UTC(2016, 1, 4); // AIRAC 1602 effective date.
+  const suppliedDateMs = date instanceof Date ? date.getTime() : NaN;
+  const dateMs = Number.isFinite(suppliedDateMs) ? suppliedDateMs : Date.now();
+  const effectiveMs = anchorMs + Math.floor((dateMs - anchorMs) / cycleMs) * cycleMs;
+  const effectiveYear = new Date(effectiveMs).getUTCFullYear();
+  let firstCycleMs = effectiveMs;
+  while (new Date(firstCycleMs - cycleMs).getUTCFullYear() === effectiveYear) {
+    firstCycleMs -= cycleMs;
+  }
+  const cycleNumber = Math.round((effectiveMs - firstCycleMs) / cycleMs) + 1;
+  return String(effectiveYear % 100).padStart(2, '0') +
+    String(cycleNumber).padStart(2, '0');
+}
+function exportFms() {
+  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+
+  const points = state.waypoints.map((wp, i) => {
+    const airfield = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+    return {
+      type: airfield ? 1 : 28,
+      id: airfield ? airfield.name : xplaneWaypointId(i),
+      altitudeFt: routeWaypointExportAltitudeFt(i),
+      lat: wp.lat,
+      lng: wp.lng,
+    };
+  });
+  const first = points[0];
+  const last = points[points.length - 1];
+  const lines = [
+    'I',
+    '1100 Version',
+    'CYCLE ' + xplaneAiracCycle(),
+    (first.type === 1 ? 'ADEP ' : 'DEP ') + first.id,
+    (last.type === 1 ? 'ADES ' : 'DES ') + last.id,
+    'NUMENR ' + points.length,
+  ];
+  points.forEach((point, i) => {
+    let via = 'DRCT';
+    if (i === 0 && point.type === 1) via = 'ADEP';
+    else if (i === points.length - 1 && point.type === 1) via = 'ADES';
+    lines.push([
+      point.type,
+      point.id,
+      via,
+      point.altitudeFt.toFixed(6),
+      point.lat.toFixed(6),
+      point.lng.toFixed(6),
+    ].join(' '));
+  });
+  lines.push('');
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = routeFileSlug() + '-' + fileStamp() + '.fms';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
@@ -2152,7 +2227,9 @@ function exportFdr() {
     const dot  = Math.max(-1, Math.min(1, uin.x * uout.x + uin.y * uout.y));
     const theta = Math.acos(dot);                       // turn angle (rad)
     const sIn = leg[k - 1].spdMS, sOut = leg[k].spdMS;
-    if (theta < 0.5 * DEG) {                             // ~straight — no arc
+    if (theta < 0.5 * DEG || Math.PI - theta < 0.5 * DEG) {
+      // A straight leg needs no arc. An exact reversal has no usable tangent
+      // arc, so preserve its waypoint instead of collapsing before the turn.
       path.push({ p: W[k], spdMS: sOut, alt: leg[k].alt });
       continue;
     }
@@ -2202,7 +2279,10 @@ function exportFdr() {
                 y: lerp(path[seg - 1].p.y, path[seg].p.y, f) };
     samp.push({ p, alt: lerp(path[seg - 1].alt, path[seg].alt, f) });
   }
-  if (samp.length < 2) samp.push({ p: W[W.length - 1], alt: lastLeg.alt });
+  const finalSample = { p: W[W.length - 1], alt: lastLeg.alt };
+  if (samp.length < 2 || hyp(sub(samp[samp.length - 1].p, finalSample.p)) > 0.01) {
+    samp.push(finalSample);
+  }
   // Smooth altitude (±20 s moving average) so climbs/descents are gradual.
   const altS = samp.map((s, i) => {
     let sum = 0, n = 0;
