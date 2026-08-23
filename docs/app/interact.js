@@ -3024,7 +3024,11 @@ function showInspector() {
       turnBtn.id = 'insp-turn-btn';
       turnBtn.textContent = manualTurn ? (S.inspTurnClear || '↻ Clear turning point')
                                        : (S.inspTurnSet || '↻ Mark as turning point');
-      turnBtn.disabled = !homeAgain && !manualTurn;
+      // A route that does not come home has no far end to mark -- unless one is already in
+      // force, by hand or from a leg that retraces. Disabling the button then would leave
+      // the app using a turning point the pilot can neither move nor clear, on a button
+      // drawn as pressed.
+      turnBtn.disabled = !homeAgain && !manualTurn && !effectiveTurn;
       turnBtn.title = turnBtn.disabled
         ? (S.inspTurnNeedsSameField || 'Available on a route that returns to the airfield it started from.')
         : (S.inspTurnTitle || '');
