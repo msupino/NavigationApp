@@ -2973,7 +2973,7 @@ function showInspector() {
         appendAddFreqChangeButton(body, wp, ccKey);
       }
     }
-    const hotspotOn = typeof waypointHotspot === 'function' && waypointHotspot(wp);
+    const hotspotOn = typeof routeWaypointHotspot === 'function' && routeWaypointHotspot(wp);
     const hotspotBtn = document.createElement('button');
     hotspotBtn.className = 'insp-btn' + (hotspotOn ? ' insp-btn-on' : '');
     hotspotBtn.id = 'insp-hotspot-btn';

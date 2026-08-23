@@ -3636,6 +3636,7 @@ document.getElementById('hotspot-cb').onchange = e => {
   try { localStorage.setItem(HOTSPOT_KEY, showHotspots ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
   draw();
+  if (state.selected && state.selected.type === 'wp') refreshInspectorIfVisible();
 };
 const DIFF_KEY = 'navaid.highlightDiff';
 try {
