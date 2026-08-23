@@ -10,7 +10,13 @@ const UNIT_SUFFIX = [
   ['Nm', 'nm'], ['Deg', '°'], ['Kt', 'kt'], ['Fpm', 'fpm'], ['Gal', 'gal'],
   ['Gph', 'gph'], ['Min', 'min'],
 ];
-const unitFor = (key) => (UNIT_SUFFIX.find(([suf]) => key.endsWith(suf)) || [])[1];
+// Keys whose suffix is part of what the value MEASURES rather than the unit it is in.
+// kmlTourSecPerFlightMin is seconds of tour per minute of flight: the value is seconds, and
+// the rule below would otherwise demand -- and a mechanical pass did once write -- "(min)".
+const UNIT_EXCEPTIONS = { kmlTourSecPerFlightMin: 's' };
+const unitFor = (key) => (Object.prototype.hasOwnProperty.call(UNIT_EXCEPTIONS, key)
+  ? UNIT_EXCEPTIONS[key]
+  : (UNIT_SUFFIX.find(([suf]) => key.endsWith(suf)) || [])[1]);
 
 async function registry(page) {
   await page.goto('?lang=en&nogist');
@@ -47,6 +53,12 @@ test('no two entries share a label', async ({ page }) => {
 });
 
 // A bare number needs its unit: "Route line width" could be px, mm or points.
+test('every exception is a real entry, so the list cannot rot', async ({ page }) => {
+  const entries = await registry(page);
+  const keys = new Set(entries.map(e => e.key));
+  expect(Object.keys(UNIT_EXCEPTIONS).filter(k => !keys.has(k))).toEqual([]);
+});
+
 test('a value whose key names a unit says that unit', async ({ page }) => {
   const entries = await registry(page);
   const missing = entries.filter((e) => {

@@ -2910,8 +2910,12 @@ function refreshPrintFit() {
   // frame) covers 56.7 x 40.1 nm of ground at 1:250 000, so a long cross-country genuinely
   // fits nothing -- and a button that dims for that reason has to SAY so, whether or not a
   // page size has been chosen yet. Dimming silently is what made it look broken.
-  const pick = fitPageToRoute(false);
-  if (!pick) {
+  //
+  // Asked lazily and at most once: this runs from draw(), so on every pan, zoom and drag of
+  // a long route, and the probe measures every piece of ink the route lays down.
+  let picked;
+  const pick = () => (picked === undefined ? (picked = fitPageToRoute(false)) : picked);
+  if (!pageSize && !pick()) {
     warn.hidden = false;
     warn.textContent = S.printNoFit || 'No page size holds this route.';
     fitBtn.hidden = false;
@@ -2926,8 +2930,18 @@ function refreshPrintFit() {
     fitBtn.title = S.printFitTitle || '';
     return;
   }
-  const fit = routePageFit();
-  if (fit.fits) {
+  // A page IS chosen. Whether anything is clipped is the cheaper question, so ask that
+  // first and only reach for the probe when the answer is yes.
+  const clipped = !routePageFit().fits;
+  if (clipped && !pick()) {
+    warn.hidden = false;
+    warn.textContent = S.printNoFit || 'No page size holds this route.';
+    fitBtn.hidden = false;
+    fitBtn.disabled = true;
+    fitBtn.title = S.printNoFit || 'No page size holds this route.';
+    return;
+  }
+  if (!clipped) {
     warn.hidden = true;
     fitBtn.hidden = false;
     fitBtn.disabled = true;
@@ -2944,7 +2958,7 @@ function refreshPrintFit() {
     return p.x >= frame.x && p.x <= frame.x + frame.w &&
            p.y >= frame.y && p.y <= frame.y + frame.h;
   });
-  warn.textContent = !pick ? (S.printNoFit || 'No page size holds this route.')
+  warn.textContent = !pick() ? (S.printNoFit || 'No page size holds this route.')
     : routeInside ? (S.printClipWarnLabels || 'A label hangs past the page.')
       : (S.printClipWarn || 'The route runs past the page.');
   fitBtn.hidden = false;
