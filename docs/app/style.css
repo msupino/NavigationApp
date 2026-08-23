@@ -195,6 +195,16 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   overflow-wrap: anywhere;
 }
 .map-legend.dragging { cursor: grabbing; }
+/* Collapsed: the title alone, as a chip. Everything else is hidden rather than removed so
+   the card keeps its identity (and its drag handle) at either size. */
+.map-legend .map-legend-title { cursor: pointer; }
+.map-legend .map-legend-title::after { content: ' \25BE'; opacity: 0.7; }   /* open: pointing down */
+.map-legend-collapsed { gap: 0; padding: 5px 9px; }
+.map-legend-collapsed > *:not(.map-legend-title) { display: none !important; }
+.map-legend-collapsed .map-legend-title { margin: 0; }
+/* Collapsed: the chevron points the way the card will open. Written after the rule above so
+   it wins on order -- the two selectors carry the same weight. */
+.map-legend-collapsed .map-legend-title::after { content: ' \25B8'; }
 .map-legend-title {
   color: #b9b3b3;
   font-size: 11px;
