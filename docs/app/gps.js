@@ -1139,7 +1139,7 @@ function drawTracks() {
 // Export a saved track as GPX (<trk>), the natural format for a flown path.
 function gpsTrackToGpx(entry) {
   const pts = trackPointsFromEntry(entry);
-  const esc = s => String(s).replace(/[<&>]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  const esc = escapeXml;                 // one escaper, defined in core.js
   const seg = pts.map(p =>
     '      <trkpt lat="' + p.lat + '" lon="' + p.lng + '">' +
     (p.alt != null ? '<ele>' + p.alt + '</ele>' : '') +  // p.alt is already metres (Geolocation altitude); GPX <ele> is metres
