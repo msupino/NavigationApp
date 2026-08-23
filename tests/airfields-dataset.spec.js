@@ -611,22 +611,6 @@ test('every field with a CVFR route plate has a CVFR overlay', async () => {
   expect(missing).toEqual([]);
 });
 
-test('LLRS CVFR overlay keeps its reviewed rotated anchors', async () => {
-  const fs = require('fs');
-  const path = require('path');
-  const root = path.join(__dirname, '..');
-  const data = JSON.parse(fs.readFileSync(path.join(root, 'docs/data/airfields.json'), 'utf8'));
-  const fields = Array.isArray(data) ? data : data.airfields;
-  const llrs = fields.find(f => f.name === 'LLRS');
-
-  expect(llrs.cvfr_overlay).toEqual({
-    png: 'LLRS_cvfr.png',
-    tl: [32.01458, 34.98322],
-    tr: [31.82413, 34.98434],
-    bl: [32.01318, 34.65388],
-  });
-});
-
 // A plate is placed by its own graticule, so the box it produces has to hold the airfield
 // the dataset already knows, and has to keep the shape of the paper: a degree of longitude
 // covers cos(latitude) as much ground as a degree of latitude, and an overlay that ignores
@@ -651,4 +635,31 @@ test('each CVFR overlay contains its field and keeps the plate\'s proportions', 
       expect([f.name, f.lng > Math.min(...lngs) && f.lng < Math.max(...lngs)]).toEqual([f.name, true]);
     }
   }
+});
+
+// LLRS's CVFR plate is printed rotated, so its overlay carries corners. Those corners were
+// once replaced with hand-set values roughly 30% too small, which floated the chart north-east
+// of the ground it draws -- Palmachim and Tel Nof no longer sat on their own symbols. The
+// numbers below come from scripts/georef-plate.py, and the ratio test is what proves them:
+// a degree of longitude covers cos(latitude) as much ground as a degree of latitude, so a
+// correct fit has the image's aspect matching the ground's to within a couple of percent.
+test('the rotated LLRS overlay keeps the fit its plate implies', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const root = path.join(__dirname, '..');
+  const data = JSON.parse(fs.readFileSync(path.join(root, 'docs/data/airfields.json'), 'utf8'));
+  const fields = Array.isArray(data) ? data : data.airfields;
+  const f = fields.find(x => x.name === 'LLRS');
+  const o = f.cvfr_overlay;
+  expect(o.tl).toEqual([32.00538, 34.94517]);
+  expect(o.tr).toEqual([31.73483, 34.94517]);
+  expect(o.bl).toEqual([32.00538, 34.5042]);
+
+  const midLat = (o.tl[0] + o.tr[0]) / 2;
+  const cos = Math.cos(midLat * Math.PI / 180);
+  // The plate is turned a quarter turn: latitude runs across the image, longitude down it.
+  const groundAcross = Math.abs(o.tr[0] - o.tl[0]);
+  const groundDown = Math.abs(o.bl[1] - o.tl[1]) * cos;
+  const { width, height } = { width: 780, height: 1078 };      // docs/cvfr-img/LLRS_cvfr.png
+  expect(Math.abs((groundAcross / groundDown) / (width / height) - 1)).toBeLessThan(0.03);
 });
