@@ -2481,6 +2481,43 @@ function loadPln(file) {
 // single-route validator with "root.waypoints: missing".
 // GPS-track entries carry `track` rather than `data`; they were silently dropped
 // before, so a library round-trip lost every recorded track.
+// A recorded track is a list of fixes: latitude, longitude, and the moment. An imported
+// file's `track` was taken as-is, so a file carrying strings, nulls or a megabyte of
+// something else went into storage and then to Drive, where every device downloaded it.
+// A bad `savedAt` is quieter and worse: the library and the Drive merge both rank by that
+// string, so an unparseable one silently loses every conflict it takes part in.
+const TRACK_MAX_POINTS = 20000;      // ~5.5 hours at 1 Hz, an order past any real sortie
+function sanitizeTrack(track) {
+  if (!Array.isArray(track) || !track.length || track.length > TRACK_MAX_POINTS) return null;
+  const out = [];
+  for (const p of track) {
+    if (!p || typeof p !== 'object') return null;
+    const lat = Number(p.lat), lng = Number(p.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    const fix = { lat, lng };
+    const t = Number(p.t);
+    if (Number.isFinite(t)) fix.t = t;
+    const alt = Number(p.alt);
+    if (p.alt != null && Number.isFinite(alt)) fix.alt = Math.round(alt);
+    const acc = Number(p.acc);
+    if (p.acc != null && Number.isFinite(acc)) fix.acc = Math.round(acc);
+    out.push(fix);
+  }
+  return out.length ? out : null;
+}
+// The stamp the merges rank by. Anything that is not a real date becomes now, which is
+// honest: this device has just taken the entry in, and a wrong-but-orderable stamp beats a
+// string that silently loses every comparison it appears in.
+function sanitizeSavedAt(savedAt) {
+  const t = Date.parse(savedAt);
+  return Number.isFinite(t) ? new Date(t).toISOString() : new Date().toISOString();
+}
+if (typeof window !== 'undefined') {
+  window.sanitizeTrack = sanitizeTrack;
+  window.sanitizeSavedAt = sanitizeSavedAt;
+}
+
 function importRouteLibraryArray(arr) {
   if (!Array.isArray(arr)) return null;
   const merged = loadRouteLibrary();
@@ -2490,13 +2527,17 @@ function importRouteLibraryArray(arr) {
   let skipped = 0;
   for (const it of arr) {
     if (!it) continue;
-    const isTrack = it.kind === 'gps' && Array.isArray(it.track) && it.track.length;
-    if (!it.data && !isTrack) { skipped++; continue; }
+    const claimsTrack = it.kind === 'gps' && Array.isArray(it.track) && it.track.length;
+    if (!it.data && !claimsTrack) { skipped++; continue; }
     if (it.data && typeof validateRoute === 'function' && validateRoute(it.data)) { skipped++; continue; }
+    // A file can say anything. Read the fixes it claims to carry rather than trusting them:
+    // a track that does not survive that is refused and counted, like a bad route.
+    const track = claimsTrack ? sanitizeTrack(it.track) : null;
+    if (claimsTrack && !track) { skipped++; continue; }
     const entry = { id: routeLibraryId(),
       name: (it.name || 'Route').toString().slice(0, 80),
-      savedAt: it.savedAt || new Date().toISOString() };
-    if (isTrack) { entry.kind = 'gps'; entry.track = it.track; }
+      savedAt: sanitizeSavedAt(it.savedAt) };
+    if (track) { entry.kind = 'gps'; entry.track = track; }
     else { entry.data = it.data; }
     merged.unshift(entry);
     added++;
