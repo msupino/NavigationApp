@@ -23,11 +23,7 @@
   var r5 = function (x) { return Math.round(x * 1e5) / 1e5; };
   // Leaflet renders a string tooltip as HTML — escape user-entered names so a
   // name like "<img onerror=…>" can't execute (self-XSS in this dev-only tool).
-  var esc = function (s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  };
+  var esc = escapeXml;                   // one escaper, defined in core.js
 
   function load(key) { try { var a = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   var points = load(KEY);

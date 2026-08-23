@@ -1958,8 +1958,7 @@ function exportGpx() {
     return;
   }
   const wps = state.waypoints;
-  const esc = s => String(s).replace(/[<>&]/g,
-    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  const esc = escapeXml;                 // one escaper, defined in core.js
   // Shared resolution (see routeExportAltitudeFt): an unset leg used to export as
   // 0 m here — sea level — so a GPS unit showed every point on the deck.
   const altM = i => {
@@ -2035,8 +2034,7 @@ function exportPln() {
     return;
   }
   const wps = state.waypoints;
-  const esc = s => String(s).replace(/[<>&"]/g,
-    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  const esc = escapeXml;                 // one escaper, defined in core.js
   // FSX waypoint ids must be free of spaces / punctuation.
   const idOf = routeWaypointExportId;
   const altFt = routeWaypointExportAltitudeFt;
@@ -4098,8 +4096,7 @@ function showFlightPlan() {
   // the pilot saves a PDF via the browser. Renders Hebrew RTL natively.
   function exportNavLog() {
     if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
-    const esc = s => String(s == null ? '' : s)
-      .replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+    const esc = escapeXml;               // one escaper, defined in core.js
     const lang = (window.__navLang === 'he') ? 'he' : 'en';
     const dir = lang === 'he' ? 'rtl' : 'ltr';
     const dep = esc(wpLabel(0));
@@ -5656,8 +5653,7 @@ async function flyRoute() {
   };
 
   function downloadKml() {
-    const esc = s => String(s).replace(/[<>&]/g,
-      c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+    const esc = escapeXml;               // one escaper, defined in core.js
     const cameraAt = (pos, alt, hdg, pad, altMode = 'absolute') =>
       pad + '<Camera>\n' +
       pad + '  <longitude>' + pos.lng + '</longitude>\n' +
