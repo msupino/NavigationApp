@@ -749,6 +749,8 @@ window.S = {
   tbGpxExportTitle: 'ייצא מסלול כ-GPX ליחידות GPS ניידות',
   tbPlnExport: '🛩 PLN — תוכנית טיסה ל-MSFS / P3D',
   tbPlnExportTitle: 'ייצא מסלול כתוכנית טיסה PLN לטיסה ב-MSFS / Prepar3D / FSX',
+  tbFmsExport: '🛩 FMS — תוכנית טיסה ל-X-Plane',
+  tbFmsExportTitle: 'ייצא מסלול כתוכנית טיסה FMS לטעינה וטיסה ב-X-Plane',
   tbFdrExport: '🎬 FDR — שחזור טיסה ב-X-Plane',
   tbFdrExportTitle: 'ייצא מסלול כקובץ הקלטת טיסה (FDR) שמשחזר את הטיסה ב-X-Plane',
   tbShowReturn: 'הצג מסלול חזרה',
