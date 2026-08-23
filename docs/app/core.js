@@ -1141,7 +1141,7 @@ window.S = Object.assign({
   routeLibraryGdriveKeepThisDevice: 'Keep THIS device\'s settings and update Google Drive?',
   routeLibraryGdriveSettingsSkipped: 'Settings not synced — sync again to choose which device wins.',
   routeLibraryGdriveStorageFull: 'This device could not store the settings (storage full).',
-  routeLibraryGdriveRaced: 'Another device changed the settings while syncing — sync again.',
+  routeLibraryGdriveRaced: 'Another device changed this while syncing — nothing was overwritten. Sync again.',
   routeTemplatesTitle: 'Route templates',
   routeTemplateRoute: 'Route',
   routeTemplateSpeed: 'Speed (kt)',
