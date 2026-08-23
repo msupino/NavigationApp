@@ -29,29 +29,27 @@ const at = (page) => page.evaluate((k) => {
            stored: JSON.parse(localStorage.getItem(k) || 'null') };
 }, KEY);
 
-test('an opened toolbar moves the legend but does not adopt the move', async ({ page }) => {
+test('an opened toolbar leaves the legend alone', async ({ page }) => {
   await boot(page, HOME);
   const placed = await at(page);
   await page.locator('#toolbar-toggle').click();
-  await expect.poll(async () => (await at(page)).y, { timeout: 5000 })
-    .not.toBe(placed.y);                               // it got out of the way...
-  expect((await at(page)).stored).toEqual(placed.stored);  // ...without rewriting where it lives
+  await page.waitForTimeout(700);
+  const after = await at(page);
+  // The menu is transient: it covers the card while it is open, and that is fine. Moving
+  // the card for it is what put the card somewhere new every time a layer was picked.
+  expect(after.y).toBe(placed.y);
+  expect(after.x).toBe(placed.x);
+  expect(after.stored).toEqual(placed.stored);
 });
 
-test('it comes home when the toolbar closes', async ({ page }) => {
+test('and closing it leaves the legend alone too', async ({ page }) => {
   await boot(page, HOME);
   const placed = await at(page);
   await page.locator('#toolbar-toggle').click();
-  // Wait for the shove itself rather than a stopwatch: the reconcile runs off a
-  // ResizeObserver and a frame, and a loaded CI runner takes longer than a laptop.
-  await expect.poll(async () => (await at(page)).y, { timeout: 5000 })
-    .not.toBe(placed.y);
+  await page.waitForTimeout(500);
   await page.locator('#toolbar-toggle').click();
-  // Back to where it sat before the toolbar covered it -- which is not always the stored
-  // spot: on a narrow screen even the collapsed toolbar can cover that, and the card should
-  // return to where the eye last saw it.
-  await expect.poll(async () => (await at(page)).y, { timeout: 5000 }).toBe(placed.y);
-  expect((await at(page)).x).toBe(placed.x);
+  await page.waitForTimeout(700);
+  expect(await at(page)).toEqual(placed);
 });
 
 // The walk: open the menu, change a layer, close, repeat. The card used to be a little
@@ -61,10 +59,10 @@ test('repeated trips to the layer picker leave it where it started', async ({ pa
   const placed = await at(page);
   for (const layer of ['Low Alt', 'Satellite', 'CVFR']) {
     await page.locator('#toolbar-toggle').click();
-    await expect.poll(async () => (await at(page)).y, { timeout: 5000 }).not.toBe(placed.y);
+    await page.waitForTimeout(300);
     await page.evaluate((v) => { const s = document.getElementById('layer-select'); s.value = v; s.onchange(); }, layer);
     await page.locator('#toolbar-toggle').click();
-    await expect.poll(async () => (await at(page)).y, { timeout: 5000 }).toBe(placed.y);
+    await page.waitForTimeout(400);
   }
   expect(await at(page)).toEqual(placed);
 });

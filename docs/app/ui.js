@@ -954,8 +954,14 @@ legendCtrl.addTo(map);
     };
   }
 
+  // What the legend keeps clear of. The toolbar is NOT on this list: it opens over the map
+  // for as long as a menu is being used and then goes, and moving the card out of its way
+  // meant the card moved every time a layer was picked -- reported as the legend jumping
+  // around a phone screen. Being covered by the menu you are reading is not a problem; being
+  // somewhere new each time you close it is. The docked search panel stays, because it is
+  // not transient: it sits there until it is dismissed.
   function chromeRects() {
-    return ['toolbar', 'search-overlay']
+    return ['search-overlay']
       .map(id => document.getElementById(id))
       .filter(el => el && !el.classList.contains('hidden'))
       .map(el => el.getBoundingClientRect())
@@ -995,30 +1001,14 @@ legendCtrl.addTo(map);
   // when the obstruction goes, and it is never written to storage. Saving it was why the
   // legend walked down the screen on a phone, a step per time the toolbar was opened.
   let home = null;
-  // Where it sat just before chrome pushed it aside. The stored spot is the pilot's intent,
-  // but it is not always reachable -- an opened toolbar can cover it, and on a narrow screen
-  // even the collapsed one can -- so returning to the spot it actually occupied is what puts
-  // the card back where the eye left it.
-  let shovedFrom = null;
-  let returningHome = false;      // true while applyPos is putting the card back
-  let homeRetries = 0;            // attempts left to finish a return the layout interrupted
-  let homeTimer = 0;
   function persistPosition() {
     const r = box.getBoundingClientRect();
-    shovedFrom = null;                 // a drag is a new decision: nothing to return to
-    homeRetries = 0;
-    clearTimeout(homeTimer);
     home = { x: r.left, y: r.top };
     try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify(home)); }
     catch (e) { /* storage unavailable */ }
   }
 
   function applyPos(x, y, persist) {
-    // Whatever moves the card, remember where it was standing first. The come-home logic
-    // used to record that only on the path it expected chrome to take; a runner whose
-    // toolbar resizes in two steps took another, so nothing was remembered and the card
-    // stayed where the shove left it.
-    const was = box.getBoundingClientRect();
     box.style.maxWidth = '';
     box.classList.remove('map-legend-constrained');
     const obstacles = chromeRects();
@@ -1042,11 +1032,6 @@ legendCtrl.addTo(map);
     box.style.right = 'auto';
     box.style.bottom = 'auto';
     box.style.margin = '0';
-    if (!persist && !returningHome && !box.classList.contains('dragging') && shovedFrom === null) {
-      const moved = Math.round(was.left) !== Math.round(parseFloat(box.style.left)) ||
-        Math.round(was.top) !== Math.round(parseFloat(box.style.top));
-      if (moved && was.width && was.height) shovedFrom = { x: was.left, y: was.top };
-    }
     if (persist) persistPosition();
   }
   try {
@@ -1054,7 +1039,6 @@ legendCtrl.addTo(map);
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
       home = { x: p.x, y: p.y };
       applyPos(p.x, p.y, false);
-      shovedFrom = null;              // restoring the stored spot is not a shove
     }
   } catch (e) { /* storage unavailable */ }
   window.reconcileLegendPosition = function (opts = {}) {
@@ -1066,42 +1050,11 @@ legendCtrl.addTo(map);
     const obstacles = chromeRects();
     const obstructed = obstacles.some(obstacle =>
       overlaps(r.left, r.top, r.width, r.height, obstacle));
-    // Nothing in the way any more: go back to where the shove found it. This is what brings
-    // the card back when the toolbar collapses.
-    if (!obstructed && !outside && shovedFrom) {
-      const target = shovedFrom;
-      // Try to go back, and keep the memory until the card is actually THERE. The toolbar
-      // collapses over several frames, so an early attempt reads a rect that is still tall,
-      // choosePosition bounces the card away again, and a memory cleared on that attempt
-      // would strand it. Clearing only on arrival lets the next reconcile finish the job.
-      if (!obstacles.some(o => overlaps(target.x, target.y, r.width, r.height, o))) {
-        if (Math.round(r.left) === Math.round(target.x) &&
-            Math.round(r.top) === Math.round(target.y)) {
-          shovedFrom = null;                     // home already: nothing left to remember
-        } else {
-          returningHome = true;
-          applyPos(target.x, target.y, false);
-          returningHome = false;
-          const now = box.getBoundingClientRect();
-          if (Math.round(now.left) === Math.round(target.x) &&
-              Math.round(now.top) === Math.round(target.y)) {
-            shovedFrom = null;
-            homeRetries = 0;
-          } else if (homeRetries < 8) {
-            // The attempt read a layout that had not settled -- the toolbar collapses over
-            // several frames -- and nothing else is going to change, so no further resize
-            // event is coming to try again. Ask for one.
-            homeRetries++;
-            clearTimeout(homeTimer);
-            homeTimer = setTimeout(() => window.reconcileLegendPosition(), 120);
-          }
-          return;
-        }
-      }
-    }
+    // Where it is is fine: leave it exactly where it is. Re-applying a position it already
+    // holds is how a card starts drifting a pixel at a time.
     if (!positioned && !outside && !obstructed) return;
-    // A shove is temporary. Only a drag decides where the legend lives, so only a drag
-    // writes to storage -- callers asking to persist a reflow are ignored.
+    // Only a drag decides where the legend lives, so only a drag writes to storage: a
+    // reflow that pushes the card clear of something must not be adopted as a new home.
     applyPos(r.left, r.top, false);
     void opts;
   };
