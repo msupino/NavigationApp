@@ -161,7 +161,7 @@ window.S = {
   routeLibraryGdriveKeepThisDevice: 'לשמור על ההגדרות של המכשיר הזה ולעדכן את Google Drive?',
   routeLibraryGdriveSettingsSkipped: 'ההגדרות לא סונכרנו — סנכרן שוב כדי לבחור איזה מכשיר קובע.',
   routeLibraryGdriveStorageFull: 'המכשיר לא הצליח לשמור את ההגדרות (אין מקום אחסון).',
-  routeLibraryGdriveRaced: 'מכשיר אחר שינה את ההגדרות במהלך הסנכרון — סנכרן שוב.',
+  routeLibraryGdriveRaced: 'מכשיר אחר שינה את זה במהלך הסנכרון — שום דבר לא נדרס. סנכרנו שוב.',
   routeTemplatesTitle: 'תבניות מסלול',
   routeTemplateRoute: 'מסלול',
   routeTemplateSpeed: 'מהירות (קשר)',
