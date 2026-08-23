@@ -402,14 +402,17 @@ function vorIconSvg(color) {
 // itself when the chart is turned to the track, so the needle always points at something
 // real on the screen. `hdg` is the track in degrees, written under the needle while a fix
 // is driving the map -- the number a pilot reads back.
+// Both angles are wrapped into 0-359 before they are used: a device that reports -1 (or a
+// computed course that has gone round the back) rendered as the readout '0-1'.
+const compassDeg = (v) => ((Math.round(v) % 360) + 360) % 360;
 function compassIconSvg(deg, hdg) {
   const readout = Number.isFinite(hdg)
-    ? '<span class="orient-hdg">' + String(Math.round(hdg) % 360).padStart(3, '0') + '\u00b0</span>'
+    ? '<span class="orient-hdg">' + String(compassDeg(hdg)).padStart(3, '0') + '\u00b0</span>'
     : '';
   return '<span class="orient-face">'
     + '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">'
     + '<circle cx="12" cy="12" r="9.2" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>'
-    + '<g transform="rotate(' + (Math.round(deg) || 0) + ' 12 12)">'
+    + '<g transform="rotate(' + (Number.isFinite(deg) ? compassDeg(deg) : 0) + ' 12 12)">'
     + '<path d="M12 3.4 L15.4 13 L12 11 L8.6 13 Z" fill="' + VOR_ON_COLOR + '"/>'
     + '<path d="M12 20.6 L8.6 13.6 L12 15.4 L15.4 13.6 Z" fill="#9a9a9a"/>'
     + '</g></svg>' + readout + '</span>';
