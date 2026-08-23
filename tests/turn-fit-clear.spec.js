@@ -130,3 +130,61 @@ test('with no route the button says to draw one', async ({ page }) => {
   expect(b.disabled).toBe(true);
   expect(b.title).toMatch(/draw a route first/i);
 });
+
+// Review finding: on a route that does NOT come home but whose geometry retraces, the app
+// still applies a turning point (legRetraceTurnIndex finds it, the leg-direction filter uses
+// it, the button draws as pressed) -- so disabling the button left a pilot unable to move or
+// clear a mark the app was acting on.
+test('a turn already in force stays editable on a one-way route', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const hz = airfields.find(a => a.name === 'LLHZ'), bs = airfields.find(a => a.name === 'LLBS');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: hz.lat + 0.3, lng: hz.lng + 0.1, name: 'FAR' },
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },      // the leg back retraces the leg out
+      { lat: bs.lat, lng: bs.lng, name: 'LLBS' },      // ...then it goes somewhere else
+    ];
+    syncLegs(); draw();
+    state.selected = { type: 'wp', index: 1 }; showInspector();
+  });
+  const out = await page.evaluate(() => {
+    const b = document.getElementById('insp-turn-btn');
+    return { retrace: legRetraceTurnIndex(), home: routeReturnsHome(),
+             disabled: b.disabled, pressed: b.getAttribute('aria-pressed') };
+  });
+  expect(out.home).toBe(false);          // it does not come home...
+  expect(out.retrace).toBe(1);           // ...but a turn is in force
+  expect(out.pressed).toBe('true');
+  expect(out.disabled).toBe(false);      // so it must remain editable
+});
+
+// The probe measures every piece of ink the route lays down, and refreshPrintFit runs from
+// draw() -- on every pan, zoom and drag. It must be asked only when its answer is used.
+test('the fit probe is not run on every draw of a route that fits', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'LLHZ', 'LLHZ']);
+  const calls = await page.evaluate(() => {
+    setPage('A3'); draw();
+    const orig = window.fitPageToRoute;
+    let n = 0;
+    window.fitPageToRoute = function () { n++; return orig.apply(this, arguments); };
+    refreshPrintFit();
+    window.fitPageToRoute = orig;
+    return n;
+  });
+  expect(calls).toBe(0);
+});
+
+test('Clear map forgets where the sheet had been dragged', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'LLHZ', 'LLHZ']);
+  page.on('dialog', d => d.accept());
+  await page.evaluate(() => {
+    setPage('A4');
+    pageOffset = { x: 120, y: -80 };
+    document.getElementById('clear').click();
+  });
+  expect(await page.evaluate(() => ({ size: pageSize, off: pageOffset })))
+    .toEqual({ size: null, off: { x: 0, y: 0 } });
+});

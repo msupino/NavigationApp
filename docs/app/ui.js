@@ -2960,6 +2960,10 @@ document.getElementById('clear').onclick = () => {
   // and the next one starts inside a sheet somebody picked for a different flight.
   if (typeof pageSize !== 'undefined' && pageSize) {
     pageSize = null;
+    // Where the sheet had been dragged to belonged to that route as much as its size did.
+    // Only an unlocked frame reads the offset (pageFrameLocked, on by default, centres the
+    // paper), so leaving it behind was invisible until someone turned that tunable off.
+    if (typeof pageOffset !== 'undefined' && pageOffset) pageOffset = { x: 0, y: 0 };
     try { localStorage.removeItem('navaid.pageSize'); } catch (e) { /* storage unavailable */ }
     if (typeof applyPage === 'function') applyPage();
     if (typeof refreshPageButtons === 'function') refreshPageButtons();

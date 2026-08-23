@@ -75,7 +75,7 @@ NavAid.tuningDefaults = {
   // and out on the line it sat over the chart at the busiest moment. Off by default; the
   // distance and time ticks on the line are unaffected.
   liveHeadingEndLabel: { value: false, type: 'bool', label: 'Heading number at the end of the predictor line' },
-  legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, seconds ahead (s)' },
+  legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, this far ahead (s)' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (°)' },
   driftCheckSec: { value: 120, min: 15, max: 900, step: 15, label: 'Off-course check every (s)' },
@@ -388,7 +388,7 @@ NavAid.tuningDefaults = {
   unknownProfileAltFt: { value: 2000, min: 500, max: 15000, step: 100,
     label: 'Height the profile draws a leg with no altitude at (ft)' },
   kmlTourSecPerFlightMin: { value: 4, min: 0.5, max: 30, step: 0.5,
-    label: 'Google Earth tour: seconds per minute of flight (min)' },
+    label: 'Google Earth tour: tour seconds per minute of flight (s)' },
   kmlTourLegMinSec: { value: 4, min: 0.5, max: 120, step: 0.5,
     label: 'Google Earth tour: shortest leg (s)' },
   kmlTourLegMaxSec: { value: 45, min: 2, max: 600, step: 1,
@@ -571,7 +571,7 @@ NavAid.tuningDefaults = {
   sigwxOpacity: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'SIGWX overlay default opacity' },
   sigwxWhiteKnockout: { value: 170, min: 120, max: 256, step: 1, label: 'SIGWX map-panel knockout lightness (drops paper+terrain so the base layer shows; 256 = off)' },
   sigwxKnockoutSat: { value: 45, min: 0, max: 120, step: 1, label: 'SIGWX map-panel knockout max saturation (keeps coloured hazard areas)' },
-  sigwxCoastWidthPx: { value: 0, min: 0, max: 6, step: 1, label: 'SIGWX coastline width (0 = off, the default; re-strokes the sea/land boundary the knockout erases) (px)' },
+  sigwxCoastWidthPx: { value: 0, min: 0, max: 6, step: 1, label: 'SIGWX coastline width (px; 0 = off, the default, and re-strokes the sea/land boundary the knockout erases)' },
   sigwxCoastColor: { value: '#1d4e89', type: 'color', label: 'SIGWX coastline color' },
   sigwxCoastAlpha: { value: 0.9, min: 0, max: 1, step: 0.05, label: 'SIGWX coastline opacity (0-1)' },
   sigwxTblLatOffset: { value: 0, min: -3, max: 3, step: 0.02, label: 'SIGWX table latitude nudge (°)' },
