@@ -3908,7 +3908,12 @@ function drawLegs() {
     if (!A || !B) continue;
     if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     const leg = state.legs[i];
-    const sa = proj(A), sb = proj(B);
+    // Out-and-back legs step to their own right so the two are visible as two -- see
+    // legScreenEnds. Everything hung off the leg (kite, drift cone, callouts) is built from
+    // sa/sb below, so taking them from one place moves the whole leg together rather than
+    // leaving its furniture behind on the old line. hitLeg reads the same helper.
+    const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
+    const sa = ends ? ends.a : proj(A), sb = ends ? ends.b : proj(B);
     const selected = selectionVisible() && state.selected &&
                      state.selected.type === 'leg' &&
                      state.selected.index === i;
@@ -3975,8 +3980,11 @@ function drawLegs() {
     const driftPerp = legDefaultLabelPerp(len);
     const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
-    const inAlong  = (inP.a  || 0) * zoomScale;
-    const outAlong = (outP.a || 0) * zoomScale;
+    // Repeated passes down the same track step along it so their kites do not pile up on one
+    // point; a kite the pilot has dragged keeps exactly where it was put.
+    const repeatAlong = (typeof legRepeatAlongPx === 'function') ? legRepeatAlongPx(i) : 0;
+    const inAlong  = (inP.a  || 0) * zoomScale + (inP._default  ? repeatAlong : 0);
+    const outAlong = (outP.a || 0) * zoomScale + (outP._default ? repeatAlong : 0);
     // Legs inside the departure field's CTR are flown on the field's procedure, not on the
     // route's stopwatch: the clock starts at the boundary reporting point (see
     // ctr-boundaries.json). Those legs add nothing and show no cumulative kite.
