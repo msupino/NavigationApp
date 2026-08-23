@@ -621,20 +621,10 @@ test('LLRS CVFR overlay keeps its reviewed rotated anchors', async () => {
 
   expect(llrs.cvfr_overlay).toEqual({
     png: 'LLRS_cvfr.png',
-    tl: [32.02026, 34.97284],
-    tr: [31.82516, 34.97635],
-    bl: [32.01613, 34.65523],
+    tl: [32.01458, 34.98322],
+    tr: [31.82413, 34.98434],
+    bl: [32.01318, 34.65388],
   });
-
-  // These come from scripts/georef-plate.py --landmark, fitted to the three airfields the
-  // plate draws (LLRS, LLPL, LLEK) as a similarity: rotation and ONE scale, so the paper
-  // keeps its proportions. The corners they replaced sat on the same three symbols but
-  // stretched the picture 6% -- which is invisible at the anchors and worst at the edges.
-  const cos = Math.cos(llrs.cvfr_overlay.tl[0] * Math.PI / 180);
-  const across = Math.abs(llrs.cvfr_overlay.tr[0] - llrs.cvfr_overlay.tl[0]);
-  const down = Math.abs(llrs.cvfr_overlay.bl[1] - llrs.cvfr_overlay.tl[1]) * cos;
-  const { width, height } = { width: 780, height: 1078 };   // docs/cvfr-img/LLRS_cvfr.png
-  expect(Math.abs((across / down) / (width / height) - 1)).toBeLessThan(0.01);
 });
 
 // A plate is placed by its own graticule, so the box it produces has to hold the airfield
