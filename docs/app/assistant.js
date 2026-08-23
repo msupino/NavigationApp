@@ -552,7 +552,14 @@
   ];
 
   // --- confirm / toast wrappers (overridable in tests) ----------------
-  let confirmAction = (msg) => (typeof confirm === 'function') ? confirm(msg) : true;
+  // No way to ask means no. This used to return true when confirm() was missing -- a WebView
+  // with dialogs suppressed would have had every route change the model proposed applied
+  // without anyone seeing the question.
+  let confirmAction = (msg) => {
+    if (typeof confirm === 'function') return confirm(msg);
+    toast(t('assistantNoConfirm', 'Change not made: this browser cannot show the confirmation.'));
+    return false;
+  };
   function toast(msg) { if (typeof showToast === 'function') showToast(msg); }
 
   // --- providers (BYOK, provider-agnostic) ----------------------------

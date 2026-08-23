@@ -1111,6 +1111,7 @@ window.S = Object.assign({
   routeLibraryGdriveSyncing: 'Syncing…',
   routeLibraryGdriveSynced: 'Synced with Google Drive',
   routeLibraryGdriveError: 'Drive sync failed',
+  routeLibraryGdriveAutoSyncFailed: 'Not synced to Drive — saved on this device. Sync from Saved routes to retry.',
   fpTimeUnitsTitle: 'Elapsed time, mm:ss (not a clock time)',
   startRouteHere: '➕ Start route here',
   addToRoute: '➕ Add to route',
