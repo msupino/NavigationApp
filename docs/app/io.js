@@ -2730,6 +2730,9 @@ function persistRouteLibrary(list, opts) {
 // but only when Drive is connected. Suppressed while a sync is itself writing
 // the merged result back (window._navaidSyncing) so we don't loop.
 let _routeAutoSyncTimer = null;
+// One notice per run of failures: a pilot editing a route offline would otherwise be told
+// the same thing on every keystroke's worth of debounce.
+let _routeAutoSyncFailed = false;
 function scheduleRouteAutoSync() {
   if (window._navaidSyncing) return;
   if (typeof gdriveConnected !== 'function' || !gdriveConnected()) return;
@@ -2738,8 +2741,22 @@ function scheduleRouteAutoSync() {
     _routeAutoSyncTimer = null;
     if (typeof gdriveSync !== 'function') return;
     gdriveSync().then(function () {
+      _routeAutoSyncFailed = false;
       if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
-    }).catch(function () { /* offline / token expired — next change retries */ });
+    }).catch(function (err) {
+      // Offline or an expired token is ordinary and the next change retries, so this is not
+      // an alert. Saying nothing at all was the problem: a pilot who saved a route with Drive
+      // connected had every reason to believe it was on Drive, and if the token had lapsed it
+      // was not -- on this device only, until they happened to sync by hand. Say it once,
+      // quietly, and again only after a sync has succeeded in between.
+      if (_routeAutoSyncFailed) return;
+      _routeAutoSyncFailed = true;
+      if (typeof showToast === 'function') {
+        showToast((S && S.routeLibraryGdriveAutoSyncFailed) ||
+          'Not synced to Drive — saved on this device. Sync from Saved routes to retry.');
+      }
+      if (typeof console !== 'undefined' && console.warn) console.warn('Drive auto-sync failed', err);
+    });
   }, 1500);
 }
 function routeLibraryId() {
