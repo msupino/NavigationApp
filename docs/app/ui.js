@@ -163,16 +163,35 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
     const stored = lsGet(NAVWP_SOURCE_KEY);
     if (stored === 'cvfr' || stored === 'lsa' || stored === 'heli') window.navDataPrefix = stored;
   } catch (e) { /* storage unavailable */ }
+  // Only charts the app actually offers: a layer switched off in the gist is gone from the
+  // base-layer picker, and offering its waypoints here anyway let a pilot pick a dataset for
+  // a chart they cannot draw -- reported as "i disabled heli layer, but it still shows up in
+  // nav waypoint from dropdown". CVFR is always offered; it is the fallback.
+  const offered = (name) => typeof layerOffered !== 'function' || layerOffered(name);
   const opts = [['', S.tbNavWpSourceFollow || 'Follow chart'],
-    ['cvfr', (S.layerLabels && S.layerLabels.CVFR) || 'CVFR'],
-    ['lsa', (S.layerLabels && S.layerLabels['Low Alt']) || 'Low Alt'],
-    ['heli', (S.layerLabels && S.layerLabels.Helicopters) || 'Helicopters']];
-  for (const [value, label] of opts) {
-    const o = document.createElement('option');
-    o.value = value; o.textContent = label;
-    sel.appendChild(o);
-  }
-  sel.value = navDataPrefix || '';
+    ['cvfr', (S.layerLabels && S.layerLabels.CVFR) || 'CVFR', 'CVFR'],
+    ['lsa', (S.layerLabels && S.layerLabels['Low Alt']) || 'Low Alt', 'Low Alt'],
+    ['heli', (S.layerLabels && S.layerLabels.Helicopters) || 'Helicopters', 'Helicopters']];
+  const buildOptions = () => {
+    sel.textContent = '';
+    for (const [value, label, layer] of opts) {
+      if (layer && !offered(layer)) continue;
+      const o = document.createElement('option');
+      o.value = value; o.textContent = label;
+      sel.appendChild(o);
+    }
+    // A stored choice for a chart that is no longer offered falls back to Follow chart,
+    // the same way a saved base layer falls back to CVFR.
+    if (navDataPrefix && !Array.from(sel.options).some(o => o.value === navDataPrefix)) {
+      window.navDataPrefix = null;
+      try { localStorage.removeItem(NAVWP_SOURCE_KEY); } catch (e) { /* storage unavailable */ }
+    }
+    sel.value = navDataPrefix || '';
+  };
+  buildOptions();
+  // The gist lands after boot and is what turns layers on and off, so rebuild then too --
+  // the base-layer picker does the same.
+  window.rebuildNavWpSource = buildOptions;
   sel.onchange = () => {
     window.navDataPrefix = sel.value || null;
     try {
@@ -7788,8 +7807,10 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshShowReturnFeature === "function") refreshShowReturnFeature();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
-    // The gist may have turned base layers on or off -- rebuild the picker to match.
+    // The gist may have turned base layers on or off -- rebuild the picker to match, and
+    // the nav-data source list with it: its entries are those same charts.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
+    if (typeof window.rebuildNavWpSource === "function") window.rebuildNavWpSource();
     if (typeof scheduleDraw === "function") scheduleDraw();
     // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
     // so alignment + opacity can be tuned from the gist without a redeploy.
