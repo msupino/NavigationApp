@@ -121,6 +121,7 @@ window.S = {
   routeLibraryGdriveSyncing: 'מסנכרן…',
   routeLibraryGdriveSynced: 'סונכרן עם Google Drive',
   routeLibraryGdriveError: 'הסנכרון נכשל',
+  routeLibraryGdriveAutoSyncFailed: 'לא סונכרן ל-Drive — נשמר במכשיר הזה. סנכרנו מ"מסלולים שמורים" לניסיון נוסף.',
   fpTimeUnitsTitle: 'זמן טיסה, דק:שנ (לא שעת שעון)',
   startRouteHere: '➕ התחל מסלול כאן',
   addToRoute: '➕ הוסף למסלול',
