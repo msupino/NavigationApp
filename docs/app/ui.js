@@ -1001,9 +1001,13 @@ legendCtrl.addTo(map);
   // the card back where the eye left it.
   let shovedFrom = null;
   let returningHome = false;      // true while applyPos is putting the card back
+  let homeRetries = 0;            // attempts left to finish a return the layout interrupted
+  let homeTimer = 0;
   function persistPosition() {
     const r = box.getBoundingClientRect();
     shovedFrom = null;                 // a drag is a new decision: nothing to return to
+    homeRetries = 0;
+    clearTimeout(homeTimer);
     home = { x: r.left, y: r.top };
     try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify(home)); }
     catch (e) { /* storage unavailable */ }
@@ -1080,7 +1084,17 @@ legendCtrl.addTo(map);
           returningHome = false;
           const now = box.getBoundingClientRect();
           if (Math.round(now.left) === Math.round(target.x) &&
-              Math.round(now.top) === Math.round(target.y)) shovedFrom = null;
+              Math.round(now.top) === Math.round(target.y)) {
+            shovedFrom = null;
+            homeRetries = 0;
+          } else if (homeRetries < 8) {
+            // The attempt read a layout that had not settled -- the toolbar collapses over
+            // several frames -- and nothing else is going to change, so no further resize
+            // event is coming to try again. Ask for one.
+            homeRetries++;
+            clearTimeout(homeTimer);
+            homeTimer = setTimeout(() => window.reconcileLegendPosition(), 120);
+          }
           return;
         }
       }
