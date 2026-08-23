@@ -2117,6 +2117,7 @@ window.S = Object.assign({
   tbLegDirNoTurn: 'This route does not double back and no turning point is marked, so there is no outbound and return to separate. Mark one on a waypoint to enable this.',
   inspTurnSet: '\u21bb Mark as turning point',
   inspTurnClear: '\u21bb Clear turning point',
+  inspTurnNeedsSameField: 'Available on a route that returns to the airfield it started from — a one-way trip has no return to separate from its outbound.',
   inspTurnTitle: 'Where this route turns for home. A loop repeats no waypoint, so nothing in the geometry says where the far end is — mark it here and the leg-direction filter can split outbound from return.',
   tbSimConnected: 'Simulator connected — showing its aircraft on the map',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane

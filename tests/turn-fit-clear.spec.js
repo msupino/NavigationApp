@@ -1,0 +1,102 @@
+// @ts-check
+// Three things that were available when they should not have been, and one that was not
+// when it should: a turning point on a one-way route, Fit page to route before a page had
+// been chosen by hand, and a page frame that outlived the route it was chosen for.
+const { test, expect } = require('./_setup');
+
+async function boot(page) {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof state !== 'undefined' &&
+    Array.isArray(window.airfields) && window.airfields.length > 0);
+}
+
+// A route from airfield codes, so its ends are real fields, with one plain waypoint in the
+// middle: the inspector offers the turning point on route waypoints, not on airfields.
+async function route(page, codes) {
+  await page.evaluate((list) => {
+    state.waypoints = list.map((c, i) => {
+      const af = airfields.find(a => a.name === c);
+      if (!af) return { lat: 32.05 + i / 20, lng: 34.85 + i / 20, name: c };
+      return (i === 0 || i === list.length - 1)
+        ? { lat: af.lat, lng: af.lng, name: af.name }
+        : { lat: af.lat + 0.02, lng: af.lng + 0.02, name: 'MID' };
+    });
+    syncLegs();
+    draw();                      // the fit probe measures the ink the last draw laid down
+    state.selected = { type: 'wp', index: 1 };
+    showInspector();
+  }, codes);
+}
+
+const turnBtn = (page) => page.evaluate(() => {
+  const b = document.getElementById('insp-turn-btn');
+  return b && { disabled: b.disabled, title: b.title, text: b.textContent };
+});
+
+test('a route that comes home offers the turning point', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'LLIB', 'LLHZ']);
+  expect((await turnBtn(page)).disabled).toBe(false);
+});
+
+test('a one-way route dims it, and says why', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'LLIB', 'LLBS']);
+  const b = await turnBtn(page);
+  expect(b.disabled).toBe(true);
+  expect(b.title).toMatch(/returns to the airfield it started from/i);
+});
+
+// A route edited into a one-way trip must not be left holding a mark nothing can use.
+test('an existing turn can still be cleared on a one-way route', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'LLIB', 'LLHZ']);
+  await page.evaluate(() => document.getElementById('insp-turn-btn').click());
+  await page.evaluate(() => {
+    const af = airfields.find(a => a.name === 'LLBS');
+    state.waypoints[state.waypoints.length - 1] = { lat: af.lat, lng: af.lng, name: af.name };
+    syncLegs();
+    state.selected = { type: 'wp', index: 1 };
+    showInspector();
+  });
+  const b = await turnBtn(page);
+  expect(b.text).toMatch(/clear/i);
+  expect(b.disabled).toBe(false);
+});
+
+test('Fit page to route works before any page size is chosen', async ({ page }) => {
+  await boot(page);
+  // A short circuit, so a page CAN hold it: LLHZ to Rosh Pina and back needs more paper
+  // than A3, which is a different (already covered) answer.
+  await route(page, ['LLHZ', 'LLHZ', 'LLHZ']);
+  await page.evaluate(() => { pageSize = null; refreshPrintFit(); });
+  const before = await page.evaluate(() => ({
+    size: pageSize,
+    disabled: document.getElementById('print-fit').disabled,
+  }));
+  expect(before).toEqual({ size: null, disabled: false });
+  await page.evaluate(() => document.getElementById('print-fit').click());
+  // It proposes one: the smallest sheet that holds the route.
+  expect(await page.evaluate(() => pageSize)).toMatch(/^A[34]/);
+});
+
+test('with no route there is still nothing to fit', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { state.waypoints = []; syncLegs(); pageSize = null; refreshPrintFit(); });
+  expect(await page.evaluate(() => document.getElementById('print-fit').disabled)).toBe(true);
+});
+
+test('Clear map takes the page frame with the route', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'LLIB', 'LLHZ']);
+  await page.evaluate(() => setPage('A4'));
+  expect(await page.evaluate(() => pageSize)).toBe('A4');
+  page.on('dialog', d => d.accept());
+  await page.evaluate(() => document.getElementById('clear').click());
+  const after = await page.evaluate(() => ({
+    size: pageSize,
+    stored: localStorage.getItem('navaid.pageSize'),
+    wps: state.waypoints.length,
+  }));
+  expect(after).toEqual({ size: null, stored: null, wps: 0 });
+});

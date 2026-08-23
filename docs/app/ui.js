@@ -2956,6 +2956,14 @@ document.getElementById('clear').onclick = () => {
   state.selected = null;
   routeAltPrefix = null;    // empty route unpins its altitude layer
   currentRouteLibraryId = null;   // cleared route is no longer a saved entry
+  // The page frame was chosen to hold THAT route. With the route gone it frames nothing,
+  // and the next one starts inside a sheet somebody picked for a different flight.
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    pageSize = null;
+    try { localStorage.removeItem('navaid.pageSize'); } catch (e) { /* storage unavailable */ }
+    if (typeof applyPage === 'function') applyPage();
+    if (typeof refreshPageButtons === 'function') refreshPageButtons();
+  }
   // Everything that follows a route edit runs through syncLegs -- including the
   // turn-dependent controls. Emptying the arrays by hand skipped it, so after Clear map
   // the Route direction picker stayed lit and kept whatever direction the deleted route
