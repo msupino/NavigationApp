@@ -17,10 +17,14 @@ label centres off the render and pass them with --lon/--lat.
 --landmark is the third way, and the one to reach for when a plate will not read: give it
 features the chart DRAWS (an airfield symbol, a VOR) and where it draws them, in pixels of
 the image you are placing. Two or more are fitted as a similarity -- rotation and one scale
--- so the paper keeps its own proportions. A graticule fit allows a different scale on each
-axis, which is how a plate can be placed with every corner reading plausibly while the
-picture is stretched: LLRS was out by 6% that way, invisible at the anchors and worst at the
-edges.
+-- so the paper keeps its own proportions, which a graticule fit does not have to: it allows
+a different scale on each axis, so a plate can be placed with every corner reading plausibly
+while the picture is slightly stretched.
+
+Whether that matters is a judgement about the map, not the arithmetic. A fit measured on the
+plate beats one measured off an existing placement, and a placement that reads right on the
+chart beats a tidier number: LLRS ships hand-set corners that a landmark fit disagreed with,
+and the hand-set ones stayed.
 
 Three numbers say whether the result can be trusted, and all are printed:
 
@@ -58,6 +62,11 @@ def page_rotation(pdf):
     coordinate systems: for LLRS that scaled the whole fit by 595/420 = 1.42 in both axes,
     which is conformal, so the ratio check could not see it and the overlay went out by
     miles. Read the rotation and turn the labels into the image's own space.
+
+    Only /Rotate 270 occurs in the plates shipped here, and that plate's fit is refused for
+    a separate reason (its graticule cannot place the field), so the transform has unit
+    cover rather than a worked example. Treat a rotated plate's fit as unproven until its
+    landmarks say otherwise.
     """
     info = subprocess.run(['pdfinfo', pdf], capture_output=True, text=True).stdout
     m = re.search(r'Page rot:\s+(-?\d+)', info)
@@ -207,7 +216,6 @@ def georef(pdf, png, arp):
     im = Image.open(png); W, H = im.size
     scale = W / pw
     rows, cols, _, _ = frame(png)
-    xs = [l['cx']*scale for l in ls]; ys = [l['cy']*scale for l in ls]
     xlab = [l['cx']*scale for l in (lat if lat_key=='cx' else lon)]
     ylab = [l['cy']*scale for l in (lat if lat_key=='cy' else lon)]
     left  = max([c for c in cols if c <= min(xlab)] or [cols[0]])
@@ -312,12 +320,14 @@ def georef_landmarks(png, marks, arp):
     """Fit from features the chart draws, as a similarity: rotation and ONE scale.
 
     The graticule fit allows a different scale on each axis, so a plate can be placed with
-    every corner reading plausibly while the picture is stretched -- LLRS's shipped corners
-    cover 11.4 nm across against 16.8 nm down for an image whose sides are 780 x 1078, a 6%
-    disagreement the chart itself cannot have. Fitting from two or more landmarks (an
-    airfield symbol, a VOR, a road junction) removes that freedom: a similarity keeps the
-    paper's own proportions, so the only things being solved for are where the chart sits,
-    how big it is and which way round.
+    every corner reading plausibly while the picture is stretched. Fitting from two or more
+    landmarks (an airfield symbol, a VOR, a road junction) removes that freedom: a similarity
+    keeps the paper's own proportions, so the only things being solved for are where the
+    chart sits, how big it is and which way round.
+
+    The fit is only as good as the pixels handed to it. Measure them on the plate; reading
+    them off an existing placement folds that placement's own error straight back in, and the
+    result can be worse on the map than what it replaced even while every number improves.
 
     `marks` is [(lat, lng, x_px, y_px), ...]. Returns the same shape as georef().
     """

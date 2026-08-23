@@ -52,6 +52,31 @@ class GeorefPlateTest(unittest.TestCase):
             )
         self.assertTrue(any('reversed' in reason for reason in GEOREF.validate_fit(out)))
 
+    def test_rotation_puts_labels_in_the_renderer_s_frame(self):
+        """The transform pdftoppm applies and pdftotext does not.
+
+        A quarter turn swaps the page's sides and moves every label with it; getting the
+        direction wrong is what made a fit read as conformal while being 1.42x too big.
+        """
+        vals = [{'cx': 10.0, 'cy': 20.0, 'deg': 32.0}]
+        same, pw, ph = GEOREF.to_image_space(vals, 0, 400.0, 600.0)
+        self.assertEqual((same[0]['cx'], same[0]['cy'], pw, ph), (10.0, 20.0, 400.0, 600.0))
+
+        for rot in (90, 270):
+            moved, w, h = GEOREF.to_image_space(vals, rot, 400.0, 600.0)
+            self.assertEqual((w, h), (600.0, 400.0), f'{rot} must swap the page sides')
+            # Still on the page it was turned onto, and no longer where it started.
+            self.assertTrue(0 <= moved[0]['cx'] <= w and 0 <= moved[0]['cy'] <= h)
+            self.assertNotEqual((moved[0]['cx'], moved[0]['cy']), (10.0, 20.0))
+            # Turning it the other way brings it home: the two are inverses.
+            back, bw, bh = GEOREF.to_image_space(moved, 360 - rot, w, h)
+            self.assertAlmostEqual(back[0]['cx'], 10.0, places=6)
+            self.assertAlmostEqual(back[0]['cy'], 20.0, places=6)
+            self.assertEqual((bw, bh), (400.0, 600.0))
+
+        flipped, w, h = GEOREF.to_image_space(vals, 180, 400.0, 600.0)
+        self.assertEqual((flipped[0]['cx'], flipped[0]['cy'], w, h), (390.0, 580.0, 400.0, 600.0))
+
     def test_landmark_fit_is_a_reflected_similarity(self):
         """Image y runs down and north runs up, so the fit must reverse handedness.
 
