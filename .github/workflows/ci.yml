@@ -141,12 +141,16 @@ jobs:
 
       - name: Check PR is rebased
         if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          if ! git merge-base --is-ancestor ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}; then
-            echo "❌ PR branch is not rebased on ${{ github.base_ref }}. Run 'git rebase origin/${{ github.base_ref }}' and push."
+          if ! git merge-base --is-ancestor "$BASE_SHA" "$HEAD_SHA"; then
+            echo "❌ PR branch is not rebased on $BASE_REF. Run 'git rebase origin/$BASE_REF' and push."
             exit 1
           fi
-          echo "✅ PR is rebased on ${{ github.base_ref }}"
+          echo "✅ PR is rebased on $BASE_REF"
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -276,12 +280,16 @@ jobs:
 
       - name: Check PR is rebased
         if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          if ! git merge-base --is-ancestor ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}; then
-            echo "❌ PR branch is not rebased on ${{ github.base_ref }}. Run 'git rebase origin/${{ github.base_ref }}' and push."
+          if ! git merge-base --is-ancestor "$BASE_SHA" "$HEAD_SHA"; then
+            echo "❌ PR branch is not rebased on $BASE_REF. Run 'git rebase origin/$BASE_REF' and push."
             exit 1
           fi
-          echo "✅ PR is rebased on ${{ github.base_ref }}"
+          echo "✅ PR is rebased on $BASE_REF"
 
       - name: Set up Node
         uses: actions/setup-node@v6

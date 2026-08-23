@@ -661,6 +661,7 @@ window.S = {
   gotoTitle: 'לחץ כדי לנווט לקואורדינטות',
   gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
+  rotateHeadingLabel: 'כיוון המפה (מעלות)',
   followOnToast: 'עוקב אחרי המטוס',
   followOffToast: 'לא עוקב — המפה בשליטתכם',
   orientHeadingToast: 'כיוון התקדמות',

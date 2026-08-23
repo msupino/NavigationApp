@@ -656,8 +656,9 @@ editLockBtn.onclick = () => {
 const rotateCtrl = L.control({ position: 'bottomright' });
 rotateCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
-  wrap.innerHTML = '<input id="rotate-hdg" type="number" min="0" max="360" step="1" value="0">' +
-                   '<span id="rotate-dial" role="slider" tabindex="0">' +
+  const dialLabel = S.rotateHeadingLabel || 'Map heading (degrees)';
+  wrap.innerHTML = '<input id="rotate-hdg" type="number" min="0" max="360" step="1" value="0" aria-label="' + dialLabel + '">' +
+                   '<span id="rotate-dial" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="359" aria-label="' + dialLabel + '">' +
                    '<span id="rotate-needle"></span>' +
                    '</span>';
   L.DomEvent.disableClickPropagation(wrap);
@@ -673,6 +674,7 @@ function refreshDial() {
   const b = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
   rotNeedle.style.transform = 'rotate(' + b + 'deg)';
   rotDial.title = S.dialTitle(b);
+  rotDial.setAttribute('aria-valuenow', String(b));
   if (document.activeElement !== rotHdg) rotHdg.value = b;
 }
 rotHdg.addEventListener('change', () => {
@@ -5011,7 +5013,6 @@ const CIRCUIT_SHOW_KEY    = 'navaid.showCircuit';
 // and simply had no controls. Every other read in this file was already wrapped; these were
 // the ones that were not.
 function lsGet(key) {
-  // eslint-disable-next-line no-restricted-globals -- the one place that must touch the API
   try { return window.localStorage.getItem(key); } catch (e) { return null; }
 }
 function lsNum(key, fallback) {
