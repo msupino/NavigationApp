@@ -42,6 +42,9 @@ test('it comes home when the toolbar closes', async ({ page }) => {
   await expect.poll(async () => (await at(page)).y, { timeout: 5000 })
     .not.toBe(placed.y);
   await page.locator('#toolbar-toggle').click();
+  // Back to where it sat before the toolbar covered it -- which is not always the stored
+  // spot: on a narrow screen even the collapsed toolbar can cover that, and the card should
+  // return to where the eye last saw it.
   await expect.poll(async () => (await at(page)).y, { timeout: 5000 }).toBe(placed.y);
   expect((await at(page)).x).toBe(placed.x);
 });

@@ -995,8 +995,14 @@ legendCtrl.addTo(map);
   // when the obstruction goes, and it is never written to storage. Saving it was why the
   // legend walked down the screen on a phone, a step per time the toolbar was opened.
   let home = null;
+  // Where it sat just before chrome pushed it aside. The stored spot is the pilot's intent,
+  // but it is not always reachable -- an opened toolbar can cover it, and on a narrow screen
+  // even the collapsed one can -- so returning to the spot it actually occupied is what puts
+  // the card back where the eye left it.
+  let shovedFrom = null;
   function persistPosition() {
     const r = box.getBoundingClientRect();
+    shovedFrom = null;                 // a drag is a new decision: nothing to return to
     home = { x: r.left, y: r.top };
     try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify(home)); }
     catch (e) { /* storage unavailable */ }
@@ -1041,17 +1047,26 @@ legendCtrl.addTo(map);
     const obstacles = chromeRects();
     const obstructed = obstacles.some(obstacle =>
       overlaps(r.left, r.top, r.width, r.height, obstacle));
-    // Nothing in the way: go back to where it was put, if it is free again. This is what
-    // brings the card home when the toolbar collapses.
-    if (!obstructed && !outside && home &&
-        (Math.round(r.left) !== Math.round(home.x) || Math.round(r.top) !== Math.round(home.y)) &&
-        !obstacles.some(o => overlaps(home.x, home.y, r.width, r.height, o))) {
-      applyPos(home.x, home.y, false);
-      return;
+    // Nothing in the way any more: go back to where the shove found it. This is what brings
+    // the card back when the toolbar collapses.
+    if (!obstructed && !outside && shovedFrom) {
+      const target = shovedFrom;
+      // Still covered? Keep the memory and try again next time. Clearing it here threw the
+      // spot away on the second reconcile of the SAME opening -- by then the card was out of
+      // the way, so nothing looked obstructed, while the place it came from still was.
+      if (!obstacles.some(o => overlaps(target.x, target.y, r.width, r.height, o))) {
+        shovedFrom = null;
+        if (Math.round(r.left) !== Math.round(target.x) ||
+            Math.round(r.top) !== Math.round(target.y)) {
+          applyPos(target.x, target.y, false);
+          return;
+        }
+      }
     }
     if (!positioned && !outside && !obstructed) return;
     // A shove is temporary. Only a drag decides where the legend lives, so only a drag
     // writes to storage -- callers asking to persist a reflow are ignored.
+    if (obstructed && !shovedFrom) shovedFrom = { x: r.left, y: r.top };
     applyPos(r.left, r.top, false);
     void opts;
   };
