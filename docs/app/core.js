@@ -206,6 +206,8 @@ NavAid.tuningDefaults = {
 
   routeLineWidthPx: { value: 3.5, min: 0.5, max: 12, step: 0.1, label: 'Route line width (px)' },
   routeSelectedLineWidthPx: { value: 5, min: 0.5, max: 16, step: 0.1, label: 'Selected route line width (px)' },
+  retracedLegOffsetPx: { value: 5, min: 0, max: 30, step: 1,
+    label: 'Out-and-back legs drawn this far apart (px, 0 = one line)' },
 
   driftAngleDeg: { value: 10, min: 1, max: 30, step: 0.5, label: 'Drift line angle from track (°)' },
   driftLengthFactor: { value: 0.5, min: 0.05, max: 1, step: 0.05, label: 'Drift line length, as a share of the leg' },
@@ -760,7 +762,7 @@ NavAid.tuningGroups = [
   { name: 'Wind', keys: ['windDir', 'windSpeed'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
   { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'touchDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx', 'bootLogoMinMs'] },
-  { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
+  { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx', 'retracedLegOffsetPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
   { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
@@ -4524,6 +4526,53 @@ function markLegAltitudeManual(i) {
 // pair as an EARLIER leg's, reversed. Exact, and needs no guess about where a turnaround
 // is: on an out-and-back this picks out precisely the return legs, and on a route that
 // never retraces it is false everywhere, so the direction filter simply does nothing.
+// A leg flown out and then flown back sits on exactly the same line: two legs, one stroke,
+// and no way to see from the chart that there are two of them or to tell which arrow belongs
+// to which. Each of the pair is drawn a little to its own right instead -- out on one side,
+// back on the other -- so the sortie reads as a there-and-back rather than a single line.
+//
+// Returns the SIGNED number of pixels to move leg i perpendicular to its own direction, or
+// 0 when the leg is not part of a retraced pair. Right of the direction of travel is the
+// side each leg takes, which is what a pilot flying a circuit expects to see and means the
+// two never land on the same side.
+function legPairOffsetPx(i) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const a = wps[i], b = wps[i + 1];
+  if (!a || !b) return 0;
+  // Filtered to one direction, there is only one of the pair on screen, and a line that
+  // sits off to the side of the track it describes would be worse than no offset at all.
+  if (typeof legDirFilter === 'string' && legDirFilter !== 'both') return 0;
+  const same = (p, q) => p && q &&
+    (typeof sameMapPoint === 'function' ? sameMapPoint(p, q) : (p.lat === q.lat && p.lng === q.lng));
+  let paired = false;
+  for (let j = 0; j < wps.length - 1; j++) {
+    if (j === i) continue;
+    if (same(wps[j], b) && same(wps[j + 1], a)) { paired = true; break; }
+  }
+  if (!paired) return 0;
+  const px = (typeof tune === 'function') ? tune('retracedLegOffsetPx') : 5;
+  return px > 0 ? px : 0;
+}
+if (typeof window !== 'undefined') window.legPairOffsetPx = legPairOffsetPx;
+// The leg's ends in screen pixels, with that offset applied. Drawing and hit-testing both
+// go through here: a line drawn to one side and selected on the other would be worse than
+// the overlap it replaces.
+function legScreenEnds(i) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const A = wps[i], B = wps[i + 1];
+  if (!A || !B || typeof proj !== 'function') return null;
+  const a = proj(A), b = proj(B);
+  const off = legPairOffsetPx(i);
+  if (!off) return { a, b };
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (!(len > 0.5)) return { a, b };
+  const nx = -dy / len, ny = dx / len;            // right of travel in screen coordinates
+  return { a: { x: a.x - nx * off, y: a.y - ny * off },
+           b: { x: b.x - nx * off, y: b.y - ny * off } };
+}
+if (typeof window !== 'undefined') window.legScreenEnds = legScreenEnds;
+
 function legIsRetrace(i) {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
   const a = wps[i], b = wps[i + 1];

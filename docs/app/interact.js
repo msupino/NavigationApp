@@ -669,8 +669,11 @@ function hitLeg(px, py) {
     if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;   // guard the transient legs>waypoints-1 state (imported / mid-edit)
-    const a = proj(A);
-    const b = proj(B);
+    // The line as DRAWN: an out-and-back pair is drawn to either side of the track, and a
+    // hit test on the shared centre line would hand the click to whichever leg came first.
+    const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
+    const a = ends ? ends.a : proj(A);
+    const b = ends ? ends.b : proj(B);
     if (distToSegment(px, py, a, b) <= tune('hitLegPx')) return i;
   }
   return -1;
