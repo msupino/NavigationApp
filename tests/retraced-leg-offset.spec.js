@@ -1,0 +1,241 @@
+// @ts-check
+// A sortie that flies out and back over the same track drew both legs on one line: two legs,
+// one stroke, and no way to tell from the chart that there were two or which arrow belonged
+// to which. Each half of the pair now steps to its own right — out on one side, back on the
+// other. Picking a direction in the leg filter puts the visible one back on the track it
+// describes, because then there is only one of the pair on screen.
+const { test, expect } = require('./_setup');
+
+async function boot(page) {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof legScreenEnds === 'function' &&
+    typeof legPairOffsetPx === 'function' && typeof syncLegs === 'function');
+}
+
+// LLHZ -> MID -> LLHZ: leg 0 and leg 1 are the same track, flown each way.
+async function outAndBack(page) {
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.18, lng: 34.83, name: 'HOME' },
+      { lat: 32.60, lng: 35.10, name: 'MID' },
+      { lat: 32.18, lng: 34.83, name: 'HOME' },
+    ];
+    syncLegs(); draw();
+  });
+}
+
+const ends = (page, i) => page.evaluate((n) => legScreenEnds(n), i);
+
+test('the two halves of an out-and-back are drawn apart', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  const [out, back] = [await ends(page, 0), await ends(page, 1)];
+  const mid = (e) => ({ x: (e.a.x + e.b.x) / 2, y: (e.a.y + e.b.y) / 2 });
+  const gap = Math.hypot(mid(out).x - mid(back).x, mid(out).y - mid(back).y);
+  const offset = await page.evaluate(() => tune('retracedLegOffsetPx'));
+  expect(gap).toBeGreaterThan(offset);          // two lines, not one
+  expect(gap).toBeLessThan(offset * 3);         // and only just apart -- still one sortie
+});
+
+test('each takes its own side, so they never land on the same one', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  // Displacement of each drawn leg from the track it describes, measured along the SAME
+  // normal for both, so the two must come out with opposite signs.
+  const sides = await page.evaluate(() => {
+    const a0 = proj(state.waypoints[0]), b0 = proj(state.waypoints[1]);
+    const dx = b0.x - a0.x, dy = b0.y - a0.y, len = Math.hypot(dx, dy);
+    const nx = -dy / len, ny = dx / len;
+    const along = (e) => {
+      const cx = (e.a.x + e.b.x) / 2 - (a0.x + b0.x) / 2;
+      const cy = (e.a.y + e.b.y) / 2 - (a0.y + b0.y) / 2;
+      return Math.round((cx * nx + cy * ny) * 100) / 100;
+    };
+    return { out: along(legScreenEnds(0)), back: along(legScreenEnds(1)) };
+  });
+  expect(Math.sign(sides.out)).toBe(-Math.sign(sides.back));   // opposite sides
+  expect(Math.abs(sides.out)).toBeCloseTo(Math.abs(sides.back), 1);   // by the same amount
+});
+
+test('a leg flown once is left on its own track', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.18, lng: 34.83, name: 'A' },
+      { lat: 32.60, lng: 35.10, name: 'B' },
+      { lat: 32.90, lng: 35.40, name: 'C' },
+    ];
+    syncLegs(); draw();
+  });
+  expect(await page.evaluate(() => [legPairOffsetPx(0), legPairOffsetPx(1)])).toEqual([0, 0]);
+  const e = await ends(page, 0);
+  const plain = await page.evaluate(() => {
+    const a = proj(state.waypoints[0]), b = proj(state.waypoints[1]);
+    return { a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y } };
+  });
+  expect(Math.round(e.a.x)).toBe(Math.round(plain.a.x));
+  expect(Math.round(e.a.y)).toBe(Math.round(plain.a.y));
+});
+
+test('choosing a direction puts the line back in the middle', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  expect(await page.evaluate(() => legPairOffsetPx(0))).toBeGreaterThan(0);
+  for (const dir of ['out', 'back']) {
+    const off = await page.evaluate((d) => {
+      window.legDirFilter = d;
+      draw();
+      return [legPairOffsetPx(0), legPairOffsetPx(1)];
+    }, dir);
+    expect(off, dir).toEqual([0, 0]);
+  }
+  // ...and back to both puts them apart again.
+  expect(await page.evaluate(() => { window.legDirFilter = 'both'; draw(); return legPairOffsetPx(0); }))
+    .toBeGreaterThan(0);
+});
+
+// The line a pilot taps must be the line they see.
+test('the hit test follows the line as drawn', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  const out = await page.evaluate(() => {
+    const e0 = legScreenEnds(0), e1 = legScreenEnds(1);
+    const mid = (e) => ({ x: (e.a.x + e.b.x) / 2, y: (e.a.y + e.b.y) / 2 });
+    return { onOut: hitLeg(mid(e0).x, mid(e0).y), onBack: hitLeg(mid(e1).x, mid(e1).y) };
+  });
+  expect(out.onOut).toBe(0);
+  expect(out.onBack).toBe(1);
+});
+
+test('the separation is tunable, and zero means the old single line', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  const same = await page.evaluate(() => {
+    setTune('retracedLegOffsetPx', 0);
+    draw();
+    const e0 = legScreenEnds(0), e1 = legScreenEnds(1);
+    setTune('retracedLegOffsetPx', 5);
+    return Math.round(e0.a.x) === Math.round(e1.b.x) && Math.round(e0.a.y) === Math.round(e1.b.y);
+  });
+  expect(same).toBe(true);
+});
+
+// Switched off, the pair shares one line exactly as it did before this existed.
+test('splitRetracedLegs is on by default and turns the whole thing off', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  expect(await page.evaluate(() => tune('splitRetracedLegs'))).toBe(true);
+  const off = await page.evaluate(() => {
+    setTune('splitRetracedLegs', false);
+    draw();
+    const e0 = legScreenEnds(0), e1 = legScreenEnds(1);
+    const offsets = [legPairOffsetPx(0), legPairOffsetPx(1)];
+    setTune('splitRetracedLegs', true);
+    return { offsets, sameLine: Math.round(e0.a.x) === Math.round(e1.b.x) &&
+                                Math.round(e0.a.y) === Math.round(e1.b.y) };
+  });
+  expect(off.offsets).toEqual([0, 0]);
+  expect(off.sameLine).toBe(true);
+});
+
+// Reported: Clear map left the direction picker where it was, so the next route began with
+// half its legs hidden by a filter nobody had chosen. An empty map is not "outbound only" --
+// there is nothing to be outbound.
+test('Clear map puts the direction picker back to both', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  page.on('dialog', d => d.accept());
+  const after = await page.evaluate(() => {
+    const sel = document.getElementById('leg-dir-select');
+    window.legDirFilter = 'back';
+    if (sel) { sel.value = 'back'; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+    document.getElementById('clear').click();
+    return { filter: window.legDirFilter, picker: sel ? sel.value : 'both',
+             legs: state.legs.length };
+  });
+  expect(after).toEqual({ filter: 'both', picker: 'both', legs: 0 });
+});
+
+// Clearing the map is the pilot saying "done with that": the stored choice goes back to
+// "both" with it, so the next route starts showing everything.
+test('the stored choice goes back to both as well', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  page.on('dialog', d => d.accept());
+  const out = await page.evaluate(() => {
+    const sel = document.getElementById('leg-dir-select');
+    sel.value = 'back';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    const before = localStorage.getItem('navaid.legDirFilter');
+    document.getElementById('clear').click();
+    return { before, after: localStorage.getItem('navaid.legDirFilter'), picker: sel.value };
+  });
+  expect(out.before).toBe('back');
+  expect(out.after).toBe('both');
+  expect(out.picker).toBe('both');
+});
+
+// Reported with a screenshot: a-b-a-b-a-a still piled the arrows up. Two causes. The kites
+// were positioned from the shared centre line rather than from the line their own leg is
+// drawn on, and passes flown the same way landed on exactly the same point along it.
+test('kites move across with the line they belong to', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  // A default kite already sits well off its leg to clear the drift cone, so "which line is
+  // nearer" proves nothing. What matters is that splitting the pair carries each kite across
+  // by exactly its own line's offset -- the kite stays on the line it labels.
+  const out = await page.evaluate(() => {
+    const at = () => [0, 1].map((i) => legLabelCenter(i, 'in'));
+    setTune('splitRetracedLegs', false); draw();
+    const together = at();
+    setTune('splitRetracedLegs', true); draw();
+    const apart = at();
+    const off = tune('retracedLegOffsetPx');
+    const ends = [0, 1].map(legScreenEnds);
+    return [0, 1].map((i) => {
+      const e = ends[i], dx = e.b.x - e.a.x, dy = e.b.y - e.a.y, len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len, ny = dx / len;                 // right of travel, as drawn
+      const mx = apart[i].x - together[i].x, my = apart[i].y - together[i].y;
+      return { across: Math.round((mx * nx + my * ny) * 10) / 10, along: Math.abs(Math.round((mx * dx + my * dy) / len)), off };
+    });
+  });
+  for (const leg of out) {
+    expect(leg.across).toBe(-leg.off);      // shifted onto its own line, right of travel
+    expect(leg.along).toBe(0);              // and nowhere else
+  }
+});
+
+test('six passes over one track leave six readable arrows, not one pile', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const A = { lat: 32.02, lng: 34.83, name: 'A' }, B = { lat: 32.45, lng: 35.05, name: 'B' };
+    state.waypoints = [A, { ...B }, { ...A }, { ...B }, { ...A }, { ...B }];
+    syncLegs(); draw();
+    const pts = state.legs.map((_, i) => legLabelCenter(i, 'in'));
+    let closest = Infinity;
+    for (let i = 0; i < pts.length; i++)
+      for (let j = i + 1; j < pts.length; j++)
+        closest = Math.min(closest, Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y));
+    return { count: pts.length, closest: Math.round(closest) };
+  });
+  expect(out.count).toBe(5);
+  // A kite is about 90 px across at this scale: anything less than its own width is a pile.
+  expect(out.closest).toBeGreaterThan(60);
+});
+
+// A kite the pilot has dragged stays exactly where it was put -- the step is only for the
+// ones the app placed.
+test('a hand-placed kite is not stepped', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const A = { lat: 32.02, lng: 34.83, name: 'A' }, B = { lat: 32.45, lng: 35.05, name: 'B' };
+    state.waypoints = [A, { ...B }, { ...A }, { ...B }];
+    syncLegs();
+    state.legs[2].inLabel = { a: 0, p: 0 };        // dragged: no _default flag
+    draw();
+    const moved = legLabelCenter(2, 'in');
+    const frame = legFrame(2);
+    return Math.round(Math.hypot(moved.x - frame.mx, moved.y - frame.my));
+  });
+  expect(out).toBe(0);                              // exactly where it was put
+});

@@ -3046,6 +3046,13 @@ document.getElementById('clear').onclick = () => {
   state.wind = { dir: 270, speed: 0 };     // cleared route: reset wind so a new hand-built route doesn't inherit it
   state.selected = null;
   routeAltPrefix = null;    // empty route unpins its altitude layer
+  // The direction filter belonged to the route that had a direction to filter. With the
+  // route gone it hides nothing, and leaving it set meant the next route was drawn with half
+  // its legs missing and a picker the pilot had to remember to put back.
+  window.legDirFilter = 'both';
+  try { localStorage.setItem('navaid.legDirFilter', 'both'); } catch (e) { /* storage unavailable */ }
+  const legDirSel = document.getElementById('leg-dir-select');
+  if (legDirSel) legDirSel.value = 'both';
   currentRouteLibraryId = null;   // cleared route is no longer a saved entry
   // The page frame was chosen to hold THAT route. With the route gone it frames nothing,
   // and the next one starts inside a sheet somebody picked for a different flight.
@@ -3374,6 +3381,19 @@ document.getElementById('cumtime-cb').checked = showCumTime;
     const row = sel.closest('label');
     if (row) row.classList.toggle('navtoggle-disabled', !has);
     sel.title = has ? '' : ((S && S.tbLegDirNoTurn) || 'This route does not double back');
+    // No route at all -- after Clear map, or before the first point. An empty map is not
+    // "outbound only": there is nothing to be outbound, and leaving the picker reading that
+    // meant the next route began with half its legs hidden by a filter nobody had chosen.
+    // The stored choice still shows through, so a pilot who picked one and reloaded finds
+    // it waiting; Clear map is what puts that choice back to "both".
+    if (!(state.legs && state.legs.length)) {
+      let savedEmpty = null;
+      try { savedEmpty = lsGet(LEG_DIR_KEY); } catch (e) { /* storage unavailable */ }
+      const val = ['both', 'out', 'back'].includes(savedEmpty) ? savedEmpty : 'both';
+      sel.value = val;
+      window.legDirFilter = val;
+      return;
+    }
     if (!has) {
       // With no turn the whole route IS outbound, so that is what the control should read.
       // Leaving a stale 'Return only' sitting there describes the route wrongly, and on a
