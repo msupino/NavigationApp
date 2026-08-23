@@ -656,8 +656,12 @@ editLockBtn.onclick = () => {
 const rotateCtrl = L.control({ position: 'bottomright' });
 rotateCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
-  const dialLabel = S.rotateHeadingLabel || 'Map heading (degrees)';
-  wrap.innerHTML = '<input id="rotate-hdg" type="number" min="0" max="360" step="1" value="0" aria-label="' + dialLabel + '">' +
+  // Two separate controls, so two separate names: a screen reader that reads "Map heading,
+  // Map heading" cannot tell the typed field from the dial beside it.
+  const esc = (v) => (typeof escapeXml === 'function' ? escapeXml(v) : String(v));
+  const fieldLabel = esc(S.rotateHeadingLabel || 'Map heading (degrees)');
+  const dialLabel = esc(S.rotateDialLabel || 'Map rotation dial (degrees)');
+  wrap.innerHTML = '<input id="rotate-hdg" type="number" min="0" max="360" step="1" value="0" aria-label="' + fieldLabel + '">' +
                    '<span id="rotate-dial" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="359" aria-label="' + dialLabel + '">' +
                    '<span id="rotate-needle"></span>' +
                    '</span>';
@@ -733,6 +737,36 @@ function rotEnd(cycle) {
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
+// The dial takes focus and calls itself a slider, so it has to answer the keys a slider
+// answers -- otherwise it is a control a keyboard pilot can reach and cannot use, which is
+// worse than one they cannot reach at all. Steps match the number field beside it: arrows
+// 1°, Page 10°, Home north up, Space/Enter the same 90° step a tap gives.
+function rotSetShown(v) {
+  const shown = ((Math.round(v) % 360) + 360) % 360;
+  orientNoteManualRotation();
+  map.setBearing((360 - shown) % 360);
+}
+rotDial.addEventListener('keydown', e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;      // leave browser/OS shortcuts alone
+  const shown = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
+  let next = null;
+  switch (e.key) {
+    case 'ArrowUp': case 'ArrowRight': next = shown + 1; break;
+    case 'ArrowDown': case 'ArrowLeft': next = shown - 1; break;
+    case 'PageUp': next = shown + 10; break;
+    case 'PageDown': next = shown - 10; break;
+    case 'Home': next = 0; break;                      // north up, like clicking the dial
+    case ' ': case 'Spacebar': case 'Enter':
+      next = shown % 90 === 0 ? shown + 90 : 0;        // the tap step
+      break;
+    default: return;
+  }
+  // Only now, once the key is one we act on: arrows would otherwise pan the map and Page
+  // would scroll the page out from under the pilot.
+  e.preventDefault();
+  e.stopPropagation();
+  rotSetShown(next);
+});
 // --- Zulu clock ------------------------------------------------------
 // A compact UTC clock for flight planning. It is intentionally not localized:
 // Zulu time is always left-to-right HH:MM:SSZ.
