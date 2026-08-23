@@ -701,8 +701,12 @@ function distToSegment(px, py, a, b) {
 function legFrame(i) {
   const A = state.waypoints[i], B = state.waypoints[i + 1];
   if (!A || !B) return null;
-  const a = proj(A);
-  const b = proj(B);
+  // The leg as DRAWN: an out-and-back pair is drawn to either side of the shared track, and
+  // everything positioned from this frame -- the nav kite, the cumulative kite, their hit
+  // boxes -- belongs with its own line rather than on the centre between them.
+  const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
+  const a = ends ? ends.a : proj(A);
+  const b = ends ? ends.b : proj(B);
   let dx = b.x - a.x, dy = b.y - a.y;
   const len = Math.hypot(dx, dy);
   if (len > 0) { dx /= len; dy /= len; }
@@ -792,6 +796,9 @@ function legLabelCenter(i, which) {
   // perpendicular is computed at render time from the live leg length
   // so it stays just outside the 10° drift cone. Mirror the renderer's
   // math here so the kite is grabbable at exactly its visible position.
+  // Same step the renderer applies to a default kite on a repeated pass (legRepeatAlongPx),
+  // so the box a pilot grabs is the arrow they can see.
+  const repeatAlong = (o._default && typeof legRepeatAlongPx === 'function') ? legRepeatAlongPx(i) : 0;
   let perp;
   if (o._default) {
     const a = proj(state.waypoints[i]);
@@ -802,7 +809,7 @@ function legLabelCenter(i, which) {
   } else {
     perp = (o.p || 0) * sc;
   }
-  const along = (o.a || 0) * sc;
+  const along = (o.a || 0) * sc + repeatAlong;
   return { x: f.mx + f.dx * along + f.nx * perp,
            y: f.my + f.dy * along + f.ny * perp };
 }

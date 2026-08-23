@@ -3980,8 +3980,11 @@ function drawLegs() {
     const driftPerp = legDefaultLabelPerp(len);
     const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
-    const inAlong  = (inP.a  || 0) * zoomScale;
-    const outAlong = (outP.a || 0) * zoomScale;
+    // Repeated passes down the same track step along it so their kites do not pile up on one
+    // point; a kite the pilot has dragged keeps exactly where it was put.
+    const repeatAlong = (typeof legRepeatAlongPx === 'function') ? legRepeatAlongPx(i) : 0;
+    const inAlong  = (inP.a  || 0) * zoomScale + (inP._default  ? repeatAlong : 0);
+    const outAlong = (outP.a || 0) * zoomScale + (outP._default ? repeatAlong : 0);
     // Legs inside the departure field's CTR are flown on the field's procedure, not on the
     // route's stopwatch: the clock starts at the boundary reporting point (see
     // ctr-boundaries.json). Those legs add nothing and show no cumulative kite.

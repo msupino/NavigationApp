@@ -4583,6 +4583,33 @@ function legScreenEnds(i) {
            b: { x: b.x - nx * off, y: b.y - ny * off } };
 }
 if (typeof window !== 'undefined') window.legScreenEnds = legScreenEnds;
+// How far along its own leg a default kite steps, to keep repeated passes apart.
+//
+// The line offset separates the two DIRECTIONS. A track flown the same way more than once --
+// a-b-a-b-a-a, a training circuit, a hold -- puts those passes on one line, and their kites
+// landed on exactly the same point: one pile of arrows with one set of numbers readable.
+// Each repeat now sits a kite's width further along the leg, so they read as a row.
+// Returns pixels along the leg direction, 0 for a leg flown once.
+function legRepeatAlongPx(i) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const a = wps[i], b = wps[i + 1];
+  if (!a || !b) return 0;
+  const same = (p, q) => p && q &&
+    (typeof sameMapPoint === 'function' ? sameMapPoint(p, q) : (p.lat === q.lat && p.lng === q.lng));
+  let before = 0, total = 0;
+  for (let j = 0; j < wps.length - 1; j++) {
+    if (!same(wps[j], a) || !same(wps[j + 1], b)) continue;   // same track, same way round
+    total++;
+    if (j < i) before++;
+  }
+  if (total < 2) return 0;
+  // Centre the row on the leg: two passes step half a width either side of the middle,
+  // three put one in the middle and one either side, and so on.
+  const width = (typeof tune === 'function' ? tune('legKiteCellWidthPx') * 3 : 90) *
+    (typeof kiteDrawScale === 'function' ? kiteDrawScale() : 1);
+  return (before - (total - 1) / 2) * width;
+}
+if (typeof window !== 'undefined') window.legRepeatAlongPx = legRepeatAlongPx;
 
 function legIsRetrace(i) {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];

@@ -174,3 +174,68 @@ test('the stored choice goes back to both as well', async ({ page }) => {
   expect(out.after).toBe('both');
   expect(out.picker).toBe('both');
 });
+
+// Reported with a screenshot: a-b-a-b-a-a still piled the arrows up. Two causes. The kites
+// were positioned from the shared centre line rather than from the line their own leg is
+// drawn on, and passes flown the same way landed on exactly the same point along it.
+test('kites move across with the line they belong to', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  // A default kite already sits well off its leg to clear the drift cone, so "which line is
+  // nearer" proves nothing. What matters is that splitting the pair carries each kite across
+  // by exactly its own line's offset -- the kite stays on the line it labels.
+  const out = await page.evaluate(() => {
+    const at = () => [0, 1].map((i) => legLabelCenter(i, 'in'));
+    setTune('splitRetracedLegs', false); draw();
+    const together = at();
+    setTune('splitRetracedLegs', true); draw();
+    const apart = at();
+    const off = tune('retracedLegOffsetPx');
+    const ends = [0, 1].map(legScreenEnds);
+    return [0, 1].map((i) => {
+      const e = ends[i], dx = e.b.x - e.a.x, dy = e.b.y - e.a.y, len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len, ny = dx / len;                 // right of travel, as drawn
+      const mx = apart[i].x - together[i].x, my = apart[i].y - together[i].y;
+      return { across: Math.round((mx * nx + my * ny) * 10) / 10, along: Math.abs(Math.round((mx * dx + my * dy) / len)), off };
+    });
+  });
+  for (const leg of out) {
+    expect(leg.across).toBe(-leg.off);      // shifted onto its own line, right of travel
+    expect(leg.along).toBe(0);              // and nowhere else
+  }
+});
+
+test('six passes over one track leave six readable arrows, not one pile', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const A = { lat: 32.02, lng: 34.83, name: 'A' }, B = { lat: 32.45, lng: 35.05, name: 'B' };
+    state.waypoints = [A, { ...B }, { ...A }, { ...B }, { ...A }, { ...B }];
+    syncLegs(); draw();
+    const pts = state.legs.map((_, i) => legLabelCenter(i, 'in'));
+    let closest = Infinity;
+    for (let i = 0; i < pts.length; i++)
+      for (let j = i + 1; j < pts.length; j++)
+        closest = Math.min(closest, Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y));
+    return { count: pts.length, closest: Math.round(closest) };
+  });
+  expect(out.count).toBe(5);
+  // A kite is about 90 px across at this scale: anything less than its own width is a pile.
+  expect(out.closest).toBeGreaterThan(60);
+});
+
+// A kite the pilot has dragged stays exactly where it was put -- the step is only for the
+// ones the app placed.
+test('a hand-placed kite is not stepped', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const A = { lat: 32.02, lng: 34.83, name: 'A' }, B = { lat: 32.45, lng: 35.05, name: 'B' };
+    state.waypoints = [A, { ...B }, { ...A }, { ...B }];
+    syncLegs();
+    state.legs[2].inLabel = { a: 0, p: 0 };        // dragged: no _default flag
+    draw();
+    const moved = legLabelCenter(2, 'in');
+    const frame = legFrame(2);
+    return Math.round(Math.hypot(moved.x - frame.mx, moved.y - frame.my));
+  });
+  expect(out).toBe(0);                              // exactly where it was put
+});
