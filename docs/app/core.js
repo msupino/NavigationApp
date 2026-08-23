@@ -3031,6 +3031,18 @@ function vorRingSuppressed(selectedIdent) {
   return false;
 }
 
+// One escaper for every file NavAid writes: GPX, KML, PLN, the printable flight plan, the
+// route editor's panels. There were six local copies with four different character sets --
+// some escaped quotes, some did not -- and the ones that did not were a line's edit away from
+// a name with a quote in it breaking out of an attribute (PLN's ATCWaypoint id, the printed
+// plan's dir="ltr" spans). Escaping the full set everywhere costs nothing: &quot; and &#39;
+// are valid in XML and HTML text as well as in attributes, and render as the character.
+const XML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function escapeXml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => XML_ESCAPES[c]);
+}
+if (typeof window !== 'undefined') window.escapeXml = escapeXml;
+
 function navLangPosKey(base) {
   const lang = (document.documentElement && document.documentElement.lang === 'he') ? 'he' : 'en';
   return base + '.' + lang;
