@@ -6,6 +6,11 @@
 const { test, expect } = require('./_setup');
 
 const KEY = 'navaid.legendPos.en';
+// Between the two toolbar heights, with room either side: an OPEN toolbar (about 540 px
+// here) covers this spot on any runner, a closed one (about 120) covers it on none. The
+// first fixture sat at y=150, close enough to the collapsed bar that a runner rendering it
+// taller still covered it -- so the card could not go back, and the test demanded it did.
+const HOME = { x: 12, y: 300 };
 
 async function boot(page, home) {
   await page.setViewportSize({ width: 390, height: 780 });
@@ -25,7 +30,7 @@ const at = (page) => page.evaluate((k) => {
 }, KEY);
 
 test('an opened toolbar moves the legend but does not adopt the move', async ({ page }) => {
-  await boot(page, { x: 12, y: 150 });
+  await boot(page, HOME);
   const placed = await at(page);
   await page.locator('#toolbar-toggle').click();
   await expect.poll(async () => (await at(page)).y, { timeout: 5000 })
@@ -34,7 +39,7 @@ test('an opened toolbar moves the legend but does not adopt the move', async ({ 
 });
 
 test('it comes home when the toolbar closes', async ({ page }) => {
-  await boot(page, { x: 12, y: 150 });
+  await boot(page, HOME);
   const placed = await at(page);
   await page.locator('#toolbar-toggle').click();
   // Wait for the shove itself rather than a stopwatch: the reconcile runs off a
@@ -52,7 +57,7 @@ test('it comes home when the toolbar closes', async ({ page }) => {
 // The walk: open the menu, change a layer, close, repeat. The card used to be a little
 // further down every round.
 test('repeated trips to the layer picker leave it where it started', async ({ page }) => {
-  await boot(page, { x: 12, y: 150 });
+  await boot(page, HOME);
   const placed = await at(page);
   for (const layer of ['Low Alt', 'Satellite', 'CVFR']) {
     await page.locator('#toolbar-toggle').click();
