@@ -45,7 +45,7 @@ class GeorefPlateTest(unittest.TestCase):
     def test_manual_fit_rejects_reversed_bounds(self):
         with mock.patch.object(GEOREF, 'frame', return_value=([10, 90], [10, 90], 100, 100)):
             out = GEOREF.georef_manual(
-                'plate.pdf', 'plate.png',
+                'plate.png',
                 {34.6: 20, 34.8: 80},
                 {32.0: 20, 32.2: 80},
                 (32.1, 34.7),

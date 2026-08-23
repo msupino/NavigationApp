@@ -81,3 +81,21 @@ test('with no fix yet there is no track to write', async ({ page }) => {
   expect(await page.evaluate(() =>
     document.getElementById('orient-toggle').textContent.trim())).toBe('');
 });
+
+// Review finding: the readout formatted the raw number, so a device reporting -1 (or a
+// computed course that had gone round the back) rendered as '0-1'. Both the digits and the
+// needle now take the angle wrapped into 0-359.
+test('a heading outside 0-359 is wrapped, not printed raw', async ({ page }) => {
+  await boot(page);
+  const seen = await page.evaluate(() => [-1, 359.7, 360, 725].map((h) => {
+    window.__geoCb({ coords: { latitude: 32.1, longitude: 34.9, accuracy: 6, speed: 40, altitude: 300, heading: h }, timestamp: Date.now() });
+    const b = document.getElementById('orient-toggle');
+    return { in: h, text: b.textContent.trim(), rot: b.querySelector('g').getAttribute('transform') };
+  }));
+  for (const s of seen) {
+    expect(s.text).toMatch(/^\d{3}°$/);
+    expect(s.rot).toMatch(/^rotate\((?:[0-9]|[1-9][0-9]|[12][0-9]{2}|3[0-5][0-9]) 12 12\)$/);
+  }
+  expect(seen.find(s => s.in === -1).text).toBe('359°');
+  expect(seen.find(s => s.in === 725).text).toBe('005°');
+});
