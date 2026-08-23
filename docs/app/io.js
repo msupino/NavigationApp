@@ -2903,12 +2903,27 @@ function refreshPrintFit() {
     warn.hidden = true;
     fitBtn.hidden = false;
     fitBtn.disabled = true;
+    fitBtn.title = S.printFitNoRoute || 'Draw a route first.';
+    return;
+  }
+  // Is there any page that COULD hold it? Ask without committing. A3 (and A4x2, the same
+  // frame) covers 56.7 x 40.1 nm of ground at 1:250 000, so a long cross-country genuinely
+  // fits nothing -- and a button that dims for that reason has to SAY so, whether or not a
+  // page size has been chosen yet. Dimming silently is what made it look broken.
+  const pick = fitPageToRoute(false);
+  if (!pick) {
+    warn.hidden = false;
+    warn.textContent = S.printNoFit || 'No page size holds this route.';
+    fitBtn.hidden = false;
+    fitBtn.disabled = true;
+    fitBtn.title = S.printNoFit || 'No page size holds this route.';
     return;
   }
   if (!pageSize) {
     warn.hidden = true;
     fitBtn.hidden = false;
-    fitBtn.disabled = !fitPageToRoute(false);     // enabled if any page can hold it
+    fitBtn.disabled = false;                       // a page can hold it: let it choose one
+    fitBtn.title = S.printFitTitle || '';
     return;
   }
   const fit = routePageFit();
@@ -2916,11 +2931,9 @@ function refreshPrintFit() {
     warn.hidden = true;
     fitBtn.hidden = false;
     fitBtn.disabled = true;
+    fitBtn.title = S.printFitAlready || 'The route already fits this page.';
     return;
   }
-  // Is there any page that COULD hold it? Ask without committing, so the message can
-  // distinguish "press the button" from "no page is big enough, split the route".
-  const pick = fitPageToRoute(false);
   warn.hidden = false;
   // Name what is actually clipped. Saying "the route runs past the page" while the
   // route plainly sits inside the frame reads as a warning that failed to clear --
@@ -2935,7 +2948,8 @@ function refreshPrintFit() {
     : routeInside ? (S.printClipWarnLabels || 'A label hangs past the page.')
       : (S.printClipWarn || 'The route runs past the page.');
   fitBtn.hidden = false;
-  fitBtn.disabled = !pick;
+  fitBtn.disabled = false;
+  fitBtn.title = S.printFitTitle || '';
 }
 
 function refreshOrientButton() {

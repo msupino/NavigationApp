@@ -100,3 +100,33 @@ test('Clear map takes the page frame with the route', async ({ page }) => {
   }));
   expect(after).toEqual({ size: null, stored: null, wps: 0 });
 });
+
+// Reported: "why is fit page to route dimmed always now?" — with a long cross-country and no
+// page chosen, the button dimmed and said nothing. A3 (and A4×2, the same frame) covers
+// 56.7 × 40.1 nm of ground at 1:250 000, so Herzliya → Rosh Pina genuinely fits no sheet.
+// Dimming for a real reason is fine; dimming silently is not.
+test('a route too big for any sheet says so, with or without a page chosen', async ({ page }) => {
+  await boot(page);
+  await route(page, ['LLHZ', 'LLIB', 'LLHZ']);            // ~78 nm across: bigger than A3
+  const noPage = await page.evaluate(() => {
+    pageSize = null; refreshPrintFit();
+    const b = document.getElementById('print-fit');
+    const w = document.getElementById('print-clip-warn');
+    return { disabled: b.disabled, title: b.title, warnHidden: w.hidden, warn: w.textContent };
+  });
+  expect(noPage.disabled).toBe(true);
+  expect(noPage.warnHidden).toBe(false);                  // the reason is on screen
+  expect(noPage.warn).toMatch(/no page size holds/i);
+  expect(noPage.title).toMatch(/no page size holds/i);
+});
+
+test('with no route the button says to draw one', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { state.waypoints = []; syncLegs(); draw(); pageSize = null; refreshPrintFit(); });
+  const b = await page.evaluate(() => {
+    const el = document.getElementById('print-fit');
+    return { disabled: el.disabled, title: el.title };
+  });
+  expect(b.disabled).toBe(true);
+  expect(b.title).toMatch(/draw a route first/i);
+});
