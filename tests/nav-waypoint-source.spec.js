@@ -5,11 +5,21 @@
 const { test, expect } = require('./_setup');
 const { showToolbarControl } = require('./_toolbar');
 
-async function boot(page) {
+async function boot(page, { withHeli = true } = {}) {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof layerDataPrefix === 'function' &&
     typeof reloadLayerDatasets === 'function');
+  // Helicopters ships switched OFF (layerEnabledHelicopters), and the picker only lists
+  // charts the app offers -- so a test about helicopter waypoints has to turn the chart on,
+  // exactly as a gist would. See navwp-source-offered.spec.js for the gate itself.
+  if (withHeli) {
+    await page.evaluate(() => {
+      setTune('layerEnabledHelicopters', true);
+      if (typeof window.rebuildNavWpSource === 'function') window.rebuildNavWpSource();
+      if (typeof rebuildLayerPicker === 'function') rebuildLayerPicker();
+    });
+  }
 }
 
 const setLayer = (page, name) => page.evaluate(n => {
@@ -17,7 +27,7 @@ const setLayer = (page, name) => page.evaluate(n => {
   map.addLayer(layers[n]);
 }, name);
 
-test('the picker offers Follow chart plus the three charts', async ({ page }) => {
+test('the picker offers Follow chart plus every chart on offer', async ({ page }) => {
   await boot(page);
   await showToolbarControl(page, '#navwp-source');
   const r = await page.evaluate(() => {
