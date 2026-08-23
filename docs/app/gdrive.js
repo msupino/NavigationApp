@@ -137,6 +137,39 @@ function gdriveHeaders() {
 }
 
 // Locate the library file in the app-data folder (null if none yet).
+// Every Drive call goes through here, for two reasons.
+//
+// A hung socket used to wedge sync for as long as the network kept the connection open with
+// nothing on it: fetch has no timeout of its own, so "Syncing…" sat there and the button
+// never came back. This aborts and rejects instead.
+//
+// And the error carries the HTTP status as a NUMBER. The auth retry used to decide whether
+// to re-authenticate by matching /401/ against the error's message text, which is one
+// reworded string away from either never retrying or retrying on a route named "401".
+const DRIVE_TIMEOUT_MS = 20000;
+function driveFetch(url, opts, what) {
+  const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), DRIVE_TIMEOUT_MS) : 0;
+  const init = Object.assign({}, opts || {}, ctl ? { signal: ctl.signal } : {});
+  return fetch(url, init).then(r => {
+    if (timer) clearTimeout(timer);
+    if (!r.ok) {
+      const err = new Error('Drive ' + what + ' failed: ' + r.status);
+      err.status = r.status;
+      throw err;
+    }
+    return r;
+  }, e => {
+    if (timer) clearTimeout(timer);
+    if (e && e.name === 'AbortError') {
+      const err = new Error('Drive ' + what + ' timed out after ' + (DRIVE_TIMEOUT_MS / 1000) + 's');
+      err.timeout = true;
+      throw err;
+    }
+    throw e;
+  });
+}
+
 function gdriveFindFile() {
   const q = encodeURIComponent("name='" + GDRIVE_FILE + "'");
   // Deliberately NOT ordered by createdTime: an account that already has two
@@ -148,15 +181,15 @@ function gdriveFindFile() {
   // read -> merge -> overwrite window in which a second device's upload disappeared.
   const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder' +
     '&fields=files(id,name,modifiedTime,version)&q=' + q;
-  return fetch(url, { headers: gdriveHeaders() })
-    .then(r => { if (!r.ok) throw new Error('Drive list failed: ' + r.status); return r.json(); })
+  return driveFetch(url, { headers: gdriveHeaders() }, 'list')
+    .then(r => r.json())
     .then(j => (j.files && j.files[0]) || null);
 }
 
 function gdriveDownload(fileId) {
-  return fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media',
-    { headers: gdriveHeaders() })
-    .then(r => { if (!r.ok) throw new Error('Drive download failed: ' + r.status); return r.json(); })
+  return driveFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media',
+    { headers: gdriveHeaders() }, 'download')
+    .then(r => r.json())
     // A non-array means the remote file is corrupt/foreign. Abort the sync
     // rather than treating it as [] — merging [] then uploading would silently
     // overwrite every route that lived only on Drive.
@@ -167,12 +200,12 @@ function gdriveDownload(fileId) {
 function gdriveUpload(fileId, library) {
   const body = JSON.stringify(library);
   if (fileId) {
-    return fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId +
+    return driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId +
       '?uploadType=media', {
       method: 'PATCH',
       headers: Object.assign(gdriveHeaders(), { 'Content-Type': 'application/json' }),
       body,
-    }).then(r => { if (!r.ok) throw new Error('Drive update failed: ' + r.status); return r.json(); });
+    }, 'update').then(r => r.json());
   }
   const meta = { name: GDRIVE_FILE, parents: ['appDataFolder'] };
   const boundary = 'navaid' + Date.now();
@@ -181,13 +214,13 @@ function gdriveUpload(fileId, library) {
     JSON.stringify(meta) + '\r\n' +
     '--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' +
     body + '\r\n--' + boundary + '--';
-  return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart' +
+  return driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart' +
     '&fields=id', {
     method: 'POST',
     headers: Object.assign(gdriveHeaders(),
       { 'Content-Type': 'multipart/related; boundary=' + boundary }),
     body: multipart,
-  }).then(r => { if (!r.ok) throw new Error('Drive create failed: ' + r.status); return r.json(); });
+  }, 'create').then(r => r.json());
 }
 
 // Merge two route-library arrays by id, keeping the newer savedAt on conflict.
@@ -239,6 +272,11 @@ function mergeRouteLibraries(a, b) {
 // which Drive also returns for rate-limit/quota, where dropping a still-valid
 // token and forcing an interactive re-auth would be a wrong, surprising retry.
 function _isAuthError(err) {
+  // The status, when we have it -- driveFetch attaches it. The message match stays as a
+  // fallback for errors raised elsewhere, but it is no longer what the decision rests on:
+  // matching /401/ against prose is one reworded string away from never retrying, and one
+  // route named "401" away from retrying when it should not.
+  if (err && typeof err.status === 'number') return err.status === 401;
   return /\b401\b/.test(String((err && err.message) || ''));
 }
 
@@ -676,8 +714,8 @@ function gdriveFindNamed(name) {
   const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder' +
     '&fields=files(id,name,modifiedTime,version)&orderBy=createdTime' +
     '&q=' + encodeURIComponent("name='" + name + "'");
-  return fetch(url, { headers: gdriveHeaders() })
-    .then(r => { if (!r.ok) throw new Error('Drive list failed: ' + r.status); return r.json(); })
+  return driveFetch(url, { headers: gdriveHeaders() }, 'list')
+    .then(r => r.json())
     .then(j => (j.files && j.files[0]) || null);
 }
 // Re-read just the version/modifiedTime to confirm the file has not changed since
@@ -687,8 +725,8 @@ function gdriveFindNamed(name) {
 function gdriveAssertUnchanged(fileId, seen) {
   if (!fileId || !seen) return Promise.resolve();
   const url = 'https://www.googleapis.com/drive/v3/files/' + fileId + '?fields=version,modifiedTime';
-  return fetch(url, { headers: gdriveHeaders() })
-    .then(r => { if (!r.ok) throw new Error('Drive check failed: ' + r.status); return r.json(); })
+  return driveFetch(url, { headers: gdriveHeaders() }, 'check')
+    .then(r => r.json())
     .then(j => {
       const now = String((j && (j.version || j.modifiedTime)) || '');
       if (now && String(seen) !== now) {
@@ -698,14 +736,13 @@ function gdriveAssertUnchanged(fileId, seen) {
     });
 }
 function gdriveDownloadJson(fileId) {
-  return fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media',
-    { headers: gdriveHeaders() })
-    .then(r => { if (!r.ok) throw new Error('Drive download failed: ' + r.status); return r.json(); });
+  return driveFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media',
+    { headers: gdriveHeaders() }, 'download').then(r => r.json());
 }
 function gdriveUploadJson(fileId, name, obj) {
   const body = JSON.stringify(obj);
   if (fileId) {
-    return fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media', {
+    return driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media', {
       method: 'PATCH',
       headers: Object.assign(gdriveHeaders(), { 'Content-Type': 'application/json' }),
       body,
@@ -718,11 +755,11 @@ function gdriveUploadJson(fileId, name, obj) {
     JSON.stringify(meta) + '\r\n' +
     '--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' +
     body + '\r\n--' + boundary + '--';
-  return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+  return driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
     method: 'POST',
     headers: Object.assign(gdriveHeaders(), { 'Content-Type': 'multipart/related; boundary=' + boundary }),
     body: multipart,
-  }).then(r => { if (!r.ok) throw new Error('Drive create failed: ' + r.status); return r.json(); });
+  }, 'create').then(r => r.json());
 }
 
 // One settings sync pass (assumes a valid token — callers connect first).
