@@ -1662,6 +1662,8 @@ window.S = Object.assign({
   gotoTitle: 'Click to go to coordinates',
   gotoError: 'Type the digits, or paste a coordinate like 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
+  rotateHeadingLabel: 'Map heading (degrees)',
+  rotateDialLabel: 'Map rotation dial (degrees) — arrows turn the map, Home for north up',
   followOnToast: 'Following the aircraft',
   followOffToast: 'Not following — pan freely',
   orientHeadingToast: 'Heading up',
