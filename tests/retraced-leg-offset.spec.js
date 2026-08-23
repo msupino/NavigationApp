@@ -119,3 +119,58 @@ test('the separation is tunable, and zero means the old single line', async ({ p
   });
   expect(same).toBe(true);
 });
+
+// Switched off, the pair shares one line exactly as it did before this existed.
+test('splitRetracedLegs is on by default and turns the whole thing off', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  expect(await page.evaluate(() => tune('splitRetracedLegs'))).toBe(true);
+  const off = await page.evaluate(() => {
+    setTune('splitRetracedLegs', false);
+    draw();
+    const e0 = legScreenEnds(0), e1 = legScreenEnds(1);
+    const offsets = [legPairOffsetPx(0), legPairOffsetPx(1)];
+    setTune('splitRetracedLegs', true);
+    return { offsets, sameLine: Math.round(e0.a.x) === Math.round(e1.b.x) &&
+                                Math.round(e0.a.y) === Math.round(e1.b.y) };
+  });
+  expect(off.offsets).toEqual([0, 0]);
+  expect(off.sameLine).toBe(true);
+});
+
+// Reported: Clear map left the direction picker where it was, so the next route began with
+// half its legs hidden by a filter nobody had chosen. An empty map is not "outbound only" --
+// there is nothing to be outbound.
+test('Clear map puts the direction picker back to both', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  page.on('dialog', d => d.accept());
+  const after = await page.evaluate(() => {
+    const sel = document.getElementById('leg-dir-select');
+    window.legDirFilter = 'back';
+    if (sel) { sel.value = 'back'; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+    document.getElementById('clear').click();
+    return { filter: window.legDirFilter, picker: sel ? sel.value : 'both',
+             legs: state.legs.length };
+  });
+  expect(after).toEqual({ filter: 'both', picker: 'both', legs: 0 });
+});
+
+// Clearing the map is the pilot saying "done with that": the stored choice goes back to
+// "both" with it, so the next route starts showing everything.
+test('the stored choice goes back to both as well', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  page.on('dialog', d => d.accept());
+  const out = await page.evaluate(() => {
+    const sel = document.getElementById('leg-dir-select');
+    sel.value = 'back';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    const before = localStorage.getItem('navaid.legDirFilter');
+    document.getElementById('clear').click();
+    return { before, after: localStorage.getItem('navaid.legDirFilter'), picker: sel.value };
+  });
+  expect(out.before).toBe('back');
+  expect(out.after).toBe('both');
+  expect(out.picker).toBe('both');
+});

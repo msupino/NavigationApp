@@ -206,8 +206,10 @@ NavAid.tuningDefaults = {
 
   routeLineWidthPx: { value: 3.5, min: 0.5, max: 12, step: 0.1, label: 'Route line width (px)' },
   routeSelectedLineWidthPx: { value: 5, min: 0.5, max: 16, step: 0.1, label: 'Selected route line width (px)' },
+  splitRetracedLegs: { value: true, type: 'bool',
+    label: 'Draw an out-and-back leg as two lines' },
   retracedLegOffsetPx: { value: 5, min: 0, max: 30, step: 1,
-    label: 'Out-and-back legs drawn this far apart (px, 0 = one line)' },
+    label: 'How far apart those two lines are drawn (px)' },
 
   driftAngleDeg: { value: 10, min: 1, max: 30, step: 0.5, label: 'Drift line angle from track (°)' },
   driftLengthFactor: { value: 0.5, min: 0.05, max: 1, step: 0.05, label: 'Drift line length, as a share of the leg' },
@@ -762,7 +764,7 @@ NavAid.tuningGroups = [
   { name: 'Wind', keys: ['windDir', 'windSpeed'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
   { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'touchDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx', 'bootLogoMinMs'] },
-  { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx', 'retracedLegOffsetPx'] },
+  { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx', 'splitRetracedLegs', 'retracedLegOffsetPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
   { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
@@ -4542,16 +4544,24 @@ function legPairOffsetPx(i) {
   // Filtered to one direction, there is only one of the pair on screen, and a line that
   // sits off to the side of the track it describes would be worse than no offset at all.
   if (typeof legDirFilter === 'string' && legDirFilter !== 'both') return 0;
+  // Switched off, both directions share one line, as they did before this existed.
+  if (typeof tune === 'function' && tune('splitRetracedLegs') === false) return 0;
+  const px = (typeof tune === 'function') ? tune('retracedLegOffsetPx') : 5;
+  if (!(px > 0)) return 0;
   const same = (p, q) => p && q &&
     (typeof sameMapPoint === 'function' ? sameMapPoint(p, q) : (p.lat === q.lat && p.lng === q.lng));
-  let paired = false;
+  // Is this track flown the other way anywhere in the route? That is the case worth
+  // separating: out and back on one line.
+  //
+  // Deliberately ONE leg back and no further. A route that goes over the same track a third
+  // and fourth time leaves those passes on the two lines already drawn rather than fanning
+  // out: a fan reads as several different tracks, and the offset is a drawing aid, not
+  // geography -- the further a line sits from the track it describes, the more it lies.
   for (let j = 0; j < wps.length - 1; j++) {
     if (j === i) continue;
-    if (same(wps[j], b) && same(wps[j + 1], a)) { paired = true; break; }
+    if (same(wps[j], b) && same(wps[j + 1], a)) return px;
   }
-  if (!paired) return 0;
-  const px = (typeof tune === 'function') ? tune('retracedLegOffsetPx') : 5;
-  return px > 0 ? px : 0;
+  return 0;
 }
 if (typeof window !== 'undefined') window.legPairOffsetPx = legPairOffsetPx;
 // The leg's ends in screen pixels, with that offset applied. Drawing and hit-testing both
