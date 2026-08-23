@@ -143,8 +143,11 @@ function gdriveFindFile() {
   // library files would switch to the earliest one, and routes that live only in
   // the newer file would become unreachable from every device. The settings file is
   // new enough to have no such legacy, so only it is ordered (gdriveFindNamed).
+  // `version` comes back so a write can check nothing landed between this read and
+  // the PATCH -- see gdriveAssertUnchanged. Without it the route library had a
+  // read -> merge -> overwrite window in which a second device's upload disappeared.
   const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder' +
-    '&fields=files(id,name,modifiedTime)&q=' + q;
+    '&fields=files(id,name,modifiedTime,version)&q=' + q;
   return fetch(url, { headers: gdriveHeaders() })
     .then(r => { if (!r.ok) throw new Error('Drive list failed: ' + r.status); return r.json(); })
     .then(j => (j.files && j.files[0]) || null);
@@ -243,13 +246,20 @@ function _isAuthError(err) {
 function _gdriveSyncOnce() {
   return gdriveFindFile().then(file => {
     const remote = file ? gdriveDownload(file.id) : Promise.resolve([]);
+    // What the file looked like when we read it. Checked again immediately before the
+    // PATCH: Drive v3 offers no precondition on a content write, so this narrows the
+    // lost-update window from "download + merge" to one request. It does not close it,
+    // and aborting is the safe side -- the next sync merges both sides normally, where
+    // an overwrite would have taken the other device's routes with it.
+    const seen = file && (file.version || file.modifiedTime);
     return remote.then(remoteArr => {
       const local = (typeof loadRouteLibrary === 'function') ? loadRouteLibrary() : [];
       const merged = mergeRouteLibraries(local, remoteArr);
       // Upload FIRST, then write local only after Drive confirms — so a failed
       // upload (expired token, network) leaves local + Drive each unchanged
       // rather than updating local while Drive silently missed the push.
-      return gdriveUpload(file && file.id, merged).then(() => {
+      return gdriveAssertUnchanged(file && file.id, seen)
+        .then(() => gdriveUpload(file && file.id, merged)).then(() => {
         window._navaidSyncing = true;   // guard so persistRouteLibrary's auto-sync hook doesn't loop
         try { if (typeof persistRouteLibrary === 'function') persistRouteLibrary(merged); }
         finally { window._navaidSyncing = false; }
