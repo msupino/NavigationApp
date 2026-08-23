@@ -52,6 +52,38 @@ class GeorefPlateTest(unittest.TestCase):
             )
         self.assertTrue(any('reversed' in reason for reason in GEOREF.validate_fit(out)))
 
+    def test_landmark_fit_is_a_reflected_similarity(self):
+        """Image y runs down and north runs up, so the fit must reverse handedness.
+
+        Solved as a plain rotation the least squares lands miles from the landmarks -- which
+        is how a stretched set of corners passed the ratio check: both axes were wrong by the
+        same factor. Two landmarks a known distance apart pin scale, rotation and place.
+        """
+        marks = [
+            (32.0, 34.8, 100.0, 100.0),
+            (31.9, 34.9, 200.0, 200.0),
+        ]
+        image = mock.MagicMock(size=(400, 400))
+        with mock.patch.object(GEOREF.Image, 'open', return_value=image):
+            out = GEOREF.georef_landmarks('plate.png', marks, (32.0, 34.8))
+        self.assertLess(max(out['resid_nm']), 0.01)
+        self.assertEqual(out['conformality'], 1.0)
+        # The first landmark is where it was put, as a fraction of the image.
+        self.assertAlmostEqual(out['arp_frac'][0], 0.25, places=2)
+        self.assertAlmostEqual(out['arp_frac'][1], 0.25, places=2)
+
+    def test_landmark_fit_needs_two_points(self):
+        image = mock.MagicMock(size=(400, 400))
+        with mock.patch.object(GEOREF.Image, 'open', return_value=image):
+            out = GEOREF.georef_landmarks('plate.png', [(32.0, 34.8, 10.0, 10.0)], None)
+        self.assertIn('error', out)
+
+    def test_a_fit_that_cannot_place_its_own_field_is_refused(self):
+        """The check that would have stopped a stretched fit reaching a pull request."""
+        self.assertEqual(GEOREF.landmark_check({'arp_frac': (0.4, 0.6)}, [], 'LLXX'), [])
+        self.assertTrue(GEOREF.landmark_check({'arp_frac': (-0.01, 0.6)}, [], 'LLXX'))
+        self.assertTrue(GEOREF.landmark_check({'arp_frac': (0.4, 1.2)}, [], 'LLXX'))
+
     def test_diagnostics_reject_distortion_and_outside_arp(self):
         out = {
             'frame': [0, 0, 100, 100],
