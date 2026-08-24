@@ -4564,6 +4564,9 @@ function showSigmetDecoded() {
 // menu opens as the centered mobile modal instead of floating over a cramped,
 // two-row toolbar.
 function exportPrintOnTopLine() {
+  // Dock rail (#1866): the toolbar is a side column, so a floating panel can
+  // never sit over its top band — the on-top placement is always valid.
+  if (window.dockUiActive && window.innerWidth >= 1024) return true;
   const heads = document.querySelectorAll('#toolbar .tb-section:not(.tb-standalone) .tb-section-head');
   const printHead = document.querySelector('#toolbar .tb-section[data-sec="print"] .tb-section-head');
   if (!heads.length || !printHead) return true;
@@ -5146,7 +5149,16 @@ function showExportModal() {
   if (floatPanel && typeof floatingPanelPosition === 'function') {
     const r = box.getBoundingClientRect();
     const insp = document.getElementById('inspector');
-    setFloatingPanelPosition(box, floatingPanelPosition(box, insp, r.left, r.top));
+    if (window.dockUiActive) {
+      // Dock shell (#1866): the panel owns the inline-start edge and the
+      // inspector keeps the end edge, so the opposite-panel collision math
+      // has nothing to resolve. Vertically centred; still draggable.
+      const x = document.documentElement.dir === 'rtl'
+        ? Math.max(0, window.innerWidth - r.width - 12) : 12;
+      setFloatingPanelPosition(box, { x, y: Math.max(0, Math.round((window.innerHeight - r.height) / 2)) });
+    } else {
+      setFloatingPanelPosition(box, floatingPanelPosition(box, insp, r.left, r.top));
+    }
   } else if (!floatPanel) {
     const insp = document.getElementById('inspector');
     if (insp) insp.classList.add('hidden');

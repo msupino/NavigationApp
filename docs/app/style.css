@@ -6459,3 +6459,171 @@ body.theme-light .search-flash-ring {
   color: inherit; border-radius: 4px; padding: 4px 6px; font-size: 12px;
 }
 .freq-notam-row .freq-notam-btn:hover { background: rgba(255, 176, 32, 0.26); }
+
+/* ── Dock shell (?dock=1) — responsive dock layout, issues #1863–#1866 ─────
+   Opt-in re-shell of the same #toolbar DOM: phones get a bottom bar whose
+   open section becomes a sheet; desktops ≥1024px get a left/right rail with
+   in-flow accordions. The GPS cluster and readout leave the toolbar for a
+   fixed top status strip (moved by app/dock-ui.js). 681–1023px keeps the
+   proven menubar until the rail has flight time (#1865). */
+
+/* Phase 1: status strip. */
+html.dock-ui #status-strip {
+  position: fixed;
+  z-index: 1500;
+  top: 8px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(94vw, 560px);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(20, 18, 18, 0.86);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+html.dock-ui #status-strip > * { position: static; }
+html.dock-ui #status-strip .gps-readout { font-size: var(--navaid-gps-readout-font, 13px); }
+/* The recording dot was a fixed corner badge; in the strip it is an inline glyph. */
+html.dock-ui #status-strip #gps-rec-indicator { display: inline; }
+
+@media (max-width: 680px) {
+  /* Phase 2: bottom bar + sheet. */
+  html.dock-ui #toolbar {
+    position: fixed;
+    display: flex;
+    top: auto;
+    bottom: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    flex-direction: row;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 0;
+    border: 0;
+    border-block-start: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 4px;
+    padding-inline-start: max(4px, env(safe-area-inset-left));
+    padding-inline-end: max(4px, env(safe-area-inset-right));
+    padding-block-end: max(4px, env(safe-area-inset-bottom));
+  }
+  html.dock-ui #toolbar-handle,
+  html.dock-ui #toolbar-toggle,
+  html.dock-ui #app-version { display: none !important; }
+  /* Boot collapses the column on phones; the dock bar is always the expanded
+     row — the section heads ARE the bar, so there is nothing to collapse.
+     The :not chain keeps the handle/toggle/version, the desktop-only
+     save/load pair and the inline lang <script> (whose source text would
+     otherwise render!) out of the bar. */
+  html.dock-ui #toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#app-version):not(#footer-links):not(.tb-quick):not(script) { display: flex !important; }
+  html.dock-ui #toolbar > script,
+  html.dock-ui .tb-quick { display: none !important; }
+  /* Help / repo links stay behind; the bar is navigation only. */
+  html.dock-ui #footer-links { display: none !important; }
+  html.dock-ui #lang-toggle { order: 99; margin-inline-start: auto; }
+  html.dock-ui #lang-select { height: 44px; }
+  html.dock-ui .tb-section-head {
+    height: 48px;
+    padding: 4px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  html.dock-ui .tb-standalone-head { height: 48px; }
+  /* The open section becomes the sheet, docked to the bar (~62px tall). */
+  html.dock-ui .tb-section-body {
+    position: fixed;
+    inset-inline: 0;
+    top: auto;
+    bottom: 66px;
+    width: auto;
+    max-height: min(62dvh, calc(100dvh - 140px));
+    overflow-y: auto;
+    border-radius: 14px 14px 0 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-block-end: 0;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+  }
+  /* Clear the bottom band (chip / readout / attribution) above the bar. */
+  html.dock-ui .leaflet-bottom { bottom: 66px; }
+  html.dock-ui #mode-chip { bottom: 72px; }
+}
+
+@media (min-width: 1024px) {
+  /* Phase 3: rail with in-flow accordions. */
+  html.dock-ui #toolbar {
+    top: 0;
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+    bottom: 0;
+    width: 216px;
+    max-height: none;
+    height: 100dvh;
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-radius: 0;    border: 0;
+    border-inline-end: 1px solid rgba(255, 255, 255, 0.14);
+    transform: none;
+    padding: 8px;
+    padding-block-start: max(8px, env(safe-area-inset-top));
+  }
+  html.dock-ui[dir="rtl"] #zulu-clock,
+  html.dock-ui #zulu-clock { transform: none; }
+  html.dock-ui #toolbar-handle { display: none !important; }
+  html.dock-ui .tb-quick { display: none !important; }
+  html.dock-ui .tb-section { position: static; margin: 1px 0; min-width: 0;
+    /* Explicit cross-size: without it a wide opened body inflates the whole
+       flex line past the rail (stretch follows the largest sibling). */
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden; }
+  html.dock-ui .tb-section-body,
+  html.dock-ui #toolbar.multi-open .tb-section-body {
+    position: static;
+    top: auto;
+    inset-inline: auto;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: none;
+    display: none;
+    transform: none;
+    box-shadow: none;
+    /* Rows sized for the 340px dropdown can exceed a 216px rail; scroll
+       inside the body rather than overflowing the column. */
+    overflow-x: auto;
+  }
+  html.dock-ui .tb-section.open .tb-section-body { display: block; }
+  /* Rail collapse toggle (#dock-rail-collapse), created by dock-ui.js. */
+  html.dock-ui #dock-rail-collapse {
+    order: -1;
+    align-self: flex-end;
+    min-width: 34px;
+    min-height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+  }
+  html.dock-ui #dock-rail-collapse::before { content: '⟨'; }
+  html.dock-ui.dock-rail-collapsed #dock-rail-collapse::before { content: '⟩'; }
+  html.dock-ui.dock-rail-collapsed #toolbar { width: 52px; padding-inline: 6px; }
+  html.dock-ui.dock-rail-collapsed .tb-section-title,
+  html.dock-ui.dock-rail-collapsed .tb-section-body,
+  html.dock-ui.dock-rail-collapsed #lang-toggle,
+  html.dock-ui.dock-rail-collapsed #app-version { display: none; }
+  html.dock-ui.dock-rail-collapsed .tb-section-head {
+    justify-content: center;
+    padding-inline: 0;
+    font-size: 17px;
+  }
+}

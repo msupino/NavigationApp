@@ -1122,6 +1122,9 @@ window.S = Object.assign({
   modeChipNote: 'Adding notes',
   modeChipStop: 'tap to stop',
   modeChipTitle: 'Click to leave this mode',
+  modeChipLocked: 'Route locked',
+  modeChipUnlock: 'tap to unlock',
+  dockRailTitle: 'Collapse or expand the toolbar rail',
   // Phone-width display labels. Full titles ("Time (mm:ss)", "Fuel (gal)") pushed the
   // table 111px past a 375px screen on their own. CSV/export headers are unaffected --
   // those come from fpHeaders, which is the export contract.

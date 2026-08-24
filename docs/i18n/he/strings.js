@@ -132,6 +132,9 @@ window.S = {
   modeChipNote: 'הוספת הערות',
   modeChipStop: 'לחץ לסיום',
   modeChipTitle: 'לחץ ליציאה מהמצב',
+  modeChipLocked: 'המסלול נעול',
+  modeChipUnlock: 'לחץ לביטול הנעילה',
+  dockRailTitle: 'כיווץ או פריסה של סרגל הכלים',
   fpHeadersNarrow: { dist: 'NM', speed: 'kt', alt: 'גובה', time: 'זמן', fuel: 'דלק',
     cumTime: 'מצטבר', cumFuel: 'דלק מצטבר' },
   fpMobileSummary: function (legs, nm, time, gal) {

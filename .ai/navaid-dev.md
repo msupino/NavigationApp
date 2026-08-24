@@ -194,6 +194,23 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 ## Features
 
 - **Modes:** Add / Note (no mode active = inspect).
+- **Mode chip:** the persistent `#mode-chip` pill (`refreshModeChip()` in
+  `ui.js`) shows an active drawing mode, and — when no mode is armed — the
+  route edit lock (`data-kind="locked"`) or aircraft following
+  (`data-kind="follow"`, shown only while a position source is live and not
+  auto-lock-masked; lifting the lock via `editUnlockOverride` reveals it).
+  Tapping exits through the control that owns the state (`#edit-lock` /
+  `#follow-lock`), so toasts and persistence semantics are identical to
+  pressing it by hand. `aria-live="polite"`.
+- **Dock shell (opt-in `?dock=1`, issues #1863–#1866):** `app/dock-ui.js`
+  re-shells the same `#toolbar` DOM behind `html.dock-ui`. Phones get a
+  fixed bottom bar of section heads whose open body becomes a sheet;
+  desktops ≥1024px get a side rail with in-flow accordions and an icon
+  collapse (`navaid.dockRailCollapsed`); 681–1023px keeps the menubar. The
+  GPS cluster and `#gps-readout` move into a fixed top `#status-strip`;
+  the Print panel parks at the inline-start edge (`exportPrintOnTopLine()`
+  short-circuits in rail mode). Absent the URL parameter nothing changes —
+  the proven shell is the default. Covered by `tests/dock-ui.spec.js`.
 - **Inspector:** `#insp-title` is an `<input>` — for waypoints it's
   the editable name (placeholder `WP N`); for legs it's read-only
   `Leg N`; for notes it's read-only and a textarea + color picker
@@ -667,6 +684,9 @@ as a machine-readable registry.
   for the floating mobile toolbar and desktop menubar.
 - `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed floating
   mobile toolbar. Desktop menubar view ignores this value.
+- `navaid.dockRailCollapsed` — `'0'` / `'1'` for the icon-collapsed rail of
+  the opt-in dock shell (`?dock=1`, `app/dock-ui.js`). Device-local; only
+  read/written while the flag is present.
 - `navaid.sec.<sectionId>` — `'0'` / `'1'` per accordion section
   (`build`, `view`, `display`, `charts`, `export`, `print`, `sim`, etc.).
 - `navaid.inspPos.<lang>`, `navaid.clockPos.<lang>`,

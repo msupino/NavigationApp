@@ -68,17 +68,42 @@ window.dismissRoutePriming = dismissRoutePriming;
 
 function refreshModeChip() {
   let chip = document.getElementById('mode-chip');
-  const label = state.mode === 'add' ? (S.modeChipAdd || 'Adding waypoints')
+  const modeLabel = state.mode === 'add' ? (S.modeChipAdd || 'Adding waypoints')
     : state.mode === 'note' ? (S.modeChipNote || 'Adding notes') : '';
+  // Beyond drawing modes the chip surfaces the two states a pilot most needs
+  // to glance-confirm in flight: the edit lock (every drag frozen) and
+  // aircraft following. An active drawing mode wins — it changes what the
+  // next tap does, which is the most urgent thing to know.
+  const locked = !state.mode && typeof routeEditLocked === 'function' && routeEditLocked();
+  const following = !state.mode && !locked
+    && typeof gpsPositionLive === 'function' && gpsPositionLive()
+    && typeof gpsSetFollow === 'function' && gpsFollow;
+  const label = modeLabel
+    || (locked ? (S.modeChipLocked || 'Route locked') : '')
+    || (following ? (S.followOnToast || 'Following the aircraft') : '');
   if (!label) { if (chip) chip.remove(); return; }
   if (!chip) {
     chip = document.createElement('button');
     chip.id = 'mode-chip';
     chip.type = 'button';
-    chip.onclick = () => setMode(null);
+    chip.setAttribute('aria-live', 'polite');
     document.body.appendChild(chip);
   }
-  chip.textContent = label + ' — ' + (S.modeChipStop || 'tap to stop');
+  chip.dataset.kind = state.mode ? 'mode' : (locked ? 'locked' : 'follow');
+  if (state.mode) {
+    chip.onclick = () => setMode(null);
+  } else {
+    // Exit through the control that owns the state so toasts, persistence and
+    // the auto-lock override semantics stay identical to pressing it by hand.
+    chip.onclick = () => {
+      const btn = document.getElementById(locked ? 'edit-lock' : 'follow-lock');
+      if (btn) btn.click();
+      refreshModeChip();
+    };
+  }
+  const action = locked ? (S.modeChipUnlock || 'tap to unlock')
+    : (S.modeChipStop || 'tap to stop');
+  chip.textContent = label + ' — ' + action;
   chip.title = S.modeChipTitle || 'Click to leave this mode';
 }
 
@@ -553,6 +578,7 @@ function refreshGpsFollowControl() {
                    : (S.followLockOff || 'Not following — tap to follow the aircraft');
   followBtn.title = label;
   followBtn.setAttribute('aria-label', label);
+  if (typeof refreshModeChip === 'function') refreshModeChip();
 }
 followBtn.onclick = () => {
   const on = !gpsFollow;
@@ -624,6 +650,7 @@ function refreshEditLockControl() {
           : (S.editLockOff || 'Points and labels can be dragged — tap to lock the route'));
   editLockBtn.title = label;
   editLockBtn.setAttribute('aria-label', label);
+  if (typeof refreshModeChip === 'function') refreshModeChip();
 }
 window.refreshEditLockControl = refreshEditLockControl;
 refreshEditLockControl();
