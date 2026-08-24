@@ -1672,19 +1672,12 @@ var _layerGen = 0;
 // reverse direction from it rather than keeping a second hand-maintained
 // inverse map that could drift. Layers not named here (Navigation /
 // Satellite / OSM) share the CVFR datasets.
-const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
-// 'ats' is a dataset with no base chart of its own: the ENR 6.1 sheet is an Extra-layers
-// overlay, not a tile layer. It can therefore never be reached by following the base layer
-// -- only by asking for it in View/Set -> "Nav waypoints from" -- so it lives beside the map
-// above rather than in it, where the reverse lookup would search for a chart that is not
-// there.
-const _PREFIXES_WITHOUT_CHART = { ats: 'ATS routes' };
+const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters', ats: 'ATS' };
 function layerDataPrefix() {
   // An explicit choice (View/Set -> "Nav waypoints from") wins over the base layer, so
   // Satellite / OSM / Navigation are no longer stuck on CVFR: they used to fall through
   // to 'cvfr' with no way to ask for the LSA or helicopter sets, even though both ship.
-  if (typeof navDataPrefix === 'string' &&
-      (_PREFIX_LAYER_NAME[navDataPrefix] || _PREFIXES_WITHOUT_CHART[navDataPrefix])) return navDataPrefix;
+  if (typeof navDataPrefix === 'string' && _PREFIX_LAYER_NAME[navDataPrefix]) return navDataPrefix;
   const l = currentLayerName();
   for (const p in _PREFIX_LAYER_NAME) {
     if (_PREFIX_LAYER_NAME[p] === l) return p;
@@ -1695,10 +1688,6 @@ function layerDataPrefix() {
 // -translated S.layerLabels dict (keyed by full layer name) instead of a
 // second hand-written map that would need its own translations kept in sync.
 function layerLabelForPrefix(pfx) {
-  if (_PREFIXES_WITHOUT_CHART[pfx]) {
-    return (S.layerLabels && S.layerLabels[_PREFIXES_WITHOUT_CHART[pfx]]) ||
-      _PREFIXES_WITHOUT_CHART[pfx];
-  }
   const layerName = _PREFIX_LAYER_NAME[pfx] || pfx;
   return (S.layerLabels && S.layerLabels[layerName]) || layerName;
 }
