@@ -246,31 +246,17 @@ def georef(pdf, png, arp):
     # (see plane()). Adopted only when it beats the single-axis fit on the labels it was
     # given: on a plate that IS square the second coefficient is noise, and the residual says
     # so. The corners then come from the plane, evaluated at the frame.
-    # Crop to the GRATICULE, not to the neat line. The frame is found by looking for the
-    # printed border, and a few pixels of error there move the whole sheet on the map while
-    # leaving every residual small -- which is how LLIB's approach charts came to sit half a
-    # mile east with a fit that read as healthy. Cutting at the outermost labelled gridlines
-    # instead makes the placement independent of that: the same fit decides both where the
-    # cut is and what coordinate it carries, so an error in the fit moves neither.
-    PXLAT = lambda deg: (deg - blat) / mlat * scale          # inverse of LAT()
-    PXLON = lambda deg: (deg - blon) / mlon * scale
-    lat_lo, lat_hi = min(l['deg'] for l in lat), max(l['deg'] for l in lat)
-    lon_lo, lon_hi = min(l['deg'] for l in lon), max(l['deg'] for l in lon)
-    if north_up_guess := (lat_key == 'cy'):
-        gtop, gbottom = PXLAT(lat_hi), PXLAT(lat_lo)
-        gleft, gright = PXLON(lon_lo), PXLON(lon_hi)
-    else:
-        gleft, gright = PXLAT(lat_lo), PXLAT(lat_hi)
-        gtop, gbottom = PXLON(lon_hi), PXLON(lon_lo)
-    if gleft > gright: gleft, gright = gright, gleft
-    if gtop > gbottom: gtop, gbottom = gbottom, gtop
-    # Only when it lands inside the page and covers most of the frame the border search
-    # found: a graticule box wildly different from it means one of the two is wrong, and the
-    # printed border is the one that was measured rather than inferred.
-    W_px, H_px = im.size
-    if (0 <= gleft < gright <= W_px and 0 <= gtop < gbottom <= H_px and
-            (gright-gleft) > 0.4*(right-left) and (gbottom-gtop) > 0.4*(bottom-top)):
-        left, right, top, bottom = gleft, gright, gtop, gbottom
+    # The whole sheet is kept: the crop is the printed frame, not the graticule box. Cutting
+    # at the outer gridlines placed the picture just as well -- both land within about 20 m
+    # of their own drawn graticule, measured -- and threw away everything the chart draws
+    # outside them, which on an approach plate is the procedure text and half the plan view.
+    #
+    # Placement rides on the least-squares fit over the labels, which is unbiased at their
+    # centroid and keeps the two axes in scale with each other (conformality ~1.00). A
+    # two-point calibration on the outermost ticks was tried and is worse: it lands the datum
+    # no better and stretches the sheet by 2%, because the ticks it trusts are two measured
+    # positions rather than eleven.
+    north_up_guess = (lat_key == 'cy')
     LATxy = lambda px, py: LAT(py if lat_key == 'cy' else px)
     LONxy = lambda px, py: LON(px if lat_key == 'cy' else py)
     north_up = (lat_key == 'cy')

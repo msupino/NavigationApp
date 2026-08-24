@@ -63,26 +63,25 @@
         "LLBG_airport_VFR.pdf"
       ],
    "ifr_overlays": [
-    {"png": "LLBG_APPROACHILS08.png", "code": "ILS 08", "title": "LLBG_APPROACH_ILS 08.pdf", "sw": [31.91667, 34.5], "ne": [32.08333, 34.91667]},
-    {"png": "LLBG_APPROACHILS12.png", "code": "ILS 12", "title": "LLBG_APPROACH_ILS 12.pdf", "sw": [31.91667, 34.58333], "ne": [32.16667, 34.91667]},
-    {"png": "LLBG_APPROACHILS21.png", "code": "ILS 21", "title": "Instrument approach chart (IAC) - ICAO ILS RWY 21", "sw": [31.91667, 34.75], "ne": [32.25, 35.16667]},
-    {"png": "LLBG_APPROACHILS30.png", "code": "ILS 30", "title": "LLBG_APPROACH_ILS 30.pdf", "sw": [31.83333, 34.66667], "ne": [32.16667, 35.16667]},
-    {"png": "LLBG_APPROACHLOC21.png", "code": "LOC 21", "title": "Instrument approach chart (IAC) - ICAO LOC RWY 21", "sw": [31.91667, 34.75], "ne": [32.25, 35.16667]},
-    {"png": "LLBG_APPROACHRNP08.png", "code": "RNP 08", "title": "Instrument approach chart (IAC) - ICAO RNP RWY 08", "sw": [31.83333, 34.5], "ne": [32.16667, 35.0]},
-    {"png": "LLBG_APPROACHRNP12.png", "code": "RNP 12", "title": "LLBG_APPROACH_RNP 12.pdf", "sw": [31.91667, 34.58333], "ne": [32.16667, 34.91667]},
-    {"png": "LLBG_APPROACHRNP26.png", "code": "RNP 26", "title": "LLBG_APPROACH_RNP 26.pdf", "sw": [31.83333, 34.66667], "ne": [32.16667, 35.16667]},
-    {"png": "LLBG_APPROACHRNPX30.png", "code": "RNP X 30", "title": "LLBG_APPROACH_RNP X 30.pdf", "sw": [31.91667, 34.75], "ne": [32.08333, 35.0]},
-    {"png": "LLBG_APPROACHRNPY21.png", "code": "RNP Y 21", "title": "LLBG_APPROACH_RNP Y 21.pdf", "sw": [31.91667, 34.75], "ne": [32.25, 35.16667]},
-    {"png": "LLBG_APPROACHRNPZ30.png", "code": "RNP Z 30", "title": "LLBG_APPROACH_RNP Z 30.pdf", "sw": [31.91667, 34.66667], "ne": [32.16667, 35.16667]},
-    {"png": "LLBG_SID08.png", "code": "SID 08", "title": "LLBG_SID_08.pdf", "tl": [32.75, 35.5], "tr": [31.91667, 35.5], "bl": [32.75, 34.0]},
-    {"png": "LLBG_SID122630Orlev.png", "code": "SID 12-26-30 (Orlev)", "title": "LLBG_SID_12-26-30 (Orlev).pdf", "tl": [32.08333, 35.0], "tr": [31.91667, 35.0], "bl": [32.08333, 34.58333]},
-    {"png": "LLBG_SID122630PidetRipu.png", "code": "SID 12-26-30 (Pidet+Ripud)", "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 PIDET 2C, 1E, 1F, RIPUD 1E, 1F", "sw": [31.91667, 34.75], "ne": [32.5, 35.25]},
-    {"png": "LLBG_SID12.png", "code": "SID 12", "title": "LLBG_SID_12.pdf", "tl": [32.33333, 35.16667], "tr": [31.83333, 35.16667], "bl": [32.33333, 34.0]},
-    {"png": "LLBG_SID26.png", "code": "SID 26", "title": "LLBG_SID_26.pdf", "tl": [32.33333, 35.16667], "tr": [31.83333, 35.16667], "bl": [32.33333, 34.0]},
-    {"png": "LLBG_SID30.png", "code": "SID 30", "title": "LLBG_SID_30.pdf", "tl": [32.33333, 35.16667], "tr": [31.83333, 35.16667], "bl": [32.33333, 34.0]},
-    {"png": "LLBG_SIDSUVAS1G.png", "code": "SID SUVAS1G", "title": "LLBG_SID_SUVAS1G.pdf", "tl": [32.33333, 35.0], "tr": [31.83333, 35.0], "bl": [32.33333, 34.0]},
-    {"png": "LLBG_STAR121.png", "code": "STAR 12-1", "title": "Standard Arrival chart instrument (STAR) - ICAO RWY 12 AMMIT 1B, SALAM 2B", "sw": [31.5, 34.83333], "ne": [32.33333, 35.5]},
-    {"png": "LLBG_VAC302.png", "code": "VAC 30-2", "title": "Visual approach chart GAVRI approach RWY 30", "sw": [31.91667, 34.75], "ne": [32.16667, 35.08333]}
+    {"png": "LLBG_APPROACHILS08.png", "code": "ILS 08", "title": "LLBG_APPROACH_ILS 08.pdf", "sw": [31.83866, 34.48222], "ne": [32.16001, 35.00327]},
+    {"png": "LLBG_APPROACHILS12.png", "code": "ILS 12", "title": "LLBG_APPROACH_ILS 12.pdf", "sw": [31.89508, 34.53213], "ne": [32.20487, 35.00774]},
+    {"png": "LLBG_APPROACHILS30.png", "code": "ILS 30", "title": "LLBG_APPROACH_ILS 30.pdf", "sw": [31.80135, 34.49936], "ne": [32.27308, 35.24054]},
+    {"png": "LLBG_APPROACHLOC21.png", "code": "LOC 21", "title": "Instrument approach chart (IAC) - ICAO LOC RWY 21", "sw": [31.90686, 34.71497], "ne": [32.2582, 35.16292]},
+    {"png": "LLBG_APPROACHRNP08.png", "code": "RNP 08", "title": "Instrument approach chart (IAC) - ICAO RNP RWY 08", "sw": [31.83119, 34.48924], "ne": [32.23656, 35.01044]},
+    {"png": "LLBG_APPROACHRNP12.png", "code": "RNP 12", "title": "LLBG_APPROACH_RNP 12.pdf", "sw": [31.89508, 34.53405], "ne": [32.20487, 35.00966]},
+    {"png": "LLBG_APPROACHRNP26.png", "code": "RNP 26", "title": "LLBG_APPROACH_RNP 26.pdf", "sw": [31.81836, 34.62644], "ne": [32.25727, 35.19682]},
+    {"png": "LLBG_APPROACHRNPX30.png", "code": "RNP X 30", "title": "LLBG_APPROACH_RNP X 30.pdf", "sw": [31.8598, 34.67452], "ne": [32.12306, 35.05651]},
+    {"png": "LLBG_APPROACHRNPY21.png", "code": "RNP Y 21", "title": "LLBG_APPROACH_RNP Y 21.pdf", "sw": [31.89776, 34.70635], "ne": [32.26804, 35.18089]},
+    {"png": "LLBG_APPROACHRNPZ30.png", "code": "RNP Z 30", "title": "LLBG_APPROACH_RNP Z 30.pdf", "sw": [31.87272, 34.65001], "ne": [32.22553, 35.20221]},
+    {"png": "LLBG_SID08.png", "code": "SID 08", "title": "LLBG_SID_08.pdf", "tl": [32.80038, 35.54204], "tr": [31.89025, 35.54204], "bl": [32.80038, 33.98594]},
+    {"png": "LLBG_SID122630Orlev.png", "code": "SID 12-26-30 (Orlev)", "title": "LLBG_SID_12-26-30 (Orlev).pdf", "tl": [32.11775, 35.03093], "tr": [31.90308, 35.03093], "bl": [32.11775, 34.54352]},
+    {"png": "LLBG_SID122630PidetRipu.png", "code": "SID 12-26-30 (Pidet+Ripud)", "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 PIDET 2C, 1E, 1F, RIPUD 1E, 1F", "sw": [31.88864, 34.69499], "ne": [32.58026, 35.28702]},
+    {"png": "LLBG_SID12.png", "code": "SID 12", "title": "LLBG_SID_12.pdf", "tl": [32.41836, 35.15314], "tr": [31.73933, 35.15314], "bl": [32.41836, 33.98031]},
+    {"png": "LLBG_SID26.png", "code": "SID 26", "title": "LLBG_SID_26.pdf", "tl": [32.4177, 35.16879], "tr": [31.74032, 35.16879], "bl": [32.4177, 33.98649]},
+    {"png": "LLBG_SID30.png", "code": "SID 30", "title": "LLBG_SID_30.pdf", "tl": [32.43696, 35.16834], "tr": [31.75312, 35.16834], "bl": [32.43696, 33.98809]},
+    {"png": "LLBG_SIDSUVAS1G.png", "code": "SID SUVAS1G", "title": "LLBG_SID_SUVAS1G.pdf", "tl": [32.40439, 35.10168], "tr": [31.7461, 35.10168], "bl": [32.40439, 33.97681]},
+    {"png": "LLBG_STAR121.png", "code": "STAR 12-1", "title": "Standard Arrival chart instrument (STAR) - ICAO RWY 12 AMMIT 1B, SALAM 2B", "sw": [31.44408, 34.83834], "ne": [32.34545, 35.56985]},
+    {"png": "LLBG_VAC302.png", "code": "VAC 30-2", "title": "Visual approach chart GAVRI approach RWY 30", "sw": [31.85532, 34.69546], "ne": [32.17047, 35.10638]}
    ],
       "runways": [
         "08/26",
@@ -436,7 +435,7 @@
         "LLHZ_airport_Chart.pdf"
       ],
    "ifr_overlays": [
-    {"png": "LLHZ_ATS.png", "code": "ATS departure", "title": "יציאה לנתיבי ATS", "sw": [32.0, 34.66667], "ne": [32.33333, 35.0]}
+    {"png": "LLHZ_ATS.png", "code": "ATS departure", "title": "יציאה לנתיבי ATS", "sw": [31.98455, 34.63961], "ne": [32.41098, 35.00103]}
    ],
       "runways": [
         "10/28"
@@ -532,8 +531,8 @@
         "LLIB_airport_Chart.pdf"
       ],
    "ifr_overlays": [
-    {"png": "LLIB_STANDARDINSTRUMENT.png", "code": "SID 15/33", "title": "STANDARD INSTRUMENT DEPARTURE RWY 15 and 33", "sw": [32.75, 35.41667], "ne": [33.08333, 35.66667]},
-    {"png": "LLIB_VOR.png", "code": "VOR approach", "title": "תהליך גישה VOR", "sw": [32.66667, 35.33333], "ne": [33.08333, 35.75]}
+    {"png": "LLIB_STANDARDINSTRUMENT.png", "code": "SID 15/33", "title": "STANDARD INSTRUMENT DEPARTURE RWY 15 and 33", "sw": [32.67581, 35.3713], "ne": [33.08093, 35.7027]},
+    {"png": "LLIB_VOR.png", "code": "VOR approach", "title": "תהליך גישה VOR", "sw": [32.65443, 35.30575], "ne": [33.10354, 35.80579]}
    ],
       "runways": [
         "15/33",
