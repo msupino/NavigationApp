@@ -51,11 +51,12 @@ test('choosing it puts the sheet on the map, on the bounds its data states', asy
 });
 
 // The sheet covers the FIR and no more, so the world around it must not be blank — the same
-// underlay every other FIR-only chart gets.
-test('the OSM underlay fills in around it', async ({ page }) => {
+// floor every other FIR-only chart gets, which is OpenStreetMap until Display says otherwise
+// (see base-layer-under-chart.spec.js).
+test('the map under the chart fills in around it', async ({ page }) => {
   await boot(page);
   await pick(page, 'ATS');
-  expect(await page.evaluate(() => map.hasLayer(osmUnderlay))).toBe(true);
+  expect(await page.evaluate(() => map.hasLayer(underlayLayer('OpenStreetMap')))).toBe(true);
 });
 
 // Being a chart is what makes "Follow chart" meaningful: its own reporting points come up

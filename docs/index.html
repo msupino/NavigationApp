@@ -328,6 +328,11 @@
           <span data-i18n="tbLayerLabel"></span>
           <select id="layer-select"></select>
         </label>
+        <label class="navtoggle" data-i18n-title="tbLayerOpacityTitle">
+          <span data-i18n="tbLayerOpacity"></span>
+          <input type="range" id="map-opacity" value="80">
+          <span class="slider-val" id="map-opacity-val"></span>
+        </label>
         <!-- Seed speed for a leg with nothing to inherit from. Drives the
              defaultLegSpeedKt tune key, so the gist default still applies until
              the pilot sets their own aircraft's cruise here. -->
@@ -409,10 +414,9 @@
         <!-- Grouped coarse to fine, separated by rules: the base map, then the waypoint
              controls, then the leg-arrow controls, then the line widths. Within a group
              the order is always size, opacity, colour. -->
-        <label class="navtoggle" data-i18n-title="tbMapOpacityTitle">
-          <span data-i18n="tbMapOpacity"></span>
-          <input type="range" id="map-opacity" value="80">
-          <span class="slider-val" id="map-opacity-val"></span>
+        <label class="navtoggle" data-i18n-title="tbBaseLayerTitle">
+          <span data-i18n="tbBaseLayer"></span>
+          <select id="base-layer-select"></select>
         </label>
         <div class="tb-group-separator" aria-hidden="true"></div>
         <label class="navtoggle navtoggle-wrap" data-i18n-title="tbWpSizeTitle">
