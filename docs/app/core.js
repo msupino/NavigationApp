@@ -1876,6 +1876,7 @@ window.S = Object.assign({
   altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'Pair endpoints not found',
   addFreqChange: 'Add frequency change (Z)',
+  addFreqChangeAtTurn: 'You leave the turning point on the frequency you arrived on, so there is no change to call here.',
   deleteFreqChange: '🗑 Delete freq change (X)',
   resetFreqLocation: '↻ Reset callout location',
   resetFreqLocationTitle: 'Reset callout location',

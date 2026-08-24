@@ -864,6 +864,7 @@ window.S = {
   altPairsGoTo: function(from, to) { return 'עבור אל ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'נקודות הזוג לא נמצאו',
   addFreqChange: 'הוסף שינוי תדר (Z)',
+  addFreqChangeAtTurn: 'מנקודת החזרה ממשיכים בתדר שבו הגעתם, ולכן אין כאן שינוי תדר לקרוא.',
   deleteFreqChange: '🗑 מחק שינוי תדר (X)',
   resetFreqLocation: '↻ אפס מיקום תווית',
   resetFreqLocationTitle: 'איפוס מיקום תווית שינוי התדר',
