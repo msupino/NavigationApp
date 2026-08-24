@@ -267,12 +267,20 @@ function isKnownCommChangeKey(ccKey) {
 function appendAddFreqChangeButton(body, wp, ccKey) {
   if (!body || !wp || !ccKey || !showCommChange) return;
   const wpIdx = Array.isArray(state.waypoints) ? state.waypoints.indexOf(wp) : -1;
-  if (wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
-      legRetraceTurnIndex() === wpIdx) return;
+  // At the turning point you leave on the frequency you arrived on, so there is no change to
+  // call. Dimmed with the reason rather than taken away: a control that vanishes when a
+  // point becomes the turn moves everything under it -- including the button being pressed
+  // -- and leaves a pilot hunting for an action that was there a moment ago.
+  const atTurn = wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
+    legRetraceTurnIndex() === wpIdx;
   const add = document.createElement('button');
   add.className = 'insp-btn add-freq-change-btn';
   add.textContent = S.addFreqChange || 'Add frequency change';
+  add.disabled = atTurn;
+  if (atTurn) add.title = S.addFreqChangeAtTurn ||
+    'You leave the turning point on the frequency you arrived on, so there is no change to call here.';
   add.onclick = () => {
+    if (atTurn) return;
     const idx = addCommChangeNoteForWaypoint(wp, ccKey);
     if (idx >= 0 && state.selected && state.selected.type === 'wp') {
       state.selected.freqNoteIndex = idx;
