@@ -4592,10 +4592,12 @@ if (typeof window !== 'undefined') window.legScreenEnds = legScreenEnds;
 // landed on exactly the same point: one pile of arrows with one set of numbers readable.
 // Each repeat now sits a kite's width further along the leg, so they read as a row.
 // Returns pixels along the leg direction, 0 for a leg flown once.
-function legRepeatAlongPx(i) {
+// Which pass this leg is, out of how many over the same track the same way round.
+// `before` counts the earlier ones, so a row can be centred on the leg.
+function legRepeatSlot(i) {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
   const a = wps[i], b = wps[i + 1];
-  if (!a || !b) return 0;
+  if (!a || !b) return { before: 0, total: 0 };
   const same = (p, q) => p && q &&
     (typeof sameMapPoint === 'function' ? sameMapPoint(p, q) : (p.lat === q.lat && p.lng === q.lng));
   let before = 0, total = 0;
@@ -4604,14 +4606,35 @@ function legRepeatAlongPx(i) {
     total++;
     if (j < i) before++;
   }
-  if (total < 2) return 0;
-  // Centre the row on the leg: two passes step half a width either side of the middle,
-  // three put one in the middle and one either side, and so on.
-  const width = (typeof tune === 'function' ? tune('legKiteCellWidthPx') * 3 : 90) *
-    (typeof kiteDrawScale === 'function' ? kiteDrawScale() : 1);
+  return { before, total };
+}
+if (typeof window !== 'undefined') window.legRepeatSlot = legRepeatSlot;
+// Centre a row of `total` kites, one width apart, on whatever the kite is anchored to.
+function legRepeatStep(i, width) {
+  const { before, total } = legRepeatSlot(i);
+  if (total < 2 || !(width > 0)) return 0;
+  // Two passes step half a width either side of the anchor, three put one on it and one
+  // either side, and so on.
   return (before - (total - 1) / 2) * width;
 }
+function legRepeatAlongPx(i) {
+  const width = (typeof tune === 'function' ? tune('legKiteCellWidthPx') * 3 : 90) *
+    (typeof kiteDrawScale === 'function' ? kiteDrawScale() : 1);
+  return legRepeatStep(i, width);
+}
 if (typeof window !== 'undefined') window.legRepeatAlongPx = legRepeatAlongPx;
+// Same idea for the cumulative-time kite, which is anchored at a waypoint rather than at the
+// middle of the leg. Every pass over the same track ends at the same waypoint, so without
+// this they stack there -- which is what a route flown three times looked like: one legible
+// elapsed time and two underneath it. Its own width, because a cum kite is not a nav kite.
+function legRepeatCumAlongPx(i) {
+  const width = (typeof tune === 'function'
+    ? (tune('cumKiteCellWidthPx') + tune('cumKiteTriangleLenPx'))
+    : 60) * (typeof cumKiteDrawScale === 'function' ? cumKiteDrawScale()
+             : (typeof legZoomScale === 'function' ? legZoomScale() : 1));
+  return legRepeatStep(i, width);
+}
+if (typeof window !== 'undefined') window.legRepeatCumAlongPx = legRepeatCumAlongPx;
 
 function legIsRetrace(i) {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
