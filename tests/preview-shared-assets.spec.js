@@ -13,7 +13,7 @@ const path = require('path');
 // workflow and not to this list makes the preview declare more shared dirs than the test
 // knows about, which is how the ATS pair announced themselves.
 const DIRS = ['circuit-img', 'training-img', 'cvfr-img', 'heli-img', 'commfail-img',
-              'atsdep-img', 'ats-img'];
+              'atsdep-img', 'ats-img', 'ifr-img'];
 
 async function boot(page, sharedDirs) {
   if (sharedDirs) {

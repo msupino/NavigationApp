@@ -466,7 +466,10 @@ def main(argv):
                          'similarity, which keeps the paper\'s proportions.')
     ap.add_argument('--write', action='store_true', help='write docs/<set>-img/<ICAO>_<set>.png')
     ap.add_argument('--set', default='cvfr',
-                    help='which overlay set --write belongs to (cvfr, atsdep, …)')
+                    help='which overlay set --write belongs to (cvfr, atsdep, ifr, …)')
+    ap.add_argument('--name', default='',
+                    help='file stem for --write (default <ICAO>_<set>); a set with several '
+                         'sheets per field needs one name each')
     ap.add_argument('--width', type=int, default=780, help='overlay width in px')
     a = ap.parse_args(argv)
 
@@ -542,7 +545,7 @@ def main(argv):
     l, t, r, b = out['frame']
     crop = hi.crop((round(l*k), round(t*k), round(r*k), round(b*k)))
     crop = crop.resize((a.width, round(crop.height * a.width / crop.width)), _I.LANCZOS)
-    dest = f'docs/{a.set}-img/{a.icao}_{a.set}.png'
+    dest = f'docs/{a.set}-img/{a.name or (a.icao + "_" + a.set)}.png'
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     crop.convert('P', palette=_I.ADAPTIVE, colors=192).save(dest, optimize=True)
     print(f'wrote {dest} {crop.size[0]}x{crop.size[1]}')

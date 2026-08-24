@@ -5230,6 +5230,57 @@ function applyCvfrOpacity(v) {
   if (cvfrLayerGroup) cvfrLayerGroup.eachLayer(l => l.setOpacity(v));
 }
 
+// ── IFR charts: SID / approach / STAR (per-airfield plates) ───────────────────
+// Unlike the other plate families a field has MANY of these -- LLBG publishes nineteen that
+// can be placed -- so a single toggle would stack nineteen sheets on one another. The toggle
+// draws one, and a picker beside it says which. The choice is remembered per field, because
+// "the ILS I am flying" is a property of the field, not of the app.
+//
+// Only sheets that could be georeferenced are here at all. Every LLER SID and IAC, four LLBG
+// STARs and the LLHA STAR are schematics with no graticule: nothing to place them by, and a
+// plausible-looking guess on an approach chart is worse than not drawing it. They stay in
+// the charts viewer, which is where a schematic belongs.
+const IFR_SHOW_KEY  = 'navaid.showIfr';
+const IFR_SHEET_KEY = 'navaid.ifrSheet';       // + '.' + ICAO
+
+window.showIfr = lsGet(IFR_SHOW_KEY) === '1';
+window.ifrLayerGroup = null;
+
+function ifrImgBase() {
+  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
+  return navAssetBase('ifr-img');
+}
+// Fields that publish a placeable IFR sheet, filtered by "Show plates for" like every other
+// plate layer.
+function ifrFields() {
+  if (!airfields) return [];
+  return airfields.filter(af => Array.isArray(af.ifr_overlays) && af.ifr_overlays.length &&
+    plateAirfieldAllowed(af.name));
+}
+function ifrSheetFor(af) {
+  if (!af || !Array.isArray(af.ifr_overlays) || !af.ifr_overlays.length) return null;
+  let want = null;
+  try { want = lsGet(IFR_SHEET_KEY + '.' + af.name); } catch (e) { /* storage unavailable */ }
+  return af.ifr_overlays.find(o => o.png === want) || af.ifr_overlays[0];
+}
+function setIfrSheet(icao, png) {
+  try { localStorage.setItem(IFR_SHEET_KEY + '.' + icao, png); } catch (e) { /* storage off */ }
+  if (ifrLayerGroup) { ifrLayerGroup.remove(); ifrLayerGroup = null; }
+  if (window.showIfr) {
+    loadIfrOverlays();
+    if (ifrLayerGroup) ifrLayerGroup.addTo(map);
+  }
+}
+function loadIfrOverlays() {
+  if (ifrLayerGroup) return;
+  if (!airfields) return;
+  ifrLayerGroup = L.layerGroup();
+  for (const af of ifrFields()) {
+    const sheet = ifrSheetFor(af);
+    if (sheet) buildOverlayLayer(ifrImgBase(), sheet, '1', 'ifr_overlay').addTo(ifrLayerGroup);
+  }
+}
+
 // ── ATS departure routes (per-airfield plate) ─────────────────────────────────
 // LLHZ's נספח ח', the only airfield chart in the AIP that draws the departure to the ATS
 // routes. One field has it today; the family is per-airfield like the others, so a second
@@ -5762,7 +5813,7 @@ function applyPlateOpacity(v) {
   const valEl = document.getElementById('plate-opacity-val');
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
   [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup,
-   atsdepLayerGroup]
+   atsdepLayerGroup, ifrLayerGroup]
     .forEach(g => { if (g) g.eachLayer(l => l.setOpacity(v)); });
 }
 
@@ -6149,6 +6200,60 @@ function chartsLoadingUntilReady(group, owner) {
     };
   }
 })();
+// IFR chart toggle + its sheet picker.
+(function () {
+  const cb = document.getElementById('ifr-cb');
+  const sel = document.getElementById('ifr-sheet');
+  if (!cb) return;
+  cb.checked = showIfr;
+  const fillSheets = () => {
+    if (!sel) return;
+    sel.textContent = '';
+    const fields = ifrFields();
+    for (const af of fields) {
+      const label = (typeof navName === 'function' ? navName(af.name) : af.name);
+      for (const o of af.ifr_overlays) {
+        const opt = document.createElement('option');
+        opt.value = af.name + '|' + o.png;
+        // The field's name only when more than one is shown: with the filter on a single
+        // field, "LLBG · ILS 08" is the field's name nineteen times over.
+        opt.textContent = fields.length > 1 ? label + ' · ' + o.code : o.code;
+        opt.title = o.title || '';
+        sel.appendChild(opt);
+      }
+    }
+    const cur = fields.map(af => af.name + '|' + (ifrSheetFor(af) || {}).png);
+    sel.value = cur[0] || '';
+    sel.disabled = !sel.options.length;
+    const row = sel.closest('label');
+    if (row) row.hidden = !showIfr || !sel.options.length;
+  };
+  window.refreshIfrSheets = fillSheets;
+  cb.onchange = async function (e) {
+    window.showIfr = e.target.checked;
+    try { localStorage.setItem(IFR_SHOW_KEY, showIfr ? '1' : '0'); } catch (_) {}
+    if (showIfr) {
+      const loadingOwner = chartsLoadingStart('ifr');
+      if (!airfields) await loadAirfields();
+      if (!window.showIfr) { chartsLoading(false, loadingOwner); return; }
+      loadIfrOverlays();
+      if (ifrLayerGroup) ifrLayerGroup.addTo(map);
+      chartsLoadingUntilReady(ifrLayerGroup, loadingOwner);
+    } else {
+      if (ifrLayerGroup) ifrLayerGroup.remove();
+      chartsLoadingCancelGroup('ifr');
+    }
+    fillSheets();
+  };
+  if (sel) {
+    sel.onchange = () => {
+      const [icao, png] = String(sel.value).split('|');
+      if (icao && png) setIfrSheet(icao, png);
+    };
+  }
+  if (airfields) fillSheets();
+  else loadAirfields().then(fillSheets).catch(() => {});
+})();
 // ATS departure-routes plate toggle — one of the airfield plates, so it joins their mutual
 // exclusion below.
 (function () {
@@ -6175,7 +6280,7 @@ function chartsLoadingUntilReady(group, owner) {
 // a time, so turning one on turns the others off (each toggle's own change
 // handler then removes its layer + persists the off state).
 (function () {
-  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'atsdep-cb']
+  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'atsdep-cb', 'ifr-cb']
     .map(id => document.getElementById(id))
     .filter(Boolean);
   for (const cb of boxes) {
@@ -7625,6 +7730,7 @@ loadAirfields().then(() => {
       ['showHeli',     HELI_SHOW_KEY,     'heli-cb',     loadHeliOverlays,     () => heliLayerGroup],
       ['showCommfail', COMMFAIL_SHOW_KEY, 'commfail-cb', loadCommfailOverlays, () => commfailLayerGroup],
       ['showAtsDep',   ATSDEP_SHOW_KEY,   'atsdep-cb',   loadAtsDepOverlays,   () => atsdepLayerGroup],
+      ['showIfr',      IFR_SHOW_KEY,      'ifr-cb',      loadIfrOverlays,      () => ifrLayerGroup],
     ];
     let shown = false;
     for (const [flag, key, cbId, load, group] of plates) {
@@ -8956,6 +9062,7 @@ NavAid.defaultVisibilityMap = [
   ['heli-cb', 'navaid.showHeli', 'defaultShowHeli'],
   ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
   ['atsdep-cb', 'navaid.showAtsDep', 'defaultShowAtsDep'],
+  ['ifr-cb', 'navaid.showIfr', 'defaultShowIfr'],
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;
