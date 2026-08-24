@@ -155,3 +155,52 @@ test('a typed out-and-back still builds', async ({ page }) => {
   });
   expect(names).toEqual(['LLHZ', 'RIDNG', 'LLHZ']);
 });
+
+// A real sortie, flown and reported: LLHZ SFAIM TYONA NTAIM YAVNE ZASHD, turn, and back up
+// the same reporting points to HTZUK KNTRY LLHZ. One turn for home, but THREE retraced legs
+// getting there -- YAVNE-ZASHD, NTAIM-YAVNE and TYONA-NTAIM are each flown both ways. The
+// limit is per track, and that is why: counting doublings back per route instead would
+// refuse this route at ZASHD->YAVNE, which is simply how the sortie is flown.
+const REAL_SORTIE = [
+  ['LLHZ', 32.17944, 34.83444], ['SFAIM', 32.21056, 34.80722], ['TYONA', 32.00472, 34.72722],
+  ['NTAIM', 31.94361, 34.78083], ['YAVNE', 31.87194, 34.75694], ['ZASHD', 31.82611, 34.70833],
+  ['YAVNE', 31.87194, 34.75694], ['NTAIM', 31.94361, 34.78083], ['TYONA', 32.00472, 34.72722],
+  ['HTZUK', 32.14556, 34.77833], ['KNTRY', 32.14083, 34.80139], ['LLHZ', 32.17944, 34.83444],
+];
+
+test('a sortie that retraces several legs on one turn is allowed, point by point', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate((list) => {
+    const wps = list.map(([name, lat, lng]) => ({ name, lat, lng }));
+    state.waypoints = [];
+    syncLegs();
+    let refusedAt = -1;
+    for (let i = 0; i < wps.length; i++) {
+      // Exactly what an add-mode tap asks before it drops the point.
+      if (!routeAllowsNextPoint(wps[i], state.waypoints)) { refusedAt = i; break; }
+      state.waypoints.push(wps[i]);
+      syncLegs();
+    }
+    const retraced = state.legs.map((_, i) => legIsRetrace(i)).filter(Boolean).length;
+    return { refusedAt, built: state.waypoints.length, over: routeOverflownTrack(state.waypoints), retraced };
+  }, REAL_SORTIE);
+  expect(out.refusedAt).toBe(-1);          // no point along the way was refused
+  expect(out.built).toBe(12);
+  expect(out.over).toBeNull();
+  expect(out.retraced).toBe(3);            // three legs flown both ways, one turn for home
+});
+
+test('the same sortie with one extra pass over a leg is refused', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate((list) => {
+    const wps = list.map(([name, lat, lng]) => ({ name, lat, lng }));
+    // ...ZASHD YAVNE ZASHD: a third pass over YAVNE-ZASHD, which no line can show.
+    const third = wps.slice(0, 7).concat([{ ...wps[5] }]);
+    return {
+      allowed: routeAllowsNextPoint(third[7], third.slice(0, 7)),
+      over: routeOverflownTrack(third),
+    };
+  }, REAL_SORTIE);
+  expect(out.allowed).toBe(false);
+  expect(out.over).not.toBeNull();
+});
