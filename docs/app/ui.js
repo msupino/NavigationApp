@@ -5194,6 +5194,33 @@ function applyCvfrOpacity(v) {
   if (cvfrLayerGroup) cvfrLayerGroup.eachLayer(l => l.setOpacity(v));
 }
 
+// ── ATS departure routes (per-airfield plate) ─────────────────────────────────
+// LLHZ's נספח ח', the only airfield chart in the AIP that draws the departure to the ATS
+// routes. One field has it today; the family is per-airfield like the others, so a second
+// one is a data row and nothing else.
+const ATSDEP_SHOW_KEY = 'navaid.showAtsDep';
+
+window.showAtsDep = lsGet(ATSDEP_SHOW_KEY) === '1';
+window.atsdepLayerGroup = null;
+
+function atsdepImgBase() {
+  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
+  return navAssetBase('atsdep-img');
+}
+
+function loadAtsDepOverlays() {
+  if (atsdepLayerGroup) return;
+  if (!airfields) return;
+  atsdepLayerGroup = L.layerGroup();
+  for (const af of airfields) {
+    const ao = af.atsdep_overlay;
+    if (!ao) continue;
+    if (!plateAirfieldAllowed(af.name)) continue;
+    buildOverlayLayer(atsdepImgBase(), ao, '1', 'atsdep_overlay')
+      .addTo(atsdepLayerGroup);
+  }
+}
+
 // ── ATS routes chart (ENR 6.1) ────────────────────────────────────────────────
 // The one national sheet among the overlays: every other one is a per-airfield plate. It is
 // NOT part of the plate mutual-exclusion group for that reason -- it is the enroute picture
@@ -5739,7 +5766,7 @@ function applyPlateOpacity(v) {
   const valEl = document.getElementById('plate-opacity-val');
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
   [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup,
-   atsLayerGroup]
+   atsdepLayerGroup, atsLayerGroup]
     .forEach(g => { if (g) g.eachLayer(l => l.setOpacity(v)); });
 }
 
@@ -6126,6 +6153,28 @@ function chartsLoadingUntilReady(group, owner) {
     };
   }
 })();
+// ATS departure-routes plate toggle — one of the airfield plates, so it joins their mutual
+// exclusion below.
+(function () {
+  const cb = document.getElementById('atsdep-cb');
+  if (!cb) return;
+  cb.checked = showAtsDep;
+  cb.onchange = async function (e) {
+    window.showAtsDep = e.target.checked;
+    try { localStorage.setItem(ATSDEP_SHOW_KEY, showAtsDep ? '1' : '0'); } catch (_) {}
+    if (showAtsDep) {
+      const loadingOwner = chartsLoadingStart('atsdep');
+      if (!airfields) await loadAirfields();
+      if (!window.showAtsDep) { chartsLoading(false, loadingOwner); return; }
+      loadAtsDepOverlays();
+      if (atsdepLayerGroup) atsdepLayerGroup.addTo(map);
+      chartsLoadingUntilReady(atsdepLayerGroup, loadingOwner);
+    } else {
+      if (atsdepLayerGroup) atsdepLayerGroup.remove();
+      chartsLoadingCancelGroup('atsdep');
+    }
+  };
+})();
 // ATS routes chart toggle. Independent of the plate group above: it is the enroute sheet,
 // not one of the airfield plates, so turning it on leaves whatever plate is showing alone.
 (function () {
@@ -6154,7 +6203,7 @@ function chartsLoadingUntilReady(group, owner) {
 // a time, so turning one on turns the others off (each toggle's own change
 // handler then removes its layer + persists the off state).
 (function () {
-  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb']
+  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'atsdep-cb']
     .map(id => document.getElementById(id))
     .filter(Boolean);
   for (const cb of boxes) {
@@ -7603,6 +7652,7 @@ loadAirfields().then(() => {
       ['showCvfr',     CVFR_SHOW_KEY,     'cvfr-cb',     loadCvfrOverlays,     () => cvfrLayerGroup],
       ['showHeli',     HELI_SHOW_KEY,     'heli-cb',     loadHeliOverlays,     () => heliLayerGroup],
       ['showCommfail', COMMFAIL_SHOW_KEY, 'commfail-cb', loadCommfailOverlays, () => commfailLayerGroup],
+      ['showAtsDep',   ATSDEP_SHOW_KEY,   'atsdep-cb',   loadAtsDepOverlays,   () => atsdepLayerGroup],
     ];
     // The ATS sheet restores on its own: it is not one of the mutually exclusive plates.
     if (window.showAts) {
@@ -8933,6 +8983,7 @@ NavAid.defaultVisibilityMap = [
   ['cvfr-cb', 'navaid.showCvfr', 'defaultShowCvfr'],
   ['heli-cb', 'navaid.showHeli', 'defaultShowHeli'],
   ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
+  ['atsdep-cb', 'navaid.showAtsDep', 'defaultShowAtsDep'],
   ['ats-cb', 'navaid.showAts', 'defaultShowAts'],
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {

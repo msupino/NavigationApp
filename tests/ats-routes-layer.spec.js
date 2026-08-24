@@ -148,3 +148,46 @@ test('it has a section of its own, not a line in the airfield plates', async ({ 
   expect(where.platesTitle).toMatch(/airfield plates/i);
   expect(where.title).toMatch(/enroute/i);
 });
+
+// The AIP's one airfield-level ATS chart: LLHZ's נספח ח', the departure to the ATS routes.
+// That one IS a plate -- it draws a few miles of map around one field -- so it belongs in
+// the plates frame and in their mutual exclusion, which is the opposite of the sheet above.
+test('the LLHZ departure plate is an airfield plate, and behaves like one', async ({ page }) => {
+  await page.route(/atsdep-img\/.*\.png/, r =>
+    r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+  await boot(page);
+  const frame = await page.evaluate(() => {
+    const mine = document.getElementById('atsdep-cb').closest('.tb-layer-frame');
+    const plates = document.getElementById('cvfr-cb').closest('.tb-layer-frame');
+    return mine === plates;
+  });
+  expect(frame).toBe(true);                     // in with the plates, unlike the enroute sheet
+
+  await page.click('#atsdep-cb');
+  await page.waitForFunction(() => {
+    let n = 0; map.eachLayer(l => { if (l && l._ovType === 'atsdep_overlay') n++; });
+    return n > 0;
+  });
+  const laid = await page.evaluate(async () => {
+    const af = await fetch('data/airfields.json').then(r => r.json());
+    const list = Array.isArray(af) ? af : af[Object.keys(af)[0]];
+    const hz = list.find(a => a.name === 'LLHZ');
+    let bounds = null;
+    map.eachLayer(l => { if (l && l._ovType === 'atsdep_overlay') bounds = l.getBounds(); });
+    return { sw: hz.atsdep_overlay.sw, ne: hz.atsdep_overlay.ne,
+             gotSw: [bounds.getSouth(), bounds.getWest()], gotNe: [bounds.getNorth(), bounds.getEast()] };
+  });
+  expect(laid.gotSw[0]).toBeCloseTo(laid.sw[0], 5);
+  expect(laid.gotSw[1]).toBeCloseTo(laid.sw[1], 5);
+  expect(laid.gotNe[0]).toBeCloseTo(laid.ne[0], 5);
+  expect(laid.gotNe[1]).toBeCloseTo(laid.ne[1], 5);
+
+  // It excludes the other plates, and the enroute sheet is untouched by any of it.
+  await page.click('#ats-cb');
+  await page.click('#cvfr-cb');
+  expect(await page.evaluate(() => ({
+    atsdep: document.getElementById('atsdep-cb').checked,
+    cvfr: document.getElementById('cvfr-cb').checked,
+    ats: document.getElementById('ats-cb').checked,
+  }))).toEqual({ atsdep: false, cvfr: true, ats: true });
+});

@@ -735,6 +735,7 @@ NavAid.tuningDefaults = {
   defaultShowCvfr: { value: false, type: 'bool', label: 'Default: show CVFR plates' },
   defaultShowHeli: { value: false, type: 'bool', label: 'Default: show heli plates' },
   defaultShowCommfail: { value: false, type: 'bool', label: 'Default: show comm-fail plates' },
+  defaultShowAtsDep: { value: false, type: 'bool', label: 'Default: show ATS departure plates' },
   defaultShowAts: { value: false, type: 'bool', label: 'Default: show the ATS routes chart' },
 };
 // Groups are ordered to mirror the route-building workflow: the route line
@@ -816,7 +817,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAts'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAtsDep', 'defaultShowAts'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1805,6 +1806,8 @@ window.S = Object.assign({
   tbHeliOpacity: 'Helicopter opacity',
   tbHeliOpacityTitle: 'Adjust helicopter route overlay opacity',
   tbHeliOpacityReset: 'Reset opacity',
+  tbShowAtsDep: 'Show ATS departure routes',
+  tbShowAtsDepTitle: 'The field plate for leaving towards the ATS routes (LLHZ נספח ח׳ — the only field that publishes one).',
   tbShowAts: 'ATS routes chart',
   tbShowAtsTitle: 'The CAA enroute sheet (ENR 6.1): ATS routes, their levels and designators, laid on the map. One national chart, so it shows wherever you are — and it is not one of the airfield plates, so it can be read alongside one.',
   tbShowCommfail: 'Show comm-failure joining',
