@@ -1653,6 +1653,13 @@ async function buildRouteFromQuery(raw) {
     if (!w) { alert(S.errSearchUnknown(t)); return false; }
     resolved.push(w);
   }
+  // A typed route is vetted before it replaces what is on the map: "LLHZ BAZRA LLHZ BAZRA"
+  // asks for a track to be flown three times, and the map can draw it twice at most.
+  const over = (typeof routeOverflownTrack === 'function') && routeOverflownTrack(resolved);
+  if (over) {
+    alert(S.trackFlownTwiceToast || 'A track can be flown twice, once each way');
+    return false;
+  }
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.searchReplaceConfirm)) return false;
   // Always store the canonical airfield / nav-waypoint code so all tokens render

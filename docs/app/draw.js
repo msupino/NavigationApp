@@ -3982,9 +3982,8 @@ function drawLegs() {
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
     // Repeated passes down the same track step along it so their kites do not pile up on one
     // point; a kite the pilot has dragged keeps exactly where it was put.
-    const repeatAlong = (typeof legRepeatAlongPx === 'function') ? legRepeatAlongPx(i) : 0;
-    const inAlong  = (inP.a  || 0) * zoomScale + (inP._default  ? repeatAlong : 0);
-    const outAlong = (outP.a || 0) * zoomScale + (outP._default ? repeatAlong : 0);
+    const inAlong  = (inP.a  || 0) * zoomScale;
+    const outAlong = (outP.a || 0) * zoomScale;
     // Legs inside the departure field's CTR are flown on the field's procedure, not on the
     // route's stopwatch: the clock starts at the boundary reporting point (see
     // ctr-boundaries.json). Those legs add nothing and show no cumulative kite.
@@ -4019,14 +4018,10 @@ function drawLegs() {
     // Declared out here because the RETURN cum kite mirrors it, and that is drawn in the
     // return block below -- inside the inbound block it was out of scope there.
     const cumDef = cumDefaultLabelOffset();       // perp/along px, shared with the hit test
-    // Every pass over the same track ends at the same waypoint, so their cumulative kites
-    // stack there -- three flights over one leg showed one elapsed time with two hidden
-    // underneath. Step each pass a kite's width along the leg, as the nav kites do.
-    const cumRepeat = (typeof legRepeatCumAlongPx === 'function') ? legRepeatCumAlongPx(i) : 0;
     if (showCumTime && !preClock) {
       const cumP = leg.cumLabel || defCum;
       const cumPerp  = cumP._default ? cumDef.perp : (cumP.p || 0) * zoomScale;
-      const cumAlong = (cumP._default ? cumDef.along + cumRepeat : (cumP.a || 0) * zoomScale);
+      const cumAlong = cumP._default ? cumDef.along : (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       queueCumTimeArrow(cumX, cumY,
@@ -4051,7 +4046,7 @@ function drawLegs() {
         const cumRetP = leg.cumLabelRet || defCum;
         // The return kite mirrors it (angle + 180), so the pair never share a place.
         const cumRetPerp  = cumRetP._default ? -cumDef.perp : (cumRetP.p || 0) * zoomScale;
-        const cumRetAlong = (cumRetP._default ? -cumDef.along - cumRepeat : (cumRetP.a || 0) * zoomScale);
+        const cumRetAlong = cumRetP._default ? -cumDef.along : (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         queueCumTimeArrow(cumRetX, cumRetY,
