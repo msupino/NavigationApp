@@ -417,6 +417,10 @@ NavAid.tuningDefaults = {
   // different framing; the point-zoom values are the fallback when there is a single
   // point and nothing to fit.
   fitRoutePaddingPx: { value: 70, min: 0, max: 200, step: 5, label: 'Fit route: padding (px)' },
+  fitPlatePaddingPx: { value: 24, min: 0, max: 200, step: 4,
+    label: 'Fit instrument chart: padding (px)' },
+  fitPlateMaxZoom: { value: 13, min: 8, max: 18, step: 0.5,
+    label: 'Fit instrument chart: closest zoom it will settle on' },
   fitRouteMaxZoom: { value: 11, min: 6, max: 18, step: 0.5, label: 'Fit route: max zoom' },
   fitRouteEmptyZoom: { value: 9, min: 6, max: 14, step: 0.5, label: 'Fit route: zoom with no route' },
   fitNotamPaddingPx: { value: 80, min: 0, max: 200, step: 5, label: 'Fit NOTAM: padding (px)' },
@@ -817,6 +821,7 @@ NavAid.tuningGroups = [
   // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
   // in front of them.
   { name: 'Map fit', keys: ['fitRoutePaddingPx', 'fitRouteMaxZoom', 'fitRouteEmptyZoom',
+    'fitPlatePaddingPx', 'fitPlateMaxZoom',
     'fitNotamPaddingPx', 'fitNotamMaxZoom', 'fitNotamPointZoom',
     'fitTrackPaddingPx', 'fitTrackMaxZoom', 'fitTrackPointZoom',
     'fitAltPairPaddingPx', 'fitAltPairMaxZoom',

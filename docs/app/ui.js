@@ -5301,7 +5301,9 @@ function setIfrSheet(key, opts = {}) {
   if (typeof gpsPositionLive === 'function' && gpsPositionLive()) return;
   let bounds = null;
   ifrLayerGroup.eachLayer(l => { if (l && l.getBounds) bounds = l.getBounds(); });
-  if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
+  // Padding comes from the tuning panel like every other fit in the app -- a literal here is
+  // what let Fit-to-screen and the route fit drift apart, and tunable-map-fit.spec.js says so.
+  if (bounds && bounds.isValid()) map.fitBounds(bounds, fitOpts('fitPlatePaddingPx', 'fitPlateMaxZoom'));
 }
 function loadIfrOverlays() {
   if (ifrLayerGroup) return;
