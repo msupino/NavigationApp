@@ -6,12 +6,12 @@
   "effective": "2025-10-02",
   "modified": "2025-09-30",
   "sw": [
-    29.5,
-    33.666667
+    29.376677,
+    33.426611
   ],
   "ne": [
-    33.333333,
-    36.0
+    33.420846,
+    36.158314
   ],
   "note": "Reprojected to Web Mercator from the CAA sheet, which is drawn on a conformal projection: placed as-printed it would sit kilometres out at the edges. Bounds cover the graticule box the sheet labels on all four sides; nothing outside it is extrapolated."
 }

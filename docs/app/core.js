@@ -3862,10 +3862,12 @@ const layers = {
   // than a tile set: it ships as one reprojected image (see scripts/warp-ats-chart.py), so
   // it is an imageOverlay wearing a base layer's hat. Leaflet treats it like any other
   // layer for add/remove/hasLayer, which is all the picker needs. Bounds are the graticule
-  // box the sheet labels on all four sides -- outside it the OSM underlay shows through,
-  // the same as for the other charts that cover only the FIR.
-  'ATS': L.imageOverlay(navAssetBase('ats-img') + 'ats-routes.png?v=2',
-    [[29.5, 33.666667], [33.333333, 36.0]],
+  // frame of the sheet itself -- outside it the OSM underlay shows through, the same as for
+  // the other charts that cover only the FIR. The corners are repeated from
+  // data/ats-chart.json, which the warp script writes; ats-routes-layer.spec.js compares the
+  // two, so a re-warp that moves them cannot leave this literal behind.
+  'ATS': L.imageOverlay(navAssetBase('ats-img') + 'ats-routes.png?v=3',
+    [[29.376677, 33.426611], [33.420846, 36.158314]],
     { attribution: 'CAAI · AIP ENR 6.1', className: 'ats-base-layer' }),
   'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
