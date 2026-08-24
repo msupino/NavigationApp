@@ -16,7 +16,7 @@ async function boot(page, q = '?lang=en&nogist') {
   await page.waitForFunction(() => typeof tune === 'function' && typeof syncLegs === 'function');
 }
 
-test('the control sits under the layer picker in View/Set and shows 90 by default', async ({ page }) => {
+test('the control sits with the layer picker in View/Set and shows 90 by default', async ({ page }) => {
   await boot(page);
   const el = page.locator('#default-speed');
   await expect(el).toHaveValue('90');
@@ -25,12 +25,17 @@ test('the control sits under the layer picker in View/Set and shows 90 by defaul
     const rows = [...body.children];
     return {
       layerIdx: rows.findIndex(r => r.querySelector('#layer-select')),
+      opacityIdx: rows.findIndex(r => r.querySelector('#map-opacity')),
       speedIdx: rows.findIndex(r => r.querySelector('#default-speed')),
       sameSection: !!body.querySelector('#default-speed'),
     };
   });
   expect(order.sameSection).toBe(true);
-  expect(order.speedIdx).toBe(order.layerIdx + 1);   // directly below Layer
+  // Layer, then the slider that dims it, then this. The opacity slider moved here from
+  // Display when the map under the chart became a chart of its own: what it acts on is the
+  // layer picked above it, so it belongs between the two.
+  expect(order.opacityIdx).toBe(order.layerIdx + 1);
+  expect(order.speedIdx).toBe(order.opacityIdx + 1);
 });
 
 test('it is labelled in both languages', async ({ page }) => {
