@@ -1914,6 +1914,8 @@ window.S = Object.assign({
   plateCategoryVfr: 'VFR / airport',
   plateCategoryOther: 'Other',
   plateOpen: 'Open',
+  platePlaceOnMap: '🗺 Show on map',
+  platePlaceOnMapTitle: 'Lay this sheet over the map, georeferenced, and go to it. The same layer you would switch on in Extra layers.',
   plateDownload: 'Download',
   plateOpenTab: 'Open in new tab',
   plateClose: 'Close',

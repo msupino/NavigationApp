@@ -6193,7 +6193,7 @@ function loadPlateTitles() {
   const url = new URL('data/plate-titles.json?v=' + PLATES_VER, document.baseURI).href;
   _plateTitlesPromise = fetch(url, { credentials: 'omit' })
     .then(r => (r.ok ? r.json() : {}))
-    .then(m => (_plateTitles = m || {}))
+    .then(m => (_plateTitles = window.plateTitles = m || {}))
     .catch(() => (_plateTitles = {}));
   return _plateTitlesPromise;
 }
@@ -6335,6 +6335,24 @@ function showPlateViewer(filename, label) {
     a.click();
   };
   btns.appendChild(download);
+  // Some of these sheets are drawn on the map. Reading one in the viewer and then hunting
+  // through Extra layers for the toggle that shows it -- and, for an instrument chart, for
+  // its name in a list of twenty -- is a long way round from the chart already open.
+  const placeable = typeof plateMapLayer === 'function' ? plateMapLayer(filename) : null;
+  if (placeable) {
+    const place = document.createElement('button');
+    place.id = 'plate-place-on-map';
+    place.textContent = S.platePlaceOnMap || 'Show on map';
+    place.title = S.platePlaceOnMapTitle || '';
+    place.onclick = () => {
+      teardown();
+      // The Charts modal underneath opened this one; it is in the way of what was asked for.
+      const charts = document.querySelector('.modal-back.charts-modal');
+      if (charts && charts._navaidClose) charts._navaidClose();
+      placeable.show();
+    };
+    btns.appendChild(place);
+  }
   box.appendChild(btns);
   function teardown() {
     window.removeEventListener('keydown', onEsc, true);

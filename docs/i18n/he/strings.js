@@ -893,6 +893,8 @@ window.S = {
   plateCategoryOther: 'אחר',
   plateOpen: 'פתח',
   plateDownload: 'הורד',
+  platePlaceOnMap: '🗺 הצג על המפה',
+  platePlaceOnMapTitle: 'הנחת הגיליון על המפה, ממוקם לפי הקואורדינטות שלו, ומעבר אליו. אותה שכבה שמפעילים בשכבות נוספות.',
   plateOpenTab: 'פתח בלשונית חדשה',
   plateClose: 'סגור',
   platesNone: 'אין דפיות — ראה AIP הרשמי',

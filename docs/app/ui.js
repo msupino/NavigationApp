@@ -6238,6 +6238,66 @@ function chartsLoadingUntilReady(group, owner) {
     };
   }
 })();
+// Which map layer, if any, draws a given plate -- the link the "Show on map" button in the
+// chart viewer follows. Instrument sheets say so themselves: the builder records the plate
+// each overlay was made from. The older families do not, so they are recognised by what the
+// CAA calls the sheet, which is the same thing the Charts list shows the pilot.
+const PLATE_LAYER_BY_TITLE = [
+  // Order matters: "הצטרפות בתקלת קשר מנתיבי CVFR" is a comm-failure sheet that mentions
+  // CVFR, so the comm-failure rule has to be asked first. The last rule is deliberately
+  // broad -- entry/exit routes are what the CVFR overlay draws, whether the sheet calls them
+  // CVFR, "נתיבי כניסה ויציאה" or "נתיבי התובלה הנמוכים".
+  [/הקפה|circuit/i,                              'circuit-cb'],
+  [/אזורי ה?אימון|training area/i,               'training-cb'],
+  [/תקלת קשר|אובדן קשר|comm-?failure|loss of comm/i, 'commfail-cb'],
+  [/מסוק|helicopter/i,                           'heli-cb'],
+  [/CVFR|כניסה ויציאה|כניסה-יציאה|התובלה הנמוכים/i, 'cvfr-cb'],
+];
+function plateMapLayer(filename) {
+  if (!filename || !airfields) return null;
+  const icao = String(filename).split('_')[0];
+  const af = airfields.find(a => a.name === icao);
+  if (!af) return null;
+  // An instrument sheet: switch the layer on and pick this exact sheet.
+  const sheet = (af.ifr_overlays || []).find(o => o.plate === filename);
+  if (sheet) {
+    return { kind: 'ifr', show: () => {
+      const cb = document.getElementById('ifr-cb');
+      if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+      setIfrSheet(icao + '|' + sheet.png, { move: true });
+      if (typeof window.refreshIfrSheets === 'function') window.refreshIfrSheets();
+      const sel = document.getElementById('ifr-sheet');
+      if (sel) sel.value = icao + '|' + sheet.png;
+    } };
+  }
+  // One of the older families: it draws that field's sheet of that kind, so the layer plus
+  // the airfield filter is the whole answer.
+  // The viewer has already loaded these to print the chip; this reads the same cache.
+  const meta = (window.plateTitles && window.plateTitles[filename]) || {};
+  const text = [meta.he, meta.en, filename].filter(Boolean).join(' ');
+  const hit = PLATE_LAYER_BY_TITLE.find(([re]) => re.test(text));
+  if (!hit) return null;
+  const cbId = hit[1];
+  const overlayKey = { 'circuit-cb': 'circuit_overlay', 'training-cb': 'training_overlay',
+                       'commfail-cb': 'commfail_overlay', 'heli-cb': 'heli_overlay',
+                       'cvfr-cb': 'cvfr_overlay' }[cbId];
+  if (!af[overlayKey]) return null;               // that field has no such overlay to show
+  return { kind: cbId, show: () => {
+    const filter = document.getElementById('plate-airfield');
+    if (filter && filter.value !== icao) {
+      filter.value = icao;
+      filter.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const cb = document.getElementById(cbId);
+    if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+    if (Number.isFinite(af.lat) && Number.isFinite(af.lng) &&
+        !(typeof gpsPositionLive === 'function' && gpsPositionLive())) {
+      map.setView([af.lat, af.lng], Math.max(map.getZoom(), tune('plateFieldZoom')));
+    }
+  } };
+}
+window.plateMapLayer = plateMapLayer;
+
 // IFR chart toggle + its sheet picker.
 (function () {
   const cb = document.getElementById('ifr-cb');

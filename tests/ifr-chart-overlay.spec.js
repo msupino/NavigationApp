@@ -75,8 +75,8 @@ test('the picker lists every placeable sheet and switches which one is drawn', a
   const sel = page.locator('#ifr-sheet');
   const values = await page.evaluate(() =>
     Array.from(document.getElementById('ifr-sheet').options).map(o => o.value));
-  expect(values.length).toBe(22);                // 19 at LLBG, 2 at LLIB, 1 at LLHZ
-  expect(values.filter(v => v.startsWith('LLBG|')).length).toBe(19);
+  expect(values.length).toBe(23);                // 20 at LLBG, 2 at LLIB, 1 at LLHZ
+  expect(values.filter(v => v.startsWith('LLBG|')).length).toBe(20);
 
   // Ask for a different sheet: that one is drawn and the one before it is gone. Reported as
   // "selecting different ifr chart doesn't remove selected" -- the picker names one chart,

@@ -93,7 +93,8 @@ def main(argv):
             why = fit.get('error') or (run.stderr.strip().split('\n')[-1] if run.stderr else 'refused')
             skipped.append((icao, plate, why[:70]))
             continue
-        row = {'png': name + '.png', 'code': tidy(code, title), 'title': title}
+        row = {'png': name + '.png', 'code': tidy(code, title), 'title': title,
+               'plate': plate}
         for key in ('sw', 'ne', 'tl', 'tr', 'bl'):
             if key in fit:
                 row[key] = fit[key]
