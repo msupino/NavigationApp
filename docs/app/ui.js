@@ -205,6 +205,41 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
   };
 })();
 
+// What sits UNDER the chart (Display). The picker above chooses the chart; this chooses the
+// map beneath it, which is what fills in around a chart that covers only the FIR and what
+// shows through one that is dimmed. Any chart can take the place, so "ATS over CVFR" and
+// "ATS over Satellite" are both a two-control answer rather than a new stacking model.
+(function wireBaseLayerPicker() {
+  const sel = document.getElementById('base-layer-select');
+  if (!sel) return;
+  const build = () => {
+    const chosen = window.baseLayerName;
+    sel.textContent = '';
+    const opts = [['none', S.tbBaseLayerNone || '— none —']];
+    for (const name of Object.keys(layers)) {
+      if (!layerOffered(name)) continue;
+      opts.push([name, (S.layerLabels && S.layerLabels[name]) || name]);
+    }
+    for (const [value, label] of opts) {
+      const o = document.createElement('option');
+      o.value = value; o.textContent = label;
+      sel.appendChild(o);
+    }
+    // A stored choice for a chart the gist has since withdrawn falls back to the default,
+    // the same way a withdrawn base layer does.
+    if (!Array.from(sel.options).some(o => o.value === chosen)) {
+      setBaseLayerName(tune('defaultBaseLayer'));
+    }
+    sel.value = window.baseLayerName;
+  };
+  build();
+  window.rebuildBaseLayerPicker = build;      // the gist lands after boot
+  sel.onchange = () => {
+    setBaseLayerName(sel.value);
+    if (typeof scheduleDraw === 'function') scheduleDraw();
+  };
+})();
+
 // base map layer picker (replaces the Leaflet layers control)
 const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
@@ -7992,6 +8027,10 @@ if (typeof loadRemoteConfig === "function") {
     // the nav-data source list with it: its entries are those same charts.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
     if (typeof window.rebuildNavWpSource === "function") window.rebuildNavWpSource();
+    // ...and the map-under-the-chart list, whose entries are those charts too. A gist that
+    // ships defaultBaseLayer also has to reach a device that never chose one.
+    if (typeof window.rebuildBaseLayerPicker === "function") window.rebuildBaseLayerPicker();
+    if (typeof updateBasemapUnderlay === "function") updateBasemapUnderlay();
     if (typeof scheduleDraw === "function") scheduleDraw();
     // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
     // so alignment + opacity can be tuned from the gist without a redeploy.
