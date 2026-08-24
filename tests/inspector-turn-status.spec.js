@@ -105,5 +105,8 @@ test('the status line reads in the panel language', async ({ page }) => {
   const status = await page.evaluate(() =>
     document.getElementById('insp-turn-status').textContent);
   expect(status).toMatch(/[֐-׿]/);    // Hebrew, not the English default
-  expect(status).toContain('נקודת חזרה');
+  expect(status).toContain('נקודת החזרה');
+  // The panel's own vocabulary: a route "חוזר על עקבותיו", which is how every other
+  // turning-point string in the Hebrew table says it.
+  expect(status).toContain('עקבותיו');
 });
