@@ -464,7 +464,9 @@ def main(argv):
                     help='ICAO=x,y — a feature the chart draws and where it draws it, in '
                          'pixels of the rendered page. Two or more switch the fit to a '
                          'similarity, which keeps the paper\'s proportions.')
-    ap.add_argument('--write', action='store_true', help='write docs/cvfr-img/<ICAO>_cvfr.png')
+    ap.add_argument('--write', action='store_true', help='write docs/<set>-img/<ICAO>_<set>.png')
+    ap.add_argument('--set', default='cvfr',
+                    help='which overlay set --write belongs to (cvfr, atsdep, …)')
     ap.add_argument('--width', type=int, default=780, help='overlay width in px')
     a = ap.parse_args(argv)
 
@@ -540,7 +542,8 @@ def main(argv):
     l, t, r, b = out['frame']
     crop = hi.crop((round(l*k), round(t*k), round(r*k), round(b*k)))
     crop = crop.resize((a.width, round(crop.height * a.width / crop.width)), _I.LANCZOS)
-    dest = f'docs/cvfr-img/{a.icao}_cvfr.png'
+    dest = f'docs/{a.set}-img/{a.icao}_{a.set}.png'
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
     crop.convert('P', palette=_I.ADAPTIVE, colors=192).save(dest, optimize=True)
     print(f'wrote {dest} {crop.size[0]}x{crop.size[1]}')
     return 0

@@ -139,9 +139,11 @@ window.S = {
     // algorithm merges the neighbouring numbers and separators into one run and
     // reorders them -- "46.0 NM · 5.2 · 30:40" came out scrambled on screen.
     // U+2066 LRI and U+2069 PDI pin the direction of each value, adding no glyphs.
-    // NOTE: no apostrophes in comments in this file -- a straight quote puts cspell
-    // into string context for everything below it, and the Hebrew dictionary stops
-    // being applied, so `npm run lint:spell` reports the rest of the file as typos.
+    // NOTE: no apostrophes in comments in this file, and none inside the strings either --
+    // a straight quote puts cspell into string context for everything below it, and the
+    // Hebrew dictionary stops being applied, so `npm run lint:spell` reports the rest of the
+    // file as typos. Hebrew punctuation wants the geresh (U+05F3) anyway -- נספח ח׳ -- so
+    // there is no reason to reach for a straight quote in Hebrew text at all.
     const ltr = v => '\u2066' + v + '\u2069';
     return ltr(legs) + ' קטעים · ' + ltr(nm + ' NM') + ' · ' + ltr(time) +
       ' · ' + ltr(gal) + ' גלון';
@@ -710,6 +712,7 @@ window.S = {
   tbGrpTerrain: 'תבליט',
   tbGrpAirspace: 'מרחב אווירי',
   tbGrpPlates: 'תרשימי שדה',
+  tbGrpEnroute: 'תרשימי מרחב',
   tbPlateOpacity: 'שקיפות תרשים',
   tbPlateOpacityTitle: 'כוונן שקיפות שכבת תרשימי השדה (משותף לכל השכבות)',
   tbPlateOpacityReset: 'אפס שקיפות',
@@ -791,6 +794,10 @@ window.S = {
   tbHeliOpacity: 'שקיפות נתיבי מסוקים',
   tbHeliOpacityTitle: 'כוונן שקיפות שכבת נתיבי המסוקים',
   tbHeliOpacityReset: 'אפס שקיפות',
+  tbShowAtsDep: 'הצג יציאה לנתיבי ATS',
+  tbShowAtsDepTitle: 'תרשים השדה ליציאה לנתיבי ATS (נספח ח׳ של הרצליה — השדה היחיד שמפרסם תרשים כזה).',
+  tbShowAts: 'מפת נתיבי ATS',
+  tbShowAtsTitle: 'גיליון המרחב של רת"א (ENR 6.1): נתיבי ATS, הגבהים והמסמנים שלהם, על גבי המפה. מפה ארצית אחת, ולכן היא מוצגת בכל מקום — ואינה אחד מתרשימי השדות, כך שאפשר לקרוא אותה יחד עם תרשים.',
   tbShowCommfail: 'הצג הצטרפות בתקלת קשר',
   tbShowCommfailTitle: 'הצג תרשימי הצטרפות בתקלת קשר מוקרנים לשדות תעופה ישראלים',
   tbAlignOverlays: 'יישור שכבות',
