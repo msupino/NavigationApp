@@ -243,7 +243,7 @@ test('every chart variant of a per-chart setting is synced', () => {
   const m = draw.match(/_PREFIX_LAYER_NAME\s*=\s*\{([^}]+)\}/);
   expect(m).not.toBeNull();
   const prefixes = [...m[1].matchAll(/(\w+)\s*:/g)].map(x => x[1]);
-  expect(prefixes.sort()).toEqual(['cvfr', 'heli', 'lsa']);
+  expect(prefixes.sort()).toEqual(['ats', 'cvfr', 'heli', 'lsa']);
   // Only bases appended with the CHART prefix, not every composed key: plenty of
   // keys are built from a base (navaid.sec., navaid.ai.key.) with no chart variants.
   const src = appSources({ excludeAllowlistFile: true });

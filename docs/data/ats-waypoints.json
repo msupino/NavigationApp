@@ -1,0 +1,411 @@
+{
+ "source": "CAA AIP ENR 6.1 ATS routes chart",
+ "note": "Coordinates as printed on the sheet, not measured off the picture.",
+ "waypoints": [
+  {
+   "name": "ABIMI",
+   "lat": 31.90472,
+   "lng": 35.24306
+  },
+  {
+   "name": "ADLOD",
+   "lat": 32.00944,
+   "lng": 35.2525
+  },
+  {
+   "name": "AMMIT",
+   "lat": 31.62222,
+   "lng": 35.45639
+  },
+  {
+   "name": "ARANI",
+   "lat": 31.22972,
+   "lng": 35.21194
+  },
+  {
+   "name": "ASSIF",
+   "lat": 31.74278,
+   "lng": 35.22833
+  },
+  {
+   "name": "ATLIT",
+   "lat": 32.69778,
+   "lng": 34.91528
+  },
+  {
+   "name": "AZERE",
+   "lat": 33.20139,
+   "lng": 33.90222
+  },
+  {
+   "name": "BARZI",
+   "lat": 32.83639,
+   "lng": 35.54333
+  },
+  {
+   "name": "BETYO",
+   "lat": 32.22333,
+   "lng": 34.91889
+  },
+  {
+   "name": "BEXOM",
+   "lat": 31.79389,
+   "lng": 35.01167
+  },
+  {
+   "name": "BIRIM",
+   "lat": 31.86167,
+   "lng": 34.96833
+  },
+  {
+   "name": "BOFIR",
+   "lat": 31.57528,
+   "lng": 34.88528
+  },
+  {
+   "name": "BOGER",
+   "lat": 30.93333,
+   "lng": 34.88333
+  },
+  {
+   "name": "BOKEF",
+   "lat": 31.425,
+   "lng": 35.00444
+  },
+  {
+   "name": "DAFNA",
+   "lat": 32.54333,
+   "lng": 34.23
+  },
+  {
+   "name": "DIVLA",
+   "lat": 32.28417,
+   "lng": 34.71778
+  },
+  {
+   "name": "DONAG",
+   "lat": 31.93417,
+   "lng": 34.58
+  },
+  {
+   "name": "EILOT",
+   "lat": 29.60806,
+   "lng": 34.97611
+  },
+  {
+   "name": "ENOKO",
+   "lat": 31.10833,
+   "lng": 35.20833
+  },
+  {
+   "name": "ESHEL",
+   "lat": 29.82222,
+   "lng": 35.01778
+  },
+  {
+   "name": "FIKER",
+   "lat": 31.46167,
+   "lng": 34.82028
+  },
+  {
+   "name": "GAFAZ",
+   "lat": 32.56222,
+   "lng": 35.29222
+  },
+  {
+   "name": "GALIM",
+   "lat": 32.83333,
+   "lng": 34.96667
+  },
+  {
+   "name": "GEFEN",
+   "lat": 31.40167,
+   "lng": 35.27083
+  },
+  {
+   "name": "GEVES",
+   "lat": 30.45,
+   "lng": 34.9875
+  },
+  {
+   "name": "GIMIK",
+   "lat": 32.80444,
+   "lng": 35.53667
+  },
+  {
+   "name": "GOBRI",
+   "lat": 31.86417,
+   "lng": 35.37889
+  },
+  {
+   "name": "GODED",
+   "lat": 32.165,
+   "lng": 34.57278
+  },
+  {
+   "name": "ITERO",
+   "lat": 31.93444,
+   "lng": 35.14222
+  },
+  {
+   "name": "JILET",
+   "lat": 32.32667,
+   "lng": 34.48333
+  },
+  {
+   "name": "JIRAF",
+   "lat": 30.78667,
+   "lng": 34.68833
+  },
+  {
+   "name": "KANER",
+   "lat": 32.20778,
+   "lng": 34.93194
+  },
+  {
+   "name": "KEREN",
+   "lat": 32.37556,
+   "lng": 34.07917
+  },
+  {
+   "name": "KINAR",
+   "lat": 30.94389,
+   "lng": 35.35139
+  },
+  {
+   "name": "KONFO",
+   "lat": 32.42833,
+   "lng": 34.11556
+  },
+  {
+   "name": "MALUQ",
+   "lat": 31.16528,
+   "lng": 35.37417
+  },
+  {
+   "name": "MEGID",
+   "lat": 32.57639,
+   "lng": 35.26056
+  },
+  {
+   "name": "MERVA",
+   "lat": 32.78167,
+   "lng": 34.54389
+  },
+  {
+   "name": "MESIL",
+   "lat": 32.11056,
+   "lng": 34.90139
+  },
+  {
+   "name": "MIRTA",
+   "lat": 31.32167,
+   "lng": 35.08639
+  },
+  {
+   "name": "MOUAB",
+   "lat": 31.79944,
+   "lng": 35.59972
+  },
+  {
+   "name": "MUVIN",
+   "lat": 31.81611,
+   "lng": 35.545
+  },
+  {
+   "name": "NALSO",
+   "lat": 29.53611,
+   "lng": 34.87833
+  },
+  {
+   "name": "NEOMI",
+   "lat": 31.58472,
+   "lng": 35.29139
+  },
+  {
+   "name": "NIKUV",
+   "lat": 31.47778,
+   "lng": 35.13889
+  },
+  {
+   "name": "NILVI",
+   "lat": 31.935,
+   "lng": 34.125
+  },
+  {
+   "name": "NURIT",
+   "lat": 30.06944,
+   "lng": 35.06583
+  },
+  {
+   "name": "OBAKO",
+   "lat": 31.06556,
+   "lng": 35.3125
+  },
+  {
+   "name": "ODEDI",
+   "lat": 31.61167,
+   "lng": 34.90611
+  },
+  {
+   "name": "ORLEV",
+   "lat": 32.02639,
+   "lng": 34.63667
+  },
+  {
+   "name": "ORPAZ",
+   "lat": 32.02972,
+   "lng": 35.18333
+  },
+  {
+   "name": "OSAMA",
+   "lat": 31.93056,
+   "lng": 35.61833
+  },
+  {
+   "name": "OVDAS",
+   "lat": 29.96611,
+   "lng": 34.94556
+  },
+  {
+   "name": "PIDET",
+   "lat": 32.52944,
+   "lng": 34.78417
+  },
+  {
+   "name": "PIKOG",
+   "lat": 32.82528,
+   "lng": 33.62472
+  },
+  {
+   "name": "PURLA",
+   "lat": 32.04889,
+   "lng": 34.22972
+  },
+  {
+   "name": "RAHAT",
+   "lat": 31.4,
+   "lng": 34.785
+  },
+  {
+   "name": "RAPIV",
+   "lat": 32.58667,
+   "lng": 34.93167
+  },
+  {
+   "name": "RASAF",
+   "lat": 29.89306,
+   "lng": 35.03139
+  },
+  {
+   "name": "SALAM",
+   "lat": 31.93333,
+   "lng": 35.51667
+  },
+  {
+   "name": "SHANI",
+   "lat": 30.22639,
+   "lng": 35.09833
+  },
+  {
+   "name": "SHAYO",
+   "lat": 30.32861,
+   "lng": 35.1175
+  },
+  {
+   "name": "SIVAK",
+   "lat": 31.70889,
+   "lng": 35.47694
+  },
+  {
+   "name": "SOKET",
+   "lat": 31.3075,
+   "lng": 34.90111
+  },
+  {
+   "name": "SUKOT",
+   "lat": 31.06556,
+   "lng": 35.36389
+  },
+  {
+   "name": "SUVAS",
+   "lat": 32.16944,
+   "lng": 33.9925
+  },
+  {
+   "name": "TALMI",
+   "lat": 31.82667,
+   "lng": 35.50389
+  },
+  {
+   "name": "TAPUZ",
+   "lat": 32.0325,
+   "lng": 34.52333
+  },
+  {
+   "name": "TILFA",
+   "lat": 31.20861,
+   "lng": 35.29472
+  },
+  {
+   "name": "TIROS",
+   "lat": 33.3,
+   "lng": 34.31667
+  },
+  {
+   "name": "TOMAL",
+   "lat": 31.74139,
+   "lng": 35.485
+  },
+  {
+   "name": "VETEK",
+   "lat": 32.35472,
+   "lng": 34.52333
+  },
+  {
+   "name": "VOLFO",
+   "lat": 32.33833,
+   "lng": 34.16722
+  },
+  {
+   "name": "VURDI",
+   "lat": 31.195,
+   "lng": 35.04167
+  },
+  {
+   "name": "YELAD",
+   "lat": 30.84833,
+   "lng": 34.94667
+  },
+  {
+   "name": "YOGGA",
+   "lat": 31.97833,
+   "lng": 34.99417
+  },
+  {
+   "name": "YOLCO",
+   "lat": 31.935,
+   "lng": 34.26889
+  },
+  {
+   "name": "YOSEF",
+   "lat": 32.60083,
+   "lng": 34.71639
+  },
+  {
+   "name": "ZACCI",
+   "lat": 32.40806,
+   "lng": 35.05778
+  },
+  {
+   "name": "ZAHAV",
+   "lat": 32.81444,
+   "lng": 34.81
+  },
+  {
+   "name": "ZUKKO",
+   "lat": 32.56167,
+   "lng": 33.94917
+  }
+ ]
+}

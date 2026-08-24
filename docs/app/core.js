@@ -149,6 +149,7 @@ NavAid.tuningDefaults = {
   //   "layerEnabledHelicopters": true
   layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
   layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
+  layerEnabledATS: { value: true, type: 'bool', label: 'Offer the ATS routes chart layer' },
   layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
   layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
   layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
@@ -736,7 +737,6 @@ NavAid.tuningDefaults = {
   defaultShowHeli: { value: false, type: 'bool', label: 'Default: show heli plates' },
   defaultShowCommfail: { value: false, type: 'bool', label: 'Default: show comm-fail plates' },
   defaultShowAtsDep: { value: false, type: 'bool', label: 'Default: show ATS departure plates' },
-  defaultShowAts: { value: false, type: 'bool', label: 'Default: show the ATS routes chart' },
 };
 // Groups are ordered to mirror the route-building workflow: the route line
 // and its per-leg annotations first, then the markers you place, then the
@@ -756,7 +756,7 @@ NavAid.tuningGroups = [
     'graphLegArrowPx', 'graphLegLabelMinZoom'] },
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
-  { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters',
+  { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
@@ -817,7 +817,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAtsDep', 'defaultShowAts'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAtsDep'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1697,7 +1697,10 @@ window.S = Object.assign({
   kmlRouteName: 'Route',
   kmlTourName: 'Fly the route',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
-                 'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
+                 'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
+                 // A dataset, not a base chart: the ENR 6.1 sheet is an Extra-layers overlay,
+                 // and this label names its points in the "Nav waypoints from" picker.
+                 'ATS': 'ATS routes' },
   // Toolbar static strings — filled into DOM by applyI18n() on boot
   tbHandleTitle: 'Drag to move',
   tbBrandTag: '— CVFR flight planner for Israel',
@@ -1716,7 +1719,6 @@ window.S = Object.assign({
   tbGrpTerrain: 'Terrain',
   tbGrpAirspace: 'Airspace',
   tbGrpPlates: 'Airfield plates',
-  tbGrpEnroute: 'Enroute charts',
   tbPlateOpacity: 'Plate opacity',
   tbPlateOpacityTitle: 'Adjust the airfield-plate overlay opacity (shared by all plate layers)',
   tbPlateOpacityReset: 'Reset opacity',
@@ -1808,8 +1810,6 @@ window.S = Object.assign({
   tbHeliOpacityReset: 'Reset opacity',
   tbShowAtsDep: 'Show ATS departure routes',
   tbShowAtsDepTitle: 'The field plate for leaving towards the ATS routes (LLHZ נספח ח׳ — the only field that publishes one).',
-  tbShowAts: 'ATS routes chart',
-  tbShowAtsTitle: 'The CAA enroute sheet (ENR 6.1): ATS routes, their levels and designators, laid on the map. One national chart, so it shows wherever you are — and it is not one of the airfield plates, so it can be read alongside one.',
   tbShowCommfail: 'Show comm-failure joining',
   tbShowCommfailTitle: 'Overlay georeferenced radio comm-failure entry plates for Israeli airfields',
   tbCommfailOpacity: 'Comm-failure opacity',
@@ -3858,6 +3858,17 @@ const layers = {
     NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png'),
     chartTileOptions({ ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' })),
+  // The CAA's enroute sheet (ENR 6.1), the one chart here that is a single raster rather
+  // than a tile set: it ships as one reprojected image (see scripts/warp-ats-chart.py), so
+  // it is an imageOverlay wearing a base layer's hat. Leaflet treats it like any other
+  // layer for add/remove/hasLayer, which is all the picker needs. Bounds are the graticule
+  // frame of the sheet itself -- outside it the OSM underlay shows through, the same as for
+  // the other charts that cover only the FIR. The corners are repeated from
+  // data/ats-chart.json, which the warp script writes; ats-routes-layer.spec.js compares the
+  // two, so a re-warp that moves them cannot leave this literal behind.
+  'ATS': L.imageOverlay(navAssetBase('ats-img') + 'ats-routes.png?v=3',
+    [[29.376677, 33.426611], [33.420846, 36.158314]],
+    { attribution: 'CAAI · AIP ENR 6.1', className: 'ats-base-layer' }),
   'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',

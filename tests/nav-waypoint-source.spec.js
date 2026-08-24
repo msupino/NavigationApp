@@ -37,7 +37,9 @@ test('the picker offers Follow chart plus every chart on offer', async ({ page }
       selected: sel.value,
       label: sel.closest('.navtoggle').textContent.trim().split('\n')[0] };
   });
-  expect(r.values).toEqual(['', 'cvfr', 'lsa', 'heli']);
+  // Every chart on offer, then the sources that have no chart of their own: the ATS points
+  // come from the ENR 6.1 sheet, an Extra-layers overlay, so they are always listed.
+  expect(r.values).toEqual(['', 'cvfr', 'lsa', 'heli', 'ats']);
   expect(r.labels[0]).toMatch(/Follow chart/);
   expect(r.selected).toBe('');                 // default: follow the base layer
   expect(r.label).toMatch(/Nav waypoints from/);

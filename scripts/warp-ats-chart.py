@@ -36,7 +36,7 @@ outermost tick. The insets and the legend panels are inside that box on the pape
 come along -- they sit over the sea and over Sinai, which is where the paper puts them.
 """
 
-import argparse, html, json, re, subprocess, sys
+import argparse, html, json, math, re, subprocess, sys
 
 try:
     import numpy as np
@@ -132,6 +132,58 @@ def cone(T):
     return apex, np.array(lats), np.array(radii)
 
 
+def _extend(v, xs, ys):
+    """np.interp, but continuing the end segment instead of flattening at the last point.
+
+    Only the frame's corners need this, and only by a fraction of a degree: the outermost
+    ticks are inside the neat line, so a strip of real chart lies past them -- PIKOG, at
+    033° 37' 29"E, sat in it. Fitting r(lat) globally is no help; the ticks are read from
+    label positions with a couple of points of noise, so any global fit carries 0.005 deg
+    (~600 m) of it into the middle of the sheet. The last interval either side is exact
+    locally, which is all an extension of this length needs.
+    """
+    out = np.interp(v, xs, ys)
+    lo = np.asarray(v) < xs[0]
+    hi = np.asarray(v) > xs[-1]
+    if np.any(lo):
+        slope = (ys[1] - ys[0]) / (xs[1] - xs[0])
+        out = np.where(lo, ys[0] + (np.asarray(v) - xs[0]) * slope, out)
+    if np.any(hi):
+        slope = (ys[-1] - ys[-2]) / (xs[-1] - xs[-2])
+        out = np.where(hi, ys[-1] + (np.asarray(v) - xs[-1]) * slope, out)
+    return out
+
+
+def extent(T):
+    """Everything inside the sheet's frame, not just the box both tick rows label.
+
+    The first version shipped the intersection of the two rows -- 33°40' to 36°00', because
+    the bottom row starts a tick later than the top one. That cut a strip off the west of the
+    sheet, and PIKOG (033° 37' 29"E) fell outside the image while its marker stayed on the
+    map: a point drawn beside a chart that stops short of it.
+
+    A conic's meridian angle is exactly linear in longitude, so the angles the ticks give are
+    fitted as a line and read back at the frame's own corners; latitude comes from the radius
+    table, which both edges cover in full. Nothing here invents chart -- it asks the model
+    where the corners of the paper are.
+    """
+    apex, plats, pradii = cone(T)
+    tv = np.array([a for a, _ in T['top']])
+    tx = np.array([b for _, b in T['top']])
+    ang = np.unwrap(np.arctan2((tx - apex[0]) / np.hypot(tx - apex[0], T['Y_TOP'] - apex[1]),
+                               (T['Y_TOP'] - apex[1]) / np.hypot(tx - apex[0], T['Y_TOP'] - apex[1])))
+    slope, intercept = np.polyfit(tv, ang, 1)
+    lon_of = lambda a: (a - intercept) / slope
+    lat_of = lambda r: float(_extend(r, pradii[::-1], plats[::-1]))
+    lons, lats = [], []
+    for x in (T['X_L'], T['X_R']):
+        for y in (T['Y_TOP'], T['Y_BOT']):
+            dx, dy = x - apex[0], y - apex[1]
+            lons.append(lon_of(math.atan2(dx / math.hypot(dx, dy), dy / math.hypot(dx, dy))))
+            lats.append(lat_of(math.hypot(dx, dy)))
+    return min(lats), max(lats), min(lons), max(lons)
+
+
 def warp(src, T, dpi, out_w, lon0, lon1, lat0, lat1):
     merc = lambda lat: np.log(np.tan(np.pi / 4 + np.radians(lat) / 2))
     imerc = lambda y: np.degrees(2 * np.arctan(np.exp(y)) - np.pi / 2)
@@ -145,12 +197,16 @@ def warp(src, T, dpi, out_w, lon0, lon1, lat0, lat1):
 
     apex, plats, pradii = cone(T)
     tv, tx = (np.array([a for a, _ in T['top']]), np.array([b for _, b in T['top']]))
-    # Direction from the apex along each meridian, taken at its top tick.
+    # Direction from the apex along each meridian, taken at its top tick. Fitted as a line
+    # rather than interpolated: on a conic the angle IS linear in longitude, and a fit reads
+    # correctly just past the outermost tick, where np.interp would flatten and smear the
+    # western strip of the sheet into a column of repeated pixels.
     ux = tx - apex[0]; uy = T['Y_TOP'] - apex[1]
     un = np.hypot(ux, uy)
-    ang = np.unwrap(np.arctan2(ux / un, uy / un))         # angle off the apex, monotone in lon
-    A = np.interp(LON, tv, ang)
-    R = np.interp(LAT, plats, pradii)
+    ang = np.unwrap(np.arctan2(ux / un, uy / un))
+    slope, intercept = np.polyfit(tv, ang, 1)
+    A = intercept + slope * LON
+    R = _extend(LAT, plats, pradii)                     # the inverse of extent()'s reading
     X = (apex[0] + R * np.sin(A)) * k
     Y = (apex[1] + R * np.cos(A)) * k
 
@@ -175,12 +231,8 @@ def main():
     args = ap.parse_args()
 
     T = frame(labels(args.pdf))
-    # The box both tick rows cover: outside it a meridian or a parallel would be extrapolated.
-    lon0 = max(T['top'][0][0], T['bottom'][0][0])
-    lon1 = min(T['top'][-1][0], T['bottom'][-1][0])
-    lat0 = max(T['left'][0][0], T['right'][0][0])
-    lat1 = min(T['left'][-1][0], T['right'][-1][0])
-    print(f'graticule box  lat {lat0:.4f}..{lat1:.4f}  lon {lon0:.4f}..{lon1:.4f}')
+    lat0, lat1, lon0, lon1 = extent(T)
+    print(f'sheet covers  lat {lat0:.4f}..{lat1:.4f}  lon {lon0:.4f}..{lon1:.4f}')
 
     img = warp(render(args.pdf, args.dpi), T, args.dpi, args.width, lon0, lon1, lat0, lat1)
     if args.colors:
