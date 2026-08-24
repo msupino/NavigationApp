@@ -239,3 +239,63 @@ test('a live fix keeps the map', async ({ page }) => {
   expect(out.after[0]).toBeCloseTo(out.before[0], 3);
   expect(out.after[1]).toBeCloseTo(out.before[1], 3);
 });
+
+// The positions a plate prints in full become chart points while it is showing, so they can
+// be tapped, inspected and put in a route. Only what the sheet actually prints: a fix it
+// names without a position is not invented.
+test('the sheet\'s printed positions become chart points', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const out = await page.evaluate(async () => {
+    const before = navWP.length;
+    const sel = document.getElementById('ifr-sheet');
+    const llib = Array.from(sel.options).find(o => o.textContent.includes('VOR approach'));
+    sel.value = llib.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 400));
+    const added = navWP.filter(w => w._plate);
+    return { before, names: added.map(w => w.name), tag: added[0] && added[0]._plate,
+             sample: added.find(w => w.name === 'ROP') };
+  });
+  expect(out.names).toEqual(expect.arrayContaining(['ETROG', 'GIMIK', 'ROP', 'DALIT']));
+  expect(out.tag).toMatch(/LLIB/);
+  // The CAA's own digits: ROP is printed at 32°58'57.1"N 035°34'22.0"E on that sheet.
+  expect(out.sample.lat).toBeCloseTo(32 + 58 / 60 + 57.1 / 3600, 4);
+  expect(out.sample.lng).toBeCloseTo(35 + 34 / 60 + 22.0 / 3600, 4);
+});
+
+test('a point can be selected and inspected like any chart point', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const out = await page.evaluate(async () => {
+    const sel = document.getElementById('ifr-sheet');
+    const llib = Array.from(sel.options).find(o => o.textContent.includes('VOR approach'));
+    sel.value = llib.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 400));
+    window.showNavWP = true;
+    const i = navWP.findIndex(w => w.name === 'DALIT');
+    state.selected = { type: 'navwp', index: i };
+    showInspector();
+    const title = document.getElementById('insp-title');
+    return { i, title: title && (title.value || title.textContent),
+             addBtn: !!document.getElementById('insp-add-to-route') };
+  });
+  expect(out.i).toBeGreaterThan(-1);
+  expect(out.title).toMatch(/DALIT/);
+  expect(out.addBtn).toBe(true);          // and it can go straight into the route
+});
+
+test('the points leave with the sheet', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const gone = await page.evaluate(async () => {
+    await new Promise(r => setTimeout(r, 300));
+    const during = navWP.filter(w => w._plate).length;
+    document.getElementById('ifr-cb').click();          // off
+    await new Promise(r => setTimeout(r, 300));
+    return { during, after: navWP.filter(w => w._plate).length };
+  });
+  expect(gone.during).toBeGreaterThan(0);
+  expect(gone.after).toBe(0);
+});

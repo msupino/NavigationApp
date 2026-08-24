@@ -5311,6 +5311,30 @@ function loadIfrOverlays() {
   if (chosen) {
     buildOverlayLayer(ifrImgBase(), chosen.sheet, '1', 'ifr_overlay').addTo(ifrLayerGroup);
   }
+  applyIfrPoints(chosen);
+}
+// The positions the sheet prints in full -- a VOR, an IAF, the field -- joined to the chart
+// points the app already draws, so they can be tapped, inspected and put in a route while
+// the sheet is showing. They are the CAA's own digits off that plate; a fix the sheet names
+// without a position is not among them, because there would be nothing to place it by.
+//
+// Carried in navWP, tagged, so every path that already knows about chart points -- drawing,
+// the hit test, the inspector, search -- treats them as what they are without learning a new
+// kind of thing. Tagged is also how they leave again: the tagged rows are dropped whenever
+// the sheet changes, so a plate's points never outlive the plate.
+function applyIfrPoints(chosen) {
+  if (!Array.isArray(navWP)) return;
+  for (let i = navWP.length - 1; i >= 0; i--) if (navWP[i] && navWP[i]._plate) navWP.splice(i, 1);
+  const points = (chosen && chosen.sheet && chosen.sheet.points) || [];
+  for (const p of points) {
+    if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
+    // A point the chart dataset already carries stays the dataset's: same name, same place,
+    // and its comm-change and report status come with it.
+    if (navWP.some(w => w && w.name === p.name)) continue;
+    navWP.push({ lat: p.lat, lng: p.lng, name: p.name, en: p.name,
+                 _plate: (chosen.icao + ' ' + chosen.sheet.code) });
+  }
+  if (typeof scheduleDraw === 'function') scheduleDraw();
 }
 
 // ── Helicopter routes overlay ─────────────────────────────────────────────────
@@ -6254,6 +6278,8 @@ function chartsLoadingUntilReady(group, owner) {
       chartsLoadingUntilReady(ifrLayerGroup, loadingOwner);
     } else {
       if (ifrLayerGroup) ifrLayerGroup.remove();
+      ifrLayerGroup = null;
+      applyIfrPoints(null);                    // the plate's points go with the plate
       chartsLoadingCancelGroup('ifr');
     }
     fillSheets();
