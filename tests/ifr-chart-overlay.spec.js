@@ -112,20 +112,37 @@ test('the remembered sheet comes back on the next start', async ({ page }) => {
 // It is not one of the airfield plates: it draws the ONE sheet you named, at the field you
 // named it for, so neither the plates' mutual exclusion nor "Show plates for" applies to it.
 // It has a frame of its own in the menu for exactly that reason.
-test('it stands apart from the airfield plates', async ({ page }) => {
+test('an instrument chart and a VFR plate cancel each other', async ({ page }) => {
   await boot(page);
   await on(page);
   await page.click('#cvfr-cb');
+  // Two pictures of the same few miles: neither can be read through the other, so the
+  // instrument chart joins the plates' mutual exclusion even though it lives in its own
+  // section of the menu.
   expect(await page.evaluate(() => ({
     ifr: document.getElementById('ifr-cb').checked,
     cvfr: document.getElementById('cvfr-cb').checked,
-  }))).toEqual({ ifr: true, cvfr: true });        // both on: they are different questions
+  }))).toEqual({ ifr: false, cvfr: true });
+  expect(await drawn(page)).toEqual([]);
 
+  // ...and back the other way.
+  await page.click('#ifr-cb');
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => ({
+    ifr: document.getElementById('ifr-cb').checked,
+    cvfr: document.getElementById('cvfr-cb').checked,
+  }))).toEqual({ ifr: true, cvfr: false });
+  expect(await drawn(page)).toHaveLength(1);
+});
+
+// The section it lives in is still its own: "Show plates for" does not reach it, and the
+// frame title says which kind of chart it is.
+test('it has a section of its own', async ({ page }) => {
+  await boot(page);
   const frames = await page.evaluate(() => {
     const mine = document.getElementById('ifr-cb').closest('.tb-layer-frame');
     const plates = document.getElementById('cvfr-cb').closest('.tb-layer-frame');
-    return { same: mine === plates,
-             title: mine.querySelector('.tb-frame-title').textContent.trim() };
+    return { same: mine === plates, title: mine.querySelector('.tb-frame-title').textContent.trim() };
   });
   expect(frames.same).toBe(false);
   expect(frames.title).toMatch(/instrument/i);

@@ -6267,7 +6267,10 @@ function chartsLoadingUntilReady(group, owner) {
 // a time, so turning one on turns the others off (each toggle's own change
 // handler then removes its layer + persists the off state).
 (function () {
-  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb']
+  // The instrument chart is in this group too, even though it lives in a section of its
+  // own: an approach plate and a VFR entry sheet drawn over each other are two pictures of
+  // the same few miles, and neither can be read through the other. One chart at a time.
+  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'ifr-cb']
     .map(id => document.getElementById(id))
     .filter(Boolean);
   for (const cb of boxes) {
@@ -7716,13 +7719,8 @@ loadAirfields().then(() => {
       ['showCvfr',     CVFR_SHOW_KEY,     'cvfr-cb',     loadCvfrOverlays,     () => cvfrLayerGroup],
       ['showHeli',     HELI_SHOW_KEY,     'heli-cb',     loadHeliOverlays,     () => heliLayerGroup],
       ['showCommfail', COMMFAIL_SHOW_KEY, 'commfail-cb', loadCommfailOverlays, () => commfailLayerGroup],
+      ['showIfr',      IFR_SHOW_KEY,      'ifr-cb',      loadIfrOverlays,      () => ifrLayerGroup],
     ];
-    // The instrument chart restores on its own: it is not one of the mutually exclusive
-    // plates, so it does not compete with whichever one is showing.
-    if (window.showIfr) {
-      loadIfrOverlays();
-      if (ifrLayerGroup) ifrLayerGroup.addTo(map);
-    }
     let shown = false;
     for (const [flag, key, cbId, load, group] of plates) {
       if (!window[flag]) continue;
