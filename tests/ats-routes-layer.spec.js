@@ -131,3 +131,20 @@ test('the sheet is placed in Web Mercator, not as the paper draws it', async ({ 
   const want = (merc(meta.ne[0]) - merc(meta.sw[0])) / ((meta.ne[1] - meta.sw[1]) * Math.PI / 180);
   expect(png.h / png.w).toBeCloseTo(want, 2);
 });
+
+// It is not an airfield plate, so it does not sit in that frame: its own section, headed
+// "Enroute charts", is what says which kind of chart it is before you switch it on.
+test('it has a section of its own, not a line in the airfield plates', async ({ page }) => {
+  await boot(page);
+  const where = await page.evaluate(() => {
+    const cb = document.getElementById('ats-cb');
+    const frame = cb.closest('.tb-layer-frame');
+    const title = frame && frame.querySelector('.tb-frame-title');
+    const plates = document.getElementById('cvfr-cb').closest('.tb-layer-frame');
+    return { title: title && title.textContent.trim(), inPlates: frame === plates,
+             platesTitle: plates.querySelector('.tb-frame-title').textContent.trim() };
+  });
+  expect(where.inPlates).toBe(false);
+  expect(where.platesTitle).toMatch(/airfield plates/i);
+  expect(where.title).toMatch(/enroute/i);
+});

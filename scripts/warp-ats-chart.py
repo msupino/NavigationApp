@@ -12,16 +12,24 @@ bottom, tracking cos(latitude) to a third of a percent, which is what "conformal
 what Web Mercator is NOT (Mercator holds longitude constant and stretches latitude instead).
 Laid down as printed, the sheet reads about four kilometres out at its corners.
 
-The model is the sheet's own graticule, read with pdftotext -bbox:
+The model is the sheet's own graticule, read with pdftotext -bbox, and it is the conic
+geometry rather than an approximation of it:
 
-  * a meridian is a straight line between its top and bottom edge ticks;
-  * a parallel is taken as a straight line between its left and right edge ticks. On this
-    sheet the two ends of a parallel differ by ~5 pt in y over 1518 pt of width, so the chord
-    stands in for the arc to well under a pixel of the shipped raster.
+  * a meridian is the straight line between its top and bottom edge ticks. They converge, so
+    the apex of the cone is where they all meet -- fitted here as the least-squares
+    intersection of every one of them;
+  * a parallel is then a CIRCLE about that apex, and its radius is the distance from the apex
+    to the parallel's own edge ticks. The two ends agree to 3 pt in 62,000, which is the
+    check that this is the right shape for the paper.
 
-A geographic position is then the intersection of its meridian and its parallel, and the
-output raster is filled by sampling that mapping -- bilinear, one pass, no dependencies
-beyond numpy/Pillow (there is no GDAL in this repo's toolchain).
+Taking a parallel as the straight chord between its two edge ticks -- the first thing tried
+here -- looks close and is not: it cuts the arc, so the middle of the sheet lands about 0.9 km
+north of where the chart draws it, which is visible the moment the overlay's graticule is put
+beside anything else's.
+
+A geographic position is apex + r(lat) along the meridian's direction, and the output raster
+is filled by sampling that mapping -- bilinear, one pass, no dependencies beyond numpy/Pillow
+(there is no GDAL in this repo's toolchain).
 
 Only the box the sheet labels on all four sides is shipped: nothing is extrapolated past the
 outermost tick. The insets and the legend panels are inside that box on the paper, so they
@@ -96,6 +104,34 @@ def render(pdf, dpi):
     return np.asarray(Image.open(_io.BytesIO(png)).convert('RGB'))
 
 
+def cone(T):
+    """The sheet's conic frame: the apex its meridians meet at, and r(latitude) about it."""
+    tops = dict(T['top']); bots = dict(T['bottom'])
+    rows, rhs = [], []
+    for v in sorted(set(tops) & set(bots)):
+        p = np.array([tops[v], T['Y_TOP']])
+        d = np.array([bots[v] - tops[v], T['Y_BOT'] - T['Y_TOP']])
+        d = d / np.hypot(*d)
+        n = np.array([-d[1], d[0]])                       # a point is on the line iff n·(X-p)=0
+        rows.append(n); rhs.append(n @ p)
+    apex, *_ = np.linalg.lstsq(np.array(rows), np.array(rhs), rcond=None)
+
+    lefts = dict(T['left']); rights = dict(T['right'])
+    lats, radii, worst = [], [], 0.0
+    for v in sorted(set(lefts) & set(rights)):
+        rl = np.hypot(T['X_L'] - apex[0], lefts[v] - apex[1])
+        rr = np.hypot(T['X_R'] - apex[0], rights[v] - apex[1])
+        worst = max(worst, abs(rr - rl))
+        lats.append(v); radii.append((rl + rr) / 2)
+    # A parallel that is not a circle about this apex would show up here as its two ends
+    # disagreeing. Refuse rather than ship a picture placed on a shape the paper does not use.
+    if worst > 0.001 * np.mean(radii):
+        raise SystemExit(f'parallel radii disagree by {worst:.1f} pt — not a conic sheet?')
+    print(f'apex ({apex[0]:.0f}, {apex[1]:.0f}) pt; parallel radii agree to {worst:.1f} pt '
+          f'in {np.mean(radii):.0f}')
+    return apex, np.array(lats), np.array(radii)
+
+
 def warp(src, T, dpi, out_w, lon0, lon1, lat0, lat1):
     merc = lambda lat: np.log(np.tan(np.pi / 4 + np.radians(lat) / 2))
     imerc = lambda y: np.degrees(2 * np.arctan(np.exp(y)) - np.pi / 2)
@@ -107,16 +143,16 @@ def warp(src, T, dpi, out_w, lon0, lon1, lat0, lat1):
     lat = imerc(y_top - (np.arange(out_h) + 0.5) / out_h * (y_top - y_bot))
     LON, LAT = np.meshgrid(lon, lat)
 
-    cols = lambda t: (np.array([a for a, _ in T[t]]), np.array([b for _, b in T[t]]))
-    tv, tx = cols('top'); bv, bx = cols('bottom')
-    lv, ly = cols('left'); rv, ry = cols('right')
-    xt = np.interp(LON, tv, tx); xb = np.interp(LON, bv, bx)
-    yl = np.interp(LAT, lv, ly); yr = np.interp(LAT, rv, ry)
-    mx, my = xb - xt, T['Y_BOT'] - T['Y_TOP']            # meridian direction
-    px, py = T['X_R'] - T['X_L'], yr - yl                # parallel direction
-    s = ((T['X_L'] - xt) * (-py) + px * (yl - T['Y_TOP'])) / (mx * (-py) + px * my)
-    X = (xt + s * mx) * k
-    Y = (T['Y_TOP'] + s * my) * k
+    apex, plats, pradii = cone(T)
+    tv, tx = (np.array([a for a, _ in T['top']]), np.array([b for _, b in T['top']]))
+    # Direction from the apex along each meridian, taken at its top tick.
+    ux = tx - apex[0]; uy = T['Y_TOP'] - apex[1]
+    un = np.hypot(ux, uy)
+    ang = np.unwrap(np.arctan2(ux / un, uy / un))         # angle off the apex, monotone in lon
+    A = np.interp(LON, tv, ang)
+    R = np.interp(LAT, plats, pradii)
+    X = (apex[0] + R * np.sin(A)) * k
+    Y = (apex[1] + R * np.cos(A)) * k
 
     x0 = np.clip(np.floor(X).astype(np.int32), 0, W - 2)
     y0 = np.clip(np.floor(Y).astype(np.int32), 0, H - 2)

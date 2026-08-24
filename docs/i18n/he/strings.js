@@ -710,6 +710,7 @@ window.S = {
   tbGrpTerrain: 'תבליט',
   tbGrpAirspace: 'מרחב אווירי',
   tbGrpPlates: 'תרשימי שדה',
+  tbGrpEnroute: 'תרשימי מרחב',
   tbPlateOpacity: 'שקיפות תרשים',
   tbPlateOpacityTitle: 'כוונן שקיפות שכבת תרשימי השדה (משותף לכל השכבות)',
   tbPlateOpacityReset: 'אפס שקיפות',
