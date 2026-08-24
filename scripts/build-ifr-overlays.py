@@ -26,7 +26,10 @@ TITLES = 'docs/data/plate-titles.json'
 FIELDS = 'docs/data/airfields.json'
 # What counts as an IFR sheet, in either language. VOR alone is not enough -- a field's
 # "VOR ref" annexes are not procedures -- so it must appear with גישה (approach).
-IFR = re.compile(r'ILS|SID|STAR|RNP|LOC\b|INSTRUMENT|\bIAC\b|APPROACH|תהליך גישה|מכשירים', re.I)
+IFR = re.compile(r'ILS|SID|STAR|RNP|LOC\b|INSTRUMENT|\bIAC\b|APPROACH|תהליך גישה|מכשירים|'
+                 # LLHZ files its departure to the ATS routes as an annex, in Hebrew: a
+                 # pattern that reads only the English words misses it entirely.
+                 r'יציאה לנתיבי ATS', re.I)
 
 
 def sheets():
@@ -56,6 +59,20 @@ def code_for(icao, plate, title):
     return stem[:40]
 
 
+
+# What a pilot calls the sheet. The file name and the CAA's own title both say it, in
+# different words; this settles on one form so the picker reads as a list of procedures.
+def tidy(code, title):
+    c = re.sub(r'^APPROACH\s+', '', code).strip()
+    if re.match(r'^STANDARD INSTRUMENT DEPARTURE', c, re.I):
+        rwys = re.findall(r'\d{2}', title)
+        return 'SID ' + '/'.join(rwys[:2]) if rwys else 'SID'
+    if 'תהליך גישה' in c:
+        return 'VOR approach'
+    if 'יציאה לנתיבי ATS' in c:
+        return 'ATS departure'
+    return c
+
 def main(argv):
     only = set(a.upper() for a in argv)
     placed, skipped = {}, []
@@ -76,7 +93,7 @@ def main(argv):
             why = fit.get('error') or (run.stderr.strip().split('\n')[-1] if run.stderr else 'refused')
             skipped.append((icao, plate, why[:70]))
             continue
-        row = {'png': name + '.png', 'code': code, 'title': title}
+        row = {'png': name + '.png', 'code': tidy(code, title), 'title': title}
         for key in ('sw', 'ne', 'tl', 'tr', 'bl'):
             if key in fit:
                 row[key] = fit[key]

@@ -242,19 +242,51 @@ def georef(pdf, png, arp):
     at = lambda m, b, px: m*(px/scale) + b
     LAT = lambda px: at(mlat, blat, px)
     LON = lambda px: at(mlon, blon, px)
-    north_up = (lat_key == 'cy')
-    if north_up:
-        box = {'sw': [round(LAT(bottom),5), round(LON(left),5)],
-               'ne': [round(LAT(top),5),    round(LON(right),5)]}
-        corners = {'tl': (LAT(top), LON(left)), 'tr': (LAT(top), LON(right)),
-                   'bl': (LAT(bottom), LON(left))}
+    # A graticule slightly out of square with the page needs both pixel axes to describe it
+    # (see plane()). Adopted only when it beats the single-axis fit on the labels it was
+    # given: on a plate that IS square the second coefficient is noise, and the residual says
+    # so. The corners then come from the plane, evaluated at the frame.
+    # Crop to the GRATICULE, not to the neat line. The frame is found by looking for the
+    # printed border, and a few pixels of error there move the whole sheet on the map while
+    # leaving every residual small -- which is how LLIB's approach charts came to sit half a
+    # mile east with a fit that read as healthy. Cutting at the outermost labelled gridlines
+    # instead makes the placement independent of that: the same fit decides both where the
+    # cut is and what coordinate it carries, so an error in the fit moves neither.
+    PXLAT = lambda deg: (deg - blat) / mlat * scale          # inverse of LAT()
+    PXLON = lambda deg: (deg - blon) / mlon * scale
+    lat_lo, lat_hi = min(l['deg'] for l in lat), max(l['deg'] for l in lat)
+    lon_lo, lon_hi = min(l['deg'] for l in lon), max(l['deg'] for l in lon)
+    if north_up_guess := (lat_key == 'cy'):
+        gtop, gbottom = PXLAT(lat_hi), PXLAT(lat_lo)
+        gleft, gright = PXLON(lon_lo), PXLON(lon_hi)
     else:
-        # Rotated print: latitude runs across the page, longitude up it.
-        box = {'tl': [round(LAT(left),5),  round(LON(top),5)],
-               'tr': [round(LAT(right),5), round(LON(top),5)],
-               'bl': [round(LAT(left),5),  round(LON(bottom),5)]}
-        corners = {'tl': (LAT(left), LON(top)), 'tr': (LAT(right), LON(top)),
-                   'bl': (LAT(left), LON(bottom))}
+        gleft, gright = PXLAT(lat_lo), PXLAT(lat_hi)
+        gtop, gbottom = PXLON(lon_hi), PXLON(lon_lo)
+    if gleft > gright: gleft, gright = gright, gleft
+    if gtop > gbottom: gtop, gbottom = gbottom, gtop
+    # Only when it lands inside the page and covers most of the frame the border search
+    # found: a graticule box wildly different from it means one of the two is wrong, and the
+    # printed border is the one that was measured rather than inferred.
+    W_px, H_px = im.size
+    if (0 <= gleft < gright <= W_px and 0 <= gtop < gbottom <= H_px and
+            (gright-gleft) > 0.4*(right-left) and (gbottom-gtop) > 0.4*(bottom-top)):
+        left, right, top, bottom = gleft, gright, gtop, gbottom
+    LATxy = lambda px, py: LAT(py if lat_key == 'cy' else px)
+    LONxy = lambda px, py: LON(px if lat_key == 'cy' else py)
+    north_up = (lat_key == 'cy')
+    tl = (LATxy(left, top), LONxy(left, top))
+    tr = (LATxy(right, top), LONxy(right, top))
+    bl = (LATxy(left, bottom), LONxy(left, bottom))
+    corners = {'tl': tl, 'tr': tr, 'bl': bl}
+    # A plate whose graticule is square to the page still ships as a plain box: three corners
+    # would be the same rectangle written the long way, and every consumer handles both.
+    square = (abs(tl[0]-tr[0]) < 1e-6 and abs(tl[1]-bl[1]) < 1e-6) if north_up else False
+    if north_up and square:
+        box = {'sw': [round(bl[0],5), round(tl[1],5)], 'ne': [round(tl[0],5), round(tr[1],5)]}
+    else:
+        box = {'tl': [round(tl[0],5), round(tl[1],5)],
+               'tr': [round(tr[0],5), round(tr[1],5)],
+               'bl': [round(bl[0],5), round(bl[1],5)]}
     # Conformality: a degree of longitude is cos(lat) as wide on the ground as a degree of
     # latitude, so a correct fit has this at 1.00. A stretch or a misread axis does not.
     span_lat = abs(corners['tl'][0] - corners['bl'][0]) if north_up else abs(corners['tr'][0]-corners['tl'][0])
