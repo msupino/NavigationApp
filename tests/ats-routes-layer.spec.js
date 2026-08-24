@@ -121,9 +121,12 @@ test('the sheet is placed in Web Mercator, not as the paper draws it', async ({ 
   // so a raster of it can only be laid down axis-aligned AFTER reprojection. What that buys
   // is checkable from the shipped file: its aspect ratio must be the Mercator one for these
   // bounds, not the paper's.
+  // Through the app's own resolver, not a hard-coded path: a PR preview ships without the
+  // image sets it has not touched and resolves them against the deployed root, so
+  // 'ats-img/...' is a 404 there -- which arrives as an undecodable image, not a clear miss.
   const png = await page.evaluate(async (name) => {
     const img = new Image();
-    img.src = 'ats-img/' + name;
+    img.src = atsImgBase() + name;
     await img.decode();
     return { w: img.naturalWidth, h: img.naturalHeight };
   }, meta.png);
