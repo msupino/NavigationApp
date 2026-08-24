@@ -3887,9 +3887,14 @@ const CHART_SPECS = {
   // as for the other charts that cover only the FIR. The corners are repeated from
   // data/ats-chart.json, which the warp script writes; ats-routes-layer.spec.js compares the
   // two, so a re-warp that moves them cannot leave this literal behind.
+  // ...in the TILE pane, where a base chart belongs. An imageOverlay defaults to the overlay
+  // pane, which is where the airfield plates are drawn -- so choosing this chart after an
+  // approach plate covered the plate, because the later layer wins inside one pane. It is a
+  // base map: it goes under everything drawn on top of the map.
   'ATS': (pane) => L.imageOverlay(navAssetBase('ats-img') + 'ats-routes.png?v=3',
     [[29.376677, 33.426611], [33.420846, 36.158314]],
-    withPane({ attribution: 'CAAI · AIP ENR 6.1', className: 'ats-base-layer' }, pane)),
+    withPane({ attribution: 'CAAI · AIP ENR 6.1', className: 'ats-base-layer' },
+             pane || 'tilePane')),
   'Satellite': (pane) => L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',

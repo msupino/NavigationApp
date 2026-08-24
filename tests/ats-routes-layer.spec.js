@@ -109,3 +109,19 @@ test('the sheet is placed in Web Mercator, not as the paper draws it', async ({ 
   const want = (merc(meta.ne[0]) - merc(meta.sw[0])) / ((meta.ne[1] - meta.sw[1]) * Math.PI / 180);
   expect(png.h / png.w).toBeCloseTo(want, 2);
 });
+
+// Reported: choosing the ATS chart after an instrument chart hid the instrument chart. An
+// imageOverlay defaults to the overlay pane -- where the plates are drawn -- so the layer
+// added last won. A base map belongs under what is drawn on the map.
+test('choosing it does not cover the plates drawn on top', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(() => layers.ATS.options.pane)).toBe('tilePane');
+  await pick(page, 'ATS');
+  const panes = await page.evaluate(() => {
+    const ats = map.getPane(layers.ATS.options.pane);
+    const overlay = map.getPane('overlayPane');
+    const z = (el) => parseInt(getComputedStyle(el).zIndex || '0', 10);
+    return { ats: z(ats), overlay: z(overlay) };
+  });
+  expect(panes.ats).toBeLessThan(panes.overlay);
+});
