@@ -434,6 +434,9 @@
         "LLHZ_airport_Annex Zayin.pdf",
         "LLHZ_airport_Chart.pdf"
       ],
+   "ifr_overlays": [
+    {"png": "LLHZ_ATSdeparture.png", "code": "ATS departure", "title": "יציאה לנתיבי ATS", "sw": [31.98455, 34.63961], "ne": [32.41098, 35.00103]}
+   ],
       "runways": [
         "10/28"
       ],
@@ -493,7 +496,6 @@
           34.79724
         ]
       },
-      "atsdep_overlay": {"png": "LLHZ_atsdep.png", "sw": [31.98455, 34.63961], "ne": [32.41098, 35.00103]},
       "heli_overlay": {
         "png": "LLHZ_heli.png",
         "sw": [

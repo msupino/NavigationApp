@@ -42,7 +42,7 @@ test('the shipped sheets are the placeable ones, and they carry their own design
   const data = JSON.parse(raw);
   const fields = data[Object.keys(data)[0]];
   const withIfr = fields.filter(a => a.ifr_overlays && a.ifr_overlays.length);
-  expect(withIfr.map(a => a.name).sort()).toEqual(['LLBG', 'LLIB']);
+  expect(withIfr.map(a => a.name).sort()).toEqual(['LLBG', 'LLHZ', 'LLIB']);
   for (const af of withIfr) {
     for (const o of af.ifr_overlays) {
       expect(o.png).toMatch(/^LL[A-Z]{2}_.*\.png$/);
@@ -78,7 +78,7 @@ test('the picker lists every placeable sheet and switches which one is drawn', a
   const sel = page.locator('#ifr-sheet');
   const values = await page.evaluate(() =>
     Array.from(document.getElementById('ifr-sheet').options).map(o => o.value));
-  expect(values.length).toBe(21);                // 19 at LLBG + 2 at LLIB
+  expect(values.length).toBe(22);                // 19 at LLBG, 2 at LLIB, 1 at LLHZ
   expect(values.filter(v => v.startsWith('LLBG|')).length).toBe(19);
 
   // Ask for a different LLBG sheet: that one is drawn, and the other field is untouched.
@@ -134,4 +134,34 @@ test('"Show plates for" narrows it like every other plate layer', async ({ page 
   const shown = await drawn(page);
   expect(shown.every(p => p.startsWith('LLIB_'))).toBe(true);
   expect(shown.length).toBe(1);
+});
+
+// The AIP's one airfield-level ATS chart -- LLHZ's נספח ח', the departure to the ATS routes
+// -- is an instrument departure like any other, so it is a sheet in this picker rather than
+// a layer of its own. It used to have its own toggle, which said it was a different kind of
+// thing than the SIDs beside it.
+test('the LLHZ ATS departure plate is one of the sheets', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const values = await page.evaluate(() =>
+    Array.from(document.getElementById('ifr-sheet').options).map(o => o.value));
+  const hz = values.find(v => v.startsWith('LLHZ|'));
+  expect(hz).toBeTruthy();
+  expect(await page.evaluate(() =>
+    Array.from(document.getElementById('ifr-sheet').options)
+      .find(o => o.value.startsWith('LLHZ|')).textContent)).toMatch(/ATS departure/);
+  // Drawn on the bounds its own row states, like every other sheet.
+  const laid = await page.evaluate(async () => {
+    const af = await fetch('data/airfields.json').then(r => r.json());
+    const list = af[Object.keys(af)[0]];
+    const row = list.find(a => a.name === 'LLHZ').ifr_overlays[0];
+    let b = null;
+    map.eachLayer(l => { if (l && l._ovType === 'ifr_overlay' && l._ovPng === row.png) b = l.getBounds(); });
+    return b ? { want: row, got: [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()] } : null;
+  });
+  expect(laid).not.toBeNull();
+  expect(laid.got[0]).toBeCloseTo(laid.want.sw[0], 5);
+  expect(laid.got[3]).toBeCloseTo(laid.want.ne[1], 5);
+  // And nothing is left of the toggle it used to have.
+  expect(await page.evaluate(() => !!document.getElementById('atsdep-cb'))).toBe(false);
 });
