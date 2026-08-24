@@ -1116,7 +1116,7 @@ window.S = Object.assign({
   startRouteHere: '➕ Start route here',
   addToRoute: '➕ Add to route',
   alreadyOnRoute: '✓ Already on the route',
-  trackFlownTwiceToast: 'This leg is already flown out and back — a track can be flown twice, once each way',
+  trackFlownTwiceToast: 'This route already doubles back once — a route turns for home once, so only one leg is flown out and back',
   emptyRouteHint: 'Click a point on the map to start a route',
   modeChipAdd: 'Adding waypoints',
   modeChipNote: 'Adding notes',
@@ -4598,7 +4598,11 @@ if (typeof window !== 'undefined') window.legScreenEnds = legScreenEnds;
 // chart can tell the third pass from the first: same line, same kites, same numbers. The
 // out-and-back split (legPairOffsetPx) separates exactly one pair for that reason, so the
 // route builder holds the route to what the map can honestly draw.
-const TRACK_PASS_LIMIT = 2;
+// One repeat per ROUTE, not per leg: a sortie turns for home once. a-b-a is that sortie;
+// a-b-a-c-a doubles back twice, and a-b-a-b flies the same track a third time. The drawing
+// follows the same rule -- legPairOffsetPx splits exactly one out-and-back pair, because a
+// further pass has nowhere of its own to be drawn: same line, same kites, same numbers.
+const ROUTE_REPEAT_LIMIT = 1;
 // How many legs in `wps` fly between these two points, either way round.
 function trackPassCount(wps, a, b) {
   if (!Array.isArray(wps) || !a || !b) return 0;
@@ -4612,18 +4616,27 @@ function trackPassCount(wps, a, b) {
   return n;
 }
 if (typeof window !== 'undefined') window.trackPassCount = trackPassCount;
-// The first track in `wps` flown more times than allowed, or null. Used to vet a route
-// BEFORE it is adopted: the candidate array is built, checked, and only then stored.
-function routeOverflownTrack(wps) {
-  if (!Array.isArray(wps)) return null;
-  for (let i = 0; i < wps.length - 1; i++) {
-    const a = wps[i], b = wps[i + 1];
-    if (trackPassCount(wps, a, b) > TRACK_PASS_LIMIT) return { i, a, b };
+// Every leg that flies a track an earlier leg already flew, in route order. The first one is
+// the turn for home; a second means the route doubles back twice.
+function routeRepeatedLegs(wps) {
+  if (!Array.isArray(wps)) return [];
+  const out = [];
+  for (let i = 1; i < wps.length - 1; i++) {
+    if (trackPassCount(wps.slice(0, i + 2), wps[i], wps[i + 1]) > 1) out.push(i);
   }
-  return null;
+  return out;
+}
+if (typeof window !== 'undefined') window.routeRepeatedLegs = routeRepeatedLegs;
+// The leg that puts a route over the limit, or null. Used to vet a route BEFORE it is
+// adopted: the candidate array is built, checked, and only then stored.
+function routeOverflownTrack(wps) {
+  const repeats = routeRepeatedLegs(wps);
+  if (repeats.length <= ROUTE_REPEAT_LIMIT) return null;
+  const i = repeats[ROUTE_REPEAT_LIMIT];        // the one past the allowance
+  return { i, a: wps[i], b: wps[i + 1], repeats: repeats.length };
 }
 if (typeof window !== 'undefined') window.routeOverflownTrack = routeOverflownTrack;
-// Would adding `next` after the current tail fly a track a third time?
+// Would adding `next` after the current tail double the route back a second time?
 function routeAllowsNextPoint(next, wps) {
   const list = Array.isArray(wps) ? wps
     : ((typeof state !== 'undefined' && state.waypoints) || []);

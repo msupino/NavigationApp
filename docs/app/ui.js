@@ -1654,10 +1654,10 @@ async function buildRouteFromQuery(raw) {
     resolved.push(w);
   }
   // A typed route is vetted before it replaces what is on the map: "LLHZ BAZRA LLHZ BAZRA"
-  // asks for a track to be flown three times, and the map can draw it twice at most.
+  // asks for a route that doubles back twice, and one out-and-back pair is all the map draws.
   const over = (typeof routeOverflownTrack === 'function') && routeOverflownTrack(resolved);
   if (over) {
-    alert(S.trackFlownTwiceToast || 'A track can be flown twice, once each way');
+    alert(S.trackFlownTwiceToast || 'A route doubles back once');
     return false;
   }
   if ((state.waypoints.length || state.notes.length) &&

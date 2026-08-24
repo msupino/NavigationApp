@@ -3756,11 +3756,11 @@ function addModeExtendThroughWaypoint(i) {
   // that makes a zero-length leg. Pressing the last waypoint therefore does nothing.
   if (tail && typeof sameMapPoint === 'function' && sameMapPoint(tail, src)) return false;
   const next = { lat: src.lat, lng: src.lng, name: src.name };
-  // Tapping back and forth between two points is how a-b-a-b gets built. The second pass
-  // closes the sortie; a third has nowhere of its own to be drawn.
+  // Tapping back and forth between points is how a route ends up doubling back twice. The
+  // first repeat is the turn for home; a second has nowhere of its own to be drawn.
   if (typeof routeAllowsNextPoint === 'function' && !routeAllowsNextPoint(next)) {
     if (typeof showToast === 'function') showToast(S.trackFlownTwiceToast ||
-      'This leg is already flown out and back');
+      'This route already doubles back once');
     return true;                 // handled: the tap did something, it just was not an add
   }
   state.waypoints.push(next);
@@ -4169,7 +4169,7 @@ map.on('click', e => {
     const next = { lat: r5(r.lat), lng: r5(r.lng), name: r.name };
     if (typeof routeAllowsNextPoint === 'function' && !routeAllowsNextPoint(next)) {
       if (typeof showToast === 'function') showToast(S.trackFlownTwiceToast ||
-        'This leg is already flown out and back');
+        'This route already doubles back once');
       return;
     }
     state.waypoints.push(next);

@@ -1,9 +1,9 @@
 // @ts-check
-// A track may be flown out and back -- once each way -- and no more. a-b-a is a sortie;
-// a-b-a-b puts the same two legs on top of the two already drawn, and nothing on the chart
-// separates the third pass from the first: same line, same kites, same numbers. The
-// out-and-back split draws exactly one pair for that reason, so the builder holds the route
-// to what the map can honestly show.
+// A route turns for home once, so one leg -- one, in the whole route -- is flown out and
+// back. a-b-a is that sortie. a-b-a-b flies the same track a third time and a-b-a-c-a
+// doubles back twice; in both cases the extra pass lands on a line already drawn, with the
+// same kites and the same numbers on top of it. The out-and-back split draws exactly one
+// pair for that reason, so the builder holds the route to what the map can honestly show.
 const { test, expect } = require('./_setup');
 
 const A = { lat: 32.00, lng: 34.80, name: 'A' };
@@ -39,38 +39,45 @@ test('counts passes over a track whichever way each one is flown', async ({ page
   expect(out.elsewhere).toBe(0);
 });
 
-test('out and back is allowed; the third pass is not', async ({ page }) => {
+test('one out-and-back is allowed; a second doubling back is not', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(([a, b, c]) => ({
     outbound: routeAllowsNextPoint(b, [a]),
-    back: routeAllowsNextPoint(a, [a, b]),
-    again: routeAllowsNextPoint(b, [a, b, a]),        // a-b-a-b
-    elsewhere: routeAllowsNextPoint(c, [a, b, a]),    // a-b-a-c is a different track
+    back: routeAllowsNextPoint(a, [a, b]),            // a-b-a: the turn for home
+    again: routeAllowsNextPoint(b, [a, b, a]),        // a-b-a-b: the same track a third time
+    onward: routeAllowsNextPoint(c, [a, b, a]),       // a-b-a-c: still one repeat
+    secondTurn: routeAllowsNextPoint(a, [a, b, a, c]),  // a-b-a-c-a: doubles back twice
     firstPoint: routeAllowsNextPoint(a, []),
   }), [A, B, C]);
   expect(out.outbound).toBe(true);
   expect(out.back).toBe(true);
   expect(out.again).toBe(false);
-  expect(out.elsewhere).toBe(true);
+  expect(out.onward).toBe(true);
+  expect(out.secondTurn).toBe(false);
   expect(out.firstPoint).toBe(true);
 });
 
-test('a route that already flies a track twice is reported by the vetting helper', async ({ page }) => {
+test('the vetting helper reports the leg that puts a route over the limit', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(([a, b, c]) => ({
-    fine: routeOverflownTrack([a, b, a, c]),
-    over: routeOverflownTrack([a, b, a, b]),
-    // Two legs between the same pair of points that are NOT adjacent still count: the
-    // route leaves and comes back to fly the same track a third time.
+    fine: routeOverflownTrack([a, b, a, c]),          // one repeat: the turn for home
+    thirdPass: routeOverflownTrack([a, b, a, b]),
+    secondTurn: routeOverflownTrack([a, b, a, c, a]), // two different tracks doubled back
+    // A repeat need not be adjacent to the leg it repeats: the route can wander away and
+    // come back to fly the same track again.
     scattered: routeOverflownTrack([a, b, c, b, a, b]),
+    repeats: routeRepeatedLegs([a, b, a, c, a]),
   }), [A, B, C]);
   expect(out.fine).toBeNull();
-  expect(out.over).not.toBeNull();
-  expect(out.over.i).toBe(0);            // reported at the first leg over that track
+  expect(out.thirdPass).not.toBeNull();
+  expect(out.thirdPass.i).toBe(2);       // the leg past the allowance, not the first repeat
+  expect(out.secondTurn).not.toBeNull();
+  expect(out.secondTurn.i).toBe(3);
   expect(out.scattered).not.toBeNull();
+  expect(out.repeats).toEqual([1, 3]);   // both doublings back, in route order
 });
 
-test('tapping between two points stops at the return, with a reason', async ({ page }) => {
+test('tapping between two points stops at the turn for home, with a reason', async ({ page }) => {
   await boot(page);
   await setRoute(page, [A, B, A]);
   const out = await page.evaluate((b) => {
@@ -86,10 +93,10 @@ test('tapping between two points stops at the return, with a reason', async ({ p
   }, B);
   expect(out.len).toBe(3);                      // the tap added nothing
   expect(out.handled).toBe(true);               // and it was not passed on as a map click
-  expect(out.toasted).toMatch(/out and back/i);
+  expect(out.toasted).toMatch(/doubles back once/i);
 });
 
-test('a fourth point elsewhere is still welcome', async ({ page }) => {
+test('carrying on to a new point after the turn is still welcome', async ({ page }) => {
   await boot(page);
   await setRoute(page, [A, B, A]);
   const len = await page.evaluate((c) => {
@@ -105,7 +112,7 @@ test('a fourth point elsewhere is still welcome', async ({ page }) => {
 // third time always ends on a point the route already contains, and that button has always
 // refused those. This pins the reasoning -- if the already-on-route rule is ever relaxed,
 // this test fails and the guard has to come back.
-test('the inspector never offers an add that would be the third pass', async ({ page }) => {
+test('the inspector never offers an add that would double the route back again', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(async () => {
     await loadNavWaypoints();
@@ -141,7 +148,7 @@ test('a typed route asking for three passes is refused before it replaces the ma
     return { ok, alerted, names: state.waypoints.map(w => w.name) };
   });
   expect(out.ok).toBe(false);
-  expect(out.alerted).toMatch(/twice|out and back/i);
+  expect(out.alerted).toMatch(/doubles back once/i);
   expect(out.names).toEqual(['A', 'C']);        // the route on the map is untouched
 });
 
