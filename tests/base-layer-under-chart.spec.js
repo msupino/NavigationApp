@@ -2,8 +2,9 @@
 // Reported as a question: can more than one layer be on at once — ATS over Satellite, ATS
 // over CVFR? The picker still chooses ONE chart, because everything downstream (waypoint
 // source, NOTAM preferences, offline tiles, export) asks "which chart am I on". What it
-// gains is a floor: Display → "Map under the chart" chooses what sits beneath, and any chart
-// can take that place. Two controls, one answer each, instead of a stacking model.
+// gains is a floor: Display → "Base map" chooses what sits beneath, and any chart can take
+// that place. Two controls, one answer each, instead of a stacking model. The slider that
+// dims the chart to let it show through lives with the chart picker, in View/Set.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -116,4 +117,28 @@ test('how strongly the floor shows through is tunable', async ({ page }) => {
     return underlayLayer('Satellite').options.opacity;
   });
   expect(op).toBeCloseTo(0.35, 3);
+});
+
+// Where the two controls sit: the chart picker and the slider that dims it belong together
+// in View/Set, and what shows underneath is a Display choice, with the theme.
+test('each control sits with the thing it acts on', async ({ page }) => {
+  await boot(page);
+  const where = await page.evaluate(() => {
+    const sec = (sel) => {
+      const el = document.querySelector(sel);
+      const s = el && el.closest('.tb-section');
+      return s ? s.dataset.sec : null;
+    };
+    const rows = [...document.querySelectorAll('.tb-section[data-sec="view"] .navtoggle')];
+    const idx = (sel) => rows.findIndex(r => r.querySelector(sel));
+    return { chart: sec('#layer-select'), opacity: sec('#map-opacity'), base: sec('#base-layer-select'),
+             chartRow: idx('#layer-select'), opacityRow: idx('#map-opacity'),
+             label: document.querySelector('#map-opacity').closest('.navtoggle')
+               .textContent.trim().split('\n')[0] };
+  });
+  expect(where.chart).toBe('view');
+  expect(where.opacity).toBe('view');
+  expect(where.opacityRow).toBe(where.chartRow + 1);   // directly under the picker it dims
+  expect(where.base).toBe('display');
+  expect(where.label).toMatch(/Layer opacity/);        // not "Map opacity": it dims the layer
 });

@@ -9,8 +9,11 @@
 //          Export/import → Print
 //   #250 — export-PNG modal checkbox labels match the View section
 //          terminology ('navigation waypoints' / 'airfields')
-//   #251 — Hebrew tbMapOpacity label is the new wording ('בהירות מפה',
-//          not the old 'מפת רקע')
+//   #251 — the Hebrew opacity label is the new wording, not the old 'מפת רקע'. The slider
+//          was renamed again since (Map opacity -> Layer opacity, בהירות מפה ->
+//          בהירות השכבה) when the map under the chart became a chart of its own: what it
+//          dims is the layer you picked. The point #251 fixed is unchanged -- the label
+//          must not read 'מפת רקע'.
 const { test, expect } = require('./_setup');
 const { pairLLHZ_LLHA } = require('./_airfieldArp');
 
@@ -87,13 +90,13 @@ test.describe('#250 — export modal checkbox label terminology', () => {
 });
 
 // ---------------------------------------------------------------------------
-// #251 — HE tbMapOpacity wording.
+// #251 — the Hebrew opacity-slider wording.
 // ---------------------------------------------------------------------------
-test.describe('#251 — Hebrew tbMapOpacity label', () => {
-  test('Hebrew "Map opacity" slider label reads בהירות מפה', async ({ page }) => {
+test.describe('#251 — Hebrew opacity-slider label', () => {
+  test('the Hebrew opacity slider reads בהירות השכבה', async ({ page }) => {
     await boot(page, 'he');
-    const text = await page.locator('label[data-i18n-title="tbMapOpacityTitle"]').textContent();
-    expect(text).toMatch(/בהירות מפה/);
+    const text = await page.locator('label[data-i18n-title="tbLayerOpacityTitle"]').textContent();
+    expect(text).toMatch(/בהירות השכבה/);
     // Old wording must be gone.
     expect(text).not.toMatch(/מפת רקע/);
   });

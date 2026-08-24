@@ -4778,7 +4778,7 @@ function showExportModal() {
   const opacityRow = document.createElement('div');
   opacityRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
   const opLbl = document.createElement('span');
-  opLbl.textContent = S.tbMapOpacity;
+  opLbl.textContent = S.tbLayerOpacity;
   opacityRow.appendChild(opLbl);
   const opSlider = document.createElement('input');
   opSlider.type = 'range';
