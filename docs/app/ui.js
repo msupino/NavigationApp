@@ -5252,7 +5252,7 @@ function applyCvfrOpacity(v) {
 // plausible-looking guess on an approach chart is worse than not drawing it. They stay in
 // the charts viewer, which is where a schematic belongs.
 const IFR_SHOW_KEY  = 'navaid.showIfr';
-const IFR_SHEET_KEY = 'navaid.ifrSheet';       // + '.' + ICAO
+const IFR_SHEET_KEY = 'navaid.ifrSheet';       // "<ICAO>|<png>": the one sheet on the map
 
 window.showIfr = lsGet(IFR_SHOW_KEY) === '1';
 window.ifrLayerGroup = null;
@@ -5261,21 +5261,32 @@ function ifrImgBase() {
   // Own copy, or the deployed root's when this preview shares it (navAssetBase).
   return navAssetBase('ifr-img');
 }
-// Fields that publish a placeable IFR sheet, filtered by "Show plates for" like every other
-// plate layer.
-function ifrFields() {
+// Every placeable sheet on offer, as { icao, sheet }, filtered by "Show plates for" like
+// every other plate layer.
+function ifrSheets() {
   if (!airfields) return [];
-  return airfields.filter(af => Array.isArray(af.ifr_overlays) && af.ifr_overlays.length &&
-    plateAirfieldAllowed(af.name));
+  const out = [];
+  for (const af of airfields) {
+    if (!Array.isArray(af.ifr_overlays) || !af.ifr_overlays.length) continue;
+    if (!plateAirfieldAllowed(af.name)) continue;
+    for (const sheet of af.ifr_overlays) out.push({ icao: af.name, sheet });
+  }
+  return out;
 }
-function ifrSheetFor(af) {
-  if (!af || !Array.isArray(af.ifr_overlays) || !af.ifr_overlays.length) return null;
+const ifrKeyOf = (entry) => entry.icao + '|' + entry.sheet.png;
+// ONE chart is drawn, not one per field. The picker names a particular sheet -- "LLBG ·
+// ILS 08" -- so choosing another must put that one on the map and take the last one off.
+// Drawing every field's current sheet at once meant picking an approach at Ben Gurion left
+// Rosh Pina's departure lying there too, which is not what was asked for.
+function ifrChosen() {
+  const list = ifrSheets();
+  if (!list.length) return null;
   let want = null;
-  try { want = lsGet(IFR_SHEET_KEY + '.' + af.name); } catch (e) { /* storage unavailable */ }
-  return af.ifr_overlays.find(o => o.png === want) || af.ifr_overlays[0];
+  try { want = lsGet(IFR_SHEET_KEY); } catch (e) { /* storage unavailable */ }
+  return list.find(e => ifrKeyOf(e) === want) || list[0];
 }
-function setIfrSheet(icao, png) {
-  try { localStorage.setItem(IFR_SHEET_KEY + '.' + icao, png); } catch (e) { /* storage off */ }
+function setIfrSheet(key) {
+  try { localStorage.setItem(IFR_SHEET_KEY, key); } catch (e) { /* storage unavailable */ }
   if (ifrLayerGroup) { ifrLayerGroup.remove(); ifrLayerGroup = null; }
   if (window.showIfr) {
     loadIfrOverlays();
@@ -5286,9 +5297,9 @@ function loadIfrOverlays() {
   if (ifrLayerGroup) return;
   if (!airfields) return;
   ifrLayerGroup = L.layerGroup();
-  for (const af of ifrFields()) {
-    const sheet = ifrSheetFor(af);
-    if (sheet) buildOverlayLayer(ifrImgBase(), sheet, '1', 'ifr_overlay').addTo(ifrLayerGroup);
+  const chosen = ifrChosen();
+  if (chosen) {
+    buildOverlayLayer(ifrImgBase(), chosen.sheet, '1', 'ifr_overlay').addTo(ifrLayerGroup);
   }
 }
 
@@ -6192,22 +6203,21 @@ function chartsLoadingUntilReady(group, owner) {
   cb.checked = showIfr;
   const fillSheets = () => {
     if (!sel) return;
+    const list = ifrSheets();
+    const fields = new Set(list.map(e => e.icao));
     sel.textContent = '';
-    const fields = ifrFields();
-    for (const af of fields) {
-      const label = (typeof navName === 'function' ? navName(af.name) : af.name);
-      for (const o of af.ifr_overlays) {
-        const opt = document.createElement('option');
-        opt.value = af.name + '|' + o.png;
-        // The field's name only when more than one is shown: with the filter on a single
-        // field, "LLBG · ILS 08" is the field's name nineteen times over.
-        opt.textContent = fields.length > 1 ? label + ' · ' + o.code : o.code;
-        opt.title = o.title || '';
-        sel.appendChild(opt);
-      }
+    for (const entry of list) {
+      const opt = document.createElement('option');
+      opt.value = ifrKeyOf(entry);
+      // The field's name only when more than one is on offer: with the filter on a single
+      // field, "LLBG · ILS 08" is that field's name nineteen times over.
+      const label = (typeof navName === 'function' ? navName(entry.icao) : entry.icao);
+      opt.textContent = fields.size > 1 ? label + ' · ' + entry.sheet.code : entry.sheet.code;
+      opt.title = entry.sheet.title || '';
+      sel.appendChild(opt);
     }
-    const cur = fields.map(af => af.name + '|' + (ifrSheetFor(af) || {}).png);
-    sel.value = cur[0] || '';
+    const chosen = ifrChosen();
+    sel.value = chosen ? ifrKeyOf(chosen) : '';
     sel.disabled = !sel.options.length;
     const row = sel.closest('label');
     if (row) row.hidden = !showIfr || !sel.options.length;
@@ -6229,15 +6239,11 @@ function chartsLoadingUntilReady(group, owner) {
     }
     fillSheets();
   };
-  if (sel) {
-    sel.onchange = () => {
-      const [icao, png] = String(sel.value).split('|');
-      if (icao && png) setIfrSheet(icao, png);
-    };
-  }
+  if (sel) sel.onchange = () => { if (sel.value) setIfrSheet(sel.value); };
   if (airfields) fillSheets();
   else loadAirfields().then(fillSheets).catch(() => {});
 })();
+
 // Airfield-plate overlays are mutually exclusive — only one plate layer shows at
 // a time, so turning one on turns the others off (each toggle's own change
 // handler then removes its layer + persists the off state).

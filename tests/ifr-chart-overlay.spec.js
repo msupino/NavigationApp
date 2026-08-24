@@ -61,15 +61,12 @@ test('the shipped sheets are the placeable ones, and they carry their own design
   expect(ller.ifr_overlays).toBeUndefined();
 });
 
-test('one sheet per field is drawn, not all of them', async ({ page }) => {
+test('exactly one sheet is drawn, not one per field', async ({ page }) => {
   await boot(page);
   await on(page);
   const shown = await drawn(page);
-  const count = await page.evaluate(() =>
-    airfields.filter(a => a.ifr_overlays && a.ifr_overlays.length).length);
-  expect(shown.length).toBe(count);              // one each, not nineteen for LLBG
-  expect(shown.some(p => p.startsWith('LLBG_'))).toBe(true);
-  expect(shown.some(p => p.startsWith('LLIB_'))).toBe(true);
+  expect(shown.length).toBe(1);                  // not nineteen for LLBG, and not one each
+  expect(shown[0]).toMatch(/^LL[A-Z]{2}_/);
 });
 
 test('the picker lists every placeable sheet and switches which one is drawn', async ({ page }) => {
@@ -81,16 +78,20 @@ test('the picker lists every placeable sheet and switches which one is drawn', a
   expect(values.length).toBe(22);                // 19 at LLBG, 2 at LLIB, 1 at LLHZ
   expect(values.filter(v => v.startsWith('LLBG|')).length).toBe(19);
 
-  // Ask for a different LLBG sheet: that one is drawn, and the other field is untouched.
+  // Ask for a different sheet: that one is drawn and the one before it is gone. Reported as
+  // "selecting different ifr chart doesn't remove selected" -- the picker names one chart,
+  // so one chart is what it puts on the map.
   const wanted = values.find(v => v.startsWith('LLBG|') && v.includes('SID'));
   await sel.selectOption(wanted);
   await page.waitForTimeout(300);
-  const after = await drawn(page);
-  expect(after).toContain(wanted.split('|')[1]);
-  expect(after.some(p => p.startsWith('LLIB_'))).toBe(true);
-  // ...and it is remembered for that field.
-  expect(await page.evaluate(() => localStorage.getItem('navaid.ifrSheet.LLBG')))
-    .toBe(wanted.split('|')[1]);
+  expect(await drawn(page)).toEqual([wanted.split('|')[1]]);
+
+  // ...including across fields: choosing Rosh Pina's departure takes Ben Gurion's off.
+  const other = values.find(v => v.startsWith('LLIB|'));
+  await sel.selectOption(other);
+  await page.waitForTimeout(300);
+  expect(await drawn(page)).toEqual([other.split('|')[1]]);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.ifrSheet'))).toBe(other);
 });
 
 test('the remembered sheet comes back on the next start', async ({ page }) => {
@@ -132,8 +133,8 @@ test('"Show plates for" narrows it like every other plate layer', async ({ page 
   await page.waitForFunction(() => !!document.getElementById('ifr-cb'));
   await on(page);
   const shown = await drawn(page);
-  expect(shown.every(p => p.startsWith('LLIB_'))).toBe(true);
   expect(shown.length).toBe(1);
+  expect(shown[0].startsWith('LLIB_')).toBe(true);   // only that field's sheets are offered
 });
 
 // The AIP's one airfield-level ATS chart -- LLHZ's נספח ח', the departure to the ATS routes
@@ -150,7 +151,10 @@ test('the LLHZ ATS departure plate is one of the sheets', async ({ page }) => {
   expect(await page.evaluate(() =>
     Array.from(document.getElementById('ifr-sheet').options)
       .find(o => o.value.startsWith('LLHZ|')).textContent)).toMatch(/ATS departure/);
-  // Drawn on the bounds its own row states, like every other sheet.
+  // Choose it -- one chart is drawn at a time -- then it is on the bounds its own row
+  // states, like every other sheet.
+  await page.locator('#ifr-sheet').selectOption(hz);
+  await page.waitForTimeout(300);
   const laid = await page.evaluate(async () => {
     const af = await fetch('data/airfields.json').then(r => r.json());
     const list = af[Object.keys(af)[0]];
