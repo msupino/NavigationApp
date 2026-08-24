@@ -1,129 +1,106 @@
 // @ts-check
-// The one national sheet among the overlays: the CAA's ENR 6.1 ATS routes chart, laid on the
-// map from Extra layers. Everything else in that menu is a per-airfield plate, and this is
-// deliberately not one of them — it is the enroute picture a plate is read against, so it
-// neither turns a plate off nor gets turned off by one.
+// The CAA's enroute sheet (ENR 6.1) as a base chart, beside CVFR / Low Alt / Helicopters. It
+// is the one chart here that ships as a single reprojected raster rather than a tile set, so
+// it is an imageOverlay wearing a base layer's hat — and, being a chart, its reporting points
+// are what "Follow chart" hands the route builder while it is showing.
 const { test, expect } = require('./_setup');
 
-// A 1x1 PNG stands in for the 1.8 MB sheet: this spec is about where the layer is placed and
-// when it shows, and the real raster would be fetched on every one of these runs for nothing.
-const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMCAYAAAB7P3qAAAAAAElFTkSuQmCC',
-  'base64');
-
 async function boot(page) {
-  await page.route(/ats-img\/.*\.png/, r =>
-    r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
-  await page.addInitScript(() => {
-    // Open "Extra layers" so its controls are interactable.
-    try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) { /* storage off */ }
-  });
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof map === 'object' && !!document.getElementById('ats-cb'));
+  await page.waitForFunction(() => typeof map === 'object' && typeof layers === 'object' &&
+    !!document.getElementById('layer-select'));
 }
 
-const layerOn = (page) => page.evaluate(() => {
-  let found = null;
-  map.eachLayer(l => { if (l && l._ovType === 'ats_overlay') found = l; });
-  if (!found) return null;
-  const b = found.getBounds();
-  return {
-    url: found._ovUrl,
-    sw: [b.getSouth(), b.getWest()],
-    ne: [b.getNorth(), b.getEast()],
-    opacity: found.options.opacity,
-  };
+const onMap = (page) => page.evaluate(() => {
+  const l = layers.ATS;
+  if (!map.hasLayer(l)) return null;
+  const b = l.getBounds();
+  return { sw: [b.getSouth(), b.getWest()], ne: [b.getNorth(), b.getEast()], url: l._url };
 });
 
-test('the chart is off until asked for, and covers the box the sheet labels', async ({ page }) => {
-  await boot(page);
-  expect(await layerOn(page)).toBeNull();
-  expect(await page.evaluate(() => document.getElementById('ats-cb').checked)).toBe(false);
+const pick = (page, name) => page.evaluate((n) => {
+  const sel = document.getElementById('layer-select');
+  sel.value = n;
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+}, name);
 
-  await page.click('#ats-cb');
-  await page.waitForFunction(() => {
-    let on = false; map.eachLayer(l => { if (l && l._ovType === 'ats_overlay') on = true; });
-    return on;
-  });
-  const on = await layerOn(page);
+test('it is listed as a chart, after the tile charts and before the base maps', async ({ page }) => {
+  await boot(page);
+  const values = await page.evaluate(() =>
+    Array.from(document.getElementById('layer-select').options).map(o => o.value));
+  expect(values).toContain('ATS');
+  // Charts first, then the divider, then the base maps.
+  expect(values.indexOf('ATS')).toBeGreaterThan(values.indexOf('CVFR'));
+  expect(values.indexOf('ATS')).toBeLessThan(values.indexOf('Satellite'));
+});
+
+test('choosing it puts the sheet on the map, on the bounds its data states', async ({ page }) => {
+  await boot(page);
+  expect(await onMap(page)).toBeNull();
+  await pick(page, 'ATS');
+  const on = await onMap(page);
   const meta = await page.evaluate(() => fetch('data/ats-chart.json').then(r => r.json()));
-  // Bounds come from the sheet's own graticule, not from anything typed twice.
+  expect(on).not.toBeNull();
   expect(on.sw[0]).toBeCloseTo(meta.sw[0], 5);
   expect(on.sw[1]).toBeCloseTo(meta.sw[1], 5);
   expect(on.ne[0]).toBeCloseTo(meta.ne[0], 5);
   expect(on.ne[1]).toBeCloseTo(meta.ne[1], 5);
   expect(on.url).toContain(meta.png);
-  // It really covers the country it is a chart of: Ben Gurion and Rosh Pina are inside.
-  expect(on.sw[0]).toBeLessThan(32.0);
-  expect(on.ne[0]).toBeGreaterThan(33.0);
-  expect(on.sw[1]).toBeLessThan(34.88);
-  expect(on.ne[1]).toBeGreaterThan(35.58);
+  // A chart is remembered like any other.
+  expect(await page.evaluate(() => localStorage.getItem('navaid.layer'))).toBe('ATS');
 });
 
-test('the choice is remembered, and restored on the next start', async ({ page }) => {
+// The sheet covers the FIR and no more, so the world around it must not be blank — the same
+// underlay every other FIR-only chart gets.
+test('the OSM underlay fills in around it', async ({ page }) => {
   await boot(page);
-  await page.click('#ats-cb');
-  expect(await page.evaluate(() => localStorage.getItem('navaid.showAts'))).toBe('1');
-  await page.reload();
-  await page.waitForFunction(() => {
-    let on = false; map.eachLayer(l => { if (l && l._ovType === 'ats_overlay') on = true; });
-    return on && document.getElementById('ats-cb').checked;
-  });
-  await page.click('#ats-cb');
-  expect(await page.evaluate(() => localStorage.getItem('navaid.showAts'))).toBe('0');
-  expect(await layerOn(page)).toBeNull();
+  await pick(page, 'ATS');
+  expect(await page.evaluate(() => map.hasLayer(osmUnderlay))).toBe(true);
 });
 
-// The airfield plates are mutually exclusive because they all draw the same few miles of
-// map. The enroute sheet is a different question, and answering it must not close the other.
-test('it lives alongside an airfield plate, not instead of it', async ({ page }) => {
+// Being a chart is what makes "Follow chart" meaningful: its own reporting points come up
+// without the pilot pinning a dataset by hand.
+test('following the chart hands over its own reporting points', async ({ page }) => {
   await boot(page);
-  await page.click('#ats-cb');
-  await page.waitForFunction(() => {
-    let on = false; map.eachLayer(l => { if (l && l._ovType === 'ats_overlay') on = true; });
-    return on;
+  await pick(page, 'ATS');
+  const out = await page.evaluate(async () => {
+    await loadNavWaypoints();
+    const graph = await fetch('data/ats-route-graph.json').then(r => r.json());
+    return { prefix: layerDataPrefix(), label: layerLabelForPrefix('ats'),
+             count: navWP.length, nodes: Object.keys(graph.nodes).length,
+             vetek: navWP.find(w => w.name === 'VETEK') || null };
   });
-  await page.click('#cvfr-cb');
-  const both = await page.evaluate(() => ({
-    ats: document.getElementById('ats-cb').checked,
-    cvfr: document.getElementById('cvfr-cb').checked,
-  }));
-  expect(both).toEqual({ ats: true, cvfr: true });
-  // ...and turning a second plate on still closes the first, as before.
-  await page.click('#heli-cb');
-  expect(await page.evaluate(() => ({
-    ats: document.getElementById('ats-cb').checked,
-    cvfr: document.getElementById('cvfr-cb').checked,
-    heli: document.getElementById('heli-cb').checked,
-  }))).toEqual({ ats: true, cvfr: false, heli: true });
+  expect(out.prefix).toBe('ats');              // followed the chart, nothing pinned
+  expect(out.label).toBe('ATS routes');
+  expect(out.count).toBe(out.nodes);
+  expect(out.vetek.lat).toBeCloseTo(32.35472, 5);
+  expect(out.vetek.lng).toBeCloseTo(34.52333, 5);
 });
 
-test('the shared plate-opacity slider drives it too', async ({ page }) => {
+test('the gist can withdraw it, like any other chart', async ({ page }) => {
   await boot(page);
-  await page.click('#ats-cb');
-  await page.waitForFunction(() => {
-    let on = false; map.eachLayer(l => { if (l && l._ovType === 'ats_overlay') on = true; });
-    return on;
+  const off = await page.evaluate(() => {
+    setTune('layerEnabledATS', false);
+    return { offered: layerOffered('ATS'), cvfr: layerOffered('CVFR') };
   });
-  await page.evaluate(() => {
-    const el = document.getElementById('plate-opacity');
-    el.value = '0.35';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  expect((await layerOn(page)).opacity).toBeCloseTo(0.35, 3);
+  expect(off.offered).toBe(false);
+  expect(off.cvfr).toBe(true);                 // the fallback is never withdrawn
 });
 
 test('the sheet is placed in Web Mercator, not as the paper draws it', async ({ page }) => {
-  await page.goto('?lang=en&nogist');          // the real raster, not the stub
-  await page.waitForFunction(() => !!document.getElementById('ats-cb'));
+  await boot(page);
   const meta = await page.evaluate(() => fetch('data/ats-chart.json').then(r => r.json()));
   // A conformal sheet holds a degree of longitude at cos(latitude) of a degree of latitude,
   // so a raster of it can only be laid down axis-aligned AFTER reprojection. What that buys
   // is checkable from the shipped file: its aspect ratio must be the Mercator one for these
   // bounds, not the paper's.
+  //
+  // Through the app's own resolver, not a hard-coded path: a PR preview ships without the
+  // image sets it has not touched and resolves them against the deployed root, so
+  // 'ats-img/...' is a 404 there -- which arrives as an undecodable image, not a clear miss.
   const png = await page.evaluate(async (name) => {
     const img = new Image();
-    img.src = 'ats-img/' + name;
+    img.src = navAssetBase('ats-img') + name;
     await img.decode();
     return { w: img.naturalWidth, h: img.naturalHeight };
   }, meta.png);
@@ -132,36 +109,20 @@ test('the sheet is placed in Web Mercator, not as the paper draws it', async ({ 
   expect(png.h / png.w).toBeCloseTo(want, 2);
 });
 
-// It is not an airfield plate, so it does not sit in that frame: its own section, headed
-// "Enroute charts", is what says which kind of chart it is before you switch it on.
-test('it has a section of its own, not a line in the airfield plates', async ({ page }) => {
-  await boot(page);
-  const where = await page.evaluate(() => {
-    const cb = document.getElementById('ats-cb');
-    const frame = cb.closest('.tb-layer-frame');
-    const title = frame && frame.querySelector('.tb-frame-title');
-    const plates = document.getElementById('cvfr-cb').closest('.tb-layer-frame');
-    return { title: title && title.textContent.trim(), inPlates: frame === plates,
-             platesTitle: plates.querySelector('.tb-frame-title').textContent.trim() };
-  });
-  expect(where.inPlates).toBe(false);
-  expect(where.platesTitle).toMatch(/airfield plates/i);
-  expect(where.title).toMatch(/enroute/i);
-});
-
 // The AIP's one airfield-level ATS chart: LLHZ's נספח ח', the departure to the ATS routes.
 // That one IS a plate -- it draws a few miles of map around one field -- so it belongs in
 // the plates frame and in their mutual exclusion, which is the opposite of the sheet above.
 test('the LLHZ departure plate is an airfield plate, and behaves like one', async ({ page }) => {
-  await page.route(/atsdep-img\/.*\.png/, r =>
-    r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) { /* storage off */ }
+  });
   await boot(page);
   const frame = await page.evaluate(() => {
     const mine = document.getElementById('atsdep-cb').closest('.tb-layer-frame');
     const plates = document.getElementById('cvfr-cb').closest('.tb-layer-frame');
     return mine === plates;
   });
-  expect(frame).toBe(true);                     // in with the plates, unlike the enroute sheet
+  expect(frame).toBe(true);                     // a plate, in with the plates
 
   await page.click('#atsdep-cb');
   await page.waitForFunction(() => {
@@ -182,12 +143,13 @@ test('the LLHZ departure plate is an airfield plate, and behaves like one', asyn
   expect(laid.gotNe[0]).toBeCloseTo(laid.ne[0], 5);
   expect(laid.gotNe[1]).toBeCloseTo(laid.ne[1], 5);
 
-  // It excludes the other plates, and the enroute sheet is untouched by any of it.
-  await page.click('#ats-cb');
+  // ...and it excludes the other plates, as they exclude each other.
   await page.click('#cvfr-cb');
   expect(await page.evaluate(() => ({
     atsdep: document.getElementById('atsdep-cb').checked,
     cvfr: document.getElementById('cvfr-cb').checked,
-    ats: document.getElementById('ats-cb').checked,
-  }))).toEqual({ atsdep: false, cvfr: true, ats: true });
+  }))).toEqual({ atsdep: false, cvfr: true });
 });
+
+// End to end: choosing ATS routes in View/Set -> "Nav waypoints from" loads the sheet's
+// points and nothing else, so a route can be built on them.

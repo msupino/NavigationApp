@@ -1672,7 +1672,7 @@ var _layerGen = 0;
 // reverse direction from it rather than keeping a second hand-maintained
 // inverse map that could drift. Layers not named here (Navigation /
 // Satellite / OSM) share the CVFR datasets.
-const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
+const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters', ats: 'ATS' };
 function layerDataPrefix() {
   // An explicit choice (View/Set -> "Nav waypoints from") wins over the base layer, so
   // Satellite / OSM / Navigation are no longer stuck on CVFR: they used to fall through

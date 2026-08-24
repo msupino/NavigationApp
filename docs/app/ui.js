@@ -161,7 +161,7 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
   if (!sel) return;
   try {
     const stored = lsGet(NAVWP_SOURCE_KEY);
-    if (stored === 'cvfr' || stored === 'lsa' || stored === 'heli') window.navDataPrefix = stored;
+    if (['cvfr', 'lsa', 'heli', 'ats'].includes(stored)) window.navDataPrefix = stored;
   } catch (e) { /* storage unavailable */ }
   // Only charts the app actually offers: a layer switched off in the gist is gone from the
   // base-layer picker, and offering its waypoints here anyway let a pilot pick a dataset for
@@ -171,7 +171,8 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
   const opts = [['', S.tbNavWpSourceFollow || 'Follow chart'],
     ['cvfr', (S.layerLabels && S.layerLabels.CVFR) || 'CVFR', 'CVFR'],
     ['lsa', (S.layerLabels && S.layerLabels['Low Alt']) || 'Low Alt', 'Low Alt'],
-    ['heli', (S.layerLabels && S.layerLabels.Helicopters) || 'Helicopters', 'Helicopters']];
+    ['heli', (S.layerLabels && S.layerLabels.Helicopters) || 'Helicopters', 'Helicopters'],
+    ['ats', (S.layerLabels && S.layerLabels.ATS) || 'ATS routes', 'ATS']];
   const buildOptions = () => {
     sel.textContent = '';
     for (const [value, label, layer] of opts) {
@@ -208,7 +209,7 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
 const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
 // '---' is a non-selectable divider. Any layer not listed is appended after.
-const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', '---',
+const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', 'ATS', '---',
                      'Navigation', 'Satellite', 'OpenStreetMap'];
 const orderedLayerNames = () => [
   ...LAYER_ORDER.filter(n => n === '---' || (layers[n] && layerOffered(n))),
@@ -5221,46 +5222,6 @@ function loadAtsDepOverlays() {
   }
 }
 
-// ── ATS routes chart (ENR 6.1) ────────────────────────────────────────────────
-// The one national sheet among the overlays: every other one is a per-airfield plate. It is
-// NOT part of the plate mutual-exclusion group for that reason -- it is the enroute picture
-// an airfield plate is read against, not a competitor for the same piece of map.
-//
-// The CAA sheet is drawn on a conformal projection whose meridians converge; laid on the map
-// as printed it would read kilometres out at the edges. The shipped PNG is reprojected to
-// Web Mercator from the sheet's own graticule (scripts/warp-ats-chart.py), which is what
-// makes a plain axis-aligned imageOverlay correct here.
-const ATS_SHOW_KEY = 'navaid.showAts';
-
-window.showAts = lsGet(ATS_SHOW_KEY) === '1';
-window.atsLayerGroup = null;
-let _atsChart = null;
-
-function atsImgBase() {
-  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
-  return navAssetBase('ats-img');
-}
-
-async function loadAtsChart() {
-  if (_atsChart) return _atsChart;
-  const res = await fetch('data/ats-chart.json?v=2');
-  if (!res.ok) throw new Error('ats-chart.json ' + res.status);
-  _atsChart = await res.json();
-  return _atsChart;
-}
-
-async function loadAtsOverlay() {
-  if (atsLayerGroup) return atsLayerGroup;
-  const c = await loadAtsChart();
-  atsLayerGroup = L.layerGroup();
-  // ?v= is hand-managed, like every other overlay set here: the raster was re-warped onto
-  // the sheet's cone after the first one shipped, and a browser holding the old file would
-  // show the old, offset picture with no way for the pilot to know why.
-  buildOverlayLayer(atsImgBase(), { png: c.png, sw: c.sw, ne: c.ne }, '2', 'ats_overlay')
-    .addTo(atsLayerGroup);
-  return atsLayerGroup;
-}
-
 // ── Helicopter routes overlay ─────────────────────────────────────────────────
 const HELI_SHOW_KEY    = 'navaid.showHeli';
 const HELI_OPACITY_KEY = 'navaid.heliOpacity';
@@ -5766,7 +5727,7 @@ function applyPlateOpacity(v) {
   const valEl = document.getElementById('plate-opacity-val');
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
   [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup,
-   atsdepLayerGroup, atsLayerGroup]
+   atsdepLayerGroup]
     .forEach(g => { if (g) g.eachLayer(l => l.setOpacity(v)); });
 }
 
@@ -6172,30 +6133,6 @@ function chartsLoadingUntilReady(group, owner) {
     } else {
       if (atsdepLayerGroup) atsdepLayerGroup.remove();
       chartsLoadingCancelGroup('atsdep');
-    }
-  };
-})();
-// ATS routes chart toggle. Independent of the plate group above: it is the enroute sheet,
-// not one of the airfield plates, so turning it on leaves whatever plate is showing alone.
-(function () {
-  const cb = document.getElementById('ats-cb');
-  if (!cb) return;
-  cb.checked = showAts;
-  cb.onchange = async function (e) {
-    window.showAts = e.target.checked;
-    try { localStorage.setItem(ATS_SHOW_KEY, showAts ? '1' : '0'); } catch (_) {}
-    if (showAts) {
-      const loadingOwner = chartsLoadingStart('ats');
-      let group = null;
-      try { group = await loadAtsOverlay(); } catch (err) { chartsLoading(false, loadingOwner); return; }
-      // Re-check: a toggle-off during the cold-start await would otherwise leave an
-      // orphaned overlay on the map.
-      if (!window.showAts) { chartsLoading(false, loadingOwner); return; }
-      group.addTo(map);
-      chartsLoadingUntilReady(group, loadingOwner);
-    } else {
-      if (atsLayerGroup) atsLayerGroup.remove();
-      chartsLoadingCancelGroup('ats');
     }
   };
 })();
@@ -7654,10 +7591,6 @@ loadAirfields().then(() => {
       ['showCommfail', COMMFAIL_SHOW_KEY, 'commfail-cb', loadCommfailOverlays, () => commfailLayerGroup],
       ['showAtsDep',   ATSDEP_SHOW_KEY,   'atsdep-cb',   loadAtsDepOverlays,   () => atsdepLayerGroup],
     ];
-    // The ATS sheet restores on its own: it is not one of the mutually exclusive plates.
-    if (window.showAts) {
-      loadAtsOverlay().then(g => { if (window.showAts && g) g.addTo(map); }).catch(() => {});
-    }
     let shown = false;
     for (const [flag, key, cbId, load, group] of plates) {
       if (!window[flag]) continue;
@@ -8984,7 +8917,6 @@ NavAid.defaultVisibilityMap = [
   ['heli-cb', 'navaid.showHeli', 'defaultShowHeli'],
   ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
   ['atsdep-cb', 'navaid.showAtsDep', 'defaultShowAtsDep'],
-  ['ats-cb', 'navaid.showAts', 'defaultShowAts'],
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;

@@ -9,7 +9,11 @@ const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
-const DIRS = ['circuit-img', 'training-img', 'cvfr-img', 'heli-img', 'commfail-img'];
+// Every image set deploy.yml can share, in the order it lists them. A set added to the
+// workflow and not to this list makes the preview declare more shared dirs than the test
+// knows about, which is how the ATS pair announced themselves.
+const DIRS = ['circuit-img', 'training-img', 'cvfr-img', 'heli-img', 'commfail-img',
+              'atsdep-img', 'ats-img'];
 
 async function boot(page, sharedDirs) {
   if (sharedDirs) {
@@ -82,7 +86,7 @@ test('a shared set resolves to the deployed root, from a preview path', async ({
 });
 
 test('every image base goes through the resolver', async ({ page }) => {
-  await boot(page, ['circuit-img', 'training-img', 'cvfr-img', 'heli-img', 'commfail-img']);
+  await boot(page, DIRS.slice());
   const r = await page.evaluate(() => ({
     circuit: circuitImgBase(), training: trainingImgBase(), cvfr: cvfrImgBase(),
     heli: heliImgBase(), commfail: commfailImgBase(),
