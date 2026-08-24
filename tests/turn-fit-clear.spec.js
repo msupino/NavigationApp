@@ -10,6 +10,24 @@ async function boot(page) {
     Array.isArray(window.airfields) && window.airfields.length > 0);
 }
 
+// A loop out of LLHZ: comes home, but no leg retraces, so the geometry cannot settle the
+// turn and the mark is the only way to name it. Waypoint 1 is selected, ready to mark.
+async function loop(page) {
+  await page.evaluate(() => {
+    const hz = airfields.find(a => a.name === 'LLHZ');
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: hz.lat + 0.30, lng: hz.lng + 0.10, name: 'FAR' },
+      { lat: hz.lat + 0.10, lng: hz.lng + 0.30, name: 'SIDE' },
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+    ];
+    syncLegs();
+    draw();
+    state.selected = { type: 'wp', index: 1 };
+    showInspector();
+  });
+}
+
 // A route from airfield codes, so its ends are real fields, with one plain waypoint in the
 // middle: the inspector offers the turning point on route waypoints, not on airfields.
 async function route(page, codes) {
@@ -33,10 +51,25 @@ const turnBtn = (page) => page.evaluate(() => {
   return b && { disabled: b.disabled, title: b.title, text: b.textContent };
 });
 
-test('a route that comes home offers the turning point', async ({ page }) => {
+// The mark is for a route whose geometry cannot settle the turn. A loop comes home without
+// retracing anything, so it is the case the button exists for.
+test('a loop that comes home offers the turning point', async ({ page }) => {
+  await boot(page);
+  await loop(page);
+  expect((await turnBtn(page)).disabled).toBe(false);
+});
+
+// ...and a route that doubles back settles it on its own: the inspector says so and offers
+// no button, because clearing it would leave a visibly retracing route with no turn.
+test('a route that doubles back states its turn instead of offering one', async ({ page }) => {
   await boot(page);
   await route(page, ['LLHZ', 'LLIB', 'LLHZ']);
-  expect((await turnBtn(page)).disabled).toBe(false);
+  expect(await turnBtn(page)).toBeNull();
+  const stated = await page.evaluate(() => {
+    const el = document.getElementById('insp-turn-status');
+    return el && el.textContent;
+  });
+  expect(stated).toMatch(/turning point/i);
 });
 
 test('a one-way route dims it, and says why', async ({ page }) => {
@@ -50,7 +83,7 @@ test('a one-way route dims it, and says why', async ({ page }) => {
 // A route edited into a one-way trip must not be left holding a mark nothing can use.
 test('an existing turn can still be cleared on a one-way route', async ({ page }) => {
   await boot(page);
-  await route(page, ['LLHZ', 'LLIB', 'LLHZ']);
+  await loop(page);
   await page.evaluate(() => document.getElementById('insp-turn-btn').click());
   await page.evaluate(() => {
     const af = airfields.find(a => a.name === 'LLBS');
@@ -135,7 +168,7 @@ test('with no route the button says to draw one', async ({ page }) => {
 // still applies a turning point (legRetraceTurnIndex finds it, the leg-direction filter uses
 // it, the button draws as pressed) -- so disabling the button left a pilot unable to move or
 // clear a mark the app was acting on.
-test('a turn already in force stays editable on a one-way route', async ({ page }) => {
+test('a proven turn stays in force on a route that does not come home', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     const hz = airfields.find(a => a.name === 'LLHZ'), bs = airfields.find(a => a.name === 'LLBS');
@@ -148,15 +181,33 @@ test('a turn already in force stays editable on a one-way route', async ({ page 
     syncLegs(); draw();
     state.selected = { type: 'wp', index: 1 }; showInspector();
   });
-  const out = await page.evaluate(() => {
-    const b = document.getElementById('insp-turn-btn');
-    return { retrace: legRetraceTurnIndex(), home: routeReturnsHome(),
-             disabled: b.disabled, pressed: b.getAttribute('aria-pressed') };
-  });
+  const out = await page.evaluate(() => ({
+    retrace: legRetraceTurnIndex(),
+    home: routeReturnsHome(),
+    button: !!document.getElementById('insp-turn-btn'),
+    stated: (document.getElementById('insp-turn-status') || {}).textContent || '',
+  }));
   expect(out.home).toBe(false);          // it does not come home...
-  expect(out.retrace).toBe(1);           // ...but a turn is in force
-  expect(out.pressed).toBe('true');
-  expect(out.disabled).toBe(false);      // so it must remain editable
+  expect(out.retrace).toBe(1);           // ...but the retraced leg still proves the turn
+  expect(out.button).toBe(false);        // which nothing here can move
+  expect(out.stated).toMatch(/turning point/i);
+});
+
+// The one-way rule still governs the MARK, which is what a route without proof depends on.
+test('a hand-set turn stays clearable after the route becomes one-way', async ({ page }) => {
+  await boot(page);
+  await loop(page);
+  await page.evaluate(() => document.getElementById('insp-turn-btn').click());
+  await page.evaluate(() => {
+    const bs = airfields.find(a => a.name === 'LLBS');
+    state.waypoints[state.waypoints.length - 1] = { lat: bs.lat, lng: bs.lng, name: 'LLBS' };
+    syncLegs();
+    state.selected = { type: 'wp', index: 1 };
+    showInspector();
+  });
+  const b = await turnBtn(page);
+  expect(b.disabled).toBe(false);
+  expect(b.text).toMatch(/clear/i);
 });
 
 // The probe measures every piece of ink the route lays down, and refreshPrintFit runs from

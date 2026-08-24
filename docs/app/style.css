@@ -2019,6 +2019,23 @@ body.theme-light .insp-btn.insp-btn-safe {
 }
 body.theme-light .insp-btn.insp-btn-safe:hover { background: #e2e7ee; border-color: #c9d2dd; }
 body.theme-light .insp-btn.insp-btn-safe:disabled:hover { background: #eef1f5; }
+/* A state the pilot has to READ, not infer from a button's weight: the line above the
+   turning-point action says in words that this point is the turn, and where that came
+   from. Quiet, not an alarm -- it reports, it does not ask for anything. */
+.insp-status {
+  margin: 2px 0;
+  padding: 4px 8px;
+  border-inline-start: 3px solid #1d6fe0;
+  background: #241f1f;
+  color: #cfcaca;
+  font-size: 11px;
+  line-height: 1.35;
+  border-radius: 3px;
+}
+body.theme-light .insp-status {
+  background: #eef3fb;
+  color: #2c333c;
+}
 /* A latched state is emphasis, not an alarm: set/unset actions keep the same safe
    colours in both themes while bold text shows which state is active. */
 .insp-btn.insp-btn-on {
