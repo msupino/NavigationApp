@@ -5261,14 +5261,15 @@ function ifrImgBase() {
   // Own copy, or the deployed root's when this preview shares it (navAssetBase).
   return navAssetBase('ifr-img');
 }
-// Every placeable sheet on offer, as { icao, sheet }, filtered by "Show plates for" like
-// every other plate layer.
+// Every placeable sheet on offer, as { icao, sheet }. NOT filtered by "Show plates for":
+// that control narrows layers which draw a sheet per field, and this one draws the single
+// sheet you named -- at the field you named it for. Filtering it would only ever remove the
+// chart you had just asked for.
 function ifrSheets() {
   if (!airfields) return [];
   const out = [];
   for (const af of airfields) {
     if (!Array.isArray(af.ifr_overlays) || !af.ifr_overlays.length) continue;
-    if (!plateAirfieldAllowed(af.name)) continue;
     for (const sheet of af.ifr_overlays) out.push({ icao: af.name, sheet });
   }
   return out;
@@ -6248,7 +6249,7 @@ function chartsLoadingUntilReady(group, owner) {
 // a time, so turning one on turns the others off (each toggle's own change
 // handler then removes its layer + persists the off state).
 (function () {
-  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'ifr-cb']
+  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb']
     .map(id => document.getElementById(id))
     .filter(Boolean);
   for (const cb of boxes) {
@@ -7697,8 +7698,13 @@ loadAirfields().then(() => {
       ['showCvfr',     CVFR_SHOW_KEY,     'cvfr-cb',     loadCvfrOverlays,     () => cvfrLayerGroup],
       ['showHeli',     HELI_SHOW_KEY,     'heli-cb',     loadHeliOverlays,     () => heliLayerGroup],
       ['showCommfail', COMMFAIL_SHOW_KEY, 'commfail-cb', loadCommfailOverlays, () => commfailLayerGroup],
-      ['showIfr',      IFR_SHOW_KEY,      'ifr-cb',      loadIfrOverlays,      () => ifrLayerGroup],
     ];
+    // The instrument chart restores on its own: it is not one of the mutually exclusive
+    // plates, so it does not compete with whichever one is showing.
+    if (window.showIfr) {
+      loadIfrOverlays();
+      if (ifrLayerGroup) ifrLayerGroup.addTo(map);
+    }
     let shown = false;
     for (const [flag, key, cbId, load, group] of plates) {
       if (!window[flag]) continue;

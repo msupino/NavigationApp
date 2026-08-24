@@ -689,6 +689,20 @@
             <input type="checkbox" id="commfail-cb"> <span data-i18n="tbShowCommfail"></span>
           </label>
         </div>
+        <!-- Hidden overlay-align tool. Like ?editor=1 / ?tune=1, revealed only
+             with ?align=1 (ui.js unhides + wires it). It nudges the plate overlays, so it
+             belongs with them. -->
+        <div class="tb-group-box" id="overlay-align-group" hidden>
+          <label class="navtoggle" data-i18n-title="tbAlignOverlaysTitle">
+            <input type="checkbox" id="overlay-align-cb"> <span data-i18n="tbAlignOverlays"></span>
+          </label>
+        </div>
+        </div>
+        <!-- Instrument charts stand apart from the plates above: "Show plates for" does not
+             reach them (they are picked one sheet at a time, by name), and they are not in
+             the plates' mutual exclusion. A frame of their own says so. -->
+        <div class="tb-layer-frame">
+        <div class="tb-frame-title" data-i18n="tbGrpIfr"></div>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowIfrTitle">
             <input type="checkbox" id="ifr-cb"> <span data-i18n="tbShowIfr"></span>
@@ -697,14 +711,6 @@
             <span data-i18n="tbIfrSheet"></span>
             <select id="ifr-sheet"></select>
           </label>
-        </div>
-        <!-- Hidden overlay-align tool. Like ?editor=1 / ?tune=1, revealed only
-             with ?align=1 (ui.js unhides + wires it). -->
-        <div class="tb-group-box" id="overlay-align-group" hidden>
-          <label class="navtoggle" data-i18n-title="tbAlignOverlaysTitle">
-            <input type="checkbox" id="overlay-align-cb"> <span data-i18n="tbAlignOverlays"></span>
-          </label>
-        </div>
         </div>
         </div>
       </div>

@@ -109,21 +109,29 @@ test('the remembered sheet comes back on the next start', async ({ page }) => {
   expect(await drawn(page)).toContain(wanted.split('|')[1]);
 });
 
-test('it is an airfield plate, so it excludes the others', async ({ page }) => {
+// It is not one of the airfield plates: it draws the ONE sheet you named, at the field you
+// named it for, so neither the plates' mutual exclusion nor "Show plates for" applies to it.
+// It has a frame of its own in the menu for exactly that reason.
+test('it stands apart from the airfield plates', async ({ page }) => {
   await boot(page);
   await on(page);
   await page.click('#cvfr-cb');
   expect(await page.evaluate(() => ({
     ifr: document.getElementById('ifr-cb').checked,
     cvfr: document.getElementById('cvfr-cb').checked,
-  }))).toEqual({ ifr: false, cvfr: true });
-  // ...and the picker row goes away with the layer, rather than offering a choice that
-  // changes nothing.
-  expect(await page.evaluate(() =>
-    document.getElementById('ifr-sheet').closest('label').hidden)).toBe(true);
+  }))).toEqual({ ifr: true, cvfr: true });        // both on: they are different questions
+
+  const frames = await page.evaluate(() => {
+    const mine = document.getElementById('ifr-cb').closest('.tb-layer-frame');
+    const plates = document.getElementById('cvfr-cb').closest('.tb-layer-frame');
+    return { same: mine === plates,
+             title: mine.querySelector('.tb-frame-title').textContent.trim() };
+  });
+  expect(frames.same).toBe(false);
+  expect(frames.title).toMatch(/instrument/i);
 });
 
-test('"Show plates for" narrows it like every other plate layer', async ({ page }) => {
+test('"Show plates for" does not reach it', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     localStorage.setItem('navaid.plateAirfield', 'LLIB');
@@ -132,9 +140,13 @@ test('"Show plates for" narrows it like every other plate layer', async ({ page 
   await page.reload();
   await page.waitForFunction(() => !!document.getElementById('ifr-cb'));
   await on(page);
-  const shown = await drawn(page);
-  expect(shown.length).toBe(1);
-  expect(shown[0].startsWith('LLIB_')).toBe(true);   // only that field's sheets are offered
+  // Every field's sheets are still offered: filtering them would only ever remove the chart
+  // just asked for, since the pick names its own field.
+  const values = await page.evaluate(() =>
+    Array.from(document.getElementById('ifr-sheet').options).map(o => o.value));
+  expect(values.some(v => v.startsWith('LLBG|'))).toBe(true);
+  expect(values.some(v => v.startsWith('LLIB|'))).toBe(true);
+  expect(await drawn(page)).toHaveLength(1);
 });
 
 // The AIP's one airfield-level ATS chart -- LLHZ's נספח ח', the departure to the ATS routes
