@@ -5216,7 +5216,7 @@ function atsImgBase() {
 
 async function loadAtsChart() {
   if (_atsChart) return _atsChart;
-  const res = await fetch('data/ats-chart.json?v=1');
+  const res = await fetch('data/ats-chart.json?v=2');
   if (!res.ok) throw new Error('ats-chart.json ' + res.status);
   _atsChart = await res.json();
   return _atsChart;
@@ -5226,7 +5226,10 @@ async function loadAtsOverlay() {
   if (atsLayerGroup) return atsLayerGroup;
   const c = await loadAtsChart();
   atsLayerGroup = L.layerGroup();
-  buildOverlayLayer(atsImgBase(), { png: c.png, sw: c.sw, ne: c.ne }, '1', 'ats_overlay')
+  // ?v= is hand-managed, like every other overlay set here: the raster was re-warped onto
+  // the sheet's cone after the first one shipped, and a browser holding the old file would
+  // show the old, offset picture with no way for the pilot to know why.
+  buildOverlayLayer(atsImgBase(), { png: c.png, sw: c.sw, ne: c.ne }, '2', 'ats_overlay')
     .addTo(atsLayerGroup);
   return atsLayerGroup;
 }
