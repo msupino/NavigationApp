@@ -161,7 +161,7 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
   if (!sel) return;
   try {
     const stored = lsGet(NAVWP_SOURCE_KEY);
-    if (stored === 'cvfr' || stored === 'lsa' || stored === 'heli') window.navDataPrefix = stored;
+    if (['cvfr', 'lsa', 'heli', 'ats'].includes(stored)) window.navDataPrefix = stored;
   } catch (e) { /* storage unavailable */ }
   // Only charts the app actually offers: a layer switched off in the gist is gone from the
   // base-layer picker, and offering its waypoints here anyway let a pilot pick a dataset for
@@ -171,7 +171,10 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
   const opts = [['', S.tbNavWpSourceFollow || 'Follow chart'],
     ['cvfr', (S.layerLabels && S.layerLabels.CVFR) || 'CVFR', 'CVFR'],
     ['lsa', (S.layerLabels && S.layerLabels['Low Alt']) || 'Low Alt', 'Low Alt'],
-    ['heli', (S.layerLabels && S.layerLabels.Helicopters) || 'Helicopters', 'Helicopters']];
+    ['heli', (S.layerLabels && S.layerLabels.Helicopters) || 'Helicopters', 'Helicopters'],
+    // No third element: the ATS points come from the enroute sheet, which is an overlay
+    // rather than a base chart, so there is no layer for `offered()` to gate them on.
+    ['ats', (S.layerLabels && S.layerLabels['ATS routes']) || 'ATS routes']];
   const buildOptions = () => {
     sel.textContent = '';
     for (const [value, label, layer] of opts) {

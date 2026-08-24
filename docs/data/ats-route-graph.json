@@ -1,0 +1,903 @@
+{
+ "layer": "ats",
+ "version": 1,
+ "source": "Reporting points read from the CAA AIP ENR 6.1 ATS routes chart (amendment 2/25, effective 02 OCT 25) by scripts/extract-ats-waypoints.py. Coordinates are the sheet's own printed digits. No Hebrew names: the sheet prints the five-letter designation and nothing else, and a transliteration would be invented. No edges either -- the sheet's route structure (designators, levels, one-way segments) is not extracted, so this layer offers its points for routes and search but no auto-routing corridor.",
+ "schema": {
+  "nodes": "code, en, lat, lng, kind, layers, name",
+  "edges": "none for this layer"
+ },
+ "nodes": {
+  "ABIMI": {
+   "code": "ABIMI",
+   "en": "ABIMI",
+   "lat": 31.90472,
+   "lng": 35.24306,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ABIMI"
+  },
+  "ADLOD": {
+   "code": "ADLOD",
+   "en": "ADLOD",
+   "lat": 32.00944,
+   "lng": 35.2525,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ADLOD"
+  },
+  "AMMIT": {
+   "code": "AMMIT",
+   "en": "AMMIT",
+   "lat": 31.62222,
+   "lng": 35.45639,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "AMMIT"
+  },
+  "ARANI": {
+   "code": "ARANI",
+   "en": "ARANI",
+   "lat": 31.22972,
+   "lng": 35.21194,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ARANI"
+  },
+  "ASSIF": {
+   "code": "ASSIF",
+   "en": "ASSIF",
+   "lat": 31.74278,
+   "lng": 35.22833,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ASSIF"
+  },
+  "ATLIT": {
+   "code": "ATLIT",
+   "en": "ATLIT",
+   "lat": 32.69778,
+   "lng": 34.91528,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ATLIT"
+  },
+  "AZERE": {
+   "code": "AZERE",
+   "en": "AZERE",
+   "lat": 33.20139,
+   "lng": 33.90222,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "AZERE"
+  },
+  "BARZI": {
+   "code": "BARZI",
+   "en": "BARZI",
+   "lat": 32.83639,
+   "lng": 35.54333,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "BARZI"
+  },
+  "BETYO": {
+   "code": "BETYO",
+   "en": "BETYO",
+   "lat": 32.22333,
+   "lng": 34.91889,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "BETYO"
+  },
+  "BEXOM": {
+   "code": "BEXOM",
+   "en": "BEXOM",
+   "lat": 31.79389,
+   "lng": 35.01167,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "BEXOM"
+  },
+  "BIRIM": {
+   "code": "BIRIM",
+   "en": "BIRIM",
+   "lat": 31.86167,
+   "lng": 34.96833,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "BIRIM"
+  },
+  "BOFIR": {
+   "code": "BOFIR",
+   "en": "BOFIR",
+   "lat": 31.57528,
+   "lng": 34.88528,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "BOFIR"
+  },
+  "BOGER": {
+   "code": "BOGER",
+   "en": "BOGER",
+   "lat": 30.93333,
+   "lng": 34.88333,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "BOGER"
+  },
+  "BOKEF": {
+   "code": "BOKEF",
+   "en": "BOKEF",
+   "lat": 31.425,
+   "lng": 35.00444,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "BOKEF"
+  },
+  "DAFNA": {
+   "code": "DAFNA",
+   "en": "DAFNA",
+   "lat": 32.54333,
+   "lng": 34.23,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "DAFNA"
+  },
+  "DIVLA": {
+   "code": "DIVLA",
+   "en": "DIVLA",
+   "lat": 32.28417,
+   "lng": 34.71778,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "DIVLA"
+  },
+  "DONAG": {
+   "code": "DONAG",
+   "en": "DONAG",
+   "lat": 31.93417,
+   "lng": 34.58,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "DONAG"
+  },
+  "EILOT": {
+   "code": "EILOT",
+   "en": "EILOT",
+   "lat": 29.60806,
+   "lng": 34.97611,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "EILOT"
+  },
+  "ENOKO": {
+   "code": "ENOKO",
+   "en": "ENOKO",
+   "lat": 31.10833,
+   "lng": 35.20833,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ENOKO"
+  },
+  "ESHEL": {
+   "code": "ESHEL",
+   "en": "ESHEL",
+   "lat": 29.82222,
+   "lng": 35.01778,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ESHEL"
+  },
+  "FIKER": {
+   "code": "FIKER",
+   "en": "FIKER",
+   "lat": 31.46167,
+   "lng": 34.82028,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "FIKER"
+  },
+  "GAFAZ": {
+   "code": "GAFAZ",
+   "en": "GAFAZ",
+   "lat": 32.56222,
+   "lng": 35.29222,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "GAFAZ"
+  },
+  "GALIM": {
+   "code": "GALIM",
+   "en": "GALIM",
+   "lat": 32.83333,
+   "lng": 34.96667,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "GALIM"
+  },
+  "GEFEN": {
+   "code": "GEFEN",
+   "en": "GEFEN",
+   "lat": 31.40167,
+   "lng": 35.27083,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "GEFEN"
+  },
+  "GEVES": {
+   "code": "GEVES",
+   "en": "GEVES",
+   "lat": 30.45,
+   "lng": 34.9875,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "GEVES"
+  },
+  "GIMIK": {
+   "code": "GIMIK",
+   "en": "GIMIK",
+   "lat": 32.80444,
+   "lng": 35.53667,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "GIMIK"
+  },
+  "GOBRI": {
+   "code": "GOBRI",
+   "en": "GOBRI",
+   "lat": 31.86417,
+   "lng": 35.37889,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "GOBRI"
+  },
+  "GODED": {
+   "code": "GODED",
+   "en": "GODED",
+   "lat": 32.165,
+   "lng": 34.57278,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "GODED"
+  },
+  "ITERO": {
+   "code": "ITERO",
+   "en": "ITERO",
+   "lat": 31.93444,
+   "lng": 35.14222,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ITERO"
+  },
+  "JILET": {
+   "code": "JILET",
+   "en": "JILET",
+   "lat": 32.32667,
+   "lng": 34.48333,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "JILET"
+  },
+  "JIRAF": {
+   "code": "JIRAF",
+   "en": "JIRAF",
+   "lat": 30.78667,
+   "lng": 34.68833,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "JIRAF"
+  },
+  "KANER": {
+   "code": "KANER",
+   "en": "KANER",
+   "lat": 32.20778,
+   "lng": 34.93194,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "KANER"
+  },
+  "KEREN": {
+   "code": "KEREN",
+   "en": "KEREN",
+   "lat": 32.37556,
+   "lng": 34.07917,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "KEREN"
+  },
+  "KINAR": {
+   "code": "KINAR",
+   "en": "KINAR",
+   "lat": 30.94389,
+   "lng": 35.35139,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "KINAR"
+  },
+  "KONFO": {
+   "code": "KONFO",
+   "en": "KONFO",
+   "lat": 32.42833,
+   "lng": 34.11556,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "KONFO"
+  },
+  "MALUQ": {
+   "code": "MALUQ",
+   "en": "MALUQ",
+   "lat": 31.16528,
+   "lng": 35.37417,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "MALUQ"
+  },
+  "MEGID": {
+   "code": "MEGID",
+   "en": "MEGID",
+   "lat": 32.57639,
+   "lng": 35.26056,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "MEGID"
+  },
+  "MERVA": {
+   "code": "MERVA",
+   "en": "MERVA",
+   "lat": 32.78167,
+   "lng": 34.54389,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "MERVA"
+  },
+  "MESIL": {
+   "code": "MESIL",
+   "en": "MESIL",
+   "lat": 32.11056,
+   "lng": 34.90139,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "MESIL"
+  },
+  "MIRTA": {
+   "code": "MIRTA",
+   "en": "MIRTA",
+   "lat": 31.32167,
+   "lng": 35.08639,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "MIRTA"
+  },
+  "MOUAB": {
+   "code": "MOUAB",
+   "en": "MOUAB",
+   "lat": 31.79944,
+   "lng": 35.59972,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "MOUAB"
+  },
+  "MUVIN": {
+   "code": "MUVIN",
+   "en": "MUVIN",
+   "lat": 31.81611,
+   "lng": 35.545,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "MUVIN"
+  },
+  "NALSO": {
+   "code": "NALSO",
+   "en": "NALSO",
+   "lat": 29.53611,
+   "lng": 34.87833,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "NALSO"
+  },
+  "NEOMI": {
+   "code": "NEOMI",
+   "en": "NEOMI",
+   "lat": 31.58472,
+   "lng": 35.29139,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "NEOMI"
+  },
+  "NIKUV": {
+   "code": "NIKUV",
+   "en": "NIKUV",
+   "lat": 31.47778,
+   "lng": 35.13889,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "NIKUV"
+  },
+  "NILVI": {
+   "code": "NILVI",
+   "en": "NILVI",
+   "lat": 31.935,
+   "lng": 34.125,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "NILVI"
+  },
+  "NURIT": {
+   "code": "NURIT",
+   "en": "NURIT",
+   "lat": 30.06944,
+   "lng": 35.06583,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "NURIT"
+  },
+  "OBAKO": {
+   "code": "OBAKO",
+   "en": "OBAKO",
+   "lat": 31.06556,
+   "lng": 35.3125,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "OBAKO"
+  },
+  "ODEDI": {
+   "code": "ODEDI",
+   "en": "ODEDI",
+   "lat": 31.61167,
+   "lng": 34.90611,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ODEDI"
+  },
+  "ORLEV": {
+   "code": "ORLEV",
+   "en": "ORLEV",
+   "lat": 32.02639,
+   "lng": 34.63667,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ORLEV"
+  },
+  "ORPAZ": {
+   "code": "ORPAZ",
+   "en": "ORPAZ",
+   "lat": 32.02972,
+   "lng": 35.18333,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ORPAZ"
+  },
+  "OSAMA": {
+   "code": "OSAMA",
+   "en": "OSAMA",
+   "lat": 31.93056,
+   "lng": 35.61833,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "OSAMA"
+  },
+  "OVDAS": {
+   "code": "OVDAS",
+   "en": "OVDAS",
+   "lat": 29.96611,
+   "lng": 34.94556,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "OVDAS"
+  },
+  "PIDET": {
+   "code": "PIDET",
+   "en": "PIDET",
+   "lat": 32.52944,
+   "lng": 34.78417,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "PIDET"
+  },
+  "PIKOG": {
+   "code": "PIKOG",
+   "en": "PIKOG",
+   "lat": 32.82528,
+   "lng": 33.62472,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "PIKOG"
+  },
+  "PURLA": {
+   "code": "PURLA",
+   "en": "PURLA",
+   "lat": 32.04889,
+   "lng": 34.22972,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "PURLA"
+  },
+  "RAHAT": {
+   "code": "RAHAT",
+   "en": "RAHAT",
+   "lat": 31.4,
+   "lng": 34.785,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "RAHAT"
+  },
+  "RAPIV": {
+   "code": "RAPIV",
+   "en": "RAPIV",
+   "lat": 32.58667,
+   "lng": 34.93167,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "RAPIV"
+  },
+  "RASAF": {
+   "code": "RASAF",
+   "en": "RASAF",
+   "lat": 29.89306,
+   "lng": 35.03139,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "RASAF"
+  },
+  "SALAM": {
+   "code": "SALAM",
+   "en": "SALAM",
+   "lat": 31.93333,
+   "lng": 35.51667,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "SALAM"
+  },
+  "SHANI": {
+   "code": "SHANI",
+   "en": "SHANI",
+   "lat": 30.22639,
+   "lng": 35.09833,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "SHANI"
+  },
+  "SHAYO": {
+   "code": "SHAYO",
+   "en": "SHAYO",
+   "lat": 30.32861,
+   "lng": 35.1175,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "SHAYO"
+  },
+  "SIVAK": {
+   "code": "SIVAK",
+   "en": "SIVAK",
+   "lat": 31.70889,
+   "lng": 35.47694,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "SIVAK"
+  },
+  "SOKET": {
+   "code": "SOKET",
+   "en": "SOKET",
+   "lat": 31.3075,
+   "lng": 34.90111,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "SOKET"
+  },
+  "SUKOT": {
+   "code": "SUKOT",
+   "en": "SUKOT",
+   "lat": 31.06556,
+   "lng": 35.36389,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "SUKOT"
+  },
+  "SUVAS": {
+   "code": "SUVAS",
+   "en": "SUVAS",
+   "lat": 32.16944,
+   "lng": 33.9925,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "SUVAS"
+  },
+  "TALMI": {
+   "code": "TALMI",
+   "en": "TALMI",
+   "lat": 31.82667,
+   "lng": 35.50389,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "TALMI"
+  },
+  "TAPUZ": {
+   "code": "TAPUZ",
+   "en": "TAPUZ",
+   "lat": 32.0325,
+   "lng": 34.52333,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "TAPUZ"
+  },
+  "TILFA": {
+   "code": "TILFA",
+   "en": "TILFA",
+   "lat": 31.20861,
+   "lng": 35.29472,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "TILFA"
+  },
+  "TIROS": {
+   "code": "TIROS",
+   "en": "TIROS",
+   "lat": 33.3,
+   "lng": 34.31667,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "TIROS"
+  },
+  "TOMAL": {
+   "code": "TOMAL",
+   "en": "TOMAL",
+   "lat": 31.74139,
+   "lng": 35.485,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "TOMAL"
+  },
+  "VETEK": {
+   "code": "VETEK",
+   "en": "VETEK",
+   "lat": 32.35472,
+   "lng": 34.52333,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "VETEK"
+  },
+  "VOLFO": {
+   "code": "VOLFO",
+   "en": "VOLFO",
+   "lat": 32.33833,
+   "lng": 34.16722,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "VOLFO"
+  },
+  "VURDI": {
+   "code": "VURDI",
+   "en": "VURDI",
+   "lat": 31.195,
+   "lng": 35.04167,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "VURDI"
+  },
+  "YELAD": {
+   "code": "YELAD",
+   "en": "YELAD",
+   "lat": 30.84833,
+   "lng": 34.94667,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "YELAD"
+  },
+  "YOGGA": {
+   "code": "YOGGA",
+   "en": "YOGGA",
+   "lat": 31.97833,
+   "lng": 34.99417,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "YOGGA"
+  },
+  "YOLCO": {
+   "code": "YOLCO",
+   "en": "YOLCO",
+   "lat": 31.935,
+   "lng": 34.26889,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "YOLCO"
+  },
+  "YOSEF": {
+   "code": "YOSEF",
+   "en": "YOSEF",
+   "lat": 32.60083,
+   "lng": 34.71639,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "YOSEF"
+  },
+  "ZACCI": {
+   "code": "ZACCI",
+   "en": "ZACCI",
+   "lat": 32.40806,
+   "lng": 35.05778,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ZACCI"
+  },
+  "ZAHAV": {
+   "code": "ZAHAV",
+   "en": "ZAHAV",
+   "lat": 32.81444,
+   "lng": 34.81,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ZAHAV"
+  },
+  "ZUKKO": {
+   "code": "ZUKKO",
+   "en": "ZUKKO",
+   "lat": 32.56167,
+   "lng": 33.94917,
+   "kind": "waypoint",
+   "layers": [
+    "ats"
+   ],
+   "name": "ZUKKO"
+  }
+ },
+ "edges": {}
+}

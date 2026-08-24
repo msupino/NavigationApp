@@ -191,3 +191,31 @@ test('the LLHZ departure plate is an airfield plate, and behaves like one', asyn
     ats: document.getElementById('ats-cb').checked,
   }))).toEqual({ atsdep: false, cvfr: true, ats: true });
 });
+
+// End to end: choosing ATS routes in View/Set -> "Nav waypoints from" loads the sheet's
+// points and nothing else, so a route can be built on them.
+test('picking ATS routes as the waypoint source loads its points', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) { /* storage off */ }
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!document.getElementById('navwp-source'));
+  const out = await page.evaluate(async () => {
+    const sel = document.getElementById('navwp-source');
+    sel.value = 'ats';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 400));
+    await loadNavWaypoints();
+    const graph = await fetch('data/ats-route-graph.json').then(r => r.json());
+    return { prefix: layerDataPrefix(), label: layerLabelForPrefix('ats'),
+             count: navWP.length, nodes: Object.keys(graph.nodes).length,
+             vetek: navWP.find(w => w.name === 'VETEK') || null };
+  });
+  expect(out.prefix).toBe('ats');
+  expect(out.label).toBe('ATS routes');
+  expect(out.count).toBe(out.nodes);
+  expect(out.vetek.lat).toBeCloseTo(32.35472, 5);
+  expect(out.vetek.lng).toBeCloseTo(34.52333, 5);
+  // The choice is a pinned dataset, so it survives a reload like the other sources.
+  expect(await page.evaluate(() => localStorage.getItem('navaid.navDataPrefix'))).toBe('ats');
+});

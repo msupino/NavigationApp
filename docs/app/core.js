@@ -1697,7 +1697,10 @@ window.S = Object.assign({
   kmlRouteName: 'Route',
   kmlTourName: 'Fly the route',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
-                 'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
+                 'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
+                 // A dataset, not a base chart: the ENR 6.1 sheet is an Extra-layers overlay,
+                 // and this label names its points in the "Nav waypoints from" picker.
+                 'ATS routes': 'ATS routes' },
   // Toolbar static strings — filled into DOM by applyI18n() on boot
   tbHandleTitle: 'Drag to move',
   tbBrandTag: '— CVFR flight planner for Israel',

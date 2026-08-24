@@ -70,3 +70,23 @@ test('no point sits on a published facility', () => {
     }
   }
 });
+
+// The same points, in the shape every other layer ships: one <layer>-route-graph.json, which
+// is what the "Nav waypoints from" picker loads when ATS routes is chosen.
+test('the graph dataset carries the same points as the extract', () => {
+  const graph = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', 'data', 'ats-route-graph.json'), 'utf8'));
+  expect(graph.layer).toBe('ats');
+  const nodes = Object.values(graph.nodes);
+  expect(nodes.length).toBe(points.length);
+  for (const p of points) {
+    const n = graph.nodes[p.name];
+    expect(n).toBeTruthy();
+    expect(n.lat).toBe(p.lat);
+    expect(n.lng).toBe(p.lng);
+    expect(n.layers).toEqual(['ats']);      // membership is by layers, not by kind
+    expect(n.kind).toBe('waypoint');
+  }
+  // No edges: the sheet's route structure is not extracted, and an empty object says so
+  // rather than a half-built corridor that auto-route would try to fly.
+  expect(graph.edges).toEqual({});
+});
