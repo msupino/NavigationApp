@@ -800,7 +800,12 @@ test.describe('manual turning point', () => {
       pressed: document.getElementById('insp-turn-btn').getAttribute('aria-pressed'),
       turnCallout: state.notes.some(n => n && n.cc === 'SFAIM'),
       ordinaryKept: state.notes.some(n => n && n.text === 'keep me'),
-      canAdd: !!document.querySelector('.add-freq-change-btn'),
+      // Dimmed, not taken away: a control that vanishes when a point becomes the turn moves
+      // every button under it, including the one being pressed.
+      addBtn: (() => {
+        const b = document.querySelector('.add-freq-change-btn');
+        return b && { disabled: b.disabled, title: b.title };
+      })(),
       style: (() => {
         const css = getComputedStyle(document.getElementById('insp-turn-btn'));
         return [css.color, css.backgroundColor, css.borderColor,
@@ -811,7 +816,9 @@ test.describe('manual turning point', () => {
     expect(out.pressed).toBe('true');   // relabels to "clear" once set
     expect(out.turnCallout).toBe(false);
     expect(out.ordinaryKept).toBe(true);
-    expect(out.canAdd).toBe(false);
+    expect(out.addBtn).not.toBeNull();
+    expect(out.addBtn.disabled).toBe(true);
+    expect(out.addBtn.title).toMatch(/frequency you arrived on/i);
     expect(out.style.slice(0, 3)).toEqual(idleStyle.slice(0, 3));
     expect(out.style[3]).toBeGreaterThan(idleStyle[3]);
 
@@ -836,8 +843,8 @@ test.describe('manual turning point', () => {
     await page.keyboard.press('z');
     const out = await page.evaluate(() => [legRetraceTurnIndex(),
       state.notes.some(n => n && n.cc === 'TYONA'),
-      !!document.querySelector('.add-freq-change-btn')]);
-    expect(out).toEqual([2, false, false]);
+      document.querySelector('.add-freq-change-btn').disabled]);
+    expect(out).toEqual([2, false, true]);   // the key adds nothing, and the button says why
   });
 });
 
