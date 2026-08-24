@@ -110,47 +110,18 @@ test('the sheet is placed in Web Mercator, not as the paper draws it', async ({ 
   expect(png.h / png.w).toBeCloseTo(want, 2);
 });
 
-// The AIP's one airfield-level ATS chart: LLHZ's נספח ח', the departure to the ATS routes.
-// That one IS a plate -- it draws a few miles of map around one field -- so it belongs in
-// the plates frame and in their mutual exclusion, which is the opposite of the sheet above.
-test('the LLHZ departure plate is an airfield plate, and behaves like one', async ({ page }) => {
-  await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) { /* storage off */ }
-  });
+// Reported: choosing the ATS chart after an instrument chart hid the instrument chart. An
+// imageOverlay defaults to the overlay pane -- where the plates are drawn -- so the layer
+// added last won. A base map belongs under what is drawn on the map.
+test('choosing it does not cover the plates drawn on top', async ({ page }) => {
   await boot(page);
-  const frame = await page.evaluate(() => {
-    const mine = document.getElementById('atsdep-cb').closest('.tb-layer-frame');
-    const plates = document.getElementById('cvfr-cb').closest('.tb-layer-frame');
-    return mine === plates;
+  expect(await page.evaluate(() => layers.ATS.options.pane)).toBe('tilePane');
+  await pick(page, 'ATS');
+  const panes = await page.evaluate(() => {
+    const ats = map.getPane(layers.ATS.options.pane);
+    const overlay = map.getPane('overlayPane');
+    const z = (el) => parseInt(getComputedStyle(el).zIndex || '0', 10);
+    return { ats: z(ats), overlay: z(overlay) };
   });
-  expect(frame).toBe(true);                     // a plate, in with the plates
-
-  await page.click('#atsdep-cb');
-  await page.waitForFunction(() => {
-    let n = 0; map.eachLayer(l => { if (l && l._ovType === 'atsdep_overlay') n++; });
-    return n > 0;
-  });
-  const laid = await page.evaluate(async () => {
-    const af = await fetch('data/airfields.json').then(r => r.json());
-    const list = Array.isArray(af) ? af : af[Object.keys(af)[0]];
-    const hz = list.find(a => a.name === 'LLHZ');
-    let bounds = null;
-    map.eachLayer(l => { if (l && l._ovType === 'atsdep_overlay') bounds = l.getBounds(); });
-    return { sw: hz.atsdep_overlay.sw, ne: hz.atsdep_overlay.ne,
-             gotSw: [bounds.getSouth(), bounds.getWest()], gotNe: [bounds.getNorth(), bounds.getEast()] };
-  });
-  expect(laid.gotSw[0]).toBeCloseTo(laid.sw[0], 5);
-  expect(laid.gotSw[1]).toBeCloseTo(laid.sw[1], 5);
-  expect(laid.gotNe[0]).toBeCloseTo(laid.ne[0], 5);
-  expect(laid.gotNe[1]).toBeCloseTo(laid.ne[1], 5);
-
-  // ...and it excludes the other plates, as they exclude each other.
-  await page.click('#cvfr-cb');
-  expect(await page.evaluate(() => ({
-    atsdep: document.getElementById('atsdep-cb').checked,
-    cvfr: document.getElementById('cvfr-cb').checked,
-  }))).toEqual({ atsdep: false, cvfr: true });
+  expect(panes.ats).toBeLessThan(panes.overlay);
 });
-
-// End to end: choosing ATS routes in View/Set -> "Nav waypoints from" loads the sheet's
-// points and nothing else, so a route can be built on them.

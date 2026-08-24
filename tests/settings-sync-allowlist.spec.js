@@ -143,6 +143,11 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.apkReloadedForBuild$/, 'APK self-reload bookkeeping'],
   [/^navaid\.toolbarPosDesktop$/, 'panel geometry (the *Pos rule misses this suffix)'],
   [/^navaid\.wxTime$/,           'forecast valid-time pick, only reused if still offered'],
+  // navaid.ifrSheet.<ICAO>: which instrument chart is drawn for that field. The key is
+  // composed per airfield and the sync layer carries exact keys only, so the allowlist
+  // cannot name the variants -- and which approach you last looked at is a thin thing to
+  // carry between devices next to the layer being on at all, which IS synced.
+  [/^navaid\.ifrSheet/,         'which IFR sheet per field, composed key, per device'],
   // sessionStorage, not a setting: these live for one tab visit.
   [/^navaid\.selected$/,         'sessionStorage — restores the selection after a reload'],
   [/^navaid\.fpOpen$/,           'sessionStorage — was the flight plan open'],

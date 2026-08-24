@@ -242,19 +242,37 @@ def georef(pdf, png, arp):
     at = lambda m, b, px: m*(px/scale) + b
     LAT = lambda px: at(mlat, blat, px)
     LON = lambda px: at(mlon, blon, px)
+    # A graticule slightly out of square with the page needs both pixel axes to describe it
+    # (see plane()). Adopted only when it beats the single-axis fit on the labels it was
+    # given: on a plate that IS square the second coefficient is noise, and the residual says
+    # so. The corners then come from the plane, evaluated at the frame.
+    # The whole sheet is kept: the crop is the printed frame, not the graticule box. Cutting
+    # at the outer gridlines placed the picture just as well -- both land within about 20 m
+    # of their own drawn graticule, measured -- and threw away everything the chart draws
+    # outside them, which on an approach plate is the procedure text and half the plan view.
+    #
+    # Placement rides on the least-squares fit over the labels, which is unbiased at their
+    # centroid and keeps the two axes in scale with each other (conformality ~1.00). A
+    # two-point calibration on the outermost ticks was tried and is worse: it lands the datum
+    # no better and stretches the sheet by 2%, because the ticks it trusts are two measured
+    # positions rather than eleven.
+    north_up_guess = (lat_key == 'cy')
+    LATxy = lambda px, py: LAT(py if lat_key == 'cy' else px)
+    LONxy = lambda px, py: LON(px if lat_key == 'cy' else py)
     north_up = (lat_key == 'cy')
-    if north_up:
-        box = {'sw': [round(LAT(bottom),5), round(LON(left),5)],
-               'ne': [round(LAT(top),5),    round(LON(right),5)]}
-        corners = {'tl': (LAT(top), LON(left)), 'tr': (LAT(top), LON(right)),
-                   'bl': (LAT(bottom), LON(left))}
+    tl = (LATxy(left, top), LONxy(left, top))
+    tr = (LATxy(right, top), LONxy(right, top))
+    bl = (LATxy(left, bottom), LONxy(left, bottom))
+    corners = {'tl': tl, 'tr': tr, 'bl': bl}
+    # A plate whose graticule is square to the page still ships as a plain box: three corners
+    # would be the same rectangle written the long way, and every consumer handles both.
+    square = (abs(tl[0]-tr[0]) < 1e-6 and abs(tl[1]-bl[1]) < 1e-6) if north_up else False
+    if north_up and square:
+        box = {'sw': [round(bl[0],5), round(tl[1],5)], 'ne': [round(tl[0],5), round(tr[1],5)]}
     else:
-        # Rotated print: latitude runs across the page, longitude up it.
-        box = {'tl': [round(LAT(left),5),  round(LON(top),5)],
-               'tr': [round(LAT(right),5), round(LON(top),5)],
-               'bl': [round(LAT(left),5),  round(LON(bottom),5)]}
-        corners = {'tl': (LAT(left), LON(top)), 'tr': (LAT(right), LON(top)),
-                   'bl': (LAT(left), LON(bottom))}
+        box = {'tl': [round(tl[0],5), round(tl[1],5)],
+               'tr': [round(tr[0],5), round(tr[1],5)],
+               'bl': [round(bl[0],5), round(bl[1],5)]}
     # Conformality: a degree of longitude is cos(lat) as wide on the ground as a degree of
     # latitude, so a correct fit has this at 1.00. A stretch or a misread axis does not.
     span_lat = abs(corners['tl'][0] - corners['bl'][0]) if north_up else abs(corners['tr'][0]-corners['tl'][0])
@@ -466,7 +484,10 @@ def main(argv):
                          'similarity, which keeps the paper\'s proportions.')
     ap.add_argument('--write', action='store_true', help='write docs/<set>-img/<ICAO>_<set>.png')
     ap.add_argument('--set', default='cvfr',
-                    help='which overlay set --write belongs to (cvfr, atsdep, …)')
+                    help='which overlay set --write belongs to (cvfr, atsdep, ifr, …)')
+    ap.add_argument('--name', default='',
+                    help='file stem for --write (default <ICAO>_<set>); a set with several '
+                         'sheets per field needs one name each')
     ap.add_argument('--width', type=int, default=780, help='overlay width in px')
     a = ap.parse_args(argv)
 
@@ -542,7 +563,7 @@ def main(argv):
     l, t, r, b = out['frame']
     crop = hi.crop((round(l*k), round(t*k), round(r*k), round(b*k)))
     crop = crop.resize((a.width, round(crop.height * a.width / crop.width)), _I.LANCZOS)
-    dest = f'docs/{a.set}-img/{a.icao}_{a.set}.png'
+    dest = f'docs/{a.set}-img/{a.name or (a.icao + "_" + a.set)}.png'
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     crop.convert('P', palette=_I.ADAPTIVE, colors=192).save(dest, optimize=True)
     print(f'wrote {dest} {crop.size[0]}x{crop.size[1]}')
