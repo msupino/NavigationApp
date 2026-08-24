@@ -308,7 +308,7 @@ jobs:
             # dropped ones against the deployed root. Filesystem links cannot help here:
             # upload-pages-artifact packs with --dereference --hard-dereference.
             SHARED=""
-            for d in circuit-img training-img cvfr-img heli-img commfail-img; do
+            for d in circuit-img training-img cvfr-img heli-img commfail-img ats-img; do
               [ -d "$STAGING/$d" ] || continue
               # TWO dots, comparing the two tips' trees directly. Triple-dot needs a merge
               # base, and there is none: production is a shallow actions/checkout and each

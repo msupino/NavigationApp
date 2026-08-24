@@ -5194,6 +5194,43 @@ function applyCvfrOpacity(v) {
   if (cvfrLayerGroup) cvfrLayerGroup.eachLayer(l => l.setOpacity(v));
 }
 
+// ── ATS routes chart (ENR 6.1) ────────────────────────────────────────────────
+// The one national sheet among the overlays: every other one is a per-airfield plate. It is
+// NOT part of the plate mutual-exclusion group for that reason -- it is the enroute picture
+// an airfield plate is read against, not a competitor for the same piece of map.
+//
+// The CAA sheet is drawn on a conformal projection whose meridians converge; laid on the map
+// as printed it would read kilometres out at the edges. The shipped PNG is reprojected to
+// Web Mercator from the sheet's own graticule (scripts/warp-ats-chart.py), which is what
+// makes a plain axis-aligned imageOverlay correct here.
+const ATS_SHOW_KEY = 'navaid.showAts';
+
+window.showAts = lsGet(ATS_SHOW_KEY) === '1';
+window.atsLayerGroup = null;
+let _atsChart = null;
+
+function atsImgBase() {
+  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
+  return navAssetBase('ats-img');
+}
+
+async function loadAtsChart() {
+  if (_atsChart) return _atsChart;
+  const res = await fetch('data/ats-chart.json?v=1');
+  if (!res.ok) throw new Error('ats-chart.json ' + res.status);
+  _atsChart = await res.json();
+  return _atsChart;
+}
+
+async function loadAtsOverlay() {
+  if (atsLayerGroup) return atsLayerGroup;
+  const c = await loadAtsChart();
+  atsLayerGroup = L.layerGroup();
+  buildOverlayLayer(atsImgBase(), { png: c.png, sw: c.sw, ne: c.ne }, '1', 'ats_overlay')
+    .addTo(atsLayerGroup);
+  return atsLayerGroup;
+}
+
 // ── Helicopter routes overlay ─────────────────────────────────────────────────
 const HELI_SHOW_KEY    = 'navaid.showHeli';
 const HELI_OPACITY_KEY = 'navaid.heliOpacity';
@@ -5698,7 +5735,8 @@ function applyPlateOpacity(v) {
   plateOpacity = v;
   const valEl = document.getElementById('plate-opacity-val');
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
-  [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup]
+  [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup,
+   atsLayerGroup]
     .forEach(g => { if (g) g.eachLayer(l => l.setOpacity(v)); });
 }
 
@@ -6084,6 +6122,30 @@ function chartsLoadingUntilReady(group, owner) {
       applyCommfailOpacity(overlayDefaultOpacity());
     };
   }
+})();
+// ATS routes chart toggle. Independent of the plate group above: it is the enroute sheet,
+// not one of the airfield plates, so turning it on leaves whatever plate is showing alone.
+(function () {
+  const cb = document.getElementById('ats-cb');
+  if (!cb) return;
+  cb.checked = showAts;
+  cb.onchange = async function (e) {
+    window.showAts = e.target.checked;
+    try { localStorage.setItem(ATS_SHOW_KEY, showAts ? '1' : '0'); } catch (_) {}
+    if (showAts) {
+      const loadingOwner = chartsLoadingStart('ats');
+      let group = null;
+      try { group = await loadAtsOverlay(); } catch (err) { chartsLoading(false, loadingOwner); return; }
+      // Re-check: a toggle-off during the cold-start await would otherwise leave an
+      // orphaned overlay on the map.
+      if (!window.showAts) { chartsLoading(false, loadingOwner); return; }
+      group.addTo(map);
+      chartsLoadingUntilReady(group, loadingOwner);
+    } else {
+      if (atsLayerGroup) atsLayerGroup.remove();
+      chartsLoadingCancelGroup('ats');
+    }
+  };
 })();
 // Airfield-plate overlays are mutually exclusive — only one plate layer shows at
 // a time, so turning one on turns the others off (each toggle's own change
@@ -7539,6 +7601,10 @@ loadAirfields().then(() => {
       ['showHeli',     HELI_SHOW_KEY,     'heli-cb',     loadHeliOverlays,     () => heliLayerGroup],
       ['showCommfail', COMMFAIL_SHOW_KEY, 'commfail-cb', loadCommfailOverlays, () => commfailLayerGroup],
     ];
+    // The ATS sheet restores on its own: it is not one of the mutually exclusive plates.
+    if (window.showAts) {
+      loadAtsOverlay().then(g => { if (window.showAts && g) g.addTo(map); }).catch(() => {});
+    }
     let shown = false;
     for (const [flag, key, cbId, load, group] of plates) {
       if (!window[flag]) continue;
@@ -8864,6 +8930,7 @@ NavAid.defaultVisibilityMap = [
   ['cvfr-cb', 'navaid.showCvfr', 'defaultShowCvfr'],
   ['heli-cb', 'navaid.showHeli', 'defaultShowHeli'],
   ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
+  ['ats-cb', 'navaid.showAts', 'defaultShowAts'],
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;
