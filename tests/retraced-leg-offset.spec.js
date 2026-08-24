@@ -204,38 +204,3 @@ test('kites move across with the line they belong to', async ({ page }) => {
     expect(leg.along).toBe(0);              // and nowhere else
   }
 });
-
-test('six passes over one track leave six readable arrows, not one pile', async ({ page }) => {
-  await boot(page);
-  const out = await page.evaluate(() => {
-    const A = { lat: 32.02, lng: 34.83, name: 'A' }, B = { lat: 32.45, lng: 35.05, name: 'B' };
-    state.waypoints = [A, { ...B }, { ...A }, { ...B }, { ...A }, { ...B }];
-    syncLegs(); draw();
-    const pts = state.legs.map((_, i) => legLabelCenter(i, 'in'));
-    let closest = Infinity;
-    for (let i = 0; i < pts.length; i++)
-      for (let j = i + 1; j < pts.length; j++)
-        closest = Math.min(closest, Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y));
-    return { count: pts.length, closest: Math.round(closest) };
-  });
-  expect(out.count).toBe(5);
-  // A kite is about 90 px across at this scale: anything less than its own width is a pile.
-  expect(out.closest).toBeGreaterThan(60);
-});
-
-// A kite the pilot has dragged stays exactly where it was put -- the step is only for the
-// ones the app placed.
-test('a hand-placed kite is not stepped', async ({ page }) => {
-  await boot(page);
-  const out = await page.evaluate(() => {
-    const A = { lat: 32.02, lng: 34.83, name: 'A' }, B = { lat: 32.45, lng: 35.05, name: 'B' };
-    state.waypoints = [A, { ...B }, { ...A }, { ...B }];
-    syncLegs();
-    state.legs[2].inLabel = { a: 0, p: 0 };        // dragged: no _default flag
-    draw();
-    const moved = legLabelCenter(2, 'in');
-    const frame = legFrame(2);
-    return Math.round(Math.hypot(moved.x - frame.mx, moved.y - frame.my));
-  });
-  expect(out).toBe(0);                              // exactly where it was put
-});

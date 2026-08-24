@@ -1116,6 +1116,7 @@ window.S = Object.assign({
   startRouteHere: '➕ Start route here',
   addToRoute: '➕ Add to route',
   alreadyOnRoute: '✓ Already on the route',
+  trackFlownTwiceToast: 'This leg is already flown out and back — a track can be flown twice, once each way',
   emptyRouteHint: 'Click a point on the map to start a route',
   modeChipAdd: 'Adding waypoints',
   modeChipNote: 'Adding notes',
@@ -4592,49 +4593,44 @@ if (typeof window !== 'undefined') window.legScreenEnds = legScreenEnds;
 // landed on exactly the same point: one pile of arrows with one set of numbers readable.
 // Each repeat now sits a kite's width further along the leg, so they read as a row.
 // Returns pixels along the leg direction, 0 for a leg flown once.
-// Which pass this leg is, out of how many over the same track the same way round.
-// `before` counts the earlier ones, so a row can be centred on the leg.
-function legRepeatSlot(i) {
-  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
-  const a = wps[i], b = wps[i + 1];
-  if (!a || !b) return { before: 0, total: 0 };
+// A track may be flown out and back -- once each way -- and no more. a-b-a is a sortie;
+// a-b-a-b is the same two legs again on top of the two already drawn, and nothing on the
+// chart can tell the third pass from the first: same line, same kites, same numbers. The
+// out-and-back split (legPairOffsetPx) separates exactly one pair for that reason, so the
+// route builder holds the route to what the map can honestly draw.
+const TRACK_PASS_LIMIT = 2;
+// How many legs in `wps` fly between these two points, either way round.
+function trackPassCount(wps, a, b) {
+  if (!Array.isArray(wps) || !a || !b) return 0;
   const same = (p, q) => p && q &&
     (typeof sameMapPoint === 'function' ? sameMapPoint(p, q) : (p.lat === q.lat && p.lng === q.lng));
-  let before = 0, total = 0;
-  for (let j = 0; j < wps.length - 1; j++) {
-    if (!same(wps[j], a) || !same(wps[j + 1], b)) continue;   // same track, same way round
-    total++;
-    if (j < i) before++;
+  let n = 0;
+  for (let i = 0; i < wps.length - 1; i++) {
+    const p = wps[i], q = wps[i + 1];
+    if ((same(p, a) && same(q, b)) || (same(p, b) && same(q, a))) n++;
   }
-  return { before, total };
+  return n;
 }
-if (typeof window !== 'undefined') window.legRepeatSlot = legRepeatSlot;
-// Centre a row of `total` kites, one width apart, on whatever the kite is anchored to.
-function legRepeatStep(i, width) {
-  const { before, total } = legRepeatSlot(i);
-  if (total < 2 || !(width > 0)) return 0;
-  // Two passes step half a width either side of the anchor, three put one on it and one
-  // either side, and so on.
-  return (before - (total - 1) / 2) * width;
+if (typeof window !== 'undefined') window.trackPassCount = trackPassCount;
+// The first track in `wps` flown more times than allowed, or null. Used to vet a route
+// BEFORE it is adopted: the candidate array is built, checked, and only then stored.
+function routeOverflownTrack(wps) {
+  if (!Array.isArray(wps)) return null;
+  for (let i = 0; i < wps.length - 1; i++) {
+    const a = wps[i], b = wps[i + 1];
+    if (trackPassCount(wps, a, b) > TRACK_PASS_LIMIT) return { i, a, b };
+  }
+  return null;
 }
-function legRepeatAlongPx(i) {
-  const width = (typeof tune === 'function' ? tune('legKiteCellWidthPx') * 3 : 90) *
-    (typeof kiteDrawScale === 'function' ? kiteDrawScale() : 1);
-  return legRepeatStep(i, width);
+if (typeof window !== 'undefined') window.routeOverflownTrack = routeOverflownTrack;
+// Would adding `next` after the current tail fly a track a third time?
+function routeAllowsNextPoint(next, wps) {
+  const list = Array.isArray(wps) ? wps
+    : ((typeof state !== 'undefined' && state.waypoints) || []);
+  if (!next || list.length < 1) return true;
+  return !routeOverflownTrack(list.concat([next]));
 }
-if (typeof window !== 'undefined') window.legRepeatAlongPx = legRepeatAlongPx;
-// Same idea for the cumulative-time kite, which is anchored at a waypoint rather than at the
-// middle of the leg. Every pass over the same track ends at the same waypoint, so without
-// this they stack there -- which is what a route flown three times looked like: one legible
-// elapsed time and two underneath it. Its own width, because a cum kite is not a nav kite.
-function legRepeatCumAlongPx(i) {
-  const width = (typeof tune === 'function'
-    ? (tune('cumKiteCellWidthPx') + tune('cumKiteTriangleLenPx'))
-    : 60) * (typeof cumKiteDrawScale === 'function' ? cumKiteDrawScale()
-             : (typeof legZoomScale === 'function' ? legZoomScale() : 1));
-  return legRepeatStep(i, width);
-}
-if (typeof window !== 'undefined') window.legRepeatCumAlongPx = legRepeatCumAlongPx;
+if (typeof window !== 'undefined') window.routeAllowsNextPoint = routeAllowsNextPoint;
 
 function legIsRetrace(i) {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];

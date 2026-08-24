@@ -126,6 +126,7 @@ window.S = {
   startRouteHere: '➕ התחל מסלול כאן',
   addToRoute: '➕ הוסף למסלול',
   alreadyOnRoute: '✓ כבר במסלול',
+  trackFlownTwiceToast: 'הקטע הזה כבר טס הלוך ושוב — אפשר לטוס מסלול פעמיים, פעם בכל כיוון',
   emptyRouteHint: 'לחץ על נקודה במפה כדי להתחיל מסלול',
   modeChipAdd: 'הוספת נקודות דרך',
   modeChipNote: 'הוספת הערות',
