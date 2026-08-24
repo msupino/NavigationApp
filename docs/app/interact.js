@@ -3041,6 +3041,9 @@ function showInspector() {
       // available, so a route edited into a one-way trip is not left holding a turn nothing
       // can use.
       const homeAgain = typeof routeReturnsHome === 'function' ? routeReturnsHome() : true;
+      // Proven by a retraced leg, not chosen: a-b-a turns at b, and that is not the pilot's
+      // to unset or move elsewhere.
+      const definitive = typeof routeTurnIsDefinitive === 'function' && routeTurnIsDefinitive();
       // Say it in words when this point IS the turn. Bold text on a button reading "Mark as
       // turning point" was the only sign, which reads as an offer, not a state -- a pilot
       // could not tell a marked point from an unmarked one without pressing it.
@@ -3050,17 +3053,32 @@ function showInspector() {
         status.id = 'insp-turn-status';
         status.textContent = manualTurn
           ? (S.inspTurnIsManual || '↻ Turning point — you marked this as where the route turns for home.')
-          : (S.inspTurnIsAuto || '↻ Turning point — the route doubles back here, so this is where it turns for home.');
+          : (S.inspTurnIsAuto || '↻ Turning point — the route doubles back here, so this is where it turns for home. It cannot be moved while it does.');
         body.appendChild(status);
+      }
+      // A route that doubles back has its turn settled by the geometry, and nothing here can
+      // move it: this point IS where it turns, so there is no action to offer -- on this
+      // waypoint or on any other. The status line above says which point that is.
+      if (definitive) {
+        if (!effectiveTurn) {
+          const held = document.createElement('div');
+          held.className = 'insp-status insp-turn-status';
+          held.id = 'insp-turn-status';
+          const turnName = (typeof navName === 'function')
+            ? navName((state.waypoints[legRetraceTurnIndex()] || {}).name || '')
+            : ((state.waypoints[legRetraceTurnIndex()] || {}).name || '');
+          held.textContent = (typeof S.inspTurnFixedAt === 'function')
+            ? S.inspTurnFixedAt(turnName)
+            : ('The route turns for home at ' + turnName + '.');
+          body.appendChild(held);
+        }
+        return;                          // no button: there is nothing to press
       }
       const turnBtn = document.createElement('button');
       turnBtn.className = 'insp-btn' + (effectiveTurn ? ' insp-btn-on' : '');
       turnBtn.id = 'insp-turn-btn';
-      // Three states, three labels. The middle one is the case the old wording got wrong:
-      // the geometry already turns here, and pressing fixes that in place for later edits.
       turnBtn.textContent = manualTurn ? (S.inspTurnClear || '↻ Clear turning point')
-        : effectiveTurn ? (S.inspTurnPin || '↻ Fix this as the turning point')
-                        : (S.inspTurnSet || '↻ Mark as turning point');
+                                       : (S.inspTurnSet || '↻ Mark as turning point');
       // A route that does not come home has no far end to mark -- unless one is already in
       // force, by hand or from a leg that retraces. Disabling the button then would leave
       // the app using a turning point the pilot can neither move nor clear, on a button
@@ -3068,8 +3086,7 @@ function showInspector() {
       turnBtn.disabled = !homeAgain && !manualTurn && !effectiveTurn;
       turnBtn.title = turnBtn.disabled
         ? (S.inspTurnNeedsSameField || 'Available on a route that returns to the airfield it started from.')
-        : (effectiveTurn && !manualTurn ? (S.inspTurnPinTitle || '')
-                                        : (S.inspTurnTitle || ''));
+        : (S.inspTurnTitle || '');
       turnBtn.setAttribute('aria-pressed', effectiveTurn ? 'true' : 'false');
       turnBtn.onclick = () => {
         setTurnWaypoint(idx);
