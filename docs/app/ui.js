@@ -1123,11 +1123,22 @@ legendCtrl.addTo(map);
     const obstructed = obstacles.some(obstacle =>
       overlaps(r.left, r.top, r.width, r.height, obstacle));
     // Where it is is fine: leave it exactly where it is. Re-applying a position it already
-    // holds is how a card starts drifting a pixel at a time.
-    if (!positioned && !outside && !obstructed) return;
+    // holds is how a card starts drifting a pixel at a time. Remember this spot as home if
+    // nothing has claimed one yet -- a legend the pilot has never dragged still has a place
+    // it belongs, and that is wherever it was sitting undisturbed.
+    if (!positioned && !outside && !obstructed) {
+      if (!home) home = { x: r.left, y: r.top };
+      return;
+    }
+    // Aim at HOME, not at where the card happens to be. Expanding a legend near the bottom
+    // of a phone screen makes it too tall to fit, so it is clamped upwards; collapsing it
+    // again used to re-apply that clamped position and leave the card somewhere new --
+    // reported as the legend moving when it is expanded and closed. Home is what the card
+    // returns to the moment there is room for it again.
+    const want = home || { x: r.left, y: r.top };
     // Only a drag decides where the legend lives, so only a drag writes to storage: a
     // reflow that pushes the card clear of something must not be adopted as a new home.
-    applyPos(r.left, r.top, false);
+    applyPos(want.x, want.y, false);
     void opts;
   };
   const bootObserver = new MutationObserver(() => {

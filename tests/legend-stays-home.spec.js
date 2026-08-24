@@ -80,3 +80,46 @@ test('dragging it still decides where it lives', async ({ page }) => {
   expect(after.stored).not.toBeNull();
   expect(Math.abs(after.stored.y - after.y)).toBeLessThan(2);   // stored = where it now is
 });
+
+// Reported separately: on a phone, expanding the legend and closing it again leaves it
+// somewhere new. A card low on the screen is too tall to fit once it opens, so it is clamped
+// upwards -- correct, and temporary. Collapsing it used to re-apply THAT position rather than
+// the one the pilot chose, so every open/close walked the card up the screen.
+test('expanding a low legend and closing it puts it back', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('navaid.legendCollapsed', '1'));
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!document.querySelector('.map-legend'));
+  await page.waitForFunction(() => !document.documentElement.classList.contains('app-booting'));
+
+  const top = () => page.evaluate(() =>
+    Math.round(document.querySelector('.map-legend').getBoundingClientRect().top));
+  const tap = async () => {
+    const t = await page.locator('.map-legend-title').boundingBox();
+    await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForTimeout(120);
+  };
+
+  // Put it low by hand: a drag is what decides where the legend lives.
+  const t0 = await page.locator('.map-legend-title').boundingBox();
+  await page.mouse.move(t0.x + 20, t0.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(t0.x + 30, 300, { steps: 6 });
+  await page.mouse.move(t0.x + 30, 520, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  const home = await top();
+
+  await tap();                                   // open: too tall down there, so it rides up
+  const opened = await top();
+  expect(opened).toBeLessThan(home);
+
+  await tap();                                   // close: back to where it was put
+  expect(await top()).toBe(home);
+
+  // ...and again, because the bug was cumulative: each round used to move it further.
+  await tap(); await tap();
+  expect(await top()).toBe(home);
+});
