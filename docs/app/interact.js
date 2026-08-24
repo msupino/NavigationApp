@@ -884,8 +884,11 @@ function hitLegLabel(px, py) {
 // Mirrors legLabelCenter but anchors to B (proj of waypoints[i+1]).
 function cumLabelCenter(i) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
-  const a = proj(state.waypoints[i]);
-  const b = proj(state.waypoints[i + 1]);
+  // The leg as DRAWN -- an out-and-back pair is drawn to either side of the shared track,
+  // and the renderer anchors this kite on the offset line.
+  const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
+  const a = ends ? ends.a : proj(state.waypoints[i]);
+  const b = ends ? ends.b : proj(state.waypoints[i + 1]);
   let dx = b.x - a.x, dy = b.y - a.y;
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
@@ -898,8 +901,11 @@ function cumLabelCenter(i) {
   // Default placement comes from draw.js's own helper so the box is always where the kite
   // was painted -- cumKiteAngleDeg moves it off the pure perpendicular.
   const def = cumDefaultLabelOffset();
+  // Same step the renderer gives a default cum kite on a repeated pass, so the box a pilot
+  // grabs is the arrow they can see.
+  const repeat = (o._default && typeof legRepeatCumAlongPx === 'function') ? legRepeatCumAlongPx(i) : 0;
   const perp  = o._default ? def.perp : (o.p || 0) * sc;
-  const along = o._default ? def.along : (o.a || 0) * sc;
+  const along = o._default ? def.along + repeat : (o.a || 0) * sc;
   return { x: b.x + dx * along + nx * perp,
            y: b.y + dy * along + ny * perp };
 }
@@ -914,7 +920,8 @@ function _materialiseDefaultCumLabel(legIdx) {
   if (!a || !b) return;
   const sc = legZoomScale() || 1;
   const def = cumDefaultLabelOffset();
-  leg.cumLabel = { a: def.along / sc, p: def.perp / sc, _m: 1 };
+  const repeat = (typeof legRepeatCumAlongPx === 'function') ? legRepeatCumAlongPx(legIdx) : 0;
+  leg.cumLabel = { a: (def.along + repeat) / sc, p: def.perp / sc, _m: 1 };
 }
 // Point inside a rotated box: center (cx,cy), unit along-axis (ux,uy) toward
 // `anchor`, half-length halfL, half-height halfW.
@@ -952,7 +959,8 @@ function hitCumLabel(px, py) {
     // endpoint waypoint -- exactly the kind of invisible blocker a hidden kite must not be.
     if (typeof legInsideCtr === 'function' && legInsideCtr(i)) continue;
     const c = cumLabelCenter(i);
-    const b = state.waypoints[i + 1] && proj(state.waypoints[i + 1]);
+    const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
+    const b = ends ? ends.b : (state.waypoints[i + 1] && proj(state.waypoints[i + 1]));
     if (c && b && _pointInKiteBox(px, py, c.x, c.y, b.x, b.y, halfL, halfW)) return { i };
   }
   return null;
@@ -963,8 +971,9 @@ function hitCumLabel(px, py) {
 // drag math is shared; default sits on the opposite perpendicular side.
 function cumLabelRetCenter(i) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
-  const a = proj(state.waypoints[i]);
-  const b = proj(state.waypoints[i + 1]);
+  const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;   // as drawn
+  const a = ends ? ends.a : proj(state.waypoints[i]);
+  const b = ends ? ends.b : proj(state.waypoints[i + 1]);
   let dx = b.x - a.x, dy = b.y - a.y;
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
@@ -973,8 +982,9 @@ function cumLabelRetCenter(i) {
   const o = (leg && leg.cumLabelRet) || { a: 0, _default: 1, _m: 1 };
   const sc = legZoomScale();
   const def = cumDefaultLabelOffset();            // mirrored, as the renderer mirrors it
+  const repeat = (o._default && typeof legRepeatCumAlongPx === 'function') ? legRepeatCumAlongPx(i) : 0;
   const perp  = o._default ? -def.perp : (o.p || 0) * sc;
-  const along = o._default ? -def.along : (o.a || 0) * sc;
+  const along = o._default ? -def.along - repeat : (o.a || 0) * sc;
   return { x: a.x + dx * along + nx * perp,
            y: a.y + dy * along + ny * perp };
 }
@@ -988,7 +998,8 @@ function _materialiseDefaultCumLabelRet(legIdx) {
   if (!a || !b) return;
   const sc = legZoomScale() || 1;
   const def = cumDefaultLabelOffset();
-  leg.cumLabelRet = { a: -def.along / sc, p: -def.perp / sc, _m: 1 };  // mirror of the inbound one
+  const repeatRet = (typeof legRepeatCumAlongPx === 'function') ? legRepeatCumAlongPx(legIdx) : 0;
+  leg.cumLabelRet = { a: (-def.along - repeatRet) / sc, p: -def.perp / sc, _m: 1 };  // mirror of the inbound one
 }
 function cumLabelDragFrame(legIdx, isReturn) {
   if (!state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return null;
@@ -1041,7 +1052,8 @@ function hitCumLabelRet(px, py) {
     if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     if (!legAllowsReturn(i)) continue;
     const c = cumLabelRetCenter(i);
-    const a = state.waypoints[i] && proj(state.waypoints[i]);   // return kite points toward A
+    const retEnds = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
+    const a = retEnds ? retEnds.a : (state.waypoints[i] && proj(state.waypoints[i]));   // return kite points toward A
     if (c && a && _pointInKiteBox(px, py, c.x, c.y, a.x, a.y, halfL, halfW)) return { i };
   }
   return null;
