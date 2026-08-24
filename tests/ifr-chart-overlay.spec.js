@@ -181,3 +181,44 @@ test('the LLHZ ATS departure plate is one of the sheets', async ({ page }) => {
   // And nothing is left of the toggle it used to have.
   expect(await page.evaluate(() => !!document.getElementById('atsdep-cb'))).toBe(false);
 });
+
+// Picking a sheet takes the map to it: asking for Ben Gurion's ILS while looking at Eilat
+// used to draw the chart somewhere off screen and say nothing.
+test('choosing a sheet moves the map to it', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const out = await page.evaluate(async () => {
+    map.setView([29.6, 35.0], 9);                       // far away, down at Eilat
+    const before = [map.getCenter().lat, map.getCenter().lng];
+    const sel = document.getElementById('ifr-sheet');
+    const llib = Array.from(sel.options).find(o => o.value.startsWith('LLIB|'));
+    sel.value = llib.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 400));
+    const af = airfields.find(a => a.name === 'LLIB');
+    return { before, after: [map.getCenter().lat, map.getCenter().lng], field: [af.lat, af.lng] };
+  });
+  expect(Math.abs(out.after[0] - out.field[0])).toBeLessThan(0.3);
+  expect(Math.abs(out.after[1] - out.field[1])).toBeLessThan(0.3);
+  expect(out.after[0]).not.toBeCloseTo(out.before[0], 2);
+});
+
+// ...but only when the pilot picks one. A fix driving the map wins over any of this.
+test('a live fix keeps the map', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const out = await page.evaluate(async () => {
+    window.gpsLiveOn = true;                            // as if Location were running
+    map.setView([29.6, 35.0], 9);
+    const before = [map.getCenter().lat, map.getCenter().lng];
+    const sel = document.getElementById('ifr-sheet');
+    const llib = Array.from(sel.options).find(o => o.value.startsWith('LLIB|'));
+    sel.value = llib.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 400));
+    window.gpsLiveOn = false;
+    return { before, after: [map.getCenter().lat, map.getCenter().lng] };
+  });
+  expect(out.after[0]).toBeCloseTo(out.before[0], 3);
+  expect(out.after[1]).toBeCloseTo(out.before[1], 3);
+});

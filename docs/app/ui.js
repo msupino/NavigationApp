@@ -5286,13 +5286,22 @@ function ifrChosen() {
   try { want = lsGet(IFR_SHEET_KEY); } catch (e) { /* storage unavailable */ }
   return list.find(e => ifrKeyOf(e) === want) || list[0];
 }
-function setIfrSheet(key) {
+function setIfrSheet(key, opts = {}) {
   try { localStorage.setItem(IFR_SHEET_KEY, key); } catch (e) { /* storage unavailable */ }
   if (ifrLayerGroup) { ifrLayerGroup.remove(); ifrLayerGroup = null; }
-  if (window.showIfr) {
-    loadIfrOverlays();
-    if (ifrLayerGroup) ifrLayerGroup.addTo(map);
-  }
+  if (!window.showIfr) return;
+  loadIfrOverlays();
+  if (!ifrLayerGroup) return;
+  ifrLayerGroup.addTo(map);
+  // Asking for Ben Gurion's ILS 08 while looking at Rosh Pina drew a chart off screen and
+  // said nothing. Picking a sheet takes the map to it -- but only when the PILOT picks one:
+  // restoring the last sheet at start-up must not drag the map away from where they left it,
+  // and neither must anything while a fix is driving it.
+  if (!opts.move) return;
+  if (typeof gpsPositionLive === 'function' && gpsPositionLive()) return;
+  let bounds = null;
+  ifrLayerGroup.eachLayer(l => { if (l && l.getBounds) bounds = l.getBounds(); });
+  if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
 }
 function loadIfrOverlays() {
   if (ifrLayerGroup) return;
@@ -5479,6 +5488,15 @@ function onRouteChangedForPlates() {
     try { localStorage.setItem(PLATE_AIRFIELD_KEY, sel.value); } catch (_) {}
     _plateAutoKey = sel.value === 'auto' ? [...routeEndpointAirfields()].sort().join(',') : '';
     rebuildPlateOverlays();
+    // Naming one field is asking to look at it: the plates you just chose are drawn around
+    // that airfield, and leaving the map where it was showed none of them. Only for a named
+    // field -- "all" and "auto" are not a place -- and never while a fix is driving the map.
+    if (sel.value === 'auto' || sel.value === 'all') return;
+    if (typeof gpsPositionLive === 'function' && gpsPositionLive()) return;
+    const af = (airfields || []).find(a => a.name === sel.value);
+    if (af && Number.isFinite(af.lat) && Number.isFinite(af.lng)) {
+      map.setView([af.lat, af.lng], Math.max(map.getZoom(), tune('plateFieldZoom')));
+    }
   };
 })();
 
@@ -6240,7 +6258,7 @@ function chartsLoadingUntilReady(group, owner) {
     }
     fillSheets();
   };
-  if (sel) sel.onchange = () => { if (sel.value) setIfrSheet(sel.value); };
+  if (sel) sel.onchange = () => { if (sel.value) setIfrSheet(sel.value, { move: true }); };
   if (airfields) fillSheets();
   else loadAirfields().then(fillSheets).catch(() => {});
 })();
