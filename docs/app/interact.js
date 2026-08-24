@@ -2455,14 +2455,21 @@ function appendAirfieldWeather(body, af) {
 // the destructive ones cannot fall below the fold on a phone, and only genuinely
 // destructive ones keep the alarm red.
 function finalizeInspectorActions(body) {
-  const btns = [...body.children].filter(el => el.classList && el.classList.contains('insp-btn'));
-  if (!btns.length) return;
+  // Status lines travel with the buttons. A line that says "this point is the turning point"
+  // is only useful beside the action it describes, and gathering the buttons at the foot of
+  // the panel used to leave it stranded three rows above them. Relative order is kept, and a
+  // status sits immediately before its own button.
+  const items = [...body.children].filter(el => el.classList &&
+    (el.classList.contains('insp-btn') || el.classList.contains('insp-status')));
+  if (!items.some(el => el.classList.contains('insp-btn'))) return;
   const wrap = document.createElement('div');
   wrap.className = 'insp-actions';
-  for (const b of btns) {
-    const txt = (b.textContent || '').toLowerCase();
-    const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
-    if (!destructive) b.classList.add('insp-btn-safe');
+  for (const b of items) {
+    if (b.classList.contains('insp-btn')) {
+      const txt = (b.textContent || '').toLowerCase();
+      const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
+      if (!destructive) b.classList.add('insp-btn-safe');
+    }
     wrap.appendChild(b);
   }
   body.appendChild(wrap);
@@ -3034,11 +3041,26 @@ function showInspector() {
       // available, so a route edited into a one-way trip is not left holding a turn nothing
       // can use.
       const homeAgain = typeof routeReturnsHome === 'function' ? routeReturnsHome() : true;
+      // Say it in words when this point IS the turn. Bold text on a button reading "Mark as
+      // turning point" was the only sign, which reads as an offer, not a state -- a pilot
+      // could not tell a marked point from an unmarked one without pressing it.
+      if (effectiveTurn) {
+        const status = document.createElement('div');
+        status.className = 'insp-status insp-turn-status';
+        status.id = 'insp-turn-status';
+        status.textContent = manualTurn
+          ? (S.inspTurnIsManual || '↻ Turning point — you marked this as where the route turns for home.')
+          : (S.inspTurnIsAuto || '↻ Turning point — the route doubles back here, so this is where it turns for home.');
+        body.appendChild(status);
+      }
       const turnBtn = document.createElement('button');
       turnBtn.className = 'insp-btn' + (effectiveTurn ? ' insp-btn-on' : '');
       turnBtn.id = 'insp-turn-btn';
+      // Three states, three labels. The middle one is the case the old wording got wrong:
+      // the geometry already turns here, and pressing fixes that in place for later edits.
       turnBtn.textContent = manualTurn ? (S.inspTurnClear || '↻ Clear turning point')
-                                       : (S.inspTurnSet || '↻ Mark as turning point');
+        : effectiveTurn ? (S.inspTurnPin || '↻ Fix this as the turning point')
+                        : (S.inspTurnSet || '↻ Mark as turning point');
       // A route that does not come home has no far end to mark -- unless one is already in
       // force, by hand or from a leg that retraces. Disabling the button then would leave
       // the app using a turning point the pilot can neither move nor clear, on a button
@@ -3046,7 +3068,8 @@ function showInspector() {
       turnBtn.disabled = !homeAgain && !manualTurn && !effectiveTurn;
       turnBtn.title = turnBtn.disabled
         ? (S.inspTurnNeedsSameField || 'Available on a route that returns to the airfield it started from.')
-        : (S.inspTurnTitle || '');
+        : (effectiveTurn && !manualTurn ? (S.inspTurnPinTitle || '')
+                                        : (S.inspTurnTitle || ''));
       turnBtn.setAttribute('aria-pressed', effectiveTurn ? 'true' : 'false');
       turnBtn.onclick = () => {
         setTurnWaypoint(idx);

@@ -1,0 +1,109 @@
+// @ts-check
+// Reported: you cannot tell from the inspector that a point IS the turning point. The only
+// sign was the action button drawn in bold while still reading "Mark as turning point" --
+// which reads as an offer, not a state, so a marked point and an unmarked one looked alike
+// unless you pressed one and watched what happened. The inspector now says it in words, and
+// says where the turn came from: worked out from the route, or marked by hand.
+const { test, expect } = require('./_setup');
+
+// The turning-point action is only offered on a route that comes back to the airfield it
+// left, so both fixtures start and end on a real one.
+const OUT_AND_BACK = ['LLHZ', 'FAR', 'LLHZ'];
+// A loop: comes home, but no leg retraces, so nothing in the geometry finds the turn.
+const LOOP = ['LLHZ', 'FAR', 'SIDE', 'LLHZ'];
+
+async function boot(page) {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showInspector === 'function' &&
+    typeof setTurnWaypoint === 'function' &&
+    Array.isArray(window.airfields) && window.airfields.length > 0);
+}
+
+const openWp = (page, codes, idx) => page.evaluate(([list, i]) => {
+  const spread = { FAR: [0.30, 0.30], SIDE: [0.10, 0.50] };
+  const home = airfields.find(a => a.name === 'LLHZ');
+  state.waypoints = list.map((code) => {
+    if (code === 'LLHZ') return { lat: home.lat, lng: home.lng, name: 'LLHZ' };
+    const [dLat, dLng] = spread[code];
+    return { lat: home.lat + dLat, lng: home.lng + dLng, name: code };
+  });
+  syncLegs();
+  state.selected = { type: 'wp', index: i };
+  showInspector();
+}, [codes, idx]);
+
+const turnUi = (page) => page.evaluate(() => {
+  const status = document.getElementById('insp-turn-status');
+  const btn = document.getElementById('insp-turn-btn');
+  return {
+    status: status ? status.textContent : null,
+    label: btn ? btn.textContent : null,
+    pressed: btn ? btn.getAttribute('aria-pressed') : null,
+    title: btn ? btn.title : null,
+  };
+});
+
+test('the turn the route makes on its own is stated, not just implied', async ({ page }) => {
+  await boot(page);
+  await openWp(page, OUT_AND_BACK, 1);          // FAR: the leg after it retraces
+  const ui = await turnUi(page);
+  expect(ui.status).toMatch(/turning point/i);
+  expect(ui.status).toMatch(/doubles back/i);   // and where the app got it from
+  expect(ui.pressed).toBe('true');
+  // The button no longer offers to mark what is already the turn.
+  expect(ui.label).not.toMatch(/mark as/i);
+  expect(ui.label).toMatch(/fix/i);
+  expect(ui.title).toMatch(/edited/i);          // what pressing it would buy you
+});
+
+test('a point that is not the turn says nothing and offers the mark', async ({ page }) => {
+  await boot(page);
+  await openWp(page, LOOP, 2);                  // SIDE: nothing retraces anywhere
+  const ui = await turnUi(page);
+  expect(ui.status).toBeNull();                 // no state to report
+  expect(ui.label).toMatch(/mark as/i);
+  expect(ui.pressed).toBe('false');
+});
+
+test('a point marked by hand says so, and offers to clear', async ({ page }) => {
+  await boot(page);
+  await openWp(page, LOOP, 1);
+  await page.click('#insp-turn-btn');
+  const ui = await turnUi(page);
+  expect(ui.status).toMatch(/you marked/i);     // by hand, not worked out
+  expect(ui.label).toMatch(/clear/i);
+  expect(ui.pressed).toBe('true');
+  // ...and clearing it takes the line away again.
+  await page.click('#insp-turn-btn');
+  const after = await turnUi(page);
+  expect(after.status).toBeNull();
+  expect(after.label).toMatch(/mark as/i);
+});
+
+test('fixing a geometry turn in place keeps it after the retrace is edited away', async ({ page }) => {
+  await boot(page);
+  await openWp(page, OUT_AND_BACK, 1);
+  await page.click('#insp-turn-btn');           // fix it
+  const out = await page.evaluate(() => {
+    const kept = !!state.waypoints[1].turn;
+    // Edit the route so no leg doubles back any more: the geometry now finds nothing.
+    const home = state.waypoints[0];
+    state.waypoints[2] = { lat: home.lat + 0.10, lng: home.lng + 0.50, name: 'SIDE' };
+    state.waypoints.push({ ...home });
+    syncLegs();
+    return { kept, turnIdx: legRetraceTurnIndex() };
+  });
+  expect(out.kept).toBe(true);
+  expect(out.turnIdx).toBe(1);                  // still the turn, because it was fixed
+});
+
+test('the status line reads in the panel language', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showInspector === 'function' &&
+    Array.isArray(window.airfields) && window.airfields.length > 0);
+  await openWp(page, OUT_AND_BACK, 1);
+  const status = await page.evaluate(() =>
+    document.getElementById('insp-turn-status').textContent);
+  expect(status).toMatch(/[֐-׿]/);    // Hebrew, not the English default
+  expect(status).toContain('נקודת חזרה');
+});
