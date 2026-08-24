@@ -181,9 +181,11 @@ test('return direction hides outbound hotspot projection, recognizes geometric t
 
     state.selected = { type: 'wp', index: 3 };
     showInspector();
-    const turnBtn = document.getElementById('insp-turn-btn');
-    const turnPressed = turnBtn.getAttribute('aria-pressed');
-    const turnSelected = turnBtn.classList.contains('insp-btn-on');
+    // TURN is proven by the retraced leg after it, so the inspector states it and offers
+    // nothing to press -- a proven turn is not the pilot's to move.
+    const turnStatus = document.getElementById('insp-turn-status');
+    const turnStated = !!turnStatus && /turning point/i.test(turnStatus.textContent);
+    const turnHasButton = !!document.getElementById('insp-turn-btn');
 
     // If the same chart hotspot also occurs on the visible return half, keep its
     // projection. Only points whose every route occurrence is hidden are suppressed.
@@ -208,8 +210,8 @@ test('return direction hides outbound hotspot projection, recognizes geometric t
       visibleRouteHotspots,
       projectedHotspots,
       navReferenceHits: hits,
-      turnPressed,
-      turnSelected,
+      turnStated,
+      turnHasButton,
       projectedWhenAlsoVisible,
       navReferenceHitsWhenAlsoVisible,
       routeWaypointResolvesToAirfield: !!airfieldAtWaypoint(state.waypoints[5]),
@@ -221,8 +223,8 @@ test('return direction hides outbound hotspot projection, recognizes geometric t
   expect(out.visibleRouteHotspots).toEqual([]);
   expect.soft(out.projectedHotspots).toBe(0);
   expect.soft(out.navReferenceHits).toEqual([]);
-  expect.soft(out.turnPressed).toBe('true');
-  expect.soft(out.turnSelected).toBe(true);
+  expect.soft(out.turnStated).toBe(true);
+  expect.soft(out.turnHasButton).toBe(false);
   expect.soft(out.projectedWhenAlsoVisible).toBe(1);
   expect.soft(out.navReferenceHitsWhenAlsoVisible).toEqual(['navwp']);
   expect(out.routeWaypointResolvesToAirfield).toBe(true);

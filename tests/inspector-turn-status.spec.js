@@ -43,17 +43,61 @@ const turnUi = (page) => page.evaluate(() => {
   };
 });
 
-test('the turn the route makes on its own is stated, not just implied', async ({ page }) => {
+test('a proven turn is stated, and offers nothing to press', async ({ page }) => {
   await boot(page);
   await openWp(page, OUT_AND_BACK, 1);          // FAR: the leg after it retraces
   const ui = await turnUi(page);
   expect(ui.status).toMatch(/turning point/i);
   expect(ui.status).toMatch(/doubles back/i);   // and where the app got it from
-  expect(ui.pressed).toBe('true');
-  // The button no longer offers to mark what is already the turn.
-  expect(ui.label).not.toMatch(/mark as/i);
-  expect(ui.label).toMatch(/fix/i);
-  expect(ui.title).toMatch(/edited/i);          // what pressing it would buy you
+  expect(ui.status).toMatch(/cannot be moved/i);
+  // a-b-a turns at b and nowhere else, so there is no action: clearing it would leave a
+  // route that visibly doubles back with no turn at all.
+  expect(ui.label).toBeNull();
+});
+
+test('every other point on that route says where the turn is', async ({ page }) => {
+  await boot(page);
+  await openWp(page, ['LLHZ', 'FAR', 'LLHZ', 'SIDE', 'LLHZ'], 3);
+  const ui = await turnUi(page);
+  expect(ui.status).toMatch(/turns for home at FAR/i);
+  expect(ui.label).toBeNull();                  // and offers no mark of its own
+});
+
+test('the proven turn cannot be moved or cleared from code either', async ({ page }) => {
+  await boot(page);
+  await openWp(page, OUT_AND_BACK, 1);
+  const out = await page.evaluate(() => ({
+    movedElsewhere: setTurnWaypoint(0),
+    clearedItself: setTurnWaypoint(1),
+    marks: state.waypoints.map(w => !!w.turn),
+    turn: legRetraceTurnIndex(),
+  }));
+  expect(out.movedElsewhere).toBe(false);
+  expect(out.clearedItself).toBe(false);
+  expect(out.marks).toEqual([false, false, false]);
+  expect(out.turn).toBe(1);                     // still the far point, whatever was asked
+});
+
+// A mark made while the route was a loop must not outrank the geometry once an edit makes
+// the route double back -- the stored flag stays, but the proof decides.
+test('proof outranks a mark left over from before', async ({ page }) => {
+  await boot(page);
+  await openWp(page, LOOP, 1);
+  await page.click('#insp-turn-btn');           // mark FAR while nothing retraces
+  const out = await page.evaluate(() => {
+    const marked = legRetraceTurnIndex();
+    // Edit SIDE away: LLHZ -> FAR -> LLHZ now doubles back at FAR... which happens to be
+    // the marked point, so move the mark first to make the test mean something.
+    setTurnWaypoint(1);                         // clear it
+    state.waypoints[2] = { ...state.waypoints[0] };
+    state.waypoints.length = 3;
+    state.waypoints[0].turn = 1;                // a stale mark on the departure field
+    syncLegs();
+    return { marked, turn: legRetraceTurnIndex(), definitive: routeTurnIsDefinitive() };
+  });
+  expect(out.marked).toBe(1);                   // the mark decided while there was no proof
+  expect(out.definitive).toBe(true);
+  expect(out.turn).toBe(1);                     // proof decides now, not the stale mark
 });
 
 test('a point that is not the turn says nothing and offers the mark', async ({ page }) => {
@@ -78,23 +122,6 @@ test('a point marked by hand says so, and offers to clear', async ({ page }) => 
   const after = await turnUi(page);
   expect(after.status).toBeNull();
   expect(after.label).toMatch(/mark as/i);
-});
-
-test('fixing a geometry turn in place keeps it after the retrace is edited away', async ({ page }) => {
-  await boot(page);
-  await openWp(page, OUT_AND_BACK, 1);
-  await page.click('#insp-turn-btn');           // fix it
-  const out = await page.evaluate(() => {
-    const kept = !!state.waypoints[1].turn;
-    // Edit the route so no leg doubles back any more: the geometry now finds nothing.
-    const home = state.waypoints[0];
-    state.waypoints[2] = { lat: home.lat + 0.10, lng: home.lng + 0.50, name: 'SIDE' };
-    state.waypoints.push({ ...home });
-    syncLegs();
-    return { kept, turnIdx: legRetraceTurnIndex() };
-  });
-  expect(out.kept).toBe(true);
-  expect(out.turnIdx).toBe(1);                  // still the turn, because it was fixed
 });
 
 test('the status line reads in the panel language', async ({ page }) => {

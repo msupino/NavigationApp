@@ -2128,9 +2128,10 @@ window.S = Object.assign({
   tbLegDirNoTurn: 'This route does not double back and no turning point is marked, so there is no outbound and return to separate. Mark one on a waypoint to enable this.',
   inspTurnSet: '\u21bb Mark as turning point',
   inspTurnClear: '\u21bb Clear turning point',
-  inspTurnPin: '\u21bb Fix this as the turning point',
-  inspTurnPinTitle: 'Keeps this point the turning point even if the route is later edited so that no leg doubles back.',
-  inspTurnIsAuto: '\u21bb Turning point \u2014 the route doubles back here, so this is where it turns for home.',
+  inspTurnFixedAt: function (name) {
+    return '\u21bb This route turns for home at ' + name + ' \u2014 the leg after it doubles back, so that is the turning point.';
+  },
+  inspTurnIsAuto: '\u21bb Turning point \u2014 the route doubles back here, so this is where it turns for home. It cannot be moved while it does.',
   inspTurnIsManual: '\u21bb Turning point \u2014 you marked this as where the route turns for home.',
   inspTurnNeedsSameField: 'Available on a route that returns to the airfield it started from — a one-way trip has no return to separate from its outbound.',
   inspTurnTitle: 'Where this route turns for home. A loop repeats no waypoint, so nothing in the geometry says where the far end is — mark it here and the leg-direction filter can split outbound from return.',
@@ -4666,19 +4667,33 @@ function legIsRetrace(i) {
 // a turn on a straight A->B->C route, and in the comm-change path that suppressed a real
 // frequency change at an arbitrary point. With no retraced leg there is no turn, the
 // direction filter has nothing to divide, and the picker says so by disabling itself.
-function legRetraceTurnIndex() {
+// A retraced leg is PROOF, and proof outranks a mark. On a-b-a the route turns at b and
+// nowhere else: a hand-set turn on some other point would describe a sortie nobody flew, and
+// clearing the one at b would leave a route that visibly doubles back with no turn at all.
+// So the mark is what a route without proof needs, and only that -- a loop repeats no
+// waypoint, no leg retraces, and the pilot flying LLHZ -> SFAIM -> TYONA -> RIDNG -> HTZUK
+// -> KNTRY -> LLHZ knows perfectly well that TYONA is the far end. Marked in the inspector.
+function routeRetraceTurnIndex() {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
   const legs = (typeof state !== 'undefined' && state.legs) || [];
   const n = Math.min(legs.length, wps.length - 1);
-  // A hand-set turn wins outright. A LOOP route repeats no waypoint, so no leg retraces
-  // and the geometry has nothing to say about where it turns for home -- but the pilot
-  // flying LLHZ -> SFAIM -> TYONA -> RIDNG -> HTZUK -> KNTRY -> LLHZ knows perfectly well
-  // that TYONA is the far end. Marked in the waypoint inspector.
-  for (let i = 0; i < wps.length; i++) {
-    if (wps[i] && wps[i].turn) return Math.min(i, n);
-  }
   for (let i = 0; i < n; i++) {
     if (legIsRetrace(i)) return i;
+  }
+  return -1;
+}
+if (typeof window !== 'undefined') window.routeRetraceTurnIndex = routeRetraceTurnIndex;
+// True when the geometry settles the turn on its own, so it is not the pilot's to move.
+function routeTurnIsDefinitive() { return routeRetraceTurnIndex() >= 0; }
+if (typeof window !== 'undefined') window.routeTurnIsDefinitive = routeTurnIsDefinitive;
+function legRetraceTurnIndex() {
+  const proven = routeRetraceTurnIndex();
+  if (proven >= 0) return proven;
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const legs = (typeof state !== 'undefined' && state.legs) || [];
+  const n = Math.min(legs.length, wps.length - 1);
+  for (let i = 0; i < wps.length; i++) {
+    if (wps[i] && wps[i].turn) return Math.min(i, n);
   }
   return -1;
 }
@@ -4687,6 +4702,10 @@ function legRetraceTurnIndex() {
 // meaningless.
 function setTurnWaypoint(idx) {
   const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  // Nothing to set or clear on a route that proves its own turn: the mark would be ignored
+  // by legRetraceTurnIndex anyway, and storing one would quietly change where the route
+  // turns the moment an edit removed the retrace.
+  if (typeof routeTurnIsDefinitive === 'function' && routeTurnIsDefinitive()) return false;
   const was = wps[idx] && wps[idx].turn;
   for (const w of wps) { if (w) delete w.turn; }
   if (!was && wps[idx]) wps[idx].turn = 1;
