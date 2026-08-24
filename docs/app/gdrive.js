@@ -360,6 +360,7 @@ const GDRIVE_SETTINGS_KEYS = [
   // syncing it silently stopped carrying the pilot's choice between devices.
   'navaid.showNotam.cvfr', 'navaid.showNotam.lsa', 'navaid.showNotam.heli',
   'navaid.showNotam.ats',
+  'navaid.baseLayer',
   'navaid.showNotam.last',
   'navaid.sigwxOv', 'navaid.showLsaBubbles', 'navaid.showCircuit',
   'navaid.showTraining', 'navaid.showCvfr', 'navaid.showHeli',

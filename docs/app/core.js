@@ -150,6 +150,11 @@ NavAid.tuningDefaults = {
   layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
   layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
   layerEnabledATS: { value: true, type: 'bool', label: 'Offer the ATS routes chart layer' },
+  defaultBaseLayer: { value: 'OpenStreetMap', type: 'select',
+    options: ['none', 'OpenStreetMap', 'Satellite', 'CVFR', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'],
+    label: 'Which map sits under the chart by default' },
+  baseLayerOpacity: { value: 0.7, min: 0.1, max: 1, step: 0.05,
+    label: 'How strongly the map under the chart shows through (0-1)' },
   layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
   layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
   layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
@@ -757,7 +762,8 @@ NavAid.tuningGroups = [
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
-    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap'] },
+    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
+    'defaultBaseLayer', 'baseLayerOpacity'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
@@ -1935,6 +1941,9 @@ window.S = Object.assign({
   tbLegArrowColorTitle: 'Fill color of the leg arrows — applies to print/export too',
   tbWaypointColor: 'Waypoint color',
   tbWaypointColorTitle: 'Fill color of the waypoint discs and their label backgrounds — applies to print/export too',
+  tbBaseLayer: 'Map under the chart',
+  tbBaseLayerTitle: 'What shows underneath the chart you picked — the map around a chart that covers only the FIR, and what you see through it when the chart is dimmed. Any chart can go here too: ATS over CVFR, or ATS over the satellite image.',
+  tbBaseLayerNone: '— none —',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
@@ -3841,42 +3850,52 @@ function chartTileOptions(options) {
   return LIVE_CHART_TILES ? options : { ...options, corsOk: true };
 }
 
-const layers = {
-  'CVFR': L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+// Leaflet resolves a layer's pane by name and appends to it; an explicit `pane: undefined`
+// is not the same as leaving it out, and boots into "cannot read properties of undefined".
+// The picker's layers want the default pane, so the key must simply be absent for them.
+const withPane = (opts, pane) => (pane ? { ...opts, pane } : opts);
+// One definition per chart, used twice: once for the picker's layer and once for whatever
+// the pilot puts UNDER it (underlayLayer below). `pane` is the only difference -- Leaflet
+// will not hold one layer object in two places, and the pane is what decides which is on top.
+const CHART_SPECS = {
+  'CVFR': (pane) => L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png'),
-    chartTileOptions({ ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' })),
-  'Navigation': L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+    chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }, pane))),
+  'Navigation': (pane) => L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png'),
-    chartTileOptions({ ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' })),
-  'Low Alt': L.tileLayer(chartTileUrl('la', 'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
+    chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' }, pane))),
+  'Low Alt': (pane) => L.tileLayer(chartTileUrl('la', 'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png'),
-    chartTileOptions({ ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' })),
-  'Helicopters': L.tileLayer(chartTileUrl('il-hel', 'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+    chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' }, pane))),
+  'Helicopters': (pane) => L.tileLayer(chartTileUrl('il-hel', 'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png'),
-    chartTileOptions({ ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' })),
+    chartTileOptions(withPane({ ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' }, pane))),
   // The CAA's enroute sheet (ENR 6.1), the one chart here that is a single raster rather
   // than a tile set: it ships as one reprojected image (see scripts/warp-ats-chart.py), so
   // it is an imageOverlay wearing a base layer's hat. Leaflet treats it like any other
   // layer for add/remove/hasLayer, which is all the picker needs. Bounds are the graticule
-  // frame of the sheet itself -- outside it the OSM underlay shows through, the same as for
-  // the other charts that cover only the FIR. The corners are repeated from
+  // frame of the sheet itself -- outside it whatever is underneath shows through, the same
+  // as for the other charts that cover only the FIR. The corners are repeated from
   // data/ats-chart.json, which the warp script writes; ats-routes-layer.spec.js compares the
   // two, so a re-warp that moves them cannot leave this literal behind.
-  'ATS': L.imageOverlay(navAssetBase('ats-img') + 'ats-routes.png?v=3',
+  'ATS': (pane) => L.imageOverlay(navAssetBase('ats-img') + 'ats-routes.png?v=3',
     [[29.376677, 33.426611], [33.420846, 36.158314]],
-    { attribution: 'CAAI · AIP ENR 6.1', className: 'ats-base-layer' }),
-  'Satellite': L.tileLayer(
+    withPane({ attribution: 'CAAI · AIP ENR 6.1', className: 'ats-base-layer' }, pane)),
+  'Satellite': (pane) => L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }),
-  'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { minZoom: 6, maxZoom: 18, subdomains: 'abc',
-      attribution: '© OpenStreetMap contributors' }),
+    withPane({ minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }, pane)),
+  'OpenStreetMap': (pane) => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    withPane({ minZoom: 6, maxZoom: 18, subdomains: 'abc',
+      attribution: '© OpenStreetMap contributors' }, pane)),
 };
+// The picker's layers: every chart, in its normal pane.
+const layers = Object.fromEntries(
+  Object.keys(CHART_SPECS).map(name => [name, CHART_SPECS[name](undefined)]));
 
 // Is a base layer offered at all? CVFR always is -- it is the fallback everything else
 // degrades to. The rest hang on gist-controlled tunables, so a layer can be pulled from
@@ -3957,20 +3976,59 @@ map.getPane('basemapUnderlay').style.zIndex = 150;        // below tilePane (200
 // is 400) but below the app's own #overlay route canvas.
 map.createPane('windfield');
 map.getPane('windfield').style.zIndex = 410;
-const osmUnderlay = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
-    opacity: 0.7, attribution: '© OpenStreetMap contributors' });
-const FULL_COVERAGE_LAYERS = { Satellite: 1, OpenStreetMap: 1 };
+// What sits UNDER the chart. It was always OSM, to fill in around the FIR-only charts. Any
+// chart can take that place now -- "ATS over CVFR" and "ATS over Satellite" are the two the
+// pilot asked for -- so the underlay is built from the same definitions as the picker's
+// layers, in the pane below them. A layer object can only be on the map once, so these are
+// their own instances: the loops that ask "which of `layers` is on the map?" to name the
+// active chart keep answering about the chart on top, which is the one the datasets,
+// waypoint source and NOTAM preferences belong to.
+const _underlayCache = {};
+function underlayLayer(name) {
+  if (name === 'OpenStreetMap') {
+    if (!_underlayCache[name]) {
+      _underlayCache[name] = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
+          attribution: '© OpenStreetMap contributors' });
+    }
+  } else if (!_underlayCache[name]) {
+    const spec = CHART_SPECS[name];
+    if (!spec) return null;
+    _underlayCache[name] = spec('basemapUnderlay');
+  }
+  const l = _underlayCache[name];
+  if (l && l.setOpacity) l.setOpacity(tune('baseLayerOpacity'));
+  return l;
+}
+// The pilot's choice, or the gist's default. 'none' draws nothing underneath.
+const BASE_LAYER_KEY = 'navaid.baseLayer';
+window.baseLayerName = (() => {
+  try {
+    const saved = localStorage.getItem(BASE_LAYER_KEY);
+    if (saved) return saved;
+  } catch (e) { /* storage unavailable */ }
+  return tune('defaultBaseLayer');
+})();
 function updateBasemapUnderlay() {
   let cur = null;
   for (const n in layers) if (map.hasLayer(layers[n])) cur = n;
-  if (cur && !FULL_COVERAGE_LAYERS[cur]) {
-    if (!map.hasLayer(osmUnderlay)) osmUnderlay.addTo(map);
-  } else if (map.hasLayer(osmUnderlay)) {
-    map.removeLayer(osmUnderlay);
+  for (const n in _underlayCache) {
+    // Never the same chart twice: under itself it is invisible and costs a second set of
+    // tiles, and under nothing at all there is no map to fill in.
+    if (n !== baseLayerName || n === cur) {
+      if (map.hasLayer(_underlayCache[n])) map.removeLayer(_underlayCache[n]);
+    }
   }
+  if (!baseLayerName || baseLayerName === 'none' || baseLayerName === cur) return;
+  const l = underlayLayer(baseLayerName);
+  if (l && !map.hasLayer(l)) l.addTo(map);
 }
 window.updateBasemapUnderlay = updateBasemapUnderlay;
+window.setBaseLayerName = function (name) {
+  window.baseLayerName = name || 'none';
+  try { localStorage.setItem(BASE_LAYER_KEY, baseLayerName); } catch (e) { /* storage off */ }
+  updateBasemapUnderlay();
+};
 updateBasemapUnderlay();
 
 // --- route overlay canvas -------------------------------------------
