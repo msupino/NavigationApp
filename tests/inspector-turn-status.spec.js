@@ -137,3 +137,44 @@ test('the status line reads in the panel language', async ({ page }) => {
   // turning-point string in the Hebrew table says it.
   expect(status).toContain('עקבותיו');
 });
+
+// Reported: pressing the button moved it. The line appeared above it, so the button dropped
+// by its height on the very press that created it -- and a second press landed on whatever
+// had slid into that place.
+test('the status line never pushes the button down', async ({ page }) => {
+  await boot(page);
+  await openWp(page, LOOP, 1);
+  const gapBefore = await page.evaluate(() => {
+    const btn = document.getElementById('insp-turn-btn');
+    const prev = btn.previousElementSibling;
+    return Math.round(btn.getBoundingClientRect().top - prev.getBoundingClientRect().bottom);
+  });
+  await page.click('#insp-turn-btn');               // marks it: the status line appears
+  const after = await page.evaluate(() => {
+    const btn = document.getElementById('insp-turn-btn');
+    const prev = btn.previousElementSibling;
+    const line = document.getElementById('insp-turn-status');
+    return {
+      gap: Math.round(btn.getBoundingClientRect().top - prev.getBoundingClientRect().bottom),
+      lineBelow: Math.round(line.getBoundingClientRect().top - btn.getBoundingClientRect().bottom),
+    };
+  });
+  // Nothing was inserted above the button: the space over it is what it was, and the line
+  // that appeared is under it.
+  expect(after.gap).toBe(gapBefore);
+  expect(after.lineBelow).toBeGreaterThanOrEqual(0);
+});
+
+test('the line reads below the button it belongs to', async ({ page }) => {
+  await boot(page);
+  await openWp(page, LOOP, 1);
+  await page.click('#insp-turn-btn');
+  const order = await page.evaluate(() => {
+    const btn = document.getElementById('insp-turn-btn');
+    const line = document.getElementById('insp-turn-status');
+    return { sameParent: btn.parentNode === line.parentNode,
+             after: !!(btn.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) };
+  });
+  expect(order.sameParent).toBe(true);
+  expect(order.after).toBe(true);
+});

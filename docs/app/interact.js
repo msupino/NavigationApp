@@ -3047,19 +3047,23 @@ function showInspector() {
       // Say it in words when this point IS the turn. Bold text on a button reading "Mark as
       // turning point" was the only sign, which reads as an offer, not a state -- a pilot
       // could not tell a marked point from an unmarked one without pressing it.
+      // Built here, appended AFTER the button below: a line that appears above it pushed the
+      // button down the moment it was pressed, so the pointer landed on whatever moved into
+      // its place and a second press hit the wrong control.
+      let status = null;
       if (effectiveTurn) {
-        const status = document.createElement('div');
+        status = document.createElement('div');
         status.className = 'insp-status insp-turn-status';
         status.id = 'insp-turn-status';
         status.textContent = manualTurn
           ? (S.inspTurnIsManual || '↻ Turning point — you marked this as where the route turns for home.')
           : (S.inspTurnIsAuto || '↻ Turning point — the route doubles back here, so this is where it turns for home. It cannot be moved while it does.');
-        body.appendChild(status);
       }
       // A route that doubles back has its turn settled by the geometry, and nothing here can
       // move it: this point IS where it turns, so there is no action to offer -- on this
-      // waypoint or on any other. The status line above says which point that is.
+      // waypoint or on any other. The status line says which point that is.
       if (definitive) {
+        if (status) body.appendChild(status);
         if (!effectiveTurn) {
           const held = document.createElement('div');
           held.className = 'insp-status insp-turn-status';
@@ -3098,6 +3102,7 @@ function showInspector() {
         showInspector();      // relabel to what the button now does
       };
       body.appendChild(turnBtn);
+      if (status) body.appendChild(status);        // below the button, so pressing moves nothing
     }
   }
   finalizeInspectorActions(body);
