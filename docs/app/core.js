@@ -417,6 +417,10 @@ NavAid.tuningDefaults = {
   // different framing; the point-zoom values are the fallback when there is a single
   // point and nothing to fit.
   fitRoutePaddingPx: { value: 70, min: 0, max: 200, step: 5, label: 'Fit route: padding (px)' },
+  fitPlatePaddingPx: { value: 24, min: 0, max: 200, step: 4,
+    label: 'Fit instrument chart: padding (px)' },
+  fitPlateMaxZoom: { value: 13, min: 8, max: 18, step: 0.5,
+    label: 'Fit instrument chart: closest zoom it will settle on' },
   fitRouteMaxZoom: { value: 11, min: 6, max: 18, step: 0.5, label: 'Fit route: max zoom' },
   fitRouteEmptyZoom: { value: 9, min: 6, max: 14, step: 0.5, label: 'Fit route: zoom with no route' },
   fitNotamPaddingPx: { value: 80, min: 0, max: 200, step: 5, label: 'Fit NOTAM: padding (px)' },
@@ -741,7 +745,9 @@ NavAid.tuningDefaults = {
   defaultShowCvfr: { value: false, type: 'bool', label: 'Default: show CVFR plates' },
   defaultShowHeli: { value: false, type: 'bool', label: 'Default: show heli plates' },
   defaultShowCommfail: { value: false, type: 'bool', label: 'Default: show comm-fail plates' },
-  defaultShowAtsDep: { value: false, type: 'bool', label: 'Default: show ATS departure plates' },
+  defaultShowIfr: { value: false, type: 'bool', label: 'Default: show the IFR chart layer' },
+  plateFieldZoom: { value: 11, min: 8, max: 14, step: 1,
+    label: 'Zoom the map goes to when one airfield is picked for plates' },
 };
 // Groups are ordered to mirror the route-building workflow: the route line
 // and its per-leg annotations first, then the markers you place, then the
@@ -815,6 +821,7 @@ NavAid.tuningGroups = [
   // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
   // in front of them.
   { name: 'Map fit', keys: ['fitRoutePaddingPx', 'fitRouteMaxZoom', 'fitRouteEmptyZoom',
+    'fitPlatePaddingPx', 'fitPlateMaxZoom',
     'fitNotamPaddingPx', 'fitNotamMaxZoom', 'fitNotamPointZoom',
     'fitTrackPaddingPx', 'fitTrackMaxZoom', 'fitTrackPointZoom',
     'fitAltPairPaddingPx', 'fitAltPairMaxZoom',
@@ -823,7 +830,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAtsDep'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1725,6 +1732,7 @@ window.S = Object.assign({
   tbGrpTerrain: 'Terrain',
   tbGrpAirspace: 'Airspace',
   tbGrpPlates: 'Airfield plates',
+  tbGrpIfr: 'Instrument charts',
   tbPlateOpacity: 'Plate opacity',
   tbPlateOpacityTitle: 'Adjust the airfield-plate overlay opacity (shared by all plate layers)',
   tbPlateOpacityReset: 'Reset opacity',
@@ -1814,8 +1822,10 @@ window.S = Object.assign({
   tbHeliOpacity: 'Helicopter opacity',
   tbHeliOpacityTitle: 'Adjust helicopter route overlay opacity',
   tbHeliOpacityReset: 'Reset opacity',
-  tbShowAtsDep: 'Show ATS departure routes',
-  tbShowAtsDepTitle: 'The field plate for leaving towards the ATS routes (LLHZ נספח ח׳ — the only field that publishes one).',
+  tbShowIfr: 'Show IFR chart',
+  tbShowIfrTitle: 'Lay one instrument chart on the map — an ILS or RNP approach, a SID, a STAR. Only the sheets the CAA draws to scale, with a graticule to place them by, are offered; the schematic ones stay in Charts, where they read properly.',
+  tbIfrSheet: 'Which chart',
+  tbIfrSheetTitle: 'Which instrument chart to draw. One at a time, remembered per airfield.',
   tbShowCommfail: 'Show comm-failure joining',
   tbShowCommfailTitle: 'Overlay georeferenced radio comm-failure entry plates for Israeli airfields',
   tbCommfailOpacity: 'Comm-failure opacity',
@@ -1909,6 +1919,8 @@ window.S = Object.assign({
   plateCategoryVfr: 'VFR / airport',
   plateCategoryOther: 'Other',
   plateOpen: 'Open',
+  platePlaceOnMap: '🗺 Show on map',
+  platePlaceOnMapTitle: 'Lay this sheet over the map, georeferenced, and go to it. The same layer you would switch on in Extra layers.',
   plateDownload: 'Download',
   plateOpenTab: 'Open in new tab',
   plateClose: 'Close',
@@ -3882,9 +3894,14 @@ const CHART_SPECS = {
   // as for the other charts that cover only the FIR. The corners are repeated from
   // data/ats-chart.json, which the warp script writes; ats-routes-layer.spec.js compares the
   // two, so a re-warp that moves them cannot leave this literal behind.
+  // ...in the TILE pane, where a base chart belongs. An imageOverlay defaults to the overlay
+  // pane, which is where the airfield plates are drawn -- so choosing this chart after an
+  // approach plate covered the plate, because the later layer wins inside one pane. It is a
+  // base map: it goes under everything drawn on top of the map.
   'ATS': (pane) => L.imageOverlay(navAssetBase('ats-img') + 'ats-routes.png?v=3',
     [[29.376677, 33.426611], [33.420846, 36.158314]],
-    withPane({ attribution: 'CAAI · AIP ENR 6.1', className: 'ats-base-layer' }, pane)),
+    withPane({ attribution: 'CAAI · AIP ENR 6.1', className: 'ats-base-layer' },
+             pane || 'tilePane')),
   'Satellite': (pane) => L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
