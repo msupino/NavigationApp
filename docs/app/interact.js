@@ -796,9 +796,6 @@ function legLabelCenter(i, which) {
   // perpendicular is computed at render time from the live leg length
   // so it stays just outside the 10° drift cone. Mirror the renderer's
   // math here so the kite is grabbable at exactly its visible position.
-  // Same step the renderer applies to a default kite on a repeated pass (legRepeatAlongPx),
-  // so the box a pilot grabs is the arrow they can see.
-  const repeatAlong = (o._default && typeof legRepeatAlongPx === 'function') ? legRepeatAlongPx(i) : 0;
   let perp;
   if (o._default) {
     const a = proj(state.waypoints[i]);
@@ -809,7 +806,7 @@ function legLabelCenter(i, which) {
   } else {
     perp = (o.p || 0) * sc;
   }
-  const along = (o.a || 0) * sc + repeatAlong;
+  const along = (o.a || 0) * sc;
   return { x: f.mx + f.dx * along + f.nx * perp,
            y: f.my + f.dy * along + f.ny * perp };
 }
@@ -901,11 +898,8 @@ function cumLabelCenter(i) {
   // Default placement comes from draw.js's own helper so the box is always where the kite
   // was painted -- cumKiteAngleDeg moves it off the pure perpendicular.
   const def = cumDefaultLabelOffset();
-  // Same step the renderer gives a default cum kite on a repeated pass, so the box a pilot
-  // grabs is the arrow they can see.
-  const repeat = (o._default && typeof legRepeatCumAlongPx === 'function') ? legRepeatCumAlongPx(i) : 0;
   const perp  = o._default ? def.perp : (o.p || 0) * sc;
-  const along = o._default ? def.along + repeat : (o.a || 0) * sc;
+  const along = o._default ? def.along : (o.a || 0) * sc;
   return { x: b.x + dx * along + nx * perp,
            y: b.y + dy * along + ny * perp };
 }
@@ -920,8 +914,7 @@ function _materialiseDefaultCumLabel(legIdx) {
   if (!a || !b) return;
   const sc = legZoomScale() || 1;
   const def = cumDefaultLabelOffset();
-  const repeat = (typeof legRepeatCumAlongPx === 'function') ? legRepeatCumAlongPx(legIdx) : 0;
-  leg.cumLabel = { a: (def.along + repeat) / sc, p: def.perp / sc, _m: 1 };
+  leg.cumLabel = { a: def.along / sc, p: def.perp / sc, _m: 1 };
 }
 // Point inside a rotated box: center (cx,cy), unit along-axis (ux,uy) toward
 // `anchor`, half-length halfL, half-height halfW.
@@ -982,9 +975,8 @@ function cumLabelRetCenter(i) {
   const o = (leg && leg.cumLabelRet) || { a: 0, _default: 1, _m: 1 };
   const sc = legZoomScale();
   const def = cumDefaultLabelOffset();            // mirrored, as the renderer mirrors it
-  const repeat = (o._default && typeof legRepeatCumAlongPx === 'function') ? legRepeatCumAlongPx(i) : 0;
   const perp  = o._default ? -def.perp : (o.p || 0) * sc;
-  const along = o._default ? -def.along - repeat : (o.a || 0) * sc;
+  const along = o._default ? -def.along : (o.a || 0) * sc;
   return { x: a.x + dx * along + nx * perp,
            y: a.y + dy * along + ny * perp };
 }
@@ -998,8 +990,7 @@ function _materialiseDefaultCumLabelRet(legIdx) {
   if (!a || !b) return;
   const sc = legZoomScale() || 1;
   const def = cumDefaultLabelOffset();
-  const repeatRet = (typeof legRepeatCumAlongPx === 'function') ? legRepeatCumAlongPx(legIdx) : 0;
-  leg.cumLabelRet = { a: (-def.along - repeatRet) / sc, p: -def.perp / sc, _m: 1 };  // mirror of the inbound one
+  leg.cumLabelRet = { a: -def.along / sc, p: -def.perp / sc, _m: 1 };  // mirror of the inbound one
 }
 function cumLabelDragFrame(legIdx, isReturn) {
   if (!state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return null;
@@ -1304,6 +1295,8 @@ function appendAddToRouteButton(body, pt) {
   // Adding from the inspector is the same edit as adding by tap, so the lock reaches it too --
   // shown as unavailable rather than refusing after the press.
   const locked = typeof routeEditLocked === 'function' && routeEditLocked();
+  // No third-pass guard here: a leg that would fly a track a third time always ends on a
+  // point already in the route, which this button refuses anyway.
   btn.disabled = !!already || locked;
   btn.onclick = () => {
     if (already || locked) return;
@@ -3762,7 +3755,15 @@ function addModeExtendThroughWaypoint(i) {
   // Repeating the point the next leg would start from is the one case
   // that makes a zero-length leg. Pressing the last waypoint therefore does nothing.
   if (tail && typeof sameMapPoint === 'function' && sameMapPoint(tail, src)) return false;
-  state.waypoints.push({ lat: src.lat, lng: src.lng, name: src.name });
+  const next = { lat: src.lat, lng: src.lng, name: src.name };
+  // Tapping back and forth between two points is how a-b-a-b gets built. The second pass
+  // closes the sortie; a third has nowhere of its own to be drawn.
+  if (typeof routeAllowsNextPoint === 'function' && !routeAllowsNextPoint(next)) {
+    if (typeof showToast === 'function') showToast(S.trackFlownTwiceToast ||
+      'This leg is already flown out and back');
+    return true;                 // handled: the tap did something, it just was not an add
+  }
+  state.waypoints.push(next);
   syncLegs();
   if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   state.selected = { type: 'wp', index: state.waypoints.length - 1 };
@@ -4165,7 +4166,13 @@ map.on('click', e => {
       return;
     }
     const tail0 = state.waypoints[state.waypoints.length - 1];
-    state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
+    const next = { lat: r5(r.lat), lng: r5(r.lng), name: r.name };
+    if (typeof routeAllowsNextPoint === 'function' && !routeAllowsNextPoint(next)) {
+      if (typeof showToast === 'function') showToast(S.trackFlownTwiceToast ||
+        'This leg is already flown out and back');
+      return;
+    }
+    state.waypoints.push(next);
     syncLegs();
     if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     // Auto-route: splice the published corridor between the old tail and the new point.
