@@ -120,6 +120,13 @@ function inspectorSelectionDataReady(sel) {
 
 function normalizeInspectorSelection(sel) {
   if (!sel || typeof sel !== 'object') return null;
+  // An aircraft is named by its transponder address, not by a place in one of our arrays:
+  // the list it lives in is rebuilt every few seconds and its order means nothing.
+  if (sel.type === 'traffic') {
+    const hex = String(sel.hex || '');
+    return hex && (window.trafficAircraft || []).some(a => a && a.hex === hex)
+      ? { type: 'traffic', hex } : null;
+  }
   const index = Number(sel.index);
   if (!Number.isInteger(index) || index < 0) return null;
   if (sel.type === 'wp') {
@@ -2886,6 +2893,30 @@ function showInspector() {
     body.appendChild(textRow(S.bubbleActive || 'Active',
       wkndOnly ? (S.bubbleWeekendOnly || 'Weekends & holidays only')
                : (S.bubbleOpenAll || 'Open all day')));
+  } else if (state.selected.type === 'traffic') {
+    // An aircraft the receiver is hearing right now. Nothing here is editable and none of it
+    // is ours: it is a read-out of one transponder, and it disappears when that aeroplane
+    // does. Missing fields stay missing rather than reading as zero -- an aircraft with no
+    // altitude reported is not on the ground.
+    const ac = (window.trafficAircraft || []).find(a => a && a.hex === state.selected.hex);
+    if (!ac) {
+      state.selected = null;
+      insp.classList.add('hidden');
+      clearStoredInspectorSelection();
+      return;
+    }
+    title.value = ac.flight || ac.hex || (S.trafficTitle || 'Traffic');
+    title.readOnly = true;
+    body.appendChild(textRow(S.trafficAltitude || 'Altitude',
+      Number.isFinite(ac.alt) ? Math.round(ac.alt) + ' ' + (S.unitFeet || 'ft') : '—'));
+    body.appendChild(textRow(S.trafficGroundSpeed || 'Ground speed',
+      Number.isFinite(ac.gs) ? Math.round(ac.gs) + ' kt' : '—'));
+    body.appendChild(textRow(S.trafficTrack || 'Track',
+      Number.isFinite(ac.track) ? String(Math.round(ac.track)).padStart(3, '0') + '°' : '—'));
+    if (ac.type) body.appendChild(textRow(S.trafficType || 'Type', ac.type));
+    if (ac.squawk) body.appendChild(textRow(S.trafficSquawk || 'Squawk', ac.squawk));
+    body.appendChild(textRow(S.latitude, fmtLatLng(ac.lat, 'N', 'S')));
+    body.appendChild(textRow(S.longitude, fmtLatLng(ac.lon, 'E', 'W')));
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
     if (!nw) {

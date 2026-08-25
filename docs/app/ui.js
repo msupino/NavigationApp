@@ -6338,6 +6338,22 @@ function plateMapLayer(filename) {
 }
 window.plateMapLayer = plateMapLayer;
 
+// Live traffic toggle. The layer itself only ever draws while a fix is driving the map
+// (traffic.js), so this switch says "when I am flying, show it" rather than "show it now".
+(function () {
+  const cb = document.getElementById('traffic-cb');
+  if (!cb) return;
+  // traffic.js may not have run yet, so fall back to the same stored-then-default reading
+  // it does -- not to `true`, which put the box on while the layer underneath was off.
+  cb.checked = typeof trafficEnabled === 'function' ? trafficEnabled()
+    : (localStorage.getItem('navaid.showTraffic') === '1'
+       || (localStorage.getItem('navaid.showTraffic') !== '0' && tune('defaultShowTraffic') !== false));
+  cb.onchange = () => {
+    try { localStorage.setItem('navaid.showTraffic', cb.checked ? '1' : '0'); } catch (_) {}
+    if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
+  };
+})();
+
 // IFR chart toggle + its sheet picker.
 (function () {
   const cb = document.getElementById('ifr-cb');
@@ -9177,6 +9193,7 @@ NavAid.defaultVisibilityMap = [
   ['heli-cb', 'navaid.showHeli', 'defaultShowHeli'],
   ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
   ['ifr-cb', 'navaid.showIfr', 'defaultShowIfr'],
+  ['traffic-cb', 'navaid.showTraffic', 'defaultShowTraffic'],
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;
