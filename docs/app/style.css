@@ -6504,12 +6504,11 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
 .traffic-arrow {
   display: inline-block; width: 20px; height: 20px;
   font: 16px/20px system-ui, sans-serif; text-align: center;
-  color: #d8541f;
+  color: var(--navaid-traffic-arrow, #b5179e);
   text-shadow: 0 0 3px #fff, 0 0 3px #fff;
 }
 .traffic-label {
   font: 700 10px/1.2 system-ui, sans-serif;
-  color: #7a2f10;
+  color: var(--navaid-traffic-label, #7b1a6b);
   text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
 }
-body.theme-light .traffic-label { color: #7a2f10; }

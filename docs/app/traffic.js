@@ -16,7 +16,8 @@
   let group = null;
   let timer = 0;
   let inFlight = false;
-  let lastError = 0;
+  let fails = 0;               // consecutive failed polls; one blip is not an outage
+  window.trafficLastError = null;
   window.trafficAircraft = [];          // what the inspector and the hit test read
 
   // Where to ask about. A real fix if there is one -- that is the traffic that matters --
@@ -173,14 +174,22 @@
         Math.abs(a.lat - mine.lat) < 0.001 && Math.abs(a.lon - mine.lng) < 0.001));
       draw(window.trafficAircraft);
       dropSelectionIfGone();
-      lastError = 0;
+      fails = 0;
+      window.trafficLastError = null;
     } catch (e) {
-      // Silence, once: an aircraft map that nags about a dropped request in the air is worse
-      // than one that quietly shows what it last had.
-      if (!lastError && typeof showToast === 'function') {
-        showToast(S.trafficUnavailable || 'Live traffic unavailable');
+      // One dropped request is not an outage. The feed times out or rate-limits now and
+      // then, and the old rule -- complain on the first failure ever -- put "Live traffic
+      // unavailable" on screen over a map that was drawing traffic perfectly well, which is
+      // exactly the kind of message that teaches a pilot to ignore messages. Complain only
+      // when it has failed several times running AND there is nothing on the map to look
+      // at, and say what went wrong, so the next question is answerable.
+      fails += 1;
+      window.trafficLastError = { at: Date.now(), why: (e && e.message) || String(e), fails };
+      const quiet = Math.max(1, (typeof tune === 'function' && tune('trafficFailsBeforeWarn')) || 3);
+      if (fails === quiet && !window.trafficAircraft.length && typeof showToast === 'function') {
+        const why = (e && e.message) || '';
+        showToast((S.trafficUnavailable || 'Live traffic unavailable') + (why ? ' (' + why + ')' : ''));
       }
-      lastError = Date.now();
     } finally {
       inFlight = false;
     }
