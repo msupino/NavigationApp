@@ -30,8 +30,17 @@ to five decimal places, which is the check that the pairing is not crossing boxe
 import argparse, html, json, math, os, re, subprocess, sys
 
 WORD = re.compile(r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)</word>')
-LAT = re.compile(r"^(\d{2})°(\d{2})[’'‘]([\d.]+)[”\"]?N$")
-LON = re.compile(r"^(\d{3})°(\d{2})[’'‘]([\d.]+)[”\"]?E$")
+# The mark between the numbers is not to be trusted. The enroute sheet is tidy -- 32°21'17"N
+# -- but the field plates are set by hand and print 34° (not 034°) for a longitude, and at
+# least one point on LLHZ's departure sheet has its minute and second marks the wrong way
+# round (32° 22" 04' N). Reading the three numbers and ignoring which mark separates them
+# finds those; the ranges below are what keep the reading honest.
+MARK = r"[’'‘′\"”″]"
+LAT = re.compile(r"^(\d{2})°(\d{2})" + MARK + r"([\d.]+)" + MARK + r"?N$")
+LON = re.compile(r"^(\d{2,3})°(\d{2})" + MARK + r"([\d.]+)" + MARK + r"?E$")
+# Israel's FIR, with room to spare: a misread that lands outside it is a misread.
+LAT_RANGE = (29.0, 34.0)
+LON_RANGE = (33.0, 36.5)
 NAME = re.compile(r'^[A-Z]{5}$')
 PHRASE = {'AVIV', 'WEST', 'GURION', 'EAST', 'PINA', 'ROSH', 'RAMON', 'ASAF', 'ILAN',
           'TEL', 'BEN', 'SEA', 'DEAD', 'GULF'}
@@ -65,10 +74,15 @@ def coordinates(W):
                 break
         m = LAT.match(buf)
         if m:
-            out.append(('lat', dms(*m.groups()), x0, yc, bx1, h)); continue
+            v = dms(*m.groups())
+            if LAT_RANGE[0] <= v <= LAT_RANGE[1]:
+                out.append(('lat', v, x0, yc, bx1, h))
+            continue
         m = LON.match(buf)
         if m:
-            out.append(('lon', dms(*m.groups()), x0, yc, bx1, h))
+            v = dms(*m.groups())
+            if LON_RANGE[0] <= v <= LON_RANGE[1]:
+                out.append(('lon', v, x0, yc, bx1, h))
     return out
 
 

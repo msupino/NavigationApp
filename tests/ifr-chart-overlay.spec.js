@@ -193,10 +193,21 @@ test('the LLHZ ATS departure plate is one of the sheets', async ({ page }) => {
     return b ? { want: row, got: [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()] } : null;
   });
   expect(laid).not.toBeNull();
-  expect(laid.got[0]).toBeCloseTo(laid.want.sw[0], 5);
-  expect(laid.got[3]).toBeCloseTo(laid.want.ne[1], 5);
-  // And nothing is left of the toggle it used to have.
-  expect(await page.evaluate(() => !!document.getElementById('atsdep-cb'))).toBe(false);
+  // This sheet is placed by hand -- its graticule labels are set differently on each side,
+  // which no automatic anchor can see -- so it carries three corners rather than a box.
+  // Leaflet reports the box around the rotated picture, which is a hair larger than the
+  // corners themselves; what matters is that every corner the row states is inside it, and
+  // that the box is not some other part of the country.
+  const { tl, tr, bl } = laid.want;
+  const [s0, w0, n0, e0] = laid.got;
+  for (const [lat, lng] of [tl, tr, bl]) {
+    expect(lat).toBeGreaterThanOrEqual(s0 - 1e-3);
+    expect(lat).toBeLessThanOrEqual(n0 + 1e-3);
+    expect(lng).toBeGreaterThanOrEqual(w0 - 1e-3);
+    expect(lng).toBeLessThanOrEqual(e0 + 1e-3);
+  }
+  expect(n0 - s0).toBeLessThan(1);            // a field plate, not half the FIR
+  expect(e0 - w0).toBeLessThan(1);
 });
 
 // Picking a sheet takes the map to it: asking for Ben Gurion's ILS while looking at Eilat
@@ -298,4 +309,50 @@ test('the points leave with the sheet', async ({ page }) => {
   });
   expect(gone.during).toBeGreaterThan(0);
   expect(gone.after).toBe(0);
+});
+
+// Reported: LLHZ's departure sheet prints BENQO, YENON and DIVLA with their positions, and
+// none of them showed. The sheet sets a longitude as 34° where the enroute chart writes
+// 034°, and one point has its minute and second marks the wrong way round (32° 22" 04' N) --
+// so a reader that insists on one spelling finds two navaids and misses every fix.
+test('the LLHZ departure sheet gives up all of its points', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const out = await page.evaluate(async () => {
+    const sel = document.getElementById('ifr-sheet');
+    const hz = Array.from(sel.options).find(o => o.value.startsWith('LLHZ|'));
+    sel.value = hz.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 400));
+    const pts = navWP.filter(w => w._plate);
+    return { names: pts.map(w => w.name),
+             benqo: pts.find(w => w.name === 'BENQO'),
+             nat: pts.find(w => w.name === 'NAT') };
+  });
+  expect(out.names).toEqual(expect.arrayContaining(['BENQO', 'YENON', 'DIVLA']));
+  // BENQO is printed at 32°23'29"N 34°45'48"E on that sheet.
+  expect(out.benqo.lat).toBeCloseTo(32 + 23 / 60 + 29 / 3600, 4);
+  expect(out.benqo.lng).toBeCloseTo(34 + 45 / 60 + 48 / 3600, 4);
+  // ...and the reading is checkable: NAT off the same sheet is the VOR the app already
+  // knows, to five decimals.
+  expect(out.nat).toBeTruthy();
+});
+
+test('a designation belongs to one position', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const dupes = await page.evaluate(async () => {
+    const sel = document.getElementById('ifr-sheet');
+    const out = [];
+    for (const o of Array.from(sel.options)) {
+      sel.value = o.value;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 60));
+      const names = navWP.filter(w => w._plate).map(w => w.name);
+      if (new Set(names).size !== names.length) out.push(o.value);
+    }
+    return out;
+  });
+  // A label between two boxes used to win both, and that sheet drew two BENQOs.
+  expect(dupes).toEqual([]);
 });

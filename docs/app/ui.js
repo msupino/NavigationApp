@@ -5108,7 +5108,41 @@ function buildOverlayLayer(base, ov, ver, type) {
   layer.on('load', done);
   layer.on('error', done);
   layer.on('remove', done);       // removal cancels the request; no load/error follows
+  addOverlayHideButton(layer, g, type);
   return layer;
+}
+// Which toggle owns a drawn sheet, for the ✕ on its corner.
+const OVERLAY_TYPE_CB = {
+  circuit_overlay: 'circuit-cb', training_overlay: 'training-cb', cvfr_overlay: 'cvfr-cb',
+  heli_overlay: 'heli-cb', commfail_overlay: 'commfail-cb', ifr_overlay: 'ifr-cb',
+};
+// A ✕ on the sheet's top-left corner, to put it away from the map itself. Switching a chart
+// off meant finding the menu it came from -- three taps on a phone, with the toolbar over
+// the map you were reading. The corner is the sheet's own north-west, so the mark sits on
+// the picture it closes rather than somewhere on the screen.
+function addOverlayHideButton(layer, g, type) {
+  const cbId = OVERLAY_TYPE_CB[type];
+  if (!cbId) return;
+  const corner = g.rot ? g.tl : [g.ne[0], g.sw[1]];
+  const btn = L.marker(corner, {
+    icon: L.divIcon({ className: 'ov-hide-btn', html: '✕', iconSize: [22, 22], iconAnchor: [0, 0] }),
+    keyboard: false,
+    pane: 'markerPane',
+    title: S.hideThisLayer || 'Hide this chart',
+    alt: S.hideThisLayer || 'Hide this chart',
+  });
+  btn.on('click', (e) => {
+    if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
+    const cb = document.getElementById(cbId);
+    if (!cb || !cb.checked) return;
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  // It belongs to the sheet: on the map exactly as long as the sheet is, and never left
+  // behind when the layer group is swapped out from under it.
+  layer.on('add', () => { if (map && !map.hasLayer(btn)) btn.addTo(map); });
+  layer.on('remove', () => { if (map && map.hasLayer(btn)) map.removeLayer(btn); });
+  layer._ovHideBtn = btn;
 }
 
 // ── Circuit overlay ──────────────────────────────────────────────────────────
@@ -5534,17 +5568,21 @@ function onRouteChangedForPlates() {
 // saveOverlayOverride) and can be copied out to bake into airfields.json.
 const overlayAlign = (function () {
   const DEG = Math.PI / 180;
+  // The instrument sheets are here too: they are the ones most likely to need an eye. A
+  // plate whose graticule labels are set differently on each side places a few hundred
+  // metres out with residuals that look healthy, and no automatic anchor can see it -- but a
+  // pilot can, against the field or a VOR rose the sheet draws.
   const GTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
-                  'heli_overlay', 'commfail_overlay'];
+                  'heli_overlay', 'commfail_overlay', 'ifr_overlay'];
   const GVAR = {
     circuit_overlay: 'circuitLayerGroup', training_overlay: 'trainingLayerGroup',
     cvfr_overlay: 'cvfrLayerGroup', heli_overlay: 'heliLayerGroup',
-    commfail_overlay: 'commfailLayerGroup',
+    commfail_overlay: 'commfailLayerGroup', ifr_overlay: 'ifrLayerGroup',
   };
   const GLOAD = {
     circuit_overlay: () => loadCircuitOverlays(), training_overlay: () => loadTrainingOverlays(),
     cvfr_overlay: () => loadCvfrOverlays(), heli_overlay: () => loadHeliOverlays(),
-    commfail_overlay: () => loadCommfailOverlays(),
+    commfail_overlay: () => loadCommfailOverlays(), ifr_overlay: () => loadIfrOverlays(),
   };
   let active = false, sel = null, editLayer = null, state = null;
   let handles = {}, panel = null, mapClick = null;

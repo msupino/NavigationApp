@@ -68,6 +68,23 @@ def facilities():
             [(v.get('ident', '?'), v['lat'], v['lng']) for v in vor])
 
 
+def candidates(box, W):
+    """Every designation that could belong to this box, best first."""
+    out = []
+    for w, x0, y, x1, _h in W:
+        if not NAME.match(w) or w in PHRASE:
+            continue
+        dy = box['y'] - y
+        if not 0 < dy < 6.5 * box['h']:
+            continue
+        cx, bx = (x0 + x1) / 2, (box['x0'] + box['x1']) / 2
+        if abs(cx - bx) > 60:
+            continue
+        out.append((abs(cx - bx) + dy, w))
+    out.sort()
+    return out
+
+
 def name_for(box, W):
     """The designation over the box, if the sheet prints one.
 
@@ -109,14 +126,33 @@ def main():
                 print(f'{icao} {row["code"]}: source plate not found'); continue
             W = ats.words(pdf)
             found = []
-            for box in ats.boxes(ats.coordinates(W)):
+            # A designation belongs to ONE position. Taking each box's nearest name on its
+            # own gave a sheet two BENQOs -- the label sat between two boxes and won both --
+            # so the names are handed out best-match first, and a box whose name has already
+            # gone takes its next choice or none.
+            boxes = ats.boxes(ats.coordinates(W))
+            claims = []
+            for i, box in enumerate(boxes):
                 lat, lng = round(box['lat'], 5), round(box['lng'], 5)
                 # A box printed on a published aerodrome or navaid IS that facility -- the
                 # words around it are its long name ("BEN GURION"), not a designation.
                 near = min(((nm(lat, lng, la, lo), ident) for ident, la, lo in known),
                            default=(99, ''))
-                name = near[1] if near[0] < FACILITY_NM else name_for(box, W)
-                found.append({'name': name, 'lat': lat, 'lng': lng})
+                if near[0] < FACILITY_NM:
+                    claims.append((-1.0, i, near[1]))          # a facility is not a guess
+                    continue
+                for score, name in candidates(box, W):
+                    claims.append((score, i, name))
+            claims.sort()
+            taken_name, taken_box = set(), {}
+            for _score, i, name in claims:
+                if i in taken_box or name in taken_name:
+                    continue
+                taken_box[i] = name
+                taken_name.add(name)
+            for i, box in enumerate(boxes):
+                found.append({'name': taken_box.get(i, ''),
+                              'lat': round(box['lat'], 5), 'lng': round(box['lng'], 5)})
             named = [p for p in found if p['name']]
             # A box with no designation is a position with nothing to call it: it would show
             # on the map as an unlabelled dot the pilot cannot check against the chart, so
