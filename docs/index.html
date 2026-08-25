@@ -632,30 +632,6 @@
         </div>
         <!-- LSA airspace bubbles overlay toggle (Low Alt layer only; hidden on
              others). The bubble list button lives in the Charts section. -->
-        <!-- Terrain: hypsometric tint from the elevation grid, plus the per-leg MSA row in
-             the inspector. It lived in View/Set as "Show MSA", where it drew nothing on the
-             map at all -- a safety toggle whose only effect was one inspector row. -->
-        <div class="tb-layer-frame">
-        <div class="tb-frame-title" data-i18n="tbGrpTerrain"></div>
-        <div id="terrain-group" class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowMsaTitle">
-            <input type="checkbox" id="msa-cb"> <span data-i18n="tbShowMsa"></span>
-          </label>
-        </div>
-        </div>
-        <div class="tb-layer-frame">
-        <div class="tb-frame-title" data-i18n="tbGrpAirspace"></div>
-        <div class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowAirspaceTitle">
-            <input type="checkbox" id="airspace-cb"> <span data-i18n="tbShowAirspace"></span>
-          </label>
-        </div>
-        <div id="lsa-group" class="tb-group-box" hidden>
-          <label class="navtoggle" data-i18n-title="tbShowLsaTitle">
-            <input type="checkbox" id="lsa-cb"> <span data-i18n="tbShowLsa"></span>
-          </label>
-        </div>
-        </div>
         <div class="tb-layer-frame">
         <div class="tb-frame-title" data-i18n="tbGrpPlates"></div>
         <label class="navtoggle tb-plate-opacity" data-i18n-title="tbPlateOpacityTitle">
@@ -725,6 +701,33 @@
           <label class="navtoggle tb-ifr-sheet" data-i18n-title="tbIfrSheetTitle" hidden>
             <span data-i18n="tbIfrSheet"></span>
             <select id="ifr-sheet"></select>
+          </label>
+        </div>
+        </div>
+        <!-- Terrain and airspace last: they are the two layers a pilot leaves ON, so they
+             are the two nobody comes back to this menu for. The charts and overlays above
+             are what the section is opened to change. -->
+        <!-- Terrain: hypsometric tint from the elevation grid, plus the per-leg MSA row in
+             the inspector. It lived in View/Set as "Show MSA", where it drew nothing on the
+             map at all -- a safety toggle whose only effect was one inspector row. -->
+        <div class="tb-layer-frame">
+        <div class="tb-frame-title" data-i18n="tbGrpTerrain"></div>
+        <div id="terrain-group" class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbShowMsaTitle">
+            <input type="checkbox" id="msa-cb"> <span data-i18n="tbShowMsa"></span>
+          </label>
+        </div>
+        </div>
+        <div class="tb-layer-frame">
+        <div class="tb-frame-title" data-i18n="tbGrpAirspace"></div>
+        <div class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbShowAirspaceTitle">
+            <input type="checkbox" id="airspace-cb"> <span data-i18n="tbShowAirspace"></span>
+          </label>
+        </div>
+        <div id="lsa-group" class="tb-group-box" hidden>
+          <label class="navtoggle" data-i18n-title="tbShowLsaTitle">
+            <input type="checkbox" id="lsa-cb"> <span data-i18n="tbShowLsa"></span>
           </label>
         </div>
         </div>
