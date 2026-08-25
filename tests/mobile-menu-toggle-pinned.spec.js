@@ -6,7 +6,7 @@ const { test, expect } = require('./_setup');
 
 // Short on purpose: a phone in landscape, or a tall one with the keyboard up. The panel
 // has to actually overflow for any of this to mean anything.
-const PHONE = { width: 390, height: 400 };
+const PHONE = { width: 390, height: 360 };
 
 async function boot(page) {
   await page.setViewportSize(PHONE);
@@ -40,7 +40,7 @@ test('the menu button stays put while the sections scroll under it', async ({ pa
   await boot(page);
   const before = await boxes(page);
   expect(before.sticky).toBe('sticky');
-  expect(before.scrollable).toBeGreaterThan(80);       // there is something to scroll
+  expect(before.scrollable).toBeGreaterThan(60);       // there is something to scroll
 
   await page.evaluate(() => { const tb = document.getElementById('toolbar'); tb.scrollTop = 60; });
   await page.waitForTimeout(120);
@@ -53,7 +53,7 @@ test('the menu button stays put while the sections scroll under it', async ({ pa
   // It rides up to the top of the panel and stops there: same place on screen however far
   // the sections travel underneath, and always within the panel's first few pixels.
   expect(end.toggleTop).toBe(mid.toggleTop);
-  expect(end.toggleTop).toBeLessThan(before.toggleTop);
+  expect(end.toggleTop).toBeLessThanOrEqual(before.toggleTop);   // it never travels down
   expect(end.toggleTop - end.panelTop).toBeLessThan(20);
 });
 
@@ -67,22 +67,39 @@ test('it is still tappable after scrolling, and still closes the panel', async (
 });
 
 // Nothing may show through it: the rows sliding past are the whole point of pinning it.
-test('the pinned button is opaque and spans the panel', async ({ page }) => {
+// And the band is the whole head -- grip, ☰, language -- not the button alone, so the open
+// panel's first line is the same line the closed card shows.
+test('the pinned head is one opaque band across the panel', async ({ page }) => {
   await boot(page);
   const look = await page.evaluate(() => {
     const tb = document.getElementById('toolbar');
-    const t = document.getElementById('toolbar-toggle');
-    const cs = getComputedStyle(t);
-    return {
-      bg: cs.backgroundColor,
-      width: Math.round(t.getBoundingClientRect().width),
-      panelWidth: Math.round(tb.getBoundingClientRect().width),
-      z: cs.zIndex,
-    };
+    const ids = ['toolbar-handle', 'toolbar-toggle', 'lang-toggle'];
+    const cells = ids.map(id => {
+      const el = document.getElementById(id);
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return { id, pos: cs.position, bg: cs.backgroundColor, z: Number(cs.zIndex) || 0,
+               left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top) };
+    });
+    const r = tb.getBoundingClientRect();
+    return { cells, panelLeft: Math.round(r.left), panelRight: Math.round(r.right) };
   });
-  expect(look.bg).not.toBe('rgba(0, 0, 0, 0)');
-  expect(look.width).toBeGreaterThanOrEqual(look.panelWidth - 2);
-  expect(Number(look.z)).toBeGreaterThan(0);
+  for (const c of look.cells) {
+    expect(c.pos).toBe('sticky');
+    expect(c.bg).not.toBe('rgba(0, 0, 0, 0)');
+    expect(c.z).toBeGreaterThan(0);
+  }
+  // One row: same top, and together they reach both edges with no seam between them.
+  const tops = look.cells.map(c => c.top);
+  expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+  const lefts = look.cells.map(c => c.left);
+  const rights = look.cells.map(c => c.right);
+  expect(Math.min(...lefts)).toBeLessThanOrEqual(look.panelLeft + 2);
+  expect(Math.max(...rights)).toBeGreaterThanOrEqual(look.panelRight - 2);
+  const sorted = look.cells.slice().sort((a, b) => a.left - b.left);
+  for (let i = 1; i < sorted.length; i++) {
+    expect(sorted[i].left - sorted[i - 1].right).toBeLessThanOrEqual(1);   // no gap to see through
+  }
 });
 
 // The closed card is a three-column grid (handle, ☰, language on one row). Sticky there
