@@ -29,6 +29,7 @@ async function stubNative(page, opts) {
         CapacitorHttp: {
           request: (req) => {
             window.__asked.push(req.url);
+            if (window.__fail) return Promise.reject(new Error(window.__fail));
             return Promise.resolve({ status: 200, data: window.__body });
           },
         },
@@ -214,4 +215,47 @@ test('an aircraft on the ground is drawn without an altitude', async ({ page }) 
   const el = await page.evaluate(() => document.querySelector('.traffic-mark').textContent.trim());
   expect(el).toContain('ELY7');
   expect(el).not.toMatch(/\d\d\d/);
+});
+
+// One dropped request is not an outage. The feed times out or rate-limits now and then, and
+// complaining on the first failure put "Live traffic unavailable" over a map that was
+// drawing traffic perfectly well -- which is how a pilot learns to ignore messages.
+test('a single dropped request says nothing', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await expect(marks(page)).toHaveCount(2);
+  await page.evaluate(() => { window.__toasts = []; const t = window.showToast; window.showToast = (m) => { window.__toasts.push(m); return t && t(m); }; });
+  await page.evaluate(async () => { window.__fail = 'Timeout'; await window.trafficPoll(); });
+  expect(await page.evaluate(() => window.__toasts)).toEqual([]);
+  // ...and what is already on the map stays there rather than blinking out.
+  expect(await marks(page).count()).toBe(2);
+});
+
+test('a real outage says so, and says why', async ({ page }) => {
+  await boot(page, { body: { ac: [] } });      // nothing on the map to look at
+  await fly(page);
+  await page.evaluate(() => { window.__toasts = []; const t = window.showToast; window.showToast = (m) => { window.__toasts.push(m); return t && t(m); }; });
+  await page.evaluate(async () => {
+    window.__fail = 'HTTP 429';
+    for (let i = 0; i < 3; i++) await window.trafficPoll();
+  });
+  const toasts = await page.evaluate(() => window.__toasts);
+  expect(toasts.length).toBe(1);               // once, not once per poll
+  expect(toasts[0]).toMatch(/HTTP 429/);
+  expect(await page.evaluate(() => window.trafficLastError.fails)).toBe(3);
+
+  // And it goes quiet again the moment the feed answers.
+  await page.evaluate(async () => { window.__fail = ''; window.__body = { ac: [] }; await window.trafficPoll(); });
+  expect(await page.evaluate(() => window.trafficLastError)).toBeNull();
+});
+
+// Red on an aviation display means resolve it now. Traffic is information.
+test('the arrows are not red, and the colour is tunable', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  const c = await page.evaluate(() => getComputedStyle(document.querySelector('.traffic-arrow')).color);
+  expect(c).toBe('rgb(181, 23, 158)');
+  await page.evaluate(() => { setTune('trafficArrowColor', '#0044cc'); applyTuningCssVars(); });
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.traffic-arrow')).color))
+    .toBe('rgb(0, 68, 204)');
 });

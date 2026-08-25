@@ -763,6 +763,13 @@ NavAid.tuningDefaults = {
     label: 'How far around you live traffic is asked for (nm)' },
   trafficRefreshSec: { value: 8, min: 3, max: 60, step: 1,
     label: 'How often live traffic is refreshed (s)' },
+  trafficFailsBeforeWarn: { value: 3, min: 1, max: 10, step: 1,
+    label: 'Failed traffic requests in a row before saying so' },
+  // Not red. Red on an aviation display means resolve it now, and this is information --
+  // magenta is what a traffic symbol wears on a moving map, and nothing else on the chart
+  // uses it.
+  trafficArrowColor: { value: '#b5179e', type: 'color', label: 'Live traffic arrow color' },
+  trafficLabelColor: { value: '#7b1a6b', type: 'color', label: 'Live traffic label color' },
   plateFieldZoom: { value: 11, min: 8, max: 14, step: 1,
     label: 'Zoom the map goes to when one airfield is picked for plates' },
 };
@@ -788,7 +795,7 @@ NavAid.tuningGroups = [
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
     'defaultBaseLayer', 'baseLayerOpacity'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficRadiusNm',
-    'trafficRefreshSec'] },
+    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficArrowColor', 'trafficLabelColor'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },

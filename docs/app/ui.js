@@ -878,6 +878,10 @@ function applyTuningCssVars() {
     '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
     'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
 
+  // Other aeroplanes. Not red: red on an aviation display means resolve it now.
+  root.setProperty('--navaid-traffic-arrow', tune('trafficArrowColor'));
+  root.setProperty('--navaid-traffic-label', tune('trafficLabelColor'));
+
   // Dark-mode backdrop behind the IMS PWX overlay: the chart's white background
   // is made transparent in the pipeline, so its dark footer (valid time / model
   // run) vanishes against the dark map. Plate ONLY the bottom band (the footer)
