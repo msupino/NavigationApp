@@ -29,6 +29,9 @@ async function boot(page, body = { aircraft: AC }) {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof startLiveLocation === 'function' &&
     typeof window.trafficRefresh === 'function');
+  // The feature is off in the shipped gist (see featureLiveTraffic): turn it on the way the
+  // gist would, so these tests are about the layer rather than about the switch above it.
+  await page.evaluate(() => { setTune('featureLiveTraffic', true); refreshTrafficFeature(); });
 }
 
 const fly = (page, lat = 32.05, lng = 34.92) => page.evaluate(async ([la, ln]) => {
@@ -51,6 +54,7 @@ test('it ships off, so a pilot who never asked for it is never told it is broken
   });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  await page.evaluate(() => { setTune('featureLiveTraffic', true); refreshTrafficFeature(); });
   expect(await page.evaluate(() => document.getElementById('traffic-cb').checked)).toBe(false);
   await fly(page);
   expect(await marks(page).count()).toBe(0);
@@ -145,4 +149,42 @@ test('your own aircraft is not drawn as traffic', async ({ page }) => {
   const names = await page.evaluate(() => (window.trafficAircraft || []).map(a => a.flight));
   expect(names).not.toContain('SELF');
   expect(names).toEqual(expect.arrayContaining(['BBG802', 'ELY321']));
+});
+
+// The gist switch above the pilot's: it decides whether this exists at all, on every device,
+// so a feed that goes away (or was never stood up) can be answered without an app release.
+test('the gist switch hides the whole thing, however the switch under it was left', async ({ page }) => {
+  let asked = 0;
+  await page.route(/api\/traffic.*/, r => { asked++; r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ aircraft: AC }) }); });
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
+    navigator.geolocation.clearWatch = () => {};
+    localStorage.setItem('navaid.showTraffic', '1');   // this pilot asked for traffic...
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof window.trafficRefresh === 'function');
+  expect(await page.evaluate(() => tune('featureLiveTraffic'))).toBe(false);   // ...and ships off
+  // No frame to wonder about: a lone disabled tick-box reads as something broken.
+  expect(await page.evaluate(() => {
+    const f = document.getElementById('traffic-cb').closest('.tb-layer-frame');
+    return getComputedStyle(f).display;
+  })).toBe('none');
+  await fly(page);
+  expect(await marks(page).count()).toBe(0);
+  expect(asked).toBe(0);
+
+  // The gist lands after boot, so flipping it has to reach a page already running.
+  await page.evaluate(() => { setTune('featureLiveTraffic', true); refreshTrafficFeature(); });
+  expect(await page.evaluate(() => {
+    const f = document.getElementById('traffic-cb').closest('.tb-layer-frame');
+    return getComputedStyle(f).display;
+  })).not.toBe('none');
+  await page.waitForTimeout(600);
+  await expect(marks(page)).toHaveCount(2);
+
+  // ...and switching it back off takes the marks away again.
+  await page.evaluate(() => { setTune('featureLiveTraffic', false); refreshTrafficFeature(); });
+  await page.waitForTimeout(300);
+  expect(await marks(page).count()).toBe(0);
 });
