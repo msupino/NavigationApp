@@ -19,7 +19,16 @@
   let lastError = 0;
   window.trafficAircraft = [];          // what the inspector and the hit test read
 
-  const live = () => typeof gpsPositionLive === 'function' && gpsPositionLive();
+  // Where to ask about. A real fix if there is one -- that is the traffic that matters --
+  // and otherwise the middle of whatever the pilot is looking at. Traffic is worth seeing
+  // while planning too: which airways are busy over the field you are routing through is a
+  // question you ask at the desk, not only in the air.
+  const centre = () => {
+    const c = (typeof gpsLastFix === 'function' && gpsLastFix()) || null;
+    if (c && Number.isFinite(c.lat)) return { lat: c.lat, lng: c.lng };
+    const m = map.getCenter();
+    return { lat: m.lat, lng: m.lng };
+  };
   // The gist switch outranks the pilot's: a feature that is off is off everywhere, even on
   // a device that ticked the box while it was on.
   const offered = () => typeof tune !== 'function' || tune('featureLiveTraffic') === true;
@@ -102,10 +111,9 @@
 
   async function poll() {
     if (inFlight) return;
-    if (!live() || !on()) { clear(); return; }
-    const c = (typeof gpsLastFix === 'function' && gpsLastFix()) || null;
-    const at = c && Number.isFinite(c.lat) ? c : map.getCenter();
-    const url = endpoint(at.lat, at.lng !== undefined ? at.lng : at.lon);
+    if (!on()) { clear(); return; }
+    const at = centre();
+    const url = endpoint(at.lat, at.lng);
     if (!url) return;                     // no endpoint configured: the feature is simply off
     inFlight = true;
     try {
@@ -133,6 +141,7 @@
     }
   }
   window.trafficPoll = poll;
+  let moveTimer = 0;
 
   function schedule() {
     clearInterval(timer);
@@ -141,7 +150,21 @@
     poll();
   }
   window.trafficRefresh = function () {
-    if (live() && on()) schedule();
+    if (on()) schedule();
     else { clearInterval(timer); timer = 0; clear(); }
   };
+
+  // Panning to another part of the country is a request to see the traffic there. Debounced,
+  // and only when the map actually moved a useful distance: a drag fires moveend constantly,
+  // and each one is a request over the wire.
+  let lastAsked = null;
+  map.on('moveend', () => {
+    if (!on()) return;
+    const at = centre();
+    if (lastAsked && Math.abs(at.lat - lastAsked.lat) < 0.05
+                  && Math.abs(at.lng - lastAsked.lng) < 0.05) return;
+    lastAsked = at;
+    clearTimeout(moveTimer);
+    moveTimer = setTimeout(poll, 400);
+  });
 })();
