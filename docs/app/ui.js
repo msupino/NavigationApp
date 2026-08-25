@@ -5534,17 +5534,21 @@ function onRouteChangedForPlates() {
 // saveOverlayOverride) and can be copied out to bake into airfields.json.
 const overlayAlign = (function () {
   const DEG = Math.PI / 180;
+  // The instrument sheets are here too: they are the ones most likely to need an eye. A
+  // plate whose graticule labels are set differently on each side places a few hundred
+  // metres out with residuals that look healthy, and no automatic anchor can see it -- but a
+  // pilot can, against the field or a VOR rose the sheet draws.
   const GTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
-                  'heli_overlay', 'commfail_overlay'];
+                  'heli_overlay', 'commfail_overlay', 'ifr_overlay'];
   const GVAR = {
     circuit_overlay: 'circuitLayerGroup', training_overlay: 'trainingLayerGroup',
     cvfr_overlay: 'cvfrLayerGroup', heli_overlay: 'heliLayerGroup',
-    commfail_overlay: 'commfailLayerGroup',
+    commfail_overlay: 'commfailLayerGroup', ifr_overlay: 'ifrLayerGroup',
   };
   const GLOAD = {
     circuit_overlay: () => loadCircuitOverlays(), training_overlay: () => loadTrainingOverlays(),
     cvfr_overlay: () => loadCvfrOverlays(), heli_overlay: () => loadHeliOverlays(),
-    commfail_overlay: () => loadCommfailOverlays(),
+    commfail_overlay: () => loadCommfailOverlays(), ifr_overlay: () => loadIfrOverlays(),
   };
   let active = false, sel = null, editLayer = null, state = null;
   let handles = {}, panel = null, mapClick = null;
