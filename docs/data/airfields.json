@@ -1,908 +1,1430 @@
 {
-  "airfields": [
-    {
-      "name": "GVULT",
-      "he": "גבולות",
-      "en": "Gvulot",
-      "lat": 31.2275,
-      "lng": 34.46028
-    },
-    {
-      "name": "KKDEM",
-      "he": "קדם",
-      "en": "Kedem",
-      "lat": 31.26278,
-      "lng": 34.65028
-    },
-    {
-      "name": "LLBG",
-      "he": "בן גוריון",
-      "en": "Tel Aviv / Ben Gurion",
-      "lat": 32.00944,
-      "lng": 34.88556,
-      "elev_ft": 134,
-      "atis": "Arrival 132.50 MHz / Departure 132.80 MHz",
-      "clearance": "121.55 MHz",
-      "plates": [
-     "LLBG_TRANSITION_ERREZ 1A.pdf",
-     "LLBG_APPROACH_PATC 12.pdf",
-     "LLBG_APPROACH_RNP X 21.pdf",
-     "LLBG_APPROACH_LOC 12.pdf",
-        "LLBG_APPROACH_ILS 08.pdf",
-        "LLBG_APPROACH_ILS 12.pdf",
-        "LLBG_APPROACH_ILS 21.pdf",
-        "LLBG_APPROACH_ILS 26.pdf",
-        "LLBG_APPROACH_ILS 30.pdf",
-        "LLBG_APPROACH_LOC 21.pdf",
-        "LLBG_APPROACH_RNP 08.pdf",
-        "LLBG_APPROACH_RNP 12.pdf",
-        "LLBG_APPROACH_RNP 26.pdf",
-        "LLBG_APPROACH_RNP X 30.pdf",
-        "LLBG_APPROACH_RNP Y 21.pdf",
-        "LLBG_APPROACH_RNP Z 30.pdf",
-        "LLBG_ATC_SMAC.pdf",
-        "LLBG_Ground_Aiport Chart.pdf",
-        "LLBG_Ground_GA Apron.pdf",
-        "LLBG_Ground_H+X Apron.pdf",
-        "LLBG_Ground_N Apron.pdf",
-        "LLBG_Ground_Terminal 1 Parking.pdf",
-        "LLBG_SID_08.pdf",
-        "LLBG_SID_12-26-30 (Orlev).pdf",
-        "LLBG_SID_12-26-30 (Pidet+Ripud).pdf",
-        "LLBG_SID_12.pdf",
-        "LLBG_SID_26.pdf",
-        "LLBG_SID_30.pdf",
-        "LLBG_SID_SUVAS1G.pdf",
-        "LLBG_STAR_08-1_V1_en.pdf",
-        "LLBG_STAR_12-1_V1_en.pdf",
-        "LLBG_STAR_12-30-1_V2_en.pdf",
-        "LLBG_STAR_21-26-1_V2_en.pdf",
-        "LLBG_STAR_30-2_V1_en.pdf",
-        "LLBG_TRANS_21-26-1.pdf",
-        "LLBG_VAC_21NAMIM_en.pdf",
-        "LLBG_VAC_30-2_V1_en.pdf",
-        "LLBG_VAC_30-3_v1_en.pdf",
-        "LLBG_VAC_en.pdf",
-        "LLBG_airport_Chart.pdf",
-        "LLBG_airport_VFR.pdf"
-      ],
-   "ifr_overlays": [
-    {"png": "LLBG_APPROACHLOC12.png", "code": "LOC 12", "title": "Instrument approach chart (IAC) - ICAO LOC RWY 12", "plate": "LLBG_APPROACH_LOC 12.pdf", "sw": [31.89532, 34.53219], "ne": [32.20494, 35.00778], "points": [{"name": "BGN", "lat": 32.01306, "lng": 34.87528}]},
-    {"png": "LLBG_APPROACHILS08.png", "code": "ILS 08", "title": "LLBG_APPROACH_ILS 08.pdf", "plate": "LLBG_APPROACH_ILS 08.pdf", "sw": [31.83866, 34.48222], "ne": [32.16001, 35.00327], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_APPROACHILS12.png", "code": "ILS 12", "title": "LLBG_APPROACH_ILS 12.pdf", "plate": "LLBG_APPROACH_ILS 12.pdf", "sw": [31.89508, 34.53213], "ne": [32.20487, 35.00774], "points": [{"name": "BGN", "lat": 32.01306, "lng": 34.87528}]},
-    {"png": "LLBG_APPROACHILS30.png", "code": "ILS 30", "title": "LLBG_APPROACH_ILS 30.pdf", "plate": "LLBG_APPROACH_ILS 30.pdf", "sw": [31.80135, 34.49936], "ne": [32.27308, 35.24054]},
-    {"png": "LLBG_APPROACHLOC21.png", "code": "LOC 21", "title": "Instrument approach chart (IAC) - ICAO LOC RWY 21", "plate": "LLBG_APPROACH_LOC 21.pdf", "sw": [31.90686, 34.71497], "ne": [32.2582, 35.16292], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_APPROACHRNP08.png", "code": "RNP 08", "title": "Instrument approach chart (IAC) - ICAO RNP RWY 08", "plate": "LLBG_APPROACH_RNP 08.pdf", "sw": [31.83119, 34.48924], "ne": [32.23656, 35.01044], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_APPROACHRNP12.png", "code": "RNP 12", "title": "LLBG_APPROACH_RNP 12.pdf", "plate": "LLBG_APPROACH_RNP 12.pdf", "sw": [31.89508, 34.53405], "ne": [32.20487, 35.00966], "points": [{"name": "BGN", "lat": 32.01306, "lng": 34.87528}]},
-    {"png": "LLBG_APPROACHRNP26.png", "code": "RNP 26", "title": "LLBG_APPROACH_RNP 26.pdf", "plate": "LLBG_APPROACH_RNP 26.pdf", "sw": [31.81836, 34.62644], "ne": [32.25727, 35.19682], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_APPROACHRNPX30.png", "code": "RNP X 30", "title": "LLBG_APPROACH_RNP X 30.pdf", "plate": "LLBG_APPROACH_RNP X 30.pdf", "sw": [31.8598, 34.67452], "ne": [32.12306, 35.05651], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_APPROACHRNPY21.png", "code": "RNP Y 21", "title": "LLBG_APPROACH_RNP Y 21.pdf", "plate": "LLBG_APPROACH_RNP Y 21.pdf", "sw": [31.89776, 34.70635], "ne": [32.26804, 35.18089], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_APPROACHRNPZ30.png", "code": "RNP Z 30", "title": "LLBG_APPROACH_RNP Z 30.pdf", "plate": "LLBG_APPROACH_RNP Z 30.pdf", "sw": [31.87272, 34.65001], "ne": [32.22553, 35.20221], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_SID08.png", "code": "SID 08", "title": "LLBG_SID_08.pdf", "plate": "LLBG_SID_08.pdf", "tl": [32.80038, 35.54204], "tr": [31.89025, 35.54204], "bl": [32.80038, 33.98594]},
-    {"png": "LLBG_SID122630Orlev.png", "code": "SID 12-26-30 (Orlev)", "title": "LLBG_SID_12-26-30 (Orlev).pdf", "plate": "LLBG_SID_12-26-30 (Orlev).pdf", "tl": [32.11775, 35.03093], "tr": [31.90308, 35.03093], "bl": [32.11775, 34.54352]},
-    {"png": "LLBG_SID122630PidetRipu.png", "code": "SID 12-26-30 (Pidet+Ripud)", "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 PIDET 2C, 1E, 1F, RIPUD 1E, 1F", "plate": "LLBG_SID_12-26-30 (Pidet+Ripud).pdf", "sw": [31.88864, 34.69499], "ne": [32.58026, 35.28702], "points": [{"name": "NAT", "lat": 32.33389, "lng": 34.96889}, {"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_SID12.png", "code": "SID 12", "title": "LLBG_SID_12.pdf", "plate": "LLBG_SID_12.pdf", "tl": [32.41836, 35.15314], "tr": [31.73933, 35.15314], "bl": [32.41836, 33.98031]},
-    {"png": "LLBG_SID26.png", "code": "SID 26", "title": "LLBG_SID_26.pdf", "plate": "LLBG_SID_26.pdf", "tl": [32.4177, 35.16879], "tr": [31.74032, 35.16879], "bl": [32.4177, 33.98649]},
-    {"png": "LLBG_SID30.png", "code": "SID 30", "title": "LLBG_SID_30.pdf", "plate": "LLBG_SID_30.pdf", "tl": [32.43696, 35.16834], "tr": [31.75312, 35.16834], "bl": [32.43696, 33.98809]},
-    {"png": "LLBG_SIDSUVAS1G.png", "code": "SID SUVAS1G", "title": "LLBG_SID_SUVAS1G.pdf", "plate": "LLBG_SID_SUVAS1G.pdf", "tl": [32.40439, 35.10168], "tr": [31.7461, 35.10168], "bl": [32.40439, 33.97681]},
-    {"png": "LLBG_STAR121.png", "code": "STAR 12-1", "title": "Standard Arrival chart instrument (STAR) - ICAO RWY 12 AMMIT 1B, SALAM 2B", "plate": "LLBG_STAR_12-1_V1_en.pdf", "sw": [31.44408, 34.83834], "ne": [32.34545, 35.56985], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_VAC302.png", "code": "VAC 30-2", "title": "Visual approach chart GAVRI approach RWY 30", "plate": "LLBG_VAC_30-2_V1_en.pdf", "sw": [31.85532, 34.69546], "ne": [32.17047, 35.10638], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]}
+ "airfields": [
+  {
+   "name": "GVULT",
+   "he": "גבולות",
+   "en": "Gvulot",
+   "lat": 31.2275,
+   "lng": 34.46028
+  },
+  {
+   "name": "KKDEM",
+   "he": "קדם",
+   "en": "Kedem",
+   "lat": 31.26278,
+   "lng": 34.65028
+  },
+  {
+   "name": "LLBG",
+   "he": "בן גוריון",
+   "en": "Tel Aviv / Ben Gurion",
+   "lat": 32.00944,
+   "lng": 34.88556,
+   "elev_ft": 134,
+   "atis": "Arrival 132.50 MHz / Departure 132.80 MHz",
+   "clearance": "121.55 MHz",
+   "plates": [
+    "LLBG_TRANSITION_ERREZ 1A.pdf",
+    "LLBG_APPROACH_PATC 12.pdf",
+    "LLBG_APPROACH_RNP X 21.pdf",
+    "LLBG_APPROACH_LOC 12.pdf",
+    "LLBG_APPROACH_ILS 08.pdf",
+    "LLBG_APPROACH_ILS 12.pdf",
+    "LLBG_APPROACH_ILS 21.pdf",
+    "LLBG_APPROACH_ILS 26.pdf",
+    "LLBG_APPROACH_ILS 30.pdf",
+    "LLBG_APPROACH_LOC 21.pdf",
+    "LLBG_APPROACH_RNP 08.pdf",
+    "LLBG_APPROACH_RNP 12.pdf",
+    "LLBG_APPROACH_RNP 26.pdf",
+    "LLBG_APPROACH_RNP X 30.pdf",
+    "LLBG_APPROACH_RNP Y 21.pdf",
+    "LLBG_APPROACH_RNP Z 30.pdf",
+    "LLBG_ATC_SMAC.pdf",
+    "LLBG_Ground_Aiport Chart.pdf",
+    "LLBG_Ground_GA Apron.pdf",
+    "LLBG_Ground_H+X Apron.pdf",
+    "LLBG_Ground_N Apron.pdf",
+    "LLBG_Ground_Terminal 1 Parking.pdf",
+    "LLBG_SID_08.pdf",
+    "LLBG_SID_12-26-30 (Orlev).pdf",
+    "LLBG_SID_12-26-30 (Pidet+Ripud).pdf",
+    "LLBG_SID_12.pdf",
+    "LLBG_SID_26.pdf",
+    "LLBG_SID_30.pdf",
+    "LLBG_SID_SUVAS1G.pdf",
+    "LLBG_STAR_08-1_V1_en.pdf",
+    "LLBG_STAR_12-1_V1_en.pdf",
+    "LLBG_STAR_12-30-1_V2_en.pdf",
+    "LLBG_STAR_21-26-1_V2_en.pdf",
+    "LLBG_STAR_30-2_V1_en.pdf",
+    "LLBG_TRANS_21-26-1.pdf",
+    "LLBG_VAC_21NAMIM_en.pdf",
+    "LLBG_VAC_30-2_V1_en.pdf",
+    "LLBG_VAC_30-3_v1_en.pdf",
+    "LLBG_VAC_en.pdf",
+    "LLBG_airport_Chart.pdf",
+    "LLBG_airport_VFR.pdf"
    ],
-      "runways": [
-        "08/26",
-        "12/30",
-        "03/21"
-      ]
-    },
-    {
-      "name": "LLBO",
-      "he": "הבונים",
-      "en": "Habonim",
-      "lat": 32.65,
-      "lng": 34.93278,
-      "plates": [
-        "LLBO_Ground_Diagram.pdf",
-        "LLBO_airport_Chart.pdf",
-        "LLBO_airport_Circuit.pdf",
-        "LLBO_airport_Routes.pdf"
-      ],
-      "cvfr_overlay": { "png": "LLBO_cvfr.png", "sw": [32.54467, 34.84634], "ne": [32.76999, 35.03317] },
-      "circuit_overlay": {
-        "png": "LLBO_circuit.png",
-        "tl": [
-          32.73729,
-          34.86559
-        ],
-        "tr": [
-          32.73559,
-          35.00564
-        ],
-        "bl": [
-          32.56831,
-          34.86232
-        ]
-      }
-    },
-    {
-      "name": "LLBS",
-      "he": "תימן",
-      "en": "Beer Sheva / Teyman",
-      "lat": 31.28694,
-      "lng": 34.72278,
-      "elev_ft": 656,
-      "plates": [
-        "LLBS_airport_Annex Alef.pdf",
-        "LLBS_airport_Annex Bet.pdf",
-        "LLBS_airport_Annex Daled.pdf",
-        "LLBS_airport_Annex Gimel.pdf",
-        "LLBS_airport_Chart.pdf"
-      ],
-      "runways": [
-        "14/32"
-      ],
-      "circuit_overlay": {
-        "png": "LLBS_circuit.png",
-        "tl": [
-          31.34877,
-          34.6835
-        ],
-        "tr": [
-          31.34772,
-          34.77031
-        ],
-        "bl": [
-          31.24623,
-          34.68162
-        ]
-      },
-      "cvfr_overlay": { "png": "LLBS_cvfr.png", "sw": [31.18949, 34.64089], "ne": [31.45011, 34.85351] },
-      "training_overlay": {
-        "png": "LLBS_training.png",
-        "sw": [
-          31.17247,
-          34.67812
-        ],
-        "ne": [
-          31.52112,
-          34.96228
-        ]
-      },
-      "heli_overlay": {
-        "png": "LLBS_heli.png",
-        "sw": [
-          31.18796,
-          34.62581
-        ],
-        "ne": [
-          31.4702,
-          34.85664
-        ]
-      }
-    },
-    {
-      "name": "LLEK",
-      "he": "תל נוף",
-      "en": "Tel Nof",
-      "lat": 31.83667,
-      "lng": 34.81889,
-      "elev_ft": 194
-    },
-    {
-      "name": "LLER",
-      "he": "אילן ואסף רמון",
-      "en": "Eilat / Ilan & Asaf Ramon",
-      "lat": 29.72722,
-      "lng": 35.01417,
-      "elev_ft": 288,
-      "atis": "132.55 MHz",
-      "plates": [
-     "LLER_APPROACH_RNP 19.pdf",
-     "LLER_APPROACH_RNP 01.pdf",
-     "LLER_APPROACH_ILS 19.pdf",
-     "LLER_APPROACH_ILS 01.pdf",
-        "LLER_ADC_3_en.pdf",
-        "LLER_ADC_RST_en.pdf",
-        "LLER_ADC_U_en.pdf",
-        "LLER_ADC_V1_en.pdf",
-        "LLER_IAC_01-2_en.pdf",
-        "LLER_IAC_01RNP_en.pdf",
-        "LLER_IAC_19ILS_V1_en.pdf",
-        "LLER_IAC_19RNP_en.pdf",
-        "LLER_SID_01-1_en.pdf",
-        "LLER_SID_01NH_en.pdf",
-        "LLER_SID_19-1_en.pdf",
-        "LLER_SID_19-3_en.pdf",
-        "LLER_SID_19NM_en.pdf",
-        "LLER_SID_19NN_en.pdf",
-        "LLER_STAR_01-1_en.pdf",
-        "LLER_STAR_01-2_en.pdf",
-        "LLER_VAC_01-1_en.pdf",
-        "LLER_VAC_19-1_en.pdf",
-        "LLER_VFRTA_en.pdf",
-        "LLER_airport_Chart.pdf"
-      ],
-      "runways": [
-        "01/19"
-      ]
-    },
-    {
-      "name": "LLES",
-      "he": "עין שמר",
-      "en": "Ein Shemer",
-      "lat": 32.44139,
-      "lng": 35.00333,
-      "elev_ft": 95,
-      "plates": [
-        "LLES_airport_Chart.pdf",
-        "LLES_airport_Text.pdf"
-      ],
-      "runways": [
-        "09/27"
-      ]
-    },
-    {
-      "name": "LLEV",
-      "he": "עין ורד",
-      "en": "Ein Vered",
-      "lat": 32.265,
-      "lng": 34.95167
-    },
-    {
-      "name": "LLEY",
-      "he": "עין יהב",
-      "en": "Ein Yahav",
-      "lat": 30.62167,
-      "lng": 35.20306,
-      "elev_ft": -164,
-      "plates": [
-        "LLEY_airport_Annex Alef.pdf",
-        "LLEY_airport_CVFR.pdf",
-        "LLEY_airport_Chart.pdf",
-        "LLEY_airport_Circuit.pdf"
-      ],
-      "circuit_overlay": {
-        "png": "LLEY_circuit.png",
-        "sw": [
-          30.59235,
-          35.17279
-        ],
-        "ne": [
-          30.65785,
-          35.21658
-        ]
-      },
-      "cvfr_overlay": {
-        "png": "LLEY_cvfr.png",
-        "sw": [
-          30.518,
-          35.07751
-        ],
-        "ne": [
-          30.78999,
-          35.31563
-        ]
-      }
-    },
-    {
-      "name": "LLFK",
-      "he": "פיק",
-      "en": "Fiq (Golan)",
-      "lat": 32.78528,
-      "lng": 35.71722,
-      "elev_ft": 1218,
-      "plates": [
-        "LLFK_airport_Annex Alef.pdf",
-        "LLFK_airport_CVFR.pdf",
-        "LLFK_airport_Chart.pdf",
-        "LLFK_airport_Circuit.pdf",
-        "LLFK_airport_Text.pdf"
-      ],
-      "circuit_overlay": {
-        "png": "LLFK_circuit.png",
-        "sw": [
-          32.74051,
-          35.67833
-        ],
-        "ne": [
-          32.83411,
-          35.75641
-        ]
-      },
-      "cvfr_overlay": {
-        "png": "LLFK_cvfr.png",
-        "tl": [
-          33.0115,
-          35.45464
-        ],
-        "tr": [
-          33.00514,
-          35.80119
-        ],
-        "bl": [
-          32.58918,
-          35.44329
-        ]
-      }
-    },
-    {
-      "name": "LLHA",
-      "he": "חיפה",
-      "en": "Haifa",
-      "lat": 32.80833,
-      "lng": 35.04278,
-      "elev_ft": 28,
-      "atis": "135.40 MHz",
-      "plates": [
-        "LLHA_airport_Annex Alef.pdf",
-        "LLHA_airport_Annex Bet 2.pdf",
-        "LLHA_airport_Annex Bet 3.pdf",
-        "LLHA_airport_Annex Bet 4.pdf",
-        "LLHA_airport_Annex Bet.pdf",
-        "LLHA_airport_Annex Chet.pdf",
-        "LLHA_airport_Annex Daled.pdf",
-        "LLHA_airport_Annex Gimel.pdf",
-        "LLHA_airport_Annex He.pdf",
-        "LLHA_airport_Annex Tet.pdf",
-        "LLHA_airport_Annex Zayin.pdf",
-        "LLHA_STAR_GALIM.pdf",
-     "LLHA_airport_Chart.pdf"
-      ],
-      "runways": [
-        "15/33"
-      ],
-      "cvfr_overlay": { "png": "LLHA_cvfr.png", "sw": [32.66213, 34.95078], "ne": [32.96003, 35.20581] },
-      "circuit_overlay": {
-        "png": "LLHA_circuit.png",
-        "sw": [
-          32.74073,
-          34.99698
-        ],
-        "ne": [
-          32.87846,
-          35.1079
-        ]
-      },
-      "training_overlay": {
-        "png": "LLHA_training.png",
-        "tl": [
-          32.97883,
-          34.98948
-        ],
-        "tr": [
-          32.976,
-          35.19468
-        ],
-        "bl": [
-          32.73018,
-          34.98408
-        ]
-      },
-      "commfail_overlay": {
-        "png": "LLHA_commfail.png",
-        "tl": [
-          32.95912,
-          34.94303
-        ],
-        "tr": [
-          32.95626,
-          35.13938
-        ],
-        "bl": [
-          32.73062,
-          34.93827
-        ]
-      },
-      "heli_overlay": {
-        "png": "LLHA_heli.png",
-        "sw": [
-          32.65279,
-          34.93371
-        ],
-        "ne": [
-          32.98791,
-          35.21743
-        ]
-      }
-    },
-    {
-      "name": "LLHB",
-      "he": "חצרים",
-      "en": "Hatzerim",
-      "lat": 31.24333,
-      "lng": 34.655,
-      "elev_ft": 722
-    },
-    {
-      "name": "LLHS",
-      "he": "חצור",
-      "en": "Hatzor",
-      "lat": 31.75778,
-      "lng": 34.72306,
-      "elev_ft": 148
-    },
-    {
-      "name": "LLHZ",
-      "he": "הרצליה",
-      "en": "Herzliya",
-      "lat": 32.17944,
-      "lng": 34.83444,
-      "elev_ft": 121,
-      "clearance": "121.70 MHz",
-      "plates": [
-        "LLHZ_airport_Annex Alef.pdf",
-        "LLHZ_airport_Annex Chet.pdf",
-        "LLHZ_airport_Annex Gimel.pdf",
-        "LLHZ_airport_Annex He.pdf",
-        "LLHZ_airport_Annex Tet.pdf",
-        "LLHZ_airport_Annex Yud Alef 2.pdf",
-        "LLHZ_airport_Annex Yud Alef 3.pdf",
-        "LLHZ_airport_Annex Yud Alef.pdf",
-        "LLHZ_airport_Annex Yud Bet.pdf",
-        "LLHZ_airport_Annex Yud Gimel.pdf",
-        "LLHZ_airport_Annex Yud.pdf",
-        "LLHZ_airport_Annex Zayin.pdf",
-        "LLHZ_airport_Chart.pdf"
-      ],
    "ifr_overlays": [
-    {"png": "LLHZ_ATS.png", "code": "ATS departure", "title": "יציאה לנתיבי ATS", "plate": "LLHZ_airport_Annex Chet.pdf", "points": [{"name": "BENQO", "lat": 32.39139, "lng": 34.76333}, {"name": "DIVLA", "lat": 32.28417, "lng": 34.71778}, {"name": "YENON", "lat": 32.37556, "lng": 34.82028}, {"name": "NAT", "lat": 32.33389, "lng": 34.96889}, {"name": "BGN", "lat": 32.01306, "lng": 34.87528}], "tl": [32.41484, 34.64451], "tr": [32.41368, 35.01289], "bl": [31.98832, 34.64263]}
-   ],
-      "runways": [
-        "10/28"
-      ],
-      "circuit_overlay": {
-        "png": "LLHZ_circuit.png",
-        "tl": [
-          32.22554,
-          34.80114
-        ],
-        "tr": [
-          32.22584,
-          34.86715
-        ],
-        "bl": [
-          32.15017,
-          34.80163
-        ]
-      },
-      "training_overlay": {
-        "png": "LLHZ_training.png",
-        "tl": [
-          32.47395,
-          34.73507
-        ],
-        "tr": [
-          32.46727,
-          35.0635
-        ],
-        "bl": [
-          32.09469,
-          34.72783
-        ]
-      },
-      "cvfr_overlay": {
-        "png": "LLHZ_cvfr.png",
-        "sw": [
-          32.07271,
-          34.75854
-        ],
-        "ne": [
-          32.28924,
-          34.92414
-        ]
-      },
-      "commfail_overlay": {
-        "png": "LLHZ_commfail.png",
-        "tl": [
-          32.21927,
-          34.79902
-        ],
-        "tr": [
-          32.21827,
-          34.87276
-        ],
-        "bl": [
-          32.13599,
-          34.79724
-        ]
-      },
-      "heli_overlay": {
-        "png": "LLHZ_heli.png",
-        "sw": [
-          32.03239,
-          34.72753
-        ],
-        "ne": [
-          32.28233,
-          34.91463
-        ]
+    {
+     "png": "LLBG_APPROACHLOC12.png",
+     "code": "LOC 12",
+     "title": "Instrument approach chart (IAC) - ICAO LOC RWY 12",
+     "plate": "LLBG_APPROACH_LOC 12.pdf",
+     "sw": [
+      31.89532,
+      34.53219
+     ],
+     "ne": [
+      32.20494,
+      35.00778
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01306,
+       "lng": 34.87528
       }
+     ]
     },
     {
-      "name": "LLIB",
-      "he": "ראש פינה",
-      "en": "Rosh Pina / Mahanayim",
-      "lat": 32.98056,
-      "lng": 35.57083,
-      "elev_ft": 884,
-      "atis": "132.45 MHz",
-      "plates": [
-        "LLIB_airport_Annex Alef.pdf",
-        "LLIB_airport_Annex Bet.pdf",
-        "LLIB_airport_Annex Chet.pdf",
-        "LLIB_airport_Annex Daled.pdf",
-        "LLIB_airport_Annex Gimel.pdf",
-        "LLIB_airport_Annex He.pdf",
-        "LLIB_airport_Annex Vav.pdf",
-        "LLIB_airport_Annex Yud Alef.pdf",
-        "LLIB_airport_Annex Yud Bet.pdf",
-        "LLIB_airport_Annex Yud.pdf",
-        "LLIB_airport_Annex Zayin.pdf",
-        "LLIB_airport_Chart.pdf"
-      ],
-   "ifr_overlays": [
-    {"png": "LLIB_STANDARDINSTRUMENT.png", "code": "SID 15/33", "title": "STANDARD INSTRUMENT DEPARTURE RWY 15 and 33", "plate": "LLIB_airport_Annex Vav.pdf", "sw": [32.67581, 35.3713], "ne": [33.08093, 35.7027], "points": [{"name": "ROP", "lat": 32.98253, "lng": 35.57278}, {"name": "BARZI", "lat": 32.83636, "lng": 35.54339}]},
-    {"png": "LLIB_VOR.png", "code": "VOR approach", "title": "תהליך גישה VOR", "plate": "LLIB_airport_Annex Zayin.pdf", "sw": [32.65443, 35.30575], "ne": [33.10354, 35.80579], "points": [{"name": "ETROG", "lat": 32.85922, "lng": 35.64644}, {"name": "GIMIK", "lat": 32.8045, "lng": 35.53686}, {"name": "LLP02", "lat": 32.90397, "lng": 35.61972}, {"name": "ROP", "lat": 32.98253, "lng": 35.57278}, {"name": "DALIT", "lat": 33.06444, "lng": 35.56944}]}
-   ],
-      "runways": [
-        "15/33",
-        "05/23"
-      ],
-      "circuit_overlay": {
-        "png": "LLIB_circuit.png",
-        "sw": [
-          32.89244,
-          35.49843
-        ],
-        "ne": [
-          33.09184,
-          35.65483
-        ]
-      },
-      "training_overlay": {
-        "png": "LLIB_training.png",
-        "sw": [
-          32.87347,
-          35.45696
-        ],
-        "ne": [
-          33.24774,
-          35.75146
-        ]
-      },
-      "heli_overlay": {
-        "png": "LLIB_heli.png",
-        "sw": [
-          32.75172,
-          35.38501
-        ],
-        "ne": [
-          33.25691,
-          35.71108
-        ]
-      },
-      "commfail_overlay": {
-        "png": "LLIB_commfail.png",
-        "tl": [
-          33.02388,
-          35.54595
-        ],
-        "tr": [
-          33.02247,
-          35.61624
-        ],
-        "bl": [
-          32.93832,
-          35.54264
-        ]
-      },
-      "cvfr_overlay": {
-        "png": "LLIB_cvfr.png",
-        "tl": [
-          33.21803,
-          35.3727
-        ],
-        "tr": [
-          33.21052,
-          35.73375
-        ],
-        "bl": [
-          32.77498,
-          35.35988
-        ]
+     "png": "LLBG_APPROACHILS08.png",
+     "code": "ILS 08",
+     "title": "LLBG_APPROACH_ILS 08.pdf",
+     "plate": "LLBG_APPROACH_ILS 08.pdf",
+     "sw": [
+      31.83866,
+      34.48222
+     ],
+     "ne": [
+      32.16001,
+      35.00327
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
       }
+     ]
     },
     {
-      "name": "LLKS",
-      "he": "קרית שמונה",
-      "en": "Kiryat Shmona",
-      "lat": 33.21417,
-      "lng": 35.59417,
-      "elev_ft": 376,
-      "plates": [
-        "LLKS_Ground_Diagram.pdf",
-        "LLKS_airport_CVFR.pdf",
-        "LLKS_airport_Chart.pdf"
-      ],
-      "runways": [
-        "03/21"
-      ],
-      "circuit_overlay": {
-        "png": "LLKS_circuit.png",
-        "sw": [
-          33.14265,
-          35.5642
-        ],
-        "ne": [
-          33.24338,
-          35.65753
-        ]
-      },
-      "cvfr_overlay": {
-        "png": "LLKS_cvfr.png",
-        "sw": [
-          32.88644,
-          35.45275
-        ],
-        "ne": [
-          33.36184,
-          35.83113
-        ]
+     "png": "LLBG_APPROACHILS12.png",
+     "code": "ILS 12",
+     "title": "LLBG_APPROACH_ILS 12.pdf",
+     "plate": "LLBG_APPROACH_ILS 12.pdf",
+     "sw": [
+      31.89508,
+      34.53213
+     ],
+     "ne": [
+      32.20487,
+      35.00774
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01306,
+       "lng": 34.87528
       }
+     ]
     },
     {
-      "name": "LLKZ",
-      "he": "קציעות",
-      "en": "Ktziot",
-      "lat": 30.85889,
-      "lng": 34.44361,
-      "elev_ft": 900,
-      "plates": [
-        "LLKZ_airport_Annex Alef.pdf",
-        "LLKZ_airport_Chart.pdf",
-        "LLKZ_airport_Circuit.pdf"
-      ],
-      "circuit_overlay": {
-        "png": "LLKZ_circuit.png",
-        "tl": [
-          30.89579,
-          34.41717
-        ],
-        "tr": [
-          30.89548,
-          34.47699
-        ],
-        "bl": [
-          30.82242,
-          34.41629
-        ]
+     "png": "LLBG_APPROACHILS30.png",
+     "code": "ILS 30",
+     "title": "LLBG_APPROACH_ILS 30.pdf",
+     "plate": "LLBG_APPROACH_ILS 30.pdf",
+     "sw": [
+      31.80135,
+      34.49936
+     ],
+     "ne": [
+      32.27308,
+      35.24054
+     ]
+    },
+    {
+     "png": "LLBG_APPROACHLOC21.png",
+     "code": "LOC 21",
+     "title": "Instrument approach chart (IAC) - ICAO LOC RWY 21",
+     "plate": "LLBG_APPROACH_LOC 21.pdf",
+     "sw": [
+      31.90686,
+      34.71497
+     ],
+     "ne": [
+      32.2582,
+      35.16292
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
       }
+     ]
     },
     {
-      "name": "LLMG",
-      "he": "מגידו",
-      "en": "Megiddo",
-      "lat": 32.59722,
-      "lng": 35.23472,
-      "elev_ft": 200,
-      "plates": [
-        "LLMG_airport_Annex Alef.pdf",
-        "LLMG_airport_Annex Daled.pdf",
-        "LLMG_airport_CVFR.pdf",
-        "LLMG_airport_Chart.pdf",
-        "LLMG_airport_Circuit.pdf",
-        "LLMG_departure_CVFR.pdf"
-      ],
-      "runways": [
-        "09/27"
-      ],
-      "circuit_overlay": {
-        "png": "LLMG_circuit.png",
-        "sw": [
-          32.54078,
-          35.18077
-        ],
-        "ne": [
-          32.66228,
-          35.283
-        ]
-      },
-      "training_overlay": {
-        "png": "LLMG_training.png",
-        "sw": [
-          32.37251,
-          35.15246
-        ],
-        "ne": [
-          32.97458,
-          35.65469
-        ]
-      },
-      "cvfr_overlay": {
-        "png": "LLMG_cvfr.png",
-        "tl": [
-          32.75343,
-          34.99523
-        ],
-        "tr": [
-          32.74293,
-          35.47994
-        ],
-        "bl": [
-          32.46064,
-          34.98816
-        ]
+     "png": "LLBG_APPROACHRNP08.png",
+     "code": "RNP 08",
+     "title": "Instrument approach chart (IAC) - ICAO RNP RWY 08",
+     "plate": "LLBG_APPROACH_RNP 08.pdf",
+     "sw": [
+      31.83119,
+      34.48924
+     ],
+     "ne": [
+      32.23656,
+      35.01044
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
       }
+     ]
     },
     {
-      "name": "LLNV",
-      "he": "נבטים",
-      "en": "Nevatim",
-      "lat": 31.21333,
-      "lng": 35.01833,
-      "elev_ft": 1391
-    },
-    {
-      "name": "LLOV",
-      "he": "עובדה",
-      "en": "Ovda",
-      "lat": 29.935,
-      "lng": 34.94083,
-      "elev_ft": 1493
-    },
-    {
-      "name": "LLPL",
-      "he": "פלמחים",
-      "en": "Palmachim",
-      "lat": 31.89833,
-      "lng": 34.69,
-      "elev_ft": 33,
-      "atis": "126.10 MHz"
-    },
-    {
-      "name": "LLRD",
-      "he": "רמת דוד",
-      "en": "Ramat David",
-      "lat": 32.66861,
-      "lng": 35.18333,
-      "elev_ft": 184
-    },
-    {
-      "name": "LLRM",
-      "he": "רמון",
-      "en": "Ramon",
-      "lat": 30.775,
-      "lng": 34.66667,
-      "elev_ft": 2126
-    },
-    {
-      "name": "LLRS",
-      "he": "ראשון לציון",
-      "en": "Rishon LeZion",
-      "lat": 31.9675,
-      "lng": 34.75361,
-      "elev_ft": 60,
-      "plates": [
-        "LLRS_airport_Annex Alef.pdf",
-        "LLRS_airport_Annex Bet.pdf",
-        "LLRS_airport_Annex Daled.pdf",
-        "LLRS_airport_Annex Gimel.pdf",
-        "LLRS_airport_Annex He.pdf",
-        "LLRS_airport_Annex Vav.pdf",
-        "LLRS_airport_Chart.pdf"
-      ],
-      "cvfr_overlay": {
-        "png": "LLRS_cvfr.png",
-        "tl": [
-          32.01458,
-          34.98322
-        ],
-        "tr": [
-          31.82413,
-          34.98434
-        ],
-        "bl": [
-          32.01318,
-          34.65388
-        ]
-      },
-      "circuit_overlay": {
-        "png": "LLRS_circuit.png",
-        "tl": [
-          31.99335,
-          34.72989
-        ],
-        "tr": [
-          31.99288,
-          34.7681
-        ],
-        "bl": [
-          31.94715,
-          34.72899
-        ]
-      },
-      "training_overlay": {
-        "png": "LLRS_training.png",
-        "sw": [
-          31.92292,
-          34.72042
-        ],
-        "ne": [
-          32.00147,
-          34.78105
-        ]
+     "png": "LLBG_APPROACHRNP12.png",
+     "code": "RNP 12",
+     "title": "LLBG_APPROACH_RNP 12.pdf",
+     "plate": "LLBG_APPROACH_RNP 12.pdf",
+     "sw": [
+      31.89508,
+      34.53405
+     ],
+     "ne": [
+      32.20487,
+      35.00966
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01306,
+       "lng": 34.87528
       }
+     ]
     },
     {
-      "name": "LLMZ",
-      "he": "מצדה",
-      "en": "Bar Yehuda (Masada)",
-      "lat": 31.32917,
-      "lng": 35.38833,
-      "elev_ft": -1240,
-      "plates": [
-        "LLMZ_airport_Annex Alef.pdf",
-        "LLMZ_airport_Annex Bet.pdf",
-        "LLMZ_airport_Annex Gimel.pdf",
-        "LLMZ_airport_CVFR.pdf",
-        "LLMZ_airport_Chart.pdf"
-      ],
-      "circuit_overlay": {
-        "png": "LLMZ_circuit.png",
-        "sw": [
-          31.27945,
-          35.33016
-        ],
-        "ne": [
-          31.39493,
-          35.43228
-        ]
-      },
-      "cvfr_overlay": {
-        "png": "LLMZ_cvfr.png",
-        "sw": [
-          31.08554,
-          35.14632
-        ],
-        "ne": [
-          31.61159,
-          35.57389
-        ]
+     "png": "LLBG_APPROACHRNP26.png",
+     "code": "RNP 26",
+     "title": "LLBG_APPROACH_RNP 26.pdf",
+     "plate": "LLBG_APPROACH_RNP 26.pdf",
+     "sw": [
+      31.81836,
+      34.62644
+     ],
+     "ne": [
+      32.25727,
+      35.19682
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
       }
+     ]
     },
     {
-      "name": "LLAR",
-      "he": "ערד",
-      "en": "Arad",
-      "lat": 31.22972,
-      "lng": 35.18972,
-      "plates": [
-        "LLAR_airport_CVFR.pdf",
-        "LLAR_airport_Chart.pdf",
-        "LLAR_airport_Circuit.pdf",
-        "LLAR_airport_Text.pdf"
-      ],
-      "circuit_overlay": {
-        "png": "LLAR_circuit.png",
-        "sw": [
-          31.1673,
-          35.1555
-        ],
-        "ne": [
-          31.2831,
-          35.2515
-        ]
-      },
-      "cvfr_overlay": {
-        "png": "LLAR_cvfr.png",
-        "sw": [
-          31.11609,
-          34.97385
-        ],
-        "ne": [
-          31.40755,
-          35.46218
-        ]
+     "png": "LLBG_APPROACHRNPX30.png",
+     "code": "RNP X 30",
+     "title": "LLBG_APPROACH_RNP X 30.pdf",
+     "plate": "LLBG_APPROACH_RNP X 30.pdf",
+     "sw": [
+      31.8598,
+      34.67452
+     ],
+     "ne": [
+      32.12306,
+      35.05651
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
       }
+     ]
+    },
+    {
+     "png": "LLBG_APPROACHRNPY21.png",
+     "code": "RNP Y 21",
+     "title": "LLBG_APPROACH_RNP Y 21.pdf",
+     "plate": "LLBG_APPROACH_RNP Y 21.pdf",
+     "sw": [
+      31.89776,
+      34.70635
+     ],
+     "ne": [
+      32.26804,
+      35.18089
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
+      }
+     ]
+    },
+    {
+     "png": "LLBG_APPROACHRNPZ30.png",
+     "code": "RNP Z 30",
+     "title": "LLBG_APPROACH_RNP Z 30.pdf",
+     "plate": "LLBG_APPROACH_RNP Z 30.pdf",
+     "sw": [
+      31.87272,
+      34.65001
+     ],
+     "ne": [
+      32.22553,
+      35.20221
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
+      }
+     ]
+    },
+    {
+     "png": "LLBG_SID08.png",
+     "code": "SID 08",
+     "title": "LLBG_SID_08.pdf",
+     "plate": "LLBG_SID_08.pdf",
+     "tl": [
+      32.80038,
+      35.54204
+     ],
+     "tr": [
+      31.89025,
+      35.54204
+     ],
+     "bl": [
+      32.80038,
+      33.98594
+     ]
+    },
+    {
+     "png": "LLBG_SID122630Orlev.png",
+     "code": "SID 12-26-30 (Orlev)",
+     "title": "LLBG_SID_12-26-30 (Orlev).pdf",
+     "plate": "LLBG_SID_12-26-30 (Orlev).pdf",
+     "tl": [
+      32.11775,
+      35.03093
+     ],
+     "tr": [
+      31.90308,
+      35.03093
+     ],
+     "bl": [
+      32.11775,
+      34.54352
+     ]
+    },
+    {
+     "png": "LLBG_SID122630PidetRipu.png",
+     "code": "SID 12-26-30 (Pidet+Ripud)",
+     "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 PIDET 2C, 1E, 1F, RIPUD 1E, 1F",
+     "plate": "LLBG_SID_12-26-30 (Pidet+Ripud).pdf",
+     "sw": [
+      31.88864,
+      34.69499
+     ],
+     "ne": [
+      32.58026,
+      35.28702
+     ],
+     "points": [
+      {
+       "name": "NAT",
+       "lat": 32.33389,
+       "lng": 34.96889
+      },
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
+      }
+     ]
+    },
+    {
+     "png": "LLBG_SID12.png",
+     "code": "SID 12",
+     "title": "LLBG_SID_12.pdf",
+     "plate": "LLBG_SID_12.pdf",
+     "tl": [
+      32.41836,
+      35.15314
+     ],
+     "tr": [
+      31.73933,
+      35.15314
+     ],
+     "bl": [
+      32.41836,
+      33.98031
+     ]
+    },
+    {
+     "png": "LLBG_SID26.png",
+     "code": "SID 26",
+     "title": "LLBG_SID_26.pdf",
+     "plate": "LLBG_SID_26.pdf",
+     "tl": [
+      32.4177,
+      35.16879
+     ],
+     "tr": [
+      31.74032,
+      35.16879
+     ],
+     "bl": [
+      32.4177,
+      33.98649
+     ]
+    },
+    {
+     "png": "LLBG_SID30.png",
+     "code": "SID 30",
+     "title": "LLBG_SID_30.pdf",
+     "plate": "LLBG_SID_30.pdf",
+     "tl": [
+      32.43696,
+      35.16834
+     ],
+     "tr": [
+      31.75312,
+      35.16834
+     ],
+     "bl": [
+      32.43696,
+      33.98809
+     ]
+    },
+    {
+     "png": "LLBG_SIDSUVAS1G.png",
+     "code": "SID SUVAS1G",
+     "title": "LLBG_SID_SUVAS1G.pdf",
+     "plate": "LLBG_SID_SUVAS1G.pdf",
+     "tl": [
+      32.40439,
+      35.10168
+     ],
+     "tr": [
+      31.7461,
+      35.10168
+     ],
+     "bl": [
+      32.40439,
+      33.97681
+     ]
+    },
+    {
+     "png": "LLBG_STAR121.png",
+     "code": "STAR 12-1",
+     "title": "Standard Arrival chart instrument (STAR) - ICAO RWY 12 AMMIT 1B, SALAM 2B",
+     "plate": "LLBG_STAR_12-1_V1_en.pdf",
+     "sw": [
+      31.44408,
+      34.83834
+     ],
+     "ne": [
+      32.34545,
+      35.56985
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
+      }
+     ]
+    },
+    {
+     "png": "LLBG_VAC302.png",
+     "code": "VAC 30-2",
+     "title": "Visual approach chart GAVRI approach RWY 30",
+     "plate": "LLBG_VAC_30-2_V1_en.pdf",
+     "sw": [
+      31.85532,
+      34.69546
+     ],
+     "ne": [
+      32.17047,
+      35.10638
+     ],
+     "points": [
+      {
+       "name": "BGN",
+       "lat": 32.01311,
+       "lng": 34.87536
+      }
+     ]
     }
-  ]
+   ],
+   "runways": [
+    "08/26",
+    "12/30",
+    "03/21"
+   ]
+  },
+  {
+   "name": "LLBO",
+   "he": "הבונים",
+   "en": "Habonim",
+   "lat": 32.65,
+   "lng": 34.93278,
+   "plates": [
+    "LLBO_Ground_Diagram.pdf",
+    "LLBO_airport_Chart.pdf",
+    "LLBO_airport_Circuit.pdf",
+    "LLBO_airport_Routes.pdf"
+   ],
+   "cvfr_overlay": {
+    "png": "LLBO_cvfr.png",
+    "sw": [
+     32.54467,
+     34.84634
+    ],
+    "ne": [
+     32.76999,
+     35.03317
+    ]
+   },
+   "circuit_overlay": {
+    "png": "LLBO_circuit.png",
+    "tl": [
+     32.73729,
+     34.86559
+    ],
+    "tr": [
+     32.73559,
+     35.00564
+    ],
+    "bl": [
+     32.56831,
+     34.86232
+    ]
+   }
+  },
+  {
+   "name": "LLBS",
+   "he": "תימן",
+   "en": "Beer Sheva / Teyman",
+   "lat": 31.28694,
+   "lng": 34.72278,
+   "elev_ft": 656,
+   "plates": [
+    "LLBS_airport_Annex Alef.pdf",
+    "LLBS_airport_Annex Bet.pdf",
+    "LLBS_airport_Annex Daled.pdf",
+    "LLBS_airport_Annex Gimel.pdf",
+    "LLBS_airport_Chart.pdf"
+   ],
+   "runways": [
+    "14/32"
+   ],
+   "circuit_overlay": {
+    "png": "LLBS_circuit.png",
+    "tl": [
+     31.34877,
+     34.6835
+    ],
+    "tr": [
+     31.34772,
+     34.77031
+    ],
+    "bl": [
+     31.24623,
+     34.68162
+    ]
+   },
+   "cvfr_overlay": {
+    "png": "LLBS_cvfr.png",
+    "sw": [
+     31.18949,
+     34.64089
+    ],
+    "ne": [
+     31.45011,
+     34.85351
+    ]
+   },
+   "training_overlay": {
+    "png": "LLBS_training.png",
+    "sw": [
+     31.17247,
+     34.67812
+    ],
+    "ne": [
+     31.52112,
+     34.96228
+    ]
+   },
+   "heli_overlay": {
+    "png": "LLBS_heli.png",
+    "sw": [
+     31.18796,
+     34.62581
+    ],
+    "ne": [
+     31.4702,
+     34.85664
+    ]
+   }
+  },
+  {
+   "name": "LLEK",
+   "he": "תל נוף",
+   "en": "Tel Nof",
+   "lat": 31.83667,
+   "lng": 34.81889,
+   "elev_ft": 194
+  },
+  {
+   "name": "LLER",
+   "he": "אילן ואסף רמון",
+   "en": "Eilat / Ilan & Asaf Ramon",
+   "lat": 29.72722,
+   "lng": 35.01417,
+   "elev_ft": 288,
+   "atis": "132.55 MHz",
+   "plates": [
+    "LLER_APPROACH_RNP 19.pdf",
+    "LLER_APPROACH_RNP 01.pdf",
+    "LLER_APPROACH_ILS 19.pdf",
+    "LLER_APPROACH_ILS 01.pdf",
+    "LLER_ADC_3_en.pdf",
+    "LLER_ADC_RST_en.pdf",
+    "LLER_ADC_U_en.pdf",
+    "LLER_ADC_V1_en.pdf",
+    "LLER_IAC_01-2_en.pdf",
+    "LLER_IAC_01RNP_en.pdf",
+    "LLER_IAC_19ILS_V1_en.pdf",
+    "LLER_IAC_19RNP_en.pdf",
+    "LLER_SID_01-1_en.pdf",
+    "LLER_SID_01NH_en.pdf",
+    "LLER_SID_19-1_en.pdf",
+    "LLER_SID_19-3_en.pdf",
+    "LLER_SID_19NM_en.pdf",
+    "LLER_SID_19NN_en.pdf",
+    "LLER_STAR_01-1_en.pdf",
+    "LLER_STAR_01-2_en.pdf",
+    "LLER_VAC_01-1_en.pdf",
+    "LLER_VAC_19-1_en.pdf",
+    "LLER_VFRTA_en.pdf",
+    "LLER_airport_Chart.pdf"
+   ],
+   "runways": [
+    "01/19"
+   ]
+  },
+  {
+   "name": "LLES",
+   "he": "עין שמר",
+   "en": "Ein Shemer",
+   "lat": 32.44139,
+   "lng": 35.00333,
+   "elev_ft": 95,
+   "plates": [
+    "LLES_airport_Chart.pdf",
+    "LLES_airport_Text.pdf"
+   ],
+   "runways": [
+    "09/27"
+   ]
+  },
+  {
+   "name": "LLEV",
+   "he": "עין ורד",
+   "en": "Ein Vered",
+   "lat": 32.265,
+   "lng": 34.95167
+  },
+  {
+   "name": "LLEY",
+   "he": "עין יהב",
+   "en": "Ein Yahav",
+   "lat": 30.62167,
+   "lng": 35.20306,
+   "elev_ft": -164,
+   "plates": [
+    "LLEY_airport_Annex Alef.pdf",
+    "LLEY_airport_CVFR.pdf",
+    "LLEY_airport_Chart.pdf",
+    "LLEY_airport_Circuit.pdf"
+   ],
+   "circuit_overlay": {
+    "png": "LLEY_circuit.png",
+    "sw": [
+     30.59235,
+     35.17279
+    ],
+    "ne": [
+     30.65785,
+     35.21658
+    ]
+   },
+   "cvfr_overlay": {
+    "png": "LLEY_cvfr.png",
+    "sw": [
+     30.518,
+     35.07751
+    ],
+    "ne": [
+     30.78999,
+     35.31563
+    ]
+   }
+  },
+  {
+   "name": "LLFK",
+   "he": "פיק",
+   "en": "Fiq (Golan)",
+   "lat": 32.78528,
+   "lng": 35.71722,
+   "elev_ft": 1218,
+   "plates": [
+    "LLFK_airport_Annex Alef.pdf",
+    "LLFK_airport_CVFR.pdf",
+    "LLFK_airport_Chart.pdf",
+    "LLFK_airport_Circuit.pdf",
+    "LLFK_airport_Text.pdf"
+   ],
+   "circuit_overlay": {
+    "png": "LLFK_circuit.png",
+    "sw": [
+     32.74051,
+     35.67833
+    ],
+    "ne": [
+     32.83411,
+     35.75641
+    ]
+   },
+   "cvfr_overlay": {
+    "png": "LLFK_cvfr.png",
+    "tl": [
+     33.0115,
+     35.45464
+    ],
+    "tr": [
+     33.00514,
+     35.80119
+    ],
+    "bl": [
+     32.58918,
+     35.44329
+    ]
+   }
+  },
+  {
+   "name": "LLHA",
+   "he": "חיפה",
+   "en": "Haifa",
+   "lat": 32.80833,
+   "lng": 35.04278,
+   "elev_ft": 28,
+   "atis": "135.40 MHz",
+   "plates": [
+    "LLHA_airport_Annex Alef.pdf",
+    "LLHA_airport_Annex Bet 2.pdf",
+    "LLHA_airport_Annex Bet 3.pdf",
+    "LLHA_airport_Annex Bet 4.pdf",
+    "LLHA_airport_Annex Bet.pdf",
+    "LLHA_airport_Annex Chet.pdf",
+    "LLHA_airport_Annex Daled.pdf",
+    "LLHA_airport_Annex Gimel.pdf",
+    "LLHA_airport_Annex He.pdf",
+    "LLHA_airport_Annex Tet.pdf",
+    "LLHA_airport_Annex Zayin.pdf",
+    "LLHA_STAR_GALIM.pdf",
+    "LLHA_airport_Chart.pdf"
+   ],
+   "runways": [
+    "15/33"
+   ],
+   "cvfr_overlay": {
+    "png": "LLHA_cvfr.png",
+    "sw": [
+     32.66213,
+     34.95078
+    ],
+    "ne": [
+     32.96003,
+     35.20581
+    ]
+   },
+   "circuit_overlay": {
+    "png": "LLHA_circuit.png",
+    "sw": [
+     32.74073,
+     34.99698
+    ],
+    "ne": [
+     32.87846,
+     35.1079
+    ]
+   },
+   "training_overlay": {
+    "png": "LLHA_training.png",
+    "tl": [
+     32.97883,
+     34.98948
+    ],
+    "tr": [
+     32.976,
+     35.19468
+    ],
+    "bl": [
+     32.73018,
+     34.98408
+    ]
+   },
+   "commfail_overlay": {
+    "png": "LLHA_commfail.png",
+    "tl": [
+     32.95912,
+     34.94303
+    ],
+    "tr": [
+     32.95626,
+     35.13938
+    ],
+    "bl": [
+     32.73062,
+     34.93827
+    ]
+   },
+   "heli_overlay": {
+    "png": "LLHA_heli.png",
+    "sw": [
+     32.65279,
+     34.93371
+    ],
+    "ne": [
+     32.98791,
+     35.21743
+    ]
+   }
+  },
+  {
+   "name": "LLHB",
+   "he": "חצרים",
+   "en": "Hatzerim",
+   "lat": 31.24333,
+   "lng": 34.655,
+   "elev_ft": 722
+  },
+  {
+   "name": "LLHS",
+   "he": "חצור",
+   "en": "Hatzor",
+   "lat": 31.75778,
+   "lng": 34.72306,
+   "elev_ft": 148
+  },
+  {
+   "name": "LLHZ",
+   "he": "הרצליה",
+   "en": "Herzliya",
+   "lat": 32.17944,
+   "lng": 34.83444,
+   "elev_ft": 121,
+   "clearance": "121.70 MHz",
+   "plates": [
+    "LLHZ_airport_Annex Alef.pdf",
+    "LLHZ_airport_Annex Chet.pdf",
+    "LLHZ_airport_Annex Gimel.pdf",
+    "LLHZ_airport_Annex He.pdf",
+    "LLHZ_airport_Annex Tet.pdf",
+    "LLHZ_airport_Annex Yud Alef 2.pdf",
+    "LLHZ_airport_Annex Yud Alef 3.pdf",
+    "LLHZ_airport_Annex Yud Alef.pdf",
+    "LLHZ_airport_Annex Yud Bet.pdf",
+    "LLHZ_airport_Annex Yud Gimel.pdf",
+    "LLHZ_airport_Annex Yud.pdf",
+    "LLHZ_airport_Annex Zayin.pdf",
+    "LLHZ_airport_Chart.pdf"
+   ],
+   "ifr_overlays": [
+    {
+     "png": "LLHZ_ATS.png",
+     "code": "ATS departure",
+     "title": "יציאה לנתיבי ATS",
+     "plate": "LLHZ_airport_Annex Chet.pdf",
+     "points": [
+      {
+       "name": "BENQO",
+       "lat": 32.39139,
+       "lng": 34.76333
+      },
+      {
+       "name": "DIVLA",
+       "lat": 32.28417,
+       "lng": 34.71778
+      },
+      {
+       "name": "YENON",
+       "lat": 32.37556,
+       "lng": 34.82028
+      },
+      {
+       "name": "NAT",
+       "lat": 32.33389,
+       "lng": 34.96889
+      },
+      {
+       "name": "BGN",
+       "lat": 32.01306,
+       "lng": 34.87528
+      }
+     ],
+     "tl": [
+      32.41484,
+      34.64451
+     ],
+     "tr": [
+      32.41368,
+      35.01289
+     ],
+     "bl": [
+      31.98832,
+      34.64263
+     ]
+    }
+   ],
+   "runways": [
+    "10/28"
+   ],
+   "circuit_overlay": {
+    "png": "LLHZ_circuit.png",
+    "tl": [
+     32.22554,
+     34.80114
+    ],
+    "tr": [
+     32.22584,
+     34.86715
+    ],
+    "bl": [
+     32.15017,
+     34.80163
+    ]
+   },
+   "training_overlay": {
+    "png": "LLHZ_training.png",
+    "tl": [
+     32.47395,
+     34.73507
+    ],
+    "tr": [
+     32.46727,
+     35.0635
+    ],
+    "bl": [
+     32.09469,
+     34.72783
+    ]
+   },
+   "cvfr_overlay": {
+    "png": "LLHZ_cvfr.png",
+    "sw": [
+     32.07271,
+     34.75854
+    ],
+    "ne": [
+     32.28924,
+     34.92414
+    ]
+   },
+   "commfail_overlay": {
+    "png": "LLHZ_commfail.png",
+    "tl": [
+     32.21927,
+     34.79902
+    ],
+    "tr": [
+     32.21827,
+     34.87276
+    ],
+    "bl": [
+     32.13599,
+     34.79724
+    ]
+   },
+   "heli_overlay": {
+    "png": "LLHZ_heli.png",
+    "sw": [
+     32.03239,
+     34.72753
+    ],
+    "ne": [
+     32.28233,
+     34.91463
+    ]
+   }
+  },
+  {
+   "name": "LLIB",
+   "he": "ראש פינה",
+   "en": "Rosh Pina / Mahanayim",
+   "lat": 32.98056,
+   "lng": 35.57083,
+   "elev_ft": 884,
+   "atis": "132.45 MHz",
+   "plates": [
+    "LLIB_airport_Annex Alef.pdf",
+    "LLIB_airport_Annex Bet.pdf",
+    "LLIB_airport_Annex Chet.pdf",
+    "LLIB_airport_Annex Daled.pdf",
+    "LLIB_airport_Annex Gimel.pdf",
+    "LLIB_airport_Annex He.pdf",
+    "LLIB_airport_Annex Vav.pdf",
+    "LLIB_airport_Annex Yud Alef.pdf",
+    "LLIB_airport_Annex Yud Bet.pdf",
+    "LLIB_airport_Annex Yud.pdf",
+    "LLIB_airport_Annex Zayin.pdf",
+    "LLIB_airport_Chart.pdf"
+   ],
+   "ifr_overlays": [
+    {
+     "png": "LLIB_STANDARDINSTRUMENT.png",
+     "code": "SID 15/33",
+     "title": "STANDARD INSTRUMENT DEPARTURE RWY 15 and 33",
+     "plate": "LLIB_airport_Annex Vav.pdf",
+     "sw": [
+      32.67581,
+      35.3713
+     ],
+     "ne": [
+      33.08093,
+      35.7027
+     ],
+     "points": [
+      {
+       "name": "ROP",
+       "lat": 32.98253,
+       "lng": 35.57278
+      },
+      {
+       "name": "BARZI",
+       "lat": 32.83636,
+       "lng": 35.54339
+      }
+     ]
+    },
+    {
+     "png": "LLIB_VOR.png",
+     "code": "VOR approach",
+     "title": "תהליך גישה VOR",
+     "plate": "LLIB_airport_Annex Zayin.pdf",
+     "sw": [
+      32.65443,
+      35.30575
+     ],
+     "ne": [
+      33.10354,
+      35.80579
+     ],
+     "points": [
+      {
+       "name": "ETROG",
+       "lat": 32.85922,
+       "lng": 35.64644
+      },
+      {
+       "name": "GIMIK",
+       "lat": 32.8045,
+       "lng": 35.53686
+      },
+      {
+       "name": "LLP02",
+       "lat": 32.90397,
+       "lng": 35.61972
+      },
+      {
+       "name": "ROP",
+       "lat": 32.98253,
+       "lng": 35.57278
+      },
+      {
+       "name": "DALIT",
+       "lat": 33.06444,
+       "lng": 35.56944
+      }
+     ]
+    }
+   ],
+   "runways": [
+    "15/33",
+    "05/23"
+   ],
+   "circuit_overlay": {
+    "png": "LLIB_circuit.png",
+    "sw": [
+     32.89244,
+     35.49843
+    ],
+    "ne": [
+     33.09184,
+     35.65483
+    ]
+   },
+   "training_overlay": {
+    "png": "LLIB_training.png",
+    "sw": [
+     32.87347,
+     35.45696
+    ],
+    "ne": [
+     33.24774,
+     35.75146
+    ]
+   },
+   "heli_overlay": {
+    "png": "LLIB_heli.png",
+    "sw": [
+     32.75172,
+     35.38501
+    ],
+    "ne": [
+     33.25691,
+     35.71108
+    ]
+   },
+   "commfail_overlay": {
+    "png": "LLIB_commfail.png",
+    "tl": [
+     33.02388,
+     35.54595
+    ],
+    "tr": [
+     33.02247,
+     35.61624
+    ],
+    "bl": [
+     32.93832,
+     35.54264
+    ]
+   },
+   "cvfr_overlay": {
+    "png": "LLIB_cvfr.png",
+    "tl": [
+     33.21803,
+     35.3727
+    ],
+    "tr": [
+     33.21052,
+     35.73375
+    ],
+    "bl": [
+     32.77498,
+     35.35988
+    ]
+   }
+  },
+  {
+   "name": "LLKS",
+   "he": "קרית שמונה",
+   "en": "Kiryat Shmona",
+   "lat": 33.21417,
+   "lng": 35.59417,
+   "elev_ft": 376,
+   "plates": [
+    "LLKS_Ground_Diagram.pdf",
+    "LLKS_airport_CVFR.pdf",
+    "LLKS_airport_Chart.pdf"
+   ],
+   "runways": [
+    "03/21"
+   ],
+   "circuit_overlay": {
+    "png": "LLKS_circuit.png",
+    "sw": [
+     33.14265,
+     35.5642
+    ],
+    "ne": [
+     33.24338,
+     35.65753
+    ]
+   },
+   "cvfr_overlay": {
+    "png": "LLKS_cvfr.png",
+    "sw": [
+     32.88644,
+     35.45275
+    ],
+    "ne": [
+     33.36184,
+     35.83113
+    ]
+   }
+  },
+  {
+   "name": "LLKZ",
+   "he": "קציעות",
+   "en": "Ktziot",
+   "lat": 30.85889,
+   "lng": 34.44361,
+   "elev_ft": 900,
+   "plates": [
+    "LLKZ_airport_Annex Alef.pdf",
+    "LLKZ_airport_Chart.pdf",
+    "LLKZ_airport_Circuit.pdf"
+   ],
+   "circuit_overlay": {
+    "png": "LLKZ_circuit.png",
+    "tl": [
+     30.89579,
+     34.41717
+    ],
+    "tr": [
+     30.89548,
+     34.47699
+    ],
+    "bl": [
+     30.82242,
+     34.41629
+    ]
+   }
+  },
+  {
+   "name": "LLMG",
+   "he": "מגידו",
+   "en": "Megiddo",
+   "lat": 32.59722,
+   "lng": 35.23472,
+   "elev_ft": 200,
+   "plates": [
+    "LLMG_airport_Annex Alef.pdf",
+    "LLMG_airport_Annex Daled.pdf",
+    "LLMG_airport_CVFR.pdf",
+    "LLMG_airport_Chart.pdf",
+    "LLMG_airport_Circuit.pdf",
+    "LLMG_departure_CVFR.pdf"
+   ],
+   "runways": [
+    "09/27"
+   ],
+   "circuit_overlay": {
+    "png": "LLMG_circuit.png",
+    "sw": [
+     32.54078,
+     35.18077
+    ],
+    "ne": [
+     32.66228,
+     35.283
+    ]
+   },
+   "training_overlay": {
+    "png": "LLMG_training.png",
+    "sw": [
+     32.37251,
+     35.15246
+    ],
+    "ne": [
+     32.97458,
+     35.65469
+    ]
+   },
+   "cvfr_overlay": {
+    "png": "LLMG_cvfr.png",
+    "tl": [
+     32.75343,
+     34.99523
+    ],
+    "tr": [
+     32.74293,
+     35.47994
+    ],
+    "bl": [
+     32.46064,
+     34.98816
+    ]
+   }
+  },
+  {
+   "name": "LLNV",
+   "he": "נבטים",
+   "en": "Nevatim",
+   "lat": 31.21333,
+   "lng": 35.01833,
+   "elev_ft": 1391
+  },
+  {
+   "name": "LLOV",
+   "he": "עובדה",
+   "en": "Ovda",
+   "lat": 29.935,
+   "lng": 34.94083,
+   "elev_ft": 1493
+  },
+  {
+   "name": "LLPL",
+   "he": "פלמחים",
+   "en": "Palmachim",
+   "lat": 31.89833,
+   "lng": 34.69,
+   "elev_ft": 33,
+   "atis": "126.10 MHz"
+  },
+  {
+   "name": "LLRD",
+   "he": "רמת דוד",
+   "en": "Ramat David",
+   "lat": 32.66861,
+   "lng": 35.18333,
+   "elev_ft": 184
+  },
+  {
+   "name": "LLRM",
+   "he": "רמון",
+   "en": "Ramon",
+   "lat": 30.775,
+   "lng": 34.66667,
+   "elev_ft": 2126
+  },
+  {
+   "name": "LLRS",
+   "he": "ראשון לציון",
+   "en": "Rishon LeZion",
+   "lat": 31.9675,
+   "lng": 34.75361,
+   "elev_ft": 60,
+   "plates": [
+    "LLRS_airport_Annex Alef.pdf",
+    "LLRS_airport_Annex Bet.pdf",
+    "LLRS_airport_Annex Daled.pdf",
+    "LLRS_airport_Annex Gimel.pdf",
+    "LLRS_airport_Annex He.pdf",
+    "LLRS_airport_Annex Vav.pdf",
+    "LLRS_airport_Chart.pdf"
+   ],
+   "cvfr_overlay": {
+    "png": "LLRS_cvfr.png",
+    "tl": [
+     32.01458,
+     34.98322
+    ],
+    "tr": [
+     31.82413,
+     34.98434
+    ],
+    "bl": [
+     32.01318,
+     34.65388
+    ]
+   },
+   "circuit_overlay": {
+    "png": "LLRS_circuit.png",
+    "tl": [
+     31.99335,
+     34.72989
+    ],
+    "tr": [
+     31.99288,
+     34.7681
+    ],
+    "bl": [
+     31.94715,
+     34.72899
+    ]
+   },
+   "training_overlay": {
+    "png": "LLRS_training.png",
+    "sw": [
+     31.92292,
+     34.72042
+    ],
+    "ne": [
+     32.00147,
+     34.78105
+    ]
+   }
+  },
+  {
+   "name": "LLMZ",
+   "he": "מצדה",
+   "en": "Bar Yehuda (Masada)",
+   "lat": 31.32917,
+   "lng": 35.38833,
+   "elev_ft": -1240,
+   "plates": [
+    "LLMZ_airport_Annex Alef.pdf",
+    "LLMZ_airport_Annex Bet.pdf",
+    "LLMZ_airport_Annex Gimel.pdf",
+    "LLMZ_airport_CVFR.pdf",
+    "LLMZ_airport_Chart.pdf"
+   ],
+   "circuit_overlay": {
+    "png": "LLMZ_circuit.png",
+    "sw": [
+     31.27945,
+     35.33016
+    ],
+    "ne": [
+     31.39493,
+     35.43228
+    ]
+   },
+   "cvfr_overlay": {
+    "png": "LLMZ_cvfr.png",
+    "sw": [
+     31.08554,
+     35.14632
+    ],
+    "ne": [
+     31.61159,
+     35.57389
+    ]
+   }
+  },
+  {
+   "name": "LLAR",
+   "he": "ערד",
+   "en": "Arad",
+   "lat": 31.22972,
+   "lng": 35.18972,
+   "plates": [
+    "LLAR_airport_CVFR.pdf",
+    "LLAR_airport_Chart.pdf",
+    "LLAR_airport_Circuit.pdf",
+    "LLAR_airport_Text.pdf"
+   ],
+   "circuit_overlay": {
+    "png": "LLAR_circuit.png",
+    "sw": [
+     31.1673,
+     35.1555
+    ],
+    "ne": [
+     31.2831,
+     35.2515
+    ]
+   },
+   "cvfr_overlay": {
+    "png": "LLAR_cvfr.png",
+    "sw": [
+     31.11609,
+     34.97385
+    ],
+    "ne": [
+     31.40755,
+     35.46218
+    ]
+   }
+  }
+ ],
+ "source": "CAAI AIP AD 2 / per-airfield AIP packs, plus hand-fitted overlay corner coordinates (circuit, training, CVFR, comm-failure, helicopter, IFR plates).",
+ "edition": "AIP packs of May 2026; overlay bounds maintained in-repo",
+ "_note": "Provenance for the data audit: every dataset says where it came from and which edition, so \"is this current?\" is answerable without archaeology."
 }

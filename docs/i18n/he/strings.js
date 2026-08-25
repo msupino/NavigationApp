@@ -905,6 +905,8 @@ window.S = {
   airspaceProhibited: 'אסור',
   airspaceRestricted: 'מוגבל',
   airspaceTma: 'TMA',
+  airspaceCtr: 'CTR',
+  airspaceKindCtr: 'אזור בקרה — נדרש אישור',
   airspaceLimits: function (upper, lower) { return lower + ' – ' + upper; },
   airspaceGnd: 'GND',
   airspaceUnl: 'UNL',

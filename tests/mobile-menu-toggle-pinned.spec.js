@@ -122,3 +122,47 @@ test('on a desktop width nothing is pinned', async ({ page }) => {
   });
   expect(cs.display === 'none' || cs.position === 'static').toBe(true);
 });
+
+// Record and Location are the two controls a pilot reaches for with the aeroplane already
+// moving. They used to sit below every section: open Display and they are a scroll away.
+test('Record and Location ride with the head, not at the end of the menu', async ({ page }) => {
+  await boot(page);
+  const before = await page.evaluate(() => {
+    const f = document.getElementById('footer-links');
+    const t = document.getElementById('toolbar-toggle');
+    return {
+      sticky: getComputedStyle(f).position,
+      opaque: getComputedStyle(f).backgroundColor,
+      belowHead: Math.round(f.getBoundingClientRect().top) >= Math.round(t.getBoundingClientRect().bottom) - 2,
+      recordVisible: !!document.getElementById('gps-record'),
+      top: Math.round(f.getBoundingClientRect().top),
+    };
+  });
+  expect(before.sticky).toBe('sticky');
+  expect(before.opaque).not.toBe('rgba(0, 0, 0, 0)');
+  expect(before.belowHead).toBe(true);
+  expect(before.recordVisible).toBe(true);
+
+  // ...and it is still there once the sections have scrolled past it.
+  await page.evaluate(() => { const tb = document.getElementById('toolbar'); tb.scrollTop = tb.scrollHeight; });
+  await page.waitForTimeout(150);
+  const after = await page.evaluate(() => {
+    const f = document.getElementById('footer-links');
+    const tb = document.getElementById('toolbar');
+    const r = f.getBoundingClientRect(), p = tb.getBoundingClientRect();
+    return { top: Math.round(r.top), insidePanel: r.top >= p.top - 2 && r.bottom <= p.bottom + 2 };
+  });
+  expect(after.top).toBe(before.top);      // did not travel with the scroll
+  expect(after.insidePanel).toBe(true);
+});
+
+// The band below the head has to know how tall the head is; a guess leaves a gap or an overlap.
+test('the second band sits exactly under the first', async ({ page }) => {
+  await boot(page);
+  const geo = await page.evaluate(() => {
+    const declared = getComputedStyle(document.documentElement).getPropertyValue('--navaid-tb-head-h').trim();
+    const t = document.getElementById('toolbar-toggle').getBoundingClientRect();
+    return { declared, headHeight: Math.round(t.height) };
+  });
+  expect(geo.declared).toBe(geo.headHeight + 'px');
+});

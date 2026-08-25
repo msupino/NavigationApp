@@ -66,3 +66,52 @@ jobs:
               --title "chore(plates): refresh plate designations from the CAA index" \
               --body "Daily pass over the CAA's AIP index. Designations that changed are in the diff; plates of ours the index no longer knows (amended upstream) are listed in the run's step summary."
           fi
+
+  # The other half of the same question: not "did a designation change" but "is the PDF we
+  # ship still the PDF the CAA serves". Reported, never auto-refreshed -- half these plates
+  # are georeferenced by hand against their printed graticule, so replacing the file under an
+  # overlay without re-checking its alignment would leave a confidently placed chart in the
+  # wrong place. One issue is kept up to date; it closes itself when everything matches.
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compare our snapshots with the AIP index
+        id: drift
+        run: |
+          set +e
+          python3 scripts/aip-drift.py --json /tmp/drift.json | tee /tmp/drift.txt
+          echo "drifted=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          {
+            echo '### AIP snapshot drift'
+            echo '```'
+            cat /tmp/drift.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep one issue in step with the answer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TITLE='AIP snapshots have drifted from the published charts'
+          NUM=$(gh issue list --state open --search "$TITLE in:title" --json number,title \
+                 -q '.[] | select(.title == "'"$TITLE"'") | .number' | head -1)
+          if [ "${{ steps.drift.outputs.drifted }}" = "0" ]; then
+            if [ -n "$NUM" ]; then
+              gh issue close "$NUM" --comment "Every snapshot in \`docs/byop/\` and \`docs/byop-enr/\` now matches what the AIP serves."
+            fi
+            exit 0
+          fi
+          BODY=$(printf 'The CAA has amended charts we ship. Refreshing is deliberate, per file, because most of these are georeferenced by hand — swapping the PDF without re-checking the overlay corners leaves a confident chart in the wrong place.\n\n```\n%s\n```\n\nRe-run: `python3 scripts/aip-drift.py`. Updated by the `AIP plate designations` workflow.\n' "$(cat /tmp/drift.txt)")
+          if [ -n "$NUM" ]; then
+            gh issue edit "$NUM" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY"
+          fi
