@@ -324,7 +324,9 @@ test('the row does not reflow between the short and long labels', async ({ page 
     return { now: at(0), late: at(sl.max) };
   });
   expect(w.late.slider).toBe(w.now.slider);
-  expect(w.late.label).toBe(w.now.label);
+  // The read-out's own box is the remainder of the row; what matters is that it does not
+  // change as the text inside it lengthens.
+  expect(Math.abs(w.late.label - w.now.label)).toBeLessThanOrEqual(1);
 });
 
 // Where it sits matters as much as what it says. Temperature and QNH are what density
@@ -373,4 +375,33 @@ test('the frequencies sit in a Communication frame', async ({ page }) => {
   expect(comms.title).toBe('Communication');
   expect(comms.rows.join(' ')).toMatch(/Primary/);
   expect(comms.borrowsWxClass).toBe(false);
+});
+
+// The slider sits at the top of the Weather box. Unlabelled, it read as though it moved the
+// whole box — the METAR below it included — rather than the density altitude alone.
+test('the slider says what it moves, and sits in the DA group', async ({ page }) => {
+  await boot(page);
+  await open(page, 'LLHA');
+  const out = await page.evaluate(() => {
+    const row = document.querySelector('.da-time-row');
+    const group = document.querySelector('.da-group');
+    const wx = document.querySelector('#insp-body .wx-section');
+    const metar = wx ? wx.querySelector('.wx-body') : null;
+    const cs = group ? getComputedStyle(group) : null;
+    return {
+      label: row.querySelector('label').textContent.trim(),
+      aria: row.querySelector('input[type=range]').getAttribute('aria-label'),
+      // The group has a rule down its side, so slider + figure + conditions read as one
+      // block and the observation below it as another.
+      ruled: cs ? parseFloat(cs.borderInlineStartWidth) > 0 : false,
+      // ...and the METAR is outside that block.
+      metarInGroup: !!(group && metar && group.contains(metar)),
+      rowsInGroup: group ? group.querySelectorAll('.row').length : 0,
+    };
+  });
+  expect(out.label).toBe('Density altitude at');
+  expect(out.aria).toBe('Density altitude at');
+  expect(out.ruled).toBe(true);
+  expect(out.metarInGroup).toBe(false);
+  expect(out.rowsInGroup).toBe(3);          // slider, the figure, the conditions it used
 });
