@@ -55,16 +55,27 @@ function inspectorAllowedNow(sel) {
 function gpsWakeLockWanted() {
   return !!(gpsRecording || gpsLiveOn);
 }
+let _gpsWakeLockPending = false;
 function gpsAcquireWakeLock() {
   if (gpsWakeLock || !gpsWakeLockWanted()) return;
+  // Two overlapping requests (start, then a quick hide/show) both resolve with gpsWakeLock
+  // still null, and the second assignment orphaned the first sentinel -- held until pagehide,
+  // with nothing left pointing at it.
+  if (_gpsWakeLockPending) return;
   if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return;
+  _gpsWakeLockPending = true;
   navigator.wakeLock.request('screen').then(function (wl) {
     // The request is async: by the time it resolves the pilot may have stopped, and a lock
     // nobody asked for any more would hold the screen on for the rest of the flight.
-    if (!gpsWakeLockWanted()) { wl.release().catch(function () {}); return; }
+    if (!gpsWakeLockWanted() || gpsWakeLock) { wl.release().catch(function () {}); return; }
     gpsWakeLock = wl;
-    wl.addEventListener('release', function () { gpsWakeLock = null; });
-  }).catch(function () { /* denied / no user gesture — ignore */ });
+    // Only if it is still OUR sentinel: the system releasing a stale one used to clear the
+    // variable tracking the live one, after which gpsReleaseWakeLock() did nothing and the
+    // screen stayed awake past the end of the flight.
+    wl.addEventListener('release', function () { if (gpsWakeLock === wl) gpsWakeLock = null; });
+  }).catch(function () { /* denied / no user gesture — ignore */ })
+    .then(function () { _gpsWakeLockPending = false; },
+          function () { _gpsWakeLockPending = false; });
 }
 
 function gpsReleaseWakeLock() {
@@ -382,6 +393,9 @@ function stopLiveLocation() {
   gpsLiveOn = false;
   if (!gpsRecording) gpsStopCompass();
   if (!gpsRecording) gpsReleaseWakeLock();
+  // Alerts belong to the flight that queued them. With nothing left driving the map, one
+  // still talking about the next leg is talking about a flight that has ended.
+  if (!gpsRecording && !(typeof simOn !== 'undefined' && simOn)) gpsStopSpeaking();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
@@ -1204,6 +1218,7 @@ function stopGpsRecording() {
   if (!gpsLiveOn) gpsStopCompass();
   updateGpsRecIndicator();
   if (!gpsLiveOn) gpsReleaseWakeLock();     // Location may still be showing
+  if (!gpsLiveOn && !(typeof simOn !== 'undefined' && simOn)) gpsStopSpeaking();     // see stopLiveLocation
   gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;
   gpsMaybeStopDriftTimer();
@@ -1920,13 +1935,33 @@ function _webSpeak(text, lang) {
 // Chained, never interrupted: a TOP firing seconds after a leg-approach alert waits its
 // turn rather than cutting it off mid-word.
 window.__gpsSpeakChain = Promise.resolve();
+// Bumped whenever speech is switched off or every source stops. A queued alert carries the
+// epoch it was queued in and stays silent if it no longer matches -- the pilot who just
+// turned the voice off means this alert too, not merely the next one.
+window.__gpsSpeakEpoch = 0;
+function gpsStopSpeaking() {
+  window.__gpsSpeakEpoch = (window.__gpsSpeakEpoch || 0) + 1;
+  const tts = _nativeTts();
+  if (tts && typeof tts.stop === 'function') { try { tts.stop(); } catch (e) { /* */ } }
+  try {
+    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.cancel) speechSynthesis.cancel();
+  } catch (e) { /* */ }
+}
+window.gpsStopSpeaking = gpsStopSpeaking;
 function gpsSpeak(text) {
   if (!text || !gpsVoiceAlertsOn()) return;
+  const epoch = window.__gpsSpeakEpoch;
+  // Checked again at the moment of speaking, not only when queued: alerts are chained, so
+  // one that waited its turn could otherwise still be talking after the voice was switched
+  // off, or after the flight it belonged to had stopped.
+  const stillWanted = () => epoch === window.__gpsSpeakEpoch && gpsVoiceAlertsOn();
   const tts = _nativeTts();
   const lang = (typeof window !== 'undefined' && window.__navLang === 'he') ? 'he-IL' : 'en-US';
   if (tts && typeof tts.speak === 'function') {
     window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
+      if (!stillWanted()) return null;
       return _gpsResolveVoiceLang(tts).then(function (voiceLang) {
+        if (!stillWanted()) return null;
         return tts.speak({
           text: text,
           lang: voiceLang,
@@ -1944,6 +1979,7 @@ function gpsSpeak(text) {
   }
   // No native plugin -- website testing path.
   window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
+    if (!stillWanted()) return null;
     return _webSpeak(text, lang);
   }).catch(function () { /* best-effort: never let a TTS failure break the chain */ });
 }

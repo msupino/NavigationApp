@@ -4190,7 +4190,7 @@ map.on('mousemove', e => {
       const other = state.waypoints[j];
       if (other) { other.lat = wp.lat; other.lng = wp.lng; other.name = wp.name; }
     }
-    draw();   // move silently — but keep an already-open inspector in sync
+    scheduleDraw();   // move silently — but keep an already-open inspector in sync
     if (!document.getElementById('inspector').classList.contains('hidden')) showInspector();
   } else if (drag.kind === 'note') {
     drag.moved = true;
@@ -4201,20 +4201,20 @@ map.on('mousemove', e => {
       n.lat = r5(e.latlng.lat + (drag.offLat || 0));
       n.lng = r5(e.latlng.lng + (drag.offLng || 0));
     }
-    draw();
+    scheduleDraw();
   } else if (drag.kind === 'label') {
     drag.moved = true;
-    if (setLegLabelFromPoint(drag, p.x, p.y)) draw();
+    if (setLegLabelFromPoint(drag, p.x, p.y)) scheduleDraw();
   } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
     drag.moved = true;
     setCumLabelFromPoint(drag.i, drag.kind === 'cumlabelret', p.x, p.y);
-    draw();
+    scheduleDraw();
   } else if (drag.kind === 'page') {
     pageOffset.x += p.x - drag.lx;
     pageOffset.y += p.y - drag.ly;
     drag.lx = p.x; drag.ly = p.y;
     clampPageOffset();
-    draw();
+    scheduleDraw();
   }
 });
 
@@ -4580,6 +4580,12 @@ mapEl.addEventListener('dblclick', e => {
   e.stopPropagation();
   if (e.stopImmediatePropagation) e.stopImmediatePropagation();
   downHit = false;
+  // A locked route takes no new points. Every other way of adding one checks this -- the
+  // add-click, every waypoint and note drag -- and this one did not: with a position driving
+  // the map the route locks itself, and a double-click on a leg still cut it in two and moved
+  // a waypoint out from under the leg being flown. Silently, because the panel that would
+  // have explained it is itself suppressed in flight.
+  if (typeof routeEditLocked === 'function' && routeEditLocked()) return;
   splitLegAt(leg, map.containerPointToLatLng([p.x, p.y]));
 }, true);
 
@@ -4795,7 +4801,7 @@ mapEl.addEventListener('touchmove', e => {
       const other = state.waypoints[j];
       if (other) { other.lat = wp.lat; other.lng = wp.lng; other.name = wp.name; }
     }
-    draw();
+    scheduleDraw();
   } else if (touchDrag.kind === 'note') {
     touchDrag.moved = true;
     setInspectorDragHidden(true);
@@ -4806,21 +4812,21 @@ mapEl.addEventListener('touchmove', e => {
       n.lat = r5(ll.lat + (touchDrag.offLat || 0));
       n.lng = r5(ll.lng + (touchDrag.offLng || 0));
     }
-    draw();
+    scheduleDraw();
   } else if (touchDrag.kind === 'label') {
     touchDrag.moved = true;
     setInspectorDragHidden(true);
-    if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();
+    if (setLegLabelFromPoint(touchDrag, p.x, p.y)) scheduleDraw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
     touchDrag.moved = true;
     setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
-    draw();
+    scheduleDraw();
   } else if (touchDrag.kind === 'page') {
     pageOffset.x += p.x - touchDrag.lx;
     pageOffset.y += p.y - touchDrag.ly;
     touchDrag.lx = p.x; touchDrag.ly = p.y;
     clampPageOffset();
-    draw();
+    scheduleDraw();
   }
 }, { passive: false });
 

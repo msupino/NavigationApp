@@ -654,3 +654,80 @@ test.describe('text and speech name the same place', () => {
     expect(drift.sp).toContain('Z, Z, R, R');   // spoken: spelled, never read as a word
   });
 });
+
+// A queued alert belongs to the moment it was queued in. Alerts are chained so they never
+// cut each other off -- which meant one that waited its turn could still be talking after
+// the pilot silenced the voice, or after the flight that raised it had ended.
+test.describe('silencing', () => {
+  test('switching the voice off stops what is queued, not just what comes next', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSpeak === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      // Hold the first utterance open so the rest of the queue is still waiting behind it.
+      let release;
+      const held = new Promise(r => { release = r; });
+      const tts = window.Capacitor.Plugins.TextToSpeech;
+      const realSpeak = tts.speak;
+      tts.speak = (o) => { window.__spoken.push(o); return o.text === 'one' ? held : Promise.resolve(); };
+      gpsSpeak('one');
+      await new Promise(r => setTimeout(r, 60));   // let the first one actually start
+      gpsSpeak('two');
+      gpsSpeak('three');
+      window.voiceAlerts = false;
+      gpsStopSpeaking();
+      release();
+      await new Promise(r => setTimeout(r, 200));
+      tts.speak = realSpeak;
+      return window.__spoken.map(s2 => s2.text);
+    });
+    expect(out).toEqual(['one']);          // the queue behind it stayed silent
+  });
+
+  test('stopping every source silences the flight that raised them', async ({ page }) => {
+    await stubTts(page);
+    await page.addInitScript(() => {
+      window.__geoCb = null;
+      navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 9; };
+      navigator.geolocation.clearWatch = () => {};
+    });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof startLiveLocation === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      startLiveLocation();
+      let release;
+      const held = new Promise(r => { release = r; });
+      const tts = window.Capacitor.Plugins.TextToSpeech;
+      tts.speak = (o) => { window.__spoken.push(o); return o.text === 'one' ? held : Promise.resolve(); };
+      gpsSpeak('one');
+      await new Promise(r => setTimeout(r, 60));   // let the first one actually start
+      gpsSpeak('two');
+      stopLiveLocation();
+      release();
+      await new Promise(r => setTimeout(r, 200));
+      return window.__spoken.map(s2 => s2.text);
+    });
+    expect(out).toEqual(['one']);
+  });
+
+  test('the voice comes back after it is switched on again', async ({ page }) => {
+    await stubTts(page);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof gpsSpeak === 'function');
+    const out = await page.evaluate(async () => {
+      window.voiceAlerts = true;
+      gpsSpeak('before');
+      window.voiceAlerts = false;
+      gpsStopSpeaking();
+      gpsSpeak('silenced');
+      window.voiceAlerts = true;
+      gpsSpeak('after');
+      await new Promise(r => setTimeout(r, 200));
+      return window.__spoken.map(s2 => s2.text);
+    });
+    expect(out).toContain('after');
+    expect(out).not.toContain('silenced');
+  });
+});
