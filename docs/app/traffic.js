@@ -19,10 +19,31 @@
   let lastError = 0;
   window.trafficAircraft = [];          // what the inspector and the hit test read
 
-  const live = () => typeof gpsPositionLive === 'function' && gpsPositionLive();
+  // Where to ask about. A real fix if there is one -- that is the traffic that matters --
+  // and otherwise the middle of whatever the pilot is looking at. Traffic is worth seeing
+  // while planning too: which airways are busy over the field you are routing through is a
+  // question you ask at the desk, not only in the air.
+  const centre = () => {
+    const c = (typeof gpsLastFix === 'function' && gpsLastFix()) || null;
+    if (c && Number.isFinite(c.lat)) return { lat: c.lat, lng: c.lng };
+    const m = map.getCenter();
+    return { lat: m.lat, lng: m.lng };
+  };
+  // The ADS-B aggregators serve data to anyone and CORS headers to nobody, so a browser
+  // cannot read them at all -- verified against adsb.lol, adsb.fi, airplanes.live, adsb.one
+  // and OpenSky, and against the public CORS proxies, which either time out or rate-limit
+  // long before an 8-second poll. The APK is not a browser: Capacitor's native HTTP makes
+  // the request in Java, where the same-origin rule does not apply. So this feature exists
+  // in the APK and nowhere else, rather than existing everywhere and failing on the desktop.
+  const nativeHttp = () => {
+    const C = typeof window !== 'undefined' && window.Capacitor;
+    return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform()
+      && C.Plugins && C.Plugins.CapacitorHttp) || null;
+  };
   // The gist switch outranks the pilot's: a feature that is off is off everywhere, even on
   // a device that ticked the box while it was on.
-  const offered = () => typeof tune !== 'function' || tune('featureLiveTraffic') === true;
+  const offered = () => (typeof tune !== 'function' || tune('featureLiveTraffic') === true)
+    && !!nativeHttp();
   window.trafficOffered = offered;
   const on = () => {
     if (!offered()) return false;
@@ -34,12 +55,47 @@
   };
   window.trafficEnabled = on;
 
+  // The feeds put the position in the path (adsb.lol: /v2/lat/32.05/lon/34.92/dist/40), so
+  // the tunable is a template. A URL with no placeholders keeps the old query-string form,
+  // which is what a proxy of one's own would most likely want.
   function endpoint(lat, lng) {
     const base = (typeof tune === 'function' && tune('trafficApiUrl')) || '';
     if (!base) return '';
-    const nm = (typeof tune === 'function' ? tune('trafficRadiusNm') : 40) || 40;
+    const nm = Math.round((typeof tune === 'function' ? tune('trafficRadiusNm') : 40) || 40);
+    if (base.indexOf('{lat}') >= 0) {
+      return base.replace('{lat}', lat.toFixed(4)).replace('{lon}', lng.toFixed(4))
+                 .replace('{dist}', String(nm));
+    }
     const sep = base.indexOf('?') >= 0 ? '&' : '?';
-    return base + sep + 'lat=' + lat.toFixed(4) + '&lon=' + lng.toFixed(4) + '&dist=' + Math.round(nm);
+    return base + sep + 'lat=' + lat.toFixed(4) + '&lon=' + lng.toFixed(4) + '&dist=' + nm;
+  }
+
+  // One aeroplane, from whichever spelling the feed uses. adsb.lol and its cousins say
+  // `ac`, alt_baro (which reads "ground" for one on the runway) and `t` for the type;
+  // a proxy of one's own would more likely say `aircraft`, `alt` and `type`.
+  function normalize(a) {
+    const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+    const alt = num(a.alt) !== null ? a.alt
+      : num(a.alt_baro) !== null ? a.alt_baro : num(a.alt_geom);
+    return {
+      hex: String(a.hex || a.icao || '').trim(),
+      flight: String(a.flight || a.callsign || '').trim(),
+      lat: num(a.lat), lon: num(a.lon !== undefined ? a.lon : a.lng),
+      alt: num(alt), gs: num(a.gs !== undefined ? a.gs : a.speed),
+      track: num(a.track !== undefined ? a.track : a.heading),
+      type: String(a.type || a.t || '').trim(),
+      squawk: String(a.squawk || '').trim(),
+    };
+  }
+
+  // GET through the native bridge. Capacitor hands back a parsed body for JSON responses
+  // and a string otherwise, so both have to be accepted.
+  async function getJson(url) {
+    const http = nativeHttp();
+    if (!http) throw new Error('no native http');
+    const r = await http.request({ url, method: 'GET', headers: { Accept: 'application/json' } });
+    if (!r || r.status < 200 || r.status >= 300) throw new Error('HTTP ' + (r && r.status));
+    return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
   }
 
   // The arrow points where the aircraft is going, and carries what a pilot reads first: who
@@ -102,17 +158,14 @@
 
   async function poll() {
     if (inFlight) return;
-    if (!live() || !on()) { clear(); return; }
-    const c = (typeof gpsLastFix === 'function' && gpsLastFix()) || null;
-    const at = c && Number.isFinite(c.lat) ? c : map.getCenter();
-    const url = endpoint(at.lat, at.lng !== undefined ? at.lng : at.lon);
+    if (!on()) { clear(); return; }
+    const at = centre();
+    const url = endpoint(at.lat, at.lng);
     if (!url) return;                     // no endpoint configured: the feature is simply off
     inFlight = true;
     try {
-      const r = await fetch(url, { cache: 'no-store' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const d = await r.json();
-      const list = (d && d.aircraft) || [];
+      const d = await getJson(url);
+      const list = ((d && (d.ac || d.aircraft)) || []).map(normalize);
       // Own-ship is in the feed too when the transponder is on: it is already drawn, and a
       // second aeroplane on top of yourself reads as traffic in your lap.
       const mine = typeof gpsLastFix === 'function' ? gpsLastFix() : null;
@@ -133,6 +186,7 @@
     }
   }
   window.trafficPoll = poll;
+  let moveTimer = 0;
 
   function schedule() {
     clearInterval(timer);
@@ -141,7 +195,21 @@
     poll();
   }
   window.trafficRefresh = function () {
-    if (live() && on()) schedule();
+    if (on()) schedule();
     else { clearInterval(timer); timer = 0; clear(); }
   };
+
+  // Panning to another part of the country is a request to see the traffic there. Debounced,
+  // and only when the map actually moved a useful distance: a drag fires moveend constantly,
+  // and each one is a request over the wire.
+  let lastAsked = null;
+  map.on('moveend', () => {
+    if (!on()) return;
+    const at = centre();
+    if (lastAsked && Math.abs(at.lat - lastAsked.lat) < 0.05
+                  && Math.abs(at.lng - lastAsked.lng) < 0.05) return;
+    lastAsked = at;
+    clearTimeout(moveTimer);
+    moveTimer = setTimeout(poll, 400);
+  });
 })();
