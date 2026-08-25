@@ -1550,6 +1550,125 @@ function freqEditRow(label, opts) {
   return row;
 }
 
+// Density altitude, beside the elevation it corrects. On a hot afternoon at Haifa, Megiddo
+// or Masada the aeroplane behaves as though the field were thousands of feet higher, and
+// nothing in an elevation figure says so. The slider runs a day ahead on the hourly
+// forecast, because the useful question is rarely "what is it now" -- it is "what time can
+// I get out of here".
+function appendAirfieldDensityAltitude(body, af) {
+  if (typeof tune === 'function' && tune('featureDensityAltitude') === false) return;
+  const DA = window.NavAid && NavAid.da;
+  if (!DA) return;
+  const elev = Number(af.elev_ft);
+  if (!Number.isFinite(elev)) return;
+
+  const sec = document.createElement('div');
+  sec.className = 'da-section';
+  const valRow = textRow(S.densityAltitude || 'Density altitude', '—');
+  valRow.classList.add('da-row');
+  const valEl = valRow.querySelector('.val');
+  valRow.title = S.densityAltitudeTitle || '';
+  sec.appendChild(valRow);
+
+  // What it was computed from, and where those numbers came from. A density altitude with
+  // no provenance is a number a pilot cannot argue with, which is the wrong kind of number.
+  const srcRow = textRow(S.daConditions || 'Temp · QNH', '—');
+  srcRow.classList.add('da-src-row');
+  const srcEl = srcRow.querySelector('.val');
+  sec.appendChild(srcRow);
+
+  const maxH = Math.round((typeof tune === 'function' && tune('daForecastHours')) || 24);
+  const timeRow = document.createElement('div');
+  timeRow.className = 'row da-time-row';
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = '0';
+  slider.max = String(maxH);
+  slider.step = '1';
+  slider.value = '0';
+  slider.className = 'da-time';
+  slider.setAttribute('aria-label', S.daWhen || 'Valid time');
+  const when = document.createElement('span');
+  when.className = 'val da-when';
+  when.dir = 'ltr';                 // a clock is a clock in both languages
+  timeRow.append(slider, when);
+  sec.appendChild(timeRow);
+  body.appendChild(sec);
+
+  // "+21ש · 08-26 12:00Z" in Hebrew is one string with an RTL letter in the middle, and the
+  // bidi algorithm hands the digits after it to that letter's run: the label rendered as
+  // "12:00 08-26 · ש21+" -- a different date and a different hour. Each part goes in its own
+  // <bdi> so the runs cannot reach into each other, whatever the language.
+  const fmtWhenText = (h) => (typeof notamTimeLabel === 'function' ? notamTimeLabel(h)
+    : (h ? '+' + h + 'h' : (S.daNow || 'now')));
+  const setWhen = (h) => {
+    when.textContent = '';
+    const parts = String(fmtWhenText(h)).split(' · ');
+    parts.forEach((part, i) => {
+      if (i) when.appendChild(document.createTextNode(' · '));
+      const bdi = document.createElement('bdi');
+      bdi.textContent = part;
+      when.appendChild(bdi);
+    });
+  };
+
+  // The observation beats the model at hour zero: LLBG's own METAR carries the temperature
+  // and QNH measured on the field, and the forecast is a grid interpolation of it.
+  let metar = null;
+  let hours = null;
+
+  function render() {
+    const h = parseInt(slider.value, 10) || 0;
+    setWhen(h);
+    let tempC = null, qnh = null, from = '';
+    if (!h && metar && Number.isFinite(Number(metar.temp))) {
+      tempC = Number(metar.temp);
+      qnh = Number.isFinite(Number(metar.altim)) ? Number(metar.altim) : null;
+      from = S.daFromMetar || 'METAR';
+    } else {
+      const sample = DA.sampleAt(hours, h);
+      if (sample) {
+        tempC = sample.tempC;
+        qnh = sample.qnh;
+        from = S.daFromForecast || 'forecast';
+      }
+    }
+    if (tempC === null) {
+      // No observation and no forecast: say so rather than quietly computing a standard
+      // day, which would read as a measurement and be wrong by thousands of feet.
+      valEl.textContent = '—';
+      srcEl.textContent = S.daNoData || 'no temperature available';
+      valRow.classList.remove('da-warn');
+      return;
+    }
+    if (qnh === null) qnh = DA.HPA_STD;
+    const da = DA.densityAltFt(elev, qnh, tempC);
+    valEl.textContent = Math.round(da).toLocaleString() + ' ft';
+    srcEl.textContent = Math.round(tempC) + ' °C · ' + fmtQnhBoth(qnh)
+      + (from ? ' · ' + from : '');
+    // The threshold is a rule of thumb, not a limit: past it the book figures stop being
+    // the figures, and that is worth colouring.
+    const over = (typeof tune === 'function' && tune('daWarnAboveElevFt')) || 2000;
+    valRow.classList.toggle('da-warn', da > elev + over);
+  }
+
+  slider.oninput = render;
+  render();
+
+  // Both sources arrive late; each redraws what it can.
+  const icao = String(af.name || '').toUpperCase();
+  if (/^[A-Z]{4}$/.test(icao) && typeof fetchAirfieldWx === 'function') {
+    Promise.resolve(fetchAirfieldWx(icao)).then((wx) => {
+      metar = (wx && wx.metar) || null;
+      render();
+    }).catch(() => {});
+  }
+  Promise.resolve(DA.forecast(af.lat, af.lng)).then((h) => {
+    hours = h;
+    render();
+  }).catch(() => {});
+}
+
 function appendAirfieldFrequencyRows(body, af) {
   const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
@@ -2359,6 +2478,7 @@ function airfieldInspectorTitle(af) {
 function appendAirfieldDetailRows(body, af, label) {
   if (Number.isFinite(af.elev_ft)) {
     body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
+    appendAirfieldDensityAltitude(body, af);
   }
   appendAirfieldFrequencyRows(body, af);
   appendAirfieldWeather(body, af);
