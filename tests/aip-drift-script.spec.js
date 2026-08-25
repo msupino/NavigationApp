@@ -25,7 +25,19 @@ test('the script watches both snapshot folders', () => {
 test('the script only reports, and never writes into the snapshot folders', () => {
   const src = fs.readFileSync(SCRIPT, 'utf8');
   expect(src).not.toMatch(/shutil|urlretrieve\(.*byop|open\([^)]*byop[^)]*['"]w/);
-  expect(src).toMatch(/deliberately does NOT refresh/i);
+  expect(src).toMatch(/refreshes nothing/i);
+});
+
+// The CAA publishes one pack per aerodrome, not one file per plate: every plate we ship is a
+// page extracted from that pack. So the useful report is "this pack was amended, and these
+// of ours came out of it" -- the unit a person can actually act on.
+test('drift is reported against the pack it came from', () => {
+  const src = fs.readFileSync(SCRIPT, 'utf8');
+  expect(src).toContain('packs_by_field');
+  expect(src).toMatch(/amended/);
+  // ...and an aerodrome the index no longer carries at all is called out, not silently
+  // grouped with the rest: LLAR has left the AIP.
+  expect(src).toMatch(/aerodrome withdrawn/i);
 });
 
 test('the workflow runs it, and keeps one issue rather than a pile', () => {

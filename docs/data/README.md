@@ -28,6 +28,19 @@ without archaeology. `scripts/aip-drift.py` answers the same question for the ch
 or an ICAO, and readers iterate them. A `source` key there would read as another plate, so
 their provenance lives in this table instead.
 
+## Refreshing a chart
+
+The CAA publishes **one pack per aerodrome**, not one file per plate: all 41 of our LLBG
+plates are pages extracted from AD 2.5. So a refresh is: open the amended pack the drift
+report names, find the page, extract it, re-render its previews, and — for any plate an
+overlay is fitted to — re-run `scripts/georef-plate.py` and check the fit.
+
+Automating that was tried and rejected. The plates it would be safest to automate (aprons,
+parking, the SMAC) are the ones with almost no extractable text, so matching a local plate
+to a page in the new pack scores 0.15 and ties between two different aprons — a guess
+wearing a hash's confidence. `scripts/aip-drift.py` therefore names the pack and lists what
+came out of it, and a person opens it.
+
 ## Known gaps
 
 - **Obstacles.** AIP ENR 5.4 does not publish the obstacle table as readable text: the page

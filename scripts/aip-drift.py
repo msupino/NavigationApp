@@ -5,11 +5,19 @@ Every plate in docs/byop/ and every section in docs/byop-enr/ is a snapshot of a
 CAA published. The CAA replaces those files without telling anyone, and a chart that has
 moved on is worse than a missing one: it looks authoritative and is wrong.
 
-This reports drift. It deliberately does NOT refresh anything. Half of these plates are
-georeferenced by hand -- corner coordinates fitted to the printed graticule -- so swapping
-the PDF underneath an overlay without re-checking its alignment would put a confidently
-placed chart in the wrong place. Refreshing is a decision, taken per file, with the
-alignment checked; this is the alarm that says a decision is due.
+This reports drift and refreshes nothing, for two reasons.
+
+The first is alignment: half of these plates are georeferenced by hand -- corner
+coordinates fitted to the printed graticule -- so swapping the PDF underneath an overlay
+without re-checking it would put a confidently placed chart in the wrong place.
+
+The second is that there is nothing to swap. The CAA publishes one pack per aerodrome, not
+one file per plate: all 41 of our LLBG plates are pages extracted from AD 2.5. Refreshing
+one means finding its page in the new pack, and the pages that would be safest to automate
+-- aprons, parking, the SMAC -- are the ones with almost no extractable text, so page
+matching scores 0.15 and ties between two different aprons. An automatic answer there would
+be a guess wearing a hash's confidence. This says which pack changed and what came out of
+it; a person opens the pack.
 
 How it knows: the AIP's index (the same one scripts/aip-plate-titles.mjs reads) lists every
 current file by SHA-512, and carries a signed link to a zip of all of them. A local file
@@ -65,8 +73,25 @@ def sha512(path):
     return h.hexdigest()
 
 
-# "LLBG_APPROACH_ILS 08.pdf" -> LLBG. Used only to group the report.
+# "LLBG_APPROACH_ILS 08.pdf" -> LLBG. Used to group the report by aerodrome, which is also
+# the unit the CAA publishes in: there is no per-plate file to fetch. Every plate we ship is
+# a page extracted from that aerodrome's pack, so when a pack is amended the honest question
+# is "which of our extracts came out of it", not "which file changed".
 FIELD = re.compile(r'^(LL[A-Z]{2})')
+
+
+def packs_by_field(entries):
+    """Aerodrome -> the pack the AIP publishes for it, and when it last changed."""
+    out = {}
+    for e in entries.values():
+        m = re.search(r'\b(LL[A-Z]{2})\b', str(e.get('TITLE', '')).upper())
+        if not m:
+            continue
+        when = str(e.get('LAST_MODIFIED', ''))[:10]
+        cur = out.get(m.group(1))
+        if not cur or when > cur[1]:
+            out[m.group(1)] = (str(e.get('TITLE', '')), when)
+    return out
 
 
 def main():
@@ -90,12 +115,17 @@ def main():
         m = FIELD.match(name)
         by_field.setdefault(m.group(1) if m else 'other', []).append(name)
 
+    packs = packs_by_field(current)
     print('AIP index: %d files served today' % len(current))
     print('snapshots: %d current, %d drifted' % (len(fresh), len(drifted)))
     for field in sorted(by_field):
         names = by_field[field]
-        print('  %-6s %2d  %s' % (field, len(names), ', '.join(n[:44] for n in names[:4])
-                                  + ('' if len(names) <= 4 else ', …')))
+        pack = packs.get(field)
+        where = ('  <- %s, amended %s' % (pack[0][:44], pack[1])) if pack else \
+                '  <- no pack in the index (aerodrome withdrawn?)'
+        print('  %-6s %2d%s' % (field, len(names), where))
+        print('         %s' % (', '.join(n[:40] for n in names[:4])
+                               + ('' if len(names) <= 4 else ', …')))
 
     if '--json' in sys.argv:
         out = Path(sys.argv[sys.argv.index('--json') + 1])
@@ -104,6 +134,7 @@ def main():
             'current': len(fresh),
             'drifted': sorted(drifted),
             'byField': {k: sorted(v) for k, v in by_field.items()},
+            'packs': {k: {'title': v[0], 'amended': v[1]} for k, v in packs.items()},
         }, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
         print('wrote %s' % out)
 
