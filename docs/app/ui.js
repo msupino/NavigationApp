@@ -416,6 +416,9 @@ refreshVoiceControl();
 voiceBtn.onclick = () => {
   window.voiceAlerts = !(window.voiceAlerts === true);
   try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
+  // Silence means silence, including whatever is mid-sentence or already queued behind it.
+  // A pilot who presses this in a busy circuit is not asking for one more alert first.
+  if (!window.voiceAlerts && typeof gpsStopSpeaking === 'function') gpsStopSpeaking();
   refreshVoiceControl();
   // Say which way it went. A speaker icon that has just changed state tells you nothing you
   // can check -- there is no sound to hear until the next alert, which may be ten minutes off,
