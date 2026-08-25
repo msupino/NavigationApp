@@ -69,15 +69,27 @@ const frameShown = (page) => page.evaluate(() => {
 
 // A browser cannot read these feeds however the switches are set, so it is not offered one.
 // A tick-box that can only ever say "Live traffic unavailable" is worse than no tick-box.
-test('a plain browser is not offered it at all', async ({ page }) => {
+test('a plain browser keeps the switch, dimmed, and says why', async ({ page }) => {
   await boot(page, { native: false });
   expect(await page.evaluate(() => tune('featureLiveTraffic'))).toBe(true);
-  expect(await frameShown(page)).toBe(false);
+  // Still there. A control that vanishes between the phone and the desktop leaves the
+  // pilot wondering what else moved -- so it stays, off and dimmed, with the reason on it.
+  expect(await frameShown(page)).toBe(true);
+  const state = await page.evaluate(() => {
+    const cb = document.getElementById('traffic-cb');
+    const label = cb.closest('label');
+    return { disabled: cb.disabled, dimmed: label.classList.contains('navtoggle-disabled'), why: label.title };
+  });
+  expect(state.disabled).toBe(true);
+  expect(state.dimmed).toBe(true);
+  expect(state.why).toMatch(/app only/i);
+  // ...and it draws nothing, whatever the stored preference said.
   await fly(page);
   expect(await marks(page).count()).toBe(0);
+  expect(await asked(page)).toEqual([]);
 });
 
-test('the gist switch hides it in the APK too, however the switch under it was left', async ({ page }) => {
+test('the gist switch is the only thing that takes it away', async ({ page }) => {
   await boot(page, { feature: false });           // shipped state: featureLiveTraffic off
   expect(await page.evaluate(() => tune('featureLiveTraffic'))).toBe(false);
   expect(await frameShown(page)).toBe(false);
