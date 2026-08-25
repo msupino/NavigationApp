@@ -6345,9 +6345,15 @@ window.plateMapLayer = plateMapLayer;
   if (!cb) return;
   // traffic.js may not have run yet, so fall back to the same stored-then-default reading
   // it does -- not to `true`, which put the box on while the layer underneath was off.
-  cb.checked = typeof trafficEnabled === 'function' ? trafficEnabled()
-    : (localStorage.getItem('navaid.showTraffic') === '1'
-       || (localStorage.getItem('navaid.showTraffic') !== '0' && tune('defaultShowTraffic') !== false));
+  // Read through lsGet: with site data blocked, a bare localStorage call throws
+  // SecurityError and takes the rest of this file's setup down with it.
+  cb.checked = (function () {
+    if (typeof trafficEnabled === 'function') return trafficEnabled();
+    const stored = lsGet('navaid.showTraffic');
+    if (stored === '0') return false;
+    if (stored === '1') return true;
+    return tune('defaultShowTraffic') !== false;
+  })();
   cb.onchange = () => {
     try { localStorage.setItem('navaid.showTraffic', cb.checked ? '1' : '0'); } catch (_) {}
     if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
