@@ -1763,6 +1763,7 @@ window.S = Object.assign({
   tbGrpIfr: 'Instrument charts',
   tbGrpTraffic: 'Traffic',
   tbShowTraffic: 'Show live traffic',
+  tbShowTrafficApkOnly: 'In the app only: the ADS-B feeds refuse browser requests, so nothing could be drawn here. Install the Android app and it works there.',
   tbShowTrafficTitle: 'Aircraft heard on ADS-B. It asks around your position when you have one, and otherwise around the middle of the map, so it works while planning too. The arrow points where each one is going; its callsign and altitude in hundreds of feet are beside it.',
   tbPlateOpacity: 'Plate opacity',
   tbPlateOpacityTitle: 'Adjust the airfield-plate overlay opacity (shared by all plate layers)',
