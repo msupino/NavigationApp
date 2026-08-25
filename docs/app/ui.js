@@ -6368,8 +6368,18 @@ window.plateMapLayer = plateMapLayer;
   window.refreshTrafficFeature = function refreshTrafficFeature() {
     const offered = typeof window.trafficOffered === 'function'
       ? window.trafficOffered() : tune('featureLiveTraffic') === true;
+    const usable = typeof window.trafficUsable !== 'function' || window.trafficUsable();
     const frame = cb.closest('.tb-layer-frame');
+    // The gist is the only thing that takes the switch away. A browser keeps it, dimmed,
+    // with the reason on it: a control that disappears between the phone and the desktop
+    // leaves the pilot wondering what else moved.
     if (frame) frame.style.display = offered ? '' : 'none';
+    cb.disabled = !usable;
+    const label = cb.closest('label');
+    if (label) {
+      label.classList.toggle('navtoggle-disabled', !usable);   // the app's own dimmed-toggle idiom
+      label.title = usable ? (S.tbShowTrafficTitle || '') : (S.tbShowTrafficApkOnly || '');
+    }
     if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
   };
   window.refreshTrafficFeature();

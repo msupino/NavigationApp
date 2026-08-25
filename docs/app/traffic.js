@@ -41,13 +41,16 @@
     return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform()
       && C.Plugins && C.Plugins.CapacitorHttp) || null;
   };
-  // The gist switch outranks the pilot's: a feature that is off is off everywhere, even on
-  // a device that ticked the box while it was on.
-  const offered = () => (typeof tune !== 'function' || tune('featureLiveTraffic') === true)
-    && !!nativeHttp();
+  // Two different questions, deliberately kept apart. The gist decides whether the feature
+  // EXISTS -- that is the only thing that removes the switch. The platform decides whether
+  // it can WORK: in a browser the switch is still there, dimmed, saying why. A control that
+  // vanishes between the phone and the desktop makes the pilot wonder what else moved.
+  const offered = () => typeof tune !== 'function' || tune('featureLiveTraffic') === true;
+  const usable = () => !!nativeHttp();
+  window.trafficUsable = usable;
   window.trafficOffered = offered;
   const on = () => {
-    if (!offered()) return false;
+    if (!offered() || !usable()) return false;
     let stored = null;
     try { stored = localStorage.getItem(LAYER_KEY); } catch (e) { /* storage unavailable */ }
     if (stored === '0') return false;
