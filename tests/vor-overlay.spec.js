@@ -568,13 +568,13 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.55');
     await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(0)).toHaveValue('132.50');
     await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(1)).toHaveValue('132.80');
+    // Document order, not child index: the frequency rows now live inside the
+    // Communication frame, so they are grandchildren of #insp-body. What this test is
+    // about -- primary above ATIS above the satellite thumbnail -- is unchanged.
     const markerOrder = await page.evaluate(() => {
-      const rows = Array.from(document.querySelector('#insp-body').children);
-      return {
-        primary: rows.findIndex(el => el.classList.contains('primary-row')),
-        atis: rows.findIndex(el => el.classList.contains('atis-row')),
-        satellite: rows.findIndex(el => el.classList.contains('satellite-snippet-section')),
-      };
+      const all = Array.from(document.querySelectorAll('#insp-body *'));
+      const at = (cls) => all.findIndex(el => el.classList.contains(cls));
+      return { primary: at('primary-row'), atis: at('atis-row'), satellite: at('satellite-snippet-section') };
     });
     expect(markerOrder.primary).toBeGreaterThanOrEqual(0);
     expect(markerOrder.atis).toBeGreaterThan(markerOrder.primary);
@@ -629,12 +629,10 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.55');
     await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(0)).toHaveValue('132.50');
     const routeOrder = await page.evaluate(() => {
-      const rows = Array.from(document.querySelector('#insp-body').children);
-      return {
-        primary: rows.findIndex(el => el.classList.contains('primary-row')),
-        atis: rows.findIndex(el => el.classList.contains('atis-row')),
-        satellite: rows.findIndex(el => el.classList.contains('satellite-snippet-section')),
-      };
+      // Descendants, for the same reason as the block above: the Communication frame.
+      const all = Array.from(document.querySelectorAll('#insp-body *'));
+      const at = (cls) => all.findIndex(el => el.classList.contains(cls));
+      return { primary: at('primary-row'), atis: at('atis-row'), satellite: at('satellite-snippet-section') };
     });
     expect(routeOrder.primary).toBeGreaterThanOrEqual(0);
     expect(routeOrder.atis).toBeGreaterThan(routeOrder.primary);

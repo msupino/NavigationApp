@@ -5918,6 +5918,24 @@ document.getElementById('airfield-cb').onchange = async e => {
   }
   draw();
 };
+// --- AIP airspace (prohibited / restricted / TMA) toggle (Extra layers) ---
+const AIRSPACE_KEY = 'navaid.showAirspace';
+try {
+  const stored = lsGet(AIRSPACE_KEY);
+  if (stored !== null) window.showAirspace = stored === '1';
+  else if (typeof tune === 'function') window.showAirspace = tune('defaultShowAirspace') === true;
+} catch (e) { /* storage unavailable */ }
+const airspaceCb = document.getElementById('airspace-cb');
+if (airspaceCb) {
+  airspaceCb.checked = showAirspace;
+  airspaceCb.onchange = e => {
+    window.showAirspace = e.target.checked;
+    try { localStorage.setItem(AIRSPACE_KEY, showAirspace ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    draw();          // drawAirspace() lazy-loads the dataset on the first draw that needs it
+  };
+}
+
 // --- LSA airspace bubbles overlay toggle (Extra layers) ------------------
 const LSA_BUBBLES_KEY = 'navaid.showLsaBubbles';
 try {
@@ -9230,6 +9248,7 @@ NavAid.defaultVisibilityMap = [
   ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
   ['ifr-cb', 'navaid.showIfr', 'defaultShowIfr'],
   ['traffic-cb', 'navaid.showTraffic', 'defaultShowTraffic'],
+  ['airspace-cb', 'navaid.showAirspace', 'defaultShowAirspace'],
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;

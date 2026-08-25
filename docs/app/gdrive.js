@@ -367,6 +367,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.showCommfail',
   'navaid.showIfr',
   'navaid.showTraffic',
+  'navaid.showAirspace',
   // sizes / widths / opacities
   // legLineWidth2, not legLineWidth: the key was bumped to v2 when the slider's
   // range changed, and the old name has not been written since — so this list was
