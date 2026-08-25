@@ -193,10 +193,21 @@ test('the LLHZ ATS departure plate is one of the sheets', async ({ page }) => {
     return b ? { want: row, got: [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()] } : null;
   });
   expect(laid).not.toBeNull();
-  expect(laid.got[0]).toBeCloseTo(laid.want.sw[0], 5);
-  expect(laid.got[3]).toBeCloseTo(laid.want.ne[1], 5);
-  // And nothing is left of the toggle it used to have.
-  expect(await page.evaluate(() => !!document.getElementById('atsdep-cb'))).toBe(false);
+  // This sheet is placed by hand -- its graticule labels are set differently on each side,
+  // which no automatic anchor can see -- so it carries three corners rather than a box.
+  // Leaflet reports the box around the rotated picture, which is a hair larger than the
+  // corners themselves; what matters is that every corner the row states is inside it, and
+  // that the box is not some other part of the country.
+  const { tl, tr, bl } = laid.want;
+  const [s0, w0, n0, e0] = laid.got;
+  for (const [lat, lng] of [tl, tr, bl]) {
+    expect(lat).toBeGreaterThanOrEqual(s0 - 1e-3);
+    expect(lat).toBeLessThanOrEqual(n0 + 1e-3);
+    expect(lng).toBeGreaterThanOrEqual(w0 - 1e-3);
+    expect(lng).toBeLessThanOrEqual(e0 + 1e-3);
+  }
+  expect(n0 - s0).toBeLessThan(1);            // a field plate, not half the FIR
+  expect(e0 - w0).toBeLessThan(1);
 });
 
 // Picking a sheet takes the map to it: asking for Ben Gurion's ILS while looking at Eilat

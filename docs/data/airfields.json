@@ -444,7 +444,7 @@
         "LLHZ_airport_Chart.pdf"
       ],
    "ifr_overlays": [
-    {"png": "LLHZ_ATS.png", "code": "ATS departure", "title": "יציאה לנתיבי ATS", "plate": "LLHZ_airport_Annex Chet.pdf", "sw": [31.98455, 34.63961], "ne": [32.41098, 35.00103], "points": [{"name": "BENQO", "lat": 32.39139, "lng": 34.76333}, {"name": "DIVLA", "lat": 32.28417, "lng": 34.71778}, {"name": "YENON", "lat": 32.37556, "lng": 34.82028}, {"name": "NAT", "lat": 32.33389, "lng": 34.96889}, {"name": "BGN", "lat": 32.01306, "lng": 34.87528}]}
+    {"png": "LLHZ_ATS.png", "code": "ATS departure", "title": "יציאה לנתיבי ATS", "plate": "LLHZ_airport_Annex Chet.pdf", "points": [{"name": "BENQO", "lat": 32.39139, "lng": 34.76333}, {"name": "DIVLA", "lat": 32.28417, "lng": 34.71778}, {"name": "YENON", "lat": 32.37556, "lng": 34.82028}, {"name": "NAT", "lat": 32.33389, "lng": 34.96889}, {"name": "BGN", "lat": 32.01306, "lng": 34.87528}], "tl": [32.41484, 34.64451], "tr": [32.41368, 35.01289], "bl": [31.98832, 34.64263]}
    ],
       "runways": [
         "10/28"
