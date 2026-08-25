@@ -63,11 +63,22 @@
       const j = await r.json();
       const h = j && j.hourly;
       const times = (h && h.time) || [];
-      const hours = times.map((t, i) => ({
+      let hours = times.map((t, i) => ({
         t: Date.parse(t.length <= 16 ? t + ':00Z' : t),
         tempC: num(h.temperature_2m && h.temperature_2m[i]),
         qnh: num(h.pressure_msl && h.pressure_msl[i]),
       })).filter(x => Number.isFinite(x.t) && x.tempC !== null);
+      // Some answers carry only `current` (the shape the QNH code asks for, and the one the
+      // test harness serves). One hour is a poor forecast but an honest present: take it
+      // rather than reporting no temperature at a field that plainly has one.
+      if (!hours.length && j && j.current && num(j.current.temperature_2m) !== null) {
+        hours = [{
+          t: Date.parse(String(j.current.time || '').length <= 16
+            ? j.current.time + ':00Z' : j.current.time) || Date.now(),
+          tempC: num(j.current.temperature_2m),
+          qnh: num(j.current.pressure_msl),
+        }];
+      }
       if (!hours.length) throw new Error('no hourly data');
       cache.set(k, { at: Date.now(), hours });
       return hours;

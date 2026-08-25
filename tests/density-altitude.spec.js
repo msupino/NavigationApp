@@ -168,3 +168,31 @@ test('the forecast is asked for once per field', async ({ page }) => {
   await page.waitForTimeout(300);
   expect(asked).toBe(first);
 });
+
+// Open-Meteo answers `current` when that is what was asked for -- the shape the QNH code
+// uses, and the one this repo's own test harness serves for every open-meteo call. One hour
+// is a poor forecast but an honest present: better than reporting no temperature at a field
+// that plainly has one.
+test('a current-only answer still gives the present hour', async ({ page }) => {
+  await page.route(/^https:\/\/api\.open-meteo\.com\//, r => r.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ latitude: 32, longitude: 34.9, elevation: 0,
+      current: { time: new Date().toISOString().slice(0, 16), temperature_2m: 31, pressure_msl: 1007 } }),
+  }));
+  await page.route('**wx-data/wx.json**', r => r.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: new Date().toISOString(), stations: {} }) }));
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.da) && !!window.airfields);
+  await open(page, 'LLHZ');
+  const da = await readDa(page);
+  expect(da.value).toMatch(/ft$/);
+  expect(da.src).toContain('31 °C');
+  expect(da.src).toContain('1007 hPa');
+
+  // ...and it does not pretend to know a later hour it was never given.
+  await page.evaluate(() => {
+    const s2 = document.querySelector('.da-time');
+    s2.value = '12'; s2.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect((await readDa(page)).value).toBe('—');
+});
