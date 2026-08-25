@@ -6492,3 +6492,24 @@ body.theme-light .search-flash-ring {
 }
 .ov-hide-btn:hover { background: #fff; border-color: #b03636; color: #b03636; }
 body.theme-light .ov-hide-btn { color: #1f252c; }
+
+/* Live ADS-B traffic: an arrow pointing where the aircraft is going, with its callsign and
+   altitude beside it. Deliberately quieter than the own-ship and the route -- it is
+   information about somebody else, and it must not be mistaken for either. */
+.traffic-mark {
+  display: flex; align-items: center; gap: 2px;
+  pointer-events: auto; cursor: pointer;
+  white-space: nowrap;
+}
+.traffic-arrow {
+  display: inline-block; width: 20px; height: 20px;
+  font: 16px/20px system-ui, sans-serif; text-align: center;
+  color: #d8541f;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+}
+.traffic-label {
+  font: 700 10px/1.2 system-ui, sans-serif;
+  color: #7a2f10;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
+body.theme-light .traffic-label { color: #7a2f10; }

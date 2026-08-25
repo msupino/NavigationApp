@@ -698,6 +698,16 @@
           </label>
         </div>
         </div>
+        <!-- Traffic is not a chart: it is other aeroplanes, live, and only while a fix is
+             driving the map. Nothing above governs it, so it stands in its own frame. -->
+        <div class="tb-layer-frame">
+        <div class="tb-frame-title" data-i18n="tbGrpTraffic"></div>
+        <div class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbShowTrafficTitle">
+            <input type="checkbox" id="traffic-cb"> <span data-i18n="tbShowTraffic"></span>
+          </label>
+        </div>
+        </div>
         <!-- Instrument charts stand apart from the plates above: "Show plates for" does not
              reach them (they are picked one sheet at a time, by name), and they are not in
              the plates' mutual exclusion. A frame of their own says so. -->
@@ -1009,6 +1019,7 @@
         'app/gdrive.js' + v,
         'app/gps.js' + v,
         'app/ui.js' + v,
+        'app/traffic.js' + v,
         'app/editor.js' + v,
         'app/assistant.js' + v,
         'app/offline-tiles.js' + v
