@@ -751,6 +751,11 @@ NavAid.tuningDefaults = {
   // (see traffic.js: a browser cannot read these feeds), so this is the switch that turns
   // it on for everyone flying with the app, without an app release.
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
+  featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
+  daWarnAboveElevFt: { value: 2000, min: 500, max: 6000, step: 100,
+    label: 'Flag density altitude this far above the field (ft)' },
+  daForecastHours: { value: 24, min: 6, max: 48, step: 1,
+    label: 'How far ahead the density-altitude slider runs (h)' },
   // Off until the feed this asks for is actually standing: a default of ON would greet
   // every pilot with "Live traffic unavailable" and nothing on the map. Flip to true once
   // trafficApiUrl answers.
@@ -795,6 +800,7 @@ NavAid.tuningGroups = [
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
     'defaultBaseLayer', 'baseLayerOpacity'] },
+  { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
@@ -1954,6 +1960,14 @@ window.S = Object.assign({
   platePlaceOnMap: '🗺 Show on map',
   platePlaceOnMapTitle: 'Lay this sheet over the map, georeferenced, and go to it. The same layer you would switch on in Extra layers.',
   hideThisLayer: 'Hide this chart',
+  densityAltitude: 'Density altitude',
+  densityAltitudeTitle: 'What the aeroplane thinks the field elevation is, once temperature and QNH are taken into account. Thin air lengthens the takeoff roll and flattens the climb: at a density altitude well above the field, the numbers in the book stop being the numbers. Move the slider to find an hour that is flyable.',
+  daConditions: 'Temp · QNH',
+  daWhen: 'Valid time',
+  daNow: 'now',
+  daFromMetar: 'METAR',
+  daFromForecast: 'forecast',
+  daNoData: 'no temperature available',
   trafficUnavailable: 'Live traffic unavailable',
   trafficTitle: 'Traffic',
   trafficAltitude: 'Altitude',
@@ -3668,6 +3682,20 @@ function wxWind(dir, spd, gst) {
   return 'Wind ' + d + ' ' + spd + ' kt' + (gst ? ' gust ' + gst : '');
 }
 // Decode a METAR from AWC's JSON object into a plain-language line.
+// QNH as both scales. Israeli ATIS and METARs give hectopascals; a Cessna's altimeter has
+// an inches subscale, and converting in your head on short final is nobody's idea of
+// airmanship. The inches figure is the one you dial, so it gets the two decimals it is set
+// with, and the double-prime is how it is written on a plate.
+const HPA_PER_INHG = 33.8639;
+function fmtQnhBoth(hPa) {
+  const v = Number(hPa);
+  if (!Number.isFinite(v)) return '';
+  // Below 900 the number was already in inches (some feeds send it that way).
+  if (v < 900) return v.toFixed(2) + '\u2033 · ' + Math.round(v * HPA_PER_INHG) + ' hPa';
+  return Math.round(v) + ' hPa · ' + (v / HPA_PER_INHG).toFixed(2) + '\u2033';
+}
+window.fmtQnhBoth = fmtQnhBoth;
+
 function decodeMetar(m) {
   if (!m) return '';
   const p = [];
@@ -3677,7 +3705,7 @@ function decodeMetar(m) {
   const cl = wxClouds(m.clouds); if (cl) p.push(cl);
   if (m.temp != null) p.push('Temp ' + Math.round(m.temp) + '°C' +
     (m.dewp != null ? ' / dew ' + Math.round(m.dewp) + '°C' : ''));
-  if (m.altim != null) p.push('QNH ' + Math.round(m.altim) + (m.altim > 900 ? ' hPa' : ' inHg'));
+  if (m.altim != null) p.push('QNH ' + fmtQnhBoth(m.altim));
   return p.join(' · ');
 }
 // Decode a TAF (AWC JSON) into one decoded line per forecast period.
