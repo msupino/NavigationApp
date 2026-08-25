@@ -6358,6 +6358,17 @@ window.plateMapLayer = plateMapLayer;
     try { localStorage.setItem('navaid.showTraffic', cb.checked ? '1' : '0'); } catch (_) {}
     if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
   };
+  // Switched off from the gist: the whole frame goes, not just the tick-box. A lone
+  // disabled switch invites a pilot to wonder what is broken. Re-checked when the gist
+  // lands, which is after boot.
+  window.refreshTrafficFeature = function refreshTrafficFeature() {
+    const offered = typeof window.trafficOffered === 'function'
+      ? window.trafficOffered() : tune('featureLiveTraffic') === true;
+    const frame = cb.closest('.tb-layer-frame');
+    if (frame) frame.style.display = offered ? '' : 'none';
+    if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
+  };
+  window.refreshTrafficFeature();
 })();
 
 // IFR chart toggle + its sheet picker.
@@ -7600,6 +7611,7 @@ function createTuningPanel() {
       if (typeof refreshShowReturnFeature === 'function') refreshShowReturnFeature();
       if (typeof refreshAssistantFeature === 'function') refreshAssistantFeature();
       if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
+      if (typeof refreshTrafficFeature === 'function') refreshTrafficFeature();
       redrawAfterTune();
       return;
     }
@@ -8266,6 +8278,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshShowReturnFeature === "function") refreshShowReturnFeature();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
+    if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();
     // The gist may have turned base layers on or off -- rebuild the picker to match, and
     // the nav-data source list with it: its entries are those same charts.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
