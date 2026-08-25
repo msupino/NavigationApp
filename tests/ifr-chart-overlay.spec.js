@@ -299,3 +299,49 @@ test('the points leave with the sheet', async ({ page }) => {
   expect(gone.during).toBeGreaterThan(0);
   expect(gone.after).toBe(0);
 });
+
+// Reported: LLHZ's departure sheet prints BENQO, YENON and DIVLA with their positions, and
+// none of them showed. The sheet sets a longitude as 34° where the enroute chart writes
+// 034°, and one point has its minute and second marks the wrong way round (32° 22" 04' N) --
+// so a reader that insists on one spelling finds two navaids and misses every fix.
+test('the LLHZ departure sheet gives up all of its points', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const out = await page.evaluate(async () => {
+    const sel = document.getElementById('ifr-sheet');
+    const hz = Array.from(sel.options).find(o => o.value.startsWith('LLHZ|'));
+    sel.value = hz.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 400));
+    const pts = navWP.filter(w => w._plate);
+    return { names: pts.map(w => w.name),
+             benqo: pts.find(w => w.name === 'BENQO'),
+             nat: pts.find(w => w.name === 'NAT') };
+  });
+  expect(out.names).toEqual(expect.arrayContaining(['BENQO', 'YENON', 'DIVLA']));
+  // BENQO is printed at 32°23'29"N 34°45'48"E on that sheet.
+  expect(out.benqo.lat).toBeCloseTo(32 + 23 / 60 + 29 / 3600, 4);
+  expect(out.benqo.lng).toBeCloseTo(34 + 45 / 60 + 48 / 3600, 4);
+  // ...and the reading is checkable: NAT off the same sheet is the VOR the app already
+  // knows, to five decimals.
+  expect(out.nat).toBeTruthy();
+});
+
+test('a designation belongs to one position', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const dupes = await page.evaluate(async () => {
+    const sel = document.getElementById('ifr-sheet');
+    const out = [];
+    for (const o of Array.from(sel.options)) {
+      sel.value = o.value;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 60));
+      const names = navWP.filter(w => w._plate).map(w => w.name);
+      if (new Set(names).size !== names.length) out.push(o.value);
+    }
+    return out;
+  });
+  // A label between two boxes used to win both, and that sheet drew two BENQOs.
+  expect(dupes).toEqual([]);
+});

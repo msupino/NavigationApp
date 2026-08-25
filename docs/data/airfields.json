@@ -72,10 +72,10 @@
     {"png": "LLBG_APPROACHILS12.png", "code": "ILS 12", "title": "LLBG_APPROACH_ILS 12.pdf", "plate": "LLBG_APPROACH_ILS 12.pdf", "sw": [31.89508, 34.53213], "ne": [32.20487, 35.00774], "points": [{"name": "BGN", "lat": 32.01306, "lng": 34.87528}]},
     {"png": "LLBG_APPROACHILS30.png", "code": "ILS 30", "title": "LLBG_APPROACH_ILS 30.pdf", "plate": "LLBG_APPROACH_ILS 30.pdf", "sw": [31.80135, 34.49936], "ne": [32.27308, 35.24054]},
     {"png": "LLBG_APPROACHLOC21.png", "code": "LOC 21", "title": "Instrument approach chart (IAC) - ICAO LOC RWY 21", "plate": "LLBG_APPROACH_LOC 21.pdf", "sw": [31.90686, 34.71497], "ne": [32.2582, 35.16292], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
-    {"png": "LLBG_APPROACHRNP08.png", "code": "RNP 08", "title": "Instrument approach chart (IAC) - ICAO RNP RWY 08", "plate": "LLBG_APPROACH_RNP 08.pdf", "sw": [31.83119, 34.48924], "ne": [32.23656, 35.01044]},
+    {"png": "LLBG_APPROACHRNP08.png", "code": "RNP 08", "title": "Instrument approach chart (IAC) - ICAO RNP RWY 08", "plate": "LLBG_APPROACH_RNP 08.pdf", "sw": [31.83119, 34.48924], "ne": [32.23656, 35.01044], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
     {"png": "LLBG_APPROACHRNP12.png", "code": "RNP 12", "title": "LLBG_APPROACH_RNP 12.pdf", "plate": "LLBG_APPROACH_RNP 12.pdf", "sw": [31.89508, 34.53405], "ne": [32.20487, 35.00966], "points": [{"name": "BGN", "lat": 32.01306, "lng": 34.87528}]},
-    {"png": "LLBG_APPROACHRNP26.png", "code": "RNP 26", "title": "LLBG_APPROACH_RNP 26.pdf", "plate": "LLBG_APPROACH_RNP 26.pdf", "sw": [31.81836, 34.62644], "ne": [32.25727, 35.19682]},
-    {"png": "LLBG_APPROACHRNPX30.png", "code": "RNP X 30", "title": "LLBG_APPROACH_RNP X 30.pdf", "plate": "LLBG_APPROACH_RNP X 30.pdf", "sw": [31.8598, 34.67452], "ne": [32.12306, 35.05651]},
+    {"png": "LLBG_APPROACHRNP26.png", "code": "RNP 26", "title": "LLBG_APPROACH_RNP 26.pdf", "plate": "LLBG_APPROACH_RNP 26.pdf", "sw": [31.81836, 34.62644], "ne": [32.25727, 35.19682], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
+    {"png": "LLBG_APPROACHRNPX30.png", "code": "RNP X 30", "title": "LLBG_APPROACH_RNP X 30.pdf", "plate": "LLBG_APPROACH_RNP X 30.pdf", "sw": [31.8598, 34.67452], "ne": [32.12306, 35.05651], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
     {"png": "LLBG_APPROACHRNPY21.png", "code": "RNP Y 21", "title": "LLBG_APPROACH_RNP Y 21.pdf", "plate": "LLBG_APPROACH_RNP Y 21.pdf", "sw": [31.89776, 34.70635], "ne": [32.26804, 35.18089], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
     {"png": "LLBG_APPROACHRNPZ30.png", "code": "RNP Z 30", "title": "LLBG_APPROACH_RNP Z 30.pdf", "plate": "LLBG_APPROACH_RNP Z 30.pdf", "sw": [31.87272, 34.65001], "ne": [32.22553, 35.20221], "points": [{"name": "BGN", "lat": 32.01311, "lng": 34.87536}]},
     {"png": "LLBG_SID08.png", "code": "SID 08", "title": "LLBG_SID_08.pdf", "plate": "LLBG_SID_08.pdf", "tl": [32.80038, 35.54204], "tr": [31.89025, 35.54204], "bl": [32.80038, 33.98594]},
@@ -444,7 +444,7 @@
         "LLHZ_airport_Chart.pdf"
       ],
    "ifr_overlays": [
-    {"png": "LLHZ_ATS.png", "code": "ATS departure", "title": "יציאה לנתיבי ATS", "plate": "LLHZ_airport_Annex Chet.pdf", "sw": [31.98455, 34.63961], "ne": [32.41098, 35.00103], "points": [{"name": "NAT", "lat": 32.33389, "lng": 34.96889}, {"name": "BGN", "lat": 32.01306, "lng": 34.87528}]}
+    {"png": "LLHZ_ATS.png", "code": "ATS departure", "title": "יציאה לנתיבי ATS", "plate": "LLHZ_airport_Annex Chet.pdf", "sw": [31.98455, 34.63961], "ne": [32.41098, 35.00103], "points": [{"name": "BENQO", "lat": 32.39139, "lng": 34.76333}, {"name": "DIVLA", "lat": 32.28417, "lng": 34.71778}, {"name": "YENON", "lat": 32.37556, "lng": 34.82028}, {"name": "NAT", "lat": 32.33389, "lng": 34.96889}, {"name": "BGN", "lat": 32.01306, "lng": 34.87528}]}
    ],
       "runways": [
         "10/28"
