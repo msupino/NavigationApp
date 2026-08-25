@@ -34,8 +34,13 @@ function gpsTrackingLive() {
 }
 // Whether the inspector may open at all right now. The gist can put the old behaviour back
 // (featureInspectorWhileTracking) for anyone who wants a waypoint's details mid-flight.
-function inspectorAllowedNow() {
+function inspectorAllowedNow(sel) {
   if (!gpsTrackingLive()) return true;
+  // Traffic is the exception, and it is the only one: those marks exist ONLY while a fix is
+  // driving the map, so the rule that keeps the panel off the chart in flight would mean
+  // nobody could ever read one. A tap on an aircraft is the pilot asking for it by name.
+  const s = sel || (typeof state !== 'undefined' && state.selected);
+  if (s && s.type === 'traffic') return true;
   return typeof tune === 'function' && tune('featureInspectorWhileTracking') === true;
 }
 
@@ -204,6 +209,11 @@ function gpsStopWatch(h) {
 var gpsLiveOn = false;
 var gpsLiveWatchId = null;
 var _gpsLivePrev = null;
+// Where the own-ship is, as of the last fix -- null before the first one. Traffic asks for a
+// radius around this, and only this: the map centre is where you are LOOKING, which in
+// flight is often somewhere else entirely.
+function gpsLastFix() { return _gpsLivePrev ? { lat: _gpsLivePrev.lat, lng: _gpsLivePrev.lng } : null; }
+if (typeof window !== 'undefined') window.gpsLastFix = gpsLastFix;
 
 function onLivePosition(pos) {
   if (!gpsLiveOn || !pos || !pos.coords) return;
@@ -319,6 +329,8 @@ function startLiveLocation() {
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
+  // Traffic follows the fix: it starts when one starts driving the map, and stops with it.
+  if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
   _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
   gpsWatchUserMapMoves();
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
@@ -374,6 +386,7 @@ function stopLiveLocation() {
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
+  if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
