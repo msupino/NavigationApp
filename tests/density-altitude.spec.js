@@ -247,3 +247,24 @@ test('the time label never wraps the row', async ({ page }) => {
   expect(geo.sameLine).toBe(true);        // slider and label share a line
   expect(geo.sliderW).toBeGreaterThan(30);      // ...and the slider is still draggable
 });
+
+// The label's text grows as the slider moves ("13:00Z" -> "+24h · 08-26 14:00Z"). With a
+// flexible slider, the readout re-sized the control being dragged: the thumb slid out from
+// under the finger pushing it.
+test('the slider keeps its width as its own label grows', async ({ page }) => {
+  await boot(page);
+  await open(page, 'LLHA');
+  const widths = await page.evaluate(async () => {
+    const sl = document.querySelector('.da-time');
+    const at = (v) => {
+      sl.value = String(v);
+      sl.dispatchEvent(new Event('input', { bubbles: true }));
+      return Math.round(sl.getBoundingClientRect().width);
+    };
+    return { now: at(0), mid: at(9), end: at(sl.max),
+             label: document.querySelector('.da-when').textContent };
+  });
+  expect(widths.mid).toBe(widths.now);
+  expect(widths.end).toBe(widths.now);
+  expect(widths.label).toMatch(/\+24/);      // the longest label really was on screen
+});

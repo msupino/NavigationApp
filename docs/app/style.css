@@ -6584,5 +6584,10 @@ body.theme-light .da-row.da-warn .val { color: #b3261e; }
    dragged it, which is the one thing a control being dragged must not do. The slider gives
    up the width instead -- it is a scrubber, not a measuring device. */
 .da-time-row { align-items: center; gap: 6px; flex-wrap: nowrap; }
-.da-when { white-space: nowrap; flex: 0 0 auto; }
-.da-time { flex: 1 1 40px; min-width: 40px; }
+/* The slider is a FIXED width and the label takes what is left. The label's text changes
+   length as the slider moves ("13:00Z" at now, "+24h · 08-26 14:00Z" at the end), so a
+   flexible slider was re-sized by its own readout mid-drag -- the thumb sliding out from
+   under the finger pushing it. Short on purpose: a day in one-hour steps needs 24 stops,
+   not precision. */
+.da-when { white-space: nowrap; flex: 1 1 auto; text-align: end; overflow: hidden; text-overflow: ellipsis; }
+.da-time { flex: 0 0 88px; width: 88px; }
