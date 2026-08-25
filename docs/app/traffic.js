@@ -20,7 +20,12 @@
   window.trafficAircraft = [];          // what the inspector and the hit test read
 
   const live = () => typeof gpsPositionLive === 'function' && gpsPositionLive();
+  // The gist switch outranks the pilot's: a feature that is off is off everywhere, even on
+  // a device that ticked the box while it was on.
+  const offered = () => typeof tune !== 'function' || tune('featureLiveTraffic') === true;
+  window.trafficOffered = offered;
   const on = () => {
+    if (!offered()) return false;
     let stored = null;
     try { stored = localStorage.getItem(LAYER_KEY); } catch (e) { /* storage unavailable */ }
     if (stored === '0') return false;

@@ -746,6 +746,11 @@ NavAid.tuningDefaults = {
   defaultShowHeli: { value: false, type: 'bool', label: 'Default: show heli plates' },
   defaultShowCommfail: { value: false, type: 'bool', label: 'Default: show comm-fail plates' },
   defaultShowIfr: { value: false, type: 'bool', label: 'Default: show the IFR chart layer' },
+  // The whole feature, from the gist: off means no Traffic box in View/Set and nothing on
+  // the map, on any device, however the switch under it was left. Ships OFF, because the
+  // feed it asks for is not standing yet -- this is the switch that turns it on for
+  // everyone once it is, without an app release.
+  featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
   // Off until the feed this asks for is actually standing: a default of ON would greet
   // every pilot with "Live traffic unavailable" and nothing on the map. Flip to true once
   // trafficApiUrl answers.
@@ -781,7 +786,7 @@ NavAid.tuningGroups = [
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
     'defaultBaseLayer', 'baseLayerOpacity'] },
-  { name: 'Live traffic', keys: ['defaultShowTraffic', 'trafficApiUrl', 'trafficRadiusNm',
+  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
