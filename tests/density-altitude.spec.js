@@ -214,3 +214,36 @@ test('pressure is given in both scales', async ({ page }) => {
   expect(out.rubbish).toBe('');
   expect(out.metar).toContain('QNH 1013 hPa · 29.91\u2033');
 });
+
+// The label is a date and a clock ("+24h · 08-26 14:00Z") and the panel is narrow. Left to
+// wrap, it broke into two lines and shoved the slider around under the finger dragging it --
+// the one thing a control being dragged must not do. Squeezed here to the width a phone with
+// large system type gives it, which is where it was first seen.
+test('the time label never wraps the row', async ({ page }) => {
+  await page.setViewportSize({ width: 380, height: 720 });
+  await boot(page);
+  await open(page, 'LLHA');
+  await page.evaluate(() => {
+    const st = document.createElement('style');
+    st.textContent = '#inspector { width: 210px !important; } .da-when { font-size: 13px !important; }';
+    document.head.appendChild(st);
+    const s2 = document.querySelector('.da-time');
+    s2.value = String(s2.max);            // the longest label the slider can produce
+    s2.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const geo = await page.evaluate(() => {
+    const slider = document.querySelector('.da-time');
+    const label = document.querySelector('.da-when');
+    const s3 = slider.getBoundingClientRect(), l = label.getBoundingClientRect();
+    return {
+      labelH: Math.round(l.height),
+      // 'normal' line-height parses to NaN, so measure against the font size instead.
+      oneLine: l.height < parseFloat(getComputedStyle(label).fontSize) * 1.8,
+      sameLine: Math.abs((s3.top + s3.height / 2) - (l.top + l.height / 2)) < 6,
+      sliderW: Math.round(s3.width),
+    };
+  });
+  expect(geo.oneLine).toBe(true);         // the label itself is one line, not two
+  expect(geo.sameLine).toBe(true);        // slider and label share a line
+  expect(geo.sliderW).toBeGreaterThan(30);      // ...and the slider is still draggable
+});
