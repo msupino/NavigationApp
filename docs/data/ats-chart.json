@@ -1,17 +1,19 @@
 {
-  "png": "ats-routes.png",
-  "title_en": "ENR 6.1 ATS routes chart",
-  "title_he": "מפת נתיבי ATS",
-  "amendment": "2/25",
-  "effective": "2025-10-02",
-  "modified": "2025-09-30",
-  "sw": [
-    29.376677,
-    33.426611
-  ],
-  "ne": [
-    33.420846,
-    36.158314
-  ],
-  "note": "Reprojected to Web Mercator from the CAA sheet, which is drawn on a conformal projection: placed as-printed it would sit kilometres out at the edges. Bounds cover the graticule box the sheet labels on all four sides; nothing outside it is extrapolated."
+ "source": "CAAI AIP ENR 6.1 ATS routes chart, georeferenced by scripts/warp-ats-chart.py against the sheet own graticule (conic projection).",
+ "edition": "amendment 2/25, effective 2025-10-02",
+ "png": "ats-routes.png",
+ "title_en": "ENR 6.1 ATS routes chart",
+ "title_he": "מפת נתיבי ATS",
+ "amendment": "2/25",
+ "effective": "2025-10-02",
+ "modified": "2025-09-30",
+ "sw": [
+  29.376677,
+  33.426611
+ ],
+ "ne": [
+  33.420846,
+  36.158314
+ ],
+ "note": "Reprojected to Web Mercator from the CAA sheet, which is drawn on a conformal projection: placed as-printed it would sit kilometres out at the edges. Bounds cover the graticule box the sheet labels on all four sides; nothing outside it is extrapolated."
 }
