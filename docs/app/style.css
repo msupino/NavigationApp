@@ -6589,5 +6589,21 @@ body.theme-light .da-row.da-warn .val { color: #b3261e; }
    flexible slider was re-sized by its own readout mid-drag -- the thumb sliding out from
    under the finger pushing it. Short on purpose: a day in one-hour steps needs 24 stops,
    not precision. */
-.da-when { white-space: nowrap; flex: 1 1 auto; text-align: end; overflow: hidden; text-overflow: ellipsis; }
+/* A clock and a date always read left to right, whatever the interface language: in Hebrew
+   the "+21ש · 08-26 11:00Z" label was being reordered by the bidi algorithm into
+   "11:00Z 08-26 · ש21+", which is a different date and a different hour. Isolated and forced
+   LTR, like the frequency readouts. The box also reserves its width, so the row does not
+   reflow as the text lengthens from "14:00Z" to the full form. */
+/* `.row .val` sets unicode-bidi: plaintext, which is what re-orders this one -- so the
+   selector has to out-specify it, not merely follow it. */
+.row .val.da-when {
+  white-space: nowrap;
+  flex: 1 1 auto;            /* the remainder of a row whose slider is fixed: a constant box */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: end;
+}
 .da-time { flex: 0 0 88px; width: 88px; }

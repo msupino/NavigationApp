@@ -268,3 +268,61 @@ test('the slider keeps its width as its own label grows', async ({ page }) => {
   expect(widths.end).toBe(widths.now);
   expect(widths.label).toMatch(/\+24/);      // the longest label really was on screen
 });
+
+// Hebrew is written right to left; a clock is not. The label "+21ש · 08-26 11:00Z" was being
+// reordered into "11:00Z 08-26 · ש21+" -- a different date and a different hour, which on a
+// planning tool is worse than no label at all.
+test('the time label reads left to right in Hebrew too', async ({ page }) => {
+  await boot(page);
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.da) && !!window.airfields);
+  await page.evaluate(() => {
+    const i = airfields.findIndex(a => String(a.name || '').toUpperCase() === 'LLHA');
+    state.selected = { type: 'airfield', index: i };
+    showInspector();
+  });
+  await page.waitForTimeout(500);
+  await page.evaluate(() => {
+    const s2 = document.querySelector('.da-time');
+    s2.value = '21';
+    s2.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const out = await page.evaluate(() => {
+    const el = document.querySelector('.da-when');
+    const cs = getComputedStyle(el);
+    return { dir: el.getAttribute('dir'), direction: cs.direction, bidi: cs.unicodeBidi,
+             text: el.textContent, rtlPage: document.documentElement.dir };
+  });
+  expect(out.rtlPage).toBe('rtl');            // the page really is in Hebrew
+  expect(out.dir).toBe('ltr');
+  expect(out.bidi).toMatch(/isolate/);
+  expect(out.text).toMatch(/^\+21/);          // the hour offset still leads
+  // ...and leads ON SCREEN, which is the part the bidi algorithm was getting wrong: the
+  // Hebrew hour letter took the digits after it into its own run, so the clock and the date
+  // swapped places. Each part is isolated now; measure where they actually land.
+  const order = await page.evaluate(() => [...document.querySelectorAll('.da-when bdi')]
+    .map(b => ({ text: b.textContent, x: Math.round(b.getBoundingClientRect().x) })));
+  expect(order.length).toBe(2);
+  expect(order[0].text).toMatch(/^\+21/);
+  expect(order[0].x).toBeLessThan(order[1].x);        // offset left, clock right
+  expect(order[1].text).toMatch(/\d\d:\d\dZ$/);
+});
+
+// ...and the row keeps its shape as the label lengthens, in either language.
+test('the row does not reflow between the short and long labels', async ({ page }) => {
+  await boot(page);
+  await open(page, 'LLHA');
+  const w = await page.evaluate(() => {
+    const sl = document.querySelector('.da-time');
+    const lb = document.querySelector('.da-when');
+    const at = (v) => {
+      sl.value = String(v);
+      sl.dispatchEvent(new Event('input', { bubbles: true }));
+      return { slider: Math.round(sl.getBoundingClientRect().width),
+               label: Math.round(lb.getBoundingClientRect().width) };
+    };
+    return { now: at(0), late: at(sl.max) };
+  });
+  expect(w.late.slider).toBe(w.now.slider);
+  expect(w.late.label).toBe(w.now.label);
+});

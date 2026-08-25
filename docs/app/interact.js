@@ -1590,12 +1590,27 @@ function appendAirfieldDensityAltitude(body, af) {
   slider.setAttribute('aria-label', S.daWhen || 'Valid time');
   const when = document.createElement('span');
   when.className = 'val da-when';
+  when.dir = 'ltr';                 // a clock is a clock in both languages
   timeRow.append(slider, when);
   sec.appendChild(timeRow);
   body.appendChild(sec);
 
-  const fmtWhen = (h) => (typeof notamTimeLabel === 'function' ? notamTimeLabel(h)
+  // "+21ש · 08-26 12:00Z" in Hebrew is one string with an RTL letter in the middle, and the
+  // bidi algorithm hands the digits after it to that letter's run: the label rendered as
+  // "12:00 08-26 · ש21+" -- a different date and a different hour. Each part goes in its own
+  // <bdi> so the runs cannot reach into each other, whatever the language.
+  const fmtWhenText = (h) => (typeof notamTimeLabel === 'function' ? notamTimeLabel(h)
     : (h ? '+' + h + 'h' : (S.daNow || 'now')));
+  const setWhen = (h) => {
+    when.textContent = '';
+    const parts = String(fmtWhenText(h)).split(' · ');
+    parts.forEach((part, i) => {
+      if (i) when.appendChild(document.createTextNode(' · '));
+      const bdi = document.createElement('bdi');
+      bdi.textContent = part;
+      when.appendChild(bdi);
+    });
+  };
 
   // The observation beats the model at hour zero: LLBG's own METAR carries the temperature
   // and QNH measured on the field, and the forecast is a grid interpolation of it.
@@ -1604,7 +1619,7 @@ function appendAirfieldDensityAltitude(body, af) {
 
   function render() {
     const h = parseInt(slider.value, 10) || 0;
-    when.textContent = fmtWhen(h);
+    setWhen(h);
     let tempC = null, qnh = null, from = '';
     if (!h && metar && Number.isFinite(Number(metar.temp))) {
       tempC = Number(metar.temp);
