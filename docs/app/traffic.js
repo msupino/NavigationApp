@@ -101,17 +101,29 @@
 
   // The arrow points where the aircraft is going, and carries what a pilot reads first: who
   // it is and how high. Altitude in hundreds of feet, the way it is said on the radio.
+  // A top-down aeroplane, the way every traffic display draws one: nose along the track, so
+  // the shape alone says which way it is going before the label is read. Drawn as a path
+  // rather than a glyph -- a font character (the old arrow) is whatever the device decides
+  // it is, and colour, size and the white outline that keeps it legible over a chart all
+  // have to be ours.
+  const PLANE = 'M12 1.6 13.35 6.4 13.35 9.6 22.4 14.9 22.4 17 13.35 14.3 13.35 19.4'
+              + ' 16.1 21.3 16.1 22.6 12 21.4 7.9 22.6 7.9 21.3 10.65 19.4 10.65 14.3'
+              + ' 1.6 17 1.6 14.9 10.65 9.6 10.65 6.4Z';
+
   function icon(a) {
     const trk = Number.isFinite(a.track) ? a.track : 0;
     const fl = Number.isFinite(a.alt) ? Math.round(a.alt / 100) : null;
     const label = [a.flight || a.hex || '', fl === null ? '' : (fl < 10 ? '0' : '') + fl]
       .filter(Boolean).join(' ');
+    const px = Math.round((typeof tune === 'function' && tune('trafficIconPx')) || 22);
+    const svg = '<svg class="traffic-plane" viewBox="0 0 24 24" width="' + px + '" height="' + px
+      + '" aria-hidden="true"><path d="' + PLANE + '"/></svg>';
     return L.divIcon({
       className: 'traffic-mark',
-      iconSize: [58, 26],
-      iconAnchor: [13, 13],
-      html: '<span class="traffic-arrow" style="transform:rotate(' + trk + 'deg)">➤</span>' +
-            '<span class="traffic-label">' + escapeXml(label) + '</span>',
+      iconSize: [px + 38, px + 4],
+      iconAnchor: [Math.round(px / 2), Math.round(px / 2)],
+      html: '<span class="traffic-arrow" style="transform:rotate(' + trk + 'deg)">' + svg + '</span>'
+          + '<span class="traffic-label">' + escapeXml(label) + '</span>',
     });
   }
 
