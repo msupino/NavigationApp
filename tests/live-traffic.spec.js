@@ -1,41 +1,56 @@
 // @ts-check
-// ADS-B traffic on the map.
+// ADS-B traffic on the map: the other aeroplanes, an arrow each, pointing where they are
+// going. It asks around your fix when there is one -- that is the traffic that matters --
+// and otherwise around the middle of what you are looking at, because which airways are
+// busy over a field you are routing through is a question asked at the desk too.
 //
-// The community feeds send no CORS headers -- a browser cannot call them at all, verified
-// rather than assumed -- and NavAid is a static site with nothing to proxy through. So it
-// asks one endpoint that can (dump1090web's /api/traffic: the local receiver first, the
-// community feed for what the aerial cannot see). Everything here is off unless a real
-// position is driving the map: traffic on a planning chart is decoration, and the battery
-// cost is only worth paying in the air.
+// It exists in the APK and nowhere else. The aggregators serve data to anyone and CORS
+// headers to nobody, so a browser cannot read them at all; Capacitor's native HTTP makes
+// the request in Java, where the same-origin rule does not apply. Rather than shipping a
+// feature that fails on the desktop, the switch is not offered there.
 const { test, expect } = require('./_setup');
 
+// What adsb.lol actually sends: `ac`, `alt_baro`, `t` for the type.
 const AC = [
-  { hex: '4c80b8', flight: 'BBG802', lat: 32.10, lon: 34.90, alt: 15975, track: 284.9, gs: 377, type: 'A320', squawk: '2225' },
-  { hex: '738a11', flight: 'ELY321', lat: 32.02, lon: 34.95, alt: 4200, track: 120, gs: 210, type: 'B738', squawk: '4512' },
+  { hex: '4c80b8', flight: 'BBG802 ', lat: 32.10, lon: 34.90, alt_baro: 15975, track: 284.9, gs: 377, t: 'A320', squawk: '2225' },
+  { hex: '738a11', flight: 'ELY321 ', lat: 32.02, lon: 34.95, alt_baro: 4200, track: 120, gs: 210, t: 'B738', squawk: '4512' },
 ];
 
-async function boot(page, body = { aircraft: AC }, opts = {}) {
-  // A test that watches the requests registers its own handler first; a second one here
-  // would take precedence (Playwright uses the last match) and the watcher would see none.
-  if (opts.route !== false) {
-    await page.route(/api\/traffic.*/, r =>
-      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }));
-  }
-  await page.addInitScript(() => {
+// A fake native platform whose CapacitorHttp answers from `body` and records what it was
+// asked. There is no page.route here: the request never goes through the browser at all.
+async function stubNative(page, opts) {
+  const o = opts || {};
+  await page.addInitScript(([body, native]) => {
+    window.__asked = [];
+    window.__body = body;
+    window.Capacitor = {
+      isNativePlatform: () => native,
+      Plugins: {
+        CapacitorHttp: {
+          request: (req) => {
+            window.__asked.push(req.url);
+            return Promise.resolve({ status: 200, data: window.__body });
+          },
+        },
+      },
+    };
     window.__geoCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
     navigator.geolocation.clearWatch = () => {};
-    // The layer ships off (see defaultShowTraffic) because the feed it asks for is not
-    // standing yet. These tests are about the layer when it is on: turn it on as the pilot
-    // would, once, rather than pretending the default is something it is not.
     localStorage.setItem('navaid.showTraffic', '1');
-  });
+  }, [o.body !== undefined ? o.body : { ac: AC }, o.native !== false]);
+}
+
+async function boot(page, opts) {
+  await stubNative(page, opts);
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof startLiveLocation === 'function' &&
-    typeof window.trafficRefresh === 'function');
-  // The feature is off in the shipped gist (see featureLiveTraffic): turn it on the way the
-  // gist would, so these tests are about the layer rather than about the switch above it.
-  await page.evaluate(() => { setTune('featureLiveTraffic', true); refreshTrafficFeature(); });
+  await page.waitForFunction(() => typeof window.trafficRefresh === 'function');
+  // The feature is off in the shipped gist (featureLiveTraffic): turn it on the way the
+  // gist would, so these tests are about the layer rather than the switch above it.
+  if (!opts || opts.feature !== false) {
+    await page.evaluate(() => { setTune('featureLiveTraffic', true); refreshTrafficFeature(); });
+    await page.waitForTimeout(300);
+  }
 }
 
 const fly = (page, lat = 32.05, lng = 34.92) => page.evaluate(async ([la, ln]) => {
@@ -45,76 +60,70 @@ const fly = (page, lat = 32.05, lng = 34.92) => page.evaluate(async ([la, ln]) =
 }, [lat, lng]);
 
 const marks = (page) => page.locator('.traffic-mark');
+const asked = (page) => page.evaluate(() => window.__asked || []);
+const frameShown = (page) => page.evaluate(() => {
+  const f = document.getElementById('traffic-cb').closest('.tb-layer-frame');
+  return getComputedStyle(f).display !== 'none';
+});
 
-// Nobody should be greeted by "Live traffic unavailable" over an empty map: the layer stays
-// off until the feed it asks for is standing, and only then does the default flip.
-test('it ships off, so a pilot who never asked for it is never told it is broken', async ({ page }) => {
-  let asked = 0;
-  await page.route(/api\/traffic.*/, r => { asked++; r.fulfill({ status: 200, contentType: 'application/json', body: '{"aircraft":[]}' }); });
-  await page.addInitScript(() => {
-    window.__geoCb = null;
-    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
-    navigator.geolocation.clearWatch = () => {};
-  });
-  await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof startLiveLocation === 'function');
-  await page.evaluate(() => { setTune('featureLiveTraffic', true); refreshTrafficFeature(); });
-  expect(await page.evaluate(() => document.getElementById('traffic-cb').checked)).toBe(false);
+// A browser cannot read these feeds however the switches are set, so it is not offered one.
+// A tick-box that can only ever say "Live traffic unavailable" is worse than no tick-box.
+test('a plain browser is not offered it at all', async ({ page }) => {
+  await boot(page, { native: false });
+  expect(await page.evaluate(() => tune('featureLiveTraffic'))).toBe(true);
+  expect(await frameShown(page)).toBe(false);
   await fly(page);
   expect(await marks(page).count()).toBe(0);
-  expect(asked).toBe(0);
+});
+
+test('the gist switch hides it in the APK too, however the switch under it was left', async ({ page }) => {
+  await boot(page, { feature: false });           // shipped state: featureLiveTraffic off
+  expect(await page.evaluate(() => tune('featureLiveTraffic'))).toBe(false);
+  expect(await frameShown(page)).toBe(false);
+  await fly(page);
+  expect(await marks(page).count()).toBe(0);
+  expect(await asked(page)).toEqual([]);          // and nothing is asked for, either
+
+  // The gist lands after boot, so flipping it has to reach a page already running.
+  await page.evaluate(() => { setTune('featureLiveTraffic', true); refreshTrafficFeature(); });
+  expect(await frameShown(page)).toBe(true);
+  await expect(marks(page)).toHaveCount(2);
 });
 
 test('it draws around the map, with no fix at all', async ({ page }) => {
-  const asked = [];
-  await page.route(/api\/traffic.*/, r => {
-    asked.push(new URL(r.request().url()));
-    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ aircraft: AC }) });
-  });
-  await boot(page, { aircraft: AC }, { route: false });
+  await boot(page);
   await page.evaluate(() => map.setView([32.05, 34.92], 10));
   await page.waitForTimeout(700);
   await expect(marks(page)).toHaveCount(2);
-  const last = asked[asked.length - 1];       // the first went out before the map was moved
-  expect(Number(last.searchParams.get('lat'))).toBeCloseTo(32.05, 1);
-  expect(Number(last.searchParams.get('lon'))).toBeCloseTo(34.92, 1);
+  // The feeds put the position in the path, so the tunable is a template.
+  expect((await asked(page)).pop()).toMatch(/\/lat\/32\.05\d*\/lon\/34\.92\d*\/dist\/40$/);
 });
 
 // A drag across the country is a request to see the traffic there -- but a drag fires
 // moveend continuously, and each one would be a request over the wire.
 test('panning somewhere else asks about there, once', async ({ page }) => {
-  const asked = [];
-  await page.route(/api\/traffic.*/, r => {
-    asked.push(new URL(r.request().url()));
-    r.fulfill({ status: 200, contentType: 'application/json', body: '{"aircraft":[]}' });
-  });
-  await boot(page, { aircraft: [] }, { route: false });
+  await boot(page, { body: { ac: [] } });
   await page.evaluate(() => map.setView([32.05, 34.92], 10));
   await page.waitForTimeout(700);
-  const before = asked.length;
+  const before = (await asked(page)).length;
   await page.evaluate(async () => {
     map.setView([33.00, 35.40], 10);
     map.setView([33.01, 35.41], 10);      // a nudge, not a new place to look at
     await new Promise(r => setTimeout(r, 900));
   });
-  expect(asked.length).toBe(before + 1);
-  expect(Number(asked[asked.length - 1].searchParams.get('lat'))).toBeCloseTo(33.0, 1);
+  const after = await asked(page);
+  expect(after.length).toBe(before + 1);
+  expect(after.pop()).toContain('/lat/33.0');
 });
 
 // A fix outranks the map: the traffic that matters is the traffic around the aircraft, not
 // around whatever corner of the chart was last dragged into view.
 test('a fix decides where it asks about, over the map centre', async ({ page }) => {
-  const asked = [];
-  await page.route(/api\/traffic.*/, r => {
-    asked.push(new URL(r.request().url()));
-    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ aircraft: AC }) });
-  });
-  await boot(page, { aircraft: AC }, { route: false });
+  await boot(page);
   await page.evaluate(() => map.setView([31.20, 34.70], 9));   // looking somewhere else
   await fly(page, 32.05, 34.92);
   await expect(marks(page)).toHaveCount(2);
-  const last = asked[asked.length - 1];
-  expect(Number(last.searchParams.get('lat'))).toBeCloseTo(32.05, 1);
+  expect((await asked(page)).pop()).toContain('/lat/32.05');
 });
 
 test('each mark says who and how high, pointing where it is going', async ({ page }) => {
@@ -122,11 +131,10 @@ test('each mark says who and how high, pointing where it is going', async ({ pag
   await fly(page);
   const first = await page.evaluate(() => {
     const el = document.querySelector('.traffic-mark');
-    const arrow = el.querySelector('.traffic-arrow');
-    return { text: el.textContent.trim(), rotated: arrow.style.transform };
+    return { text: el.textContent.trim(), rotated: el.querySelector('.traffic-arrow').style.transform };
   });
-  expect(first.text).toContain('BBG802');
-  expect(first.text).toContain('160');            // 15 975 ft, in hundreds, as it is said
+  expect(first.text).toContain('BBG802');       // trimmed: the feed pads callsigns to 8
+  expect(first.text).toContain('160');          // 15 975 ft, in hundreds, as it is said
   expect(first.rotated).toBe('rotate(284.9deg)');
 });
 
@@ -138,15 +146,16 @@ test('tapping one opens the inspector on it, in flight', async ({ page }) => {
   const out = await page.evaluate(() => ({
     sel: state.selected,
     title: document.getElementById('insp-title').value,
-    rows: [...document.querySelectorAll('#insp-body .row')].map(r => r.textContent.replace(/\s+/g, ' ').trim()),
+    rows: [...document.querySelectorAll('#insp-body .row')].map(r => r.textContent.replace(/\s+/g, ' ').trim()).join(' '),
   }));
-  // The in-flight rule hides the inspector because the panel covers the chart. These marks
-  // exist ONLY in flight, so a tap on one is the pilot asking for exactly this panel.
+  // The in-flight rule hides the inspector because the panel covers the chart. A tap on an
+  // aircraft is the pilot asking for exactly that panel.
   expect(out.sel).toEqual({ type: 'traffic', hex: '4c80b8' });
   expect(out.title).toBe('BBG802');
-  expect(out.rows.join(' ')).toMatch(/15975 ft/);
-  expect(out.rows.join(' ')).toMatch(/377 kt/);
-  expect(out.rows.join(' ')).toMatch(/2225/);
+  expect(out.rows).toMatch(/15975 ft/);
+  expect(out.rows).toMatch(/377 kt/);
+  expect(out.rows).toMatch(/A320/);
+  expect(out.rows).toMatch(/2225/);
 });
 
 test('an aircraft that stops being heard takes its panel with it', async ({ page }) => {
@@ -155,9 +164,11 @@ test('an aircraft that stops being heard takes its panel with it', async ({ page
   await page.evaluate(() => map.setView([32.10, 34.90], 10));
   await page.locator('.traffic-mark').first().click({ force: true });
   expect(await page.evaluate(() => state.selected.type)).toBe('traffic');
-  await page.route(/api\/traffic.*/, r =>
-    r.fulfill({ status: 200, contentType: 'application/json', body: '{"aircraft":[]}' }));
-  await page.evaluate(async () => { await window.trafficPoll(); await new Promise(r => setTimeout(r, 200)); });
+  await page.evaluate(async () => {
+    window.__body = { ac: [] };
+    await window.trafficPoll();
+    await new Promise(r => setTimeout(r, 200));
+  });
   expect(await page.evaluate(() => state.selected)).toBeNull();
   expect(await marks(page).count()).toBe(0);
 });
@@ -179,47 +190,28 @@ test('the toggle is remembered, and off means off even in the air', async ({ pag
 // The own-ship is in the feed too when its transponder is on, and a second aeroplane drawn
 // on top of yourself reads as traffic in your lap.
 test('your own aircraft is not drawn as traffic', async ({ page }) => {
-  await boot(page, { aircraft: [{ hex: 'own111', flight: 'SELF', lat: 32.05, lon: 34.92, alt: 1200 }, ...AC] });
+  await boot(page, { body: { ac: [{ hex: 'own111', flight: 'SELF', lat: 32.05, lon: 34.92, alt_baro: 1200 }, ...AC] } });
   await fly(page, 32.05, 34.92);
   const names = await page.evaluate(() => (window.trafficAircraft || []).map(a => a.flight));
   expect(names).not.toContain('SELF');
   expect(names).toEqual(expect.arrayContaining(['BBG802', 'ELY321']));
 });
 
-// The gist switch above the pilot's: it decides whether this exists at all, on every device,
-// so a feed that goes away (or was never stood up) can be answered without an app release.
-test('the gist switch hides the whole thing, however the switch under it was left', async ({ page }) => {
-  let asked = 0;
-  await page.route(/api\/traffic.*/, r => { asked++; r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ aircraft: AC }) }); });
-  await page.addInitScript(() => {
-    window.__geoCb = null;
-    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
-    navigator.geolocation.clearWatch = () => {};
-    localStorage.setItem('navaid.showTraffic', '1');   // this pilot asked for traffic...
-  });
-  await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof window.trafficRefresh === 'function');
-  expect(await page.evaluate(() => tune('featureLiveTraffic'))).toBe(false);   // ...and ships off
-  // No frame to wonder about: a lone disabled tick-box reads as something broken.
-  expect(await page.evaluate(() => {
-    const f = document.getElementById('traffic-cb').closest('.tb-layer-frame');
-    return getComputedStyle(f).display;
-  })).toBe('none');
+// One aeroplane, whichever spelling the feed uses: adsb.lol says ac/alt_baro/t, a proxy of
+// one's own would more likely say aircraft/alt/type. Both have to read the same.
+test('it reads either spelling of the feed', async ({ page }) => {
+  await boot(page, { body: { aircraft: [{ hex: 'abc123', callsign: 'ISR44', lat: 32.10, lng: 34.90, alt: 3300, heading: 90, speed: 140, type: 'C172', squawk: '7000' }] } });
   await fly(page);
-  expect(await marks(page).count()).toBe(0);
-  expect(asked).toBe(0);
+  const a = await page.evaluate(() => window.trafficAircraft[0]);
+  expect(a).toMatchObject({ hex: 'abc123', flight: 'ISR44', lat: 32.10, lon: 34.90, alt: 3300, track: 90, gs: 140, type: 'C172' });
+  expect(await page.evaluate(() => document.querySelector('.traffic-mark').textContent)).toContain('ISR44');
+});
 
-  // The gist lands after boot, so flipping it has to reach a page already running.
-  await page.evaluate(() => { setTune('featureLiveTraffic', true); refreshTrafficFeature(); });
-  expect(await page.evaluate(() => {
-    const f = document.getElementById('traffic-cb').closest('.tb-layer-frame');
-    return getComputedStyle(f).display;
-  })).not.toBe('none');
-  await page.waitForTimeout(600);
-  await expect(marks(page)).toHaveCount(2);
-
-  // ...and switching it back off takes the marks away again.
-  await page.evaluate(() => { setTune('featureLiveTraffic', false); refreshTrafficFeature(); });
-  await page.waitForTimeout(300);
-  expect(await marks(page).count()).toBe(0);
+// An aeroplane on the runway reports alt_baro "ground", not a number.
+test('an aircraft on the ground is drawn without an altitude', async ({ page }) => {
+  await boot(page, { body: { ac: [{ hex: 'gnd001', flight: 'ELY7', lat: 32.10, lon: 34.90, alt_baro: 'ground', track: 0 }] } });
+  await fly(page);
+  const el = await page.evaluate(() => document.querySelector('.traffic-mark').textContent.trim());
+  expect(el).toContain('ELY7');
+  expect(el).not.toMatch(/\d\d\d/);
 });
