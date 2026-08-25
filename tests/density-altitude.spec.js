@@ -326,3 +326,51 @@ test('the row does not reflow between the short and long labels', async ({ page 
   expect(w.late.slider).toBe(w.now.slider);
   expect(w.late.label).toBe(w.now.label);
 });
+
+// Where it sits matters as much as what it says. Temperature and QNH are what density
+// altitude is made of, and the METAR they come from prints directly below it — so it
+// belongs inside Weather, above the satellite thumbnail, with its slider above the numbers
+// the slider changes.
+test('it lives in the Weather box, slider first, above the satellite', async ({ page }) => {
+  await boot(page);
+  await open(page, 'LLHA');
+  const layout = await page.evaluate(() => {
+    const wx = document.querySelector('#insp-body .wx-section');
+    const da = document.querySelector('.da-section');
+    const sat = document.querySelector('#insp-body .sat-section, #insp-body .satellite-section');
+    const inside = !!(wx && da && wx.contains(da));
+    const kids = da ? [...da.children].map(c => c.className) : [];
+    const order = (a, b) => !!(a && b) &&
+      (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    return {
+      inside,
+      sliderFirst: /da-time-row/.test(kids[0] || ''),
+      beforeSatellite: sat ? order(wx, sat) : null,
+      wxBeforeSat: sat ? order(document.querySelector('.da-row'), sat) : null,
+    };
+  });
+  expect(layout.inside).toBe(true);            // inside the Weather frame, not above it
+  expect(layout.sliderFirst).toBe(true);       // the control before its own read-out
+  if (layout.beforeSatellite !== null) expect(layout.beforeSatellite).toBe(true);
+});
+
+// Radios grouped and titled: on a field with a tower, a clearance and an ATIS this is five
+// rows of bare numbers otherwise.
+test('the frequencies sit in a Communication frame', async ({ page }) => {
+  await boot(page);
+  await open(page, 'LLHA');
+  const comms = await page.evaluate(() => {
+    const sec = document.querySelector('#insp-body .comm-section');
+    if (!sec) return null;
+    return {
+      title: sec.querySelector('.insp-frame-head').textContent.trim(),
+      rows: [...sec.querySelectorAll('.row label')].map(l => l.textContent.trim()),
+      // ...and it must not wear the weather section's class, which the wx tests select on.
+      borrowsWxClass: sec.classList.contains('wx-section'),
+    };
+  });
+  expect(comms).not.toBeNull();
+  expect(comms.title).toBe('Communication');
+  expect(comms.rows.join(' ')).toMatch(/Primary/);
+  expect(comms.borrowsWxClass).toBe(false);
+});

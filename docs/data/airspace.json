@@ -9,7 +9,14 @@
    "name": "LLP03",
    "upperFt": 3000,
    "lowerFt": 0,
-   "remarks": "H24",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 2.0,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      32.861389,
@@ -39,7 +46,14 @@
    "name": "LLP04",
    "upperFt": 3000,
    "lowerFt": 0,
-   "remarks": "H24",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "3000 0 /",
+   "areaNm2": 0.7,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      32.793889,
@@ -69,7 +83,14 @@
    "name": "LLP05",
    "upperFt": 2000,
    "lowerFt": 0,
-   "remarks": "H24",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 2.2,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      32.678611,
@@ -95,7 +116,14 @@
    "name": "LLP07",
    "upperFt": 2000,
    "lowerFt": 0,
-   "remarks": "H24",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 0.9,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      32.479271,
@@ -393,7 +421,14 @@
    "name": "LLP08",
    "upperFt": 1100,
    "lowerFt": 0,
-   "remarks": "H24",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 2.1,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      32.160556,
@@ -443,7 +478,14 @@
    "name": "LLP11",
    "upperFt": 8000,
    "lowerFt": 0,
-   "remarks": "H24",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 2.1,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.791546,
@@ -741,7 +783,14 @@
    "name": "LLP12",
    "upperFt": 3000,
    "lowerFt": 0,
-   "remarks": "H24",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 17.7,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.747778,
@@ -791,7 +840,14 @@
    "name": "LLP13",
    "upperFt": 4000,
    "lowerFt": 0,
-   "remarks": "H24",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 32.9,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.838403,
@@ -1089,7 +1145,14 @@
    "name": "LLP14",
    "upperFt": 7000,
    "lowerFt": 0,
-   "remarks": "H24",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 22.8,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.1325,
@@ -1131,7 +1194,14 @@
    "name": "LLP15",
    "upperFt": 99900,
    "lowerFt": 0,
-   "remarks": "H24 AIRAC AMDT 001/2024 AIP ISRAEL Remarks of activity, type of nature of hazard, risk of interception) 3",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "AIRAC AMDT; AIP; ISRAEL; limit / Lower Remarks; limit (time of activity, type of; restriction, nature of hazard,; risk of interception); 2 3",
+   "areaNm2": 41.8,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.049722,
@@ -1621,7 +1691,14 @@
    "name": "LLP171",
    "upperFt": 6000,
    "lowerFt": 0,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 477.0,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      32.229722,
@@ -1703,7 +1780,14 @@
    "name": "LLP172",
    "upperFt": 6000,
    "lowerFt": 0,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 356.4,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.816667,
@@ -2037,7 +2121,14 @@
    "name": "LLP173",
    "upperFt": 6000,
    "lowerFt": 0,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 321.1,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.741111,
@@ -2267,7 +2358,14 @@
    "name": "LLP18",
    "upperFt": 6000,
    "lowerFt": 0,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 25.3,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.908611,
@@ -2309,7 +2407,14 @@
    "name": "LLP19",
    "upperFt": 99900,
    "lowerFt": 0,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 292.1,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.649444,
@@ -2431,7 +2536,17 @@
    "name": "LLR01",
    "upperFt": 40000,
    "lowerFt": 7000,
-   "remarks": "TRG MIL Sun 06:15 (UTCW) - Fri 10:30 (UTCW) IDF/AF Training Areas Except holiday eve 10:30 (09:30) until day after holidat 06:15 (05:15)",
+   "activity": [
+    "TRG",
+    "MIL"
+   ],
+   "hours": [
+    "Sun 06:15 (UTCW) - Fri 10:30 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "IDF/AF Training Areas; Except holiday eve 10:30 (09:30) until day; after holidat 06:15 (05:15)",
+   "areaNm2": 702.9,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      33.086389,
@@ -2505,7 +2620,16 @@
    "name": "LLR02",
    "upperFt": 40000,
    "lowerFt": 5000,
-   "remarks": "TRG H24 IDF/AF Training Areas",
+   "activity": [
+    "TRG"
+   ],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "IDF/AF Training Areas",
+   "areaNm2": 458.2,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.703889,
@@ -2556,10 +2680,19 @@
   {
    "id": "LLR20",
    "kind": "restricted",
-   "name": "LLR20",
+   "name": "Habonim (LLR20)",
    "upperFt": 12000,
    "lowerFt": 0,
-   "remarks": "PARACHUTE H24 \"Habonim\" parachuting area.",
+   "activity": [
+    "PARACHUTE"
+   ],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "\"Habonim\" parachuting area.",
+   "areaNm2": 7.5,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      32.665,
@@ -3137,7 +3270,21 @@
    "name": "LLR24",
    "upperFt": 99000,
    "lowerFt": 0,
-   "remarks": "MILOPS CIVIL Sun SR - Sun SS Mon SR - Mon SS Thu SR - Thu SS Wed SR - Wed SS Tue SR - Tue SS Except holiday eve until day after holiday at Sunrise",
+   "activity": [
+    "MILOPS",
+    "CIVIL"
+   ],
+   "hours": [
+    "Sun SR - Sun SS",
+    "Mon SR - Mon SS",
+    "Thu SR - Thu SS",
+    "Wed SR - Wed SS",
+    "Tue SR - Tue SS"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve until day after holiday at; Sunrise",
+   "areaNm2": 26.4,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.969167,
@@ -3160,10 +3307,17 @@
   {
    "id": "LLR27",
    "kind": "restricted",
-   "name": "LLR27",
+   "name": "Eilat (LLR27)",
    "upperFt": 23000,
    "lowerFt": 0,
-   "remarks": "OTHER \"Eilat\" Restricted area. Activated by NOTAM",
+   "activity": [
+    "OTHER"
+   ],
+   "hours": [],
+   "byNotam": true,
+   "notes": "\"Eilat\" Restricted area.; Activated by NOTAM",
+   "areaNm2": 38.0,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      29.665556,
@@ -3193,7 +3347,17 @@
    "name": "LLR309",
    "upperFt": 5000,
    "lowerFt": 0,
-   "remarks": "FIRE MIL Sun 04:00 (UTCW) - Thu 19:00 (UTCW) Except holiday eve. 12:00 (11:00) until day after holiday 04:00 (03:00)",
+   "activity": [
+    "MIL",
+    "FIRE"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 36.5,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.409444,
@@ -3243,7 +3407,14 @@
    "name": "LLR36",
    "upperFt": 99000,
    "lowerFt": 0,
-   "remarks": "Sun 04:00 (UTCW) - Thu 19:00 (UTCW) Except holiday eve. 12:00 (11:00) until day after holiday 04:00 (03:00) AIRAC AMDT 003/2022 AIP ISRAEL Remarks of activity, type of nature of hazard, risk of interception) 3",
+   "activity": [],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00); AIRAC AMDT; AIP; ISRAEL; limit / Lower Remarks; limit (time of activity, type of; restriction, nature of hazard,; risk of interception); 2 3",
+   "areaNm2": 532.9,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.954722,
@@ -3405,7 +3576,17 @@
    "name": "LLR500",
    "upperFt": 14500,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00)",
+   "activity": [
+    "MIL",
+    "FIRE"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 20.4,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.058056,
@@ -3443,7 +3624,17 @@
    "name": "LLR502",
    "upperFt": 14500,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00)",
+   "activity": [
+    "MIL",
+    "FIRE"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 14.9,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.030556,
@@ -3481,7 +3672,17 @@
    "name": "LLR504",
    "upperFt": 14500,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00)",
+   "activity": [
+    "MIL",
+    "FIRE"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 8.2,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.978056,
@@ -3511,7 +3712,17 @@
    "name": "LLR520",
    "upperFt": 14500,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00)",
+   "activity": [
+    "MIL",
+    "FIRE"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 27.3,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.811667,
@@ -3541,7 +3752,17 @@
    "name": "LLR589",
    "upperFt": 14500,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00)",
+   "activity": [
+    "MIL",
+    "FIRE"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 25.6,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.0175,
@@ -3575,7 +3796,17 @@
    "name": "LLR618",
    "upperFt": 14500,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00)",
+   "activity": [
+    "MIL",
+    "FIRE"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 20.5,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.954722,
@@ -3613,7 +3844,16 @@
    "name": "LLR801",
    "upperFt": 11000,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00)",
+   "activity": [
+    "MILOPS"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "MIL; Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 174.6,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.561944,
@@ -3651,7 +3891,16 @@
    "name": "LLR802",
    "upperFt": 11000,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00)",
+   "activity": [
+    "MILOPS"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "MIL; Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 40.4,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.495,
@@ -3677,7 +3926,16 @@
    "name": "LLR803",
    "upperFt": 11000,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00)",
+   "activity": [
+    "MILOPS"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "MIL; Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 35.8,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.561944,
@@ -3707,7 +3965,16 @@
    "name": "LLR804",
    "upperFt": 99000,
    "lowerFt": 0,
-   "remarks": "(UTCW) - Thu 19:00 (UTCW) holiday eve. 12:00 (11:00) until day 04:00 (03:00) CAA ENR-5.1 - 5 11 AUG 2022 Remarks (time of activity, type of restriction, nature of hazard, risk of interception) 3",
+   "activity": [
+    "MIL"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00); CAA; ENR-5.1 - 5; 11 AUG 2022; Upper limit / Lower Remarks; limit (time of activity, type of; restriction, nature of hazard,; risk of interception); 2 3",
+   "areaNm2": 140.8,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.203611,
@@ -3789,7 +4056,16 @@
    "name": "LLR805",
    "upperFt": 12500,
    "lowerFt": 0,
-   "remarks": "MIL Sun 04:00 (UTCW) - Thu 19:00 (UTCW) Except holiday eve. 12:00 (11:00) until day after holiday 04:00 (03:00)",
+   "activity": [
+    "MIL"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 67.8,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.233889,
@@ -3847,7 +4123,17 @@
    "name": "LLR82",
    "upperFt": 4000,
    "lowerFt": 0,
-   "remarks": "MILOPS CIVIL H24",
+   "activity": [
+    "MILOPS",
+    "CIVIL"
+   ],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 31.2,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.932222,
@@ -3893,7 +4179,16 @@
    "name": "LLR83",
    "upperFt": 11000,
    "lowerFt": 0,
-   "remarks": "MILOPS MIL Sun 04:00 (UTCW) - Thu 19:00 (UTCW) Except holiday eve. 12:00 (11:00) until day after holiday 04:00 (03:00)",
+   "activity": [
+    "MILOPS"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "MIL; Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 342.7,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      32.550556,
@@ -3931,7 +4226,17 @@
    "name": "LLR90",
    "upperFt": 11000,
    "lowerFt": 0,
-   "remarks": "FIRE MIL Sun 04:00 (UTCW) - Thu 19:00 (UTCW) Except holiday eve. 12:00 (11:00) until day after holiday 04:00 (03:00)",
+   "activity": [
+    "MIL",
+    "FIRE"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00)",
+   "areaNm2": 134.9,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      30.9325,
@@ -3961,7 +4266,16 @@
    "name": "LLR921",
    "upperFt": 5000,
    "lowerFt": 0,
-   "remarks": "MIL Sun 04:00 (UTCW) - Thu 19:00 (UTCW) Except holiday eve. 12:00 (11:00) until day after holiday 04:00 (03:00) Remarks of activity, type of restriction, of hazard, risk of interception) 3 AIRAC AMDT 003/2022 AIP ISRAEL CAA",
+   "activity": [
+    "MIL"
+   ],
+   "hours": [
+    "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)"
+   ],
+   "byNotam": false,
+   "notes": "Except holiday eve. 12:00 (11:00) until day; after holiday 04:00 (03:00); Remarks; Upper limit (time of activity, type of restriction,; Lower limit nature of hazard, risk of interception); 2 3; AIRAC AMDT; AIP; ISRAEL; LEFT BLANK; CAA",
+   "areaNm2": 142.8,
+   "source": "AIP ENR 5.1",
    "ring": [
     [
      31.345556,
@@ -4108,7 +4422,41 @@
    "name": "Ben-Gurion TMA — Western Sector",
    "upperFt": 9000,
    "lowerFt": 3000,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 150.7,
+   "source": "AIP ENR 2.1",
+   "stations": [
+    {
+     "mhz": "120.500",
+     "name": "APP/DEP control",
+     "purpose": ""
+    },
+    {
+     "mhz": "131.10",
+     "name": "APP/DEP control",
+     "purpose": "Secondary"
+    },
+    {
+     "mhz": "121.500",
+     "name": "APP/DEP control",
+     "purpose": "Emergency"
+    },
+    {
+     "mhz": "119.500",
+     "name": "TMA control",
+     "purpose": ""
+    },
+    {
+     "mhz": "133.600",
+     "name": "TMA control",
+     "purpose": "Secondary"
+    }
+   ],
    "ring": [
     [
      32.321389,
@@ -4135,7 +4483,41 @@
    "name": "Ben-Gurion TMA — Northern Sea Route Sector",
    "upperFt": 8000,
    "lowerFt": 2500,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 61.4,
+   "source": "AIP ENR 2.1",
+   "stations": [
+    {
+     "mhz": "120.500",
+     "name": "APP/DEP control",
+     "purpose": ""
+    },
+    {
+     "mhz": "131.10",
+     "name": "APP/DEP control",
+     "purpose": "Secondary"
+    },
+    {
+     "mhz": "121.500",
+     "name": "APP/DEP control",
+     "purpose": "Emergency"
+    },
+    {
+     "mhz": "119.500",
+     "name": "TMA control",
+     "purpose": ""
+    },
+    {
+     "mhz": "133.600",
+     "name": "TMA control",
+     "purpose": "Secondary"
+    }
+   ],
    "ring": [
     [
      32.3225,
@@ -4162,7 +4544,41 @@
    "name": "Ben-Gurion TMA — Southern Sea Route Sector",
    "upperFt": 8000,
    "lowerFt": 1200,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 54.0,
+   "source": "AIP ENR 2.1",
+   "stations": [
+    {
+     "mhz": "120.500",
+     "name": "APP/DEP control",
+     "purpose": ""
+    },
+    {
+     "mhz": "131.10",
+     "name": "APP/DEP control",
+     "purpose": "Secondary"
+    },
+    {
+     "mhz": "121.500",
+     "name": "APP/DEP control",
+     "purpose": "Emergency"
+    },
+    {
+     "mhz": "119.500",
+     "name": "TMA control",
+     "purpose": ""
+    },
+    {
+     "mhz": "133.600",
+     "name": "TMA control",
+     "purpose": "Secondary"
+    }
+   ],
    "ring": [
     [
      32.111389,
@@ -4189,7 +4605,41 @@
    "name": "Ben-Gurion TMA — Northern Beach Sector",
    "upperFt": 8000,
    "lowerFt": 2500,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 54.5,
+   "source": "AIP ENR 2.1",
+   "stations": [
+    {
+     "mhz": "120.500",
+     "name": "APP/DEP control",
+     "purpose": ""
+    },
+    {
+     "mhz": "131.10",
+     "name": "APP/DEP control",
+     "purpose": "Secondary"
+    },
+    {
+     "mhz": "121.500",
+     "name": "APP/DEP control",
+     "purpose": "Emergency"
+    },
+    {
+     "mhz": "119.500",
+     "name": "TMA control",
+     "purpose": ""
+    },
+    {
+     "mhz": "133.600",
+     "name": "TMA control",
+     "purpose": "Secondary"
+    }
+   ],
    "ring": [
     [
      32.292778,
@@ -4224,7 +4674,41 @@
    "name": "Ben-Gurion TMA — Southern Beach Sector",
    "upperFt": 8000,
    "lowerFt": 2000,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 82.4,
+   "source": "AIP ENR 2.1",
+   "stations": [
+    {
+     "mhz": "120.500",
+     "name": "APP/DEP control",
+     "purpose": ""
+    },
+    {
+     "mhz": "131.10",
+     "name": "APP/DEP control",
+     "purpose": "Secondary"
+    },
+    {
+     "mhz": "121.500",
+     "name": "APP/DEP control",
+     "purpose": "Emergency"
+    },
+    {
+     "mhz": "119.500",
+     "name": "TMA control",
+     "purpose": ""
+    },
+    {
+     "mhz": "133.600",
+     "name": "TMA control",
+     "purpose": "Secondary"
+    }
+   ],
    "ring": [
     [
      32.106111,
@@ -4255,7 +4739,41 @@
    "name": "Ben-Gurion TMA — Northern Central Sector",
    "upperFt": 9000,
    "lowerFt": 0,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 47.1,
+   "source": "AIP ENR 2.1",
+   "stations": [
+    {
+     "mhz": "120.500",
+     "name": "APP/DEP control",
+     "purpose": ""
+    },
+    {
+     "mhz": "131.10",
+     "name": "APP/DEP control",
+     "purpose": "Secondary"
+    },
+    {
+     "mhz": "121.500",
+     "name": "APP/DEP control",
+     "purpose": "Emergency"
+    },
+    {
+     "mhz": "119.500",
+     "name": "TMA control",
+     "purpose": ""
+    },
+    {
+     "mhz": "133.600",
+     "name": "TMA control",
+     "purpose": "Secondary"
+    }
+   ],
    "ring": [
     [
      32.264722,
@@ -4286,7 +4804,41 @@
    "name": "Ben-Gurion TMA — Southern Central Sector",
    "upperFt": 9000,
    "lowerFt": 2000,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 71.6,
+   "source": "AIP ENR 2.1",
+   "stations": [
+    {
+     "mhz": "120.500",
+     "name": "APP/DEP control",
+     "purpose": ""
+    },
+    {
+     "mhz": "131.10",
+     "name": "APP/DEP control",
+     "purpose": "Secondary"
+    },
+    {
+     "mhz": "121.500",
+     "name": "APP/DEP control",
+     "purpose": "Emergency"
+    },
+    {
+     "mhz": "119.500",
+     "name": "TMA control",
+     "purpose": ""
+    },
+    {
+     "mhz": "133.600",
+     "name": "TMA control",
+     "purpose": "Secondary"
+    }
+   ],
    "ring": [
     [
      32.105,
@@ -4317,7 +4869,41 @@
    "name": "Ben-Gurion TMA — Central Sector",
    "upperFt": 9000,
    "lowerFt": 6000,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 201.0,
+   "source": "AIP ENR 2.1",
+   "stations": [
+    {
+     "mhz": "120.500",
+     "name": "APP/DEP control",
+     "purpose": ""
+    },
+    {
+     "mhz": "131.10",
+     "name": "APP/DEP control",
+     "purpose": "Secondary"
+    },
+    {
+     "mhz": "121.500",
+     "name": "APP/DEP control",
+     "purpose": "Emergency"
+    },
+    {
+     "mhz": "119.500",
+     "name": "TMA control",
+     "purpose": ""
+    },
+    {
+     "mhz": "133.600",
+     "name": "TMA control",
+     "purpose": "Secondary"
+    }
+   ],
    "ring": [
     [
      32.230556,
@@ -4356,7 +4942,41 @@
    "name": "Ben-Gurion TMA — Eastern Sector",
    "upperFt": 10000,
    "lowerFt": 6000,
-   "remarks": "",
+   "activity": [],
+   "hours": [
+    "H24"
+   ],
+   "byNotam": false,
+   "notes": "",
+   "areaNm2": 383.0,
+   "source": "AIP ENR 2.1",
+   "stations": [
+    {
+     "mhz": "120.500",
+     "name": "APP/DEP control",
+     "purpose": ""
+    },
+    {
+     "mhz": "131.10",
+     "name": "APP/DEP control",
+     "purpose": "Secondary"
+    },
+    {
+     "mhz": "121.500",
+     "name": "APP/DEP control",
+     "purpose": "Emergency"
+    },
+    {
+     "mhz": "119.500",
+     "name": "TMA control",
+     "purpose": ""
+    },
+    {
+     "mhz": "133.600",
+     "name": "TMA control",
+     "purpose": "Secondary"
+    }
+   ],
    "ring": [
     [
      32.157778,

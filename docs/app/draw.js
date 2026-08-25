@@ -1852,9 +1852,15 @@ async function loadNavWaypoints() {
 // sectors (ENR 2.1). Loaded once, lazily, on the first draw that wants it -- 46 rings is a
 // small file but nobody who never opens the layer should pay for it.
 var airspace = null;                 // null = not loaded
-async function loadAirspace() {
-  if (airspace !== null) return airspace;
-  airspace = [];                     // claim it: a second draw must not fetch again
+var _airspaceLoad = null;            // the in-flight fetch, so a second draw joins it
+function loadAirspace() {
+  if (airspace !== null) return Promise.resolve(airspace);
+  // Joining the promise, NOT claiming the global with an empty array: the claim made a
+  // caller that arrived while the fetch was still running receive [] and believe it.
+  if (!_airspaceLoad) _airspaceLoad = _fetchAirspace();
+  return _airspaceLoad;
+}
+async function _fetchAirspace() {
   try {
     // ?v= is hand-bumped when the dataset changes, like every other data file here.
     const r = await fetch('data/airspace.json?v=1');
@@ -1865,6 +1871,7 @@ async function loadAirspace() {
     console.warn('Failed to load airspace:', e);
     airspace = [];
   }
+  _airspaceLoad = null;
   if (airspace.length) scheduleDraw();
   return airspace;
 }
@@ -1884,6 +1891,27 @@ function airspaceLimitText(a) {
     ? (S.airspaceUnl || 'UNL') : String(a.upperFt);
   return typeof S.airspaceLimits === 'function' ? S.airspaceLimits(hi, lo) : (lo + ' - ' + hi);
 }
+
+// Which areas contain this point, smallest first -- a sector inside a TMA inside a
+// restricted area should offer the tightest one first, the way the bubbles do.
+function airspaceAtLatLng(latlng) {
+  if (!showAirspace || !Array.isArray(airspace) || !airspace.length || !latlng) return [];
+  const pt = proj(latlng);
+  const out = [];
+  for (let i = 0; i < airspace.length; i++) {
+    const poly = airspace[i].ring.map(c => proj({ lat: c[0], lng: c[1] }));
+    if (!notamPointInPoly(pt, poly)) continue;
+    let a2 = 0;
+    for (let j = 0; j < poly.length; j++) {
+      const q = poly[(j + 1) % poly.length];
+      a2 += poly[j].x * q.y - q.x * poly[j].y;
+    }
+    out.push({ index: i, size: Math.abs(a2) });
+  }
+  out.sort((x, y) => x.size - y.size);
+  return out.map(h => h.index);
+}
+window.airspaceAtLatLng = airspaceAtLatLng;
 
 function drawAirspace() {
   if (!showAirspace) return;

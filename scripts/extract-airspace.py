@@ -235,6 +235,63 @@ def parse_limits(text):
 AREA_ID = re.compile(r"^\s{0,3}(LL[PRD]\d+)\b", re.M)
 
 
+# --- remarks -----------------------------------------------------------------
+# The remarks column carries three different things in one blob: what the area is for
+# (TRG, PARACHUTE, FIRE...), when it is active ("H24", "Sun 04:00 (UTCW) - Thu 19:00
+# (UTCW)"), and prose ("Habonim" parachuting area. Activated by NOTAM). A pilot deciding
+# whether to route through wants them apart, so they are taken apart here rather than in
+# the app -- one place to be wrong, and it is the place holding the source PDF.
+ACTIVITY = ['TRG', 'MILOPS', 'MIL', 'PARACHUTE', 'FIRE', 'BALLOON', 'CIVIL', 'OTHER']
+# "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)" / "Sun SR - Sun SS" / "H24"
+SCHEDULE = re.compile(
+    r"(H24|(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s+(?:\d{1,2}:\d{2}(?:\s*\(UTCW\))?|SR|SS)"
+    r"\s*-\s*(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s+(?:\d{1,2}:\d{2}(?:\s*\(UTCW\))?|SR|SS))")
+QUOTED = re.compile(r'"([^"]{2,40})"')
+
+
+def read_remarks(text):
+    """-> (activity[], hours[], byNotam, title, prose)."""
+    flat = ' '.join(text.split())
+    activity = [a for a in ACTIVITY if re.search(r"\b" + a + r"\b", flat)]
+    if 'MILOPS' in activity and 'MIL' in activity:
+        activity.remove('MIL')                     # MILOPS already says it
+    hours = []
+    for m in SCHEDULE.finditer(flat):
+        h = ' '.join(m.group(1).split())
+        if h not in hours:
+            hours.append(h)
+    quoted = QUOTED.search(flat)
+    prose = flat
+    for token in activity:
+        prose = re.sub(r"\b" + token + r"\b", ' ', prose)
+    for h in hours:
+        prose = prose.replace(h, ' ')
+    # Removing the schedule and the activity words leaves their separators behind, and a
+    # note that reads "; ; ; IDF/AF Training Areas" is a parser's leftovers, not prose.
+    prose = '; '.join(p for p in (' '.join(x.split()) for x in prose.split(';'))
+                      if p and re.search(r"[A-Za-z0-9]", p) and p not in ('/0', '/'))
+    return {
+        'activity': activity,
+        'hours': hours,
+        'byNotam': bool(re.search(r"activated by NOTAM", flat, re.I)),
+        'title': quoted.group(1) if quoted else '',
+        'prose': prose,
+    }
+
+
+def ring_area_nm2(ring):
+    """Planar shoelace in nautical miles. Good to a fraction of a percent at this
+    latitude, and it is a sense of scale rather than a survey."""
+    lat0 = sum(p[0] for p in ring) / len(ring)
+    k = math.cos(math.radians(lat0))
+    total = 0.0
+    for i in range(len(ring)):
+        x1, y1 = ring[i][1] * 60 * k, ring[i][0] * 60
+        x2, y2 = ring[(i + 1) % len(ring)][1] * 60 * k, ring[(i + 1) % len(ring)][0] * 60
+        total += x1 * y2 - x2 * y1
+    return round(abs(total) / 2, 1)
+
+
 def read_enr51(rows):
     """rows = pdf_columns(ENR 5.1). An area starts where the boundary column
     opens with its identifier; its limits and remarks are the other two columns
@@ -252,15 +309,17 @@ def read_enr51(rows):
             # The identifier line's tail is kept apart: when the column edge falls in
             # the wrong place, the upper figure is printed there rather than in the
             # limits column, and further down this same column is only coordinates.
-            blocks.append([head.group(1), kind, left[head.end():], mid, right, left[head.end():]])
+            blocks.append([head.group(1), kind, left[head.end():], mid, right, left[head.end():],
+                           [(mid + ' ' + right).strip()]])
             continue
         if blocks:
             blocks[-1][2] += ' ' + left
             blocks[-1][3] += ' ' + mid
             blocks[-1][4] += ' ' + right
+            blocks[-1][6].append((mid + ' ' + right).strip())
 
     seen = set()
-    for ident, kind, boundary, limits, remarks, head_line in blocks:
+    for ident, kind, boundary, limits, remarks, head_line, note_lines in blocks:
         if ident in seen:           # LLP05 is printed twice; keep the first
             continue
         ring, why = build_ring(boundary)
@@ -273,13 +332,32 @@ def read_enr51(rows):
         # column. Read both, from the head of the block only -- past the first line
         # the boundary column is coordinates, which no level pattern matches anyway.
         upper, lower = parse_limits(head_line + ' ' + limits)
+        # Remarks straddle the same moving edge: LLR500's "Sun 04:00" prints in the
+        # limits column and the rest of its schedule in the remarks one, so read both
+        # and strike out the vertical limits rather than losing half a schedule.
+        blob = re.sub(r"(FL\s*\d+|UNL|\d[\d ]*)\s*(?:FT)?\s*(?:ALT|AGL|AMSL)?\s*/\s*"
+                      r"(FL\s*\d+|GND|\d[\d ]*)\s*(?:FT)?\s*(?:ALT|AGL|AMSL)?", ' ',
+                      ' | '.join(l for l in note_lines if l.strip()))
+        # What is left of a line once the vertical limits are struck out is often nothing
+        # at all -- the limits are printed once and the rest of the column is blank -- so
+        # drop the empty pieces before joining, or the note reads "; ; ; IDF/AF Training".
+        blob = re.sub(r"\b(FT|ALT|AGL|AMSL)\b", ' ', blob)
+        pieces = [' '.join(p.split()) for p in blob.split('|')]
+        pieces = [p for p in pieces if p and re.search(r"[A-Za-z0-9]", p) and p not in ('/0', '/')]
+        blob = '; '.join(pieces)
+        r = read_remarks(blob)
         areas.append({
             'id': ident,
             'kind': kind,
-            'name': ident,
+            'name': (r['title'] + ' (' + ident + ')') if r['title'] else ident,
             'upperFt': upper,
             'lowerFt': lower,
-            'remarks': ' '.join(remarks.split()),
+            'activity': r['activity'],
+            'hours': r['hours'],
+            'byNotam': r['byNotam'],
+            'notes': r['prose'],
+            'areaNm2': ring_area_nm2(ring),
+            'source': 'AIP ENR 5.1',
             'ring': ring,
         })
     return areas, skipped
@@ -297,6 +375,43 @@ def parse_band(text):
     return parse_level(m.group(2)), parse_level(m.group(1))
 
 
+# The TMA's frequencies: who to call to cross it, which is the question a controlled
+# airspace raises. They are printed once for the whole TMA, above the sector list, so
+# every sector carries the same set.
+FREQ = re.compile(r"(\d{3}\.\d{2,3})\s*MHZ(?:\s*/\s*(\w+))?", re.I)
+
+
+CONTROL = re.compile(r"((?:APP/DEP|TMA|[A-Z][A-Za-z\-]*)\s+control)")
+
+
+def read_tma_stations(rows, upto):
+    """Frequency, and which position answers on it.
+
+    The position is named on its own line ("APP/DEP control", "TMA control") and its
+    frequencies print beside and below it, so each frequency takes the nearest named
+    position in either direction. Scraping the words next to the number instead gave
+    labels like "/APP ENG", which is the table's layout rather than a call sign."""
+    freqs, controls, seen = [], [], set()
+    for i, (left, mid, right) in enumerate(rows[:upto]):
+        line = ' '.join((left + ' ' + mid + ' ' + right).split())
+        c = CONTROL.search(line)
+        if c:
+            controls.append((i, c.group(1)))
+        for m in FREQ.finditer(line):
+            mhz = m.group(1)
+            if mhz in seen:
+                continue
+            seen.add(mhz)
+            freqs.append((i, mhz, (m.group(2) or '').capitalize()))
+    out = []
+    for i, mhz, purpose in freqs:
+        name = ''
+        if controls:
+            name = min(controls, key=lambda c: abs(c[0] - i))[1]
+        out.append({'mhz': mhz, 'name': name, 'purpose': purpose})
+    return out
+
+
 def read_enr21(rows):
     text = '\n'.join(left for left, _, _ in rows)
     areas, skipped = [], []
@@ -305,6 +420,14 @@ def read_enr21(rows):
         tma = text.find('TMA')
     body = text[tma:]
     marks = [(m.start(), m.group(1).strip()) for m in SECTOR.finditer(body)]
+    # Everything printed above the first sector heading is the TMA's own header block.
+    first_sector_line = next((i for i, (left, _, _) in enumerate(rows)
+                              if SECTOR.match(left.strip() + '\n')), len(rows))
+    # ...starting at the "2. TMA" heading: everything above it belongs to the FIR and its
+    # sectors, whose frequencies are a different answer to a different question.
+    tma_line = next((i for i, (left, _, _) in enumerate(rows)
+                     if re.match(r"^\s*2\.\s+TMA\s*$", left)), 0)
+    stations = read_tma_stations(rows[tma_line:first_sector_line], first_sector_line - tma_line)
     for i, (pos, name) in enumerate(marks):
         end = marks[i + 1][0] if i + 1 < len(marks) else len(body)
         chunk = body[pos:end]
@@ -327,7 +450,13 @@ def read_enr21(rows):
             'name': 'Ben-Gurion TMA — ' + name,
             'upperFt': upper,
             'lowerFt': lower,
-            'remarks': '',
+            'activity': [],
+            'hours': ['H24'],
+            'byNotam': False,
+            'notes': '',
+            'areaNm2': ring_area_nm2(ring),
+            'source': 'AIP ENR 2.1',
+            'stations': stations,
             'ring': ring,
         })
     return areas, skipped
