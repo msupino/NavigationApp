@@ -833,6 +833,7 @@ function draw() {
   // Ground colouring first: it is the chart's own backdrop, so everything else -- airspace,
   // the route, the overlays -- draws on top of it rather than being tinted by it.
   if (window.showMsa) { drawTerrainTint(); drawTerrainWarnings(); }
+  drawAirspace();               // AIP airspace (P/R/TMA) under everything else
   drawAreas();                  // airspace bubbles under the waypoints
   // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
   // what a pilot is actually looking at even with every segment drawn.
@@ -1846,6 +1847,91 @@ async function loadNavWaypoints() {
     return [];
   }
 }
+
+// Airspace from the AIP: prohibited and restricted areas (ENR 5.1) and the Ben-Gurion TMA
+// sectors (ENR 2.1). Loaded once, lazily, on the first draw that wants it -- 46 rings is a
+// small file but nobody who never opens the layer should pay for it.
+var airspace = null;                 // null = not loaded
+async function loadAirspace() {
+  if (airspace !== null) return airspace;
+  airspace = [];                     // claim it: a second draw must not fetch again
+  try {
+    // ?v= is hand-bumped when the dataset changes, like every other data file here.
+    const r = await fetch('data/airspace.json?v=1');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    airspace = (d.areas || []).filter(a => a && Array.isArray(a.ring) && a.ring.length >= 3);
+  } catch (e) {
+    console.warn('Failed to load airspace:', e);
+    airspace = [];
+  }
+  if (airspace.length) scheduleDraw();
+  return airspace;
+}
+window.loadAirspace = loadAirspace;
+
+function airspaceColor(kind) {
+  if (kind === 'prohibited') return tune('airspaceProhibitedColor');
+  if (kind === 'tma') return tune('airspaceTmaColor');
+  return tune('airspaceRestrictedColor');
+}
+
+// "0 – 3000" reads as feet without saying so twice; GND and UNL are the words a chart uses.
+function airspaceLimitText(a) {
+  const lo = a.lowerFt === 0 || a.lowerFt === null || a.lowerFt === undefined
+    ? (S.airspaceGnd || 'GND') : String(a.lowerFt);
+  const hi = a.upperFt === null || a.upperFt === undefined
+    ? (S.airspaceUnl || 'UNL') : String(a.upperFt);
+  return typeof S.airspaceLimits === 'function' ? S.airspaceLimits(hi, lo) : (lo + ' - ' + hi);
+}
+
+function drawAirspace() {
+  if (!showAirspace) return;
+  if (airspace === null) { loadAirspace(); return; }
+  if (!airspace.length) return;
+  const alpha = tune('airspaceFillAlpha');
+  octx.save();
+  octx.setLineDash([]);
+  for (const a of airspace) {
+    octx.beginPath();
+    for (let i = 0; i < a.ring.length; i++) {
+      const p = proj({ lat: a.ring[i][0], lng: a.ring[i][1] });
+      if (i === 0) octx.moveTo(p.x, p.y); else octx.lineTo(p.x, p.y);
+    }
+    octx.closePath();
+    const col = airspaceColor(a.kind);
+    octx.fillStyle = cssRgba(col, alpha);
+    octx.strokeStyle = col;
+    octx.lineWidth = tune('airspaceLineWidthPx');
+    octx.fill();
+    octx.stroke();
+  }
+  // Identifier and vertical limits at the centroid, from a zoom where they can be read.
+  // A country-wide view of 46 stacked labels is not information.
+  if (map.getZoom() >= tune('airspaceLabelMinZoom')) {
+    const px = Math.round(tune('airspaceLabelFontPx'));
+    octx.font = 'bold ' + px + 'px sans-serif';
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    for (const a of airspace) {
+      let x = 0, y = 0;
+      for (const p of a.ring) { const s2 = proj({ lat: p[0], lng: p[1] }); x += s2.x; y += s2.y; }
+      x /= a.ring.length; y /= a.ring.length;
+      const col = airspaceColor(a.kind);
+      const lines = [a.short || a.id, airspaceLimitText(a)];
+      for (let i = 0; i < lines.length; i++) {
+        const ly = y + (i - 0.5) * (px + 2);
+        octx.lineWidth = 3;
+        octx.strokeStyle = 'rgba(255,255,255,0.9)';
+        octx.strokeText(lines[i], x, ly);
+        octx.fillStyle = col;
+        octx.fillText(lines[i], x, ly);
+      }
+    }
+  }
+  octx.restore();
+}
+window.drawAirspace = drawAirspace;
 
 // LSA airspace areas ("bubbles") overlay — filled rings drawn under the
 // waypoints. Layer-aware via fetchLayerData('areas'): the Low Alt layer has
