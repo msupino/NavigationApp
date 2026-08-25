@@ -115,6 +115,7 @@ function inspectorSelectionDataReady(sel) {
   if (sel.type === 'airfield') return Array.isArray(airfields);
   if (sel.type === 'vor') return Array.isArray(vors);
   if (sel.type === 'lsaArea') return Array.isArray(areas);
+  if (sel.type === 'airspace') return Array.isArray(window.airspace);
   return true;
 }
 
@@ -152,6 +153,10 @@ function normalizeInspectorSelection(sel) {
   }
   if (sel.type === 'vor') {
     return Array.isArray(vors) && index < vors.length ? { type: 'vor', index } : null;
+  }
+  if (sel.type === 'airspace') {
+    return Array.isArray(window.airspace) && index < window.airspace.length
+      ? { type: 'airspace', index } : null;
   }
   if (sel.type === 'lsaArea') {
     return Array.isArray(areas) && index < areas.length ? { type: 'lsaArea', index } : null;
@@ -477,6 +482,14 @@ function dedupePointCandidates(candidates) {
   return out;
 }
 function pointChoiceText(c) {
+  if (c.type === 'airspace') {
+    const a = (window.airspace && window.airspace[c.index]) || {};
+    const kind = a.kind === 'prohibited' ? (S.airspaceProhibited || 'Prohibited')
+      : a.kind === 'tma' ? (S.airspaceTma || 'TMA')
+      : a.kind === 'ctr' ? (S.airspaceCtr || 'CTR') : (S.airspaceRestricted || 'Restricted');
+    return { primary: a.short || a.id || kind,
+      meta: kind + (typeof airspaceLimitText === 'function' ? ' \u00b7 ' + airspaceLimitText(a) : '') };
+  }
   if (c.type === 'lsaArea') {
     const a = (typeof areas !== 'undefined' && areas && areas[c.index]) || {};
     const bits = [];
@@ -1550,6 +1563,102 @@ function freqEditRow(label, opts) {
   return row;
 }
 
+// --- airspace helpers --------------------------------------------------------
+// Is this area in force at this moment? Only where the printed schedule says so without
+// interpretation: "H24" always, and a "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)" window read
+// in UTC. Anything resting on sunrise/sunset or on the holiday calendar returns null --
+// unknown, and shown as nothing. A confident "not active now" that is wrong is the one
+// answer here that could put an aeroplane somewhere it must not be.
+const AIRSPACE_DAY = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+function airspaceActiveNow(a, nowDate) {
+  const hours = (a && a.hours) || [];
+  if (!hours.length) return null;
+  if (hours.some(h => /^H24$/i.test(h))) return true;
+  const now = nowDate || new Date();
+  let known = false;
+  for (const h of hours) {
+    const m = /^(\w{3})\s+(\d{1,2}):(\d{2})[^-]*-\s*(\w{3})\s+(\d{1,2}):(\d{2})/.exec(h);
+    if (!m) continue;                       // SR/SS and the like: not decidable here
+    known = true;
+    const d0 = AIRSPACE_DAY[m[1].toLowerCase()];
+    const d1 = AIRSPACE_DAY[m[4].toLowerCase()];
+    if (d0 === undefined || d1 === undefined) continue;
+    const minsOf = (d, hh, mm) => d * 1440 + Number(hh) * 60 + Number(mm);
+    const from = minsOf(d0, m[2], m[3]);
+    const to = minsOf(d1, m[5], m[6]);
+    const cur = now.getUTCDay() * 1440 + now.getUTCHours() * 60 + now.getUTCMinutes();
+    const inside = from <= to ? (cur >= from && cur <= to) : (cur >= from || cur <= to);
+    if (inside) return true;
+  }
+  return known ? false : null;
+}
+window.airspaceActiveNow = airspaceActiveNow;
+
+// How the planned route stands against this area's limits. Lateral crossing alone means
+// little: the leg may be well above or below it.
+function airspaceRouteVerdict(a) {
+  if (typeof state === 'undefined' || !state.legs || !state.legs.length) return '';
+  if (typeof airspaceAtLatLng !== 'function') return '';
+  let crosses = false;
+  let lowest = null, highest = null;
+  for (let i = 0; i < state.legs.length; i++) {
+    const w1 = state.waypoints[i], w2 = state.waypoints[i + 1];
+    if (!w1 || !w2) continue;
+    // Sample along the leg: a leg can pass through an area without either end being in it.
+    for (let t = 0; t <= 1.0001; t += 0.05) {
+      const at = { lat: w1.lat + (w2.lat - w1.lat) * t, lng: w1.lng + (w2.lng - w1.lng) * t };
+      if (airspaceAtLatLng(at).indexOf(window.airspace.indexOf(a)) === -1) continue;
+      crosses = true;
+      const alt = typeof legAltitudeFt === 'function' ? legAltitudeFt(state.legs[i]) : null;
+      if (Number.isFinite(alt)) {
+        lowest = lowest === null ? alt : Math.min(lowest, alt);
+        highest = highest === null ? alt : Math.max(highest, alt);
+      }
+      break;
+    }
+  }
+  if (!crosses) return S.airspaceRouteClear || 'clear of it';
+  if (lowest === null) return S.airspaceRouteCrossesNoAlt || 'crosses it — no planned altitude';
+  const upper = a.upperFt === null || a.upperFt === undefined ? Infinity : a.upperFt;
+  const lower = a.lowerFt || 0;
+  if (highest < lower) {
+    return (S.airspaceRouteBelow || 'crosses it, below the base') +
+      ' (' + (lower - highest) + ' ' + (S.unitFeet || 'ft') + ')';
+  }
+  if (lowest > upper) {
+    return (S.airspaceRouteAbove || 'crosses it, above the top') +
+      ' (' + (lowest - upper) + ' ' + (S.unitFeet || 'ft') + ')';
+  }
+  return S.airspaceRouteInside || 'crosses it, inside its limits';
+}
+
+// Distance from the live position (or the map centre when there is no fix) to the nearest
+// corner of the area, and roughly which way it lies.
+function airspaceDistanceText(a) {
+  const fix = (typeof gpsLastFix === 'function' && gpsLastFix()) || null;
+  const from = fix || (typeof map !== 'undefined' ? map.getCenter() : null);
+  if (!from || !Array.isArray(a.ring)) return '';
+  const here = { lat: from.lat, lng: from.lng !== undefined ? from.lng : from.lon };
+  let best = null;
+  for (const p of a.ring) {
+    const g = geo(here, { lat: p[0], lng: p[1] });      // the app's own great-circle helper
+    if (!best || g.dist < best.dist) best = g;
+  }
+  if (!best) return '';
+  return best.dist.toFixed(best.dist < 10 ? 1 : 0) + ' ' + (S.unitNm || 'nm')
+    + ' · ' + String(Math.round(best.brg)).padStart(3, '0') + '°';
+}
+
+// NOTAMs that name this area. Same idea as the bubble matcher: the identifier is what the
+// NOTAM text uses, so match on it rather than on geometry.
+function airspaceNotams(a) {
+  const list = (typeof notams !== 'undefined' && Array.isArray(notams)) ? notams : [];
+  if (!list.length || !a || !a.id) return [];
+  const id = String(a.id).toUpperCase();
+  const rx = new RegExp('\\b' + id.replace(/[^A-Z0-9]/g, '') + '\\b');
+  return list.filter(n => rx.test(String((n && (n.text || n.raw || n.body)) || '').toUpperCase()));
+}
+
 // Density altitude, beside the elevation it corrects. On a hot afternoon at Haifa, Megiddo
 // or Masada the aeroplane behaves as though the field were thousands of feet higher, and
 // nothing in an elevation figure says so. The slider runs a day ahead on the hourly
@@ -1592,7 +1701,9 @@ function appendAirfieldDensityAltitude(body, af) {
   when.className = 'val da-when';
   when.dir = 'ltr';                 // a clock is a clock in both languages
   timeRow.append(slider, when);
-  sec.appendChild(timeRow);
+  // The slider goes ABOVE the numbers it changes: a control under its own read-out is a
+  // control the pilot scrolls past to find, having already read a figure for the wrong hour.
+  sec.insertBefore(timeRow, sec.firstChild);
   body.appendChild(sec);
 
   // "+21ש · 08-26 12:00Z" in Hebrew is one string with an RTL letter in the middle, and the
@@ -1667,6 +1778,23 @@ function appendAirfieldDensityAltitude(body, af) {
     hours = h;
     render();
   }).catch(() => {});
+}
+
+function appendAirfieldComms(body, af) {
+  const sec = document.createElement('div');
+  // Its own class, not the weather section's: `.wx-section` is what the weather tests and
+  // styles select, and a second element wearing it makes every one of those selectors
+  // ambiguous.
+  sec.className = 'insp-frame comm-section';
+  const head = document.createElement('div');
+  head.className = 'insp-frame-head';
+  const lbl = document.createElement('span');
+  lbl.textContent = S.commTitle || 'Communication';
+  head.appendChild(lbl);
+  sec.appendChild(head);
+  appendAirfieldFrequencyRows(sec, af);
+  // A field with no published frequency gets no empty frame.
+  if (sec.querySelectorAll('.row').length) body.appendChild(sec);
 }
 
 function appendAirfieldFrequencyRows(body, af) {
@@ -2478,9 +2606,13 @@ function airfieldInspectorTitle(af) {
 function appendAirfieldDetailRows(body, af, label) {
   if (Number.isFinite(af.elev_ft)) {
     body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
-    appendAirfieldDensityAltitude(body, af);
   }
-  appendAirfieldFrequencyRows(body, af);
+  // Frequencies in a frame of their own: on a field with a tower, a clearance delivery and
+  // an ATIS this is four or five rows of numbers, and unlabelled they read as a list of
+  // settings rather than as the radios to set.
+  appendAirfieldComms(body, af);
+  // Density altitude lives under Weather, because temperature and QNH are what it is made
+  // of -- and the METAR it reads them from is printed directly below it.
   appendAirfieldWeather(body, af);
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
   appendVorRadialRow(body, af.lat, af.lng);
@@ -2511,6 +2643,10 @@ function appendAirfieldWeather(body, af) {
   refreshBtn.setAttribute('aria-label', refreshBtn.title);
   head.appendChild(refreshBtn);
   sec.appendChild(head);
+  // Density altitude first, with its own time slider above it: the slider is what the
+  // pilot came here to move, and a control that sits under the numbers it changes is a
+  // control you scroll past.
+  appendAirfieldDensityAltitude(sec, af);
   const bodyEl = document.createElement('div');
   bodyEl.className = 'wx-body';
   // Follow content direction: prose messages (loading / no-data / error) read
@@ -2990,6 +3126,91 @@ function showInspector() {
     appendPointCoordinateRows(body, af);
     appendAirfieldDetailRows(body, af, title.value);
     appendAddToRouteButton(body, af);
+  } else if (state.selected.type === 'airspace') {
+    // One area of controlled or restricted airspace, from the AIP. Everything here is a
+    // read-out: what it is, how high it reaches, when it is in force and who owns it.
+    const a = (window.airspace || [])[state.selected.index];
+    if (!a) {
+      state.selected = null;
+      insp.classList.add('hidden');
+      clearStoredInspectorSelection();
+      return;
+    }
+    title.value = a.name || a.id;
+    title.placeholder = ''; title.readOnly = true; title.oninput = null;
+
+    // What the letter means, in words. "Restricted" is not "closed", and a pilot deciding
+    // whether to route through needs to know which of the three this is.
+    const kindText = a.kind === 'prohibited' ? (S.airspaceKindProhibited || 'Prohibited — closed')
+      : a.kind === 'tma' ? (S.airspaceKindTma || 'Controlled — clearance required')
+      : a.kind === 'ctr' ? (S.airspaceKindCtr || 'Control zone — clearance required')
+      : (S.airspaceKindRestricted || 'Restricted — conditional');
+    body.appendChild(textRow(S.airspaceKind || 'Class', kindText));
+    body.appendChild(textRow(S.airspaceVertical || 'Vertical limits', airspaceLimitText(a)));
+
+    // Where the planned route stands against those limits: the outline says nothing about
+    // whether this leg is a problem, and the numbers on their own make the pilot do the
+    // comparison in their head at exactly the wrong moment.
+    const verdict = airspaceRouteVerdict(a);
+    if (verdict) body.appendChild(textRow(S.airspaceYourRoute || 'Your route', verdict));
+
+    if (Array.isArray(a.activity) && a.activity.length) {
+      body.appendChild(textRow(S.airspaceActivity || 'Activity',
+        a.activity.map(t => (S.airspaceActivityNames && S.airspaceActivityNames[t]) || t).join(' · ')));
+    }
+    // Hours, and whether they are in force right now where that can be decided from the
+    // text alone. The holiday-eve exceptions stay as printed: the Israeli holiday calendar
+    // is not something to infer, and a wrong "not active" is the dangerous direction.
+    if (Array.isArray(a.hours) && a.hours.length) {
+      const now = airspaceActiveNow(a);
+      const state2 = now === true ? (S.airspaceActiveNow || 'active now')
+        : now === false ? (S.airspaceNotActiveNow || 'not active now') : '';
+      const row = textRow(S.airspaceHours || 'Hours', a.hours.join(' · '));
+      if (state2) {
+        const tag = document.createElement('span');
+        tag.className = 'airspace-now' + (now ? ' is-active' : '');
+        tag.textContent = state2;
+        row.querySelector('.val').appendChild(document.createTextNode(' '));
+        row.querySelector('.val').appendChild(tag);
+      }
+      body.appendChild(row);
+    }
+    if (a.byNotam) body.appendChild(textRow(S.airspaceActivation || 'Activation', S.airspaceByNotam || 'By NOTAM'));
+
+    // Who to call. A controlled sector without its frequency is a wall; with it, it is a
+    // clearance away.
+    if (Array.isArray(a.stations) && a.stations.length) {
+      for (const st of a.stations) {
+        const label = [st.name, st.purpose].filter(Boolean).join(' · ') || (S.airspaceFreq || 'Frequency');
+        const row = textRow(label, st.mhz);
+        row.querySelector('.val').dir = 'ltr';
+        body.appendChild(row);
+      }
+    }
+
+    if (a.notes) body.appendChild(textRow(S.airspaceNotes || 'Notes', a.notes));
+    if (Number.isFinite(a.areaNm2)) {
+      body.appendChild(textRow(S.airspaceSize || 'Size',
+        Math.round(a.areaNm2).toLocaleString() + ' ' + (S.airspaceNm2 || 'nm²')));
+    }
+    const away = airspaceDistanceText(a);
+    if (away) body.appendChild(textRow(S.airspaceDistance || 'From you', away));
+
+    // Live NOTAMs that name this area -- the difference between "activated by NOTAM" and
+    // "activated", which is the whole question for half of these.
+    const hits = airspaceNotams(a);
+    if (hits.length) {
+      const row = textRow(S.airspaceNotams || 'NOTAMs', String(hits.length));
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'insp-notam-link';
+      link.textContent = S.airspaceShowNotams || 'Show';
+      link.onclick = () => { if (typeof showNotamModal === 'function') showNotamModal(hits); };
+      row.querySelector('.val').appendChild(document.createTextNode(' '));
+      row.querySelector('.val').appendChild(link);
+      body.appendChild(row);
+    }
+    body.appendChild(textRow(S.airspaceSource || 'Source', a.source || 'AIP'));
   } else if (state.selected.type === 'lsaArea') {
     const a = (typeof areas !== 'undefined' && areas) ? areas[state.selected.index] : null;
     if (!a) {
@@ -4024,7 +4245,9 @@ map.on('mousedown', e => {
   // covers a lot of map and everything drawn on top of it should win the plain click.
   const bubbleHits = (includeOverlayChoices && typeof lsaAreasAtLatLng === 'function')
     ? lsaAreasAtLatLng(e.latlng).map(i => ({ type: 'lsaArea', index: i })) : [];
-  const ovAll = ovHits.concat(notamHits, bubbleHits);
+  const airspaceHits = (includeOverlayChoices && typeof airspaceAtLatLng === 'function')
+    ? airspaceAtLatLng(e.latlng).map(i => ({ type: 'airspace', index: i })) : [];
+  const ovAll = ovHits.concat(notamHits, bubbleHits, airspaceHits);
   // Already-selected item wins: if the press is on the item whose inspector is
   // open, drag it rather than surfacing the chooser for an overlapping item.
   if (includeOverlayChoices && grabSelected(p.x, p.y, e.latlng)) {
@@ -4645,7 +4868,11 @@ mapEl.addEventListener('touchstart', e => {
     ? notamsAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(n => ({ type: 'notam', notam: n })) : [];
   const bubbleHits = (includeOverlayChoices && typeof lsaAreasAtLatLng === 'function')
     ? lsaAreasAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(i => ({ type: 'lsaArea', index: i })) : [];
-  const ovAll = ovHits.concat(notamHits, bubbleHits);
+  // Airspace last for the same reason the bubbles are: it covers a lot of map, and
+  // anything drawn on top of it should win a plain tap.
+  const airspaceHits = (includeOverlayChoices && typeof airspaceAtLatLng === 'function')
+    ? airspaceAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(i => ({ type: 'airspace', index: i })) : [];
+  const ovAll = ovHits.concat(notamHits, bubbleHits, airspaceHits);
   // Airport count-badge wins over a waypoint on the same field (see mousedown).
   if (includeOverlayChoices && typeof notamBadgeNotamsAt === 'function') {
     const badge = notamBadgeNotamsAt(map.containerPointToLatLng([p.x, p.y]));

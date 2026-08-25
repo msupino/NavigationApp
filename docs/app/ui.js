@@ -881,6 +881,15 @@ function applyTuningCssVars() {
     '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
     'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
 
+  // The pinned head's real height, for whatever sticks below it (the Record / Location band
+  // on a phone). Measured rather than assumed: the row grows with the language picker's font
+  // and with the platform's minimum touch target.
+  const tbToggle = document.getElementById('toolbar-toggle');
+  if (tbToggle) {
+    const h = Math.round(tbToggle.getBoundingClientRect().height);
+    if (h > 0) root.setProperty('--navaid-tb-head-h', h + 'px');
+  }
+
   // Other aeroplanes. Not red: red on an aviation display means resolve it now.
   root.setProperty('--navaid-traffic-arrow', tune('trafficArrowColor'));
   root.setProperty('--navaid-traffic-label', tune('trafficLabelColor'));
@@ -5918,6 +5927,24 @@ document.getElementById('airfield-cb').onchange = async e => {
   }
   draw();
 };
+// --- AIP airspace (prohibited / restricted / TMA) toggle (Extra layers) ---
+const AIRSPACE_KEY = 'navaid.showAirspace';
+try {
+  const stored = lsGet(AIRSPACE_KEY);
+  if (stored !== null) window.showAirspace = stored === '1';
+  else if (typeof tune === 'function') window.showAirspace = tune('defaultShowAirspace') === true;
+} catch (e) { /* storage unavailable */ }
+const airspaceCb = document.getElementById('airspace-cb');
+if (airspaceCb) {
+  airspaceCb.checked = showAirspace;
+  airspaceCb.onchange = e => {
+    window.showAirspace = e.target.checked;
+    try { localStorage.setItem(AIRSPACE_KEY, showAirspace ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    draw();          // drawAirspace() lazy-loads the dataset on the first draw that needs it
+  };
+}
+
 // --- LSA airspace bubbles overlay toggle (Extra layers) ------------------
 const LSA_BUBBLES_KEY = 'navaid.showLsaBubbles';
 try {
@@ -9230,6 +9257,7 @@ NavAid.defaultVisibilityMap = [
   ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
   ['ifr-cb', 'navaid.showIfr', 'defaultShowIfr'],
   ['traffic-cb', 'navaid.showTraffic', 'defaultShowTraffic'],
+  ['airspace-cb', 'navaid.showAirspace', 'defaultShowAirspace'],
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;
