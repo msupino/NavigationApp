@@ -6517,3 +6517,14 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
   color: var(--navaid-traffic-label, #7b1a6b);
   text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
 }
+
+/* Density altitude: the elevation the aeroplane actually flies from. The value goes red
+   once it is far enough above the field that the book figures stop applying -- a colour,
+   not a warning box, because it is information a pilot weighs rather than an alert. */
+.da-section { display: contents; }
+.da-row .val { font-weight: 700; }
+.da-row.da-warn .val { color: #d64545; }
+body.theme-light .da-row.da-warn .val { color: #b3261e; }
+.da-src-row .val, .da-when { opacity: 0.8; font-size: 11px; }
+.da-time-row { align-items: center; gap: 6px; }
+.da-time { flex: 1 1 auto; min-width: 0; }

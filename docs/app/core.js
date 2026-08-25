@@ -751,6 +751,11 @@ NavAid.tuningDefaults = {
   // (see traffic.js: a browser cannot read these feeds), so this is the switch that turns
   // it on for everyone flying with the app, without an app release.
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
+  featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
+  daWarnAboveElevFt: { value: 2000, min: 500, max: 6000, step: 100,
+    label: 'Flag density altitude this far above the field (ft)' },
+  daForecastHours: { value: 24, min: 6, max: 48, step: 1,
+    label: 'How far ahead the density-altitude slider runs (h)' },
   // Off until the feed this asks for is actually standing: a default of ON would greet
   // every pilot with "Live traffic unavailable" and nothing on the map. Flip to true once
   // trafficApiUrl answers.
@@ -795,6 +800,7 @@ NavAid.tuningGroups = [
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
     'defaultBaseLayer', 'baseLayerOpacity'] },
+  { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
@@ -1954,6 +1960,14 @@ window.S = Object.assign({
   platePlaceOnMap: '🗺 Show on map',
   platePlaceOnMapTitle: 'Lay this sheet over the map, georeferenced, and go to it. The same layer you would switch on in Extra layers.',
   hideThisLayer: 'Hide this chart',
+  densityAltitude: 'Density altitude',
+  densityAltitudeTitle: 'What the aeroplane thinks the field elevation is, once temperature and QNH are taken into account. Thin air lengthens the takeoff roll and flattens the climb: at a density altitude well above the field, the numbers in the book stop being the numbers. Move the slider to find an hour that is flyable.',
+  daConditions: 'Temp · QNH',
+  daWhen: 'Valid time',
+  daNow: 'now',
+  daFromMetar: 'METAR',
+  daFromForecast: 'forecast',
+  daNoData: 'no temperature available',
   trafficUnavailable: 'Live traffic unavailable',
   trafficTitle: 'Traffic',
   trafficAltitude: 'Altitude',
