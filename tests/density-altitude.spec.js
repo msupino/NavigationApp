@@ -19,13 +19,13 @@ function series(startMs, hours) {
 
 async function boot(page, opts) {
   const o = opts || {};
-  await page.route(/api\.open-meteo\.com.*/, (r) => {
+  await page.route(/^https:\/\/api\.open-meteo\.com\//, (r) => {
     const start = Date.now() - (Date.now() % 3600e3);
     r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify({ hourly: series(start, 36), elevation: 30 }) });
   });
   if (o.metar !== false) {
-    await page.route(/wx\.json.*/, (r) => r.fulfill({ status: 200, contentType: 'application/json',
+    await page.route('**wx-data/wx.json**', (r) => r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify({ generatedAt: new Date().toISOString(), stations: { LLHA: { metar: {
         icaoId: 'LLHA', temp: 33, altim: 1009, rawOb: 'METAR LLHA 33/21 Q1009' } } } }) }));
   }
@@ -122,8 +122,8 @@ test('the slider runs a day ahead, on the forecast', async ({ page }) => {
 // A density altitude with no provenance is a number a pilot cannot argue with. With neither
 // an observation nor a forecast, say nothing rather than quietly computing a standard day.
 test('with no temperature it shows nothing, not a standard day', async ({ page }) => {
-  await page.route(/api\.open-meteo\.com.*/, r => r.fulfill({ status: 500, body: '' }));
-  await page.route(/wx\.json.*/, r => r.fulfill({ status: 200, contentType: 'application/json',
+  await page.route(/^https:\/\/api\.open-meteo\.com\//, r => r.fulfill({ status: 500, body: '' }));
+  await page.route('**wx-data/wx.json**', r => r.fulfill({ status: 200, contentType: 'application/json',
     body: JSON.stringify({ generatedAt: new Date().toISOString(), stations: {} }) }));
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => !!(window.NavAid && NavAid.da) && !!window.airfields);
@@ -146,13 +146,13 @@ test('the gist can take the whole section away', async ({ page }) => {
 
 test('the forecast is asked for once per field', async ({ page }) => {
   let asked = 0;
-  await page.route(/api\.open-meteo\.com.*/, (r) => {
+  await page.route(/^https:\/\/api\.open-meteo\.com\//, (r) => {
     asked++;
     const start = Date.now() - (Date.now() % 3600e3);
     r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify({ hourly: series(start, 36) }) });
   });
-  await page.route(/wx\.json.*/, r => r.fulfill({ status: 200, contentType: 'application/json',
+  await page.route('**wx-data/wx.json**', r => r.fulfill({ status: 200, contentType: 'application/json',
     body: JSON.stringify({ generatedAt: new Date().toISOString(), stations: {} }) }));
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => !!(window.NavAid && NavAid.da) && !!window.airfields);
