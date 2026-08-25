@@ -6502,10 +6502,15 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
   white-space: nowrap;
 }
 .traffic-arrow {
-  display: inline-block; width: 20px; height: 20px;
-  font: 16px/20px system-ui, sans-serif; text-align: center;
-  color: var(--navaid-traffic-arrow, #b5179e);
-  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  transform-origin: 50% 50%;
+}
+/* Filled shape, white outline: it has to read over a CVFR sheet, a satellite tile and a
+   dark map without changing colour for each. */
+.traffic-plane {
+  display: block;
+  fill: var(--navaid-traffic-arrow, #b5179e);
+  stroke: #fff; stroke-width: 1.1; stroke-linejoin: round; paint-order: stroke;
 }
 .traffic-label {
   font: 700 10px/1.2 system-ui, sans-serif;

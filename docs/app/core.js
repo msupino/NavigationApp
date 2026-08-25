@@ -768,7 +768,8 @@ NavAid.tuningDefaults = {
   // Not red. Red on an aviation display means resolve it now, and this is information --
   // magenta is what a traffic symbol wears on a moving map, and nothing else on the chart
   // uses it.
-  trafficArrowColor: { value: '#b5179e', type: 'color', label: 'Live traffic arrow color' },
+  trafficIconPx: { value: 22, min: 12, max: 40, step: 1, label: 'Live traffic aircraft size (px)' },
+  trafficArrowColor: { value: '#b5179e', type: 'color', label: 'Live traffic aircraft color' },
   trafficLabelColor: { value: '#7b1a6b', type: 'color', label: 'Live traffic label color' },
   plateFieldZoom: { value: 11, min: 8, max: 14, step: 1,
     label: 'Zoom the map goes to when one airfield is picked for plates' },
@@ -795,7 +796,8 @@ NavAid.tuningGroups = [
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
     'defaultBaseLayer', 'baseLayerOpacity'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficRadiusNm',
-    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficArrowColor', 'trafficLabelColor'] },
+    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
+    'trafficLabelColor'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
