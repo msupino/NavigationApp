@@ -250,12 +250,40 @@ test('a real outage says so, and says why', async ({ page }) => {
 });
 
 // Red on an aviation display means resolve it now. Traffic is information.
-test('the arrows are not red, and the colour is tunable', async ({ page }) => {
+test('the aircraft are not red, and the colour is tunable', async ({ page }) => {
   await boot(page);
   await fly(page);
-  const c = await page.evaluate(() => getComputedStyle(document.querySelector('.traffic-arrow')).color);
+  const c = await page.evaluate(() => getComputedStyle(document.querySelector('.traffic-plane')).fill);
   expect(c).toBe('rgb(181, 23, 158)');
   await page.evaluate(() => { setTune('trafficArrowColor', '#0044cc'); applyTuningCssVars(); });
-  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.traffic-arrow')).color))
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.traffic-plane')).fill))
     .toBe('rgb(0, 68, 204)');
+});
+
+// A shape, not a font glyph: an aeroplane seen from above, nose along the track, so which
+// way it is going is readable before the label is.
+test('each one is an aeroplane, turned to its track', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  const out = await page.evaluate(() => {
+    const el = document.querySelector('.traffic-mark');
+    const svg = el.querySelector('svg.traffic-plane');
+    return {
+      isSvg: !!svg,
+      path: svg.querySelector('path').getAttribute('d').slice(0, 8),
+      rotated: el.querySelector('.traffic-arrow').style.transform,
+      size: svg.getAttribute('width'),
+      glyph: el.textContent.includes('\u27a4'),
+    };
+  });
+  expect(out.isSvg).toBe(true);
+  expect(out.glyph).toBe(false);              // the old ➤ is gone
+  expect(out.path).toBe('M12 1.6 ');
+  expect(out.rotated).toBe('rotate(284.9deg)');
+  expect(out.size).toBe('22');
+
+  // Size follows the tunable, on the next draw.
+  await page.evaluate(async () => { setTune('trafficIconPx', 34); await window.trafficPoll(); });
+  expect(await page.evaluate(() => document.querySelector('svg.traffic-plane').getAttribute('width')))
+    .toBe('34');
 });
