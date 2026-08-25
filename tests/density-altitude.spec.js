@@ -95,6 +95,9 @@ test('hour zero uses the METAR, and says which numbers it used', async ({ page }
   const da = await readDa(page);
   expect(da.src).toContain('33 °C');
   expect(da.src).toContain('1009 hPa');
+  // Both scales: Israeli QNH is in hectopascals, the altimeter subscale is in inches, and
+  // converting in your head on short final is nobody's idea of airmanship.
+  expect(da.src).toContain('29.80\u2033');
   expect(da.src).toContain('METAR');
 });
 
@@ -195,4 +198,19 @@ test('a current-only answer still gives the present hour', async ({ page }) => {
     s2.value = '12'; s2.dispatchEvent(new Event('input', { bubbles: true }));
   });
   expect((await readDa(page)).value).toBe('—');
+});
+
+// The same pair everywhere pressure is shown, decoded METAR included.
+test('pressure is given in both scales', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => ({
+    hpa: fmtQnhBoth(1009),
+    inches: fmtQnhBoth(29.92),          // some feeds send inches; the pair still reads right
+    rubbish: fmtQnhBoth('x'),
+    metar: decodeMetar({ altim: 1013, temp: 20 }),
+  }));
+  expect(out.hpa).toBe('1009 hPa · 29.80\u2033');
+  expect(out.inches).toBe('29.92\u2033 · 1013 hPa');
+  expect(out.rubbish).toBe('');
+  expect(out.metar).toContain('QNH 1013 hPa · 29.91\u2033');
 });

@@ -3682,6 +3682,20 @@ function wxWind(dir, spd, gst) {
   return 'Wind ' + d + ' ' + spd + ' kt' + (gst ? ' gust ' + gst : '');
 }
 // Decode a METAR from AWC's JSON object into a plain-language line.
+// QNH as both scales. Israeli ATIS and METARs give hectopascals; a Cessna's altimeter has
+// an inches subscale, and converting in your head on short final is nobody's idea of
+// airmanship. The inches figure is the one you dial, so it gets the two decimals it is set
+// with, and the double-prime is how it is written on a plate.
+const HPA_PER_INHG = 33.8639;
+function fmtQnhBoth(hPa) {
+  const v = Number(hPa);
+  if (!Number.isFinite(v)) return '';
+  // Below 900 the number was already in inches (some feeds send it that way).
+  if (v < 900) return v.toFixed(2) + '\u2033 · ' + Math.round(v * HPA_PER_INHG) + ' hPa';
+  return Math.round(v) + ' hPa · ' + (v / HPA_PER_INHG).toFixed(2) + '\u2033';
+}
+window.fmtQnhBoth = fmtQnhBoth;
+
 function decodeMetar(m) {
   if (!m) return '';
   const p = [];
@@ -3691,7 +3705,7 @@ function decodeMetar(m) {
   const cl = wxClouds(m.clouds); if (cl) p.push(cl);
   if (m.temp != null) p.push('Temp ' + Math.round(m.temp) + '°C' +
     (m.dewp != null ? ' / dew ' + Math.round(m.dewp) + '°C' : ''));
-  if (m.altim != null) p.push('QNH ' + Math.round(m.altim) + (m.altim > 900 ? ' hPa' : ' inHg'));
+  if (m.altim != null) p.push('QNH ' + fmtQnhBoth(m.altim));
   return p.join(' · ');
 }
 // Decode a TAF (AWC JSON) into one decoded line per forecast period.

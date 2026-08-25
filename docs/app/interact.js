@@ -1629,7 +1629,7 @@ function appendAirfieldDensityAltitude(body, af) {
     if (qnh === null) qnh = DA.HPA_STD;
     const da = DA.densityAltFt(elev, qnh, tempC);
     valEl.textContent = Math.round(da).toLocaleString() + ' ft';
-    srcEl.textContent = Math.round(tempC) + ' °C · ' + Math.round(qnh) + ' hPa'
+    srcEl.textContent = Math.round(tempC) + ' °C · ' + fmtQnhBoth(qnh)
       + (from ? ' · ' + from : '');
     // The threshold is a rule of thumb, not a limit: past it the book figures stop being
     // the figures, and that is worth colouring.

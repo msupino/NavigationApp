@@ -591,7 +591,7 @@ function gpsQnhMoveNm() {
   const nm = (typeof tune === 'function') ? Number(tune('qnhMoveNm')) : NaN;
   return Number.isFinite(nm) && nm > 0 ? nm : GPS_QNH_MOVE_NM;
 }
-const HPA_PER_INHG = 33.8639;
+// HPA_PER_INHG lives in core.js, beside fmtQnhBoth (same constant, one definition).
 
 function gpsAltimetryOn() {
   return typeof tune !== 'function' || tune('altimetryCorrection') !== false;
