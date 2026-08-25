@@ -2014,7 +2014,7 @@ window.S = Object.assign({
   densityAltitude: 'Density altitude',
   densityAltitudeTitle: 'What the aeroplane thinks the field elevation is, once temperature and QNH are taken into account. Thin air lengthens the takeoff roll and flattens the climb: at a density altitude well above the field, the numbers in the book stop being the numbers. Move the slider to find an hour that is flyable.',
   daConditions: 'Temp · QNH',
-  daWhen: 'Valid time',
+  daWhen: 'Density altitude at',
   daNow: 'now',
   daFromMetar: 'METAR',
   daFromForecast: 'forecast',
