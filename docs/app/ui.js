@@ -5927,6 +5927,17 @@ document.getElementById('airfield-cb').onchange = async e => {
   }
   draw();
 };
+// A row with a slider in it gets marked as one, so the stylesheet can give the slider a
+// line of its own on a phone. Marked here rather than with :has() in CSS: the APK's WebView
+// is whatever Android shipped, and a selector that silently does nothing there would leave
+// exactly the 24px-wide sliders this is fixing.
+(function markSliderRows() {
+  for (const range of document.querySelectorAll('#toolbar .navtoggle input[type="range"]')) {
+    const row = range.closest('.navtoggle');
+    if (row) row.classList.add('navtoggle-slider');
+  }
+}());
+
 // --- AIP airspace (prohibited / restricted / TMA) toggle (Extra layers) ---
 const AIRSPACE_KEY = 'navaid.showAirspace';
 try {

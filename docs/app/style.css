@@ -5762,6 +5762,22 @@ html[data-theme="light"] #insp-body .insp-actions {
     border-bottom-color: #cfd5df;
   }
 
+  /* A slider sharing a line with its own label had 24-32px left to drag in -- "Wind/temp
+     opacity" and the NOTAM timeline were the worst, and on a touch screen a 24px track is
+     not a control. The label and the value keep the first line; the slider gets the next
+     one, full width, with a track tall enough to hit. */
+  #toolbar .navtoggle-slider { flex-wrap: wrap; }
+  #toolbar .navtoggle-slider > input[type="range"] {
+    flex: 1 1 100%;
+    width: auto;
+    min-width: 0;
+    height: 28px;
+    margin: 1px 0 3px;
+  }
+  /* The value keeps its column on the label's line, so the number does not jump about as
+     it changes width. */
+  #toolbar .navtoggle-slider > .slider-val { margin-inline-start: auto; }
+
   /* The coordinate readout is a button in disguise ("Click to go to coordinates") and
      was 19px tall. Grow the strike area with padding, not type size, so the readout
      itself looks unchanged. Skipped while its go-to editor is open, which swaps the
