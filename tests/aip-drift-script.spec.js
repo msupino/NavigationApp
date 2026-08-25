@@ -3,7 +3,7 @@
 // and a stale chart is worse than a missing one because it still looks authoritative. This
 // covers the script's contract rather than the network -- what it reads, what it refuses to
 // do, and that the workflow actually runs it.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
