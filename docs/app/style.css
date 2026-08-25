@@ -5678,6 +5678,59 @@ html[data-theme="light"] #insp-body .insp-actions {
     justify-content: center;
     row-gap: 4px;
   }
+  /* The ☰ is the only way in and out of the menus on a phone, and it scrolled away with
+     them: open Display, scroll to the bottom of a long section, and the control that
+     closes it is somewhere above the top of the screen. Pin it, and pin it as the SAME
+     first line the closed card shows -- grip, ☰, language on one row -- so opening and
+     closing the panel does not rearrange its head. The closed card is already a
+     three-column grid; this makes the open one match, with everything below spanning
+     all three columns. */
+  #toolbar:not(.collapsed) {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0;
+    row-gap: 4px;
+  }
+  #toolbar:not(.collapsed) > * { grid-column: 1 / -1; }
+  #toolbar:not(.collapsed) > #toolbar-handle { grid-column: 1; grid-row: 1; }
+  #toolbar:not(.collapsed) > #toolbar-toggle { grid-column: 2; grid-row: 1; }
+  #toolbar:not(.collapsed) > #lang-toggle    { grid-column: 3; grid-row: 1; }
+  /* One pinned band, not three floating chips: opaque, and stretched into the panel's
+     padding on every side, or the rows sliding past show through the seams. */
+  #toolbar:not(.collapsed) > #toolbar-handle,
+  #toolbar:not(.collapsed) > #toolbar-toggle,
+  #toolbar:not(.collapsed) > #lang-toggle {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    align-self: stretch;
+    width: auto;              /* the base rule sizes the ☰ to its 18px bars */
+    margin-top: -6px;
+    padding-top: 6px;
+    padding-bottom: 4px;
+    background: rgba(20, 18, 18, 0.97);
+    border-bottom: 1px solid #3a3636;
+  }
+  #toolbar:not(.collapsed) > #toolbar-handle { margin-left: -6px; padding-left: 6px; }
+  #toolbar:not(.collapsed) > #lang-toggle {
+    margin-right: -6px;
+    padding-right: 6px;
+    margin-bottom: 0;         /* its expanded-stack separator is the band's border now */
+  }
+  html[dir="rtl"] #toolbar:not(.collapsed) > #toolbar-handle {
+    margin-left: 0; padding-left: 0; margin-right: -6px; padding-right: 6px;
+  }
+  html[dir="rtl"] #toolbar:not(.collapsed) > #lang-toggle {
+    margin-right: 0; padding-right: 0; margin-left: -6px; padding-left: 6px;
+  }
+  body.theme-light #toolbar:not(.collapsed) > #toolbar-handle,
+  body.theme-light #toolbar:not(.collapsed) > #toolbar-toggle,
+  body.theme-light #toolbar:not(.collapsed) > #lang-toggle {
+    background: rgba(250, 252, 255, 0.98);
+    border-bottom-color: #cfd5df;
+  }
+
   /* The coordinate readout is a button in disguise ("Click to go to coordinates") and
      was 19px tall. Grow the strike area with padding, not type size, so the readout
      itself looks unchanged. Skipped while its go-to editor is open, which swaps the
