@@ -22,7 +22,7 @@ const turnOn = (page) => page.evaluate(async () => {
 test('the dataset is real: 46 areas, closed rings, all inside the country', async ({ page }) => {
   await boot(page);
   const d = await page.evaluate(async () => {
-    const r = await fetch('data/airspace.json?v=1');
+    const r = await fetch('data/airspace.json?v=2');
     return r.json();
   });
   expect(d.areas.length).toBeGreaterThanOrEqual(40);
@@ -49,7 +49,7 @@ test('the dataset is real: 46 areas, closed rings, all inside the country', asyn
 test('circles and arcs survive the trip from prose to geometry', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(async () => {
-    const d = await (await fetch('data/airspace.json?v=1')).json();
+    const d = await (await fetch('data/airspace.json?v=2')).json();
     const byId = Object.fromEntries(d.areas.map(a => [a.id, a]));
     const R = 6371;
     const km = (a, b) => {
@@ -242,4 +242,66 @@ test('the panel compares the planned route against the limits', async ({ page })
   expect(verdicts.inside).toMatch(/inside its limits/);
   expect(verdicts.below).toMatch(/below the base/);
   expect(verdicts.clear).toMatch(/clear of it/);
+});
+
+// --- CTRs (AD 2.17) ---------------------------------------------------------
+// The control zones every VFR flight into a controlled field has to talk through. They live
+// in each aerodrome's own AD 2.17 block, not in ENR 5.1 — which is why the app had a
+// ctr-boundaries.json that was a list of reporting-point names rather than geometry.
+test('the four CTRs are there, with their own class and ceiling', async ({ page }) => {
+  await boot(page);
+  const ctrs = await page.evaluate(async () => {
+    const d = await (await fetch('data/airspace.json?v=2')).json();
+    return d.areas.filter(a => a.kind === 'ctr').map(a => ({
+      id: a.id, upper: a.upperFt, lower: a.lowerFt, pts: a.ring.length,
+      area: a.areaNm2, source: a.source,
+    }));
+  });
+  const byId = Object.fromEntries(ctrs.map(c => [c.id, c]));
+  expect(Object.keys(byId).sort()).toEqual(
+    ['LLBG-CTR', 'LLER-CTR-NORTH', 'LLER-CTR-SOUTH', 'LLHA-CTR']);
+  expect(byId['LLBG-CTR'].upper).toBe(2000);           // SFC to 2 000 FT MSL
+  expect(byId['LLHA-CTR'].upper).toBe(3000);
+  expect(byId['LLER-CTR-NORTH'].upper).toBe(4000);     // the two halves differ...
+  expect(byId['LLER-CTR-SOUTH'].upper).toBe(6000);     // ...and each takes its own ceiling
+  for (const c of ctrs) {
+    expect(c.lower).toBe(0);                           // SFC, all of them
+    expect(c.source).toBe('AIP AD 2.17');
+    expect(c.area).toBeGreaterThan(10);
+  }
+});
+
+// Eilat's CTR is drawn partly along the Israel/Jordan and Israel/Egypt borders — prose, not
+// coordinates. The border is data the app already carries for NOTAM areas, so the stretch
+// between the two named corners is traced rather than guessed.
+test('a CTR that runs along the border is traced from the border data', async ({ page }) => {
+  await boot(page);
+  const shape = await page.evaluate(async () => {
+    const d = await (await fetch('data/airspace.json?v=2')).json();
+    const south = d.areas.find(a => a.id === 'LLER-CTR-SOUTH');
+    const lats = south.ring.map(p => p[0]);
+    const lngs = south.ring.map(p => p[1]);
+    return { pts: south.ring.length, minLat: Math.min(...lats), maxLat: Math.max(...lats),
+             minLng: Math.min(...lngs), maxLng: Math.max(...lngs) };
+  });
+  // Many more vertices than the handful of printed corners: the traced border is in there.
+  expect(shape.pts).toBeGreaterThan(20);
+  // ...and it stays where Eilat is, rather than wandering off along the whole frontier.
+  expect(shape.minLat).toBeGreaterThan(29.3);
+  expect(shape.maxLat).toBeLessThan(30.1);
+  expect(shape.minLng).toBeGreaterThan(34.7);
+  expect(shape.maxLng).toBeLessThan(35.2);
+});
+
+test('a CTR reads as a control zone, in its own colour', async ({ page }) => {
+  await boot(page);
+  await turnOn(page);
+  const out = await openArea(page, 'LLBG-CTR');
+  expect(out.title).toMatch(/Ben-Gurion CTR/);
+  expect(out.rows.Class).toBe('Control zone — clearance required');
+  expect(out.rows['Vertical limits']).toMatch(/GND/);
+  expect(out.rows['Vertical limits']).toMatch(/2000/);
+  const colour = await page.evaluate(() => airspaceColor('ctr'));
+  expect(colour).toBe('#1c7c74');
+  expect(colour).not.toBe(await page.evaluate(() => airspaceColor('tma')));
 });

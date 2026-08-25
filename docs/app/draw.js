@@ -1863,7 +1863,7 @@ function loadAirspace() {
 async function _fetchAirspace() {
   try {
     // ?v= is hand-bumped when the dataset changes, like every other data file here.
-    const r = await fetch('data/airspace.json?v=1');
+    const r = await fetch('data/airspace.json?v=2');
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     airspace = (d.areas || []).filter(a => a && Array.isArray(a.ring) && a.ring.length >= 3);
@@ -1880,6 +1880,9 @@ window.loadAirspace = loadAirspace;
 function airspaceColor(kind) {
   if (kind === 'prohibited') return tune('airspaceProhibitedColor');
   if (kind === 'tma') return tune('airspaceTmaColor');
+  // A CTR is controlled like a TMA but it is the one you have to talk through to land, so
+  // it gets its own colour rather than dissolving into the TMA sectors above it.
+  if (kind === 'ctr') return tune('airspaceCtrColor');
   return tune('airspaceRestrictedColor');
 }
 

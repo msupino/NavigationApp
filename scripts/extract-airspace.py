@@ -32,6 +32,13 @@ OUT = ROOT / 'docs' / 'data' / 'airspace.json'
 
 ENR51 = PDF_DIR / 'ENR-5.1_prohibited-restricted-danger.pdf'
 ENR21 = PDF_DIR / 'ENR-2.1_FIR-TMA.pdf'
+# One AD 2.17 "ATS Airspace" block per controlled aerodrome: the CTR every VFR flight in
+# and out of that field has to talk its way through.
+AD2 = [
+    (PDF_DIR / 'AD-2.2_LLHA_Haifa.pdf', 'LLHA', 'Haifa CTR'),
+    (PDF_DIR / 'AD-2.5_LLBG_Ben-Gurion.pdf', 'LLBG', 'Ben-Gurion CTR'),
+    (PDF_DIR / 'AD-2.7_LLER_Eilat-Ramon.pdf', 'LLER', 'Eilat Ramon CTR'),
+]
 
 NM_M = 1852.0
 KM_M = 1000.0
@@ -462,6 +469,156 @@ def read_enr21(rows):
     return areas, skipped
 
 
+# --- AD 2.17 (CTRs) ----------------------------------------------------------
+# "SFC to 2 000 FT MSL", "SFC/MSL - 3 000 FT MSL (3 500 FT during weekends)",
+# "CTR North - SFC to 4 000 FT MSL".
+CTR_LIMITS = re.compile(r"(?:SFC(?:/MSL)?)\s*(?:to|-|–)\s*([\d ]+)\s*FT", re.I)
+CTR_PART = re.compile(r"^\s*(CTR\s+\w+)\s*-\s*", re.M)
+
+
+# Eilat's CTR is drawn partly along the international border: "295855N 0350540E southward
+# along the Israel/Jordan border to 295335N 0350503E". The border is data we already carry
+# (docs/data/notam-borders.json, used for prose NOTAM areas), so the arc between the two
+# named points can be traced rather than guessed -- and if the border file cannot supply it,
+# the area is refused like any other boundary we cannot read.
+BORDERS = ROOT / 'docs' / 'data' / 'notam-borders.json'
+ALONG = re.compile(r"along the Israel/\s*(\w+)\s*border", re.I)
+
+
+def _border_arcs(name):
+    try:
+        data = json.loads(BORDERS.read_text(encoding='utf-8'))
+    except Exception:
+        return []
+    return data.get('borders', {}).get(name.upper(), [])
+
+
+def _nearest_on(arc, pt):
+    best, at = None, None
+    for i, p in enumerate(arc):
+        d = (p[0] - pt[0]) ** 2 + (p[1] - pt[1]) ** 2
+        if best is None or d < best:
+            best, at = d, i
+    return at, (best or 0) ** 0.5
+
+
+def border_run(country, start, end):
+    """The border vertices between two points, in the order the AIP walks them."""
+    best = None
+    for arc in _border_arcs(country):
+        i, di = _nearest_on(arc, start)
+        j, dj = _nearest_on(arc, end)
+        if i is None or j is None:
+            continue
+        # Both ends have to actually sit on this border, or we are tracing the wrong one.
+        # 0.08° is about 5 nm: the AIP's corner and geoBoundaries' vertex are never the
+        # same point, but they are never a country apart either.
+        if max(di, dj) > 0.08:
+            continue
+        run = arc[i:j + 1] if i <= j else list(reversed(arc[j:i + 1]))
+        if best is None or len(run) < len(best):
+            best = run
+    return best or []
+
+
+def ctr_ring_with_border(chunk):
+    """A boundary that alternates coordinates and stretches of national border.
+
+    The text reads as a walk: a corner, "southward along the Israel/Jordan border to",
+    the next corner, then more corners. Each "along" is replaced by the border vertices
+    between the corner before it and the corner after it."""
+    pieces = []
+    cursor = 0
+    for m in ALONG.finditer(chunk):
+        before = parse_points(chunk[cursor:m.start()])
+        after = parse_points(chunk[m.end():])
+        if not before or not after:
+            return None, 'border stretch without a corner at both ends'
+        pieces.append(('pts', before))
+        pieces.append(('border', (m.group(1), before[-1], after[0])))
+        cursor = m.end()
+    pieces.append(('pts', parse_points(chunk[cursor:])))
+
+    ring = []
+    for kind, val in pieces:
+        if kind == 'pts':
+            ring.extend(val)
+            continue
+        country, a, b = val
+        run = border_run(country, a, b)
+        if not run:
+            return None, 'border arc unavailable for Israel/' + country
+        ring.extend((round(p[0], 6), round(p[1], 6)) for p in run)
+
+    out = []
+    for p in ring:
+        if not out or out[-1] != p:
+            out.append(p)
+    if len(out) > 2 and out[0] == out[-1]:
+        out.pop()
+    return (out, None) if len(out) >= 3 else (None, 'fewer than three corners')
+
+
+def read_ad2(path, icao, name):
+    """The CTR(s) of one aerodrome. Eilat prints two (North and South); the others one."""
+    rows = pdf_columns(path)
+    text = '\n'.join(' '.join(p for p in r if p) for r in rows)
+    start = text.find('AD 2.17')
+    if start < 0:
+        return [], [(icao, 'no AD 2.17 ATS Airspace block')]
+    end = text.find('AD 2.18', start)
+    block = text[start:end if end > 0 else start + 4000]
+    # Cut at the next numbered row so the classification and call-sign lines stay out of
+    # the boundary: "3 Airspace classification" is not a coordinate but it is full of digits.
+    lateral = block.split('Vertical limits')[0]
+    verticals = block[len(lateral):]
+
+    parts = []
+    marks = [(m.start(), m.group(1)) for m in CTR_PART.finditer(lateral)]
+    if marks:
+        for i, (pos, label) in enumerate(marks):
+            stop = marks[i + 1][0] if i + 1 < len(marks) else len(lateral)
+            parts.append((label.strip(), lateral[pos:stop]))
+    else:
+        parts.append(('', lateral))
+
+    areas, skipped = [], []
+    for label, chunk in parts:
+        ring, why = build_ring(chunk)
+        if ring is None and ALONG.search(chunk):
+            ring, why = ctr_ring_with_border(chunk)
+        if ring is None:
+            skipped.append((icao + (' ' + label if label else ''), why))
+            continue
+        # Each half of a split CTR has its own ceiling, printed against its own label.
+        upper = None
+        if label:
+            m = re.search(re.escape(label) + r"[^\n]*?(?:SFC(?:/MSL)?)\s*(?:to|-|–)\s*([\d ]+)\s*FT",
+                          verticals, re.I)
+            if m:
+                upper = parse_level(m.group(1))
+        if upper is None:
+            m = CTR_LIMITS.search(verticals)
+            upper = parse_level(m.group(1)) if m else None
+        full = name + (' ' + label.replace('CTR ', '') if label else '')
+        areas.append({
+            'id': icao + '-CTR' + (label.replace('CTR ', '-').upper() if label else ''),
+            'short': icao + ' CTR' + (' ' + label.replace('CTR ', '')[:1] if label else ''),
+            'kind': 'ctr',
+            'name': full,
+            'upperFt': upper,
+            'lowerFt': 0,                      # SFC, in every one of them
+            'activity': [],
+            'hours': ['H24'],
+            'byNotam': False,
+            'notes': '',
+            'areaNm2': ring_area_nm2(ring),
+            'source': 'AIP AD 2.17',
+            'ring': ring,
+        })
+    return areas, skipped
+
+
 def main():
     write = '--write' in sys.argv
     for p in (ENR51, ENR21):
@@ -471,8 +628,16 @@ def main():
 
     p_areas, p_skip = read_enr51(pdf_columns(ENR51))
     t_areas, t_skip = read_enr21(pdf_columns(ENR21))
-    areas = p_areas + t_areas
-    skipped = p_skip + t_skip
+    c_areas, c_skip = [], []
+    for path, icao, name in AD2:
+        if not path.exists():
+            c_skip.append((icao, 'no AD 2 snapshot in docs/byop-enr'))
+            continue
+        a, sk = read_ad2(path, icao, name)
+        c_areas += a
+        c_skip += sk
+    areas = p_areas + t_areas + c_areas
+    skipped = p_skip + t_skip + c_skip
 
     by_kind = {}
     for a in areas:
@@ -490,8 +655,8 @@ def main():
     if write:
         doc = {
             'version': 1,
-            'source': ('CAAI AIP ENR 5.1 (prohibited / restricted, 22 FEB 2024) and '
-                       'ENR 2.1 (FIR, TMA, 06 AUG 2026), read by scripts/extract-airspace.py. '
+            'source': ('CAAI AIP ENR 5.1 (prohibited / restricted), ENR 2.1 (FIR, TMA) and '
+                       'AD 2.17 (CTRs at LLHA, LLBG, LLER), read by scripts/extract-airspace.py. '
                        'Areas whose boundary the AIP describes in prose rather than coordinates '
                        '(national borders) are deliberately absent -- see the script.'),
             'generatedBy': 'scripts/extract-airspace.py',

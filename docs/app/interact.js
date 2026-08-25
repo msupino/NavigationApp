@@ -485,7 +485,8 @@ function pointChoiceText(c) {
   if (c.type === 'airspace') {
     const a = (window.airspace && window.airspace[c.index]) || {};
     const kind = a.kind === 'prohibited' ? (S.airspaceProhibited || 'Prohibited')
-      : a.kind === 'tma' ? (S.airspaceTma || 'TMA') : (S.airspaceRestricted || 'Restricted');
+      : a.kind === 'tma' ? (S.airspaceTma || 'TMA')
+      : a.kind === 'ctr' ? (S.airspaceCtr || 'CTR') : (S.airspaceRestricted || 'Restricted');
     return { primary: a.short || a.id || kind,
       meta: kind + (typeof airspaceLimitText === 'function' ? ' \u00b7 ' + airspaceLimitText(a) : '') };
   }
@@ -3142,6 +3143,7 @@ function showInspector() {
     // whether to route through needs to know which of the three this is.
     const kindText = a.kind === 'prohibited' ? (S.airspaceKindProhibited || 'Prohibited — closed')
       : a.kind === 'tma' ? (S.airspaceKindTma || 'Controlled — clearance required')
+      : a.kind === 'ctr' ? (S.airspaceKindCtr || 'Control zone — clearance required')
       : (S.airspaceKindRestricted || 'Restricted — conditional');
     body.appendChild(textRow(S.airspaceKind || 'Class', kindText));
     body.appendChild(textRow(S.airspaceVertical || 'Vertical limits', airspaceLimitText(a)));
