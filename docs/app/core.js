@@ -1921,6 +1921,7 @@ window.S = Object.assign({
   plateOpen: 'Open',
   platePlaceOnMap: '🗺 Show on map',
   platePlaceOnMapTitle: 'Lay this sheet over the map, georeferenced, and go to it. The same layer you would switch on in Extra layers.',
+  hideThisLayer: 'Hide this chart',
   plateDownload: 'Download',
   plateOpenTab: 'Open in new tab',
   plateClose: 'Close',

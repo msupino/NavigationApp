@@ -6476,3 +6476,19 @@ body.theme-light .search-flash-ring {
   color: inherit; border-radius: 4px; padding: 4px 6px; font-size: 12px;
 }
 .freq-notam-row .freq-notam-btn:hover { background: rgba(255, 176, 32, 0.26); }
+
+/* The ✕ that puts a chart overlay away, sitting on the sheet's own north-west corner. Big
+   enough for a fingertip, and it never draws over the chart's own ink for long: it goes with
+   the sheet. */
+.ov-hide-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  font: 700 14px/1 system-ui, sans-serif;
+  color: #1f252c;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #4b4646; border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  cursor: pointer; user-select: none;
+}
+.ov-hide-btn:hover { background: #fff; border-color: #b03636; color: #b03636; }
+body.theme-light .ov-hide-btn { color: #1f252c; }

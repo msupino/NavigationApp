@@ -895,6 +895,7 @@ window.S = {
   plateDownload: 'הורד',
   platePlaceOnMap: '🗺 הצג על המפה',
   platePlaceOnMapTitle: 'הנחת הגיליון על המפה, ממוקם לפי הקואורדינטות שלו, ומעבר אליו. אותה שכבה שמפעילים בשכבות נוספות.',
+  hideThisLayer: 'הסתר את התרשים',
   plateOpenTab: 'פתח בלשונית חדשה',
   plateClose: 'סגור',
   platesNone: 'אין דפיות — ראה AIP הרשמי',
