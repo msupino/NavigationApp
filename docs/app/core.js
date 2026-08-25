@@ -747,16 +747,17 @@ NavAid.tuningDefaults = {
   defaultShowCommfail: { value: false, type: 'bool', label: 'Default: show comm-fail plates' },
   defaultShowIfr: { value: false, type: 'bool', label: 'Default: show the IFR chart layer' },
   // The whole feature, from the gist: off means no Traffic box in View/Set and nothing on
-  // the map, on any device, however the switch under it was left. Ships OFF, because the
-  // feed it asks for is not standing yet -- this is the switch that turns it on for
-  // everyone once it is, without an app release.
+  // the map, however the switch under it was left. It only appears in the APK in any case
+  // (see traffic.js: a browser cannot read these feeds), so this is the switch that turns
+  // it on for everyone flying with the app, without an app release.
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
   // Off until the feed this asks for is actually standing: a default of ON would greet
   // every pilot with "Live traffic unavailable" and nothing on the map. Flip to true once
   // trafficApiUrl answers.
   defaultShowTraffic: { value: false, type: 'bool',
     label: 'Default: show live traffic while a fix is driving the map' },
-  trafficApiUrl: { value: 'https://adsb.supino.org/api/traffic', type: 'text',
+  // {lat}/{lon}/{dist} are filled in; a URL without them gets them as query parameters.
+  trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
     label: 'Where live traffic is fetched from (empty turns it off)' },
   trafficRadiusNm: { value: 40, min: 5, max: 150, step: 5,
     label: 'How far around you live traffic is asked for (nm)' },
@@ -1753,7 +1754,7 @@ window.S = Object.assign({
   tbGrpIfr: 'Instrument charts',
   tbGrpTraffic: 'Traffic',
   tbShowTraffic: 'Show live traffic',
-  tbShowTrafficTitle: 'Aircraft heard on ADS-B, drawn while a fix is driving the map. Off on a planning map: traffic you are not flying among is decoration, and asking for it costs battery. The arrow points where each one is going; its callsign and altitude in hundreds of feet are beside it.',
+  tbShowTrafficTitle: 'Aircraft heard on ADS-B. It asks around your position when you have one, and otherwise around the middle of the map, so it works while planning too. The arrow points where each one is going; its callsign and altitude in hundreds of feet are beside it.',
   tbPlateOpacity: 'Plate opacity',
   tbPlateOpacityTitle: 'Adjust the airfield-plate overlay opacity (shared by all plate layers)',
   tbPlateOpacityReset: 'Reset opacity',
