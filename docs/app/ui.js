@@ -881,6 +881,15 @@ function applyTuningCssVars() {
     '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
     'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
 
+  // The pinned head's real height, for whatever sticks below it (the Record / Location band
+  // on a phone). Measured rather than assumed: the row grows with the language picker's font
+  // and with the platform's minimum touch target.
+  const tbToggle = document.getElementById('toolbar-toggle');
+  if (tbToggle) {
+    const h = Math.round(tbToggle.getBoundingClientRect().height);
+    if (h > 0) root.setProperty('--navaid-tb-head-h', h + 'px');
+  }
+
   // Other aeroplanes. Not red: red on an aviation display means resolve it now.
   root.setProperty('--navaid-traffic-arrow', tune('trafficArrowColor'));
   root.setProperty('--navaid-traffic-label', tune('trafficLabelColor'));

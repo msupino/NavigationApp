@@ -5726,6 +5726,24 @@ html[data-theme="light"] #insp-body .insp-actions {
     border-bottom: 1px solid #3a3636;
   }
   #toolbar:not(.collapsed) > #toolbar-handle { margin-left: -6px; padding-left: 6px; }
+  /* Record and Location ride with the head, not at the far end of the menu. They are the two
+     controls a pilot reaches for with the aeroplane already moving, and they used to sit
+     below every section -- open Display and they are a scroll away. Pinned as the second
+     band, directly under the ☰ that is always there. */
+  #toolbar:not(.collapsed) > #footer-links {
+    grid-row: 2;
+    position: sticky;
+    top: var(--navaid-tb-head-h, 44px);
+    z-index: 2;
+    margin: 0 -6px;
+    padding: 3px 6px;
+    background: rgba(20, 18, 18, 0.97);
+    border-bottom: 1px solid #3a3636;
+  }
+  body.theme-light #toolbar:not(.collapsed) > #footer-links {
+    background: rgba(250, 252, 255, 0.98);
+    border-bottom-color: #cfd5df;
+  }
   #toolbar:not(.collapsed) > #lang-toggle {
     margin-right: -6px;
     padding-right: 6px;
