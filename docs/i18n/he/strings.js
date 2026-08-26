@@ -828,6 +828,7 @@ window.S = {
   legendWaypoint: 'נקודת דיווח',
   legendVor: 'תחנת VOR',
   tbMoreLinks: 'קישורים נוספים (מאגר, ויקי, תקלות, אודות, פרטיות, תנאים)',
+  legendHotspot: 'צומת',
   legendAtcChange: 'שינוי תדר',
   commChangeBadge: '📡 נקודת שינוי תדר',
   commChangeNoteText: 'שינוי תדר',
