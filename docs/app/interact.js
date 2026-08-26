@@ -1672,7 +1672,9 @@ function appendAirfieldDensityAltitude(body, af) {
   if (!Number.isFinite(elev)) return;
 
   const sec = document.createElement('div');
-  sec.className = 'da-section';
+  // A group of its own inside Weather: the slider, the figure and the conditions it was
+  // computed from are one thing, and the observation below them is another.
+  sec.className = 'da-section da-group';
   const valRow = textRow(S.densityAltitude || 'Density altitude', '—');
   valRow.classList.add('da-row');
   const valEl = valRow.querySelector('.val');
@@ -1689,6 +1691,11 @@ function appendAirfieldDensityAltitude(body, af) {
   const maxH = Math.round((typeof tune === 'function' && tune('daForecastHours')) || 24);
   const timeRow = document.createElement('div');
   timeRow.className = 'row da-time-row';
+  // The slider sits at the top of the Weather box, where an unlabelled control reads as
+  // though it moved the whole box -- the METAR below it included. It says what it moves.
+  const timeLbl = document.createElement('label');
+  timeLbl.textContent = S.daWhen || 'Density altitude at';
+  timeRow.appendChild(timeLbl);
   const slider = document.createElement('input');
   slider.type = 'range';
   slider.min = '0';

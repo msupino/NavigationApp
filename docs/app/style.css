@@ -5762,6 +5762,22 @@ html[data-theme="light"] #insp-body .insp-actions {
     border-bottom-color: #cfd5df;
   }
 
+  /* A slider sharing a line with its own label had 24-32px left to drag in -- "Wind/temp
+     opacity" and the NOTAM timeline were the worst, and on a touch screen a 24px track is
+     not a control. The label and the value keep the first line; the slider gets the next
+     one, full width, with a track tall enough to hit. */
+  #toolbar .navtoggle-slider { flex-wrap: wrap; }
+  #toolbar .navtoggle-slider > input[type="range"] {
+    flex: 1 1 100%;
+    width: auto;
+    min-width: 0;
+    height: 28px;
+    margin: 1px 0 3px;
+  }
+  /* The value keeps its column on the label's line, so the number does not jump about as
+     it changes width. */
+  #toolbar .navtoggle-slider > .slider-val { margin-inline-start: auto; }
+
   /* The coordinate readout is a button in disguise ("Click to go to coordinates") and
      was 19px tall. Grow the strike area with padding, not type size, so the readout
      itself looks unchanged. Skipped while its go-to editor is open, which swaps the
@@ -6605,7 +6621,19 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
 /* Density altitude: the elevation the aeroplane actually flies from. The value goes red
    once it is far enough above the field that the book figures stop applying -- a colour,
    not a warning box, because it is information a pilot weighs rather than an alert. */
-.da-section { display: contents; }
+/* Inside the Weather box, density altitude is its own group: slider, figure and the
+   conditions it came from. Without the rule down its side the slider sat under the box's
+   own heading and read as though it moved the METAR too. */
+.da-group {
+  display: block;
+  border-inline-start: 2px solid rgba(214, 69, 69, 0.35);
+  padding-inline-start: 7px;
+  margin: 2px 0 6px;
+}
+body.theme-light .da-group { border-inline-start-color: rgba(179, 38, 30, 0.3); }
+/* Label and slider hold their size; the read-out takes the rest, so the row's shape does
+   not change as its own text grows from "13:00Z" to "+24h · 08-26 14:00Z". */
+.da-time-row label { font-size: 11px; flex: 0 0 auto; }
 .da-row .val { font-weight: 700; }
 .da-row.da-warn .val { color: #d64545; }
 body.theme-light .da-row.da-warn .val { color: #b3261e; }
