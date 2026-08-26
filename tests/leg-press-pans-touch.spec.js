@@ -189,3 +189,51 @@ test('with the route locked, a wobbly tap on a waypoint still opens it', async (
   expect(opened.sel).toBe('wp');
   expect(opened.shut).toBe(false);
 });
+
+// A double tap zooms the chart. Everywhere off the route Leaflet does it, off the browser's
+// compatibility dblclick -- which this app suppresses whenever the press lands on a route
+// element, because that same dblclick reaches the leg-split handler. So the zoom has to be
+// performed by the handler that took the gesture, or it is simply lost on the part of the
+// screen the route covers -- which airborne, with the edit lock on, is most of it.
+const doubleTapAt = (page, at) => page.evaluate((where) => {
+  const el = document.getElementById('map');
+  const r = el.getBoundingClientRect();
+  const pt = where === 'wp'
+    ? map.latLngToContainerPoint(L.latLng(state.waypoints[0].lat, state.waypoints[0].lng))
+    : (() => {
+        const a = state.waypoints[0], b = state.waypoints[1];
+        return map.latLngToContainerPoint(
+          L.latLng((a.lat + b.lat) / 2, (a.lng + b.lng) / 2));
+      })();
+  const before = map.getZoom();
+  const fire = (type) => {
+    const t = [{ clientX: r.left + pt.x, clientY: r.top + pt.y, identifier: 0 }];
+    const ev = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(ev, 'touches', { value: type === 'touchend' ? [] : t });
+    Object.defineProperty(ev, 'changedTouches', { value: t });
+    el.dispatchEvent(ev);
+  };
+  fire('touchstart'); fire('touchend');
+  fire('touchstart'); fire('touchend');
+  return { before, after: map.getZoom(), waypoints: state.waypoints.length };
+}, at);
+
+test('a double tap on a waypoint zooms the chart', async ({ page }) => {
+  await boot(page);
+  const z = await doubleTapAt(page, 'wp');
+  expect(z.after).toBe(z.before + 1);
+});
+
+test('a double tap on a leg zooms instead of splitting it', async ({ page }) => {
+  await boot(page);
+  const z = await doubleTapAt(page, 'leg');
+  expect(z.after).toBe(z.before + 1);
+  expect(z.waypoints).toBe(2);            // still two: the route was not cut
+});
+
+test('...and it still zooms with the route locked', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { window.editLocked = true; });
+  const z = await doubleTapAt(page, 'wp');
+  expect(z.after).toBe(z.before + 1);
+});

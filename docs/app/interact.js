@@ -5388,6 +5388,18 @@ function undoTapOpenIfDoubleTap(x, y) {
   if (Math.hypot(x - rec.x, y - rec.y) > DOUBLE_TAP_PX) return false;
   state.selected = rec.prev;
   showInspector();
+  // ...and then do what the pilot actually asked for. A double tap zooms the chart, and
+  // everywhere else on the map Leaflet's doubleClickZoom does it -- off the browser's
+  // compatibility dblclick, which this handler suppresses whenever the press lands on a
+  // route element. Suppressing it is not optional: the same dblclick reaches the split
+  // handler and cuts the leg in two. So the zoom is performed here instead of being lost.
+  //
+  // Which matters most exactly where the route is: airborne the edit lock is on, the route
+  // covers much of a kneeboard screen, and a double tap that landed on it used to do
+  // nothing at all.
+  if (map.doubleClickZoom && map.doubleClickZoom.enabled()) {
+    map.setZoomAround(map.containerPointToLatLng([x, y]), map.getZoom() + 1);
+  }
   draw();
   return true;
 }
