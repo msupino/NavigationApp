@@ -1587,7 +1587,8 @@ window.S = Object.assign({
   // Pointer to a frequency NOTAM on an airfield. Names the NOTAM, never its frequency:
   // the published value stays what the inspector shows and the pilot reads the NOTAM.
   freqNotamNote: (ids) => 'Frequency NOTAM: ' + (Array.isArray(ids) ? ids.join(', ') : ids),
-  freqNotamRow: (service, id) => service + ' \u2014 NOTAM ' + id,
+  freqNotamRowTitle: (id, published) => 'NOTAM ' + id
+    + (published ? ' \u00b7 AIP ' + published : ' \u00b7 not published in the AIP'),
   // Plain-language preamble above the ICAO block in a filed mail. Follows the UI
   // language; the (FPL-...) block itself is never translated.
   fplMailTitle: 'Flight plan on the low-level transit routes',

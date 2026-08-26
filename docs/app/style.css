@@ -6700,3 +6700,14 @@ body.theme-light .da-row.da-warn .val { color: #b3261e; }
 .da-time-row label { order: 1; }
 .row .val.da-when { order: 2; }
 .da-time { order: 3; flex: 1 1 100%; width: auto; height: 24px; margin: 1px 0 2px; }
+
+/* A frequency a NOTAM changed: the row is the normal editable one, ringed so it reads as
+   "this is not what the AIP publishes". Red because that is what this app already uses for
+   a thing you must look at before you fly, and the ring is on the row rather than the input
+   so a row the NOTAM created (Haifa's clearance) is marked the same as one it changed. */
+.insp-row.freq-notam-changed,
+.row.freq-notam-changed {
+  outline: 2px solid #b03636;
+  outline-offset: 1px;
+  border-radius: 4px;
+}

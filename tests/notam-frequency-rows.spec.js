@@ -94,44 +94,84 @@ test('an unparsed frequency NOTAM still raises the pointer badge', async ({ page
 const openField = (page, icao) => page.evaluate((c) => {
   state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === c) };
   showInspector();
-  return Array.from(document.querySelectorAll('#insp-body .row')).map(r => ({
+  const read = (r) => ({
     cls: r.className,
     label: (r.querySelector('label') || {}).textContent || '',
-    val: (r.querySelector('.val') || r.querySelector('input') || {}).textContent
-      || (r.querySelector('input') || {}).value || '',
-  }));
+    val: (r.querySelector('input') || {}).value
+      || ((r.querySelector('.val') || {}).textContent || ''),
+    title: r.title || '',
+  });
+  return Array.from(document.querySelectorAll('#insp-body .row')).map(read);
 }, icao);
 
-test('Haifa gains a clearance row it has no AIP row for', async ({ page }) => {
+test('Haifa gains the clearance row it has no AIP row for, ringed', async ({ page }) => {
   await boot(page, LIVE);
   const rows = await openField(page, 'LLHA');
-  const notamRow = rows.find(r => /freq-notam-value-row/.test(r.cls));
-  expect(notamRow).toBeTruthy();
-  expect(notamRow.label).toBe('Clearance — NOTAM A0685/26');
-  expect(notamRow.val).toBe('127.80 MHz');
+  const row = rows.find(r => /clearance-row/.test(r.cls));
+  expect(row).toBeTruthy();
+  // One row, not two: the frequency to call, marked as not-the-published-one.
+  expect(row.cls).toMatch(/freq-notam-changed/);
+  expect(row.val).toBe('127.80');
+  expect(row.title).toBe('NOTAM A0685/26 · not published in the AIP');
   // The dataset itself still says what the AIP says: nothing.
   const published = await page.evaluate(() =>
     airfields.find(a => a.name === 'LLHA').clearance);
   expect(published).toBeUndefined();
 });
 
-test('the row leaves when the NOTAM does, with no file to edit', async ({ page }) => {
-  await boot(page, []);
-  const rows = await openField(page, 'LLHA');
-  expect(rows.some(r => /freq-notam-value-row/.test(r.cls))).toBe(false);
+test('Herzliya keeps one row per service, each ringed, AIP value in the title', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await openField(page, 'LLHZ');
+  const clearance = rows.find(r => /clearance-row/.test(r.cls));
+  expect(clearance.val).toBe('118.55');
+  expect(clearance.cls).toMatch(/freq-notam-changed/);
+  // 121.70 is what AD 2.18 publishes; it is not lost, it is what the row says it replaced.
+  expect(clearance.title).toBe('NOTAM C1574/26 · AIP 121.70');
+  const tower = rows.find(r => /primary-row/.test(r.cls));
+  expect(tower.val).toBe('125.60');
+  expect(tower.cls).toMatch(/freq-notam-changed/);
+  expect(tower.title).toMatch(/^NOTAM C1574\/26 · AIP /);
+  // Exactly one row per service -- no second opinion beside it.
+  expect(rows.filter(r => /clearance-row/.test(r.cls)).length).toBe(1);
 });
 
-test('the gist can withdraw the rows and the pointer badge remains', async ({ page }) => {
+test('the ring leaves when the NOTAM does, with no file to edit', async ({ page }) => {
+  await boot(page, []);
+  const rows = await openField(page, 'LLHZ');
+  const clearance = rows.find(r => /clearance-row/.test(r.cls));
+  expect(clearance.val).toBe('121.70');            // back to the AIP value on its own
+  expect(clearance.cls).not.toMatch(/freq-notam-changed/);
+  expect(await openField(page, 'LLHA')).not.toContainEqual(
+    expect.objectContaining({ cls: expect.stringMatching(/clearance-row/) }));
+});
+
+test('reset returns to the NOTAM frequency, not the superseded one', async ({ page }) => {
   await boot(page, LIVE);
-  const rows = await page.evaluate(() => {
-    setTune('featureNotamFreqRows', false);
-    state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHA') };
-    showInspector();
-    return {
-      value: !!document.querySelector('#insp-body .freq-notam-value-row'),
-      pointer: !!document.querySelector('#insp-body .freq-notam-row'),
-    };
+  await openField(page, 'LLHZ');
+  const after = await page.evaluate(async () => {
+    const row = document.querySelector('#insp-body .clearance-row');
+    const inp = row.querySelector('input');
+    inp.value = '119.00';
+    inp.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 50));
+    row.querySelector('.commchange-freq-reset').click();
+    await new Promise(r => setTimeout(r, 50));
+    return document.querySelector('#insp-body .clearance-row input').value;
   });
-  expect(rows.value).toBe(false);
-  expect(rows.pointer).toBe(true);
+  expect(after).toBe('118.55');
+});
+
+test('the gist can withdraw it and the row returns to the AIP value', async ({ page }) => {
+  await boot(page, LIVE);
+  const seen = await page.evaluate(() => {
+    setTune('featureNotamFreqRows', false);
+    state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHZ') };
+    showInspector();
+    const row = document.querySelector('#insp-body .clearance-row');
+    return { val: row.querySelector('input').value, cls: row.className,
+             pointer: !!document.querySelector('#insp-body .freq-notam-row') };
+  });
+  expect(seen.val).toBe('121.70');
+  expect(seen.cls).not.toMatch(/freq-notam-changed/);
+  expect(seen.pointer).toBe(true);                 // the badge is untouched by any of this
 });
