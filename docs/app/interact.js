@@ -14,7 +14,10 @@ function hitNote(px, py) {
     if (note && note.cc) {
       const hitComm = hitCommCallout(px, py, note);
       if (hitComm === true) return i;
-      if (hitComm === false) continue;
+      // false = outside the callout; null = it has no geometry, because it is degenerate and
+      // nothing was drawn. Falling through to noteRect() below gave that second case the
+      // generic 40x40 box -- an invisible blob that swallowed presses over blank chart.
+      if (hitComm === false || hitComm === null) continue;
     }
     const r = noteRect(i);
     // Test in the note's OWN frame: identification-point ovals are drawn rotated
@@ -1777,8 +1780,12 @@ function appendAirfieldDensityAltitude(body, af) {
     let tempC = null, qnh = null, from = '';
     const metarAgeMin = metar && metar.obsTime
       ? (Date.now() - Number(metar.obsTime) * 1000) / 60000 : null;
-    const metarFresh = metar && (metarAgeMin === null
-      || metarAgeMin <= ((typeof tune === 'function' && tune('daMetarMaxAgeMin')) || 90));
+    // No obsTime, no claim: an observation of unknown age was being treated as current
+    // forever, so a station that stopped reporting kept feeding "now" into the density
+    // altitude. Unknown age falls through to the forecast, which at least knows what hour
+    // it is describing.
+    const metarFresh = metar && metarAgeMin !== null
+      && metarAgeMin <= ((typeof tune === 'function' && tune('daMetarMaxAgeMin')) || 90);
     if (!h && metarFresh && Number.isFinite(Number(metar.temp))) {
       tempC = Number(metar.temp);
       qnh = Number.isFinite(Number(metar.altim)) ? Number(metar.altim) : null;
@@ -4268,7 +4275,7 @@ function grabSelected(px, py, latlng) {
       drag = { kind: 'note', i: noteHit,
                offLat: state.notes[noteHit].lat - latlng.lat,
                offLng: state.notes[noteHit].lng - latlng.lng };
-      holdMapForDrag('note');
+      drag.heldMap = holdMapForDrag('note');
       draw();                     // panel waits for the release: see TAP_OPENS_INSPECTOR_KINDS
       return true;
     }
@@ -4458,7 +4465,7 @@ map.on('mousedown', e => {
       offLat: state.notes[note].lat - e.latlng.lat,
       offLng: state.notes[note].lng - e.latlng.lng,
     };
-    holdMapForDrag('note');
+    drag.heldMap = holdMapForDrag('note');
     draw();                       // panel waits for the release: see TAP_OPENS_INSPECTOR_KINDS
     return;
   }
@@ -4471,7 +4478,7 @@ map.on('mousedown', e => {
     drag = { kind: 'wp', i: lead, also: coincident.slice(1), moved: false,
              origLat: state.waypoints[lead].lat, origLng: state.waypoints[lead].lng,
              origName: state.waypoints[lead].name, originSnapArmed: false };
-    holdMapForDrag('wp');
+    drag.heldMap = holdMapForDrag('wp');
     draw();
     return;
   }
@@ -4487,7 +4494,7 @@ map.on('mousedown', e => {
     drag = { kind: 'wp', i: wp, moved: false,
              origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
              origName: state.waypoints[wp].name, originSnapArmed: false };
-    holdMapForDrag('wp');
+    drag.heldMap = holdMapForDrag('wp');
     // Highlight now, but defer the inspector to release-without-move so you can
     // drag a waypoint (or grab one while panning) without the panel popping up.
     draw();
@@ -4505,7 +4512,7 @@ map.on('mousedown', e => {
     _materialiseDefaultCumLabel(cum.i);
     drag = { kind: 'cumlabel', i: cum.i };
     state.selected = { type: 'leg', index: cum.i };
-    holdMapForDrag('cumlabel');
+    drag.heldMap = holdMapForDrag('cumlabel');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
@@ -4515,7 +4522,7 @@ map.on('mousedown', e => {
     _materialiseDefaultCumLabelRet(cumRet.i);
     drag = { kind: 'cumlabelret', i: cumRet.i };
     state.selected = { type: 'leg', index: cumRet.i };
-    holdMapForDrag('cumlabelret');
+    drag.heldMap = holdMapForDrag('cumlabelret');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
@@ -4526,7 +4533,7 @@ map.on('mousedown', e => {
     drag = { kind: 'label', i: lab.i, which: lab.which,
              ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
-    holdMapForDrag('label');
+    drag.heldMap = holdMapForDrag('label');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
@@ -4534,8 +4541,10 @@ map.on('mousedown', e => {
   if (leg >= 0) {
     downHit = true;
     state.selected = { type: 'leg', index: leg };
-    drag = { kind: 'legclick' };
-    map.dragging.disable();
+    // The map pans under the finger: a leg press selects and opens on release, it does not
+    // drag the leg anywhere. The touch handler has said so in its own comment since it was
+    // written; the mouse path disabled the pan anyway, so pressing the route froze the chart.
+    drag = { kind: 'legclick', heldMap: false };
     draw();                       // panel waits for the release, as every other press does
     return;
   }
@@ -4571,7 +4580,8 @@ map.on('mousedown', e => {
   }
   if (pageSize && hitPageFrameEdge(p.x, p.y)) {
     downHit = true;
-    drag = { kind: 'page', lx: p.x, ly: p.y };
+    // Print layout, not the route: the lock has never covered it, and it does drag.
+    drag = { kind: 'page', lx: p.x, ly: p.y, heldMap: true };
     map.dragging.disable();
     return;
   }
@@ -4583,8 +4593,12 @@ map.on('mousedown', e => {
 // mark it, or letting go re-opens the panel every time the pilot slides the map by a
 // waypoint.
 map.on('movestart', () => {
-  if (drag && dragLockedNow(drag.kind)) drag.moved = true;
-  if (touchDrag && dragLockedNow(touchDrag.kind)) touchDrag.moved = true;
+  // A press that left Leaflet its pan -- locked, or a leg press, which never drags anything
+  // -- can have the map move under it while the press is still pending. That is a drag of
+  // the CHART, not a tap on what is under the finger: mark it, or letting go re-opens the
+  // panel every time the pilot slides the map past a waypoint or along a leg.
+  if (drag && !drag.heldMap) drag.moved = true;
+  if (touchDrag && !touchDrag.heldMap) touchDrag.moved = true;
 });
 
 map.on('mousemove', e => {
@@ -5177,8 +5191,9 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag.inspWasOpen = !document.getElementById('inspector').classList.contains('hidden');
     // Locked: leave the pan alone and do NOT swallow the gesture, or the finger sticks to a
     // waypoint that was never going to move. The release still opens the panel for a tap.
-    if (holdMapForDrag(touchDrag.kind)) {
-      e.preventDefault();              // suppress pan + the synthetic click
+    touchDrag.heldMap = holdMapForDrag(touchDrag.kind);
+    if (touchDrag.heldMap) {
+      e.preventDefault();            // suppress pan + the synthetic click
     }
     // Nothing opens here -- endTouch decides, once tap and drag can be told apart.
     draw();
@@ -5201,6 +5216,21 @@ mapEl.addEventListener('touchmove', e => {
     return;
   }
   if (!touchDrag || e.touches.length !== 1) return;
+  // Back to one finger after a pinch is not the drag resuming. The press that armed this
+  // drag happened before the zoom, so startX/startY are in the old view's pixels: the slop
+  // check compares against a point that no longer means anything, clears it instantly, and
+  // the waypoint jumps to wherever the surviving finger is -- occasionally close enough to a
+  // neighbour to take the delete-on-overlap path with it. mousedown, click and endTouch all
+  // consult the same guard already; this was the one path that did not.
+  if (typeof touchGestureInProgress === 'function' && touchGestureInProgress()) {
+    // Re-seed from here, so if the finger really does go on to drag, it measures from where
+    // it is now rather than from the pre-pinch position.
+    const q = touchXY(e.touches[0]);
+    touchDrag.startX = q.x;
+    touchDrag.startY = q.y;
+    touchDrag.dragArmed = false;
+    return;
+  }
   e.preventDefault();
   const p = touchXY(e.touches[0]);
   // A fingertip is ~10 mm across and never lands still, so a plain tap arrives with a few

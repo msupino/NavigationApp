@@ -10,9 +10,12 @@
 //   pressure altitude = elevation + 30 × (1013 − QNH)
 //   ISA temperature at that pressure altitude = 15 − 1.98 × (PA / 1000)
 //   density altitude = PA + 120 × (OAT − ISA)
-// It is what the manuals and the E6-B teach, it is good to a few tens of feet over the
-// range that matters here, and a pilot can check it in their head -- which a pilot cannot
-// do with the exact form, and being checkable is the point.
+// It is what the manuals and the E6-B teach, and a pilot can check it in their head --
+// which a pilot cannot do with the exact form, and being checkable is the point. It is not
+// exact: against the full barometric form it runs about 220 ft high at the hot, low-pressure
+// end of the range that matters here (Masada in summer), and a few tens of feet over most of
+// it. That is the error the printed charts carry too, and it is on the conservative side --
+// the number shown is never lower than the truth.
 (function () {
   'use strict';
   const NS = (window.NavAid = window.NavAid || {});

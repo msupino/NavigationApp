@@ -2057,6 +2057,7 @@ window.S = Object.assign({
   wxTitleNoMetar: 'Density altitude',
   daElevFromModel: 'terrain elevation',
   trafficUnavailable: 'Live traffic unavailable',
+  airspaceUnavailable: 'Airspace unavailable',
   trafficTitle: 'Traffic',
   trafficAltitude: 'Altitude',
   trafficGroundSpeed: 'Ground speed',
