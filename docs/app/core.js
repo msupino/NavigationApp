@@ -42,7 +42,7 @@ NavAid.tuningDefaults = {
   followResumeMs: { value: 5000, min: 0, max: 60000, step: 500, label: 'Resume following after (ms)' },
   // Turning follow back on is a request to fly the map, and the zoom the pilot was reading
   // the chart at is usually not the zoom to fly at -- zoomed out to see the whole route, or
-  // in on a field's circuit. Re-engaging clamps into this band; a zoom already inside it was
+  // in on the circuit at a field. Re-engaging clamps into this band; a zoom already inside was
   // a deliberate choice and is left alone.
   followZoomFloor: { value: 10, min: 6, max: 18, step: 0.5, label: 'Follow aircraft: closest zoom to keep' },
   followZoomCeiling: { value: 14, min: 6, max: 18, step: 0.5, label: 'Follow aircraft: widest zoom to keep' },
