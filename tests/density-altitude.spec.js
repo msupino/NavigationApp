@@ -27,7 +27,8 @@ async function boot(page, opts) {
   if (o.metar !== false) {
     await page.route('**wx-data/wx.json**', (r) => r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify({ generatedAt: new Date().toISOString(), stations: { LLHA: { metar: {
-        icaoId: 'LLHA', temp: 33, altim: 1009, rawOb: 'METAR LLHA 33/21 Q1009' } } } }) }));
+        icaoId: 'LLHA', temp: 33, altim: 1009, obsTime: Math.floor(Date.now() / 1000),
+        rawOb: 'METAR LLHA 33/21 Q1009' } } } }) }));
   }
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => !!(window.NavAid && NavAid.da) && !!window.airfields);
@@ -574,4 +575,21 @@ test('a stale METAR is aged, then dropped for the forecast', async ({ page }) =>
   expect(stale.src).toContain('21 °C');           // the forecast for this hour instead
   expect(stale.src).toContain('forecast');
   expect(stale.src).not.toMatch(/METAR/);
+});
+
+// A station that stops stamping its observations is not reporting "now" forever. Without an
+// obsTime there is no way to tell a five-minute-old reading from a five-day-old one, and the
+// panel was calling every one of them current -- so the safe reading is that it is not.
+test('a METAR with no observation time is not treated as current', async ({ page }) => {
+  await page.route('**wx-data/wx.json**', (r) => r.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: new Date().toISOString(), stations: { LLHA: { metar: {
+      icaoId: 'LLHA', temp: 33, altim: 1009, rawOb: 'METAR LLHA 33/21 Q1009' } } } }) }));
+  await boot(page, { metar: false });
+  await open(page, 'LLHA');
+  const src = await page.evaluate(() => {
+    const el = document.querySelector('.da-src-row .val');
+    return el ? el.textContent.trim() : null;
+  });
+  expect(src).not.toMatch(/METAR/);
 });
