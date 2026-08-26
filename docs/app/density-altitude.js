@@ -18,7 +18,10 @@
   const NS = (window.NavAid = window.NavAid || {});
 
   const HPA_STD = 1013;
-  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+  // Number(null) is 0 and Number('') is 0, so a missing pressure came back as 0 hPa -- a
+  // reading no altimeter has ever shown, silently feeding the density-altitude sum.
+  const num = (v) => (v === null || v === undefined || v === ''
+    || !Number.isFinite(Number(v)) ? null : Number(v));
 
   function pressureAltFt(elevFt, qnhHpa) {
     const e = num(elevFt), q = num(qnhHpa);

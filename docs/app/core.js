@@ -766,6 +766,8 @@ NavAid.tuningDefaults = {
   airspaceLabelFontPx: { value: 12, min: 7, max: 24, step: 1, label: 'Airspace label size (px)' },
   daWarnAboveElevFt: { value: 2000, min: 500, max: 6000, step: 100,
     label: 'Flag density altitude this far above the field (ft)' },
+  daMetarMaxAgeMin: { value: 90, min: 15, max: 360, step: 5,
+    label: 'Use a METAR for density altitude up to this old (min)' },
   daForecastHours: { value: 24, min: 6, max: 48, step: 1,
     label: 'How far ahead the density-altitude slider runs (h)' },
   // Off until the feed this asks for is actually standing: a default of ON would greet
@@ -812,7 +814,8 @@ NavAid.tuningGroups = [
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
     'defaultBaseLayer', 'baseLayerOpacity'] },
-  { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours'] },
+  { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours',
+    'daMetarMaxAgeMin'] },
   { name: 'Airspace', keys: ['defaultShowAirspace', 'airspaceProhibitedColor', 'airspaceRestrictedColor',
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
@@ -902,6 +905,10 @@ function tune(key) {
   if (spec.type === 'select') {
     return spec.options && spec.options.indexOf(v) !== -1 ? v : spec.value;
   }
+  // Free text (a URL, a comma-separated palette): the numeric fall-through below would hand
+  // back the default for every one of them, so a set value could never be read even once
+  // setTune accepted it.
+  if (spec.type === 'text') return typeof v === 'string' ? v : spec.value;
   return Number.isFinite(v) ? v : spec.value;
 }
 
@@ -965,6 +972,14 @@ function setTune(key, value) {
   if (spec.type === 'select') {
     if (!spec.options || spec.options.indexOf(value) === -1) return;
     NavAid.tuning[key] = value;
+    return;
+  }
+  if (spec.type === 'text') {
+    // A URL, not a number: it has no min/max to clamp to and the numeric branch below
+    // rejected it silently, which made trafficApiUrl unsettable from the gist -- documented
+    // as configurable, and not.
+    if (typeof value !== 'string') return;
+    NavAid.tuning[key] = value.trim();
     return;
   }
   if (!Number.isFinite(value)) return;
@@ -2024,6 +2039,8 @@ window.S = Object.assign({
   daFromForecast: 'forecast',
   daNoData: 'no temperature available',
   daNoElev: 'no field elevation',
+  daQnhAssumed: '(standard)',
+  daAgeMin: function (m) { return '(' + m + ' min old)'; },
   wxTitleNoMetar: 'Density altitude',
   daElevFromModel: 'terrain elevation',
   trafficUnavailable: 'Live traffic unavailable',

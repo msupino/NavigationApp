@@ -1598,7 +1598,7 @@ window.airspaceActiveNow = airspaceActiveNow;
 // little: the leg may be well above or below it.
 function airspaceRouteVerdict(a) {
   if (typeof state === 'undefined' || !state.legs || !state.legs.length) return '';
-  if (typeof airspaceAtLatLng !== 'function') return '';
+  if (typeof airspaceContains !== 'function') return '';
   let crosses = false;
   let lowest = null, highest = null;
   for (let i = 0; i < state.legs.length; i++) {
@@ -1607,7 +1607,9 @@ function airspaceRouteVerdict(a) {
     // Sample along the leg: a leg can pass through an area without either end being in it.
     for (let t = 0; t <= 1.0001; t += 0.05) {
       const at = { lat: w1.lat + (w2.lat - w1.lat) * t, lng: w1.lng + (w2.lng - w1.lng) * t };
-      if (airspaceAtLatLng(at).indexOf(window.airspace.indexOf(a)) === -1) continue;
+      // Geometry, not visibility: this answer is about the route, and it must read the same
+      // whether or not the layer happens to be switched on.
+      if (!airspaceContains(a, at)) continue;
       crosses = true;
       const alt = typeof legAltitudeFt === 'function' ? legAltitudeFt(state.legs[i]) : null;
       if (Number.isFinite(alt)) {
@@ -1751,10 +1753,19 @@ function appendAirfieldDensityAltitude(body, af) {
     const h = parseInt(slider.value, 10) || 0;
     setWhen(h);
     let tempC = null, qnh = null, from = '';
-    if (!h && metar && Number.isFinite(Number(metar.temp))) {
+    const metarAgeMin = metar && metar.obsTime
+      ? (Date.now() - Number(metar.obsTime) * 1000) / 60000 : null;
+    const metarFresh = metar && (metarAgeMin === null
+      || metarAgeMin <= ((typeof tune === 'function' && tune('daMetarMaxAgeMin')) || 90));
+    if (!h && metarFresh && Number.isFinite(Number(metar.temp))) {
       tempC = Number(metar.temp);
       qnh = Number.isFinite(Number(metar.altim)) ? Number(metar.altim) : null;
-      from = S.daFromMetar || 'METAR';
+      // Say how old it is once it stops being "now": a two-hour-old observation is still
+      // the best thing available, but the panel should not present it as current.
+      from = (S.daFromMetar || 'METAR')
+        + (metarAgeMin !== null && metarAgeMin >= 30
+          ? ' ' + (typeof S.daAgeMin === 'function' ? S.daAgeMin(Math.round(metarAgeMin))
+            : '(' + Math.round(metarAgeMin) + ' min)') : '');
     } else {
       const sample = DA.sampleAt(hours, h);
       if (sample) {
@@ -1778,10 +1789,12 @@ function appendAirfieldDensityAltitude(body, af) {
       valRow.classList.remove('da-warn');
       return;
     }
-    if (qnh === null) qnh = DA.HPA_STD;
+    let qnhAssumed = false;
+    if (qnh === null) { qnh = DA.HPA_STD; qnhAssumed = true; }
     const da = DA.densityAltFt(elev, qnh, tempC);
     valEl.textContent = Math.round(da).toLocaleString() + ' ft';
     srcEl.textContent = Math.round(tempC) + ' °C · ' + fmtQnhBoth(qnh)
+      + (qnhAssumed ? ' ' + (S.daQnhAssumed || '(standard)') : '')
       + (from ? ' · ' + from : '')
       + (elevFromModel ? ' · ' + (S.daElevFromModel || 'terrain elevation') : '');
     // The threshold is a rule of thumb, not a limit: past it the book figures stop being

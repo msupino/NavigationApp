@@ -1868,8 +1868,14 @@ async function _fetchAirspace() {
     const d = await r.json();
     airspace = (d.areas || []).filter(a => a && Array.isArray(a.ring) && a.ring.length >= 3);
   } catch (e) {
+    // Leave airspace === null so the next draw retries -- the same rule loadNavWaypoints
+    // documents. Assigning [] would satisfy the guard above forever: one dropped request on
+    // a bad connection, and the layer is a checked box over an empty map until reload, with
+    // nothing said about restricted airspace the pilot believes they are being shown.
     console.warn('Failed to load airspace:', e);
-    airspace = [];
+    airspace = null;
+    _airspaceLoad = null;
+    return [];
   }
   _airspaceLoad = null;
   if (airspace.length) scheduleDraw();
@@ -1895,8 +1901,21 @@ function airspaceLimitText(a) {
   return typeof S.airspaceLimits === 'function' ? S.airspaceLimits(hi, lo) : (lo + ' - ' + hi);
 }
 
+// Is this point inside this area? Geometry only -- no toggle, no visibility. The route
+// check below must not change its answer because a layer is switched off: "your route is
+// clear of it" is a safety statement, and one that depends on what is being drawn is worse
+// than saying nothing.
+function airspaceContains(area, latlng) {
+  if (!area || !Array.isArray(area.ring) || !latlng) return false;
+  const pt = proj(latlng);
+  return notamPointInPoly(pt, area.ring.map(c => proj({ lat: c[0], lng: c[1] })));
+}
+window.airspaceContains = airspaceContains;
+
 // Which areas contain this point, smallest first -- a sector inside a TMA inside a
-// restricted area should offer the tightest one first, the way the bubbles do.
+// restricted area should offer the tightest one first, the way the bubbles do. This one IS
+// gated on the toggle: it answers "what did the pilot just tap", and an invisible area is
+// not something anyone tapped.
 function airspaceAtLatLng(latlng) {
   if (!showAirspace || !Array.isArray(airspace) || !airspace.length || !latlng) return [];
   const pt = proj(latlng);

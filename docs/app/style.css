@@ -4746,6 +4746,11 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
 #tuning-panel select {
   min-width: 0;
 }
+#tuning-panel .tune-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 #tuning-panel input[type="range"] {
   width: 100%;
 }
