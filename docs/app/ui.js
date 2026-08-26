@@ -244,7 +244,7 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
 const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
 // '---' is a non-selectable divider. Any layer not listed is appended after.
-const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', 'ATS', '---',
+const LAYER_ORDER = ['CVFR', 'CVFR AIP', 'Low Alt', 'Helicopters', 'ATS', '---',
                      'Navigation', 'Satellite', 'OpenStreetMap'];
 const orderedLayerNames = () => [
   ...LAYER_ORDER.filter(n => n === '---' || (layers[n] && layerOffered(n))),

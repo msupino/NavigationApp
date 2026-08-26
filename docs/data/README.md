@@ -22,6 +22,24 @@ without archaeology. `scripts/aip-drift.py` answers the same question for the ch
 | `ultralight-areas.json` | CAAI PAMAT internal chart, appendix A-17 | update 3/24, 31 OCT 2024 |
 | `vor.json` | AIP ENR 4.1 antenna positions + GEN 2.5 names; see the file's own `_source` | AIRAC 2024-10-31 |
 
+## One chart is not a dataset
+
+The **CVFR (AIP)** base layer ships no file here: it is a tile set, built by
+`scripts/build-cvfr-tiles.py` from the CAA's own two CVFR sheets (AIP part II, northern and
+southern) and served from `navaid-tiles.supino.org/CVFR-AIP/`. Those sheets are vector PDFs,
+so the leg distances, magnetic tracks and altitude flags survive the render -- the
+annotations the extracted Flight Maps CVFR set does not carry. z8-13, 3,768 tiles.
+
+Rebuilding it after an amendment is the whole command:
+
+```bash
+python3 scripts/build-cvfr-tiles.py cvfr-north.pdf cvfr-south.pdf --out CVFR-AIP
+```
+
+The panel boxes it cuts (title, notes, frequency table, legend, scale bars, and the north
+sheet's Tel Aviv enlargement) are measured off the paper and live in the script's `PANELS`
+table. A re-issued sheet that moves them needs that table re-measured; the script says how.
+
 ## Two files carry no header
 
 `plate-titles.json` and `ifr-overlays.json` are keyed maps — every top-level key is a plate

@@ -149,11 +149,13 @@ NavAid.tuningDefaults = {
   //   "layerEnabledHelicopters": true
   featureNotamFreqRows: { value: true, type: 'bool',
     label: 'Show frequencies a NOTAM states, as their own inspector row' },
+  layerEnabledCVFRAIP: { value: true, type: 'bool', label: 'Offer the CVFR AIP layer' },
   layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
   layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
   layerEnabledATS: { value: true, type: 'bool', label: 'Offer the ATS routes chart layer' },
   defaultBaseLayer: { value: 'OpenStreetMap', type: 'select',
-    options: ['none', 'OpenStreetMap', 'Satellite', 'CVFR', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'],
+    options: ['none', 'OpenStreetMap', 'Satellite', 'CVFR', 'CVFR AIP', 'Navigation', 'Low Alt',
+              'Helicopters', 'ATS'],
     label: 'Which map sits under the chart by default' },
   baseLayerOpacity: { value: 0.7, min: 0.1, max: 1, step: 0.05,
     label: 'How strongly the map under the chart shows through (0-1)' },
@@ -813,7 +815,7 @@ NavAid.tuningGroups = [
     'graphLegArrowPx', 'graphLegLabelMinZoom'] },
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
-  { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
+  { name: 'Base layers', keys: ['layerEnabledCVFRAIP', 'layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
     'defaultBaseLayer', 'baseLayerOpacity'] },
   { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours',
@@ -1778,7 +1780,7 @@ window.S = Object.assign({
   kmlDocName: 'NavAid flythrough',
   kmlRouteName: 'Route',
   kmlTourName: 'Fly the route',
-  layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
+  layerLabels: { 'CVFR': 'CVFR', 'CVFR AIP': 'CVFR (AIP)', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
                  // A dataset, not a base chart: the ENR 6.1 sheet is an Extra-layers overlay,
                  // and this label names its points in the "Nav waypoints from" picker.
@@ -3929,6 +3931,9 @@ function finishLatLng(lat, lng) {
 // the "X of Y map tiles failed to load" warning when the viewport extends
 // past the chart (the typical case at low zoom).
 const FM_BOUNDS = { south: 28.3, west: 33.7, north: 34.3, east: 36.6 };
+// Our own CVFR tiles cover exactly the two sheets they were cut from and not a metre more,
+// so they get their own box: the frame corners scripts/build-cvfr-tiles.py reports.
+const CVFR_AIP_BOUNDS = { south: 29.4313, west: 34.1003, north: 33.3635, east: 35.9145 };
 const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13,
                chartBounds: FM_BOUNDS };
 const FM_ATTR =
@@ -4022,6 +4027,17 @@ const CHART_SPECS = {
     NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }, pane))),
+  // The same chart as CVFR above, cut here from the CAA's own two sheets rather than
+  // extracted from Flight Maps. Those sheets are vector PDFs, so what survives the render is
+  // what the paper prints: leg distances, magnetic tracks and the altitude flags -- the
+  // numbers a pilot actually flies by, and the ones missing from the extracted set.
+  // Ours alone, on our own mirror: no flight-maps split, because flight-maps has no part in
+  // it. minNativeZoom 8 because the build starts there; Leaflet upscales for 6 and 7 rather
+  // than asking for tiles that were never made.
+  'CVFR AIP': (pane) => L.tileLayer(NAVAID_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png',
+    withPane({ ...TILE, minNativeZoom: 8, chartBounds: CVFR_AIP_BOUNDS, corsOk: true,
+      attribution: 'Charts \u00a9 CAAI \u00b7 AIP part II CVFR sheets',
+      exportUrl: NAVAID_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png' }, pane)),
   'Navigation': (pane) => L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,

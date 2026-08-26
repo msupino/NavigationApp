@@ -695,7 +695,7 @@ window.S = {
   kmlDocName: 'NavAid טיסה',
   kmlRouteName: 'מסלול',
   kmlTourName: 'טוס את המסלול',
-  layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
+  layerLabels: { 'CVFR': 'CVFR', 'CVFR AIP': 'CVFR (AIP)', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
                  'Helicopters': 'מסוקים', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap',
                  'ATS': 'נתיבי ATS' },
   tbHandleTitle: 'גרור להזזה',
