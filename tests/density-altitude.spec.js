@@ -481,3 +481,36 @@ test('every airfield has one', async ({ page }) => {
   });
   expect(missing).toEqual([]);
 });
+
+// Haifa publishes a tower and an ATIS and no clearance at all (AD 2.18). The panel used to
+// print "Clearance — None" so every airfield read the same way; inside a titled
+// Communication frame that reads as a service the field has, which happens to be off.
+test('a field with no clearance does not mention one', async ({ page }) => {
+  await boot(page);
+  await open(page, 'LLHA');
+  const comms = await page.evaluate(() => {
+    const sec = document.querySelector('#insp-body .comm-section');
+    return {
+      labels: [...sec.querySelectorAll('.row label')].map(l => l.textContent.trim()),
+      clearanceRows: sec.querySelectorAll('.clearance-row').length,
+      text: sec.textContent,
+    };
+  });
+  expect(comms.labels).toContain('Primary');
+  expect(comms.labels).toContain('ATIS');
+  expect(comms.labels).not.toContain('Clearance');
+  expect(comms.clearanceRows).toBe(0);
+  expect(comms.text).not.toMatch(/None/);
+});
+
+// ...and a field that does publish one still shows it.
+test('a field with a clearance still shows it', async ({ page }) => {
+  await boot(page);
+  await open(page, 'LLBG');
+  const val = await page.evaluate(() => {
+    const row = document.querySelector('#insp-body .clearance-row');
+    const inp = row && row.querySelector('input');
+    return inp ? inp.value : null;
+  });
+  expect(val).toBe('121.55');
+});

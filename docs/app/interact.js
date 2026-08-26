@@ -1850,10 +1850,11 @@ function appendAirfieldFrequencyRows(body, af) {
   const appendFieldParts = (field, label, rowClass) => {
     const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, field) : [];
     if (!parts.length) {
-      // Show a "— None" row so every airfield inspector has the same layout.
-      const row = textRow(label, S.freqNone || 'None');
-      row.classList.add(rowClass);
-      body.appendChild(row);
+      // Nothing published: no row. It used to print "Clearance — None" so every airfield
+      // read the same way, which was defensible as a loose list and stopped being so inside
+      // a titled Communication frame -- there it reads as a service the field has, that
+      // happens to be off. Haifa publishes a tower and an ATIS and no clearance at all; the
+      // panel now says exactly that by not mentioning one.
       return;
     }
     for (const p of parts) {
