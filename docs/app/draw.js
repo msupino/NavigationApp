@@ -1901,6 +1901,8 @@ async function loadNavWaypoints() {
 // sectors (ENR 2.1). Loaded once, lazily, on the first draw that wants it -- 46 rings is a
 // small file but nobody who never opens the layer should pay for it.
 var airspace = null;                 // null = not loaded
+// Said once per outage, not once per retry: the draw loop asks again every frame.
+var _airspaceWarned = false;
 var _airspaceLoad = null;            // the in-flight fetch, so a second draw joins it
 function loadAirspace() {
   if (airspace !== null) return Promise.resolve(airspace);
@@ -1924,9 +1926,19 @@ async function _fetchAirspace() {
     console.warn('Failed to load airspace:', e);
     airspace = null;
     _airspaceLoad = null;
+    // ...and say so. A console warning is not a message to a pilot: the checkbox stays
+    // ticked, the map stays empty, and the reading is "there is no restricted airspace
+    // here" rather than "we could not find out". Once per run of failures, the same shape
+    // the traffic outage uses -- what failed, and why, so the next question is answerable.
+    if (!_airspaceWarned && typeof showToast === 'function') {
+      _airspaceWarned = true;
+      const why = (e && e.message) || '';
+      showToast((S.airspaceUnavailable || 'Airspace unavailable') + (why ? ' (' + why + ')' : ''));
+    }
     return [];
   }
   _airspaceLoad = null;
+  _airspaceWarned = false;                  // it came back; a later outage is news again
   if (airspace.length) scheduleDraw();
   return airspace;
 }

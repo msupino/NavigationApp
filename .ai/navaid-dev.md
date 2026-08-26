@@ -160,7 +160,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   - `state.mode` = `'add' | 'note' | null` (null = inspect);
     `state.selected` = `{type:'wp'|'leg'|'note', index}` or `null`.
   - Top-level globals: `showReturn`, `showMidLeg`, `showCumTime`,
-    `highlightDiff`, `showNavWP`, `navWP`, `showHotspots`, `showWpNames`,
+    `highlightDiff`, `showNavWP`, `navWP`, `showHotspots` (stored under
+    `navaid.showHotspots2`, see below), `showWpNames`,
     `wpNameAngle`, `showAirfields`, `showVorStations`, `vorRef`,
     `showReporting`, `showMsa`, `showWind`, `showSigmet`,
     `yellowAlpha`, `wpSize`, `legArrowSize`, `legLineWidth`,
@@ -313,8 +314,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     to terrain during pan (not just on `moveend`).
 - **Drift lines** (10°), **minute markers** with even-minute numeric
   labels and a white halo.
-- **Comm-change frequency callouts:** the "Show/Add Freq Changes" layer
-  still draws red rings on published comm-change reporting points. When a
+- **Comm-change frequency callouts:** the "Show/Add Freq Changes" layer no
+  longer draws a red ring on published comm-change reporting points -- the red
+  circle means *hotspot* now, and two meanings for one mark is one too many.
+  `commChangeRings` in the gist (default `false`) puts them back for anyone who
+  wants the old reading. When a
   route waypoint sits on one of those points, `seedCommChangeNotes()`
   creates a real draggable note tagged `cc: <ICAO>`, with editable
   `freqName` / `freq` fields. Tagged notes render as chart-style lightning
@@ -725,6 +729,22 @@ as a machine-readable registry.
 - `navaid.showTraffic` — `'0'` / `'1'` for live ADS-B traffic. The switch exists
   everywhere but only works in the APK (the feeds refuse browser requests), and
   `featureLiveTraffic` in the gist decides whether the control is offered at all.
+- **Frequencies a NOTAM states:** `airfieldFreqChanges(icao)` (draw.js) reads a
+  new tower or clearance frequency out of the live NOTAM feed, but only from a
+  narrow grammar -- each pattern must name its service AND its frequency in one
+  match (`NEW FREQ INSTL FOR CLEARANCE ... 127.800MHZ`, `TWR FREQ ... CHG TO
+  125.600MHZ`, `CLEARANCE (CPT) FREQ CHG TO 118.550MHZ`). Anything else yields
+  nothing and keeps the older pointer badge, which names the NOTAM and opens it.
+  A match is applied at the **call sign's template** (`commCallSignTemplateFreq`),
+  not at one panel, so the waypoint inspector, the Freq column, the map callouts
+  and the airfield row all follow one definition; `commCallSignPublishedFreq`
+  keeps the catalog's own answer for the row titles. The row is the field's own
+  editable row, ringed red (`.freq-notam-changed`), and reset returns to the
+  NOTAM frequency rather than the superseded one. Nothing is stored: the value is
+  computed per render, so it leaves when the NOTAM leaves the feed. It can also
+  CREATE a row the dataset has none for -- Haifa publishes no clearance at all.
+  `featureNotamFreqRows` in the gist (default `true`) withdraws the applied
+  frequencies; the pointer badge is unaffected either way.
 - `navaid.showIfr` — `'0'` / `'1'` for the instrument-chart layer, and
   `navaid.ifrSheet.<ICAO>` for which sheet that field is showing (device-local:
   a composed key the exact-key sync layer cannot enumerate).
@@ -752,8 +772,11 @@ as a machine-readable registry.
   for locally edited airport frequency defaults.
 - `navaid.vorFreqOverrides` — object keyed by VOR ident for locally edited
   VOR frequency defaults.
-- `navaid.showHotspots` — `'0'` / `'1'` for graph-derived route-hotspot defaults. This does
-  not clear or override the per-waypoint `hotspot` choice stored in `navaid.route`.
+- `navaid.showHotspots2` — `'0'` / `'1'` for graph-derived route-hotspot defaults. This does
+  not clear or override the per-waypoint `hotspot` choice stored in `navaid.route`. The key
+  is deliberately **not** `navaid.showHotspots`: the overlay was switched off for everyone,
+  and a rename is how a stored `'1'` from before that stops resurrecting it. `ui.js` removes
+  the old key on boot, so an upgrade forgets the old answer rather than inheriting it.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
