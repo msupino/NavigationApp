@@ -833,6 +833,7 @@ function draw() {
   // Ground colouring first: it is the chart's own backdrop, so everything else -- airspace,
   // the route, the overlays -- draws on top of it rather than being tinted by it.
   if (window.showMsa) { drawTerrainTint(); drawTerrainWarnings(); }
+  drawAirspace();               // AIP airspace (P/R/TMA) under everything else
   drawAreas();                  // airspace bubbles under the waypoints
   // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
   // what a pilot is actually looking at even with every segment drawn.
@@ -1491,6 +1492,55 @@ function airfieldFreqNotams(icao) {
     return FREQ_MENTION_RE.test(String(n.text || '').toUpperCase());
   });
 }
+// ...and the narrow case where a value CAN be read out, because the CAA writes it the same
+// way every time. Two shapes are in the feed today:
+//
+//   A0685/26 LLHA  NEW FREQ INSTL FOR CLEARANCE BFR TAXI (CPT) 127.800MHZ.
+//   C1574/26 LLHZ  TWR FREQ TEMPO CHG TO 125.600MHZ, CLEARANCE (CPT) FREQ CHG TO 118.550MHZ.
+//
+// The rule above still holds -- a mis-parse puts a pilot on the wrong frequency -- so this
+// does not relax it, it narrows it: each pattern must name its service AND its frequency in
+// one match, an unmatched NOTAM yields nothing and keeps the pointer badge, and what comes
+// out is never written into the AIP row. It is shown as its own row, carrying the NOTAM id,
+// and it exists only while that NOTAM is in the feed. When the NOTAM goes, so does the row,
+// with no file to edit -- which is the difference between this and baking 127.80 into
+// airfields.json, where it outlives the reason it was true.
+const FREQ_MHZ = '(1[0-3][0-9]\\.[0-9]{1,3})\\s*MHZ';
+const FREQ_PATTERNS = [
+  // "TWR FREQ TEMPO CHG TO 125.600MHZ" / "TOWER FREQ CHANGED TO ..."
+  { service: 'tower', re: new RegExp('\\b(?:TWR|TOWER)\\b[^.,;]{0,40}?\\bFREQ(?:UENCY)?\\b[^.,;]{0,40}?'
+      + '\\bCHG?(?:ANGED)?\\s+TO\\s+' + FREQ_MHZ) },
+  // "CLEARANCE (CPT) FREQ CHG TO 118.550MHZ"
+  { service: 'clearance', re: new RegExp('\\bCLEARANCE\\b[^.,;]{0,40}?\\bFREQ(?:UENCY)?\\b[^.,;]{0,40}?'
+      + '\\bCHG?(?:ANGED)?\\s+TO\\s+' + FREQ_MHZ) },
+  // "NEW FREQ INSTL FOR CLEARANCE BFR TAXI (CPT) 127.800MHZ"
+  { service: 'clearance', re: new RegExp('\\bNEW\\s+FREQ(?:UENCY)?\\b[^.,;]{0,20}?\\bFOR\\b[^.,;]{0,20}?'
+      + '\\bCLEARANCE\\b[^.,;]{0,40}?' + FREQ_MHZ) },
+];
+
+// Trailing zeros are how the NOTAM writes it and not how the chart does: 127.800 is 127.80,
+// and a row that disagrees with the AIP row's format reads as a different kind of number.
+function freqTwoDecimals(mhz) {
+  const n = Number(mhz);
+  return Number.isFinite(n) ? n.toFixed(2) : String(mhz);
+}
+
+// [{ service, freq, id }] for one airfield, from the NOTAMs in force right now.
+function airfieldFreqChanges(icao) {
+  const out = [];
+  for (const n of airfieldFreqNotams(icao)) {
+    const text = String((n && n.text) || '').toUpperCase();
+    for (const pat of FREQ_PATTERNS) {
+      const m = pat.re.exec(text);
+      // One row per service per NOTAM: a later NOTAM that repeats a service does not stack.
+      if (m && !out.some(o => o.service === pat.service)) {
+        out.push({ service: pat.service, freq: freqTwoDecimals(m[1]), id: n.id });
+      }
+    }
+  }
+  return out;
+}
+
 function drawNotamAirportMarkers() {
   if (!Array.isArray(airfields) || !airfields.length) return;
   const byIcao = {};
@@ -1672,7 +1722,7 @@ var _layerGen = 0;
 // reverse direction from it rather than keeping a second hand-maintained
 // inverse map that could drift. Layers not named here (Navigation /
 // Satellite / OSM) share the CVFR datasets.
-const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
+const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters', ats: 'ATS' };
 function layerDataPrefix() {
   // An explicit choice (View/Set -> "Nav waypoints from") wins over the base layer, so
   // Satellite / OSM / Navigation are no longer stuck on CVFR: they used to fall through
@@ -1846,6 +1896,141 @@ async function loadNavWaypoints() {
     return [];
   }
 }
+
+// Airspace from the AIP: prohibited and restricted areas (ENR 5.1) and the Ben-Gurion TMA
+// sectors (ENR 2.1). Loaded once, lazily, on the first draw that wants it -- 46 rings is a
+// small file but nobody who never opens the layer should pay for it.
+var airspace = null;                 // null = not loaded
+var _airspaceLoad = null;            // the in-flight fetch, so a second draw joins it
+function loadAirspace() {
+  if (airspace !== null) return Promise.resolve(airspace);
+  // Joining the promise, NOT claiming the global with an empty array: the claim made a
+  // caller that arrived while the fetch was still running receive [] and believe it.
+  if (!_airspaceLoad) _airspaceLoad = _fetchAirspace();
+  return _airspaceLoad;
+}
+async function _fetchAirspace() {
+  try {
+    // ?v= is hand-bumped when the dataset changes, like every other data file here.
+    const r = await fetch('data/airspace.json?v=2');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    airspace = (d.areas || []).filter(a => a && Array.isArray(a.ring) && a.ring.length >= 3);
+  } catch (e) {
+    // Leave airspace === null so the next draw retries -- the same rule loadNavWaypoints
+    // documents. Assigning [] would satisfy the guard above forever: one dropped request on
+    // a bad connection, and the layer is a checked box over an empty map until reload, with
+    // nothing said about restricted airspace the pilot believes they are being shown.
+    console.warn('Failed to load airspace:', e);
+    airspace = null;
+    _airspaceLoad = null;
+    return [];
+  }
+  _airspaceLoad = null;
+  if (airspace.length) scheduleDraw();
+  return airspace;
+}
+window.loadAirspace = loadAirspace;
+
+function airspaceColor(kind) {
+  if (kind === 'prohibited') return tune('airspaceProhibitedColor');
+  if (kind === 'tma') return tune('airspaceTmaColor');
+  // A CTR is controlled like a TMA but it is the one you have to talk through to land, so
+  // it gets its own colour rather than dissolving into the TMA sectors above it.
+  if (kind === 'ctr') return tune('airspaceCtrColor');
+  return tune('airspaceRestrictedColor');
+}
+
+// "0 – 3000" reads as feet without saying so twice; GND and UNL are the words a chart uses.
+function airspaceLimitText(a) {
+  const lo = a.lowerFt === 0 || a.lowerFt === null || a.lowerFt === undefined
+    ? (S.airspaceGnd || 'GND') : String(a.lowerFt);
+  const hi = a.upperFt === null || a.upperFt === undefined
+    ? (S.airspaceUnl || 'UNL') : String(a.upperFt);
+  return typeof S.airspaceLimits === 'function' ? S.airspaceLimits(hi, lo) : (lo + ' - ' + hi);
+}
+
+// Is this point inside this area? Geometry only -- no toggle, no visibility. The route
+// check below must not change its answer because a layer is switched off: "your route is
+// clear of it" is a safety statement, and one that depends on what is being drawn is worse
+// than saying nothing.
+function airspaceContains(area, latlng) {
+  if (!area || !Array.isArray(area.ring) || !latlng) return false;
+  const pt = proj(latlng);
+  return notamPointInPoly(pt, area.ring.map(c => proj({ lat: c[0], lng: c[1] })));
+}
+window.airspaceContains = airspaceContains;
+
+// Which areas contain this point, smallest first -- a sector inside a TMA inside a
+// restricted area should offer the tightest one first, the way the bubbles do. This one IS
+// gated on the toggle: it answers "what did the pilot just tap", and an invisible area is
+// not something anyone tapped.
+function airspaceAtLatLng(latlng) {
+  if (!showAirspace || !Array.isArray(airspace) || !airspace.length || !latlng) return [];
+  const pt = proj(latlng);
+  const out = [];
+  for (let i = 0; i < airspace.length; i++) {
+    const poly = airspace[i].ring.map(c => proj({ lat: c[0], lng: c[1] }));
+    if (!notamPointInPoly(pt, poly)) continue;
+    let a2 = 0;
+    for (let j = 0; j < poly.length; j++) {
+      const q = poly[(j + 1) % poly.length];
+      a2 += poly[j].x * q.y - q.x * poly[j].y;
+    }
+    out.push({ index: i, size: Math.abs(a2) });
+  }
+  out.sort((x, y) => x.size - y.size);
+  return out.map(h => h.index);
+}
+window.airspaceAtLatLng = airspaceAtLatLng;
+
+function drawAirspace() {
+  if (!showAirspace) return;
+  if (airspace === null) { loadAirspace(); return; }
+  if (!airspace.length) return;
+  const alpha = tune('airspaceFillAlpha');
+  octx.save();
+  octx.setLineDash([]);
+  for (const a of airspace) {
+    octx.beginPath();
+    for (let i = 0; i < a.ring.length; i++) {
+      const p = proj({ lat: a.ring[i][0], lng: a.ring[i][1] });
+      if (i === 0) octx.moveTo(p.x, p.y); else octx.lineTo(p.x, p.y);
+    }
+    octx.closePath();
+    const col = airspaceColor(a.kind);
+    octx.fillStyle = cssRgba(col, alpha);
+    octx.strokeStyle = col;
+    octx.lineWidth = tune('airspaceLineWidthPx');
+    octx.fill();
+    octx.stroke();
+  }
+  // Identifier and vertical limits at the centroid, from a zoom where they can be read.
+  // A country-wide view of 46 stacked labels is not information.
+  if (map.getZoom() >= tune('airspaceLabelMinZoom')) {
+    const px = Math.round(tune('airspaceLabelFontPx'));
+    octx.font = 'bold ' + px + 'px sans-serif';
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    for (const a of airspace) {
+      let x = 0, y = 0;
+      for (const p of a.ring) { const s2 = proj({ lat: p[0], lng: p[1] }); x += s2.x; y += s2.y; }
+      x /= a.ring.length; y /= a.ring.length;
+      const col = airspaceColor(a.kind);
+      const lines = [a.short || a.id, airspaceLimitText(a)];
+      for (let i = 0; i < lines.length; i++) {
+        const ly = y + (i - 0.5) * (px + 2);
+        octx.lineWidth = 3;
+        octx.strokeStyle = 'rgba(255,255,255,0.9)';
+        octx.strokeText(lines[i], x, ly);
+        octx.fillStyle = col;
+        octx.fillText(lines[i], x, ly);
+      }
+    }
+  }
+  octx.restore();
+}
+window.drawAirspace = drawAirspace;
 
 // LSA airspace areas ("bubbles") overlay — filled rings drawn under the
 // waypoints. Layer-aware via fetchLayerData('areas'): the Low Alt layer has
@@ -2413,6 +2598,7 @@ async function loadAirfields() {
       cvfr_overlay: a.cvfr_overlay || null,
       heli_overlay: a.heli_overlay || null,
       commfail_overlay: a.commfail_overlay || null,
+      ifr_overlays: Array.isArray(a.ifr_overlays) ? a.ifr_overlays.slice() : null,
     }));
     if (typeof populatePlateAirfieldSelect === 'function') populatePlateAirfieldSelect();
     return airfields;
@@ -2874,7 +3060,13 @@ function drawCommChangeRings() {
   // commChangeMap may be null briefly during boot — guard so a fast first
   // paint can't NPE before loadCommChange resolves. The red rings are an
   // on-screen affordance only — omit them from the PNG export (NavAid.exporting).
-  if (showCommChange && commChangeMap && navWP && navWP.length &&
+  // The red ring is retired: that circle now means "hotspot" -- the pilot marks those, and
+  // one symbol cannot mean both "look out here" and "change frequency here". A frequency
+  // change already says so in words, in its own callout with the frequency in it, which is
+  // more than a ring ever said. Kept behind a tunable rather than deleted: the drawing is
+  // three lines and someone may want it back on a chart with no callouts.
+  if (showCommChange && tune('commChangeRings') === true &&
+      commChangeMap && navWP && navWP.length &&
       !(window.NavAid && NavAid.exporting)) {
     const ringWidth = tune('commChangeRingWidthPx');
     octx.strokeStyle = tune('commChangeRingColor');
@@ -2885,6 +3077,11 @@ function drawCommChangeRings() {
     // ring to enclose the disc (+ its 3px stroke) so it stays visible outside.
     for (const wp of navWP) {
       if (!commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
+      // A suppressed change is one the pilot has said does not apply to this route. The
+      // callout goes, and the ring has to go with it: a red circle on the map is the app
+      // saying "change frequency here", and leaving it drawn after the change was dismissed
+      // says it about a point where nothing happens.
+      if (isCommChangeSuppressed(wp.name)) continue;
       if (typeof routePointOnlyInHiddenDirection === 'function' &&
           routePointOnlyInHiddenDirection(wp)) continue;
       const s = proj(wp);                // no viewport cull: also drawn into
@@ -3051,8 +3248,41 @@ function commCallSignDefaultFreq(row) {
   if (typeof row.freq === 'string' && row.freq.trim()) return commFormatFreq(row.freq);
   return '';
 }
-function commCallSignTemplateFreq(id, row) {
+// The frequency the catalog publishes for this call sign, ignoring NOTAMs and overrides.
+function commCallSignPublishedFreq(id, row) {
   return commCallSignDefaultFreq(row || commCatalogCallSignRow(id));
+}
+
+// Which aerodrome a call sign belongs to. The map lives in interact.js, which loads after
+// this file, so it is read at call time rather than captured.
+function commCallSignIcao(id) {
+  const map = (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS) || null;
+  if (!map || !id) return '';
+  const want = String(id).toUpperCase();
+  for (const code in map) if (String(map[code] || '').toUpperCase() === want) return code;
+  return '';
+}
+
+// A NOTAM that moved this call sign's tower frequency, if one is in force.
+function commCallSignFreqChange(id) {
+  if (typeof tune === 'function' && tune('featureNotamFreqRows') === false) return null;
+  if (typeof airfieldFreqChanges !== 'function') return null;
+  const icao = commCallSignIcao(commCallSignIdKey(id) || id);
+  if (!icao) return null;
+  return airfieldFreqChanges(icao).find(c => c.service === 'tower') || null;
+}
+
+// The frequency a fresh comm-change gets, and the one its reset button returns to.
+//
+// A NOTAM in force is the template, not a decoration on top of it. Herzliya's tower moved to
+// 125.60 under C1574/26, and every waypoint that seeds its frequency from the HERZLIYA call
+// sign -- Bnei Dror, Deror, the whole northern set -- would otherwise offer 122.20 and send
+// a pilot to call a frequency nobody is on. One definition here reaches all of them: the
+// waypoint inspector, the Freq column, the map callouts and the airfield panel.
+function commCallSignTemplateFreq(id, row) {
+  const change = commCallSignFreqChange(id);
+  if (change) return change.freq;
+  return commCallSignPublishedFreq(id, row);
 }
 function commCallSignOverrideFreq(id) {
   const key = commCallSignIdKey(id);

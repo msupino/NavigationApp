@@ -13,6 +13,12 @@ const SAME_IN_BOTH = [
   'choosePointNotam', 'notamInspLabel',        // NOTAM
   'tbSigmet', 'sigmetReadout',                 // SIGMET
   'atis', 'wxMetar', 'plateCategoryStar',      // ATIS / METAR / STAR
+  // The density-altitude row names where its temperature came from. A METAR is called a
+  // METAR in Hebrew too -- the observation type, not a word to translate.
+  'daFromMetar',
+  // Two numbers and a dash. Called with one argument by the sweep above it reads
+  // "undefined – 1", which is an artefact of the probe, not English on screen.
+  'airspaceLimits',
   'geModeApp', 'geModeWeb',                    // Google Earth Pro / Web
   'tbViewSource', 'tbWiki',                    // GitHub / Wiki
   'vorRadialDme', 'windFetchOk',               // "R-123° / 4 NM", "5 hPa ← .."

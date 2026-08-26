@@ -14,6 +14,9 @@ const KEYS = [
   'fitTrackPaddingPx', 'fitTrackMaxZoom', 'fitTrackPointZoom',
   'fitAltPairPaddingPx', 'fitAltPairMaxZoom',
   'fitAreaPaddingPx', 'fitAreaMaxZoom', 'fitBoxPaddingPx',
+  // The instrument-chart fit, used when a sheet is picked in the IFR layer or reached from
+  // "Show on map" in a chart viewer.
+  'fitPlatePaddingPx', 'fitPlateMaxZoom',
 ];
 
 async function boot(page) {

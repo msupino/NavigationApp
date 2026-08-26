@@ -115,11 +115,19 @@ function inspectorSelectionDataReady(sel) {
   if (sel.type === 'airfield') return Array.isArray(airfields);
   if (sel.type === 'vor') return Array.isArray(vors);
   if (sel.type === 'lsaArea') return Array.isArray(areas);
+  if (sel.type === 'airspace') return Array.isArray(window.airspace);
   return true;
 }
 
 function normalizeInspectorSelection(sel) {
   if (!sel || typeof sel !== 'object') return null;
+  // An aircraft is named by its transponder address, not by a place in one of our arrays:
+  // the list it lives in is rebuilt every few seconds and its order means nothing.
+  if (sel.type === 'traffic') {
+    const hex = String(sel.hex || '');
+    return hex && (window.trafficAircraft || []).some(a => a && a.hex === hex)
+      ? { type: 'traffic', hex } : null;
+  }
   const index = Number(sel.index);
   if (!Number.isInteger(index) || index < 0) return null;
   if (sel.type === 'wp') {
@@ -145,6 +153,10 @@ function normalizeInspectorSelection(sel) {
   }
   if (sel.type === 'vor') {
     return Array.isArray(vors) && index < vors.length ? { type: 'vor', index } : null;
+  }
+  if (sel.type === 'airspace') {
+    return Array.isArray(window.airspace) && index < window.airspace.length
+      ? { type: 'airspace', index } : null;
   }
   if (sel.type === 'lsaArea') {
     return Array.isArray(areas) && index < areas.length ? { type: 'lsaArea', index } : null;
@@ -267,12 +279,20 @@ function isKnownCommChangeKey(ccKey) {
 function appendAddFreqChangeButton(body, wp, ccKey) {
   if (!body || !wp || !ccKey || !showCommChange) return;
   const wpIdx = Array.isArray(state.waypoints) ? state.waypoints.indexOf(wp) : -1;
-  if (wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
-      legRetraceTurnIndex() === wpIdx) return;
+  // At the turning point you leave on the frequency you arrived on, so there is no change to
+  // call. Dimmed with the reason rather than taken away: a control that vanishes when a
+  // point becomes the turn moves everything under it -- including the button being pressed
+  // -- and leaves a pilot hunting for an action that was there a moment ago.
+  const atTurn = wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
+    legRetraceTurnIndex() === wpIdx;
   const add = document.createElement('button');
   add.className = 'insp-btn add-freq-change-btn';
   add.textContent = S.addFreqChange || 'Add frequency change';
+  add.disabled = atTurn;
+  if (atTurn) add.title = S.addFreqChangeAtTurn ||
+    'You leave the turning point on the frequency you arrived on, so there is no change to call here.';
   add.onclick = () => {
+    if (atTurn) return;
     const idx = addCommChangeNoteForWaypoint(wp, ccKey);
     if (idx >= 0 && state.selected && state.selected.type === 'wp') {
       state.selected.freqNoteIndex = idx;
@@ -462,6 +482,14 @@ function dedupePointCandidates(candidates) {
   return out;
 }
 function pointChoiceText(c) {
+  if (c.type === 'airspace') {
+    const a = (window.airspace && window.airspace[c.index]) || {};
+    const kind = a.kind === 'prohibited' ? (S.airspaceProhibited || 'Prohibited')
+      : a.kind === 'tma' ? (S.airspaceTma || 'TMA')
+      : a.kind === 'ctr' ? (S.airspaceCtr || 'CTR') : (S.airspaceRestricted || 'Restricted');
+    return { primary: a.short || a.id || kind,
+      meta: kind + (typeof airspaceLimitText === 'function' ? ' \u00b7 ' + airspaceLimitText(a) : '') };
+  }
   if (c.type === 'lsaArea') {
     const a = (typeof areas !== 'undefined' && areas && areas[c.index]) || {};
     const bits = [];
@@ -1485,6 +1513,28 @@ function refreshAirfieldInspectorAfterCommCatalog(af) {
 // Generic editable-frequency inspector row. `opts`:
 //   value      current displayed freq, def default, rowClass extra class
 //   isOverride() -> bool, commit(norm) -> displayed value, onReset()
+// A frequency a NOTAM states outright goes into the field's own row, ringed red, rather
+// than standing in a row of its own beside it. Two rows for one frequency is two answers to
+// one question, and the pilot has to work out which to call; one row ringed red is the
+// answer, marked as not-the-published-one. The published value stays in the row's title,
+// and the id says which NOTAM to read.
+//
+// Where the AIP publishes nothing -- Haifa's clearance -- the NOTAM CREATES the row. That is
+// the case a value-substitution scheme cannot serve, and the reason this is computed at
+// render rather than merged into airfields.json: the row exists exactly as long as the
+// NOTAM is in the feed, and needs nothing edited back when it goes.
+function airfieldFreqChangeFor(af, service) {
+  if (typeof airfieldFreqChanges !== 'function') return null;
+  if (typeof tune === 'function' && tune('featureNotamFreqRows') === false) return null;
+  return airfieldFreqChanges(af && af.name).find(c => c.service === service) || null;
+}
+
+function airfieldFreqNotamTitle(change, published) {
+  return S.freqNotamRowTitle
+    ? S.freqNotamRowTitle(change.id, published)
+    : 'NOTAM ' + change.id + (published ? ' \u00b7 AIP ' + published : '');
+}
+
 function freqEditRow(label, opts) {
   const row = document.createElement('div');
   row.className = 'row' + (opts.rowClass ? ' ' + opts.rowClass : '');
@@ -1535,23 +1585,315 @@ function freqEditRow(label, opts) {
   return row;
 }
 
+// --- airspace helpers --------------------------------------------------------
+// Is this area in force at this moment? Only where the printed schedule says so without
+// interpretation: "H24" always, and a "Sun 04:00 (UTCW) - Thu 19:00 (UTCW)" window read
+// in UTC. Anything resting on sunrise/sunset or on the holiday calendar returns null --
+// unknown, and shown as nothing. A confident "not active now" that is wrong is the one
+// answer here that could put an aeroplane somewhere it must not be.
+const AIRSPACE_DAY = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+function airspaceActiveNow(a, nowDate) {
+  const hours = (a && a.hours) || [];
+  if (!hours.length) return null;
+  if (hours.some(h => /^H24$/i.test(h))) return true;
+  const now = nowDate || new Date();
+  let known = false;
+  for (const h of hours) {
+    const m = /^(\w{3})\s+(\d{1,2}):(\d{2})[^-]*-\s*(\w{3})\s+(\d{1,2}):(\d{2})/.exec(h);
+    if (!m) continue;                       // SR/SS and the like: not decidable here
+    known = true;
+    const d0 = AIRSPACE_DAY[m[1].toLowerCase()];
+    const d1 = AIRSPACE_DAY[m[4].toLowerCase()];
+    if (d0 === undefined || d1 === undefined) continue;
+    const minsOf = (d, hh, mm) => d * 1440 + Number(hh) * 60 + Number(mm);
+    const from = minsOf(d0, m[2], m[3]);
+    const to = minsOf(d1, m[5], m[6]);
+    const cur = now.getUTCDay() * 1440 + now.getUTCHours() * 60 + now.getUTCMinutes();
+    const inside = from <= to ? (cur >= from && cur <= to) : (cur >= from || cur <= to);
+    if (inside) return true;
+  }
+  return known ? false : null;
+}
+window.airspaceActiveNow = airspaceActiveNow;
+
+// How the planned route stands against this area's limits. Lateral crossing alone means
+// little: the leg may be well above or below it.
+function airspaceRouteVerdict(a) {
+  if (typeof state === 'undefined' || !state.legs || !state.legs.length) return '';
+  if (typeof airspaceContains !== 'function') return '';
+  let crosses = false;
+  let lowest = null, highest = null;
+  for (let i = 0; i < state.legs.length; i++) {
+    const w1 = state.waypoints[i], w2 = state.waypoints[i + 1];
+    if (!w1 || !w2) continue;
+    // Sample along the leg: a leg can pass through an area without either end being in it.
+    for (let t = 0; t <= 1.0001; t += 0.05) {
+      const at = { lat: w1.lat + (w2.lat - w1.lat) * t, lng: w1.lng + (w2.lng - w1.lng) * t };
+      // Geometry, not visibility: this answer is about the route, and it must read the same
+      // whether or not the layer happens to be switched on.
+      if (!airspaceContains(a, at)) continue;
+      crosses = true;
+      const alt = typeof legAltitudeFt === 'function' ? legAltitudeFt(state.legs[i]) : null;
+      if (Number.isFinite(alt)) {
+        lowest = lowest === null ? alt : Math.min(lowest, alt);
+        highest = highest === null ? alt : Math.max(highest, alt);
+      }
+      break;
+    }
+  }
+  if (!crosses) return S.airspaceRouteClear || 'clear of it';
+  if (lowest === null) return S.airspaceRouteCrossesNoAlt || 'crosses it — no planned altitude';
+  const upper = a.upperFt === null || a.upperFt === undefined ? Infinity : a.upperFt;
+  const lower = a.lowerFt || 0;
+  if (highest < lower) {
+    return (S.airspaceRouteBelow || 'crosses it, below the base') +
+      ' (' + (lower - highest) + ' ' + (S.unitFeet || 'ft') + ')';
+  }
+  if (lowest > upper) {
+    return (S.airspaceRouteAbove || 'crosses it, above the top') +
+      ' (' + (lowest - upper) + ' ' + (S.unitFeet || 'ft') + ')';
+  }
+  return S.airspaceRouteInside || 'crosses it, inside its limits';
+}
+
+// Distance from the live position (or the map centre when there is no fix) to the nearest
+// corner of the area, and roughly which way it lies.
+function airspaceDistanceText(a) {
+  const fix = (typeof gpsLastFix === 'function' && gpsLastFix()) || null;
+  const from = fix || (typeof map !== 'undefined' ? map.getCenter() : null);
+  if (!from || !Array.isArray(a.ring)) return '';
+  const here = { lat: from.lat, lng: from.lng !== undefined ? from.lng : from.lon };
+  let best = null;
+  for (const p of a.ring) {
+    const g = geo(here, { lat: p[0], lng: p[1] });      // the app's own great-circle helper
+    if (!best || g.dist < best.dist) best = g;
+  }
+  if (!best) return '';
+  return best.dist.toFixed(best.dist < 10 ? 1 : 0) + ' ' + (S.unitNm || 'nm')
+    + ' · ' + String(Math.round(best.brg)).padStart(3, '0') + '°';
+}
+
+// NOTAMs that name this area. Same idea as the bubble matcher: the identifier is what the
+// NOTAM text uses, so match on it rather than on geometry.
+function airspaceNotams(a) {
+  const list = (typeof notams !== 'undefined' && Array.isArray(notams)) ? notams : [];
+  if (!list.length || !a || !a.id) return [];
+  const id = String(a.id).toUpperCase();
+  const rx = new RegExp('\\b' + id.replace(/[^A-Z0-9]/g, '') + '\\b');
+  return list.filter(n => rx.test(String((n && (n.text || n.raw || n.body)) || '').toUpperCase()));
+}
+
+// Density altitude, beside the elevation it corrects. On a hot afternoon at Haifa, Megiddo
+// or Masada the aeroplane behaves as though the field were thousands of feet higher, and
+// nothing in an elevation figure says so. The slider runs a day ahead on the hourly
+// forecast, because the useful question is rarely "what is it now" -- it is "what time can
+// I get out of here".
+function appendAirfieldDensityAltitude(body, af) {
+  if (typeof tune === 'function' && tune('featureDensityAltitude') === false) return;
+  const DA = window.NavAid && NavAid.da;
+  if (!DA) return;
+  // Five of the fields in the dataset have no published elevation (Habonim, Ein Vered,
+  // Arad, Gvulot, Kedem). Without one there is no density altitude at all -- so where the
+  // AIP is silent the forecast's own terrain height stands in, and the panel says which of
+  // the two it used rather than presenting a model figure as a surveyed one.
+  let elev = Number(af.elev_ft);
+  let elevFromModel = false;
+  if (!Number.isFinite(elev)) {
+    elev = NaN;
+    elevFromModel = true;
+  }
+
+  const sec = document.createElement('div');
+  // A group of its own inside Weather: the slider, the figure and the conditions it was
+  // computed from are one thing, and the observation below them is another.
+  sec.className = 'da-section da-group';
+  const valRow = textRow(S.densityAltitude || 'Density altitude', '—');
+  valRow.classList.add('da-row');
+  const valEl = valRow.querySelector('.val');
+  valRow.title = S.densityAltitudeTitle || '';
+  sec.appendChild(valRow);
+
+  // What it was computed from, and where those numbers came from. A density altitude with
+  // no provenance is a number a pilot cannot argue with, which is the wrong kind of number.
+  const srcRow = textRow(S.daConditions || 'Temp · QNH', '—');
+  srcRow.classList.add('da-src-row');
+  const srcEl = srcRow.querySelector('.val');
+  sec.appendChild(srcRow);
+
+  const maxH = Math.round((typeof tune === 'function' && tune('daForecastHours')) || 24);
+  const timeRow = document.createElement('div');
+  timeRow.className = 'row da-time-row';
+  // The slider sits at the top of the Weather box, where an unlabelled control reads as
+  // though it moved the whole box -- the METAR below it included. It says what it moves.
+  const timeLbl = document.createElement('label');
+  timeLbl.textContent = S.daWhen || 'Density altitude at';
+  timeRow.appendChild(timeLbl);
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = '0';
+  slider.max = String(maxH);
+  slider.step = '1';
+  slider.value = '0';
+  slider.className = 'da-time';
+  slider.setAttribute('aria-label', S.daWhen || 'Valid time');
+  const when = document.createElement('span');
+  when.className = 'val da-when';
+  when.dir = 'ltr';                 // a clock is a clock in both languages
+  timeRow.append(slider, when);
+  // The slider goes ABOVE the numbers it changes: a control under its own read-out is a
+  // control the pilot scrolls past to find, having already read a figure for the wrong hour.
+  sec.insertBefore(timeRow, sec.firstChild);
+  body.appendChild(sec);
+
+  // "+21ש · 08-26 12:00Z" in Hebrew is one string with an RTL letter in the middle, and the
+  // bidi algorithm hands the digits after it to that letter's run: the label rendered as
+  // "12:00 08-26 · ש21+" -- a different date and a different hour. Each part goes in its own
+  // <bdi> so the runs cannot reach into each other, whatever the language.
+  const fmtWhenText = (h) => (typeof notamTimeLabel === 'function' ? notamTimeLabel(h)
+    : (h ? '+' + h + 'h' : (S.daNow || 'now')));
+  const setWhen = (h) => {
+    when.textContent = '';
+    const parts = String(fmtWhenText(h)).split(' · ');
+    parts.forEach((part, i) => {
+      if (i) when.appendChild(document.createTextNode(' · '));
+      const bdi = document.createElement('bdi');
+      bdi.textContent = part;
+      when.appendChild(bdi);
+    });
+  };
+
+  // The observation beats the model at hour zero: LLBG's own METAR carries the temperature
+  // and QNH measured on the field, and the forecast is a grid interpolation of it.
+  let metar = null;
+  let hours = null;
+
+  function render() {
+    if (elevFromModel) {
+      const m = DA.modelElevationFt(af.lat, af.lng);
+      if (Number.isFinite(m)) elev = Math.round(m);
+    }
+    const h = parseInt(slider.value, 10) || 0;
+    setWhen(h);
+    let tempC = null, qnh = null, from = '';
+    const metarAgeMin = metar && metar.obsTime
+      ? (Date.now() - Number(metar.obsTime) * 1000) / 60000 : null;
+    const metarFresh = metar && (metarAgeMin === null
+      || metarAgeMin <= ((typeof tune === 'function' && tune('daMetarMaxAgeMin')) || 90));
+    if (!h && metarFresh && Number.isFinite(Number(metar.temp))) {
+      tempC = Number(metar.temp);
+      qnh = Number.isFinite(Number(metar.altim)) ? Number(metar.altim) : null;
+      // Say how old it is once it stops being "now": a two-hour-old observation is still
+      // the best thing available, but the panel should not present it as current.
+      from = (S.daFromMetar || 'METAR')
+        + (metarAgeMin !== null && metarAgeMin >= 30
+          ? ' ' + (typeof S.daAgeMin === 'function' ? S.daAgeMin(Math.round(metarAgeMin))
+            : '(' + Math.round(metarAgeMin) + ' min)') : '');
+    } else {
+      const sample = DA.sampleAt(hours, h);
+      if (sample) {
+        tempC = sample.tempC;
+        qnh = sample.qnh;
+        from = S.daFromForecast || 'forecast';
+      }
+    }
+    if (!Number.isFinite(elev)) {
+      // The forecast has not answered yet, or answered without a terrain height.
+      valEl.textContent = '—';
+      srcEl.textContent = S.daNoElev || 'no field elevation';
+      valRow.classList.remove('da-warn');
+      return;
+    }
+    if (tempC === null) {
+      // No observation and no forecast: say so rather than quietly computing a standard
+      // day, which would read as a measurement and be wrong by thousands of feet.
+      valEl.textContent = '—';
+      srcEl.textContent = S.daNoData || 'no temperature available';
+      valRow.classList.remove('da-warn');
+      return;
+    }
+    let qnhAssumed = false;
+    if (qnh === null) { qnh = DA.HPA_STD; qnhAssumed = true; }
+    const da = DA.densityAltFt(elev, qnh, tempC);
+    valEl.textContent = Math.round(da).toLocaleString() + ' ft';
+    srcEl.textContent = Math.round(tempC) + ' °C · ' + fmtQnhBoth(qnh)
+      + (qnhAssumed ? ' ' + (S.daQnhAssumed || '(standard)') : '')
+      + (from ? ' · ' + from : '')
+      + (elevFromModel ? ' · ' + (S.daElevFromModel || 'terrain elevation') : '');
+    // The threshold is a rule of thumb, not a limit: past it the book figures stop being
+    // the figures, and that is worth colouring.
+    const over = (typeof tune === 'function' && tune('daWarnAboveElevFt')) || 2000;
+    valRow.classList.toggle('da-warn', da > elev + over);
+  }
+
+  slider.oninput = render;
+  render();
+
+  // Both sources arrive late; each redraws what it can.
+  const icao = String(af.name || '').toUpperCase();
+  if (/^[A-Z]{4}$/.test(icao) && typeof fetchAirfieldWx === 'function') {
+    Promise.resolve(fetchAirfieldWx(icao)).then((wx) => {
+      metar = (wx && wx.metar) || null;
+      render();
+    }).catch(() => {});
+  }
+  Promise.resolve(DA.forecast(af.lat, af.lng)).then((h) => {
+    hours = h;
+    render();
+  }).catch(() => {});
+}
+
+function appendAirfieldComms(body, af) {
+  const sec = document.createElement('div');
+  // Its own class, not the weather section's: `.wx-section` is what the weather tests and
+  // styles select, and a second element wearing it makes every one of those selectors
+  // ambiguous.
+  sec.className = 'insp-frame comm-section';
+  const head = document.createElement('div');
+  head.className = 'insp-frame-head';
+  const lbl = document.createElement('span');
+  lbl.textContent = S.commTitle || 'Communication';
+  head.appendChild(lbl);
+  sec.appendChild(head);
+  appendAirfieldFrequencyRows(sec, af);
+  // A field with no published frequency gets no empty frame.
+  if (sec.querySelectorAll('.row').length) body.appendChild(sec);
+}
+
+
 function appendAirfieldFrequencyRows(body, af) {
   const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+  const towerChange = airfieldFreqChangeFor(af, 'tower');
   if (id) {
-    const template = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : '';
-    body.appendChild(freqEditRow(S.primary || 'Primary', {
-      value: typeof commCallSignEffectiveFreq === 'function' ? commCallSignEffectiveFreq(id) : '',
+    // commCallSignTemplateFreq already answers with the NOTAM's frequency when one is in
+    // force -- that is what the pilot calls and what reset returns to. The published one is
+    // not lost: it is in the row's title.
+    const published = typeof commCallSignPublishedFreq === 'function' ? commCallSignPublishedFreq(id) : '';
+    const template = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : published;
+    const override = () => !!(typeof commCallSignOverrideFreq === 'function' && commCallSignOverrideFreq(id));
+    const row = freqEditRow(S.primary || 'Primary', {
+      value: override() && typeof commCallSignEffectiveFreq === 'function'
+        ? commCallSignEffectiveFreq(id) : template,
       def: template, rowClass: 'primary-row',
-      isOverride: () => !!(typeof commCallSignOverrideFreq === 'function' && commCallSignOverrideFreq(id)),
+      isOverride: override,
       commit: n => typeof commApplyCallSignFreqOverride === 'function' ? commApplyCallSignFreqOverride(id, n) : n,
       onReset: () => { if (typeof commResetCallSignFreqOverride === 'function') commResetCallSignFreqOverride(id); return template; },
-    }));
+    });
+    if (towerChange) {
+      row.classList.add('freq-notam-changed');
+      row.title = airfieldFreqNotamTitle(towerChange, published);
+    }
+    body.appendChild(row);
   } else {
     const primary = airfieldPrimaryText(af);
     if (primary) {
-      const row = textRow(S.primary || 'Primary', primary);
+      const row = textRow(S.primary || 'Primary',
+        towerChange ? towerChange.freq + ' MHz' : primary);
       row.classList.add('primary-row');
+      if (towerChange) {
+        row.classList.add('freq-notam-changed');
+        row.title = airfieldFreqNotamTitle(towerChange, primary);
+      }
       body.appendChild(row);
     } else {
       refreshAirfieldInspectorAfterCommCatalog(af);
@@ -1560,25 +1902,51 @@ function appendAirfieldFrequencyRows(body, af) {
   // Clearance / ATIS — one editable numeric field per labelled part (#freq).
   const appendFieldParts = (field, label, rowClass) => {
     const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, field) : [];
-    if (!parts.length) {
-      // Show a "— None" row so every airfield inspector has the same layout.
-      const row = textRow(label, S.freqNone || 'None');
-      row.classList.add(rowClass);
+    const chg = field === 'clearance' ? airfieldFreqChangeFor(af, 'clearance') : null;
+    if (!parts.length && chg) {
+      // Nothing published, but a NOTAM installed one: the row is the NOTAM's.
+      const row = freqEditRow(label, {
+        value: chg.freq, def: chg.freq, rowClass,
+        isOverride: () => false, commit: n => n, onReset: () => chg.freq,
+      });
+      row.classList.add('freq-notam-changed');
+      row.title = airfieldFreqNotamTitle(chg, '');
       body.appendChild(row);
+      return;
+    }
+    if (!parts.length) {
+      // Nothing published: no row. It used to print "Clearance — None" so every airfield
+      // read the same way, which was defensible as a loose list and stopped being so inside
+      // a titled Communication frame -- there it reads as a service the field has, that
+      // happens to be off. Haifa publishes a tower and an ATIS and no clearance at all; the
+      // panel now says exactly that by not mentioning one.
       return;
     }
     for (const p of parts) {
       const rowLabel = p.label ? label + ' ' + p.label : label;
-      body.appendChild(freqEditRow(rowLabel, {
-        value: p.freq, def: p.def, rowClass,
+      // Only the first part can carry a change: the NOTAMs seen state one frequency per
+      // service, and guessing which of "Arrival / Departure" they meant would be a guess.
+      const c = (chg && p === parts[0]) ? chg : null;
+      const published = p.def;
+      // With a NOTAM in force its frequency IS the default -- that is what reset returns to,
+      // and what the pilot calls. The published one is not lost; it is in the row's title.
+      const def = c ? c.freq : published;
+      const row = freqEditRow(rowLabel, {
+        value: p.overridden ? p.freq : def, def, rowClass,
         isOverride: () => p.overridden,
-        commit: n => { setAirfieldFreqOverride(p.key, n === p.def ? '' : n); p.freq = n; p.overridden = n !== p.def; return n; },
-        onReset: () => { setAirfieldFreqOverride(p.key, ''); p.freq = p.def; p.overridden = false; return p.def; },
-      }));
+        commit: n => { setAirfieldFreqOverride(p.key, n === def ? '' : n); p.freq = n; p.overridden = n !== def; return n; },
+        onReset: () => { setAirfieldFreqOverride(p.key, ''); p.freq = def; p.overridden = false; return def; },
+      });
+      if (c) {
+        row.classList.add('freq-notam-changed');
+        row.title = airfieldFreqNotamTitle(c, published);
+      }
+      body.appendChild(row);
     }
   };
   appendFieldParts('clearance', S.clearance || 'Clearance', 'clearance-row');
   appendFieldParts('atis', S.atis || 'ATIS', 'atis-row');
+
 
   // A NOTAM about this field's frequencies. A POINTER, never a value: the rows above keep
   // showing what the AIP publishes, and nothing is read out of the NOTAM text. A NOTAM
@@ -2345,7 +2713,12 @@ function appendAirfieldDetailRows(body, af, label) {
   if (Number.isFinite(af.elev_ft)) {
     body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
   }
-  appendAirfieldFrequencyRows(body, af);
+  // Frequencies in a frame of their own: on a field with a tower, a clearance delivery and
+  // an ATIS this is four or five rows of numbers, and unlabelled they read as a list of
+  // settings rather than as the radios to set.
+  appendAirfieldComms(body, af);
+  // Density altitude lives under Weather, because temperature and QNH are what it is made
+  // of -- and the METAR it reads them from is printed directly below it.
   appendAirfieldWeather(body, af);
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
   appendVorRadialRow(body, af.lat, af.lng);
@@ -2358,7 +2731,10 @@ function appendAirfieldDetailRows(body, af, label) {
 // the published wx feed; shows decoded text with a toggle to the raw report.
 function appendAirfieldWeather(body, af) {
   const icao = String(af && af.name || '').toUpperCase();
-  if (!/^[A-Z]{4}$/.test(icao) || typeof fetchAirfieldWx !== 'function') return;
+  // A field with no ICAO code publishes no METAR -- but it still has weather, and density
+  // altitude is computed from a forecast that needs only a position. Gvulot and Kedem used
+  // to get no Weather box at all, and with it no density altitude, for want of four letters.
+  const hasWx = /^[A-Z]{4}$/.test(icao) && typeof fetchAirfieldWx === 'function';
   const sec = document.createElement('div');
   sec.className = 'wx-section';
   const head = document.createElement('div');
@@ -2376,6 +2752,18 @@ function appendAirfieldWeather(body, af) {
   refreshBtn.setAttribute('aria-label', refreshBtn.title);
   head.appendChild(refreshBtn);
   sec.appendChild(head);
+  // Density altitude first, with its own time slider above it: the slider is what the
+  // pilot came here to move, and a control that sits under the numbers it changes is a
+  // control you scroll past.
+  appendAirfieldDensityAltitude(sec, af);
+  if (!hasWx) {
+    // No observation to fetch: the box is the density altitude, and its heading says so.
+    if (!sec.querySelector('.da-group')) return;
+    headLbl.textContent = S.wxTitleNoMetar || S.densityAltitude || 'Density altitude';
+    refreshBtn.remove();
+    body.appendChild(sec);
+    return;
+  }
   const bodyEl = document.createElement('div');
   bodyEl.className = 'wx-body';
   // Follow content direction: prose messages (loading / no-data / error) read
@@ -2454,6 +2842,20 @@ function appendAirfieldWeather(body, af) {
 // Split the inspector's actions from its data rows: they go into one sticky block so
 // the destructive ones cannot fall below the fold on a phone, and only genuinely
 // destructive ones keep the alarm red.
+// The order a pilot reads them in, not the order the panel happens to build them in.
+// Anything not named here keeps its relative position after these.
+const INSPECTOR_ACTION_ORDER = [
+  'insp-del-wp-btn',        // delete the point
+  'insp-reset-name-btn',    // put its name back
+  'add-freq-change-btn',    // (class) add a frequency change here
+  'insp-hotspot-btn',       // mark it as a hotspot
+  'insp-turn-btn',          // mark the turn
+];
+function inspectorActionRank(el) {
+  const i = INSPECTOR_ACTION_ORDER.findIndex(k => el.id === k || el.classList.contains(k));
+  return i === -1 ? INSPECTOR_ACTION_ORDER.length : i;
+}
+
 function finalizeInspectorActions(body) {
   // Status lines travel with the buttons. A line that says "this point is the turning point"
   // is only useful beside the action it describes, and gathering the buttons at the foot of
@@ -2464,7 +2866,15 @@ function finalizeInspectorActions(body) {
   if (!items.some(el => el.classList.contains('insp-btn'))) return;
   const wrap = document.createElement('div');
   wrap.className = 'insp-actions';
-  for (const b of items) {
+  // Stable sort: a status line stays with the button it describes, because it carries that
+  // button's rank rather than one of its own.
+  let lastRank = INSPECTOR_ACTION_ORDER.length;
+  const ranked = items.map((el, i) => {
+    if (el.classList.contains('insp-btn')) lastRank = inspectorActionRank(el);
+    return { el, rank: el.classList.contains('insp-status') ? lastRank : inspectorActionRank(el), i };
+  });
+  ranked.sort((a, b) => (a.rank - b.rank) || (a.i - b.i));
+  for (const { el: b } of ranked) {
     if (b.classList.contains('insp-btn')) {
       const txt = (b.textContent || '').toLowerCase();
       const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
@@ -2509,6 +2919,21 @@ const LOCKABLE_DRAG_KINDS = ['wp', 'note', 'label', 'cumlabel', 'cumlabelret'];
 // pass here did for kites -- flashes the panel across the chart on every drag.
 const KITE_DRAG_KINDS = ['label', 'cumlabel', 'cumlabelret'];
 const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick'].concat(KITE_DRAG_KINDS);
+// A press on something draggable normally takes the map's drag away, so the gesture moves
+// the thing and not the chart under it. When the route is LOCKED, nothing is going to move
+// -- and taking the pan away anyway left the map stuck under every waypoint, kite, callout
+// and cumulative arrow on it. On a kneeboard those cover a good part of the screen, so the
+// map read as frozen wherever the route happened to be.
+//
+// So: hold the map only when the drag can actually do something. Locked, Leaflet keeps the
+// pan and the press still selects on the way down and opens the panel on release -- unless
+// the map moved, which `movestart` below marks as a drag rather than a tap.
+function holdMapForDrag(kind) {
+  if (dragLockedNow(kind)) return false;
+  map.dragging.disable();
+  return true;
+}
+
 function dragLockedNow(kind) {
   if (LOCKABLE_DRAG_KINDS.indexOf(kind) === -1) return false;
   // The map's edit lock owns this: the pilot's stored choice, the automatic lock whenever a
@@ -2855,6 +3280,91 @@ function showInspector() {
     appendPointCoordinateRows(body, af);
     appendAirfieldDetailRows(body, af, title.value);
     appendAddToRouteButton(body, af);
+  } else if (state.selected.type === 'airspace') {
+    // One area of controlled or restricted airspace, from the AIP. Everything here is a
+    // read-out: what it is, how high it reaches, when it is in force and who owns it.
+    const a = (window.airspace || [])[state.selected.index];
+    if (!a) {
+      state.selected = null;
+      insp.classList.add('hidden');
+      clearStoredInspectorSelection();
+      return;
+    }
+    title.value = a.name || a.id;
+    title.placeholder = ''; title.readOnly = true; title.oninput = null;
+
+    // What the letter means, in words. "Restricted" is not "closed", and a pilot deciding
+    // whether to route through needs to know which of the three this is.
+    const kindText = a.kind === 'prohibited' ? (S.airspaceKindProhibited || 'Prohibited — closed')
+      : a.kind === 'tma' ? (S.airspaceKindTma || 'Controlled — clearance required')
+      : a.kind === 'ctr' ? (S.airspaceKindCtr || 'Control zone — clearance required')
+      : (S.airspaceKindRestricted || 'Restricted — conditional');
+    body.appendChild(textRow(S.airspaceKind || 'Class', kindText));
+    body.appendChild(textRow(S.airspaceVertical || 'Vertical limits', airspaceLimitText(a)));
+
+    // Where the planned route stands against those limits: the outline says nothing about
+    // whether this leg is a problem, and the numbers on their own make the pilot do the
+    // comparison in their head at exactly the wrong moment.
+    const verdict = airspaceRouteVerdict(a);
+    if (verdict) body.appendChild(textRow(S.airspaceYourRoute || 'Your route', verdict));
+
+    if (Array.isArray(a.activity) && a.activity.length) {
+      body.appendChild(textRow(S.airspaceActivity || 'Activity',
+        a.activity.map(t => (S.airspaceActivityNames && S.airspaceActivityNames[t]) || t).join(' · ')));
+    }
+    // Hours, and whether they are in force right now where that can be decided from the
+    // text alone. The holiday-eve exceptions stay as printed: the Israeli holiday calendar
+    // is not something to infer, and a wrong "not active" is the dangerous direction.
+    if (Array.isArray(a.hours) && a.hours.length) {
+      const now = airspaceActiveNow(a);
+      const state2 = now === true ? (S.airspaceActiveNow || 'active now')
+        : now === false ? (S.airspaceNotActiveNow || 'not active now') : '';
+      const row = textRow(S.airspaceHours || 'Hours', a.hours.join(' · '));
+      if (state2) {
+        const tag = document.createElement('span');
+        tag.className = 'airspace-now' + (now ? ' is-active' : '');
+        tag.textContent = state2;
+        row.querySelector('.val').appendChild(document.createTextNode(' '));
+        row.querySelector('.val').appendChild(tag);
+      }
+      body.appendChild(row);
+    }
+    if (a.byNotam) body.appendChild(textRow(S.airspaceActivation || 'Activation', S.airspaceByNotam || 'By NOTAM'));
+
+    // Who to call. A controlled sector without its frequency is a wall; with it, it is a
+    // clearance away.
+    if (Array.isArray(a.stations) && a.stations.length) {
+      for (const st of a.stations) {
+        const label = [st.name, st.purpose].filter(Boolean).join(' · ') || (S.airspaceFreq || 'Frequency');
+        const row = textRow(label, st.mhz);
+        row.querySelector('.val').dir = 'ltr';
+        body.appendChild(row);
+      }
+    }
+
+    if (a.notes) body.appendChild(textRow(S.airspaceNotes || 'Notes', a.notes));
+    if (Number.isFinite(a.areaNm2)) {
+      body.appendChild(textRow(S.airspaceSize || 'Size',
+        Math.round(a.areaNm2).toLocaleString() + ' ' + (S.airspaceNm2 || 'nm²')));
+    }
+    const away = airspaceDistanceText(a);
+    if (away) body.appendChild(textRow(S.airspaceDistance || 'From you', away));
+
+    // Live NOTAMs that name this area -- the difference between "activated by NOTAM" and
+    // "activated", which is the whole question for half of these.
+    const hits = airspaceNotams(a);
+    if (hits.length) {
+      const row = textRow(S.airspaceNotams || 'NOTAMs', String(hits.length));
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'insp-notam-link';
+      link.textContent = S.airspaceShowNotams || 'Show';
+      link.onclick = () => { if (typeof showNotamModal === 'function') showNotamModal(hits); };
+      row.querySelector('.val').appendChild(document.createTextNode(' '));
+      row.querySelector('.val').appendChild(link);
+      body.appendChild(row);
+    }
+    body.appendChild(textRow(S.airspaceSource || 'Source', a.source || 'AIP'));
   } else if (state.selected.type === 'lsaArea') {
     const a = (typeof areas !== 'undefined' && areas) ? areas[state.selected.index] : null;
     if (!a) {
@@ -2878,6 +3388,30 @@ function showInspector() {
     body.appendChild(textRow(S.bubbleActive || 'Active',
       wkndOnly ? (S.bubbleWeekendOnly || 'Weekends & holidays only')
                : (S.bubbleOpenAll || 'Open all day')));
+  } else if (state.selected.type === 'traffic') {
+    // An aircraft the receiver is hearing right now. Nothing here is editable and none of it
+    // is ours: it is a read-out of one transponder, and it disappears when that aeroplane
+    // does. Missing fields stay missing rather than reading as zero -- an aircraft with no
+    // altitude reported is not on the ground.
+    const ac = (window.trafficAircraft || []).find(a => a && a.hex === state.selected.hex);
+    if (!ac) {
+      state.selected = null;
+      insp.classList.add('hidden');
+      clearStoredInspectorSelection();
+      return;
+    }
+    title.value = ac.flight || ac.hex || (S.trafficTitle || 'Traffic');
+    title.readOnly = true;
+    body.appendChild(textRow(S.trafficAltitude || 'Altitude',
+      Number.isFinite(ac.alt) ? Math.round(ac.alt) + ' ' + (S.unitFeet || 'ft') : '—'));
+    body.appendChild(textRow(S.trafficGroundSpeed || 'Ground speed',
+      Number.isFinite(ac.gs) ? Math.round(ac.gs) + ' kt' : '—'));
+    body.appendChild(textRow(S.trafficTrack || 'Track',
+      Number.isFinite(ac.track) ? String(Math.round(ac.track)).padStart(3, '0') + '°' : '—'));
+    if (ac.type) body.appendChild(textRow(S.trafficType || 'Type', ac.type));
+    if (ac.squawk) body.appendChild(textRow(S.trafficSquawk || 'Squawk', ac.squawk));
+    body.appendChild(textRow(S.latitude, fmtLatLng(ac.lat, 'N', 'S')));
+    body.appendChild(textRow(S.longitude, fmtLatLng(ac.lon, 'E', 'W')));
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
     if (!nw) {
@@ -2997,6 +3531,8 @@ function showInspector() {
     }
     const hotspotOn = typeof routeWaypointHotspot === 'function' && routeWaypointHotspot(wp);
     const hotspotBtn = document.createElement('button');
+    // Quiet until it is marked: an unmarked point has nothing on the chart to shout about,
+    // and a row of red buttons teaches a pilot to stop reading them.
     hotspotBtn.className = 'insp-btn' + (hotspotOn ? ' insp-btn-on' : '');
     hotspotBtn.id = 'insp-hotspot-btn';
     hotspotBtn.textContent = hotspotOn ? (S.inspHotspotClear || '🔥 Clear hotspot')
@@ -3012,6 +3548,7 @@ function showInspector() {
     body.appendChild(hotspotBtn);
     const del = document.createElement('button');
     del.className = 'insp-btn';
+    del.id = 'insp-del-wp-btn';
     del.textContent = S.deleteWp;
     del.onclick = () => {
       deleteWaypoint(state.selected.index);
@@ -3023,6 +3560,7 @@ function showInspector() {
     // the nearest reference code, or clears it when off-grid (placeholder).
     const resetName = document.createElement('button');
     resetName.className = 'insp-btn';
+    resetName.id = 'insp-reset-name-btn';
     resetName.textContent = S.resetWpName || '↻';
     if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
     resetName.onclick = () => resetWpName(state.selected.index);
@@ -3047,19 +3585,23 @@ function showInspector() {
       // Say it in words when this point IS the turn. Bold text on a button reading "Mark as
       // turning point" was the only sign, which reads as an offer, not a state -- a pilot
       // could not tell a marked point from an unmarked one without pressing it.
+      // Built here, appended AFTER the button below: a line that appears above it pushed the
+      // button down the moment it was pressed, so the pointer landed on whatever moved into
+      // its place and a second press hit the wrong control.
+      let status = null;
       if (effectiveTurn) {
-        const status = document.createElement('div');
+        status = document.createElement('div');
         status.className = 'insp-status insp-turn-status';
         status.id = 'insp-turn-status';
         status.textContent = manualTurn
           ? (S.inspTurnIsManual || '↻ Turning point — you marked this as where the route turns for home.')
           : (S.inspTurnIsAuto || '↻ Turning point — the route doubles back here, so this is where it turns for home. It cannot be moved while it does.');
-        body.appendChild(status);
       }
       // A route that doubles back has its turn settled by the geometry, and nothing here can
       // move it: this point IS where it turns, so there is no action to offer -- on this
-      // waypoint or on any other. The status line above says which point that is.
+      // waypoint or on any other. The status line says which point that is.
       if (definitive) {
+        if (status) body.appendChild(status);
         if (!effectiveTurn) {
           const held = document.createElement('div');
           held.className = 'insp-status insp-turn-status';
@@ -3098,6 +3640,7 @@ function showInspector() {
         showInspector();      // relabel to what the button now does
       };
       body.appendChild(turnBtn);
+      if (status) body.appendChild(status);        // below the button, so pressing moves nothing
     }
   }
   finalizeInspectorActions(body);
@@ -3412,6 +3955,9 @@ function appendFreqEdit(body, note, editOptions) {
     updateTemplateHint();
     draw();
   }
+  // Assigned once the frequency control exists; `var` so updateTemplateHint can run before
+  // that point without tripping over a temporal dead zone.
+  var freqNotamTarget = null;
   function updateTemplateHint() {
     if (!templateRow) return;
     const opt = typeof commNoteCallSignOption === 'function'
@@ -3428,6 +3974,18 @@ function appendFreqEdit(body, note, editOptions) {
     if (resetFreq) {
       resetFreq.hidden = !template;
       resetFreq.disabled = !changed;
+    }
+    // Ring the frequency control when this call sign's tower is on a NOTAM frequency, the
+    // same mark the airfield panel uses. The waypoint is where a pilot reads the frequency
+    // they are about to call, so the mark belongs here more than anywhere.
+    if (freqNotamTarget) {
+      const chg = (opt && typeof commCallSignFreqChange === 'function')
+        ? commCallSignFreqChange(opt.id) : null;
+      freqNotamTarget.classList.toggle('freq-notam-changed', !!chg);
+      freqNotamTarget.title = chg
+        ? airfieldFreqNotamTitle(chg, (typeof commCallSignPublishedFreq === 'function'
+          ? commCallSignPublishedFreq(opt.id) : ''))
+        : '';
     }
     syncCallSignSelect();
   }
@@ -3557,6 +4115,8 @@ function appendFreqEdit(body, note, editOptions) {
   unit.className = 'freq-unit';
   unit.textContent = 'MHz';
   freqControl.appendChild(unit);
+  freqNotamTarget = freqControl;
+  updateTemplateHint();
   resetFreq = document.createElement('button');
   resetFreq.type = 'button';
   resetFreq.className = 'commchange-freq-reset';
@@ -3708,7 +4268,7 @@ function grabSelected(px, py, latlng) {
       drag = { kind: 'note', i: noteHit,
                offLat: state.notes[noteHit].lat - latlng.lat,
                offLng: state.notes[noteHit].lng - latlng.lng };
-      map.dragging.disable();
+      holdMapForDrag('note');
       draw();                     // panel waits for the release: see TAP_OPENS_INSPECTOR_KINDS
       return true;
     }
@@ -3860,7 +4420,9 @@ map.on('mousedown', e => {
   // covers a lot of map and everything drawn on top of it should win the plain click.
   const bubbleHits = (includeOverlayChoices && typeof lsaAreasAtLatLng === 'function')
     ? lsaAreasAtLatLng(e.latlng).map(i => ({ type: 'lsaArea', index: i })) : [];
-  const ovAll = ovHits.concat(notamHits, bubbleHits);
+  const airspaceHits = (includeOverlayChoices && typeof airspaceAtLatLng === 'function')
+    ? airspaceAtLatLng(e.latlng).map(i => ({ type: 'airspace', index: i })) : [];
+  const ovAll = ovHits.concat(notamHits, bubbleHits, airspaceHits);
   // Already-selected item wins: if the press is on the item whose inspector is
   // open, drag it rather than surfacing the chooser for an overlapping item.
   if (includeOverlayChoices && grabSelected(p.x, p.y, e.latlng)) {
@@ -3896,7 +4458,7 @@ map.on('mousedown', e => {
       offLat: state.notes[note].lat - e.latlng.lat,
       offLng: state.notes[note].lng - e.latlng.lng,
     };
-    map.dragging.disable();
+    holdMapForDrag('note');
     draw();                       // panel waits for the release: see TAP_OPENS_INSPECTOR_KINDS
     return;
   }
@@ -3909,7 +4471,7 @@ map.on('mousedown', e => {
     drag = { kind: 'wp', i: lead, also: coincident.slice(1), moved: false,
              origLat: state.waypoints[lead].lat, origLng: state.waypoints[lead].lng,
              origName: state.waypoints[lead].name, originSnapArmed: false };
-    map.dragging.disable();
+    holdMapForDrag('wp');
     draw();
     return;
   }
@@ -3925,7 +4487,7 @@ map.on('mousedown', e => {
     drag = { kind: 'wp', i: wp, moved: false,
              origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
              origName: state.waypoints[wp].name, originSnapArmed: false };
-    map.dragging.disable();
+    holdMapForDrag('wp');
     // Highlight now, but defer the inspector to release-without-move so you can
     // drag a waypoint (or grab one while panning) without the panel popping up.
     draw();
@@ -3943,7 +4505,7 @@ map.on('mousedown', e => {
     _materialiseDefaultCumLabel(cum.i);
     drag = { kind: 'cumlabel', i: cum.i };
     state.selected = { type: 'leg', index: cum.i };
-    map.dragging.disable();
+    holdMapForDrag('cumlabel');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
@@ -3953,7 +4515,7 @@ map.on('mousedown', e => {
     _materialiseDefaultCumLabelRet(cumRet.i);
     drag = { kind: 'cumlabelret', i: cumRet.i };
     state.selected = { type: 'leg', index: cumRet.i };
-    map.dragging.disable();
+    holdMapForDrag('cumlabelret');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
@@ -3964,7 +4526,7 @@ map.on('mousedown', e => {
     drag = { kind: 'label', i: lab.i, which: lab.which,
              ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
-    map.dragging.disable();
+    holdMapForDrag('label');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
@@ -4016,6 +4578,15 @@ map.on('mousedown', e => {
   downHit = false;                     // empty space -> Leaflet pans
 });
 
+// A locked press leaves Leaflet its pan, so the map can move while `drag`/`touchDrag` is
+// still pending. That is a drag of the CHART, not a tap on the thing under the finger --
+// mark it, or letting go re-opens the panel every time the pilot slides the map by a
+// waypoint.
+map.on('movestart', () => {
+  if (drag && dragLockedNow(drag.kind)) drag.moved = true;
+  if (touchDrag && dragLockedNow(touchDrag.kind)) touchDrag.moved = true;
+});
+
 map.on('mousemove', e => {
   if (!drag) {
     // Pointer cursor over clickable NOTAM areas/badges (select mode only).
@@ -4041,7 +4612,7 @@ map.on('mousemove', e => {
       const other = state.waypoints[j];
       if (other) { other.lat = wp.lat; other.lng = wp.lng; other.name = wp.name; }
     }
-    draw();   // move silently — but keep an already-open inspector in sync
+    scheduleDraw();   // move silently — but keep an already-open inspector in sync
     if (!document.getElementById('inspector').classList.contains('hidden')) showInspector();
   } else if (drag.kind === 'note') {
     drag.moved = true;
@@ -4052,20 +4623,20 @@ map.on('mousemove', e => {
       n.lat = r5(e.latlng.lat + (drag.offLat || 0));
       n.lng = r5(e.latlng.lng + (drag.offLng || 0));
     }
-    draw();
+    scheduleDraw();
   } else if (drag.kind === 'label') {
     drag.moved = true;
-    if (setLegLabelFromPoint(drag, p.x, p.y)) draw();
+    if (setLegLabelFromPoint(drag, p.x, p.y)) scheduleDraw();
   } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
     drag.moved = true;
     setCumLabelFromPoint(drag.i, drag.kind === 'cumlabelret', p.x, p.y);
-    draw();
+    scheduleDraw();
   } else if (drag.kind === 'page') {
     pageOffset.x += p.x - drag.lx;
     pageOffset.y += p.y - drag.ly;
     drag.lx = p.x; drag.ly = p.y;
     clampPageOffset();
-    draw();
+    scheduleDraw();
   }
 });
 
@@ -4431,6 +5002,12 @@ mapEl.addEventListener('dblclick', e => {
   e.stopPropagation();
   if (e.stopImmediatePropagation) e.stopImmediatePropagation();
   downHit = false;
+  // A locked route takes no new points. Every other way of adding one checks this -- the
+  // add-click, every waypoint and note drag -- and this one did not: with a position driving
+  // the map the route locks itself, and a double-click on a leg still cut it in two and moved
+  // a waypoint out from under the leg being flown. Silently, because the panel that would
+  // have explained it is itself suppressed in flight.
+  if (typeof routeEditLocked === 'function' && routeEditLocked()) return;
   splitLegAt(leg, map.containerPointToLatLng([p.x, p.y]));
 }, true);
 
@@ -4475,7 +5052,11 @@ mapEl.addEventListener('touchstart', e => {
     ? notamsAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(n => ({ type: 'notam', notam: n })) : [];
   const bubbleHits = (includeOverlayChoices && typeof lsaAreasAtLatLng === 'function')
     ? lsaAreasAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(i => ({ type: 'lsaArea', index: i })) : [];
-  const ovAll = ovHits.concat(notamHits, bubbleHits);
+  // Airspace last for the same reason the bubbles are: it covers a lot of map, and
+  // anything drawn on top of it should win a plain tap.
+  const airspaceHits = (includeOverlayChoices && typeof airspaceAtLatLng === 'function')
+    ? airspaceAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(i => ({ type: 'airspace', index: i })) : [];
+  const ovAll = ovHits.concat(notamHits, bubbleHits, airspaceHits);
   // Airport count-badge wins over a waypoint on the same field (see mousedown).
   if (includeOverlayChoices && typeof notamBadgeNotamsAt === 'function') {
     const badge = notamBadgeNotamsAt(map.containerPointToLatLng([p.x, p.y]));
@@ -4594,8 +5175,11 @@ mapEl.addEventListener('touchstart', e => {
     // preserves a pre-gesture panel, which left tablets losing the inspector after every
     // label nudge while desktops kept it.
     touchDrag.inspWasOpen = !document.getElementById('inspector').classList.contains('hidden');
-    map.dragging.disable();
-    e.preventDefault();                // suppress pan + the synthetic click
+    // Locked: leave the pan alone and do NOT swallow the gesture, or the finger sticks to a
+    // waypoint that was never going to move. The release still opens the panel for a tap.
+    if (holdMapForDrag(touchDrag.kind)) {
+      e.preventDefault();              // suppress pan + the synthetic click
+    }
     // Nothing opens here -- endTouch decides, once tap and drag can be told apart.
     draw();
   }
@@ -4646,7 +5230,7 @@ mapEl.addEventListener('touchmove', e => {
       const other = state.waypoints[j];
       if (other) { other.lat = wp.lat; other.lng = wp.lng; other.name = wp.name; }
     }
-    draw();
+    scheduleDraw();
   } else if (touchDrag.kind === 'note') {
     touchDrag.moved = true;
     setInspectorDragHidden(true);
@@ -4657,21 +5241,21 @@ mapEl.addEventListener('touchmove', e => {
       n.lat = r5(ll.lat + (touchDrag.offLat || 0));
       n.lng = r5(ll.lng + (touchDrag.offLng || 0));
     }
-    draw();
+    scheduleDraw();
   } else if (touchDrag.kind === 'label') {
     touchDrag.moved = true;
     setInspectorDragHidden(true);
-    if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();
+    if (setLegLabelFromPoint(touchDrag, p.x, p.y)) scheduleDraw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
     touchDrag.moved = true;
     setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
-    draw();
+    scheduleDraw();
   } else if (touchDrag.kind === 'page') {
     pageOffset.x += p.x - touchDrag.lx;
     pageOffset.y += p.y - touchDrag.ly;
     touchDrag.lx = p.x; touchDrag.ly = p.y;
     clampPageOffset();
-    draw();
+    scheduleDraw();
   }
 }, { passive: false });
 

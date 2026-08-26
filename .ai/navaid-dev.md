@@ -719,6 +719,17 @@ as a machine-readable registry.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
 - `navaid.showReporting` — `'0'` / `'1'` for mandatory-reporting badges.
 - `navaid.showMsa` — `'0'` / `'1'` for the leg-inspector MSA row.
+- `navaid.showAirspace` — `'0'` / `'1'` for the AIP airspace layer (prohibited,
+  restricted, TMA sectors and CTRs; Extra layers). Ships off, and the gist's
+  `defaultShowAirspace` reconciles a device that has never chosen.
+- `navaid.showTraffic` — `'0'` / `'1'` for live ADS-B traffic. The switch exists
+  everywhere but only works in the APK (the feeds refuse browser requests), and
+  `featureLiveTraffic` in the gist decides whether the control is offered at all.
+- `navaid.showIfr` — `'0'` / `'1'` for the instrument-chart layer, and
+  `navaid.ifrSheet.<ICAO>` for which sheet that field is showing (device-local:
+  a composed key the exact-key sync layer cannot enumerate).
+- `navaid.baseLayer` — which chart is drawn *under* a plate overlay, chosen in
+  View/Set beside the layer picker; `defaultBaseLayer` seeds it.
 - `navaid.showWind` — `'0'` / `'1'` for wind inputs, arrows, and readout.
 - `navaid.windField`, `navaid.windFieldAlt`, `navaid.windFieldOpacity`, and
   `navaid.wxTime` — wind-field visibility and device-local forecast scrub state.

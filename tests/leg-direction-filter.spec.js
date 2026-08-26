@@ -310,14 +310,14 @@ test('the supplied LLHZ loop hides direction-only hotspots in both selections', 
     routeHotspots: ['SFAIM', 'TYONA', 'NTAIM'],
     projectedHotspots: ['NTAIM', 'SFAIM', 'TYONA'],
     notes: ['SFAIM', 'TYONA'],
-    commRings: ['NTAIM', 'SFAIM', 'TYONA'],
+    commRings: [],
     commHits: ['NTAIM', 'SFAIM', 'TYONA'],
   });
   expect(out.returning).toEqual({
     routeHotspots: ['NTAIM', 'TYONA', 'HTZUK'],
     projectedHotspots: ['HTZUK', 'NTAIM', 'TYONA'],
     notes: ['KNTRY', 'TYONA'],
-    commRings: ['KNTRY', 'NTAIM', 'TYONA'],
+    commRings: [],
     commHits: ['KNTRY', 'NTAIM', 'TYONA'],
   });
 });
@@ -800,7 +800,12 @@ test.describe('manual turning point', () => {
       pressed: document.getElementById('insp-turn-btn').getAttribute('aria-pressed'),
       turnCallout: state.notes.some(n => n && n.cc === 'SFAIM'),
       ordinaryKept: state.notes.some(n => n && n.text === 'keep me'),
-      canAdd: !!document.querySelector('.add-freq-change-btn'),
+      // Dimmed, not taken away: a control that vanishes when a point becomes the turn moves
+      // every button under it, including the one being pressed.
+      addBtn: (() => {
+        const b = document.querySelector('.add-freq-change-btn');
+        return b && { disabled: b.disabled, title: b.title };
+      })(),
       style: (() => {
         const css = getComputedStyle(document.getElementById('insp-turn-btn'));
         return [css.color, css.backgroundColor, css.borderColor,
@@ -811,8 +816,17 @@ test.describe('manual turning point', () => {
     expect(out.pressed).toBe('true');   // relabels to "clear" once set
     expect(out.turnCallout).toBe(false);
     expect(out.ordinaryKept).toBe(true);
-    expect(out.canAdd).toBe(false);
-    expect(out.style.slice(0, 3)).toEqual(idleStyle.slice(0, 3));
+    expect(out.addBtn).not.toBeNull();
+    expect(out.addBtn.disabled).toBe(true);
+    expect(out.addBtn.title).toMatch(/frequency you arrived on/i);
+    // Pressed looks pressed. This used to require the colours to be IDENTICAL to idle, with
+    // only the weight changing -- which on a small button is invisible, so a marked turning
+    // point read exactly like an unmarked one. Set marks are red in this panel: red is its
+    // word for "there is something on the chart here", and the label says which mark. Idle
+    // stays quiet, which is the distinction that was missing.
+    expect(out.style[1]).not.toBe(idleStyle[1]);            // filled once set
+    expect(out.style[2]).not.toBe(idleStyle[2]);            // and bordered
+    expect(idleStyle[1]).not.toBe(destructive);             // unset is never the alarm colour
     expect(out.style[3]).toBeGreaterThan(idleStyle[3]);
 
     await page.locator('#insp-turn-btn').click();
@@ -836,8 +850,8 @@ test.describe('manual turning point', () => {
     await page.keyboard.press('z');
     const out = await page.evaluate(() => [legRetraceTurnIndex(),
       state.notes.some(n => n && n.cc === 'TYONA'),
-      !!document.querySelector('.add-freq-change-btn')]);
-    expect(out).toEqual([2, false, false]);
+      document.querySelector('.add-freq-change-btn').disabled]);
+    expect(out).toEqual([2, false, true]);   // the key adds nothing, and the button says why
   });
 });
 

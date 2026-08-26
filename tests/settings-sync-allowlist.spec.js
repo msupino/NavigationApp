@@ -133,6 +133,9 @@ const NOT_A_SYNCED_SETTING = [
   [/TipDone$/,                    'one-time tip, per device'],
   // Legacy keys that are READ for migration and never written.
   [/^navaid\.showVor$/,          'pre-split VOR key, read once then removed'],
+  // Superseded when the hotspot overlay was switched off for everyone: the app only removes
+  // it now, so that a device does not carry its old answer -- or sync it to a new one.
+  [/^navaid\.showHotspots$/,     'pre-reset hotspot key, removed on load and never written'],
   [/^navaid\.showNotam$/,        'pre-per-chart NOTAM key, read for adoption only'],
   [/^navaid\.legLineWidth2?$/,   'superseded when the slider range narrowed; read for adoption'],
   [/^navaid\.driftLineWidth$/,   'superseded when the slider range narrowed; read for adoption'],
@@ -143,6 +146,11 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.apkReloadedForBuild$/, 'APK self-reload bookkeeping'],
   [/^navaid\.toolbarPosDesktop$/, 'panel geometry (the *Pos rule misses this suffix)'],
   [/^navaid\.wxTime$/,           'forecast valid-time pick, only reused if still offered'],
+  // navaid.ifrSheet.<ICAO>: which instrument chart is drawn for that field. The key is
+  // composed per airfield and the sync layer carries exact keys only, so the allowlist
+  // cannot name the variants -- and which approach you last looked at is a thin thing to
+  // carry between devices next to the layer being on at all, which IS synced.
+  [/^navaid\.ifrSheet/,         'which IFR sheet per field, composed key, per device'],
   // sessionStorage, not a setting: these live for one tab visit.
   [/^navaid\.selected$/,         'sessionStorage — restores the selection after a reload'],
   [/^navaid\.fpOpen$/,           'sessionStorage — was the flight plan open'],
@@ -243,7 +251,7 @@ test('every chart variant of a per-chart setting is synced', () => {
   const m = draw.match(/_PREFIX_LAYER_NAME\s*=\s*\{([^}]+)\}/);
   expect(m).not.toBeNull();
   const prefixes = [...m[1].matchAll(/(\w+)\s*:/g)].map(x => x[1]);
-  expect(prefixes.sort()).toEqual(['cvfr', 'heli', 'lsa']);
+  expect(prefixes.sort()).toEqual(['ats', 'cvfr', 'heli', 'lsa']);
   // Only bases appended with the CHART prefix, not every composed key: plenty of
   // keys are built from a base (navaid.sec., navaid.ai.key.) with no chart variants.
   const src = appSources({ excludeAllowlistFile: true });

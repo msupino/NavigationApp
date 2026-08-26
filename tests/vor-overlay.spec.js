@@ -568,13 +568,13 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.55');
     await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(0)).toHaveValue('132.50');
     await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(1)).toHaveValue('132.80');
+    // Document order, not child index: the frequency rows now live inside the
+    // Communication frame, so they are grandchildren of #insp-body. What this test is
+    // about -- primary above ATIS above the satellite thumbnail -- is unchanged.
     const markerOrder = await page.evaluate(() => {
-      const rows = Array.from(document.querySelector('#insp-body').children);
-      return {
-        primary: rows.findIndex(el => el.classList.contains('primary-row')),
-        atis: rows.findIndex(el => el.classList.contains('atis-row')),
-        satellite: rows.findIndex(el => el.classList.contains('satellite-snippet-section')),
-      };
+      const all = Array.from(document.querySelectorAll('#insp-body *'));
+      const at = (cls) => all.findIndex(el => el.classList.contains(cls));
+      return { primary: at('primary-row'), atis: at('atis-row'), satellite: at('satellite-snippet-section') };
     });
     expect(markerOrder.primary).toBeGreaterThanOrEqual(0);
     expect(markerOrder.atis).toBeGreaterThan(markerOrder.primary);
@@ -593,7 +593,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('122.20');
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
+    // Herzliya publishes no ATIS, so the panel does not mention one.
+    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLPL') };
@@ -607,8 +608,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       showInspector();
     });
     await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('120.75');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
-    await expect(page.locator('#insp-body .clearance-row')).toContainText('None');
+    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .clearance-row')).toHaveCount(0);
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLES') };
@@ -629,12 +630,10 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.55');
     await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(0)).toHaveValue('132.50');
     const routeOrder = await page.evaluate(() => {
-      const rows = Array.from(document.querySelector('#insp-body').children);
-      return {
-        primary: rows.findIndex(el => el.classList.contains('primary-row')),
-        atis: rows.findIndex(el => el.classList.contains('atis-row')),
-        satellite: rows.findIndex(el => el.classList.contains('satellite-snippet-section')),
-      };
+      // Descendants, for the same reason as the block above: the Communication frame.
+      const all = Array.from(document.querySelectorAll('#insp-body *'));
+      const at = (cls) => all.findIndex(el => el.classList.contains(cls));
+      return { primary: at('primary-row'), atis: at('atis-row'), satellite: at('satellite-snippet-section') };
     });
     expect(routeOrder.primary).toBeGreaterThanOrEqual(0);
     expect(routeOrder.atis).toBeGreaterThan(routeOrder.primary);
@@ -651,7 +650,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-title')).toHaveValue(/Herzliya/);
     await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('122.20');
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
+    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
   });
 
   test('Hebrew airfield inspector keeps ICAO and frequency values in reading order', async ({ page }) => {

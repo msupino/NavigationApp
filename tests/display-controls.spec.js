@@ -21,7 +21,7 @@ test('Display rows run map -> waypoint trio -> leg-arrow trio', async ({ page })
     const el = document.getElementById('kite-alpha');
     const text = sel => document.querySelector(sel).closest('.navtoggle')
       .textContent.trim().split('\n')[0];
-    return { mapOp: idx('#map-opacity'),
+    return { baseLayer: idx('#base-layer-select'), mapOp: idx('#map-opacity'),
       wpAlpha: idx('#yellow-alpha'), wpColor: idx('#waypoint-color'), wpSize: idx('#wp-size'),
       legSize: idx('#leg-arrow-size'), legAlpha: idx('#kite-alpha'), legColor: idx('#leg-arrow-color'),
       lineWidth: idx('#leg-line-width'),
@@ -37,7 +37,10 @@ test('Display rows run map -> waypoint trio -> leg-arrow trio', async ({ page })
         return cs.display !== 'none' && parseFloat(cs.height) > 0;
       })() };
   });
-  expect(r.mapOp).toBe(0);                          // map opacity first, on its own
+  // The base map picker is the first row here now. Layer opacity moved to View/Set, under
+  // the chart picker it dims -- see ui-toolbar-controls.spec.js.
+  expect(r.baseLayer).toBe(0);
+  expect(r.mapOp).toBe(-1);
   // waypoint trio: size, opacity, colour
   expect(r.wpAlpha).toBe(r.wpSize + 1);
   expect(r.wpColor).toBe(r.wpAlpha + 1);

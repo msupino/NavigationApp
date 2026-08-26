@@ -137,3 +137,85 @@ test('the status line reads in the panel language', async ({ page }) => {
   // turning-point string in the Hebrew table says it.
   expect(status).toContain('עקבותיו');
 });
+
+// Reported: pressing the button moved it. The line appeared above it, so the button dropped
+// by its height on the very press that created it -- and a second press landed on whatever
+// had slid into that place.
+test('the status line never pushes the button down', async ({ page }) => {
+  await boot(page);
+  await openWp(page, LOOP, 1);
+  const gapBefore = await page.evaluate(() => {
+    const btn = document.getElementById('insp-turn-btn');
+    const prev = btn.previousElementSibling;
+    return Math.round(btn.getBoundingClientRect().top - prev.getBoundingClientRect().bottom);
+  });
+  await page.click('#insp-turn-btn');               // marks it: the status line appears
+  const after = await page.evaluate(() => {
+    const btn = document.getElementById('insp-turn-btn');
+    const prev = btn.previousElementSibling;
+    const line = document.getElementById('insp-turn-status');
+    return {
+      gap: Math.round(btn.getBoundingClientRect().top - prev.getBoundingClientRect().bottom),
+      lineBelow: Math.round(line.getBoundingClientRect().top - btn.getBoundingClientRect().bottom),
+    };
+  });
+  // Nothing was inserted above the button: the space over it is what it was, and the line
+  // that appeared is under it.
+  expect(after.gap).toBe(gapBefore);
+  expect(after.lineBelow).toBeGreaterThanOrEqual(0);
+});
+
+test('the line reads below the button it belongs to', async ({ page }) => {
+  await boot(page);
+  await openWp(page, LOOP, 1);
+  await page.click('#insp-turn-btn');
+  const order = await page.evaluate(() => {
+    const btn = document.getElementById('insp-turn-btn');
+    const line = document.getElementById('insp-turn-status');
+    return { sameParent: btn.parentNode === line.parentNode,
+             after: !!(btn.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) };
+  });
+  expect(order.sameParent).toBe(true);
+  expect(order.after).toBe(true);
+});
+
+// Pressing the turning-point button used to move it: "Add frequency change" disappeared from
+// the actions above it the moment the point became the turn, and everything below slid up by
+// its height. It is dimmed now, so the column is the same height before and after.
+test('the button stays put on a waypoint that has a frequency change to offer', async ({ page }) => {
+  await boot(page);
+  const before = await page.evaluate(async () => {
+    await Promise.all([loadNavWaypoints(), loadCommChange()]);
+    const hz = airfields.find(a => a.name === 'LLHZ');
+    const sfaim = navWP.find(w => w.name === 'SFAIM');
+    window.showCommChange = true;
+    state.waypoints = [
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: sfaim.lat, lng: sfaim.lng, name: 'SFAIM' },
+      { lat: hz.lat + 0.10, lng: hz.lng + 0.30, name: 'SIDE' },
+      { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+    ];
+    syncLegs();
+    state.selected = { type: 'wp', index: 1 };
+    showInspector();
+    const b = document.getElementById('insp-turn-btn');
+    const above = [...b.parentNode.children].filter(el =>
+      el.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return { above: above.map(el => el.className).join('|'),
+             add: !!document.querySelector('.add-freq-change-btn') };
+  });
+  expect(before.add).toBe(true);              // SFAIM does have one to offer
+  await page.click('#insp-turn-btn');
+  const after = await page.evaluate(() => {
+    const b = document.getElementById('insp-turn-btn');
+    const a = document.querySelector('.add-freq-change-btn');
+    const above = [...b.parentNode.children].filter(el =>
+      el.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return { above: above.map(el => el.className).join('|'), addDisabled: a && a.disabled };
+  });
+  expect(after.addDisabled).toBe(true);       // dimmed, still there
+  // Nothing was removed from above it and nothing inserted, so the column over the button is
+  // unchanged. (The panel itself can still shift by a few pixels once it grows past its
+  // height cap and starts to scroll -- that is the panel, not this control.)
+  expect(after.above).toBe(before.above);
+});

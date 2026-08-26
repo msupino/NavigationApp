@@ -147,8 +147,16 @@ NavAid.tuningDefaults = {
   // of the set, and it was carried as a gist override long enough to be the settled answer
   // rather than a deployment's opinion. Either value can still be flipped from the gist:
   //   "layerEnabledHelicopters": true
+  featureNotamFreqRows: { value: true, type: 'bool',
+    label: 'Show frequencies a NOTAM states, as their own inspector row' },
   layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
   layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
+  layerEnabledATS: { value: true, type: 'bool', label: 'Offer the ATS routes chart layer' },
+  defaultBaseLayer: { value: 'OpenStreetMap', type: 'select',
+    options: ['none', 'OpenStreetMap', 'Satellite', 'CVFR', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'],
+    label: 'Which map sits under the chart by default' },
+  baseLayerOpacity: { value: 0.7, min: 0.1, max: 1, step: 0.05,
+    label: 'How strongly the map under the chart shows through (0-1)' },
   layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
   layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
   layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
@@ -310,6 +318,9 @@ NavAid.tuningDefaults = {
   navWaypointLabelHaloPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Nav waypoint label halo width (px)' },
 
   commChangeRingRadiusPx: { value: 6, min: 1, max: 40, step: 0.5, label: 'Comm-change ring radius (px)' },
+  // Off: the red circle now means a hotspot, and one symbol cannot mean two things. The
+  // callout says "change frequency here" in words, with the frequency in it.
+  commChangeRings: { value: false, type: 'bool', label: 'Draw a ring at frequency-change points' },
   commChangeRingWidthPx: { value: 1.8, min: 0.25, max: 10, step: 0.1, label: 'Comm-change ring width (px)' },
   commChangeRingColor: { value: '#e74c3c', type: 'color', label: 'Comm-change ring color' },
   commChangeNoteLatOffset: { value: 0, min: -0.15, max: 0.15, step: 0.001, label: 'Comm-change arrow tail lat offset' },
@@ -411,6 +422,10 @@ NavAid.tuningDefaults = {
   // different framing; the point-zoom values are the fallback when there is a single
   // point and nothing to fit.
   fitRoutePaddingPx: { value: 70, min: 0, max: 200, step: 5, label: 'Fit route: padding (px)' },
+  fitPlatePaddingPx: { value: 24, min: 0, max: 200, step: 4,
+    label: 'Fit instrument chart: padding (px)' },
+  fitPlateMaxZoom: { value: 13, min: 8, max: 18, step: 0.5,
+    label: 'Fit instrument chart: closest zoom it will settle on' },
   fitRouteMaxZoom: { value: 11, min: 6, max: 18, step: 0.5, label: 'Fit route: max zoom' },
   fitRouteEmptyZoom: { value: 9, min: 6, max: 14, step: 0.5, label: 'Fit route: zoom with no route' },
   fitNotamPaddingPx: { value: 80, min: 0, max: 200, step: 5, label: 'Fit NOTAM: padding (px)' },
@@ -735,6 +750,50 @@ NavAid.tuningDefaults = {
   defaultShowCvfr: { value: false, type: 'bool', label: 'Default: show CVFR plates' },
   defaultShowHeli: { value: false, type: 'bool', label: 'Default: show heli plates' },
   defaultShowCommfail: { value: false, type: 'bool', label: 'Default: show comm-fail plates' },
+  defaultShowIfr: { value: false, type: 'bool', label: 'Default: show the IFR chart layer' },
+  // The whole feature, from the gist: off means no Traffic box in View/Set and nothing on
+  // the map, however the switch under it was left. It only appears in the APK in any case
+  // (see traffic.js: a browser cannot read these feeds), so this is the switch that turns
+  // it on for everyone flying with the app, without an app release.
+  featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
+  featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
+  defaultShowAirspace: { value: false, type: 'bool', label: 'Default: show airspace areas' },
+  airspaceProhibitedColor: { value: '#c0392b', type: 'color', label: 'Prohibited area outline color' },
+  airspaceRestrictedColor: { value: '#b06a00', type: 'color', label: 'Restricted area outline color' },
+  airspaceTmaColor: { value: '#2a63b5', type: 'color', label: 'TMA sector outline color' },
+  airspaceCtrColor: { value: '#1c7c74', type: 'color', label: 'CTR outline color' },
+  airspaceFillAlpha: { value: 0.08, min: 0, max: 0.5, step: 0.01, label: 'Airspace fill opacity' },
+  airspaceLineWidthPx: { value: 1.6, min: 0.5, max: 6, step: 0.1, label: 'Airspace outline width (px)' },
+  airspaceLabelMinZoom: { value: 9, min: 5, max: 14, step: 1, label: 'Airspace labels appear at zoom' },
+  airspaceLabelFontPx: { value: 12, min: 7, max: 24, step: 1, label: 'Airspace label size (px)' },
+  daWarnAboveElevFt: { value: 2000, min: 500, max: 6000, step: 100,
+    label: 'Flag density altitude this far above the field (ft)' },
+  daMetarMaxAgeMin: { value: 90, min: 15, max: 360, step: 5,
+    label: 'Use a METAR for density altitude up to this old (min)' },
+  daForecastHours: { value: 24, min: 6, max: 48, step: 1,
+    label: 'How far ahead the density-altitude slider runs (h)' },
+  // Off until the feed this asks for is actually standing: a default of ON would greet
+  // every pilot with "Live traffic unavailable" and nothing on the map. Flip to true once
+  // trafficApiUrl answers.
+  defaultShowTraffic: { value: false, type: 'bool',
+    label: 'Default: show live traffic while a fix is driving the map' },
+  // {lat}/{lon}/{dist} are filled in; a URL without them gets them as query parameters.
+  trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
+    label: 'Where live traffic is fetched from (empty turns it off)' },
+  trafficRadiusNm: { value: 40, min: 5, max: 150, step: 5,
+    label: 'How far around you live traffic is asked for (nm)' },
+  trafficRefreshSec: { value: 8, min: 3, max: 60, step: 1,
+    label: 'How often live traffic is refreshed (s)' },
+  trafficFailsBeforeWarn: { value: 3, min: 1, max: 10, step: 1,
+    label: 'Failed traffic requests in a row before saying so' },
+  // Not red. Red on an aviation display means resolve it now, and this is information --
+  // magenta is what a traffic symbol wears on a moving map, and nothing else on the chart
+  // uses it.
+  trafficIconPx: { value: 22, min: 12, max: 40, step: 1, label: 'Live traffic aircraft size (px)' },
+  trafficArrowColor: { value: '#b5179e', type: 'color', label: 'Live traffic aircraft color' },
+  trafficLabelColor: { value: '#7b1a6b', type: 'color', label: 'Live traffic label color' },
+  plateFieldZoom: { value: 11, min: 8, max: 14, step: 1,
+    label: 'Zoom the map goes to when one airfield is picked for plates' },
 };
 // Groups are ordered to mirror the route-building workflow: the route line
 // and its per-leg annotations first, then the markers you place, then the
@@ -754,8 +813,17 @@ NavAid.tuningGroups = [
     'graphLegArrowPx', 'graphLegLabelMinZoom'] },
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
-  { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters',
-    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap'] },
+  { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
+    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
+    'defaultBaseLayer', 'baseLayerOpacity'] },
+  { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours',
+    'daMetarMaxAgeMin'] },
+  { name: 'Airspace', keys: ['defaultShowAirspace', 'airspaceProhibitedColor', 'airspaceRestrictedColor',
+    'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
+    'airspaceLabelFontPx'] },
+  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficRadiusNm',
+    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
+    'trafficLabelColor'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
@@ -777,7 +845,7 @@ NavAid.tuningGroups = [
   { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldMarkerWidthFactor', 'airfieldMarkerBaseFactor', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldOutlineColor'] },
   { name: 'Nav waypoints', keys: ['navWaypointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
-  { name: 'Frequency changes', keys: ['commCalloutAngleDeg', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
+  { name: 'Frequency changes', keys: ['commCalloutAngleDeg', 'commChangeRings', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameLocked', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm', 'a4x2MarkLabelBgColor', 'a4x2MarkLabelInkColor'] },
   { name: 'Route defaults', keys: ['defaultLegSpeedKt', 'unknownProfileAltFt', 'legLabelMaxScale'] },
@@ -795,7 +863,7 @@ NavAid.tuningGroups = [
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
-  { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
+  { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor', 'featureNotamFreqRows'] },
   { name: 'Overlay opacity', keys: ['overlayOpacity'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
@@ -807,6 +875,7 @@ NavAid.tuningGroups = [
   // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
   // in front of them.
   { name: 'Map fit', keys: ['fitRoutePaddingPx', 'fitRouteMaxZoom', 'fitRouteEmptyZoom',
+    'fitPlatePaddingPx', 'fitPlateMaxZoom',
     'fitNotamPaddingPx', 'fitNotamMaxZoom', 'fitNotamPointZoom',
     'fitTrackPaddingPx', 'fitTrackMaxZoom', 'fitTrackPointZoom',
     'fitAltPairPaddingPx', 'fitAltPairMaxZoom',
@@ -815,7 +884,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -838,6 +907,10 @@ function tune(key) {
   if (spec.type === 'select') {
     return spec.options && spec.options.indexOf(v) !== -1 ? v : spec.value;
   }
+  // Free text (a URL, a comma-separated palette): the numeric fall-through below would hand
+  // back the default for every one of them, so a set value could never be read even once
+  // setTune accepted it.
+  if (spec.type === 'text') return typeof v === 'string' ? v : spec.value;
   return Number.isFinite(v) ? v : spec.value;
 }
 
@@ -901,6 +974,14 @@ function setTune(key, value) {
   if (spec.type === 'select') {
     if (!spec.options || spec.options.indexOf(value) === -1) return;
     NavAid.tuning[key] = value;
+    return;
+  }
+  if (spec.type === 'text') {
+    // A URL, not a number: it has no min/max to clamp to and the numeric branch below
+    // rejected it silently, which made trafficApiUrl unsettable from the gist -- documented
+    // as configurable, and not.
+    if (typeof value !== 'string') return;
+    NavAid.tuning[key] = value.trim();
     return;
   }
   if (!Number.isFinite(value)) return;
@@ -995,7 +1076,7 @@ window.S = Object.assign({
   // the ?v= cache-busts all three kinds, which now come from the same file.
   routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
-  airfieldsUrl: 'data/airfields.json?v=39',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=40',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
   vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations
@@ -1209,6 +1290,7 @@ window.S = Object.assign({
   chooseLsaBubble: 'LSA bubble',
   bubbleAltBand: 'Altitude band',
   unitFeet: 'ft',
+  unitNm: 'nm',
   bubbleActive: 'Active',
   bubbleWeekendOnly: 'Weekends & holidays only',
   bubbleWeekendTag: 'weekend',
@@ -1508,6 +1590,8 @@ window.S = Object.assign({
   // Pointer to a frequency NOTAM on an airfield. Names the NOTAM, never its frequency:
   // the published value stays what the inspector shows and the pilot reads the NOTAM.
   freqNotamNote: (ids) => 'Frequency NOTAM: ' + (Array.isArray(ids) ? ids.join(', ') : ids),
+  freqNotamRowTitle: (id, published) => 'NOTAM ' + id
+    + (published ? ' \u00b7 AIP ' + published : ' \u00b7 not published in the AIP'),
   // Plain-language preamble above the ICAO block in a filed mail. Follows the UI
   // language; the (FPL-...) block itself is never translated.
   fplMailTitle: 'Flight plan on the low-level transit routes',
@@ -1698,7 +1782,10 @@ window.S = Object.assign({
   kmlRouteName: 'Route',
   kmlTourName: 'Fly the route',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
-                 'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
+                 'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
+                 // A dataset, not a base chart: the ENR 6.1 sheet is an Extra-layers overlay,
+                 // and this label names its points in the "Nav waypoints from" picker.
+                 'ATS': 'ATS routes' },
   // Toolbar static strings — filled into DOM by applyI18n() on boot
   tbHandleTitle: 'Drag to move',
   tbBrandTag: '— CVFR flight planner for Israel',
@@ -1717,6 +1804,11 @@ window.S = Object.assign({
   tbGrpTerrain: 'Terrain',
   tbGrpAirspace: 'Airspace',
   tbGrpPlates: 'Airfield plates',
+  tbGrpIfr: 'Instrument charts',
+  tbGrpTraffic: 'Traffic',
+  tbShowTraffic: 'Show live traffic',
+  tbShowTrafficApkOnly: 'In the app only: the ADS-B feeds refuse browser requests, so nothing could be drawn here. Install the Android app and it works there.',
+  tbShowTrafficTitle: 'Aircraft heard on ADS-B. It asks around your position when you have one, and otherwise around the middle of the map, so it works while planning too. The arrow points where each one is going; its callsign and altitude in hundreds of feet are beside it.',
   tbPlateOpacity: 'Plate opacity',
   tbPlateOpacityTitle: 'Adjust the airfield-plate overlay opacity (shared by all plate layers)',
   tbPlateOpacityReset: 'Reset opacity',
@@ -1806,6 +1898,10 @@ window.S = Object.assign({
   tbHeliOpacity: 'Helicopter opacity',
   tbHeliOpacityTitle: 'Adjust helicopter route overlay opacity',
   tbHeliOpacityReset: 'Reset opacity',
+  tbShowIfr: 'Show IFR chart',
+  tbShowIfrTitle: 'Lay one instrument chart on the map — an ILS or RNP approach, a SID, a STAR. Only the sheets the CAA draws to scale, with a graticule to place them by, are offered; the schematic ones stay in Charts, where they read properly.',
+  tbIfrSheet: 'Which chart',
+  tbIfrSheetTitle: 'Which instrument chart to draw. One at a time, remembered per airfield.',
   tbShowCommfail: 'Show comm-failure joining',
   tbShowCommfailTitle: 'Overlay georeferenced radio comm-failure entry plates for Israeli airfields',
   tbCommfailOpacity: 'Comm-failure opacity',
@@ -1832,6 +1928,7 @@ window.S = Object.assign({
   legendVor: 'VOR station',
   tbMoreLinks: 'More links (repo, wiki, issues, about, privacy, terms)',
   legendAtcChange: 'Freq change',
+  legendHotspot: 'Hotspot',
   commChangeBadge: '📡 Freq change point',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
@@ -1879,6 +1976,7 @@ window.S = Object.assign({
   altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'Pair endpoints not found',
   addFreqChange: 'Add frequency change (Z)',
+  addFreqChangeAtTurn: 'You leave the turning point on the frequency you arrived on, so there is no change to call here.',
   deleteFreqChange: '🗑 Delete freq change (X)',
   resetFreqLocation: '↻ Reset callout location',
   resetFreqLocationTitle: 'Reset callout location',
@@ -1898,6 +1996,67 @@ window.S = Object.assign({
   plateCategoryVfr: 'VFR / airport',
   plateCategoryOther: 'Other',
   plateOpen: 'Open',
+  platePlaceOnMap: '🗺 Show on map',
+  platePlaceOnMapTitle: 'Lay this sheet over the map, georeferenced, and go to it. The same layer you would switch on in Extra layers.',
+  hideThisLayer: 'Hide this chart',
+  tbShowAirspace: 'Controlled & restricted airspace',
+  tbShowAirspaceTitle: 'Three different things, from the AIP (ENR 5.1 and ENR 2.1): prohibited areas (LLP — closed), restricted areas (LLR — conditional, most have published hours or an activating NOTAM) and the Ben-Gurion TMA sectors (controlled — entered with a clearance). Each is drawn with its vertical limits, and those limits are the point: the boundaries are lateral, so a leg crossing one on the map may be well above or below it.',
+  airspaceProhibited: 'Prohibited',
+  airspaceRestricted: 'Restricted',
+  airspaceTma: 'TMA',
+  airspaceCtr: 'CTR',
+  airspaceKindCtr: 'Control zone — clearance required',
+  airspaceLimits: function (upper, lower) { return lower + ' – ' + upper; },
+  airspaceGnd: 'GND',
+  airspaceUnl: 'UNL',
+  commTitle: 'Communication',
+  airspaceKind: 'Class',
+  airspaceKindProhibited: 'Prohibited — closed',
+  airspaceKindRestricted: 'Restricted — conditional',
+  airspaceKindTma: 'Controlled — clearance required',
+  airspaceVertical: 'Vertical limits',
+  airspaceYourRoute: 'Your route',
+  airspaceRouteClear: 'clear of it',
+  airspaceRouteInside: 'crosses it, inside its limits',
+  airspaceRouteAbove: 'crosses it, above the top',
+  airspaceRouteBelow: 'crosses it, below the base',
+  airspaceRouteCrossesNoAlt: 'crosses it — no planned altitude',
+  airspaceActivity: 'Activity',
+  airspaceActivityNames: { TRG: 'Training', MIL: 'Military', MILOPS: 'Military operations',
+    PARACHUTE: 'Parachuting', FIRE: 'Live fire', BALLOON: 'Balloon', CIVIL: 'Civil', OTHER: 'Other' },
+  airspaceHours: 'Hours',
+  airspaceActiveNow: 'active now',
+  airspaceNotActiveNow: 'not active now',
+  airspaceActivation: 'Activation',
+  airspaceByNotam: 'By NOTAM',
+  airspaceFreq: 'Frequency',
+  airspaceNotes: 'Notes',
+  airspaceSize: 'Size',
+  airspaceNm2: 'nm²',
+  airspaceDistance: 'From you',
+  airspaceNotams: 'NOTAMs',
+  airspaceShowNotams: 'Show',
+  airspaceSource: 'Source',
+  densityAltitude: 'Density altitude',
+  densityAltitudeTitle: 'What the aeroplane thinks the field elevation is, once temperature and QNH are taken into account. Thin air lengthens the takeoff roll and flattens the climb: at a density altitude well above the field, the numbers in the book stop being the numbers. Move the slider to find an hour that is flyable.',
+  daConditions: 'Temp · QNH',
+  daWhen: 'Density altitude at',
+  daNow: 'now',
+  daFromMetar: 'METAR',
+  daFromForecast: 'forecast',
+  daNoData: 'no temperature available',
+  daNoElev: 'no field elevation',
+  daQnhAssumed: '(standard)',
+  daAgeMin: function (m) { return '(' + m + ' min old)'; },
+  wxTitleNoMetar: 'Density altitude',
+  daElevFromModel: 'terrain elevation',
+  trafficUnavailable: 'Live traffic unavailable',
+  trafficTitle: 'Traffic',
+  trafficAltitude: 'Altitude',
+  trafficGroundSpeed: 'Ground speed',
+  trafficSquawk: 'Squawk',
+  trafficType: 'Type',
+  trafficTrack: 'Track',
   plateDownload: 'Download',
   plateOpenTab: 'Open in new tab',
   plateClose: 'Close',
@@ -1930,8 +2089,11 @@ window.S = Object.assign({
   tbLegArrowColorTitle: 'Fill color of the leg arrows — applies to print/export too',
   tbWaypointColor: 'Waypoint color',
   tbWaypointColorTitle: 'Fill color of the waypoint discs and their label backgrounds — applies to print/export too',
-  tbMapOpacity: 'Map opacity',
-  tbMapOpacityTitle: 'Base map brightness',
+  tbBaseLayer: 'Base map',
+  tbBaseLayerTitle: 'What shows underneath the chart you picked — the map around a chart that covers only the FIR, and what you see through it when the chart is dimmed. Any chart can go here too: ATS over CVFR, or ATS over the satellite image.',
+  tbBaseLayerNone: '— none —',
+  tbLayerOpacity: 'Layer opacity',
+  tbLayerOpacityTitle: 'How strongly the chart you picked is drawn. Dim it to read the map underneath it — which, since it can be another chart, is how two charts are read together.',
   tbLegArrowSize: 'Leg arrow size',
   tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
   sliderReset: 'Reset to default',
@@ -2260,6 +2422,7 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
 var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
 var showLsaBubbles = true;  // LSA airspace bubbles overlay (Low Alt layer; default on)
+var showAirspace = false;   // prohibited / restricted / TMA from the AIP (Extra layers)
 // Auto-route on the MAP: adding a reporting point extends the route along the published
 // corridor between it and the previous point, instead of a straight line. CVFR only for
 // now (the maintainer's scope); filing-time expansion stays independent of this.
@@ -3602,6 +3765,20 @@ function wxWind(dir, spd, gst) {
   return 'Wind ' + d + ' ' + spd + ' kt' + (gst ? ' gust ' + gst : '');
 }
 // Decode a METAR from AWC's JSON object into a plain-language line.
+// QNH as both scales. Israeli ATIS and METARs give hectopascals; a Cessna's altimeter has
+// an inches subscale, and converting in your head on short final is nobody's idea of
+// airmanship. The inches figure is the one you dial, so it gets the two decimals it is set
+// with, and the double-prime is how it is written on a plate.
+const HPA_PER_INHG = 33.8639;
+function fmtQnhBoth(hPa) {
+  const v = Number(hPa);
+  if (!Number.isFinite(v)) return '';
+  // Below 900 the number was already in inches (some feeds send it that way).
+  if (v < 900) return v.toFixed(2) + '\u2033 · ' + Math.round(v * HPA_PER_INHG) + ' hPa';
+  return Math.round(v) + ' hPa · ' + (v / HPA_PER_INHG).toFixed(2) + '\u2033';
+}
+window.fmtQnhBoth = fmtQnhBoth;
+
 function decodeMetar(m) {
   if (!m) return '';
   const p = [];
@@ -3611,7 +3788,7 @@ function decodeMetar(m) {
   const cl = wxClouds(m.clouds); if (cl) p.push(cl);
   if (m.temp != null) p.push('Temp ' + Math.round(m.temp) + '°C' +
     (m.dewp != null ? ' / dew ' + Math.round(m.dewp) + '°C' : ''));
-  if (m.altim != null) p.push('QNH ' + Math.round(m.altim) + (m.altim > 900 ? ' hPa' : ' inHg'));
+  if (m.altim != null) p.push('QNH ' + fmtQnhBoth(m.altim));
   return p.join(' · ');
 }
 // Decode a TAF (AWC JSON) into one decoded line per forecast period.
@@ -3836,31 +4013,57 @@ function chartTileOptions(options) {
   return LIVE_CHART_TILES ? options : { ...options, corsOk: true };
 }
 
-const layers = {
-  'CVFR': L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+// Leaflet resolves a layer's pane by name and appends to it; an explicit `pane: undefined`
+// is not the same as leaving it out, and boots into "cannot read properties of undefined".
+// The picker's layers want the default pane, so the key must simply be absent for them.
+const withPane = (opts, pane) => (pane ? { ...opts, pane } : opts);
+// One definition per chart, used twice: once for the picker's layer and once for whatever
+// the pilot puts UNDER it (underlayLayer below). `pane` is the only difference -- Leaflet
+// will not hold one layer object in two places, and the pane is what decides which is on top.
+const CHART_SPECS = {
+  'CVFR': (pane) => L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png'),
-    chartTileOptions({ ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' })),
-  'Navigation': L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+    chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }, pane))),
+  'Navigation': (pane) => L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png'),
-    chartTileOptions({ ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' })),
-  'Low Alt': L.tileLayer(chartTileUrl('la', 'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
+    chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' }, pane))),
+  'Low Alt': (pane) => L.tileLayer(chartTileUrl('la', 'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png'),
-    chartTileOptions({ ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' })),
-  'Helicopters': L.tileLayer(chartTileUrl('il-hel', 'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+    chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' }, pane))),
+  'Helicopters': (pane) => L.tileLayer(chartTileUrl('il-hel', 'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png'),
-    chartTileOptions({ ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' })),
-  'Satellite': L.tileLayer(
+    chartTileOptions(withPane({ ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' }, pane))),
+  // The CAA's enroute sheet (ENR 6.1), the one chart here that is a single raster rather
+  // than a tile set: it ships as one reprojected image (see scripts/warp-ats-chart.py), so
+  // it is an imageOverlay wearing a base layer's hat. Leaflet treats it like any other
+  // layer for add/remove/hasLayer, which is all the picker needs. Bounds are the graticule
+  // frame of the sheet itself -- outside it whatever is underneath shows through, the same
+  // as for the other charts that cover only the FIR. The corners are repeated from
+  // data/ats-chart.json, which the warp script writes; ats-routes-layer.spec.js compares the
+  // two, so a re-warp that moves them cannot leave this literal behind.
+  // ...in the TILE pane, where a base chart belongs. An imageOverlay defaults to the overlay
+  // pane, which is where the airfield plates are drawn -- so choosing this chart after an
+  // approach plate covered the plate, because the later layer wins inside one pane. It is a
+  // base map: it goes under everything drawn on top of the map.
+  'ATS': (pane) => L.imageOverlay(navAssetBase('ats-img') + 'ats-routes.png?v=3',
+    [[29.376677, 33.426611], [33.420846, 36.158314]],
+    withPane({ attribution: 'CAAI · AIP ENR 6.1', className: 'ats-base-layer' },
+             pane || 'tilePane')),
+  'Satellite': (pane) => L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }),
-  'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { minZoom: 6, maxZoom: 18, subdomains: 'abc',
-      attribution: '© OpenStreetMap contributors' }),
+    withPane({ minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }, pane)),
+  'OpenStreetMap': (pane) => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    withPane({ minZoom: 6, maxZoom: 18, subdomains: 'abc',
+      attribution: '© OpenStreetMap contributors' }, pane)),
 };
+// The picker's layers: every chart, in its normal pane.
+const layers = Object.fromEntries(
+  Object.keys(CHART_SPECS).map(name => [name, CHART_SPECS[name](undefined)]));
 
 // Is a base layer offered at all? CVFR always is -- it is the fallback everything else
 // degrades to. The rest hang on gist-controlled tunables, so a layer can be pulled from
@@ -3941,20 +4144,59 @@ map.getPane('basemapUnderlay').style.zIndex = 150;        // below tilePane (200
 // is 400) but below the app's own #overlay route canvas.
 map.createPane('windfield');
 map.getPane('windfield').style.zIndex = 410;
-const osmUnderlay = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
-    opacity: 0.7, attribution: '© OpenStreetMap contributors' });
-const FULL_COVERAGE_LAYERS = { Satellite: 1, OpenStreetMap: 1 };
+// What sits UNDER the chart. It was always OSM, to fill in around the FIR-only charts. Any
+// chart can take that place now -- "ATS over CVFR" and "ATS over Satellite" are the two the
+// pilot asked for -- so the underlay is built from the same definitions as the picker's
+// layers, in the pane below them. A layer object can only be on the map once, so these are
+// their own instances: the loops that ask "which of `layers` is on the map?" to name the
+// active chart keep answering about the chart on top, which is the one the datasets,
+// waypoint source and NOTAM preferences belong to.
+const _underlayCache = {};
+function underlayLayer(name) {
+  if (name === 'OpenStreetMap') {
+    if (!_underlayCache[name]) {
+      _underlayCache[name] = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
+          attribution: '© OpenStreetMap contributors' });
+    }
+  } else if (!_underlayCache[name]) {
+    const spec = CHART_SPECS[name];
+    if (!spec) return null;
+    _underlayCache[name] = spec('basemapUnderlay');
+  }
+  const l = _underlayCache[name];
+  if (l && l.setOpacity) l.setOpacity(tune('baseLayerOpacity'));
+  return l;
+}
+// The pilot's choice, or the gist's default. 'none' draws nothing underneath.
+const BASE_LAYER_KEY = 'navaid.baseLayer';
+window.baseLayerName = (() => {
+  try {
+    const saved = localStorage.getItem(BASE_LAYER_KEY);
+    if (saved) return saved;
+  } catch (e) { /* storage unavailable */ }
+  return tune('defaultBaseLayer');
+})();
 function updateBasemapUnderlay() {
   let cur = null;
   for (const n in layers) if (map.hasLayer(layers[n])) cur = n;
-  if (cur && !FULL_COVERAGE_LAYERS[cur]) {
-    if (!map.hasLayer(osmUnderlay)) osmUnderlay.addTo(map);
-  } else if (map.hasLayer(osmUnderlay)) {
-    map.removeLayer(osmUnderlay);
+  for (const n in _underlayCache) {
+    // Never the same chart twice: under itself it is invisible and costs a second set of
+    // tiles, and under nothing at all there is no map to fill in.
+    if (n !== baseLayerName || n === cur) {
+      if (map.hasLayer(_underlayCache[n])) map.removeLayer(_underlayCache[n]);
+    }
   }
+  if (!baseLayerName || baseLayerName === 'none' || baseLayerName === cur) return;
+  const l = underlayLayer(baseLayerName);
+  if (l && !map.hasLayer(l)) l.addTo(map);
 }
 window.updateBasemapUnderlay = updateBasemapUnderlay;
+window.setBaseLayerName = function (name) {
+  window.baseLayerName = name || 'none';
+  try { localStorage.setItem(BASE_LAYER_KEY, baseLayerName); } catch (e) { /* storage off */ }
+  updateBasemapUnderlay();
+};
 updateBasemapUnderlay();
 
 // --- route overlay canvas -------------------------------------------

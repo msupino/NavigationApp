@@ -11,18 +11,20 @@ const options = (page) => page.evaluate(() =>
 test('a chart that is not offered is not a waypoint source', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof layerOffered === 'function');
-  // Helicopters ships off, so the shipped list is CVFR + Low Alt + Follow chart.
+  // Helicopters ships off, so the shipped list is CVFR + Low Alt + Follow chart -- plus the
+  // ATS points, which have no chart to be withdrawn: they come from the ENR 6.1 sheet, an
+  // Extra-layers overlay rather than a base layer, so nothing gates them.
   expect(await page.evaluate(() => layerOffered('Helicopters'))).toBe(false);
-  expect(await options(page)).toEqual(['', 'cvfr', 'lsa']);
+  expect(await options(page)).toEqual(['', 'cvfr', 'lsa', 'ats']);
 });
 
 test('turning the chart back on brings its waypoints back', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof window.rebuildNavWpSource === 'function');
   await page.evaluate(() => { setTune('layerEnabledHelicopters', true); window.rebuildNavWpSource(); });
-  expect(await options(page)).toEqual(['', 'cvfr', 'lsa', 'heli']);
+  expect(await options(page)).toEqual(['', 'cvfr', 'lsa', 'heli', 'ats']);
   await page.evaluate(() => { setTune('layerEnabledHelicopters', false); window.rebuildNavWpSource(); });
-  expect(await options(page)).toEqual(['', 'cvfr', 'lsa']);
+  expect(await options(page)).toEqual(['', 'cvfr', 'lsa', 'ats']);
 });
 
 // A pilot who chose heli waypoints before the chart was pulled must not be left pinned to a

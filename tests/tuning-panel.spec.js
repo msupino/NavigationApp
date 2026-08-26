@@ -180,6 +180,7 @@ test.describe('Hidden tuning panel', () => {
         windTextHaloColor: '#fedcba',
         liveAircraftFillColor: '#cc1122',
         liveAircraftOutlineColor: '#eeeeee',
+        commChangeRings: true,          // the ring ships off; this test is about its colour
         commChangeRingColor: '#990000',
         profileBgColor: '#001122',
         profileGridColor: '#112244',

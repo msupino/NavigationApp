@@ -186,7 +186,7 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
   if (!sel) return;
   try {
     const stored = lsGet(NAVWP_SOURCE_KEY);
-    if (stored === 'cvfr' || stored === 'lsa' || stored === 'heli') window.navDataPrefix = stored;
+    if (['cvfr', 'lsa', 'heli', 'ats'].includes(stored)) window.navDataPrefix = stored;
   } catch (e) { /* storage unavailable */ }
   // Only charts the app actually offers: a layer switched off in the gist is gone from the
   // base-layer picker, and offering its waypoints here anyway let a pilot pick a dataset for
@@ -196,7 +196,8 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
   const opts = [['', S.tbNavWpSourceFollow || 'Follow chart'],
     ['cvfr', (S.layerLabels && S.layerLabels.CVFR) || 'CVFR', 'CVFR'],
     ['lsa', (S.layerLabels && S.layerLabels['Low Alt']) || 'Low Alt', 'Low Alt'],
-    ['heli', (S.layerLabels && S.layerLabels.Helicopters) || 'Helicopters', 'Helicopters']];
+    ['heli', (S.layerLabels && S.layerLabels.Helicopters) || 'Helicopters', 'Helicopters'],
+    ['ats', (S.layerLabels && S.layerLabels.ATS) || 'ATS routes', 'ATS']];
   const buildOptions = () => {
     sel.textContent = '';
     for (const [value, label, layer] of opts) {
@@ -229,11 +230,46 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
   };
 })();
 
+// What sits UNDER the chart (Display). The picker above chooses the chart; this chooses the
+// map beneath it, which is what fills in around a chart that covers only the FIR and what
+// shows through one that is dimmed. Any chart can take the place, so "ATS over CVFR" and
+// "ATS over Satellite" are both a two-control answer rather than a new stacking model.
+(function wireBaseLayerPicker() {
+  const sel = document.getElementById('base-layer-select');
+  if (!sel) return;
+  const build = () => {
+    const chosen = window.baseLayerName;
+    sel.textContent = '';
+    const opts = [['none', S.tbBaseLayerNone || '— none —']];
+    for (const name of Object.keys(layers)) {
+      if (!layerOffered(name)) continue;
+      opts.push([name, (S.layerLabels && S.layerLabels[name]) || name]);
+    }
+    for (const [value, label] of opts) {
+      const o = document.createElement('option');
+      o.value = value; o.textContent = label;
+      sel.appendChild(o);
+    }
+    // A stored choice for a chart the gist has since withdrawn falls back to the default,
+    // the same way a withdrawn base layer does.
+    if (!Array.from(sel.options).some(o => o.value === chosen)) {
+      setBaseLayerName(tune('defaultBaseLayer'));
+    }
+    sel.value = window.baseLayerName;
+  };
+  build();
+  window.rebuildBaseLayerPicker = build;      // the gist lands after boot
+  sel.onchange = () => {
+    setBaseLayerName(sel.value);
+    if (typeof scheduleDraw === 'function') scheduleDraw();
+  };
+})();
+
 // base map layer picker (replaces the Leaflet layers control)
 const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
 // '---' is a non-selectable divider. Any layer not listed is appended after.
-const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', '---',
+const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', 'ATS', '---',
                      'Navigation', 'Satellite', 'OpenStreetMap'];
 const orderedLayerNames = () => [
   ...LAYER_ORDER.filter(n => n === '---' || (layers[n] && layerOffered(n))),
@@ -405,6 +441,9 @@ refreshVoiceControl();
 voiceBtn.onclick = () => {
   window.voiceAlerts = !(window.voiceAlerts === true);
   try { localStorage.setItem(VOICE_ALERTS_KEY, window.voiceAlerts ? '1' : '0'); } catch (err) { /* */ }
+  // Silence means silence, including whatever is mid-sentence or already queued behind it.
+  // A pilot who presses this in a busy circuit is not asking for one more alert first.
+  if (!window.voiceAlerts && typeof gpsStopSpeaking === 'function') gpsStopSpeaking();
   refreshVoiceControl();
   // Say which way it went. A speaker icon that has just changed state tells you nothing you
   // can check -- there is no sound to hear until the next alert, which may be ten minutes off,
@@ -869,6 +908,23 @@ function applyTuningCssVars() {
     '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
     'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
 
+  // The pinned head's real height, for whatever sticks below it (the Record / Location band
+  // on a phone). Measured rather than assumed: the row grows with the language picker's font
+  // and with the platform's minimum touch target.
+  const tbToggle = document.getElementById('toolbar-toggle');
+  if (tbToggle) {
+    const h = Math.round(tbToggle.getBoundingClientRect().height);
+    if (h > 0) root.setProperty('--navaid-tb-head-h', h + 'px');
+  }
+
+  // The hotspot pair, so the inspector's "marked" button can wear what the waypoint wears.
+  root.setProperty('--navaid-hotspot-fill', tune('waypointHotspotFillColor'));
+  root.setProperty('--navaid-hotspot-ring', tune('waypointHotspotRingColor'));
+
+  // Other aeroplanes. Not red: red on an aviation display means resolve it now.
+  root.setProperty('--navaid-traffic-arrow', tune('trafficArrowColor'));
+  root.setProperty('--navaid-traffic-label', tune('trafficLabelColor'));
+
   // Dark-mode backdrop behind the IMS PWX overlay: the chart's white background
   // is made transparent in the pipeline, so its dark footer (valid time / model
   // run) vanishes against the dark map. Plate ONLY the bottom band (the footer)
@@ -1114,11 +1170,22 @@ legendCtrl.addTo(map);
     const obstructed = obstacles.some(obstacle =>
       overlaps(r.left, r.top, r.width, r.height, obstacle));
     // Where it is is fine: leave it exactly where it is. Re-applying a position it already
-    // holds is how a card starts drifting a pixel at a time.
-    if (!positioned && !outside && !obstructed) return;
+    // holds is how a card starts drifting a pixel at a time. Remember this spot as home if
+    // nothing has claimed one yet -- a legend the pilot has never dragged still has a place
+    // it belongs, and that is wherever it was sitting undisturbed.
+    if (!positioned && !outside && !obstructed) {
+      if (!home) home = { x: r.left, y: r.top };
+      return;
+    }
+    // Aim at HOME, not at where the card happens to be. Expanding a legend near the bottom
+    // of a phone screen makes it too tall to fit, so it is clamped upwards; collapsing it
+    // again used to re-apply that clamped position and leave the card somewhere new --
+    // reported as the legend moving when it is expanded and closed. Home is what the card
+    // returns to the moment there is room for it again.
+    const want = home || { x: r.left, y: r.top };
     // Only a drag decides where the legend lives, so only a drag writes to storage: a
     // reflow that pushes the card clear of something must not be adopted as a new home.
-    applyPos(r.left, r.top, false);
+    applyPos(want.x, want.y, false);
     void opts;
   };
   const bootObserver = new MutationObserver(() => {
@@ -3817,10 +3884,19 @@ document.getElementById('wpname-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
-const HOTSPOT_KEY = 'navaid.showHotspots';
+// Bumped from navaid.showHotspots when the overlay was switched off for everyone. The gist
+// default only reaches a device that never chose for itself, so anyone who had ever touched
+// this switch -- or ran a build that wrote the value on their behalf -- would have kept it
+// on for good. A new key makes every device look unset once, and take the gist's answer.
+// The cost is deliberate and one-way: someone who turned it ON on purpose loses that, and
+// there is no way to tell them apart from someone who never chose.
+const HOTSPOT_KEY = 'navaid.showHotspots2';
 try {
   const sh = lsGet(HOTSPOT_KEY);
   if (sh !== null) window.showHotspots = sh === '1';
+  // The superseded key is dropped rather than read: leaving it would have it sync between
+  // devices forever, and restore itself the day the name is reused.
+  try { localStorage.removeItem('navaid.showHotspots'); } catch (err) { /* */ }
 } catch (e) { /* storage unavailable */ }
 document.getElementById('hotspot-cb').checked = showHotspots;
 document.getElementById('hotspot-cb').onchange = e => {
@@ -5088,7 +5164,41 @@ function buildOverlayLayer(base, ov, ver, type) {
   layer.on('load', done);
   layer.on('error', done);
   layer.on('remove', done);       // removal cancels the request; no load/error follows
+  addOverlayHideButton(layer, g, type);
   return layer;
+}
+// Which toggle owns a drawn sheet, for the ✕ on its corner.
+const OVERLAY_TYPE_CB = {
+  circuit_overlay: 'circuit-cb', training_overlay: 'training-cb', cvfr_overlay: 'cvfr-cb',
+  heli_overlay: 'heli-cb', commfail_overlay: 'commfail-cb', ifr_overlay: 'ifr-cb',
+};
+// A ✕ on the sheet's top-left corner, to put it away from the map itself. Switching a chart
+// off meant finding the menu it came from -- three taps on a phone, with the toolbar over
+// the map you were reading. The corner is the sheet's own north-west, so the mark sits on
+// the picture it closes rather than somewhere on the screen.
+function addOverlayHideButton(layer, g, type) {
+  const cbId = OVERLAY_TYPE_CB[type];
+  if (!cbId) return;
+  const corner = g.rot ? g.tl : [g.ne[0], g.sw[1]];
+  const btn = L.marker(corner, {
+    icon: L.divIcon({ className: 'ov-hide-btn', html: '✕', iconSize: [22, 22], iconAnchor: [0, 0] }),
+    keyboard: false,
+    pane: 'markerPane',
+    title: S.hideThisLayer || 'Hide this chart',
+    alt: S.hideThisLayer || 'Hide this chart',
+  });
+  btn.on('click', (e) => {
+    if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
+    const cb = document.getElementById(cbId);
+    if (!cb || !cb.checked) return;
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  // It belongs to the sheet: on the map exactly as long as the sheet is, and never left
+  // behind when the layer group is swapped out from under it.
+  layer.on('add', () => { if (map && !map.hasLayer(btn)) btn.addTo(map); });
+  layer.on('remove', () => { if (map && map.hasLayer(btn)) map.removeLayer(btn); });
+  layer._ovHideBtn = btn;
 }
 
 // ── Circuit overlay ──────────────────────────────────────────────────────────
@@ -5219,6 +5329,104 @@ function applyCvfrOpacity(v) {
   const valEl = document.getElementById('cvfr-opacity-val');
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
   if (cvfrLayerGroup) cvfrLayerGroup.eachLayer(l => l.setOpacity(v));
+}
+
+// ── IFR charts: SID / approach / STAR (per-airfield plates) ───────────────────
+// Unlike the other plate families a field has MANY of these -- LLBG publishes nineteen that
+// can be placed -- so a single toggle would stack nineteen sheets on one another. The toggle
+// draws one, and a picker beside it says which. The choice is remembered per field, because
+// "the ILS I am flying" is a property of the field, not of the app.
+//
+// Only sheets that could be georeferenced are here at all. Every LLER SID and IAC, four LLBG
+// STARs and the LLHA STAR are schematics with no graticule: nothing to place them by, and a
+// plausible-looking guess on an approach chart is worse than not drawing it. They stay in
+// the charts viewer, which is where a schematic belongs.
+const IFR_SHOW_KEY  = 'navaid.showIfr';
+const IFR_SHEET_KEY = 'navaid.ifrSheet';       // "<ICAO>|<png>": the one sheet on the map
+
+window.showIfr = lsGet(IFR_SHOW_KEY) === '1';
+window.ifrLayerGroup = null;
+
+function ifrImgBase() {
+  // Own copy, or the deployed root's when this preview shares it (navAssetBase).
+  return navAssetBase('ifr-img');
+}
+// Every placeable sheet on offer, as { icao, sheet }. NOT filtered by "Show plates for":
+// that control narrows layers which draw a sheet per field, and this one draws the single
+// sheet you named -- at the field you named it for. Filtering it would only ever remove the
+// chart you had just asked for.
+function ifrSheets() {
+  if (!airfields) return [];
+  const out = [];
+  for (const af of airfields) {
+    if (!Array.isArray(af.ifr_overlays) || !af.ifr_overlays.length) continue;
+    for (const sheet of af.ifr_overlays) out.push({ icao: af.name, sheet });
+  }
+  return out;
+}
+const ifrKeyOf = (entry) => entry.icao + '|' + entry.sheet.png;
+// ONE chart is drawn, not one per field. The picker names a particular sheet -- "LLBG ·
+// ILS 08" -- so choosing another must put that one on the map and take the last one off.
+// Drawing every field's current sheet at once meant picking an approach at Ben Gurion left
+// Rosh Pina's departure lying there too, which is not what was asked for.
+function ifrChosen() {
+  const list = ifrSheets();
+  if (!list.length) return null;
+  let want = null;
+  try { want = lsGet(IFR_SHEET_KEY); } catch (e) { /* storage unavailable */ }
+  return list.find(e => ifrKeyOf(e) === want) || list[0];
+}
+function setIfrSheet(key, opts = {}) {
+  try { localStorage.setItem(IFR_SHEET_KEY, key); } catch (e) { /* storage unavailable */ }
+  if (ifrLayerGroup) { ifrLayerGroup.remove(); ifrLayerGroup = null; }
+  if (!window.showIfr) return;
+  loadIfrOverlays();
+  if (!ifrLayerGroup) return;
+  ifrLayerGroup.addTo(map);
+  // Asking for Ben Gurion's ILS 08 while looking at Rosh Pina drew a chart off screen and
+  // said nothing. Picking a sheet takes the map to it -- but only when the PILOT picks one:
+  // restoring the last sheet at start-up must not drag the map away from where they left it,
+  // and neither must anything while a fix is driving it.
+  if (!opts.move) return;
+  if (typeof gpsPositionLive === 'function' && gpsPositionLive()) return;
+  let bounds = null;
+  ifrLayerGroup.eachLayer(l => { if (l && l.getBounds) bounds = l.getBounds(); });
+  // Padding comes from the tuning panel like every other fit in the app -- a literal here is
+  // what let Fit-to-screen and the route fit drift apart, and tunable-map-fit.spec.js says so.
+  if (bounds && bounds.isValid()) map.fitBounds(bounds, fitOpts('fitPlatePaddingPx', 'fitPlateMaxZoom'));
+}
+function loadIfrOverlays() {
+  if (ifrLayerGroup) return;
+  if (!airfields) return;
+  ifrLayerGroup = L.layerGroup();
+  const chosen = ifrChosen();
+  if (chosen) {
+    buildOverlayLayer(ifrImgBase(), chosen.sheet, '1', 'ifr_overlay').addTo(ifrLayerGroup);
+  }
+  applyIfrPoints(chosen);
+}
+// The positions the sheet prints in full -- a VOR, an IAF, the field -- joined to the chart
+// points the app already draws, so they can be tapped, inspected and put in a route while
+// the sheet is showing. They are the CAA's own digits off that plate; a fix the sheet names
+// without a position is not among them, because there would be nothing to place it by.
+//
+// Carried in navWP, tagged, so every path that already knows about chart points -- drawing,
+// the hit test, the inspector, search -- treats them as what they are without learning a new
+// kind of thing. Tagged is also how they leave again: the tagged rows are dropped whenever
+// the sheet changes, so a plate's points never outlive the plate.
+function applyIfrPoints(chosen) {
+  if (!Array.isArray(navWP)) return;
+  for (let i = navWP.length - 1; i >= 0; i--) if (navWP[i] && navWP[i]._plate) navWP.splice(i, 1);
+  const points = (chosen && chosen.sheet && chosen.sheet.points) || [];
+  for (const p of points) {
+    if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
+    // A point the chart dataset already carries stays the dataset's: same name, same place,
+    // and its comm-change and report status come with it.
+    if (navWP.some(w => w && w.name === p.name)) continue;
+    navWP.push({ lat: p.lat, lng: p.lng, name: p.name, en: p.name,
+                 _plate: (chosen.icao + ' ' + chosen.sheet.code) });
+  }
+  if (typeof scheduleDraw === 'function') scheduleDraw();
 }
 
 // ── Helicopter routes overlay ─────────────────────────────────────────────────
@@ -5396,6 +5604,15 @@ function onRouteChangedForPlates() {
     try { localStorage.setItem(PLATE_AIRFIELD_KEY, sel.value); } catch (_) {}
     _plateAutoKey = sel.value === 'auto' ? [...routeEndpointAirfields()].sort().join(',') : '';
     rebuildPlateOverlays();
+    // Naming one field is asking to look at it: the plates you just chose are drawn around
+    // that airfield, and leaving the map where it was showed none of them. Only for a named
+    // field -- "all" and "auto" are not a place -- and never while a fix is driving the map.
+    if (sel.value === 'auto' || sel.value === 'all') return;
+    if (typeof gpsPositionLive === 'function' && gpsPositionLive()) return;
+    const af = (airfields || []).find(a => a.name === sel.value);
+    if (af && Number.isFinite(af.lat) && Number.isFinite(af.lng)) {
+      map.setView([af.lat, af.lng], Math.max(map.getZoom(), tune('plateFieldZoom')));
+    }
   };
 })();
 
@@ -5407,17 +5624,21 @@ function onRouteChangedForPlates() {
 // saveOverlayOverride) and can be copied out to bake into airfields.json.
 const overlayAlign = (function () {
   const DEG = Math.PI / 180;
+  // The instrument sheets are here too: they are the ones most likely to need an eye. A
+  // plate whose graticule labels are set differently on each side places a few hundred
+  // metres out with residuals that look healthy, and no automatic anchor can see it -- but a
+  // pilot can, against the field or a VOR rose the sheet draws.
   const GTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
-                  'heli_overlay', 'commfail_overlay'];
+                  'heli_overlay', 'commfail_overlay', 'ifr_overlay'];
   const GVAR = {
     circuit_overlay: 'circuitLayerGroup', training_overlay: 'trainingLayerGroup',
     cvfr_overlay: 'cvfrLayerGroup', heli_overlay: 'heliLayerGroup',
-    commfail_overlay: 'commfailLayerGroup',
+    commfail_overlay: 'commfailLayerGroup', ifr_overlay: 'ifrLayerGroup',
   };
   const GLOAD = {
     circuit_overlay: () => loadCircuitOverlays(), training_overlay: () => loadTrainingOverlays(),
     cvfr_overlay: () => loadCvfrOverlays(), heli_overlay: () => loadHeliOverlays(),
-    commfail_overlay: () => loadCommfailOverlays(),
+    commfail_overlay: () => loadCommfailOverlays(), ifr_overlay: () => loadIfrOverlays(),
   };
   let active = false, sel = null, editLayer = null, state = null;
   let handles = {}, panel = null, mapClick = null;
@@ -5725,7 +5946,8 @@ function applyPlateOpacity(v) {
   plateOpacity = v;
   const valEl = document.getElementById('plate-opacity-val');
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
-  [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup]
+  [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup,
+   ifrLayerGroup]
     .forEach(g => { if (g) g.eachLayer(l => l.setOpacity(v)); });
 }
 
@@ -5745,6 +5967,35 @@ document.getElementById('airfield-cb').onchange = async e => {
   }
   draw();
 };
+// A row with a slider in it gets marked as one, so the stylesheet can give the slider a
+// line of its own on a phone. Marked here rather than with :has() in CSS: the APK's WebView
+// is whatever Android shipped, and a selector that silently does nothing there would leave
+// exactly the 24px-wide sliders this is fixing.
+(function markSliderRows() {
+  for (const range of document.querySelectorAll('#toolbar .navtoggle input[type="range"]')) {
+    const row = range.closest('.navtoggle');
+    if (row) row.classList.add('navtoggle-slider');
+  }
+}());
+
+// --- AIP airspace (prohibited / restricted / TMA) toggle (Extra layers) ---
+const AIRSPACE_KEY = 'navaid.showAirspace';
+try {
+  const stored = lsGet(AIRSPACE_KEY);
+  if (stored !== null) window.showAirspace = stored === '1';
+  else if (typeof tune === 'function') window.showAirspace = tune('defaultShowAirspace') === true;
+} catch (e) { /* storage unavailable */ }
+const airspaceCb = document.getElementById('airspace-cb');
+if (airspaceCb) {
+  airspaceCb.checked = showAirspace;
+  airspaceCb.onchange = e => {
+    window.showAirspace = e.target.checked;
+    try { localStorage.setItem(AIRSPACE_KEY, showAirspace ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    draw();          // drawAirspace() lazy-loads the dataset on the first draw that needs it
+  };
+}
+
 // --- LSA airspace bubbles overlay toggle (Extra layers) ------------------
 const LSA_BUBBLES_KEY = 'navaid.showLsaBubbles';
 try {
@@ -6112,11 +6363,168 @@ function chartsLoadingUntilReady(group, owner) {
     };
   }
 })();
+// Which map layer, if any, draws a given plate -- the link the "Show on map" button in the
+// chart viewer follows. Instrument sheets say so themselves: the builder records the plate
+// each overlay was made from. The older families do not, so they are recognised by what the
+// CAA calls the sheet, which is the same thing the Charts list shows the pilot.
+const PLATE_LAYER_BY_TITLE = [
+  // Order matters: "הצטרפות בתקלת קשר מנתיבי CVFR" is a comm-failure sheet that mentions
+  // CVFR, so the comm-failure rule has to be asked first. The last rule is deliberately
+  // broad -- entry/exit routes are what the CVFR overlay draws, whether the sheet calls them
+  // CVFR, "נתיבי כניסה ויציאה" or "נתיבי התובלה הנמוכים".
+  [/הקפה|circuit/i,                              'circuit-cb'],
+  [/אזורי ה?אימון|training area/i,               'training-cb'],
+  [/תקלת קשר|אובדן קשר|comm-?failure|loss of comm/i, 'commfail-cb'],
+  [/מסוק|helicopter/i,                           'heli-cb'],
+  [/CVFR|כניסה ויציאה|כניסה-יציאה|התובלה הנמוכים/i, 'cvfr-cb'],
+];
+function plateMapLayer(filename) {
+  if (!filename || !airfields) return null;
+  const icao = String(filename).split('_')[0];
+  const af = airfields.find(a => a.name === icao);
+  if (!af) return null;
+  // An instrument sheet: switch the layer on and pick this exact sheet.
+  const sheet = (af.ifr_overlays || []).find(o => o.plate === filename);
+  if (sheet) {
+    return { kind: 'ifr', show: () => {
+      const cb = document.getElementById('ifr-cb');
+      if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+      setIfrSheet(icao + '|' + sheet.png, { move: true });
+      if (typeof window.refreshIfrSheets === 'function') window.refreshIfrSheets();
+      const sel = document.getElementById('ifr-sheet');
+      if (sel) sel.value = icao + '|' + sheet.png;
+    } };
+  }
+  // One of the older families: it draws that field's sheet of that kind, so the layer plus
+  // the airfield filter is the whole answer.
+  // The viewer has already loaded these to print the chip; this reads the same cache.
+  const meta = (window.plateTitles && window.plateTitles[filename]) || {};
+  const text = [meta.he, meta.en, filename].filter(Boolean).join(' ');
+  const hit = PLATE_LAYER_BY_TITLE.find(([re]) => re.test(text));
+  if (!hit) return null;
+  const cbId = hit[1];
+  const overlayKey = { 'circuit-cb': 'circuit_overlay', 'training-cb': 'training_overlay',
+                       'commfail-cb': 'commfail_overlay', 'heli-cb': 'heli_overlay',
+                       'cvfr-cb': 'cvfr_overlay' }[cbId];
+  if (!af[overlayKey]) return null;               // that field has no such overlay to show
+  return { kind: cbId, show: () => {
+    const filter = document.getElementById('plate-airfield');
+    if (filter && filter.value !== icao) {
+      filter.value = icao;
+      filter.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const cb = document.getElementById(cbId);
+    if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+    if (Number.isFinite(af.lat) && Number.isFinite(af.lng) &&
+        !(typeof gpsPositionLive === 'function' && gpsPositionLive())) {
+      map.setView([af.lat, af.lng], Math.max(map.getZoom(), tune('plateFieldZoom')));
+    }
+  } };
+}
+window.plateMapLayer = plateMapLayer;
+
+// Live traffic toggle. The layer itself only ever draws while a fix is driving the map
+// (traffic.js), so this switch says "when I am flying, show it" rather than "show it now".
+(function () {
+  const cb = document.getElementById('traffic-cb');
+  if (!cb) return;
+  // traffic.js may not have run yet, so fall back to the same stored-then-default reading
+  // it does -- not to `true`, which put the box on while the layer underneath was off.
+  // Read through lsGet: with site data blocked, a bare localStorage call throws
+  // SecurityError and takes the rest of this file's setup down with it.
+  cb.checked = (function () {
+    if (typeof trafficEnabled === 'function') return trafficEnabled();
+    const stored = lsGet('navaid.showTraffic');
+    if (stored === '0') return false;
+    if (stored === '1') return true;
+    return tune('defaultShowTraffic') !== false;
+  })();
+  cb.onchange = () => {
+    try { localStorage.setItem('navaid.showTraffic', cb.checked ? '1' : '0'); } catch (_) {}
+    if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
+  };
+  // Switched off from the gist: the whole frame goes, not just the tick-box. A lone
+  // disabled switch invites a pilot to wonder what is broken. Re-checked when the gist
+  // lands, which is after boot.
+  window.refreshTrafficFeature = function refreshTrafficFeature() {
+    const offered = typeof window.trafficOffered === 'function'
+      ? window.trafficOffered() : tune('featureLiveTraffic') === true;
+    const usable = typeof window.trafficUsable !== 'function' || window.trafficUsable();
+    const frame = cb.closest('.tb-layer-frame');
+    // The gist is the only thing that takes the switch away. A browser keeps it, dimmed,
+    // with the reason on it: a control that disappears between the phone and the desktop
+    // leaves the pilot wondering what else moved.
+    if (frame) frame.style.display = offered ? '' : 'none';
+    cb.disabled = !usable;
+    const label = cb.closest('label');
+    if (label) {
+      label.classList.toggle('navtoggle-disabled', !usable);   // the app's own dimmed-toggle idiom
+      label.title = usable ? (S.tbShowTrafficTitle || '') : (S.tbShowTrafficApkOnly || '');
+    }
+    if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
+  };
+  window.refreshTrafficFeature();
+})();
+
+// IFR chart toggle + its sheet picker.
+(function () {
+  const cb = document.getElementById('ifr-cb');
+  const sel = document.getElementById('ifr-sheet');
+  if (!cb) return;
+  cb.checked = showIfr;
+  const fillSheets = () => {
+    if (!sel) return;
+    const list = ifrSheets();
+    const fields = new Set(list.map(e => e.icao));
+    sel.textContent = '';
+    for (const entry of list) {
+      const opt = document.createElement('option');
+      opt.value = ifrKeyOf(entry);
+      // The field's name only when more than one is on offer: with the filter on a single
+      // field, "LLBG · ILS 08" is that field's name nineteen times over.
+      const label = (typeof navName === 'function' ? navName(entry.icao) : entry.icao);
+      opt.textContent = fields.size > 1 ? label + ' · ' + entry.sheet.code : entry.sheet.code;
+      opt.title = entry.sheet.title || '';
+      sel.appendChild(opt);
+    }
+    const chosen = ifrChosen();
+    sel.value = chosen ? ifrKeyOf(chosen) : '';
+    sel.disabled = !sel.options.length;
+    const row = sel.closest('label');
+    if (row) row.hidden = !showIfr || !sel.options.length;
+  };
+  window.refreshIfrSheets = fillSheets;
+  cb.onchange = async function (e) {
+    window.showIfr = e.target.checked;
+    try { localStorage.setItem(IFR_SHOW_KEY, showIfr ? '1' : '0'); } catch (_) {}
+    if (showIfr) {
+      const loadingOwner = chartsLoadingStart('ifr');
+      if (!airfields) await loadAirfields();
+      if (!window.showIfr) { chartsLoading(false, loadingOwner); return; }
+      loadIfrOverlays();
+      if (ifrLayerGroup) ifrLayerGroup.addTo(map);
+      chartsLoadingUntilReady(ifrLayerGroup, loadingOwner);
+    } else {
+      if (ifrLayerGroup) ifrLayerGroup.remove();
+      ifrLayerGroup = null;
+      applyIfrPoints(null);                    // the plate's points go with the plate
+      chartsLoadingCancelGroup('ifr');
+    }
+    fillSheets();
+  };
+  if (sel) sel.onchange = () => { if (sel.value) setIfrSheet(sel.value, { move: true }); };
+  if (airfields) fillSheets();
+  else loadAirfields().then(fillSheets).catch(() => {});
+})();
+
 // Airfield-plate overlays are mutually exclusive — only one plate layer shows at
 // a time, so turning one on turns the others off (each toggle's own change
 // handler then removes its layer + persists the off state).
 (function () {
-  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb']
+  // The instrument chart is in this group too, even though it lives in a section of its
+  // own: an approach plate and a VFR entry sheet drawn over each other are two pictures of
+  // the same few miles, and neither can be read through the other. One chart at a time.
+  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'ifr-cb']
     .map(id => document.getElementById(id))
     .filter(Boolean);
   for (const cb of boxes) {
@@ -7136,7 +7544,7 @@ function tuningPanelEnabled() {
 
 function formatTuneValue(spec, value) {
   if (spec.type === 'bool') return value ? 'on' : 'off';
-  if (spec.type === 'color' || spec.type === 'select') return String(value);
+  if (spec.type === 'color' || spec.type === 'select' || spec.type === 'text') return String(value);
   const step = String(spec.step || 1);
   const dot = step.indexOf('.');
   const places = dot === -1 ? 0 : step.length - dot - 1;
@@ -7284,6 +7692,7 @@ function createTuningPanel() {
     if (set.color) set.color.value = String(v);
     if (set.text) set.text.value = text;
     if (set.select) set.select.value = String(v);
+    if (set.textValue) set.textValue.value = String(v);
     if (set.check) set.check.checked = !!v;
   };
   const applyValue = (key, raw) => {
@@ -7298,10 +7707,11 @@ function createTuningPanel() {
       if (typeof refreshShowReturnFeature === 'function') refreshShowReturnFeature();
       if (typeof refreshAssistantFeature === 'function') refreshAssistantFeature();
       if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
+      if (typeof refreshTrafficFeature === 'function') refreshTrafficFeature();
       redrawAfterTune();
       return;
     }
-    if (spec && (spec.type === 'color' || spec.type === 'select')) {
+    if (spec && (spec.type === 'color' || spec.type === 'select' || spec.type === 'text')) {
       setTune(key, raw);
     } else {
       const v = parseFloat(raw);
@@ -7392,6 +7802,18 @@ function createTuningPanel() {
         color.addEventListener('input', () => applyValue(key, color.value));
         text.addEventListener('input', () => applyValue(key, text.value));
         row.append(name, color, text, reset);
+      } else if (spec.type === 'text') {
+        // A free-text value (a URL). The numeric branch below would render a range slider
+        // with min/max of undefined -- a control that cannot express the value it holds.
+        const field = document.createElement('input');
+        field.type = 'text';
+        field.id = 'tune-' + key + '-text';
+        field.className = 'tune-text';
+        field.setAttribute('aria-label', spec.label || key);
+        field.dir = 'ltr';
+        set.textValue = field;
+        field.addEventListener('change', () => applyValue(key, field.value));
+        row.append(name, field, reset);
       } else if (spec.type === 'select') {
         const select = document.createElement('select');
         select.id = 'tune-' + key + '-select';
@@ -7565,6 +7987,7 @@ loadAirfields().then(() => {
       ['showCvfr',     CVFR_SHOW_KEY,     'cvfr-cb',     loadCvfrOverlays,     () => cvfrLayerGroup],
       ['showHeli',     HELI_SHOW_KEY,     'heli-cb',     loadHeliOverlays,     () => heliLayerGroup],
       ['showCommfail', COMMFAIL_SHOW_KEY, 'commfail-cb', loadCommfailOverlays, () => commfailLayerGroup],
+      ['showIfr',      IFR_SHOW_KEY,      'ifr-cb',      loadIfrOverlays,      () => ifrLayerGroup],
     ];
     let shown = false;
     for (const [flag, key, cbId, load, group] of plates) {
@@ -7963,10 +8386,15 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshShowReturnFeature === "function") refreshShowReturnFeature();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
+    if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();
     // The gist may have turned base layers on or off -- rebuild the picker to match, and
     // the nav-data source list with it: its entries are those same charts.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
     if (typeof window.rebuildNavWpSource === "function") window.rebuildNavWpSource();
+    // ...and the map-under-the-chart list, whose entries are those charts too. A gist that
+    // ships defaultBaseLayer also has to reach a device that never chose one.
+    if (typeof window.rebuildBaseLayerPicker === "function") window.rebuildBaseLayerPicker();
+    if (typeof updateBasemapUnderlay === "function") updateBasemapUnderlay();
     if (typeof scheduleDraw === "function") scheduleDraw();
     // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
     // so alignment + opacity can be tuned from the gist without a redeploy.
@@ -8858,7 +9286,7 @@ NavAid.defaultVisibilityMap = [
   ['navwp-cb', 'navaid.showNavWP', 'defaultShowNavWP'],
   ['airfield-cb', 'navaid.showAirfields', 'defaultShowAirfields'],
   ['vor-cb', 'navaid.showVorStations', 'defaultShowVor'],
-  ['hotspot-cb', 'navaid.showHotspots', 'defaultShowHotspots'],
+  ['hotspot-cb', 'navaid.showHotspots2', 'defaultShowHotspots'],
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
@@ -8891,6 +9319,9 @@ NavAid.defaultVisibilityMap = [
   ['cvfr-cb', 'navaid.showCvfr', 'defaultShowCvfr'],
   ['heli-cb', 'navaid.showHeli', 'defaultShowHeli'],
   ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
+  ['ifr-cb', 'navaid.showIfr', 'defaultShowIfr'],
+  ['traffic-cb', 'navaid.showTraffic', 'defaultShowTraffic'],
+  ['airspace-cb', 'navaid.showAirspace', 'defaultShowAirspace'],
 ];
 NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
   if (typeof tune !== 'function') return;

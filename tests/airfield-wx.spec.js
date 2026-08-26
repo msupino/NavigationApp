@@ -151,12 +151,27 @@ test('Hebrew no-data message reads RTL, not garbled LTR', async ({ page }) => {
   expect(await body.getAttribute('dir')).toBe('auto');
 });
 
-test('non-ICAO field shows no weather section', async ({ page }) => {
+// A field with no ICAO code publishes no METAR -- so no observation, no refresh button and
+// no "Weather" heading. It does still have weather, though, and density altitude is computed
+// from a forecast that needs only a position: Gvulot and Kedem used to get no box at all,
+// and with it no density altitude, for want of four letters.
+test('a non-ICAO field gets no METAR, but keeps its density altitude', async ({ page }) => {
   await boot(page);
-  const present = await page.evaluate(() => {
+  const shown = await page.evaluate(() => {
     const body = document.createElement('div');
-    appendAirfieldWeather(body, { name: 'WP 3', lat: 32, lng: 34.9 });
-    return body.querySelector('.wx-section') !== null;
+    appendAirfieldWeather(body, { name: 'WP 3', lat: 32, lng: 34.9, elev_ft: 300 });
+    const sec = body.querySelector('.wx-section');
+    return {
+      section: !!sec,
+      heading: sec ? sec.querySelector('.wx-head').textContent.trim() : '',
+      refresh: !!(sec && sec.querySelector('.wx-refresh')),
+      metarBody: !!(sec && sec.querySelector('.wx-body')),
+      da: !!(sec && sec.querySelector('.da-group')),
+    };
   });
-  expect(present).toBe(false);
+  expect(shown.section).toBe(true);
+  expect(shown.da).toBe(true);
+  expect(shown.heading).toBe('Density altitude');   // not "Weather (METAR / TAF)"
+  expect(shown.refresh).toBe(false);
+  expect(shown.metarBody).toBe(false);
 });

@@ -102,3 +102,39 @@ test('Auto option shows only the route first & last airfield and follows edits',
     .toEqual(['LLMG_cvfr.png', 'LLMZ_cvfr.png']);
 });
 
+// Naming one field in "Show plates for" is asking to look at it: the plates just chosen are
+// drawn around that airfield, and the map stayed where it was.
+test('picking one airfield takes the map there', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    map.setView([31.0, 34.6], 8);
+    const before = { c: [map.getCenter().lat, map.getCenter().lng], z: map.getZoom() };
+    const sel = document.getElementById('plate-airfield');
+    sel.value = 'LLIB';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 300));
+    const af = airfields.find(a => a.name === 'LLIB');
+    return { before, after: [map.getCenter().lat, map.getCenter().lng], zoom: map.getZoom(),
+             field: [af.lat, af.lng] };
+  });
+  expect(out.after[0]).toBeCloseTo(out.field[0], 3);
+  expect(out.after[1]).toBeCloseTo(out.field[1], 3);
+  expect(out.zoom).toBeGreaterThanOrEqual(out.before.z);   // never zooms out to do it
+});
+
+test('all and auto are not a place, so the map stays', async ({ page }) => {
+  await boot(page);
+  for (const value of ['all', 'auto']) {
+    const out = await page.evaluate(async (v) => {
+      map.setView([31.0, 34.6], 8);
+      const before = [map.getCenter().lat, map.getCenter().lng];
+      const sel = document.getElementById('plate-airfield');
+      sel.value = v;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 300));
+      return { before, after: [map.getCenter().lat, map.getCenter().lng] };
+    }, value);
+    expect(out.after[0]).toBeCloseTo(out.before[0], 3);
+    expect(out.after[1]).toBeCloseTo(out.before[1], 3);
+  }
+});

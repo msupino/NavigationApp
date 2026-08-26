@@ -34,6 +34,13 @@
   "modified": "2023-11-02",
   "source": "aip"
  },
+ "LLBG_APPROACH_LOC 12.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Instrument approach chart (IAC) - ICAO LOC RWY 12",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
  "LLBG_APPROACH_LOC 21.pdf": {
   "annex": "",
   "he": "",
@@ -41,11 +48,25 @@
   "modified": "2024-08-12",
   "source": "aip"
  },
+ "LLBG_APPROACH_PATC 12.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Precision Approach Terrain Chart - ICAO RWY 12",
+  "modified": "2022-08-01",
+  "source": "aip"
+ },
  "LLBG_APPROACH_RNP 08.pdf": {
   "annex": "",
   "he": "",
   "en": "Instrument approach chart (IAC) - ICAO RNP RWY 08",
   "modified": "2024-08-12",
+  "source": "aip"
+ },
+ "LLBG_APPROACH_RNP X 21.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Instrument approach chart (IAC) - ICAO RNP X RWY 21",
+  "modified": "2022-08-01",
   "source": "aip"
  },
  "LLBG_SID_12-26-30 (Pidet+Ripud).pdf": {
@@ -67,6 +88,13 @@
   "he": "",
   "en": "Standard Arrival chart instrument (STAR) - ICAO RWY 12 AMMIT 1B, SALAM 2B",
   "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLBG_TRANSITION_ERREZ 1A.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "RNAV Transition Instrument - RWYs 21,26 ERREZ 1A",
+  "modified": "2023-05-17",
   "source": "aip"
  },
  "LLBG_VAC_30-2_V1_en.pdf": {
@@ -144,6 +172,34 @@
   "he": "דפי מלל",
   "en": "",
   "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLER_APPROACH_ILS 01.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "INSTRUMENT APPROACH CHART- ICAO ILS RWY 01",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLER_APPROACH_ILS 19.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "INSTRUMENT APPROACH CHART- ICAO ILS RWY 19 - ICAO",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLER_APPROACH_RNP 01.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "INSTRUMENT APPROACH CHART - ICAO RNP RWY 01",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLER_APPROACH_RNP 19.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "INSTRUMENT APPROACH CHART- ICAO RNP RWY 19",
+  "modified": "2026-08-06",
   "source": "aip"
  },
  "LLER_airport_Chart.pdf": {
@@ -228,6 +284,13 @@
   "he": "הצטרפות ועזיבה - כטבם",
   "en": "",
   "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLHA_STAR_GALIM.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "STANDARD ARRIVAL CHART INSTRUMENT (STAR) - GALIM1A, GALIM 1B",
+  "modified": "2026-08-06",
   "source": "aip"
  },
  "LLHA_airport_Annex Alef.pdf": {

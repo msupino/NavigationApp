@@ -34,8 +34,13 @@ function gpsTrackingLive() {
 }
 // Whether the inspector may open at all right now. The gist can put the old behaviour back
 // (featureInspectorWhileTracking) for anyone who wants a waypoint's details mid-flight.
-function inspectorAllowedNow() {
+function inspectorAllowedNow(sel) {
   if (!gpsTrackingLive()) return true;
+  // Traffic is the exception, and it is the only one: those marks exist ONLY while a fix is
+  // driving the map, so the rule that keeps the panel off the chart in flight would mean
+  // nobody could ever read one. A tap on an aircraft is the pilot asking for it by name.
+  const s = sel || (typeof state !== 'undefined' && state.selected);
+  if (s && s.type === 'traffic') return true;
   return typeof tune === 'function' && tune('featureInspectorWhileTracking') === true;
 }
 
@@ -50,16 +55,27 @@ function inspectorAllowedNow() {
 function gpsWakeLockWanted() {
   return !!(gpsRecording || gpsLiveOn);
 }
+let _gpsWakeLockPending = false;
 function gpsAcquireWakeLock() {
   if (gpsWakeLock || !gpsWakeLockWanted()) return;
+  // Two overlapping requests (start, then a quick hide/show) both resolve with gpsWakeLock
+  // still null, and the second assignment orphaned the first sentinel -- held until pagehide,
+  // with nothing left pointing at it.
+  if (_gpsWakeLockPending) return;
   if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return;
+  _gpsWakeLockPending = true;
   navigator.wakeLock.request('screen').then(function (wl) {
     // The request is async: by the time it resolves the pilot may have stopped, and a lock
     // nobody asked for any more would hold the screen on for the rest of the flight.
-    if (!gpsWakeLockWanted()) { wl.release().catch(function () {}); return; }
+    if (!gpsWakeLockWanted() || gpsWakeLock) { wl.release().catch(function () {}); return; }
     gpsWakeLock = wl;
-    wl.addEventListener('release', function () { gpsWakeLock = null; });
-  }).catch(function () { /* denied / no user gesture — ignore */ });
+    // Only if it is still OUR sentinel: the system releasing a stale one used to clear the
+    // variable tracking the live one, after which gpsReleaseWakeLock() did nothing and the
+    // screen stayed awake past the end of the flight.
+    wl.addEventListener('release', function () { if (gpsWakeLock === wl) gpsWakeLock = null; });
+  }).catch(function () { /* denied / no user gesture — ignore */ })
+    .then(function () { _gpsWakeLockPending = false; },
+          function () { _gpsWakeLockPending = false; });
 }
 
 function gpsReleaseWakeLock() {
@@ -204,6 +220,11 @@ function gpsStopWatch(h) {
 var gpsLiveOn = false;
 var gpsLiveWatchId = null;
 var _gpsLivePrev = null;
+// Where the own-ship is, as of the last fix -- null before the first one. Traffic asks for a
+// radius around this, and only this: the map centre is where you are LOOKING, which in
+// flight is often somewhere else entirely.
+function gpsLastFix() { return _gpsLivePrev ? { lat: _gpsLivePrev.lat, lng: _gpsLivePrev.lng } : null; }
+if (typeof window !== 'undefined') window.gpsLastFix = gpsLastFix;
 
 function onLivePosition(pos) {
   if (!gpsLiveOn || !pos || !pos.coords) return;
@@ -319,6 +340,8 @@ function startLiveLocation() {
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
+  // Traffic follows the fix: it starts when one starts driving the map, and stops with it.
+  if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
   _gpsUserMovedAt = 0;              // a gesture from a previous session owns nothing here
   gpsWatchUserMapMoves();
   // Snap to wherever gpsOwn's last known position actually falls on the route, not a
@@ -370,10 +393,14 @@ function stopLiveLocation() {
   gpsLiveOn = false;
   if (!gpsRecording) gpsStopCompass();
   if (!gpsRecording) gpsReleaseWakeLock();
+  // Alerts belong to the flight that queued them. With nothing left driving the map, one
+  // still talking about the next leg is talking about a flight that has ended.
+  if (!gpsRecording && !(typeof simOn !== 'undefined' && simOn)) gpsStopSpeaking();
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
   if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
+  if (typeof window.trafficRefresh === 'function') window.trafficRefresh();
   _gpsLivePrev = null;
   if (!gpsRecording) gpsStopStaleWatchdog();
   if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
@@ -578,7 +605,7 @@ function gpsQnhMoveNm() {
   const nm = (typeof tune === 'function') ? Number(tune('qnhMoveNm')) : NaN;
   return Number.isFinite(nm) && nm > 0 ? nm : GPS_QNH_MOVE_NM;
 }
-const HPA_PER_INHG = 33.8639;
+// HPA_PER_INHG lives in core.js, beside fmtQnhBoth (same constant, one definition).
 
 function gpsAltimetryOn() {
   return typeof tune !== 'function' || tune('altimetryCorrection') !== false;
@@ -1191,6 +1218,7 @@ function stopGpsRecording() {
   if (!gpsLiveOn) gpsStopCompass();
   updateGpsRecIndicator();
   if (!gpsLiveOn) gpsReleaseWakeLock();     // Location may still be showing
+  if (!gpsLiveOn && !(typeof simOn !== 'undefined' && simOn)) gpsStopSpeaking();     // see stopLiveLocation
   gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;
   gpsMaybeStopDriftTimer();
@@ -1907,13 +1935,33 @@ function _webSpeak(text, lang) {
 // Chained, never interrupted: a TOP firing seconds after a leg-approach alert waits its
 // turn rather than cutting it off mid-word.
 window.__gpsSpeakChain = Promise.resolve();
+// Bumped whenever speech is switched off or every source stops. A queued alert carries the
+// epoch it was queued in and stays silent if it no longer matches -- the pilot who just
+// turned the voice off means this alert too, not merely the next one.
+window.__gpsSpeakEpoch = 0;
+function gpsStopSpeaking() {
+  window.__gpsSpeakEpoch = (window.__gpsSpeakEpoch || 0) + 1;
+  const tts = _nativeTts();
+  if (tts && typeof tts.stop === 'function') { try { tts.stop(); } catch (e) { /* */ } }
+  try {
+    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.cancel) speechSynthesis.cancel();
+  } catch (e) { /* */ }
+}
+window.gpsStopSpeaking = gpsStopSpeaking;
 function gpsSpeak(text) {
   if (!text || !gpsVoiceAlertsOn()) return;
+  const epoch = window.__gpsSpeakEpoch;
+  // Checked again at the moment of speaking, not only when queued: alerts are chained, so
+  // one that waited its turn could otherwise still be talking after the voice was switched
+  // off, or after the flight it belonged to had stopped.
+  const stillWanted = () => epoch === window.__gpsSpeakEpoch && gpsVoiceAlertsOn();
   const tts = _nativeTts();
   const lang = (typeof window !== 'undefined' && window.__navLang === 'he') ? 'he-IL' : 'en-US';
   if (tts && typeof tts.speak === 'function') {
     window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
+      if (!stillWanted()) return null;
       return _gpsResolveVoiceLang(tts).then(function (voiceLang) {
+        if (!stillWanted()) return null;
         return tts.speak({
           text: text,
           lang: voiceLang,
@@ -1931,6 +1979,7 @@ function gpsSpeak(text) {
   }
   // No native plugin -- website testing path.
   window.__gpsSpeakChain = window.__gpsSpeakChain.then(function () {
+    if (!stillWanted()) return null;
     return _webSpeak(text, lang);
   }).catch(function () { /* best-effort: never let a TTS failure break the chain */ });
 }
