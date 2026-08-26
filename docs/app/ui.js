@@ -890,6 +890,10 @@ function applyTuningCssVars() {
     if (h > 0) root.setProperty('--navaid-tb-head-h', h + 'px');
   }
 
+  // The hotspot pair, so the inspector's "marked" button can wear what the waypoint wears.
+  root.setProperty('--navaid-hotspot-fill', tune('waypointHotspotFillColor'));
+  root.setProperty('--navaid-hotspot-ring', tune('waypointHotspotRingColor'));
+
   // Other aeroplanes. Not red: red on an aviation display means resolve it now.
   root.setProperty('--navaid-traffic-arrow', tune('trafficArrowColor'));
   root.setProperty('--navaid-traffic-label', tune('trafficLabelColor'));

@@ -2038,8 +2038,32 @@ body.theme-light .insp-status {
 }
 /* A latched state is emphasis, not an alarm: set/unset actions keep the same safe
    colours in both themes while bold text shows which state is active. */
-.insp-btn.insp-btn-on {
+/* A pressed toggle has to look pressed. This said "on" with font-weight alone, which on a
+   small grey button is invisible -- so a marked hotspot looked exactly like an unmarked one,
+   and the control read as inert. It now wears the hotspot's own colours: the ring colour as
+   its border, the fill colour behind it, the same pair the waypoint gets on the map. */
+.insp-btn.insp-btn-on,
+.insp-btn.insp-btn-safe.insp-btn-on {
   font-weight: 900;
+  color: #2a1c00;
+  background: var(--navaid-hotspot-fill, #ffd166);
+  border: 2px solid var(--navaid-hotspot-ring, #d7263d);
+}
+.insp-btn.insp-btn-safe.insp-btn-on:hover {
+  background: var(--navaid-hotspot-fill, #ffd166);
+  border-color: var(--navaid-hotspot-ring, #d7263d);
+  filter: brightness(1.06);
+}
+/* The light theme restyles .insp-btn-safe with a body-class selector, which out-specifies
+   the rule above; the pressed state has to answer at the same weight or it loses. */
+body.theme-light .insp-btn.insp-btn-safe.insp-btn-on {
+  color: #2a1c00;
+  background: var(--navaid-hotspot-fill, #ffd166);
+  border: 2px solid var(--navaid-hotspot-ring, #d7263d);
+}
+body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
+  background: var(--navaid-hotspot-fill, #ffd166);
+  border-color: var(--navaid-hotspot-ring, #d7263d);
 }
 .insp-btn:disabled {
   opacity: 0.48;
