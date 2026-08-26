@@ -3853,10 +3853,19 @@ document.getElementById('wpname-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
-const HOTSPOT_KEY = 'navaid.showHotspots';
+// Bumped from navaid.showHotspots when the overlay was switched off for everyone. The gist
+// default only reaches a device that never chose for itself, so anyone who had ever touched
+// this switch -- or ran a build that wrote the value on their behalf -- would have kept it
+// on for good. A new key makes every device look unset once, and take the gist's answer.
+// The cost is deliberate and one-way: someone who turned it ON on purpose loses that, and
+// there is no way to tell them apart from someone who never chose.
+const HOTSPOT_KEY = 'navaid.showHotspots2';
 try {
   const sh = lsGet(HOTSPOT_KEY);
   if (sh !== null) window.showHotspots = sh === '1';
+  // The superseded key is dropped rather than read: leaving it would have it sync between
+  // devices forever, and restore itself the day the name is reused.
+  try { localStorage.removeItem('navaid.showHotspots'); } catch (err) { /* */ }
 } catch (e) { /* storage unavailable */ }
 document.getElementById('hotspot-cb').checked = showHotspots;
 document.getElementById('hotspot-cb').onchange = e => {
@@ -9233,7 +9242,7 @@ NavAid.defaultVisibilityMap = [
   ['navwp-cb', 'navaid.showNavWP', 'defaultShowNavWP'],
   ['airfield-cb', 'navaid.showAirfields', 'defaultShowAirfields'],
   ['vor-cb', 'navaid.showVorStations', 'defaultShowVor'],
-  ['hotspot-cb', 'navaid.showHotspots', 'defaultShowHotspots'],
+  ['hotspot-cb', 'navaid.showHotspots2', 'defaultShowHotspots'],
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
