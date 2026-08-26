@@ -348,7 +348,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.layer', 'navaid.pageSize', 'navaid.pageOrient',
   // display / layer toggles
   'navaid.showAirfields', 'navaid.showVorStations', 'navaid.showNavWP',
-  'navaid.showHotspots', 'navaid.showWpNames', 'navaid.showCumTime', 'navaid.showDrift',
+  'navaid.showHotspots2', 'navaid.showWpNames', 'navaid.showCumTime', 'navaid.showDrift',
   'navaid.autoRoute',
   'navaid.showFreqChanges', 'navaid.showMidLeg',
   'navaid.highlightDiff', 'navaid.limitLegKites', 'navaid.showMsa',
