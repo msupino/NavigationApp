@@ -150,6 +150,13 @@ NavAid.tuningDefaults = {
   featureNotamFreqRows: { value: true, type: 'bool',
     label: 'Show frequencies a NOTAM states, as their own inspector row' },
   layerEnabledCVFRAIP: { value: true, type: 'bool', label: 'Offer the CVFR AIP layer' },
+  // Which tiles the CVFR layer itself draws. Both are the same chart; they differ in what
+  // survived getting to us. 'flight-maps' is the default because it is what every existing
+  // user is already looking at, and a base chart is not a thing to change under a pilot
+  // without them asking -- this is the switch that asks. 'aip' points the same picker entry
+  // at our own build, which keeps the leg distances, tracks and altitude flags.
+  cvfrTileSource: { value: 'flight-maps', type: 'select', options: ['flight-maps', 'aip'],
+    label: 'Which tiles the CVFR layer draws' },
   layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
   layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
   layerEnabledATS: { value: true, type: 'bool', label: 'Offer the ATS routes chart layer' },
@@ -815,7 +822,7 @@ NavAid.tuningGroups = [
     'graphLegArrowPx', 'graphLegLabelMinZoom'] },
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
-  { name: 'Base layers', keys: ['layerEnabledCVFRAIP', 'layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
+  { name: 'Base layers', keys: ['cvfrTileSource', 'layerEnabledCVFRAIP', 'layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
     'defaultBaseLayer', 'baseLayerOpacity'] },
   { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours',
@@ -3939,6 +3946,7 @@ const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13,
 const FM_ATTR =
   'Charts © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
 const NAVAID_TILE_BASE = 'https://navaid-tiles.supino.org';
+const CVFR_AIP_ATTR = 'Charts \u00a9 CAAI \u00b7 AIP part II CVFR sheets';
 
 function tileLayerUrl(layer, coords) {
   const subs = layer.options && layer.options.subdomains ?
@@ -4022,11 +4030,22 @@ const withPane = (opts, pane) => (pane ? { ...opts, pane } : opts);
 // One definition per chart, used twice: once for the picker's layer and once for whatever
 // the pilot puts UNDER it (underlayLayer below). `pane` is the only difference -- Leaflet
 // will not hold one layer object in two places, and the pane is what decides which is on top.
+// Our own CVFR build, as a layer spec. Used twice: as its own picker entry, and as what the
+// CVFR entry becomes when `cvfrTileSource` is set to 'aip'.
+const cvfrAipLayer = (pane) => L.tileLayer(NAVAID_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png',
+  withPane({ ...TILE, minNativeZoom: 8, chartBounds: CVFR_AIP_BOUNDS, corsOk: true,
+    attribution: CVFR_AIP_ATTR,
+    exportUrl: NAVAID_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png' }, pane));
+
 const CHART_SPECS = {
-  'CVFR': (pane) => L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
-    NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png'),
-    chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }, pane))),
+  // Read at layer-construction time, which is after the gist has landed and re-run this --
+  // so flipping cvfrTileSource in the gist moves the CVFR entry itself onto our build,
+  // without the pilot having to know there are two of them.
+  'CVFR': (pane) => (tune('cvfrTileSource') === 'aip' ? cvfrAipLayer(pane)
+    : L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+      NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png'),
+      chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
+        exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }, pane)))),
   // The same chart as CVFR above, cut here from the CAA's own two sheets rather than
   // extracted from Flight Maps. Those sheets are vector PDFs, so what survives the render is
   // what the paper prints: leg distances, magnetic tracks and the altitude flags -- the
@@ -4034,10 +4053,7 @@ const CHART_SPECS = {
   // Ours alone, on our own mirror: no flight-maps split, because flight-maps has no part in
   // it. minNativeZoom 8 because the build starts there; Leaflet upscales for 6 and 7 rather
   // than asking for tiles that were never made.
-  'CVFR AIP': (pane) => L.tileLayer(NAVAID_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png',
-    withPane({ ...TILE, minNativeZoom: 8, chartBounds: CVFR_AIP_BOUNDS, corsOk: true,
-      attribution: 'Charts \u00a9 CAAI \u00b7 AIP part II CVFR sheets',
-      exportUrl: NAVAID_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png' }, pane)),
+  'CVFR AIP': cvfrAipLayer,
   'Navigation': (pane) => L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,

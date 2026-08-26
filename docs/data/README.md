@@ -36,6 +36,11 @@ Rebuilding it after an amendment is the whole command:
 python3 scripts/build-cvfr-tiles.py cvfr-north.pdf cvfr-south.pdf --out CVFR-AIP
 ```
 
+The **CVFR** picker entry keeps drawing the Flight Maps tiles by default; `cvfrTileSource`
+in the tuning gist (`flight-maps` | `aip`) points it at this build instead, without the pilot
+having to know there are two of them. `CVFR (AIP)` stays in the picker either way, which is
+what makes the two comparable side by side.
+
 The panel boxes it cuts (title, notes, frequency table, legend, scale bars, and the north
 sheet's Tel Aviv enlargement) are measured off the paper and live in the script's `PANELS`
 table. A re-issued sheet that moves them needs that table re-measured; the script says how.

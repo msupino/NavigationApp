@@ -88,3 +88,40 @@ test('the gist can withdraw it, and the picker loses it', async ({ page }) => {
   });
   expect(gone).toBe(true);
 });
+
+// The knob. Both entries draw the same chart; which one the CVFR entry itself uses is a
+// deployment's choice, and it defaults to what every existing user is already looking at.
+// Asserted on the layer's URL template rather than on requests: the harness blocks tile
+// hosts, so "no request was made" would pass for the wrong reason.
+const cvfrUrl = (page) => page.evaluate(() => {
+  const sel = document.getElementById('layer-select');
+  sel.value = 'CVFR';
+  sel.onchange && sel.onchange();
+  return (layers.CVFR && layers.CVFR._url) || '';
+});
+
+test('the CVFR layer draws flight-maps tiles by default', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(() => tune('cvfrTileSource'))).toBe('flight-maps');
+  expect(await cvfrUrl(page)).not.toContain('CVFR-AIP');
+});
+
+test('the gist can point the CVFR entry at our own build', async ({ page }) => {
+  await boot(page);
+  const url = await page.evaluate(() => {
+    setTune('cvfrTileSource', 'aip');
+    // Rebuilt from the specs, the way the gist landing does it.
+    layers.CVFR = CHART_SPECS.CVFR(undefined);
+    return layers.CVFR._url;
+  });
+  expect(url).toBe('https://navaid-tiles.supino.org/CVFR-AIP/{z}/{x}/{y}.png');
+});
+
+test('both entries share one definition', async ({ page }) => {
+  await boot(page);
+  const same = await page.evaluate(() => {
+    setTune('cvfrTileSource', 'aip');
+    return CHART_SPECS.CVFR(undefined)._url === CHART_SPECS['CVFR AIP'](undefined)._url;
+  });
+  expect(same).toBe(true);
+});
