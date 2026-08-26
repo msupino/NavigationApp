@@ -1865,10 +1865,11 @@ function appendAirfieldFrequencyRows(body, af) {
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
   const towerChange = airfieldFreqChangeFor(af, 'tower');
   if (id) {
-    const published = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : '';
-    // With a NOTAM in force its frequency IS the default: that is what the pilot calls and
-    // what reset returns to. The published one is not lost -- it is in the row's title.
-    const template = towerChange ? towerChange.freq : published;
+    // commCallSignTemplateFreq already answers with the NOTAM's frequency when one is in
+    // force -- that is what the pilot calls and what reset returns to. The published one is
+    // not lost: it is in the row's title.
+    const published = typeof commCallSignPublishedFreq === 'function' ? commCallSignPublishedFreq(id) : '';
+    const template = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : published;
     const override = () => !!(typeof commCallSignOverrideFreq === 'function' && commCallSignOverrideFreq(id));
     const row = freqEditRow(S.primary || 'Primary', {
       value: override() && typeof commCallSignEffectiveFreq === 'function'
@@ -3939,6 +3940,9 @@ function appendFreqEdit(body, note, editOptions) {
     updateTemplateHint();
     draw();
   }
+  // Assigned once the frequency control exists; `var` so updateTemplateHint can run before
+  // that point without tripping over a temporal dead zone.
+  var freqNotamTarget = null;
   function updateTemplateHint() {
     if (!templateRow) return;
     const opt = typeof commNoteCallSignOption === 'function'
@@ -3955,6 +3959,18 @@ function appendFreqEdit(body, note, editOptions) {
     if (resetFreq) {
       resetFreq.hidden = !template;
       resetFreq.disabled = !changed;
+    }
+    // Ring the frequency control when this call sign's tower is on a NOTAM frequency, the
+    // same mark the airfield panel uses. The waypoint is where a pilot reads the frequency
+    // they are about to call, so the mark belongs here more than anywhere.
+    if (freqNotamTarget) {
+      const chg = (opt && typeof commCallSignFreqChange === 'function')
+        ? commCallSignFreqChange(opt.id) : null;
+      freqNotamTarget.classList.toggle('freq-notam-changed', !!chg);
+      freqNotamTarget.title = chg
+        ? airfieldFreqNotamTitle(chg, (typeof commCallSignPublishedFreq === 'function'
+          ? commCallSignPublishedFreq(opt.id) : ''))
+        : '';
     }
     syncCallSignSelect();
   }
@@ -4084,6 +4100,8 @@ function appendFreqEdit(body, note, editOptions) {
   unit.className = 'freq-unit';
   unit.textContent = 'MHz';
   freqControl.appendChild(unit);
+  freqNotamTarget = freqControl;
+  updateTemplateHint();
   resetFreq = document.createElement('button');
   resetFreq.type = 'button';
   resetFreq.className = 'commchange-freq-reset';

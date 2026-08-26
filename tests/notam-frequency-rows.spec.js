@@ -175,3 +175,43 @@ test('the gist can withdraw it and the row returns to the AIP value', async ({ p
   expect(seen.cls).not.toMatch(/freq-notam-changed/);
   expect(seen.pointer).toBe(true);                 // the badge is untouched by any of this
 });
+
+// The airfield panel is not where a pilot reads the frequency they are about to call. A
+// waypoint's comm-change is, and it seeds itself from the airfield's call sign -- so Bnei
+// Dror, Deror and the rest of the northern set offered 122.20 while C1574/26 had Herzliya
+// on 125.60. One definition (commCallSignTemplateFreq) feeds them all.
+test('a call sign on a NOTAM frequency offers the NOTAM frequency everywhere', async ({ page }) => {
+  await boot(page, LIVE);
+  const seen = await page.evaluate(() => ({
+    template: commCallSignTemplateFreq('HERZLIYA'),
+    published: commCallSignPublishedFreq('HERZLIYA'),
+    effective: commCallSignEffectiveFreq('HERZLIYA'),
+    icao: commCallSignIcao('HERZLIYA'),
+    change: commCallSignFreqChange('HERZLIYA'),
+  }));
+  expect(seen.icao).toBe('LLHZ');
+  expect(seen.change).toMatchObject({ service: 'tower', freq: '125.60', id: 'C1574/26' });
+  expect(seen.template).toBe('125.60');
+  expect(seen.effective).toBe('125.60');
+  // The published one is still answerable, which is what the row's title shows.
+  expect(seen.published).toBe('122.20');
+});
+
+test('with the NOTAM gone the call sign is back on its published frequency', async ({ page }) => {
+  await boot(page, []);
+  const seen = await page.evaluate(() => ({
+    template: commCallSignTemplateFreq('HERZLIYA'),
+    change: commCallSignFreqChange('HERZLIYA'),
+  }));
+  expect(seen.change).toBe(null);
+  expect(seen.template).toBe('122.20');
+});
+
+test('a call sign with no NOTAM is untouched', async ({ page }) => {
+  await boot(page, LIVE);
+  const seen = await page.evaluate(() => ({
+    template: commCallSignTemplateFreq('BEN_GURION'),
+    published: commCallSignPublishedFreq('BEN_GURION'),
+  }));
+  expect(seen.template).toBe(seen.published);
+});
