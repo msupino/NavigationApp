@@ -2992,7 +2992,13 @@ function drawCommChangeRings() {
   // commChangeMap may be null briefly during boot — guard so a fast first
   // paint can't NPE before loadCommChange resolves. The red rings are an
   // on-screen affordance only — omit them from the PNG export (NavAid.exporting).
-  if (showCommChange && commChangeMap && navWP && navWP.length &&
+  // The red ring is retired: that circle now means "hotspot" -- the pilot marks those, and
+  // one symbol cannot mean both "look out here" and "change frequency here". A frequency
+  // change already says so in words, in its own callout with the frequency in it, which is
+  // more than a ring ever said. Kept behind a tunable rather than deleted: the drawing is
+  // three lines and someone may want it back on a chart with no callouts.
+  if (showCommChange && tune('commChangeRings') === true &&
+      commChangeMap && navWP && navWP.length &&
       !(window.NavAid && NavAid.exporting)) {
     const ringWidth = tune('commChangeRingWidthPx');
     octx.strokeStyle = tune('commChangeRingColor');
@@ -3003,6 +3009,11 @@ function drawCommChangeRings() {
     // ring to enclose the disc (+ its 3px stroke) so it stays visible outside.
     for (const wp of navWP) {
       if (!commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
+      // A suppressed change is one the pilot has said does not apply to this route. The
+      // callout goes, and the ring has to go with it: a red circle on the map is the app
+      // saying "change frequency here", and leaving it drawn after the change was dismissed
+      // says it about a point where nothing happens.
+      if (isCommChangeSuppressed(wp.name)) continue;
       if (typeof routePointOnlyInHiddenDirection === 'function' &&
           routePointOnlyInHiddenDirection(wp)) continue;
       const s = proj(wp);                // no viewport cull: also drawn into
