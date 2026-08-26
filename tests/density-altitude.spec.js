@@ -482,25 +482,39 @@ test('every airfield has one', async ({ page }) => {
   expect(missing).toEqual([]);
 });
 
-// Haifa publishes a tower and an ATIS and no clearance at all (AD 2.18). The panel used to
-// print "Clearance — None" so every airfield read the same way; inside a titled
-// Communication frame that reads as a service the field has, which happens to be off.
+// A service the AIP does not publish is not mentioned: the panel used to print
+// "Clearance — None" so every airfield read the same way, and inside a titled Communication
+// frame that reads as a service the field has, which happens to be off. Ein Shemer has a
+// tower and nothing else.
 test('a field with no clearance does not mention one', async ({ page }) => {
   await boot(page);
-  await open(page, 'LLHA');
+  await open(page, 'LLES');
   const comms = await page.evaluate(() => {
     const sec = document.querySelector('#insp-body .comm-section');
+    if (!sec) return { labels: [], clearanceRows: 0, text: '' };
     return {
       labels: [...sec.querySelectorAll('.row label')].map(l => l.textContent.trim()),
       clearanceRows: sec.querySelectorAll('.clearance-row').length,
       text: sec.textContent,
     };
   });
-  expect(comms.labels).toContain('Primary');
-  expect(comms.labels).toContain('ATIS');
   expect(comms.labels).not.toContain('Clearance');
   expect(comms.clearanceRows).toBe(0);
   expect(comms.text).not.toMatch(/None/);
+});
+
+// Haifa's AD 2.18 lists no clearance, but A0680/26 installed one -- "NEW FREQ INSTL FOR
+// CLEARANCE BFR TAXI (CPT) 121.800MHZ" -- and it is a standing change, so the dataset
+// carries it rather than leaving the pilot to read it out of a NOTAM every flight.
+test('Haifa carries the clearance its NOTAM installed', async ({ page }) => {
+  await boot(page);
+  await open(page, 'LLHA');
+  const val = await page.evaluate(() => {
+    const row = document.querySelector('#insp-body .clearance-row');
+    const inp = row && row.querySelector('input');
+    return inp ? inp.value : (row ? row.querySelector('.val').textContent.trim() : null);
+  });
+  expect(val).toBe('121.80');
 });
 
 // ...and a field that does publish one still shows it.
