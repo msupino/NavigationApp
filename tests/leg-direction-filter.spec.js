@@ -819,7 +819,13 @@ test.describe('manual turning point', () => {
     expect(out.addBtn).not.toBeNull();
     expect(out.addBtn.disabled).toBe(true);
     expect(out.addBtn.title).toMatch(/frequency you arrived on/i);
-    expect(out.style.slice(0, 3)).toEqual(idleStyle.slice(0, 3));
+    // Pressed looks pressed. This used to require the colours to be IDENTICAL to idle, with
+    // only the weight changing -- which on a small button is invisible, so a marked turning
+    // point read exactly like an unmarked one. It now takes the same filled highlight the
+    // hotspot toggle uses, and is still not the destructive red.
+    expect(out.style[1]).not.toBe(idleStyle[1]);            // filled
+    expect(out.style[2]).not.toBe(idleStyle[2]);            // ringed
+    expect(out.style[1]).not.toBe(destructive);             // ...but not an alarm
     expect(out.style[3]).toBeGreaterThan(idleStyle[3]);
 
     await page.locator('#insp-turn-btn').click();
