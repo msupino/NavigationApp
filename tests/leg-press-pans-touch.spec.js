@@ -159,3 +159,33 @@ test('a pinch that began on a waypoint is not a tap, and moves nothing', async (
   expect(got.windowOpen).toBe(true);
   expect(got.stillOpen).toBe(true);
 });
+
+// The same slop mismatch, one kind wider. `heldMap` is false for every lockable kind while
+// the route is locked, so marking touch presses as moved on Leaflet's `movestart` (3px)
+// overrode the app's own 10px threshold for those too: with the edit lock on, a fingertip
+// wobbling a couple of pixels while tapping a waypoint stopped opening its panel.
+test('with the route locked, a wobbly tap on a waypoint still opens it', async ({ page }) => {
+  await boot(page);
+  const opened = await page.evaluate(() => {
+    window.editLocked = true;
+    const el = document.getElementById('map');
+    const r = el.getBoundingClientRect();
+    const w = map.latLngToContainerPoint(
+      L.latLng(state.waypoints[0].lat, state.waypoints[0].lng));
+    const fire = (type, dx, dy) => {
+      const t = [{ clientX: r.left + w.x + dx, clientY: r.top + w.y + dy, identifier: 0 }];
+      const ev = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(ev, 'touches', { value: type === 'touchend' ? [] : t });
+      Object.defineProperty(ev, 'changedTouches', { value: t });
+      el.dispatchEvent(ev);
+    };
+    fire('touchstart', 0, 0);
+    map.fire('movestart');            // Leaflet calls 3px a pan; the app calls 10px a tap
+    fire('touchmove', 2, 2);
+    fire('touchend', 2, 2);
+    return { sel: state.selected && state.selected.type,
+             shut: document.getElementById('inspector').classList.contains('hidden') };
+  });
+  expect(opened.sel).toBe('wp');
+  expect(opened.shut).toBe(false);
+});
