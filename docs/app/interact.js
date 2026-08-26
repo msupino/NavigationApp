@@ -1668,8 +1668,16 @@ function appendAirfieldDensityAltitude(body, af) {
   if (typeof tune === 'function' && tune('featureDensityAltitude') === false) return;
   const DA = window.NavAid && NavAid.da;
   if (!DA) return;
-  const elev = Number(af.elev_ft);
-  if (!Number.isFinite(elev)) return;
+  // Five of the fields in the dataset have no published elevation (Habonim, Ein Vered,
+  // Arad, Gvulot, Kedem). Without one there is no density altitude at all -- so where the
+  // AIP is silent the forecast's own terrain height stands in, and the panel says which of
+  // the two it used rather than presenting a model figure as a surveyed one.
+  let elev = Number(af.elev_ft);
+  let elevFromModel = false;
+  if (!Number.isFinite(elev)) {
+    elev = NaN;
+    elevFromModel = true;
+  }
 
   const sec = document.createElement('div');
   // A group of its own inside Weather: the slider, the figure and the conditions it was
@@ -1736,6 +1744,10 @@ function appendAirfieldDensityAltitude(body, af) {
   let hours = null;
 
   function render() {
+    if (elevFromModel) {
+      const m = DA.modelElevationFt(af.lat, af.lng);
+      if (Number.isFinite(m)) elev = Math.round(m);
+    }
     const h = parseInt(slider.value, 10) || 0;
     setWhen(h);
     let tempC = null, qnh = null, from = '';
@@ -1751,6 +1763,13 @@ function appendAirfieldDensityAltitude(body, af) {
         from = S.daFromForecast || 'forecast';
       }
     }
+    if (!Number.isFinite(elev)) {
+      // The forecast has not answered yet, or answered without a terrain height.
+      valEl.textContent = '—';
+      srcEl.textContent = S.daNoElev || 'no field elevation';
+      valRow.classList.remove('da-warn');
+      return;
+    }
     if (tempC === null) {
       // No observation and no forecast: say so rather than quietly computing a standard
       // day, which would read as a measurement and be wrong by thousands of feet.
@@ -1763,7 +1782,8 @@ function appendAirfieldDensityAltitude(body, af) {
     const da = DA.densityAltFt(elev, qnh, tempC);
     valEl.textContent = Math.round(da).toLocaleString() + ' ft';
     srcEl.textContent = Math.round(tempC) + ' °C · ' + fmtQnhBoth(qnh)
-      + (from ? ' · ' + from : '');
+      + (from ? ' · ' + from : '')
+      + (elevFromModel ? ' · ' + (S.daElevFromModel || 'terrain elevation') : '');
     // The threshold is a rule of thumb, not a limit: past it the book figures stop being
     // the figures, and that is worth colouring.
     const over = (typeof tune === 'function' && tune('daWarnAboveElevFt')) || 2000;
@@ -2632,7 +2652,10 @@ function appendAirfieldDetailRows(body, af, label) {
 // the published wx feed; shows decoded text with a toggle to the raw report.
 function appendAirfieldWeather(body, af) {
   const icao = String(af && af.name || '').toUpperCase();
-  if (!/^[A-Z]{4}$/.test(icao) || typeof fetchAirfieldWx !== 'function') return;
+  // A field with no ICAO code publishes no METAR -- but it still has weather, and density
+  // altitude is computed from a forecast that needs only a position. Gvulot and Kedem used
+  // to get no Weather box at all, and with it no density altitude, for want of four letters.
+  const hasWx = /^[A-Z]{4}$/.test(icao) && typeof fetchAirfieldWx === 'function';
   const sec = document.createElement('div');
   sec.className = 'wx-section';
   const head = document.createElement('div');
@@ -2654,6 +2677,14 @@ function appendAirfieldWeather(body, af) {
   // pilot came here to move, and a control that sits under the numbers it changes is a
   // control you scroll past.
   appendAirfieldDensityAltitude(sec, af);
+  if (!hasWx) {
+    // No observation to fetch: the box is the density altitude, and its heading says so.
+    if (!sec.querySelector('.da-group')) return;
+    headLbl.textContent = S.wxTitleNoMetar || S.densityAltitude || 'Density altitude';
+    refreshBtn.remove();
+    body.appendChild(sec);
+    return;
+  }
   const bodyEl = document.createElement('div');
   bodyEl.className = 'wx-body';
   // Follow content direction: prose messages (loading / no-data / error) read

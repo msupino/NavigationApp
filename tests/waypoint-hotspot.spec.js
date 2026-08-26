@@ -82,7 +82,7 @@ test('global hotspot visibility controls only defaults while inspector overrides
   });
   expect(await page.evaluate(() => ({
     shown: showHotspots,
-    stored: localStorage.getItem('navaid.showHotspots'),
+    stored: localStorage.getItem('navaid.showHotspots2'),
     drawn: window.__hotspotWaypointIndexes,
     overrides: state.waypoints.map(wp => Object.prototype.hasOwnProperty.call(wp, 'hotspot')),
   }))).toEqual({ shown: false, stored: '0', drawn: [0], overrides: [true, false, true] });
@@ -183,13 +183,13 @@ test('global hotspot visibility does not reopen a hidden waypoint inspector', as
 test('tunable hotspot default controls a device with no saved preference', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(() => {
-    localStorage.removeItem('navaid.showHotspots');
+    localStorage.removeItem('navaid.showHotspots2');
     NavAid.tuning.defaultShowHotspots = false;
     NavAid.applyDefaultVisibility();
     return {
       checked: document.getElementById('hotspot-cb').checked,
       shown: showHotspots,
-      stored: localStorage.getItem('navaid.showHotspots'),
+      stored: localStorage.getItem('navaid.showHotspots2'),
     };
   });
   expect(result).toEqual({ checked: false, shown: false, stored: null });
