@@ -147,6 +147,8 @@ NavAid.tuningDefaults = {
   // of the set, and it was carried as a gist override long enough to be the settled answer
   // rather than a deployment's opinion. Either value can still be flipped from the gist:
   //   "layerEnabledHelicopters": true
+  featureNotamFreqRows: { value: true, type: 'bool',
+    label: 'Show frequencies a NOTAM states, as their own inspector row' },
   layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
   layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
   layerEnabledATS: { value: true, type: 'bool', label: 'Offer the ATS routes chart layer' },
@@ -861,7 +863,7 @@ NavAid.tuningGroups = [
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
-  { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
+  { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor', 'featureNotamFreqRows'] },
   { name: 'Overlay opacity', keys: ['overlayOpacity'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
@@ -1585,6 +1587,8 @@ window.S = Object.assign({
   // Pointer to a frequency NOTAM on an airfield. Names the NOTAM, never its frequency:
   // the published value stays what the inspector shows and the pilot reads the NOTAM.
   freqNotamNote: (ids) => 'Frequency NOTAM: ' + (Array.isArray(ids) ? ids.join(', ') : ids),
+  freqNotamRowTitle: (id, published) => 'NOTAM ' + id
+    + (published ? ' \u00b7 AIP ' + published : ' \u00b7 not published in the AIP'),
   // Plain-language preamble above the ICAO block in a filed mail. Follows the UI
   // language; the (FPL-...) block itself is never translated.
   fplMailTitle: 'Flight plan on the low-level transit routes',

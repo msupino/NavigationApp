@@ -732,7 +732,6 @@
    "lng": 35.04278,
    "elev_ft": 28,
    "atis": "135.40 MHz",
-   "clearance": "127.80 MHz",
    "plates": [
     "LLHA_airport_Annex Alef.pdf",
     "LLHA_airport_Annex Bet 2.pdf",
@@ -1426,6 +1425,6 @@
   }
  ],
  "source": "CAAI AIP AD 2 / per-airfield AIP packs, plus hand-fitted overlay corner coordinates (circuit, training, CVFR, comm-failure, helicopter, IFR plates).",
- "edition": "AIP packs of May 2026; overlay bounds maintained in-repo. LLHA clearance 127.80 is from NOTAM A0685/26 (\u201cNEW FREQ INSTL FOR CLEARANCE BFR TAXI (CPT) 127.800MHZ\u201d, effective 2026-08-26), which replaced A0680/26\u2019s 121.80; carried here as a standing frequency until the AIP catches up.",
+ "edition": "AIP packs of May 2026; overlay bounds maintained in-repo. Frequencies a NOTAM states are no longer copied in here: the inspector reads them out of the live feed and shows them as their own dated row, so they leave when the NOTAM does. LLHA\u2019s clearance (A0685/26) is one of those and is deliberately absent below \u2014 AD 2.18 publishes none.",
  "_note": "Provenance for the data audit: every dataset says where it came from and which edition, so \"is this current?\" is answerable without archaeology."
 }
