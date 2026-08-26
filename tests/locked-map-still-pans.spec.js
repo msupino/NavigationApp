@@ -89,12 +89,14 @@ test('the page frame is unaffected by the route lock', async ({ page }) => {
 test('a pan that starts on a locked waypoint is not a tap on release', async ({ page }) => {
   await boot(page);
   await setLock(page, true);
+  // Through the real press rather than by assigning `drag`: the pending drag is a
+  // module-scope variable, not a window property, so a test that set `window.drag` would be
+  // setting something else and passing for the wrong reason.
+  await pressWaypoint(page);
   const moved = await page.evaluate(() => {
-    drag = { kind: 'wp', i: 0, moved: false };
-    map.fire('movestart');
-    const m = drag.moved;
-    drag = null;
-    return m;
+    map.fire('movestart');            // Leaflet still has the pan, so this is a real pan
+    return drag ? drag.moved : null;
   });
   expect(moved).toBe(true);
+  await release(page);
 });
