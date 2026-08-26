@@ -1513,6 +1513,28 @@ function refreshAirfieldInspectorAfterCommCatalog(af) {
 // Generic editable-frequency inspector row. `opts`:
 //   value      current displayed freq, def default, rowClass extra class
 //   isOverride() -> bool, commit(norm) -> displayed value, onReset()
+// A frequency a NOTAM states outright goes into the field's own row, ringed red, rather
+// than standing in a row of its own beside it. Two rows for one frequency is two answers to
+// one question, and the pilot has to work out which to call; one row ringed red is the
+// answer, marked as not-the-published-one. The published value stays in the row's title,
+// and the id says which NOTAM to read.
+//
+// Where the AIP publishes nothing -- Haifa's clearance -- the NOTAM CREATES the row. That is
+// the case a value-substitution scheme cannot serve, and the reason this is computed at
+// render rather than merged into airfields.json: the row exists exactly as long as the
+// NOTAM is in the feed, and needs nothing edited back when it goes.
+function airfieldFreqChangeFor(af, service) {
+  if (typeof airfieldFreqChanges !== 'function') return null;
+  if (typeof tune === 'function' && tune('featureNotamFreqRows') === false) return null;
+  return airfieldFreqChanges(af && af.name).find(c => c.service === service) || null;
+}
+
+function airfieldFreqNotamTitle(change, published) {
+  return S.freqNotamRowTitle
+    ? S.freqNotamRowTitle(change.id, published)
+    : 'NOTAM ' + change.id + (published ? ' \u00b7 AIP ' + published : '');
+}
+
 function freqEditRow(label, opts) {
   const row = document.createElement('div');
   row.className = 'row' + (opts.rowClass ? ' ' + opts.rowClass : '');
@@ -1837,23 +1859,41 @@ function appendAirfieldComms(body, af) {
   if (sec.querySelectorAll('.row').length) body.appendChild(sec);
 }
 
+
 function appendAirfieldFrequencyRows(body, af) {
   const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+  const towerChange = airfieldFreqChangeFor(af, 'tower');
   if (id) {
-    const template = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : '';
-    body.appendChild(freqEditRow(S.primary || 'Primary', {
-      value: typeof commCallSignEffectiveFreq === 'function' ? commCallSignEffectiveFreq(id) : '',
+    // commCallSignTemplateFreq already answers with the NOTAM's frequency when one is in
+    // force -- that is what the pilot calls and what reset returns to. The published one is
+    // not lost: it is in the row's title.
+    const published = typeof commCallSignPublishedFreq === 'function' ? commCallSignPublishedFreq(id) : '';
+    const template = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : published;
+    const override = () => !!(typeof commCallSignOverrideFreq === 'function' && commCallSignOverrideFreq(id));
+    const row = freqEditRow(S.primary || 'Primary', {
+      value: override() && typeof commCallSignEffectiveFreq === 'function'
+        ? commCallSignEffectiveFreq(id) : template,
       def: template, rowClass: 'primary-row',
-      isOverride: () => !!(typeof commCallSignOverrideFreq === 'function' && commCallSignOverrideFreq(id)),
+      isOverride: override,
       commit: n => typeof commApplyCallSignFreqOverride === 'function' ? commApplyCallSignFreqOverride(id, n) : n,
       onReset: () => { if (typeof commResetCallSignFreqOverride === 'function') commResetCallSignFreqOverride(id); return template; },
-    }));
+    });
+    if (towerChange) {
+      row.classList.add('freq-notam-changed');
+      row.title = airfieldFreqNotamTitle(towerChange, published);
+    }
+    body.appendChild(row);
   } else {
     const primary = airfieldPrimaryText(af);
     if (primary) {
-      const row = textRow(S.primary || 'Primary', primary);
+      const row = textRow(S.primary || 'Primary',
+        towerChange ? towerChange.freq + ' MHz' : primary);
       row.classList.add('primary-row');
+      if (towerChange) {
+        row.classList.add('freq-notam-changed');
+        row.title = airfieldFreqNotamTitle(towerChange, primary);
+      }
       body.appendChild(row);
     } else {
       refreshAirfieldInspectorAfterCommCatalog(af);
@@ -1862,6 +1902,18 @@ function appendAirfieldFrequencyRows(body, af) {
   // Clearance / ATIS — one editable numeric field per labelled part (#freq).
   const appendFieldParts = (field, label, rowClass) => {
     const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, field) : [];
+    const chg = field === 'clearance' ? airfieldFreqChangeFor(af, 'clearance') : null;
+    if (!parts.length && chg) {
+      // Nothing published, but a NOTAM installed one: the row is the NOTAM's.
+      const row = freqEditRow(label, {
+        value: chg.freq, def: chg.freq, rowClass,
+        isOverride: () => false, commit: n => n, onReset: () => chg.freq,
+      });
+      row.classList.add('freq-notam-changed');
+      row.title = airfieldFreqNotamTitle(chg, '');
+      body.appendChild(row);
+      return;
+    }
     if (!parts.length) {
       // Nothing published: no row. It used to print "Clearance — None" so every airfield
       // read the same way, which was defensible as a loose list and stopped being so inside
@@ -1872,16 +1924,29 @@ function appendAirfieldFrequencyRows(body, af) {
     }
     for (const p of parts) {
       const rowLabel = p.label ? label + ' ' + p.label : label;
-      body.appendChild(freqEditRow(rowLabel, {
-        value: p.freq, def: p.def, rowClass,
+      // Only the first part can carry a change: the NOTAMs seen state one frequency per
+      // service, and guessing which of "Arrival / Departure" they meant would be a guess.
+      const c = (chg && p === parts[0]) ? chg : null;
+      const published = p.def;
+      // With a NOTAM in force its frequency IS the default -- that is what reset returns to,
+      // and what the pilot calls. The published one is not lost; it is in the row's title.
+      const def = c ? c.freq : published;
+      const row = freqEditRow(rowLabel, {
+        value: p.overridden ? p.freq : def, def, rowClass,
         isOverride: () => p.overridden,
-        commit: n => { setAirfieldFreqOverride(p.key, n === p.def ? '' : n); p.freq = n; p.overridden = n !== p.def; return n; },
-        onReset: () => { setAirfieldFreqOverride(p.key, ''); p.freq = p.def; p.overridden = false; return p.def; },
-      }));
+        commit: n => { setAirfieldFreqOverride(p.key, n === def ? '' : n); p.freq = n; p.overridden = n !== def; return n; },
+        onReset: () => { setAirfieldFreqOverride(p.key, ''); p.freq = def; p.overridden = false; return def; },
+      });
+      if (c) {
+        row.classList.add('freq-notam-changed');
+        row.title = airfieldFreqNotamTitle(c, published);
+      }
+      body.appendChild(row);
     }
   };
   appendFieldParts('clearance', S.clearance || 'Clearance', 'clearance-row');
   appendFieldParts('atis', S.atis || 'ATIS', 'atis-row');
+
 
   // A NOTAM about this field's frequencies. A POINTER, never a value: the rows above keep
   // showing what the AIP publishes, and nothing is read out of the NOTAM text. A NOTAM
@@ -3875,6 +3940,9 @@ function appendFreqEdit(body, note, editOptions) {
     updateTemplateHint();
     draw();
   }
+  // Assigned once the frequency control exists; `var` so updateTemplateHint can run before
+  // that point without tripping over a temporal dead zone.
+  var freqNotamTarget = null;
   function updateTemplateHint() {
     if (!templateRow) return;
     const opt = typeof commNoteCallSignOption === 'function'
@@ -3891,6 +3959,18 @@ function appendFreqEdit(body, note, editOptions) {
     if (resetFreq) {
       resetFreq.hidden = !template;
       resetFreq.disabled = !changed;
+    }
+    // Ring the frequency control when this call sign's tower is on a NOTAM frequency, the
+    // same mark the airfield panel uses. The waypoint is where a pilot reads the frequency
+    // they are about to call, so the mark belongs here more than anywhere.
+    if (freqNotamTarget) {
+      const chg = (opt && typeof commCallSignFreqChange === 'function')
+        ? commCallSignFreqChange(opt.id) : null;
+      freqNotamTarget.classList.toggle('freq-notam-changed', !!chg);
+      freqNotamTarget.title = chg
+        ? airfieldFreqNotamTitle(chg, (typeof commCallSignPublishedFreq === 'function'
+          ? commCallSignPublishedFreq(opt.id) : ''))
+        : '';
     }
     syncCallSignSelect();
   }
@@ -4020,6 +4100,8 @@ function appendFreqEdit(body, note, editOptions) {
   unit.className = 'freq-unit';
   unit.textContent = 'MHz';
   freqControl.appendChild(unit);
+  freqNotamTarget = freqControl;
+  updateTemplateHint();
   resetFreq = document.createElement('button');
   resetFreq.type = 'button';
   resetFreq.className = 'commchange-freq-reset';

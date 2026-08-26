@@ -503,20 +503,6 @@ test('a field with no clearance does not mention one', async ({ page }) => {
   expect(comms.text).not.toMatch(/None/);
 });
 
-// Haifa's AD 2.18 lists no clearance, but A0680/26 installed one -- "NEW FREQ INSTL FOR
-// CLEARANCE BFR TAXI (CPT) 121.800MHZ" -- and it is a standing change, so the dataset
-// carries it rather than leaving the pilot to read it out of a NOTAM every flight.
-test('Haifa carries the clearance its NOTAM installed', async ({ page }) => {
-  await boot(page);
-  await open(page, 'LLHA');
-  const val = await page.evaluate(() => {
-    const row = document.querySelector('#insp-body .clearance-row');
-    const inp = row && row.querySelector('input');
-    return inp ? inp.value : (row ? row.querySelector('.val').textContent.trim() : null);
-  });
-  expect(val).toBe('121.80');
-});
-
 // ...and a field that does publish one still shows it.
 test('a field with a clearance still shows it', async ({ page }) => {
   await boot(page);

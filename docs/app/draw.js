@@ -1492,6 +1492,55 @@ function airfieldFreqNotams(icao) {
     return FREQ_MENTION_RE.test(String(n.text || '').toUpperCase());
   });
 }
+// ...and the narrow case where a value CAN be read out, because the CAA writes it the same
+// way every time. Two shapes are in the feed today:
+//
+//   A0685/26 LLHA  NEW FREQ INSTL FOR CLEARANCE BFR TAXI (CPT) 127.800MHZ.
+//   C1574/26 LLHZ  TWR FREQ TEMPO CHG TO 125.600MHZ, CLEARANCE (CPT) FREQ CHG TO 118.550MHZ.
+//
+// The rule above still holds -- a mis-parse puts a pilot on the wrong frequency -- so this
+// does not relax it, it narrows it: each pattern must name its service AND its frequency in
+// one match, an unmatched NOTAM yields nothing and keeps the pointer badge, and what comes
+// out is never written into the AIP row. It is shown as its own row, carrying the NOTAM id,
+// and it exists only while that NOTAM is in the feed. When the NOTAM goes, so does the row,
+// with no file to edit -- which is the difference between this and baking 127.80 into
+// airfields.json, where it outlives the reason it was true.
+const FREQ_MHZ = '(1[0-3][0-9]\\.[0-9]{1,3})\\s*MHZ';
+const FREQ_PATTERNS = [
+  // "TWR FREQ TEMPO CHG TO 125.600MHZ" / "TOWER FREQ CHANGED TO ..."
+  { service: 'tower', re: new RegExp('\\b(?:TWR|TOWER)\\b[^.,;]{0,40}?\\bFREQ(?:UENCY)?\\b[^.,;]{0,40}?'
+      + '\\bCHG?(?:ANGED)?\\s+TO\\s+' + FREQ_MHZ) },
+  // "CLEARANCE (CPT) FREQ CHG TO 118.550MHZ"
+  { service: 'clearance', re: new RegExp('\\bCLEARANCE\\b[^.,;]{0,40}?\\bFREQ(?:UENCY)?\\b[^.,;]{0,40}?'
+      + '\\bCHG?(?:ANGED)?\\s+TO\\s+' + FREQ_MHZ) },
+  // "NEW FREQ INSTL FOR CLEARANCE BFR TAXI (CPT) 127.800MHZ"
+  { service: 'clearance', re: new RegExp('\\bNEW\\s+FREQ(?:UENCY)?\\b[^.,;]{0,20}?\\bFOR\\b[^.,;]{0,20}?'
+      + '\\bCLEARANCE\\b[^.,;]{0,40}?' + FREQ_MHZ) },
+];
+
+// Trailing zeros are how the NOTAM writes it and not how the chart does: 127.800 is 127.80,
+// and a row that disagrees with the AIP row's format reads as a different kind of number.
+function freqTwoDecimals(mhz) {
+  const n = Number(mhz);
+  return Number.isFinite(n) ? n.toFixed(2) : String(mhz);
+}
+
+// [{ service, freq, id }] for one airfield, from the NOTAMs in force right now.
+function airfieldFreqChanges(icao) {
+  const out = [];
+  for (const n of airfieldFreqNotams(icao)) {
+    const text = String((n && n.text) || '').toUpperCase();
+    for (const pat of FREQ_PATTERNS) {
+      const m = pat.re.exec(text);
+      // One row per service per NOTAM: a later NOTAM that repeats a service does not stack.
+      if (m && !out.some(o => o.service === pat.service)) {
+        out.push({ service: pat.service, freq: freqTwoDecimals(m[1]), id: n.id });
+      }
+    }
+  }
+  return out;
+}
+
 function drawNotamAirportMarkers() {
   if (!Array.isArray(airfields) || !airfields.length) return;
   const byIcao = {};
@@ -3199,8 +3248,41 @@ function commCallSignDefaultFreq(row) {
   if (typeof row.freq === 'string' && row.freq.trim()) return commFormatFreq(row.freq);
   return '';
 }
-function commCallSignTemplateFreq(id, row) {
+// The frequency the catalog publishes for this call sign, ignoring NOTAMs and overrides.
+function commCallSignPublishedFreq(id, row) {
   return commCallSignDefaultFreq(row || commCatalogCallSignRow(id));
+}
+
+// Which aerodrome a call sign belongs to. The map lives in interact.js, which loads after
+// this file, so it is read at call time rather than captured.
+function commCallSignIcao(id) {
+  const map = (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS) || null;
+  if (!map || !id) return '';
+  const want = String(id).toUpperCase();
+  for (const code in map) if (String(map[code] || '').toUpperCase() === want) return code;
+  return '';
+}
+
+// A NOTAM that moved this call sign's tower frequency, if one is in force.
+function commCallSignFreqChange(id) {
+  if (typeof tune === 'function' && tune('featureNotamFreqRows') === false) return null;
+  if (typeof airfieldFreqChanges !== 'function') return null;
+  const icao = commCallSignIcao(commCallSignIdKey(id) || id);
+  if (!icao) return null;
+  return airfieldFreqChanges(icao).find(c => c.service === 'tower') || null;
+}
+
+// The frequency a fresh comm-change gets, and the one its reset button returns to.
+//
+// A NOTAM in force is the template, not a decoration on top of it. Herzliya's tower moved to
+// 125.60 under C1574/26, and every waypoint that seeds its frequency from the HERZLIYA call
+// sign -- Bnei Dror, Deror, the whole northern set -- would otherwise offer 122.20 and send
+// a pilot to call a frequency nobody is on. One definition here reaches all of them: the
+// waypoint inspector, the Freq column, the map callouts and the airfield panel.
+function commCallSignTemplateFreq(id, row) {
+  const change = commCallSignFreqChange(id);
+  if (change) return change.freq;
+  return commCallSignPublishedFreq(id, row);
 }
 function commCallSignOverrideFreq(id) {
   const key = commCallSignIdKey(id);

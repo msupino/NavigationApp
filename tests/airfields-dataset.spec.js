@@ -235,10 +235,11 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     expect(byCode.get('LLER').atis).toBe('132.55 MHz');
     expect(byCode.get('LLHA').atis).toBe('135.40 MHz');
     expect(byCode.get('LLHZ').clearance).toBe('121.70 MHz');
-    // Not in AD 2.18: installed by NOTAM A0680/26 ("NEW FREQ INSTL FOR CLEARANCE BFR TAXI
-    // (CPT) 121.800MHZ") as a standing change, and carried here so a departing pilot does
-    // not have to read it out of a NOTAM before every flight.
-    expect(byCode.get('LLHA').clearance).toBe('121.80 MHz');
+    // AD 2.18 publishes no clearance for Haifa, and this file says so. The one a NOTAM
+    // installed (A0685/26) is read out of the live feed and shown as its own dated row --
+    // see notam-frequency-rows.spec.js. Baking it in here froze a temporary claim into a
+    // file that means "published truth", and it had already gone stale once.
+    expect(byCode.get('LLHA').clearance).toBeUndefined();
     expect(byCode.get('LLIB').atis).toBe('132.45 MHz');
     expect(byCode.get('LLPL').atis).toBe('126.10 MHz');
 
@@ -252,7 +253,7 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
       .filter(a => typeof a.clearance === 'string' && a.clearance.trim())
       .map(a => a.name)
       .sort();
-    expect(withClearance).toEqual(['LLBG', 'LLHA', 'LLHZ']);
+    expect(withClearance).toEqual(['LLBG', 'LLHZ']);
   });
 
   // BYOP plates and the runway-chip UI in interact.js read these
