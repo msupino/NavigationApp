@@ -42,7 +42,7 @@
   // Open-Meteo, the same free service the winds-aloft and QNH code already use: hourly
   // 2 m temperature and mean-sea-level pressure at the field. forecast_days=2 so the
   // slider's +24 h still lands inside the fetched range when "now" is late in the UTC day.
-  const cache = new Map();                    // key -> { at, hours: [{t, tempC, qnh}] }
+  const cache = new Map();       // key -> { at, hours: [{t, tempC, qnh}], elevationFt }
   const TTL_MS = 30 * 60e3;                   // an hourly forecast does not move faster
 
   function key(lat, lng) { return lat.toFixed(2) + ',' + lng.toFixed(2); }
@@ -80,7 +80,11 @@
         }];
       }
       if (!hours.length) throw new Error('no hourly data');
-      cache.set(k, { at: Date.now(), hours });
+      // The model's own terrain height at the point, in feet. Not a substitute for a
+      // published field elevation, but for the handful of strips the AIP gives no
+      // elevation for it is the difference between a density altitude and a dash.
+      const elevM = num(j && j.elevation);
+      cache.set(k, { at: Date.now(), hours, elevationFt: elevM === null ? null : elevM * 3.28084 });
       return hours;
     } catch (e) {
       return null;
@@ -101,8 +105,15 @@
     return bestGap <= 3600e3 * 1.5 ? best : null;
   }
 
+  // The terrain height the forecast reported for this point, once it has been fetched.
+  function modelElevationFt(lat, lng) {
+    const hit = cache.get(key(lat, lng));
+    return hit && Number.isFinite(hit.elevationFt) ? hit.elevationFt : null;
+  }
+
   NS.da = {
     HPA_STD,
+    modelElevationFt,
     pressureAltFt,
     isaTempC,
     densityAltFt,
