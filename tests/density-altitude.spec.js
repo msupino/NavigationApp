@@ -434,3 +434,50 @@ test('the clock is never truncated, in either language', async ({ page }) => {
     expect(out.sliderFullWidth, lang).toBe(true);
   }
 });
+
+// Five fields in the dataset have no published elevation — Habonim, Ein Vered, Arad,
+// Gvulot, Kedem — and without one there is no density altitude at all. Where the AIP is
+// silent the forecast's own terrain height stands in, and the panel says which it used
+// rather than passing a model figure off as a surveyed one.
+test('a field with no published elevation still gets a density altitude', async ({ page }) => {
+  await page.route(/^https:\/\/api\.open-meteo\.com\//, (r) => {
+    const start = Date.now() - (Date.now() % 3600e3);
+    const h = { time: [], temperature_2m: [], pressure_msl: [] };
+    for (let i = 0; i < 30; i++) {
+      h.time.push(new Date(start + i * 3600e3).toISOString().slice(0, 16));
+      h.temperature_2m.push(30);
+      h.pressure_msl.push(1009);
+    }
+    // Open-Meteo reports the model's terrain height for the point it answered for.
+    r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ hourly: h, elevation: 100 }) });
+  });
+  await page.route('**wx-data/wx.json**', r => r.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: new Date().toISOString(), stations: {} }) }));
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.da) && !!window.airfields);
+  await open(page, 'LLBO');                         // Habonim: no elev_ft in the dataset
+  await page.waitForTimeout(400);
+  const da = await readDa(page);
+  expect(da.value).toMatch(/ft$/);
+  expect(da.value).not.toBe('—');
+  // ...and it is labelled, so nobody reads it as a surveyed field elevation.
+  expect(da.src).toMatch(/terrain elevation/);
+  expect(da.src).toMatch(/30 °C/);
+});
+
+// Every airfield in the dataset ends up with the figure, one way or the other.
+test('every airfield has one', async ({ page }) => {
+  await boot(page);
+  const missing = await page.evaluate(async () => {
+    const out = [];
+    for (let i = 0; i < airfields.length; i++) {
+      state.selected = { type: 'airfield', index: i };
+      showInspector();
+      await new Promise(r => setTimeout(r, 60));
+      if (!document.querySelector('.da-group')) out.push(airfields[i].name);
+    }
+    return out;
+  });
+  expect(missing).toEqual([]);
+});
