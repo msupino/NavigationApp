@@ -949,6 +949,8 @@ window.S = {
   daFromForecast: 'תחזית',
   daNoData: 'אין נתוני טמפרטורה',
   daNoElev: 'אין גובה שדה',
+  daQnhAssumed: '(תקני)',
+  daAgeMin: function (m) { return '(לפני ' + m + ' דק׳)'; },
   wxTitleNoMetar: 'גובה צפיפות',
   daElevFromModel: 'גובה שטח',
   trafficUnavailable: 'תעבורה חיה אינה זמינה',

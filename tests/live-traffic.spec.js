@@ -299,3 +299,69 @@ test('each one is an aeroplane, turned to its track', async ({ page }) => {
   expect(await page.evaluate(() => document.querySelector('svg.traffic-plane').getAttribute('width')))
     .toBe('34');
 });
+
+// A request already on the wire when the layer is switched off used to arrive afterwards and
+// draw its aeroplanes onto a map that was meant to be clear of them.
+test('a response that outlives its switch-off is discarded', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await expect(marks(page)).toHaveCount(2);
+
+  const after = await page.evaluate(async () => {
+    // Hold the next response open, switch the layer off underneath it, then let it land.
+    let release;
+    const held = new Promise((r) => { release = r; });
+    const tts = window.Capacitor.Plugins.CapacitorHttp;
+    const real = tts.request;
+    tts.request = () => held.then(() => ({ status: 200, data: window.__body }));
+    const poll = window.trafficPoll();
+    await new Promise((r) => setTimeout(r, 50));
+    const cb = document.getElementById('traffic-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));   // off: map is cleared
+    const cleared = document.querySelectorAll('.traffic-mark').length;
+    release();
+    await poll;
+    await new Promise((r) => setTimeout(r, 100));
+    tts.request = real;
+    return { cleared, afterLanding: document.querySelectorAll('.traffic-mark').length,
+             list: (window.trafficAircraft || []).length };
+  });
+  expect(after.cleared).toBe(0);
+  expect(after.afterLanding).toBe(0);      // the stale answer did not put them back
+  expect(after.list).toBe(0);
+});
+
+// trafficApiUrl is documented as gist-configurable. setTune had no branch for a text spec,
+// so the value fell through to the numeric check and was silently rejected — and the tuning
+// panel rendered a range slider with min/max of undefined for it.
+test('the endpoint is settable, and the panel gives it a text field', async ({ page }) => {
+  await boot(page);
+  const set = await page.evaluate(() => {
+    const before = tune('trafficApiUrl');
+    setTune('trafficApiUrl', 'https://example.test/v2/lat/{lat}/lon/{lon}/dist/{dist}');
+    const after = tune('trafficApiUrl');
+    setTune('trafficApiUrl', 42);          // not a string: refused, value kept
+    return { before, after, afterBadValue: tune('trafficApiUrl') };
+  });
+  expect(set.after).toBe('https://example.test/v2/lat/{lat}/lon/{lon}/dist/{dist}');
+  expect(set.after).not.toBe(set.before);
+  expect(set.afterBadValue).toBe(set.after);
+
+  // ...and it is asked for at the new address.
+  await page.evaluate(() => { window.__asked.length = 0; });
+  await fly(page);
+  expect((await asked(page)).pop()).toContain('example.test');
+
+  await page.goto('?lang=en&nogist&tune=1');
+  await page.waitForFunction(() => !!document.getElementById('tuning-panel'));
+  const control = await page.evaluate(() => {
+    const field = document.getElementById('tune-trafficApiUrl-text');
+    return { exists: !!field, type: field && field.type, value: field && field.value,
+             range: !!document.getElementById('tune-trafficApiUrl-range') };
+  });
+  expect(control.exists).toBe(true);
+  expect(control.type).toBe('text');
+  expect(control.range).toBe(false);       // not a slider for a URL
+  expect(control.value).toContain('adsb.lol');
+});

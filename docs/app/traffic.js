@@ -17,6 +17,10 @@
   let timer = 0;
   let inFlight = false;
   let fails = 0;               // consecutive failed polls; one blip is not an outage
+  // Bumped whenever the layer is torn down. A request already on the wire when the pilot
+  // switches traffic off -- or when the fix stops -- would otherwise arrive afterwards and
+  // draw its aeroplanes onto a map that is meant to be clear of them.
+  let generation = 0;
   window.trafficLastError = null;
   window.trafficAircraft = [];          // what the inspector and the hit test read
 
@@ -175,12 +179,16 @@
   async function poll() {
     if (inFlight) return;
     if (!on()) { clear(); return; }
+    const myGen = generation;   // 'mine' below is the own-ship fix; do not shadow it
     const at = centre();
     const url = endpoint(at.lat, at.lng);
     if (!url) return;                     // no endpoint configured: the feature is simply off
     inFlight = true;
     try {
       const d = await getJson(url);
+      // Still the same layer that asked? A response that outlived its own switch-off is
+      // stale by definition, and drawing it puts traffic back on a cleared map.
+      if (myGen !== generation || !on()) return;
       const list = ((d && (d.ac || d.aircraft)) || []).map(normalize);
       // Own-ship is in the feed too when the transponder is on: it is already drawn, and a
       // second aeroplane on top of yourself reads as traffic in your lap.
@@ -192,6 +200,7 @@
       fails = 0;
       window.trafficLastError = null;
     } catch (e) {
+      if (myGen !== generation) return;             // torn down mid-flight: not an outage
       // One dropped request is not an outage. The feed times out or rate-limits now and
       // then, and the old rule -- complain on the first failure ever -- put "Live traffic
       // unavailable" on screen over a map that was drawing traffic perfectly well, which is
@@ -219,8 +228,11 @@
     poll();
   }
   window.trafficRefresh = function () {
-    if (on()) schedule();
-    else { clearInterval(timer); timer = 0; clear(); }
+    if (on()) { schedule(); return; }
+    generation++;                                   // disown whatever is still in flight
+    clearInterval(timer);
+    timer = 0;
+    clear();
   };
 
   // Panning to another part of the country is a request to see the traffic there. Debounced,

@@ -528,3 +528,64 @@ test('a field with a clearance still shows it', async ({ page }) => {
   });
   expect(val).toBe('121.55');
 });
+
+// An assumed 1013 is an assumption. The row printed it exactly like a measured QNH, so a
+// figure computed from a guess read as a figure computed from an observation.
+test('an assumed pressure says so', async ({ page }) => {
+  await page.route(/^https:\/\/api\.open-meteo\.com\//, (r) => {
+    const start = Date.now() - (Date.now() % 3600e3);
+    const h = { time: [], temperature_2m: [], pressure_msl: [] };
+    for (let i = 0; i < 30; i++) {
+      h.time.push(new Date(start + i * 3600e3).toISOString().slice(0, 16));
+      h.temperature_2m.push(28);
+      h.pressure_msl.push(null);            // temperature only: no pressure in the answer
+    }
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ hourly: h }) });
+  });
+  await page.route('**wx-data/wx.json**', r => r.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: new Date().toISOString(), stations: {} }) }));
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.da) && !!window.airfields);
+  await open(page, 'LLHA');
+  const da = await readDa(page);
+  expect(da.src).toContain('1013 hPa');
+  expect(da.src).toMatch(/\(standard\)/);
+});
+
+// A METAR is the observation while it is recent. Past daMetarMaxAgeMin it is history, and
+// the forecast for this hour is the better answer; between 30 min and that limit it is still
+// used, with its age said out loud rather than presented as "now".
+test('a stale METAR is aged, then dropped for the forecast', async ({ page }) => {
+  const wx = (ageMin) => ({
+    generatedAt: new Date().toISOString(),
+    stations: { LLHA: { metar: { icaoId: 'LLHA', temp: 33, altim: 1009,
+      obsTime: Math.round((Date.now() - ageMin * 60000) / 1000) } } },
+  });
+  const forecast = (r) => {
+    const start = Date.now() - (Date.now() % 3600e3);
+    const h = { time: [], temperature_2m: [], pressure_msl: [] };
+    for (let i = 0; i < 30; i++) {
+      h.time.push(new Date(start + i * 3600e3).toISOString().slice(0, 16));
+      h.temperature_2m.push(21); h.pressure_msl.push(1005);
+    }
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ hourly: h }) });
+  };
+  await page.route(/^https:\/\/api\.open-meteo\.com\//, forecast);
+
+  await page.route('**wx-data/wx.json**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(wx(45)) }));
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.da) && !!window.airfields);
+  await open(page, 'LLHA');
+  const aged = await readDa(page);
+  expect(aged.src).toContain('33 °C');            // still the observation...
+  expect(aged.src).toMatch(/45 min old/);         // ...and it says how old
+
+  await page.route('**wx-data/wx.json**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(wx(200)) }));
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.da) && !!window.airfields);
+  await open(page, 'LLHA');
+  const stale = await readDa(page);
+  expect(stale.src).toContain('21 °C');           // the forecast for this hour instead
+  expect(stale.src).toContain('forecast');
+  expect(stale.src).not.toMatch(/METAR/);
+});
