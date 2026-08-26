@@ -1883,6 +1883,26 @@ function appendAirfieldFrequencyRows(body, af) {
   appendFieldParts('clearance', S.clearance || 'Clearance', 'clearance-row');
   appendFieldParts('atis', S.atis || 'ATIS', 'atis-row');
 
+  // A frequency a NOTAM states outright, in its own row, never merged into the rows above.
+  // Two reasons it is separate rather than a substitution. It is true today and not in
+  // general, so it must read as dated -- hence the NOTAM id on the row. And Haifa publishes
+  // no clearance at all: there is no row to substitute into, so a NOTAM that installs one
+  // has to be able to CREATE the row, which a value-replacement scheme cannot do.
+  // It needs no cleanup either: the row exists while the NOTAM is in the feed and stops
+  // existing when it leaves, with nothing to edit back.
+  const freqChanges = (typeof airfieldFreqChanges === 'function'
+    && (typeof tune !== 'function' || tune('featureNotamFreqRows') !== false))
+    ? airfieldFreqChanges(af && af.name) : [];
+  for (const c of freqChanges) {
+    const service = c.service === 'tower' ? (S.primary || 'Primary')
+      : (S.clearance || 'Clearance');
+    const row = textRow(S.freqNotamRow ? S.freqNotamRow(service, c.id)
+      : service + ' \u2014 NOTAM ' + c.id, c.freq + ' MHz');
+    row.classList.add('freq-notam-value-row');
+    row.title = c.id;
+    body.appendChild(row);
+  }
+
   // A NOTAM about this field's frequencies. A POINTER, never a value: the rows above keep
   // showing what the AIP publishes, and nothing is read out of the NOTAM text. A NOTAM
   // frequency is true today, not in general, and a mis-parse would put a pilot on the wrong

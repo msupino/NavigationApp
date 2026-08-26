@@ -519,6 +519,7 @@ window.S = {
   warnFplDestNotAerodrome: 'המסלול אינו מסתיים בשדה מוכר — הוא יוגש כ־ZZZZ עם שם הנקודה בשדה 18, וסביר שיידחה. תוכנית טיסה מוגשת בדרך כלל משדה לשדה.',
   warnFplEarly: 'מוקדם מדי להגשה: טיסה הממריאה עד 17:00 מוגשת מ־18:00 ביום שלפניה, וטיסה מאוחרת יותר מוגשת באותו היום.',
   freqNotamNote: (ids) => 'נוטאם תדר: ' + (Array.isArray(ids) ? ids.join(', ') : ids),
+  freqNotamRow: (service, id) => service + ' \u2014 נוטאם ' + id,
   fplMailTitle: 'תכנית טיסה בנתיבי התובלה הנמוכים',
   fplMailDeparture: (place, t) => 'המראה מ' + place + ' ב ' + t + ' זמן מקומי',
   fplMailRoute: (list) => 'נתיב: ' + list,
