@@ -310,14 +310,14 @@ test('the supplied LLHZ loop hides direction-only hotspots in both selections', 
     routeHotspots: ['SFAIM', 'TYONA', 'NTAIM'],
     projectedHotspots: ['NTAIM', 'SFAIM', 'TYONA'],
     notes: ['SFAIM', 'TYONA'],
-    commRings: ['NTAIM', 'SFAIM', 'TYONA'],
+    commRings: [],
     commHits: ['NTAIM', 'SFAIM', 'TYONA'],
   });
   expect(out.returning).toEqual({
     routeHotspots: ['NTAIM', 'TYONA', 'HTZUK'],
     projectedHotspots: ['HTZUK', 'NTAIM', 'TYONA'],
     notes: ['KNTRY', 'TYONA'],
-    commRings: ['KNTRY', 'NTAIM', 'TYONA'],
+    commRings: [],
     commHits: ['KNTRY', 'NTAIM', 'TYONA'],
   });
 });
@@ -821,11 +821,12 @@ test.describe('manual turning point', () => {
     expect(out.addBtn.title).toMatch(/frequency you arrived on/i);
     // Pressed looks pressed. This used to require the colours to be IDENTICAL to idle, with
     // only the weight changing -- which on a small button is invisible, so a marked turning
-    // point read exactly like an unmarked one. It now takes the same filled highlight the
-    // hotspot toggle uses, and is still not the destructive red.
-    expect(out.style[1]).not.toBe(idleStyle[1]);            // filled
-    expect(out.style[2]).not.toBe(idleStyle[2]);            // ringed
-    expect(out.style[1]).not.toBe(destructive);             // ...but not an alarm
+    // point read exactly like an unmarked one. Set marks are red in this panel: red is its
+    // word for "there is something on the chart here", and the label says which mark. Idle
+    // stays quiet, which is the distinction that was missing.
+    expect(out.style[1]).not.toBe(idleStyle[1]);            // filled once set
+    expect(out.style[2]).not.toBe(idleStyle[2]);            // and bordered
+    expect(idleStyle[1]).not.toBe(destructive);             // unset is never the alarm colour
     expect(out.style[3]).toBeGreaterThan(idleStyle[3]);
 
     await page.locator('#insp-turn-btn').click();

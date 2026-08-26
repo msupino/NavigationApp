@@ -282,6 +282,13 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   height: 12px;
   border: 2px solid #e74c3c;
 }
+/* The ringed circle is the hotspot symbol now -- fill and ring, the pair a marked waypoint
+   wears on the map and the inspector's pressed toggle wears with it. Frequency changes have
+   their own callout, which says so in words and carries the frequency. */
+.legend-hotspot::before {
+  background: var(--navaid-hotspot-fill, #ffd166);
+  border-color: var(--navaid-hotspot-ring, #d7263d);
+}
 /* VOR: painted into this canvas by drawVorSymbol() -- the same function the map uses
    (see paintLegendVor in ui.js). CSS cannot reproduce it: stroke width, tick length and
    dot size are all ratios of the radius, and an approximation looked wrong at 18px. */
@@ -2038,32 +2045,25 @@ body.theme-light .insp-status {
 }
 /* A latched state is emphasis, not an alarm: set/unset actions keep the same safe
    colours in both themes while bold text shows which state is active. */
-/* A pressed toggle has to look pressed. These said "on" with font-weight alone, which on a
-   small grey button is invisible -- a marked point looked exactly like an unmarked one, and
-   the control read as inert.
-   ONE pressed look for every toggle in the panel -- hotspot, turning point, whatever comes
-   next -- so a pilot learns "filled and ringed means this is set" once and reads it
-   everywhere. The colours are the hotspot pair, which is also what a marked waypoint wears
-   on the map. */
+
+/* A pressed toggle has to look pressed, and there is one way it does it: filled red with a
+   plain white border. These used to say "on" with font-weight alone -- invisible on a small
+   button -- and then briefly in amber with a red ring, which was two accent colours doing
+   one job. Red is the panel's word for "there is something on the chart here", which is
+   exactly what a set mark means; the button's own label says which mark. */
 .insp-btn.insp-btn-on,
-.insp-btn.insp-btn-safe.insp-btn-on {
+.insp-btn.insp-btn-safe.insp-btn-on,
+body.theme-light .insp-btn.insp-btn-on,
+body.theme-light .insp-btn.insp-btn-safe.insp-btn-on {
   font-weight: 900;
-  color: #2a1c00;
-  background: var(--navaid-hotspot-fill, #ffd166);
-  border: 2px solid var(--navaid-hotspot-ring, #d7263d);
+  color: #fff;
+  background: #b03636;
+  border: 2px solid #fff;
 }
-.insp-btn.insp-btn-safe.insp-btn-on:hover {
-  background: var(--navaid-hotspot-fill, #ffd166);
-  border-color: var(--navaid-hotspot-ring, #d7263d);
-  filter: brightness(1.06);
-}
-/* The light theme restyles .insp-btn-safe with a body-class selector, which out-specifies
-   the rule above; the pressed state has to answer at the same weight or it loses. */
-body.theme-light .insp-btn.insp-btn-safe.insp-btn-on,
+.insp-btn.insp-btn-safe.insp-btn-on:hover,
 body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
-  color: #2a1c00;
-  background: var(--navaid-hotspot-fill, #ffd166);
-  border: 2px solid var(--navaid-hotspot-ring, #d7263d);
+  background: #c44141;
+  border-color: #fff;
 }
 .insp-btn:disabled {
   opacity: 0.48;

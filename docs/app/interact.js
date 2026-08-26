@@ -2764,6 +2764,20 @@ function appendAirfieldWeather(body, af) {
 // Split the inspector's actions from its data rows: they go into one sticky block so
 // the destructive ones cannot fall below the fold on a phone, and only genuinely
 // destructive ones keep the alarm red.
+// The order a pilot reads them in, not the order the panel happens to build them in.
+// Anything not named here keeps its relative position after these.
+const INSPECTOR_ACTION_ORDER = [
+  'insp-del-wp-btn',        // delete the point
+  'insp-reset-name-btn',    // put its name back
+  'add-freq-change-btn',    // (class) add a frequency change here
+  'insp-hotspot-btn',       // mark it as a hotspot
+  'insp-turn-btn',          // mark the turn
+];
+function inspectorActionRank(el) {
+  const i = INSPECTOR_ACTION_ORDER.findIndex(k => el.id === k || el.classList.contains(k));
+  return i === -1 ? INSPECTOR_ACTION_ORDER.length : i;
+}
+
 function finalizeInspectorActions(body) {
   // Status lines travel with the buttons. A line that says "this point is the turning point"
   // is only useful beside the action it describes, and gathering the buttons at the foot of
@@ -2774,7 +2788,15 @@ function finalizeInspectorActions(body) {
   if (!items.some(el => el.classList.contains('insp-btn'))) return;
   const wrap = document.createElement('div');
   wrap.className = 'insp-actions';
-  for (const b of items) {
+  // Stable sort: a status line stays with the button it describes, because it carries that
+  // button's rank rather than one of its own.
+  let lastRank = INSPECTOR_ACTION_ORDER.length;
+  const ranked = items.map((el, i) => {
+    if (el.classList.contains('insp-btn')) lastRank = inspectorActionRank(el);
+    return { el, rank: el.classList.contains('insp-status') ? lastRank : inspectorActionRank(el), i };
+  });
+  ranked.sort((a, b) => (a.rank - b.rank) || (a.i - b.i));
+  for (const { el: b } of ranked) {
     if (b.classList.contains('insp-btn')) {
       const txt = (b.textContent || '').toLowerCase();
       const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
@@ -3416,6 +3438,8 @@ function showInspector() {
     }
     const hotspotOn = typeof routeWaypointHotspot === 'function' && routeWaypointHotspot(wp);
     const hotspotBtn = document.createElement('button');
+    // Quiet until it is marked: an unmarked point has nothing on the chart to shout about,
+    // and a row of red buttons teaches a pilot to stop reading them.
     hotspotBtn.className = 'insp-btn' + (hotspotOn ? ' insp-btn-on' : '');
     hotspotBtn.id = 'insp-hotspot-btn';
     hotspotBtn.textContent = hotspotOn ? (S.inspHotspotClear || '🔥 Clear hotspot')
@@ -3431,6 +3455,7 @@ function showInspector() {
     body.appendChild(hotspotBtn);
     const del = document.createElement('button');
     del.className = 'insp-btn';
+    del.id = 'insp-del-wp-btn';
     del.textContent = S.deleteWp;
     del.onclick = () => {
       deleteWaypoint(state.selected.index);
@@ -3442,6 +3467,7 @@ function showInspector() {
     // the nearest reference code, or clears it when off-grid (placeholder).
     const resetName = document.createElement('button');
     resetName.className = 'insp-btn';
+    resetName.id = 'insp-reset-name-btn';
     resetName.textContent = S.resetWpName || '↻';
     if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
     resetName.onclick = () => resetWpName(state.selected.index);
