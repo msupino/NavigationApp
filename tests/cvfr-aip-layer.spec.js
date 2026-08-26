@@ -7,8 +7,10 @@
 // asks for a zoom the build did not produce.
 const { test, expect } = require('./_setup');
 
+// Relative, never '/': the deployed run serves the preview under BASE_URL=.../pr/<n>/, and
+// an absolute '/' resolves to the ORIGIN root -- which is the base build, without this layer.
 const boot = async (page) => {
-  await page.goto('/');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => window.NavAid && window.NavAid.tuningDefaults);
 };
 
@@ -28,7 +30,7 @@ test('the layer is offered, labelled, and sits beside CVFR', async ({ page }) =>
 });
 
 test('the Hebrew build labels it too', async ({ page }) => {
-  await page.goto('/?lang=he');
+  await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => window.NavAid && window.NavAid.tuningDefaults);
   const label = await page.evaluate(() => {
     const opt = Array.from(document.getElementById('layer-select').options)
