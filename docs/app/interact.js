@@ -4610,7 +4610,12 @@ map.on('movestart', () => {
   // the CHART, not a tap on what is under the finger: mark it, or letting go re-opens the
   // panel every time the pilot slides the map past a waypoint or along a leg.
   if (drag && !drag.heldMap) drag.moved = true;
-  if (touchDrag && !touchDrag.heldMap) touchDrag.moved = true;
+  // ...except a touch leg press, which measures its own travel. Leaflet now gets the
+  // gesture (nothing calls preventDefault on it any more), and it starts a pan on the
+  // first pixel -- so this fired on the two-pixel wobble every real fingertip has, and a
+  // genuine tap on a leg stopped opening its panel. touchmove's own touchDragPx check is
+  // the one that can tell a tap from a pan; leave the decision there.
+  if (touchDrag && !touchDrag.heldMap && touchDrag.kind !== 'legtap') touchDrag.moved = true;
 });
 
 map.on('mousemove', e => {
