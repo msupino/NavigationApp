@@ -305,3 +305,50 @@ test('a CTR reads as a control zone, in its own colour', async ({ page }) => {
   expect(colour).toBe('#1c7c74');
   expect(colour).not.toBe(await page.evaluate(() => airspaceColor('tma')));
 });
+
+// --- from review ------------------------------------------------------------
+// One dropped request used to disable the layer for the session: the catch assigned [], which
+// satisfies the "already loaded" guard forever. The toggle stayed checked over an empty map,
+// saying nothing about restricted airspace the pilot believed they were being shown.
+test('a failed fetch is retried, not remembered', async ({ page }) => {
+  let attempts = 0;
+  await page.route(/data\/airspace\.json/, (r) => {
+    attempts += 1;
+    if (attempts === 1) return r.fulfill({ status: 500, body: '' });
+    return r.continue();
+  });
+  await boot(page);
+  const first = await page.evaluate(async () => {
+    const cb = document.getElementById('airspace-cb');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+    await loadAirspace();
+    return { loaded: (window.airspace || []).length, isNull: window.airspace === null };
+  });
+  expect(first.loaded).toBe(0);
+  expect(first.isNull).toBe(true);        // null, so the next draw asks again
+
+  const second = await page.evaluate(async () => (await loadAirspace()).length);
+  expect(second).toBeGreaterThan(40);
+  expect(attempts).toBe(2);
+});
+
+// "Your route is clear of it" is a safety statement. It must not change because a layer is
+// switched off -- the route either crosses the area or it does not.
+test('the route verdict does not depend on the layer being visible', async ({ page }) => {
+  await boot(page);
+  const verdicts = await page.evaluate(async () => {
+    await loadAirspace();
+    const a = window.airspace.find(x => x.id === 'LLR01');
+    const mid = a.ring.reduce((acc, p) => [acc[0] + p[0] / a.ring.length, acc[1] + p[1] / a.ring.length], [0, 0]);
+    state.waypoints = [{ lat: mid[0] - 0.15, lng: mid[1], name: 'A' },
+                       { lat: mid[0] + 0.15, lng: mid[1], name: 'B' }];
+    syncLegs();
+    state.legs.forEach(l => { l.altitude = 10000; l.inboundAltitude = 10000; });
+    const on = (() => { window.showAirspace = true; return airspaceRouteVerdict(a); })();
+    const off = (() => { window.showAirspace = false; return airspaceRouteVerdict(a); })();
+    return { on, off };
+  });
+  expect(verdicts.on).toMatch(/inside its limits/);
+  expect(verdicts.off).toBe(verdicts.on);
+});

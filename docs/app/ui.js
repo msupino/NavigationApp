@@ -7517,7 +7517,7 @@ function tuningPanelEnabled() {
 
 function formatTuneValue(spec, value) {
   if (spec.type === 'bool') return value ? 'on' : 'off';
-  if (spec.type === 'color' || spec.type === 'select') return String(value);
+  if (spec.type === 'color' || spec.type === 'select' || spec.type === 'text') return String(value);
   const step = String(spec.step || 1);
   const dot = step.indexOf('.');
   const places = dot === -1 ? 0 : step.length - dot - 1;
@@ -7665,6 +7665,7 @@ function createTuningPanel() {
     if (set.color) set.color.value = String(v);
     if (set.text) set.text.value = text;
     if (set.select) set.select.value = String(v);
+    if (set.textValue) set.textValue.value = String(v);
     if (set.check) set.check.checked = !!v;
   };
   const applyValue = (key, raw) => {
@@ -7683,7 +7684,7 @@ function createTuningPanel() {
       redrawAfterTune();
       return;
     }
-    if (spec && (spec.type === 'color' || spec.type === 'select')) {
+    if (spec && (spec.type === 'color' || spec.type === 'select' || spec.type === 'text')) {
       setTune(key, raw);
     } else {
       const v = parseFloat(raw);
@@ -7774,6 +7775,18 @@ function createTuningPanel() {
         color.addEventListener('input', () => applyValue(key, color.value));
         text.addEventListener('input', () => applyValue(key, text.value));
         row.append(name, color, text, reset);
+      } else if (spec.type === 'text') {
+        // A free-text value (a URL). The numeric branch below would render a range slider
+        // with min/max of undefined -- a control that cannot express the value it holds.
+        const field = document.createElement('input');
+        field.type = 'text';
+        field.id = 'tune-' + key + '-text';
+        field.className = 'tune-text';
+        field.setAttribute('aria-label', spec.label || key);
+        field.dir = 'ltr';
+        set.textValue = field;
+        field.addEventListener('change', () => applyValue(key, field.value));
+        row.append(name, field, reset);
       } else if (spec.type === 'select') {
         const select = document.createElement('select');
         select.id = 'tune-' + key + '-select';
