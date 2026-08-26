@@ -42,7 +42,7 @@ test('neither leg press kind takes the map', async ({ page }) => {
   }
 });
 
-test('a one-finger press on a leg leaves the pan alone and is not swallowed', async ({ page }) => {
+test('a one-finger press on a leg leaves the pan alone, but takes the gesture', async ({ page }) => {
   await boot(page);
   const p = await legMidpoint(page);
   const got = await page.evaluate(({ x, y }) => {
@@ -58,8 +58,38 @@ test('a one-finger press on a leg leaves the pan alone and is not swallowed', as
   }, p);
   expect(got.kind).toBe('legtap');
   expect(got.held).toBe(false);          // the press does not take the map...
-  expect(got.dragEnabled).toBe(true);    // ...so Leaflet still pans
-  expect(got.swallowed).toBe(false);     // ...and the gesture reaches it
+  expect(got.dragEnabled).toBe(true);    // ...so Leaflet still pans (from its own listeners)
+  // ...and the browser default IS suppressed. Leaflet does not need it, and leaving it
+  // alive re-enables the compatibility mouse chain -- see the double-tap test below.
+  expect(got.swallowed).toBe(true);
+});
+
+// The reason the default must stay suppressed. Two taps on a leg that reach the browser
+// become a real dblclick, and the dblclick handler splits the leg -- so a pilot
+// double-tapping the chart to zoom in got their route cut in two, with a waypoint inserted
+// at the tap. Only a locked route stopped it, which is to say: not in the air.
+test('double-tapping a leg does not split it', async ({ page }) => {
+  await boot(page);
+  const p = await legMidpoint(page);
+  const before = await page.evaluate(() => state.waypoints.length);
+  const after = await page.evaluate(({ x, y }) => {
+    const el = document.getElementById('map');
+    const r = el.getBoundingClientRect();
+    const t = [{ clientX: r.left + x, clientY: r.top + y, identifier: 0 }];
+    const fire = (type) => {
+      const ev = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(ev, 'touches', { value: type === 'touchend' ? [] : t });
+      Object.defineProperty(ev, 'changedTouches', { value: t });
+      el.dispatchEvent(ev);
+      return ev.defaultPrevented;
+    };
+    const swallowed = [fire('touchstart'), (fire('touchend'), fire('touchstart'))];
+    fire('touchend');
+    return { count: state.waypoints.length, swallowed };
+  }, p);
+  // Both taps were taken by the app, so no compatibility click -- and no dblclick.
+  expect(after.swallowed).toEqual([true, true]);
+  expect(after.count).toBe(before);
 });
 
 // A pan that merely started on a leg is not a request to inspect that leg. The touch path
@@ -105,13 +135,27 @@ test('a pinch that began on a waypoint is not a tap, and moves nothing', async (
       el.dispatchEvent(ev);
     };
     fire('touchstart', 1);                     // press the waypoint
+    const windowOpenBefore = touchGestureInProgress();
     fire('touchstart', 2);                     // ...second finger: a pinch
+    const windowOpen = touchGestureInProgress();
     fire('touchend', 1);                       // ...one lifts: endTouch clears touchDrag
+    const stillOpen = touchGestureInProgress();
     const cleared = touchDrag === null;
     fire('touchmove', 1);                      // nothing to resume, so nothing moves
     fire('touchend', 0);
-    return { cleared, wp: JSON.stringify(state.waypoints[0]) };
+    return { cleared, windowOpenBefore, windowOpen, stillOpen,
+             wp: JSON.stringify(state.waypoints[0]),
+             panelShut: document.getElementById('inspector').classList.contains('hidden') };
   });
   expect(got.cleared).toBe(true);
   expect(got.wp).toBe(before);
+  // The point of the whole thing: the pilot was zooming, not asking about a waypoint, so
+  // the panel must not open over the chart they were zooming into. Without this assertion
+  // the test passed on "nothing moved" alone, and a broken gesture window would go unseen.
+  expect(got.panelShut).toBe(true);
+  // ...and the window that makes endTouch call it a drag really does open, and survives the
+  // lift that ends a pinch. This is what the removed touchmove guard used to pin.
+  expect(got.windowOpenBefore).toBe(false);
+  expect(got.windowOpen).toBe(true);
+  expect(got.stillOpen).toBe(true);
 });

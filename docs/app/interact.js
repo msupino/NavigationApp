@@ -5215,12 +5215,21 @@ mapEl.addEventListener('touchstart', e => {
     // preserves a pre-gesture panel, which left tablets losing the inspector after every
     // label nudge while desktops kept it.
     touchDrag.inspWasOpen = !document.getElementById('inspector').classList.contains('hidden');
-    // Locked: leave the pan alone and do NOT swallow the gesture, or the finger sticks to a
-    // waypoint that was never going to move. The release still opens the panel for a tap.
+    // Two separate things, and tying them together was a bug in both directions.
+    //
+    // heldMap answers "does this gesture move something, so Leaflet must not pan?" -- false
+    // when the route is locked (nothing is going to move) and for a leg press (which drags
+    // nothing by design).
+    //
+    // preventDefault answers "has the app taken this gesture?", and the answer is always
+    // yes: this branch only runs when the press hit something. Suppressing the default is
+    // what kills the browser's compatibility mouse sequence -- without it a leg tap fires a
+    // real mousedown/mouseup/click, two taps make a native dblclick, and the dblclick
+    // handler above SPLITS THE LEG. A pilot double-tapping the chart to zoom in got their
+    // route cut in two and a waypoint inserted. Leaflet pans from its own touch listeners,
+    // not from the browser default, so suppressing it costs no panning.
     touchDrag.heldMap = holdMapForDrag(touchDrag.kind);
-    if (touchDrag.heldMap) {
-      e.preventDefault();            // suppress pan + the synthetic click
-    }
+    e.preventDefault();              // suppress the synthetic mouse chain, and with it dblclick
     // Nothing opens here -- endTouch decides, once tap and drag can be told apart.
     draw();
   }
