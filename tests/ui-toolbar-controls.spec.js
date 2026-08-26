@@ -78,7 +78,9 @@ test.describe('Map legend', () => {
     await expect(legend).toContainText('Legend');
     await expect(legend).toContainText('Airfield');
     await expect(legend).toContainText('Waypoint');
-    await expect(legend).toContainText('Freq change');
+    // The ringed circle is the hotspot symbol now; a frequency change announces itself in a
+    // callout, with the frequency in it, and needs no legend entry.
+    await expect(legend).toContainText('Hotspot');
     await expect(legend.locator('.legend-airfield')).toBeVisible();
     await expect(legend.locator('.legend-waypoint')).toBeVisible();
     await expect(legend.locator('.legend-atc')).toBeVisible();

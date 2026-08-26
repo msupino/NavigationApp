@@ -360,27 +360,45 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(missing).toEqual([]);
   });
 
-  test('populated dataset draws comm-change rings for in-view points', async ({ page }) => {
+  // The ring is retired: a red circle on the map means a hotspot now, and one symbol cannot
+  // mean both "look out here" and "change frequency here". The callout says the latter in
+  // words, with the frequency in it. The drawing is kept behind commChangeRings for anyone
+  // who wants it back.
+  test('no ring is drawn at a comm-change point by default', async ({ page }) => {
     await boot(page);   // boot() frames the map on TYONA
     await page.evaluate(() => { window.showCommChange = true; draw(); });
-    const drawn = await page.evaluate(() =>
-      Array.from(window.__commChangeRingsDrawn || []));
+    expect(await page.evaluate(() => Array.from(window.__commChangeRingsDrawn || []))).toEqual([]);
+  });
+
+  test('...and the tunable brings it back', async ({ page }) => {
+    await boot(page);
+    const drawn = await page.evaluate(() => {
+      window.showCommChange = true;
+      setTune('commChangeRings', true);
+      draw();
+      return Array.from(window.__commChangeRingsDrawn || []);
+    });
     expect(drawn).toContain('TYONA');
   });
 
   test('comm-change rings are omitted from the PNG export', async ({ page }) => {
     await boot(page);
-    // Sanity: rings draw on-screen.
+    // With the ring turned back on it draws on-screen...
     const onScreen = await page.evaluate(() => {
-      window.showCommChange = true; draw();
+      window.showCommChange = true;
+      setTune('commChangeRings', true);
+      draw();
       return Array.from(window.__commChangeRingsDrawn || []);
     });
     expect(onScreen).toContain('TYONA');
-    // During export (NavAid.exporting) no rings are drawn.
+    // ...and still never during export (NavAid.exporting).
     const exported = await page.evaluate(() => {
-      NavAid.exporting = true; draw();
+      window.NavAid = window.NavAid || {};
+      NavAid.exporting = true;
+      draw();
       const out = Array.from(window.__commChangeRingsDrawn || []);
-      NavAid.exporting = false; draw();
+      NavAid.exporting = false;
+      draw();
       return out;
     });
     expect(exported).toEqual([]);
@@ -513,7 +531,9 @@ test.describe('comm-change rendering (fixture-backed)', () => {
   test('drawNavWaypoints draws the comm-change ring at TYONA', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
-    await page.evaluate(() => { window.showCommChange = true; draw(); });
+    // The ring is off by default now (a red circle means a hotspot); this test is about the
+    // drawing itself, so it asks for it.
+    await page.evaluate(() => { window.showCommChange = true; setTune('commChangeRings', true); draw(); });
     const drawn = await page.evaluate(() =>
       Array.from(window.__commChangeRingsDrawn || []));
     expect(drawn).toContain('TYONA');
@@ -529,7 +549,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
       cb.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await page.waitForFunction(() => window.showCommChange === true);
-    await page.evaluate(() => draw());
+    await page.evaluate(() => { setTune('commChangeRings', true); draw(); });
     // Sanity check before flipping back.
     let drawn = await page.evaluate(() =>
       Array.from(window.__commChangeRingsDrawn || []));
@@ -693,6 +713,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     await page.evaluate(async () => {
       window.showNavWP = false;
       window.showCommChange = true;
+      setTune('commChangeRings', true);      // the ring ships off; this test is about it
       // navWP positions are still required — loaded by the comm toggle/boot.
       if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
       draw();
@@ -706,7 +727,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
   test('ring grows to enclose a named route-waypoint disc so it stays visible (#488)', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
-    await page.evaluate(() => { window.showCommChange = true; draw(); });
+    await page.evaluate(() => { window.showCommChange = true; setTune('commChangeRings', true); draw(); });
     // Bare ring radius with no route waypoint on the point.
     const bare = await page.evaluate(() => {
       state.waypoints = []; state.legs = []; syncLegs();
