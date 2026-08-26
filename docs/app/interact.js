@@ -2799,7 +2799,7 @@ function finalizeInspectorActions(body) {
   for (const { el: b } of ranked) {
     if (b.classList.contains('insp-btn')) {
       const txt = (b.textContent || '').toLowerCase();
-      const destructive = /🗑|delete|remove|מחק|הסר/.test(txt) || b.classList.contains('insp-btn-loud');
+      const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
       if (!destructive) b.classList.add('insp-btn-safe');
     }
     wrap.appendChild(b);
@@ -3438,7 +3438,10 @@ function showInspector() {
     }
     const hotspotOn = typeof routeWaypointHotspot === 'function' && routeWaypointHotspot(wp);
     const hotspotBtn = document.createElement('button');
-    hotspotBtn.className = 'insp-btn insp-btn-loud' + (hotspotOn ? ' insp-btn-on' : '');
+    // Quiet until it is marked: an unmarked point has nothing on the chart to shout about,
+    // and a row of red buttons teaches a pilot to stop reading them. insp-btn-on-hot rather
+    // than the shared insp-btn-on -- this one is red, the turning point is filled amber.
+    hotspotBtn.className = 'insp-btn' + (hotspotOn ? ' insp-btn-on insp-btn-on-hot' : '');
     hotspotBtn.id = 'insp-hotspot-btn';
     hotspotBtn.textContent = hotspotOn ? (S.inspHotspotClear || '🔥 Clear hotspot')
                                        : (S.inspHotspotSet || '🔥 Mark as hotspot');

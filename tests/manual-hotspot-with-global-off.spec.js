@@ -128,12 +128,11 @@ test('the button shows whether the point is marked', async ({ page }) => {
   // Not disabled and not faded in either state: it is a toggle, not a locked control.
   expect(look.off.disabled).toBe(false);
   expect(look.off.opacity).toBe('1');
-  // ...and the two states are told apart by more than the weight of the type. The button
-  // stays red either way -- it is a mark on the chart, not a preference -- and takes the
-  // hotspot ring as its border once the point is marked.
+  // ...and the two states are told apart by more than the weight of the type: quiet while
+  // the point is unmarked, red once it is.
   expect(look.on.cls).toMatch(/insp-btn-on/);
-  expect(look.on.border).not.toBe(look.off.border);
-  expect(look.on.border).toBe('rgb(255, 209, 102)');  // waypointHotspotFillColor, as the ring
+  expect(look.on.bg).not.toBe(look.off.bg);
+  expect(look.on.bg).toBe('rgb(176, 54, 54)');
 });
 
 // The action row reads in a fixed order — delete, reset, frequency change, hotspot, turn —
@@ -153,15 +152,17 @@ test('the actions are in the order a pilot reads them', async ({ page }) => {
   expect(rank('insp-hotspot-btn')).toBeGreaterThan(-1);
 });
 
-// It is a mark on the chart, not a preference: it wears the same red as the delete actions,
-// and keeps it when pressed, with the hotspot ring as its border so set still reads as set.
-test('the hotspot toggle is red in both states', async ({ page }) => {
+// Red says "there is something on the chart here", which is true only once the point is
+// marked. An unmarked point has nothing to shout about, and a row of red buttons teaches a
+// pilot to stop reading them.
+test('the hotspot toggle is quiet until it is set, then red', async ({ page }) => {
   await boot(page);
   const look = await page.evaluate(() => {
     const read = () => {
       const b = document.getElementById('insp-hotspot-btn');
       const cs = getComputedStyle(b);
-      return { bg: cs.backgroundColor, border: cs.borderTopColor, safe: b.classList.contains('insp-btn-safe') };
+      return { bg: cs.backgroundColor, border: cs.borderTopColor,
+               safe: b.classList.contains('insp-btn-safe') };
     };
     state.selected = { type: 'wp', index: 0 };
     showInspector();
@@ -171,9 +172,10 @@ test('the hotspot toggle is red in both states', async ({ page }) => {
     showInspector();
     return { off, on: read() };
   });
-  expect(look.off.safe).toBe(false);                  // never demoted to the quiet grey
-  expect(look.off.bg).toBe('rgb(176, 54, 54)');       // the same red as delete
-  expect(look.on.bg).toBe('rgb(176, 54, 54)');        // ...pressed too
-  expect(look.on.border).toBe('rgb(255, 209, 102)');  // ringed with the hotspot colour
-  expect(look.on.border).not.toBe(look.off.border);   // so the two states still differ
+  // Unmarked: the panel's quiet grey, like every other non-destructive action.
+  expect(look.off.safe).toBe(true);
+  expect(look.off.bg).not.toBe('rgb(176, 54, 54)');
+  // Marked: red, with a plain white border rather than a second accent colour.
+  expect(look.on.bg).toBe('rgb(176, 54, 54)');
+  expect(look.on.border).toBe('rgb(255, 255, 255)');
 });

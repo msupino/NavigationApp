@@ -75,7 +75,8 @@ test('both toggles show their set state', async ({ page }) => {
   expect(both.hotOn.on).toBe(true);
   expect(both.turnOn.bg).not.toBe(both.turnOff.bg);       // filled once set
   expect(both.hotOn.border).not.toBe(both.hotOff.border); // ringed once set
-  expect(both.hotOn.bg).toBe('rgb(176, 54, 54)');         // ...and still the chart-mark red
+  expect(both.hotOn.bg).toBe('rgb(176, 54, 54)');         // red once the mark exists
+  expect(both.hotOff.bg).not.toBe('rgb(176, 54, 54)');    // ...and quiet before it does
 });
 
 // A route that never comes home has no far end to mark. The button says so and is disabled --
