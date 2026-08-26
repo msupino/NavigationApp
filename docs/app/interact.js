@@ -2919,6 +2919,21 @@ const LOCKABLE_DRAG_KINDS = ['wp', 'note', 'label', 'cumlabel', 'cumlabelret'];
 // pass here did for kites -- flashes the panel across the chart on every drag.
 const KITE_DRAG_KINDS = ['label', 'cumlabel', 'cumlabelret'];
 const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick'].concat(KITE_DRAG_KINDS);
+// A press on something draggable normally takes the map's drag away, so the gesture moves
+// the thing and not the chart under it. When the route is LOCKED, nothing is going to move
+// -- and taking the pan away anyway left the map stuck under every waypoint, kite, callout
+// and cumulative arrow on it. On a kneeboard those cover a good part of the screen, so the
+// map read as frozen wherever the route happened to be.
+//
+// So: hold the map only when the drag can actually do something. Locked, Leaflet keeps the
+// pan and the press still selects on the way down and opens the panel on release -- unless
+// the map moved, which `movestart` below marks as a drag rather than a tap.
+function holdMapForDrag(kind) {
+  if (dragLockedNow(kind)) return false;
+  map.dragging.disable();
+  return true;
+}
+
 function dragLockedNow(kind) {
   if (LOCKABLE_DRAG_KINDS.indexOf(kind) === -1) return false;
   // The map's edit lock owns this: the pilot's stored choice, the automatic lock whenever a
@@ -4253,7 +4268,7 @@ function grabSelected(px, py, latlng) {
       drag = { kind: 'note', i: noteHit,
                offLat: state.notes[noteHit].lat - latlng.lat,
                offLng: state.notes[noteHit].lng - latlng.lng };
-      map.dragging.disable();
+      holdMapForDrag('note');
       draw();                     // panel waits for the release: see TAP_OPENS_INSPECTOR_KINDS
       return true;
     }
@@ -4443,7 +4458,7 @@ map.on('mousedown', e => {
       offLat: state.notes[note].lat - e.latlng.lat,
       offLng: state.notes[note].lng - e.latlng.lng,
     };
-    map.dragging.disable();
+    holdMapForDrag('note');
     draw();                       // panel waits for the release: see TAP_OPENS_INSPECTOR_KINDS
     return;
   }
@@ -4456,7 +4471,7 @@ map.on('mousedown', e => {
     drag = { kind: 'wp', i: lead, also: coincident.slice(1), moved: false,
              origLat: state.waypoints[lead].lat, origLng: state.waypoints[lead].lng,
              origName: state.waypoints[lead].name, originSnapArmed: false };
-    map.dragging.disable();
+    holdMapForDrag('wp');
     draw();
     return;
   }
@@ -4472,7 +4487,7 @@ map.on('mousedown', e => {
     drag = { kind: 'wp', i: wp, moved: false,
              origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
              origName: state.waypoints[wp].name, originSnapArmed: false };
-    map.dragging.disable();
+    holdMapForDrag('wp');
     // Highlight now, but defer the inspector to release-without-move so you can
     // drag a waypoint (or grab one while panning) without the panel popping up.
     draw();
@@ -4490,7 +4505,7 @@ map.on('mousedown', e => {
     _materialiseDefaultCumLabel(cum.i);
     drag = { kind: 'cumlabel', i: cum.i };
     state.selected = { type: 'leg', index: cum.i };
-    map.dragging.disable();
+    holdMapForDrag('cumlabel');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
@@ -4500,7 +4515,7 @@ map.on('mousedown', e => {
     _materialiseDefaultCumLabelRet(cumRet.i);
     drag = { kind: 'cumlabelret', i: cumRet.i };
     state.selected = { type: 'leg', index: cumRet.i };
-    map.dragging.disable();
+    holdMapForDrag('cumlabelret');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
@@ -4511,7 +4526,7 @@ map.on('mousedown', e => {
     drag = { kind: 'label', i: lab.i, which: lab.which,
              ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
-    map.dragging.disable();
+    holdMapForDrag('label');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
     return;
   }
@@ -4561,6 +4576,15 @@ map.on('mousedown', e => {
     return;
   }
   downHit = false;                     // empty space -> Leaflet pans
+});
+
+// A locked press leaves Leaflet its pan, so the map can move while `drag`/`touchDrag` is
+// still pending. That is a drag of the CHART, not a tap on the thing under the finger --
+// mark it, or letting go re-opens the panel every time the pilot slides the map by a
+// waypoint.
+map.on('movestart', () => {
+  if (drag && dragLockedNow(drag.kind)) drag.moved = true;
+  if (touchDrag && dragLockedNow(touchDrag.kind)) touchDrag.moved = true;
 });
 
 map.on('mousemove', e => {
@@ -5151,8 +5175,11 @@ mapEl.addEventListener('touchstart', e => {
     // preserves a pre-gesture panel, which left tablets losing the inspector after every
     // label nudge while desktops kept it.
     touchDrag.inspWasOpen = !document.getElementById('inspector').classList.contains('hidden');
-    map.dragging.disable();
-    e.preventDefault();                // suppress pan + the synthetic click
+    // Locked: leave the pan alone and do NOT swallow the gesture, or the finger sticks to a
+    // waypoint that was never going to move. The release still opens the panel for a tap.
+    if (holdMapForDrag(touchDrag.kind)) {
+      e.preventDefault();              // suppress pan + the synthetic click
+    }
     // Nothing opens here -- endTouch decides, once tap and drag can be told apart.
     draw();
   }
