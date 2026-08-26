@@ -1942,6 +1942,12 @@ async function _fetchAirspace() {
   if (airspace.length) scheduleDraw();
   return airspace;
 }
+// Ticking the layer again is a fresh question, so it deserves a fresh answer. Without this
+// the warning latched for the process: the pilot sees one toast, it fades, and every later
+// look at a still-broken layer is a silent empty map -- the exact "there is no restricted
+// airspace here" misreading this warning exists to prevent, just deferred.
+function airspaceWarningReset() { _airspaceWarned = false; }
+window.airspaceWarningReset = airspaceWarningReset;
 window.loadAirspace = loadAirspace;
 
 function airspaceColor(kind) {
