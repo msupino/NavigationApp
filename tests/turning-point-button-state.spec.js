@@ -46,33 +46,36 @@ test('marking a turning point shows on the button, not only in the text', async 
   expect(after.border).not.toBe(before.border);
 });
 
-// One pressed look for the whole panel: the turning point and the hotspot mark different
-// things, but "this is set" should read the same wherever it appears.
-test('the pressed look is the same as the hotspot toggle', async ({ page }) => {
+// Both buttons say "this is set" at a glance, in the panel's own vocabulary: the hotspot
+// keeps the red of a chart mark and takes the hotspot ring as its border, the turning point
+// takes the filled highlight. What matters is that neither is told apart by type weight
+// alone, which is what made them read as inert.
+test('both toggles show their set state', async ({ page }) => {
   await boot(page);
   const both = await page.evaluate(() => {
+    const read = (id) => {
+      const b = document.getElementById(id);
+      const cs = getComputedStyle(b);
+      return { on: b.className.includes('insp-btn-on'), bg: cs.backgroundColor,
+               border: cs.borderTopColor };
+    };
     state.selected = { type: 'wp', index: 2 };
     showInspector();
+    const turnOff = read('insp-turn-btn');
+    const hotOff = read('insp-hotspot-btn');
     document.getElementById('insp-turn-btn').click();
     state.selected = { type: 'wp', index: 2 };
     showInspector();
     document.getElementById('insp-hotspot-btn').click();
     state.selected = { type: 'wp', index: 2 };
     showInspector();
-    const read = (id) => {
-      const b = document.getElementById(id);
-      const cs = getComputedStyle(b);
-      return { on: b.className.includes('insp-btn-on'), bg: cs.backgroundColor,
-               border: cs.borderTopColor, weight: cs.fontWeight };
-    };
-    return { turn: read('insp-turn-btn'), hotspot: read('insp-hotspot-btn') };
+    return { turnOff, hotOff, turnOn: read('insp-turn-btn'), hotOn: read('insp-hotspot-btn') };
   });
-  expect(both.turn.on).toBe(true);
-  expect(both.hotspot.on).toBe(true);
-  expect(both.turn.bg).toBe(both.hotspot.bg);
-  expect(both.turn.border).toBe(both.hotspot.border);
-  expect(both.turn.bg).toBe('rgb(255, 209, 102)');
-  expect(both.turn.border).toBe('rgb(215, 38, 61)');
+  expect(both.turnOn.on).toBe(true);
+  expect(both.hotOn.on).toBe(true);
+  expect(both.turnOn.bg).not.toBe(both.turnOff.bg);       // filled once set
+  expect(both.hotOn.border).not.toBe(both.hotOff.border); // ringed once set
+  expect(both.hotOn.bg).toBe('rgb(176, 54, 54)');         // ...and still the chart-mark red
 });
 
 // A route that never comes home has no far end to mark. The button says so and is disabled --

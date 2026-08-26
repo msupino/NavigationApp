@@ -2038,6 +2038,19 @@ body.theme-light .insp-status {
 }
 /* A latched state is emphasis, not an alarm: set/unset actions keep the same safe
    colours in both themes while bold text shows which state is active. */
+/* The hotspot toggle wears the same red as the delete actions: it is a mark on the chart,
+   not a preference, and the panel's quiet grey read as "nothing happens here". Pressed, it
+   keeps the red and takes the hotspot ring as its border, so set and unset are still told
+   apart at a glance. */
+.insp-btn.insp-btn-loud.insp-btn-on,
+.insp-btn.insp-btn-loud.insp-btn-safe.insp-btn-on,
+body.theme-light .insp-btn.insp-btn-loud.insp-btn-on,
+body.theme-light .insp-btn.insp-btn-loud.insp-btn-safe.insp-btn-on {
+  color: #fff;
+  background: #b03636;
+  border: 3px solid var(--navaid-hotspot-fill, #ffd166);
+}
+
 /* A pressed toggle has to look pressed. These said "on" with font-weight alone, which on a
    small grey button is invisible -- a marked point looked exactly like an unmarked one, and
    the control read as inert.
