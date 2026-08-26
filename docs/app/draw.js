@@ -3248,8 +3248,41 @@ function commCallSignDefaultFreq(row) {
   if (typeof row.freq === 'string' && row.freq.trim()) return commFormatFreq(row.freq);
   return '';
 }
-function commCallSignTemplateFreq(id, row) {
+// The frequency the catalog publishes for this call sign, ignoring NOTAMs and overrides.
+function commCallSignPublishedFreq(id, row) {
   return commCallSignDefaultFreq(row || commCatalogCallSignRow(id));
+}
+
+// Which aerodrome a call sign belongs to. The map lives in interact.js, which loads after
+// this file, so it is read at call time rather than captured.
+function commCallSignIcao(id) {
+  const map = (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS) || null;
+  if (!map || !id) return '';
+  const want = String(id).toUpperCase();
+  for (const code in map) if (String(map[code] || '').toUpperCase() === want) return code;
+  return '';
+}
+
+// A NOTAM that moved this call sign's tower frequency, if one is in force.
+function commCallSignFreqChange(id) {
+  if (typeof tune === 'function' && tune('featureNotamFreqRows') === false) return null;
+  if (typeof airfieldFreqChanges !== 'function') return null;
+  const icao = commCallSignIcao(commCallSignIdKey(id) || id);
+  if (!icao) return null;
+  return airfieldFreqChanges(icao).find(c => c.service === 'tower') || null;
+}
+
+// The frequency a fresh comm-change gets, and the one its reset button returns to.
+//
+// A NOTAM in force is the template, not a decoration on top of it. Herzliya's tower moved to
+// 125.60 under C1574/26, and every waypoint that seeds its frequency from the HERZLIYA call
+// sign -- Bnei Dror, Deror, the whole northern set -- would otherwise offer 122.20 and send
+// a pilot to call a frequency nobody is on. One definition here reaches all of them: the
+// waypoint inspector, the Freq column, the map callouts and the airfield panel.
+function commCallSignTemplateFreq(id, row) {
+  const change = commCallSignFreqChange(id);
+  if (change) return change.freq;
+  return commCallSignPublishedFreq(id, row);
 }
 function commCallSignOverrideFreq(id) {
   const key = commCallSignIdKey(id);
