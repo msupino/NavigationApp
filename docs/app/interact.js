@@ -2935,7 +2935,15 @@ const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick'].concat(KI
 // So: hold the map only when the drag can actually do something. Locked, Leaflet keeps the
 // pan and the press still selects on the way down and opens the panel on release -- unless
 // the map moved, which `movestart` below marks as a drag rather than a tap.
+// A press on a leg line selects it and opens its panel on release. It drags nothing, so the
+// map pans under the finger -- which the touchmove handler has documented since it was
+// written, and which only the MOUSE path was taught. `legtap` is not a lockable kind, so
+// holdMapForDrag fell through to disabling the pan and the touch path then swallowed the
+// gesture with preventDefault: on the kneeboard tablet this fix was for, pressing anywhere
+// on the route still froze the chart.
+const PAN_THROUGH_DRAG_KINDS = ['legtap', 'legclick'];
 function holdMapForDrag(kind) {
+  if (PAN_THROUGH_DRAG_KINDS.indexOf(kind) !== -1) return false;
   if (dragLockedNow(kind)) return false;
   map.dragging.disable();
   return true;
@@ -4540,11 +4548,15 @@ map.on('mousedown', e => {
   const leg = hitLeg(p.x, p.y);
   if (leg >= 0) {
     downHit = true;
+    // Kept so a pan that merely started on a leg can put the selection back -- the touch
+    // path has done this for `legtap` all along.
+    const prevSel = state.selected;
     state.selected = { type: 'leg', index: leg };
     // The map pans under the finger: a leg press selects and opens on release, it does not
     // drag the leg anywhere. The touch handler has said so in its own comment since it was
     // written; the mouse path disabled the pan anyway, so pressing the route froze the chart.
-    drag = { kind: 'legclick', heldMap: false };
+    drag = { kind: 'legclick', prevSelected: prevSel };
+    drag.heldMap = holdMapForDrag('legclick');
     draw();                       // panel waits for the release, as every other press does
     return;
   }
@@ -4670,6 +4682,15 @@ function clearDragAndRedraw(which) {
 
 function endMouseDrag() {
   if (drag) {
+    // Pressing a leg selects it, which is right for a click and wrong for a pan: the pilot
+    // was moving the chart, and a highlighted leg with no panel explains nothing. The touch
+    // path has put the old selection back for `legtap` all along; the mouse path did not,
+    // so a pan that started on a leg left it highlighted -- and, if the inspector was
+    // already open on something else, retargeted the panel to that leg.
+    if (drag.kind === 'legclick' && drag.moved) {
+      state.selected = drag.prevSelected || null;
+      draw();
+    }
     settleAddModeWaypointTap(drag);
     if (drag.kind === 'wp' && drag.moved) {
       const wp = state.waypoints[drag.i];
@@ -5216,21 +5237,15 @@ mapEl.addEventListener('touchmove', e => {
     return;
   }
   if (!touchDrag || e.touches.length !== 1) return;
-  // Back to one finger after a pinch is not the drag resuming. The press that armed this
-  // drag happened before the zoom, so startX/startY are in the old view's pixels: the slop
-  // check compares against a point that no longer means anything, clears it instantly, and
-  // the waypoint jumps to wherever the surviving finger is -- occasionally close enough to a
-  // neighbour to take the delete-on-overlap path with it. mousedown, click and endTouch all
-  // consult the same guard already; this was the one path that did not.
-  if (typeof touchGestureInProgress === 'function' && touchGestureInProgress()) {
-    // Re-seed from here, so if the finger really does go on to drag, it measures from where
-    // it is now rather than from the pre-pinch position.
-    const q = touchXY(e.touches[0]);
-    touchDrag.startX = q.x;
-    touchDrag.startY = q.y;
-    touchDrag.dragArmed = false;
-    return;
-  }
+  // No pinch guard here, deliberately. A drag cannot survive a pinch to be resumed: endTouch
+  // is bound to EVERY touchend with no remaining-finger check, and every path through it
+  // ends in clearDragAndRedraw('touch'), so the lift that ends a pinch has already nulled
+  // touchDrag -- the `!touchDrag` return above is what actually stops the teleport. A guard
+  // added here fired only in the case it was not written for: for 700ms after any pinch it
+  // swallowed a BRAND NEW one-finger drag, so a pilot who zoomed in and immediately grabbed
+  // a waypoint got a dead drag. What protects the pinch-that-started-on-a-waypoint is
+  // endTouch's own touchGestureInProgress() check, which marks it moved so the release is
+  // not read as a tap.
   e.preventDefault();
   const p = touchXY(e.touches[0]);
   // A fingertip is ~10 mm across and never lands still, so a plain tap arrives with a few
