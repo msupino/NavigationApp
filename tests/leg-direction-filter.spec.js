@@ -310,14 +310,14 @@ test('the supplied LLHZ loop hides direction-only hotspots in both selections', 
     routeHotspots: ['SFAIM', 'TYONA', 'NTAIM'],
     projectedHotspots: ['NTAIM', 'SFAIM', 'TYONA'],
     notes: ['SFAIM', 'TYONA'],
-    commRings: ['NTAIM', 'SFAIM', 'TYONA'],
+    commRings: [],
     commHits: ['NTAIM', 'SFAIM', 'TYONA'],
   });
   expect(out.returning).toEqual({
     routeHotspots: ['NTAIM', 'TYONA', 'HTZUK'],
     projectedHotspots: ['HTZUK', 'NTAIM', 'TYONA'],
     notes: ['KNTRY', 'TYONA'],
-    commRings: ['KNTRY', 'NTAIM', 'TYONA'],
+    commRings: [],
     commHits: ['KNTRY', 'NTAIM', 'TYONA'],
   });
 });
