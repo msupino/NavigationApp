@@ -3452,9 +3452,8 @@ function showInspector() {
     const hotspotOn = typeof routeWaypointHotspot === 'function' && routeWaypointHotspot(wp);
     const hotspotBtn = document.createElement('button');
     // Quiet until it is marked: an unmarked point has nothing on the chart to shout about,
-    // and a row of red buttons teaches a pilot to stop reading them. insp-btn-on-hot rather
-    // than the shared insp-btn-on -- this one is red, the turning point is filled amber.
-    hotspotBtn.className = 'insp-btn' + (hotspotOn ? ' insp-btn-on insp-btn-on-hot' : '');
+    // and a row of red buttons teaches a pilot to stop reading them.
+    hotspotBtn.className = 'insp-btn' + (hotspotOn ? ' insp-btn-on' : '');
     hotspotBtn.id = 'insp-hotspot-btn';
     hotspotBtn.textContent = hotspotOn ? (S.inspHotspotClear || '🔥 Clear hotspot')
                                        : (S.inspHotspotSet || '🔥 Mark as hotspot');
