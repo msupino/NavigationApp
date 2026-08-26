@@ -133,6 +133,9 @@ const NOT_A_SYNCED_SETTING = [
   [/TipDone$/,                    'one-time tip, per device'],
   // Legacy keys that are READ for migration and never written.
   [/^navaid\.showVor$/,          'pre-split VOR key, read once then removed'],
+  // Superseded when the hotspot overlay was switched off for everyone: the app only removes
+  // it now, so that a device does not carry its old answer -- or sync it to a new one.
+  [/^navaid\.showHotspots$/,     'pre-reset hotspot key, removed on load and never written'],
   [/^navaid\.showNotam$/,        'pre-per-chart NOTAM key, read for adoption only'],
   [/^navaid\.legLineWidth2?$/,   'superseded when the slider range narrowed; read for adoption'],
   [/^navaid\.driftLineWidth$/,   'superseded when the slider range narrowed; read for adoption'],
