@@ -730,6 +730,18 @@ NavAid.tuningDefaults = {
   followMeRateSec: { value: 2, min: 1, max: 30, step: 1, label: 'Follow me: publish every (s)' },
   followMeStaleSec: { value: 30, min: 5, max: 300, step: 5,
     label: 'Follow me: call the position stale after (s)' },
+  // A share that survives the app dying. The topic and key are kept on the device, so a
+  // crash, a force-quit or a reboot mid-flight resumes the SAME link instead of stranding
+  // everyone who already has it. Hours, because a link that outlives the flight is a link
+  // that tracks you next week: past this, sharing again mints a new one.
+  followMeResumeHr: { value: 12, min: 1, max: 48, step: 1,
+    label: 'Follow me: resume the same link for (hours)' },
+  // The other end of that trade: one link per aircraft, kept forever, that can live in a
+  // club WhatsApp group. It only ever shows a position while the pilot is actually sharing
+  // -- between flights whoever holds it sees "waiting for a position" -- but it does mean a
+  // standing invitation to every future flight, so it is off unless someone asks for it.
+  featureFollowMePersist: { value: false, type: 'bool',
+    label: 'Feature: keep one follow-me link per aircraft, forever' },
   // The one-time nudge that teaches a first-time visitor the core action, plus the click
   // priming that goes with it (an empty map's first plain click drops a waypoint instead of
   // inspecting). Both are the same onboarding gesture, so one switch governs them: off, and
@@ -920,7 +932,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'featureFollowMe', 'followMeBroker', 'offlineAutoFloor', 'offlineFloorWifiOnly', 'offlineFloorMinZ', 'offlineFloorMaxZ', 'followMeRateSec', 'followMeStaleSec', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'featureFollowMe', 'followMeBroker', 'offlineAutoFloor', 'offlineFloorWifiOnly', 'offlineFloorMinZ', 'offlineFloorMaxZ', 'followMeRateSec', 'followMeStaleSec', 'followMeResumeHr', 'featureFollowMePersist', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1880,6 +1892,7 @@ window.S = Object.assign({
   followMeLastFix: (sec) => (sec < 90 ? 'Last position ' + sec + 's ago'
     : 'Last position ' + Math.round(sec / 60) + ' min ago'),
   followMeStale: 'not moving — the feed has stopped',
+  followMeResumed: 'Follow me: still sharing — the same link as before still works.',
   tbFollowMeTitle: 'Share a link that shows where you are while you fly. The position is encrypted; the key is in the link.',
   tbFollowMeStop: 'Stop sharing',
   followMeCopied: 'Follow-me link copied — it works while you are sharing, and dies when you stop.',
