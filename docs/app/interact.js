@@ -2935,7 +2935,15 @@ const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick'].concat(KI
 // So: hold the map only when the drag can actually do something. Locked, Leaflet keeps the
 // pan and the press still selects on the way down and opens the panel on release -- unless
 // the map moved, which `movestart` below marks as a drag rather than a tap.
+// A press on a leg line selects it and opens its panel on release. It drags nothing, so the
+// map pans under the finger -- which the touchmove handler has documented since it was
+// written, and which only the MOUSE path was taught. `legtap` is not a lockable kind, so
+// holdMapForDrag fell through to disabling the pan and the touch path then swallowed the
+// gesture with preventDefault: on the kneeboard tablet this fix was for, pressing anywhere
+// on the route still froze the chart.
+const PAN_THROUGH_DRAG_KINDS = ['legtap', 'legclick'];
 function holdMapForDrag(kind) {
+  if (PAN_THROUGH_DRAG_KINDS.indexOf(kind) !== -1) return false;
   if (dragLockedNow(kind)) return false;
   map.dragging.disable();
   return true;
@@ -4540,11 +4548,15 @@ map.on('mousedown', e => {
   const leg = hitLeg(p.x, p.y);
   if (leg >= 0) {
     downHit = true;
+    // Kept so a pan that merely started on a leg can put the selection back -- the touch
+    // path has done this for `legtap` all along.
+    const prevSel = state.selected;
     state.selected = { type: 'leg', index: leg };
     // The map pans under the finger: a leg press selects and opens on release, it does not
     // drag the leg anywhere. The touch handler has said so in its own comment since it was
     // written; the mouse path disabled the pan anyway, so pressing the route froze the chart.
-    drag = { kind: 'legclick', heldMap: false };
+    drag = { kind: 'legclick', prevSelected: prevSel };
+    drag.heldMap = holdMapForDrag('legclick');
     draw();                       // panel waits for the release, as every other press does
     return;
   }
@@ -4597,8 +4609,15 @@ map.on('movestart', () => {
   // -- can have the map move under it while the press is still pending. That is a drag of
   // the CHART, not a tap on what is under the finger: mark it, or letting go re-opens the
   // panel every time the pilot slides the map past a waypoint or along a leg.
+  //
+  // Mouse only, deliberately. Leaflet's Draggable starts a pan at clickTolerance = 3px while
+  // the app calls a touch gesture a drag at touchDragPx = 10, so marking a touch press here
+  // overrode the app's own threshold with a smaller one: a fingertip wobbling 4px while
+  // tapping stopped opening the panel. That is what broke the leg tap, and it broke every
+  // LOCKABLE kind the same way while the route was locked -- heldMap is false for those too.
+  // The touchmove handler already sets `moved` once past the slop, for the locked kinds and
+  // for legs alike, so it is the one place that decision belongs. A mouse does not wobble.
   if (drag && !drag.heldMap) drag.moved = true;
-  if (touchDrag && !touchDrag.heldMap) touchDrag.moved = true;
 });
 
 map.on('mousemove', e => {
@@ -4670,6 +4689,15 @@ function clearDragAndRedraw(which) {
 
 function endMouseDrag() {
   if (drag) {
+    // Pressing a leg selects it, which is right for a click and wrong for a pan: the pilot
+    // was moving the chart, and a highlighted leg with no panel explains nothing. The touch
+    // path has put the old selection back for `legtap` all along; the mouse path did not,
+    // so a pan that started on a leg left it highlighted -- and, if the inspector was
+    // already open on something else, retargeted the panel to that leg.
+    if (drag.kind === 'legclick' && drag.moved) {
+      state.selected = drag.prevSelected || null;
+      draw();
+    }
     settleAddModeWaypointTap(drag);
     if (drag.kind === 'wp' && drag.moved) {
       const wp = state.waypoints[drag.i];
@@ -5035,7 +5063,13 @@ mapEl.addEventListener('touchstart', e => {
   if (e.touches.length !== 1) return;
   const p = touchXY(e.touches[0]);
   // Second tap of a double tap: the first tap's panel goes back where it was, and this touch
-  // is marked so its own release opens nothing either -- the gesture is a zoom, not a tap.
+  // is marked so its own release opens nothing either -- a double tap is not a request to
+  // inspect. It does not zoom the chart when it lands on a route element: this handler takes
+  // the gesture and suppresses the browser default, and Leaflet's doubleClickZoom listens
+  // for the dblclick that default would have produced. Suppressing it is deliberate -- the
+  // same default is what let a double tap on a LEG reach the dblclick handler and split the
+  // route. Double-tap zoom still works everywhere the press hits no route element, which is
+  // where a pilot zooming the chart is aiming.
   const wasDoubleTap = undoTapOpenIfDoubleTap(p.x, p.y);
   const selectionBeforeTouch = state.selected;
   // Hit-test priority matches paint order so the topmost element wins:
@@ -5189,12 +5223,21 @@ mapEl.addEventListener('touchstart', e => {
     // preserves a pre-gesture panel, which left tablets losing the inspector after every
     // label nudge while desktops kept it.
     touchDrag.inspWasOpen = !document.getElementById('inspector').classList.contains('hidden');
-    // Locked: leave the pan alone and do NOT swallow the gesture, or the finger sticks to a
-    // waypoint that was never going to move. The release still opens the panel for a tap.
+    // Two separate things, and tying them together was a bug in both directions.
+    //
+    // heldMap answers "does this gesture move something, so Leaflet must not pan?" -- false
+    // when the route is locked (nothing is going to move) and for a leg press (which drags
+    // nothing by design).
+    //
+    // preventDefault answers "has the app taken this gesture?", and the answer is always
+    // yes: this branch only runs when the press hit something. Suppressing the default is
+    // what kills the browser's compatibility mouse sequence -- without it a leg tap fires a
+    // real mousedown/mouseup/click, two taps make a native dblclick, and the dblclick
+    // handler above SPLITS THE LEG. A pilot double-tapping the chart to zoom in got their
+    // route cut in two and a waypoint inserted. Leaflet pans from its own touch listeners,
+    // not from the browser default, so suppressing it costs no panning.
     touchDrag.heldMap = holdMapForDrag(touchDrag.kind);
-    if (touchDrag.heldMap) {
-      e.preventDefault();            // suppress pan + the synthetic click
-    }
+    e.preventDefault();              // suppress the synthetic mouse chain, and with it dblclick
     // Nothing opens here -- endTouch decides, once tap and drag can be told apart.
     draw();
   }
@@ -5216,21 +5259,15 @@ mapEl.addEventListener('touchmove', e => {
     return;
   }
   if (!touchDrag || e.touches.length !== 1) return;
-  // Back to one finger after a pinch is not the drag resuming. The press that armed this
-  // drag happened before the zoom, so startX/startY are in the old view's pixels: the slop
-  // check compares against a point that no longer means anything, clears it instantly, and
-  // the waypoint jumps to wherever the surviving finger is -- occasionally close enough to a
-  // neighbour to take the delete-on-overlap path with it. mousedown, click and endTouch all
-  // consult the same guard already; this was the one path that did not.
-  if (typeof touchGestureInProgress === 'function' && touchGestureInProgress()) {
-    // Re-seed from here, so if the finger really does go on to drag, it measures from where
-    // it is now rather than from the pre-pinch position.
-    const q = touchXY(e.touches[0]);
-    touchDrag.startX = q.x;
-    touchDrag.startY = q.y;
-    touchDrag.dragArmed = false;
-    return;
-  }
+  // No pinch guard here, deliberately. A drag cannot survive a pinch to be resumed: endTouch
+  // is bound to EVERY touchend with no remaining-finger check, and every path through it
+  // ends in clearDragAndRedraw('touch'), so the lift that ends a pinch has already nulled
+  // touchDrag -- the `!touchDrag` return above is what actually stops the teleport. A guard
+  // added here fired only in the case it was not written for: for 700ms after any pinch it
+  // swallowed a BRAND NEW one-finger drag, so a pilot who zoomed in and immediately grabbed
+  // a waypoint got a dead drag. What protects the pinch-that-started-on-a-waypoint is
+  // endTouch's own touchGestureInProgress() check, which marks it moved so the release is
+  // not read as a tap.
   e.preventDefault();
   const p = touchXY(e.touches[0]);
   // A fingertip is ~10 mm across and never lands still, so a plain tap arrives with a few
@@ -5351,6 +5388,18 @@ function undoTapOpenIfDoubleTap(x, y) {
   if (Math.hypot(x - rec.x, y - rec.y) > DOUBLE_TAP_PX) return false;
   state.selected = rec.prev;
   showInspector();
+  // ...and then do what the pilot actually asked for. A double tap zooms the chart, and
+  // everywhere else on the map Leaflet's doubleClickZoom does it -- off the browser's
+  // compatibility dblclick, which this handler suppresses whenever the press lands on a
+  // route element. Suppressing it is not optional: the same dblclick reaches the split
+  // handler and cuts the leg in two. So the zoom is performed here instead of being lost.
+  //
+  // Which matters most exactly where the route is: airborne the edit lock is on, the route
+  // covers much of a kneeboard screen, and a double tap that landed on it used to do
+  // nothing at all.
+  if (map.doubleClickZoom && map.doubleClickZoom.enabled()) {
+    map.setZoomAround(map.containerPointToLatLng([x, y]), map.getZoom() + 1);
+  }
   draw();
   return true;
 }
@@ -5381,7 +5430,7 @@ function endTouch(evOrCancelled) {
   setInspectorDragHidden(false);
   // ...unless it was already open before the finger landed, in which case it is something
   // the pilot was reading and a drag does not take it away -- the mouse path's rule.
-  // The second tap of a double tap opens nothing: the gesture is a zoom, and the first tap's
+  // The second tap of a double tap opens nothing -- it is not a request to inspect, and the first tap's
   // panel has already been put back where it was.
   touchLog(cancelled ? 'touchcancel' : 'touchend',
     touchDrag ? ('kind=' + touchDrag.kind + ' moved=' + !!touchDrag.moved +

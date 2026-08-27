@@ -54,3 +54,24 @@ test('a load that succeeds says nothing', async ({ page }) => {
   expect(shown.n).toBe(0);
   expect(shown.areas).toBeGreaterThan(0);
 });
+
+// Ticking the layer again is a fresh question. The warning is said once per outage, and the
+// flag latched for the process: the pilot saw one toast, it faded, and every later look at a
+// still-broken layer was a silent empty map -- the exact misreading the toast exists to stop.
+test('re-opening the layer asks again, and is answered again', async ({ page }) => {
+  await boot(page, { fail: true });
+  const shown = await page.evaluate(async () => {
+    let n = 0;
+    const real = window.showToast;
+    window.showToast = (m) => { if (/Airspace unavailable/.test(m)) n += 1; return real && real(m); };
+    const cb = document.getElementById('airspace-cb');
+    for (const on of [true, false, true]) {
+      cb.checked = on;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+      await loadAirspace();
+    }
+    window.showToast = real;
+    return n;
+  });
+  expect(shown).toBe(2);          // once per time the pilot asked, not once per process
+});

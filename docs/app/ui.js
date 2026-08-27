@@ -5965,6 +5965,9 @@ if (airspaceCb) {
     window.showAirspace = e.target.checked;
     try { localStorage.setItem(AIRSPACE_KEY, showAirspace ? '1' : '0'); }
     catch (err) { /* storage unavailable */ }
+    // Asking again deserves an answer again: the load-failure warning is said once per
+    // outage, and without this the second look at a still-broken layer is a silent empty map.
+    if (showAirspace && typeof airspaceWarningReset === 'function') airspaceWarningReset();
     draw();          // drawAirspace() lazy-loads the dataset on the first draw that needs it
   };
 }
