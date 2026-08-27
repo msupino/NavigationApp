@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 ---
 
 # RCA — ios-location-permission: iOS app does not request location permission

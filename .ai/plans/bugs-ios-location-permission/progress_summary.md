@@ -1,7 +1,7 @@
 ---
 name: iOS app does not request location permission
 status: draft
-updated_at: '2026-08-27T12:40:30+03:00'
+updated_at: '2026-08-27T12:41:09+03:00'
 ---
 
 # iOS app does not request location permission
@@ -14,7 +14,7 @@ The installed iOS app never registers for foreground location access, so NavAid 
 
 | Task | Status |
 |---|---|
-| T-1: Implement and verify the fix | ⬜ pending |
+| T-1: Implement and verify the fix | 🔄 in-progress |
 
 ## Artifacts
 - [investigation.md](investigation.md)
