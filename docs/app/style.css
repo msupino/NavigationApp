@@ -4370,15 +4370,20 @@ body.theme-light .charts-freq-table-wrap::after {
   color: #fff2a8;
   font-weight: 600;
 }
+/* Read like the charts window's field tiles: the name carries the row, the code sits under
+   it in the same quiet grey. It is the same question in both windows -- which field is this
+   -- so it should not need reading twice in two different shapes. */
 .charts-freq-label,
 .charts-freq-code {
   display: block;
 }
+.charts-freq-label { font-weight: 700; line-height: 1.25; }
 .charts-freq-code {
   direction: ltr;
   margin-top: 2px;
-  color: #8a8484;
-  font-size: 11px;
+  color: #9aa4b0;
+  font-size: 12px;
+  letter-spacing: 0.04em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   unicode-bidi: isolate;
 }
