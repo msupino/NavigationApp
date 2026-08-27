@@ -464,3 +464,70 @@ test('the Hebrew build calls the AIP פמ״ת', async ({ page }) => {
   expect(sources.some(x => x === 'AIP')).toBe(false);
   expect(sources.some(x => x === 'נוטאם')).toBe(true);
 });
+
+// The NOTAM opened from the Freq table explains something ON that table. Closing the
+// explanation must leave the table where it was -- it read as "closing the NOTAM closed my
+// table", because opening it ran closeOpenChartModals() and took the table with it.
+test('the Freq table survives opening and closing the NOTAM', async ({ page }) => {
+  await boot(page, LIVE);
+  const seen = await page.evaluate(async () => {
+    const table = () => !!document.querySelector('.charts-freq-section table');
+    const notam = () => !!document.querySelector('.modal-back[data-chart-modal="notam-list"]');
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !table(); i++) await new Promise(r => setTimeout(r, 50));
+    const before = table();
+    const row = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .find(tr => tr.querySelector('.charts-freq-source-btn'));
+    row.querySelector('.charts-freq-source-btn').click();
+    await new Promise(r => setTimeout(r, 200));
+    const whileOpen = { table: table(), notam: notam() };
+    document.querySelector('.modal-back[data-chart-modal="notam-list"] .modal-close-x').click();
+    await new Promise(r => setTimeout(r, 200));
+    return { before, whileOpen, after: { table: table(), notam: notam() } };
+  });
+  expect(seen.before).toBe(true);
+  expect(seen.whileOpen).toEqual({ table: true, notam: true });   // both on screen
+  expect(seen.after).toEqual({ table: true, notam: false });      // the table stays
+});
+
+// ...but two NOTAM lists are never wanted, so a second one still replaces the first.
+test('a second NOTAM list replaces the first', async ({ page }) => {
+  await boot(page, LIVE);
+  const count = await page.evaluate(async () => {
+    showNotamModal(null, { keepCharts: true });
+    showNotamModal(null, { keepCharts: true });
+    await new Promise(r => setTimeout(r, 150));
+    return document.querySelectorAll('.modal-back[data-chart-modal="notam-list"]').length;
+  });
+  expect(count).toBe(1);
+});
+
+// Five columns on a narrow screen means Override and its reset sit off the edge, and a table
+// that does not obviously scroll reads as a table with nothing more to give.
+test('the table says when there is more of it off the edge', async ({ page }) => {
+  await page.setViewportSize({ width: 380, height: 700 });
+  await boot(page, LIVE);
+  const seen = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-table-wrap'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const wrap = document.querySelector('.charts-freq-table-wrap');
+    wrap.style.width = '220px';                 // force the overflow this is about
+    wrap.dispatchEvent(new Event('scroll'));
+    await new Promise(r => setTimeout(r, 60));
+    const atStart = { start: wrap.classList.contains('scroll-start'),
+                      end: wrap.classList.contains('scroll-end') };
+    wrap.scrollLeft = wrap.scrollWidth - wrap.clientWidth;
+    wrap.dispatchEvent(new Event('scroll'));
+    await new Promise(r => setTimeout(r, 60));
+    const atEnd = { start: wrap.classList.contains('scroll-start'),
+                    end: wrap.classList.contains('scroll-end') };
+    return { atStart, atEnd, max: wrap.scrollWidth - wrap.clientWidth };
+  });
+  expect(seen.max).toBeGreaterThan(1);
+  // At the start: more to the right, nothing to the left.
+  expect(seen.atStart).toEqual({ start: false, end: true });
+  // At the far end: the promise of more is withdrawn.
+  expect(seen.atEnd).toEqual({ start: true, end: false });
+});
