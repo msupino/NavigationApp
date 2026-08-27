@@ -7810,6 +7810,14 @@ function createTuningPanel() {
       if (typeof NavAid.applyDefaultVisibility === 'function') NavAid.applyDefaultVisibility();
       if (typeof refreshShowReturnFeature === 'function') refreshShowReturnFeature();
       // The gist decides whether Follow me exists at all, and it lands after this file.
+      // A gist that turns it OFF also ends a session already running -- including one this
+      // device resumed on boot -- because a control that has just been hidden cannot be used
+      // to stop sharing. Only here, where the gist demonstrably arrived: a failed fetch
+      // in the air must never read as "the feature was withdrawn".
+      if (key === 'featureFollowMe' && raw !== true) {
+        const F = (window.NavAid && window.NavAid.followMe) || null;
+        if (F && F.sharing()) F.stop();
+      }
       if (typeof refreshFollowMeControl === 'function') refreshFollowMeControl();
       if (typeof refreshFollowMeMapControl === 'function') refreshFollowMeMapControl();
       if (typeof refreshAssistantFeature === 'function') refreshAssistantFeature();

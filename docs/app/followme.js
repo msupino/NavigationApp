@@ -210,13 +210,50 @@
     return clean;
   }
 
+  // --- the session that survives a restart -----------------------------------
+  // A phone dies mid-flight -- the app is force-quit, Android reclaims it, the battery goes
+  // -- and the pilot starts it again. Without this the link everyone already has is dead,
+  // and nobody re-shares a link at 2000 feet. So the topic and key are kept on the device.
+  //
+  // ONLY on the device: they are a capability to watch this aeroplane, not a preference, so
+  // they are never synced to Drive (settings-sync-allowlist.spec.js holds this). And by
+  // default they expire: a link that outlives the flight it was shared for is a link that
+  // tracks you next week.
+  const SESSION_KEY = 'navaid.followMeSession';
+  const resumeMs = () => Math.max(1, Number(tune('followMeResumeHr', 12)) || 12) * 3600000;
+  const persistLink = () => tune('featureFollowMePersist', false) === true;
+
+  function storedSession() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (!raw || !raw.id || !raw.k || !raw.reg) return null;
+      // A key of the wrong size is a key from a broken write, not a session.
+      if (b64url.to(raw.k).length !== 32) return null;
+      if (!persistLink() && !(Date.now() - Number(raw.at) < resumeMs())) return null;
+      return raw;
+    } catch (e) {
+      return null;                                  // storage off, or something not ours
+    }
+  }
+  function saveSession(o) {
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(o)); } catch (e) { /* storage off */ }
+  }
+  function clearSession() {
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* storage off */ }
+  }
+
   async function followMeStart(code) {
     if (session) return session.link;
     // Refuse rather than share an anonymous dot.
     const reg = followMeSetCode(code || followMeCode());
     if (!reg) return null;
-    const id = b64url.from(randomBytes(16));
-    const rawKey = randomBytes(32);
+    // Same aeroplane, same link: this is what makes a restart survivable. A DIFFERENT code
+    // is a different aeroplane and gets its own topic and key -- inheriting a link already
+    // shared for the last aircraft would point its followers at this one.
+    const prev = storedSession();
+    const reuse = !!(prev && prev.reg === reg);
+    const id = reuse ? prev.id : b64url.from(randomBytes(16));
+    const rawKey = reuse ? b64url.to(prev.k) : randomBytes(32);
     const key = await importKey(rawKey);
     const client = mqttConnect(brokerUrl(), { clientId: 'navaid-pub-' + id.slice(0, 8) });
     session = {
@@ -225,6 +262,9 @@
       // broker's view of the world. Everything the relay sees is the id.
       link: location.origin + location.pathname + '?follow=' + id + '#k=' + b64url.from(rawKey),
     };
+    // `on` is the consent a restart reads back: it says this device was sharing when it
+    // stopped running, which is the only reason resuming without asking is honest.
+    saveSession({ id, k: b64url.from(rawKey), reg, at: Date.now(), on: true });
     return session.link;
   }
   function followMeStop() {
@@ -237,6 +277,35 @@
     catch (e) { /* already closing: the session ends either way */ }
     session.client.close();
     session = null;
+    // Stopping is what kills the link -- so the key goes with it. Persistent mode is the
+    // exception the pilot asked for: the link stays valid for the next flight, but it is
+    // marked not-sharing so a later restart does not silently start publishing again.
+    if (persistLink()) {
+      const prev = storedSession();
+      if (prev) saveSession({ ...prev, on: false });
+    } else {
+      clearSession();
+    }
+  }
+
+  // Throw the stored link away and, if sharing, come back on a fresh one. The escape hatch
+  // for a persistent link that has been passed further than the pilot meant it to go.
+  async function followMeNewLink() {
+    const reg = followMeCode();
+    const wasSharing = !!session;
+    if (wasSharing) followMeStop();
+    clearSession();
+    return wasSharing ? followMeStart(reg) : null;
+  }
+
+  // Called on boot. Resumes only what this device was already doing: a stored session marked
+  // `on`, inside its window. Anything else -- a deliberate stop, an expired link, a device
+  // that never shared -- starts nothing.
+  async function followMeResume() {
+    if (session) return null;
+    const prev = storedSession();
+    if (!prev || prev.on !== true) return null;
+    return followMeStart(prev.reg);
   }
   function followMeSharing() { return !!session; }
 
@@ -419,6 +488,7 @@
     linkParams: followMeLinkParams, staleSec: followMeStaleSec,
     start: followMeStart, stop: followMeStop, sharing: followMeSharing, publish: followMePublish,
     code: followMeCode, setCode: followMeSetCode,
+    newLink: followMeNewLink, resume: followMeResume, _stored: storedSession,
     watch: followMeWatch, unwatch: followMeUnwatch, watching: followMeWatching,
     _mqtt: mqttConnect, _seal: seal, _open: open, _b64url: b64url,
     _encodeLength: encodeLength, _readLength: readLength,
@@ -439,8 +509,22 @@
     // a pilot is OFFERED sharing; whoever opens a link with a key in it has been handed the
     // answer already, by someone who did have the feature. Refusing them because a gist
     // elsewhere has not loaded yet helps nobody.
-    if (!followMeLinkParams()) return;
-    followMeViewerStart().catch(() => { /* bad link: the banner says nothing arrived */ });
+    if (followMeLinkParams()) {
+      followMeViewerStart().catch(() => { /* bad link: the banner says nothing arrived */ });
+      return;
+    }
+    // Not a viewer: this device may have been sharing when the app stopped running.
+    followMeResume().then((link) => {
+      if (!link) return;
+      if (typeof window.refreshFollowMeControl === 'function') window.refreshFollowMeControl();
+      if (typeof window.refreshFollowMeMapControl === 'function') window.refreshFollowMeMapControl();
+      // Say so. Sharing that restarts itself invisibly is the kind of surprise this whole
+      // feature is written to avoid.
+      const S = window.S || {};
+      if (typeof window.showToast === 'function') {
+        window.showToast(S.followMeResumed || 'Follow me: still sharing — the same link as before still works.');
+      }
+    }).catch(() => { /* nothing stored, or storage is off */ });
   }
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
     setTimeout(followMeBoot, 0);
