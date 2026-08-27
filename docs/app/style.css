@@ -6879,3 +6879,13 @@ body.theme-light .da-row.da-warn .val { color: #b3261e; }
   outline-offset: 1px;
   border-radius: 4px;
 }
+
+/* The same mark in the Freq table. An outline on a <tr> is not painted by every engine, and
+   putting one on each cell draws a box per cell rather than a ring round the row -- so the
+   cells carry the edges between them, and a tint ties them together. */
+tr.freq-notam-changed td {
+  border-block: 2px solid #b03636;
+  background: rgba(176, 54, 54, 0.10);
+}
+tr.freq-notam-changed td:first-child { border-inline-start: 2px solid #b03636; }
+tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
