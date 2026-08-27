@@ -1098,6 +1098,10 @@ downloadable `route.json`.
   `appId: org.supino.navaid`, `appName: NavAid`, `webDir: shell`, and
   `server.url: https://navaid.supino.org`. Its iOS app-bound navigation option
   allows Capacitor bridge injection on that production domain.
+- iOS supports foreground **Show location** and GPS track recording through the
+  web `navigator.geolocation` path while the app is in use. `Info.plist` declares
+  the required when-in-use location purpose. Background or lock-screen tracking
+  remains unsupported without a compatible plugin and background entitlement.
 - Keep Capacitor packages in `mobile/package.json`; the root package remains
   only the Playwright/static-check tooling for the web app.
 - `mobile/scripts/validate-capacitor.mjs` and

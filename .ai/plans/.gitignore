@@ -5,3 +5,7 @@ bugs-mobile-legend/internal/code-review/
 !bugs-heli-nav-source/
 !bugs-heli-nav-source/**
 bugs-heli-nav-source/internal/code-review/
+
+!bugs-ios-location-permission/
+!bugs-ios-location-permission/**
+bugs-ios-location-permission/internal/code-review/
