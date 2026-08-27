@@ -3433,6 +3433,69 @@ try {
 // The return path can be switched off wholesale from the tuning gist (featureShowReturn).
 // Hidden AND forced off, not merely hidden: a stored 'on' from before it was disabled would
 // otherwise keep drawing the mirrored path with no control left to turn it off.
+// --- Follow me ------------------------------------------------------------
+// The button is offered only when the gist says so, and only does anything while a position
+// source is live: a link that shows nothing is worse than no link, because the person
+// watching cannot tell the difference from a pilot who has landed.
+function followMeOffered() {
+  return typeof tune === 'function' && tune('featureFollowMe') === true;
+}
+(function wireFollowMe() {
+  const btn = document.getElementById('follow-me');
+  if (!btn) return;
+  const F = () => (window.NavAid && window.NavAid.followMe) || null;
+  function refresh() {
+    btn.hidden = !followMeOffered();
+    const on = !!(F() && F().sharing());
+    btn.textContent = on ? (S.tbFollowMeStop || 'Stop sharing') : (S.tbFollowMe || 'Follow me');
+    btn.classList.toggle('on', on);
+  }
+  btn.addEventListener('click', async () => {
+    const f = F();
+    if (!f) return;
+    if (f.sharing()) {
+      f.stop();
+      refresh();
+      if (typeof showToast === 'function') showToast(S.followMeStopped || 'Follow me: stopped.');
+      return;
+    }
+    // Refuse rather than share a link that will never move.
+    const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
+      || (typeof gpsRecording !== 'undefined' && gpsRecording);
+    if (!live) {
+      if (typeof showToast === 'function') {
+        showToast(S.followMeNoFix || 'Follow me needs a position: turn on Location or Record first.');
+      }
+      return;
+    }
+    // Ask for the aircraft code. Nothing verifies it -- a pilot can type anything -- but a
+    // shared link with no name on it is a puzzle for whoever opens it, so it is required.
+    const asked = window.prompt(S.followMeAskCode || 'Aircraft code (e.g. 4X-CDE)', f.code() || '');
+    if (asked === null) return;                     // cancelled: share nothing
+    const link = await f.start(asked);
+    if (!link) {
+      if (typeof showToast === 'function') showToast(S.followMeNeedCode || 'Follow me needs an aircraft code.');
+      return;
+    }
+    refresh();
+    // The share sheet where there is one -- on a phone that is how a link reaches WhatsApp --
+    // and the clipboard everywhere else.
+    let shared = false;
+    if (navigator.share) {
+      try { await navigator.share({ title: S.tbFollowMe || 'Follow me', url: link }); shared = true; }
+      catch (e) { /* dismissed: fall through to the clipboard */ }
+    }
+    if (!shared && navigator.clipboard && navigator.clipboard.writeText) {
+      try { await navigator.clipboard.writeText(link); } catch (e) { /* denied */ }
+    }
+    if (!shared && typeof showToast === 'function') {
+      showToast(S.followMeCopied || 'Follow-me link copied.');
+    }
+  });
+  refresh();
+  window.refreshFollowMeControl = refresh;
+}());
+
 function showReturnFeatureOn() {
   return typeof tune !== 'function' || tune('featureShowReturn') !== false;
 }

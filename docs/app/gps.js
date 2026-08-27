@@ -279,6 +279,14 @@ function onLivePosition(pos) {
   gpsNoteFixArrived();
   gpsRefreshQnh(p.lat, p.lng);
   gpsCheckLegAlerts();
+  // Follow me, if the pilot is sharing: the same fix, encrypted, to a topic nobody can guess.
+  // Rate-limited inside; a failure here must never disturb the fix handling around it.
+  if (window.NavAid && NavAid.followMe && NavAid.followMe.sharing()) {
+    try {
+      NavAid.followMe.publish({ lat: p.lat, lng: p.lng, alt: c.altitude, trk: hdg,
+        kt: (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed * 1.94384 : null });
+    } catch (e) { /* sharing is a courtesy, never a reason to lose a fix */ }
+  }
   if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   // The compass needle and the track written under it are read from this fix, so they have
   // to be redrawn with it -- not only when the map is rotated or tracking starts.
