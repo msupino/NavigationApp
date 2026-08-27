@@ -703,6 +703,15 @@ NavAid.tuningDefaults = {
   // tuning gist to bring the control, its keyboard shortcut and the drawing back, without a
   // deploy -- the code is all still here.
   featureShowReturn: { value: false, type: 'bool', label: 'Feature: show return path' },
+  // Follow me: a link that shows someone where the aeroplane is, relayed by a PUBLIC MQTT
+  // broker and encrypted before it gets there -- see docs/app/followme.js. Off until it has
+  // been flown with: a position feed that is wrong or stale is worse than none.
+  featureFollowMe: { value: false, type: 'bool', label: 'Feature: share a live position link' },
+  followMeBroker: { value: 'wss://broker.emqx.io:8084/mqtt', type: 'text',
+    label: 'Follow me: public broker WebSocket URL' },
+  followMeRateSec: { value: 2, min: 1, max: 30, step: 1, label: 'Follow me: publish every (s)' },
+  followMeStaleSec: { value: 30, min: 5, max: 300, step: 5,
+    label: 'Follow me: call the position stale after (s)' },
   // The one-time nudge that teaches a first-time visitor the core action, plus the click
   // priming that goes with it (an empty map's first plain click drops a waypoint instead of
   // inspecting). Both are the same onboarding gesture, so one switch governs them: off, and
@@ -893,7 +902,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFollowMe', 'followMeBroker', 'followMeRateSec', 'followMeStaleSec', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1845,6 +1854,18 @@ window.S = Object.assign({
   tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
   tbShare: '🔗 Share',
+  tbFollowMe: 'Follow me',
+  followMeAskCode: 'Aircraft code (e.g. 4X-CDE)',
+  followMeNeedCode: 'Follow me needs an aircraft code — whoever opens the link has to know which aeroplane it is.',
+  followMeWaiting: 'Follow me: waiting for a position…',
+  followMeLastFix: (sec) => (sec < 90 ? 'Last position ' + sec + 's ago'
+    : 'Last position ' + Math.round(sec / 60) + ' min ago'),
+  followMeStale: 'not moving — the feed has stopped',
+  tbFollowMeTitle: 'Share a link that shows where you are while you fly. The position is encrypted; the key is in the link.',
+  tbFollowMeStop: 'Stop sharing',
+  followMeCopied: 'Follow-me link copied — it works while you are sharing, and dies when you stop.',
+  followMeStopped: 'Follow me: stopped. The link is dead.',
+  followMeNoFix: 'Follow me needs a position: turn on Location or Record first.',
   tbShareTitle: 'Copy a shareable link to this route to the clipboard',
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
