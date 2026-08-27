@@ -92,6 +92,20 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(purpose[1].trim(), 'the iOS location purpose string must not be empty').not.toBe('');
   });
 
+  test('keeps the native iOS screen awake only while the app is active', () => {
+    const iosDelegate = readText('mobile/ios/App/App/AppDelegate.swift');
+
+    expect(iosDelegate).toMatch(
+      /didFinishLaunchingWithOptions[^{]*\{[^}]*application\.isIdleTimerDisabled = true/,
+    );
+    expect(iosDelegate).toMatch(
+      /applicationWillResignActive[^{]*\{[^}]*application\.isIdleTimerDisabled = false/,
+    );
+    expect(iosDelegate).toMatch(
+      /applicationDidBecomeActive[^{]*\{[^}]*application\.isIdleTimerDisabled = true/,
+    );
+  });
+
   test('registers native X-Plane discovery without requiring an iOS multicast entitlement', () => {
     const androidPlugin = readText(
       'mobile/android/app/src/main/java/org/supino/navaid/XPlaneDiscoveryPlugin.java');

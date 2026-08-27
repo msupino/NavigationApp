@@ -27,17 +27,21 @@ async function measure(page, file) {
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
     const at = (i) => `${d[i]},${d[i + 1]},${d[i + 2]},${d[i + 3]}`;
     const bg = at(0);
-    let ink = 0, outside = 0;
+    let ink = 0, outside = 0, blue = 0;
     const r = c.width * 0.4;
     for (let y = 0; y < c.height; y++) {
       for (let x = 0; x < c.width; x++) {
         const i = (y * c.width + x) * 4;
         if (at(i) === bg) continue;
         ink++;
+        if (d[i + 2] > d[i] + 20 && d[i + 2] > d[i + 1] + 20) blue++;
         if (Math.hypot(x - c.width / 2, y - c.height / 2) > r) outside++;
       }
     }
-    return { w: c.width, h: c.height, ink: ink / (c.width * c.height), outside };
+    return {
+      w: c.width, h: c.height, ink: ink / (c.width * c.height),
+      blue: blue / (c.width * c.height), outside,
+    };
   }, dataUri(file));
 }
 
@@ -55,6 +59,17 @@ test('the PWA icons are the declared sizes and are not blank', async ({ page }) 
     expect({ file, w: m.w, h: m.h }).toEqual({ file, w: size, h: size });
     expect(m.ink).toBeGreaterThan(0.02);
   }
+});
+
+test('the iOS icon uses the current route-trail mark', async ({ page }) => {
+  const file = 'mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png';
+  const m = await measure(page, file);
+  const generator = fs.readFileSync(path.join(ROOT, 'scripts/make-icons.mjs'), 'utf8');
+
+  expect({ w: m.w, h: m.h }).toEqual({ w: 1024, h: 1024 });
+  expect(m.ink).toBeGreaterThan(0.02);
+  expect(m.blue).toBeGreaterThan(0.005);
+  expect(generator).toContain('AppIcon.appiconset');
 });
 
 // Declared "any maskable" in the manifest, so a launcher may crop them to a circle: the mark
