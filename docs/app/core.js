@@ -1953,6 +1953,7 @@ window.S = Object.assign({
   freqTableFilterLabel: 'Filter frequencies by aerodrome',
   freqTableSource: 'Source',
   freqSourceAip: 'AIP',
+  freqServiceTower: 'Tower',
   freqSourceNotam: 'NOTAM',
   freqSourceNotamGone: 'NOTAM no longer in the feed',
   freqTableNoMatches: 'No matching frequencies',

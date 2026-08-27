@@ -6706,6 +6706,24 @@ function renderFreqTable(freqSection) {
     td.appendChild(btn);
     return td;
   };
+  // "הרצליה" on one row and "קלירנס" on another asks the pilot to hold the airport in their
+  // head while reading down a list of services. The charts window names the field and shows
+  // its code underneath; this does the same, and adds what the frequency is FOR: Herzliya
+  // Tower, Herzliya Clearance. A call sign with no field of its own keeps its own name --
+  // there is no field to put in front of it.
+  // Same rule the charts window's localFieldName uses -- that one is scoped to its own modal,
+  // so the rule is repeated rather than reached for.
+  const fieldName = (af) => {
+    if (!af) return '';
+    const heUi = (typeof window !== 'undefined' && window.__navLang === 'he');
+    return ((heUi ? (af.he || af.en) : (af.en || af.he)) || '').trim();
+  };
+  const fieldLabel = (icao, service) => {
+    const af = (typeof airfieldByIcao === 'function' && icao) ? airfieldByIcao(icao) : null;
+    const name = fieldName(af);
+    if (!name) return service;
+    return service ? name + ' ' + service : name;
+  };
   const pending = [];
   for (const opt of opts) {
     const tr = document.createElement('tr');
@@ -6739,7 +6757,9 @@ function renderFreqTable(freqSection) {
     const name = document.createElement('td');
     const label = document.createElement('span');
     label.className = 'charts-freq-label';
-    label.textContent = opt.label || opt.id;
+    label.textContent = optIcao
+      ? fieldLabel(optIcao, S.freqServiceTower || 'Tower')
+      : (opt.label || opt.id);
     name.appendChild(label);
     const codeText = optIcao || ((opt.label && opt.label !== opt.id) ? opt.id : '');
     if (codeText) {
@@ -6868,7 +6888,7 @@ function renderFreqTable(freqSection) {
     const name = document.createElement('td');
     const label = document.createElement('span');
     label.className = 'charts-freq-label';
-    label.textContent = r.flabel + partName;
+    label.textContent = fieldLabel(r.af.name, r.flabel + partName);
     name.appendChild(label);
     const code = document.createElement('span');
     code.className = 'charts-freq-code';
