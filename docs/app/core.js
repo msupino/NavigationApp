@@ -706,6 +706,14 @@ NavAid.tuningDefaults = {
   // Follow me: a link that shows someone where the aeroplane is, relayed by a PUBLIC MQTT
   // broker and encrypted before it gets there -- see docs/app/followme.js. Off until it has
   // been flown with: a position feed that is wrong or stale is worse than none.
+  // The offline floor: a small en-route map fetched quietly on load, so a pilot who never
+  // pressed "Download charts" still has something in the air. ~300 tiles, ~4 MB over the
+  // published extent; the deep zooms stay behind the button because the full pack is ~200 MB.
+  offlineAutoFloor: { value: false, type: 'bool', label: 'Fetch a basic offline map on load' },
+  offlineFloorWifiOnly: { value: true, type: 'bool',
+    label: 'Fetch the basic offline map only when the connection is not metered' },
+  offlineFloorMinZ: { value: 7, min: 5, max: 12, step: 1, label: 'Basic offline map: widest zoom' },
+  offlineFloorMaxZ: { value: 10, min: 6, max: 13, step: 1, label: 'Basic offline map: closest zoom' },
   featureFollowMe: { value: false, type: 'bool', label: 'Feature: share a live position link' },
   followMeBroker: { value: 'wss://broker.emqx.io:8084/mqtt', type: 'text',
     label: 'Follow me: public broker WebSocket URL' },
@@ -902,7 +910,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFollowMe', 'followMeBroker', 'followMeRateSec', 'followMeStaleSec', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFollowMe', 'followMeBroker', 'offlineAutoFloor', 'offlineFloorWifiOnly', 'offlineFloorMinZ', 'offlineFloorMaxZ', 'followMeRateSec', 'followMeStaleSec', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
