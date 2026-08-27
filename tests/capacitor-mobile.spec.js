@@ -96,13 +96,13 @@ test.describe('Capacitor mobile wrapper', () => {
     const iosDelegate = readText('mobile/ios/App/App/AppDelegate.swift');
 
     expect(iosDelegate).toMatch(
-      /didFinishLaunchingWithOptions[\s\S]*?application\.isIdleTimerDisabled = true/,
+      /didFinishLaunchingWithOptions[^{]*\{[^}]*application\.isIdleTimerDisabled = true/,
     );
     expect(iosDelegate).toMatch(
-      /applicationWillResignActive[\s\S]*?application\.isIdleTimerDisabled = false/,
+      /applicationWillResignActive[^{]*\{[^}]*application\.isIdleTimerDisabled = false/,
     );
     expect(iosDelegate).toMatch(
-      /applicationDidBecomeActive[\s\S]*?application\.isIdleTimerDisabled = true/,
+      /applicationDidBecomeActive[^{]*\{[^}]*application\.isIdleTimerDisabled = true/,
     );
   });
 
