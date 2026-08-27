@@ -6638,9 +6638,12 @@ function renderFreqTable(freqSection) {
   const headRow = document.createElement('tr');
   for (const label of [
     S.freqTableCallSign || 'Call sign',
-    S.freqTableDefault || S.commChangeTemplateFreq || 'Default',
-    S.freqTableSource || 'Source',
+    // The value in force first: it is what a pilot reads and what they edit. Then where it
+    // came from, then what the book says it was -- provenance and reference, behind the
+    // answer rather than in front of it.
     S.freqTableOverride || 'Override',
+    S.freqTableSource || 'Source',
+    S.freqTableDefault || S.commChangeTemplateFreq || 'Default',
     '',
   ]) {
     const th = document.createElement('th');
@@ -6683,7 +6686,7 @@ function renderFreqTable(freqSection) {
       const hit = all.filter(n => n && n.id === notam.id);
       // If it has gone from the feed between render and click, say so rather than opening an
       // empty list: the row is about to stop existing anyway.
-      if (hit.length && typeof showNotamModal === 'function') showNotamModal(hit);
+      if (hit.length && typeof showNotamModal === 'function') showNotamModal(hit, { keepCharts: true });
       else if (typeof showToast === 'function') {
         showToast((S.freqSourceNotamGone || 'NOTAM no longer in the feed') + ' (' + notam.id + ')');
       }
@@ -6832,7 +6835,7 @@ function renderFreqTable(freqSection) {
     };
     actions.appendChild(reset);
     syncFreqInputValidity();
-    tr.append(name, template, sourceCell(optChg), local, actions);
+    tr.append(name, local, sourceCell(optChg), template, actions);
     pending.push({ code: optIcao || '', order: 0, sub: opt.label || opt.id, tr });
   }
   // Airfield clearance / ATIS rows (editable numeric parts).
@@ -6918,7 +6921,7 @@ function renderFreqTable(freqSection) {
     local.appendChild(inp);
     actions.appendChild(reset);
     syncAf();
-    tr.append(name, template, sourceCell(r.notam), local, actions);
+    tr.append(name, local, sourceCell(r.notam), template, actions);
     pending.push({ code: r.af.name || '', order: 1, sub: r.flabel + partName, tr });
   }
   // VOR rows (editable single frequency each).
@@ -6985,7 +6988,7 @@ function renderFreqTable(freqSection) {
     local.appendChild(inp);
     actions.appendChild(reset);
     syncVor();
-    tr.append(name, template, sourceCell(null), local, actions);
+    tr.append(name, local, sourceCell(null), template, actions);
     pending.push({ code: '', order: 2, sub: v.ident || '', tr });
   }
   // By ICAO, and within a code by kind: the call sign first, then clearance / ATIS. A row
@@ -6998,6 +7001,26 @@ function renderFreqTable(freqSection) {
   table.appendChild(tbody);
   tableWrap.appendChild(table);
   freqSection.appendChild(tableWrap);
+
+  // Say when there is more table off the edge. Measured rather than assumed: the fade is on
+  // whichever side still has content, so it goes away at the end of the scroll instead of
+  // promising more that is not there. Re-measured on scroll and on resize, because the modal
+  // is draggable and the phone can be turned.
+  const markOverflow = () => {
+    const max = tableWrap.scrollWidth - tableWrap.clientWidth;
+    if (max <= 1) {
+      tableWrap.classList.remove('scroll-start', 'scroll-end');
+      return;
+    }
+    // scrollLeft is negative in RTL on every engine that matters now; distance from each end
+    // is what the fades want, and abs() gets both directions with one measurement.
+    const from = Math.abs(tableWrap.scrollLeft);
+    tableWrap.classList.toggle('scroll-start', from > 1);
+    tableWrap.classList.toggle('scroll-end', from < max - 1);
+  };
+  tableWrap.addEventListener('scroll', markOverflow, { passive: true });
+  window.addEventListener('resize', markOverflow);
+  requestAnimationFrame(markOverflow);
 
   const noMatches = document.createElement('p');
   noMatches.className = 'charts-freq-empty charts-freq-no-matches';
