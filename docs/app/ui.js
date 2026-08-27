@@ -4766,11 +4766,25 @@ async function ensureNotams() {
   if (typeof buildNotamRouteLines === 'function') buildNotamRouteLines();
   refreshNotamListBtn();
 }
-function showNotamModal(only) {
+function showNotamModal(only, opts) {
   // Behave like every other chart modal: opening closes any other open chart
   // modal (and a prior NOTAM list, since it's tagged below) + the toolbar
   // dropdowns. One chart on screen at a time.
-  if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+  //
+  // ...unless this list was opened FROM one of those charts, to explain something on it.
+  // The Freq table's Source column opens the NOTAM behind a frequency: closing that chart
+  // to show the explanation, and leaving nothing behind when the explanation is dismissed,
+  // reads as "closing the NOTAM closed my table". `keepCharts` keeps the caller on screen;
+  // a prior NOTAM list is still replaced, since two of those are never wanted.
+  const keepCharts = !!(opts && opts.keepCharts);
+  if (keepCharts) {
+    for (const back of Array.from(document.querySelectorAll('.modal-back[data-chart-modal="notam-list"]'))) {
+      if (typeof back._navaidClose === 'function') back._navaidClose();
+      else back.remove();
+    }
+  } else if (typeof closeOpenChartModals === 'function') {
+    closeOpenChartModals();
+  }
   if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
   const back = document.createElement('div');
   back.className = 'modal-back';

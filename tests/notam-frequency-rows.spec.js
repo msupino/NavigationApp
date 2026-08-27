@@ -366,3 +366,198 @@ test('the aerodrome dropdown filters the table', async ({ page }) => {
   expect(got.n).toBeGreaterThan(0);
   expect(got.codes.every(c => c === 'LLHZ')).toBe(true);
 });
+
+// The ring says "this is not the published frequency". The Source column says what it is
+// instead — and unlike colour it survives a print, an export, and a colour-blind reader.
+test('every row says where its frequency came from', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-section tbody tr')).map(tr => ({
+      icao: tr.dataset.icao || '',
+      marked: tr.classList.contains('freq-notam-changed'),
+      source: (tr.querySelector('.charts-freq-source') || {}).textContent || '',
+      srcTitle: (tr.querySelector('.charts-freq-source-btn') || tr.querySelector('.charts-freq-source') || {}).title || '',
+      value: (tr.querySelector('input') || {}).value || '',
+    }));
+  });
+  // Every row has one, and it is one of the two words.
+  expect(rows.length).toBeGreaterThan(4);
+  for (const r of rows) expect(['AIP', 'NOTAM']).toContain(r.source);
+  // NOTAM exactly where the ring is, and nowhere else.
+  for (const r of rows) expect(r.source === 'NOTAM').toBe(r.marked);
+  // ...and it names which NOTAM.
+  const herzliya = rows.filter(r => r.icao === 'LLHZ' && r.source === 'NOTAM');
+  expect(herzliya.length).toBe(2);                    // tower and clearance
+  for (const r of herzliya) expect(r.srcTitle).toBe('C1574/26');
+  expect(rows.find(r => r.icao === 'LLHA' && r.source === 'NOTAM').srcTitle).toBe('A0685/26');
+});
+
+test('with no NOTAM in the feed every row reads AIP', async ({ page }) => {
+  await boot(page, []);
+  const sources = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-source')).map(td => td.textContent);
+  });
+  expect(sources.length).toBeGreaterThan(4);
+  expect(sources.every(x => x === 'AIP')).toBe(true);
+});
+
+// Naming the NOTAM and then making the pilot go and find it is half an answer. The Source
+// cell is the way in: it opens that NOTAM and only that one.
+test('the NOTAM source opens that NOTAM', async ({ page }) => {
+  await boot(page, LIVE);
+  const got = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const row = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .find(tr => tr.dataset.icao === 'LLHA' && tr.querySelector('.charts-freq-source-btn'));
+    row.querySelector('.charts-freq-source-btn').click();
+    await new Promise(r => setTimeout(r, 200));
+    const ids = Array.from(document.querySelectorAll('.notam-id, .notam-item'))
+      .map(el => el.textContent).join(' ');
+    return { open: !!document.querySelector('.notam-modal, .modal-back'), ids };
+  });
+  expect(got.open).toBe(true);
+  expect(got.ids).toMatch(/A0685\/26/);
+  expect(got.ids).not.toMatch(/C1574\/26/);   // only the one the row is about
+});
+
+test('an AIP row has nothing to open', async ({ page }) => {
+  await boot(page, []);
+  const buttons = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return document.querySelectorAll('.charts-freq-source-btn').length;
+  });
+  expect(buttons).toBe(0);
+});
+
+// פמ״ת — פרסום מידע תעופתי — is what the AIP is called in Hebrew. Written with a gershayim
+// (U+05F4), not an ASCII double quote: the app's own typography rule, and the one that keeps
+// the spell check from reading the string as unterminated.
+test('the Hebrew build calls the AIP פמ״ת', async ({ page }) => {
+  await page.route(NOTAM_RE, r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(feed(LIVE)) }));
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showFreqTableModal === 'function'
+    && window.notams !== null);
+  const sources = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-source')).map(td => td.textContent);
+  });
+  expect(sources.length).toBeGreaterThan(4);
+  expect(sources.some(x => x === 'פמ״ת')).toBe(true);
+  expect(sources.some(x => x === 'AIP')).toBe(false);
+  expect(sources.some(x => x === 'נוטאם')).toBe(true);
+});
+
+// The NOTAM opened from the Freq table explains something ON that table. Closing the
+// explanation must leave the table where it was -- it read as "closing the NOTAM closed my
+// table", because opening it ran closeOpenChartModals() and took the table with it.
+test('the Freq table survives opening and closing the NOTAM', async ({ page }) => {
+  await boot(page, LIVE);
+  const seen = await page.evaluate(async () => {
+    const table = () => !!document.querySelector('.charts-freq-section table');
+    const notam = () => !!document.querySelector('.modal-back[data-chart-modal="notam-list"]');
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !table(); i++) await new Promise(r => setTimeout(r, 50));
+    const before = table();
+    const row = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .find(tr => tr.querySelector('.charts-freq-source-btn'));
+    row.querySelector('.charts-freq-source-btn').click();
+    await new Promise(r => setTimeout(r, 200));
+    const whileOpen = { table: table(), notam: notam() };
+    document.querySelector('.modal-back[data-chart-modal="notam-list"] .modal-close-x').click();
+    await new Promise(r => setTimeout(r, 200));
+    return { before, whileOpen, after: { table: table(), notam: notam() } };
+  });
+  expect(seen.before).toBe(true);
+  expect(seen.whileOpen).toEqual({ table: true, notam: true });   // both on screen
+  expect(seen.after).toEqual({ table: true, notam: false });      // the table stays
+});
+
+// ...but two NOTAM lists are never wanted, so a second one still replaces the first.
+test('a second NOTAM list replaces the first', async ({ page }) => {
+  await boot(page, LIVE);
+  const count = await page.evaluate(async () => {
+    showNotamModal(null, { keepCharts: true });
+    showNotamModal(null, { keepCharts: true });
+    await new Promise(r => setTimeout(r, 150));
+    return document.querySelectorAll('.modal-back[data-chart-modal="notam-list"]').length;
+  });
+  expect(count).toBe(1);
+});
+
+// Five columns on a narrow screen means Override and its reset sit off the edge, and a table
+// that does not obviously scroll reads as a table with nothing more to give.
+test('the table says when there is more of it off the edge', async ({ page }) => {
+  await page.setViewportSize({ width: 380, height: 700 });
+  await boot(page, LIVE);
+  const seen = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-table-wrap'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const wrap = document.querySelector('.charts-freq-table-wrap');
+    wrap.style.width = '220px';                 // force the overflow this is about
+    wrap.dispatchEvent(new Event('scroll'));
+    await new Promise(r => setTimeout(r, 60));
+    const atStart = { start: wrap.classList.contains('scroll-start'),
+                      end: wrap.classList.contains('scroll-end') };
+    wrap.scrollLeft = wrap.scrollWidth - wrap.clientWidth;
+    wrap.dispatchEvent(new Event('scroll'));
+    await new Promise(r => setTimeout(r, 60));
+    const atEnd = { start: wrap.classList.contains('scroll-start'),
+                    end: wrap.classList.contains('scroll-end') };
+    return { atStart, atEnd, max: wrap.scrollWidth - wrap.clientWidth };
+  });
+  expect(seen.max).toBeGreaterThan(1);
+  // At the start: more to the right, nothing to the left.
+  expect(seen.atStart).toEqual({ start: false, end: true });
+  // At the far end: the promise of more is withdrawn.
+  expect(seen.atEnd).toEqual({ start: true, end: false });
+});
+
+// Column order: the value in force first — it is what a pilot reads and what they edit —
+// then where it came from, then what the book says it was.
+test('the value in force leads, the published one follows', async ({ page }) => {
+  await boot(page, LIVE);
+  const got = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const heads = Array.from(document.querySelectorAll('.charts-freq-table thead th'))
+      .map(th => th.textContent);
+    const row = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .find(tr => tr.dataset.icao === 'LLHZ' && tr.querySelector('.charts-freq-source-btn')
+        && (tr.querySelector('input') || {}).value === '118.55');
+    const cells = Array.from(row.children);
+    return {
+      heads,
+      inputAt: cells.findIndex(td => td.querySelector('input')),
+      sourceAt: cells.findIndex(td => td.classList.contains('charts-freq-source')),
+      defaultAt: cells.findIndex(td => td.classList.contains('charts-freq-template')),
+      defaultText: (row.querySelector('.charts-freq-template') || {}).textContent || '',
+    };
+  });
+  expect(got.heads.slice(0, 4)).toEqual(['Call sign', 'Override', 'Source', 'Default']);
+  expect(got.inputAt).toBe(1);
+  expect(got.sourceAt).toBe(2);
+  expect(got.defaultAt).toBe(3);
+  expect(got.defaultText).toBe('121.70');   // still the published one, just further right
+});

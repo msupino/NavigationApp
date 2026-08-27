@@ -6638,8 +6638,12 @@ function renderFreqTable(freqSection) {
   const headRow = document.createElement('tr');
   for (const label of [
     S.freqTableCallSign || 'Call sign',
-    S.freqTableDefault || S.commChangeTemplateFreq || 'Default',
+    // The value in force first: it is what a pilot reads and what they edit. Then where it
+    // came from, then what the book says it was -- provenance and reference, behind the
+    // answer rather than in front of it.
     S.freqTableOverride || 'Override',
+    S.freqTableSource || 'Source',
+    S.freqTableDefault || S.commChangeTemplateFreq || 'Default',
     '',
   ]) {
     const th = document.createElement('th');
@@ -6653,6 +6657,43 @@ function renderFreqTable(freqSection) {
   // call sign, the aerodrome's clearance/ATIS, the VORs -- can be laid out grouped by
   // aerodrome instead of as three separate blocks. Looking up LLHZ meant finding its Primary
   // row under H in one block and its Clearance row under L in another.
+  // Where the value in force came from. AIP for anything published -- the aerodrome packs,
+  // the call-sign catalog, ENR 4.1 for the VORs -- and NOTAM, named, for a frequency a
+  // NOTAM put in force. The ring says "this is not the published one"; this says what it is
+  // instead, and stays readable in a printed or exported table where colour does not.
+  const sourceCell = (notam) => {
+    const td = document.createElement('td');
+    td.className = 'charts-freq-source' + (notam ? ' charts-freq-source-notam' : '');
+    td.dir = 'ltr';
+    if (!notam) {
+      td.textContent = S.freqSourceAip || 'AIP';
+      return td;
+    }
+    // Naming the NOTAM and then making the pilot go and find it is half an answer. The cell
+    // is the way in: it opens that NOTAM, and only that one, the same as the badge in the
+    // airfield inspector. A button rather than a click handler on the cell, so it is
+    // reachable by keyboard and reads as something you can press.
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'charts-freq-source-btn';
+    btn.textContent = S.freqSourceNotam || 'NOTAM';
+    btn.title = notam.id;
+    btn.setAttribute('aria-label', (S.freqSourceNotam || 'NOTAM') + ' ' + notam.id);
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const all = (typeof activeNotams === 'function') ? activeNotams({ allCharts: true }) : [];
+      const hit = all.filter(n => n && n.id === notam.id);
+      // If it has gone from the feed between render and click, say so rather than opening an
+      // empty list: the row is about to stop existing anyway.
+      if (hit.length && typeof showNotamModal === 'function') showNotamModal(hit, { keepCharts: true });
+      else if (typeof showToast === 'function') {
+        showToast((S.freqSourceNotamGone || 'NOTAM no longer in the feed') + ' (' + notam.id + ')');
+      }
+    };
+    td.appendChild(btn);
+    return td;
+  };
   const pending = [];
   for (const opt of opts) {
     const tr = document.createElement('tr');
@@ -6794,7 +6835,7 @@ function renderFreqTable(freqSection) {
     };
     actions.appendChild(reset);
     syncFreqInputValidity();
-    tr.append(name, template, local, actions);
+    tr.append(name, local, sourceCell(optChg), template, actions);
     pending.push({ code: optIcao || '', order: 0, sub: opt.label || opt.id, tr });
   }
   // Airfield clearance / ATIS rows (editable numeric parts).
@@ -6880,7 +6921,7 @@ function renderFreqTable(freqSection) {
     local.appendChild(inp);
     actions.appendChild(reset);
     syncAf();
-    tr.append(name, template, local, actions);
+    tr.append(name, local, sourceCell(r.notam), template, actions);
     pending.push({ code: r.af.name || '', order: 1, sub: r.flabel + partName, tr });
   }
   // VOR rows (editable single frequency each).
@@ -6947,7 +6988,7 @@ function renderFreqTable(freqSection) {
     local.appendChild(inp);
     actions.appendChild(reset);
     syncVor();
-    tr.append(name, template, local, actions);
+    tr.append(name, local, sourceCell(null), template, actions);
     pending.push({ code: '', order: 2, sub: v.ident || '', tr });
   }
   // By ICAO, and within a code by kind: the call sign first, then clearance / ATIS. A row
@@ -6960,6 +7001,26 @@ function renderFreqTable(freqSection) {
   table.appendChild(tbody);
   tableWrap.appendChild(table);
   freqSection.appendChild(tableWrap);
+
+  // Say when there is more table off the edge. Measured rather than assumed: the fade is on
+  // whichever side still has content, so it goes away at the end of the scroll instead of
+  // promising more that is not there. Re-measured on scroll and on resize, because the modal
+  // is draggable and the phone can be turned.
+  const markOverflow = () => {
+    const max = tableWrap.scrollWidth - tableWrap.clientWidth;
+    if (max <= 1) {
+      tableWrap.classList.remove('scroll-start', 'scroll-end');
+      return;
+    }
+    // scrollLeft is negative in RTL on every engine that matters now; distance from each end
+    // is what the fades want, and abs() gets both directions with one measurement.
+    const from = Math.abs(tableWrap.scrollLeft);
+    tableWrap.classList.toggle('scroll-start', from > 1);
+    tableWrap.classList.toggle('scroll-end', from < max - 1);
+  };
+  tableWrap.addEventListener('scroll', markOverflow, { passive: true });
+  window.addEventListener('resize', markOverflow);
+  requestAnimationFrame(markOverflow);
 
   const noMatches = document.createElement('p');
   noMatches.className = 'charts-freq-empty charts-freq-no-matches';
