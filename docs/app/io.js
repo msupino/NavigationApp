@@ -6524,6 +6524,13 @@ function renderFreqTable(freqSection) {
       }
     }
   }
+  const idToIcao = {};
+  if (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS) {
+    for (const [icao, csId] of Object.entries(AIRFIELD_CALL_SIGN_IDS)) {
+      if (!csId) continue;
+      idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(csId) : String(csId).toUpperCase()] = icao;
+    }
+  }
   const opts = (typeof commAllCallSignOptions === 'function'
     ? commAllCallSignOptions() : [])
     .filter(o => o && o.id)
@@ -6532,24 +6539,47 @@ function renderFreqTable(freqSection) {
         ? commCallSignIdKey(o.id) : String(o.id || '').trim().toUpperCase();
       return key && usedIds.has(key);
     })
-    .sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
+    .sort((a, b) => {
+      // By ICAO, which is what the row shows and what a pilot looks up. A call sign with no
+      // field of its own (area control, information) has no code to sort on, so it falls to
+      // the end of the block under its own name rather than jumping the airports.
+      const ka = idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(a.id) : String(a.id || '').toUpperCase()] || '';
+      const kb = idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(b.id) : String(b.id || '').toUpperCase()] || '';
+      if (ka !== kb) return (ka || '\uffff').localeCompare(kb || '\uffff');
+      return (a.label || a.id).localeCompare(b.label || b.id);
+    });
   // Reverse map: call-sign id (key) -> airfield ICAO, so an airfield-primary
   // call sign reads with the airport's ICAO code + "Primary" label (consistent
   // with that airport's Clearance / ATIS rows below) instead of its own code.
-  const idToIcao = {};
-  if (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS) {
-    for (const [icao, csId] of Object.entries(AIRFIELD_CALL_SIGN_IDS)) {
-      if (!csId) continue;
-      idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(csId) : String(csId).toUpperCase()] = icao;
-    }
-  }
   // Airfield clearance / ATIS frequencies — one row per labelled numeric part.
-  const afList = (typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : [];
+  // By ICAO too, so the airfield block reads in the same order as the call-sign block above
+  // and a pilot scanning for LLHZ finds its rows in one place.
+  const afList = ((typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : [])
+    .slice()
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
   const afFreqRows = [];
   for (const af of afList) {
+    // A NOTAM that states a new clearance frequency outright. The inspector has shown these
+    // since #1934; this table read af.clearance straight from the dataset, so it went on
+    // printing the superseded number -- or nothing at all where the AIP publishes none, as
+    // at Haifa. A frequency table that disagrees with the panel beside it is worse than one
+    // that is merely incomplete: the pilot has to work out which to believe.
+    const chg = (typeof airfieldFreqChangeFor === 'function')
+      ? airfieldFreqChangeFor(af, 'clearance') : null;
     for (const fld of [['clearance', S.clearance || 'Clearance'], ['atis', S.atis || 'ATIS']]) {
       const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, fld[0]) : [];
-      for (const part of parts) afFreqRows.push({ af, flabel: fld[1], part });
+      const notam = fld[0] === 'clearance' ? chg : null;
+      for (const part of parts) {
+        afFreqRows.push({ af, flabel: fld[1], part,
+          notam: (notam && part === parts[0]) ? notam : null,
+          publishedDef: part.def });
+      }
+      // Nothing published, but a NOTAM installed one: the row is the NOTAM's, and read-only
+      // here -- there is no dataset default to edit or restore it to.
+      if (notam && !parts.length) {
+        afFreqRows.push({ af, flabel: fld[1], notam, readOnly: true,
+          part: { label: '', freq: notam.freq, def: notam.freq, key: '', overridden: false } });
+      }
     }
   }
   // VOR frequencies (one editable row each).
@@ -6619,9 +6649,25 @@ function renderFreqTable(freqSection) {
   thead.appendChild(headRow);
   table.appendChild(thead);
   const tbody = document.createElement('tbody');
+  // Rows are collected rather than appended as they are built, so the three kinds -- the
+  // call sign, the aerodrome's clearance/ATIS, the VORs -- can be laid out grouped by
+  // aerodrome instead of as three separate blocks. Looking up LLHZ meant finding its Primary
+  // row under H in one block and its Clearance row under L in another.
+  const pending = [];
   for (const opt of opts) {
     const tr = document.createElement('tr');
     tr.className = opt.overrideFreq ? 'overridden' : '';
+    // The value already follows the NOTAM -- commCallSignTemplateFreq answers with it -- but
+    // nothing said so, and a number that moved for a reason should carry the reason.
+    const optChg = (typeof commCallSignFreqChange === 'function')
+      ? commCallSignFreqChange(opt.id) : null;
+    if (optChg) {
+      tr.classList.add('freq-notam-changed');
+      tr.title = (typeof airfieldFreqNotamTitle === 'function')
+        ? airfieldFreqNotamTitle(optChg, (typeof commCallSignPublishedFreq === 'function'
+          ? commCallSignPublishedFreq(opt.id) : ''))
+        : 'NOTAM ' + optChg.id;
+    }
     // Airfield-primary call signs show the airport ICAO as their code, so the
     // same airport reads consistently with its Clearance / ATIS rows (LLHZ),
     // not two codes (HERZLIYA vs LLHZ).
@@ -6636,6 +6682,7 @@ function renderFreqTable(freqSection) {
       opt.row && opt.row.he,
     ].filter(Boolean).join(' ').toLocaleLowerCase();
     tr.dataset.search = searchText;
+    tr.dataset.icao = optIcao || '';
     const name = document.createElement('td');
     const label = document.createElement('span');
     label.className = 'charts-freq-label';
@@ -6650,7 +6697,12 @@ function renderFreqTable(freqSection) {
     }
     const template = document.createElement('td');
     template.className = 'charts-freq-template';
-    template.textContent = opt.templateFreq || '';
+    // The Default column is the published frequency and nothing else. A NOTAM is not a new
+    // default -- it is a change in force today, which is what the editable value beside it
+    // shows. Writing it here would have left the pilot no way to see what the change
+    // replaced, and "Restore originals" restoring to something a NOTAM chose.
+    template.textContent = (typeof commCallSignPublishedFreq === 'function'
+      ? commCallSignPublishedFreq(opt.id) : opt.templateFreq) || '';
     const local = document.createElement('td');
     const inp = document.createElement('input');
     inp.className = 'charts-freq-input';
@@ -6661,7 +6713,7 @@ function renderFreqTable(freqSection) {
       inp.inputMode = 'decimal';
       inp.step = '0.005';
     }
-    inp.value = opt.freq || opt.templateFreq || '';
+    inp.value = opt.freq || opt.templateFreq || '';   // opt.freq already prefers a hand override
     inp.dataset.callSign = opt.id;
     inp.setAttribute('aria-invalid', 'false');
     inp.setAttribute('aria-label', (opt.label || opt.id) + ' ' +
@@ -6743,16 +6795,23 @@ function renderFreqTable(freqSection) {
     actions.appendChild(reset);
     syncFreqInputValidity();
     tr.append(name, template, local, actions);
-    tbody.appendChild(tr);
+    pending.push({ code: optIcao || '', order: 0, sub: opt.label || opt.id, tr });
   }
   // Airfield clearance / ATIS rows (editable numeric parts).
   for (const r of afFreqRows) {
     const part = r.part;
     const tr = document.createElement('tr');
     tr.className = part.overridden ? 'overridden' : '';
+    if (r.notam) {
+      tr.classList.add('freq-notam-changed');
+      tr.title = (typeof airfieldFreqNotamTitle === 'function')
+        ? airfieldFreqNotamTitle(r.notam, r.readOnly ? '' : part.def)
+        : 'NOTAM ' + r.notam.id;
+    }
     const partName = (part.label ? ' ' + part.label : '');
     tr.dataset.search = [r.af.name, r.af.en, r.af.he, r.flabel, part.label, part.freq, part.def]
       .filter(Boolean).join(' ').toLocaleLowerCase();
+    tr.dataset.icao = r.af.name || '';
     const name = document.createElement('td');
     const label = document.createElement('span');
     label.className = 'charts-freq-label';
@@ -6764,14 +6823,16 @@ function renderFreqTable(freqSection) {
     name.appendChild(code);
     const template = document.createElement('td');
     template.className = 'charts-freq-template';
-    template.textContent = part.def || '';
+    // Published, not the NOTAM -- see the call-sign rows above. Where a NOTAM created the
+    // row there is no published value, and the column is honestly blank.
+    template.textContent = (r.notam ? (r.readOnly ? '' : r.publishedDef) : part.def) || '';
     const local = document.createElement('td');
     const inp = document.createElement('input');
     inp.className = 'charts-freq-input';
     inp.dir = 'ltr';
     if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
     else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
-    inp.value = part.freq || part.def || '';
+    inp.value = (r.notam ? r.notam.freq : (part.freq || part.def)) || '';
     const actions = document.createElement('td');
     actions.className = 'charts-freq-actions';
     const reset = document.createElement('button');
@@ -6779,23 +6840,30 @@ function renderFreqTable(freqSection) {
     reset.className = 'commchange-freq-reset';
     reset.textContent = '↻';
     reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    // What reset returns to, and what counts as "not edited". A NOTAM in force is the
+    // frequency to call, so it is what remains when the pilot undoes their own edit -- the
+    // call-sign rows have always behaved this way (commCallSignTemplateFreq answers with the
+    // NOTAM), and the airfield rows reset to part.def, which is not NOTAM-aware. So LLHZ
+    // tower reset to 125.60 and LLHZ clearance reset to 121.70, in the same table, from the
+    // same NOTAM. Reset undoes YOUR edit; it does not undo the NOTAM.
+    const inForce = (r.notam ? r.notam.freq : part.def) || '';
     const normOf = () => (typeof commNormalizeFreqInput === 'function'
       ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
     function syncAf() {
       const n = normOf();
       const invalid = n === null;
       inp.classList.toggle('invalid', invalid);
-      inp.classList.toggle('is-default', !invalid && !!part.def && (n || '') === part.def);
+      inp.classList.toggle('is-default', !invalid && !!inForce && (n || '') === inForce);
       inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
-      reset.disabled = !part.def || (!part.overridden && !invalid);
+      reset.disabled = !inForce || (!part.overridden && !invalid);
     }
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
     inp.addEventListener('input', syncAf);
     inp.addEventListener('change', () => {
       const n = normOf();
       if (n === null) { syncAf(); return; }
-      setAirfieldFreqOverride(part.key, n === part.def ? '' : n);
-      part.freq = n; part.overridden = n !== part.def;
+      setAirfieldFreqOverride(part.key, n === inForce ? '' : n);
+      part.freq = n; part.overridden = n !== inForce;
       inp.value = n;
       tr.classList.toggle('overridden', part.overridden);
       syncAf(); updateRestoreAll(); afterFreqTableEdit();
@@ -6804,8 +6872,8 @@ function renderFreqTable(freqSection) {
       e.preventDefault();
       if (reset.disabled) return;
       setAirfieldFreqOverride(part.key, '');
-      part.freq = part.def; part.overridden = false;
-      inp.value = part.def || '';
+      part.freq = inForce; part.overridden = false;
+      inp.value = inForce;
       tr.classList.remove('overridden');
       syncAf(); updateRestoreAll(); afterFreqTableEdit();
     };
@@ -6813,7 +6881,7 @@ function renderFreqTable(freqSection) {
     actions.appendChild(reset);
     syncAf();
     tr.append(name, template, local, actions);
-    tbody.appendChild(tr);
+    pending.push({ code: r.af.name || '', order: 1, sub: r.flabel + partName, tr });
   }
   // VOR rows (editable single frequency each).
   for (const r of vorFreqRows) {
@@ -6821,6 +6889,7 @@ function renderFreqTable(freqSection) {
     const tr = document.createElement('tr');
     tr.className = r.overridden ? 'overridden' : '';
     tr.dataset.search = [v.ident, v.name, v.he, 'vor', r.def].filter(Boolean).join(' ').toLocaleLowerCase();
+    tr.dataset.icao = '';                       // a VOR belongs to no aerodrome
     const name = document.createElement('td');
     const label = document.createElement('span');
     label.className = 'charts-freq-label';
@@ -6879,8 +6948,15 @@ function renderFreqTable(freqSection) {
     actions.appendChild(reset);
     syncVor();
     tr.append(name, template, local, actions);
-    tbody.appendChild(tr);
+    pending.push({ code: '', order: 2, sub: v.ident || '', tr });
   }
+  // By ICAO, and within a code by kind: the call sign first, then clearance / ATIS. A row
+  // with no aerodrome of its own -- area control, a VOR -- sorts after every airport rather
+  // than in among them.
+  pending.sort((a, b) => (a.code || '\uffff').localeCompare(b.code || '\uffff')
+    || a.order - b.order
+    || String(a.sub).localeCompare(String(b.sub)));
+  for (const row of pending) tbody.appendChild(row.tr);
   table.appendChild(tbody);
   tableWrap.appendChild(table);
   freqSection.appendChild(tableWrap);
@@ -6891,11 +6967,40 @@ function renderFreqTable(freqSection) {
   noMatches.hidden = true;
   freqSection.appendChild(noMatches);
 
+  // Filter by aerodrome, the same control the NOTAM list uses: every code that has rows,
+  // with its count, and All first. A long table is mostly other people's airports, and
+  // typing a code into the search box only works if you remember it -- the list is the
+  // answer to "which fields are even in here".
+  const codes = Array.from(new Set(Array.from(tbody.querySelectorAll('tr'))
+    .map(tr => tr.dataset.icao).filter(Boolean))).sort();
+  let filterIcao = '';
+  let sel = null;
+  if (codes.length > 1) {
+    sel = document.createElement('select');
+    sel.className = 'charts-freq-filter-sel';
+    sel.dir = 'ltr';
+    sel.setAttribute('aria-label', S.freqTableFilterLabel || 'Filter frequencies by aerodrome');
+    const optAll = document.createElement('option');
+    optAll.value = '';
+    optAll.textContent = (S.notamFilterAll || 'All') + ' ('
+      + tbody.querySelectorAll('tr').length + ')';
+    sel.appendChild(optAll);
+    for (const c of codes) {
+      const o = document.createElement('option');
+      o.value = c;
+      o.textContent = c + ' (' + tbody.querySelectorAll('tr[data-icao="' + c + '"]').length + ')';
+      sel.appendChild(o);
+    }
+    sel.onchange = () => { filterIcao = sel.value; applySearchFilter(); };
+    searchWrap.appendChild(sel);
+  }
+
   function applySearchFilter() {
     const q = search.value.trim().toLocaleLowerCase();
     let shown = 0;
     for (const tr of tbody.querySelectorAll('tr')) {
-      const hit = !q || (tr.dataset.search || '').includes(q);
+      const hit = (!q || (tr.dataset.search || '').includes(q))
+        && (!filterIcao || tr.dataset.icao === filterIcao);
       tr.hidden = !hit;
       if (hit) shown += 1;
     }

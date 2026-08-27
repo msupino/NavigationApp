@@ -1956,6 +1956,7 @@ window.S = Object.assign({
   freqTableRestoreAll: 'Restore originals',
   freqTableEmpty: 'No frequency catalog available',
   freqTableSearch: 'Search frequencies',
+  freqTableFilterLabel: 'Filter frequencies by aerodrome',
   freqTableNoMatches: 'No matching frequencies',
   altPairsTitle: 'CVFR altitude pairs',
   altPairsTitleFor: function (label) { return label + ' altitude pairs'; },

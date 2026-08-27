@@ -215,3 +215,154 @@ test('a call sign with no NOTAM is untouched', async ({ page }) => {
   }));
   expect(seen.template).toBe(seen.published);
 });
+
+// The Freq table under Charts is the other place a frequency is read, and it disagreed with
+// the panel beside it: the call-sign rows already carried the NOTAM value but said nothing
+// about why, and the airfield clearance rows read af.clearance straight from the dataset --
+// so they printed the superseded number, or nothing at all where the AIP publishes none.
+const openFreqTable = (page) => page.evaluate(async () => {
+  showFreqTableModal();
+  for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return Array.from(document.querySelectorAll('.charts-freq-section tbody tr')).map(tr => ({
+    text: tr.textContent.replace(/\s+/g, ' ').trim(),
+    marked: tr.classList.contains('freq-notam-changed'),
+    title: tr.title || '',
+    value: (tr.querySelector('input') || {}).value || '',
+    def: (tr.querySelector('.charts-freq-template') || {}).textContent || '',
+  }));
+});
+
+test('the Freq table marks a call sign a NOTAM moved, and says which', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await openFreqTable(page);
+  const herzliya = rows.filter(r => /LLHZ|HERZLIYA/i.test(r.text) && r.marked);
+  expect(herzliya.length).toBeGreaterThan(0);
+  expect(herzliya[0].title).toMatch(/NOTAM C1574\/26/);
+  expect(herzliya.some(r => r.value === '125.60')).toBe(true);
+});
+
+test('Haifa gets a clearance row it has no dataset entry for', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await openFreqTable(page);
+  const haifa = rows.filter(r => /LLHA/.test(r.text) && r.marked);
+  expect(haifa.length).toBe(1);
+  expect(haifa[0].title).toBe('NOTAM A0685/26 · not published in the AIP');
+  // In the editable value, not the Default column: a NOTAM is a change in force, not a
+  // published default. See "the NOTAM is the value in force" below.
+  expect(haifa[0].value).toBe('127.80');
+});
+
+test('with no NOTAM in the feed the table marks nothing', async ({ page }) => {
+  await boot(page, []);
+  const rows = await openFreqTable(page);
+  expect(rows.some(r => r.marked)).toBe(false);
+  // ...and Haifa's invented clearance row is gone with it.
+  expect(rows.filter(r => /LLHA/.test(r.text) && /Clearance/i.test(r.text)).length).toBe(0);
+});
+
+// A NOTAM is not a new default. The Default column keeps what the AIP or the catalog
+// publishes, so the pilot can see what the change replaced -- and so "Restore originals"
+// restores to something published rather than to whatever a NOTAM chose. The change in
+// force is the value beside it.
+test('the NOTAM is the value in force, never the default', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await openFreqTable(page);
+  const clearance = rows.find(r => /LLHZ/.test(r.text) && /Clearance/i.test(r.text));
+  expect(clearance.def).toBe('121.70');       // what AD 2.18 publishes
+  expect(clearance.value).toBe('118.55');     // what C1574/26 put in force
+  const tower = rows.find(r => /LLHZ|HERZLIYA/i.test(r.text) && r.marked && r.value === '125.60');
+  expect(tower.def).toBe('122.20');           // the catalog's own, not the NOTAM
+});
+
+// ...and where a NOTAM created the row there is nothing published to show, so the column is
+// blank rather than echoing the NOTAM back as if the AIP had said it.
+test('a row a NOTAM created has no default to show', async ({ page }) => {
+  await boot(page, LIVE);
+  const haifa = (await openFreqTable(page)).find(r => /LLHA/.test(r.text) && r.marked);
+  expect(haifa.value).toBe('127.80');
+  expect(haifa.def.trim()).toBe('');
+});
+
+// Reset undoes YOUR edit; it does not undo the NOTAM. The two row kinds disagreed about
+// that: the call-sign rows fell back to what is in force, the airfield rows to part.def --
+// so in one table, from one NOTAM, LLHZ tower reset to 125.60 and LLHZ clearance to 121.70.
+const resetRow = (page, match) => page.evaluate(async (m) => {
+  showFreqTableModal();
+  for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  const rows = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'));
+  const tr = rows.find(t => new RegExp(m.text).test(t.textContent)
+    && (t.querySelector('input') || {}).value === m.value);
+  const inp = tr.querySelector('input');
+  inp.value = '119.00';                       // the pilot types over it
+  inp.dispatchEvent(new Event('change', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 60));
+  const edited = inp.value;
+  const btn = tr.querySelector('.commchange-freq-reset');
+  btn.disabled = false;
+  btn.click();
+  await new Promise(r => setTimeout(r, 60));
+  return { edited, afterReset: tr.querySelector('input').value };
+}, match);
+
+test('both row kinds reset to the frequency in force, not to the superseded one', async ({ page }) => {
+  await boot(page, LIVE);
+  const clearance = await resetRow(page, { text: 'LLHZ.*Clearance|Clearance.*LLHZ', value: '118.55' });
+  expect(clearance.edited).toBe('119.00');
+  expect(clearance.afterReset).toBe('118.55');   // was 121.70 — the superseded number
+
+  const tower = await resetRow(page, { text: 'LLHZ|HERZLIYA', value: '125.60' });
+  expect(tower.afterReset).toBe('125.60');       // unchanged: this row was already right
+});
+
+// The table is looked up by field, so it is ordered by ICAO — the code each row shows.
+test('the Freq table is one list, grouped and sorted by ICAO', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .map(tr => tr.dataset.icao || '');
+  });
+  const codes = rows.filter(c => /^LL[A-Z]{2}$/.test(c));
+  expect(codes.length).toBeGreaterThan(4);
+  // One ascending run, not three blocks: every row for a field sits with its own kind.
+  expect(codes).toEqual([...codes].sort());
+  // ...and each code appears as a single contiguous group.
+  const firstSeen = new Map();
+  codes.forEach((c, i) => { if (!firstSeen.has(c)) firstSeen.set(c, i); });
+  for (const [c, start] of firstSeen) {
+    const n = codes.filter(x => x === c).length;
+    expect(codes.slice(start, start + n).every(x => x === c)).toBe(true);
+  }
+  // Rows with no aerodrome (VORs, area control) come after every airport, never among them.
+  const lastCoded = rows.lastIndexOf(codes[codes.length - 1]);
+  expect(rows.slice(lastCoded + 1).every(c => c === '')).toBe(true);
+});
+
+// The same control the NOTAM list has: every code that has rows, with its count, All first.
+test('the aerodrome dropdown filters the table', async ({ page }) => {
+  await boot(page, LIVE);
+  const got = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const sel = document.querySelector('.charts-freq-filter-sel');
+    const opts = Array.from(sel.options).map(o => o.textContent);
+    sel.value = 'LLHZ';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    const visible = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .filter(tr => !tr.hidden);
+    return { opts, codes: visible.map(tr => tr.dataset.icao), n: visible.length };
+  });
+  expect(got.opts[0]).toMatch(/^All \(\d+\)$/);
+  expect(got.opts.some(o => /^LLHZ \(\d+\)$/.test(o))).toBe(true);
+  expect(got.n).toBeGreaterThan(0);
+  expect(got.codes.every(c => c === 'LLHZ')).toBe(true);
+});
