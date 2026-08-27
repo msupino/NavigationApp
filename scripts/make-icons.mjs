@@ -82,6 +82,11 @@ for (const size of [192, 512]) {
     join(ROOT, `docs/assets/icon-${size}.png`));
 }
 
+// Xcode derives every iPhone and iPad launcher size from this universal source.
+// Use the same mask-safe artwork as the PWA icons so native packaging cannot drift.
+await png(page, svg({ scale: 0.78, radius: 0 }), 1024, 1024,
+  join(ROOT, 'mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png'));
+
 const res = join(ROOT, 'mobile/android/app/src/main/res');
 for (const [density, size] of Object.entries(MIPMAP)) {
   await png(page, svg({}), size, size, join(res, `mipmap-${density}/ic_launcher.png`));

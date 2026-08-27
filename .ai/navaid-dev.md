@@ -626,8 +626,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   (`gpsAcquireWakeLock()` / `gpsWakeLockWanted()` in `gps.js`), releases it only
   when neither is running, and re-acquires it when the page becomes
   visible again — browsers drop the sentinel while the tab is hidden, so a
-  backgrounded browser tab can still leave gaps. The native app uses background
-  geolocation instead, which is a separate capability.
+  backgrounded browser tab can still leave gaps. The native iOS wrapper also
+  disables its idle timer whenever NavAid is active. This native fallback keeps
+  older iPads awake without the web API and restores Auto-Lock in the background.
 
 ## Persistence (`localStorage` + `sessionStorage`, all keyed `navaid.*`)
 
@@ -1102,6 +1103,9 @@ downloadable `route.json`.
   web `navigator.geolocation` path while the app is in use. `Info.plist` declares
   the required when-in-use location purpose. Background or lock-screen tracking
   remains unsupported without a compatible plugin and background entitlement.
+- The iOS delegate disables the idle timer while NavAid is active and restores
+  it when the app resigns active. This supports iPadOS versions that predate the
+  Web Screen Wake Lock API without enabling background GPS execution.
 - Keep Capacitor packages in `mobile/package.json`; the root package remains
   only the Playwright/static-check tooling for the web app.
 - `mobile/scripts/validate-capacitor.mjs` and

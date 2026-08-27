@@ -15,6 +15,9 @@ Native bits baked into the shell:
   its Swift package targets Capacitor 7, while this shell and social login use
   Capacitor 8. iOS supports foreground location through `navigator.geolocation`
   while the app is in use; background or lock-screen tracking is not enabled.
+- The iOS wrapper disables the idle timer while NavAid is active. This keeps the
+  chart visible on older iPads that do not support the Web Screen Wake Lock API.
+  Moving NavAid to the background restores the user's normal Auto-Lock behavior.
 - Android manifest: fine/coarse location, `FOREGROUND_SERVICE(_LOCATION)`,
   `POST_NOTIFICATIONS`.
 - `webDir` is the tiny `shell/` stub — packaged only so `cap sync` has a
