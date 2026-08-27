@@ -288,7 +288,14 @@ function onLivePosition(pos) {
     // The FIRST fix centres: there is nothing on screen to preserve yet, and a pilot who
     // opened the app to find out where they are should be shown -- unless they have
     // switched following off, which is a standing instruction, not a per-fix one.
-    if (isFirst && gpsFollow) map.setView([p.lat, p.lng], map.getZoom());
+    // ...and the first fix is also the moment to frame it. Turning Location on with follow
+    // already on -- the default, and how most flights start -- never went through
+    // gpsSetFollow, so the flying band was only ever applied by toggling the switch off and
+    // on. A pilot who opened the app zoomed out over the whole route got their aeroplane
+    // centred in that same country-wide view, which is the case the band exists for.
+    if (isFirst && gpsFollow) {
+      map.setView([p.lat, p.lng], gpsFollowZoom(map.getZoom(), p.lat, p.lng));
+    }
     else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
     gpsApplyHeadingUp();
   }
@@ -428,7 +435,8 @@ function gpsSetFollow(on) {
   // preceded the tap must not hold the map hostage for its grace period either.
   if (gpsFollow && gpsOwn) {
     _gpsUserMovedAt = 0;
-    gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng, gpsFollowZoom(map && map.getZoom()));
+    gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng,
+      gpsFollowZoom(map && map.getZoom(), gpsOwn.lat, gpsOwn.lng));
   }
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
@@ -459,9 +467,32 @@ function gpsApplyHeadingUp() {
 // circuit -- and re-centring at that zoom put the aircraft in the middle of a view they
 // could not navigate from. Clamped, not set: a zoom already inside the band was a
 // deliberate choice about how much chart to see, and this does not overrule it.
-function gpsFollowZoom(current) {
-  const lo = typeof tune === 'function' ? tune('followZoomFloor') : 10;
-  const hi = typeof tune === 'function' ? tune('followZoomCeiling') : 14;
+// Inside a control zone, geometry only. NOT airspaceAtLatLng, which is gated on the airspace
+// LAYER being switched on: where the aeroplane is does not depend on what the pilot has
+// chosen to draw. If the dataset has not been fetched yet this asks for it and answers false
+// for now -- the next engage gets the real answer, and a fetch is not worth blocking a
+// re-centre for.
+function gpsInsideCtr(lat, lng) {
+  if (typeof airspaceContains !== 'function') return false;
+  if (!Array.isArray(airspace)) {
+    if (typeof loadAirspace === 'function') loadAirspace();
+    return false;
+  }
+  const at = { lat, lng };
+  return airspace.some(a => a && a.kind === 'ctr' && airspaceContains(a, at));
+}
+
+// The zoom to fly at, when follow is (re-)engaged -- and how much chart that is depends on
+// where the aeroplane is. In a CTR the questions are close-in ones (which reporting point,
+// which runway, where the traffic is) and a 40-mile view answers none of them; en route the
+// opposite. So the band is chosen by position, then the pilot's own zoom is clamped into it
+// rather than replaced: a zoom already inside was a deliberate choice about how much chart
+// to see, and this does not overrule it.
+function gpsFollowZoom(current, lat, lng) {
+  const ctr = Number.isFinite(lat) && Number.isFinite(lng) && gpsInsideCtr(lat, lng);
+  const t = (k, d) => (typeof tune === 'function' ? tune(k) : d);
+  const lo = ctr ? t('followZoomCtrFloor', 12) : t('followZoomFloor', 10);
+  const hi = ctr ? t('followZoomCtrCeiling', 15) : t('followZoomCeiling', 14);
   if (!Number.isFinite(current)) return current;
   if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo > hi) return current;
   return Math.min(hi, Math.max(lo, current));
