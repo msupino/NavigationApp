@@ -13,7 +13,11 @@ Native bits baked into the shell:
   locked (`docs/app/gps.js` falls back to plain `watchPosition` on the web).
   `capacitor.config.json` deliberately excludes it from `ios.includePlugins`:
   its Swift package targets Capacitor 7, while this shell and social login use
-  Capacitor 8. iOS background location is not enabled or advertised yet.
+  Capacitor 8. iOS supports foreground location through `navigator.geolocation`
+  while the app is in use; background or lock-screen tracking is not enabled.
+- The iOS wrapper disables the idle timer while NavAid is active. This keeps the
+  chart visible on older iPads that do not support the Web Screen Wake Lock API.
+  Moving NavAid to the background restores the user's normal Auto-Lock behavior.
 - Android manifest: fine/coarse location, `FOREGROUND_SERVICE(_LOCATION)`,
   `POST_NOTIFICATIONS`.
 - `webDir` is the tiny `shell/` stub — packaged only so `cap sync` has a
@@ -89,10 +93,11 @@ TestFlight/App Store). `Info.plist` lists `navaid.supino.org` under
 `WKAppBoundDomains` so the site's service worker (offline + chart packs)
 works inside WKWebView. The matching Capacitor
 `ios.limitsNavigationsToAppBoundDomains` option must remain enabled; WebKit
-otherwise rejects the native JavaScript bridge on the remote page. Background
-location on iOS still needs the
-`UIBackgroundModes: location` entitlement + usage strings before lock-screen
-recording works there.
+otherwise rejects the native JavaScript bridge on the remote page. Foreground
+**Show location** and GPS track recording use `navigator.geolocation` and the
+when-in-use permission declared in `Info.plist`. Background location still needs
+a compatible plugin, the `UIBackgroundModes: location` entitlement, and
+additional usage metadata before lock-screen recording works there.
 
 The native iOS and Android apps can poll an HTTP simulator bridge on the local
 network. Those requests use Capacitor's native HTTP client instead of mixed-content

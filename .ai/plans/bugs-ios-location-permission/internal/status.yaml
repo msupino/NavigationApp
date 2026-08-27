@@ -1,0 +1,28 @@
+schema_version: 3
+plugin_version: 1.27.0
+pipeline_status: implementing
+pipeline_status_history:
+  - status: init
+    at: '2026-08-27T12:32:13+03:00'
+  - status: investigated
+    at: '2026-08-27T12:35:29+03:00'
+  - status: test_written
+    at: '2026-08-27T12:37:58+03:00'
+  - status: rca_ready
+    at: '2026-08-27T12:40:30+03:00'
+  - status: implementing
+    at: '2026-08-27T12:41:09+03:00'
+epic_key: ios-location-permission
+branch: codex/ios-location-permission
+base: dev
+epic: .ai/plans/bugs-ios-location-permission
+pipeline_mode: bug-fix
+updated_at: '2026-08-27T12:41:32+03:00'
+pr_flow:
+  draft_pr_number: 1964
+  pr_url: https://github.com/msupino/NavigationApp/pull/1964
+  base_branch: dev
+  code_review_iteration: 1
+  acknowledged_issue_comments: []
+tier: lean
+current_phase: implement

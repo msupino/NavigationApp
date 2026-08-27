@@ -153,6 +153,12 @@ if (fs.existsSync(iosInfo)) {
       !/<key>NSLocalNetworkUsageDescription<\/key>\s*<string>[^<]+<\/string>/.test(text)) {
     fail('iOS local simulator bridge access is not declared');
   }
+  const locationPurpose = text.match(
+    /<key>NSLocationWhenInUseUsageDescription<\/key>\s*<string>([^<]*)<\/string>/,
+  );
+  if (!locationPurpose?.[1].trim()) {
+    fail('iOS foreground location purpose must be declared and non-empty');
+  }
   if (text.includes('<key>NSAllowsArbitraryLoads</key>')) {
     fail('iOS must not disable App Transport Security globally');
   }

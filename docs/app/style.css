@@ -230,7 +230,7 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   font-size: 11px;
   letter-spacing: 0.3px;
 }
-@media (min-width: 681px) {
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
   .map-legend-version { display: block; }
 }
 .legend-symbol {
@@ -740,7 +740,7 @@ html[dir="rtl"] #toolbar.collapsed {
 
 /* Desktop menu bar: the same toolbar sections become top-level dropdown
    menus. Phone/tablet-narrow viewports keep the floating column below. */
-@media (min-width: 681px) {
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
   /* Map fills the whole viewport; the menu bar floats over it. */
   #map,
   #overlay {
@@ -2238,7 +2238,7 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
   color: inherit;
 }
 
-@media (min-width: 681px) {
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
   #app-version {
     display: none;
   }
@@ -4797,7 +4797,7 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
   font-size: 11px;
 }
 
-@media (min-width: 681px) {
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
   #search-overlay {
     top: 46px;
   }
@@ -5023,7 +5023,7 @@ body.theme-light .point-choice-option:hover .point-choice-meta,
 body.theme-light .point-choice-option:focus .point-choice-meta {
   color: #4b5563;
 }
-@media (min-width: 681px) {
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
   body.theme-light #toolbar {
     background: rgba(250, 252, 255, 0.98);
     box-shadow: 0 2px 12px rgba(31, 37, 44, 0.16);
