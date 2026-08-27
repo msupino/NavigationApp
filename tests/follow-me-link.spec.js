@@ -9,11 +9,12 @@
 // publishing a position is exactly the wrong thing to have in a repository.
 const { test, expect } = require('./_setup');
 
-async function boot(page) {
-  await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
-  // A WebSocket that records what was sent and can play frames back.
-  await page.evaluate(() => {
+// The stub is installed BEFORE any page script runs, and replaces window.WebSocket
+// outright: boot can now resume a stored session on its own, and a test that quietly
+// starts publishing a position to a public broker is exactly the wrong thing to have in a
+// repository. It also survives a reload, which is how a restart is tested.
+async function installStub(page) {
+  await page.addInitScript(() => {
     window.__sent = [];
     window.__sockets = [];
     window.StubSocket = class {
@@ -27,7 +28,14 @@ async function boot(page) {
       deliver(bytes) { this.onmessage && this.onmessage({ data: new Uint8Array(bytes).buffer }); }
       connack() { this.deliver([0x20, 2, 0, 0]); }
     };
+    window.WebSocket = window.StubSocket;
   });
+}
+
+async function boot(page) {
+  await installStub(page);
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
 }
 
 test('the remaining-length varint round-trips past one byte', async ({ page }) => {
@@ -481,4 +489,112 @@ test('a dropped socket reconnects and re-subscribes; stopping does not', async (
   expect(got.after.sockets).toBe(got.before.sockets + 1);  // it came back...
   expect(got.after.subs).toBe(got.before.subs + 1);        // ...and re-subscribed
   expect(got.settled).toBe(got.closed);                    // stop means stop
+});
+
+// A share that dies with the app is a share nobody can rely on: the pilot is at 2000 feet
+// and is not going to re-send a link. These four tests pin what survives and what does not.
+async function shareOnce(page, code) {
+  return page.evaluate(async (reg) => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await F.start(reg);
+    window.__sockets[window.__sockets.length - 1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    F.stop();
+    window.WebSocket = orig;
+    return link;
+  }, code);
+}
+
+test('sharing the same aeroplane again resumes the same link', async ({ page }) => {
+  await boot(page);
+  // A crash is a stop that never ran, so the stored session is what a restart reads.
+  const first = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await F.start('4X-KEEP');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.WebSocket = orig;
+    return link;
+  });
+  await page.reload();                            // the restart
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
+  // Boot resumes it by itself: the pilot does not have to notice anything happened.
+  await page.waitForFunction(() => NavAid.followMe.sharing(), null, { timeout: 3000 });
+  const again = await shareOnce(page, '4X-KEEP');
+  expect(again).toBe(first);                      // same topic AND same key
+});
+
+test('a different aircraft code never inherits the previous link', async ({ page }) => {
+  await boot(page);
+  const a = await shareOnce(page, '4X-AAA');
+  const b = await shareOnce(page, '4X-BBB');
+  expect(b).not.toBe(a);
+});
+
+test('stopping kills the link, and an expired session is not resumed', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const first = await F.start('4X-DEAD');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    F.stop();                                     // deliberate: the key goes with it
+    const afterStop = !!F._stored();
+    const resumedAfterStop = await F.resume();
+
+    // Now a session that was never stopped, but is older than the window.
+    const second = await F.start('4X-DEAD');
+    window.__sockets[window.__sockets.length - 1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    const stored = JSON.parse(localStorage.getItem('navaid.followMeSession'));
+    localStorage.setItem('navaid.followMeSession',
+      JSON.stringify({ ...stored, at: Date.now() - 13 * 3600000 }));   // window is 12h
+    const expired = !!F._stored();
+    const third = await F.start('4X-DEAD');       // already sharing: same session
+    F.stop();
+    window.WebSocket = orig;
+    return { differs: second !== first, afterStop, resumedAfterStop, expired, third: third === second };
+  });
+  expect(got.afterStop).toBe(false);              // nothing left to resume
+  expect(got.resumedAfterStop).toBe(null);
+  expect(got.differs).toBe(true);                 // a stopped link never comes back
+  expect(got.expired).toBe(false);                // 13h later it is not offered either
+  expect(got.third).toBe(true);
+});
+
+test('the persistent-link flag keeps one link across a deliberate stop', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    setTune('featureFollowMePersist', true);
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const first = await F.start('4X-CLUB');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    F.stop();
+    const kept = F._stored();
+    // Stopped on purpose, so a restart must NOT start publishing again by itself...
+    const resumed = await F.resume();
+    // ...but the link the club already has still works next flight.
+    const second = await F.start('4X-CLUB');
+    window.__sockets[window.__sockets.length - 1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    // And the escape hatch throws it away.
+    const third = await F.newLink();
+    F.stop();
+    window.WebSocket = orig;
+    return { same: second === first, kept: !!kept, on: kept && kept.on, resumed, fresh: third !== first };
+  });
+  expect(got.kept).toBe(true);
+  expect(got.on).toBe(false);                     // kept, but marked not sharing
+  expect(got.resumed).toBe(null);
+  expect(got.same).toBe(true);
+  expect(got.fresh).toBe(true);
 });
