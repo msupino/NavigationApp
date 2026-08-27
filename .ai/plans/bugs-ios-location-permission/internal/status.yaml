@@ -17,11 +17,12 @@ branch: codex/ios-location-permission
 base: dev
 epic: .ai/plans/bugs-ios-location-permission
 pipeline_mode: bug-fix
-updated_at: '2026-08-27T12:41:09+03:00'
+updated_at: '2026-08-27T12:41:32+03:00'
 pr_flow:
   draft_pr_number: 1964
   pr_url: https://github.com/msupino/NavigationApp/pull/1964
   base_branch: dev
-  code_review_iteration: 0
+  code_review_iteration: 1
   acknowledged_issue_comments: []
 tier: lean
+current_phase: implement
