@@ -561,3 +561,66 @@ test('the value in force leads, the published one follows', async ({ page }) => 
   expect(got.defaultAt).toBe(3);
   expect(got.defaultText).toBe('121.70');   // still the published one, just further right
 });
+
+// "הרצליה" on one row and "קלירנס" on another asks the pilot to hold the airport in their
+// head while reading down a list of services. Each row names the field and what the
+// frequency is for, the way the charts window names a field.
+test('rows are named field + service', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-section tbody tr')).map(tr => ({
+      icao: tr.dataset.icao || '',
+      label: (tr.querySelector('.charts-freq-label') || {}).textContent || '',
+      code: (tr.querySelector('.charts-freq-code') || {}).textContent || '',
+    }));
+  });
+  const hz = rows.filter(r => r.icao === 'LLHZ');
+  expect(hz.length).toBeGreaterThan(1);
+  // The field's own name leads every one of its rows...
+  const field = hz[0].label.split(' ')[0];
+  expect(hz.every(r => r.label.startsWith(field))).toBe(true);
+  // ...and the services are named, not left to the reader.
+  expect(hz.some(r => /Tower$/.test(r.label))).toBe(true);
+  expect(hz.some(r => /Clearance$/.test(r.label))).toBe(true);
+  // The code is still there, under the name, as in the charts window.
+  expect(hz.every(r => r.code === 'LLHZ')).toBe(true);
+});
+
+test('a call sign with no field of its own keeps its own name', async ({ page }) => {
+  await boot(page, LIVE);
+  const orphan = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const tr = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .find(t => !t.dataset.icao && t.querySelector('.charts-freq-label'));
+    return tr ? (tr.querySelector('.charts-freq-label').textContent || '') : null;
+  });
+  if (orphan !== null) expect(orphan.trim()).not.toBe('Tower');
+});
+
+// ...and in Hebrew the field's Hebrew name leads, with the service in Hebrew after it.
+test('Hebrew names the field in Hebrew', async ({ page }) => {
+  await page.route(NOTAM_RE, r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(feed(LIVE)) }));
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showFreqTableModal === 'function' && window.notams !== null);
+  const hz = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .filter(tr => tr.dataset.icao === 'LLHZ')
+      .map(tr => (tr.querySelector('.charts-freq-label') || {}).textContent || '');
+  });
+  expect(hz.length).toBeGreaterThan(1);
+  expect(hz.every(l => l.startsWith('הרצליה'))).toBe(true);
+  expect(hz.some(l => l.endsWith('מגדל'))).toBe(true);
+  expect(hz.some(l => l.endsWith('קלירנס'))).toBe(true);
+});
