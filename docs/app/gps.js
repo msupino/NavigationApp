@@ -426,7 +426,10 @@ function gpsSetFollow(on) {
   try { localStorage.setItem(GPS_FOLLOW_KEY, gpsFollow ? '1' : '0'); } catch (e) { /* */ }
   // Turning it back on should act now rather than at the next fix -- and the pan that
   // preceded the tap must not hold the map hostage for its grace period either.
-  if (gpsFollow && gpsOwn) { _gpsUserMovedAt = 0; gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng); }
+  if (gpsFollow && gpsOwn) {
+    _gpsUserMovedAt = 0;
+    gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng, gpsFollowZoom(map && map.getZoom()));
+  }
   if (typeof refreshGpsFollowControl === 'function') refreshGpsFollowControl();
   if (typeof refreshOrientControl === 'function') refreshOrientControl();
   if (typeof refreshVoiceControl === 'function') refreshVoiceControl();
@@ -451,10 +454,24 @@ function gpsFollowSuspended() {
 function gpsApplyHeadingUp() {
   if (typeof applyHeadingUp === 'function') applyHeadingUp();
 }
-function gpsFollowRecenter(lat, lng) {
+// The zoom to fly at, when follow is (re-)engaged. The pilot may have been reading the
+// chart at a zoom that is no use for flying it -- out to see the whole route, or in on a
+// circuit -- and re-centring at that zoom put the aircraft in the middle of a view they
+// could not navigate from. Clamped, not set: a zoom already inside the band was a
+// deliberate choice about how much chart to see, and this does not overrule it.
+function gpsFollowZoom(current) {
+  const lo = typeof tune === 'function' ? tune('followZoomFloor') : 10;
+  const hi = typeof tune === 'function' ? tune('followZoomCeiling') : 14;
+  if (!Number.isFinite(current)) return current;
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo > hi) return current;
+  return Math.min(hi, Math.max(lo, current));
+}
+function gpsFollowRecenter(lat, lng, zoom) {
   if (typeof map === 'undefined' || !map) return false;
   if (gpsFollowSuspended()) return false;
-  map.setView([lat, lng], map.getZoom());
+  // Only an explicit zoom re-frames the view. Every fix-driven recentre keeps the zoom it
+  // finds, or a pilot who deliberately zoomed in while following would be fought at 1 Hz.
+  map.setView([lat, lng], Number.isFinite(zoom) ? zoom : map.getZoom());
   return true;
 }
 // Any gesture that moves the map counts, whatever it is: drag, wheel, pinch, double-tap,
