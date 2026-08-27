@@ -319,24 +319,50 @@ test('both row kinds reset to the frequency in force, not to the superseded one'
 });
 
 // The table is looked up by field, so it is ordered by ICAO — the code each row shows.
-test('the Freq table is ordered by ICAO', async ({ page }) => {
+test('the Freq table is one list, grouped and sorted by ICAO', async ({ page }) => {
   await boot(page, LIVE);
-  const codes = await page.evaluate(async () => {
+  const rows = await page.evaluate(async () => {
     showFreqTableModal();
     for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
       await new Promise(r => setTimeout(r, 50));
     }
     return Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
-      .map(tr => (tr.querySelector('.charts-freq-code') || {}).textContent || '')
-      .filter(c => /^LL[A-Z]{2}$/.test(c));
+      .map(tr => tr.dataset.icao || '');
   });
+  const codes = rows.filter(c => /^LL[A-Z]{2}$/.test(c));
   expect(codes.length).toBeGreaterThan(4);
-  // Each block is sorted; a code may appear again when the next block starts.
-  const runs = [[codes[0]]];
-  for (const c of codes.slice(1)) {
-    if (c >= runs[runs.length - 1][runs[runs.length - 1].length - 1]) runs[runs.length - 1].push(c);
-    else runs.push([c]);
+  // One ascending run, not three blocks: every row for a field sits with its own kind.
+  expect(codes).toEqual([...codes].sort());
+  // ...and each code appears as a single contiguous group.
+  const firstSeen = new Map();
+  codes.forEach((c, i) => { if (!firstSeen.has(c)) firstSeen.set(c, i); });
+  for (const [c, start] of firstSeen) {
+    const n = codes.filter(x => x === c).length;
+    expect(codes.slice(start, start + n).every(x => x === c)).toBe(true);
   }
-  for (const run of runs) expect(run).toEqual([...run].sort());
-  expect(runs.length).toBeLessThanOrEqual(2);   // the call-sign block, then the airfield one
+  // Rows with no aerodrome (VORs, area control) come after every airport, never among them.
+  const lastCoded = rows.lastIndexOf(codes[codes.length - 1]);
+  expect(rows.slice(lastCoded + 1).every(c => c === '')).toBe(true);
+});
+
+// The same control the NOTAM list has: every code that has rows, with its count, All first.
+test('the aerodrome dropdown filters the table', async ({ page }) => {
+  await boot(page, LIVE);
+  const got = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const sel = document.querySelector('.charts-freq-filter-sel');
+    const opts = Array.from(sel.options).map(o => o.textContent);
+    sel.value = 'LLHZ';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    const visible = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .filter(tr => !tr.hidden);
+    return { opts, codes: visible.map(tr => tr.dataset.icao), n: visible.length };
+  });
+  expect(got.opts[0]).toMatch(/^All \(\d+\)$/);
+  expect(got.opts.some(o => /^LLHZ \(\d+\)$/.test(o))).toBe(true);
+  expect(got.n).toBeGreaterThan(0);
+  expect(got.codes.every(c => c === 'LLHZ')).toBe(true);
 });

@@ -6649,6 +6649,11 @@ function renderFreqTable(freqSection) {
   thead.appendChild(headRow);
   table.appendChild(thead);
   const tbody = document.createElement('tbody');
+  // Rows are collected rather than appended as they are built, so the three kinds -- the
+  // call sign, the aerodrome's clearance/ATIS, the VORs -- can be laid out grouped by
+  // aerodrome instead of as three separate blocks. Looking up LLHZ meant finding its Primary
+  // row under H in one block and its Clearance row under L in another.
+  const pending = [];
   for (const opt of opts) {
     const tr = document.createElement('tr');
     tr.className = opt.overrideFreq ? 'overridden' : '';
@@ -6677,6 +6682,7 @@ function renderFreqTable(freqSection) {
       opt.row && opt.row.he,
     ].filter(Boolean).join(' ').toLocaleLowerCase();
     tr.dataset.search = searchText;
+    tr.dataset.icao = optIcao || '';
     const name = document.createElement('td');
     const label = document.createElement('span');
     label.className = 'charts-freq-label';
@@ -6789,7 +6795,7 @@ function renderFreqTable(freqSection) {
     actions.appendChild(reset);
     syncFreqInputValidity();
     tr.append(name, template, local, actions);
-    tbody.appendChild(tr);
+    pending.push({ code: optIcao || '', order: 0, sub: opt.label || opt.id, tr });
   }
   // Airfield clearance / ATIS rows (editable numeric parts).
   for (const r of afFreqRows) {
@@ -6805,6 +6811,7 @@ function renderFreqTable(freqSection) {
     const partName = (part.label ? ' ' + part.label : '');
     tr.dataset.search = [r.af.name, r.af.en, r.af.he, r.flabel, part.label, part.freq, part.def]
       .filter(Boolean).join(' ').toLocaleLowerCase();
+    tr.dataset.icao = r.af.name || '';
     const name = document.createElement('td');
     const label = document.createElement('span');
     label.className = 'charts-freq-label';
@@ -6874,7 +6881,7 @@ function renderFreqTable(freqSection) {
     actions.appendChild(reset);
     syncAf();
     tr.append(name, template, local, actions);
-    tbody.appendChild(tr);
+    pending.push({ code: r.af.name || '', order: 1, sub: r.flabel + partName, tr });
   }
   // VOR rows (editable single frequency each).
   for (const r of vorFreqRows) {
@@ -6882,6 +6889,7 @@ function renderFreqTable(freqSection) {
     const tr = document.createElement('tr');
     tr.className = r.overridden ? 'overridden' : '';
     tr.dataset.search = [v.ident, v.name, v.he, 'vor', r.def].filter(Boolean).join(' ').toLocaleLowerCase();
+    tr.dataset.icao = '';                       // a VOR belongs to no aerodrome
     const name = document.createElement('td');
     const label = document.createElement('span');
     label.className = 'charts-freq-label';
@@ -6940,8 +6948,15 @@ function renderFreqTable(freqSection) {
     actions.appendChild(reset);
     syncVor();
     tr.append(name, template, local, actions);
-    tbody.appendChild(tr);
+    pending.push({ code: '', order: 2, sub: v.ident || '', tr });
   }
+  // By ICAO, and within a code by kind: the call sign first, then clearance / ATIS. A row
+  // with no aerodrome of its own -- area control, a VOR -- sorts after every airport rather
+  // than in among them.
+  pending.sort((a, b) => (a.code || '\uffff').localeCompare(b.code || '\uffff')
+    || a.order - b.order
+    || String(a.sub).localeCompare(String(b.sub)));
+  for (const row of pending) tbody.appendChild(row.tr);
   table.appendChild(tbody);
   tableWrap.appendChild(table);
   freqSection.appendChild(tableWrap);
@@ -6952,11 +6967,40 @@ function renderFreqTable(freqSection) {
   noMatches.hidden = true;
   freqSection.appendChild(noMatches);
 
+  // Filter by aerodrome, the same control the NOTAM list uses: every code that has rows,
+  // with its count, and All first. A long table is mostly other people's airports, and
+  // typing a code into the search box only works if you remember it -- the list is the
+  // answer to "which fields are even in here".
+  const codes = Array.from(new Set(Array.from(tbody.querySelectorAll('tr'))
+    .map(tr => tr.dataset.icao).filter(Boolean))).sort();
+  let filterIcao = '';
+  let sel = null;
+  if (codes.length > 1) {
+    sel = document.createElement('select');
+    sel.className = 'charts-freq-filter-sel';
+    sel.dir = 'ltr';
+    sel.setAttribute('aria-label', S.freqTableFilterLabel || 'Filter frequencies by aerodrome');
+    const optAll = document.createElement('option');
+    optAll.value = '';
+    optAll.textContent = (S.notamFilterAll || 'All') + ' ('
+      + tbody.querySelectorAll('tr').length + ')';
+    sel.appendChild(optAll);
+    for (const c of codes) {
+      const o = document.createElement('option');
+      o.value = c;
+      o.textContent = c + ' (' + tbody.querySelectorAll('tr[data-icao="' + c + '"]').length + ')';
+      sel.appendChild(o);
+    }
+    sel.onchange = () => { filterIcao = sel.value; applySearchFilter(); };
+    searchWrap.appendChild(sel);
+  }
+
   function applySearchFilter() {
     const q = search.value.trim().toLocaleLowerCase();
     let shown = 0;
     for (const tr of tbody.querySelectorAll('tr')) {
-      const hit = !q || (tr.dataset.search || '').includes(q);
+      const hit = (!q || (tr.dataset.search || '').includes(q))
+        && (!filterIcao || tr.dataset.icao === filterIcao);
       tr.hidden = !hit;
       if (hit) shown += 1;
     }
