@@ -19,7 +19,7 @@
   const NS = (window.NavAid = window.NavAid || {});
 
   // --- MQTT 3.1.1 over WebSocket, the parts a position feed uses -------------
-  const CONNECT = 1, CONNACK = 2, PUBLISH = 3, SUBSCRIBE = 8, SUBACK = 9, PINGREQ = 12;
+  const CONNECT = 1, CONNACK = 2, PUBLISH = 3, SUBSCRIBE = 8, PINGREQ = 12;
 
   function encodeLength(n) {
     const out = [];
