@@ -6639,6 +6639,7 @@ function renderFreqTable(freqSection) {
   for (const label of [
     S.freqTableCallSign || 'Call sign',
     S.freqTableDefault || S.commChangeTemplateFreq || 'Default',
+    S.freqTableSource || 'Source',
     S.freqTableOverride || 'Override',
     '',
   ]) {
@@ -6653,6 +6654,18 @@ function renderFreqTable(freqSection) {
   // call sign, the aerodrome's clearance/ATIS, the VORs -- can be laid out grouped by
   // aerodrome instead of as three separate blocks. Looking up LLHZ meant finding its Primary
   // row under H in one block and its Clearance row under L in another.
+  // Where the value in force came from. AIP for anything published -- the aerodrome packs,
+  // the call-sign catalog, ENR 4.1 for the VORs -- and NOTAM, named, for a frequency a
+  // NOTAM put in force. The ring says "this is not the published one"; this says what it is
+  // instead, and stays readable in a printed or exported table where colour does not.
+  const sourceCell = (notam) => {
+    const td = document.createElement('td');
+    td.className = 'charts-freq-source' + (notam ? ' charts-freq-source-notam' : '');
+    td.dir = 'ltr';
+    td.textContent = notam ? (S.freqSourceNotam || 'NOTAM') : (S.freqSourceAip || 'AIP');
+    if (notam) td.title = notam.id;
+    return td;
+  };
   const pending = [];
   for (const opt of opts) {
     const tr = document.createElement('tr');
@@ -6794,7 +6807,7 @@ function renderFreqTable(freqSection) {
     };
     actions.appendChild(reset);
     syncFreqInputValidity();
-    tr.append(name, template, local, actions);
+    tr.append(name, template, sourceCell(optChg), local, actions);
     pending.push({ code: optIcao || '', order: 0, sub: opt.label || opt.id, tr });
   }
   // Airfield clearance / ATIS rows (editable numeric parts).
@@ -6880,7 +6893,7 @@ function renderFreqTable(freqSection) {
     local.appendChild(inp);
     actions.appendChild(reset);
     syncAf();
-    tr.append(name, template, local, actions);
+    tr.append(name, template, sourceCell(r.notam), local, actions);
     pending.push({ code: r.af.name || '', order: 1, sub: r.flabel + partName, tr });
   }
   // VOR rows (editable single frequency each).
@@ -6947,7 +6960,7 @@ function renderFreqTable(freqSection) {
     local.appendChild(inp);
     actions.appendChild(reset);
     syncVor();
-    tr.append(name, template, local, actions);
+    tr.append(name, template, sourceCell(null), local, actions);
     pending.push({ code: '', order: 2, sub: v.ident || '', tr });
   }
   // By ICAO, and within a code by kind: the call sign first, then clearance / ATIS. A row
