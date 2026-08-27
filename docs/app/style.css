@@ -6722,3 +6722,8 @@ tr.freq-notam-changed td {
 }
 tr.freq-notam-changed td:first-child { border-inline-start: 2px solid #b03636; }
 tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
+
+/* The Source column: quiet for the published case, and coloured only where it is saying the
+   value did not come from the book. */
+.charts-freq-source { font-size: 12px; opacity: 0.72; white-space: nowrap; }
+.charts-freq-source-notam { color: #b03636; opacity: 1; font-weight: 700; }
