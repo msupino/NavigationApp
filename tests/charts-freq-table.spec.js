@@ -109,7 +109,10 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(page.locator('.charts-freq-title h3')).toHaveText('Frequency defaults');
     await expect(page.locator('.charts-freq-table thead th').nth(1))
       .toHaveText('Default');
+    // Source sits between Default and Override: where the value in force came from.
     await expect(page.locator('.charts-freq-table thead th').nth(2))
+      .toHaveText('Source');
+    await expect(page.locator('.charts-freq-table thead th').nth(3))
       .toHaveText('Override');
     const herzliya = page.locator('.charts-freq-input[data-call-sign="HERZLIYA"]');
     await expect(herzliya).toHaveAttribute('type', 'number');

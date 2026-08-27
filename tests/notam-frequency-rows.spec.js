@@ -366,3 +366,45 @@ test('the aerodrome dropdown filters the table', async ({ page }) => {
   expect(got.n).toBeGreaterThan(0);
   expect(got.codes.every(c => c === 'LLHZ')).toBe(true);
 });
+
+// The ring says "this is not the published frequency". The Source column says what it is
+// instead — and unlike colour it survives a print, an export, and a colour-blind reader.
+test('every row says where its frequency came from', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-section tbody tr')).map(tr => ({
+      icao: tr.dataset.icao || '',
+      marked: tr.classList.contains('freq-notam-changed'),
+      source: (tr.querySelector('.charts-freq-source') || {}).textContent || '',
+      srcTitle: (tr.querySelector('.charts-freq-source') || {}).title || '',
+      value: (tr.querySelector('input') || {}).value || '',
+    }));
+  });
+  // Every row has one, and it is one of the two words.
+  expect(rows.length).toBeGreaterThan(4);
+  for (const r of rows) expect(['AIP', 'NOTAM']).toContain(r.source);
+  // NOTAM exactly where the ring is, and nowhere else.
+  for (const r of rows) expect(r.source === 'NOTAM').toBe(r.marked);
+  // ...and it names which NOTAM.
+  const herzliya = rows.filter(r => r.icao === 'LLHZ' && r.source === 'NOTAM');
+  expect(herzliya.length).toBe(2);                    // tower and clearance
+  for (const r of herzliya) expect(r.srcTitle).toBe('C1574/26');
+  expect(rows.find(r => r.icao === 'LLHA' && r.source === 'NOTAM').srcTitle).toBe('A0685/26');
+});
+
+test('with no NOTAM in the feed every row reads AIP', async ({ page }) => {
+  await boot(page, []);
+  const sources = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-source')).map(td => td.textContent);
+  });
+  expect(sources.length).toBeGreaterThan(4);
+  expect(sources.every(x => x === 'AIP')).toBe(true);
+});
