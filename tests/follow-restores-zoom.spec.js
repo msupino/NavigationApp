@@ -121,3 +121,38 @@ test('CTR awareness does not depend on the airspace layer being on', async ({ pa
   expect(got.off).toBe(true);           // still inside the CTR...
   expect(got.viaLayer).toBe(0);         // ...even though the layer answers with nothing
 });
+
+// The moment most flights actually start: Location on, follow already on (the default), so
+// gpsSetFollow is never called. The band was unreachable that way -- you had to toggle the
+// switch off and on to see it.
+const firstFixAt = (page, zoom, lat, lng) => page.evaluate(async (p) => {
+  if (typeof loadAirspace === 'function') await loadAirspace();
+  window.gpsFollow = true;
+  window.gpsLiveOn = true;
+  window.gpsRecording = false;
+  window._gpsLivePrev = null;                        // no fix yet: the next one is the first
+  window._gpsUserMovedAt = 0;
+  map.setView([p.lat + 0.5, p.lng + 0.5], p.zoom);   // wherever the pilot was looking
+  // Through the real handler, so this exercises the path Location actually takes.
+  onLivePosition({ coords: { latitude: p.lat, longitude: p.lng, accuracy: 5 },
+                   timestamp: Date.now() });
+  const c = map.getCenter();
+  return { zoom: map.getZoom(), lat: +c.lat.toFixed(3), lng: +c.lng.toFixed(3) };
+}, { zoom, lat, lng });
+
+test('the first fix frames the aeroplane, not just centres it', async ({ page }) => {
+  await boot(page);
+  const got = await firstFixAt(page, 7, 30.6, 34.9);   // en route, clear of every CTR
+  expect(got.lat).toBe(30.6);                          // centred on the aeroplane...
+  expect(got.zoom).toBe(10);                           // ...and zoomed to fly with
+});
+
+test('the first fix inside a CTR uses the CTR band', async ({ page }) => {
+  await boot(page);
+  expect((await firstFixAt(page, 7, 31.9992, 34.8894)).zoom).toBe(12);   // LLBG CTR
+});
+
+test('a first fix at a zoom already fit to fly at is left alone', async ({ page }) => {
+  await boot(page);
+  expect((await firstFixAt(page, 12, 30.6, 34.9)).zoom).toBe(12);
+});

@@ -288,7 +288,14 @@ function onLivePosition(pos) {
     // The FIRST fix centres: there is nothing on screen to preserve yet, and a pilot who
     // opened the app to find out where they are should be shown -- unless they have
     // switched following off, which is a standing instruction, not a per-fix one.
-    if (isFirst && gpsFollow) map.setView([p.lat, p.lng], map.getZoom());
+    // ...and the first fix is also the moment to frame it. Turning Location on with follow
+    // already on -- the default, and how most flights start -- never went through
+    // gpsSetFollow, so the flying band was only ever applied by toggling the switch off and
+    // on. A pilot who opened the app zoomed out over the whole route got their aeroplane
+    // centred in that same country-wide view, which is the case the band exists for.
+    if (isFirst && gpsFollow) {
+      map.setView([p.lat, p.lng], gpsFollowZoom(map.getZoom(), p.lat, p.lng));
+    }
     else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
     gpsApplyHeadingUp();
   }
