@@ -143,6 +143,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.editor\./,          '?edit=1 overlay editor scratch data'],
   [/^navaid\.sim/,               'simulator link, per device'],
   [/^navaid\.gpsLiveOn$/,        'whether live location is on, per device -- resumed on reload, not synced to others'],
+  [/^navaid\.followMeCode$/,     'the aircraft code typed for a follow-me link -- belongs to the aeroplane being flown from THIS device, not to the pilot account'],
   [/^navaid\.apkReloadedForBuild$/, 'APK self-reload bookkeeping'],
   [/^navaid\.toolbarPosDesktop$/, 'panel geometry (the *Pos rule misses this suffix)'],
   [/^navaid\.wxTime$/,           'forecast valid-time pick, only reused if still offered'],
