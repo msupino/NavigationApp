@@ -6662,8 +6662,33 @@ function renderFreqTable(freqSection) {
     const td = document.createElement('td');
     td.className = 'charts-freq-source' + (notam ? ' charts-freq-source-notam' : '');
     td.dir = 'ltr';
-    td.textContent = notam ? (S.freqSourceNotam || 'NOTAM') : (S.freqSourceAip || 'AIP');
-    if (notam) td.title = notam.id;
+    if (!notam) {
+      td.textContent = S.freqSourceAip || 'AIP';
+      return td;
+    }
+    // Naming the NOTAM and then making the pilot go and find it is half an answer. The cell
+    // is the way in: it opens that NOTAM, and only that one, the same as the badge in the
+    // airfield inspector. A button rather than a click handler on the cell, so it is
+    // reachable by keyboard and reads as something you can press.
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'charts-freq-source-btn';
+    btn.textContent = S.freqSourceNotam || 'NOTAM';
+    btn.title = notam.id;
+    btn.setAttribute('aria-label', (S.freqSourceNotam || 'NOTAM') + ' ' + notam.id);
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const all = (typeof activeNotams === 'function') ? activeNotams({ allCharts: true }) : [];
+      const hit = all.filter(n => n && n.id === notam.id);
+      // If it has gone from the feed between render and click, say so rather than opening an
+      // empty list: the row is about to stop existing anyway.
+      if (hit.length && typeof showNotamModal === 'function') showNotamModal(hit);
+      else if (typeof showToast === 'function') {
+        showToast((S.freqSourceNotamGone || 'NOTAM no longer in the feed') + ' (' + notam.id + ')');
+      }
+    };
+    td.appendChild(btn);
     return td;
   };
   const pending = [];

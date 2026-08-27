@@ -380,7 +380,7 @@ test('every row says where its frequency came from', async ({ page }) => {
       icao: tr.dataset.icao || '',
       marked: tr.classList.contains('freq-notam-changed'),
       source: (tr.querySelector('.charts-freq-source') || {}).textContent || '',
-      srcTitle: (tr.querySelector('.charts-freq-source') || {}).title || '',
+      srcTitle: (tr.querySelector('.charts-freq-source-btn') || tr.querySelector('.charts-freq-source') || {}).title || '',
       value: (tr.querySelector('input') || {}).value || '',
     }));
   });
@@ -407,4 +407,60 @@ test('with no NOTAM in the feed every row reads AIP', async ({ page }) => {
   });
   expect(sources.length).toBeGreaterThan(4);
   expect(sources.every(x => x === 'AIP')).toBe(true);
+});
+
+// Naming the NOTAM and then making the pilot go and find it is half an answer. The Source
+// cell is the way in: it opens that NOTAM and only that one.
+test('the NOTAM source opens that NOTAM', async ({ page }) => {
+  await boot(page, LIVE);
+  const got = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const row = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .find(tr => tr.dataset.icao === 'LLHA' && tr.querySelector('.charts-freq-source-btn'));
+    row.querySelector('.charts-freq-source-btn').click();
+    await new Promise(r => setTimeout(r, 200));
+    const ids = Array.from(document.querySelectorAll('.notam-id, .notam-item'))
+      .map(el => el.textContent).join(' ');
+    return { open: !!document.querySelector('.notam-modal, .modal-back'), ids };
+  });
+  expect(got.open).toBe(true);
+  expect(got.ids).toMatch(/A0685\/26/);
+  expect(got.ids).not.toMatch(/C1574\/26/);   // only the one the row is about
+});
+
+test('an AIP row has nothing to open', async ({ page }) => {
+  await boot(page, []);
+  const buttons = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return document.querySelectorAll('.charts-freq-source-btn').length;
+  });
+  expect(buttons).toBe(0);
+});
+
+// פמ״ת — פרסום מידע תעופתי — is what the AIP is called in Hebrew. Written with a gershayim
+// (U+05F4), not an ASCII double quote: the app's own typography rule, and the one that keeps
+// the spell check from reading the string as unterminated.
+test('the Hebrew build calls the AIP פמ״ת', async ({ page }) => {
+  await page.route(NOTAM_RE, r => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(feed(LIVE)) }));
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showFreqTableModal === 'function'
+    && window.notams !== null);
+  const sources = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-source')).map(td => td.textContent);
+  });
+  expect(sources.length).toBeGreaterThan(4);
+  expect(sources.some(x => x === 'פמ״ת')).toBe(true);
+  expect(sources.some(x => x === 'AIP')).toBe(false);
+  expect(sources.some(x => x === 'נוטאם')).toBe(true);
 });

@@ -1951,6 +1951,7 @@ window.S = Object.assign({
   freqTableSource: 'Source',
   freqSourceAip: 'AIP',
   freqSourceNotam: 'NOTAM',
+  freqSourceNotamGone: 'NOTAM no longer in the feed',
   freqTableNoMatches: 'No matching frequencies',
   altPairsTitle: 'CVFR altitude pairs',
   altPairsTitleFor: function (label) { return label + ' altitude pairs'; },
