@@ -745,6 +745,7 @@ window.S = {
   tbImportTitle: 'ייבא JSON מסלול',
   tbShare: '🔗 שתף',
   tbFollowMe: 'עקבו אחריי',
+  followMeSharingNow: 'משתפים את המיקום שלכם — הקישו כדי להפסיק',
   followMeAskCode: 'קוד המטוס (למשל 4X-CDE)',
   followMeNeedCode: 'למעקב דרוש קוד מטוס — מי שפותח את הקישור צריך לדעת איזה מטוס זה.',
   followMeWaiting: 'עקבו אחריי: ממתין למיקום…',

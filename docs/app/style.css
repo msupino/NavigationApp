@@ -6800,3 +6800,17 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
 .follow-me-arrow { font-size: 22px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
 body.theme-light .follow-me-banner { color: #10240f; background: rgba(222, 245, 224, 0.95); }
 body.theme-light .follow-me-banner.stale { color: #4a1c08; background: rgba(255, 226, 209, 0.96); }
+
+/* Follow me, on the map: the same square as the follow lock and the compass beside it. */
+.follow-me-ctrl button {
+  width: 34px; height: 34px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; line-height: 1;
+  color: #b9b3b3;
+  background: rgba(20, 18, 18, 0.86);
+  border: 1px solid #3a3535; border-radius: 8px; cursor: pointer;
+}
+/* Lit while it is actually sharing -- the one state a pilot must be able to see at a glance,
+   because the cost of not noticing is a link still broadcasting after the flight. */
+.follow-me-ctrl button.follow-me-on { color: #7ee08a; border-color: #4e8f58; }
+body.theme-light .follow-me-ctrl button { color: #3b4350; background: rgba(255,255,255,0.9); border-color: #cdd3db; }

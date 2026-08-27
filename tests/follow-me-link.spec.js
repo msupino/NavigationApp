@@ -273,3 +273,87 @@ test('a position that stops arriving is called stale, not drawn as current', asy
   expect(got.stale).toBe(true);
   expect(got.text).toMatch(/stopped|not moving/i);
 });
+
+// Where the control lives. Sharing is decided in the air, so it belongs beside the follow
+// lock and the compass -- the two other controls that exist only while a fix is driving the
+// map -- not in the Export menu, which is where you go to save a file.
+test('the map control appears with the position source, and only if offered', async ({ page }) => {
+  await boot(page);
+  const seen = await page.evaluate(() => {
+    const wrap = () => document.getElementById('follow-me-map').parentNode;
+    const shown = () => wrap().style.display !== 'none';
+    const out = {};
+    // Feature off: nothing, whatever the GPS is doing.
+    setTune('featureFollowMe', false);
+    window.gpsLiveOn = true;
+    refreshFollowMeMapControl();
+    out.offNoControl = shown();
+    // Offered, but no position to share: still nothing -- a switch for nothing is worse
+    // than no switch.
+    setTune('featureFollowMe', true);
+    window.gpsLiveOn = false;
+    window.gpsRecording = false;
+    refreshFollowMeMapControl();
+    out.noFix = shown();
+    // Offered and live: there it is.
+    window.gpsLiveOn = true;
+    refreshFollowMeMapControl();
+    out.live = shown();
+    // Recording counts too.
+    window.gpsLiveOn = false;
+    window.gpsRecording = true;
+    refreshFollowMeMapControl();
+    out.recording = shown();
+    window.gpsRecording = false;
+    return out;
+  });
+  expect(seen.offNoControl).toBe(false);
+  expect(seen.noFix).toBe(false);
+  expect(seen.live).toBe(true);
+  expect(seen.recording).toBe(true);
+});
+
+// The gist lands AFTER ui.js, so a feature switched on there has to bring its controls back
+// without a reload — the trap showReturnFeatureOn documents in its own comment. Two halves:
+// the refreshes must DO the right thing, and the gist-landing path must CALL them.
+test('the refreshes bring the controls back when the flag flips', async ({ page }) => {
+  await boot(page);
+  const seen = await page.evaluate(() => {
+    window.gpsLiveOn = true;
+    setTune('featureFollowMe', false);
+    refreshFollowMeControl();
+    refreshFollowMeMapControl();
+    const before = { menu: !document.getElementById('follow-me').hidden,
+                     map: document.getElementById('follow-me-map').parentNode.style.display !== 'none' };
+    setTune('featureFollowMe', true);
+    refreshFollowMeControl();
+    refreshFollowMeMapControl();
+    return { before, after: { menu: !document.getElementById('follow-me').hidden,
+                              map: document.getElementById('follow-me-map').parentNode.style.display !== 'none' } };
+  });
+  expect(seen.before).toEqual({ menu: false, map: false });
+  expect(seen.after).toEqual({ menu: true, map: true });
+});
+
+// ...and that they are actually wired into the gist-landing block. That block is an inline
+// .then() on loadRemoteConfig with no name to call, so this reads the source: a behavioural
+// test here would pass whether or not the calls were ever hooked up, which is exactly how a
+// feature ends up switched on in the gist and invisible until a reload.
+test('the gist-landing block calls both refreshes', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  const wired = await page.evaluate(async () => {
+    const src = await (await fetch('app/ui.js')).text();
+    const at = src.indexOf('loadRemoteConfig().then');
+    if (at < 0) return null;
+    const block = src.slice(at, at + 4000);
+    return { menu: block.includes('refreshFollowMeControl'),
+             map: block.includes('refreshFollowMeMapControl'),
+             // The neighbour that documents the same trap, as a canary that this is the
+             // right block and not some other .then().
+             neighbour: block.includes('refreshShowReturnFeature') };
+  });
+  expect(wired).not.toBe(null);
+  expect(wired.neighbour).toBe(true);
+  expect(wired.menu).toBe(true);
+  expect(wired.map).toBe(true);
+});
