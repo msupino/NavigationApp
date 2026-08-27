@@ -6559,7 +6559,8 @@ function renderFreqTable(freqSection) {
       const notam = fld[0] === 'clearance' ? chg : null;
       for (const part of parts) {
         afFreqRows.push({ af, flabel: fld[1], part,
-          notam: (notam && part === parts[0]) ? notam : null });
+          notam: (notam && part === parts[0]) ? notam : null,
+          publishedDef: part.def });
       }
       // Nothing published, but a NOTAM installed one: the row is the NOTAM's, and read-only
       // here -- there is no dataset default to edit or restore it to.
@@ -6678,7 +6679,12 @@ function renderFreqTable(freqSection) {
     }
     const template = document.createElement('td');
     template.className = 'charts-freq-template';
-    template.textContent = opt.templateFreq || '';
+    // The Default column is the published frequency and nothing else. A NOTAM is not a new
+    // default -- it is a change in force today, which is what the editable value beside it
+    // shows. Writing it here would have left the pilot no way to see what the change
+    // replaced, and "Restore originals" restoring to something a NOTAM chose.
+    template.textContent = (typeof commCallSignPublishedFreq === 'function'
+      ? commCallSignPublishedFreq(opt.id) : opt.templateFreq) || '';
     const local = document.createElement('td');
     const inp = document.createElement('input');
     inp.className = 'charts-freq-input';
@@ -6689,7 +6695,7 @@ function renderFreqTable(freqSection) {
       inp.inputMode = 'decimal';
       inp.step = '0.005';
     }
-    inp.value = opt.freq || opt.templateFreq || '';
+    inp.value = opt.freq || opt.templateFreq || '';   // opt.freq already prefers a hand override
     inp.dataset.callSign = opt.id;
     inp.setAttribute('aria-invalid', 'false');
     inp.setAttribute('aria-label', (opt.label || opt.id) + ' ' +
@@ -6798,14 +6804,16 @@ function renderFreqTable(freqSection) {
     name.appendChild(code);
     const template = document.createElement('td');
     template.className = 'charts-freq-template';
-    template.textContent = part.def || '';
+    // Published, not the NOTAM -- see the call-sign rows above. Where a NOTAM created the
+    // row there is no published value, and the column is honestly blank.
+    template.textContent = (r.notam ? (r.readOnly ? '' : r.publishedDef) : part.def) || '';
     const local = document.createElement('td');
     const inp = document.createElement('input');
     inp.className = 'charts-freq-input';
     inp.dir = 'ltr';
     if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
     else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
-    inp.value = part.freq || part.def || '';
+    inp.value = (r.notam ? r.notam.freq : (part.freq || part.def)) || '';
     const actions = document.createElement('td');
     actions.className = 'charts-freq-actions';
     const reset = document.createElement('button');

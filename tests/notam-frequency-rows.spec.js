@@ -230,6 +230,7 @@ const openFreqTable = (page) => page.evaluate(async () => {
     marked: tr.classList.contains('freq-notam-changed'),
     title: tr.title || '',
     value: (tr.querySelector('input') || {}).value || '',
+    def: (tr.querySelector('.charts-freq-template') || {}).textContent || '',
   }));
 });
 
@@ -248,7 +249,9 @@ test('Haifa gets a clearance row it has no dataset entry for', async ({ page }) 
   const haifa = rows.filter(r => /LLHA/.test(r.text) && r.marked);
   expect(haifa.length).toBe(1);
   expect(haifa[0].title).toBe('NOTAM A0685/26 · not published in the AIP');
-  expect(haifa[0].text).toMatch(/127\.80/);
+  // In the editable value, not the Default column: a NOTAM is a change in force, not a
+  // published default. See "the NOTAM is the value in force" below.
+  expect(haifa[0].value).toBe('127.80');
 });
 
 test('with no NOTAM in the feed the table marks nothing', async ({ page }) => {
@@ -257,4 +260,27 @@ test('with no NOTAM in the feed the table marks nothing', async ({ page }) => {
   expect(rows.some(r => r.marked)).toBe(false);
   // ...and Haifa's invented clearance row is gone with it.
   expect(rows.filter(r => /LLHA/.test(r.text) && /Clearance/i.test(r.text)).length).toBe(0);
+});
+
+// A NOTAM is not a new default. The Default column keeps what the AIP or the catalog
+// publishes, so the pilot can see what the change replaced -- and so "Restore originals"
+// restores to something published rather than to whatever a NOTAM chose. The change in
+// force is the value beside it.
+test('the NOTAM is the value in force, never the default', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await openFreqTable(page);
+  const clearance = rows.find(r => /LLHZ/.test(r.text) && /Clearance/i.test(r.text));
+  expect(clearance.def).toBe('121.70');       // what AD 2.18 publishes
+  expect(clearance.value).toBe('118.55');     // what C1574/26 put in force
+  const tower = rows.find(r => /LLHZ|HERZLIYA/i.test(r.text) && r.marked && r.value === '125.60');
+  expect(tower.def).toBe('122.20');           // the catalog's own, not the NOTAM
+});
+
+// ...and where a NOTAM created the row there is nothing published to show, so the column is
+// blank rather than echoing the NOTAM back as if the AIP had said it.
+test('a row a NOTAM created has no default to show', async ({ page }) => {
+  await boot(page, LIVE);
+  const haifa = (await openFreqTable(page)).find(r => /LLHA/.test(r.text) && r.marked);
+  expect(haifa.value).toBe('127.80');
+  expect(haifa.def.trim()).toBe('');
 });
