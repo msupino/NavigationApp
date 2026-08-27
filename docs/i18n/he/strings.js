@@ -850,6 +850,7 @@ window.S = {
   freqTableFilterLabel: 'סינון תדרים לפי שדה',
   freqTableSource: 'מקור',
   freqSourceAip: 'פמ״ת',
+  freqServiceTower: 'מגדל',
   freqSourceNotam: 'נוטאם',
   freqSourceNotamGone: 'הנוטאם כבר לא בהזנה',
   freqTableNoMatches: 'אין תדרים תואמים',
