@@ -75,3 +75,49 @@ test('a fix-driven recentre keeps whatever zoom it finds', async ({ page }) => {
   expect(after.after).toBe(after.deep);
   expect(after.deep).toBeGreaterThan(14);   // ...and it is outside the band, so this proves it
 });
+
+// How much chart to fly with depends on where the aeroplane is. Inside a control zone the
+// questions are close-in ones -- which reporting point, which runway, where the traffic is --
+// and a 40-mile view answers none of them. En route the opposite.
+const engageAtPlace = (page, zoom, lat, lng) => page.evaluate(async (p) => {
+  if (typeof loadAirspace === 'function') await loadAirspace();
+  window.gpsOwn = { lat: p.lat, lng: p.lng };
+  gpsSetFollow(false);
+  map.setView([p.lat, p.lng], p.zoom);
+  gpsSetFollow(true);
+  return { zoom: map.getZoom(), inCtr: gpsInsideCtr(p.lat, p.lng) };
+}, { zoom, lat, lng });
+
+test('over Ben Gurion CTR, engaging follow keeps a close-in view', async ({ page }) => {
+  await boot(page);
+  const got = await engageAtPlace(page, 7, 31.9992, 34.8894);
+  expect(got.inCtr).toBe(true);
+  expect(got.zoom).toBe(12);            // followZoomCtrFloor, not the en-route 10
+});
+
+test('over the Negev, the en-route band applies', async ({ page }) => {
+  await boot(page);
+  const got = await engageAtPlace(page, 7, 30.6, 34.9);   // clear of every CTR
+  expect(got.inCtr).toBe(false);
+  expect(got.zoom).toBe(10);            // followZoomFloor
+});
+
+test('a CTR zoom the pilot chose inside the band is left alone', async ({ page }) => {
+  await boot(page);
+  expect((await engageAtPlace(page, 14, 32.8542, 35.0548)).zoom).toBe(14);   // Haifa CTR
+});
+
+// The layer being switched off does not move the aeroplane: the test is geometry, not
+// what the pilot has chosen to draw.
+test('CTR awareness does not depend on the airspace layer being on', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    if (typeof loadAirspace === 'function') await loadAirspace();
+    window.showAirspace = false;
+    return { off: gpsInsideCtr(31.9992, 34.8894),
+             viaLayer: (typeof airspaceAtLatLng === 'function')
+               ? airspaceAtLatLng({ lat: 31.9992, lng: 34.8894 }).length : -1 };
+  });
+  expect(got.off).toBe(true);           // still inside the CTR...
+  expect(got.viaLayer).toBe(0);         // ...even though the layer answers with nothing
+});
