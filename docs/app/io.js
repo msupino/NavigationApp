@@ -6547,9 +6547,26 @@ function renderFreqTable(freqSection) {
   const afList = (typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : [];
   const afFreqRows = [];
   for (const af of afList) {
+    // A NOTAM that states a new clearance frequency outright. The inspector has shown these
+    // since #1934; this table read af.clearance straight from the dataset, so it went on
+    // printing the superseded number -- or nothing at all where the AIP publishes none, as
+    // at Haifa. A frequency table that disagrees with the panel beside it is worse than one
+    // that is merely incomplete: the pilot has to work out which to believe.
+    const chg = (typeof airfieldFreqChangeFor === 'function')
+      ? airfieldFreqChangeFor(af, 'clearance') : null;
     for (const fld of [['clearance', S.clearance || 'Clearance'], ['atis', S.atis || 'ATIS']]) {
       const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, fld[0]) : [];
-      for (const part of parts) afFreqRows.push({ af, flabel: fld[1], part });
+      const notam = fld[0] === 'clearance' ? chg : null;
+      for (const part of parts) {
+        afFreqRows.push({ af, flabel: fld[1], part,
+          notam: (notam && part === parts[0]) ? notam : null });
+      }
+      // Nothing published, but a NOTAM installed one: the row is the NOTAM's, and read-only
+      // here -- there is no dataset default to edit or restore it to.
+      if (notam && !parts.length) {
+        afFreqRows.push({ af, flabel: fld[1], notam, readOnly: true,
+          part: { label: '', freq: notam.freq, def: notam.freq, key: '', overridden: false } });
+      }
     }
   }
   // VOR frequencies (one editable row each).
@@ -6622,6 +6639,17 @@ function renderFreqTable(freqSection) {
   for (const opt of opts) {
     const tr = document.createElement('tr');
     tr.className = opt.overrideFreq ? 'overridden' : '';
+    // The value already follows the NOTAM -- commCallSignTemplateFreq answers with it -- but
+    // nothing said so, and a number that moved for a reason should carry the reason.
+    const optChg = (typeof commCallSignFreqChange === 'function')
+      ? commCallSignFreqChange(opt.id) : null;
+    if (optChg) {
+      tr.classList.add('freq-notam-changed');
+      tr.title = (typeof airfieldFreqNotamTitle === 'function')
+        ? airfieldFreqNotamTitle(optChg, (typeof commCallSignPublishedFreq === 'function'
+          ? commCallSignPublishedFreq(opt.id) : ''))
+        : 'NOTAM ' + optChg.id;
+    }
     // Airfield-primary call signs show the airport ICAO as their code, so the
     // same airport reads consistently with its Clearance / ATIS rows (LLHZ),
     // not two codes (HERZLIYA vs LLHZ).
@@ -6750,6 +6778,12 @@ function renderFreqTable(freqSection) {
     const part = r.part;
     const tr = document.createElement('tr');
     tr.className = part.overridden ? 'overridden' : '';
+    if (r.notam) {
+      tr.classList.add('freq-notam-changed');
+      tr.title = (typeof airfieldFreqNotamTitle === 'function')
+        ? airfieldFreqNotamTitle(r.notam, r.readOnly ? '' : part.def)
+        : 'NOTAM ' + r.notam.id;
+    }
     const partName = (part.label ? ' ' + part.label : '');
     tr.dataset.search = [r.af.name, r.af.en, r.af.he, r.flabel, part.label, part.freq, part.def]
       .filter(Boolean).join(' ').toLocaleLowerCase();

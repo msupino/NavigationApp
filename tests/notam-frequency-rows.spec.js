@@ -215,3 +215,46 @@ test('a call sign with no NOTAM is untouched', async ({ page }) => {
   }));
   expect(seen.template).toBe(seen.published);
 });
+
+// The Freq table under Charts is the other place a frequency is read, and it disagreed with
+// the panel beside it: the call-sign rows already carried the NOTAM value but said nothing
+// about why, and the airfield clearance rows read af.clearance straight from the dataset --
+// so they printed the superseded number, or nothing at all where the AIP publishes none.
+const openFreqTable = (page) => page.evaluate(async () => {
+  showFreqTableModal();
+  for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return Array.from(document.querySelectorAll('.charts-freq-section tbody tr')).map(tr => ({
+    text: tr.textContent.replace(/\s+/g, ' ').trim(),
+    marked: tr.classList.contains('freq-notam-changed'),
+    title: tr.title || '',
+    value: (tr.querySelector('input') || {}).value || '',
+  }));
+});
+
+test('the Freq table marks a call sign a NOTAM moved, and says which', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await openFreqTable(page);
+  const herzliya = rows.filter(r => /LLHZ|HERZLIYA/i.test(r.text) && r.marked);
+  expect(herzliya.length).toBeGreaterThan(0);
+  expect(herzliya[0].title).toMatch(/NOTAM C1574\/26/);
+  expect(herzliya.some(r => r.value === '125.60')).toBe(true);
+});
+
+test('Haifa gets a clearance row it has no dataset entry for', async ({ page }) => {
+  await boot(page, LIVE);
+  const rows = await openFreqTable(page);
+  const haifa = rows.filter(r => /LLHA/.test(r.text) && r.marked);
+  expect(haifa.length).toBe(1);
+  expect(haifa[0].title).toBe('NOTAM A0685/26 · not published in the AIP');
+  expect(haifa[0].text).toMatch(/127\.80/);
+});
+
+test('with no NOTAM in the feed the table marks nothing', async ({ page }) => {
+  await boot(page, []);
+  const rows = await openFreqTable(page);
+  expect(rows.some(r => r.marked)).toBe(false);
+  // ...and Haifa's invented clearance row is gone with it.
+  expect(rows.filter(r => /LLHA/.test(r.text) && /Clearance/i.test(r.text)).length).toBe(0);
+});
