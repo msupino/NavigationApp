@@ -847,6 +847,7 @@ window.S = {
   freqTableRestoreAll: 'שחזר ברירות מחדל',
   freqTableEmpty: 'אין קטלוג תדרים זמין',
   freqTableSearch: 'חיפוש תדרים',
+  freqTableFilterLabel: 'סינון תדרים לפי שדה',
   freqTableNoMatches: 'אין תדרים תואמים',
   altPairsTitle: 'נתיבי CVFR',
   altPairsTitleFor: function (label) { return 'נתיבי ' + label; },
