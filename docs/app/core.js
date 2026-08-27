@@ -1855,6 +1855,7 @@ window.S = Object.assign({
   tbImportTitle: 'Import route from JSON or GPX file',
   tbShare: '🔗 Share',
   tbFollowMe: 'Follow me',
+  followMeSharingNow: 'Sharing your position — tap to stop',
   followMeAskCode: 'Aircraft code (e.g. 4X-CDE)',
   followMeNeedCode: 'Follow me needs an aircraft code — whoever opens the link has to know which aeroplane it is.',
   followMeWaiting: 'Follow me: waiting for a position…',

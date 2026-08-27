@@ -576,6 +576,8 @@ const followBtn = document.getElementById('follow-lock');
 // Shown only while tracking, and only in step with the switch itself: one function owns
 // both, so the icon can never say one thing while the map does another.
 function refreshGpsFollowControl() {
+  // The share control appears and disappears with the same position source.
+  if (typeof refreshFollowMeMapControl === 'function') refreshFollowMeMapControl();
   const wrap = followBtn && followBtn.parentNode;
   if (!wrap) return;
   const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
@@ -593,6 +595,47 @@ function refreshGpsFollowControl() {
   followBtn.title = label;
   followBtn.setAttribute('aria-label', label);
 }
+// --- Follow me — beside the follow lock, and only while there is a position to share -----
+// It lived in the Export menu, which is where you go to save a file, not where you are
+// looking while the aeroplane is moving. Sharing is something a pilot decides in the air, so
+// the control belongs with the other two that only exist while a fix is driving the map.
+const followMeCtrl = L.control({ position: 'bottomright' });
+followMeCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control follow-me-ctrl');
+  wrap.innerHTML = '<button id="follow-me-map" type="button" aria-pressed="false"></button>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+followMeCtrl.addTo(map);
+const followMeBtn = document.getElementById('follow-me-map');
+function refreshFollowMeMapControl() {
+  const wrap = followMeBtn && followMeBtn.parentNode;
+  if (!wrap) return;
+  const F = (window.NavAid && window.NavAid.followMe) || null;
+  const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
+    || (typeof gpsRecording !== 'undefined' && gpsRecording);
+  const offered = typeof tune === 'function' && tune('featureFollowMe') === true;
+  // Same rule as the follow lock: no position, no control -- there would be nothing to share.
+  wrap.style.display = (offered && live) ? '' : 'none';
+  orderMapControls(wrap.parentNode);
+  const on = !!(F && F.sharing());
+  followMeBtn.textContent = on ? '\u25C9' : '\u21EA';
+  followMeBtn.classList.toggle('follow-me-on', on);
+  followMeBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const label = on ? (S.followMeSharingNow || 'Sharing your position — tap to stop')
+                   : (S.tbFollowMeTitle || 'Share a link that shows where you are');
+  followMeBtn.title = label;
+  followMeBtn.setAttribute('aria-label', label);
+}
+window.refreshFollowMeMapControl = refreshFollowMeMapControl;
+followMeBtn.onclick = () => {
+  const btn = document.getElementById('follow-me');
+  if (btn) btn.click();                 // one behaviour, in the menu and on the map
+  setTimeout(refreshFollowMeMapControl, 0);
+};
+refreshFollowMeMapControl();
+
 followBtn.onclick = () => {
   const on = !gpsFollow;
   if (typeof gpsSetFollow === 'function') gpsSetFollow(on);
@@ -7766,6 +7809,9 @@ function createTuningPanel() {
       // (for toggles the current user hasn't explicitly set).
       if (typeof NavAid.applyDefaultVisibility === 'function') NavAid.applyDefaultVisibility();
       if (typeof refreshShowReturnFeature === 'function') refreshShowReturnFeature();
+      // The gist decides whether Follow me exists at all, and it lands after this file.
+      if (typeof refreshFollowMeControl === 'function') refreshFollowMeControl();
+      if (typeof refreshFollowMeMapControl === 'function') refreshFollowMeMapControl();
       if (typeof refreshAssistantFeature === 'function') refreshAssistantFeature();
       if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
       if (typeof refreshTrafficFeature === 'function') refreshTrafficFeature();
@@ -8445,6 +8491,8 @@ if (typeof loadRemoteConfig === "function") {
     if (NavAid && typeof NavAid.applyDefaultVisibility === "function") NavAid.applyDefaultVisibility();
     // Same reason: the gist may have switched the return path back on.
     if (typeof refreshShowReturnFeature === "function") refreshShowReturnFeature();
+    if (typeof refreshFollowMeControl === "function") refreshFollowMeControl();
+    if (typeof refreshFollowMeMapControl === "function") refreshFollowMeMapControl();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();
