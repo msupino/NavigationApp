@@ -703,7 +703,7 @@ NavAid.tuningDefaults = {
   // tuning gist to bring the control, its keyboard shortcut and the drawing back, without a
   // deploy -- the code is all still here.
   featureShowReturn: { value: false, type: 'bool', label: 'Feature: show return path' },
-  // Retired, not deleted. The flight plan's "Return route" picker joins a SEPARATE saved
+  // Retired, not deleted. The Return route picker in the flight plan joins a SEPARATE saved
   // route as the way home -- the two-saved-routes workflow, from before a route could
   // retrace itself. An out-and-back is now drawn as one route (a-b-c-b-a), the turn is
   // derived from the geometry, and such a route ends at its departure field -- where the
