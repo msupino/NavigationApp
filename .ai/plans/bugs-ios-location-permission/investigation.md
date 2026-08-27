@@ -1,3 +1,7 @@
+---
+status: approved
+---
+
 # Investigation: iOS foreground location permission
 
 ## Ticket context
