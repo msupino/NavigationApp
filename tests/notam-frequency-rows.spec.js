@@ -284,3 +284,59 @@ test('a row a NOTAM created has no default to show', async ({ page }) => {
   expect(haifa.value).toBe('127.80');
   expect(haifa.def.trim()).toBe('');
 });
+
+// Reset undoes YOUR edit; it does not undo the NOTAM. The two row kinds disagreed about
+// that: the call-sign rows fell back to what is in force, the airfield rows to part.def --
+// so in one table, from one NOTAM, LLHZ tower reset to 125.60 and LLHZ clearance to 121.70.
+const resetRow = (page, match) => page.evaluate(async (m) => {
+  showFreqTableModal();
+  for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  const rows = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'));
+  const tr = rows.find(t => new RegExp(m.text).test(t.textContent)
+    && (t.querySelector('input') || {}).value === m.value);
+  const inp = tr.querySelector('input');
+  inp.value = '119.00';                       // the pilot types over it
+  inp.dispatchEvent(new Event('change', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 60));
+  const edited = inp.value;
+  const btn = tr.querySelector('.commchange-freq-reset');
+  btn.disabled = false;
+  btn.click();
+  await new Promise(r => setTimeout(r, 60));
+  return { edited, afterReset: tr.querySelector('input').value };
+}, match);
+
+test('both row kinds reset to the frequency in force, not to the superseded one', async ({ page }) => {
+  await boot(page, LIVE);
+  const clearance = await resetRow(page, { text: 'LLHZ.*Clearance|Clearance.*LLHZ', value: '118.55' });
+  expect(clearance.edited).toBe('119.00');
+  expect(clearance.afterReset).toBe('118.55');   // was 121.70 — the superseded number
+
+  const tower = await resetRow(page, { text: 'LLHZ|HERZLIYA', value: '125.60' });
+  expect(tower.afterReset).toBe('125.60');       // unchanged: this row was already right
+});
+
+// The table is looked up by field, so it is ordered by ICAO — the code each row shows.
+test('the Freq table is ordered by ICAO', async ({ page }) => {
+  await boot(page, LIVE);
+  const codes = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .map(tr => (tr.querySelector('.charts-freq-code') || {}).textContent || '')
+      .filter(c => /^LL[A-Z]{2}$/.test(c));
+  });
+  expect(codes.length).toBeGreaterThan(4);
+  // Each block is sorted; a code may appear again when the next block starts.
+  const runs = [[codes[0]]];
+  for (const c of codes.slice(1)) {
+    if (c >= runs[runs.length - 1][runs[runs.length - 1].length - 1]) runs[runs.length - 1].push(c);
+    else runs.push([c]);
+  }
+  for (const run of runs) expect(run).toEqual([...run].sort());
+  expect(runs.length).toBeLessThanOrEqual(2);   // the call-sign block, then the airfield one
+});

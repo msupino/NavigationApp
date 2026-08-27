@@ -6524,6 +6524,13 @@ function renderFreqTable(freqSection) {
       }
     }
   }
+  const idToIcao = {};
+  if (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS) {
+    for (const [icao, csId] of Object.entries(AIRFIELD_CALL_SIGN_IDS)) {
+      if (!csId) continue;
+      idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(csId) : String(csId).toUpperCase()] = icao;
+    }
+  }
   const opts = (typeof commAllCallSignOptions === 'function'
     ? commAllCallSignOptions() : [])
     .filter(o => o && o.id)
@@ -6532,19 +6539,24 @@ function renderFreqTable(freqSection) {
         ? commCallSignIdKey(o.id) : String(o.id || '').trim().toUpperCase();
       return key && usedIds.has(key);
     })
-    .sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
+    .sort((a, b) => {
+      // By ICAO, which is what the row shows and what a pilot looks up. A call sign with no
+      // field of its own (area control, information) has no code to sort on, so it falls to
+      // the end of the block under its own name rather than jumping the airports.
+      const ka = idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(a.id) : String(a.id || '').toUpperCase()] || '';
+      const kb = idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(b.id) : String(b.id || '').toUpperCase()] || '';
+      if (ka !== kb) return (ka || '\uffff').localeCompare(kb || '\uffff');
+      return (a.label || a.id).localeCompare(b.label || b.id);
+    });
   // Reverse map: call-sign id (key) -> airfield ICAO, so an airfield-primary
   // call sign reads with the airport's ICAO code + "Primary" label (consistent
   // with that airport's Clearance / ATIS rows below) instead of its own code.
-  const idToIcao = {};
-  if (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS) {
-    for (const [icao, csId] of Object.entries(AIRFIELD_CALL_SIGN_IDS)) {
-      if (!csId) continue;
-      idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(csId) : String(csId).toUpperCase()] = icao;
-    }
-  }
   // Airfield clearance / ATIS frequencies — one row per labelled numeric part.
-  const afList = (typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : [];
+  // By ICAO too, so the airfield block reads in the same order as the call-sign block above
+  // and a pilot scanning for LLHZ finds its rows in one place.
+  const afList = ((typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : [])
+    .slice()
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
   const afFreqRows = [];
   for (const af of afList) {
     // A NOTAM that states a new clearance frequency outright. The inspector has shown these
@@ -6821,23 +6833,30 @@ function renderFreqTable(freqSection) {
     reset.className = 'commchange-freq-reset';
     reset.textContent = '↻';
     reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    // What reset returns to, and what counts as "not edited". A NOTAM in force is the
+    // frequency to call, so it is what remains when the pilot undoes their own edit -- the
+    // call-sign rows have always behaved this way (commCallSignTemplateFreq answers with the
+    // NOTAM), and the airfield rows reset to part.def, which is not NOTAM-aware. So LLHZ
+    // tower reset to 125.60 and LLHZ clearance reset to 121.70, in the same table, from the
+    // same NOTAM. Reset undoes YOUR edit; it does not undo the NOTAM.
+    const inForce = (r.notam ? r.notam.freq : part.def) || '';
     const normOf = () => (typeof commNormalizeFreqInput === 'function'
       ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
     function syncAf() {
       const n = normOf();
       const invalid = n === null;
       inp.classList.toggle('invalid', invalid);
-      inp.classList.toggle('is-default', !invalid && !!part.def && (n || '') === part.def);
+      inp.classList.toggle('is-default', !invalid && !!inForce && (n || '') === inForce);
       inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
-      reset.disabled = !part.def || (!part.overridden && !invalid);
+      reset.disabled = !inForce || (!part.overridden && !invalid);
     }
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
     inp.addEventListener('input', syncAf);
     inp.addEventListener('change', () => {
       const n = normOf();
       if (n === null) { syncAf(); return; }
-      setAirfieldFreqOverride(part.key, n === part.def ? '' : n);
-      part.freq = n; part.overridden = n !== part.def;
+      setAirfieldFreqOverride(part.key, n === inForce ? '' : n);
+      part.freq = n; part.overridden = n !== inForce;
       inp.value = n;
       tr.classList.toggle('overridden', part.overridden);
       syncAf(); updateRestoreAll(); afterFreqTableEdit();
@@ -6846,8 +6865,8 @@ function renderFreqTable(freqSection) {
       e.preventDefault();
       if (reset.disabled) return;
       setAirfieldFreqOverride(part.key, '');
-      part.freq = part.def; part.overridden = false;
-      inp.value = part.def || '';
+      part.freq = inForce; part.overridden = false;
+      inp.value = inForce;
       tr.classList.remove('overridden');
       syncAf(); updateRestoreAll(); afterFreqTableEdit();
     };
