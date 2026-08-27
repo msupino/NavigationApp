@@ -2801,7 +2801,7 @@ function revealSearchOverlay() {
 // Desktop keeps the search on screen permanently, parked under the menu bar on
 // the side the language reads from and draggable anywhere from there. Mobile has
 // no room for a standing panel, so it stays the summoned overlay.
-const SEARCH_DOCK_MQ = window.matchMedia('(min-width: 681px)');
+const SEARCH_DOCK_MQ = window.matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)');
 const SEARCH_POS_KEY = 'navaid.searchPos';
 function searchDocked() { return searchOverlay.classList.contains('docked'); }
 (function dockSearchOnDesktop() {
@@ -7143,8 +7143,16 @@ document.getElementById('insp-close').onclick = () => {
 };
 
 // --- toolbar drag / responsive menu mode -----------------------------
+// A wide screen is not a desktop. An iPad is 1080 CSS px in landscape and gets the menubar
+// layout on width alone -- where the collapse toggle is inert (setCollapsed force-returns
+// false) and the dropdowns are absolutely positioned with no room to scroll, so View and
+// Weather ran 170-200px past the bottom of the screen with no way to reach the rest.
+//
+// Not a user-agent test: iPadOS deliberately reports a DESKTOP Safari UA, so sniffing calls
+// an iPad a Mac. What actually differs is the pointer -- a touch screen is coarse and cannot
+// hover, and those are the two things the menubar layout assumes it has.
 const toolbarDesktopMenuQuery = window.matchMedia
-  ? window.matchMedia('(min-width: 681px)')
+  ? window.matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)')
   : null;
 
 function toolbarUsesDesktopMenu() {
