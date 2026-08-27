@@ -703,6 +703,16 @@ NavAid.tuningDefaults = {
   // tuning gist to bring the control, its keyboard shortcut and the drawing back, without a
   // deploy -- the code is all still here.
   featureShowReturn: { value: false, type: 'bool', label: 'Feature: show return path' },
+  // Retired, not deleted. The flight plan's "Return route" picker joins a SEPARATE saved
+  // route as the way home -- the two-saved-routes workflow, from before a route could
+  // retrace itself. An out-and-back is now drawn as one route (a-b-c-b-a), the turn is
+  // derived from the geometry, and such a route ends at its departure field -- where the
+  // picker disables itself anyway, because landing means a separate plan per leg
+  // (AIP alef-11). What was left was a control that is inert on the common path and applies
+  // only to a route ending at a non-aerodrome waypoint. Off by default; the joining code is
+  // untouched behind it, so a deployment that still files that way can switch it back on.
+  featureFplReturnJoin: { value: false, type: 'bool',
+    label: 'Feature: join a saved return route in the flight plan' },
   // The one-time nudge that teaches a first-time visitor the core action, plus the click
   // priming that goes with it (an empty map's first plain click drops a waypoint instead of
   // inspecting). Both are the same onboarding gesture, so one switch governs them: off, and
@@ -893,7 +903,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.

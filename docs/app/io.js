@@ -9759,9 +9759,15 @@ function showFplDialog() {
     // than disabled: unlike the leg-direction picker, whose absence would be puzzling on a
     // route that simply has no turn, this one is a niche joining tool and its row is pure
     // noise when empty.
-    const hasReturnChoices = retSel.options.length > 1;
+    // See featureFplReturnJoin in core.js for why this is off by default: an out-and-back is
+    // one route now, and such a route ends at its departure field, where this picker
+    // disables itself regardless. Forcing the value clear means the join cannot apply while
+    // the row is not on screen -- a hidden control must not still be deciding anything.
+    const returnJoinOffered = (typeof tune !== 'function' || tune('featureFplReturnJoin') === true);
+    if (!returnJoinOffered) retSel.value = '';
+    const hasReturnChoices = returnJoinOffered && retSel.options.length > 1;
     if (hasReturnChoices) body.append(retRow, expandLbl, retPreview);
-    if (endsAtField) {
+    if (endsAtField && returnJoinOffered) {
       const why = document.createElement('div');
       why.className = 'fpl-hint';
       fplSetBidiText(why, S.fplReturnAtFieldHint ||
