@@ -61,8 +61,8 @@ test('a session publishes an encrypted position nobody else can read', async ({ 
     const url = new URL(link);
     const id = url.searchParams.get('follow');
     const rawKey = url.hash.replace(/^#k=/, '');
-    // The publish frame: 0x30 = PUBLISH, QoS 0.
-    const pub = window.__sent.find(f => f[0] === 0x30);
+    // The publish frame: high nibble 3 = PUBLISH. The low bits carry RETAIN, so match the type.
+    const pub = window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4);
     const bytes = new Uint8Array(pub);
     const len = F._readLength(bytes, 1);
     const topicLen = (bytes[len.next] << 8) | bytes[len.next + 1];
@@ -100,7 +100,7 @@ test('a watcher decrypts what the pilot published', async ({ page }) => {
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
     await F.publish({ lat: 31.5, lng: 35.1, alt: 3000 });
-    const pub = new Uint8Array(window.__sent.find(f => f[0] === 0x30));
+    const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
 
     const url = new URL(link);
     const state = await F.watch(url.searchParams.get('follow'), url.hash.replace(/^#k=/, ''));
@@ -192,7 +192,7 @@ test('the code travels inside the envelope, not beside it', async ({ page }) => 
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
     await F.publish({ lat: 32.1, lng: 34.8 });
-    const pub = new Uint8Array(window.__sent.find(f => f[0] === 0x30));
+    const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
     const wire = new TextDecoder().decode(pub);
     const url = new URL(link);
     const key = await F.importKey(F._b64url.to(url.hash.replace(/^#k=/, '')));
@@ -219,7 +219,7 @@ test('opening the link watches, names the aircraft and dates the position', asyn
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
     await F.publish({ lat: 31.8, lng: 34.95, trk: 270 });
-    const pub = new Uint8Array(window.__sent.find(f => f[0] === 0x30));
+    const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
     const url = new URL(link);
 
     await F.viewerStart({ search: url.search, hash: url.hash });
@@ -254,7 +254,7 @@ test('a position that stops arriving is called stale, not drawn as current', asy
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
     await F.publish({ lat: 31.8, lng: 34.95 });
-    const pub = new Uint8Array(window.__sent.find(f => f[0] === 0x30));
+    const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
     const url = new URL(link);
     const state = await F.viewerStart({ search: url.search, hash: url.hash });
     window.__sockets[1].connack();
@@ -356,4 +356,129 @@ test('the gist-landing block calls both refreshes', async ({ page }) => {
   expect(wired.neighbour).toBe(true);
   expect(wired.menu).toBe(true);
   expect(wired.map).toBe(true);
+});
+
+// Retained, so a viewer opening mid-flight sees where the aeroplane is at once rather than
+// waiting for the next publish - and cleared on stop, so the broker does not hand out the
+// final position of a flight that ended days ago.
+test('the position is retained while sharing and cleared when it stops', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    await F.start('4X-RET');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.publish({ lat: 32, lng: 34.9 });
+    const pub = window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4);
+    const retainBit = pub[0] & 1;
+    window.__sent.length = 0;
+    F.stop();
+    await new Promise(r => setTimeout(r, 10));
+    const clear = window.__sent.find(f => (f[0] & 0xf0) === 0x30);
+    const len = F._readLength(new Uint8Array(clear), 1);
+    const topicLen = (clear[len.next] << 8) | clear[len.next + 1];
+    const payloadLen = len.value - 2 - topicLen;
+    window.WebSocket = orig;
+    return { retainBit, clearRetain: clear[0] & 1, payloadLen };
+  });
+  expect(got.retainBit).toBe(1);
+  expect(got.clearRetain).toBe(1);
+  expect(got.payloadLen).toBe(0);
+});
+
+// The viewer must start from the link alone. It boots on DOMContentLoaded and the tuning
+// gist lands after that, so a feature-flag check there answered with the baked-in false and
+// the link opened an ordinary map - which is exactly what happened in the air.
+test('the viewer boot does not wait on the gist', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  const src = await page.evaluate(async () => (await fetch('app/followme.js')).text());
+  const at = src.indexOf('function followMeBoot');
+  const boot = src.slice(at, at + 900);
+  expect(at).toBeGreaterThan(0);
+  // Comments stripped first: the block explains the trap by naming the call, and prose
+  // about a guard is not a guard.
+  const code = boot.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  expect(code).toContain('followMeLinkParams');
+  expect(code).not.toContain('featureFollowMe');
+});
+
+// A follower on the ground is watching an aeroplane, not a dot: the banner has to say how
+// high and how fast, in feet and knots, and where. The fix carries metres and knots.
+test('the banner reads out altitude, speed, track and position', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await F.start('4X-ABC');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    const seen = [];
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    window.__sockets[1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    // Two fixes: one complete, one with no altitude and no speed at all.
+    for (const fix of [{ lat: 32.1, lng: 34.8, alt: 610, kt: 95, trk: 7 },
+                       { lat: 32.2, lng: 34.85, trk: 7 }]) {
+      window.__sent.length = 0;
+      // The publisher rate-limits itself; the floor is one second, so wait it out rather
+      // than reach into its state.
+      setTune('followMeRateSec', 1);
+      await new Promise(r => setTimeout(r, 1100));
+      await F.publish(fix);
+      window.__sockets[1].deliver(new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4)));
+      await new Promise(r => setTimeout(r, 40));
+      seen.push(document.getElementById('follow-me-banner').textContent);
+    }
+    F.viewerStop(); F.stop();
+    window.WebSocket = orig;
+    return seen;
+  });
+  expect(got[0]).toContain('2001 ft');          // 610 m read back in feet
+  expect(got[0]).toContain('95 kt');
+  expect(got[0]).toContain('007°');        // track, three digits like a heading
+  expect(got[0]).toContain('32.1000, 34.8000');
+  expect(got[1]).not.toMatch(/ft|kt/);          // nothing invented for what was not sent
+  expect(got[1]).toContain('32.2000');
+});
+
+// The cockpit case: the socket dies mid-flight (screen lock, cell handover, doze). Silence
+// after that would leave the pilot believing they are still being followed.
+test('a dropped socket reconnects and re-subscribes; stopping does not', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await F.start('4X-RCN');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    window.__sockets[1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    const subs = () => window.__sent.filter(f => (f[0] & 0xf0) === 0x80).length;
+    const before = { sockets: window.__sockets.length, subs: subs() };
+
+    window.__sockets[1].close();                  // the drop
+    await new Promise(r => setTimeout(r, 2300));  // first backoff step is 2s
+    const grew = window.__sockets.length;
+    window.__sockets[grew - 1].connack();
+    await new Promise(r => setTimeout(r, 20));
+    const after = { sockets: grew, subs: subs() };
+
+    F.viewerStop(); F.stop();
+    const closed = window.__sockets.length;
+    window.__sockets[grew - 1].close();           // a close that stop() already asked for
+    await new Promise(r => setTimeout(r, 2300));
+    const settled = window.__sockets.length;
+    window.WebSocket = orig;
+    return { before, after, closed, settled };
+  });
+  expect(got.after.sockets).toBe(got.before.sockets + 1);  // it came back...
+  expect(got.after.subs).toBe(got.before.subs + 1);        // ...and re-subscribed
+  expect(got.settled).toBe(got.closed);                    // stop means stop
 });

@@ -50,57 +50,88 @@
     return { value, next: i };
   }
 
+  // A phone in a cockpit loses its socket: the screen locks, the cell hands over, Android
+  // dozes. A feed that ends there and never comes back is worse than useless -- the pilot
+  // believes they are being followed. So the client owns its socket rather than being one:
+  // it reconnects with backoff until close() is called, and re-runs onOpen each time so the
+  // viewer re-subscribes and the publisher resumes on the next fix.
   function mqttConnect(url, opts) {
     const o = opts || {};
-    const ws = new (o.WebSocketImpl || window.WebSocket)(url, 'mqtt');
-    ws.binaryType = 'arraybuffer';
-    const client = { ws, onMessage: null, onOpen: null, onClose: null, ready: false };
-    let ping = 0;
+    const Impl = o.WebSocketImpl || window.WebSocket;
+    const client = { ws: null, onMessage: null, onOpen: null, onClose: null, ready: false };
+    let ping = 0, retry = 0, timer = 0, done = false;
     let packetId = 1;
 
-    ws.onopen = () => {
-      const keepalive = 30;
-      ws.send(packet(CONNECT, 0, [
-        ...encodeString('MQTT'), 4, 0x02, keepalive >> 8, keepalive & 0xff,
-        ...encodeString(o.clientId || ('navaid-' + Math.random().toString(36).slice(2, 10))),
-      ]));
-      // Public brokers drop a client that goes quiet. Half the keepalive, as the spec suggests.
-      ping = setInterval(() => {
-        try { ws.send(new Uint8Array([PINGREQ << 4, 0])); } catch (e) { /* closing */ }
-      }, keepalive * 500);
-    };
-    ws.onclose = () => { clearInterval(ping); client.ready = false; if (client.onClose) client.onClose(); };
-    ws.onerror = () => { /* onclose follows */ };
-    ws.onmessage = (ev) => {
-      const buf = new Uint8Array(ev.data);
-      if (!buf.length) return;
-      const type = buf[0] >> 4;
-      if (type === CONNACK) {
-        client.ready = true;
-        if (client.onOpen) client.onOpen();
-        return;
-      }
-      if (type !== PUBLISH) return;                 // SUBACK, PINGRESP: nothing to do
-      const len = readLength(buf, 1);
-      if (!len) return;
-      const topicLen = (buf[len.next] << 8) | buf[len.next + 1];
-      const topic = new TextDecoder().decode(buf.subarray(len.next + 2, len.next + 2 + topicLen));
-      const payload = buf.subarray(len.next + 2 + topicLen, len.next + len.value);
-      if (client.onMessage) client.onMessage(topic, payload);
-    };
+    function backoffMs() {
+      // 2s, 4s, 8s... capped: a broker that is down is not helped by a faster client.
+      return Math.min(30000, 2000 * Math.pow(2, Math.min(Math.max(0, retry - 1), 4)));
+    }
 
-    client.publish = (topic, payload) => {
+    function open() {
+      const ws = new Impl(url, 'mqtt');
+      client.ws = ws;
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = () => {
+        const keepalive = 30;
+        ws.send(packet(CONNECT, 0, [
+          ...encodeString('MQTT'), 4, 0x02, keepalive >> 8, keepalive & 0xff,
+          // A fresh client id per attempt: a broker that still holds the old session would
+          // otherwise kick the reconnecting client as a duplicate.
+          ...encodeString((o.clientId || 'navaid') + '-' + Math.random().toString(36).slice(2, 8)),
+        ]));
+        // Public brokers drop a client that goes quiet. Half the keepalive, as the spec suggests.
+        ping = setInterval(() => {
+          try { ws.send(new Uint8Array([PINGREQ << 4, 0])); } catch (e) { /* closing */ }
+        }, keepalive * 500);
+      };
+      ws.onclose = () => {
+        clearInterval(ping);
+        client.ready = false;
+        if (client.onClose) client.onClose();
+        if (done) return;
+        retry += 1;
+        timer = setTimeout(open, backoffMs());
+      };
+      ws.onerror = () => { /* onclose follows */ };
+      ws.onmessage = (ev) => {
+        const buf = new Uint8Array(ev.data);
+        if (!buf.length) return;
+        const type = buf[0] >> 4;
+        if (type === CONNACK) {
+          client.ready = true;
+          retry = 0;                                  // this attempt worked; start over if it drops
+          if (client.onOpen) client.onOpen();
+          return;
+        }
+        if (type !== PUBLISH) return;                 // SUBACK, PINGRESP: nothing to do
+        const len = readLength(buf, 1);
+        if (!len) return;
+        const topicLen = (buf[len.next] << 8) | buf[len.next + 1];
+        const topic = new TextDecoder().decode(buf.subarray(len.next + 2, len.next + 2 + topicLen));
+        const payload = buf.subarray(len.next + 2 + topicLen, len.next + len.value);
+        if (client.onMessage) client.onMessage(topic, payload);
+      };
+    }
+    open();
+
+    client.publish = (topic, payload, opts) => {
       if (!client.ready) return false;
-      ws.send(packet(PUBLISH, 0, [...encodeString(topic), ...payload]));
+      // Bit 0 of the PUBLISH flags is RETAIN: keep this as the topic's last known value.
+      client.ws.send(packet(PUBLISH, (opts && opts.retain) ? 1 : 0, [...encodeString(topic), ...payload]));
       return true;
     };
     client.subscribe = (topic) => {
       if (!client.ready) return false;
       const id = packetId++;
-      ws.send(packet(SUBSCRIBE, 2, [id >> 8, id & 0xff, ...encodeString(topic), 0]));
+      client.ws.send(packet(SUBSCRIBE, 2, [id >> 8, id & 0xff, ...encodeString(topic), 0]));
       return true;
     };
-    client.close = () => { clearInterval(ping); try { ws.close(); } catch (e) { /* already gone */ } };
+    client.close = () => {
+      done = true;                                    // stop means stop: no reconnect after this
+      clearInterval(ping); clearTimeout(timer);
+      try { client.ws.close(); } catch (e) { /* already gone */ }
+    };
     return client;
   }
 
@@ -198,6 +229,12 @@
   }
   function followMeStop() {
     if (!session) return;
+    // Clear the retained position before going: a zero-length retained payload is how MQTT
+    // says "there is no last known value here". Without it the broker would hand the pilot's
+    // final position to anyone opening the link days later, which is the opposite of a link
+    // that dies when you stop sharing.
+    try { session.client.publish(topicFor(session.id), new Uint8Array(0), { retain: true }); }
+    catch (e) { /* already closing: the session ends either way */ }
     session.client.close();
     session = null;
   }
@@ -221,7 +258,9 @@
       kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
       t: now,
     });
-    return session.client.publish(topicFor(session.id), payload);
+    // Retained: the broker keeps the last one, so a viewer opening mid-flight sees where the
+    // aeroplane is immediately instead of waiting for the next publish. It is cleared on stop.
+    return session.client.publish(topicFor(session.id), payload, { retain: true });
   }
 
   // --- watching -------------------------------------------------------------
@@ -241,6 +280,7 @@
     client.onClose = () => { state.connected = false; };
     client.onMessage = async (topic, payload) => {
       if (topic !== topicFor(id)) return;
+      if (!payload || !payload.length) return;   // the cleared retained value: sharing stopped
       const msg = await open(key, payload);
       if (!msg) return;                       // not ours, or the wrong key
       state.fix = msg;
@@ -289,13 +329,26 @@
     const stale = age === null || age > followMeStaleSec();
     el.classList.toggle('stale', stale);
     const reg = (st.fix && st.fix.reg) ? String(st.fix.reg) : '';
+    // What a follower on the ground wants to know, in the units a pilot reads: altitude in
+    // feet (the fix carries metres), speed in knots, track, and the position itself. Only
+    // fields the aeroplane actually sent -- a missing altitude is left out rather than
+    // rendered as zero, which would read as "on the ground".
+    const f = st.fix || {};
+    const bits = [];
+    if (Number.isFinite(f.alt)) bits.push(Math.round(f.alt * 3.28084) + ' ft');
+    if (Number.isFinite(f.kt)) bits.push(Math.round(f.kt) + ' kt');
+    if (Number.isFinite(f.trk)) bits.push(String(Math.round(f.trk)).padStart(3, '0') + '\u00b0');
+    if (Number.isFinite(f.lat) && Number.isFinite(f.lng)) {
+      bits.push(f.lat.toFixed(4) + ', ' + f.lng.toFixed(4));
+    }
     const said = age === null
       ? (S.followMeWaiting || 'Follow me: waiting for a position…')
       : ((S.followMeLastFix ? S.followMeLastFix(age) : ('Last position ' + age + 's ago'))
          + (stale ? ' · ' + (S.followMeStale || 'not moving — the feed has stopped') : ''));
     // The code leads, because on a link shared into a group chat it is the only thing that
-    // says WHICH aeroplane this is.
-    el.textContent = reg ? (reg + ' · ' + said) : said;
+    // says WHICH aeroplane this is. Then what it is doing, then how old that is -- the age
+    // goes last because it qualifies everything before it.
+    el.textContent = [reg, bits.join(' · '), said].filter(Boolean).join(' · ');
     if (viewer.marker) viewer.marker.setOpacity(stale ? 0.45 : 1);
   }
 
@@ -377,7 +430,15 @@
   // or the person following sees an ordinary map and concludes the feature is broken.
   // Deferred until the map exists, and only when the gist offers the feature at all.
   function followMeBoot() {
-    if (typeof tune === 'function' && tune('featureFollowMe') !== true) return;
+    // No feature-flag check here, deliberately. This runs on DOMContentLoaded and the tuning
+    // gist lands AFTER it, so tune('featureFollowMe') still answered with the baked-in false
+    // and the viewer never started -- the link opened an ordinary map. Exactly the trap the
+    // sharing controls document, in the one place that had no refresh to fall back on.
+    //
+    // And a flag is the wrong question for this end anyway. featureFollowMe decides whether
+    // a pilot is OFFERED sharing; whoever opens a link with a key in it has been handed the
+    // answer already, by someone who did have the feature. Refusing them because a gist
+    // elsewhere has not loaded yet helps nobody.
     if (!followMeLinkParams()) return;
     followMeViewerStart().catch(() => { /* bad link: the banner says nothing arrived */ });
   }
