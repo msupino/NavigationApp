@@ -531,3 +531,33 @@ test('the table says when there is more of it off the edge', async ({ page }) =>
   // At the far end: the promise of more is withdrawn.
   expect(seen.atEnd).toEqual({ start: true, end: false });
 });
+
+// Column order: the value in force first — it is what a pilot reads and what they edit —
+// then where it came from, then what the book says it was.
+test('the value in force leads, the published one follows', async ({ page }) => {
+  await boot(page, LIVE);
+  const got = await page.evaluate(async () => {
+    showFreqTableModal();
+    for (let i = 0; i < 40 && !document.querySelector('.charts-freq-section table'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const heads = Array.from(document.querySelectorAll('.charts-freq-table thead th'))
+      .map(th => th.textContent);
+    const row = Array.from(document.querySelectorAll('.charts-freq-section tbody tr'))
+      .find(tr => tr.dataset.icao === 'LLHZ' && tr.querySelector('.charts-freq-source-btn')
+        && (tr.querySelector('input') || {}).value === '118.55');
+    const cells = Array.from(row.children);
+    return {
+      heads,
+      inputAt: cells.findIndex(td => td.querySelector('input')),
+      sourceAt: cells.findIndex(td => td.classList.contains('charts-freq-source')),
+      defaultAt: cells.findIndex(td => td.classList.contains('charts-freq-template')),
+      defaultText: (row.querySelector('.charts-freq-template') || {}).textContent || '',
+    };
+  });
+  expect(got.heads.slice(0, 4)).toEqual(['Call sign', 'Override', 'Source', 'Default']);
+  expect(got.inputAt).toBe(1);
+  expect(got.sourceAt).toBe(2);
+  expect(got.defaultAt).toBe(3);
+  expect(got.defaultText).toBe('121.70');   // still the published one, just further right
+});

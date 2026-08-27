@@ -6638,9 +6638,12 @@ function renderFreqTable(freqSection) {
   const headRow = document.createElement('tr');
   for (const label of [
     S.freqTableCallSign || 'Call sign',
-    S.freqTableDefault || S.commChangeTemplateFreq || 'Default',
-    S.freqTableSource || 'Source',
+    // The value in force first: it is what a pilot reads and what they edit. Then where it
+    // came from, then what the book says it was -- provenance and reference, behind the
+    // answer rather than in front of it.
     S.freqTableOverride || 'Override',
+    S.freqTableSource || 'Source',
+    S.freqTableDefault || S.commChangeTemplateFreq || 'Default',
     '',
   ]) {
     const th = document.createElement('th');
@@ -6832,7 +6835,7 @@ function renderFreqTable(freqSection) {
     };
     actions.appendChild(reset);
     syncFreqInputValidity();
-    tr.append(name, template, sourceCell(optChg), local, actions);
+    tr.append(name, local, sourceCell(optChg), template, actions);
     pending.push({ code: optIcao || '', order: 0, sub: opt.label || opt.id, tr });
   }
   // Airfield clearance / ATIS rows (editable numeric parts).
@@ -6918,7 +6921,7 @@ function renderFreqTable(freqSection) {
     local.appendChild(inp);
     actions.appendChild(reset);
     syncAf();
-    tr.append(name, template, sourceCell(r.notam), local, actions);
+    tr.append(name, local, sourceCell(r.notam), template, actions);
     pending.push({ code: r.af.name || '', order: 1, sub: r.flabel + partName, tr });
   }
   // VOR rows (editable single frequency each).
@@ -6985,7 +6988,7 @@ function renderFreqTable(freqSection) {
     local.appendChild(inp);
     actions.appendChild(reset);
     syncVor();
-    tr.append(name, template, sourceCell(null), local, actions);
+    tr.append(name, local, sourceCell(null), template, actions);
     pending.push({ code: '', order: 2, sub: v.ident || '', tr });
   }
   // By ICAO, and within a code by kind: the call sign first, then clearance / ATIS. A row
