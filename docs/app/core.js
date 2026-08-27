@@ -711,7 +711,7 @@ NavAid.tuningDefaults = {
   // published extent; the deep zooms stay behind the button because the full pack is ~200 MB.
   offlineAutoFloor: { value: false, type: 'bool', label: 'Fetch a basic offline map on load' },
   offlineFloorWifiOnly: { value: true, type: 'bool',
-    label: 'Fetch the basic offline map only on unmetered connections' },
+    label: 'Fetch the basic offline map only when the connection is not metered' },
   offlineFloorMinZ: { value: 7, min: 5, max: 12, step: 1, label: 'Basic offline map: widest zoom' },
   offlineFloorMaxZ: { value: 10, min: 6, max: 13, step: 1, label: 'Basic offline map: closest zoom' },
   featureFollowMe: { value: false, type: 'bool', label: 'Feature: share a live position link' },
