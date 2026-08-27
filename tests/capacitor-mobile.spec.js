@@ -82,6 +82,16 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(iosInfo).toContain('finds X-Plane');
   });
 
+  test('declares foreground location access for iOS', () => {
+    const iosInfo = readText('mobile/ios/App/App/Info.plist');
+    const purpose = iosInfo.match(
+      /<key>NSLocationWhenInUseUsageDescription<\/key>\s*<string>([^<]*)<\/string>/,
+    );
+
+    expect(purpose, 'iOS foreground location requires a purpose string').toBeTruthy();
+    expect(purpose[1].trim(), 'the iOS location purpose string must not be empty').not.toBe('');
+  });
+
   test('registers native X-Plane discovery without requiring an iOS multicast entitlement', () => {
     const androidPlugin = readText(
       'mobile/android/app/src/main/java/org/supino/navaid/XPlaneDiscoveryPlugin.java');
