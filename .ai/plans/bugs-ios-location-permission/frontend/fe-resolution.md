@@ -14,6 +14,6 @@ No design-system obligation applies because the fix adds no application UI.
 
 ## Unclear
 
-NavAid is not registered in the design-intelligence product resolver, which only identifies DAP and Cyber products. This does not change the code-walk result because the fix adds no application UI.
+NavAid is not registered in the design-intelligence product resolver. This does not change the code-walk result because the fix adds no application UI.
 
-**Grounded by**: code walk (native plist and validation to the existing GPS action) · KB (unavailable — no NavAid product profile) · DS MCP (unavailable — no NavAid product profile)
+**Grounded by**: code walk from the native plist and validator to the existing GPS action. The KB and DS MCP have no NavAid product profile.

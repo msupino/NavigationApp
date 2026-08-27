@@ -8,11 +8,11 @@ status: approved
 
 ## What's happening
 
-The installed iOS app never registers for foreground location access, so NavAid is absent from iOS Location Services and **Show location** cannot display a GPS fix. The connected iPad confirms the symptom.
+Before the fix, the installed iOS app never registered for foreground location access. NavAid was absent from iOS Location Services, and **Show location** could not display a GPS fix.
 
 ## Root cause
 
-`mobile/ios/App/App/Info.plist:27-34` declares local-network access but omits Apple's required `NSLocationWhenInUseUsageDescription`. The existing GPS action reaches `navigator.geolocation` through `docs/app/gps.js:337-378`, while both native checks accept the incomplete plist.
+The checked-in iOS `Info.plist` declared local-network access but omitted Apple's required `NSLocationWhenInUseUsageDescription`. The existing `gpsStartWatch()` path reaches `navigator.geolocation`, while both native checks accepted the incomplete plist.
 
 ## Design system
 
@@ -30,9 +30,9 @@ No design-system obligation applies because the fix adds no application UI.
 
 ### Unclear
 
-NavAid is not registered in the design-intelligence product resolver, which only identifies DAP and Cyber products. This does not change the code-walk result because the fix adds no application UI.
+NavAid is not registered in the design-intelligence product resolver. This does not change the code-walk result because the fix adds no application UI.
 
-**Grounded by**: code walk (native plist and validation to the existing GPS action) · KB (unavailable — no NavAid product profile) · DS MCP (unavailable — no NavAid product profile)
+**Grounded by**: code walk from the native plist and validator to the existing GPS action. The KB and DS MCP have no NavAid product profile.
 
 ## Suggested fix
 
@@ -41,11 +41,11 @@ NavAid is not registered in the design-intelligence product resolver, which only
 - `tests/capacitor-mobile.spec.js` — keep the committed red contract regression and turn it green.
 - `mobile/README.md` and `.ai/navaid-dev.md` — distinguish supported foreground iOS location from deferred background/lock-screen tracking.
 
-**Expected shape**: 5 files, ~30 changed lines · extend the existing plist, validator, wrapper contract test, and two native documentation sources · new test files: 0
+**Expected shape**: five files and about 30 changed lines. Extend the existing plist, validator, contract test, and two documentation sources. Add no test file.
 
 ## Failing test (written, red)
 
-`tests/capacitor-mobile.spec.js` — `declares foreground location access for iOS` (contract) requires a non-empty `NSLocationWhenInUseUsageDescription`. Current result: 1 failed, 6 passed because the key is missing.
+Red-phase result: the new `declares foreground location access for iOS` contract required a non-empty purpose string. It failed while the other six tests passed.
 
 ## Verification plan
 

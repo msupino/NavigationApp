@@ -9,7 +9,7 @@ status: approved
 - GitHub issue: #1963
 - Branch: `codex/ios-location-permission`, derived from `origin/dev`
 - Reported environment: physical iPad Air 2, iPadOS 15.8.8, installed bundle `org.supino.navaid`
-- Observed behavior: NavAid is absent from **Settings > Privacy & Security > Location Services** and **Show location** produces no GPS position.
+- Observed before the fix: NavAid was absent from **Settings > Privacy & Security > Location Services**. **Show location** produced no GPS position.
 - Expected behavior: the installed iOS app requests foreground location access and displays the device position after access is allowed.
 
 ## Root cause
@@ -31,10 +31,10 @@ The app nevertheless requests foreground location through the browser API:
 - `startLiveLocation()` and `startGpsRecording()` both reach `gpsStartWatch()`.
 
 Apple requires a non-empty `NSLocationWhenInUseUsageDescription` purpose string
-for an iOS app that accesses location while in use. Without the declaration,
-the native bundle has no valid foreground-location permission contract, which
-matches the physical-device evidence: the app does not appear in Location
-Services and cannot deliver a fix. Apple documents the requirement at
+for foreground location access. Without it, the native bundle has no valid
+foreground-location permission contract. That matched the original device
+evidence. The app did not appear in Location Services and could not deliver a
+fix. Apple documents the requirement at
 <https://developer.apple.com/documentation/bundleresources/information-property-list/nslocationwheninuseusagedescription>.
 
 This is not caused by the HTTPS remote-shell URL, the app-bound-domain setting,
@@ -60,22 +60,21 @@ Bug surface: **frontend** (native iOS wrapper for the client application).
 
 ## Test Gap
 
-The current wrapper contract has no assertion that the iOS plist contains a
-non-empty `NSLocationWhenInUseUsageDescription`. Both existing native checks can
-pass while producing an iOS bundle that cannot ask for location:
+At investigation time, the wrapper contract had no assertion for a non-empty
+`NSLocationWhenInUseUsageDescription`. Both native checks could pass. The iOS
+bundle still remained unable to ask for location:
 
 1. `tests/capacitor-mobile.spec.js` verifies Android location permissions and
    iOS local-network keys only.
 2. `mobile/scripts/validate-capacitor.mjs`, run before every Capacitor sync,
    likewise accepts the incomplete plist.
 
-A regression test should first assert a non-empty When-In-Use purpose string in
-the checked-in plist and fail on the current branch. The sync-time validator
-should enforce the same invariant so local native builds fail before Xcode.
-Physical-device verification is still necessary after the static tests: install
-the rebuilt bundle, start **Show location**, confirm the permission prompt, allow
-access, confirm NavAid appears in Location Services, and confirm a position is
-drawn. Static CI cannot exercise an iPad privacy database or GPS fix.
+The red-phase test should require a non-empty When-In-Use purpose string in the
+checked-in plist. The sync-time validator should enforce the same invariant
+before Xcode runs. Physical-device verification should then install the rebuilt
+bundle and start **Show location**. It should confirm the permission prompt,
+allow access, and verify both the Location Services entry and map position.
+Static CI cannot exercise an iPad privacy database or GPS fix.
 
 ## Minimal fix shape
 
