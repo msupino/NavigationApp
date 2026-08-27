@@ -19,7 +19,10 @@
   const NS = (window.NavAid = window.NavAid || {});
 
   // --- MQTT 3.1.1 over WebSocket, the parts a position feed uses -------------
-  const CONNECT = 1, CONNACK = 2, PUBLISH = 3, SUBSCRIBE = 8, SUBACK = 9, PINGREQ = 12;
+  // Only the packet types this client sends or acts on. SUBACK (9) and PINGRESP (13) arrive
+  // and are ignored -- naming them here would be a constant nobody reads, which is what
+  // CodeQL flagged; the branch below says what happens to them instead.
+  const CONNECT = 1, CONNACK = 2, PUBLISH = 3, SUBSCRIBE = 8, PINGREQ = 12;
 
   function encodeLength(n) {
     const out = [];
@@ -80,7 +83,7 @@
         if (client.onOpen) client.onOpen();
         return;
       }
-      if (type !== PUBLISH) return;                 // SUBACK, PINGRESP: nothing to do
+      if (type !== PUBLISH) return;                 // SUBACK (9), PINGRESP (13): nothing to do
       const len = readLength(buf, 1);
       if (!len) return;
       const topicLen = (buf[len.next] << 8) | buf[len.next + 1];
