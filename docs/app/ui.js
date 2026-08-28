@@ -483,12 +483,24 @@ function compassIconSvg(deg, hdg) {
     + '</g></svg>' + readout + '</span>';
 }
 
+// One orientation control serves whichever aircraft currently drives the map. A follower link
+// has no local GPS fix, so reading gpsOwn alone hid the button and could only rotate to an old
+// device heading left from an earlier session.
+function mapAircraftTrack() {
+  const following = window.NavAid && NavAid.followMe &&
+    typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing();
+  if (following && typeof NavAid.followMe.viewerFix === 'function') {
+    const fix = NavAid.followMe.viewerFix();
+    return fix && Number.isFinite(fix.trk) ? fix.trk : null;
+  }
+  return (typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.hdg)) ? gpsOwn.hdg : null;
+}
+
 // Point the map so the aircraft's track is up the screen. Leaflet's bearing is the angle
 // the MAP is rotated by, so holding a heading of h up means rotating by 360 - h.
 function applyHeadingUp() {
   if (!headingUpOn || typeof map.setBearing !== 'function') return;
-  const hdg = (typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.hdg))
-    ? gpsOwn.hdg : null;
+  const hdg = mapAircraftTrack();
   if (hdg == null) return;                       // no heading yet: leave the map as it is
   const want = ((360 - hdg) % 360 + 360) % 360;
   const now = map.getBearing ? map.getBearing() : 0;
@@ -503,7 +515,10 @@ window.applyHeadingUp = applyHeadingUp;
 function refreshOrientControl() {
   const wrap = orientBtn && orientBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
+  const ownShip = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
+  const following = !!(window.NavAid && NavAid.followMe &&
+    typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing());
+  const tracking = ownShip || following;
   wrap.style.display = tracking ? '' : 'none';
   orderMapControls(wrap.parentNode);
   // Three states, not two: the dial can leave the chart pointing anywhere, and a button
@@ -513,7 +528,7 @@ function refreshOrientControl() {
   const rotated = !headingUpOn && ((bearing % 360) + 360) % 360 !== 0;
   // Heading-up turns the chart, so north is what moves: point the needle at north. North-up
   // leaves the chart still, so the needle points where the aircraft is going.
-  const trk = (typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.hdg)) ? gpsOwn.hdg : null;
+  const trk = mapAircraftTrack();
   const needle = headingUpOn ? ((bearing % 360) + 360) % 360 : (trk == null ? 0 : trk);
   orientBtn.innerHTML = compassIconSvg(needle, trk);
   orientBtn.classList.toggle('orient-on', headingUpOn);

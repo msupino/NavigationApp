@@ -223,11 +223,12 @@ function ltrIsolate(text) {
   return t ? '\u2066' + t + '\u2069' : t;
 }
 
-function drawHeadingLine(pos, hdg, gsKt) {
+function drawHeadingLine(pos, hdg, gsKt, opts) {
   if (!pos) return;
-  const h = Number.isFinite(hdg) ? hdg : lastOwnHeadingDeg;
+  const noFallback = opts && opts.noFallback === true;
+  const h = Number.isFinite(hdg) ? hdg : (noFallback ? null : lastOwnHeadingDeg);
   if (!Number.isFinite(h)) return;          // no heading yet — nothing to draw
-  lastOwnHeadingDeg = h;
+  if (!noFallback) lastOwnHeadingDeg = h;
   const haveSpeed = Number.isFinite(gsKt) && gsKt > 0;
   const hr = h * Math.PI / 180;
   const cosLat = Math.max(0.2, Math.cos(pos.lat * Math.PI / 180));
@@ -863,6 +864,13 @@ function draw() {
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
   if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg, simAircraft.ias);  // sim own-ship
+  // A follower gets the same dashed 2/5/10 NM predictor as an own-ship. Do not reuse the
+  // own-ship's remembered heading when a remote fix omits track: silence is safer than a
+  // confident line pointing in a different aircraft's direction.
+  if (window.NavAid && NavAid.followMe && typeof NavAid.followMe.viewerFix === 'function') {
+    const followed = NavAid.followMe.viewerFix();
+    if (followed) drawHeadingLine(followed, followed.trk, followed.kt, { noFallback: true });
+  }
   drawInfo();
   drawPageFrame();
   drawPlanCard();          // flight-plan card placed for PNG export

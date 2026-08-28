@@ -952,6 +952,9 @@ anchored on the reported coordinate; the aircraft label is absolutely positioned
 must not participate in Leaflet's icon width or move the aircraft away from that coordinate.
 `followMePlanePx` and `followMePlaneColor` tune its size and fill from the Gist.
 While viewing a Follow Me link, each received fix recentres the map on the aircraft.
+The on-map orientation control remains available in follower mode and toggles North-up versus
+the followed aircraft's track-up view. The follower also draws the standard dashed heading
+predictor with labelled 2 NM, 5 NM, and 10 NM marks.
 
 Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
 publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle

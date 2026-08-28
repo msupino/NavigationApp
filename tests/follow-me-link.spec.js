@@ -269,12 +269,38 @@ test('opening the link watches, names the aircraft and dates the position', asyn
     const labelRect = label.getBoundingClientRect();
     const planeColor = getComputedStyle(plane).fill;
     const planeTransform = mark.querySelector('.follow-me-arrow').style.transform;
+    const renderedNoseBearing = () => {
+      const svg = document.querySelector('.follow-me-plane');
+      const matrix = svg.getScreenCTM();
+      const nose = new DOMPoint(12, 1.6).matrixTransform(matrix);
+      const centre = new DOMPoint(12, 12).matrixTransform(matrix);
+      return Math.round((Math.atan2(nose.x - centre.x, -(nose.y - centre.y)) * 180 / Math.PI + 360) % 360);
+    };
+    const initialNoseBearing = renderedNoseBearing();
     map.panTo([32.5, 35.5], { animate: false });
     const nextFix = [31.9, 35.05];
-    viewerState.fix = { lat: nextFix[0], lng: nextFix[1], trk: 90, reg: '4X-XYZ', t: Date.now() };
+    viewerState.fix = { lat: nextFix[0], lng: nextFix[1], trk: 90, kt: 110,
+      reg: '4X-XYZ', t: Date.now() };
     viewerState.at = viewerState.fix.t;
     F.viewerDraw();
     const followed = map.getCenter();
+    draw();
+    const orient = document.getElementById('orient-toggle');
+    const orientVisible = orient.parentNode.style.display !== 'none';
+    const orientTrack = orient.textContent.trim();
+    const distanceMarks = window.__headingLine && window.__headingLine.marks;
+    const northUpNoseBearing = renderedNoseBearing();
+    orient.click();
+    const trackUpBearing = Math.round(map.getBearing());
+    const trackUpNoseBearing = renderedNoseBearing();
+    viewerState.fix.trk = 180;
+    F.viewerDraw();
+    draw();
+    const updatedTrackUpBearing = Math.round(map.getBearing());
+    const updatedTrackUpNoseBearing = renderedNoseBearing();
+    orient.click();
+    const northUpBearing = Math.round(map.getBearing());
+    const northUp180NoseBearing = renderedNoseBearing();
     const out = {
       waiting, live: banner.textContent, stale: banner.classList.contains('stale'),
       viewing: F.viewing(), marks: document.querySelectorAll('.follow-me-mark').length,
@@ -288,6 +314,10 @@ test('opening the link watches, names the aircraft and dates the position', asyn
         labelRect.bottom <= planeRect.top || labelRect.top >= planeRect.bottom),
       mapFollows: Math.abs(followed.lat - nextFix[0]) < 0.000001 &&
         Math.abs(followed.lng - nextFix[1]) < 0.000001,
+      orientVisible, orientTrack, distanceMarks,
+      trackUpBearing, updatedTrackUpBearing, northUpBearing,
+      initialNoseBearing, northUpNoseBearing, trackUpNoseBearing,
+      updatedTrackUpNoseBearing, northUp180NoseBearing,
     };
     F.viewerStop(); await F.stop();
     window.WebSocket = orig;
@@ -303,9 +333,20 @@ test('opening the link watches, names the aircraft and dates the position', asyn
   expect(got.planeWidth).toBe('34');              // Gist-tunable rather than a fixed marker size
   expect(got.planeColor).toBe('rgb(0, 68, 204)');
   expect(got.transform).toBe('rotate(270deg)');  // same track the banner reports
+  expect(got.initialNoseBearing).toBe(270);       // rendered nose, not merely a CSS value
   expect(got.planeAtFix).toBe(true);             // the aircraft, not its label, owns the coordinate
   expect(got.labelOverlapsPlane).toBe(false);
   expect(got.mapFollows).toBe(true);             // every new fix returns the aircraft to centre
+  expect(got.orientVisible).toBe(true);           // North-up / track-up button is on the map
+  expect(got.orientTrack).toBe('090°');
+  expect(got.distanceMarks).toEqual([2, 5, 10]);  // standard dashed predictor distances
+  expect(got.trackUpBearing).toBe(270);           // 360 - 090 puts the aircraft direction up
+  expect(got.northUpNoseBearing).toBe(90);
+  expect(got.trackUpNoseBearing).toBe(0);
+  expect(got.updatedTrackUpBearing).toBe(180);    // new tracks keep driving the rotated map
+  expect(got.updatedTrackUpNoseBearing).toBe(0);
+  expect(got.northUpBearing).toBe(0);
+  expect(got.northUp180NoseBearing).toBe(180);
   expect(got.after).toBe(false);                // stopping clears the banner
 });
 

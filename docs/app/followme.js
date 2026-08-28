@@ -735,13 +735,18 @@
   function followMeViewerDraw() {
     if (!viewer || !viewer.state.fix || typeof L === 'undefined' || typeof map === 'undefined') return;
     const f = viewer.state.fix;
+    // leaflet-rotate keeps divIcon content screen-upright. Apply the map bearing ourselves so
+    // the aircraft nose still points along the geographic track on a rotated chart.
+    if (typeof applyHeadingUp === 'function') applyHeadingUp();
+    const mapTurn = typeof map.getBearing === 'function' ? map.getBearing() : 0;
+    const screenTrack = Number.isFinite(f.trk) ? f.trk + mapTurn : mapTurn;
     const px = Math.round(Number(tune('followMePlanePx', 26)) || 26);
     const icon = L.divIcon({
       className: 'follow-me-mark',
       iconSize: [px, px],
       iconAnchor: [px / 2, px / 2],
       html: '<span class="follow-me-arrow" style="transform:rotate('
-        + (Number.isFinite(f.trk) ? f.trk : 0) + 'deg)">'
+        + screenTrack + 'deg)">'
         + '<svg class="follow-me-plane" viewBox="0 0 24 24" width="' + px + '" height="' + px
         + '" aria-hidden="true"><path d="' + FOLLOW_ME_PLANE + '"/></svg></span>'
         + (f.reg ? '<span class="follow-me-label">' + escapeHtml(f.reg) + '</span>' : ''),
@@ -757,6 +762,7 @@
       // pan can trail rapid updates, so place the reported fix in the centre immediately.
       map.setView([f.lat, f.lng], map.getZoom(), { animate: false });
     }
+    if (typeof refreshOrientControl === 'function') refreshOrientControl();
     followMeViewerRefresh();
   }
 
@@ -773,13 +779,17 @@
     const p = followMeLinkParams(opts && opts.search, opts && opts.hash);
     if (!p) return null;
     const state = await followMeWatch(p.id, p.key, opts);
-    viewer = { state, marker: null, timer: 0 };
+    viewer = { state, marker: null, timer: 0, rotateHandler: null };
     // Following an aircraft is not route onboarding. Drop any intro that was painted before
     // this async viewer started, and begin with route edits locked just like a live own-ship.
     if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
     window.editUnlockOverride = false;
     document.body.classList.add('follow-me-viewing');
     if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
+    if (typeof map !== 'undefined' && map && map.on) {
+      viewer.rotateHandler = () => { if (viewer) followMeViewerDraw(); };
+      map.on('rotate rotateend', viewer.rotateHandler);
+    }
     followMeViewerRefresh();
     // The age has to keep counting even when nothing arrives -- especially then.
     viewer.timer = setInterval(followMeViewerRefresh, 1000);
@@ -788,6 +798,9 @@
   function followMeViewerStop() {
     if (!viewer) return;
     clearInterval(viewer.timer);
+    if (viewer.rotateHandler && typeof map !== 'undefined' && map && map.off) {
+      map.off('rotate rotateend', viewer.rotateHandler);
+    }
     if (viewer.marker && typeof map !== 'undefined') map.removeLayer(viewer.marker);
     viewer = null;
     window.editUnlockOverride = false;
@@ -801,6 +814,7 @@
 
   NS.followMe = {
     viewerStart: followMeViewerStart, viewerStop: followMeViewerStop, viewing: followMeViewing,
+    viewerFix: () => (viewer && viewer.state && viewer.state.fix) || null,
     viewerDraw: followMeViewerDraw, viewerRefresh: followMeViewerRefresh,
     linkParams: followMeLinkParams, staleSec: followMeStaleSec,
     start: followMeStart, stop: followMeStop, sharing: followMeSharing, status: followMeStatus,
