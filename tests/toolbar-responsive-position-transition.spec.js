@@ -60,6 +60,7 @@ test('a queued desktop restore cannot overwrite mobile after a rapid mode flip',
       queued.push(callback);
       return queued.length;
     };
+    window.__toolbarTestFrameCount = () => queued.length;
     window.__flushToolbarTestFrames = () => {
       window.requestAnimationFrame = nativeRequestAnimationFrame;
       for (const callback of queued.splice(0)) callback(performance.now());
@@ -67,11 +68,18 @@ test('a queued desktop restore cannot overwrite mobile after a rapid mode flip',
   });
 
   await page.setViewportSize({ width: 1200, height: 900 });
-  await page.waitForFunction(() =>
-    matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches);
+  // Poll by timer because requestAnimationFrame is intentionally held above. Also require
+  // queued work: the media query can change before its listener queues the restore.
+  await page.waitForFunction(() => {
+    const desktop = matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches;
+    return desktop && !document.getElementById('toolbar').classList.contains('collapsed') &&
+      window.__toolbarTestFrameCount() > 0;
+  }, null, { polling: 10 });
   await page.setViewportSize({ width: 390, height: 780 });
-  await page.waitForFunction(() =>
-    !matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches);
+  await page.waitForFunction(() => {
+    const desktop = matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches;
+    return !desktop && document.getElementById('toolbar').classList.contains('collapsed');
+  }, null, { polling: 10 });
   await page.evaluate(() => window.__flushToolbarTestFrames());
 
   const box = await page.locator('#toolbar').boundingBox();

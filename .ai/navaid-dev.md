@@ -187,7 +187,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   persisted at `navaid.toolbarCollapsed`. By default, the undragged toolbar stays
   left-anchored in English and right-anchored in Hebrew while collapsing or expanding.
   Switching from the desktop menubar clears its inline desktop geometry before restoring
-  the separate mobile position or default. Queued restores are ignored after a mode change.
+  the separate mobile position or default. A queued restore is ignored if its requesting
+  responsive mode is inactive when its animation-frame callback runs.
   On desktop
   (`min-width: 681px`)
   those same `.tb-section` groups render as a fixed top menubar with
