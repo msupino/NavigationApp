@@ -224,7 +224,18 @@ test.describe('workflow trust and integrity gates', () => {
     // ...and it must not carry a token: the data branches are pushed with an explicit
     // x-access-token URL, never with the checkout's credentials.
     expect(aviation).toContain('persist-credentials: false');
-    expect(read('.github/workflows/charts-monitor.yml')).toContain('wx-data/wx.json');
+    const monitor = read('.github/workflows/charts-monitor.yml');
+    expect(monitor).toContain('wx-data/wx.json');
+    expect(monitor).toContain('scripts/chart-monitor-recovery.mjs');
+    expect(monitor).toContain('createWorkflowDispatch');
+    const monitorDoc = YAML.parse(monitor);
+    expect(monitorDoc.permissions).toMatchObject({ contents: 'read', issues: 'write', actions: 'write' });
+    expect(String(monitorDoc.jobs.check.if)).toContain(
+      'github.ref_name == github.event.repository.default_branch');
+    const monitorCheckout = monitorDoc.jobs.check.steps.find(step =>
+      String(step.uses || '').startsWith('actions/checkout'));
+    expect(monitorCheckout.with['persist-credentials']).toBe(false);
+    expect(String(monitorCheckout.with.ref)).toContain('github.event.repository.default_branch');
 
     const ims = read('.github/workflows/ims-charts.yml');
     // Source-naming and the collision guard are a module now (behaviour lives in

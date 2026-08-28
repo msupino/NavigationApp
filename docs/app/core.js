@@ -84,6 +84,15 @@ NavAid.tuningDefaults = {
   // and out on the line it sat over the chart at the busiest moment. Off by default; the
   // distance and time ticks on the line are unaffected.
   liveHeadingEndLabel: { value: false, type: 'bool', label: 'Heading number at the end of the predictor line' },
+  // Garmin-style map trend: infer a turn from successive tracks, never from one fix. The
+  // rate/arc caps mirror the useful limits documented for Garmin turn/track vectors; the
+  // remaining knobs reject low-speed jitter and age the estimate out promptly.
+  livePredictorTurnMinDegSec: { value: 0.25, min: 0, max: 3, step: 0.05, label: 'Curve predictor above turn rate (°/s)' },
+  livePredictorTurnMaxDegSec: { value: 4, min: 0.5, max: 12, step: 0.25, label: 'Curve predictor maximum valid turn rate (°/s)' },
+  livePredictorTurnMaxArcDeg: { value: 90, min: 10, max: 180, step: 5, label: 'Curve predictor maximum arc (°)' },
+  livePredictorTurnMinKt: { value: 10, min: 0, max: 100, step: 1, label: 'Curve predictor above groundspeed (kt)' },
+  livePredictorTurnHoldSec: { value: 6, min: 1, max: 30, step: 1, label: 'Keep measured turn rate for (s)' },
+  livePredictorTurnSmoothing: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Curve predictor smoothing (0-1)' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, this far ahead (s)' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (°)' },
@@ -915,7 +924,7 @@ NavAid.tuningGroups = [
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
-  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
+  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing'] },
   { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },

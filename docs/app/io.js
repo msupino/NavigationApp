@@ -8926,6 +8926,7 @@ async function _simFetch() {
       alt: d.altitude || 0,
       hdg: hdgTrue,
       ias: d.ias || 0,
+      t: Date.now(),
     };
     // Follow me treats the connected simulator as a live position source, so it must carry
     // the same fixes the map control promises. The bridge uses ft/kt; the encrypted feed uses

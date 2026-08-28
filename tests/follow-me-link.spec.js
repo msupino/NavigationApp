@@ -350,6 +350,75 @@ test('opening the link watches, names the aircraft and dates the position', asyn
   expect(got.after).toBe(false);                // stopping clears the banner
 });
 
+test('the viewer status stays below the toolbar as the mobile menu changes height', async ({ page }) => {
+  await page.setViewportSize({ width: 516, height: 700 });
+  await boot(page);
+  const link = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const started = await F.start('TEST');
+    window.__sockets[0].connack();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return started;
+  });
+  await page.evaluate(async followerLink => {
+    const url = new URL(followerLink);
+    await NavAid.followMe.viewerStart({ search: url.search, hash: url.hash });
+  }, link);
+
+  const boxes = () => page.evaluate(() => {
+    const toolbar = document.getElementById('toolbar').getBoundingClientRect();
+    const banner = document.getElementById('follow-me-banner').getBoundingClientRect();
+    return { toolbarBottom: toolbar.bottom, bannerTop: banner.top };
+  });
+  let measured = await boxes();
+  expect(measured.bannerTop).toBeGreaterThanOrEqual(measured.toolbarBottom + 7);
+
+  await page.locator('#toolbar-toggle').click();
+  await page.waitForFunction(() => {
+    const toolbar = document.getElementById('toolbar').getBoundingClientRect();
+    const banner = document.getElementById('follow-me-banner').getBoundingClientRect();
+    return banner.top >= toolbar.bottom + 7;
+  });
+  measured = await boxes();
+  expect(measured.bannerTop).toBeGreaterThanOrEqual(measured.toolbarBottom + 7);
+});
+
+test('the Hebrew viewer banner keeps telemetry LTR in an RTL segment order', async ({ page }) => {
+  await installStub(page);
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
+  const seen = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('TEST');
+    window.__sockets[0].connack();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const url = new URL(link);
+    const state = await F.viewerStart({ search: url.search, hash: url.hash });
+    state.fix = { reg: 'TEST', lat: 32.3728, lng: 34.9068, alt: 456.9, kt: 90,
+      trk: 3, t: Date.now() };
+    state.at = state.fix.t;
+    F.viewerRefresh();
+    const banner = document.getElementById('follow-me-banner');
+    const values = [...banner.querySelectorAll('.follow-me-banner-value')];
+    const result = {
+      dir: banner.dir,
+      text: values.map(value => value.textContent),
+      valueDirs: values.map(value => value.dir),
+      // The first five values share the telemetry row. In RTL their logical order must
+      // proceed from right to left, while every individual value remains LTR.
+      lefts: values.slice(0, 5).map(value => value.getBoundingClientRect().left),
+    };
+    F.viewerStop();
+    await F.stop();
+    return result;
+  });
+  expect(seen.dir).toBe('rtl');
+  expect(seen.text.slice(0, 5)).toEqual(['TEST', '1499 ft', '90 kt', '003°', '32.3728, 34.9068']);
+  expect(seen.text[5]).toMatch(/^המיקום האחרון לפני \d+ שניות$/);
+  expect(seen.valueDirs).toEqual(['ltr', 'ltr', 'ltr', 'ltr', 'ltr', 'rtl']);
+  expect(seen.lefts.every((left, index, all) => index === 0 || all[index - 1] > left)).toBe(true);
+});
+
 test('a position that stops arriving is called stale, not drawn as current', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
