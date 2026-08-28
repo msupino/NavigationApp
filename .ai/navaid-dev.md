@@ -881,10 +881,12 @@ as a machine-readable registry.
 - `navaid.followMeSession` — the device-local Follow Me bearer capability:
   random topic id, AES key, aircraft label, last activity time, monotonic packet sequence,
   sharing consent, and pending-stop cleanup state. It is deliberately excluded from
-  Drive sync. Stop waits for the broker's QoS 1 acknowledgement before removing the
-  record. Persistent-link mode instead keeps an inactive record. While offline, the
-  record remains with `pendingStop: true` and `on: false`. A reconnect retries the
-  delete; pending cleanup must not be treated as active sharing.
+  Drive sync. Normally Stop stores `pendingStop: true` and `on: false`, waits for the
+  broker's QoS 1 acknowledgement, then removes the record; persistent-link mode instead
+  keeps it inactive. If the pending-state write fails, Stop removes active consent
+  immediately when possible. If storage is unreadable, Stop remains pending after PUBACK
+  and retries durable revocation until the store can be verified. While offline, the pending
+  record remains and a reconnect retries the delete; pending cleanup is never active sharing.
 - `navaid.tracks.shown` — JSON array of shown recorded-track ids
   (`gps.js`). Only one track is shown at a time, so this holds 0 or 1 id;
   an older multi-id list is healed to a single id on load.
@@ -937,9 +939,9 @@ replacement session. Each publish checks the shared session before and after enc
 `storage` event closes an in-memory publisher when another tab stops or replaces the session.
 A delegated Stop result must not be labelled complete until the tab that owns cleanup receives
 PUBACK and durable consent revocation succeeds. Stop also broadcasts revocation directly to
-established tabs and removes the active record when writing pending cleanup state fails.
-Starting requires the private session to be stored successfully; otherwise the UI refuses to
-create a link that cannot send.
+established tabs. A failed pending-state write falls back to verified removal; an unreadable
+store keeps Stop pending and is retried after PUBACK. Starting requires the private session to
+be stored successfully; otherwise the UI refuses to create a link that cannot send.
 
 Opening a Follow Me viewer link suppresses the new-route onboarding hint and its primed map
 click. Viewer mode starts with the same automatic route-edit lock used by a live own-ship;
