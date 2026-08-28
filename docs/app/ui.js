@@ -958,6 +958,7 @@ function applyTuningCssVars() {
   // Other aeroplanes. Not red: red on an aviation display means resolve it now.
   root.setProperty('--navaid-traffic-arrow', tune('trafficArrowColor'));
   root.setProperty('--navaid-traffic-label', tune('trafficLabelColor'));
+  root.setProperty('--navaid-follow-me-plane', tune('followMePlaneColor'));
 
   // Dark-mode backdrop behind the IMS PWX overlay: the chart's white background
   // is made transparent in the pipeline, so its dark footer (valid time / model

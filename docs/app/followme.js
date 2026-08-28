@@ -726,16 +726,24 @@
     if (viewer.marker) viewer.marker.setOpacity(stale ? 0.45 : 1);
   }
 
+  // A top-down aircraft whose unrotated nose points north. A font glyph has a device-specific
+  // diagonal heading, so applying the reported track to it cannot produce a reliable bearing.
+  const FOLLOW_ME_PLANE = 'M12 1.6 13.35 6.4 13.35 9.6 22.4 14.9 22.4 17 13.35 14.3'
+    + ' 13.35 19.4 16.1 21.3 16.1 22.6 12 21.4 7.9 22.6 7.9 21.3 10.65 19.4'
+    + ' 10.65 14.3 1.6 17 1.6 14.9 10.65 9.6 10.65 6.4Z';
+
   function followMeViewerDraw() {
     if (!viewer || !viewer.state.fix || typeof L === 'undefined' || typeof map === 'undefined') return;
     const f = viewer.state.fix;
-    const px = 26;
+    const px = Math.round(Number(tune('followMePlanePx', 26)) || 26);
     const icon = L.divIcon({
       className: 'follow-me-mark',
       iconSize: [px, px],
       iconAnchor: [px / 2, px / 2],
       html: '<span class="follow-me-arrow" style="transform:rotate('
-        + (Number.isFinite(f.trk) ? f.trk : 0) + 'deg)">\u2708</span>'
+        + (Number.isFinite(f.trk) ? f.trk : 0) + 'deg)">'
+        + '<svg class="follow-me-plane" viewBox="0 0 24 24" width="' + px + '" height="' + px
+        + '" aria-hidden="true"><path d="' + FOLLOW_ME_PLANE + '"/></svg></span>'
         + (f.reg ? '<span class="follow-me-label">' + escapeHtml(f.reg) + '</span>' : ''),
     });
     if (!viewer.marker) {
@@ -745,9 +753,9 @@
     } else {
       viewer.marker.setLatLng([f.lat, f.lng]);
       viewer.marker.setIcon(icon);
-      // Follow the aeroplane, but never fight a viewer who has panned away to look at
-      // something -- the same courtesy the pilot's own follow lock extends.
-      if (viewer.follow) map.panTo([f.lat, f.lng], { animate: true });
+      // A Follow Me link is a live tracker: every new fix owns the map centre. An animated
+      // pan can trail rapid updates, so place the reported fix in the centre immediately.
+      map.setView([f.lat, f.lng], map.getZoom(), { animate: false });
     }
     followMeViewerRefresh();
   }
@@ -765,7 +773,7 @@
     const p = followMeLinkParams(opts && opts.search, opts && opts.hash);
     if (!p) return null;
     const state = await followMeWatch(p.id, p.key, opts);
-    viewer = { state, marker: null, follow: true, timer: 0 };
+    viewer = { state, marker: null, timer: 0 };
     // Following an aircraft is not route onboarding. Drop any intro that was painted before
     // this async viewer started, and begin with route edits locked just like a live own-ship.
     if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
@@ -775,9 +783,6 @@
     followMeViewerRefresh();
     // The age has to keep counting even when nothing arrives -- especially then.
     viewer.timer = setInterval(followMeViewerRefresh, 1000);
-    if (typeof map !== 'undefined' && map && map.on) {
-      map.on('dragstart', () => { if (viewer) viewer.follow = false; });
-    }
     return state;
   }
   function followMeViewerStop() {

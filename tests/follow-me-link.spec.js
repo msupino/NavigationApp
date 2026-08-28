@@ -240,6 +240,9 @@ test('opening the link watches, names the aircraft and dates the position', asyn
   await boot(page);
   const got = await page.evaluate(async () => {
     const F = NavAid.followMe;
+    setTune('followMePlanePx', 34);
+    setTune('followMePlaneColor', '#0044cc');
+    applyTuningCssVars();
     const orig = window.WebSocket;
     window.WebSocket = window.StubSocket;
     const link = await F.start('4X-XYZ');
@@ -249,15 +252,43 @@ test('opening the link watches, names the aircraft and dates the position', asyn
     const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
     const url = new URL(link);
 
-    await F.viewerStart({ search: url.search, hash: url.hash });
+    const viewerState = await F.viewerStart({ search: url.search, hash: url.hash });
     const waiting = document.getElementById('follow-me-banner').textContent;
     window.__sockets[1].connack();
     await new Promise(r => setTimeout(r, 10));
     window.__sockets[1].deliver(pub);
     await new Promise(r => setTimeout(r, 40));
     const banner = document.getElementById('follow-me-banner');
-    const out = { waiting, live: banner.textContent, stale: banner.classList.contains('stale'),
-                  viewing: F.viewing(), marks: document.querySelectorAll('.follow-me-mark').length };
+    const mark = document.querySelector('.follow-me-mark');
+    const plane = mark.querySelector('.follow-me-plane');
+    const label = mark.querySelector('.follow-me-label');
+    const markRect = mark.getBoundingClientRect();
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const point = map.latLngToContainerPoint([31.8, 34.95]);
+    const planeRect = plane.getBoundingClientRect();
+    const labelRect = label.getBoundingClientRect();
+    const planeColor = getComputedStyle(plane).fill;
+    const planeTransform = mark.querySelector('.follow-me-arrow').style.transform;
+    map.panTo([32.5, 35.5], { animate: false });
+    const nextFix = [31.9, 35.05];
+    viewerState.fix = { lat: nextFix[0], lng: nextFix[1], trk: 90, reg: '4X-XYZ', t: Date.now() };
+    viewerState.at = viewerState.fix.t;
+    F.viewerDraw();
+    const followed = map.getCenter();
+    const out = {
+      waiting, live: banner.textContent, stale: banner.classList.contains('stale'),
+      viewing: F.viewing(), marks: document.querySelectorAll('.follow-me-mark').length,
+      svg: !!plane,
+      planeWidth: plane.getAttribute('width'),
+      planeColor,
+      transform: planeTransform,
+      planeAtFix: Math.abs(markRect.left + markRect.width / 2 - mapRect.left - point.x) < 1 &&
+        Math.abs(markRect.top + markRect.height / 2 - mapRect.top - point.y) < 1,
+      labelOverlapsPlane: !(labelRect.right <= planeRect.left || labelRect.left >= planeRect.right ||
+        labelRect.bottom <= planeRect.top || labelRect.top >= planeRect.bottom),
+      mapFollows: Math.abs(followed.lat - nextFix[0]) < 0.000001 &&
+        Math.abs(followed.lng - nextFix[1]) < 0.000001,
+    };
     F.viewerStop(); await F.stop();
     window.WebSocket = orig;
     return Object.assign(out, { after: !!document.getElementById('follow-me-banner') });
@@ -268,6 +299,13 @@ test('opening the link watches, names the aircraft and dates the position', asyn
   expect(got.stale).toBe(false);
   expect(got.viewing).toBe(true);
   expect(got.marks).toBe(1);
+  expect(got.svg).toBe(true);                    // a north-pointing shape, not a diagonal font glyph
+  expect(got.planeWidth).toBe('34');              // Gist-tunable rather than a fixed marker size
+  expect(got.planeColor).toBe('rgb(0, 68, 204)');
+  expect(got.transform).toBe('rotate(270deg)');  // same track the banner reports
+  expect(got.planeAtFix).toBe(true);             // the aircraft, not its label, owns the coordinate
+  expect(got.labelOverlapsPlane).toBe(false);
+  expect(got.mapFollows).toBe(true);             // every new fix returns the aircraft to centre
   expect(got.after).toBe(false);                // stopping clears the banner
 });
 
@@ -910,7 +948,7 @@ test('language selection preserves the follower encryption key on a clean phone'
   });
   const key = 'A'.repeat(43); // 32 zero bytes, base64url without padding
   await page.goto('?nogist&follow=test-viewer#k=' + key);
-  await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe.viewing()));
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe && NavAid.followMe.viewing()));
 
   expect(await page.evaluate(() => ({
     lang: new URLSearchParams(location.search).get('lang'),
@@ -918,7 +956,7 @@ test('language selection preserves the follower encryption key on a clean phone'
   }))).toEqual({ lang: 'he', hash: '#k=' + key });
 
   await page.locator('#lang-select').selectOption('en');
-  await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe.viewing()));
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe && NavAid.followMe.viewing()));
   expect(await page.evaluate(() => ({
     lang: new URLSearchParams(location.search).get('lang'),
     hash: location.hash,

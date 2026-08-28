@@ -947,6 +947,12 @@ Last Will removes the last broker value after an unexpected disconnect. Publishe
 states are `idle`, `connecting`, `connected`, `reconnecting`, and `stopping`.
 Only `connected` may be labelled as actively sharing.
 
+The follower marker uses a north-pointing SVG rotated directly by `trk`. Its fixed-size icon is
+anchored on the reported coordinate; the aircraft label is absolutely positioned beside it and
+must not participate in Leaflet's icon width or move the aircraft away from that coordinate.
+`followMePlanePx` and `followMePlaneColor` tune its size and fill from the Gist.
+While viewing a Follow Me link, each received fix recentres the map on the aircraft.
+
 Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
 publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle
 lock lets Stop revoke an encryption still in flight. Stop holds its lifecycle lock through
