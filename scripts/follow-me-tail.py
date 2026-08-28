@@ -136,17 +136,17 @@ def main():
         print('# watching %s on %s' % (topic, args.broker), file=sys.stderr)
         c.subscribe(topic, qos=0)
 
-    last_seq = -1
+    last_order = -1
 
     def on_message(c, userdata, msg):
-        nonlocal last_seq
+        nonlocal last_order
         if not msg.payload:
             return                      # the empty retained message: sharing has stopped
         fix = unseal(key, msg.payload)
-        order = accepted_order(fix, last_seq)
+        order = accepted_order(fix, last_order)
         if order is None:
             return
-        last_seq = order
+        last_order = order
         at = time.strftime('%H:%M:%S')
         print(json.dumps(fix) if args.json else fmt(fix, at), flush=True)
         if args.once:

@@ -462,6 +462,50 @@ test('an encryption already in flight cannot republish after Stop', async ({ pag
   expect(got).toEqual({ published: false, retainedPayloads: 0 });
 });
 
+test('Stop revokes an in-flight publisher in another NavAid tab', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-TABS');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+  });
+
+  const other = await context.newPage();
+  await boot(other);
+  await other.waitForFunction(() => NavAid.followMe.sharing());
+  await other.evaluate(async () => {
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sent.length = 0;
+    const originalEncrypt = crypto.subtle.encrypt.bind(crypto.subtle);
+    window.__releaseFollowEncryption = null;
+    Object.defineProperty(crypto.subtle, 'encrypt', {
+      configurable: true,
+      value: (...args) => new Promise((resolve, reject) => {
+        window.__releaseFollowEncryption = () => originalEncrypt(...args).then(resolve, reject);
+      }),
+    });
+    window.__otherPublish = NavAid.followMe.publish({ lat: 32.3, lng: 34.8 });
+    while (!window.__releaseFollowEncryption) await new Promise(r => setTimeout(r, 0));
+  });
+
+  await page.evaluate(() => NavAid.followMe.stop());
+  const got = await other.evaluate(async () => {
+    window.__releaseFollowEncryption();
+    const published = await window.__otherPublish;
+    await new Promise(r => setTimeout(r, 20));
+    delete crypto.subtle.encrypt;
+    return {
+      published,
+      status: NavAid.followMe.status(),
+      retainedPositions: window.__sent.filter(f =>
+        (f[0] & 0xf0) === 0x30 && (f[0] & 1) && ((f[0] >> 1) & 3) === 0).length,
+    };
+  });
+  expect(got).toEqual({ published: false, status: 'idle', retainedPositions: 0 });
+  await other.close();
+});
+
 test('publisher CONNECT installs a retained empty Last Will', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {

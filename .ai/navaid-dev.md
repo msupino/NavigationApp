@@ -879,7 +879,7 @@ as a machine-readable registry.
   resume following after a pan.
 - `navaid.followMeCode` — the device-local aircraft label used by Follow Me.
 - `navaid.followMeSession` — the device-local Follow Me bearer capability:
-  random topic id, AES key, aircraft label, start time, monotonic packet sequence,
+  random topic id, AES key, aircraft label, last activity time, monotonic packet sequence,
   sharing consent, and pending-stop cleanup state. It is deliberately excluded from
   Drive sync. Stop waits for the broker's QoS 1 acknowledgement before removing the
   record. Persistent-link mode instead keeps an inactive record. While offline, the
@@ -928,6 +928,10 @@ Deliberate Stop uses a QoS 1 retained delete and waits for PUBACK. A retained em
 Last Will removes the last broker value after an unexpected disconnect. Publisher UI
 states are `idle`, `connecting`, `connected`, `reconnecting`, and `stopping`.
 Only `connected` may be labelled as actively sharing.
+
+Same-origin tabs serialize their final publish/Stop boundary with a Web Lock. Each publish
+also checks the shared session before and after encryption. A `storage` event closes an
+in-memory publisher when another tab stops or replaces the session.
 
 When adding a new key, grep `localStorage.setItem` /
 `sessionStorage.setItem` under `docs/` to stay in sync with this list.
