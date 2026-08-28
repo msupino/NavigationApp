@@ -418,6 +418,50 @@ test('the position is retained while sharing and cleared when it stops', async (
   expect(got.payloadLen).toBe(0);
 });
 
+test('an encryption already in flight cannot republish after Stop', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    await F.start('4X-RACE');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sent.length = 0;
+
+    const originalEncrypt = crypto.subtle.encrypt.bind(crypto.subtle);
+    let release;
+    Object.defineProperty(crypto.subtle, 'encrypt', {
+      configurable: true,
+      value: (...args) => new Promise((resolve, reject) => {
+        release = () => originalEncrypt(...args).then(resolve, reject);
+      }),
+    });
+    const publishing = F.publish({ lat: 32.2, lng: 34.9 });
+    while (!release) await new Promise(r => setTimeout(r, 0));
+    window.__sockets[0].autoPuback = false;
+    const stopping = F.stop();
+    await new Promise(r => setTimeout(r, 10));
+    const clearIndex = window.__sent.findIndex(f =>
+      (f[0] & 0xf0) === 0x30 && ((f[0] >> 1) & 3) === 1);
+    const clear = new Uint8Array(window.__sent[clearIndex]);
+    const len = F._readLength(clear, 1);
+    const topicLen = (clear[len.next] << 8) | clear[len.next + 1];
+    const idAt = len.next + 2 + topicLen;
+    release();
+    const published = await publishing;
+    await new Promise(r => setTimeout(r, 10));
+    const afterDelete = window.__sent.slice(clearIndex + 1);
+    window.__sockets[0].deliver([0x40, 0x02, clear[idAt], clear[idAt + 1]]);
+    await stopping;
+    delete crypto.subtle.encrypt;
+    return {
+      published,
+      retainedPayloads: afterDelete.filter(f =>
+        (f[0] & 0xf0) === 0x30 && (f[0] & 1) && ((f[0] >> 1) & 3) === 0).length,
+    };
+  });
+  expect(got).toEqual({ published: false, retainedPayloads: 0 });
+});
+
 test('publisher CONNECT installs a retained empty Last Will', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {

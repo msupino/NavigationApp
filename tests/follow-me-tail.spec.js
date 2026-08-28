@@ -11,6 +11,7 @@ function validate(cases) {
     'module = importlib.util.module_from_spec(spec)',
     'spec.loader.exec_module(module)',
     'cases = json.loads(sys.stdin.read())',
+    'cases = [[dict(case[0], t=float("nan")) if case[0].get("t") == "__nan__" else case[0], *case[1:]] for case in cases]',
     'print(json.dumps([module.accepted_order(*case) for case in cases]))',
   ].join('; ');
   const result = spawnSync('python3', ['-c', code, script], {
@@ -30,6 +31,8 @@ test('command-line Follow Me validation matches browser ordering boundaries', ()
     [{ ...base, lat: true }, 0, now],                 // bool is not a coordinate
     [{ ...base, lat: 91 }, 0, now],
     [{ ...base, t: now + 300001 }, 0, now],
+    [{ ...base, t: '__nan__' }, 0, now],
+    [{ ...base, seq: 9_007_199_254_740_992 }, 0, now],
   ]);
-  expect(results).toEqual([12, now, null, null, null, null]);
+  expect(results).toEqual([12, now, null, null, null, null, null, null]);
 });

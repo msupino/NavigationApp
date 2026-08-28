@@ -19,6 +19,7 @@ Needs: paho-mqtt >= 2, cryptography.
 import argparse
 import base64
 import json
+import math
 import sys
 import time
 import urllib.parse
@@ -90,13 +91,14 @@ def accepted_order(fix, last_order=-1, now_ms=None):
         return None
     lat, lng, sent, seq = fix.get('lat'), fix.get('lng'), fix.get('t'), fix.get('seq')
     order = sent if seq is None else seq  # compatibility with pre-sequence publishers
-    numeric = lambda value: isinstance(value, (int, float)) and not isinstance(value, bool)
+    numeric = lambda value: (isinstance(value, (int, float)) and
+                             not isinstance(value, bool) and math.isfinite(value))
     now = time.time() * 1000 if now_ms is None else now_ms
     if (not numeric(lat) or not -90 <= lat <= 90 or
             not numeric(lng) or not -180 <= lng <= 180 or
             not numeric(sent) or sent <= 0 or sent > now + 300000 or
             not isinstance(order, int) or isinstance(order, bool) or
-            order < 0 or order <= last_order):
+            order < 0 or order > 9007199254740991 or order <= last_order):
         return None
     return order
 

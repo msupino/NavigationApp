@@ -456,27 +456,31 @@
   async function followMePublish(fix) {
     if (!session || session.status === 'stopping' || !fix ||
         !Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)) return false;
+    const s = session;
     const every = Math.max(1, Number(tune('followMeRateSec', 2)) || 2) * 1000;
     const now = Date.now();
-    if (now - session.lastSentAt < every) return false;
-    session.lastSentAt = now;
-    session.lastActiveAt = now;
-    session.seq = Math.max(session.seq + 1, now);
-    saveSession(sessionRecord(session, true, false));
-    const payload = await seal(session.key, {
+    if (now - s.lastSentAt < every) return false;
+    s.lastSentAt = now;
+    s.lastActiveAt = now;
+    s.seq = Math.max(s.seq + 1, now);
+    saveSession(sessionRecord(s, true, false));
+    const payload = await seal(s.key, {
       // Inside the envelope: the broker relays the label without being able to read it.
-      reg: session.reg,
+      reg: s.reg,
       lat: Math.round(fix.lat * 1e5) / 1e5,
       lng: Math.round(fix.lng * 1e5) / 1e5,
       alt: Number.isFinite(fix.alt) ? Math.round(fix.alt) : null,
       trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
       kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
       t: now,
-      seq: session.seq,
+      seq: s.seq,
     });
+    // Stop can run while WebCrypto is yielding. Never let that older operation publish a
+    // retained fix after the tombstone, or publish into a new session that replaced it.
+    if (session !== s || s.status === 'stopping') return false;
     // Retained: the broker keeps the last one, so a viewer opening mid-flight sees where the
     // aeroplane is immediately instead of waiting for the next publish. It is cleared on stop.
-    return session.client.publish(topicFor(session.id), payload, { retain: true });
+    return s.client.publish(topicFor(s.id), payload, { retain: true });
   }
 
   // --- watching -------------------------------------------------------------
