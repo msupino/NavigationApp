@@ -908,9 +908,9 @@ re-load that does a full page navigation):
 `docs/app/followme.js` publishes encrypted position envelopes over MQTT WebSocket.
 The broker URL is Gist-tunable. Its default is a public third-party test relay.
 The default is best-effort, so the UI must not promise availability or delivery.
-It must not promise retention or history either. Browser, iOS, Android, real GPS,
-and simulator sources share one publisher. Simulator altitude is converted from
-feet to metres before it enters the envelope.
+It must not promise retention or history either. The same publisher handles real GPS
+and simulator fixes in the browser, iOS app, and Android app. Simulator altitude is
+converted from feet to metres before it enters the envelope.
 
 The topic is random, and the AES key is in the URL fragment. The relay receives neither
 readable flight data nor the key. The complete URL is still a bearer capability.
@@ -919,9 +919,10 @@ This accepted limitation is disclosed before sharing and in `docs/privacy.html`.
 Follow Me must not be described as authenticated or safety tracking.
 
 Current envelopes carry publisher time `t` and a persisted monotonic `seq`. Viewers use
-`t` for displayed age and require increasing order. During cached-client rollout, a
-legacy packet without `seq` uses `t` as its order value. Coordinates and time must also
-be plausible. These checks stop retained or reconnect replays from becoming fresh.
+`t` for displayed age and require increasing `seq`. During cached-client rollout, a
+legacy packet without `seq` requires increasing `t`. Latitude must be from -90 through
+90, and longitude from -180 through 180. `t` can be at most five minutes in the future.
+These checks stop retained or reconnect replays from becoming fresh.
 
 Deliberate Stop uses a QoS 1 retained delete and waits for PUBACK. A retained empty
 Last Will removes the last broker value after an unexpected disconnect. Publisher UI
