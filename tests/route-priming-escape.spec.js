@@ -63,6 +63,17 @@ test('opening a desktop menu section cancels route onboarding', async ({ page })
   expect(s.cursor).toBe(false);
 });
 
+test('opening a desktop menu section from the keyboard cancels route onboarding', async ({ page }) => {
+  await fresh(page);
+  const head = page.locator('.tb-section[data-sec="build"] .tb-section-head');
+  await head.focus();
+  await page.keyboard.press('ArrowDown');
+  const s = await primed(page);
+  expect(s.hint).toBe(false);
+  expect(s.armed).toBe(false);
+  expect(s.cursor).toBe(false);
+});
+
 test.describe('mobile menu', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 

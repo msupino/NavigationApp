@@ -97,10 +97,10 @@ def accepted_order(fix, last_order=-1, now_ms=None):
     if (not numeric(lat) or not -90 <= lat <= 90 or
             not numeric(lng) or not -180 <= lng <= 180 or
             not numeric(sent) or sent <= 0 or sent > now + 300000 or
-            not isinstance(order, int) or isinstance(order, bool) or
+            not numeric(order) or not float(order).is_integer() or
             order < 0 or order > 9007199254740991 or order <= last_order):
         return None
-    return order
+    return int(order)
 
 
 def main():

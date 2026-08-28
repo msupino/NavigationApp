@@ -1894,6 +1894,7 @@ window.S = Object.assign({
   followMeStoppingShort: 'Stopping sharing…',
   followMeAskCode: 'Aircraft code (e.g. 4X-CDE)\n\nUses a public best-effort relay. Anyone with the link can view or submit positions.',
   followMeNeedCode: 'Follow me needs an aircraft code — whoever opens the link has to know which aeroplane it is.',
+  followMeStartFailed: 'Follow me could not start because this device cannot store the private session.',
   followMeWaiting: 'Follow me: waiting for a position…',
   followMeLastFix: (sec) => (sec < 90 ? 'Last position ' + sec + 's ago'
     : 'Last position ' + Math.round(sec / 60) + ' min ago'),

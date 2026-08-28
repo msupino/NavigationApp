@@ -222,6 +222,7 @@
   // link that tracks you next week, and the only way to be sure it cannot is to have no
   // way to resume it.
   let session = null;
+  let startFailure = null;
 
   // The aircraft's code -- 4X-CDE, or whatever the pilot types. It is a LABEL, not an
   // identity: nothing checks it, and a pilot can type any registration they like. That is
@@ -279,7 +280,12 @@
     }
   }
   function saveSession(o) {
-    try { localStorage.setItem(SESSION_KEY, JSON.stringify(o)); } catch (e) { /* storage off */ }
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(o));
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
   function clearSession() {
     try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* storage off */ }
@@ -313,6 +319,16 @@
     return Promise.resolve().then(action);
   }
 
+  function withFollowMePublishLock(action) {
+    const locks = navigator.locks;
+    if (locks && typeof locks.request === 'function') {
+      return locks.request('navaid-follow-me-publish', { mode: 'exclusive' }, action);
+    }
+    // The lifecycle authorization checks still prevent post-Stop sends. Web Locks add the
+    // cross-tab ordering guarantee on every currently supported browser/native runtime.
+    return Promise.resolve().then(action);
+  }
+
   function relinquishPublisher(s) {
     if (!s || session !== s) return;
     s.status = 'stopping';
@@ -329,8 +345,15 @@
     clearTimeout(s.clearAckTimer);
     s.client.close();
     if (s.resolveConnected) s.resolveConnected(false);
-    if (persistLink()) saveSession(sessionRecord(s, false, false));
-    else clearSession();
+    // The lifecycle lock is held until this acknowledgement resolves stopPromise. Re-check
+    // identity anyway: a stale cleaner must never erase or deactivate a replacement session.
+    const stored = rawSession();
+    const ownsPending = !!(stored && stored.pendingStop && !stored.on &&
+      stored.id === s.id && stored.k === s.rawKeyB64);
+    if (ownsPending) {
+      if (persistLink()) saveSession(sessionRecord(s, false, false));
+      else clearSession();
+    }
     session = null;
     refreshSessionControls();
     if (s.resolveStop) s.resolveStop({ pending: false });
@@ -371,6 +394,9 @@
       resolveConnected: null, connectedPromise: null,
       link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k,
     };
+    if (pendingStop) {
+      s.stopPromise = new Promise(resolve => { s.resolveStop = resolve; });
+    }
     s.connectedPromise = new Promise(resolve => { s.resolveConnected = resolve; });
     session = s;
     client.onOpen = () => {
@@ -406,13 +432,14 @@
   }
 
   async function followMeStart(code) {
+    startFailure = null;
     if (session && sessionAuthorized(session)) {
       return session.status === 'stopping' ? null : session.link;
     }
     if (session) relinquishPublisher(session);
     // Refuse rather than share an anonymous dot.
     const reg = followMeSetCode(code || followMeCode());
-    if (!reg) return null;
+    if (!reg) { startFailure = 'code'; return null; }
     return withFollowMeLock(async () => {
       if (session && sessionAuthorized(session)) {
         return session.status === 'stopping' ? null : session.link;
@@ -431,7 +458,11 @@
         id, k: rawKeyB64, at: Date.now(), seq: reuse ? prev.seq : 0,
       }, reg, false);
       // `on` is the consent a restart reads back. Persist it inside the same lock as Stop.
-      saveSession(sessionRecord(s, true, false));
+      if (!saveSession(sessionRecord(s, true, false))) {
+        startFailure = 'storage';
+        relinquishPublisher(s);
+        return null;
+      }
       return s.link;
     });
   }
@@ -448,11 +479,14 @@
     refreshSessionControls();
     // Serialize the consent change and tombstone behind any publish already at its final
     // send boundary. Other tabs then see pendingStop before they can enter that boundary.
-    withFollowMeLock(() => {
+    withFollowMeLock(async () => {
       if (session !== s) return;
       saveSession(sessionRecord(s, false, true));
       // If disconnected, mqttConnect keeps retrying. Its next CONNACK runs the same clear.
       clearRetainedAndFinish(s);
+      // Keep the origin-wide lifecycle lock through PUBACK. Only one tab may own cleanup;
+      // another pending-resume waits, re-reads storage, and sees that the work is finished.
+      await s.stopPromise;
     }).catch(() => { /* keep stopping; a later reconnect/storage event can retry */ });
     return s.stopPromise;
   }
@@ -475,7 +509,13 @@
     const prev = storedSession();
     if (!prev) return null;
     if (prev.pendingStop) {
-      await openPublisher(prev, prev.reg, true);
+      await withFollowMeLock(async () => {
+        const current = rawSession();
+        if (!current || !current.pendingStop || current.on ||
+            current.id !== prev.id || current.k !== prev.k) return;
+        const cleaner = await openPublisher(current, current.reg, true);
+        await cleaner.stopPromise;
+      });
       return null;
     }
     if (prev.on !== true) return null;
@@ -504,29 +544,51 @@
     const now = Date.now();
     if (now - s.lastSentAt < every) return false;
     s.lastSentAt = now;
-    s.lastActiveAt = now;
-    s.seq = Math.max(s.seq + 1, now);
-    const payload = await seal(s.key, {
-      // Inside the envelope: the broker relays the label without being able to read it.
-      reg: s.reg,
-      lat: Math.round(fix.lat * 1e5) / 1e5,
-      lng: Math.round(fix.lng * 1e5) / 1e5,
-      alt: Number.isFinite(fix.alt) ? Math.round(fix.alt) : null,
-      trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
-      kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
-      t: now,
-      seq: s.seq,
-    });
-    // Stop can run while WebCrypto is yielding. Never let that older operation publish a
-    // retained fix after the tombstone, or publish into a new session that replaced it.
-    return withFollowMeLock(() => {
+    // Serialize the full publication across tabs so sequence order matches wire order. The
+    // separate lifecycle lock is held only at the authorization boundaries, allowing Stop to
+    // revoke a publication while WebCrypto is still working.
+    return withFollowMePublishLock(async () => {
+      const reserved = await withFollowMeLock(() => {
+        if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
+          relinquishPublisher(s);
+          return false;
+        }
+        const stored = rawSession();
+        s.lastActiveAt = now;
+        s.seq = Math.max(s.seq + 1, (stored ? stored.seq : 0) + 1, now);
+        if (!saveSession(sessionRecord(s, true, false))) {
+          relinquishPublisher(s);
+          return false;
+        }
+        return true;
+      });
+      if (!reserved) return false;
+      const payload = await seal(s.key, {
+        // Inside the envelope: the broker relays the label without being able to read it.
+        reg: s.reg,
+        lat: Math.round(fix.lat * 1e5) / 1e5,
+        lng: Math.round(fix.lng * 1e5) / 1e5,
+        alt: Number.isFinite(fix.alt) ? Math.round(fix.alt) : null,
+        trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
+        kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
+        t: now,
+        seq: s.seq,
+      });
+      // Avoid waiting behind a Stop that deliberately holds the lifecycle lock through
+      // PUBACK. Shared storage provides the cross-tab revocation signal synchronously here.
       if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
         relinquishPublisher(s);
         return false;
       }
-      saveSession(sessionRecord(s, true, false));
-      // This callback has no yield: retained send is ordered before a later Stop tombstone.
-      return s.client.publish(topicFor(s.id), payload, { retain: true });
+      return withFollowMeLock(() => {
+        if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
+          relinquishPublisher(s);
+          return false;
+        }
+        // The final authorization and retained send do not yield. A later Stop tombstone
+        // therefore cannot be followed by this older retained position.
+        return s.client.publish(topicFor(s.id), payload, { retain: true });
+      });
     });
   }
 
@@ -703,6 +765,7 @@
     viewerDraw: followMeViewerDraw, viewerRefresh: followMeViewerRefresh,
     linkParams: followMeLinkParams, staleSec: followMeStaleSec,
     start: followMeStart, stop: followMeStop, sharing: followMeSharing, status: followMeStatus,
+    startFailure: () => startFailure,
     publish: followMePublish,
     code: followMeCode, setCode: followMeSetCode,
     newLink: followMeNewLink, resume: followMeResume, _stored: storedSession,

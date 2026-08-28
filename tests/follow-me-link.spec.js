@@ -546,6 +546,136 @@ test('Stop serializes with a session still initializing in another tab', async (
   await other.close();
 });
 
+test('two publisher tabs allocate strictly increasing sequence values', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-SEQ');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+  });
+  const other = await context.newPage();
+  await boot(other);
+  await other.waitForFunction(() => NavAid.followMe.sharing());
+  await other.evaluate(async () => {
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+  });
+
+  for (const [tab, label] of [[page, 'a'], [other, 'b']]) {
+    await tab.evaluate((name) => {
+      window.__sent.length = 0;
+      Date.now = () => 2_000_000;
+      const socket = window.__sockets[0];
+      const send = socket.send.bind(socket);
+      socket.send = bytes => {
+        const frame = new Uint8Array(bytes);
+        if ((frame[0] & 0xf0) === 0x30 && ((frame[0] >> 1) & 3) === 0) {
+          const order = JSON.parse(localStorage.getItem('test.followWire') || '[]');
+          order.push(name);
+          localStorage.setItem('test.followWire', JSON.stringify(order));
+        }
+        send(bytes);
+      };
+      setTune('followMeRateSec', 1);
+    }, label);
+  }
+  await page.evaluate(() => { window.__publishResult = NavAid.followMe.publish({ lat: 32.1, lng: 34.8 }); });
+  await other.evaluate(() => { window.__publishResult = NavAid.followMe.publish({ lat: 32.2, lng: 34.9 }); });
+  expect(await page.evaluate(() => window.__publishResult)).toBe(true);
+  expect(await other.evaluate(() => window.__publishResult)).toBe(true);
+
+  const seqByTab = {};
+  for (const [tab, label] of [[page, 'a'], [other, 'b']]) {
+    seqByTab[label] = await tab.evaluate(async () => {
+      const F = NavAid.followMe;
+      const frame = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30));
+      const len = F._readLength(frame, 1);
+      const topicLen = (frame[len.next] << 8) | frame[len.next + 1];
+      const payload = frame.subarray(len.next + 2 + topicLen, len.next + len.value);
+      const stored = JSON.parse(localStorage.getItem('navaid.followMeSession'));
+      const key = await F.importKey(F._b64url.to(stored.k));
+      return (await F._open(key, payload)).seq;
+    });
+  }
+  const wire = await page.evaluate(() => JSON.parse(localStorage.getItem('test.followWire')));
+  expect(wire).toHaveLength(2);
+  expect(seqByTab[wire[1]]).toBeGreaterThan(seqByTab[wire[0]]);
+  await page.evaluate(() => NavAid.followMe.stop());
+  await other.close();
+});
+
+test('only one tab resumes pending cleanup and a stale cleaner cannot erase a new session', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-CLEAN');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[0].autoPuback = false;
+    NavAid.followMe.stop();
+  });
+  await page.waitForFunction(() => {
+    const s = JSON.parse(localStorage.getItem('navaid.followMeSession') || 'null');
+    return s && s.pendingStop;
+  });
+  await page.close();
+
+  const a = await context.newPage();
+  const b = await context.newPage();
+  await Promise.all([boot(a), boot(b)]);
+  await a.waitForTimeout(80);
+  const counts = [await a.evaluate(() => window.__sockets.length),
+                  await b.evaluate(() => window.__sockets.length)];
+  const owner = counts[0] ? a : b;
+  const stale = counts[0] ? b : a;
+  expect(counts[0] + counts[1]).toBe(1);
+
+  const packetId = await owner.evaluate(async () => {
+    const socket = window.__sockets[0];
+    socket.autoPuback = false;
+    socket.connack();
+    await new Promise(r => setTimeout(r, 20));
+    const F = NavAid.followMe;
+    const frame = new Uint8Array(window.__sent.find(f =>
+      (f[0] & 0xf0) === 0x30 && ((f[0] >> 1) & 3) === 1));
+    const len = F._readLength(frame, 1);
+    const topicLen = (frame[len.next] << 8) | frame[len.next + 1];
+    const at = len.next + 2 + topicLen;
+    return [frame[at], frame[at + 1]];
+  });
+  await owner.evaluate(([hi, lo]) => window.__sockets[0].deliver([0x40, 0x02, hi, lo]), packetId);
+  await owner.waitForFunction(() => NavAid.followMe.status() === 'idle');
+
+  await owner.evaluate(async () => {
+    await NavAid.followMe.start('4X-NEW');
+    window.__sockets[window.__sockets.length - 1].connack();
+    await new Promise(r => setTimeout(r, 10));
+  });
+  const activeId = await owner.evaluate(() => JSON.parse(
+    localStorage.getItem('navaid.followMeSession')).id);
+
+  const staleSockets = await stale.evaluate(() => window.__sockets.length);
+  if (staleSockets) {
+    await stale.evaluate(async () => {
+      const socket = window.__sockets[0];
+      socket.autoPuback = false;
+      socket.connack();
+      await new Promise(r => setTimeout(r, 20));
+      const F = NavAid.followMe;
+      const frame = new Uint8Array(window.__sent.find(f =>
+        (f[0] & 0xf0) === 0x30 && ((f[0] >> 1) & 3) === 1));
+      const len = F._readLength(frame, 1);
+      const topicLen = (frame[len.next] << 8) | frame[len.next + 1];
+      const at = len.next + 2 + topicLen;
+      socket.deliver([0x40, 0x02, frame[at], frame[at + 1]]);
+      await new Promise(r => setTimeout(r, 20));
+    });
+  }
+  expect(await owner.evaluate(() => JSON.parse(
+    localStorage.getItem('navaid.followMeSession')).id)).toBe(activeId);
+  await owner.evaluate(() => NavAid.followMe.stop());
+  await Promise.all([a.close(), b.close()]);
+});
+
 test('publisher CONNECT installs a retained empty Last Will', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
@@ -1065,7 +1195,7 @@ test('a Stop delegated to another tab does not claim the link is dead', async ({
 
 // Dismissing the native share sheet is not a copy, and a denied clipboard write is not one
 // either. Never tell a pilot a link reached the clipboard when both delivery paths failed.
-test('cancelled sharing and a failed clipboard do not claim the link was copied', async ({ page }) => {
+test('failed native sharing and clipboard do not claim the link was copied', async ({ page }) => {
   await boot(page);
   const toasts = await page.evaluate(async () => {
     setTune('featureFollowMe', true);
@@ -1091,4 +1221,61 @@ test('cancelled sharing and a failed clipboard do not claim the link was copied'
   });
   expect(toasts).not.toContain('Follow-me link copied.');
   expect(toasts.some(text => /could not be shared/i.test(text))).toBe(true);
+});
+
+test('cancelling the native share sheet does not fall back to clipboard or show an error', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    setTune('featureFollowMe', true);
+    window.gpsLiveOn = true;
+    window.prompt = () => '4X-CANCEL';
+    const toasts = [];
+    let clipboardWrites = 0;
+    window.showToast = message => toasts.push(String(message));
+    Object.defineProperty(navigator, 'share', {
+      configurable: true, value: async () => {
+        const error = new Error('cancelled');
+        error.name = 'AbortError';
+        throw error;
+      },
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true, value: { writeText: async () => { clipboardWrites++; } },
+    });
+    document.getElementById('follow-me').click();
+    await new Promise(r => setTimeout(r, 80));
+    if (NavAid.followMe.sharing()) {
+      window.__sockets[0].connack();
+      await new Promise(r => setTimeout(r, 10));
+      await NavAid.followMe.stop();
+    }
+    window.gpsLiveOn = false;
+    return { toasts, clipboardWrites };
+  });
+  expect(got.clipboardWrites).toBe(0);
+  expect(got.toasts).toEqual([]);
+});
+
+test('storage failure refuses to create a link that cannot publish', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const realSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'navaid.followMeSession') throw new DOMException('full', 'QuotaExceededError');
+      return realSet.call(this, key, value);
+    };
+    const link = await NavAid.followMe.start('4X-NOSTORE');
+    Storage.prototype.setItem = realSet;
+    return { link, status: NavAid.followMe.status() };
+  });
+  expect(got).toEqual({ link: null, status: 'idle' });
+});
+
+test('a truncated follower URL keeps ordinary route onboarding', async ({ page }) => {
+  await installStub(page);
+  await page.goto('?lang=en&nogist&follow=missing-key');
+  await page.waitForFunction(() => typeof routePrimingArmed === 'function');
+  expect(await page.evaluate(() => NavAid.followMe.viewing())).toBe(false);
+  await expect(page.locator('#empty-route-hint')).toBeVisible();
+  expect(await page.evaluate(() => routePrimingArmed())).toBe(true);
 });

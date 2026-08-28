@@ -22,7 +22,9 @@ function routeIntroOn() {
   // A Follow Me URL is a viewing task, not a route-building session. Suppress the first-route
   // wizard before followme.js loads so it never flashes or primes a map click as an edit.
   try {
-    if (new URLSearchParams(location.search).get('follow')) return false;
+    const id = new URLSearchParams(location.search).get('follow');
+    const key = new URLSearchParams(location.hash.replace(/^#/, '')).get('k');
+    if (id && /^[A-Za-z0-9_-]{43}$/.test(key || '')) return false;
   } catch (e) { /* malformed URL: fall back to the ordinary intro rule */ }
   return typeof tune !== 'function' || tune('featureRouteIntro') !== false;
 }
@@ -3557,9 +3559,12 @@ function followMeOffered() {
     if (!link) {
       if (typeof showToast === 'function') {
         const stopping = typeof f.status === 'function' && f.status() === 'stopping';
+        const failure = typeof f.startFailure === 'function' ? f.startFailure() : null;
         showToast(stopping
           ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
-          : (S.followMeNeedCode || 'Follow me needs an aircraft code.'));
+          : failure === 'storage'
+            ? (S.followMeStartFailed || 'Follow me could not start on this device.')
+            : (S.followMeNeedCode || 'Follow me needs an aircraft code.'));
       }
       return;
     }
@@ -7604,6 +7609,7 @@ function refreshMapAfterToolbarModeChange() {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
       if (toolbarUsesDesktopMenu() && e.key === 'ArrowDown') {
         e.preventDefault();
+        if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
         closeOthers(sec);
         setSectionOpen(sec, true);
       }
@@ -7614,6 +7620,7 @@ function refreshMapAfterToolbarModeChange() {
         const next = sections[(idx + dir + sections.length) % sections.length];
         next?.querySelector('.tb-section-head')?.focus();
         if (sec.classList.contains('open') || anySectionOpen()) {
+          if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
           closeOthers(next);
           setSectionOpen(next, true);
         }

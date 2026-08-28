@@ -11,9 +11,15 @@ function validate(cases) {
     'module = importlib.util.module_from_spec(spec)',
     'spec.loader.exec_module(module)',
     'cases = json.loads(sys.stdin.read())',
-    'cases = [[dict(case[0], t=float("nan")) if case[0].get("t") == "__nan__" else case[0], *case[1:]] for case in cases]',
+    'def decode(message):',
+    '    message = dict(message)',
+    '    if message.get("t") == "__nan__": message["t"] = float("nan")',
+    '    if message.get("t") == "__float2000000__": message["t"] = 2000000.0',
+    '    if message.get("seq") == "__float12__": message["seq"] = 12.0',
+    '    return message',
+    'cases = [[decode(case[0]), *case[1:]] for case in cases]',
     'print(json.dumps([module.accepted_order(*case) for case in cases]))',
-  ].join('; ');
+  ].join('\n');
   const result = spawnSync('python3', ['-c', code, script], {
     input: JSON.stringify(cases), encoding: 'utf8',
   });
@@ -33,6 +39,8 @@ test('command-line Follow Me validation matches browser ordering boundaries', ()
     [{ ...base, t: now + 300001 }, 0, now],
     [{ ...base, t: '__nan__' }, 0, now],
     [{ ...base, seq: 9_007_199_254_740_992 }, 0, now],
+    [{ ...base, seq: '__float12__' }, 11, now],
+    [{ lat: 32.1, lng: 34.9, t: '__float2000000__' }, 1_999_999, now],
   ]);
-  expect(results).toEqual([12, now, null, null, null, null, null, null]);
+  expect(results).toEqual([12, now, null, null, null, null, null, null, 12, now]);
 });

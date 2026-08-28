@@ -929,10 +929,15 @@ Last Will removes the last broker value after an unexpected disconnect. Publishe
 states are `idle`, `connecting`, `connected`, `reconnecting`, and `stopping`.
 Only `connected` may be labelled as actively sharing.
 
-Same-origin tabs serialize Start, final publish, and Stop with one Web Lock. Each publish
-also checks the shared session before and after encryption. A `storage` event closes an
-in-memory publisher when another tab stops or replaces the session. A delegated Stop result
-must not be labelled complete until the tab that owns cleanup receives PUBACK.
+Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
+publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle
+lock lets Stop revoke an encryption still in flight. Stop holds its lifecycle lock through
+PUBACK, so only one tab can resume pending cleanup and a stale cleaner cannot erase a
+replacement session. Each publish checks the shared session before and after encryption. A
+`storage` event closes an in-memory publisher when another tab stops or replaces the session.
+A delegated Stop result must not be labelled complete until the tab that owns cleanup receives
+PUBACK. Starting requires the private session to be stored successfully; otherwise the UI
+refuses to create a link that cannot send.
 
 Opening a Follow Me viewer link suppresses the new-route onboarding hint and its primed map
 click. Viewer mode starts with the same automatic route-edit lock used by a live own-ship;
