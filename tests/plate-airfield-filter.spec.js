@@ -3,6 +3,7 @@
 // plate overlay to a single airfield so close fields (e.g. LLKS & LLIB) don't
 // overlap. Default is "All airfields" (every field's plates, as before).
 const { test, expect } = require('./_setup');
+const { setAirfieldPlate } = require('./_platePicker');
 
 test.use({ serviceWorkers: 'block' });
 
@@ -26,7 +27,7 @@ async function boot(page) {
 
 test('picker is populated once plates load and defaults to All airfields', async ({ page }) => {
   await boot(page);
-  await page.locator('#cvfr-cb').check();
+  await setAirfieldPlate(page, 'cvfr-cb');
   const sel = page.locator('#plate-airfield');
   await expect.poll(() => sel.locator('option').count()).toBeGreaterThan(1);
   await expect(sel).toHaveValue('');                     // "All airfields"
@@ -36,7 +37,7 @@ test('picker is populated once plates load and defaults to All airfields', async
 
 test('choosing an airfield limits plates to that field; All restores every plate', async ({ page }) => {
   await boot(page);
-  await page.locator('#cvfr-cb').check();
+  await setAirfieldPlate(page, 'cvfr-cb');
   await page.waitForFunction(() => window.cvfrLayerGroup &&
     cvfrLayerGroup.getLayers().length > 1);
 
@@ -57,7 +58,7 @@ test('choosing an airfield limits plates to that field; All restores every plate
 
 test('the filter persists across reload', async ({ page }) => {
   await boot(page);
-  await page.locator('#cvfr-cb').check();
+  await setAirfieldPlate(page, 'cvfr-cb');
   await expect.poll(() => page.locator('#plate-airfield option').count()).toBeGreaterThan(1);
   await page.selectOption('#plate-airfield', 'LLMG');
   await page.reload();
@@ -79,7 +80,7 @@ test('Auto with no route falls back to showing every field (not none)', async ({
   await page.evaluate(() => { localStorage.setItem('navaid.plateAirfield', 'auto'); });
   await page.reload();
   await page.waitForFunction(() => typeof map !== 'undefined' && document.getElementById('plate-airfield'));
-  await page.locator('#cvfr-cb').check();
+  await setAirfieldPlate(page, 'cvfr-cb');
   await page.waitForFunction(() => window.cvfrLayerGroup);
   const shown = await page.evaluate(() => cvfrLayerGroup.getLayers().length);
   expect(shown).toBeGreaterThan(1);   // all fields, not an empty map
@@ -88,7 +89,7 @@ test('Auto with no route falls back to showing every field (not none)', async ({
 test('Auto option shows only the route first & last airfield and follows edits', async ({ page }) => {
   await boot(page);
   await setRoute(page, ['LLHZ', 'LLMG', 'LLFK']);   // endpoints LLHZ, LLFK
-  await page.locator('#cvfr-cb').check();
+  await setAirfieldPlate(page, 'cvfr-cb');
   await expect(page.locator('#plate-airfield option[value="auto"]')).toHaveCount(1);
 
   await page.selectOption('#plate-airfield', 'auto');
