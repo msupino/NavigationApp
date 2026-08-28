@@ -42,6 +42,10 @@ async function boot(page) {
   });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof buildIcaoFpl === 'function' && typeof syncLegs === 'function');
+  // The picker is retired by default -- an out-and-back is one route now, see
+  // featureFplReturnJoin. The JOINING it drives is not retired, and is what this file is
+  // about, so the flag goes on here. Its default is pinned by its own test below.
+  await page.evaluate(() => { if (typeof setTune === 'function') setTune('featureFplReturnJoin', true); });
   // Real published coordinates, so the graph match is by position as it is in the app.
   await page.evaluate((pts) => { window.__pts = pts; }, PTS);
 }
@@ -272,6 +276,7 @@ test('the picker never says the same thing twice', async ({ page }) => {
   });
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => typeof syncLegs === 'function' && typeof showFlightPlan === 'function');
+  await page.evaluate(() => { if (typeof setTune === 'function') setTune('featureFplReturnJoin', true); });
   const labels = await page.evaluate(({ out, back }) => {
     // The picker only offers routes that start where the current one ENDS, so the saved
     // candidates here are outbound-shaped and the loaded route is the return.
@@ -774,4 +779,44 @@ test('two miscaptured corridor closures do not force absurd detours: NTAIM-SIRNI
   });
   expect(r.ntaimSirni).toEqual(['NTAIM', 'SIRNI']);
   expect(r.aakkoSmrat).toEqual(['AAKKO', 'SMRAT']);
+});
+
+// ...and the default is that the picker is not there at all. An out-and-back is drawn as one
+// route now (a-b-c-b-a) with the turn derived from its geometry, and such a route ends at its
+// departure field -- where this picker disables itself anyway, because landing means a
+// separate plan per leg. What was left was a control inert on the common path.
+test('the return picker is retired by default, and decides nothing while hidden', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { for (const s of ['build', 'view', 'display', 'export', 'print']) localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof buildIcaoFpl === 'function');
+  const seen = await page.evaluate(() => ({
+    flag: tune('featureFplReturnJoin'),
+    // Open the dialog the way the toolbar does.
+    row: (typeof showFplDialog === 'function') ? (showFplDialog(), null) : 'no-modal-fn',
+  }));
+  expect(seen.flag).toBe(false);
+  await page.waitForTimeout(250);
+  const dom = await page.evaluate(() => ({
+    picker: !!document.getElementById('fpl-return-route'),
+    hint: !!Array.from(document.querySelectorAll('.fpl-hint'))
+      .find(el => /separate plan/i.test(el.textContent || '')),
+  }));
+  expect(dom.picker).toBe(false);      // the row is not on screen...
+  expect(dom.hint).toBe(false);        // ...and neither is the note explaining it
+});
+
+test('the gist can bring it back', async ({ page }) => {
+  await boot(page);                    // boot() turns the flag on
+  await page.evaluate(({ back }) => {
+    state.waypoints = back.map(w => ({ ...w }));
+    syncLegs();
+    routeLibrarySaveCurrent('Return via KNTRY');
+    state.waypoints = [];
+    syncLegs();
+  }, { back: BACK });
+  await page.evaluate(({ out }) => { state.waypoints = out.map(w => ({ ...w })); syncLegs(); }, { out: OUT });
+  await page.evaluate(() => { showFlightPlan(); document.getElementById('fpl-open').click(); });
+  await expect(page.locator('#fpl-return-route')).toBeVisible({ timeout: 5000 });
 });
