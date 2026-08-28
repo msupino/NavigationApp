@@ -1,14 +1,12 @@
 // Follow me: a link that shows someone where the aeroplane is, with no server of ours.
 //
-// Two devices that never talk to the same machine cannot see each other, so something has to
-// relay. The question is whose. This uses a PUBLIC MQTT broker over WebSocket -- no account,
-// no signup, nothing for us to run or pay for or keep up. The position is published to a
-// topic nobody can guess, encrypted before it leaves the aeroplane, and the key travels in
-// the link's FRAGMENT, which browsers never send to a server. The broker cannot read the
-// position, but it remains a public test relay: it offers no delivery or availability promise.
-// The URL is a bearer capability. Anyone who has it can read the feed and, because the key is
-// symmetric, can create a valid-looking packet. That accepted limitation is disclosed before
-// sharing; this is a convenience link, not an authenticated safety-tracking service.
+// Two devices need a relay. This uses a PUBLIC MQTT broker over WebSocket, with no NavAid
+// account or server. Positions use an unguessable topic and browser-side encryption.
+// The key is in the link fragment, which browsers do not send to a server.
+//
+// The broker cannot read positions, but the test relay has no availability promise.
+// The URL is a bearer capability. Its symmetric key can also create valid-looking packets.
+// This accepted limit is disclosed before sharing; this is not authenticated safety tracking.
 //
 // What it is not: a tracking service. A public broker is best-effort and unauthenticated,
 // there is no history, and a phone that loses signal simply stops publishing. The viewer is
@@ -16,13 +14,13 @@
 // aeroplane where it last was is worse than a map that admits it does not know.
 //
 // The MQTT client here is deliberately small and in-repo rather than a library from a CDN:
-// this is 3.1.1 with QoS 0, which is a publish, a subscribe and a ping.
+// positions use QoS 0; retained cleanup uses QoS 1 so Stop can wait for broker acknowledgement.
 (function () {
   'use strict';
   const NS = (window.NavAid = window.NavAid || {});
 
   // --- MQTT 3.1.1 over WebSocket, the parts a position feed uses -------------
-  const CONNECT = 1, CONNACK = 2, PUBLISH = 3, SUBSCRIBE = 8, PINGREQ = 12;
+  const CONNECT = 1, CONNACK = 2, PUBLISH = 3, PUBACK = 4, SUBSCRIBE = 8, PINGREQ = 12;
 
   function encodeLength(n) {
     const out = [];
@@ -36,6 +34,10 @@
   }
   function encodeString(s) {
     const bytes = new TextEncoder().encode(s);
+    return [bytes.length >> 8, bytes.length & 0xff, ...bytes];
+  }
+  function encodeBytes(value) {
+    const bytes = value || new Uint8Array(0);
     return [bytes.length >> 8, bytes.length & 0xff, ...bytes];
   }
   function packet(type, flags, body) {
@@ -61,7 +63,9 @@
   function mqttConnect(url, opts) {
     const o = opts || {};
     const Impl = o.WebSocketImpl || window.WebSocket;
-    const client = { ws: null, onMessage: null, onOpen: null, onClose: null, ready: false };
+    const client = {
+      ws: null, onMessage: null, onOpen: null, onClose: null, onPublishAck: null, ready: false,
+    };
     let ping = 0, retry = 0, timer = 0, done = false;
     let packetId = 1;
 
@@ -77,11 +81,20 @@
 
       ws.onopen = () => {
         const keepalive = 30;
-        ws.send(packet(CONNECT, 0, [
-          ...encodeString('MQTT'), 4, 0x02, keepalive >> 8, keepalive & 0xff,
+        const will = o.will && o.will.topic ? o.will : null;
+        // A retained empty Last Will removes the last position if the app crashes or the
+        // device disappears without completing Stop. Will QoS 0 is enough for this fallback;
+        // deliberate Stop separately waits for a QoS 1 PUBACK.
+        const connectFlags = 0x02 | (will ? 0x04 | (will.retain ? 0x20 : 0) : 0);
+        const connectPayload = [
           // A fresh client id per attempt: a broker that still holds the old session would
           // otherwise kick the reconnecting client as a duplicate.
           ...encodeString((o.clientId || 'navaid') + '-' + Math.random().toString(36).slice(2, 8)),
+        ];
+        if (will) connectPayload.push(...encodeString(will.topic), ...encodeBytes(will.payload));
+        ws.send(packet(CONNECT, 0, [
+          ...encodeString('MQTT'), 4, connectFlags, keepalive >> 8, keepalive & 0xff,
+          ...connectPayload,
         ]));
         // Public brokers drop a client that goes quiet. Half the keepalive, as the spec suggests.
         ping = setInterval(() => {
@@ -107,6 +120,13 @@
           if (client.onOpen) client.onOpen();
           return;
         }
+        if (type === PUBACK) {
+          const len = readLength(buf, 1);
+          if (!len || len.value !== 2 || len.next + 1 >= buf.length) return;
+          const id = (buf[len.next] << 8) | buf[len.next + 1];
+          if (client.onPublishAck) client.onPublishAck(id);
+          return;
+        }
         if (type !== PUBLISH) return;                 // SUBACK, PINGRESP: nothing to do
         const len = readLength(buf, 1);
         if (!len) return;
@@ -120,9 +140,14 @@
 
     client.publish = (topic, payload, opts) => {
       if (!client.ready) return false;
-      // Bit 0 of the PUBLISH flags is RETAIN: keep this as the topic's last known value.
-      client.ws.send(packet(PUBLISH, (opts && opts.retain) ? 1 : 0, [...encodeString(topic), ...payload]));
-      return true;
+      const qos = opts && opts.qos === 1 ? 1 : 0;
+      // Bit 0 is RETAIN; QoS 1 occupies bit 1 and adds a packet id after the topic.
+      const id = qos ? packetId++ : 0;
+      if (packetId > 0xffff) packetId = 1;
+      client.ws.send(packet(PUBLISH, (opts && opts.retain ? 1 : 0) | (qos << 1), [
+        ...encodeString(topic), ...(qos ? [id >> 8, id & 0xff] : []), ...payload,
+      ]));
+      return qos ? id : true;
     };
     client.subscribe = (topic) => {
       if (!client.ready) return false;
@@ -267,14 +292,16 @@
 
   function sessionRecord(s, on, pendingStop) {
     return {
-      id: s.id, k: s.rawKeyB64, reg: s.reg, at: s.startedAt,
+      id: s.id, k: s.rawKeyB64, reg: s.reg, at: s.lastActiveAt,
       seq: s.seq, on: on === true, pendingStop: pendingStop === true,
     };
   }
 
   function finishStop(s) {
     if (!s || session !== s) return;
+    clearTimeout(s.clearAckTimer);
     s.client.close();
+    if (s.resolveConnected) s.resolveConnected(false);
     if (persistLink()) saveSession(sessionRecord(s, false, false));
     else clearSession();
     session = null;
@@ -283,13 +310,21 @@
   }
 
   function clearRetainedAndFinish(s) {
-    if (!s || session !== s || !s.client.ready) return false;
-    let sent = false;
+    if (!s || session !== s || !s.client.ready || s.clearPacketId) return false;
+    let packetId = null;
     try {
-      sent = s.client.publish(topicFor(s.id), new Uint8Array(0), { retain: true });
-    } catch (e) { sent = false; }
-    if (!sent) return false;
-    finishStop(s);
+      packetId = s.client.publish(
+        topicFor(s.id), new Uint8Array(0), { retain: true, qos: 1 });
+    } catch (e) { packetId = null; }
+    if (!Number.isInteger(packetId) || packetId < 1) return false;
+    s.clearPacketId = packetId;
+    clearTimeout(s.clearAckTimer);
+    s.clearAckTimer = setTimeout(() => {
+      if (session !== s || s.status !== 'stopping' || s.clearPacketId !== packetId) return;
+      // A silent broker is not confirmation. Closing forces the reconnect path to retry.
+      s.clearPacketId = null;
+      try { s.client.ws.close(); } catch (e) { /* onclose/reconnect handles it */ }
+    }, 10000);
     return true;
   }
 
@@ -297,14 +332,19 @@
     const id = raw.id;
     const rawKey = b64url.to(raw.k);
     const key = await importKey(rawKey);
-    const client = mqttConnect(brokerUrl(), { clientId: 'navaid-pub-' + id.slice(0, 8) });
+    const client = mqttConnect(brokerUrl(), {
+      clientId: 'navaid-pub-' + id.slice(0, 8),
+      will: { topic: topicFor(id), payload: new Uint8Array(0), retain: true },
+    });
     const s = {
-      id, key, client, reg, rawKeyB64: raw.k, startedAt: Number(raw.at) || Date.now(),
+      id, key, client, reg, rawKeyB64: raw.k, lastActiveAt: Number(raw.at) || Date.now(),
       seq: Number.isSafeInteger(raw.seq) ? raw.seq : 0,
       lastSentAt: 0, status: pendingStop ? 'stopping' : 'connecting', everConnected: false,
-      resolveStop: null, stopPromise: null,
+      resolveStop: null, stopPromise: null, clearPacketId: null, clearAckTimer: 0,
+      resolveConnected: null, connectedPromise: null,
       link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k,
     };
+    s.connectedPromise = new Promise(resolve => { s.resolveConnected = resolve; });
     session = s;
     client.onOpen = () => {
       if (session !== s) return;
@@ -314,12 +354,25 @@
         return;
       }
       s.status = 'connected';
+      if (s.resolveConnected) {
+        s.resolveConnected(true);
+        s.resolveConnected = null;
+      }
       refreshSessionControls();
     };
     client.onClose = () => {
-      if (session !== s || s.status === 'stopping') return;
+      if (session !== s) return;
+      clearTimeout(s.clearAckTimer);
+      s.clearPacketId = null;
+      if (s.status === 'stopping') return;
       s.status = s.everConnected ? 'reconnecting' : 'connecting';
       refreshSessionControls();
+    };
+    client.onPublishAck = (packetId) => {
+      if (session === s && s.status === 'stopping' && packetId === s.clearPacketId) {
+        clearTimeout(s.clearAckTimer);
+        finishStop(s);
+      }
     };
     refreshSessionControls();
     return s;
@@ -341,8 +394,9 @@
     const reuse = !!(prev && prev.reg === reg);
     const id = reuse ? prev.id : b64url.from(randomBytes(16));
     const rawKeyB64 = reuse ? prev.k : b64url.from(randomBytes(32));
-    const startedAt = reuse ? Number(prev.at) || Date.now() : Date.now();
-    const s = await openPublisher({ id, k: rawKeyB64, at: startedAt, seq: reuse ? prev.seq : 0 }, reg, false);
+    const s = await openPublisher({
+      id, k: rawKeyB64, at: Date.now(), seq: reuse ? prev.seq : 0,
+    }, reg, false);
     // `on` is the consent a restart reads back: it says this device was sharing when it
     // stopped running, which is the only reason resuming without asking is honest.
     saveSession(sessionRecord(s, true, false));
@@ -388,7 +442,11 @@
       return null;
     }
     if (prev.on !== true) return null;
-    return followMeStart(prev.reg);
+    const link = await followMeStart(prev.reg);
+    const s = session;
+    if (!link || !s) return null;
+    const connected = s.status === 'connected' ? true : await s.connectedPromise;
+    return connected ? link : null;
   }
   function followMeSharing() { return !!session && session.status !== 'stopping'; }
   function followMeStatus() { return session ? session.status : 'idle'; }
@@ -402,6 +460,7 @@
     const now = Date.now();
     if (now - session.lastSentAt < every) return false;
     session.lastSentAt = now;
+    session.lastActiveAt = now;
     session.seq = Math.max(session.seq + 1, now);
     saveSession(sessionRecord(session, true, false));
     const payload = await seal(session.key, {

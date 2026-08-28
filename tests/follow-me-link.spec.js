@@ -23,7 +23,20 @@ async function installStub(page) {
         window.__sockets.push(this);
         setTimeout(() => this.onopen && this.onopen(), 0);
       }
-      send(bytes) { window.__sent.push(Array.from(new Uint8Array(bytes))); }
+      send(bytes) {
+        const frame = new Uint8Array(bytes);
+        window.__sent.push(Array.from(frame));
+        // The broker acknowledges QoS 1 retained deletes. Deliver it asynchronously, like
+        // a real socket, so production code has stored the in-flight packet id first.
+        if (this.autoPuback !== false && (frame[0] >> 4) === 3 && ((frame[0] >> 1) & 3) === 1) {
+          let at = 1, mult = 1, digit;
+          do { digit = frame[at++]; mult *= 128; } while (digit & 0x80);
+          const topicLen = (frame[at] << 8) | frame[at + 1];
+          const idAt = at + 2 + topicLen;
+          const id = (frame[idAt] << 8) | frame[idAt + 1];
+          setTimeout(() => this.deliver([0x40, 0x02, id >> 8, id & 0xff]), 0);
+        }
+      }
       close() { this.onclose && this.onclose(); }
       deliver(bytes) { this.onmessage && this.onmessage({ data: new Uint8Array(bytes).buffer }); }
       connack() { this.deliver([0x20, 2, 0, 0]); }
@@ -80,7 +93,7 @@ test('a session publishes an encrypted position nobody else can read', async ({ 
 
     const right = await F._open(await F.importKey(F._b64url.to(rawKey)), payload);
     const wrong = await F._open(await F.importKey(F.randomBytes(32)), payload);
-    F.stop();
+    await F.stop();
     return { link, id, topic, hasKeyInQuery: url.search.includes(rawKey),
              looksEncrypted: !/lat|32\.0/.test(asText), right, wrong };
   });
@@ -118,7 +131,7 @@ test('a watcher decrypts what the pilot published', async ({ page }) => {
     window.__sockets[1].deliver(pub);                            // the broker relays it back
     await new Promise(r => setTimeout(r, 30));
     const out = { subscribed, connected: state.connected, fix: state.fix };
-    F.unwatch(); F.stop();
+    F.unwatch(); await F.stop();
     window.WebSocket = orig;
     return out;
   });
@@ -150,12 +163,16 @@ test('one session at a time, and stopping ends it', async ({ page }) => {
     const a = await F.start('4X-CDE');
     const b = await F.start('4X-CDE');               // asking twice does not open a second session
     const sharingBefore = F.sharing();
-    F.stop();
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.stop();
     const after = { sharing: F.sharing(), same: a === b, sockets: window.__sockets.length };
     // ...and a new session is a NEW link: nothing survives the flight it belonged to.
     const c = await F.start('4X-CDE');
     const reused = c === a;
-    F.stop();
+    window.__sockets[window.__sockets.length - 1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.stop();
     window.WebSocket = orig;
     return Object.assign(after, { sharingBefore, reused });
   });
@@ -179,7 +196,9 @@ test('sharing refuses without an aircraft code', async ({ page }) => {
     const blank = await F.start('   ');
     const ok = await F.start('4x-cde');
     const out = { none, blank, ok: !!ok, sockets: window.__sockets.length, code: F.code() };
-    F.stop();
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.stop();
     window.WebSocket = orig;
     return out;
   });
@@ -207,7 +226,7 @@ test('the code travels inside the envelope, not beside it', async ({ page }) => 
     const len = F._readLength(pub, 1);
     const topicLen = (pub[len.next] << 8) | pub[len.next + 1];
     const msg = await F._open(key, pub.subarray(len.next + 2 + topicLen, len.next + len.value));
-    F.stop();
+    await F.stop();
     window.WebSocket = orig;
     return { onWire: /4X-ABC/.test(wire), inLink: /4X-ABC/.test(link), reg: msg && msg.reg };
   });
@@ -239,7 +258,7 @@ test('opening the link watches, names the aircraft and dates the position', asyn
     const banner = document.getElementById('follow-me-banner');
     const out = { waiting, live: banner.textContent, stale: banner.classList.contains('stale'),
                   viewing: F.viewing(), marks: document.querySelectorAll('.follow-me-mark').length };
-    F.viewerStop(); F.stop();
+    F.viewerStop(); await F.stop();
     window.WebSocket = orig;
     return Object.assign(out, { after: !!document.getElementById('follow-me-banner') });
   });
@@ -274,7 +293,7 @@ test('a position that stops arriving is called stale, not drawn as current', asy
     F.viewerRefresh();
     const banner = document.getElementById('follow-me-banner');
     const out = { text: banner.textContent, stale: banner.classList.contains('stale') };
-    F.viewerStop(); F.stop();
+    F.viewerStop(); await F.stop();
     window.WebSocket = orig;
     return out;
   });
@@ -382,18 +401,49 @@ test('the position is retained while sharing and cleared when it stops', async (
     const pub = window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4);
     const retainBit = pub[0] & 1;
     window.__sent.length = 0;
-    F.stop();
+    const stopped = F.stop();
     await new Promise(r => setTimeout(r, 10));
     const clear = window.__sent.find(f => (f[0] & 0xf0) === 0x30);
     const len = F._readLength(new Uint8Array(clear), 1);
     const topicLen = (clear[len.next] << 8) | clear[len.next + 1];
-    const payloadLen = len.value - 2 - topicLen;
+    const payloadLen = len.value - 2 - topicLen - 2; // QoS 1 packet id
     window.WebSocket = orig;
-    return { retainBit, clearRetain: clear[0] & 1, payloadLen };
+    await stopped;
+    return { retainBit, clearRetain: clear[0] & 1,
+             clearQos: (clear[0] >> 1) & 3, payloadLen };
   });
   expect(got.retainBit).toBe(1);
   expect(got.clearRetain).toBe(1);
+  expect(got.clearQos).toBe(1);
   expect(got.payloadLen).toBe(0);
+});
+
+test('publisher CONNECT installs a retained empty Last Will', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    await F.start('4X-WILL');
+    await new Promise(r => setTimeout(r, 10));
+    const frame = new Uint8Array(window.__sent[0]);
+    const len = F._readLength(frame, 1);
+    let at = len.next;
+    const protocolLen = (frame[at] << 8) | frame[at + 1];
+    at += 2 + protocolLen;
+    at += 1; // protocol level
+    const flags = frame[at++];
+    at += 2; // keepalive
+    const clientLen = (frame[at] << 8) | frame[at + 1];
+    at += 2 + clientLen;
+    const willTopicLen = (frame[at] << 8) | frame[at + 1];
+    const willTopic = new TextDecoder().decode(frame.subarray(at + 2, at + 2 + willTopicLen));
+    at += 2 + willTopicLen;
+    const willPayloadLen = (frame[at] << 8) | frame[at + 1];
+    return { will: !!(flags & 0x04), retained: !!(flags & 0x20), willTopic, willPayloadLen };
+  });
+  expect(got).toEqual({
+    will: true, retained: true, willTopic: expect.stringMatching(/^navaid\/follow\//),
+    willPayloadLen: 0,
+  });
 });
 
 // The viewer must start from the link alone. It boots on DOMContentLoaded and the tuning
@@ -441,7 +491,7 @@ test('the banner reads out altitude, speed, track and position', async ({ page }
       await new Promise(r => setTimeout(r, 40));
       seen.push(document.getElementById('follow-me-banner').textContent);
     }
-    F.viewerStop(); F.stop();
+    F.viewerStop(); await F.stop();
     window.WebSocket = orig;
     return seen;
   });
@@ -478,7 +528,7 @@ test('a dropped socket reconnects and re-subscribes; stopping does not', async (
     await new Promise(r => setTimeout(r, 20));
     const after = { sockets: grew, subs: subs() };
 
-    F.viewerStop(); F.stop();
+    F.viewerStop(); await F.stop();
     const closed = window.__sockets.length;
     window.__sockets[grew - 1].close();           // a close that stop() already asked for
     await new Promise(r => setTimeout(r, 2300));
@@ -501,7 +551,7 @@ async function shareOnce(page, code) {
     const link = await F.start(reg);
     window.__sockets[window.__sockets.length - 1].connack();
     await new Promise(r => setTimeout(r, 10));
-    F.stop();
+    await F.stop();
     window.WebSocket = orig;
     return link;
   }, code);
@@ -528,6 +578,32 @@ test('sharing the same aeroplane again resumes the same link', async ({ page }) 
   expect(again).toBe(first);                      // same topic AND same key
 });
 
+test('automatic resume says sharing only after the broker connects', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-RESUME');
+  });
+  await page.reload();
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
+  const before = await page.evaluate(async () => {
+    window.__resumeToasts = [];
+    window.showToast = message => window.__resumeToasts.push(String(message));
+    await new Promise(r => setTimeout(r, 30));
+    return { status: NavAid.followMe.status(), toasts: window.__resumeToasts.slice() };
+  });
+  expect(before.status).toBe('connecting');
+  expect(before.toasts.some(text => /still sharing/i.test(text))).toBe(false);
+  const after = await page.evaluate(async () => {
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 30));
+    const result = { status: NavAid.followMe.status(), toasts: window.__resumeToasts.slice() };
+    await NavAid.followMe.stop();
+    return result;
+  });
+  expect(after.status).toBe('connected');
+  expect(after.toasts.some(text => /still sharing/i.test(text))).toBe(true);
+});
+
 test('a different aircraft code never inherits the previous link', async ({ page }) => {
   await boot(page);
   const a = await shareOnce(page, '4X-AAA');
@@ -544,7 +620,7 @@ test('stopping kills the link, and an expired session is not resumed', async ({ 
     const first = await F.start('4X-DEAD');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
-    F.stop();                                     // deliberate: the key goes with it
+    await F.stop();                               // deliberate: the key goes with it
     const afterStop = !!F._stored();
     const resumedAfterStop = await F.resume();
 
@@ -557,7 +633,7 @@ test('stopping kills the link, and an expired session is not resumed', async ({ 
       JSON.stringify({ ...stored, at: Date.now() - 13 * 3600000 }));   // window is 12h
     const expired = !!F._stored();
     const third = await F.start('4X-DEAD');       // already sharing: same session
-    F.stop();
+    await F.stop();
     window.WebSocket = orig;
     return { differs: second !== first, afterStop, resumedAfterStop, expired, third: third === second };
   });
@@ -578,7 +654,7 @@ test('the persistent-link flag keeps one link across a deliberate stop', async (
     const first = await F.start('4X-CLUB');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
-    F.stop();
+    await F.stop();
     const kept = F._stored();
     // Stopped on purpose, so a restart must NOT start publishing again by itself...
     const resumed = await F.resume();
@@ -588,7 +664,9 @@ test('the persistent-link flag keeps one link across a deliberate stop', async (
     await new Promise(r => setTimeout(r, 10));
     // And the escape hatch throws it away.
     const third = await F.newLink();
-    F.stop();
+    window.__sockets[window.__sockets.length - 1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.stop();
     window.WebSocket = orig;
     return { same: second === first, kept: !!kept, on: kept && kept.on, resumed, fresh: third !== first };
   });
@@ -599,10 +677,9 @@ test('the persistent-link flag keeps one link across a deliberate stop', async (
   expect(got.fresh).toBe(true);
 });
 
-// A retained MQTT packet can arrive minutes after it was published, and reconnects can
-// replay an older retained packet after a newer live one. Receipt time is not aircraft
-// time: the encrypted publisher timestamp is the only honest age, and timestamps
-// must move forward before a packet is allowed to replace the current fix.
+// A retained MQTT packet can arrive minutes after publication. Reconnects can replay an
+// older retained packet after a newer live one. Receipt time is not aircraft time.
+// The encrypted publisher timestamp is the honest age, and packet order must advance.
 test('retained positions keep their publisher age and replays cannot become fresh', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
@@ -636,7 +713,7 @@ test('retained positions keep their publisher age and replays cannot become fres
     window.__sockets[1].deliver(oldFrame);          // reconnect/re retained replay
     await new Promise(r => setTimeout(r, 30));
     const afterReplay = { lat: state.fix && state.fix.lat, at: state.at };
-    F.unwatch(); F.stop();
+    F.unwatch(); await F.stop();
     return { present, oldPublishedAt: present - 10 * 60 * 1000, afterNew, afterReplay };
   });
   expect(got.afterNew).toEqual({ lat: 32.2, at: got.present });
@@ -649,28 +726,36 @@ test('a new viewer accepts timestamp-ordered packets from an older publisher', a
   const got = await page.evaluate(async () => {
     const F = NavAid.followMe;
     const link = await F.start('4X-OLD');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
     const url = new URL(link);
     const id = url.searchParams.get('follow');
     const rawKey = url.hash.replace(/^#k=/, '');
-    const sentAt = Date.now() - 1000;
-    const payload = await F._seal(await F.importKey(F._b64url.to(rawKey)), {
-      reg: '4X-OLD', lat: 32.4, lng: 34.8, t: sentAt,
-    });
     const topic = new TextEncoder().encode(F.topicFor(id));
-    const body = new Uint8Array(2 + topic.length + payload.length);
-    body[0] = topic.length >> 8; body[1] = topic.length & 255;
-    body.set(topic, 2); body.set(payload, 2 + topic.length);
-    const lengths = F._encodeLength(body.length);
-    const frame = new Uint8Array(1 + lengths.length + body.length);
-    frame[0] = 0x31; frame.set(lengths, 1); frame.set(body, 1 + lengths.length);
+    const key = await F.importKey(F._b64url.to(rawKey));
+    const makeFrame = async (fix) => {
+      const payload = await F._seal(key, fix);
+      const body = new Uint8Array(2 + topic.length + payload.length);
+      body[0] = topic.length >> 8; body[1] = topic.length & 255;
+      body.set(topic, 2); body.set(payload, 2 + topic.length);
+      const lengths = F._encodeLength(body.length);
+      const frame = new Uint8Array(1 + lengths.length + body.length);
+      frame[0] = 0x31; frame.set(lengths, 1); frame.set(body, 1 + lengths.length);
+      return frame;
+    };
+    const sentAt = Date.now() - 1000;
+    const newer = await makeFrame({ reg: '4X-OLD', lat: 32.4, lng: 34.8, t: sentAt });
+    const older = await makeFrame({ reg: '4X-OLD', lat: 31.9, lng: 35.1, t: sentAt - 1000 });
 
     const state = await F.watch(id, rawKey);
     window.__sockets[1].connack();
     await new Promise(r => setTimeout(r, 10));
-    window.__sockets[1].deliver(frame);
+    window.__sockets[1].deliver(newer);
+    await new Promise(r => setTimeout(r, 30));
+    window.__sockets[1].deliver(older);
     await new Promise(r => setTimeout(r, 30));
     const out = { fix: state.fix, at: state.at, sentAt };
-    F.unwatch(); F.stop();
+    F.unwatch(); await F.stop();
     return out;
   });
   expect(got.fix).toMatchObject({ reg: '4X-OLD', lat: 32.4, lng: 34.8 });
@@ -695,7 +780,7 @@ test('the publisher sequence survives an app restart', async ({ page }) => {
     await new Promise(r => setTimeout(r, 10));
     await NavAid.followMe.publish({ lat: 32.2, lng: 35.0 });
     const seq = JSON.parse(localStorage.getItem('navaid.followMeSession')).seq;
-    NavAid.followMe.stop();
+    await NavAid.followMe.stop();
     return seq;
   });
   expect(second).toBeGreaterThan(first);
@@ -719,18 +804,34 @@ test('stopping while disconnected retries and completes retained-position cleanu
     await new Promise(r => setTimeout(r, 20));
     const pending = JSON.parse(localStorage.getItem('navaid.followMeSession') || 'null');
     await new Promise(r => setTimeout(r, 2300));
+    window.__sockets[1].autoPuback = false;
     window.__sockets[1].connack();                 // reconnect completes the retained delete
+    await new Promise(r => setTimeout(r, 30));
+    const beforeAck = {
+      status: F.status(),
+      stored: JSON.parse(localStorage.getItem('navaid.followMeSession') || 'null'),
+      deadToast: toasts.some(text => /link is dead/i.test(text)),
+    };
+    const clear = new Uint8Array(window.__sent.find(f =>
+      (f[0] & 0xf0) === 0x30 && ((f[0] >> 1) & 3) === 1));
+    const len = F._readLength(clear, 1);
+    const topicLen = (clear[len.next] << 8) | clear[len.next + 1];
+    const idAt = len.next + 2 + topicLen;
+    window.__sockets[1].deliver([0x40, 0x02, clear[idAt], clear[idAt + 1]]);
     await new Promise(r => setTimeout(r, 30));
     const cleared = localStorage.getItem('navaid.followMeSession');
     const retainedDelete = window.__sent.some(f =>
       (f[0] & 0xf1) === 0x31 && f.length > 4 && f[f.length - 1] !== 0);
     window.gpsLiveOn = false;
-    return { sharing: F.sharing(), pending, cleared, retainedDelete, toasts };
+    return { sharing: F.sharing(), pending, beforeAck, cleared, retainedDelete, toasts };
   });
   expect(got.sharing).toBe(false);
   expect(got.pending).toMatchObject({ reg: '4X-CLEAN', pendingStop: true, on: false });
   expect(got.pending.id).toBeTruthy();
   expect(got.pending.k).toBeTruthy();
+  expect(got.beforeAck.status).toBe('stopping');
+  expect(got.beforeAck.stored).toMatchObject({ pendingStop: true, on: false });
+  expect(got.beforeAck.deadToast).toBe(false);
   expect(got.cleared).toBe(null);
   expect(got.retainedDelete).toBe(true);
   expect(got.toasts.some(text => /link is dead/i.test(text))).toBe(true);
@@ -807,10 +908,14 @@ test('cancelled sharing and a failed clipboard do not claim the link was copied'
     });
     document.getElementById('follow-me').click();
     await new Promise(r => setTimeout(r, 80));
-    if (NavAid.followMe.sharing()) NavAid.followMe.stop();
+    if (NavAid.followMe.sharing()) {
+      window.__sockets[0].connack();
+      await new Promise(r => setTimeout(r, 10));
+      await NavAid.followMe.stop();
+    }
     window.gpsLiveOn = false;
     return seen;
   });
-  expect(toasts).not.toContain('Follow-me link copied — it works while you are sharing, and dies when you stop.');
+  expect(toasts).not.toContain('Follow-me link copied.');
   expect(toasts.some(text => /could not be shared/i.test(text))).toBe(true);
 });

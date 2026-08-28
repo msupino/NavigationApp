@@ -3543,7 +3543,12 @@ function followMeOffered() {
     if (asked === null) return;                     // cancelled: share nothing
     const link = await f.start(asked);
     if (!link) {
-      if (typeof showToast === 'function') showToast(S.followMeNeedCode || 'Follow me needs an aircraft code.');
+      if (typeof showToast === 'function') {
+        const stopping = typeof f.status === 'function' && f.status() === 'stopping';
+        showToast(stopping
+          ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
+          : (S.followMeNeedCode || 'Follow me needs an aircraft code.'));
+      }
       return;
     }
     refresh();

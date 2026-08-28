@@ -99,9 +99,10 @@
         guarantee. Follow Me is a convenience feature, not a safety or authenticated
         tracking service.</li>
       <li>The most recent encrypted position is retained while sharing so a new viewer
-        can see it immediately. Stop clears it. If the device is offline, NavAid keeps
-        the random topic and key on that device only until it reconnects and confirms
-        the clear.</li>
+        can see it immediately. Stop clears it and waits for broker acknowledgement.
+        An unexpected disconnect also asks the relay to clear it through MQTT Last Will.
+        If the device is already offline when Stop is pressed, NavAid keeps the random
+        topic and key on that device only until it reconnects and confirms the clear.</li>
     </ul>
 
     <h2>Map and chart data</h2>
@@ -173,8 +174,9 @@
       <li>הממסר פועל במאמץ מיטבי: אין הבטחה למסירה, לזמינות או להיסטוריה. ״עקבו אחריי״
         הוא כלי נוחות, ולא שירות בטיחות או מעקב מאומת.</li>
       <li>המיקום המוצפן האחרון נשמר בממסר בזמן השיתוף כדי שצופה חדש יראה אותו מיד.
-        עצירה מוחקת אותו. אם המכשיר אינו מחובר, NavAid שומרת את הנושא האקראי והמפתח
-        במכשיר בלבד עד לחיבור מחדש ולאישור המחיקה.</li>
+        עצירה מוחקת אותו וממתינה לאישור מהממסר. ניתוק בלתי צפוי מבקש מהממסר למחוק אותו
+        גם באמצעות MQTT Last Will. אם המכשיר כבר אינו מחובר בעת העצירה, NavAid שומרת
+        את הנושא האקראי והמפתח במכשיר בלבד עד לחיבור מחדש ולאישור המחיקה.</li>
     </ul>
 
     <h2>נתוני מפה ותרשימים</h2>

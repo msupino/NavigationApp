@@ -1901,7 +1901,7 @@ window.S = Object.assign({
   followMeResumed: 'Follow me: still sharing — the same link as before still works.',
   tbFollowMeTitle: 'Share a best-effort live position link through a public relay. Anyone with the link can view or submit positions.',
   tbFollowMeStop: 'Stop sharing',
-  followMeCopied: 'Follow-me link copied — it works while you are sharing, and dies when you stop.',
+  followMeCopied: 'Follow-me link copied.',
   followMeShareFailed: 'Follow me started, but the link could not be shared or copied.',
   followMeStopped: 'Follow me: stopped. The link is dead.',
   followMeNoFix: 'Follow me needs a position: turn on Location or Record first.',

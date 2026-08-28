@@ -881,9 +881,10 @@ as a machine-readable registry.
 - `navaid.followMeSession` — the device-local Follow Me bearer capability:
   random topic id, AES key, aircraft label, start time, monotonic packet sequence,
   sharing consent, and pending-stop cleanup state. It is deliberately excluded from
-  Drive sync. While connected, Stop deletes the retained broker value before removing
-  this record. While offline, the record remains with `pendingStop: true` and `on: false`
-  until a reconnect confirms the delete; it must not be treated as active sharing.
+  Drive sync. Stop waits for the broker's QoS 1 acknowledgement before removing the
+  record. Persistent-link mode instead keeps an inactive record. While offline, the
+  record remains with `pendingStop: true` and `on: false`. A reconnect retries the
+  delete; pending cleanup must not be treated as active sharing.
 - `navaid.tracks.shown` — JSON array of shown recorded-track ids
   (`gps.js`). Only one track is shown at a time, so this holds 0 or 1 id;
   an older multi-id list is healed to a single id on load.
@@ -905,23 +906,27 @@ re-load that does a full page navigation):
 ### Follow Me transport and trust boundary
 
 `docs/app/followme.js` publishes encrypted position envelopes over MQTT WebSocket.
-The broker URL is Gist-tunable, but the default is a public third-party test relay and
-is therefore best-effort: no availability, delivery, retention, or history guarantee
-may be implied by the UI. Browser, iOS, Android, real GPS, and simulator sources all
-use the same publisher; simulator altitude is converted from feet to metres before it
-enters the envelope.
+The broker URL is Gist-tunable. Its default is a public third-party test relay.
+The default is best-effort, so the UI must not promise availability or delivery.
+It must not promise retention or history either. Browser, iOS, Android, real GPS,
+and simulator sources share one publisher. Simulator altitude is converted from
+feet to metres before it enters the envelope.
 
-The topic is random and the AES key is carried in the URL fragment, so the relay does
-not receive readable flight data or the key. The complete URL is nevertheless a bearer
-capability: symmetric encryption means any link holder can both read and create a
-valid-looking update. This is an accepted limitation, disclosed before sharing and in
-`docs/privacy.html`; Follow Me must not be described as authenticated or safety tracking.
+The topic is random, and the AES key is in the URL fragment. The relay receives neither
+readable flight data nor the key. The complete URL is still a bearer capability.
+Symmetric encryption lets any link holder read and create a valid-looking update.
+This accepted limitation is disclosed before sharing and in `docs/privacy.html`.
+Follow Me must not be described as authenticated or safety tracking.
 
-Each envelope carries publisher time `t` and a persisted monotonic `seq`. Viewers use
-`t` for displayed age and accept only increasing `seq` values with valid coordinates
-and plausible time, preventing retained or reconnect replays from becoming fresh.
-Publisher UI states are `idle`, `connecting`, `connected`, `reconnecting`, and
-`stopping`; only `connected` may be labelled as actively sharing.
+Current envelopes carry publisher time `t` and a persisted monotonic `seq`. Viewers use
+`t` for displayed age and require increasing order. During cached-client rollout, a
+legacy packet without `seq` uses `t` as its order value. Coordinates and time must also
+be plausible. These checks stop retained or reconnect replays from becoming fresh.
+
+Deliberate Stop uses a QoS 1 retained delete and waits for PUBACK. A retained empty
+Last Will removes the last broker value after an unexpected disconnect. Publisher UI
+states are `idle`, `connecting`, `connected`, `reconnecting`, and `stopping`.
+Only `connected` may be labelled as actively sharing.
 
 When adding a new key, grep `localStorage.setItem` /
 `sessionStorage.setItem` under `docs/` to stay in sync with this list.
