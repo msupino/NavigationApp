@@ -1066,7 +1066,10 @@ downloadable `route.json`.
   activity, layer/input changes, and a visible-tab 10 minute interval.
   Those follow-up checks are throttled to once every 5 minutes; the
   existing "New NavAid build available" notice appears only when the
-  service worker actually reports a newer installed build.
+  service worker actually reports a newer installed build. One update can
+  report installed, activated, and controller-change lifecycle events; they
+  share one notification cycle, so dismissing the notice suppresses repeats
+  for that worker while a distinct later worker can notify again.
 - **Toolbar version SHA suffix is automatic.** The same Deploy step
   also rewrites `version: '1.0'` → `version: '1.0-<short-sha>'` in
   `docs/app/core.js`, so the toolbar identifies the exact deployed commit.
