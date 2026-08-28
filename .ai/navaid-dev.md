@@ -930,6 +930,8 @@ converted from feet to metres before it enters the envelope.
 
 The topic is random, and the AES key is in the URL fragment. The relay receives neither
 readable flight data nor the key. The complete URL is still a bearer capability.
+Every language URL rewrite in `docs/index.html` must preserve `location.hash`; dropping the
+fragment removes the viewer's key and silently turns a valid follower link into an ordinary map.
 Symmetric encryption lets any link holder read and create a valid-looking update.
 This accepted limitation is disclosed before sharing and in `docs/privacy.html`.
 Follow Me must not be described as authenticated or safety tracking.

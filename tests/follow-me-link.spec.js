@@ -903,6 +903,28 @@ test('the viewer boot does not wait on the gist', async ({ page }) => {
   expect(code).not.toContain('featureFollowMe');
 });
 
+test('language selection preserves the follower encryption key on a clean phone', async ({ page }) => {
+  await installStub(page);
+  await page.addInitScript(() => {
+    try { localStorage.removeItem('navaid.lang'); } catch (e) { /* storage unavailable */ }
+  });
+  const key = 'A'.repeat(43); // 32 zero bytes, base64url without padding
+  await page.goto('?nogist&follow=test-viewer#k=' + key);
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe.viewing()));
+
+  expect(await page.evaluate(() => ({
+    lang: new URLSearchParams(location.search).get('lang'),
+    hash: location.hash,
+  }))).toEqual({ lang: 'he', hash: '#k=' + key });
+
+  await page.locator('#lang-select').selectOption('en');
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe.viewing()));
+  expect(await page.evaluate(() => ({
+    lang: new URLSearchParams(location.search).get('lang'),
+    hash: location.hash,
+  }))).toEqual({ lang: 'en', hash: '#k=' + key });
+});
+
 test('opening a follower link skips route onboarding and locks route editing', async ({ page }) => {
   await installStub(page);
   const key = 'A'.repeat(43); // 32 zero bytes, base64url without padding
