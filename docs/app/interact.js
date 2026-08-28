@@ -668,6 +668,14 @@ function showPointChoice(candidates) {
     selectPointCandidate(items[0]);
     return true;
   }
+  // The chooser is the active inspection surface now. Leaving the previous waypoint
+  // inspector visible underneath it looked like two inspectors were open, and leaving its
+  // selection active kept that old waypoint enlarged until a choice was made. This is most
+  // common on fresh storage, where reference-point overlays are enabled by default and make
+  // overlapping candidates frequent.
+  state.selected = null;
+  showInspector();
+  draw();
   const modal = createDraggableModal(S.choosePointTitle || 'Choose point', 'modal point-choice-modal');
   const body = document.createElement('div');
   body.className = 'point-choice-list';
