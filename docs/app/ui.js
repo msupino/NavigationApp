@@ -3504,15 +3504,17 @@ function followMeOffered() {
 (function wireFollowMe() {
   const btn = document.getElementById('follow-me');
   if (!btn) return;
+  const btnLabel = btn.querySelector('.follow-me-button-label');
   const F = () => (window.NavAid && window.NavAid.followMe) || null;
   function refresh() {
     btn.hidden = !followMeOffered();
     const f = F();
     const status = f && typeof f.status === 'function' ? f.status() : 'idle';
     const active = status !== 'idle';
-    btn.textContent = status === 'stopping'
+    const text = status === 'stopping'
       ? (S.followMeStoppingShort || 'Stopping sharing…')
       : active ? (S.tbFollowMeStop || 'Stop sharing') : (S.tbFollowMe || 'Follow me');
+    if (btnLabel) btnLabel.textContent = text;
     btn.classList.toggle('on', status === 'connected');
     btn.disabled = status === 'stopping';
     const label = status === 'connected'

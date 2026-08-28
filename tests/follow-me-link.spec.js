@@ -362,6 +362,36 @@ test('the refreshes bring the controls back when the flag flips', async ({ page 
   expect(seen.after).toEqual({ menu: true, map: true });
 });
 
+test('the toolbar button keeps its decorative icon when sharing state changes', async ({ page }) => {
+  await boot(page);
+  const seen = await page.evaluate(() => {
+    setTune('featureFollowMe', true);
+    const button = document.getElementById('follow-me');
+    const icon = button.querySelector('.follow-me-button-icon');
+    const label = button.querySelector('.follow-me-button-label');
+    const states = {};
+    for (const status of ['idle', 'connecting', 'connected', 'reconnecting', 'stopping']) {
+      NavAid.followMe.status = () => status;
+      refreshFollowMeControl();
+      states[status] = { icon: icon.textContent, label: label.textContent, sameIcon: icon.isConnected };
+    }
+    return {
+      decorative: icon.getAttribute('aria-hidden'),
+      iconCount: button.querySelectorAll('.follow-me-button-icon').length,
+      states
+    };
+  });
+  expect(seen.decorative).toBe('true');
+  expect(seen.iconCount).toBe(1);
+  for (const state of Object.values(seen.states)) {
+    expect(state.icon).toBe('📡');
+    expect(state.label.length).toBeGreaterThan(0);
+    expect(state.sameIcon).toBe(true);
+  }
+  expect(seen.states.idle.label).toBe('Follow me');
+  expect(seen.states.connected.label).toBe('Stop sharing');
+});
+
 // ...and that they are actually wired into the gist-landing block. That block is an inline
 // .then() on loadRemoteConfig with no name to call, so this reads the source: a behavioural
 // test here would pass whether or not the calls were ever hooked up, which is exactly how a
