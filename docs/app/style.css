@@ -104,6 +104,10 @@ html.app-booting .leaflet-control-container { visibility: hidden; }
   white-space: nowrap;
 }
 #toolbar button:hover { background: #3c3737; }
+.follow-me-button-icon {
+  display: inline-block;
+  margin-inline-end: 0.35em;
+}
 #toolbar button:disabled {
   opacity: 0.42;
   cursor: default;
@@ -626,11 +630,11 @@ html[dir="rtl"] .tb-section.open .tb-section-head::after { transform: rotate(-90
   max-width: min(96vw, 240px);
   padding: 4px 6px;
 }
-/* In Hebrew the clock mirrors to the LEFT while the toolbar stayed left too, so the closed
-   menu sat on top of it. Mirror the toolbar as well, the way the rest of the RTL layout
-   does -- clock on one side, menu on the other, in both languages. A dragged position
-   (inline style) still wins. */
-html[dir="rtl"] #toolbar.collapsed {
+/* In Hebrew the clock mirrors to the LEFT, so the default floating toolbar belongs on the
+   RIGHT in both states. Keeping this independent of .collapsed also prevents the toolbar
+   from jumping across a touch tablet when the menu expands. A dragged position (inline
+   style) still wins. */
+html[dir="rtl"] #toolbar {
   left: auto;
   right: 12px;
 }
@@ -2616,6 +2620,7 @@ body.theme-light .shortcuts-help-keys kbd {
   #toolbar { gap: 6px; top: 8px; left: 8px;
              max-height: calc(100vh - 16px);
              max-height: calc(100dvh - 16px); }
+  html[dir="rtl"] #toolbar { left: auto; right: 8px; }
   #toolbar button { padding: 9px 12px; font-size: 14px; }
   #toolbar .navtoggle { font-size: 14px; }
   #toolbar .navtoggle input { width: 18px; height: 18px; }
@@ -6963,8 +6968,31 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
   background: rgba(78, 34, 20, 0.94);
   border-color: rgba(214, 122, 74, 0.65);
 }
-.follow-me-mark { display: flex; align-items: center; justify-content: center; }
-.follow-me-arrow { font-size: 22px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+.follow-me-mark {
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.follow-me-arrow {
+  display: flex; align-items: center; justify-content: center;
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+}
+.follow-me-plane {
+  display: block;
+  fill: var(--navaid-follow-me-plane, #182839);
+  stroke: #fff; stroke-width: 1.1; stroke-linejoin: round; paint-order: stroke;
+}
+/* The fixed-size aircraft owns the coordinate. The label is decoration beside it and must
+   not widen the Leaflet icon box, which would move the aircraft away from the reported fix. */
+.follow-me-label {
+  position: absolute;
+  inset-inline-start: calc(100% + 3px);
+  top: 50%; transform: translateY(-50%);
+  white-space: nowrap;
+  font: 700 12px/1.2 system-ui, sans-serif;
+  color: #182839;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
 body.theme-light .follow-me-banner { color: #10240f; background: rgba(222, 245, 224, 0.95); }
 body.theme-light .follow-me-banner.stale { color: #4a1c08; background: rgba(255, 226, 209, 0.96); }
 
