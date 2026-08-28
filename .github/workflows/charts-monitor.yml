@@ -3,8 +3,9 @@ name: Monitor chart data freshness
 # Watches the data feeds published by the other scheduled Actions and flags
 # stale ones (an upstream job stopped publishing). On staleness it opens (and
 # keeps updated) a single tracking issue assigned to the repo owner, and fails
-# the run; when everything is fresh again it closes that issue. Notification is
-# the issue assignment + the workflow-failure email.
+# the run. Before alerting, it dispatches each affected producer and waits for
+# fresh output; when recovery succeeds it closes any existing issue. Notification
+# is the issue assignment + the workflow-failure email.
 #
 # Feeds + the producing workflow's cadence → freshness budget:
 #   sigmet-data/sigmet.json   aviation-data.yml  every 20m* -> 4h
@@ -23,24 +24,36 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: write
 
 jobs:
   check:
+    # workflow_dispatch lets a caller choose a ref. This job imports repository code while
+    # holding actions/issues write, so only the default branch may execute it.
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
+      - name: Checkout recovery helper
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
       - name: Check feed freshness
         uses: actions/github-script@v7
         with:
           script: |
+            const { pathToFileURL } = require('node:url');
+            const helperUrl = pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/chart-monitor-recovery.mjs`).href;
+            const { recoverStaleFeeds } = await import(helperUrl);
             const RAW = `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/`;
             const feeds = [
-              { label: 'SIGMET (sigmet-data/sigmet.json)', url: 'sigmet-data/sigmet.json', maxHours: 4 },
-              { label: 'Weather (wx-data/wx.json)', url: 'wx-data/wx.json', maxHours: 4 },
-              { label: 'PWX charts (ims-data/ims/pwx.json)', url: 'ims-data/ims/pwx.json', maxHours: 5 },
-              { label: 'SIGWX charts (ims-data/ims/sigwx.json)', url: 'ims-data/ims/sigwx.json', maxHours: 6 },
-              { label: 'NOTAMs (notam-data/notam.json)', url: 'notam-data/notam.json', maxHours: 6 },
+              { label: 'SIGMET (sigmet-data/sigmet.json)', url: 'sigmet-data/sigmet.json', maxHours: 4, workflow: 'aviation-data.yml' },
+              { label: 'Weather (wx-data/wx.json)', url: 'wx-data/wx.json', maxHours: 4, workflow: 'aviation-data.yml' },
+              { label: 'PWX charts (ims-data/ims/pwx.json)', url: 'ims-data/ims/pwx.json', maxHours: 5, workflow: 'ims-charts.yml' },
+              { label: 'SIGWX charts (ims-data/ims/sigwx.json)', url: 'ims-data/ims/sigwx.json', maxHours: 6, workflow: 'ims-charts.yml' },
+              { label: 'NOTAMs (notam-data/notam.json)', url: 'notam-data/notam.json', maxHours: 6, workflow: 'notam.yml' },
             ];
-            const now = Date.now();
             const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
             // Fetch a feed's JSON, retrying transient failures. raw.githubusercontent
@@ -63,43 +76,74 @@ jobs:
               return { transient: lastErr || 'fetch failed' };
             }
 
-            const stale = [], ok = [], unknown = [];
-            for (const f of feeds) {
-              const res = await fetchFeed(f.url);
-              if (res.transient) {
-                unknown.push(`- ${f.label} — could not verify (${res.transient})`);
-                continue;
-              }
-              let ts = null, err = res.fatal || null;
-              if (!err) {
-                const j = res.json;
-                ts = j.generatedAt || null;
-                if (!ts && /^\d{12}$/.test(j.run || '')) {
-                  const m = j.run;
-                  ts = `${m.slice(0,4)}-${m.slice(4,6)}-${m.slice(6,8)}T${m.slice(8,10)}:${m.slice(10,12)}:00Z`;
+            async function checkFeeds() {
+              const stale = [], ok = [], unknown = [];
+              const now = Date.now();
+              for (const f of feeds) {
+                const res = await fetchFeed(f.url);
+                if (res.transient) {
+                  unknown.push(`- ${f.label} — could not verify (${res.transient})`);
+                  continue;
+                }
+                let ts = null, err = res.fatal || null;
+                if (!err) {
+                  const j = res.json;
+                  ts = j.generatedAt || null;
+                  if (!ts && /^\d{12}$/.test(j.run || '')) {
+                    const m = j.run;
+                    ts = `${m.slice(0,4)}-${m.slice(4,6)}-${m.slice(6,8)}T${m.slice(8,10)}:${m.slice(10,12)}:00Z`;
+                  }
+                }
+                const age = ts ? (now - Date.parse(ts)) / 3.6e6 : null;
+                if (err || age === null || !isFinite(age) || age > f.maxHours) {
+                  const reason = err ? ('fetch failed: ' + err) :
+                    (age === null ? 'no timestamp' : age.toFixed(1) + 'h old (budget ' + f.maxHours + 'h)');
+                  stale.push({ workflow: f.workflow, line: `- **${f.label}** — ${reason}` });
+                } else {
+                  ok.push(`- ${f.label} — ${age.toFixed(1)}h old`);
                 }
               }
-              const age = ts ? (now - Date.parse(ts)) / 3.6e6 : null;
-              if (err || age === null || !isFinite(age) || age > f.maxHours) {
-                stale.push(`- **${f.label}** — ${err ? ('fetch failed: ' + err) : (age === null ? 'no timestamp' : age.toFixed(1) + 'h old (budget ' + f.maxHours + 'h)')}`);
-              } else {
-                ok.push(`- ${f.label} — ${age.toFixed(1)}h old`);
-              }
+              return { stale, ok, unknown };
             }
 
             const { owner, repo } = context.repo;
+            let snapshot = await checkFeeds();
+            let recovery = null;
+            if (snapshot.stale.length) {
+              const ref = (context.payload.repository && context.payload.repository.default_branch) || 'main';
+              recovery = await recoverStaleFeeds({
+                initial: snapshot,
+                dispatch: workflow => {
+                  core.notice(`Dispatching stale-feed producer ${workflow} on ${ref}`);
+                  return github.rest.actions.createWorkflowDispatch({
+                    owner, repo, workflow_id: workflow, ref,
+                  });
+                },
+                check: checkFeeds,
+                sleep,
+              });
+              snapshot = recovery.snapshot;
+            }
+            const stale = snapshot.stale.map(item => item.line);
+            const { ok, unknown } = snapshot;
             const TITLE = '⚠️ Stale chart data feed(s)';
             // Find an existing open tracking issue by exact title.
             const q = `repo:${owner}/${repo} is:issue is:open in:title "${TITLE}"`;
             const existing = (await github.rest.search.issuesAndPullRequests({ q })).data.items[0];
             const stamp = new Date().toISOString();
             const unknownBlock = unknown.length ? ['', '### Could not verify (transient)', unknown.join('\n')] : [];
+            const recoveryBlock = recovery ? ['', '### Automatic recovery',
+              `- Dispatched: ${recovery.dispatched.join(', ') || 'none'}`,
+              `- Waited: ${Math.round(recovery.waitedMs / 60000)} minutes`,
+              ...recovery.dispatchErrors.map(item => `- ${item.workflow}: dispatch failed (${item.error})`),
+            ] : [];
 
             if (stale.length) {
               const body = [
                 'The scheduled monitor detected stale published chart data — an upstream',
                 'publishing Action may have stopped or failed.', '',
                 '### Stale', stale.join('\n'),
+                ...recoveryBlock,
                 ...unknownBlock, '',
                 '### OK', (ok.join('\n') || '_(none)_'), '',
                 `_Last checked: ${stamp}_`,
