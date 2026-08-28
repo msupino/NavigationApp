@@ -8915,6 +8915,18 @@ async function _simFetch() {
       hdg: hdgTrue,
       ias: d.ias || 0,
     };
+    // Follow me treats the connected simulator as a live position source, so it must carry
+    // the same fixes the map control promises. The bridge uses ft/kt; the encrypted feed uses
+    // metres/kt, matching the Geolocation path in gps.js. A real device fix keeps precedence.
+    if (!gpsRecording && !gpsLiveOn && window.NavAid && NavAid.followMe && NavAid.followMe.sharing()) {
+      NavAid.followMe.publish({
+        lat: window.simAircraft.lat,
+        lng: window.simAircraft.lng,
+        alt: Number.isFinite(window.simAircraft.alt) ? window.simAircraft.alt / 3.28084 : null,
+        trk: window.simAircraft.hdg,
+        kt: window.simAircraft.ias,
+      }).catch(() => { /* sharing must never break the simulator poll */ });
+    }
     // How much faster than real time the reporting aircraft's own clock is running (cvfr-
     // bridge's speed_factor field; 1 = real time, and always 1 from a real X-Plane backend).
     // gpsCheckDrift runs on a fixed REAL-TIME interval, with no idea a connected simulator

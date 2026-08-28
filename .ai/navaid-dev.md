@@ -877,6 +877,16 @@ as a machine-readable registry.
   real fix and the simulator: the sim panel used to carry its own copy
   (`navaid.simFollow`, since removed), and requiring both meant the lock could not
   resume following after a pan.
+- `navaid.followMeCode` — the device-local aircraft label used by Follow Me.
+- `navaid.followMeSession` — the device-local Follow Me bearer capability:
+  random topic id, AES key, aircraft label, last activity time, monotonic packet sequence,
+  sharing consent, and pending-stop cleanup state. It is deliberately excluded from
+  Drive sync. Normally Stop stores `pendingStop: true` and `on: false`, waits for the
+  broker's QoS 1 acknowledgement, then removes the record; persistent-link mode instead
+  keeps it inactive. If the pending-state write fails, Stop removes active consent
+  immediately when possible. If storage is unreadable, Stop remains pending after PUBACK
+  and retries durable revocation until the store can be verified. While offline, the pending
+  record remains and a reconnect retries the delete; pending cleanup is never active sharing.
 - `navaid.tracks.shown` — JSON array of shown recorded-track ids
   (`gps.js`). Only one track is shown at a time, so this holds 0 or 1 id;
   an older multi-id list is healed to a single id on load.
@@ -894,6 +904,49 @@ re-load that does a full page navigation):
 
 `magVar` is hardcoded at `-5` in `core.js`; the obsolete
 `navaid.magVar` key is no longer written.
+
+### Follow Me transport and trust boundary
+
+`docs/app/followme.js` publishes encrypted position envelopes over MQTT WebSocket.
+The broker URL is Gist-tunable. Its default is a public third-party test relay.
+The default is best-effort, so the UI must not promise availability or delivery.
+The UI must not promise retention or history either. The same publisher handles real GPS
+and simulator fixes in the browser, iOS app, and Android app. Simulator altitude is
+converted from feet to metres before it enters the envelope.
+
+The topic is random, and the AES key is in the URL fragment. The relay receives neither
+readable flight data nor the key. The complete URL is still a bearer capability.
+Symmetric encryption lets any link holder read and create a valid-looking update.
+This accepted limitation is disclosed before sharing and in `docs/privacy.html`.
+Follow Me must not be described as authenticated or safety tracking.
+
+Current envelopes carry publisher time `t` and a persisted monotonic `seq`. Viewers use
+`t` for displayed age and require increasing `seq`. During cached-client rollout, a
+legacy packet without `seq` requires increasing `t`. Latitude must be from -90 through
+90, and longitude from -180 through 180. `t` can be at most five minutes in the future.
+These checks stop retained or reconnect replays from becoming fresh.
+
+Deliberate Stop uses a QoS 1 retained delete and waits for PUBACK. A retained empty
+Last Will removes the last broker value after an unexpected disconnect. Publisher UI
+states are `idle`, `connecting`, `connected`, `reconnecting`, and `stopping`.
+Only `connected` may be labelled as actively sharing.
+
+Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
+publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle
+lock lets Stop revoke an encryption still in flight. Stop holds its lifecycle lock through
+PUBACK, so only one tab can resume pending cleanup and a stale cleaner cannot erase a
+replacement session. Each publish checks the shared session before and after encryption. A
+`storage` event closes an in-memory publisher when another tab stops or replaces the session.
+A delegated Stop result must not be labelled complete until the tab that owns cleanup receives
+PUBACK and durable consent revocation succeeds. Stop also broadcasts revocation directly to
+established tabs. A failed pending-state write falls back to verified removal; an unreadable
+store keeps Stop pending and is retried after PUBACK. Starting requires the private session to
+be stored successfully; otherwise the UI refuses to create a link that cannot send.
+
+Opening a Follow Me viewer link suppresses the new-route onboarding hint and its primed map
+click. Viewer mode starts with the same automatic route-edit lock used by a live own-ship;
+the existing one-tap session override still permits an intentional edit. Opening the toolbar
+menu also dismisses route onboarding so the next map click cannot unexpectedly add a waypoint.
 
 When adding a new key, grep `localStorage.setItem` /
 `sessionStorage.setItem` under `docs/` to stay in sync with this list.
