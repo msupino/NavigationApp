@@ -537,7 +537,7 @@
   // Called on boot. Resumes only what this device was already doing: a stored session marked
   // `on`, inside its window. Anything else -- a deliberate stop, an expired link, a device
   // that never shared -- starts nothing.
-  async function followMeResume() {
+  async function followMeResume(options) {
     if (session) return null;
     const prev = storedSession();
     if (!prev) return null;
@@ -551,6 +551,10 @@
       });
       return null;
     }
+    // Boot must not reconnect a publisher that has nothing to publish. Keep the stored
+    // capability so turning Location/recording/simulator on and pressing Follow Me can
+    // reuse the same link; pending retained-message cleanup above remains unconditional.
+    if (options && options.resumeSharing === false) return null;
     if (prev.on !== true) return null;
     const link = await followMeStart(prev.reg);
     const s = session;
@@ -939,8 +943,12 @@
       followMeViewerStart().catch(() => { /* bad link: the banner says nothing arrived */ });
       return;
     }
-    // Not a viewer: this device may have been sharing when the app stopped running.
-    followMeResume().then((link) => {
+    // Not a viewer: this device may have been sharing when the app stopped running. Resume
+    // only if a position source also resumed; otherwise "still sharing" would describe a
+    // connected socket that cannot send a position. The stored link remains reusable.
+    const hasRealPositionSource = typeof window.gpsTrackingLive === 'function' &&
+      window.gpsTrackingLive();
+    followMeResume({ resumeSharing: hasRealPositionSource }).then((link) => {
       if (!link) return;
       if (typeof window.refreshFollowMeControl === 'function') window.refreshFollowMeControl();
       if (typeof window.refreshFollowMeMapControl === 'function') window.refreshFollowMeMapControl();
@@ -948,7 +956,10 @@
       // feature is written to avoid.
       const S = window.S || {};
       if (typeof window.showToast === 'function') {
-        window.showToast(S.followMeResumed || 'Follow me: still sharing — the same link as before still works.');
+        window.showToast(
+          S.followMeResumed || 'Follow me: still sharing — the same link as before still works.',
+          { ms: 6000 }
+        );
       }
     }).catch(() => { /* nothing stored, or storage is off */ });
   }
