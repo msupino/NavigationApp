@@ -8426,8 +8426,35 @@ function watchServiceWorkerUpdates(sw) {
   const controlledAtStart = !!sw.controller;
   let hadController = controlledAtStart;
   let firstInstallWorker = null;
+  let updateCycleWorker = null;
+  let updateCycleNotified = false;
+  let updateControllerChangePending = false;
+  const beginUpdateCycle = worker => {
+    if (!worker || worker === updateCycleWorker) return;
+    updateCycleWorker = worker;
+    updateCycleNotified = false;
+    updateControllerChangePending = false;
+  };
+  const notifyForUpdateCycle = worker => {
+    beginUpdateCycle(worker);
+    if (updateCycleNotified) return;
+    updateCycleNotified = true;
+    // skipWaiting() makes this same update emit controllerchange after its installed /
+    // activated state. Remember that expected echo even if the browser gives the
+    // controller a different JS wrapper from the installing worker.
+    updateControllerChangePending = true;
+    showBuildUpdateNotice();
+  };
   const notifyIfUpdate = () => {
-    if (hadController) showBuildUpdateNotice();
+    if (!hadController) {
+      hadController = true;
+      return;
+    }
+    if (updateControllerChangePending) {
+      updateControllerChangePending = false;
+      return;
+    }
+    notifyForUpdateCycle(sw.controller);
     hadController = true;
   };
   if (typeof sw.addEventListener === 'function') {
@@ -8436,17 +8463,18 @@ function watchServiceWorkerUpdates(sw) {
   return sw.register('sw.js').then(reg => {
     const watchWorker = worker => {
       if (!worker || typeof worker.addEventListener !== 'function') return;
+      beginUpdateCycle(worker);
       worker.addEventListener('statechange', () => {
         if ((worker.state === 'installed' || worker.state === 'activated') &&
             hadController) {
           if (!controlledAtStart && worker === firstInstallWorker) return;
-          showBuildUpdateNotice();
+          notifyForUpdateCycle(worker);
         }
       });
     };
     if (!controlledAtStart && reg) firstInstallWorker = reg.installing || reg.waiting || null;
     if (reg && reg.waiting && hadController && reg.waiting !== firstInstallWorker) {
-      showBuildUpdateNotice();
+      notifyForUpdateCycle(reg.waiting);
     }
     if (reg) {
       buildUpdateRegistration = reg;
