@@ -529,8 +529,10 @@
         <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
         <!-- Follow me: a live position link, relayed by a public broker and encrypted before
              it gets there. Hidden until the gist offers it (featureFollowMe). -->
-        <button id="follow-me" type="button" hidden
-                data-i18n="tbFollowMe" data-i18n-title="tbFollowMeTitle"></button>
+        <button id="follow-me" type="button" hidden data-i18n-title="tbFollowMeTitle">
+          <span class="follow-me-button-icon" aria-hidden="true">📡</span>
+          <span class="follow-me-button-label" data-i18n="tbFollowMe"></span>
+        </button>
         <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
         <!-- Moved here from the Edit menu: wiping every saved route + setting sat
              directly beside everyday actions (Undo / Clear / Fit), one slip away.

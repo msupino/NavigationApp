@@ -3504,15 +3504,17 @@ function followMeOffered() {
 (function wireFollowMe() {
   const btn = document.getElementById('follow-me');
   if (!btn) return;
+  const btnLabel = btn.querySelector('.follow-me-button-label');
   const F = () => (window.NavAid && window.NavAid.followMe) || null;
   function refresh() {
     btn.hidden = !followMeOffered();
     const f = F();
     const status = f && typeof f.status === 'function' ? f.status() : 'idle';
     const active = status !== 'idle';
-    btn.textContent = status === 'stopping'
+    const text = status === 'stopping'
       ? (S.followMeStoppingShort || 'Stopping sharing…')
       : active ? (S.tbFollowMeStop || 'Stop sharing') : (S.tbFollowMe || 'Follow me');
+    if (btnLabel) btnLabel.textContent = text;
     btn.classList.toggle('on', status === 'connected');
     btn.disabled = status === 'stopping';
     const label = status === 'connected'
@@ -7348,8 +7350,8 @@ function refreshMapAfterToolbarModeChange() {
   const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
   // Position is per-language (RTL mirrors LTR, so the spot differs by language).
   const posKey = () => navLangPosKey(toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
-  const posBase = () => (toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
+  let wasDesktopMenu = toolbarUsesDesktopMenu();
 
   function clampPos(x, y) {
     const w = bar.offsetWidth, h = bar.offsetHeight;
@@ -7370,15 +7372,21 @@ function refreshMapAfterToolbarModeChange() {
 
   function restorePos() {
     try {
-      const raw = navLangPosRead(posBase());
+      const desktopMenu = toolbarUsesDesktopMenu();
+      const raw = navLangPosRead(desktopMenu ? KEY_DESKTOP : KEY);
       if (raw) {
         const p = JSON.parse(raw);
-        requestAnimationFrame(() => setPos(p.x, p.y));
+        requestAnimationFrame(() => {
+          // A resize can switch modes before this frame runs. Never apply coordinates read
+          // from the other mode's storage key after that transition.
+          if (toolbarUsesDesktopMenu() !== desktopMenu) return;
+          setPos(p.x, p.y);
+        });
       }
     } catch (e) { /* storage unavailable */ }
   }
 
-  function clearInlineDesktopPos() {
+  function clearInlineToolbarPos() {
     bar.style.left = '';
     bar.style.top = '';
     bar.style.right = '';
@@ -7467,16 +7475,23 @@ function refreshMapAfterToolbarModeChange() {
   });
 
   function applyResponsiveToolbarMode() {
-    if (toolbarUsesDesktopMenu()) {
+    const desktopMenu = toolbarUsesDesktopMenu();
+    const enteringMobile = wasDesktopMenu && !desktopMenu;
+    wasDesktopMenu = desktopMenu;
+    if (desktopMenu) {
       dragging = false;
       bar.classList.remove('dragging');
-      clearInlineDesktopPos();       // drop any leftover mobile-column position
+      clearInlineToolbarPos();       // drop any leftover mobile-column position
       setCollapsed(false, { persist: false });
       restorePos();                  // re-apply a saved desktop position, if any
       refreshMapAfterToolbarModeChange();
       if (typeof window.reclampToolbarSections === 'function') window.reclampToolbarSections();
       return;
     }
+    // Desktop and mobile positions have separate keys, so their live inline geometry must
+    // be separate too. Otherwise an absent mobile save makes restorePos() a no-op and the
+    // desktop menubar's coordinates leak into the floating toolbar.
+    if (enteringMobile) clearInlineToolbarPos();
     restorePos();
     let sc = null;
     try { sc = lsGet(COLLAPSED_KEY); } catch (e) { /* storage unavailable */ }
