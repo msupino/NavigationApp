@@ -257,6 +257,58 @@ test.describe('Service worker', () => {
     await expect(page.locator('#build-update-notice')).toHaveCount(0);
   });
 
+  test('one service-worker update asks to reload only once', async ({ page }) => {
+    await page.goto('?lang=en');
+    const shown = await page.evaluate(async () => {
+      document.getElementById('build-update-notice')?.remove();
+      const swListeners = {};
+      const regListeners = {};
+      const workerListeners = new Map();
+      const worker = state => ({
+        state,
+        addEventListener(type, cb) { workerListeners.set(this, { type, cb }); },
+      });
+      const firstUpdate = worker('installing');
+      const reg = {
+        installing: firstUpdate,
+        waiting: null,
+        addEventListener(type, cb) { regListeners[type] = cb; },
+        update() { return Promise.resolve(); },
+      };
+      const fakeSw = {
+        controller: {},
+        addEventListener(type, cb) { swListeners[type] = cb; },
+        register() { return Promise.resolve(reg); },
+      };
+      await watchServiceWorkerUpdates(fakeSw);
+
+      const visibility = [];
+      firstUpdate.state = 'installed';
+      workerListeners.get(firstUpdate).cb();
+      visibility.push(!!document.getElementById('build-update-notice'));
+      document.querySelector('#build-update-notice .update-dismiss').click();
+
+      firstUpdate.state = 'activated';
+      workerListeners.get(firstUpdate).cb();
+      visibility.push(!!document.getElementById('build-update-notice'));
+      document.getElementById('build-update-notice')?.remove();
+
+      fakeSw.controller = firstUpdate;
+      swListeners.controllerchange();
+      visibility.push(!!document.getElementById('build-update-notice'));
+      document.getElementById('build-update-notice')?.remove();
+
+      const laterUpdate = worker('installing');
+      reg.installing = laterUpdate;
+      regListeners.updatefound();
+      laterUpdate.state = 'installed';
+      workerListeners.get(laterUpdate).cb();
+      visibility.push(!!document.getElementById('build-update-notice'));
+      return visibility;
+    });
+    expect(shown).toEqual([true, false, false, true]);
+  });
+
   test('Service-worker update checks are throttled after registration', async ({ page }) => {
     await page.goto('?lang=en');
     const updates = await page.evaluate(async () => {
