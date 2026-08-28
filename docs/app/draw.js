@@ -118,7 +118,12 @@ function drawOwnShip(pos, hdg, gsKt) {
   // A frozen fix is drawn faded, and without the heading predictor: extrapolating a track
   // from a position that stopped updating is the one thing a stale fix must not do.
   const stale = typeof gpsFixStale === 'function' && gpsFixStale();
-  if (!stale) drawHeadingLine(pos, hdg, gsKt);   // predictor under the aircraft symbol, freezes lastOwnHeadingDeg
+  if (!stale) drawHeadingLine(pos, hdg, gsKt, {
+    trackKey: 'own', sampleTime: pos.t, receivedAt: pos.t,
+    // A phone compass says where the device points, not how the aircraft's ground track is
+    // changing. It may orient the stationary symbol, but it must not manufacture a turn.
+    disableTurn: pos.hdgCompass === true,
+  });   // predictor under the aircraft symbol, freezes lastOwnHeadingDeg
   const s = proj(pos);
   // Screen angle from a projected geographic offset in the heading direction,
   // so it stays correct under map rotation (map.setBearing) — same approach as
@@ -190,8 +195,11 @@ function drawOwnShip(pos, hdg, gsKt) {
   octx.restore();
 }
 
-// Heading predictor for the own-ship (live GPS + simulator). A straight line along the
-// current track with TWO sets of cross-tick marks: fixed distance (2/5/10 NM, each
+// Heading predictor for the own-ship (live GPS + simulator). Successive timed track fixes
+// estimate turn rate; a valid turn bends the predicted path into a constant-rate arc, capped
+// at 90° by default, then continues tangent so the longer distance marks remain useful. With
+// one fix, low speed, stale data or an implausible rate it remains the original straight line.
+// It carries TWO sets of cross-tick marks: fixed distance (2/5/10 NM, each
 // labelled with its own time-to-reach) and fixed time (2/5 minutes ahead, each labelled
 // with the distance it works out to at the current groundspeed) -- both, not either/or.
 // The NM marks draw regardless of speed (their position never depended on it); the
@@ -203,12 +211,66 @@ function drawOwnShip(pos, hdg, gsKt) {
 const HEADING_LINE_MARKS_NM = [2, 5, 10];
 const HEADING_LINE_MARKS_MIN = [2, 5];
 let lastOwnHeadingDeg = null;
+const headingTurnSamples = new Map();
 // Clear the frozen predictor heading when the own-ship SOURCE changes (live GPS
 // start, sim start). Without this, restarting live location while parked (GPS
 // course goes null at zero groundspeed → falls back to the last heading) points
 // confidently at a stale course, and switching sim↔live leaks one source's
 // heading into the other.
-function resetHeadingPredictor() { lastOwnHeadingDeg = null; }
+function resetHeadingPredictor() {
+  lastOwnHeadingDeg = null;
+  headingTurnSamples.clear();
+}
+
+function headingDeltaDeg(from, to) {
+  return ((to - from + 540) % 360) - 180;
+}
+
+function finiteTuneNumber(key, fallback) {
+  const value = Number(tune(key));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function measuredHeadingTurnRate(key, heading, sampleTime, receivedAt, disableTurn) {
+  key = key || 'own';
+  if (disableTurn || !Number.isFinite(heading) || !Number.isFinite(sampleTime)) {
+    headingTurnSamples.delete(key);
+    return null;
+  }
+  const holdSec = Math.max(1, finiteTuneNumber('livePredictorTurnHoldSec', 6));
+  const seenAt = Number.isFinite(receivedAt) ? receivedAt : sampleTime;
+  const prior = headingTurnSamples.get(key);
+  if (prior && prior.t === sampleTime) {
+    return Date.now() - seenAt <= holdSec * 1000 ? prior.rate : null;
+  }
+  if (!prior) {
+    headingTurnSamples.set(key, { t: sampleTime, heading, rate: null, receivedAt: seenAt });
+    return null;
+  }
+  const dt = (sampleTime - prior.t) / 1000;
+  // Samples closer than a quarter-second are timing noise. A gap longer than the hold time
+  // is a new observation, not evidence the aircraft spent the whole gap turning steadily.
+  if (!(dt >= 0.25) || dt > holdSec) {
+    headingTurnSamples.set(key, { t: sampleTime, heading, rate: null, receivedAt: seenAt });
+    return null;
+  }
+  const raw = headingDeltaDeg(prior.heading, heading) / dt;
+  const maxRate = Math.max(0.5, finiteTuneNumber('livePredictorTurnMaxDegSec', 4));
+  const minRate = Math.max(0, finiteTuneNumber('livePredictorTurnMinDegSec', 0.25));
+  let rate = null;
+  if (Math.abs(raw) <= maxRate) {
+    if (Math.abs(raw) < minRate) {
+      rate = 0; // stop the curve promptly when the turn stops; do not slowly decay through it
+    } else {
+      const smoothing = Math.max(0, Math.min(1,
+        finiteTuneNumber('livePredictorTurnSmoothing', 0.5)));
+      rate = Number.isFinite(prior.rate)
+        ? prior.rate * smoothing + raw * (1 - smoothing) : raw;
+    }
+  }
+  headingTurnSamples.set(key, { t: sampleTime, heading, rate, receivedAt: seenAt });
+  return Date.now() - seenAt <= holdSec * 1000 ? rate : null;
+}
 // A canvas takes its paragraph direction from the interface language, so in Hebrew everything
 // drawn on the map is laid out RTL -- and bidi then reorders any label that is a Latin or
 // numeric run followed by another run. "5 nm" came out "nm 5"; "LLIB / ראש פינה" came out
@@ -232,10 +294,62 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   const haveSpeed = Number.isFinite(gsKt) && gsKt > 0;
   const hr = h * Math.PI / 180;
   const cosLat = Math.max(0.2, Math.cos(pos.lat * Math.PI / 180));
-  const atNm = (nm) => proj({
-    lat: pos.lat + (nm / 60) * Math.cos(hr),
-    lng: pos.lng + (nm / 60) * Math.sin(hr) / cosLat,
-  });
+  const minTurnKt = Math.max(0, finiteTuneNumber('livePredictorTurnMinKt', 10));
+  const sampleTime = Number.isFinite(opts && opts.sampleTime) ? opts.sampleTime : pos.t;
+  const receivedAt = Number.isFinite(opts && opts.receivedAt) ? opts.receivedAt : sampleTime;
+  const measuredRate = measuredHeadingTurnRate(opts && opts.trackKey, h, sampleTime,
+    receivedAt, (opts && opts.disableTurn) || !haveSpeed || gsKt < minTurnKt);
+  const minRate = Math.max(0, finiteTuneNumber('livePredictorTurnMinDegSec', 0.25));
+  const turnRate = haveSpeed && gsKt >= minTurnKt && Number.isFinite(measuredRate) &&
+    Math.abs(measuredRate) >= minRate ? measuredRate : null;
+  const maxArcDeg = Math.max(1, finiteTuneNumber('livePredictorTurnMaxArcDeg', 90));
+  const speedNmSec = haveSpeed ? gsKt / 3600 : 0;
+  const turnRadSec = Number.isFinite(turnRate) ? turnRate * Math.PI / 180 : 0;
+  const arcLimitNm = turnRadSec
+    ? speedNmSec * (maxArcDeg * Math.PI / 180) / Math.abs(turnRadSec) : Infinity;
+  const geoAtNm = (nm) => {
+    let northNm, eastNm, pathHeading = h;
+    if (!turnRadSec || nm <= 0) {
+      northNm = nm * Math.cos(hr);
+      eastNm = nm * Math.sin(hr);
+    } else {
+      const arcNm = Math.min(nm, arcLimitNm);
+      const arcSec = arcNm / speedNmSec;
+      const endRad = hr + turnRadSec * arcSec;
+      northNm = speedNmSec / turnRadSec * (Math.sin(endRad) - Math.sin(hr));
+      eastNm = speedNmSec / turnRadSec * (Math.cos(hr) - Math.cos(endRad));
+      pathHeading = h + turnRate * arcSec;
+      if (nm > arcNm) {
+        const straightNm = nm - arcNm;
+        const endHeadingRad = pathHeading * Math.PI / 180;
+        northNm += straightNm * Math.cos(endHeadingRad);
+        eastNm += straightNm * Math.sin(endHeadingRad);
+      }
+    }
+    return {
+      lat: pos.lat + northNm / 60,
+      lng: pos.lng + eastNm / (60 * cosLat),
+      heading: ((pathHeading % 360) + 360) % 360,
+    };
+  };
+  const pathAtNm = (nm) => {
+    const geo = geoAtNm(nm);
+    return { geo, screen: proj(geo), heading: geo.heading };
+  };
+  const frameAtNm = (nm) => {
+    const point = pathAtNm(nm);
+    const tr = point.heading * Math.PI / 180;
+    const aheadGeo = {
+      lat: point.geo.lat + (0.05 / 60) * Math.cos(tr),
+      lng: point.geo.lng + (0.05 / 60) * Math.sin(tr) /
+        Math.max(0.2, Math.cos(point.geo.lat * Math.PI / 180)),
+    };
+    const ahead = proj(aheadGeo);
+    const dx = ahead.x - point.screen.x, dy = ahead.y - point.screen.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    return { point, ux, uy, px: -uy, py: ux };
+  };
   const nmAtMin = (min) => gsKt * (min / 60);   // distance covered in `min` minutes at gsKt
   const s = proj(pos);
   // Line reaches whichever mark set extends further -- the 10 NM mark, or the 5-minute
@@ -244,12 +358,21 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
     ? Math.max(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1],
                 nmAtMin(HEADING_LINE_MARKS_MIN[HEADING_LINE_MARKS_MIN.length - 1]))
     : HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1];
-  const end = atNm(farNm);
-  const dx = end.x - s.x, dy = end.y - s.y;
-  const len = Math.hypot(dx, dy);
-  if (len < 1) return;                       // degenerate (extreme zoom-out)
-  const ux = dx / len, uy = dy / len;        // line direction (screen)
-  const px = -uy, py = ux;                    // unit perpendicular (screen)
+  const endFrame = frameAtNm(farNm);
+  const end = endFrame.point.screen;
+  const ux = endFrame.ux, uy = endFrame.uy;
+  if (Math.hypot(end.x - s.x, end.y - s.y) < 1) return; // degenerate (extreme zoom-out)
+
+  const pathDistances = [0];
+  if (turnRadSec) {
+    const curveNm = Math.min(farNm, arcLimitNm);
+    const curveDeg = Math.abs(turnRate) * curveNm / speedNmSec;
+    const segments = Math.max(2, Math.min(120, Math.ceil(curveDeg / 3)));
+    for (let i = 1; i <= segments; i++) pathDistances.push(curveNm * i / segments);
+    if (farNm > curveNm + 1e-6) pathDistances.push(farNm);
+  } else {
+    pathDistances.push(farNm);
+  }
 
   octx.save();
   octx.lineCap = 'butt';
@@ -257,7 +380,10 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   // the line — dashed so it reads clearly over a busy/coloured chart
   octx.beginPath();
   octx.moveTo(s.x, s.y);
-  octx.lineTo(end.x, end.y);
+  for (const nm of pathDistances.slice(1)) {
+    const point = pathAtNm(nm).screen;
+    octx.lineTo(point.x, point.y);
+  }
   octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), 0.95);
   octx.lineWidth = tune('liveHeadingLineWidthPx');
   octx.setLineDash([tune('liveHeadingDashPx'), tune('liveHeadingDashGapPx')]);
@@ -272,7 +398,9 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
   function drawMark(nm, primaryLabel, secondaryLabel, textColor) {
-    const m = atNm(nm);
+    const frame = frameAtNm(nm);
+    const m = frame.point.screen;
+    const px = frame.px, py = frame.py;
     octx.beginPath();
     octx.moveTo(m.x - px * tick, m.y - py * tick);
     octx.lineTo(m.x + px * tick, m.y + py * tick);
@@ -330,7 +458,13 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   octx.restore();
   if (typeof window !== 'undefined')
     window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(),
-      minMarks: haveSpeed ? HEADING_LINE_MARKS_MIN.slice() : [], headingLabel };
+      minMarks: haveSpeed ? HEADING_LINE_MARKS_MIN.slice() : [], headingLabel,
+      curved: !!turnRadSec, turnRate, maxArcDeg,
+      endHeading: endFrame.point.heading,
+      path: pathDistances.map(nm => {
+        const p = pathAtNm(nm);
+        return { nm, lat: p.geo.lat, lng: p.geo.lng, heading: p.heading };
+      }) };
 }
 
 // TOC / TOD markers along the route. A small dot + label at the point
@@ -869,7 +1003,16 @@ function draw() {
   // confident line pointing in a different aircraft's direction.
   if (window.NavAid && NavAid.followMe && typeof NavAid.followMe.viewerFix === 'function') {
     const followed = NavAid.followMe.viewerFix();
-    if (followed) drawHeadingLine(followed, followed.trk, followed.kt, { noFallback: true });
+    if (followed) {
+      const watching = typeof NavAid.followMe.watching === 'function'
+        ? NavAid.followMe.watching() : null;
+      drawHeadingLine(followed, followed.trk, followed.kt, {
+        noFallback: true,
+        trackKey: 'follow:' + ((watching && watching.id) || 'viewer'),
+        sampleTime: followed.t,
+        receivedAt: watching && watching.at,
+      });
+    }
   }
   drawInfo();
   drawPageFrame();

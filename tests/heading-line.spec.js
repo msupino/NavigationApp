@@ -1,5 +1,5 @@
 // @ts-check
-// Own-ship heading predictor: a line along the current track with TWO sets of
+// Own-ship heading predictor: a straight or measured-turn path along the current track with TWO sets of
 // cross-tick marks -- fixed distance (2/5/10 NM) and fixed time (2/5 minutes ahead) --
 // both, not either/or. Just the marks themselves: a time-to-reach subtext under the NM
 // marks and a distance subtext under the minute marks were both tried and reported as
@@ -125,6 +125,68 @@ test('the simulator own-ship gets minute marks from its own IAS too', async ({ p
   expect(out).toEqual([2, 5]);
 });
 
+test('successive own-location tracks bend the predictor in the measured turn direction', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    resetHeadingPredictor();
+    window.gpsLiveOn = true;
+    const now = Date.now();
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 0, t: now - 1000 };
+    drawOwnShip(window.gpsOwn, 0, 120);
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 3, t: now };
+    drawOwnShip(window.gpsOwn, 3, 120);
+    return window.__headingLine;
+  });
+  expect(out.curved).toBe(true);
+  expect(out.turnRate).toBeCloseTo(3, 4);
+  expect(out.path.length).toBeGreaterThan(2);
+  expect(out.endHeading).toBeCloseTo(93, 4); // current track + the default 90° arc cap
+  expect(out.path.at(-1).lng).toBeGreaterThan(34.9); // a right turn from north bends east
+});
+
+test('turn measurement crosses north by the shortest direction', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    resetHeadingPredictor();
+    const now = Date.now();
+    drawHeadingLine({ lat: 32.1, lng: 34.9, t: now - 1000 }, 1, 100,
+      { trackKey: 'wrap', sampleTime: now - 1000, receivedAt: now - 1000 });
+    drawHeadingLine({ lat: 32.1, lng: 34.9, t: now }, 359, 100,
+      { trackKey: 'wrap', sampleTime: now, receivedAt: now });
+    return window.__headingLine;
+  });
+  expect(out.curved).toBe(true);
+  expect(out.turnRate).toBeCloseTo(-2, 4);
+  expect(out.endHeading).toBeCloseTo(269, 4);
+});
+
+test('predictor stays straight without a fresh plausible airborne turn measurement', async ({ page }) => {
+  await boot(page);
+  const results = await page.evaluate(() => {
+    const now = Date.now();
+    function pair(key, firstHeading, secondHeading, speed, receivedAt = now) {
+      resetHeadingPredictor();
+      drawHeadingLine({ lat: 32.1, lng: 34.9 }, firstHeading, speed,
+        { trackKey: key, sampleTime: now - 1000, receivedAt: now - 1000 });
+      drawHeadingLine({ lat: 32.1, lng: 34.9 }, secondHeading, speed,
+        { trackKey: key, sampleTime: now, receivedAt });
+      return window.__headingLine.curved;
+    }
+    resetHeadingPredictor();
+    drawHeadingLine({ lat: 32.1, lng: 34.9 }, 20, 100,
+      { trackKey: 'single', sampleTime: now, receivedAt: now });
+    return {
+      single: window.__headingLine.curved,
+      straight: pair('straight', 20, 20, 100),
+      tooFast: pair('fast', 20, 25, 100), // 5°/s exceeds the default 4°/s validity cap
+      lowSpeed: pair('slow', 20, 23, 5),
+      stale: pair('stale', 20, 23, 100, now - 7000),
+    };
+  });
+  expect(results).toEqual({ single: false, straight: false, tooFast: false,
+    lowSpeed: false, stale: false });
+});
+
 test('the 10 NM mark projects to a point 10 NM ahead on the heading', async ({ page }) => {
   await boot(page);
   // Re-derive the outermost fixed mark geographically and check it against geo():
@@ -166,7 +228,10 @@ test('every heading-line knob is registered and exposed in the tune menu', async
   const info = await page.evaluate(() => {
     const keys = ['liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx',
       'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx',
-      'liveHeadingLabelPx', 'liveHeadingLabelGapPx'];
+      'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec',
+      'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg',
+      'livePredictorTurnMinKt', 'livePredictorTurnHoldSec',
+      'livePredictorTurnSmoothing'];
     const group = NavAid.tuningGroups.find(g => g.name === 'Live aircraft');
     return {
       registered: keys.every(k => NavAid.tuningDefaults[k]),
@@ -258,9 +323,10 @@ test('the simulator feed\'s magnetic heading is converted to true for the geomet
       json: async () => ({ latitude: 32.1, longitude: 34.9, altitude: 1000,
         heading: 90, variation: 5, ias: 90 }) });
     await _simFetch();
-    return window.simAircraft.hdg;
+    return { hdg: window.simAircraft.hdg, t: window.simAircraft.t };
   });
-  expect(out).toBe(95);
+  expect(out.hdg).toBe(95);
+  expect(out.t).toBeGreaterThan(Date.now() - 5000); // timed samples enable turn-rate measurement
 });
 
 // Two things about the mark labels themselves, both reported off a Hebrew session:
