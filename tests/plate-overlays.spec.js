@@ -114,6 +114,9 @@ test('airfield chart checkbox reveals its type dropdown like instrument charts',
       options: Array.from(document.getElementById('plate-type').options).map(option => option.value),
       visibleCheckboxes: Array.from(frame.querySelectorAll('input[type="checkbox"]'))
         .filter(input => input.getClientRects().length).map(input => input.id),
+      label: document.querySelector('[data-i18n="tbPlateEnabled"]').textContent,
+      opacityLabel: document.querySelector('[data-i18n="tbPlateOpacity"]').textContent,
+      opacityValue: document.getElementById('plate-opacity-val').textContent,
     };
   });
   expect(controls).toEqual({
@@ -122,6 +125,9 @@ test('airfield chart checkbox reveals its type dropdown like instrument charts',
     legacyVisible: false,
     options: CBS,
     visibleCheckboxes: ['plate-enabled-cb'],
+    label: 'Show airfield charts',
+    opacityLabel: 'Chart opacity',
+    opacityValue: '80%',
   });
   await page.locator('#plate-enabled-cb').check();
   await expect(page.locator('#plate-type')).toBeVisible();

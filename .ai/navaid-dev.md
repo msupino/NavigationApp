@@ -857,7 +857,7 @@ as a machine-readable registry.
   overlays: `''` = all airfields, `'auto'` = the route's first & last airfield
   (live via `syncLegs()`), or a single ICAO.
 - `navaid.plateType` — the airfield-chart type selected in Extra layers. The one
-  visible **Show airfield chart** checkbox drives the existing mutually exclusive
+  visible **Show airfield charts** checkbox drives the existing mutually exclusive
   circuit, training, CVFR, helicopter and communication-failure overlay settings;
   turning it off remembers this type for the next enable. Included in settings sync.
 - `navaid.overlayBoundsOverrides` — per-plate overlay geometry overrides from

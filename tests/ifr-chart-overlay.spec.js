@@ -160,6 +160,12 @@ test('instrument charts precede live traffic and match the airfield-chart contro
       platePickerVisible: !!document.getElementById('plate-type').getClientRects().length,
       ifrSlider: !!ifr.querySelector('#ifr-opacity'),
       plateSlider: !!document.getElementById('plate-opacity'),
+      ifrOrder: Array.from(ifr.querySelectorAll('input, select')).map(element => element.id),
+      plateOrder: Array.from(document.getElementById('plate-enabled-cb').closest('.tb-layer-frame')
+        .querySelectorAll('#plate-enabled-cb, #plate-type, #plate-opacity, #plate-airfield'))
+        .map(element => element.id),
+      ifrOpacityText: document.getElementById('ifr-opacity-val').textContent,
+      plateOpacityText: document.getElementById('plate-opacity-val').textContent,
     };
   });
   expect(layout).toEqual({
@@ -168,6 +174,10 @@ test('instrument charts precede live traffic and match the airfield-chart contro
     platePickerVisible: false,
     ifrSlider: true,
     plateSlider: true,
+    ifrOrder: ['ifr-cb', 'ifr-sheet', 'ifr-opacity'],
+    plateOrder: ['plate-enabled-cb', 'plate-type', 'plate-opacity', 'plate-airfield'],
+    ifrOpacityText: '80%',
+    plateOpacityText: '80%',
   });
   await on(page);
   await expect(page.locator('#ifr-sheet')).toBeVisible();

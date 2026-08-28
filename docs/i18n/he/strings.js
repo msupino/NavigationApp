@@ -727,7 +727,7 @@ window.S = {
   tbPlateAirfieldTitle: 'הגבל את תרשימי השדה לשדה אחד, כדי שתרשימי שדות שכנים לא יחפפו',
   tbPlateAirfieldAll: 'כל השדות',
   tbPlateAirfieldAuto: 'אוטומטי (תחילת וסוף מסלול)',
-  tbPlateEnabled: 'הצג תרשים שדה',
+  tbPlateEnabled: 'הצג תרשימי שדה',
   tbPlateEnabledTitle: 'הצג את תרשים השדה שנבחר',
   tbPlateType: 'איזה תרשים',
   tbPlateTypeTitle: 'בחר איזה תרשים שדה להציג; ניתן להציג רק תרשים אחד בכל פעם',
