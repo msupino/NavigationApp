@@ -184,8 +184,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   toolbar is the original floating vertical column with a `⋯` drag handle
   (`#toolbar-handle`) and hamburger collapse control. Position is persisted
   at `navaid.toolbarPos.<lang>`, re-clamped on `window resize`; collapsed state is
-  persisted at `navaid.toolbarCollapsed`. Its undragged default stays left-anchored in
-  English and right-anchored in Hebrew while collapsing or expanding. On desktop
+  persisted at `navaid.toolbarCollapsed`. By default, the undragged toolbar stays
+  left-anchored in English and right-anchored in Hebrew while collapsing or expanding.
+  Switching from the desktop menubar clears its inline desktop geometry before restoring
+  the separate mobile position or default. On desktop
   (`min-width: 681px`)
   those same `.tb-section` groups render as a fixed top menubar with
   Windows-like dropdown panels. Desktop ignores saved mobile drag/collapse
@@ -200,7 +202,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Inspector:** `#insp-title` is an `<input>` — for waypoints it's
   the editable name (placeholder `WP N`); for legs it's read-only
   `Leg N`; for notes it's read-only and a textarea + color picker
-  below holds the body. The global `keydown` handler bails out when
+  below holds the body. Opening a multi-point chooser clears and closes any previous
+  inspector/selection; choosing an item opens only that item's inspector. The global
+  `keydown` handler bails out when
   the target is an input / textarea / contenteditable so typing
   Backspace doesn't delete.
 - **Waypoints:** circle auto-sized to fit name or sequence number

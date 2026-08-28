@@ -7350,6 +7350,7 @@ function refreshMapAfterToolbarModeChange() {
   const posKey = () => navLangPosKey(toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   const posBase = () => (toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
+  let wasDesktopMenu = toolbarUsesDesktopMenu();
 
   function clampPos(x, y) {
     const w = bar.offsetWidth, h = bar.offsetHeight;
@@ -7467,7 +7468,10 @@ function refreshMapAfterToolbarModeChange() {
   });
 
   function applyResponsiveToolbarMode() {
-    if (toolbarUsesDesktopMenu()) {
+    const desktopMenu = toolbarUsesDesktopMenu();
+    const enteringMobile = wasDesktopMenu && !desktopMenu;
+    wasDesktopMenu = desktopMenu;
+    if (desktopMenu) {
       dragging = false;
       bar.classList.remove('dragging');
       clearInlineDesktopPos();       // drop any leftover mobile-column position
@@ -7477,6 +7481,10 @@ function refreshMapAfterToolbarModeChange() {
       if (typeof window.reclampToolbarSections === 'function') window.reclampToolbarSections();
       return;
     }
+    // Desktop and mobile positions have separate keys, so their live inline geometry must
+    // be separate too. Otherwise an absent mobile save makes restorePos() a no-op and the
+    // desktop menubar's coordinates leak into the floating toolbar.
+    if (enteringMobile) clearInlineDesktopPos();
     restorePos();
     let sc = null;
     try { sc = lsGet(COLLAPSED_KEY); } catch (e) { /* storage unavailable */ }
