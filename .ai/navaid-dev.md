@@ -936,6 +936,14 @@ Symmetric encryption lets any link holder read and create a valid-looking update
 This accepted limitation is disclosed before sharing and in `docs/privacy.html`.
 Follow Me must not be described as authenticated or safety tracking.
 
+On app startup, an active stored Follow Me session reconnects only when Location or
+route recording is also active. The simulator never auto-opens an MQTT publisher; a
+simulated position can be shared only after Follow Me is explicitly enabled. With no
+real position source, the stored link stays available for reuse but no MQTT publisher is
+opened and no "still sharing" message is shown. Pending retained-position cleanup is
+still retried without a position source. A successful automatic resume keeps its
+confirmation toast visible for 6 seconds so the full message can be read.
+
 Current envelopes carry publisher time `t` and a persisted monotonic `seq`. Viewers use
 `t` for displayed age and require increasing `seq`. During cached-client rollout, a
 legacy packet without `seq` requires increasing `t`. Latitude must be from -90 through
