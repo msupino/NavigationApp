@@ -205,7 +205,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   the editable name (placeholder `WP N`); for legs it's read-only
   `Leg N`; for notes it's read-only and a textarea + color picker
   below holds the body. Opening a multi-point chooser clears the previous selection and
-  closes the previous inspector; choosing an item opens only that item's inspector. The global
+  closes the previous inspector. Choosing an item closes the chooser and opens only that
+  item's inspector or NOTAM details. The global
   `keydown` handler bails out when
   the target is an input / textarea / contenteditable so typing
   Backspace doesn't delete.
