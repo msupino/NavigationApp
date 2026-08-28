@@ -735,9 +735,10 @@ as a machine-readable registry.
   CREATE a row the dataset has none for -- Haifa publishes no clearance at all.
   `featureNotamFreqRows` in the gist (default `true`) withdraws the applied
   frequencies; the pointer badge is unaffected either way.
-- `navaid.showIfr` — `'0'` / `'1'` for the instrument-chart layer, and
-  `navaid.ifrSheet.<ICAO>` for which sheet that field is showing (device-local:
-  a composed key the exact-key sync layer cannot enumerate).
+- `navaid.showIfr` — `'0'` / `'1'` for the instrument-chart layer;
+  `navaid.ifrSheet` remembers the one selected `"<ICAO>|<png>"` sheet, and
+  `navaid.ifrOpacity` remembers its independent opacity. All three are included
+  in settings sync.
 - `navaid.baseLayer` — which chart is drawn *under* a plate overlay, chosen in
   View/Set beside the layer picker; `defaultBaseLayer` seeds it.
 - `navaid.showWind` — `'0'` / `'1'` for wind inputs, arrows, and readout.
@@ -855,6 +856,10 @@ as a machine-readable registry.
 - `navaid.plateAirfield` — "Show plates for" filter on the airfield-plate
   overlays: `''` = all airfields, `'auto'` = the route's first & last airfield
   (live via `syncLegs()`), or a single ICAO.
+- `navaid.plateType` — the airfield-chart type selected in Extra layers. The one
+  visible **Show airfield charts** checkbox drives the existing mutually exclusive
+  circuit, training, CVFR, helicopter and communication-failure overlay settings;
+  turning it off remembers this type for the next enable. Included in settings sync.
 - `navaid.overlayBoundsOverrides` — per-plate overlay geometry overrides from
   the `?align=1` align editor, keyed by overlay PNG filename; axis-aligned
   (`sw`/`ne`) or rotated (`tl`/`tr`/`bl`). Wins over `airfields.json` bounds.
