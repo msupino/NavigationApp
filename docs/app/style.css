@@ -626,11 +626,11 @@ html[dir="rtl"] .tb-section.open .tb-section-head::after { transform: rotate(-90
   max-width: min(96vw, 240px);
   padding: 4px 6px;
 }
-/* In Hebrew the clock mirrors to the LEFT while the toolbar stayed left too, so the closed
-   menu sat on top of it. Mirror the toolbar as well, the way the rest of the RTL layout
-   does -- clock on one side, menu on the other, in both languages. A dragged position
-   (inline style) still wins. */
-html[dir="rtl"] #toolbar.collapsed {
+/* In Hebrew the clock mirrors to the LEFT, so the default floating toolbar belongs on the
+   RIGHT in both states. Keeping this independent of .collapsed also prevents the toolbar
+   from jumping across a touch tablet when the menu expands. A dragged position (inline
+   style) still wins. */
+html[dir="rtl"] #toolbar {
   left: auto;
   right: 12px;
 }
@@ -2616,6 +2616,7 @@ body.theme-light .shortcuts-help-keys kbd {
   #toolbar { gap: 6px; top: 8px; left: 8px;
              max-height: calc(100vh - 16px);
              max-height: calc(100dvh - 16px); }
+  html[dir="rtl"] #toolbar { left: auto; right: 8px; }
   #toolbar button { padding: 9px 12px; font-size: 14px; }
   #toolbar .navtoggle { font-size: 14px; }
   #toolbar .navtoggle input { width: 18px; height: 18px; }
