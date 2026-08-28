@@ -703,6 +703,45 @@ NavAid.tuningDefaults = {
   // tuning gist to bring the control, its keyboard shortcut and the drawing back, without a
   // deploy -- the code is all still here.
   featureShowReturn: { value: false, type: 'bool', label: 'Feature: show return path' },
+  // Retired, not deleted. The Return route picker in the flight plan joins a SEPARATE saved
+  // route as the way home -- the two-saved-routes workflow, from before a route could
+  // retrace itself. An out-and-back is now drawn as one route (a-b-c-b-a), the turn is
+  // derived from the geometry, and such a route ends at its departure field -- where the
+  // picker disables itself anyway, because landing means a separate plan per leg
+  // (AIP alef-11). What was left was a control that is inert on the common path and applies
+  // only to a route ending at a non-aerodrome waypoint. Off by default; the joining code is
+  // untouched behind it, so a deployment that still files that way can switch it back on.
+  featureFplReturnJoin: { value: false, type: 'bool',
+    label: 'Feature: join a saved return route in the flight plan' },
+  // Follow me: a link that shows someone where the aeroplane is, relayed by a PUBLIC MQTT
+  // broker and encrypted before it gets there -- see docs/app/followme.js. Off until it has
+  // been flown with: a position feed that is wrong or stale is worse than none.
+  // The offline floor: a small en-route map fetched quietly on load, so a pilot who never
+  // pressed "Download charts" still has something in the air. ~300 tiles, ~4 MB over the
+  // published extent; the deep zooms stay behind the button because the full pack is ~200 MB.
+  offlineAutoFloor: { value: false, type: 'bool', label: 'Fetch a basic offline map on load' },
+  offlineFloorWifiOnly: { value: true, type: 'bool',
+    label: 'Fetch the basic offline map only when the connection is not metered' },
+  offlineFloorMinZ: { value: 7, min: 5, max: 12, step: 1, label: 'Basic offline map: widest zoom' },
+  offlineFloorMaxZ: { value: 10, min: 6, max: 13, step: 1, label: 'Basic offline map: closest zoom' },
+  featureFollowMe: { value: false, type: 'bool', label: 'Feature: share a live position link' },
+  followMeBroker: { value: 'wss://broker.emqx.io:8084/mqtt', type: 'text',
+    label: 'Follow me: public broker WebSocket URL' },
+  followMeRateSec: { value: 2, min: 1, max: 30, step: 1, label: 'Follow me: publish every (s)' },
+  followMeStaleSec: { value: 30, min: 5, max: 300, step: 5,
+    label: 'Follow me: call the position stale after (s)' },
+  // A share that survives the app dying. The topic and key are kept on the device, so a
+  // crash, a force-quit or a reboot mid-flight resumes the SAME link instead of stranding
+  // everyone who already has it. Hours, because a link that outlives the flight is a link
+  // that tracks you next week: past this, sharing again mints a new one.
+  followMeResumeHr: { value: 12, min: 1, max: 48, step: 1,
+    label: 'Follow me: resume the same link for (hours)' },
+  // The other end of that trade: one link per aircraft, kept forever, that can live in a
+  // club WhatsApp group. It only ever shows a position while the pilot is actually sharing
+  // -- between flights whoever holds it sees "waiting for a position" -- but it does mean a
+  // standing invitation to every future flight, so it is off unless someone asks for it.
+  featureFollowMePersist: { value: false, type: 'bool',
+    label: 'Feature: keep one follow-me link per aircraft, forever' },
   // The one-time nudge that teaches a first-time visitor the core action, plus the click
   // priming that goes with it (an empty map's first plain click drops a waypoint instead of
   // inspecting). Both are the same onboarding gesture, so one switch governs them: off, and
@@ -893,7 +932,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'featureFollowMe', 'followMeBroker', 'offlineAutoFloor', 'offlineFloorWifiOnly', 'offlineFloorMinZ', 'offlineFloorMaxZ', 'followMeRateSec', 'followMeStaleSec', 'followMeResumeHr', 'featureFollowMePersist', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1848,6 +1887,20 @@ window.S = Object.assign({
   tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
   tbShare: '🔗 Share',
+  tbFollowMe: 'Follow me',
+  followMeSharingNow: 'Sharing your position — tap to stop',
+  followMeAskCode: 'Aircraft code (e.g. 4X-CDE)',
+  followMeNeedCode: 'Follow me needs an aircraft code — whoever opens the link has to know which aeroplane it is.',
+  followMeWaiting: 'Follow me: waiting for a position…',
+  followMeLastFix: (sec) => (sec < 90 ? 'Last position ' + sec + 's ago'
+    : 'Last position ' + Math.round(sec / 60) + ' min ago'),
+  followMeStale: 'not moving — the feed has stopped',
+  followMeResumed: 'Follow me: still sharing — the same link as before still works.',
+  tbFollowMeTitle: 'Share a link that shows where you are while you fly. The position is encrypted; the key is in the link.',
+  tbFollowMeStop: 'Stop sharing',
+  followMeCopied: 'Follow-me link copied — it works while you are sharing, and dies when you stop.',
+  followMeStopped: 'Follow me: stopped. The link is dead.',
+  followMeNoFix: 'Follow me needs a position: turn on Location or Record first.',
   tbShareTitle: 'Copy a shareable link to this route to the clipboard',
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',

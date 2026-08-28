@@ -101,6 +101,88 @@
     }
   }
 
+  // --- the floor -------------------------------------------------------------
+  // The pack above is something a pilot chooses to download. This is the part that happens
+  // whether or not anyone remembered: a small en-route map of the whole country, refetched
+  // quietly on load, so "the map was blank in the air" needs someone to have both forgotten
+  // AND been offline at the desk.
+  //
+  // Small on purpose. z7-10 over the published chart extent is ~300 tiles, about 4 MB. The
+  // full z7-13 pack is ~14,600 tiles and ~200 MB, which is not something to start on someone
+  // else's data plan without being asked -- so the deep zooms stay behind the button.
+  //
+  // It also repairs itself, which matters more than it sounds: Safari evicts site data after
+  // about a week of not being used, and does not honour storage.persist(). A pack downloaded
+  // before one flight can simply be gone before the next, with nothing said. A floor that is
+  // refetched every load turns that from a silent loss into a few seconds of wifi.
+  const FLOOR_CONCURRENCY = 4;
+  let _floorRun = null;
+
+  function floorWanted() {
+    if (typeof tune !== 'function') return false;
+    if (tune('offlineAutoFloor') !== true) return false;
+    // Not on someone's data plan. 4 MB is small, but "small" is not ours to decide for a
+    // pilot roaming abroad or on a metered hotspot.
+    if (tune('offlineFloorWifiOnly') === false) return true;
+    try {
+      const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (!c) return true;                       // no way to ask: assume it is fine
+      if (c.saveData) return false;              // Data Saver is an explicit "do not"
+      return !/^(slow-2g|2g|3g)$/.test(c.effectiveType || '');
+    } catch (e) { return true; }
+  }
+
+  // Returns what it did, so the caller (and a test) can tell "skipped" from "nothing to do".
+  async function fetchFloor(opts) {
+    const o = opts || {};
+    if (_floorRun) return _floorRun;
+    if (!o.force && !floorWanted()) return { skipped: 'metered-or-off' };
+    const cur = chartLayer();
+    if (!cur) return { skipped: 'no chart layer' };
+    const zMin = Number(o.zMin != null ? o.zMin : (typeof tune === 'function' ? tune('offlineFloorMinZ') : 7));
+    const zMax = Number(o.zMax != null ? o.zMax : (typeof tune === 'function' ? tune('offlineFloorMaxZ') : 10));
+    if (!Number.isFinite(zMin) || !Number.isFinite(zMax) || zMin > zMax) return { skipped: 'bad range' };
+
+    _floorRun = (async () => {
+      let ok = 0, fetched = 0, failed = 0;
+      try {
+        try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* */ }
+        const cache = await caches.open(TILE_CACHE);
+        const list = offlineTileList(TILE.chartBounds, zMin, zMax);
+        const worker = async () => {
+          while (list.length) {
+            const c = list.pop();
+            const liveUrl = tileLayerUrl(cur.layer, c);
+            try {
+              // Already there: cost nothing on every load after the first.
+              if (await cache.match(liveUrl)) { ok++; continue; }
+              const r = await fetch(exportTileLayerUrl(cur.layer, c), { mode: 'cors' });
+              if (r.ok) { await cache.put(liveUrl, r); ok++; fetched++; }
+              else failed++;                  // 404 = sea, outside coverage
+            } catch (e) { failed++; }         // offline at the desk: try again next load
+          }
+        };
+        const workers = [];
+        for (let i = 0; i < FLOOR_CONCURRENCY; i++) workers.push(worker());
+        await Promise.all(workers);
+        if (fetched) notifySw();
+        return { ok, fetched, failed, zMin, zMax };
+      } finally {
+        _floorRun = null;
+      }
+    })();
+    return _floorRun;
+  }
+
+  // After boot, and out of its way: the map painting is what the pilot is waiting for, and a
+  // few hundred tile requests during it would be felt.
+  function scheduleFloor() {
+    const go = () => { fetchFloor().catch(() => { /* next load tries again */ }); };
+    const idle = window.requestIdleCallback;
+    if (idle) idle(go, { timeout: 8000 });
+    else setTimeout(go, 4000);
+  }
+
   // The SW skips tile proxying entirely while no pack exists (perf); tell it
   // to re-check after a download or delete.
   function notifySw() {
@@ -175,8 +257,14 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();
+  // ...and the floor, once the map has settled. Deliberately not inside wire(): the button
+  // exists whether or not the floor is offered, and the floor runs whether or not the button
+  // was ever pressed.
+  if (document.readyState === 'complete') scheduleFloor();
+  else window.addEventListener('load', scheduleFloor);
 
   // Test seam
   window.NavAidOfflineTiles = { offlineTileList, downloadPack, deletePack, packSize,
+    fetchFloor, floorWanted, scheduleFloor,
     TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z };
 }());
