@@ -955,6 +955,21 @@ While viewing a Follow Me link, each received fix recentres the map on the aircr
 The on-map orientation control remains available in follower mode and toggles North-up versus
 the followed aircraft's track-up view. The follower also draws the standard dashed heading
 predictor with labelled 2 NM, 5 NM, and 10 NM marks.
+The always-visible follower status banner is parked below the toolbar and follows toolbar or
+viewport size changes. If an expanded phone menu leaves no free vertical space, the banner is
+clamped on-screen below the toolbar's stacking level so it cannot block menu controls.
+Its mixed Hebrew/aviation content is rendered as direction-isolated segments: the segment order
+follows the page direction, while aircraft code, altitude, speed, track and coordinates stay LTR.
+
+For ground testing, `scripts/follow-me-simulator.py` publishes the bundled
+`scripts/routes/LLHZ-to-LLHA.json` route template as aircraft `TEST`, or accepts any exported
+route JSON. Like the cvfr-bridge fake, it flies the route's waypoint geometry with per-leg
+`flightSpeed` and `inboundAltitude`, loops indefinitely, and offers `--speed-factor` plus
+global speed/altitude overrides. It prints a new follower link, uses the production
+AES-GCM/MQTT retained-message protocol, and clears the retained fix on normal exit. Use
+`--once` for one flight. Its optional packages are listed in
+`scripts/requirements-follow-me.txt`; `--dry-run` validates without importing them or contacting
+the broker.
 
 The shared predictor is used by real GPS/recording, simulator, and Follow Me fixes. Two fresh,
 timed ground-track samples can bend it into a constant-rate turn; it curves by at most 90° and
