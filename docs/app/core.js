@@ -723,8 +723,10 @@ NavAid.tuningDefaults = {
   featureFplReturnJoin: { value: false, type: 'bool',
     label: 'Feature: join a saved return route in the flight plan' },
   // Follow me: a link that shows someone where the aeroplane is, relayed by a PUBLIC MQTT
-  // broker and encrypted before it gets there -- see docs/app/followme.js. Off until it has
-  // been flown with: a position feed that is wrong or stale is worse than none.
+  // test broker and encrypted before it gets there -- see docs/app/followme.js. The relay is
+  // best-effort and unauthenticated; encryption hides the payload from the broker, while any
+  // bearer-link holder can read or submit valid-looking packets. Off until it has been flown
+  // with: a position feed that is wrong or stale is worse than none.
   // The offline floor: a small en-route map fetched quietly on load, so a pilot who never
   // pressed "Download charts" still has something in the air. ~300 tiles, ~4 MB over the
   // published extent; the deep zooms stay behind the button because the full pack is ~200 MB.
@@ -1895,16 +1897,22 @@ window.S = Object.assign({
   tbShare: '🔗 Share',
   tbFollowMe: 'Follow me',
   followMeSharingNow: 'Sharing your position — tap to stop',
-  followMeAskCode: 'Aircraft code (e.g. 4X-CDE)',
+  followMeConnecting: 'Follow me: connecting — tap to stop',
+  followMeReconnecting: 'Follow me: reconnecting — tap to stop',
+  followMeStopping: 'Follow me: stopping — clearing the last position',
+  followMeStoppingShort: 'Stopping sharing…',
+  followMeAskCode: 'Aircraft code (e.g. 4X-CDE)\n\nUses a public best-effort relay. Anyone with the link can view or submit positions.',
   followMeNeedCode: 'Follow me needs an aircraft code — whoever opens the link has to know which aeroplane it is.',
+  followMeStartFailed: 'Follow me could not start because this device cannot store the private session.',
   followMeWaiting: 'Follow me: waiting for a position…',
   followMeLastFix: (sec) => (sec < 90 ? 'Last position ' + sec + 's ago'
     : 'Last position ' + Math.round(sec / 60) + ' min ago'),
   followMeStale: 'not moving — the feed has stopped',
   followMeResumed: 'Follow me: still sharing — the same link as before still works.',
-  tbFollowMeTitle: 'Share a link that shows where you are while you fly. The position is encrypted; the key is in the link.',
+  tbFollowMeTitle: 'Share a best-effort live position link through a public relay. Anyone with the link can view or submit positions.',
   tbFollowMeStop: 'Stop sharing',
-  followMeCopied: 'Follow-me link copied — it works while you are sharing, and dies when you stop.',
+  followMeCopied: 'Follow-me link copied.',
+  followMeShareFailed: 'Follow me started, but the link could not be shared or copied.',
   followMeStopped: 'Follow me: stopped. The link is dead.',
   followMeNoFix: 'Follow me needs a position: turn on Location or Record first.',
   tbShareTitle: 'Copy a shareable link to this route to the clipboard',

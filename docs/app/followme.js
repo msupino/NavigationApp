@@ -1,25 +1,26 @@
 // Follow me: a link that shows someone where the aeroplane is, with no server of ours.
-//
-// Two devices that never talk to the same machine cannot see each other, so something has to
-// relay. The question is whose. This uses a PUBLIC MQTT broker over WebSocket -- no account,
-// no signup, nothing for us to run or pay for or keep up. The position is published to a
-// topic nobody can guess, encrypted before it leaves the aeroplane, and the key travels in
-// the link's FRAGMENT, which browsers never send to a server. So the broker relays bytes it
-// cannot read, and a public relay stops being a privacy problem.
-//
+
+// Two devices need a relay. This uses a PUBLIC MQTT broker over WebSocket, with no NavAid
+// account or server. Positions use an unguessable topic and browser-side encryption.
+// The key is in the link fragment, which browsers do not send to a server.
+
+// The broker cannot read positions, but the test relay has no availability promise.
+// The URL is a bearer capability. Its symmetric key can also create valid-looking packets.
+// This accepted limit is disclosed before sharing; this is not authenticated safety tracking.
+
 // What it is not: a tracking service. A public broker is best-effort and unauthenticated,
 // there is no history, and a phone that loses signal simply stops publishing. The viewer is
 // built around saying so -- see followMeAge -- because a map that quietly keeps drawing an
 // aeroplane where it last was is worse than a map that admits it does not know.
-//
+
 // The MQTT client here is deliberately small and in-repo rather than a library from a CDN:
-// this is 3.1.1 with QoS 0, which is a publish, a subscribe and a ping.
+// positions use QoS 0; retained cleanup uses QoS 1 so Stop can wait for broker acknowledgement.
 (function () {
   'use strict';
   const NS = (window.NavAid = window.NavAid || {});
 
   // --- MQTT 3.1.1 over WebSocket, the parts a position feed uses -------------
-  const CONNECT = 1, CONNACK = 2, PUBLISH = 3, SUBSCRIBE = 8, PINGREQ = 12;
+  const CONNECT = 1, CONNACK = 2, PUBLISH = 3, PUBACK = 4, SUBSCRIBE = 8, PINGREQ = 12;
 
   function encodeLength(n) {
     const out = [];
@@ -33,6 +34,10 @@
   }
   function encodeString(s) {
     const bytes = new TextEncoder().encode(s);
+    return [bytes.length >> 8, bytes.length & 0xff, ...bytes];
+  }
+  function encodeBytes(value) {
+    const bytes = value || new Uint8Array(0);
     return [bytes.length >> 8, bytes.length & 0xff, ...bytes];
   }
   function packet(type, flags, body) {
@@ -58,7 +63,9 @@
   function mqttConnect(url, opts) {
     const o = opts || {};
     const Impl = o.WebSocketImpl || window.WebSocket;
-    const client = { ws: null, onMessage: null, onOpen: null, onClose: null, ready: false };
+    const client = {
+      ws: null, onMessage: null, onOpen: null, onClose: null, onPublishAck: null, ready: false,
+    };
     let ping = 0, retry = 0, timer = 0, done = false;
     let packetId = 1;
 
@@ -74,11 +81,20 @@
 
       ws.onopen = () => {
         const keepalive = 30;
-        ws.send(packet(CONNECT, 0, [
-          ...encodeString('MQTT'), 4, 0x02, keepalive >> 8, keepalive & 0xff,
+        const will = o.will && o.will.topic ? o.will : null;
+        // A retained empty Last Will removes the last position if the app crashes or the
+        // device disappears without completing Stop. Will QoS 0 is enough for this fallback;
+        // deliberate Stop separately waits for a QoS 1 PUBACK.
+        const connectFlags = 0x02 | (will ? 0x04 | (will.retain ? 0x20 : 0) : 0);
+        const connectPayload = [
           // A fresh client id per attempt: a broker that still holds the old session would
           // otherwise kick the reconnecting client as a duplicate.
           ...encodeString((o.clientId || 'navaid') + '-' + Math.random().toString(36).slice(2, 8)),
+        ];
+        if (will) connectPayload.push(...encodeString(will.topic), ...encodeBytes(will.payload));
+        ws.send(packet(CONNECT, 0, [
+          ...encodeString('MQTT'), 4, connectFlags, keepalive >> 8, keepalive & 0xff,
+          ...connectPayload,
         ]));
         // Public brokers drop a client that goes quiet. Half the keepalive, as the spec suggests.
         ping = setInterval(() => {
@@ -104,6 +120,13 @@
           if (client.onOpen) client.onOpen();
           return;
         }
+        if (type === PUBACK) {
+          const len = readLength(buf, 1);
+          if (!len || len.value !== 2 || len.next + 1 >= buf.length) return;
+          const id = (buf[len.next] << 8) | buf[len.next + 1];
+          if (client.onPublishAck) client.onPublishAck(id);
+          return;
+        }
         if (type !== PUBLISH) return;                 // SUBACK, PINGRESP: nothing to do
         const len = readLength(buf, 1);
         if (!len) return;
@@ -117,9 +140,14 @@
 
     client.publish = (topic, payload, opts) => {
       if (!client.ready) return false;
-      // Bit 0 of the PUBLISH flags is RETAIN: keep this as the topic's last known value.
-      client.ws.send(packet(PUBLISH, (opts && opts.retain) ? 1 : 0, [...encodeString(topic), ...payload]));
-      return true;
+      const qos = opts && opts.qos === 1 ? 1 : 0;
+      // Bit 0 is RETAIN; QoS 1 occupies bit 1 and adds a packet id after the topic.
+      const id = qos ? packetId++ : 0;
+      if (packetId > 0xffff) packetId = 1;
+      client.ws.send(packet(PUBLISH, (opts && opts.retain ? 1 : 0) | (qos << 1), [
+        ...encodeString(topic), ...(qos ? [id >> 8, id & 0xff] : []), ...payload,
+      ]));
+      return qos ? id : true;
     };
     client.subscribe = (topic) => {
       if (!client.ready) return false;
@@ -194,6 +222,7 @@
   // link that tracks you next week, and the only way to be sure it cannot is to have no
   // way to resume it.
   let session = null;
+  let startFailure = null;
 
   // The aircraft's code -- 4X-CDE, or whatever the pilot types. It is a LABEL, not an
   // identity: nothing checks it, and a pilot can type any registration they like. That is
@@ -223,12 +252,36 @@
   const resumeMs = () => Math.max(1, Number(tune('followMeResumeHr', 12)) || 12) * 3600000;
   const persistLink = () => tune('featureFollowMePersist', false) === true;
 
-  function storedSession() {
+  function checkedSession() {
+    let text;
     try {
-      const raw = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-      if (!raw || !raw.id || !raw.k || !raw.reg) return null;
+      text = localStorage.getItem(SESSION_KEY);
+    } catch (e) {
+      return { ok: false, value: null };
+    }
+    if (!text) return { ok: true, value: null };
+    try {
+      const raw = JSON.parse(text);
+      if (!raw || !raw.id || !raw.k || !raw.reg) return { ok: true, value: null };
       // A key of the wrong size is a key from a broken write, not a session.
-      if (b64url.to(raw.k).length !== 32) return null;
+      if (b64url.to(raw.k).length !== 32) return { ok: true, value: null };
+      raw.seq = Number.isSafeInteger(raw.seq) && raw.seq >= 0 ? raw.seq : 0;
+      raw.pendingStop = raw.pendingStop === true;
+      raw.on = raw.on === true;
+      return { ok: true, value: raw };
+    } catch (e) {
+      // The store was readable. Malformed data cannot authorize a resume.
+      return { ok: true, value: null };
+    }
+  }
+  function rawSession() { return checkedSession().value; }
+  function storedSession() {
+    const raw = rawSession();
+    try {
+      if (!raw) return null;
+      // A pending Stop owns the capability until it can clear the broker. Expiry must not
+      // make that cleanup impossible; it is never eligible for ordinary sharing reuse.
+      if (raw.pendingStop) return raw;
       if (!persistLink() && !(Date.now() - Number(raw.at) < resumeMs())) return null;
       return raw;
     } catch (e) {
@@ -236,56 +289,239 @@
     }
   }
   function saveSession(o) {
-    try { localStorage.setItem(SESSION_KEY, JSON.stringify(o)); } catch (e) { /* storage off */ }
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(o));
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
   function clearSession() {
-    try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* storage off */ }
+    try {
+      localStorage.removeItem(SESSION_KEY);
+      return localStorage.getItem(SESSION_KEY) === null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function refreshSessionControls() {
+    if (typeof window.refreshFollowMeControl === 'function') window.refreshFollowMeControl();
+    if (typeof window.refreshFollowMeMapControl === 'function') window.refreshFollowMeMapControl();
+  }
+
+  function sessionRecord(s, on, pendingStop) {
+    return {
+      id: s.id, k: s.rawKeyB64, reg: s.reg, at: s.lastActiveAt,
+      seq: s.seq, on: on === true, pendingStop: pendingStop === true,
+    };
+  }
+
+  function sessionAuthorized(s) {
+    const checked = checkedSession();
+    const stored = checked.value;
+    return !!(s && stored && stored.on && !stored.pendingStop &&
+      stored.id === s.id && stored.k === s.rawKeyB64);
+  }
+
+  function withFollowMeLock(action) {
+    const locks = navigator.locks;
+    if (locks && typeof locks.request === 'function') {
+      return locks.request('navaid-follow-me-session', { mode: 'exclusive' }, action);
+    }
+    // Older embedded WebViews have no Web Locks. The shared-storage checks still fence
+    // ordinary event ordering there; current browser and native runtimes take the lock.
+    return Promise.resolve().then(action);
+  }
+
+  function withFollowMePublishLock(action) {
+    const locks = navigator.locks;
+    if (locks && typeof locks.request === 'function') {
+      return locks.request('navaid-follow-me-publish', { mode: 'exclusive' }, action);
+    }
+    // The lifecycle authorization checks still prevent post-Stop sends. Web Locks add the
+    // cross-tab ordering guarantee on every currently supported browser/native runtime.
+    return Promise.resolve().then(action);
+  }
+
+  function relinquishPublisher(s) {
+    if (!s || session !== s) return;
+    s.status = 'stopping';
+    clearTimeout(s.clearAckTimer);
+    clearTimeout(s.revocationRetryTimer);
+    s.client.close();
+    if (s.resolveConnected) s.resolveConnected(false);
+    if (s.resolveStop) s.resolveStop({ pending: true });
+    session = null;
+    refreshSessionControls();
+  }
+
+  function finishStop(s) {
+    if (!s || session !== s) return;
+    clearTimeout(s.clearAckTimer);
+    clearTimeout(s.revocationRetryTimer);
+    s.client.close();
+    if (s.resolveConnected) s.resolveConnected(false);
+    // The lifecycle lock is held until this acknowledgement resolves stopPromise. Re-check
+    // identity anyway: a stale cleaner must never erase or deactivate a replacement session.
+    const checked = checkedSession();
+    const stored = checked.value;
+    const ownsPending = !!(stored && stored.pendingStop && !stored.on &&
+      stored.id === s.id && stored.k === s.rawKeyB64);
+    const sameCapability = !!(stored && stored.id === s.id && stored.k === s.rawKeyB64);
+    let durable = checked.ok;
+    if (ownsPending) {
+      durable = persistLink()
+        ? (saveSession(sessionRecord(s, false, false)) || clearSession())
+        : clearSession();
+    } else if (sameCapability && stored.on) {
+      // The pending-state write failed. Removing the old active consent is the safe fallback.
+      durable = clearSession();
+    }
+    if (!durable) {
+      // The broker deletion is acknowledged, but Stop is not complete until a reload also
+      // sees consent revoked. Keep the owner and retry the durable local revocation.
+      s.clearPacketId = null;
+      s.revocationRetryTimer = setTimeout(() => finishStop(s), 1000);
+      return;
+    }
+    session = null;
+    refreshSessionControls();
+    if (s.resolveStop) s.resolveStop({ pending: false });
+  }
+
+  function clearRetainedAndFinish(s) {
+    if (!s || session !== s || !s.client.ready || s.clearPacketId) return false;
+    let packetId = null;
+    try {
+      packetId = s.client.publish(
+        topicFor(s.id), new Uint8Array(0), { retain: true, qos: 1 });
+    } catch (e) { packetId = null; }
+    if (!Number.isInteger(packetId) || packetId < 1) return false;
+    s.clearPacketId = packetId;
+    clearTimeout(s.clearAckTimer);
+    s.clearAckTimer = setTimeout(() => {
+      if (session !== s || s.status !== 'stopping' || s.clearPacketId !== packetId) return;
+      // A silent broker is not confirmation. Closing forces the reconnect path to retry.
+      s.clearPacketId = null;
+      try { s.client.ws.close(); } catch (e) { /* onclose/reconnect handles it */ }
+    }, 10000);
+    return true;
+  }
+
+  async function openPublisher(raw, reg, pendingStop) {
+    const id = raw.id;
+    const rawKey = b64url.to(raw.k);
+    const key = await importKey(rawKey);
+    const client = mqttConnect(brokerUrl(), {
+      clientId: 'navaid-pub-' + id.slice(0, 8),
+      will: { topic: topicFor(id), payload: new Uint8Array(0), retain: true },
+    });
+    const s = {
+      id, key, client, reg, rawKeyB64: raw.k, lastActiveAt: Number(raw.at) || Date.now(),
+      seq: Number.isSafeInteger(raw.seq) ? raw.seq : 0,
+      lastSentAt: 0, status: pendingStop ? 'stopping' : 'connecting', everConnected: false,
+      resolveStop: null, stopPromise: null, clearPacketId: null, clearAckTimer: 0,
+      revocationRetryTimer: 0,
+      resolveConnected: null, connectedPromise: null,
+      link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k,
+    };
+    if (pendingStop) {
+      s.stopPromise = new Promise(resolve => { s.resolveStop = resolve; });
+    }
+    s.connectedPromise = new Promise(resolve => { s.resolveConnected = resolve; });
+    session = s;
+    client.onOpen = () => {
+      if (session !== s) return;
+      s.everConnected = true;
+      if (s.status === 'stopping') {
+        clearRetainedAndFinish(s);
+        return;
+      }
+      s.status = 'connected';
+      if (s.resolveConnected) {
+        s.resolveConnected(true);
+        s.resolveConnected = null;
+      }
+      refreshSessionControls();
+    };
+    client.onClose = () => {
+      if (session !== s) return;
+      clearTimeout(s.clearAckTimer);
+      s.clearPacketId = null;
+      if (s.status === 'stopping') return;
+      s.status = s.everConnected ? 'reconnecting' : 'connecting';
+      refreshSessionControls();
+    };
+    client.onPublishAck = (packetId) => {
+      if (session === s && s.status === 'stopping' && packetId === s.clearPacketId) {
+        clearTimeout(s.clearAckTimer);
+        finishStop(s);
+      }
+    };
+    refreshSessionControls();
+    return s;
   }
 
   async function followMeStart(code) {
-    if (session) return session.link;
+    startFailure = null;
+    if (session && sessionAuthorized(session)) {
+      return session.status === 'stopping' ? null : session.link;
+    }
+    if (session) relinquishPublisher(session);
     // Refuse rather than share an anonymous dot.
     const reg = followMeSetCode(code || followMeCode());
-    if (!reg) return null;
-    // Same aeroplane, same link: this is what makes a restart survivable. A DIFFERENT code
-    // is a different aeroplane and gets its own topic and key -- inheriting a link already
-    // shared for the last aircraft would point its followers at this one.
-    const prev = storedSession();
-    const reuse = !!(prev && prev.reg === reg);
-    const id = reuse ? prev.id : b64url.from(randomBytes(16));
-    const rawKey = reuse ? b64url.to(prev.k) : randomBytes(32);
-    const key = await importKey(rawKey);
-    const client = mqttConnect(brokerUrl(), { clientId: 'navaid-pub-' + id.slice(0, 8) });
-    session = {
-      id, key, client, reg, lastSentAt: 0,
-      // The key is in the FRAGMENT, so it is never in a request line, a proxy log or the
-      // broker's view of the world. Everything the relay sees is the id.
-      link: location.origin + location.pathname + '?follow=' + id + '#k=' + b64url.from(rawKey),
-    };
-    // `on` is the consent a restart reads back: it says this device was sharing when it
-    // stopped running, which is the only reason resuming without asking is honest.
-    saveSession({ id, k: b64url.from(rawKey), reg, at: Date.now(), on: true });
-    return session.link;
+    if (!reg) { startFailure = 'code'; return null; }
+    return withFollowMeLock(async () => {
+      if (session && sessionAuthorized(session)) {
+        return session.status === 'stopping' ? null : session.link;
+      }
+      if (session) relinquishPublisher(session);
+      // Re-read only after acquiring the device-wide lifecycle lock. Stop may have changed
+      // consent while WebCrypto or another tab delayed this Start request.
+      const prev = storedSession();
+      if (prev && prev.pendingStop) return null;
+      // Same aeroplane, same link: this makes a restart survivable. A different code gets
+      // a new topic and key, so followers of the previous aircraft cannot inherit it.
+      const reuse = !!(prev && prev.reg === reg);
+      const id = reuse ? prev.id : b64url.from(randomBytes(16));
+      const rawKeyB64 = reuse ? prev.k : b64url.from(randomBytes(32));
+      const s = await openPublisher({
+        id, k: rawKeyB64, at: Date.now(), seq: reuse ? prev.seq : 0,
+      }, reg, false);
+      // `on` is the consent a restart reads back. Persist it inside the same lock as Stop.
+      if (!saveSession(sessionRecord(s, true, false))) {
+        startFailure = 'storage';
+        relinquishPublisher(s);
+        return null;
+      }
+      return s.link;
+    });
   }
   function followMeStop() {
-    if (!session) return;
+    if (!session) return Promise.resolve({ pending: false });
+    const s = session;
+    if (s.status === 'stopping') return s.stopPromise || Promise.resolve({ pending: true });
     // Clear the retained position before going: a zero-length retained payload is how MQTT
     // says "there is no last known value here". Without it the broker would hand the pilot's
     // final position to anyone opening the link days later, which is the opposite of a link
     // that dies when you stop sharing.
-    try { session.client.publish(topicFor(session.id), new Uint8Array(0), { retain: true }); }
-    catch (e) { /* already closing: the session ends either way */ }
-    session.client.close();
-    session = null;
-    // Stopping is what kills the link -- so the key goes with it. Persistent mode is the
-    // exception the pilot asked for: the link stays valid for the next flight, but it is
-    // marked not-sharing so a later restart does not silently start publishing again.
-    if (persistLink()) {
-      const prev = storedSession();
-      if (prev) saveSession({ ...prev, on: false });
-    } else {
-      clearSession();
-    }
+    s.status = 'stopping';
+    s.stopPromise = new Promise(resolve => { s.resolveStop = resolve; });
+    refreshSessionControls();
+    broadcastRevocation(s);
+    // Serialize the consent change and tombstone behind any publish already at its final
+    // send boundary. Other tabs then see pendingStop before they can enter that boundary.
+    withFollowMeLock(async () => {
+      if (session !== s) return;
+      if (!saveSession(sessionRecord(s, false, true))) clearSession();
+      // If disconnected, mqttConnect keeps retrying. Its next CONNACK runs the same clear.
+      clearRetainedAndFinish(s);
+      // Keep the origin-wide lifecycle lock through PUBACK. Only one tab may own cleanup;
+      // another pending-resume waits, re-reads storage, and sees that the work is finished.
+      await s.stopPromise;
+    }).catch(() => { /* keep stopping; a later reconnect/storage event can retry */ });
+    return s.stopPromise;
   }
 
   // Throw the stored link away and, if sharing, come back on a fresh one. The escape hatch
@@ -293,7 +529,7 @@
   async function followMeNewLink() {
     const reg = followMeCode();
     const wasSharing = !!session;
-    if (wasSharing) followMeStop();
+    if (wasSharing) await followMeStop();
     clearSession();
     return wasSharing ? followMeStart(reg) : null;
   }
@@ -304,32 +540,90 @@
   async function followMeResume() {
     if (session) return null;
     const prev = storedSession();
-    if (!prev || prev.on !== true) return null;
-    return followMeStart(prev.reg);
+    if (!prev) return null;
+    if (prev.pendingStop) {
+      await withFollowMeLock(async () => {
+        const current = rawSession();
+        if (!current || !current.pendingStop || current.on ||
+            current.id !== prev.id || current.k !== prev.k) return;
+        const cleaner = await openPublisher(current, current.reg, true);
+        await cleaner.stopPromise;
+      });
+      return null;
+    }
+    if (prev.on !== true) return null;
+    const link = await followMeStart(prev.reg);
+    const s = session;
+    if (!link || !s) return null;
+    const connected = s.status === 'connected' ? true : await s.connectedPromise;
+    return connected ? link : null;
   }
-  function followMeSharing() { return !!session; }
+  function followMeSharing() { return !!session && session.status !== 'stopping'; }
+  function followMeStatus() { return session ? session.status : 'idle'; }
 
   // Called from the fix handler. Rate-limited: a public broker is a courtesy, and one
   // position a second is plenty to follow an aeroplane with.
   async function followMePublish(fix) {
-    if (!session || !fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)) return false;
+    if (!session || session.status === 'stopping' || !fix ||
+        !Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)) return false;
+    const s = session;
+    // localStorage is shared by same-origin tabs. A Stop or replacement session in another
+    // tab revokes this publisher immediately, even before its storage event is delivered.
+    if (!sessionAuthorized(s)) {
+      relinquishPublisher(s);
+      return false;
+    }
     const every = Math.max(1, Number(tune('followMeRateSec', 2)) || 2) * 1000;
     const now = Date.now();
-    if (now - session.lastSentAt < every) return false;
-    session.lastSentAt = now;
-    const payload = await seal(session.key, {
-      // Inside the envelope: the broker relays the label without being able to read it.
-      reg: session.reg,
-      lat: Math.round(fix.lat * 1e5) / 1e5,
-      lng: Math.round(fix.lng * 1e5) / 1e5,
-      alt: Number.isFinite(fix.alt) ? Math.round(fix.alt) : null,
-      trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
-      kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
-      t: now,
+    if (now - s.lastSentAt < every) return false;
+    s.lastSentAt = now;
+    // Serialize the full publication across tabs so sequence order matches wire order. The
+    // separate lifecycle lock is held only at the authorization boundaries, allowing Stop to
+    // revoke a publication while WebCrypto is still working.
+    return withFollowMePublishLock(async () => {
+      const reserved = await withFollowMeLock(() => {
+        if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
+          if (session === s && s.status === 'stopping') return false;
+          relinquishPublisher(s);
+          return false;
+        }
+        const stored = rawSession();
+        s.lastActiveAt = now;
+        s.seq = Math.max(s.seq + 1, (stored ? stored.seq : 0) + 1, now);
+        if (!saveSession(sessionRecord(s, true, false))) {
+          relinquishPublisher(s);
+          return false;
+        }
+        return true;
+      });
+      if (!reserved) return false;
+      const payload = await seal(s.key, {
+        // Inside the envelope: the broker relays the label without being able to read it.
+        reg: s.reg,
+        lat: Math.round(fix.lat * 1e5) / 1e5,
+        lng: Math.round(fix.lng * 1e5) / 1e5,
+        alt: Number.isFinite(fix.alt) ? Math.round(fix.alt) : null,
+        trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
+        kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
+        t: now,
+        seq: s.seq,
+      });
+      // Avoid waiting behind a Stop that deliberately holds the lifecycle lock through
+      // PUBACK. Shared storage provides the cross-tab revocation signal synchronously here.
+      if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
+        if (!(session === s && s.status === 'stopping')) relinquishPublisher(s);
+        return false;
+      }
+      return withFollowMeLock(() => {
+        if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
+          if (!(session === s && s.status === 'stopping')) relinquishPublisher(s);
+          return false;
+        }
+        // The final authorization and retained send do not yield. A later Stop tombstone
+        // therefore cannot be followed by this older retained position.
+        return s.client.publish(topicFor(s.id), payload, { retain: true });
+      });
     });
-    // Retained: the broker keeps the last one, so a viewer opening mid-flight sees where the
-    // aeroplane is immediately instead of waiting for the next publish. It is cleared on stop.
-    return session.client.publish(topicFor(session.id), payload, { retain: true });
   }
 
   // --- watching -------------------------------------------------------------
@@ -342,7 +636,7 @@
   async function followMeWatch(id, rawKeyB64, opts) {
     if (watch) followMeUnwatch();
     const key = await importKey(b64url.to(rawKeyB64));
-    const state = { id, fix: null, at: null, connected: false };
+    const state = { id, fix: null, at: null, connected: false, lastOrder: -1 };
     const client = mqttConnect(brokerUrl(), Object.assign(
       { clientId: 'navaid-sub-' + id.slice(0, 8) }, opts || {}));
     client.onOpen = () => { state.connected = true; client.subscribe(topicFor(id)); };
@@ -352,8 +646,19 @@
       if (!payload || !payload.length) return;   // the cleared retained value: sharing stopped
       const msg = await open(key, payload);
       if (!msg) return;                       // not ours, or the wrong key
+      const now = Date.now();
+      // `seq` was added after the first Follow Me release. During a rolling cache update,
+      // an older publisher can still send timestamp-only packets to a newer viewer. Its
+      // millisecond timestamp is monotonic enough for that compatibility window and still
+      // prevents an older retained packet replacing a newer one.
+      const order = msg.seq == null ? msg.t : msg.seq;
+      if (!Number.isFinite(msg.lat) || msg.lat < -90 || msg.lat > 90 ||
+          !Number.isFinite(msg.lng) || msg.lng < -180 || msg.lng > 180 ||
+          !Number.isFinite(msg.t) || msg.t <= 0 || msg.t > now + 300000 ||
+          !Number.isSafeInteger(order) || order < 0 || order <= state.lastOrder) return;
+      state.lastOrder = order;
       state.fix = msg;
-      state.at = Date.now();
+      state.at = msg.t;
       followMeViewerDraw();
       if (typeof window.scheduleDraw === 'function') window.scheduleDraw();
     };
@@ -461,7 +766,12 @@
     if (!p) return null;
     const state = await followMeWatch(p.id, p.key, opts);
     viewer = { state, marker: null, follow: true, timer: 0 };
+    // Following an aircraft is not route onboarding. Drop any intro that was painted before
+    // this async viewer started, and begin with route edits locked just like a live own-ship.
+    if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
+    window.editUnlockOverride = false;
     document.body.classList.add('follow-me-viewing');
+    if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
     followMeViewerRefresh();
     // The age has to keep counting even when nothing arrives -- especially then.
     viewer.timer = setInterval(followMeViewerRefresh, 1000);
@@ -475,7 +785,9 @@
     clearInterval(viewer.timer);
     if (viewer.marker && typeof map !== 'undefined') map.removeLayer(viewer.marker);
     viewer = null;
+    window.editUnlockOverride = false;
     document.body.classList.remove('follow-me-viewing');
+    if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
     const el = document.getElementById('follow-me-banner');
     if (el) el.remove();
     followMeUnwatch();
@@ -486,7 +798,9 @@
     viewerStart: followMeViewerStart, viewerStop: followMeViewerStop, viewing: followMeViewing,
     viewerDraw: followMeViewerDraw, viewerRefresh: followMeViewerRefresh,
     linkParams: followMeLinkParams, staleSec: followMeStaleSec,
-    start: followMeStart, stop: followMeStop, sharing: followMeSharing, publish: followMePublish,
+    start: followMeStart, stop: followMeStop, sharing: followMeSharing, status: followMeStatus,
+    startFailure: () => startFailure,
+    publish: followMePublish,
     code: followMeCode, setCode: followMeSetCode,
     newLink: followMeNewLink, resume: followMeResume, _stored: storedSession,
     watch: followMeWatch, unwatch: followMeUnwatch, watching: followMeWatching,
@@ -495,6 +809,28 @@
     age: followMeAge, topicFor, brokerUrl, importKey, randomBytes,
   };
   window.followMeAge = followMeAge;
+
+  const revocationChannel = typeof BroadcastChannel === 'function'
+    ? new BroadcastChannel('navaid-follow-me-revocation') : null;
+  function broadcastRevocation(s) {
+    if (!revocationChannel || !s) return;
+    try { revocationChannel.postMessage({ id: s.id, k: s.rawKeyB64 }); } catch (e) { /* optional */ }
+  }
+  if (revocationChannel) {
+    revocationChannel.onmessage = (event) => {
+      const revoked = event && event.data;
+      if (session && session.status !== 'stopping' && revoked &&
+          revoked.id === session.id && revoked.k === session.rawKeyB64) {
+        relinquishPublisher(session);
+      }
+    };
+  }
+
+  window.addEventListener('storage', (event) => {
+    if (event.key === SESSION_KEY && session && !sessionAuthorized(session)) {
+      relinquishPublisher(session);
+    }
+  });
 
   // A shared link is only a link: opening it has to put the app into watching mode by itself,
   // or the person following sees an ordinary map and concludes the feature is broken.

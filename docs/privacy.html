@@ -47,7 +47,7 @@
   <!-- English -->
   <div data-lang="en">
     <h1>NavAid — Privacy Policy</h1>
-    <p class="muted">Last updated: 22 August 2026</p>
+    <p class="muted">Last updated: 28 August 2026</p>
 
     <p><strong>NavAid</strong> is a free, open-source CVFR flight-route planner that runs
     entirely in your web browser. There is no NavAid server and no NavAid account — the
@@ -56,8 +56,8 @@
     <h2>What we collect</h2>
     <p><strong>Nothing is sent to us.</strong> NavAid has no backend and no analytics
     operated by NavAid. Your routes, waypoints, notes and settings are stored only in your
-    browser's local storage on your own device unless you explicitly enable one of the
-    optional Google Drive sync features described below.</p>
+    browser's local storage on your own device unless you explicitly enable optional
+    Google Drive sync or Follow Me, as described below.</p>
 
     <h2>Google Drive (optional)</h2>
     <p>If — and only if — you choose to connect Google Drive, NavAid uses the
@@ -85,6 +85,26 @@
     <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API
     Services User Data Policy</a>, including the Limited Use requirements.</p>
 
+    <h2>Follow Me (optional)</h2>
+    <p>If — and only if — you start Follow Me, NavAid encrypts your current position,
+    altitude, speed, track and aircraft label in your browser and sends the encrypted
+    bytes through a public third-party MQTT test relay. The relay can see ordinary
+    connection metadata such as your IP address, connection times and a random topic,
+    but it does not receive the encryption key or readable flight data.</p>
+    <ul>
+      <li>The key is in the shared URL's fragment. Anyone who has the complete link can
+        read the feed and, because the same key validates updates, can submit a
+        valid-looking position. Treat the link as a bearer capability.</li>
+      <li>The relay is best-effort: there is no delivery, availability or history
+        guarantee. Follow Me is a convenience feature, not a safety or authenticated
+        tracking service.</li>
+      <li>The most recent encrypted position is retained while sharing so a new viewer
+        can see it immediately. Stop clears it and waits for broker acknowledgement.
+        An unexpected disconnect also asks the relay to clear it through MQTT Last Will.
+        If the device is already offline when Stop is pressed, NavAid keeps the random
+        topic and key on that device only until it reconnects and confirms the clear.</li>
+    </ul>
+
     <h2>Map and chart data</h2>
     <p>Map tiles and aeronautical charts are loaded directly from their providers
     (flight-maps.com, Esri, OpenStreetMap). Those providers may receive standard web
@@ -106,7 +126,7 @@
   <!-- Hebrew -->
   <div data-lang="he" dir="rtl">
     <h1>NavAid — מדיניות פרטיות</h1>
-    <p class="muted">עודכן לאחרונה: 22 באוגוסט 2026</p>
+    <p class="muted">עודכן לאחרונה: 28 באוגוסט 2026</p>
 
     <p><strong>NavAid</strong> הוא מתכנן מסלולי טיסה CVFR חופשי ובקוד פתוח, הפועל כולו
     בדפדפן שלך. אין שרת של NavAid ואין חשבון NavAid — האפליקציה מורכבת מקבצים סטטיים
@@ -115,8 +135,8 @@
     <h2>מה אנו אוספים</h2>
     <p><strong>שום דבר אינו נשלח אלינו.</strong> ל-NavAid אין צד-שרת ואין כלי ניתוח
     נתונים (analytics) המופעל על ידי NavAid. המסלולים, נקודות הציון, ההערות וההגדרות שלך
-    נשמרים באחסון המקומי של הדפדפן, על המכשיר שלך, אלא אם הפעלת במפורש אחת
-    מאפשרויות הסנכרון האופציונליות עם Google Drive המתוארות להלן.</p>
+    נשמרים באחסון המקומי של הדפדפן, על המכשיר שלך, אלא אם הפעלת במפורש סנכרון
+    אופציונלי עם Google Drive או את ״עקבו אחריי״, כמתואר להלן.</p>
 
     <h2>Google Drive (אופציונלי)</h2>
     <p>אם — ורק אם — תבחר לחבר את Google Drive, ‏NavAid משתמשת בהרשאת
@@ -141,6 +161,23 @@
     </ul>
     <p>השימוש של NavAid במידע המתקבל מ-Google APIs תואם ל-<a href="https://developers.google.com/terms/api-services-user-data-policy">Google
     API Services User Data Policy</a>, לרבות דרישות השימוש המוגבל (Limited Use).</p>
+
+    <h2>עקבו אחריי (אופציונלי)</h2>
+    <p>אם — ורק אם — הפעלת את ״עקבו אחריי״, NavAid מצפינה בדפדפן את המיקום הנוכחי,
+    הגובה, המהירות, הנתיב ותווית המטוס, ושולחת את המידע המוצפן דרך ממסר MQTT ציבורי
+    וניסיוני של צד שלישי. הממסר יכול לראות נתוני חיבור רגילים, כגון כתובת ה-IP, זמני
+    החיבור ונושא אקראי, אך אינו מקבל את מפתח ההצפנה או נתוני טיסה קריאים.</p>
+    <ul>
+      <li>המפתח נמצא במקטע (fragment) של הקישור המשותף. כל מי שמחזיק בקישור המלא יכול
+        לקרוא את העדכונים, ומכיוון שאותו מפתח מאמת עדכונים, גם לשלוח מיקום שנראה תקין.
+        יש להתייחס לקישור כאל הרשאת גישה למחזיק בו.</li>
+      <li>הממסר פועל במאמץ מיטבי: אין הבטחה למסירה, לזמינות או להיסטוריה. ״עקבו אחריי״
+        הוא כלי נוחות, ולא שירות בטיחות או מעקב מאומת.</li>
+      <li>המיקום המוצפן האחרון נשמר בממסר בזמן השיתוף כדי שצופה חדש יראה אותו מיד.
+        עצירה מוחקת אותו וממתינה לאישור מהממסר. ניתוק בלתי צפוי מבקש מהממסר למחוק אותו
+        גם באמצעות MQTT Last Will. אם המכשיר כבר אינו מחובר בעת העצירה, NavAid שומרת
+        את הנושא האקראי והמפתח במכשיר בלבד עד לחיבור מחדש ולאישור המחיקה.</li>
+    </ul>
 
     <h2>נתוני מפה ותרשימים</h2>
     <p>אריחי המפה והתרשימים האווירונאוטיים נטענים ישירות מהספקים שלהם
