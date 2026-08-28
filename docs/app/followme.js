@@ -678,19 +678,64 @@
   // its last position without saying so is not showing you where it is -- it is showing you
   // where it was, in a way that looks identical.
   let viewer = null;
+  let viewerBannerLayout = null;
 
   function followMeStaleSec() {
     const v = Number(tune('followMeStaleSec', 30));
     return Number.isFinite(v) && v > 0 ? v : 30;
   }
 
+  function followMeViewerPlaceBanner(el) {
+    if (!el || !el.isConnected) return;
+    const toolbar = document.getElementById('toolbar');
+    const toolbarBox = toolbar && toolbar.getBoundingClientRect();
+    const gap = 8;
+    const belowToolbar = toolbarBox && toolbarBox.height ? toolbarBox.bottom + gap : gap;
+    // An expanded phone menu can consume nearly the whole viewport. Keep the status on-screen
+    // in that case; its lower stacking level lets the toolbar remain the usable surface.
+    const maxTop = Math.max(gap, window.innerHeight - el.offsetHeight - gap);
+    el.style.top = Math.round(Math.min(belowToolbar, maxTop)) + 'px';
+  }
+
+  function followMeViewerWatchBanner(el) {
+    if (viewerBannerLayout) return;
+    let frame = 0;
+    const place = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => followMeViewerPlaceBanner(el));
+    };
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
+    const toolbar = document.getElementById('toolbar');
+    if (observer) {
+      observer.observe(el);
+      if (toolbar) observer.observe(toolbar);
+    }
+    window.addEventListener('resize', place);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', place);
+    viewerBannerLayout = { observer, frame: () => frame, place };
+    place();
+  }
+
+  function followMeViewerClearBannerLayout() {
+    if (!viewerBannerLayout) return;
+    if (viewerBannerLayout.observer) viewerBannerLayout.observer.disconnect();
+    cancelAnimationFrame(viewerBannerLayout.frame());
+    window.removeEventListener('resize', viewerBannerLayout.place);
+    if (window.visualViewport) window.visualViewport.removeEventListener('resize', viewerBannerLayout.place);
+    viewerBannerLayout = null;
+  }
+
   function followMeViewerBanner() {
     let el = document.getElementById('follow-me-banner');
-    if (el) return el;
+    if (el) {
+      followMeViewerWatchBanner(el);
+      return el;
+    }
     el = document.createElement('div');
     el.id = 'follow-me-banner';
     el.className = 'follow-me-banner';
     document.body.appendChild(el);
+    followMeViewerWatchBanner(el);
     return el;
   }
 
@@ -723,6 +768,7 @@
     // says WHICH aeroplane this is. Then what it is doing, then how old that is -- the age
     // goes last because it qualifies everything before it.
     el.textContent = [reg, bits.join(' · '), said].filter(Boolean).join(' · ');
+    followMeViewerPlaceBanner(el);
     if (viewer.marker) viewer.marker.setOpacity(stale ? 0.45 : 1);
   }
 
@@ -806,6 +852,7 @@
     window.editUnlockOverride = false;
     document.body.classList.remove('follow-me-viewing');
     if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
+    followMeViewerClearBannerLayout();
     const el = document.getElementById('follow-me-banner');
     if (el) el.remove();
     followMeUnwatch();

@@ -350,6 +350,39 @@ test('opening the link watches, names the aircraft and dates the position', asyn
   expect(got.after).toBe(false);                // stopping clears the banner
 });
 
+test('the viewer status stays below the toolbar as the mobile menu changes height', async ({ page }) => {
+  await page.setViewportSize({ width: 516, height: 700 });
+  await boot(page);
+  const link = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const started = await F.start('TEST');
+    window.__sockets[0].connack();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return started;
+  });
+  await page.evaluate(async followerLink => {
+    const url = new URL(followerLink);
+    await NavAid.followMe.viewerStart({ search: url.search, hash: url.hash });
+  }, link);
+
+  const boxes = () => page.evaluate(() => {
+    const toolbar = document.getElementById('toolbar').getBoundingClientRect();
+    const banner = document.getElementById('follow-me-banner').getBoundingClientRect();
+    return { toolbarBottom: toolbar.bottom, bannerTop: banner.top };
+  });
+  let measured = await boxes();
+  expect(measured.bannerTop).toBeGreaterThanOrEqual(measured.toolbarBottom + 7);
+
+  await page.locator('#toolbar-toggle').click();
+  await page.waitForFunction(() => {
+    const toolbar = document.getElementById('toolbar').getBoundingClientRect();
+    const banner = document.getElementById('follow-me-banner').getBoundingClientRect();
+    return banner.top >= toolbar.bottom + 7;
+  });
+  measured = await boxes();
+  expect(measured.bannerTop).toBeGreaterThanOrEqual(measured.toolbarBottom + 7);
+});
+
 test('a position that stops arriving is called stale, not drawn as current', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {

@@ -6783,7 +6783,10 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
   top: 8px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 2400;
+  /* Under the toolbar if a short viewport leaves no room below it. In the normal case JS
+     parks the banner below the toolbar; this stacking order is the last-resort guarantee
+     that an expanded menu remains usable. */
+  z-index: 1090;
   max-width: min(92vw, 460px);
   padding: 6px 12px;
   border-radius: 999px;

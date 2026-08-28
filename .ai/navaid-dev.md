@@ -955,6 +955,9 @@ While viewing a Follow Me link, each received fix recentres the map on the aircr
 The on-map orientation control remains available in follower mode and toggles North-up versus
 the followed aircraft's track-up view. The follower also draws the standard dashed heading
 predictor with labelled 2 NM, 5 NM, and 10 NM marks.
+The always-visible follower status banner is parked below the toolbar and follows toolbar or
+viewport size changes. If an expanded phone menu leaves no free vertical space, the banner is
+clamped on-screen below the toolbar's stacking level so it cannot block menu controls.
 
 Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
 publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle
