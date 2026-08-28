@@ -640,6 +640,21 @@
              others). The bubble list button lives in the Charts section. -->
         <div class="tb-layer-frame">
         <div class="tb-frame-title" data-i18n="tbGrpPlates"></div>
+        <div class="tb-group-box tb-plate-picker">
+          <label class="navtoggle" data-i18n-title="tbPlateEnabledTitle">
+            <input type="checkbox" id="plate-enabled-cb"> <span data-i18n="tbPlateEnabled"></span>
+          </label>
+          <label class="navtoggle tb-plate-type" data-i18n-title="tbPlateTypeTitle" hidden>
+            <span data-i18n="tbPlateType"></span>
+            <select id="plate-type">
+              <option value="circuit-cb" data-i18n="plateTypeCircuit"></option>
+              <option value="training-cb" data-i18n="plateTypeTraining"></option>
+              <option value="cvfr-cb" data-i18n="plateTypeCvfr"></option>
+              <option value="heli-cb" data-i18n="plateTypeHeli"></option>
+              <option value="commfail-cb" data-i18n="plateTypeCommfail"></option>
+            </select>
+          </label>
+        </div>
         <label class="navtoggle tb-plate-opacity" data-i18n-title="tbPlateOpacityTitle">
           <span data-i18n="tbPlateOpacity"></span>
           <input type="range" id="plate-opacity" min="0.1" max="1" step="0.05" value="0.6">
@@ -651,30 +666,15 @@
           <span data-i18n="tbPlateAirfield"></span>
           <select id="plate-airfield"></select>
         </label>
-        <div class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowCircuitTitle">
-            <input type="checkbox" id="circuit-cb"> <span data-i18n="tbShowCircuit"></span>
-          </label>
-        </div>
-        <div class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowTrainingTitle">
-            <input type="checkbox" id="training-cb"> <span data-i18n="tbShowTraining"></span>
-          </label>
-        </div>
-        <div class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowCvfrTitle">
-            <input type="checkbox" id="cvfr-cb"> <span data-i18n="tbShowCvfr"></span>
-          </label>
-        </div>
-        <div class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowHeliTitle">
-            <input type="checkbox" id="heli-cb"> <span data-i18n="tbShowHeli"></span>
-          </label>
-        </div>
-        <div class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowCommfailTitle">
-            <input type="checkbox" id="commfail-cb"> <span data-i18n="tbShowCommfail"></span>
-          </label>
+        <!-- Existing per-type switches remain as hidden state adapters. Their handlers own
+             loading, persistence, chart shortcuts and the on-map close button; the compact
+             picker above is the only user-facing control. -->
+        <div id="plate-type-state" class="tb-group-box" hidden>
+          <input type="checkbox" id="circuit-cb">
+          <input type="checkbox" id="training-cb">
+          <input type="checkbox" id="cvfr-cb">
+          <input type="checkbox" id="heli-cb">
+          <input type="checkbox" id="commfail-cb">
         </div>
         <!-- Hidden overlay-align tool. Like ?editor=1 / ?tune=1, revealed only
              with ?align=1 (ui.js unhides + wires it). It nudges the plate overlays, so it
@@ -685,19 +685,8 @@
           </label>
         </div>
         </div>
-        <!-- Traffic is not a chart: it is other aeroplanes, live, and only while a fix is
-             driving the map. Nothing above governs it, so it stands in its own frame. -->
-        <div class="tb-layer-frame">
-        <div class="tb-frame-title" data-i18n="tbGrpTraffic"></div>
-        <div class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowTrafficTitle">
-            <input type="checkbox" id="traffic-cb"> <span data-i18n="tbShowTraffic"></span>
-          </label>
-        </div>
-        </div>
-        <!-- Instrument charts stand apart from the plates above: "Show plates for" does not
-             reach them (they are picked one sheet at a time, by name), and they are not in
-             the plates' mutual exclusion. A frame of their own says so. -->
+        <!-- Instrument charts use the same compact progression as the airfield charts:
+             enable, choose one chart, then set its opacity. -->
         <div class="tb-layer-frame">
         <div class="tb-frame-title" data-i18n="tbGrpIfr"></div>
         <div class="tb-group-box">
@@ -707,6 +696,23 @@
           <label class="navtoggle tb-ifr-sheet" data-i18n-title="tbIfrSheetTitle" hidden>
             <span data-i18n="tbIfrSheet"></span>
             <select id="ifr-sheet"></select>
+          </label>
+        </div>
+        <label class="navtoggle tb-ifr-opacity" data-i18n-title="tbIfrOpacityTitle">
+          <span data-i18n="tbIfrOpacity"></span>
+          <input type="range" id="ifr-opacity" min="0.1" max="1" step="0.05" value="0.6">
+          <span class="slider-val" id="ifr-opacity-val"></span>
+          <button id="ifr-opacity-reset" class="slider-reset" type="button"
+                  data-i18n-title="tbIfrOpacityReset">↻</button>
+        </label>
+        </div>
+        <!-- Traffic is not a chart: it is other aeroplanes, live, and only while a fix is
+             driving the map. Nothing above governs it, so it stands in its own frame. -->
+        <div class="tb-layer-frame">
+        <div class="tb-frame-title" data-i18n="tbGrpTraffic"></div>
+        <div class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbShowTrafficTitle">
+            <input type="checkbox" id="traffic-cb"> <span data-i18n="tbShowTraffic"></span>
           </label>
         </div>
         </div>
