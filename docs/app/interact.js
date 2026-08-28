@@ -668,6 +668,12 @@ function showPointChoice(candidates) {
     selectPointCandidate(items[0]);
     return true;
   }
+  // The chooser replaces the current inspection surface. Close the old inspector and clear
+  // its enlarged waypoint before drawing the chooser. Fresh storage exposes this often
+  // because reference-point overlays are enabled by default.
+  state.selected = null;
+  showInspector();
+  draw();
   const modal = createDraggableModal(S.choosePointTitle || 'Choose point', 'modal point-choice-modal');
   const body = document.createElement('div');
   body.className = 'point-choice-list';

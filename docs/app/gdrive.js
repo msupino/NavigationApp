@@ -364,7 +364,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.showNotam.last',
   'navaid.sigwxOv', 'navaid.showLsaBubbles', 'navaid.showCircuit',
   'navaid.showTraining', 'navaid.showCvfr', 'navaid.showHeli',
-  'navaid.showCommfail',
+  'navaid.showCommfail', 'navaid.plateType',
   'navaid.showIfr',
   'navaid.showTraffic',
   'navaid.showAirspace',
@@ -380,7 +380,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.waypointColor', 'navaid.legArrowColor',
   'navaid.trainingOpacity',
   'navaid.cvfrOpacity', 'navaid.heliOpacity', 'navaid.circuitOpacity',
-  'navaid.plateOpacity', 'navaid.commfailOpacity', 'navaid.mapOpacity.v2',
+  'navaid.plateOpacity', 'navaid.ifrOpacity', 'navaid.commfailOpacity', 'navaid.mapOpacity.v2',
   'navaid.wxOpacity',   // one slider fades both the PWX and SIGWX overlays
   // flight-plan columns, aircraft profile, user data corrections
   'navaid.fpColumns', 'navaid.aircraft', 'navaid.airfieldFreqOverrides',

@@ -2,6 +2,7 @@
 // Circuit overlay: georeferenced VFR/circuit plate images toggled from the
 // "Extra layers" toolbar section (data-sec="weather").
 const { test, expect } = require('./_setup');
+const { setAirfieldPlate } = require('./_platePicker');
 
 // Block the service worker so that Playwright's page.route() can intercept
 // circuit-img requests directly. Without this, the SW (which calls
@@ -40,7 +41,7 @@ test('circuit-cb is unchecked by default and controls are hidden', async ({ page
 
 test('checking circuit-cb reveals controls and adds image overlays', async ({ page }) => {
   await boot(page);
-  await page.locator('#circuit-cb').check();
+  await setAirfieldPlate(page, 'circuit-cb');
   // At least one leaflet image overlay should appear in the overlay pane
   const imgs = page.locator('.leaflet-overlay-pane img.leaflet-image-layer');
   await expect(imgs.first()).toBeVisible();
@@ -50,9 +51,9 @@ test('checking circuit-cb reveals controls and adds image overlays', async ({ pa
 
 test('unchecking removes all circuit overlays from the map', async ({ page }) => {
   await boot(page);
-  await page.locator('#circuit-cb').check();
+  await setAirfieldPlate(page, 'circuit-cb');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
-  await page.locator('#circuit-cb').uncheck();
+  await setAirfieldPlate(page, 'circuit-cb', false);
   // circuitLayerGroup was created but removed from map — the group itself
   // must not be on the map after unchecking.
   const onMap = await page.evaluate(
@@ -63,7 +64,7 @@ test('unchecking removes all circuit overlays from the map', async ({ page }) =>
 
 test('opacity slider drives overlay opacity', async ({ page }) => {
   await boot(page);
-  await page.locator('#circuit-cb').check();
+  await setAirfieldPlate(page, 'circuit-cb');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
 
   const result = await page.evaluate(() => {
@@ -83,7 +84,7 @@ test('opacity slider drives overlay opacity', async ({ page }) => {
 
 test('opacity reset restores the tuned default', async ({ page }) => {
   await boot(page);
-  await page.locator('#circuit-cb').check();
+  await setAirfieldPlate(page, 'circuit-cb');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
 
   const result = await page.evaluate(() => {
@@ -109,7 +110,7 @@ test('opacity reset restores the tuned default', async ({ page }) => {
 
 test('toggle state and opacity persist across reload', async ({ page }) => {
   await boot(page);
-  await page.locator('#circuit-cb').check();
+  await setAirfieldPlate(page, 'circuit-cb');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
 
   // Set a custom opacity before reloading
@@ -144,7 +145,7 @@ test('circuit overlay PNG URLs resolve through circuitImgBase()', async ({ page 
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' && document.getElementById('circuit-cb'));
-  await page.locator('#circuit-cb').check();
+  await setAirfieldPlate(page, 'circuit-cb');
   await page.waitForFunction(() => {
     let n = 0;
     if (window.circuitLayerGroup) window.circuitLayerGroup.eachLayer(() => n++);

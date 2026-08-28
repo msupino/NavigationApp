@@ -483,12 +483,24 @@ function compassIconSvg(deg, hdg) {
     + '</g></svg>' + readout + '</span>';
 }
 
+// One orientation control serves whichever aircraft currently drives the map. A follower link
+// has no local GPS fix, so reading gpsOwn alone hid the button and could only rotate to an old
+// device heading left from an earlier session.
+function mapAircraftTrack() {
+  const following = window.NavAid && NavAid.followMe &&
+    typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing();
+  if (following && typeof NavAid.followMe.viewerFix === 'function') {
+    const fix = NavAid.followMe.viewerFix();
+    return fix && Number.isFinite(fix.trk) ? fix.trk : null;
+  }
+  return (typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.hdg)) ? gpsOwn.hdg : null;
+}
+
 // Point the map so the aircraft's track is up the screen. Leaflet's bearing is the angle
 // the MAP is rotated by, so holding a heading of h up means rotating by 360 - h.
 function applyHeadingUp() {
   if (!headingUpOn || typeof map.setBearing !== 'function') return;
-  const hdg = (typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.hdg))
-    ? gpsOwn.hdg : null;
+  const hdg = mapAircraftTrack();
   if (hdg == null) return;                       // no heading yet: leave the map as it is
   const want = ((360 - hdg) % 360 + 360) % 360;
   const now = map.getBearing ? map.getBearing() : 0;
@@ -503,7 +515,10 @@ window.applyHeadingUp = applyHeadingUp;
 function refreshOrientControl() {
   const wrap = orientBtn && orientBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
+  const ownShip = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
+  const following = !!(window.NavAid && NavAid.followMe &&
+    typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing());
+  const tracking = ownShip || following;
   wrap.style.display = tracking ? '' : 'none';
   orderMapControls(wrap.parentNode);
   // Three states, not two: the dial can leave the chart pointing anywhere, and a button
@@ -513,7 +528,7 @@ function refreshOrientControl() {
   const rotated = !headingUpOn && ((bearing % 360) + 360) % 360 !== 0;
   // Heading-up turns the chart, so north is what moves: point the needle at north. North-up
   // leaves the chart still, so the needle points where the aircraft is going.
-  const trk = (typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.hdg)) ? gpsOwn.hdg : null;
+  const trk = mapAircraftTrack();
   const needle = headingUpOn ? ((bearing % 360) + 360) % 360 : (trk == null ? 0 : trk);
   orientBtn.innerHTML = compassIconSvg(needle, trk);
   orientBtn.classList.toggle('orient-on', headingUpOn);
@@ -958,6 +973,7 @@ function applyTuningCssVars() {
   // Other aeroplanes. Not red: red on an aviation display means resolve it now.
   root.setProperty('--navaid-traffic-arrow', tune('trafficArrowColor'));
   root.setProperty('--navaid-traffic-label', tune('trafficLabelColor'));
+  root.setProperty('--navaid-follow-me-plane', tune('followMePlaneColor'));
 
   // Dark-mode backdrop behind the IMS PWX overlay: the chart's white background
   // is made transparent in the pipeline, so its dark footer (valid time / model
@@ -3504,15 +3520,17 @@ function followMeOffered() {
 (function wireFollowMe() {
   const btn = document.getElementById('follow-me');
   if (!btn) return;
+  const btnLabel = btn.querySelector('.follow-me-button-label');
   const F = () => (window.NavAid && window.NavAid.followMe) || null;
   function refresh() {
     btn.hidden = !followMeOffered();
     const f = F();
     const status = f && typeof f.status === 'function' ? f.status() : 'idle';
     const active = status !== 'idle';
-    btn.textContent = status === 'stopping'
+    const text = status === 'stopping'
       ? (S.followMeStoppingShort || 'Stopping sharing…')
       : active ? (S.tbFollowMeStop || 'Stop sharing') : (S.tbFollowMe || 'Follow me');
+    if (btnLabel) btnLabel.textContent = text;
     btn.classList.toggle('on', status === 'connected');
     btn.disabled = status === 'stopping';
     const label = status === 'connected'
@@ -5293,7 +5311,8 @@ window.overlayLoadingCount = () => _overlayLoading;
 function buildOverlayLayer(base, ov, ver, type) {
   const url = base + encodeURIComponent(ov.png) + '?v=' + ver;
   const g = overlayGeom(ov);
-  const opts = { opacity: plateOpacity, interactive: false, pane: 'overlayPane' };
+  const opts = { opacity: type === 'ifr_overlay' ? ifrOpacity : plateOpacity,
+    interactive: false, pane: 'overlayPane' };
   const layer = g.rot
     ? L.imageOverlay.rotated(url, g.tl, g.tr, g.bl, opts)
     : L.imageOverlay(url, [g.sw, g.ne], opts);
@@ -5488,9 +5507,18 @@ function applyCvfrOpacity(v) {
 // the charts viewer, which is where a schematic belongs.
 const IFR_SHOW_KEY  = 'navaid.showIfr';
 const IFR_SHEET_KEY = 'navaid.ifrSheet';       // "<ICAO>|<png>": the one sheet on the map
+const IFR_OPACITY_KEY = 'navaid.ifrOpacity';
 
 window.showIfr = lsGet(IFR_SHOW_KEY) === '1';
 window.ifrLayerGroup = null;
+let ifrOpacity = lsNum(IFR_OPACITY_KEY, overlayDefaultOpacity());
+
+function applyIfrOpacity(v) {
+  ifrOpacity = v;
+  const valEl = document.getElementById('ifr-opacity-val');
+  if (valEl) valEl.textContent = Math.round(v * 100) + '%';
+  if (ifrLayerGroup) ifrLayerGroup.eachLayer(layer => layer.setOpacity(v));
+}
 
 function ifrImgBase() {
   // Own copy, or the deployed root's when this preview shares it (navAssetBase).
@@ -6091,8 +6119,7 @@ function applyPlateOpacity(v) {
   plateOpacity = v;
   const valEl = document.getElementById('plate-opacity-val');
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
-  [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup,
-   ifrLayerGroup]
+  [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup]
     .forEach(g => { if (g) g.eachLayer(l => l.setOpacity(v)); });
 }
 
@@ -6618,6 +6645,8 @@ window.plateMapLayer = plateMapLayer;
 (function () {
   const cb = document.getElementById('ifr-cb');
   const sel = document.getElementById('ifr-sheet');
+  const opEl = document.getElementById('ifr-opacity');
+  const opReset = document.getElementById('ifr-opacity-reset');
   if (!cb) return;
   cb.checked = showIfr;
   const fillSheets = () => {
@@ -6661,6 +6690,21 @@ window.plateMapLayer = plateMapLayer;
     fillSheets();
   };
   if (sel) sel.onchange = () => { if (sel.value) setIfrSheet(sel.value, { move: true }); };
+  if (opEl) {
+    opEl.value = String(ifrOpacity);
+    applyIfrOpacity(ifrOpacity);
+    opEl.oninput = () => {
+      const value = parseFloat(opEl.value);
+      try { localStorage.setItem(IFR_OPACITY_KEY, String(value)); } catch (_) {}
+      applyIfrOpacity(value);
+    };
+  }
+  if (opReset) opReset.onclick = () => {
+    if (!opEl) return;
+    opEl.value = String(overlayDefaultOpacity());
+    try { localStorage.setItem(IFR_OPACITY_KEY, opEl.value); } catch (_) {}
+    applyIfrOpacity(parseFloat(opEl.value));
+  };
   if (airfields) fillSheets();
   else loadAirfields().then(fillSheets).catch(() => {});
 })();
@@ -6686,6 +6730,59 @@ window.plateMapLayer = plateMapLayer;
       }
     });
   }
+})();
+// The five VFR airfield plates are one choice, not five independent layers. Keep their
+// established checkboxes as state adapters so saved settings, chart shortcuts and each
+// loader retain one implementation; this compact pair is the visible control.
+(function wirePlateTypePicker() {
+  const enabled = document.getElementById('plate-enabled-cb');
+  const select = document.getElementById('plate-type');
+  if (!enabled || !select) return;
+  const key = 'navaid.plateType';
+  const boxes = Array.from(select.options)
+    .map(option => document.getElementById(option.value))
+    .filter(Boolean);
+  if (!boxes.length) return;
+  const selectRow = select.closest('label');
+  const saved = lsGet(key);
+  const active = boxes.find(box => box.checked);
+  select.value = active ? active.id
+    : boxes.some(box => box.id === saved) ? saved : boxes[0].id;
+
+  const remember = () => {
+    try { localStorage.setItem(key, select.value); } catch (_) {}
+  };
+  const refresh = () => {
+    const shown = boxes.find(box => box.checked);
+    enabled.checked = !!shown;
+    if (selectRow) selectRow.hidden = !enabled.checked;
+    if (shown) {
+      select.value = shown.id;
+      remember();
+    }
+  };
+  const setBox = (box, checked) => {
+    if (!box || box.checked === checked) return;
+    box.checked = checked;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  enabled.onchange = () => {
+    if (enabled.checked) {
+      setBox(document.getElementById(select.value), true);
+    } else {
+      for (const box of boxes) setBox(box, false);
+    }
+    refresh();
+  };
+  select.onchange = () => {
+    remember();
+    if (enabled.checked) setBox(document.getElementById(select.value), true);
+    refresh();
+  };
+  for (const box of boxes) box.addEventListener('change', refresh);
+  refresh();
+  window.refreshPlateTypePicker = refresh;
 })();
 // Shared airfield-plate opacity slider — one control at the top of the frame
 // drives whichever plate overlay is showing.
@@ -7348,8 +7445,8 @@ function refreshMapAfterToolbarModeChange() {
   const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
   // Position is per-language (RTL mirrors LTR, so the spot differs by language).
   const posKey = () => navLangPosKey(toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
-  const posBase = () => (toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
+  let wasDesktopMenu = toolbarUsesDesktopMenu();
 
   function clampPos(x, y) {
     const w = bar.offsetWidth, h = bar.offsetHeight;
@@ -7370,15 +7467,21 @@ function refreshMapAfterToolbarModeChange() {
 
   function restorePos() {
     try {
-      const raw = navLangPosRead(posBase());
+      const desktopMenu = toolbarUsesDesktopMenu();
+      const raw = navLangPosRead(desktopMenu ? KEY_DESKTOP : KEY);
       if (raw) {
         const p = JSON.parse(raw);
-        requestAnimationFrame(() => setPos(p.x, p.y));
+        requestAnimationFrame(() => {
+          // A resize can switch modes before this frame runs. Never apply coordinates read
+          // from the other mode's storage key after that transition.
+          if (toolbarUsesDesktopMenu() !== desktopMenu) return;
+          setPos(p.x, p.y);
+        });
       }
     } catch (e) { /* storage unavailable */ }
   }
 
-  function clearInlineDesktopPos() {
+  function clearInlineToolbarPos() {
     bar.style.left = '';
     bar.style.top = '';
     bar.style.right = '';
@@ -7467,16 +7570,23 @@ function refreshMapAfterToolbarModeChange() {
   });
 
   function applyResponsiveToolbarMode() {
-    if (toolbarUsesDesktopMenu()) {
+    const desktopMenu = toolbarUsesDesktopMenu();
+    const enteringMobile = wasDesktopMenu && !desktopMenu;
+    wasDesktopMenu = desktopMenu;
+    if (desktopMenu) {
       dragging = false;
       bar.classList.remove('dragging');
-      clearInlineDesktopPos();       // drop any leftover mobile-column position
+      clearInlineToolbarPos();       // drop any leftover mobile-column position
       setCollapsed(false, { persist: false });
       restorePos();                  // re-apply a saved desktop position, if any
       refreshMapAfterToolbarModeChange();
       if (typeof window.reclampToolbarSections === 'function') window.reclampToolbarSections();
       return;
     }
+    // Desktop and mobile positions have separate keys, so their live inline geometry must
+    // be separate too. Otherwise an absent mobile save makes restorePos() a no-op and the
+    // desktop menubar's coordinates leak into the floating toolbar.
+    if (enteringMobile) clearInlineToolbarPos();
     restorePos();
     let sc = null;
     try { sc = lsGet(COLLAPSED_KEY); } catch (e) { /* storage unavailable */ }

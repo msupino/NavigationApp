@@ -8,6 +8,7 @@
 // Every LLER SID and IAC, four LLBG STARs and the LLHA STAR are schematics: nothing to place
 // them by, so they stay in the charts viewer rather than being placed by guesswork.
 const { test, expect } = require('./_setup');
+const { setAirfieldPlate } = require('./_platePicker');
 const fs = require('fs');
 const path = require('path');
 
@@ -115,7 +116,7 @@ test('the remembered sheet comes back on the next start', async ({ page }) => {
 test('an instrument chart and a VFR plate cancel each other', async ({ page }) => {
   await boot(page);
   await on(page);
-  await page.click('#cvfr-cb');
+  await setAirfieldPlate(page, 'cvfr-cb');
   // Two pictures of the same few miles: neither can be read through the other, so the
   // instrument chart joins the plates' mutual exclusion even though it lives in its own
   // section of the menu.
@@ -146,6 +147,66 @@ test('it has a section of its own', async ({ page }) => {
   });
   expect(frames.same).toBe(false);
   expect(frames.title).toMatch(/instrument/i);
+});
+
+test('instrument charts precede live traffic and match the airfield-chart controls', async ({ page }) => {
+  await boot(page);
+  const layout = await page.evaluate(() => {
+    const ifr = document.getElementById('ifr-cb').closest('.tb-layer-frame');
+    const traffic = document.getElementById('traffic-cb').closest('.tb-layer-frame');
+    return {
+      beforeTraffic: Boolean(ifr.compareDocumentPosition(traffic) & Node.DOCUMENT_POSITION_FOLLOWING),
+      ifrPickerVisible: !!document.getElementById('ifr-sheet').getClientRects().length,
+      platePickerVisible: !!document.getElementById('plate-type').getClientRects().length,
+      ifrSlider: !!ifr.querySelector('#ifr-opacity'),
+      plateSlider: !!document.getElementById('plate-opacity'),
+      ifrOrder: Array.from(ifr.querySelectorAll('input, select')).map(element => element.id),
+      plateOrder: Array.from(document.getElementById('plate-enabled-cb').closest('.tb-layer-frame')
+        .querySelectorAll('#plate-enabled-cb, #plate-type, #plate-opacity, #plate-airfield'))
+        .map(element => element.id),
+      ifrOpacityText: document.getElementById('ifr-opacity-val').textContent,
+      plateOpacityText: document.getElementById('plate-opacity-val').textContent,
+    };
+  });
+  expect(layout).toEqual({
+    beforeTraffic: true,
+    ifrPickerVisible: false,
+    platePickerVisible: false,
+    ifrSlider: true,
+    plateSlider: true,
+    ifrOrder: ['ifr-cb', 'ifr-sheet', 'ifr-opacity'],
+    plateOrder: ['plate-enabled-cb', 'plate-type', 'plate-opacity', 'plate-airfield'],
+    ifrOpacityText: '80%',
+    plateOpacityText: '80%',
+  });
+  await on(page);
+  await expect(page.locator('#ifr-sheet')).toBeVisible();
+});
+
+test('instrument-chart opacity is independent, live, and remembered', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  await page.locator('#ifr-opacity').evaluate(element => {
+    element.value = '0.35';
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const changed = await page.evaluate(() => {
+    let opacity = null;
+    map.eachLayer(layer => {
+      if (layer && layer._ovType === 'ifr_overlay') opacity = layer.options.opacity;
+    });
+    return {
+      opacity,
+      label: document.getElementById('ifr-opacity-val').textContent,
+      stored: localStorage.getItem('navaid.ifrOpacity'),
+      plate: document.getElementById('plate-opacity').value,
+    };
+  });
+  expect(changed).toEqual({ opacity: 0.35, label: '35%', stored: '0.35', plate: '0.8' });
+
+  await page.reload();
+  await page.waitForFunction(() => document.getElementById('ifr-opacity-val').textContent === '35%');
+  expect(await page.locator('#ifr-opacity').inputValue()).toBe('0.35');
 });
 
 test('"Show plates for" does not reach it', async ({ page }) => {

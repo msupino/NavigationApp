@@ -2,6 +2,7 @@
 // Helicopter routes overlay: georeferenced helicopter route plate images toggled from the
 // "Extra layers" toolbar section (data-sec="weather").
 const { test, expect } = require('./_setup');
+const { setAirfieldPlate } = require('./_platePicker');
 
 // Block the service worker so that Playwright's page.route() can intercept
 // heli-img requests directly. Without this, the SW (which calls
@@ -40,7 +41,7 @@ test('heli-cb is unchecked by default and controls are hidden', async ({ page })
 
 test('checking heli-cb reveals controls and adds image overlays', async ({ page }) => {
   await boot(page);
-  await page.locator('#heli-cb').check();
+  await setAirfieldPlate(page, 'heli-cb');
   // At least one leaflet image overlay should appear in the overlay pane
   const imgs = page.locator('.leaflet-overlay-pane img.leaflet-image-layer');
   await expect(imgs.first()).toBeVisible();
@@ -50,9 +51,9 @@ test('checking heli-cb reveals controls and adds image overlays', async ({ page 
 
 test('unchecking removes all heli overlays from the map', async ({ page }) => {
   await boot(page);
-  await page.locator('#heli-cb').check();
+  await setAirfieldPlate(page, 'heli-cb');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
-  await page.locator('#heli-cb').uncheck();
+  await setAirfieldPlate(page, 'heli-cb', false);
   // heliLayerGroup was created but removed from map — the group itself
   // must not be on the map after unchecking.
   const onMap = await page.evaluate(
@@ -63,7 +64,7 @@ test('unchecking removes all heli overlays from the map', async ({ page }) => {
 
 test('opacity slider drives overlay opacity', async ({ page }) => {
   await boot(page);
-  await page.locator('#heli-cb').check();
+  await setAirfieldPlate(page, 'heli-cb');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
 
   const result = await page.evaluate(() => {
@@ -84,7 +85,7 @@ test('opacity slider drives overlay opacity', async ({ page }) => {
 
 test('opacity reset restores the tuned default', async ({ page }) => {
   await boot(page);
-  await page.locator('#heli-cb').check();
+  await setAirfieldPlate(page, 'heli-cb');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
 
   const result = await page.evaluate(() => {
@@ -110,7 +111,7 @@ test('opacity reset restores the tuned default', async ({ page }) => {
 
 test('toggle state and opacity persist across reload', async ({ page }) => {
   await boot(page);
-  await page.locator('#heli-cb').check();
+  await setAirfieldPlate(page, 'heli-cb');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
 
   // Set a custom opacity before reloading
@@ -145,7 +146,7 @@ test('heli overlay PNG URLs resolve through heliImgBase()', async ({ page }) => 
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' && document.getElementById('heli-cb'));
-  await page.locator('#heli-cb').check();
+  await setAirfieldPlate(page, 'heli-cb');
   await page.waitForFunction(() => {
     let n = 0;
     if (window.heliLayerGroup) window.heliLayerGroup.eachLayer(() => n++);

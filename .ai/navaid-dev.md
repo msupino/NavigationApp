@@ -184,7 +184,13 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   toolbar is the original floating vertical column with a `⋯` drag handle
   (`#toolbar-handle`) and hamburger collapse control. Position is persisted
   at `navaid.toolbarPos.<lang>`, re-clamped on `window resize`; collapsed state is
-  persisted at `navaid.toolbarCollapsed`. On desktop (`min-width: 681px`)
+  persisted at `navaid.toolbarCollapsed`. By default, the undragged toolbar stays
+  left-anchored in English and right-anchored in Hebrew while collapsing or expanding.
+  Switching from the desktop menubar clears its inline desktop geometry before restoring
+  the separate mobile position or default. A queued restore is ignored if its requesting
+  responsive mode is inactive when its animation-frame callback runs.
+  On desktop
+  (`min-width: 681px`)
   those same `.tb-section` groups render as a fixed top menubar with
   Windows-like dropdown panels. Desktop ignores saved mobile drag/collapse
   state, offsets the map/overlay below the menu strip, and closes dropdowns
@@ -198,7 +204,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Inspector:** `#insp-title` is an `<input>` — for waypoints it's
   the editable name (placeholder `WP N`); for legs it's read-only
   `Leg N`; for notes it's read-only and a textarea + color picker
-  below holds the body. The global `keydown` handler bails out when
+  below holds the body. Opening a multi-point chooser clears the previous selection and
+  closes the previous inspector. Choosing an item closes the chooser and opens only that
+  item's inspector or NOTAM details. The global
+  `keydown` handler bails out when
   the target is an input / textarea / contenteditable so typing
   Backspace doesn't delete.
 - **Waypoints:** circle auto-sized to fit name or sequence number
@@ -726,9 +735,10 @@ as a machine-readable registry.
   CREATE a row the dataset has none for -- Haifa publishes no clearance at all.
   `featureNotamFreqRows` in the gist (default `true`) withdraws the applied
   frequencies; the pointer badge is unaffected either way.
-- `navaid.showIfr` — `'0'` / `'1'` for the instrument-chart layer, and
-  `navaid.ifrSheet.<ICAO>` for which sheet that field is showing (device-local:
-  a composed key the exact-key sync layer cannot enumerate).
+- `navaid.showIfr` — `'0'` / `'1'` for the instrument-chart layer;
+  `navaid.ifrSheet` remembers the one selected `"<ICAO>|<png>"` sheet, and
+  `navaid.ifrOpacity` remembers its independent opacity. All three are included
+  in settings sync.
 - `navaid.baseLayer` — which chart is drawn *under* a plate overlay, chosen in
   View/Set beside the layer picker; `defaultBaseLayer` seeds it.
 - `navaid.showWind` — `'0'` / `'1'` for wind inputs, arrows, and readout.
@@ -846,6 +856,10 @@ as a machine-readable registry.
 - `navaid.plateAirfield` — "Show plates for" filter on the airfield-plate
   overlays: `''` = all airfields, `'auto'` = the route's first & last airfield
   (live via `syncLegs()`), or a single ICAO.
+- `navaid.plateType` — the airfield-chart type selected in Extra layers. The one
+  visible **Show airfield charts** checkbox drives the existing mutually exclusive
+  circuit, training, CVFR, helicopter and communication-failure overlay settings;
+  turning it off remembers this type for the next enable. Included in settings sync.
 - `navaid.overlayBoundsOverrides` — per-plate overlay geometry overrides from
   the `?align=1` align editor, keyed by overlay PNG filename; axis-aligned
   (`sw`/`ne`) or rotated (`tl`/`tr`/`bl`). Wins over `airfields.json` bounds.
@@ -916,6 +930,8 @@ converted from feet to metres before it enters the envelope.
 
 The topic is random, and the AES key is in the URL fragment. The relay receives neither
 readable flight data nor the key. The complete URL is still a bearer capability.
+Every language URL rewrite in `docs/index.html` must preserve `location.hash`; dropping the
+fragment removes the viewer's key and silently turns a valid follower link into an ordinary map.
 Symmetric encryption lets any link holder read and create a valid-looking update.
 This accepted limitation is disclosed before sharing and in `docs/privacy.html`.
 Follow Me must not be described as authenticated or safety tracking.
@@ -930,6 +946,15 @@ Deliberate Stop uses a QoS 1 retained delete and waits for PUBACK. A retained em
 Last Will removes the last broker value after an unexpected disconnect. Publisher UI
 states are `idle`, `connecting`, `connected`, `reconnecting`, and `stopping`.
 Only `connected` may be labelled as actively sharing.
+
+The follower marker uses a north-pointing SVG rotated directly by `trk`. Its fixed-size icon is
+anchored on the reported coordinate; the aircraft label is absolutely positioned beside it and
+must not participate in Leaflet's icon width or move the aircraft away from that coordinate.
+`followMePlanePx` and `followMePlaneColor` tune its size and fill from the Gist.
+While viewing a Follow Me link, each received fix recentres the map on the aircraft.
+The on-map orientation control remains available in follower mode and toggles North-up versus
+the followed aircraft's track-up view. The follower also draws the standard dashed heading
+predictor with labelled 2 NM, 5 NM, and 10 NM marks.
 
 Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
 publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle
