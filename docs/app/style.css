@@ -6797,7 +6797,18 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   text-align: center;
   pointer-events: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
 }
+.follow-me-banner-segment {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  white-space: nowrap;
+}
+.follow-me-banner-segment + .follow-me-banner-segment { padding-inline-start: 0.35em; }
 /* Stale is a different statement, so it looks different rather than just older. */
 .follow-me-banner.stale {
   color: #ffe3d0;

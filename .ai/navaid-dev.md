@@ -958,6 +958,8 @@ predictor with labelled 2 NM, 5 NM, and 10 NM marks.
 The always-visible follower status banner is parked below the toolbar and follows toolbar or
 viewport size changes. If an expanded phone menu leaves no free vertical space, the banner is
 clamped on-screen below the toolbar's stacking level so it cannot block menu controls.
+Its mixed Hebrew/aviation content is rendered as direction-isolated segments: the segment order
+follows the page direction, while aircraft code, altitude, speed, track and coordinates stay LTR.
 
 Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
 publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle
