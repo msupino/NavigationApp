@@ -6783,7 +6783,10 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
   top: 8px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 2400;
+  /* Under the toolbar if a short viewport leaves no room below it. In the normal case JS
+     parks the banner below the toolbar; this stacking order is the last-resort guarantee
+     that an expanded menu remains usable. */
+  z-index: 1090;
   max-width: min(92vw, 460px);
   padding: 6px 12px;
   border-radius: 999px;
@@ -6794,7 +6797,18 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   text-align: center;
   pointer-events: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
 }
+.follow-me-banner-segment {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  white-space: nowrap;
+}
+.follow-me-banner-segment + .follow-me-banner-segment { padding-inline-start: 0.35em; }
 /* Stale is a different statement, so it looks different rather than just older. */
 .follow-me-banner.stale {
   color: #ffe3d0;
