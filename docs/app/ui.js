@@ -7348,7 +7348,6 @@ function refreshMapAfterToolbarModeChange() {
   const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
   // Position is per-language (RTL mirrors LTR, so the spot differs by language).
   const posKey = () => navLangPosKey(toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
-  const posBase = () => (toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
   let wasDesktopMenu = toolbarUsesDesktopMenu();
 
@@ -7371,10 +7370,16 @@ function refreshMapAfterToolbarModeChange() {
 
   function restorePos() {
     try {
-      const raw = navLangPosRead(posBase());
+      const desktopMenu = toolbarUsesDesktopMenu();
+      const raw = navLangPosRead(desktopMenu ? KEY_DESKTOP : KEY);
       if (raw) {
         const p = JSON.parse(raw);
-        requestAnimationFrame(() => setPos(p.x, p.y));
+        requestAnimationFrame(() => {
+          // A resize can switch modes before this frame runs. Never apply coordinates read
+          // from the other mode's storage key after that transition.
+          if (toolbarUsesDesktopMenu() !== desktopMenu) return;
+          setPos(p.x, p.y);
+        });
       }
     } catch (e) { /* storage unavailable */ }
   }

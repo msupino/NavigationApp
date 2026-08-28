@@ -43,3 +43,39 @@ test('a saved mobile position wins after leaving desktop mode', async ({ page })
   expect(Math.round(box.x)).toBe(44);
   expect(Math.round(box.y)).toBe(55);
 });
+
+test('a queued desktop restore cannot overwrite mobile after a rapid mode flip', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem('navaid.toolbarPosDesktop.en', JSON.stringify({ x: 120, y: 90 }));
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => document.getElementById('toolbar').classList.contains('collapsed'));
+
+  await page.evaluate(() => {
+    const nativeRequestAnimationFrame = window.requestAnimationFrame;
+    const queued = [];
+    window.requestAnimationFrame = callback => {
+      queued.push(callback);
+      return queued.length;
+    };
+    window.__flushToolbarTestFrames = () => {
+      window.requestAnimationFrame = nativeRequestAnimationFrame;
+      for (const callback of queued.splice(0)) callback(performance.now());
+    };
+  });
+
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.waitForFunction(() =>
+    matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches);
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.waitForFunction(() =>
+    !matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches);
+  await page.evaluate(() => window.__flushToolbarTestFrames());
+
+  const box = await page.locator('#toolbar').boundingBox();
+  expect(box).not.toBeNull();
+  expect(Math.round(box.x)).toBe(8);
+  expect(Math.round(box.y)).toBe(8);
+});
