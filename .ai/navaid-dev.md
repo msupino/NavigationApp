@@ -956,6 +956,14 @@ The on-map orientation control remains available in follower mode and toggles No
 the followed aircraft's track-up view. The follower also draws the standard dashed heading
 predictor with labelled 2 NM, 5 NM, and 10 NM marks.
 
+The shared predictor is used by real GPS/recording, simulator, and Follow Me fixes. Two fresh,
+timed ground-track samples can bend it into a constant-rate turn; it curves by at most 90° and
+then continues on the ending tangent so the 2/5/10 NM and 2/5 minute marks remain available.
+One sample, compass-only direction, less than 10 kt, a turn below 0.25°/s, a turn above 4°/s,
+or a sample older than six seconds falls back to the straight predictor. The thresholds,
+maximum arc, hold time, and smoothing are Gist tunables in the `Live aircraft` group. Calling
+`resetHeadingPredictor()` on a source change clears both the frozen heading and turn history.
+
 For ground testing, `scripts/follow-me-simulator.py` publishes the bundled
 `scripts/routes/LLHZ-to-LLHA.json` route template as aircraft `TEST`, or accepts any exported
 route JSON. Like the cvfr-bridge fake, it flies the route's waypoint geometry with per-leg
