@@ -506,6 +506,46 @@ test('Stop revokes an in-flight publisher in another NavAid tab', async ({ page,
   await other.close();
 });
 
+test('Stop serializes with a session still initializing in another tab', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-START');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+  });
+
+  const other = await context.newPage();
+  await other.addInitScript(() => {
+    const originalImport = crypto.subtle.importKey.bind(crypto.subtle);
+    window.__releaseFollowImport = null;
+    Object.defineProperty(crypto.subtle, 'importKey', {
+      configurable: true,
+      value: (...args) => new Promise((resolve, reject) => {
+        window.__releaseFollowImport = () => originalImport(...args).then(resolve, reject);
+      }),
+    });
+  });
+  await boot(other);
+  await other.waitForFunction(() => typeof window.__releaseFollowImport === 'function');
+
+  await page.evaluate(() => {
+    window.__stopFinished = false;
+    NavAid.followMe.stop().then(() => { window.__stopFinished = true; });
+  });
+  await new Promise(r => setTimeout(r, 30));
+  expect(await page.evaluate(() => window.__stopFinished)).toBe(false);
+
+  await other.evaluate(() => window.__releaseFollowImport());
+  await page.waitForFunction(() => window.__stopFinished);
+  await other.waitForFunction(() => NavAid.followMe.status() === 'idle');
+  const got = await other.evaluate(() => ({
+    status: NavAid.followMe.status(),
+    stored: localStorage.getItem('navaid.followMeSession'),
+  }));
+  expect(got).toEqual({ status: 'idle', stored: null });
+  await other.close();
+});
+
 test('publisher CONNECT installs a retained empty Last Will', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
@@ -976,6 +1016,30 @@ test('the Follow me control distinguishes connecting and reconnecting from shari
   expect(labels.connecting).toMatch(/connecting/i);
   expect(labels.connected).toMatch(/sharing/i);
   expect(labels.reconnecting).toMatch(/reconnecting/i);
+});
+
+test('a Stop delegated to another tab does not claim the link is dead', async ({ page }) => {
+  await boot(page);
+  const toasts = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    setTune('featureFollowMe', true);
+    window.gpsLiveOn = true;
+    await F.start('4X-PENDING');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    const realStop = F.stop.bind(F);
+    F.stop = async () => ({ pending: true });
+    const seen = [];
+    window.showToast = message => seen.push(String(message));
+    document.getElementById('follow-me').click();
+    await new Promise(r => setTimeout(r, 30));
+    F.stop = realStop;
+    await F.stop();
+    window.gpsLiveOn = false;
+    return seen;
+  });
+  expect(toasts.some(text => /link is dead/i.test(text))).toBe(false);
+  expect(toasts.some(text => /clearing the last position/i.test(text))).toBe(true);
 });
 
 // Dismissing the native share sheet is not a copy, and a denied clipboard write is not one

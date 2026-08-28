@@ -3523,9 +3523,13 @@ function followMeOffered() {
     const status = typeof f.status === 'function' ? f.status() : (f.sharing() ? 'connected' : 'idle');
     if (status !== 'idle') {
       if (status === 'stopping') return;
-      await f.stop();
+      const result = await f.stop();
       refresh();
-      if (typeof showToast === 'function') showToast(S.followMeStopped || 'Follow me: stopped.');
+      if (typeof showToast === 'function') {
+        showToast(result && result.pending
+          ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
+          : (S.followMeStopped || 'Follow me: stopped.'));
+      }
       return;
     }
     // Refuse rather than share a link that will never move.

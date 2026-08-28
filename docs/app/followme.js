@@ -303,10 +303,10 @@
       stored.id === s.id && stored.k === s.rawKeyB64);
   }
 
-  function withSessionLock(id, action) {
+  function withFollowMeLock(action) {
     const locks = navigator.locks;
     if (locks && typeof locks.request === 'function') {
-      return locks.request('navaid-follow-me-' + id, { mode: 'exclusive' }, action);
+      return locks.request('navaid-follow-me-session', { mode: 'exclusive' }, action);
     }
     // Older embedded WebViews have no Web Locks. The shared-storage checks still fence
     // ordinary event ordering there; current browser and native runtimes take the lock.
@@ -406,28 +406,34 @@
   }
 
   async function followMeStart(code) {
-    if (session) return session.status === 'stopping' ? null : session.link;
+    if (session && sessionAuthorized(session)) {
+      return session.status === 'stopping' ? null : session.link;
+    }
+    if (session) relinquishPublisher(session);
     // Refuse rather than share an anonymous dot.
     const reg = followMeSetCode(code || followMeCode());
     if (!reg) return null;
-    // Same aeroplane, same link: this is what makes a restart survivable. A DIFFERENT code
-    // is a different aeroplane and gets its own topic and key -- inheriting a link already
-    // shared for the last aircraft would point its followers at this one.
-    const prev = storedSession();
-    if (prev && prev.pendingStop) {
-      await openPublisher(prev, prev.reg, true);
-      return null;
-    }
-    const reuse = !!(prev && prev.reg === reg);
-    const id = reuse ? prev.id : b64url.from(randomBytes(16));
-    const rawKeyB64 = reuse ? prev.k : b64url.from(randomBytes(32));
-    const s = await openPublisher({
-      id, k: rawKeyB64, at: Date.now(), seq: reuse ? prev.seq : 0,
-    }, reg, false);
-    // `on` is the consent a restart reads back: it says this device was sharing when it
-    // stopped running, which is the only reason resuming without asking is honest.
-    saveSession(sessionRecord(s, true, false));
-    return s.link;
+    return withFollowMeLock(async () => {
+      if (session && sessionAuthorized(session)) {
+        return session.status === 'stopping' ? null : session.link;
+      }
+      if (session) relinquishPublisher(session);
+      // Re-read only after acquiring the device-wide lifecycle lock. Stop may have changed
+      // consent while WebCrypto or another tab delayed this Start request.
+      const prev = storedSession();
+      if (prev && prev.pendingStop) return null;
+      // Same aeroplane, same link: this makes a restart survivable. A different code gets
+      // a new topic and key, so followers of the previous aircraft cannot inherit it.
+      const reuse = !!(prev && prev.reg === reg);
+      const id = reuse ? prev.id : b64url.from(randomBytes(16));
+      const rawKeyB64 = reuse ? prev.k : b64url.from(randomBytes(32));
+      const s = await openPublisher({
+        id, k: rawKeyB64, at: Date.now(), seq: reuse ? prev.seq : 0,
+      }, reg, false);
+      // `on` is the consent a restart reads back. Persist it inside the same lock as Stop.
+      saveSession(sessionRecord(s, true, false));
+      return s.link;
+    });
   }
   function followMeStop() {
     if (!session) return Promise.resolve({ pending: false });
@@ -442,7 +448,7 @@
     refreshSessionControls();
     // Serialize the consent change and tombstone behind any publish already at its final
     // send boundary. Other tabs then see pendingStop before they can enter that boundary.
-    withSessionLock(s.id, () => {
+    withFollowMeLock(() => {
       if (session !== s) return;
       saveSession(sessionRecord(s, false, true));
       // If disconnected, mqttConnect keeps retrying. Its next CONNACK runs the same clear.
@@ -513,7 +519,7 @@
     });
     // Stop can run while WebCrypto is yielding. Never let that older operation publish a
     // retained fix after the tombstone, or publish into a new session that replaced it.
-    return withSessionLock(s.id, () => {
+    return withFollowMeLock(() => {
       if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
         relinquishPublisher(s);
         return false;

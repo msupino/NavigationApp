@@ -929,9 +929,10 @@ Last Will removes the last broker value after an unexpected disconnect. Publishe
 states are `idle`, `connecting`, `connected`, `reconnecting`, and `stopping`.
 Only `connected` may be labelled as actively sharing.
 
-Same-origin tabs serialize their final publish/Stop boundary with a Web Lock. Each publish
+Same-origin tabs serialize Start, final publish, and Stop with one Web Lock. Each publish
 also checks the shared session before and after encryption. A `storage` event closes an
-in-memory publisher when another tab stops or replaces the session.
+in-memory publisher when another tab stops or replaces the session. A delegated Stop result
+must not be labelled complete until the tab that owns cleanup receives PUBACK.
 
 When adding a new key, grep `localStorage.setItem` /
 `sessionStorage.setItem` under `docs/` to stay in sync with this list.
