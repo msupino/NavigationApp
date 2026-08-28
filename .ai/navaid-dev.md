@@ -1074,6 +1074,11 @@ downloadable `route.json`.
   (`.github/workflows/deploy.yml`) have `workflow_dispatch:`. Manual
   trigger: `gh workflow run CI --ref dev` /
   `gh workflow run Deploy --ref dev`.
+- The chart freshness monitor first dispatches each unique stale producer workflow, then
+  polls the published feed timestamps for up to 23 minutes. It opens or updates the stale-feed
+  issue only when that recovery fails; a successful refresh closes an existing alert. The
+  orchestration is implemented in `scripts/chart-monitor-recovery.mjs` and tested without
+  dispatching real workflows.
 - **Explicitly authorized admin-bypass pushes can silently swallow workflow events.** Pushing
   to `dev` / `main` as a repo admin while branch protection has required
   status checks pending records a "Bypassed rule violations" entry but
