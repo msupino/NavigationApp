@@ -449,17 +449,73 @@ test('an encryption already in flight cannot republish after Stop', async ({ pag
     release();
     const published = await publishing;
     await new Promise(r => setTimeout(r, 10));
+    const statusBeforeAck = F.status();
+    const pendingBeforeAck = JSON.parse(
+      localStorage.getItem('navaid.followMeSession')).pendingStop;
     const afterDelete = window.__sent.slice(clearIndex + 1);
     window.__sockets[0].deliver([0x40, 0x02, clear[idAt], clear[idAt + 1]]);
     await stopping;
     delete crypto.subtle.encrypt;
     return {
       published,
+      statusBeforeAck,
+      pendingBeforeAck,
+      statusAfterAck: F.status(),
+      storedAfterAck: localStorage.getItem('navaid.followMeSession'),
       retainedPayloads: afterDelete.filter(f =>
         (f[0] & 0xf0) === 0x30 && (f[0] & 1) && ((f[0] >> 1) & 3) === 0).length,
     };
   });
-  expect(got).toEqual({ published: false, retainedPayloads: 0 });
+  expect(got).toEqual({
+    published: false,
+    statusBeforeAck: 'stopping',
+    pendingBeforeAck: true,
+    statusAfterAck: 'idle',
+    storedAfterAck: null,
+    retainedPayloads: 0,
+  });
+});
+
+test('Stop falls back to removing consent when its pending-state write fails', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-REVOKE');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+  });
+
+  const other = await context.newPage();
+  await boot(other);
+  await other.waitForFunction(() => NavAid.followMe.sharing());
+  await other.evaluate(async () => {
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+  });
+
+  const stopped = await page.evaluate(async () => {
+    const realSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'navaid.followMeSession' && JSON.parse(value).pendingStop) {
+        throw new DOMException('full', 'QuotaExceededError');
+      }
+      return realSet.call(this, key, value);
+    };
+    const result = await NavAid.followMe.stop();
+    Storage.prototype.setItem = realSet;
+    return { result, stored: localStorage.getItem('navaid.followMeSession') };
+  });
+  expect(stopped).toEqual({ result: { pending: false }, stored: null });
+  await other.waitForFunction(() => NavAid.followMe.status() === 'idle');
+  expect(await other.evaluate(() => NavAid.followMe.publish({ lat: 32.1, lng: 34.8 }))).toBe(false);
+
+  const reload = await context.newPage();
+  await boot(reload);
+  await reload.waitForTimeout(50);
+  expect(await reload.evaluate(() => ({
+    status: NavAid.followMe.status(),
+    sockets: window.__sockets.length,
+  }))).toEqual({ status: 'idle', sockets: 0 });
+  await Promise.all([other.close(), reload.close()]);
 });
 
 test('Stop revokes an in-flight publisher in another NavAid tab', async ({ page, context }) => {
@@ -626,7 +682,6 @@ test('only one tab resumes pending cleanup and a stale cleaner cannot erase a ne
   const counts = [await a.evaluate(() => window.__sockets.length),
                   await b.evaluate(() => window.__sockets.length)];
   const owner = counts[0] ? a : b;
-  const stale = counts[0] ? b : a;
   expect(counts[0] + counts[1]).toBe(1);
 
   const packetId = await owner.evaluate(async () => {
@@ -642,37 +697,25 @@ test('only one tab resumes pending cleanup and a stale cleaner cannot erase a ne
     const at = len.next + 2 + topicLen;
     return [frame[at], frame[at + 1]];
   });
-  await owner.evaluate(([hi, lo]) => window.__sockets[0].deliver([0x40, 0x02, hi, lo]), packetId);
-  await owner.waitForFunction(() => NavAid.followMe.status() === 'idle');
-
-  await owner.evaluate(async () => {
-    await NavAid.followMe.start('4X-NEW');
-    window.__sockets[window.__sockets.length - 1].connack();
-    await new Promise(r => setTimeout(r, 10));
+  const replacement = await owner.evaluate(() => {
+    const F = NavAid.followMe;
+    const record = {
+      id: F._b64url.from(F.randomBytes(16)),
+      k: F._b64url.from(F.randomBytes(32)),
+      reg: '4X-NEW', at: Date.now(), seq: 0, on: true, pendingStop: false,
+    };
+    // Same-document writes do not emit a storage event. This directly exercises the
+    // acknowledgement guard against a cleanup owner whose shared record was replaced.
+    localStorage.setItem('navaid.followMeSession', JSON.stringify(record));
+    return record;
   });
-  const activeId = await owner.evaluate(() => JSON.parse(
-    localStorage.getItem('navaid.followMeSession')).id);
-
-  const staleSockets = await stale.evaluate(() => window.__sockets.length);
-  if (staleSockets) {
-    await stale.evaluate(async () => {
-      const socket = window.__sockets[0];
-      socket.autoPuback = false;
-      socket.connack();
-      await new Promise(r => setTimeout(r, 20));
-      const F = NavAid.followMe;
-      const frame = new Uint8Array(window.__sent.find(f =>
-        (f[0] & 0xf0) === 0x30 && ((f[0] >> 1) & 3) === 1));
-      const len = F._readLength(frame, 1);
-      const topicLen = (frame[len.next] << 8) | frame[len.next + 1];
-      const at = len.next + 2 + topicLen;
-      socket.deliver([0x40, 0x02, frame[at], frame[at + 1]]);
-      await new Promise(r => setTimeout(r, 20));
-    });
-  }
+  await owner.evaluate(([hi, lo]) => {
+    window.__sockets[0].deliver([0x40, 0x02, hi, lo]);
+  }, packetId);
+  await owner.waitForFunction(() => NavAid.followMe.status() === 'idle');
   expect(await owner.evaluate(() => JSON.parse(
-    localStorage.getItem('navaid.followMeSession')).id)).toBe(activeId);
-  await owner.evaluate(() => NavAid.followMe.stop());
+    localStorage.getItem('navaid.followMeSession')))).toEqual(replacement);
+  await owner.evaluate(() => localStorage.removeItem('navaid.followMeSession'));
   await Promise.all([a.close(), b.close()]);
 });
 

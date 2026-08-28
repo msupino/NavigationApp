@@ -936,8 +936,10 @@ PUBACK, so only one tab can resume pending cleanup and a stale cleaner cannot er
 replacement session. Each publish checks the shared session before and after encryption. A
 `storage` event closes an in-memory publisher when another tab stops or replaces the session.
 A delegated Stop result must not be labelled complete until the tab that owns cleanup receives
-PUBACK. Starting requires the private session to be stored successfully; otherwise the UI
-refuses to create a link that cannot send.
+PUBACK and durable consent revocation succeeds. Stop also broadcasts revocation directly to
+established tabs and removes the active record when writing pending cleanup state fails.
+Starting requires the private session to be stored successfully; otherwise the UI refuses to
+create a link that cannot send.
 
 Opening a Follow Me viewer link suppresses the new-route onboarding hint and its primed map
 click. Viewer mode starts with the same automatic route-edit lock used by a live own-ship;

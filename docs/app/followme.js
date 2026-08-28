@@ -288,7 +288,12 @@
     }
   }
   function clearSession() {
-    try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* storage off */ }
+    try {
+      localStorage.removeItem(SESSION_KEY);
+      return localStorage.getItem(SESSION_KEY) === null;
+    } catch (e) {
+      return false;
+    }
   }
 
   function refreshSessionControls() {
@@ -333,6 +338,7 @@
     if (!s || session !== s) return;
     s.status = 'stopping';
     clearTimeout(s.clearAckTimer);
+    clearTimeout(s.revocationRetryTimer);
     s.client.close();
     if (s.resolveConnected) s.resolveConnected(false);
     if (s.resolveStop) s.resolveStop({ pending: true });
@@ -343,6 +349,7 @@
   function finishStop(s) {
     if (!s || session !== s) return;
     clearTimeout(s.clearAckTimer);
+    clearTimeout(s.revocationRetryTimer);
     s.client.close();
     if (s.resolveConnected) s.resolveConnected(false);
     // The lifecycle lock is held until this acknowledgement resolves stopPromise. Re-check
@@ -350,9 +357,22 @@
     const stored = rawSession();
     const ownsPending = !!(stored && stored.pendingStop && !stored.on &&
       stored.id === s.id && stored.k === s.rawKeyB64);
+    const sameCapability = !!(stored && stored.id === s.id && stored.k === s.rawKeyB64);
+    let durable = true;
     if (ownsPending) {
-      if (persistLink()) saveSession(sessionRecord(s, false, false));
-      else clearSession();
+      durable = persistLink()
+        ? (saveSession(sessionRecord(s, false, false)) || clearSession())
+        : clearSession();
+    } else if (sameCapability && stored.on) {
+      // The pending-state write failed. Removing the old active consent is the safe fallback.
+      durable = clearSession();
+    }
+    if (!durable) {
+      // The broker deletion is acknowledged, but Stop is not complete until a reload also
+      // sees consent revoked. Keep the owner and retry the durable local revocation.
+      s.clearPacketId = null;
+      s.revocationRetryTimer = setTimeout(() => finishStop(s), 1000);
+      return;
     }
     session = null;
     refreshSessionControls();
@@ -391,6 +411,7 @@
       seq: Number.isSafeInteger(raw.seq) ? raw.seq : 0,
       lastSentAt: 0, status: pendingStop ? 'stopping' : 'connecting', everConnected: false,
       resolveStop: null, stopPromise: null, clearPacketId: null, clearAckTimer: 0,
+      revocationRetryTimer: 0,
       resolveConnected: null, connectedPromise: null,
       link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k,
     };
@@ -477,11 +498,12 @@
     s.status = 'stopping';
     s.stopPromise = new Promise(resolve => { s.resolveStop = resolve; });
     refreshSessionControls();
+    broadcastRevocation(s);
     // Serialize the consent change and tombstone behind any publish already at its final
     // send boundary. Other tabs then see pendingStop before they can enter that boundary.
     withFollowMeLock(async () => {
       if (session !== s) return;
-      saveSession(sessionRecord(s, false, true));
+      if (!saveSession(sessionRecord(s, false, true))) clearSession();
       // If disconnected, mqttConnect keeps retrying. Its next CONNACK runs the same clear.
       clearRetainedAndFinish(s);
       // Keep the origin-wide lifecycle lock through PUBACK. Only one tab may own cleanup;
@@ -550,6 +572,7 @@
     return withFollowMePublishLock(async () => {
       const reserved = await withFollowMeLock(() => {
         if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
+          if (session === s && s.status === 'stopping') return false;
           relinquishPublisher(s);
           return false;
         }
@@ -577,12 +600,12 @@
       // Avoid waiting behind a Stop that deliberately holds the lifecycle lock through
       // PUBACK. Shared storage provides the cross-tab revocation signal synchronously here.
       if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
-        relinquishPublisher(s);
+        if (!(session === s && s.status === 'stopping')) relinquishPublisher(s);
         return false;
       }
       return withFollowMeLock(() => {
         if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
-          relinquishPublisher(s);
+          if (!(session === s && s.status === 'stopping')) relinquishPublisher(s);
           return false;
         }
         // The final authorization and retained send do not yield. A later Stop tombstone
@@ -775,6 +798,21 @@
     age: followMeAge, topicFor, brokerUrl, importKey, randomBytes,
   };
   window.followMeAge = followMeAge;
+
+  const revocationChannel = typeof BroadcastChannel === 'function'
+    ? new BroadcastChannel('navaid-follow-me-revocation') : null;
+  function broadcastRevocation(s) {
+    if (!revocationChannel || !s) return;
+    try { revocationChannel.postMessage({ id: s.id, k: s.rawKeyB64 }); } catch (e) { /* optional */ }
+  }
+  if (revocationChannel) {
+    revocationChannel.onmessage = (event) => {
+      const revoked = event && event.data;
+      if (session && revoked && revoked.id === session.id && revoked.k === session.rawKeyB64) {
+        relinquishPublisher(session);
+      }
+    };
+  }
 
   window.addEventListener('storage', (event) => {
     if (event.key === SESSION_KEY && session && !sessionAuthorized(session)) {
