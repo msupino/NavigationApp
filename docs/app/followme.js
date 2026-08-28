@@ -670,7 +670,12 @@
     if (!p) return null;
     const state = await followMeWatch(p.id, p.key, opts);
     viewer = { state, marker: null, follow: true, timer: 0 };
+    // Following an aircraft is not route onboarding. Drop any intro that was painted before
+    // this async viewer started, and begin with route edits locked just like a live own-ship.
+    if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
+    window.editUnlockOverride = false;
     document.body.classList.add('follow-me-viewing');
+    if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
     followMeViewerRefresh();
     // The age has to keep counting even when nothing arrives -- especially then.
     viewer.timer = setInterval(followMeViewerRefresh, 1000);
@@ -684,7 +689,9 @@
     clearInterval(viewer.timer);
     if (viewer.marker && typeof map !== 'undefined') map.removeLayer(viewer.marker);
     viewer = null;
+    window.editUnlockOverride = false;
     document.body.classList.remove('follow-me-viewing');
+    if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
     const el = document.getElementById('follow-me-banner');
     if (el) el.remove();
     followMeUnwatch();

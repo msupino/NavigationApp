@@ -54,6 +54,28 @@ test('after Escape a map click adds nothing', async ({ page }) => {
   expect(await page.evaluate(() => state.waypoints.length)).toBe(before);
 });
 
+test('opening a desktop menu section cancels route onboarding', async ({ page }) => {
+  await fresh(page);
+  await page.locator('.tb-section[data-sec="build"] .tb-section-head').click();
+  const s = await primed(page);
+  expect(s.hint).toBe(false);
+  expect(s.armed).toBe(false);
+  expect(s.cursor).toBe(false);
+});
+
+test.describe('mobile menu', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test('expanding the main menu cancels route onboarding', async ({ page }) => {
+    await fresh(page);
+    await page.locator('#toolbar-toggle').click();
+    const s = await primed(page);
+    expect(s.hint).toBe(false);
+    expect(s.armed).toBe(false);
+    expect(s.cursor).toBe(false);
+  });
+});
+
 // The other half: while it IS primed, the click still starts the route — that is the whole
 // point of the intro, and Escape must not be the only way to find out what a click does.
 test('while primed, a click still drops the first waypoint and enters add mode', async ({ page }) => {

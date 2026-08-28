@@ -19,6 +19,11 @@ function emptyRouteHintSeen() {
 }
 // The intro (hint + click priming) can be switched off wholesale from the tuning gist.
 function routeIntroOn() {
+  // A Follow Me URL is a viewing task, not a route-building session. Suppress the first-route
+  // wizard before followme.js loads so it never flashes or primes a map click as an edit.
+  try {
+    if (new URLSearchParams(location.search).get('follow')) return false;
+  } catch (e) { /* malformed URL: fall back to the ordinary intro rule */ }
   return typeof tune !== 'function' || tune('featureRouteIntro') !== false;
 }
 function refreshEmptyRouteHint() {
@@ -679,7 +684,10 @@ const editLockBtn = document.getElementById('edit-lock');
 // Starting a recording or Location locks the route on its own, and a button still showing an
 // open padlock while every drag is being refused is a button that lies.
 function editLockAutoNow() {
-  return typeof gpsMapLocked === 'function' && gpsMapLocked();
+  const ownPosition = typeof gpsMapLocked === 'function' && gpsMapLocked();
+  const following = !!(window.NavAid && NavAid.followMe &&
+    typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing());
+  return ownPosition || following;
 }
 // The in-flight lock is a default, not a rule: a diversion gets planned in the air, and a
 // pilot who means to move a waypoint has to be able to. The exception is deliberate (one tap)
@@ -7439,11 +7447,16 @@ function refreshMapAfterToolbarModeChange() {
       window.reconcileLegendPosition();
     }
   }
-  toggle.addEventListener('click',
-    () => setCollapsed(!bar.classList.contains('collapsed')));
+  toggle.addEventListener('click', () => {
+    const opening = bar.classList.contains('collapsed');
+    if (opening && typeof dismissRoutePriming === 'function') dismissRoutePriming();
+    setCollapsed(!bar.classList.contains('collapsed'));
+  });
   toggle.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
+      const opening = bar.classList.contains('collapsed');
+      if (opening && typeof dismissRoutePriming === 'function') dismissRoutePriming();
       setCollapsed(!bar.classList.contains('collapsed'));
     }
   });
@@ -7581,6 +7594,7 @@ function refreshMapAfterToolbarModeChange() {
     head.setAttribute('aria-expanded', sec.classList.contains('open') ? 'true' : 'false');
     function toggle() {
       const willOpen = !sec.classList.contains('open');
+      if (willOpen && typeof dismissRoutePriming === 'function') dismissRoutePriming();
       // Accordion behaviour: opening a section closes the others.
       if (willOpen) closeOthers(sec);
       setSectionOpen(sec, willOpen);

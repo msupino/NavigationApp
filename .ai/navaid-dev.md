@@ -908,7 +908,7 @@ re-load that does a full page navigation):
 `docs/app/followme.js` publishes encrypted position envelopes over MQTT WebSocket.
 The broker URL is Gist-tunable. Its default is a public third-party test relay.
 The default is best-effort, so the UI must not promise availability or delivery.
-It must not promise retention or history either. The same publisher handles real GPS
+The UI must not promise retention or history either. The same publisher handles real GPS
 and simulator fixes in the browser, iOS app, and Android app. Simulator altitude is
 converted from feet to metres before it enters the envelope.
 
@@ -933,6 +933,11 @@ Same-origin tabs serialize Start, final publish, and Stop with one Web Lock. Eac
 also checks the shared session before and after encryption. A `storage` event closes an
 in-memory publisher when another tab stops or replaces the session. A delegated Stop result
 must not be labelled complete until the tab that owns cleanup receives PUBACK.
+
+Opening a Follow Me viewer link suppresses the new-route onboarding hint and its primed map
+click. Viewer mode starts with the same automatic route-edit lock used by a live own-ship;
+the existing one-tap session override still permits an intentional edit. Opening the toolbar
+menu also dismisses route onboarding so the next map click cannot unexpectedly add a waypoint.
 
 When adding a new key, grep `localStorage.setItem` /
 `sessionStorage.setItem` under `docs/` to stay in sync with this list.

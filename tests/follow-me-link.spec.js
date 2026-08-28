@@ -590,6 +590,27 @@ test('the viewer boot does not wait on the gist', async ({ page }) => {
   expect(code).not.toContain('featureFollowMe');
 });
 
+test('opening a follower link skips route onboarding and locks route editing', async ({ page }) => {
+  await installStub(page);
+  const key = 'A'.repeat(43); // 32 zero bytes, base64url without padding
+  await page.goto('?lang=en&nogist&follow=test-viewer#k=' + key);
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe.viewing()));
+
+  await expect(page.locator('#empty-route-hint')).toHaveCount(0);
+  const before = await page.evaluate(() => ({
+    primed: routePrimingArmed(),
+    locked: routeEditLocked(),
+    waypoints: state.waypoints.length,
+  }));
+  expect(before).toEqual({ primed: false, locked: true, waypoints: 0 });
+
+  await page.evaluate(() => {
+    const p = L.point(240, 260);
+    map.fire('click', { containerPoint: p, latlng: map.containerPointToLatLng(p) });
+  });
+  expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
+});
+
 // A follower on the ground is watching an aeroplane, not a dot: the banner has to say how
 // high and how fast, in feet and knots, and where. The fix carries metres and knots.
 test('the banner reads out altitude, speed, track and position', async ({ page }) => {
