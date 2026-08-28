@@ -100,7 +100,9 @@
       if (!p) {
         var params = new URLSearchParams(location.search);
         params.set('lang', lang);
-        history.replaceState(null, '', '?' + params.toString());
+        // Follow-me encryption keys live in the fragment. Rebuilding only the query silently
+        // turned a valid shared link into an ordinary map on a first-time phone.
+        history.replaceState(null, '', '?' + params.toString() + location.hash);
       }
       window.__navLang = lang;
     }());
@@ -263,7 +265,7 @@
           }
           var params = new URLSearchParams(location.search);
           params.set('lang', sel.value);
-          location.href = '?' + params.toString();
+          location.href = '?' + params.toString() + location.hash;
         });
         // Browsers may restore a form control's live value from the back-forward cache after
         // the document scripts set it. Reconcile the visible picker with the restored page.
