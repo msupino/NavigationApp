@@ -1,18 +1,18 @@
 // Follow me: a link that shows someone where the aeroplane is, with no server of ours.
-//
+
 // Two devices need a relay. This uses a PUBLIC MQTT broker over WebSocket, with no NavAid
 // account or server. Positions use an unguessable topic and browser-side encryption.
 // The key is in the link fragment, which browsers do not send to a server.
-//
+
 // The broker cannot read positions, but the test relay has no availability promise.
 // The URL is a bearer capability. Its symmetric key can also create valid-looking packets.
 // This accepted limit is disclosed before sharing; this is not authenticated safety tracking.
-//
+
 // What it is not: a tracking service. A public broker is best-effort and unauthenticated,
 // there is no history, and a phone that loses signal simply stops publishing. The viewer is
 // built around saying so -- see followMeAge -- because a map that quietly keeps drawing an
 // aeroplane where it last was is worse than a map that admits it does not know.
-//
+
 // The MQTT client here is deliberately small and in-repo rather than a library from a CDN:
 // positions use QoS 0; retained cleanup uses QoS 1 so Stop can wait for broker acknowledgement.
 (function () {
