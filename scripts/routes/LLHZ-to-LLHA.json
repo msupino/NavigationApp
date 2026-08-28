@@ -1,0 +1,27 @@
+{
+  "waypoints": [
+    { "lat": 32.17944, "lng": 34.83444, "name": "LLHZ" },
+    { "lat": 32.21861, "lng": 34.88250, "name": "BAZRA" },
+    { "lat": 32.25722, "lng": 34.89111, "name": "DEROR" },
+    { "lat": 32.32306, "lng": 34.90389, "name": "SHARO" },
+    { "lat": 32.46472, "lng": 34.91222, "name": "HADRA" },
+    { "lat": 32.59194, "lng": 34.94639, "name": "FRDIS" },
+    { "lat": 32.71444, "lng": 34.97083, "name": "BOREN" },
+    { "lat": 32.75389, "lng": 34.93694, "name": "HOTRM" },
+    { "lat": 32.79611, "lng": 34.94333, "name": "DAROM" },
+    { "lat": 32.84111, "lng": 34.98111, "name": "GALIM" },
+    { "lat": 32.80833, "lng": 35.04278, "name": "LLHA" }
+  ],
+  "legs": [
+    { "inboundAltitude": 800, "outboundAltitude": 1200, "flightSpeed": 90 },
+    { "inboundAltitude": 800, "outboundAltitude": 2000, "flightSpeed": 90 },
+    { "inboundAltitude": 1500, "outboundAltitude": 2000, "flightSpeed": 90 },
+    { "inboundAltitude": 1500, "outboundAltitude": 2000, "flightSpeed": 90 },
+    { "inboundAltitude": 1500, "outboundAltitude": 2000, "flightSpeed": 90 },
+    { "inboundAltitude": 1500, "outboundAltitude": 2000, "flightSpeed": 90 },
+    { "inboundAltitude": 1500, "outboundAltitude": 2000, "flightSpeed": 90 },
+    { "inboundAltitude": 1500, "outboundAltitude": 2000, "flightSpeed": 90 },
+    { "inboundAltitude": 1500, "outboundAltitude": 2000, "flightSpeed": 90 },
+    { "inboundAltitude": 1500, "outboundAltitude": 2000, "flightSpeed": 90 }
+  ]
+}
