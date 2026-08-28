@@ -7379,7 +7379,7 @@ function refreshMapAfterToolbarModeChange() {
     } catch (e) { /* storage unavailable */ }
   }
 
-  function clearInlineDesktopPos() {
+  function clearInlineToolbarPos() {
     bar.style.left = '';
     bar.style.top = '';
     bar.style.right = '';
@@ -7474,7 +7474,7 @@ function refreshMapAfterToolbarModeChange() {
     if (desktopMenu) {
       dragging = false;
       bar.classList.remove('dragging');
-      clearInlineDesktopPos();       // drop any leftover mobile-column position
+      clearInlineToolbarPos();       // drop any leftover mobile-column position
       setCollapsed(false, { persist: false });
       restorePos();                  // re-apply a saved desktop position, if any
       refreshMapAfterToolbarModeChange();
@@ -7484,7 +7484,7 @@ function refreshMapAfterToolbarModeChange() {
     // Desktop and mobile positions have separate keys, so their live inline geometry must
     // be separate too. Otherwise an absent mobile save makes restorePos() a no-op and the
     // desktop menubar's coordinates leak into the floating toolbar.
-    if (enteringMobile) clearInlineDesktopPos();
+    if (enteringMobile) clearInlineToolbarPos();
     restorePos();
     let sc = null;
     try { sc = lsGet(COLLAPSED_KEY); } catch (e) { /* storage unavailable */ }

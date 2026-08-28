@@ -21,12 +21,20 @@ test('opening a point chooser closes the old waypoint inspector and selection', 
     showInspector();
     draw();
     const firstWasOpen = !document.getElementById('inspector').classList.contains('hidden');
+    const originalDraw = window.draw;
+    let chooserDraws = 0;
+    window.draw = function () {
+      chooserDraws += 1;
+      return originalDraw.apply(this, arguments);
+    };
     showPointChoice([{ type: 'wp', index: 1 }, { type: 'wp', index: 2 }]);
+    window.draw = originalDraw;
     return {
       firstWasOpen,
       inspectorHidden: document.getElementById('inspector').classList.contains('hidden'),
       selected: state.selected,
       chooserCount: document.querySelectorAll('.point-choice-modal').length,
+      chooserDraws,
     };
   });
 
@@ -34,6 +42,7 @@ test('opening a point chooser closes the old waypoint inspector and selection', 
   expect(opened.inspectorHidden).toBe(true);
   expect(opened.selected).toBeNull();
   expect(opened.chooserCount).toBe(1);
+  expect(opened.chooserDraws).toBeGreaterThan(0);
 
   await page.locator('.point-choice-option', { hasText: 'SECOND' }).click();
   await expect(page.locator('.point-choice-modal')).toHaveCount(0);

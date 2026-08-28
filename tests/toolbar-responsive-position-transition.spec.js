@@ -27,6 +27,7 @@ for (const lang of ['en', 'he']) {
 
     const box = await page.locator('#toolbar').boundingBox();
     expect(box).not.toBeNull();
+    expect(Math.round(box.y)).toBe(8);
     if (lang === 'en') expect(Math.round(box.x)).toBe(8);
     else expect(Math.round(390 - box.x - box.width)).toBe(8);
   });
