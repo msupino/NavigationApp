@@ -518,6 +518,63 @@ test('Stop falls back to removing consent when its pending-state write fails', a
   await Promise.all([other.close(), reload.close()]);
 });
 
+test('Stop stays pending until an unreadable session store can be revoked', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-STORE');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[0].autoPuback = false;
+
+    const real = {
+      get: Storage.prototype.getItem,
+      set: Storage.prototype.setItem,
+      remove: Storage.prototype.removeItem,
+    };
+    window.__blockFollowStorage = true;
+    for (const [name, method] of [['getItem', 'get'], ['setItem', 'set'], ['removeItem', 'remove']]) {
+      Storage.prototype[name] = function (key, ...args) {
+        if (window.__blockFollowStorage && key === 'navaid.followMeSession') {
+          throw new DOMException('blocked', 'SecurityError');
+        }
+        return real[method].call(this, key, ...args);
+      };
+    }
+    window.__stopSettled = false;
+    window.__storageStop = NavAid.followMe.stop().then(result => {
+      window.__stopSettled = true;
+      return result;
+    });
+    await new Promise(r => setTimeout(r, 20));
+    const F = NavAid.followMe;
+    const frame = new Uint8Array(window.__sent.find(f =>
+      (f[0] & 0xf0) === 0x30 && ((f[0] >> 1) & 3) === 1));
+    const len = F._readLength(frame, 1);
+    const topicLen = (frame[len.next] << 8) | frame[len.next + 1];
+    const at = len.next + 2 + topicLen;
+    window.__sockets[0].deliver([0x40, 0x02, frame[at], frame[at + 1]]);
+  });
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => ({
+    settled: window.__stopSettled,
+    status: NavAid.followMe.status(),
+  }))).toEqual({ settled: false, status: 'stopping' });
+
+  await page.evaluate(() => { window.__blockFollowStorage = false; });
+  await page.waitForFunction(() => window.__stopSettled, null, { timeout: 3000 });
+  expect(await page.evaluate(async () => ({
+    result: await window.__storageStop,
+    status: NavAid.followMe.status(),
+    stored: localStorage.getItem('navaid.followMeSession'),
+  }))).toEqual({ result: { pending: false }, status: 'idle', stored: null });
+
+  const reload = await context.newPage();
+  await boot(reload);
+  await reload.waitForTimeout(50);
+  expect(await reload.evaluate(() => NavAid.followMe.status())).toBe('idle');
+  await reload.close();
+});
+
 test('Stop revokes an in-flight publisher in another NavAid tab', async ({ page, context }) => {
   await boot(page);
   await page.evaluate(async () => {
@@ -559,6 +616,55 @@ test('Stop revokes an in-flight publisher in another NavAid tab', async ({ page,
     };
   });
   expect(got).toEqual({ published: false, status: 'idle', retainedPositions: 0 });
+  await other.close();
+});
+
+test('simultaneous Stops keep one cleanup owner through PUBACK', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-DUAL');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[0].autoPuback = false;
+  });
+  const other = await context.newPage();
+  await boot(other);
+  await other.waitForFunction(() => NavAid.followMe.sharing());
+  await other.evaluate(async () => {
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[0].autoPuback = false;
+  });
+
+  await Promise.all([
+    page.evaluate(() => { window.__stopResult = NavAid.followMe.stop(); }),
+    other.evaluate(() => { window.__stopResult = NavAid.followMe.stop(); }),
+  ]);
+  await page.waitForTimeout(60);
+  const statuses = [await page.evaluate(() => NavAid.followMe.status()),
+                    await other.evaluate(() => NavAid.followMe.status())];
+  expect(statuses.filter(status => status === 'stopping')).toHaveLength(1);
+  const owner = statuses[0] === 'stopping' ? page : other;
+  const packetId = await owner.evaluate(() => {
+    const F = NavAid.followMe;
+    const frame = new Uint8Array(window.__sent.find(f =>
+      (f[0] & 0xf0) === 0x30 && ((f[0] >> 1) & 3) === 1));
+    const len = F._readLength(frame, 1);
+    const topicLen = (frame[len.next] << 8) | frame[len.next + 1];
+    const at = len.next + 2 + topicLen;
+    return [frame[at], frame[at + 1]];
+  });
+  await owner.evaluate(([hi, lo]) => {
+    window.__sockets[0].deliver([0x40, 0x02, hi, lo]);
+  }, packetId);
+  const results = await Promise.all([
+    page.evaluate(() => window.__stopResult),
+    other.evaluate(() => window.__stopResult),
+  ]);
+  expect(results.map(result => result.pending).sort()).toEqual([false, true]);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.followMeSession'))).toBe(null);
+  expect(await page.evaluate(() => NavAid.followMe.status())).toBe('idle');
+  expect(await other.evaluate(() => NavAid.followMe.status())).toBe('idle');
   await other.close();
 });
 

@@ -252,20 +252,29 @@
   const resumeMs = () => Math.max(1, Number(tune('followMeResumeHr', 12)) || 12) * 3600000;
   const persistLink = () => tune('featureFollowMePersist', false) === true;
 
-  function rawSession() {
+  function checkedSession() {
+    let text;
     try {
-      const raw = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-      if (!raw || !raw.id || !raw.k || !raw.reg) return null;
+      text = localStorage.getItem(SESSION_KEY);
+    } catch (e) {
+      return { ok: false, value: null };
+    }
+    if (!text) return { ok: true, value: null };
+    try {
+      const raw = JSON.parse(text);
+      if (!raw || !raw.id || !raw.k || !raw.reg) return { ok: true, value: null };
       // A key of the wrong size is a key from a broken write, not a session.
-      if (b64url.to(raw.k).length !== 32) return null;
+      if (b64url.to(raw.k).length !== 32) return { ok: true, value: null };
       raw.seq = Number.isSafeInteger(raw.seq) && raw.seq >= 0 ? raw.seq : 0;
       raw.pendingStop = raw.pendingStop === true;
       raw.on = raw.on === true;
-      return raw;
+      return { ok: true, value: raw };
     } catch (e) {
-      return null;
+      // The store was readable. Malformed data cannot authorize a resume.
+      return { ok: true, value: null };
     }
   }
+  function rawSession() { return checkedSession().value; }
   function storedSession() {
     const raw = rawSession();
     try {
@@ -309,7 +318,8 @@
   }
 
   function sessionAuthorized(s) {
-    const stored = rawSession();
+    const checked = checkedSession();
+    const stored = checked.value;
     return !!(s && stored && stored.on && !stored.pendingStop &&
       stored.id === s.id && stored.k === s.rawKeyB64);
   }
@@ -354,11 +364,12 @@
     if (s.resolveConnected) s.resolveConnected(false);
     // The lifecycle lock is held until this acknowledgement resolves stopPromise. Re-check
     // identity anyway: a stale cleaner must never erase or deactivate a replacement session.
-    const stored = rawSession();
+    const checked = checkedSession();
+    const stored = checked.value;
     const ownsPending = !!(stored && stored.pendingStop && !stored.on &&
       stored.id === s.id && stored.k === s.rawKeyB64);
     const sameCapability = !!(stored && stored.id === s.id && stored.k === s.rawKeyB64);
-    let durable = true;
+    let durable = checked.ok;
     if (ownsPending) {
       durable = persistLink()
         ? (saveSession(sessionRecord(s, false, false)) || clearSession())
@@ -808,7 +819,8 @@
   if (revocationChannel) {
     revocationChannel.onmessage = (event) => {
       const revoked = event && event.data;
-      if (session && revoked && revoked.id === session.id && revoked.k === session.rawKeyB64) {
+      if (session && session.status !== 'stopping' && revoked &&
+          revoked.id === session.id && revoked.k === session.rawKeyB64) {
         relinquishPublisher(session);
       }
     };
