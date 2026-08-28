@@ -19,6 +19,13 @@ function emptyRouteHintSeen() {
 }
 // The intro (hint + click priming) can be switched off wholesale from the tuning gist.
 function routeIntroOn() {
+  // A Follow Me URL is a viewing task, not a route-building session. Suppress the first-route
+  // wizard before followme.js loads so it never flashes or primes a map click as an edit.
+  try {
+    const id = new URLSearchParams(location.search).get('follow');
+    const key = new URLSearchParams(location.hash.replace(/^#/, '')).get('k');
+    if (id && /^[A-Za-z0-9_-]{43}$/.test(key || '')) return false;
+  } catch (e) { /* malformed URL: fall back to the ordinary intro rule */ }
   return typeof tune !== 'function' || tune('featureRouteIntro') !== false;
 }
 function refreshEmptyRouteHint() {
@@ -645,12 +652,20 @@ function refreshFollowMeMapControl() {
   // Same rule as the follow lock: no position, no control -- there would be nothing to share.
   wrap.style.display = (offered && live) ? '' : 'none';
   orderMapControls(wrap.parentNode);
-  const on = !!(F && F.sharing());
-  followMeBtn.textContent = on ? '\u25C9' : '\u21EA';
-  followMeBtn.classList.toggle('follow-me-on', on);
-  followMeBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  const label = on ? (S.followMeSharingNow || 'Sharing your position — tap to stop')
-                   : (S.tbFollowMeTitle || 'Share a link that shows where you are');
+  const status = F && typeof F.status === 'function' ? F.status() : 'idle';
+  const active = status !== 'idle';
+  followMeBtn.textContent = status === 'connected' ? '\u25C9' : (active ? '\u25CC' : '\u21EA');
+  followMeBtn.classList.toggle('follow-me-on', status === 'connected');
+  followMeBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  const label = status === 'connected'
+    ? (S.followMeSharingNow || 'Sharing your position — tap to stop')
+    : status === 'reconnecting'
+      ? (S.followMeReconnecting || 'Follow me: reconnecting — tap to stop')
+      : status === 'connecting'
+        ? (S.followMeConnecting || 'Follow me: connecting — tap to stop')
+        : status === 'stopping'
+          ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
+          : (S.tbFollowMeTitle || 'Share a best-effort live position link');
   followMeBtn.title = label;
   followMeBtn.setAttribute('aria-label', label);
 }
@@ -697,7 +712,10 @@ const editLockBtn = document.getElementById('edit-lock');
 // Starting a recording or Location locks the route on its own, and a button still showing an
 // open padlock while every drag is being refused is a button that lies.
 function editLockAutoNow() {
-  return typeof gpsMapLocked === 'function' && gpsMapLocked();
+  const ownPosition = typeof gpsMapLocked === 'function' && gpsMapLocked();
+  const following = !!(window.NavAid && NavAid.followMe &&
+    typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing());
+  return ownPosition || following;
 }
 // The in-flight lock is a default, not a rule: a diversion gets planned in the air, and a
 // pilot who means to move a waypoint has to be able to. The exception is deliberate (one tap)
@@ -3516,17 +3534,39 @@ function followMeOffered() {
   const F = () => (window.NavAid && window.NavAid.followMe) || null;
   function refresh() {
     btn.hidden = !followMeOffered();
-    const on = !!(F() && F().sharing());
-    btn.textContent = on ? (S.tbFollowMeStop || 'Stop sharing') : (S.tbFollowMe || 'Follow me');
-    btn.classList.toggle('on', on);
+    const f = F();
+    const status = f && typeof f.status === 'function' ? f.status() : 'idle';
+    const active = status !== 'idle';
+    btn.textContent = status === 'stopping'
+      ? (S.followMeStoppingShort || 'Stopping sharing…')
+      : active ? (S.tbFollowMeStop || 'Stop sharing') : (S.tbFollowMe || 'Follow me');
+    btn.classList.toggle('on', status === 'connected');
+    btn.disabled = status === 'stopping';
+    const label = status === 'connected'
+      ? (S.followMeSharingNow || 'Sharing your position — tap to stop')
+      : status === 'reconnecting'
+        ? (S.followMeReconnecting || 'Follow me: reconnecting — tap to stop')
+        : status === 'connecting'
+          ? (S.followMeConnecting || 'Follow me: connecting — tap to stop')
+          : status === 'stopping'
+            ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
+            : (S.tbFollowMeTitle || 'Share a best-effort live position link');
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
   }
   btn.addEventListener('click', async () => {
     const f = F();
     if (!f) return;
-    if (f.sharing()) {
-      f.stop();
+    const status = typeof f.status === 'function' ? f.status() : (f.sharing() ? 'connected' : 'idle');
+    if (status !== 'idle') {
+      if (status === 'stopping') return;
+      const result = await f.stop();
       refresh();
-      if (typeof showToast === 'function') showToast(S.followMeStopped || 'Follow me: stopped.');
+      if (typeof showToast === 'function') {
+        showToast(result && result.pending
+          ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
+          : (S.followMeStopped || 'Follow me: stopped.'));
+      }
       return;
     }
     // Refuse rather than share a link that will never move.
@@ -3544,22 +3584,34 @@ function followMeOffered() {
     if (asked === null) return;                     // cancelled: share nothing
     const link = await f.start(asked);
     if (!link) {
-      if (typeof showToast === 'function') showToast(S.followMeNeedCode || 'Follow me needs an aircraft code.');
+      if (typeof showToast === 'function') {
+        const stopping = typeof f.status === 'function' && f.status() === 'stopping';
+        const failure = typeof f.startFailure === 'function' ? f.startFailure() : null;
+        showToast(stopping
+          ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
+          : failure === 'storage'
+            ? (S.followMeStartFailed || 'Follow me could not start on this device.')
+            : (S.followMeNeedCode || 'Follow me needs an aircraft code.'));
+      }
       return;
     }
     refresh();
     // The share sheet where there is one -- on a phone that is how a link reaches WhatsApp --
     // and the clipboard everywhere else.
     let shared = false;
+    let cancelled = false;
     if (navigator.share) {
       try { await navigator.share({ title: S.tbFollowMe || 'Follow me', url: link }); shared = true; }
-      catch (e) { /* dismissed: fall through to the clipboard */ }
+      catch (e) { cancelled = !!(e && e.name === 'AbortError'); }
     }
-    if (!shared && navigator.clipboard && navigator.clipboard.writeText) {
-      try { await navigator.clipboard.writeText(link); } catch (e) { /* denied */ }
+    let copied = false;
+    if (!shared && !cancelled && navigator.clipboard && navigator.clipboard.writeText) {
+      try { await navigator.clipboard.writeText(link); copied = true; } catch (e) { /* denied */ }
     }
-    if (!shared && typeof showToast === 'function') {
+    if (copied && typeof showToast === 'function') {
       showToast(S.followMeCopied || 'Follow-me link copied.');
+    } else if (!shared && !cancelled && typeof showToast === 'function') {
+      showToast(S.followMeShareFailed || 'Follow me started, but the link could not be shared or copied.');
     }
   });
   refresh();
@@ -7427,11 +7479,16 @@ function refreshMapAfterToolbarModeChange() {
       window.reconcileLegendPosition();
     }
   }
-  toggle.addEventListener('click',
-    () => setCollapsed(!bar.classList.contains('collapsed')));
+  toggle.addEventListener('click', () => {
+    const opening = bar.classList.contains('collapsed');
+    if (opening && typeof dismissRoutePriming === 'function') dismissRoutePriming();
+    setCollapsed(!bar.classList.contains('collapsed'));
+  });
   toggle.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
+      const opening = bar.classList.contains('collapsed');
+      if (opening && typeof dismissRoutePriming === 'function') dismissRoutePriming();
       setCollapsed(!bar.classList.contains('collapsed'));
     }
   });
@@ -7569,6 +7626,7 @@ function refreshMapAfterToolbarModeChange() {
     head.setAttribute('aria-expanded', sec.classList.contains('open') ? 'true' : 'false');
     function toggle() {
       const willOpen = !sec.classList.contains('open');
+      if (willOpen && typeof dismissRoutePriming === 'function') dismissRoutePriming();
       // Accordion behaviour: opening a section closes the others.
       if (willOpen) closeOthers(sec);
       setSectionOpen(sec, willOpen);
@@ -7578,6 +7636,7 @@ function refreshMapAfterToolbarModeChange() {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
       if (toolbarUsesDesktopMenu() && e.key === 'ArrowDown') {
         e.preventDefault();
+        if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
         closeOthers(sec);
         setSectionOpen(sec, true);
       }
@@ -7588,6 +7647,7 @@ function refreshMapAfterToolbarModeChange() {
         const next = sections[(idx + dir + sections.length) % sections.length];
         next?.querySelector('.tb-section-head')?.focus();
         if (sec.classList.contains('open') || anySectionOpen()) {
+          if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
           closeOthers(next);
           setSectionOpen(next, true);
         }

@@ -19,12 +19,10 @@ Needs: paho-mqtt >= 2, cryptography.
 import argparse
 import base64
 import json
+import math
 import sys
 import time
 import urllib.parse
-
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-import paho.mqtt.client as mqtt
 
 DEFAULT_BROKER = 'wss://broker.emqx.io:8084/mqtt'
 TOPIC = 'navaid/follow/'
@@ -60,6 +58,8 @@ def parse_link(link):
 
 def unseal(key, payload):
     """iv (12 bytes) || AES-GCM ciphertext, exactly what the app seals."""
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
     if len(payload) < 13:
         return None
     try:
@@ -85,7 +85,27 @@ def fmt(fix, at):
     return '%s  %-8s %s' % (at, str(fix.get('reg', '?'))[:8], '  '.join(bits))
 
 
+def accepted_order(fix, last_order=-1, now_ms=None):
+    """Return this fix's ordering value, or None when the browser would reject it."""
+    if not isinstance(fix, dict):
+        return None
+    lat, lng, sent, seq = fix.get('lat'), fix.get('lng'), fix.get('t'), fix.get('seq')
+    order = sent if seq is None else seq  # compatibility with pre-sequence publishers
+    numeric = lambda value: (isinstance(value, (int, float)) and
+                             not isinstance(value, bool) and math.isfinite(value))
+    now = time.time() * 1000 if now_ms is None else now_ms
+    if (not numeric(lat) or not -90 <= lat <= 90 or
+            not numeric(lng) or not -180 <= lng <= 180 or
+            not numeric(sent) or sent <= 0 or sent > now + 300000 or
+            not numeric(order) or not float(order).is_integer() or
+            order < 0 or order > 9007199254740991 or order <= last_order):
+        return None
+    return int(order)
+
+
 def main():
+    import paho.mqtt.client as mqtt
+
     ap = argparse.ArgumentParser(description='Print positions from a NavAid Follow me link.')
     ap.add_argument('link', help='the share link, with its #k= fragment')
     ap.add_argument('--broker', default=DEFAULT_BROKER,
@@ -116,12 +136,17 @@ def main():
         print('# watching %s on %s' % (topic, args.broker), file=sys.stderr)
         c.subscribe(topic, qos=0)
 
+    last_order = -1
+
     def on_message(c, userdata, msg):
+        nonlocal last_order
         if not msg.payload:
             return                      # the empty retained message: sharing has stopped
         fix = unseal(key, msg.payload)
-        if not fix or not isinstance(fix.get('lat'), (int, float)):
+        order = accepted_order(fix, last_order)
+        if order is None:
             return
+        last_order = order
         at = time.strftime('%H:%M:%S')
         print(json.dumps(fix) if args.json else fmt(fix, at), flush=True)
         if args.once:
