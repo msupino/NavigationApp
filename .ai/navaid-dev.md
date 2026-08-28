@@ -930,6 +930,8 @@ converted from feet to metres before it enters the envelope.
 
 The topic is random, and the AES key is in the URL fragment. The relay receives neither
 readable flight data nor the key. The complete URL is still a bearer capability.
+Every language URL rewrite in `docs/index.html` must preserve `location.hash`; dropping the
+fragment removes the viewer's key and silently turns a valid follower link into an ordinary map.
 Symmetric encryption lets any link holder read and create a valid-looking update.
 This accepted limitation is disclosed before sharing and in `docs/privacy.html`.
 Follow Me must not be described as authenticated or safety tracking.
@@ -944,6 +946,15 @@ Deliberate Stop uses a QoS 1 retained delete and waits for PUBACK. A retained em
 Last Will removes the last broker value after an unexpected disconnect. Publisher UI
 states are `idle`, `connecting`, `connected`, `reconnecting`, and `stopping`.
 Only `connected` may be labelled as actively sharing.
+
+The follower marker uses a north-pointing SVG rotated directly by `trk`. Its fixed-size icon is
+anchored on the reported coordinate; the aircraft label is absolutely positioned beside it and
+must not participate in Leaflet's icon width or move the aircraft away from that coordinate.
+`followMePlanePx` and `followMePlaneColor` tune its size and fill from the Gist.
+While viewing a Follow Me link, each received fix recentres the map on the aircraft.
+The on-map orientation control remains available in follower mode and toggles North-up versus
+the followed aircraft's track-up view. The follower also draws the standard dashed heading
+predictor with labelled 2 NM, 5 NM, and 10 NM marks.
 
 Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
 publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle

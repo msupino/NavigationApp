@@ -6801,8 +6801,31 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
   background: rgba(78, 34, 20, 0.94);
   border-color: rgba(214, 122, 74, 0.65);
 }
-.follow-me-mark { display: flex; align-items: center; justify-content: center; }
-.follow-me-arrow { font-size: 22px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+.follow-me-mark {
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.follow-me-arrow {
+  display: flex; align-items: center; justify-content: center;
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+}
+.follow-me-plane {
+  display: block;
+  fill: var(--navaid-follow-me-plane, #182839);
+  stroke: #fff; stroke-width: 1.1; stroke-linejoin: round; paint-order: stroke;
+}
+/* The fixed-size aircraft owns the coordinate. The label is decoration beside it and must
+   not widen the Leaflet icon box, which would move the aircraft away from the reported fix. */
+.follow-me-label {
+  position: absolute;
+  inset-inline-start: calc(100% + 3px);
+  top: 50%; transform: translateY(-50%);
+  white-space: nowrap;
+  font: 700 12px/1.2 system-ui, sans-serif;
+  color: #182839;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
 body.theme-light .follow-me-banner { color: #10240f; background: rgba(222, 245, 224, 0.95); }
 body.theme-light .follow-me-banner.stale { color: #4a1c08; background: rgba(255, 226, 209, 0.96); }
 
