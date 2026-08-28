@@ -619,12 +619,20 @@ function refreshFollowMeMapControl() {
   // Same rule as the follow lock: no position, no control -- there would be nothing to share.
   wrap.style.display = (offered && live) ? '' : 'none';
   orderMapControls(wrap.parentNode);
-  const on = !!(F && F.sharing());
-  followMeBtn.textContent = on ? '\u25C9' : '\u21EA';
-  followMeBtn.classList.toggle('follow-me-on', on);
-  followMeBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  const label = on ? (S.followMeSharingNow || 'Sharing your position — tap to stop')
-                   : (S.tbFollowMeTitle || 'Share a link that shows where you are');
+  const status = F && typeof F.status === 'function' ? F.status() : 'idle';
+  const active = status !== 'idle';
+  followMeBtn.textContent = status === 'connected' ? '\u25C9' : (active ? '\u25CC' : '\u21EA');
+  followMeBtn.classList.toggle('follow-me-on', status === 'connected');
+  followMeBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  const label = status === 'connected'
+    ? (S.followMeSharingNow || 'Sharing your position — tap to stop')
+    : status === 'reconnecting'
+      ? (S.followMeReconnecting || 'Follow me: reconnecting — tap to stop')
+      : status === 'connecting'
+        ? (S.followMeConnecting || 'Follow me: connecting — tap to stop')
+        : status === 'stopping'
+          ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
+          : (S.tbFollowMeTitle || 'Share a best-effort live position link');
   followMeBtn.title = label;
   followMeBtn.setAttribute('aria-label', label);
 }
@@ -3489,15 +3497,33 @@ function followMeOffered() {
   const F = () => (window.NavAid && window.NavAid.followMe) || null;
   function refresh() {
     btn.hidden = !followMeOffered();
-    const on = !!(F() && F().sharing());
-    btn.textContent = on ? (S.tbFollowMeStop || 'Stop sharing') : (S.tbFollowMe || 'Follow me');
-    btn.classList.toggle('on', on);
+    const f = F();
+    const status = f && typeof f.status === 'function' ? f.status() : 'idle';
+    const active = status !== 'idle';
+    btn.textContent = status === 'stopping'
+      ? (S.followMeStoppingShort || 'Stopping sharing…')
+      : active ? (S.tbFollowMeStop || 'Stop sharing') : (S.tbFollowMe || 'Follow me');
+    btn.classList.toggle('on', status === 'connected');
+    btn.disabled = status === 'stopping';
+    const label = status === 'connected'
+      ? (S.followMeSharingNow || 'Sharing your position — tap to stop')
+      : status === 'reconnecting'
+        ? (S.followMeReconnecting || 'Follow me: reconnecting — tap to stop')
+        : status === 'connecting'
+          ? (S.followMeConnecting || 'Follow me: connecting — tap to stop')
+          : status === 'stopping'
+            ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
+            : (S.tbFollowMeTitle || 'Share a best-effort live position link');
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
   }
   btn.addEventListener('click', async () => {
     const f = F();
     if (!f) return;
-    if (f.sharing()) {
-      f.stop();
+    const status = typeof f.status === 'function' ? f.status() : (f.sharing() ? 'connected' : 'idle');
+    if (status !== 'idle') {
+      if (status === 'stopping') return;
+      await f.stop();
       refresh();
       if (typeof showToast === 'function') showToast(S.followMeStopped || 'Follow me: stopped.');
       return;
@@ -3524,15 +3550,19 @@ function followMeOffered() {
     // The share sheet where there is one -- on a phone that is how a link reaches WhatsApp --
     // and the clipboard everywhere else.
     let shared = false;
+    let cancelled = false;
     if (navigator.share) {
       try { await navigator.share({ title: S.tbFollowMe || 'Follow me', url: link }); shared = true; }
-      catch (e) { /* dismissed: fall through to the clipboard */ }
+      catch (e) { cancelled = !!(e && e.name === 'AbortError'); }
     }
-    if (!shared && navigator.clipboard && navigator.clipboard.writeText) {
-      try { await navigator.clipboard.writeText(link); } catch (e) { /* denied */ }
+    let copied = false;
+    if (!shared && !cancelled && navigator.clipboard && navigator.clipboard.writeText) {
+      try { await navigator.clipboard.writeText(link); copied = true; } catch (e) { /* denied */ }
     }
-    if (!shared && typeof showToast === 'function') {
+    if (copied && typeof showToast === 'function') {
       showToast(S.followMeCopied || 'Follow-me link copied.');
+    } else if (!shared && !cancelled && typeof showToast === 'function') {
+      showToast(S.followMeShareFailed || 'Follow me started, but the link could not be shared or copied.');
     }
   });
   refresh();

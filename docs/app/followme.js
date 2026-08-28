@@ -4,8 +4,11 @@
 // relay. The question is whose. This uses a PUBLIC MQTT broker over WebSocket -- no account,
 // no signup, nothing for us to run or pay for or keep up. The position is published to a
 // topic nobody can guess, encrypted before it leaves the aeroplane, and the key travels in
-// the link's FRAGMENT, which browsers never send to a server. So the broker relays bytes it
-// cannot read, and a public relay stops being a privacy problem.
+// the link's FRAGMENT, which browsers never send to a server. The broker cannot read the
+// position, but it remains a public test relay: it offers no delivery or availability promise.
+// The URL is a bearer capability. Anyone who has it can read the feed and, because the key is
+// symmetric, can create a valid-looking packet. That accepted limitation is disclosed before
+// sharing; this is a convenience link, not an authenticated safety-tracking service.
 //
 // What it is not: a tracking service. A public broker is best-effort and unauthenticated,
 // there is no history, and a phone that loses signal simply stops publishing. The viewer is
@@ -223,12 +226,27 @@
   const resumeMs = () => Math.max(1, Number(tune('followMeResumeHr', 12)) || 12) * 3600000;
   const persistLink = () => tune('featureFollowMePersist', false) === true;
 
-  function storedSession() {
+  function rawSession() {
     try {
       const raw = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
       if (!raw || !raw.id || !raw.k || !raw.reg) return null;
       // A key of the wrong size is a key from a broken write, not a session.
       if (b64url.to(raw.k).length !== 32) return null;
+      raw.seq = Number.isSafeInteger(raw.seq) && raw.seq >= 0 ? raw.seq : 0;
+      raw.pendingStop = raw.pendingStop === true;
+      raw.on = raw.on === true;
+      return raw;
+    } catch (e) {
+      return null;
+    }
+  }
+  function storedSession() {
+    const raw = rawSession();
+    try {
+      if (!raw) return null;
+      // A pending Stop owns the capability until it can clear the broker. Expiry must not
+      // make that cleanup impossible; it is never eligible for ordinary sharing reuse.
+      if (raw.pendingStop) return raw;
       if (!persistLink() && !(Date.now() - Number(raw.at) < resumeMs())) return null;
       return raw;
     } catch (e) {
@@ -242,8 +260,73 @@
     try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* storage off */ }
   }
 
+  function refreshSessionControls() {
+    if (typeof window.refreshFollowMeControl === 'function') window.refreshFollowMeControl();
+    if (typeof window.refreshFollowMeMapControl === 'function') window.refreshFollowMeMapControl();
+  }
+
+  function sessionRecord(s, on, pendingStop) {
+    return {
+      id: s.id, k: s.rawKeyB64, reg: s.reg, at: s.startedAt,
+      seq: s.seq, on: on === true, pendingStop: pendingStop === true,
+    };
+  }
+
+  function finishStop(s) {
+    if (!s || session !== s) return;
+    s.client.close();
+    if (persistLink()) saveSession(sessionRecord(s, false, false));
+    else clearSession();
+    session = null;
+    refreshSessionControls();
+    if (s.resolveStop) s.resolveStop({ pending: false });
+  }
+
+  function clearRetainedAndFinish(s) {
+    if (!s || session !== s || !s.client.ready) return false;
+    let sent = false;
+    try {
+      sent = s.client.publish(topicFor(s.id), new Uint8Array(0), { retain: true });
+    } catch (e) { sent = false; }
+    if (!sent) return false;
+    finishStop(s);
+    return true;
+  }
+
+  async function openPublisher(raw, reg, pendingStop) {
+    const id = raw.id;
+    const rawKey = b64url.to(raw.k);
+    const key = await importKey(rawKey);
+    const client = mqttConnect(brokerUrl(), { clientId: 'navaid-pub-' + id.slice(0, 8) });
+    const s = {
+      id, key, client, reg, rawKeyB64: raw.k, startedAt: Number(raw.at) || Date.now(),
+      seq: Number.isSafeInteger(raw.seq) ? raw.seq : 0,
+      lastSentAt: 0, status: pendingStop ? 'stopping' : 'connecting', everConnected: false,
+      resolveStop: null, stopPromise: null,
+      link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k,
+    };
+    session = s;
+    client.onOpen = () => {
+      if (session !== s) return;
+      s.everConnected = true;
+      if (s.status === 'stopping') {
+        clearRetainedAndFinish(s);
+        return;
+      }
+      s.status = 'connected';
+      refreshSessionControls();
+    };
+    client.onClose = () => {
+      if (session !== s || s.status === 'stopping') return;
+      s.status = s.everConnected ? 'reconnecting' : 'connecting';
+      refreshSessionControls();
+    };
+    refreshSessionControls();
+    return s;
+  }
+
   async function followMeStart(code) {
-    if (session) return session.link;
+    if (session) return session.status === 'stopping' ? null : session.link;
     // Refuse rather than share an anonymous dot.
     const reg = followMeSetCode(code || followMeCode());
     if (!reg) return null;
@@ -251,41 +334,36 @@
     // is a different aeroplane and gets its own topic and key -- inheriting a link already
     // shared for the last aircraft would point its followers at this one.
     const prev = storedSession();
+    if (prev && prev.pendingStop) {
+      await openPublisher(prev, prev.reg, true);
+      return null;
+    }
     const reuse = !!(prev && prev.reg === reg);
     const id = reuse ? prev.id : b64url.from(randomBytes(16));
-    const rawKey = reuse ? b64url.to(prev.k) : randomBytes(32);
-    const key = await importKey(rawKey);
-    const client = mqttConnect(brokerUrl(), { clientId: 'navaid-pub-' + id.slice(0, 8) });
-    session = {
-      id, key, client, reg, lastSentAt: 0,
-      // The key is in the FRAGMENT, so it is never in a request line, a proxy log or the
-      // broker's view of the world. Everything the relay sees is the id.
-      link: location.origin + location.pathname + '?follow=' + id + '#k=' + b64url.from(rawKey),
-    };
+    const rawKeyB64 = reuse ? prev.k : b64url.from(randomBytes(32));
+    const startedAt = reuse ? Number(prev.at) || Date.now() : Date.now();
+    const s = await openPublisher({ id, k: rawKeyB64, at: startedAt, seq: reuse ? prev.seq : 0 }, reg, false);
     // `on` is the consent a restart reads back: it says this device was sharing when it
     // stopped running, which is the only reason resuming without asking is honest.
-    saveSession({ id, k: b64url.from(rawKey), reg, at: Date.now(), on: true });
-    return session.link;
+    saveSession(sessionRecord(s, true, false));
+    return s.link;
   }
   function followMeStop() {
-    if (!session) return;
+    if (!session) return Promise.resolve({ pending: false });
+    const s = session;
+    if (s.status === 'stopping') return s.stopPromise || Promise.resolve({ pending: true });
     // Clear the retained position before going: a zero-length retained payload is how MQTT
     // says "there is no last known value here". Without it the broker would hand the pilot's
     // final position to anyone opening the link days later, which is the opposite of a link
     // that dies when you stop sharing.
-    try { session.client.publish(topicFor(session.id), new Uint8Array(0), { retain: true }); }
-    catch (e) { /* already closing: the session ends either way */ }
-    session.client.close();
-    session = null;
-    // Stopping is what kills the link -- so the key goes with it. Persistent mode is the
-    // exception the pilot asked for: the link stays valid for the next flight, but it is
-    // marked not-sharing so a later restart does not silently start publishing again.
-    if (persistLink()) {
-      const prev = storedSession();
-      if (prev) saveSession({ ...prev, on: false });
-    } else {
-      clearSession();
-    }
+    s.status = 'stopping';
+    saveSession(sessionRecord(s, false, true));
+    s.stopPromise = new Promise(resolve => { s.resolveStop = resolve; });
+    refreshSessionControls();
+    // If disconnected, mqttConnect keeps retrying. Its next CONNACK runs the same clear and
+    // only then removes the local capability. Closing now would make cleanup impossible.
+    clearRetainedAndFinish(s);
+    return s.stopPromise;
   }
 
   // Throw the stored link away and, if sharing, come back on a fresh one. The escape hatch
@@ -293,7 +371,7 @@
   async function followMeNewLink() {
     const reg = followMeCode();
     const wasSharing = !!session;
-    if (wasSharing) followMeStop();
+    if (wasSharing) await followMeStop();
     clearSession();
     return wasSharing ? followMeStart(reg) : null;
   }
@@ -304,19 +382,28 @@
   async function followMeResume() {
     if (session) return null;
     const prev = storedSession();
-    if (!prev || prev.on !== true) return null;
+    if (!prev) return null;
+    if (prev.pendingStop) {
+      await openPublisher(prev, prev.reg, true);
+      return null;
+    }
+    if (prev.on !== true) return null;
     return followMeStart(prev.reg);
   }
-  function followMeSharing() { return !!session; }
+  function followMeSharing() { return !!session && session.status !== 'stopping'; }
+  function followMeStatus() { return session ? session.status : 'idle'; }
 
   // Called from the fix handler. Rate-limited: a public broker is a courtesy, and one
   // position a second is plenty to follow an aeroplane with.
   async function followMePublish(fix) {
-    if (!session || !fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)) return false;
+    if (!session || session.status === 'stopping' || !fix ||
+        !Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)) return false;
     const every = Math.max(1, Number(tune('followMeRateSec', 2)) || 2) * 1000;
     const now = Date.now();
     if (now - session.lastSentAt < every) return false;
     session.lastSentAt = now;
+    session.seq = Math.max(session.seq + 1, now);
+    saveSession(sessionRecord(session, true, false));
     const payload = await seal(session.key, {
       // Inside the envelope: the broker relays the label without being able to read it.
       reg: session.reg,
@@ -326,6 +413,7 @@
       trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
       kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
       t: now,
+      seq: session.seq,
     });
     // Retained: the broker keeps the last one, so a viewer opening mid-flight sees where the
     // aeroplane is immediately instead of waiting for the next publish. It is cleared on stop.
@@ -342,7 +430,7 @@
   async function followMeWatch(id, rawKeyB64, opts) {
     if (watch) followMeUnwatch();
     const key = await importKey(b64url.to(rawKeyB64));
-    const state = { id, fix: null, at: null, connected: false };
+    const state = { id, fix: null, at: null, connected: false, lastSeq: -1 };
     const client = mqttConnect(brokerUrl(), Object.assign(
       { clientId: 'navaid-sub-' + id.slice(0, 8) }, opts || {}));
     client.onOpen = () => { state.connected = true; client.subscribe(topicFor(id)); };
@@ -352,8 +440,19 @@
       if (!payload || !payload.length) return;   // the cleared retained value: sharing stopped
       const msg = await open(key, payload);
       if (!msg) return;                       // not ours, or the wrong key
+      const now = Date.now();
+      // `seq` was added after the first Follow Me release. During a rolling cache update,
+      // an older publisher can still send timestamp-only packets to a newer viewer. Its
+      // millisecond timestamp is monotonic enough for that compatibility window and still
+      // prevents an older retained packet replacing a newer one.
+      const order = msg.seq == null ? msg.t : msg.seq;
+      if (!Number.isFinite(msg.lat) || msg.lat < -90 || msg.lat > 90 ||
+          !Number.isFinite(msg.lng) || msg.lng < -180 || msg.lng > 180 ||
+          !Number.isFinite(msg.t) || msg.t <= 0 || msg.t > now + 300000 ||
+          !Number.isSafeInteger(order) || order < 0 || order <= state.lastSeq) return;
+      state.lastSeq = order;
       state.fix = msg;
-      state.at = Date.now();
+      state.at = msg.t;
       followMeViewerDraw();
       if (typeof window.scheduleDraw === 'function') window.scheduleDraw();
     };
@@ -486,7 +585,8 @@
     viewerStart: followMeViewerStart, viewerStop: followMeViewerStop, viewing: followMeViewing,
     viewerDraw: followMeViewerDraw, viewerRefresh: followMeViewerRefresh,
     linkParams: followMeLinkParams, staleSec: followMeStaleSec,
-    start: followMeStart, stop: followMeStop, sharing: followMeSharing, publish: followMePublish,
+    start: followMeStart, stop: followMeStop, sharing: followMeSharing, status: followMeStatus,
+    publish: followMePublish,
     code: followMeCode, setCode: followMeSetCode,
     newLink: followMeNewLink, resume: followMeResume, _stored: storedSession,
     watch: followMeWatch, unwatch: followMeUnwatch, watching: followMeWatching,

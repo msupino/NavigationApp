@@ -116,12 +116,24 @@ def main():
         print('# watching %s on %s' % (topic, args.broker), file=sys.stderr)
         c.subscribe(topic, qos=0)
 
+    last_seq = -1
+
     def on_message(c, userdata, msg):
+        nonlocal last_seq
         if not msg.payload:
             return                      # the empty retained message: sharing has stopped
         fix = unseal(key, msg.payload)
-        if not fix or not isinstance(fix.get('lat'), (int, float)):
+        lat, lng, sent, seq = (fix or {}).get('lat'), (fix or {}).get('lng'), \
+            (fix or {}).get('t'), (fix or {}).get('seq')
+        order = sent if seq is None else seq  # compatibility with pre-sequence publishers
+        numeric = lambda value: isinstance(value, (int, float)) and not isinstance(value, bool)
+        if (not fix or not numeric(lat) or not -90 <= lat <= 90 or
+                not numeric(lng) or not -180 <= lng <= 180 or
+                not numeric(sent) or sent <= 0 or sent > time.time() * 1000 + 300000 or
+                not isinstance(order, int) or isinstance(order, bool) or
+                order < 0 or order <= last_seq):
             return
+        last_seq = order
         at = time.strftime('%H:%M:%S')
         print(json.dumps(fix) if args.json else fmt(fix, at), flush=True)
         if args.once:

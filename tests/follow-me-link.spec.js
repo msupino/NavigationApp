@@ -598,3 +598,219 @@ test('the persistent-link flag keeps one link across a deliberate stop', async (
   expect(got.same).toBe(true);
   expect(got.fresh).toBe(true);
 });
+
+// A retained MQTT packet can arrive minutes after it was published, and reconnects can
+// replay an older retained packet after a newer live one. Receipt time is not aircraft
+// time: the encrypted publisher timestamp is the only honest age, and timestamps
+// must move forward before a packet is allowed to replace the current fix.
+test('retained positions keep their publisher age and replays cannot become fresh', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const realNow = Date.now;
+    const link = await F.start('4X-TIME');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    setTune('followMeRateSec', 1);
+
+    // Produce two valid encrypted frames from the real publisher, ten minutes apart.
+    const present = realNow();
+    Date.now = () => present - 10 * 60 * 1000;
+    await F.publish({ lat: 31.1, lng: 34.1 });
+    const oldFrame = new Uint8Array(window.__sent.find(
+      f => (f[0] & 0xf0) === 0x30 && f.length > 4));
+    window.__sent.length = 0;
+    Date.now = () => present;
+    await F.publish({ lat: 32.2, lng: 35.2 });
+    const newFrame = new Uint8Array(window.__sent.find(
+      f => (f[0] & 0xf0) === 0x30 && f.length > 4));
+    Date.now = realNow;
+
+    const url = new URL(link);
+    const state = await F.watch(url.searchParams.get('follow'), url.hash.replace(/^#k=/, ''));
+    window.__sockets[1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[1].deliver(newFrame);
+    await new Promise(r => setTimeout(r, 30));
+    const afterNew = { lat: state.fix && state.fix.lat, at: state.at };
+    window.__sockets[1].deliver(oldFrame);          // reconnect/re retained replay
+    await new Promise(r => setTimeout(r, 30));
+    const afterReplay = { lat: state.fix && state.fix.lat, at: state.at };
+    F.unwatch(); F.stop();
+    return { present, oldPublishedAt: present - 10 * 60 * 1000, afterNew, afterReplay };
+  });
+  expect(got.afterNew).toEqual({ lat: 32.2, at: got.present });
+  expect(got.afterReplay).toEqual(got.afterNew);
+  expect(got.afterReplay.at).not.toBe(got.oldPublishedAt);
+});
+
+test('a new viewer accepts timestamp-ordered packets from an older publisher', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('4X-OLD');
+    const url = new URL(link);
+    const id = url.searchParams.get('follow');
+    const rawKey = url.hash.replace(/^#k=/, '');
+    const sentAt = Date.now() - 1000;
+    const payload = await F._seal(await F.importKey(F._b64url.to(rawKey)), {
+      reg: '4X-OLD', lat: 32.4, lng: 34.8, t: sentAt,
+    });
+    const topic = new TextEncoder().encode(F.topicFor(id));
+    const body = new Uint8Array(2 + topic.length + payload.length);
+    body[0] = topic.length >> 8; body[1] = topic.length & 255;
+    body.set(topic, 2); body.set(payload, 2 + topic.length);
+    const lengths = F._encodeLength(body.length);
+    const frame = new Uint8Array(1 + lengths.length + body.length);
+    frame[0] = 0x31; frame.set(lengths, 1); frame.set(body, 1 + lengths.length);
+
+    const state = await F.watch(id, rawKey);
+    window.__sockets[1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[1].deliver(frame);
+    await new Promise(r => setTimeout(r, 30));
+    const out = { fix: state.fix, at: state.at, sentAt };
+    F.unwatch(); F.stop();
+    return out;
+  });
+  expect(got.fix).toMatchObject({ reg: '4X-OLD', lat: 32.4, lng: 34.8 });
+  expect(got.at).toBe(got.sentAt);
+});
+
+test('the publisher sequence survives an app restart', async ({ page }) => {
+  await boot(page);
+  const first = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    await F.start('4X-SEQ');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.publish({ lat: 32.1, lng: 34.9 });
+    return JSON.parse(localStorage.getItem('navaid.followMeSession')).seq;
+  });
+  await page.reload();
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
+  await page.waitForFunction(() => NavAid.followMe.sharing());
+  const second = await page.evaluate(async () => {
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await NavAid.followMe.publish({ lat: 32.2, lng: 35.0 });
+    const seq = JSON.parse(localStorage.getItem('navaid.followMeSession')).seq;
+    NavAid.followMe.stop();
+    return seq;
+  });
+  expect(second).toBeGreaterThan(first);
+});
+
+// MQTT can only delete a retained value while connected. If Stop happens in a tunnel or
+// cell handover, throwing away the topic/key makes cleanup impossible forever. The local
+// record must keep the capability needed to retry, but must not remain marked as sharing.
+test('stopping while disconnected retries and completes retained-position cleanup', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    await F.start('4X-CLEAN');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[0].close();                    // client.ready is now false
+    const toasts = [];
+    window.showToast = (message) => toasts.push(String(message));
+    window.gpsLiveOn = true;
+    document.getElementById('follow-me').click();   // pilot presses Stop
+    await new Promise(r => setTimeout(r, 20));
+    const pending = JSON.parse(localStorage.getItem('navaid.followMeSession') || 'null');
+    await new Promise(r => setTimeout(r, 2300));
+    window.__sockets[1].connack();                 // reconnect completes the retained delete
+    await new Promise(r => setTimeout(r, 30));
+    const cleared = localStorage.getItem('navaid.followMeSession');
+    const retainedDelete = window.__sent.some(f =>
+      (f[0] & 0xf1) === 0x31 && f.length > 4 && f[f.length - 1] !== 0);
+    window.gpsLiveOn = false;
+    return { sharing: F.sharing(), pending, cleared, retainedDelete, toasts };
+  });
+  expect(got.sharing).toBe(false);
+  expect(got.pending).toMatchObject({ reg: '4X-CLEAN', pendingStop: true, on: false });
+  expect(got.pending.id).toBeTruthy();
+  expect(got.pending.k).toBeTruthy();
+  expect(got.cleared).toBe(null);
+  expect(got.retainedDelete).toBe(true);
+  expect(got.toasts.some(text => /link is dead/i.test(text))).toBe(true);
+});
+
+// Simulator-only flights are a supported position source. Offering Follow me there while
+// only the Geolocation handler publishes leaves a plausible-looking link that never moves.
+test('a simulator fix is published when Follow me is sharing', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    await F.start('4X-SIM');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sent.length = 0;
+    const originalRequest = window._simRequestData;
+    window._simRequestData = async () => ({
+      latitude: 32.12345, longitude: 34.98765, altitude: 2500,
+      heading: 85, variation: 5, ias: 104,
+    });
+    window.simOn = true;
+    await window._simFetch();
+    await new Promise(r => setTimeout(r, 30));
+    const published = window.__sent.some(f => (f[0] & 0xf0) === 0x30 && f.length > 4);
+    window._simRequestData = originalRequest;
+    window.simOn = false;
+    F.stop();
+    return published;
+  });
+  expect(got).toBe(true);
+});
+
+// A session exists before MQTT's CONNACK, and survives temporary disconnects. The cockpit
+// label must describe those states instead of promising that positions are being shared.
+test('the Follow me control distinguishes connecting and reconnecting from sharing', async ({ page }) => {
+  await boot(page);
+  const labels = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    window.gpsLiveOn = true;
+    await F.start('4X-STATE');
+    refreshFollowMeMapControl();
+    const connecting = document.getElementById('follow-me-map').getAttribute('aria-label');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    refreshFollowMeMapControl();
+    const connected = document.getElementById('follow-me-map').getAttribute('aria-label');
+    window.__sockets[0].close();
+    refreshFollowMeMapControl();
+    const reconnecting = document.getElementById('follow-me-map').getAttribute('aria-label');
+    F.stop();
+    window.gpsLiveOn = false;
+    return { connecting, connected, reconnecting };
+  });
+  expect(labels.connecting).toMatch(/connecting/i);
+  expect(labels.connected).toMatch(/sharing/i);
+  expect(labels.reconnecting).toMatch(/reconnecting/i);
+});
+
+// Dismissing the native share sheet is not a copy, and a denied clipboard write is not one
+// either. Never tell a pilot a link reached the clipboard when both delivery paths failed.
+test('cancelled sharing and a failed clipboard do not claim the link was copied', async ({ page }) => {
+  await boot(page);
+  const toasts = await page.evaluate(async () => {
+    setTune('featureFollowMe', true);
+    window.gpsLiveOn = true;
+    window.prompt = () => '4X-NOCOPY';
+    const seen = [];
+    window.showToast = (message) => seen.push(String(message));
+    Object.defineProperty(navigator, 'share', {
+      configurable: true, value: async () => { throw new Error('cancelled'); },
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true, value: { writeText: async () => { throw new Error('denied'); } },
+    });
+    document.getElementById('follow-me').click();
+    await new Promise(r => setTimeout(r, 80));
+    if (NavAid.followMe.sharing()) NavAid.followMe.stop();
+    window.gpsLiveOn = false;
+    return seen;
+  });
+  expect(toasts).not.toContain('Follow-me link copied — it works while you are sharing, and dies when you stop.');
+  expect(toasts.some(text => /could not be shared/i.test(text))).toBe(true);
+});
