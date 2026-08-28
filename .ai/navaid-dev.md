@@ -956,6 +956,16 @@ The on-map orientation control remains available in follower mode and toggles No
 the followed aircraft's track-up view. The follower also draws the standard dashed heading
 predictor with labelled 2 NM, 5 NM, and 10 NM marks.
 
+For ground testing, `scripts/follow-me-simulator.py` publishes the bundled
+`scripts/routes/LLHZ-to-LLHA.json` route template as aircraft `TEST`, or accepts any exported
+route JSON. Like the cvfr-bridge fake, it flies the route's waypoint geometry with per-leg
+`flightSpeed` and `inboundAltitude`, loops indefinitely, and offers `--speed-factor` plus
+global speed/altitude overrides. It prints a new follower link, uses the production
+AES-GCM/MQTT retained-message protocol, and clears the retained fix on normal exit. Use
+`--once` for one flight. Its optional packages are listed in
+`scripts/requirements-follow-me.txt`; `--dry-run` validates without importing them or contacting
+the broker.
+
 Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
 publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle
 lock lets Stop revoke an encryption still in flight. Stop holds its lifecycle lock through
