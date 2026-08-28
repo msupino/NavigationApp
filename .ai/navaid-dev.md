@@ -184,7 +184,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   toolbar is the original floating vertical column with a `⋯` drag handle
   (`#toolbar-handle`) and hamburger collapse control. Position is persisted
   at `navaid.toolbarPos.<lang>`, re-clamped on `window resize`; collapsed state is
-  persisted at `navaid.toolbarCollapsed`. On desktop (`min-width: 681px`)
+  persisted at `navaid.toolbarCollapsed`. Its undragged default stays left-anchored in
+  English and right-anchored in Hebrew while collapsing or expanding. On desktop
+  (`min-width: 681px`)
   those same `.tb-section` groups render as a fixed top menubar with
   Windows-like dropdown panels. Desktop ignores saved mobile drag/collapse
   state, offsets the map/overlay below the menu strip, and closes dropdowns
