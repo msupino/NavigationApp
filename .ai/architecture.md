@@ -59,7 +59,9 @@ Only CVFR is maintained for in-flight offline use. `offline-tiles.js` audits the
 z7–13 CVFR pyramid against `navaid-tiles-v1`, removes legacy tiles from other chart layers,
 and fetches only missing CVFR tiles on suitable production connections. Known 404 cells outside
 the irregular chart sheet are stored as transparent tiles, so 100% means every expected request
-has a deterministic offline response. Other base layers are explicitly online-only.
+has a deterministic offline response. When a route has at least two waypoints, its one-tile
+corridor is queued before the rest of the country at every zoom. Other base layers are explicitly
+online-only.
 
 Rendering flow:
 

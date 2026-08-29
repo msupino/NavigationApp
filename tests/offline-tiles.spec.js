@@ -32,6 +32,34 @@ test('offlineTileList covers the chart bounds at each zoom', async ({ page }) =>
   expect(r.sample.z).toBe(7);
 });
 
+test('a defined route moves its tile corridor to the front without dropping whole-chart tiles', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const O = NavAidOfflineTiles;
+    const route = [
+      { lat: 32.17944, lng: 34.83444 },
+      { lat: 32.79417, lng: 34.98917 },
+    ];
+    const original = O.cvfrPlan(10, 10);
+    const ordered = O.prioritizeRouteTiles(original, route);
+    const distances = ordered.map(item => O.routeTileDistanceSq(item.coords, route));
+    const firstOutside = distances.findIndex(distance => distance > 2.25);
+    const untouched = O.prioritizeRouteTiles(original, []).every((item, i) => item === original[i]);
+    return {
+      sameCount: ordered.length === original.length,
+      firstIsRoute: distances[0] <= 2.25,
+      routeOnlyPrefix: firstOutside > 0 && distances.slice(firstOutside).every(distance => distance > 2.25),
+      noRouteKeepsOrder: untouched,
+    };
+  });
+  expect(r).toEqual({
+    sameCount: true,
+    firstIsRoute: true,
+    routeOnlyPrefix: true,
+    noRouteKeepsOrder: true,
+  });
+});
+
 test('downloadPack always stores CVFR, regardless of the selected map layer', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {

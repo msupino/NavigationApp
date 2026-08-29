@@ -64,12 +64,63 @@
     }));
   }
 
+  function routeTilePoint(waypoint, zoom) {
+    const lat = Math.max(-85.05112878, Math.min(85.05112878, Number(waypoint.lat)));
+    const lng = Number(waypoint.lng);
+    const n = Math.pow(2, zoom);
+    const r = lat * Math.PI / 180;
+    return {
+      x: (lng + 180) / 360 * n,
+      y: (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n,
+    };
+  }
+
+  function pointSegmentDistanceSq(point, a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    if (!dx && !dy) return Math.pow(point.x - a.x, 2) + Math.pow(point.y - a.y, 2);
+    const t = Math.max(0, Math.min(1,
+      ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy)));
+    const x = a.x + t * dx;
+    const y = a.y + t * dy;
+    return Math.pow(point.x - x, 2) + Math.pow(point.y - y, 2);
+  }
+
+  function routeTileDistanceSq(coords, waypoints) {
+    if (!Array.isArray(waypoints) || waypoints.length < 2) return Infinity;
+    const center = { x: coords.x + 0.5, y: coords.y + 0.5 };
+    const points = waypoints.map(waypoint => routeTilePoint(waypoint, coords.z));
+    let best = Infinity;
+    for (let i = 1; i < points.length; i++) {
+      best = Math.min(best, pointSegmentDistanceSq(center, points[i - 1], points[i]));
+    }
+    return best;
+  }
+
+  // Download a one-tile corridor around the route before the rest of the country. Preserve the
+  // normal low-to-high zoom order inside each group, so every useful route scale becomes
+  // available progressively. The complete CVFR plan is unchanged; only its queue order moves.
+  function prioritizeRouteTiles(plan, waypoints) {
+    if (!Array.isArray(waypoints) || waypoints.length < 2) return plan.slice();
+    const corridorDistanceSq = 2.25; // 1.5 tiles from the route centreline
+    return plan.map((item, index) => ({ item, index,
+      routeFirst: routeTileDistanceSq(item.coords, waypoints) <= corridorDistanceSq }))
+      .sort((a, b) => Number(b.routeFirst) - Number(a.routeFirst) || a.index - b.index)
+      .map(entry => entry.item);
+  }
+
+  function currentRouteWaypoints() {
+    try {
+      return typeof state !== 'undefined' && Array.isArray(state.waypoints) ? state.waypoints : [];
+    } catch (e) { return []; }
+  }
+
   function percentage(present, total) {
     return total ? Math.floor(present / total * 100) : 0;
   }
 
   async function cvfrCoverage(zMin, zMax, options) {
-    const plan = cvfrPlan(zMin, zMax);
+    const plan = prioritizeRouteTiles(cvfrPlan(zMin, zMax), currentRouteWaypoints());
     if (!plan.length) return { error: 'no CVFR layer', present: 0, total: 0, percent: 0, complete: false };
     if (!(await caches.has(TILE_CACHE))) {
       return { name: 'CVFR', present: 0, total: plan.length, missing: plan.length,
@@ -164,9 +215,10 @@
         let present = plan.length - missing.length;
         setReport({ name: 'CVFR', present, total: plan.length, missing: missing.length,
           percent: percentage(present, plan.length), complete: !missing.length, running: true });
+        let nextMissing = 0;
         const worker = async () => {
-          while (missing.length) {
-            const item = missing.pop();
+          while (nextMissing < missing.length) {
+            const item = missing[nextMissing++];
             try {
               const response = await fetch(item.fetchUrl, { mode: 'cors' });
               if (response.ok) {
@@ -180,12 +232,12 @@
               } else failed++;
             } catch (e) { failed++; }
             done++;
-            if (done % 25 === 0 || !missing.length) {
+            if (done % 25 === 0 || done === missing.length) {
               const report = { name: 'CVFR', present, total: plan.length,
                 missing: plan.length - present, percent: percentage(present, plan.length),
                 complete: present === plan.length, running: true };
               setReport(report);
-              progress(done, done + missing.length, present);
+              progress(done, missing.length, present);
             }
           }
         };
@@ -364,7 +416,8 @@
   window.addEventListener('online', scheduleAuto);
 
   window.NavAidOfflineTiles = {
-    offlineTileList, cvfrPlan, cvfrCoverage, connectionSuitable, automaticCvfrWanted,
+    offlineTileList, cvfrPlan, routeTileDistanceSq, prioritizeRouteTiles,
+    cvfrCoverage, connectionSuitable, automaticCvfrWanted,
     downloadPack, fetchFloor, deletePack, packSize, auditAndMaintain, scheduleAuto,
     TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z,
   };
