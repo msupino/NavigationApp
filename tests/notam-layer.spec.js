@@ -54,7 +54,7 @@ test('airfield inspector links to its NOTAMs, or shows N/A when none', async ({ 
   await expect(page.locator('#insp-body .insp-notam-link')).toHaveCount(0);
 });
 
-test('airfield inspector can include future NOTAMs without leaving its ICAO', async ({ page }) => {
+test('airfield NOTAM list can include future entries without leaving its ICAO', async ({ page }) => {
   const now = Date.now();
   const iso = value => new Date(value).toISOString();
   await boot(page, { generatedAt: iso(now), notams: [
@@ -73,32 +73,32 @@ test('airfield inspector can include future NOTAMs without leaving its ICAO', as
     closeToolbarMenus();
   });
 
-  const future = page.locator('#insp-body .notam-insp-future input');
   const link = page.locator('#insp-body .insp-notam-link');
+  await expect(link).toContainText('1');
+  await link.click();
+  const future = page.locator('.notam-modal #notam-show-all');
   await expect(future).toBeVisible();
   await expect(future).not.toBeChecked();
-  await expect(link).toContainText('1');
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
   await future.check();
-  await expect(link).toContainText('2');
-  await future.uncheck();
-  await expect(link).toContainText('1');
-  await future.check();
-  await link.click();
   await expect(page.locator('.notam-modal .notam-item')).toHaveCount(2);
   await expect(page.locator('.notam-modal')).toContainText('LLBG FUTURE');
   await expect(page.locator('.notam-modal')).not.toContainText('LLHA FUTURE');
+  await future.uncheck();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
   await page.locator('.notam-modal .modal-close-x').click();
 
-  // An airfield with no active entry still exposes the toggle that reveals its future one.
+  // An airfield with no active entry can still open the scoped list and reveal its future one.
   await page.evaluate(() => {
     state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHA') };
     showInspector();
     closeToolbarMenus();
   });
-  const futureOnly = page.locator('#insp-body .notam-insp-future input');
-  await expect(page.locator('#insp-body .insp-notam-link')).toHaveCount(0);
-  await futureOnly.check();
-  await expect(page.locator('#insp-body .insp-notam-link')).toContainText('1');
+  await page.locator('#insp-body .insp-notam-link').click();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(0);
+  await page.locator('.notam-modal #notam-show-all').check();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
+  await expect(page.locator('.notam-modal')).toContainText('LLHA FUTURE');
 });
 
 test('NOTAM list button reveals when data loads and lists all NOTAMs', async ({ page }) => {
