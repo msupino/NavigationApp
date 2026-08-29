@@ -4953,6 +4953,8 @@ function showNotamModal(only, opts) {
   // reads as "closing the NOTAM closed my table". `keepCharts` keeps the caller on screen;
   // a prior NOTAM list is still replaced, since two of those are never wanted.
   const keepCharts = !!(opts && opts.keepCharts);
+  const scopedIcao = /^[A-Z]{4}$/.test(String(opts && opts.icao || '').toUpperCase())
+    ? String(opts.icao).toUpperCase() : '';
   if (keepCharts) {
     for (const back of Array.from(document.querySelectorAll('.modal-back[data-chart-modal="notam-list"]'))) {
       if (typeof back._navaidClose === 'function') back._navaidClose();
@@ -4980,10 +4982,14 @@ function showNotamModal(only, opts) {
   const clicked = (Array.isArray(only) && only.length) ? only : null;
   let timeFrame = 'active';
   const feedFor = (frame) => {
-    if (clicked) return clicked;
-    if (frame === 'all') return Array.isArray(notams) ? notams.slice() : [];
-    return (typeof activeNotams === 'function') ? activeNotams()
+    let feed;
+    if (clicked) feed = clicked;
+    else if (frame === 'all') feed = Array.isArray(notams) ? notams.slice() : [];
+    else feed = (typeof activeNotams === 'function') ? activeNotams()
       : (Array.isArray(notams) ? notams : []);
+    return scopedIcao
+      ? feed.filter(n => String(n.icao || '').toUpperCase() === scopedIcao)
+      : feed;
   };
   let shown = feedFor(timeFrame);
   const h = document.createElement('h3');
@@ -4991,7 +4997,7 @@ function showNotamModal(only, opts) {
   // (FIR-wide / mixed). Updates when the filter narrows the list.
   const updateTitle = (subset) => {
     const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
-    const scope = ic.length === 1 ? ic[0] : 'LLLL';
+    const scope = scopedIcao || (ic.length === 1 ? ic[0] : 'LLLL');
     h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length;
   };
   updateTitle(shown);

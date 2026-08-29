@@ -54,6 +54,53 @@ test('airfield inspector links to its NOTAMs, or shows N/A when none', async ({ 
   await expect(page.locator('#insp-body .insp-notam-link')).toHaveCount(0);
 });
 
+test('airfield NOTAM list can include future entries without leaving its ICAO', async ({ page }) => {
+  const now = Date.now();
+  const iso = value => new Date(value).toISOString();
+  await boot(page, { generatedAt: iso(now), notams: [
+    { id: 'B1/26', icao: 'LLBG', start: iso(now - 3600000), end: iso(now + 3600000),
+      geom: null, text: 'LLBG ACTIVE' },
+    { id: 'B2/26', icao: 'LLBG', start: iso(now + 900000), end: iso(now + 7200000),
+      geom: null, text: 'LLBG FUTURE' },
+    { id: 'H1/26', icao: 'LLHA', start: iso(now + 900000), end: iso(now + 7200000),
+      geom: null, text: 'LLHA FUTURE' },
+  ] });
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  await page.evaluate(() => {
+    state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLBG') };
+    showInspector();
+    closeToolbarMenus();
+  });
+
+  const link = page.locator('#insp-body .insp-notam-link');
+  await expect(link).toContainText('1');
+  await link.click();
+  const future = page.locator('.notam-modal #notam-show-all');
+  await expect(future).toBeVisible();
+  await expect(future).not.toBeChecked();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
+  await future.check();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(2);
+  await expect(page.locator('.notam-modal')).toContainText('LLBG FUTURE');
+  await expect(page.locator('.notam-modal')).not.toContainText('LLHA FUTURE');
+  await future.uncheck();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
+  await page.locator('.notam-modal .modal-close-x').click();
+
+  // An airfield with no active entry can still open the scoped list and reveal its future one.
+  await page.evaluate(() => {
+    state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHA') };
+    showInspector();
+    closeToolbarMenus();
+  });
+  await page.locator('#insp-body .insp-notam-link').click();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(0);
+  await page.locator('.notam-modal #notam-show-all').check();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
+  await expect(page.locator('.notam-modal')).toContainText('LLHA FUTURE');
+});
+
 test('NOTAM list button reveals when data loads and lists all NOTAMs', async ({ page }) => {
   await boot(page);
   const btn = page.locator('#notam-list-btn');
