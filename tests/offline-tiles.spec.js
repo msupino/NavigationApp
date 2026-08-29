@@ -32,10 +32,11 @@ test('offlineTileList covers the chart bounds at each zoom', async ({ page }) =>
   expect(r.sample.z).toBe(7);
 });
 
-test('downloadPack stores tiles under the URL the map will request', async ({ page }) => {
+test('downloadPack always stores CVFR, regardless of the selected map layer', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
-    // chart layer active by default (CVFR)
+    for (const key in layers) if (map.hasLayer(layers[key])) map.removeLayer(layers[key]);
+    map.addLayer(layers['Low Alt']);
     const res = await NavAidOfflineTiles.downloadPack(() => {}, 7, 7);
     const cache = await caches.open(NavAidOfflineTiles.TILE_CACHE);
     const keys = (await cache.keys()).map(k => k.url);
@@ -63,25 +64,66 @@ test('deletePack removes the offline tiles; packSize reports the count', async (
   expect(r.after).toBe(0);
 });
 
-test('the download button shows only on chart layers (has a CORS mirror)', async ({ page }) => {
+test('one compact status button opens an explicit CVFR-only manager', async ({ page }) => {
   await boot(page);
-  // The group lives in the Charts toolbar section.
   expect(await page.locator('#offline-tiles-group').evaluate(el => !!el.closest('[data-sec="charts"]'))).toBe(true);
+  expect(page.locator('#offline-tiles-group button')).toHaveCount(1);
+  await page.locator('.tb-section[data-sec="charts"] .tb-section-head').click();
+  await page.locator('#offline-tiles-btn').click();
+  await expect(page.locator('.offline-manager-modal')).toBeVisible();
+  await expect(page.locator('.offline-manager-layer')).toHaveText('CVFR');
+  await expect(page.locator('.offline-manager-online')).toContainText('Online only');
+  await expect(page.locator('.offline-manager-online')).toContainText('Navigation');
+  await expect(page.locator('.offline-manager-online')).toContainText('Helicopters');
+});
+
+test('coverage is exact, complete packs cannot be redundantly repaired, and old layer tiles are pruned', async ({ page }) => {
+  await boot(page);
   const r = await page.evaluate(async () => {
-    const grp = document.getElementById('offline-tiles-group');
-    const setL = k => { for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]); map.addLayer(layers[k]); };
-    const onChart = !grp.hidden || grp.hidden;   // read after each switch below
-    setL('CVFR'); await new Promise(r2 => setTimeout(r2, 50));
-    const cvfr = !document.getElementById('offline-tiles-group').hidden;
-    setL('OpenStreetMap'); await new Promise(r2 => setTimeout(r2, 50));
-    const osm = !document.getElementById('offline-tiles-group').hidden;
-    setL('Low Alt'); await new Promise(r2 => setTimeout(r2, 50));
-    const lsa = !document.getElementById('offline-tiles-group').hidden;
-    return { cvfr, osm, lsa, onChart };
+    const O = NavAidOfflineTiles;
+    await caches.delete(O.TILE_CACHE);
+    const cache = await caches.open(O.TILE_CACHE);
+    await cache.put('https://navaid-tiles.supino.org/Israel-Navigation/7/1/1.png',
+      new Response(new Uint8Array([1]), { status: 200 }));
+    const before = await O.cvfrCoverage(7, 7);
+    const first = await O.downloadPack(() => {}, 7, 7);
+    const complete = await O.cvfrCoverage(7, 7, { pruneOtherLayers: true });
+    const second = await O.downloadPack(() => {}, 7, 7);
+    const urls = (await (await caches.open(O.TILE_CACHE)).keys()).map(k => k.url);
+    await caches.delete(O.TILE_CACHE);
+    return { before, first, complete, second,
+      hasOtherLayer: urls.some(url => url.includes('Israel-Navigation')) };
   });
-  expect(r.cvfr).toBe(true);     // chart layer → button shown
-  expect(r.osm).toBe(false);     // no mirror → hidden
-  expect(r.lsa).toBe(true);      // chart layer → shown
+  expect(r.before.complete).toBe(false);
+  expect(r.complete.complete).toBe(true);
+  expect(r.complete.percent).toBe(100);
+  expect(r.second.fetched).toBe(0);
+  expect(r.hasOtherLayer).toBe(false);
+});
+
+test('known 404 cells are cached as transparent tiles and count as complete', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const O = NavAidOfflineTiles;
+    await caches.delete(O.TILE_CACHE);
+    const original = window.fetch;
+    let first = true;
+    window.fetch = function () {
+      if (first) { first = false; return Promise.resolve(new Response('', { status: 404 })); }
+      return original.apply(this, arguments);
+    };
+    const result = await O.downloadPack(() => {}, 7, 7);
+    window.fetch = original;
+    const cache = await caches.open(O.TILE_CACHE);
+    const responses = await Promise.all((await cache.keys()).map(key => cache.match(key)));
+    const placeholders = responses.filter(response => response.headers.get('x-navaid-empty-chart-tile') === '1').length;
+    const coverage = await O.cvfrCoverage(7, 7);
+    await caches.delete(O.TILE_CACHE);
+    return { result, placeholders, coverage };
+  });
+  expect(r.result.placeholders).toBe(1);
+  expect(r.placeholders).toBe(1);
+  expect(r.coverage.complete).toBe(true);
 });
 
 test('sw.js exempts the tile cache from activate cleanup and serves tiles cache-first', async ({ page }) => {

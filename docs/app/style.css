@@ -5573,8 +5573,30 @@ body.theme-light .overlay-loading {
 .lsa-row-weekend::before { background: rgba(201, 178, 138, 0.75); border-color: #2b2b2b; }
 .lsa-empty { opacity: 0.7; padding: 8px; }
 
-/* --- Offline chart packs (Extra layers) ------------------------------ */
-.offline-tiles-status { font-size: 12px; opacity: 0.8; align-self: center; }
+/* --- Automatic CVFR offline map (Charts) ----------------------------- */
+.offline-tiles-group { padding: 0; }
+.offline-tiles-group > button { width: 100%; }
+.offline-manager-modal { width: min(460px, calc(100vw - 24px)); }
+.offline-manager-copy { margin: 8px 0; line-height: 1.4; }
+.offline-manager-online { opacity: 0.72; font-size: 12px; }
+.offline-manager-card {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #555;
+  border-radius: 6px;
+}
+.offline-manager-layer { font-weight: 700; font-size: 15px; }
+.offline-manager-state { margin: 5px 0 8px; }
+.offline-manager-progress {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #454545;
+  margin-bottom: 9px;
+}
+.offline-manager-progress > span { display: block; height: 100%; background: #4caf50; }
+.offline-manager-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.offline-manager-actions button { flex: 1 1 auto; }
 
 /* --- Overlay align editor (Extra layers, ?align=1) ------------------ */
 /* Floating editor panel */
