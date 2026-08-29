@@ -19,6 +19,19 @@ function python(expression) {
   return JSON.parse(result.stdout);
 }
 
+function runMainWith(setup, args = []) {
+  const code = [
+    'import importlib.util, sys',
+    'spec = importlib.util.spec_from_file_location("follow_me_simulator", sys.argv[1])',
+    'module = importlib.util.module_from_spec(spec)',
+    'spec.loader.exec_module(module)',
+    setup,
+    'sys.argv = [sys.argv[1]] + sys.argv[2:]',
+    'raise SystemExit(module.main())',
+  ].join('\n');
+  return spawnSync('python3', ['-c', code, script, ...args], { encoding: 'utf8' });
+}
+
 test('default Follow Me simulator flies the LLHZ-LLHA route waypoints', () => {
   const route = python('module.load_route()');
   expect(route.map(point => point.name)).toEqual([
@@ -75,4 +88,49 @@ test('simulator constructs a fragment-key follower link and supports offline dry
   expect(result.stdout).toMatch(/^Follower link:\nhttps:\/\/navaid\.supino\.org\/\?follow=.+#k=.+/);
   expect(result.stderr).toContain('LLHZ -> BAZRA -> DEROR -> SHARO -> HADRA -> FRDIS -> BOREN -> HOTRM -> DAROM -> GALIM -> LLHA');
   expect(result.stderr).toContain('Aircraft: TEST');
+});
+
+test('MQTT hostname and connection failures exit cleanly without a traceback', () => {
+  const result = runMainWith([
+    'import socket',
+    'def fail_connect(*_args):',
+    '    raise socket.gaierror(-2, "Name or service not known")',
+    'module.mqtt_client = fail_connect',
+  ].join('\n'), ['--broker', 'wss://unknown.invalid/mqtt']);
+
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain('could not connect to wss://unknown.invalid/mqtt');
+  expect(result.stderr).toContain('Name or service not known');
+  expect(result.stderr).not.toContain('Traceback');
+});
+
+test('Ctrl-C during MQTT setup stops cleanly without a traceback', () => {
+  const result = runMainWith([
+    'def interrupt_connect(*_args):',
+    '    raise KeyboardInterrupt()',
+    'module.mqtt_client = interrupt_connect',
+  ].join('\n'));
+
+  expect(result.status).toBe(130);
+  expect(result.stderr).toContain('Stopping.');
+  expect(result.stderr).not.toContain('Traceback');
+  expect(result.stderr).not.toContain('KeyboardInterrupt');
+});
+
+test('Ctrl-C while waiting for MQTT also shuts down an initialized client cleanly', () => {
+  const result = runMainWith([
+    'class InterruptEvent:',
+    '    def wait(self, _timeout): raise KeyboardInterrupt()',
+    'class Client:',
+    '    def loop_start(self): pass',
+    '    def disconnect(self): pass',
+    '    def loop_stop(self): pass',
+    'module.threading.Event = InterruptEvent',
+    'module.mqtt_client = lambda *_args: Client()',
+  ].join('\n'));
+
+  expect(result.status).toBe(130);
+  expect(result.stderr).toContain('Stopping.');
+  expect(result.stderr).not.toContain('Traceback');
+  expect(result.stderr).not.toContain('KeyboardInterrupt');
 });
