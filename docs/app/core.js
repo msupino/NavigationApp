@@ -727,14 +727,14 @@ NavAid.tuningDefaults = {
   // best-effort and unauthenticated; encryption hides the payload from the broker, while any
   // bearer-link holder can read or submit valid-looking packets. Off until it has been flown
   // with: a position feed that is wrong or stale is worse than none.
-  // The offline floor: a small en-route map fetched quietly on load, so a pilot who never
-  // pressed "Download charts" still has something in the air. ~300 tiles, ~4 MB over the
-  // published extent; the deep zooms stay behind the button because the full pack is ~200 MB.
-  offlineAutoFloor: { value: false, type: 'bool', label: 'Fetch a basic offline map on load' },
-  offlineFloorWifiOnly: { value: true, type: 'bool',
-    label: 'Fetch the basic offline map only when the connection is not metered' },
-  offlineFloorMinZ: { value: 7, min: 5, max: 12, step: 1, label: 'Basic offline map: widest zoom' },
-  offlineFloorMaxZ: { value: 10, min: 6, max: 13, step: 1, label: 'Basic offline map: closest zoom' },
+  // CVFR is the one chart needed in flight. Keep its complete native-detail pyramid locally
+  // without relying on a pilot remembering a preflight download. The manager audits the cache
+  // before every run, fetches only missing tiles, and waits on constrained connections.
+  offlineAutoCvfr: { value: true, type: 'bool', label: 'Keep the CVFR chart available offline' },
+  offlineCvfrUnmeteredOnly: { value: true, type: 'bool',
+    label: 'Update the offline CVFR chart only on a suitable connection' },
+  offlineCvfrMinZoom: { value: 7, min: 5, max: 12, step: 1, label: 'Offline CVFR: widest zoom' },
+  offlineCvfrMaxZoom: { value: 13, min: 6, max: 13, step: 1, label: 'Offline CVFR: closest zoom' },
   featureFollowMe: { value: false, type: 'bool', label: 'Feature: share a live position link' },
   followMeBroker: { value: 'wss://broker.emqx.io:8084/mqtt', type: 'text',
     label: 'Follow me: public broker WebSocket URL' },
@@ -950,7 +950,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoFloor', 'offlineFloorWifiOnly', 'offlineFloorMinZ', 'offlineFloorMaxZ', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -2376,17 +2376,22 @@ window.S = Object.assign({
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
   tbSecWeather: '🗂 Extra layers',
-  // Offline map packs (offline-tiles.js, Charts section)
-  tbOfflineCharts: '⬇ Download offline maps',
-  tbOfflineChartsTitle: 'Pre-download the current map layer so it works with no internet (tap again to cancel)',
-  offlineDownloadConfirm: 'Download the current map for offline use? About ',
-  offlineDelete: '🗑 Delete offline maps',
-  offlineDeleteTitle: 'Remove the downloaded map tiles from this device — the app keeps working online',
-  offlineDeleteConfirm: 'Delete the offline maps?',
-  offlineCancel: '✕ Cancel — ',
-  offlineCancelled: 'cancelled',
-  offlineDone: 'saved ',
-  offlineTilesCount: 'offline tiles: ',
+  // Automatic CVFR offline map (offline-tiles.js, Charts section)
+  tbOfflineCharts: 'Offline CVFR: checking…',
+  tbOfflineChartsTitle: 'Show automatic offline CVFR coverage and storage details',
+  offlineManagerTitle: 'Offline maps',
+  offlineManagerAutomatic: 'CVFR is kept automatically for the whole chart at zooms 7–13.',
+  offlineManagerOnlineOnly: 'Online only: Navigation, Low Alt, Helicopters, ATS, Satellite and OpenStreetMap.',
+  offlineCvfrChecking: 'Offline CVFR: checking…',
+  offlineCvfrReady: 'Offline CVFR: ready ✓',
+  offlineCvfrProgress: function(p) { return '⬇ Download CVFR offline — ' + p + '%'; },
+  offlineCvfrWaiting: function(p) { return '⬇ Download CVFR offline — ' + p + '% · waiting for connection'; },
+  offlineCvfrDetail: function(present, total, p) { return present + ' of ' + total + ' tiles · ' + p + '%'; },
+  offlineCvfrRepair: '⬇ Download missing CVFR tiles',
+  offlineCvfrRepairTitle: 'Fetch only the missing CVFR tiles now',
+  offlineDelete: 'Clear offline CVFR',
+  offlineDeleteTitle: 'Remove the downloaded CVFR chart from this device; automatic maintenance resumes next time the app opens',
+  offlineDeleteConfirm: 'Clear the offline CVFR chart from this device?',
   tbLegDir: '🧭 Route direction',
   tbLegDirTitle: 'Which route direction to display. The other half\u2019s route line, waypoints, kites, drift and time marks, wind arrows, route-bound notes, totals and plan rows are hidden.',
   tbLegDirBoth: 'Both directions',

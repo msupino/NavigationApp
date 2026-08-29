@@ -151,13 +151,18 @@ test('the simulator panel keeps its aria-modal promise', async ({ page }) => {
   expect(closed.backOnTrigger).toBe(true);   // the trigger is a visible footer icon, so it can take focus back
 });
 
-test('the destructive offline-maps button explains itself', async ({ page }) => {
+test('the compact offline manager keeps its destructive action explained', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => {
-    const del = document.getElementById('offline-tiles-del');
-    const dl = document.getElementById('offline-tiles-btn');
-    return { delTitle: del.title, dlTitle: dl.title };
+  await page.evaluate(() => {
+    setTune('offlineCvfrMinZoom', 7);
+    setTune('offlineCvfrMaxZoom', 7);
   });
+  await page.locator('.tb-section[data-sec="charts"] .tb-section-head').click();
+  await page.locator('#offline-tiles-btn').click();
+  const r = await page.evaluate(() => ({
+    delTitle: document.querySelector('.offline-manager-actions button:last-child').title,
+    dlTitle: document.getElementById('offline-tiles-btn').title,
+  }));
   expect(r.delTitle.length).toBeGreaterThan(10);   // had no title at all; its sibling did
   expect(r.dlTitle.length).toBeGreaterThan(10);
 });

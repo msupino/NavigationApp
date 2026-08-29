@@ -21,7 +21,7 @@ The order matters:
 10. `docs/app/ui.js` - toolbar wiring, persistence toggles, boot.
 11. `docs/app/editor.js` - route-graph editing helpers.
 12. `docs/app/assistant.js` - optional AI assistant.
-13. `docs/app/offline-tiles.js` - native/offline chart-pack controls.
+13. `docs/app/offline-tiles.js` - automatic CVFR cache audit, repair, and compact status manager.
 
 Do not introduce modules, bundlers, transpilers, or new runtime dependencies
 without explicit approval.
@@ -54,6 +54,15 @@ CVFR, Navigation, Low Alt, and Helicopters chart tiles load live from
 `https://flight-maps.com`. Their `exportUrl` layer options point at
 `https://navaid-tiles.supino.org` so PNG export/download can fetch readable
 mirror tiles for canvas composition.
+
+Only CVFR is maintained for in-flight offline use. `offline-tiles.js` audits the expected
+z7–13 CVFR pyramid against `navaid-tiles-v1`, removes legacy tiles from other chart layers,
+and fetches only missing CVFR tiles on suitable production connections. Known 404 cells outside
+the irregular chart sheet are stored as transparent tiles, so 100% means every expected request
+has a deterministic offline response. When a route has at least two waypoints, its one-tile
+corridor is queued before the rest of the country at every zoom. Other base layers are explicitly
+online-only. A route added or edited during an active download immediately reprioritizes only the
+remaining queue; completed and in-flight requests are not restarted.
 
 Rendering flow:
 
