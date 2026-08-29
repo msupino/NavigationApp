@@ -122,6 +122,18 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `https://msupino.github.io/NavigationApp-owned-tiles/CVFR-AIP/`.
   Selection persisted at `localStorage['navaid.layer']` and restored
   *before* `L.map()` runs (no CVFR flash on reload).
+- **Automatic offline CVFR:** `app/offline-tiles.js` maintains the complete CVFR tile pyramid
+  (default z7–13) in Cache Storage `navaid-tiles-v1` on the production app. It first audits exact
+  expected URLs, downloads only missing tiles, turns known 404 outside-sheet cells into local
+  transparent tiles, and reports an exact percentage / ready state from the cache itself. If a
+  route exists, tiles in a one-tile corridor around its legs are downloaded before the remaining
+  whole-chart tiles. One
+  compact Charts-section button explicitly offers to download missing CVFR tiles and opens the
+  progress/detail manager; at 100% it changes to a ready indicator. Navigation, Low Alt, Helicopters, ATS,
+  Satellite, and OpenStreetMap are documented there as online-only. Automatic maintenance is on
+  by default (`offlineAutoCvfr`) and pauses on Data Saver, slow connections, or an explicitly
+  cellular connection when `offlineCvfrUnmeteredOnly` is true. It never auto-runs in local,
+  staging, or PR-preview deployments; focused tests invoke its force seam.
 - **Route overlay:** a `<canvas id="overlay">` over the map with
   `pointer-events: none`, redrawn on every Leaflet `move` / `zoom` /
   `resize`. `proj(wp)` = `map.latLngToContainerPoint`.

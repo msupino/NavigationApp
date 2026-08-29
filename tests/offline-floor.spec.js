@@ -1,12 +1,5 @@
-// The offline floor: a small en-route map fetched quietly on load.
-//
-// The downloadable pack is something a pilot chooses. This is the part that happens whether
-// or not anyone remembered — because "the map was blank in the air" should need someone to
-// have both forgotten AND been offline at the desk.
-//
-// It is small on purpose: z7-10 over the published extent is ~300 tiles, about 4 MB. The
-// full z7-13 pack is ~14,600 tiles and ~200 MB, which is not something to start on someone
-// else's data plan unasked — so the deep zooms stay behind the button.
+// Automatic CVFR maintenance: production keeps the complete chart, while local/staging/PR
+// deployments never start the large transfer by themselves.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -14,46 +7,49 @@ async function boot(page) {
   await page.waitForFunction(() => !!(window.NavAidOfflineTiles && window.NavAidOfflineTiles.fetchFloor));
 }
 
-test('it ships off, so nothing is fetched unasked', async ({ page }) => {
+test('automatic CVFR ships on but does not run from a local/preview deployment', async ({ page }) => {
   await boot(page);
   const off = await page.evaluate(() => ({
-    flag: tune('offlineAutoFloor'),
-    wanted: NavAidOfflineTiles.floorWanted(),
+    flag: tune('offlineAutoCvfr'),
+    wanted: NavAidOfflineTiles.automaticCvfrWanted(),
+    suitable: NavAidOfflineTiles.connectionSuitable(),
   }));
-  expect(off.flag).toBe(false);
+  expect(off.flag).toBe(true);
   expect(off.wanted).toBe(false);
+  expect(off.suitable).toBe(true);
 });
 
-test('a metered connection is a reason not to', async ({ page }) => {
+test('a constrained or explicitly cellular connection pauses automatic maintenance', async ({ page }) => {
   await boot(page);
   const seen = await page.evaluate(() => {
-    setTune('offlineAutoFloor', true);
     const orig = Object.getOwnPropertyDescriptor(navigator, 'connection');
     const set = (v) => Object.defineProperty(navigator, 'connection', { value: v, configurable: true });
     const out = {};
     set({ effectiveType: '4g', saveData: false });
-    out.wifi = NavAidOfflineTiles.floorWanted();
+    out.fast = NavAidOfflineTiles.connectionSuitable();
+    set({ type: 'cellular', effectiveType: '4g', saveData: false });
+    out.cellular = NavAidOfflineTiles.connectionSuitable();
     set({ effectiveType: '4g', saveData: true });         // Data Saver is an explicit "do not"
-    out.saveData = NavAidOfflineTiles.floorWanted();
+    out.saveData = NavAidOfflineTiles.connectionSuitable();
     set({ effectiveType: '3g', saveData: false });
-    out.threeG = NavAidOfflineTiles.floorWanted();
+    out.threeG = NavAidOfflineTiles.connectionSuitable();
     set(undefined);                                       // no way to ask
-    out.unknown = NavAidOfflineTiles.floorWanted();
-    // ...and a deployment that would rather not care can say so.
-    setTune('offlineFloorWifiOnly', false);
+    out.unknown = NavAidOfflineTiles.connectionSuitable();
+    setTune('offlineCvfrUnmeteredOnly', false);
     set({ effectiveType: '2g', saveData: true });
-    out.forcedOn = NavAidOfflineTiles.floorWanted();
+    out.forcedOn = NavAidOfflineTiles.connectionSuitable();
     if (orig) Object.defineProperty(navigator, 'connection', orig);
     return out;
   });
-  expect(seen.wifi).toBe(true);
+  expect(seen.fast).toBe(true);
+  expect(seen.cellular).toBe(false);
   expect(seen.saveData).toBe(false);
   expect(seen.threeG).toBe(false);
   expect(seen.unknown).toBe(true);
   expect(seen.forcedOn).toBe(true);
 });
 
-test('it fetches the floor zooms and nothing deeper', async ({ page }) => {
+test('a forced maintenance run fetches the requested CVFR zooms and nothing deeper', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
     const O = NavAidOfflineTiles;
@@ -77,12 +73,15 @@ test('a second load costs nothing: what is cached is not refetched', async ({ pa
     await caches.delete(O.TILE_CACHE);
     const first = await O.fetchFloor({ force: true, zMin: 7, zMax: 7 });
     const second = await O.fetchFloor({ force: true, zMin: 7, zMax: 7 });
+    const coverage = await O.cvfrCoverage(7, 7);
     await caches.delete(O.TILE_CACHE);
-    return { first, second };
+    return { first, second, coverage };
   });
   expect(got.first.fetched).toBeGreaterThan(0);
   expect(got.second.fetched).toBe(0);         // ...but still counted as present
   expect(got.second.ok).toBe(got.first.ok);
+  expect(got.coverage.complete).toBe(true);
+  expect(got.coverage.percent).toBe(100);
 });
 
 test('two runs cannot overlap', async ({ page }) => {
