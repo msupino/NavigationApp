@@ -115,6 +115,18 @@
     } catch (e) { return []; }
   }
 
+  function routeFingerprint(waypoints) {
+    if (!Array.isArray(waypoints) || waypoints.length < 2) return '';
+    return waypoints.map(waypoint => Number(waypoint.lat) + ',' + Number(waypoint.lng)).join(';');
+  }
+
+  function reprioritizeRemaining(queue, start, waypoints) {
+    if (!Array.isArray(queue) || start >= queue.length) return queue;
+    const ordered = prioritizeRouteTiles(queue.slice(start), waypoints);
+    queue.splice.apply(queue, [start, queue.length - start].concat(ordered));
+    return queue;
+  }
+
   function percentage(present, total) {
     return total ? Math.floor(present / total * 100) : 0;
   }
@@ -216,8 +228,18 @@
         setReport({ name: 'CVFR', present, total: plan.length, missing: missing.length,
           percent: percentage(present, plan.length), complete: !missing.length, running: true });
         let nextMissing = 0;
+        let queuedRouteFingerprint = routeFingerprint(currentRouteWaypoints());
         const worker = async () => {
           while (nextMissing < missing.length) {
+            // A route can be created or edited while a long whole-country download is running.
+            // Reorder only work that has not started; completed and in-flight requests are left
+            // alone, while the new route corridor becomes the next work dispatched.
+            const routeNow = currentRouteWaypoints();
+            const fingerprintNow = routeFingerprint(routeNow);
+            if (fingerprintNow !== queuedRouteFingerprint) {
+              reprioritizeRemaining(missing, nextMissing, routeNow);
+              queuedRouteFingerprint = fingerprintNow;
+            }
             const item = missing[nextMissing++];
             try {
               const response = await fetch(item.fetchUrl, { mode: 'cors' });
@@ -416,7 +438,7 @@
   window.addEventListener('online', scheduleAuto);
 
   window.NavAidOfflineTiles = {
-    offlineTileList, cvfrPlan, routeTileDistanceSq, prioritizeRouteTiles,
+    offlineTileList, cvfrPlan, routeTileDistanceSq, prioritizeRouteTiles, reprioritizeRemaining,
     cvfrCoverage, connectionSuitable, automaticCvfrWanted,
     downloadPack, fetchFloor, deletePack, packSize, auditAndMaintain, scheduleAuto,
     TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z,

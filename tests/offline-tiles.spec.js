@@ -60,6 +60,34 @@ test('a defined route moves its tile corridor to the front without dropping whol
   });
 });
 
+test('a route added during download reprioritizes only the remaining queue', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const O = NavAidOfflineTiles;
+    const route = [
+      { lat: 32.17944, lng: 34.83444 },
+      { lat: 32.79417, lng: 34.98917 },
+    ];
+    const queue = O.cvfrPlan(10, 10);
+    const completedPrefix = queue.slice(0, 3);
+    O.reprioritizeRemaining(queue, completedPrefix.length, route);
+    const distances = queue.slice(completedPrefix.length)
+      .map(item => O.routeTileDistanceSq(item.coords, route));
+    const firstOutside = distances.findIndex(distance => distance > 2.25);
+    return {
+      prefixUntouched: completedPrefix.every((item, i) => queue[i] === item),
+      nextIsRoute: distances[0] <= 2.25,
+      routeOnlyRemainingPrefix: firstOutside > 0 &&
+        distances.slice(firstOutside).every(distance => distance > 2.25),
+    };
+  });
+  expect(r).toEqual({
+    prefixUntouched: true,
+    nextIsRoute: true,
+    routeOnlyRemainingPrefix: true,
+  });
+});
+
 test('downloadPack always stores CVFR, regardless of the selected map layer', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {

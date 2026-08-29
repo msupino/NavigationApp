@@ -61,7 +61,8 @@ and fetches only missing CVFR tiles on suitable production connections. Known 40
 the irregular chart sheet are stored as transparent tiles, so 100% means every expected request
 has a deterministic offline response. When a route has at least two waypoints, its one-tile
 corridor is queued before the rest of the country at every zoom. Other base layers are explicitly
-online-only.
+online-only. A route added or edited during an active download immediately reprioritizes only the
+remaining queue; completed and in-flight requests are not restarted.
 
 Rendering flow:
 
