@@ -4955,6 +4955,8 @@ function showNotamModal(only, opts) {
   const keepCharts = !!(opts && opts.keepCharts);
   const scopedIcao = /^[A-Z]{4}$/.test(String(opts && opts.icao || '').toUpperCase())
     ? String(opts.icao).toUpperCase() : '';
+  const initialFilterIcao = /^[A-Z]{4}$/.test(String(opts && opts.filterIcao || '').toUpperCase())
+    ? String(opts.filterIcao).toUpperCase() : '';
   if (keepCharts) {
     for (const back of Array.from(document.querySelectorAll('.modal-back[data-chart-modal="notam-list"]'))) {
       if (typeof back._navaidClose === 'function') back._navaidClose();
@@ -5019,7 +5021,7 @@ function showNotamModal(only, opts) {
   // Airfield/global filter. Every NOTAM carries an ICAO: LLLL = FIR-wide
   // (global); anything else is aerodrome-specific. Build a dropdown of the
   // codes present so the list can be narrowed to one airfield (or globals).
-  let filterIcao = '';
+  let filterIcao = initialFilterIcao;
   let filterText = '';
   const codes = Array.from(new Set(
     shown.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
@@ -5163,6 +5165,8 @@ function showNotamModal(only, opts) {
         + ' (' + cnt + ')';
       sel.appendChild(o);
     }
+    sel.value = codes.includes(initialFilterIcao) ? initialFilterIcao : '';
+    filterIcao = sel.value;
     sel.onchange = () => { filterIcao = sel.value; renderList(); };
     fw.appendChild(sel);
     }

@@ -191,10 +191,16 @@ test('decodeNotam covers the extended Israel-FIR abbreviations and the XX condit
 });
 
 test('clicking an airport NOTAM badge opens the (scrollable) list, not the picker', async ({ page }) => {
+  const now = Date.now();
   const many = [];
   for (let i = 0; i < 17; i++) {
-    many.push({ id: 'B' + i + '/26', icao: 'LLBG', end: '', geom: null, text: 'B' + i + ' LLBG notam line.' });
+    many.push({ id: 'B' + i + '/26', icao: 'LLBG', start: new Date(now - 3600000).toISOString(),
+      end: new Date(now + 3600000).toISOString(), geom: null, text: 'B' + i + ' LLBG notam line.' });
   }
+  many.push({ id: 'BF/26', icao: 'LLBG', start: new Date(now + 900000).toISOString(),
+    end: new Date(now + 7200000).toISOString(), geom: null, text: 'BF LLBG future notam.' });
+  many.push({ id: 'H1/26', icao: 'LLHA', start: new Date(now - 3600000).toISOString(),
+    end: new Date(now + 3600000).toISOString(), geom: null, text: 'H1 LLHA active notam.' });
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: many });
   await page.locator('#notam-cb').check();
   await page.evaluate(() => loadAirfields && loadAirfields());
@@ -218,6 +224,15 @@ test('clicking an airport NOTAM badge opens the (scrollable) list, not the picke
   await expect(page.locator('.notam-modal h3')).toContainText('LLBG');
   await expect(page.locator('.notam-modal h3')).not.toContainText('LLLL');
   await expect(page.locator('.notam-modal .notam-item')).toHaveCount(17);
+  await expect(page.locator('.notam-modal .notam-filter-sel')).toHaveValue('LLBG');
+  const future = page.locator('.notam-modal #notam-show-all');
+  await expect(future).toBeVisible();
+  await expect(future).not.toBeChecked();
+  await future.check();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(18);
+  await expect(page.locator('.notam-modal')).toContainText('future notam');
+  await page.locator('.notam-modal .notam-filter-sel').selectOption('');
+  await expect(page.locator('.notam-modal')).toContainText('LLHA active notam');
   const canScroll = await page.evaluate(() => {
     const l = document.querySelector('.notam-list');
     return l.scrollHeight > l.clientHeight + 2;
