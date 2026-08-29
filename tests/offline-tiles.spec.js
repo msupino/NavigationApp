@@ -66,15 +66,22 @@ test('deletePack removes the offline tiles; packSize reports the count', async (
 
 test('one compact status button opens an explicit CVFR-only manager', async ({ page }) => {
   await boot(page);
+  await page.evaluate(async () => {
+    await caches.delete(NavAidOfflineTiles.TILE_CACHE);
+    setTune('offlineCvfrMinZoom', 7);
+    setTune('offlineCvfrMaxZoom', 7);
+  });
   expect(await page.locator('#offline-tiles-group').evaluate(el => !!el.closest('[data-sec="charts"]'))).toBe(true);
   expect(page.locator('#offline-tiles-group button')).toHaveCount(1);
   await page.locator('.tb-section[data-sec="charts"] .tb-section-head').click();
+  await expect(page.locator('#offline-tiles-btn')).toContainText('Download CVFR offline');
   await page.locator('#offline-tiles-btn').click();
   await expect(page.locator('.offline-manager-modal')).toBeVisible();
   await expect(page.locator('.offline-manager-layer')).toHaveText('CVFR');
   await expect(page.locator('.offline-manager-online')).toContainText('Online only');
   await expect(page.locator('.offline-manager-online')).toContainText('Navigation');
   await expect(page.locator('.offline-manager-online')).toContainText('Helicopters');
+  await expect(page.locator('#offline-tiles-btn')).toContainText('ready ✓');
 });
 
 test('coverage is exact, complete packs cannot be redundantly repaired, and old layer tiles are pruned', async ({ page }) => {

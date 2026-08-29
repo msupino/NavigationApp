@@ -153,6 +153,10 @@ test('the simulator panel keeps its aria-modal promise', async ({ page }) => {
 
 test('the compact offline manager keeps its destructive action explained', async ({ page }) => {
   await boot(page);
+  await page.evaluate(() => {
+    setTune('offlineCvfrMinZoom', 7);
+    setTune('offlineCvfrMaxZoom', 7);
+  });
   await page.locator('.tb-section[data-sec="charts"] .tb-section-head').click();
   await page.locator('#offline-tiles-btn').click();
   const r = await page.evaluate(() => ({

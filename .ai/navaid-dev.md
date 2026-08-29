@@ -123,7 +123,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   (default z7–13) in Cache Storage `navaid-tiles-v1` on the production app. It first audits exact
   expected URLs, downloads only missing tiles, turns known 404 outside-sheet cells into local
   transparent tiles, and reports an exact percentage / ready state from the cache itself. One
-  compact Charts-section button opens the detail manager. Navigation, Low Alt, Helicopters, ATS,
+  compact Charts-section button explicitly offers to download missing CVFR tiles and opens the
+  progress/detail manager; at 100% it changes to a ready indicator. Navigation, Low Alt, Helicopters, ATS,
   Satellite, and OpenStreetMap are documented there as online-only. Automatic maintenance is on
   by default (`offlineAutoCvfr`) and pauses on Data Saver, slow connections, or an explicitly
   cellular connection when `offlineCvfrUnmeteredOnly` is true. It never auto-runs in local,

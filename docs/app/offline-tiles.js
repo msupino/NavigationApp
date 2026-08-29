@@ -246,7 +246,7 @@
     if (lastReport.waiting) {
       return tf('offlineCvfrWaiting', p => 'Offline CVFR: ' + p + '% — waiting for connection', lastReport.percent);
     }
-    return tf('offlineCvfrProgress', p => 'Offline CVFR: ' + p + '%', lastReport.percent);
+    return tf('offlineCvfrProgress', p => '⬇ Download CVFR offline — ' + p + '%', lastReport.percent);
   }
 
   function renderCompactStatus() {
@@ -321,6 +321,16 @@
     renderManager();
   }
 
+  async function openManagerAndDownload() {
+    openManager();
+    const report = lastReport || await cvfrCoverage(undefined, undefined, { pruneOtherLayers: true });
+    setReport(report);
+    // An incomplete compact button is an explicit download action. This also gives PR/staging
+    // users a way to exercise the feature even though large automatic transfers run only in
+    // production. Once complete, the same button remains a read-only way into the details.
+    if (!report.complete && !runningPromise) await downloadPack();
+  }
+
   async function auditAndMaintain() {
     const report = await cvfrCoverage(undefined, undefined, { pruneOtherLayers: true });
     if (!automaticCvfrWanted() || suppressAutoThisSession) {
@@ -336,7 +346,7 @@
   function wire() {
     const button = document.getElementById('offline-tiles-btn');
     if (!button) return;
-    button.onclick = openManager;
+    button.onclick = () => { openManagerAndDownload().catch(() => {}); };
     renderCompactStatus();
     cvfrCoverage(undefined, undefined, { pruneOtherLayers: true }).then(setReport).catch(() => {});
   }
