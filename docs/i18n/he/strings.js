@@ -929,6 +929,8 @@ window.S = {
   notamInspLabel: 'NOTAM',
   notamInspNone: 'אין',
   notamInspView: function (n) { return '📋 הצג ' + n; },
+  notamInspFuture: 'NOTAM עתידיים',
+  notamInspFutureTitle: 'הצג גם NOTAM שאינם פעילים כעת',
   runways: 'מסלולים',
   plateCategoryApproach: 'גישה',
   plateCategorySid: 'SID',

@@ -2648,33 +2648,78 @@ function appendSatelliteSnippet(body, point, label) {
 function appendAirfieldNotams(body, af) {
   const icao = String(af && af.name || '').toUpperCase();
   if (!/^[A-Z]{4}$/.test(icao)) return;
-  const matchesNow = () => (Array.isArray(notams) && typeof activeNotams === 'function')
-    ? activeNotams().filter(n => String(n.icao || '').toUpperCase() === icao)
-    : null;
+  let includeFuture = false;
+  let loadFailed = false;
+  const matchesAll = () => Array.isArray(notams)
+    ? notams.filter(n => String(n.icao || '').toUpperCase() === icao)
+    : (loadFailed ? [] : null);
+  const matchesActive = () => {
+    return (Array.isArray(notams) && typeof activeNotams === 'function')
+      ? activeNotams().filter(n => String(n.icao || '').toUpperCase() === icao)
+      : (loadFailed ? [] : null);
+  };
+  const matchesWithFuture = () => {
+    const all = matchesAll();
+    const active = matchesActive();
+    if (all === null || active === null) return null;
+    const activeSet = new Set(active);
+    const at = Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
+    return all.filter(n => activeSet.has(n) || Date.parse(n.start || '') > at);
+  };
+  const matchesNow = () => includeFuture ? matchesWithFuture() : matchesActive();
   const row = document.createElement('div');
   row.className = 'row notam-insp-row';
   const lbl = document.createElement('label');
   lbl.textContent = S.notamInspLabel || 'NOTAMs';
   const val = document.createElement('span');
-  val.className = 'val';
-  const render = matches => {
-    val.textContent = '';
-    if (matches === null) { val.textContent = '…'; return; }
-    if (!matches.length) { val.textContent = S.notamInspNone || 'N/A'; return; }
-    const link = document.createElement('button');
-    link.type = 'button';
-    link.className = 'insp-notam-link';
-    link.textContent = S.notamInspView ? S.notamInspView(matches.length) : ('View ' + matches.length);
-    link.onclick = () => { if (typeof showNotamModal === 'function') showNotamModal(matches); };
-    val.appendChild(link);
+  val.className = 'val notam-insp-controls';
+  const frame = document.createElement('label');
+  frame.className = 'notam-timeframe notam-insp-future';
+  frame.title = S.notamInspFutureTitle || S.notamShowAllTitle || '';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  const futureText = document.createElement('span');
+  futureText.textContent = S.notamInspFuture || 'Future NOTAMs';
+  frame.append(cb, futureText);
+  const result = document.createElement('span');
+  result.className = 'notam-insp-result';
+  val.append(frame, result);
+  const render = () => {
+    const matches = matchesNow();
+    const active = matchesActive();
+    const withFuture = matchesWithFuture();
+    result.textContent = '';
+    cb.checked = includeFuture;
+    cb.disabled = withFuture === null || (active !== null && withFuture.length === active.length);
+    if (matches === null) {
+      result.textContent = '…';
+      return;
+    }
+    if (!matches.length) {
+      result.textContent = S.notamInspNone || 'N/A';
+    } else {
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'insp-notam-link';
+      link.textContent = S.notamInspView ? S.notamInspView(matches.length) : ('View ' + matches.length);
+      link.onclick = () => { if (typeof showNotamModal === 'function') showNotamModal(matches); };
+      result.appendChild(link);
+    }
   };
-  const m = matchesNow();
-  render(m);
-  if (m === null && typeof ensureNotams === 'function') {
+  cb.addEventListener('change', () => {
+    includeFuture = cb.checked;
+    render();
+  });
+  const initial = matchesNow();
+  render();
+  if (initial === null && typeof ensureNotams === 'function') {
     // Guard against the inspector being closed / switched to another airfield
     // before the load resolves — don't write into a detached/stale row.
-    ensureNotams().then(() => { if (val.isConnected) render(matchesNow()); })
-      .catch(() => { if (val.isConnected) render([]); });
+    ensureNotams().then(() => { if (val.isConnected) render(); })
+      .catch(() => {
+        loadFailed = true;
+        if (val.isConnected) render();
+      });
   }
   row.append(lbl, val);
   body.appendChild(row);

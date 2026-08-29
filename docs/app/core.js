@@ -2089,6 +2089,8 @@ window.S = Object.assign({
   notamInspLabel: 'NOTAMs',
   notamInspNone: 'N/A',
   notamInspView: function (n) { return '📋 View ' + n; },
+  notamInspFuture: 'Future NOTAMs',
+  notamInspFutureTitle: 'Also show NOTAMs that are not currently active',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
   plateCategorySid: 'SID',

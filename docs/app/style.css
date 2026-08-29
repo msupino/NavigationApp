@@ -4041,6 +4041,14 @@ body.theme-light .msa-low .val { color: #c0392b; }
 }
 .insp-notam-link:hover { color: #9cc8ff; }
 body.theme-light .insp-notam-link { color: #1d6fe0; }
+.notam-insp-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.notam-insp-future:has(input:disabled) { opacity: 0.5; cursor: default; }
 
 /* Airfield METAR/TAF (#670) */
 .wx-section { margin: 8px 0 2px; border-top: 1px solid #3a3636; padding-top: 6px; }
