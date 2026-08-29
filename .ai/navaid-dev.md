@@ -711,6 +711,10 @@ as a machine-readable registry.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
+- Airfield inspectors keep their NOTAM list scoped to the selected ICAO. The
+  opened list uses the same default-off **Include not yet active** checkbox as
+  the FIR-wide NOTAM list, including when that airfield currently has no active
+  entry. The choice is transient and adds no `localStorage` key.
 - `navaid.showReporting` — `'0'` / `'1'` for mandatory-reporting badges.
 - `navaid.showMsa` — `'0'` / `'1'` for the leg-inspector MSA row.
 - `navaid.showAirspace` — `'0'` / `'1'` for the AIP airspace layer (prohibited,
