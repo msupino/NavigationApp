@@ -4,7 +4,8 @@
 
 A browser flight-route planner. Leaflet slippy map (live chart tiles from
 `https://flight-maps.com`, export/download tiles from
-`https://navaid-tiles.supino.org`) with a canvas overlay that draws the route,
+`https://navaid-tiles.supino.org`, and NavAid-generated layers from
+`https://msupino.github.io/NavigationApp-owned-tiles`) with a canvas overlay that draws the route,
 free-text notes, and an
 optional VFR-reporting-point reference layer. Plain HTML / CSS / JS, no
 build step; pinned Leaflet plugins are listed in `docs/index.html`. This repository now
@@ -116,7 +117,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Base map:** Leaflet with six base layers in one `layers` object:
   CVFR / Nav / Low Alt / Heli (live from `https://flight-maps.com`,
   with `exportUrl` entries on `https://navaid-tiles.supino.org` for PNG
-  download rendering) / Satellite (Esri) / OSM.
+  download rendering) / Satellite (Esri) / OSM. The independently generated
+  CVFR (AIP) layer loads and exports from
+  `https://msupino.github.io/NavigationApp-owned-tiles/CVFR-AIP/`.
   Selection persisted at `localStorage['navaid.layer']` and restored
   *before* `L.map()` runs (no CVFR flash on reload).
 - **Route overlay:** a `<canvas id="overlay">` over the map with
@@ -1082,6 +1085,9 @@ downloadable `route.json`.
   `msupino/NavigationApp-tiles`, served from
   `https://navaid-tiles.supino.org`, so canvas tile fetches remain
   readable without the old proxy path.
+- NavAid-generated chart layers are kept out of the Flight Maps mirror repository.
+  CVFR (AIP) is stored in `msupino/NavigationApp-owned-tiles` and served from
+  `https://msupino.github.io/NavigationApp-owned-tiles/CVFR-AIP/`.
 - `cvfr-route-graph.json` — the Israeli CVFR reporting points and route edges.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the source of

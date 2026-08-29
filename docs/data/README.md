@@ -26,7 +26,10 @@ without archaeology. `scripts/aip-drift.py` answers the same question for the ch
 
 The **CVFR (AIP)** base layer ships no file here: it is a tile set, built by
 `scripts/build-cvfr-tiles.py` from the CAA's own two CVFR sheets (AIP part II, northern and
-southern) and served from `navaid-tiles.supino.org/CVFR-AIP/`. Those sheets are vector PDFs,
+southern) and served from
+`msupino.github.io/NavigationApp-owned-tiles/CVFR-AIP/`. The dedicated
+`msupino/NavigationApp-owned-tiles` repository contains only independently generated
+NavAid layers; the Flight Maps mirrors remain separate. Those sheets are vector PDFs,
 so the leg distances, magnetic tracks and altitude flags survive the render -- the
 annotations the extracted Flight Maps CVFR set does not carry. z8-13, 3,768 tiles.
 

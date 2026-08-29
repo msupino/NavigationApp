@@ -13,6 +13,9 @@ async function boot(page) {
   await page.route(/^https:\/\/navaid-tiles\.supino\.org\//, r =>
     r.fulfill({ status: 200, contentType: 'image/png', body: PNG,
       headers: { 'access-control-allow-origin': '*' } }));
+  await page.route(/^https:\/\/msupino\.github\.io\/NavigationApp-owned-tiles\//, r =>
+    r.fulfill({ status: 200, contentType: 'image/png', body: PNG,
+      headers: { 'access-control-allow-origin': '*' } }));
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' &&
     window.NavAidOfflineTiles && typeof layers !== 'undefined');
@@ -98,6 +101,8 @@ test('sw.js exempts the tile cache from activate cleanup and serves tiles cache-
   expect(sw).toMatch(/if \(k === CACHE \|\| k === TILE_CACHE\) continue;/);
   expect(sw).toContain('ownedByThisScope');
   expect(sw).toMatch(/TILE_HOST = 'flight-maps\.com'/);
+  expect(sw).toMatch(/OWNED_TILE_HOST = 'msupino\.github\.io'/);
+  expect(sw).toMatch(/OWNED_TILE_PATH = '\/NavigationApp-owned-tiles\/'/);
   const tileBranch = sw.indexOf('url.host === TILE_HOST');
   const cacheableBail = sw.indexOf('if (!cacheable(url)) return');
   expect(tileBranch).toBeGreaterThan(0);

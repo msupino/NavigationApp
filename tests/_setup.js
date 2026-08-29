@@ -35,11 +35,13 @@ const TRANSPARENT_PNG = Buffer.from(
 // GitHub runner -- reported by its owner as millions over three months from
 // "127.0.0.1:8000 in the US", which is exactly what this suite looks like from outside.
 // OpenStreetMap's tile policy says the same thing about automated bulk use, and
-// navaid-tiles.supino.org is only the CORS mirror of the same charts. None of them are
-// under test here; the app's own behaviour is.
+// navaid-tiles.supino.org is only the CORS mirror of the same charts, while
+// msupino.github.io serves the app's generated layers. None of them are under test here;
+// the app's own behaviour is.
 const TILE_HOSTS = [
   'flight-maps.com',
   'navaid-tiles.supino.org',
+  'msupino.github.io',
   'tile.openstreetmap.org',
 ];
 function isTileHost(host) {
@@ -64,6 +66,7 @@ const ISA_WEATHER = JSON.stringify({
 const TILE_MODE = process.env.NAVAID_TEST_TILES || 'stub';
 const MIRROR_BASE = 'https://navaid-tiles.supino.org';
 const MIRROR_HOST = 'navaid-tiles.supino.org';
+const OWNED_TILE_HOST = 'msupino.github.io';
 const MIRROR_DIR = { cvfr: 'CVFR', nav: 'Israel-Navigation', la: 'LSA-Low-Altitude', 'il-hel': 'Israel-Helicopters' };
 // https://flight-maps.com/tiles/<kind>/z/x/y.png -> the same tile in our copy.
 function mirrorUrlFor(url) {
@@ -116,7 +119,8 @@ exports.test = base.test.extend({
         if (isTileHost(host)) {
           const mirrored = TILE_MODE === 'mirror' && host !== MIRROR_HOST && mirrorUrlFor(url);
           if (mirrored) return route.continue({ url: mirrored });
-          if (host === MIRROR_HOST && TILE_MODE === 'mirror') return route.continue();
+          if ((host === MIRROR_HOST || host === OWNED_TILE_HOST) &&
+              TILE_MODE === 'mirror') return route.continue();
           // The marker header is how a test can prove nothing left the machine.
           return route.fulfill({
             status: 200, contentType: 'image/png', body: TRANSPARENT_PNG,

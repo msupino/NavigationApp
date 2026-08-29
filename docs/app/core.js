@@ -4042,6 +4042,8 @@ const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13,
 const FM_ATTR =
   'Charts © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
 const NAVAID_TILE_BASE = 'https://navaid-tiles.supino.org';
+const NAVAID_OWNED_TILE_BASE =
+  'https://msupino.github.io/NavigationApp-owned-tiles';
 const CVFR_AIP_ATTR = 'Charts \u00a9 CAAI \u00b7 AIP part II CVFR sheets';
 
 function tileLayerUrl(layer, coords) {
@@ -4128,10 +4130,10 @@ const withPane = (opts, pane) => (pane ? { ...opts, pane } : opts);
 // will not hold one layer object in two places, and the pane is what decides which is on top.
 // Our own CVFR build, as a layer spec. Used twice: as its own picker entry, and as what the
 // CVFR entry becomes when `cvfrTileSource` is set to 'aip'.
-const cvfrAipLayer = (pane) => L.tileLayer(NAVAID_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png',
+const cvfrAipLayer = (pane) => L.tileLayer(NAVAID_OWNED_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png',
   withPane({ ...TILE, minNativeZoom: 8, chartBounds: CVFR_AIP_BOUNDS, corsOk: true,
     attribution: CVFR_AIP_ATTR,
-    exportUrl: NAVAID_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png' }, pane));
+    exportUrl: NAVAID_OWNED_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png' }, pane));
 
 const CHART_SPECS = {
   // Read at layer-construction time, which is after the gist has landed and re-run this --

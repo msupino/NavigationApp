@@ -53,7 +53,9 @@ reference points, callouts, and overlays on `#overlay`, a canvas above the map.
 CVFR, Navigation, Low Alt, and Helicopters chart tiles load live from
 `https://flight-maps.com`. Their `exportUrl` layer options point at
 `https://navaid-tiles.supino.org` so PNG export/download can fetch readable
-mirror tiles for canvas composition.
+mirror tiles for canvas composition. NavAid-generated layers are kept separate:
+CVFR (AIP) loads and exports from
+`https://msupino.github.io/NavigationApp-owned-tiles/CVFR-AIP/`.
 
 Rendering flow:
 

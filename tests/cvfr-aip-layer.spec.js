@@ -2,7 +2,7 @@
 //
 // What is worth pinning here is not that a layer exists -- the picker test would catch
 // that -- but the three things that would make it quietly wrong: that it draws from our
-// mirror and never from flight-maps (it is not their chart), that it declares the box its
+// owned-layer repository and never from flight-maps (it is not their chart), that it declares the box its
 // tiles actually cover so export does not chase 404s past the sheet edge, and that it never
 // asks for a zoom the build did not produce.
 const { test, expect } = require('./_setup');
@@ -40,7 +40,7 @@ test('the Hebrew build labels it too', async ({ page }) => {
   expect(label).toBe('CVFR (AIP)');
 });
 
-test('it draws from our own mirror, not from flight-maps', async ({ page }) => {
+test('it draws from our owned-layer repository, not from flight-maps', async ({ page }) => {
   await boot(page);
   // The layer object is not exported, so this asserts on the tile requests it makes.
   const seen = [];
@@ -53,7 +53,7 @@ test('it draws from our own mirror, not from flight-maps', async ({ page }) => {
   await page.waitForTimeout(1500);
   expect(seen.length).toBeGreaterThan(0);
   for (const u of seen) {
-    expect(u).toContain('navaid-tiles.supino.org/CVFR-AIP/');
+    expect(u).toContain('msupino.github.io/NavigationApp-owned-tiles/CVFR-AIP/');
     expect(u).not.toContain('flight-maps.com');
   }
 });
@@ -114,7 +114,7 @@ test('the gist can point the CVFR entry at our own build', async ({ page }) => {
     layers.CVFR = CHART_SPECS.CVFR(undefined);
     return layers.CVFR._url;
   });
-  expect(url).toBe('https://navaid-tiles.supino.org/CVFR-AIP/{z}/{x}/{y}.png');
+  expect(url).toBe('https://msupino.github.io/NavigationApp-owned-tiles/CVFR-AIP/{z}/{x}/{y}.png');
 });
 
 test('both entries share one definition', async ({ page }) => {

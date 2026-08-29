@@ -9,9 +9,12 @@ const TILE_CACHE = 'navaid-tiles-v1';
 // the map will actually request. Both are served from the pack.
 const TILE_HOST = 'flight-maps.com';
 const MIRROR_TILE_HOST = 'navaid-tiles.supino.org';
+const OWNED_TILE_HOST = 'msupino.github.io';
+const OWNED_TILE_PATH = '/NavigationApp-owned-tiles/';
 function isChartTileRequest(url) {
   if (url.host === TILE_HOST) return url.pathname.indexOf('/tiles/') === 0;
-  return url.host === MIRROR_TILE_HOST;
+  if (url.host === MIRROR_TILE_HOST) return true;
+  return url.host === OWNED_TILE_HOST && url.pathname.indexOf(OWNED_TILE_PATH) === 0;
 }
 // Tiles are the hottest request path (pans fetch dozens in a burst), so the
 // SW only proxies them when a pack actually exists — otherwise the fetch

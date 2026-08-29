@@ -21,7 +21,10 @@ const { test, expect } = require('./_setup');
 // different server, and a pattern that matches anywhere in the string would call it this
 // one (CodeQL js/regex/missing-regexp-anchor).
 const FORBIDDEN_HOSTS = ['flight-maps.com', 'tile.openstreetmap.org']
-  .concat(process.env.NAVAID_TEST_TILES === 'mirror' ? [] : ['navaid-tiles.supino.org']);
+  .concat(process.env.NAVAID_TEST_TILES === 'mirror' ? [] : [
+    'navaid-tiles.supino.org',
+    'msupino.github.io',
+  ]);
 const isForbiddenHost = (host) =>
   FORBIDDEN_HOSTS.some((h) => host === h || host.endsWith('.' + h));
 
