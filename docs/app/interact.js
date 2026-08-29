@@ -2648,36 +2648,67 @@ function appendSatelliteSnippet(body, point, label) {
 function appendAirfieldNotams(body, af) {
   const icao = String(af && af.name || '').toUpperCase();
   if (!/^[A-Z]{4}$/.test(icao)) return;
-  const matchesNow = () => (Array.isArray(notams) && typeof activeNotams === 'function')
-    ? activeNotams().filter(n => String(n.icao || '').toUpperCase() === icao)
-    : null;
+  let loadFailed = false;
+  const matchesAll = () => Array.isArray(notams)
+    ? notams.filter(n => String(n.icao || '').toUpperCase() === icao)
+    : (loadFailed ? [] : null);
+  const matchesActive = () => {
+    return (Array.isArray(notams) && typeof activeNotams === 'function')
+      ? activeNotams().filter(n => String(n.icao || '').toUpperCase() === icao)
+      : (loadFailed ? [] : null);
+  };
   const row = document.createElement('div');
   row.className = 'row notam-insp-row';
   const lbl = document.createElement('label');
   lbl.textContent = S.notamInspLabel || 'NOTAMs';
   const val = document.createElement('span');
   val.className = 'val';
-  const render = matches => {
+  const render = () => {
+    const active = matchesActive();
+    const all = matchesAll();
     val.textContent = '';
-    if (matches === null) { val.textContent = '…'; return; }
-    if (!matches.length) { val.textContent = S.notamInspNone || 'N/A'; return; }
+    if (active === null || all === null) { val.textContent = '…'; return; }
+    if (!all.length) { val.textContent = S.notamInspNone || 'N/A'; return; }
     const link = document.createElement('button');
     link.type = 'button';
     link.className = 'insp-notam-link';
-    link.textContent = S.notamInspView ? S.notamInspView(matches.length) : ('View ' + matches.length);
-    link.onclick = () => { if (typeof showNotamModal === 'function') showNotamModal(matches); };
+    const count = active.length || all.length;
+    link.textContent = S.notamInspView ? S.notamInspView(count) : ('View ' + count);
+    link.onclick = () => {
+      if (typeof showNotamModal === 'function') showNotamModal(null, { filterIcao: icao });
+    };
     val.appendChild(link);
   };
-  const m = matchesNow();
-  render(m);
-  if (m === null && typeof ensureNotams === 'function') {
+  const initial = matchesActive();
+  render();
+  if (initial === null && typeof ensureNotams === 'function') {
     // Guard against the inspector being closed / switched to another airfield
     // before the load resolves — don't write into a detached/stale row.
-    ensureNotams().then(() => { if (val.isConnected) render(matchesNow()); })
-      .catch(() => { if (val.isConnected) render([]); });
+    ensureNotams().then(() => { if (val.isConnected) render(); })
+      .catch(() => {
+        loadFailed = true;
+        if (val.isConnected) render();
+      });
   }
   row.append(lbl, val);
   body.appendChild(row);
+}
+
+// Airport NOTAM badges are shortcuts into the normal NOTAM sheet, with that
+// airfield preselected in its existing ICAO filter. This preserves the sheet's
+// "Include not yet active" toggle and lets the pilot return to the full feed.
+// Area/route NOTAM clicks remain fixed single-event views.
+function showNotamBadgeModal(entries) {
+  if (typeof showNotamModal !== 'function') return;
+  const list = Array.isArray(entries) ? entries : [];
+  const codes = Array.from(new Set(list
+    .map(n => String(n && n.icao || '').toUpperCase())
+    .filter(code => /^[A-Z]{4}$/.test(code))));
+  if (codes.length === 1 && list.every(n => String(n && n.icao || '').toUpperCase() === codes[0])) {
+    showNotamModal(null, { filterIcao: codes[0] });
+  } else {
+    showNotamModal(list);
+  }
 }
 
 function appendAirfieldPlates(body, af) {
@@ -4458,7 +4489,7 @@ map.on('mousedown', e => {
     if (badge.length) {
       downHit = true;
       pendingOverlayAction = () => {
-        if (typeof showNotamModal === 'function') showNotamModal(badge);
+        showNotamBadgeModal(badge);
       };
       return;
     }
@@ -5116,7 +5147,7 @@ mapEl.addEventListener('touchstart', e => {
     const badge = notamBadgeNotamsAt(map.containerPointToLatLng([p.x, p.y]));
     if (badge.length) {
       e.preventDefault();
-      if (typeof showNotamModal === 'function') showNotamModal(badge);
+      showNotamBadgeModal(badge);
       return;
     }
   }

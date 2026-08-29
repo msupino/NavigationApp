@@ -714,6 +714,11 @@ as a machine-readable registry.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
+- Airfield inspectors and airfield NOTAM count badges both open the regular
+  NOTAM sheet with that ICAO preselected in its existing filter. The sheet keeps
+  its default-off **Include not yet active** checkbox and access to the full
+  feed, including when the selected airfield currently has no active entry. The
+  choice is transient and adds no `localStorage` key.
 - `navaid.showReporting` — `'0'` / `'1'` for mandatory-reporting badges.
 - `navaid.showMsa` — `'0'` / `'1'` for the leg-inspector MSA row.
 - `navaid.showAirspace` — `'0'` / `'1'` for the AIP airspace layer (prohibited,
@@ -939,6 +944,14 @@ Symmetric encryption lets any link holder read and create a valid-looking update
 This accepted limitation is disclosed before sharing and in `docs/privacy.html`.
 Follow Me must not be described as authenticated or safety tracking.
 
+On app startup, an active stored Follow Me session reconnects only when Location or
+route recording is also active. The simulator never auto-opens an MQTT publisher; a
+simulated position can be shared only after Follow Me is explicitly enabled. With no
+real position source, the stored link stays available for reuse but no MQTT publisher is
+opened and no "still sharing" message is shown. Pending retained-position cleanup is
+still retried without a position source. A successful automatic resume keeps its
+confirmation toast visible for 6 seconds so the full message can be read.
+
 Current envelopes carry publisher time `t` and a persisted monotonic `seq`. Viewers use
 `t` for displayed age and require increasing `seq`. During cached-client rollout, a
 legacy packet without `seq` requires increasing `t`. Latitude must be from -90 through
@@ -958,6 +971,39 @@ While viewing a Follow Me link, each received fix recentres the map on the aircr
 The on-map orientation control remains available in follower mode and toggles North-up versus
 the followed aircraft's track-up view. The follower also draws the standard dashed heading
 predictor with labelled 2 NM, 5 NM, and 10 NM marks.
+The always-visible follower status banner is parked below the toolbar and follows toolbar or
+viewport size changes. If an expanded phone menu leaves no free vertical space, the banner is
+clamped on-screen below the toolbar's stacking level so it cannot block menu controls.
+Its mixed Hebrew/aviation content is rendered as direction-isolated segments: the segment order
+follows the page direction, while aircraft code, altitude, speed, track and coordinates stay LTR.
+
+For ground testing, `scripts/follow-me-simulator.py` publishes the bundled
+`scripts/routes/LLHZ-to-LLHA.json` route template as aircraft `TEST`, or accepts any exported
+route JSON. Like the cvfr-bridge fake, it flies the route's waypoint geometry with per-leg
+`flightSpeed` and `inboundAltitude`, loops indefinitely, and offers `--speed-factor` plus
+global speed/altitude overrides. It prints a new follower link, uses the production
+AES-GCM/MQTT retained-message protocol, and clears the retained fix on normal exit. Use
+`--once` for one flight. Its optional packages are listed in
+`scripts/requirements-follow-me.txt`; `--dry-run` validates without importing them or contacting
+the broker.
+
+The shared predictor is used by real GPS/recording, simulator, and Follow Me fixes. Two fresh,
+timed ground-track samples can bend it into a constant-rate turn; it curves by at most 90° and
+then continues on the ending tangent so the 2/5/10 NM and 2/5 minute marks remain available.
+One sample, compass-only direction, less than 10 kt, a turn below 0.25°/s, a turn above 4°/s,
+or a sample older than six seconds falls back to the straight predictor. The thresholds,
+maximum arc, hold time, and smoothing are Gist tunables in the `Live aircraft` group. Calling
+`resetHeadingPredictor()` on a source change clears both the frozen heading and turn history.
+
+For ground testing, `scripts/follow-me-simulator.py` publishes the bundled
+`scripts/routes/LLHZ-to-LLHA.json` route template as aircraft `TEST`, or accepts any exported
+route JSON. Like the cvfr-bridge fake, it flies the route's waypoint geometry with per-leg
+`flightSpeed` and `inboundAltitude`, loops indefinitely, and offers `--speed-factor` plus
+global speed/altitude overrides. It prints a new follower link, uses the production
+AES-GCM/MQTT retained-message protocol, and clears the retained fix on normal exit. Use
+`--once` for one flight. Its optional packages are listed in
+`scripts/requirements-follow-me.txt`; `--dry-run` validates without importing them or contacting
+the broker.
 
 Same-origin tabs use separate Web Locks for session lifecycle and publication ordering. The
 publish lock orders sequence allocation, encryption, and wire sends across tabs; the lifecycle
@@ -1036,7 +1082,10 @@ downloadable `route.json`.
   activity, layer/input changes, and a visible-tab 10 minute interval.
   Those follow-up checks are throttled to once every 5 minutes; the
   existing "New NavAid build available" notice appears only when the
-  service worker actually reports a newer installed build.
+  service worker actually reports a newer installed build. One update can
+  report installed, activated, and controller-change lifecycle events; they
+  share one notification cycle, so dismissing the notice suppresses repeats
+  for that worker while a distinct later worker can notify again.
 - **Toolbar version SHA suffix is automatic.** The same Deploy step
   also rewrites `version: '1.0'` → `version: '1.0-<short-sha>'` in
   `docs/app/core.js`, so the toolbar identifies the exact deployed commit.
@@ -1059,6 +1108,11 @@ downloadable `route.json`.
   (`.github/workflows/deploy.yml`) have `workflow_dispatch:`. Manual
   trigger: `gh workflow run CI --ref dev` /
   `gh workflow run Deploy --ref dev`.
+- The chart freshness monitor first dispatches each unique stale producer workflow, then
+  polls the published feed timestamps for up to 23 minutes. It opens or updates the stale-feed
+  issue only when that recovery fails; a successful refresh closes an existing alert. The
+  orchestration is implemented in `scripts/chart-monitor-recovery.mjs` and tested without
+  dispatching real workflows.
 - **Explicitly authorized admin-bypass pushes can silently swallow workflow events.** Pushing
   to `dev` / `main` as a repo admin while branch protection has required
   status checks pending records a "Bypassed rule violations" entry but

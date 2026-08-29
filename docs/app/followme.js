@@ -537,7 +537,7 @@
   // Called on boot. Resumes only what this device was already doing: a stored session marked
   // `on`, inside its window. Anything else -- a deliberate stop, an expired link, a device
   // that never shared -- starts nothing.
-  async function followMeResume() {
+  async function followMeResume(options) {
     if (session) return null;
     const prev = storedSession();
     if (!prev) return null;
@@ -551,6 +551,10 @@
       });
       return null;
     }
+    // Boot must not reconnect a publisher that has nothing to publish. Keep the stored
+    // capability so turning Location/recording/simulator on and pressing Follow Me can
+    // reuse the same link; pending retained-message cleanup above remains unconditional.
+    if (options && options.resumeSharing === false) return null;
     if (prev.on !== true) return null;
     const link = await followMeStart(prev.reg);
     const s = session;
@@ -678,19 +682,64 @@
   // its last position without saying so is not showing you where it is -- it is showing you
   // where it was, in a way that looks identical.
   let viewer = null;
+  let viewerBannerLayout = null;
 
   function followMeStaleSec() {
     const v = Number(tune('followMeStaleSec', 30));
     return Number.isFinite(v) && v > 0 ? v : 30;
   }
 
+  function followMeViewerPlaceBanner(el) {
+    if (!el || !el.isConnected) return;
+    const toolbar = document.getElementById('toolbar');
+    const toolbarBox = toolbar && toolbar.getBoundingClientRect();
+    const gap = 8;
+    const belowToolbar = toolbarBox && toolbarBox.height ? toolbarBox.bottom + gap : gap;
+    // An expanded phone menu can consume nearly the whole viewport. Keep the status on-screen
+    // in that case; its lower stacking level lets the toolbar remain the usable surface.
+    const maxTop = Math.max(gap, window.innerHeight - el.offsetHeight - gap);
+    el.style.top = Math.round(Math.min(belowToolbar, maxTop)) + 'px';
+  }
+
+  function followMeViewerWatchBanner(el) {
+    if (viewerBannerLayout) return;
+    let frame = 0;
+    const place = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => followMeViewerPlaceBanner(el));
+    };
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
+    const toolbar = document.getElementById('toolbar');
+    if (observer) {
+      observer.observe(el);
+      if (toolbar) observer.observe(toolbar);
+    }
+    window.addEventListener('resize', place);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', place);
+    viewerBannerLayout = { observer, frame: () => frame, place };
+    place();
+  }
+
+  function followMeViewerClearBannerLayout() {
+    if (!viewerBannerLayout) return;
+    if (viewerBannerLayout.observer) viewerBannerLayout.observer.disconnect();
+    cancelAnimationFrame(viewerBannerLayout.frame());
+    window.removeEventListener('resize', viewerBannerLayout.place);
+    if (window.visualViewport) window.visualViewport.removeEventListener('resize', viewerBannerLayout.place);
+    viewerBannerLayout = null;
+  }
+
   function followMeViewerBanner() {
     let el = document.getElementById('follow-me-banner');
-    if (el) return el;
+    if (el) {
+      followMeViewerWatchBanner(el);
+      return el;
+    }
     el = document.createElement('div');
     el.id = 'follow-me-banner';
     el.className = 'follow-me-banner';
     document.body.appendChild(el);
+    followMeViewerWatchBanner(el);
     return el;
   }
 
@@ -722,7 +771,32 @@
     // The code leads, because on a link shared into a group chat it is the only thing that
     // says WHICH aeroplane this is. Then what it is doing, then how old that is -- the age
     // goes last because it qualifies everything before it.
-    el.textContent = [reg, bits.join(' · '), said].filter(Boolean).join(' · ');
+    // A single text node lets the Unicode BiDi algorithm move coordinates, track and the
+    // Hebrew age sentence around each other. Keep every aviation value as its own LTR
+    // isolate, and let the flex row order follow the page language.
+    const bannerDir = document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr';
+    const segments = [reg, ...bits, said].filter(Boolean);
+    el.dir = bannerDir;
+    el.replaceChildren();
+    segments.forEach((text, index) => {
+      const group = document.createElement('span');
+      group.className = 'follow-me-banner-segment';
+      group.dir = bannerDir;
+      if (index) {
+        const separator = document.createElement('span');
+        separator.className = 'follow-me-banner-separator';
+        separator.setAttribute('aria-hidden', 'true');
+        separator.textContent = '·';
+        group.appendChild(separator);
+      }
+      const value = document.createElement('bdi');
+      value.className = 'follow-me-banner-value';
+      value.dir = index === segments.length - 1 ? bannerDir : 'ltr';
+      value.textContent = text;
+      group.appendChild(value);
+      el.appendChild(group);
+    });
+    followMeViewerPlaceBanner(el);
     if (viewer.marker) viewer.marker.setOpacity(stale ? 0.45 : 1);
   }
 
@@ -806,6 +880,7 @@
     window.editUnlockOverride = false;
     document.body.classList.remove('follow-me-viewing');
     if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
+    followMeViewerClearBannerLayout();
     const el = document.getElementById('follow-me-banner');
     if (el) el.remove();
     followMeUnwatch();
@@ -868,8 +943,12 @@
       followMeViewerStart().catch(() => { /* bad link: the banner says nothing arrived */ });
       return;
     }
-    // Not a viewer: this device may have been sharing when the app stopped running.
-    followMeResume().then((link) => {
+    // Not a viewer: this device may have been sharing when the app stopped running. Resume
+    // only if a position source also resumed; otherwise "still sharing" would describe a
+    // connected socket that cannot send a position. The stored link remains reusable.
+    const hasRealPositionSource = typeof window.gpsTrackingLive === 'function' &&
+      window.gpsTrackingLive();
+    followMeResume({ resumeSharing: hasRealPositionSource }).then((link) => {
       if (!link) return;
       if (typeof window.refreshFollowMeControl === 'function') window.refreshFollowMeControl();
       if (typeof window.refreshFollowMeMapControl === 'function') window.refreshFollowMeMapControl();
@@ -877,7 +956,10 @@
       // feature is written to avoid.
       const S = window.S || {};
       if (typeof window.showToast === 'function') {
-        window.showToast(S.followMeResumed || 'Follow me: still sharing — the same link as before still works.');
+        window.showToast(
+          S.followMeResumed || 'Follow me: still sharing — the same link as before still works.',
+          { ms: 6000 }
+        );
       }
     }).catch(() => { /* nothing stored, or storage is off */ });
   }

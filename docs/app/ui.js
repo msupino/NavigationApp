@@ -4953,6 +4953,8 @@ function showNotamModal(only, opts) {
   // reads as "closing the NOTAM closed my table". `keepCharts` keeps the caller on screen;
   // a prior NOTAM list is still replaced, since two of those are never wanted.
   const keepCharts = !!(opts && opts.keepCharts);
+  const initialFilterIcao = /^[A-Z]{4}$/.test(String(opts && opts.filterIcao || '').toUpperCase())
+    ? String(opts.filterIcao).toUpperCase() : '';
   if (keepCharts) {
     for (const back of Array.from(document.querySelectorAll('.modal-back[data-chart-modal="notam-list"]'))) {
       if (typeof back._navaidClose === 'function') back._navaidClose();
@@ -4980,10 +4982,12 @@ function showNotamModal(only, opts) {
   const clicked = (Array.isArray(only) && only.length) ? only : null;
   let timeFrame = 'active';
   const feedFor = (frame) => {
-    if (clicked) return clicked;
-    if (frame === 'all') return Array.isArray(notams) ? notams.slice() : [];
-    return (typeof activeNotams === 'function') ? activeNotams()
+    let feed;
+    if (clicked) feed = clicked;
+    else if (frame === 'all') feed = Array.isArray(notams) ? notams.slice() : [];
+    else feed = (typeof activeNotams === 'function') ? activeNotams()
       : (Array.isArray(notams) ? notams : []);
+    return feed;
   };
   let shown = feedFor(timeFrame);
   const h = document.createElement('h3');
@@ -5013,10 +5017,15 @@ function showNotamModal(only, opts) {
   // Airfield/global filter. Every NOTAM carries an ICAO: LLLL = FIR-wide
   // (global); anything else is aerodrome-specific. Build a dropdown of the
   // codes present so the list can be narrowed to one airfield (or globals).
-  let filterIcao = '';
+  let filterIcao = initialFilterIcao;
   let filterText = '';
+  // A normal list can start filtered to an airfield that currently has only
+  // future entries. Build its choices from the full feed so that ICAO remains
+  // selectable while the active view is empty; fixed map-click subsets still
+  // expose only codes that were actually clicked.
+  const codeFeed = clicked ? shown : (Array.isArray(notams) ? notams : shown);
   const codes = Array.from(new Set(
-    shown.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
+    codeFeed.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
   const list = document.createElement('div');
   list.className = 'notam-list';
   // Freetext match: id, ICAO, raw and decoded text -- whichever the pilot is
@@ -5157,6 +5166,8 @@ function showNotamModal(only, opts) {
         + ' (' + cnt + ')';
       sel.appendChild(o);
     }
+    sel.value = codes.includes(initialFilterIcao) ? initialFilterIcao : '';
+    filterIcao = sel.value;
     sel.onchange = () => { filterIcao = sel.value; renderList(); };
     fw.appendChild(sel);
     }
@@ -8426,8 +8437,35 @@ function watchServiceWorkerUpdates(sw) {
   const controlledAtStart = !!sw.controller;
   let hadController = controlledAtStart;
   let firstInstallWorker = null;
+  let updateCycleWorker = null;
+  let updateCycleNotified = false;
+  let updateControllerChangePending = false;
+  const beginUpdateCycle = worker => {
+    if (!worker || worker === updateCycleWorker) return;
+    updateCycleWorker = worker;
+    updateCycleNotified = false;
+    updateControllerChangePending = false;
+  };
+  const notifyForUpdateCycle = worker => {
+    beginUpdateCycle(worker);
+    if (updateCycleNotified) return;
+    updateCycleNotified = true;
+    // skipWaiting() makes this same update emit controllerchange after its installed /
+    // activated state. Remember that expected echo even if the browser gives the
+    // controller a different JS wrapper from the installing worker.
+    updateControllerChangePending = true;
+    showBuildUpdateNotice();
+  };
   const notifyIfUpdate = () => {
-    if (hadController) showBuildUpdateNotice();
+    if (!hadController) {
+      hadController = true;
+      return;
+    }
+    if (updateControllerChangePending) {
+      updateControllerChangePending = false;
+      return;
+    }
+    notifyForUpdateCycle(sw.controller);
     hadController = true;
   };
   if (typeof sw.addEventListener === 'function') {
@@ -8436,17 +8474,18 @@ function watchServiceWorkerUpdates(sw) {
   return sw.register('sw.js').then(reg => {
     const watchWorker = worker => {
       if (!worker || typeof worker.addEventListener !== 'function') return;
+      beginUpdateCycle(worker);
       worker.addEventListener('statechange', () => {
         if ((worker.state === 'installed' || worker.state === 'activated') &&
             hadController) {
           if (!controlledAtStart && worker === firstInstallWorker) return;
-          showBuildUpdateNotice();
+          notifyForUpdateCycle(worker);
         }
       });
     };
     if (!controlledAtStart && reg) firstInstallWorker = reg.installing || reg.waiting || null;
     if (reg && reg.waiting && hadController && reg.waiting !== firstInstallWorker) {
-      showBuildUpdateNotice();
+      notifyForUpdateCycle(reg.waiting);
     }
     if (reg) {
       buildUpdateRegistration = reg;

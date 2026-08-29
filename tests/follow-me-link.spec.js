@@ -51,6 +51,25 @@ async function boot(page) {
   await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
 }
 
+// Follow Me may resume after a reload only when something will actually keep feeding it
+// positions. Give restart tests a harmless live-location watch without exposing a real fix.
+async function keepLiveLocationOnAfterReload(page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        watchPosition() { return 41; },
+        clearWatch() {},
+      },
+    });
+  });
+  await page.evaluate(() => localStorage.setItem('navaid.gpsLiveOn', '1'));
+}
+
+async function resumeStoredSharing(page) {
+  await page.evaluate(() => { NavAid.followMe.resume(); });
+}
+
 test('the remaining-length varint round-trips past one byte', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(() => {
@@ -350,6 +369,75 @@ test('opening the link watches, names the aircraft and dates the position', asyn
   expect(got.after).toBe(false);                // stopping clears the banner
 });
 
+test('the viewer status stays below the toolbar as the mobile menu changes height', async ({ page }) => {
+  await page.setViewportSize({ width: 516, height: 700 });
+  await boot(page);
+  const link = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const started = await F.start('TEST');
+    window.__sockets[0].connack();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return started;
+  });
+  await page.evaluate(async followerLink => {
+    const url = new URL(followerLink);
+    await NavAid.followMe.viewerStart({ search: url.search, hash: url.hash });
+  }, link);
+
+  const boxes = () => page.evaluate(() => {
+    const toolbar = document.getElementById('toolbar').getBoundingClientRect();
+    const banner = document.getElementById('follow-me-banner').getBoundingClientRect();
+    return { toolbarBottom: toolbar.bottom, bannerTop: banner.top };
+  });
+  let measured = await boxes();
+  expect(measured.bannerTop).toBeGreaterThanOrEqual(measured.toolbarBottom + 7);
+
+  await page.locator('#toolbar-toggle').click();
+  await page.waitForFunction(() => {
+    const toolbar = document.getElementById('toolbar').getBoundingClientRect();
+    const banner = document.getElementById('follow-me-banner').getBoundingClientRect();
+    return banner.top >= toolbar.bottom + 7;
+  });
+  measured = await boxes();
+  expect(measured.bannerTop).toBeGreaterThanOrEqual(measured.toolbarBottom + 7);
+});
+
+test('the Hebrew viewer banner keeps telemetry LTR in an RTL segment order', async ({ page }) => {
+  await installStub(page);
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
+  const seen = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('TEST');
+    window.__sockets[0].connack();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const url = new URL(link);
+    const state = await F.viewerStart({ search: url.search, hash: url.hash });
+    state.fix = { reg: 'TEST', lat: 32.3728, lng: 34.9068, alt: 456.9, kt: 90,
+      trk: 3, t: Date.now() };
+    state.at = state.fix.t;
+    F.viewerRefresh();
+    const banner = document.getElementById('follow-me-banner');
+    const values = [...banner.querySelectorAll('.follow-me-banner-value')];
+    const result = {
+      dir: banner.dir,
+      text: values.map(value => value.textContent),
+      valueDirs: values.map(value => value.dir),
+      // The first five values share the telemetry row. In RTL their logical order must
+      // proceed from right to left, while every individual value remains LTR.
+      lefts: values.slice(0, 5).map(value => value.getBoundingClientRect().left),
+    };
+    F.viewerStop();
+    await F.stop();
+    return result;
+  });
+  expect(seen.dir).toBe('rtl');
+  expect(seen.text.slice(0, 5)).toEqual(['TEST', '1499 ft', '90 kt', '003°', '32.3728, 34.9068']);
+  expect(seen.text[5]).toMatch(/^המיקום האחרון לפני \d+ שניות$/);
+  expect(seen.valueDirs).toEqual(['ltr', 'ltr', 'ltr', 'ltr', 'ltr', 'rtl']);
+  expect(seen.lefts.every((left, index, all) => index === 0 || all[index - 1] > left)).toBe(true);
+});
+
 test('a position that stops arriving is called stale, not drawn as current', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
@@ -595,6 +683,7 @@ test('Stop falls back to removing consent when its pending-state write fails', a
 
   const other = await context.newPage();
   await boot(other);
+  await resumeStoredSharing(other);
   await other.waitForFunction(() => NavAid.followMe.sharing());
   await other.evaluate(async () => {
     window.__sockets[0].connack();
@@ -694,6 +783,7 @@ test('Stop revokes an in-flight publisher in another NavAid tab', async ({ page,
 
   const other = await context.newPage();
   await boot(other);
+  await resumeStoredSharing(other);
   await other.waitForFunction(() => NavAid.followMe.sharing());
   await other.evaluate(async () => {
     window.__sockets[0].connack();
@@ -738,6 +828,7 @@ test('simultaneous Stops keep one cleanup owner through PUBACK', async ({ page, 
   });
   const other = await context.newPage();
   await boot(other);
+  await resumeStoredSharing(other);
   await other.waitForFunction(() => NavAid.followMe.sharing());
   await other.evaluate(async () => {
     window.__sockets[0].connack();
@@ -801,6 +892,7 @@ test('Stop serializes with a session still initializing in another tab', async (
     });
   });
   await boot(other);
+  await resumeStoredSharing(other);
   await other.waitForFunction(() => typeof window.__releaseFollowImport === 'function');
 
   await page.evaluate(() => {
@@ -830,6 +922,7 @@ test('two publisher tabs allocate strictly increasing sequence values', async ({
   });
   const other = await context.newPage();
   await boot(other);
+  await resumeStoredSharing(other);
   await other.waitForFunction(() => NavAid.followMe.sharing());
   await other.evaluate(async () => {
     window.__sockets[0].connack();
@@ -1133,6 +1226,7 @@ test('sharing the same aeroplane again resumes the same link', async ({ page }) 
     window.WebSocket = orig;
     return link;
   });
+  await keepLiveLocationOnAfterReload(page);
   await page.reload();                            // the restart
   await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
   // Boot resumes it by itself: the pilot does not have to notice anything happened.
@@ -1146,16 +1240,20 @@ test('automatic resume says sharing only after the broker connects', async ({ pa
   await page.evaluate(async () => {
     await NavAid.followMe.start('4X-RESUME');
   });
+  await keepLiveLocationOnAfterReload(page);
   await page.reload();
   await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
   const before = await page.evaluate(async () => {
     window.__resumeToasts = [];
-    window.showToast = message => window.__resumeToasts.push(String(message));
+    window.showToast = (message, opts) => window.__resumeToasts.push({
+      text: String(message),
+      ms: opts && opts.ms,
+    });
     await new Promise(r => setTimeout(r, 30));
     return { status: NavAid.followMe.status(), toasts: window.__resumeToasts.slice() };
   });
   expect(before.status).toBe('connecting');
-  expect(before.toasts.some(text => /still sharing/i.test(text))).toBe(false);
+  expect(before.toasts.some(item => /still sharing/i.test(item.text))).toBe(false);
   const after = await page.evaluate(async () => {
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 30));
@@ -1164,7 +1262,48 @@ test('automatic resume says sharing only after the broker connects', async ({ pa
     return result;
   });
   expect(after.status).toBe('connected');
-  expect(after.toasts.some(text => /still sharing/i.test(text))).toBe(true);
+  const resumed = after.toasts.find(item => /still sharing/i.test(item.text));
+  expect(resumed).toBeTruthy();
+  expect(resumed.ms).toBe(6000);
+});
+
+test('boot keeps a stored sharing link idle when every position source is off', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-OFF');
+  });
+  await page.reload();
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
+  await page.waitForTimeout(80);
+  const got = await page.evaluate(() => ({
+    status: NavAid.followMe.status(),
+    sockets: window.__sockets.length,
+    stored: NavAid.followMe._stored(),
+    live: gpsPositionLive(),
+  }));
+  expect(got.live).toBe(false);
+  expect(got.status).toBe('idle');
+  expect(got.sockets).toBe(0);
+  expect(got.stored).toMatchObject({ reg: '4X-OFF', on: true });
+});
+
+test('boot does not auto-open Follow Me MQTT for the simulator', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-SIM');
+    localStorage.setItem('navaid.simOn', '1');
+  });
+  await page.reload();
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
+  await page.waitForTimeout(80);
+  const got = await page.evaluate(() => ({
+    status: NavAid.followMe.status(),
+    simOn: window.simOn,
+    stored: NavAid.followMe._stored(),
+  }));
+  expect(got.simOn).toBe(true);
+  expect(got.status).toBe('idle');
+  expect(got.stored).toMatchObject({ reg: '4X-SIM', on: true });
 });
 
 test('a different aircraft code never inherits the previous link', async ({ page }) => {
@@ -1335,6 +1474,7 @@ test('the publisher sequence survives an app restart', async ({ page }) => {
     await F.publish({ lat: 32.1, lng: 34.9 });
     return JSON.parse(localStorage.getItem('navaid.followMeSession')).seq;
   });
+  await keepLiveLocationOnAfterReload(page);
   await page.reload();
   await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
   await page.waitForFunction(() => NavAid.followMe.sharing());
