@@ -202,9 +202,10 @@ def mqtt_client(broker, topic, connected):
 
     def on_connect(_client, _userdata, _flags, reason_code, _properties=None):
         if reason_code == 0:
-            connected.set()
+            connected.error = None
         else:
-            print('broker refused connection: %s' % reason_code, file=sys.stderr)
+            connected.error = 'broker refused connection: %s' % reason_code
+        connected.set()
 
     client.on_connect = on_connect
     client.connect(url.hostname, port, keepalive=30)
@@ -253,18 +254,32 @@ def main():
 
     topic = TOPIC_PREFIX + session_id
     connected = threading.Event()
+    client = None
+    loop_started = False
+    broker_connected = False
+    interrupted = False
     try:
-        client = mqtt_client(args.broker, topic, connected)
-    except (ImportError, ValueError) as error:
-        raise SystemExit('%s\nInstall: python3 -m pip install -r scripts/requirements-follow-me.txt' % error) from error
-    client.loop_start()
-    if not connected.wait(15):
-        client.loop_stop()
-        raise SystemExit('timed out connecting to %s' % args.broker)
-    print('Publishing to %s. Press Ctrl-C to stop.' % args.broker, file=sys.stderr)
+        try:
+            client = mqtt_client(args.broker, topic, connected)
+            client.loop_start()
+            loop_started = True
+        except ImportError as error:
+            raise SystemExit('%s\nInstall: python3 -m pip install -r '
+                             'scripts/requirements-follow-me.txt' % error) from error
+        except ValueError as error:
+            raise SystemExit(str(error)) from error
+        except (OSError, RuntimeError) as error:
+            raise SystemExit('could not connect to %s: %s' % (args.broker, error)) from error
 
-    sequence = int(time.time() * 1000)
-    try:
+        if not connected.wait(15):
+            raise SystemExit('timed out connecting to %s' % args.broker)
+        connection_error = getattr(connected, 'error', None)
+        if connection_error:
+            raise SystemExit('%s (%s)' % (connection_error, args.broker))
+        broker_connected = True
+        print('Publishing to %s. Press Ctrl-C to stop.' % args.broker, file=sys.stderr)
+
+        sequence = int(time.time() * 1000)
         while True:
             started = time.monotonic()
             for index, point in enumerate(points):
@@ -278,19 +293,41 @@ def main():
                 time.sleep(max(0, deadline - time.monotonic()))
             if args.once:
                 break
+    except (OSError, RuntimeError, ValueError) as error:
+        raise SystemExit('publishing failed: %s' % error) from error
     except KeyboardInterrupt:
-        print('\nStopping.', file=sys.stderr)
+        interrupted = True
     finally:
-        # Remove the retained last position. The Last Will performs the same cleanup if the
-        # process or network dies before this normal shutdown completes.
-        info = client.publish(topic, b'', qos=1, retain=True)
-        try:
-            info.wait_for_publish(timeout=10)
-        except (RuntimeError, ValueError):
-            pass
-        client.disconnect()
-        client.loop_stop()
+        if client is not None:
+            # Remove the retained last position only after CONNACK. Before then there is no
+            # position to clear, and cleanup calls on a half-created client can obscure the
+            # useful DNS/connection error with a second exception.
+            if broker_connected:
+                try:
+                    info = client.publish(topic, b'', qos=1, retain=True)
+                    info.wait_for_publish(timeout=10)
+                except KeyboardInterrupt:
+                    interrupted = True
+                except Exception:
+                    pass
+            try:
+                client.disconnect()
+            except KeyboardInterrupt:
+                interrupted = True
+            except Exception:
+                pass
+            if loop_started:
+                try:
+                    client.loop_stop()
+                except KeyboardInterrupt:
+                    interrupted = True
+                except Exception:
+                    pass
+    if interrupted:
+        print('\nStopping.', file=sys.stderr)
+        return 130
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())
