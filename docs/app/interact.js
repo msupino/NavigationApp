@@ -2675,7 +2675,7 @@ function appendAirfieldNotams(body, af) {
     const count = active.length || all.length;
     link.textContent = S.notamInspView ? S.notamInspView(count) : ('View ' + count);
     link.onclick = () => {
-      if (typeof showNotamModal === 'function') showNotamModal(null, { icao });
+      if (typeof showNotamModal === 'function') showNotamModal(null, { filterIcao: icao });
     };
     val.appendChild(link);
   };
@@ -2692,6 +2692,23 @@ function appendAirfieldNotams(body, af) {
   }
   row.append(lbl, val);
   body.appendChild(row);
+}
+
+// Airport NOTAM badges are shortcuts into the normal NOTAM sheet, with that
+// airfield preselected in its existing ICAO filter. This preserves the sheet's
+// "Include not yet active" toggle and lets the pilot return to the full feed.
+// Area/route NOTAM clicks remain fixed single-event views.
+function showNotamBadgeModal(entries) {
+  if (typeof showNotamModal !== 'function') return;
+  const list = Array.isArray(entries) ? entries : [];
+  const codes = Array.from(new Set(list
+    .map(n => String(n && n.icao || '').toUpperCase())
+    .filter(code => /^[A-Z]{4}$/.test(code))));
+  if (codes.length === 1 && list.every(n => String(n && n.icao || '').toUpperCase() === codes[0])) {
+    showNotamModal(null, { filterIcao: codes[0] });
+  } else {
+    showNotamModal(list);
+  }
 }
 
 function appendAirfieldPlates(body, af) {
@@ -4472,7 +4489,7 @@ map.on('mousedown', e => {
     if (badge.length) {
       downHit = true;
       pendingOverlayAction = () => {
-        if (typeof showNotamModal === 'function') showNotamModal(badge);
+        showNotamBadgeModal(badge);
       };
       return;
     }
@@ -5130,7 +5147,7 @@ mapEl.addEventListener('touchstart', e => {
     const badge = notamBadgeNotamsAt(map.containerPointToLatLng([p.x, p.y]));
     if (badge.length) {
       e.preventDefault();
-      if (typeof showNotamModal === 'function') showNotamModal(badge);
+      showNotamBadgeModal(badge);
       return;
     }
   }

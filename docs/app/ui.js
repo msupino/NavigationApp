@@ -4953,8 +4953,8 @@ function showNotamModal(only, opts) {
   // reads as "closing the NOTAM closed my table". `keepCharts` keeps the caller on screen;
   // a prior NOTAM list is still replaced, since two of those are never wanted.
   const keepCharts = !!(opts && opts.keepCharts);
-  const scopedIcao = /^[A-Z]{4}$/.test(String(opts && opts.icao || '').toUpperCase())
-    ? String(opts.icao).toUpperCase() : '';
+  const initialFilterIcao = /^[A-Z]{4}$/.test(String(opts && opts.filterIcao || '').toUpperCase())
+    ? String(opts.filterIcao).toUpperCase() : '';
   if (keepCharts) {
     for (const back of Array.from(document.querySelectorAll('.modal-back[data-chart-modal="notam-list"]'))) {
       if (typeof back._navaidClose === 'function') back._navaidClose();
@@ -4987,9 +4987,7 @@ function showNotamModal(only, opts) {
     else if (frame === 'all') feed = Array.isArray(notams) ? notams.slice() : [];
     else feed = (typeof activeNotams === 'function') ? activeNotams()
       : (Array.isArray(notams) ? notams : []);
-    return scopedIcao
-      ? feed.filter(n => String(n.icao || '').toUpperCase() === scopedIcao)
-      : feed;
+    return feed;
   };
   let shown = feedFor(timeFrame);
   const h = document.createElement('h3');
@@ -4997,7 +4995,7 @@ function showNotamModal(only, opts) {
   // (FIR-wide / mixed). Updates when the filter narrows the list.
   const updateTitle = (subset) => {
     const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
-    const scope = scopedIcao || (ic.length === 1 ? ic[0] : 'LLLL');
+    const scope = ic.length === 1 ? ic[0] : 'LLLL';
     h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length;
   };
   updateTitle(shown);
@@ -5019,10 +5017,15 @@ function showNotamModal(only, opts) {
   // Airfield/global filter. Every NOTAM carries an ICAO: LLLL = FIR-wide
   // (global); anything else is aerodrome-specific. Build a dropdown of the
   // codes present so the list can be narrowed to one airfield (or globals).
-  let filterIcao = '';
+  let filterIcao = initialFilterIcao;
   let filterText = '';
+  // A normal list can start filtered to an airfield that currently has only
+  // future entries. Build its choices from the full feed so that ICAO remains
+  // selectable while the active view is empty; fixed map-click subsets still
+  // expose only codes that were actually clicked.
+  const codeFeed = clicked ? shown : (Array.isArray(notams) ? notams : shown);
   const codes = Array.from(new Set(
-    shown.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
+    codeFeed.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
   const list = document.createElement('div');
   list.className = 'notam-list';
   // Freetext match: id, ICAO, raw and decoded text -- whichever the pilot is
@@ -5163,6 +5166,8 @@ function showNotamModal(only, opts) {
         + ' (' + cnt + ')';
       sel.appendChild(o);
     }
+    sel.value = codes.includes(initialFilterIcao) ? initialFilterIcao : '';
+    filterIcao = sel.value;
     sel.onchange = () => { filterIcao = sel.value; renderList(); };
     fw.appendChild(sel);
     }
