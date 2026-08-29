@@ -2675,7 +2675,7 @@ function appendAirfieldNotams(body, af) {
     const count = active.length || all.length;
     link.textContent = S.notamInspView ? S.notamInspView(count) : ('View ' + count);
     link.onclick = () => {
-      if (typeof showNotamModal === 'function') showNotamModal(null, { icao });
+      if (typeof showNotamModal === 'function') showNotamModal(null, { filterIcao: icao });
     };
     val.appendChild(link);
   };

@@ -77,24 +77,30 @@ test('airfield NOTAM list can include future entries without leaving its ICAO', 
   await expect(link).toContainText('1');
   await link.click();
   const future = page.locator('.notam-modal #notam-show-all');
+  const filter = page.locator('.notam-modal .notam-filter-sel');
   await expect(future).toBeVisible();
   await expect(future).not.toBeChecked();
+  await expect(filter).toHaveValue('LLBG');
   await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
   await future.check();
   await expect(page.locator('.notam-modal .notam-item')).toHaveCount(2);
   await expect(page.locator('.notam-modal')).toContainText('LLBG FUTURE');
   await expect(page.locator('.notam-modal')).not.toContainText('LLHA FUTURE');
+  await filter.selectOption('');
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(3);
   await future.uncheck();
   await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
   await page.locator('.notam-modal .modal-close-x').click();
 
-  // An airfield with no active entry can still open the scoped list and reveal its future one.
+  // An airfield with no active entry can still open the normal sheet prefiltered
+  // to its ICAO and reveal its future one.
   await page.evaluate(() => {
     state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHA') };
     showInspector();
     closeToolbarMenus();
   });
   await page.locator('#insp-body .insp-notam-link').click();
+  await expect(page.locator('.notam-modal .notam-filter-sel')).toHaveValue('LLHA');
   await expect(page.locator('.notam-modal .notam-item')).toHaveCount(0);
   await page.locator('.notam-modal #notam-show-all').check();
   await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
