@@ -87,12 +87,12 @@ NavAid.tuningDefaults = {
   // Garmin-style map trend: infer a turn from successive tracks, never from one fix. The
   // rate/arc caps mirror the useful limits documented for Garmin turn/track vectors; the
   // remaining knobs reject low-speed jitter and age the estimate out promptly.
-  livePredictorTurnMinDegSec: { value: 0.25, min: 0, max: 3, step: 0.05, label: 'Curve predictor above turn rate (°/s)' },
+  livePredictorTurnMinDegSec: { value: 1, min: 0, max: 3, step: 0.05, label: 'Curve predictor above turn rate (°/s)' },
   livePredictorTurnMaxDegSec: { value: 4, min: 0.5, max: 12, step: 0.25, label: 'Curve predictor maximum valid turn rate (°/s)' },
   livePredictorTurnMaxArcDeg: { value: 90, min: 10, max: 180, step: 5, label: 'Curve predictor maximum arc (°)' },
   livePredictorTurnMinKt: { value: 10, min: 0, max: 100, step: 1, label: 'Curve predictor above groundspeed (kt)' },
   livePredictorTurnHoldSec: { value: 6, min: 1, max: 30, step: 1, label: 'Keep measured turn rate for (s)' },
-  livePredictorTurnSmoothing: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Curve predictor smoothing (0-1)' },
+  livePredictorTurnSmoothing: { value: 0.7, min: 0, max: 1, step: 0.05, label: 'Curve predictor smoothing (0-1)' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, this far ahead (s)' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (°)' },

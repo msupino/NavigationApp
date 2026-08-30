@@ -239,36 +239,76 @@ function measuredHeadingTurnRate(key, heading, sampleTime, receivedAt, disableTu
   }
   const holdSec = Math.max(1, finiteTuneNumber('livePredictorTurnHoldSec', 6));
   const seenAt = Number.isFinite(receivedAt) ? receivedAt : sampleTime;
-  const prior = headingTurnSamples.get(key);
-  if (prior && prior.t === sampleTime) {
-    return Date.now() - seenAt <= holdSec * 1000 ? prior.rate : null;
+  let st = headingTurnSamples.get(key);
+  // Re-drawing the SAME fix (same map redraw, no new GPS sample) must not add a point or
+  // recompute -- it would stack duplicate samples and drag the slope. Return what the last
+  // real sample produced, subject to the same freshness gate.
+  if (st && st.lastT === sampleTime) {
+    return Date.now() - st.seenAt <= holdSec * 1000 ? st.rate : null;
   }
-  if (!prior) {
-    headingTurnSamples.set(key, { t: sampleTime, heading, rate: null, receivedAt: seenAt });
-    return null;
+  if (!st) {
+    st = { points: [], rate: null, prevHeading: null, unwrapped: 0, lastT: null, seenAt };
+    headingTurnSamples.set(key, st);
   }
-  const dt = (sampleTime - prior.t) / 1000;
-  // Samples closer than a quarter-second are timing noise. A gap longer than the hold time
-  // is a new observation, not evidence the aircraft spent the whole gap turning steadily.
-  if (!(dt >= 0.25) || dt > holdSec) {
-    headingTurnSamples.set(key, { t: sampleTime, heading, rate: null, receivedAt: seenAt });
-    return null;
+  // Unwrap the heading against the previous one so a turn through north is a continuous
+  // ramp (359 -> 1 is +2, not -358). The regression below needs a monotone angle, not a
+  // value that jumps 360 at the wrap.
+  if (st.prevHeading === null) {
+    st.unwrapped = heading;
+  } else {
+    st.unwrapped += headingDeltaDeg(st.prevHeading, heading);
   }
-  const raw = headingDeltaDeg(prior.heading, heading) / dt;
-  const maxRate = Math.max(0.5, finiteTuneNumber('livePredictorTurnMaxDegSec', 4));
-  const minRate = Math.max(0, finiteTuneNumber('livePredictorTurnMinDegSec', 0.25));
+  st.prevHeading = heading;
+  const gapFromLast = st.points.length
+    ? (sampleTime - st.points[st.points.length - 1].t) / 1000 : 0;
+  // A gap longer than the hold time is a new observation, not evidence the aeroplane spent
+  // the whole gap turning steadily: drop the history and start the window fresh.
+  if (gapFromLast > holdSec) st.points = [];
+  st.points.push({ t: sampleTime, a: st.unwrapped });
+  // Keep only the last holdSec of samples. The turn rate is measured over THIS window, so a
+  // turn that has stopped falls out of it within holdSec and the curve straightens on its own.
+  const cutoff = sampleTime - holdSec * 1000;
+  while (st.points.length > 2 && st.points[0].t < cutoff) st.points.shift();
+  st.lastT = sampleTime;
+  st.seenAt = seenAt;
+
+  // Least-squares slope of angle-vs-time over the window, in deg/s. Two points give exactly
+  // the 2-point derivative; many points average out the per-fix GPS-course jitter that a
+  // 2-point estimate mistakes for a turn -- the whole reason this is windowed and not a
+  // difference of the last two fixes.
+  const n = st.points.length;
+  const span = n >= 2 ? (st.points[n - 1].t - st.points[0].t) / 1000 : 0;
   let rate = null;
-  if (Math.abs(raw) <= maxRate) {
-    if (Math.abs(raw) < minRate) {
-      rate = 0; // stop the curve promptly when the turn stops; do not slowly decay through it
-    } else {
-      const smoothing = Math.max(0, Math.min(1,
-        finiteTuneNumber('livePredictorTurnSmoothing', 0.5)));
-      rate = Number.isFinite(prior.rate)
-        ? prior.rate * smoothing + raw * (1 - smoothing) : raw;
+  if (n >= 2 && span >= 0.25) {
+    let st_ = 0, sa = 0;
+    for (const p of st.points) { st_ += p.t; sa += p.a; }
+    const mt = st_ / n, ma = sa / n;
+    let num = 0, den = 0;
+    for (const p of st.points) {
+      const dtp = (p.t - mt) / 1000;
+      num += dtp * (p.a - ma);
+      den += dtp * dtp;
+    }
+    const slope = den > 0 ? num / den : null;   // deg/s
+    if (Number.isFinite(slope)) {
+      const maxRate = Math.max(0.5, finiteTuneNumber('livePredictorTurnMaxDegSec', 4));
+      const minRate = Math.max(0, finiteTuneNumber('livePredictorTurnMinDegSec', 0.25));
+      if (Math.abs(slope) <= maxRate) {
+        if (Math.abs(slope) < minRate) {
+          rate = 0;      // below the floor: draw straight, do not decay a phantom curve
+        } else {
+          const smoothing = Math.max(0, Math.min(1,
+            finiteTuneNumber('livePredictorTurnSmoothing', 0.5)));
+          // Smooth successive slopes, seeding on the first with the raw slope so a clean
+          // two-sample turn reads exactly -- the EMA only damps the jitter that survives
+          // the window.
+          rate = Number.isFinite(st.rate) ? st.rate * smoothing + slope * (1 - smoothing) : slope;
+        }
+      }
+      // An implausible slope (> maxRate) leaves rate null: a spike is not a turn.
     }
   }
-  headingTurnSamples.set(key, { t: sampleTime, heading, rate, receivedAt: seenAt });
+  st.rate = rate;
   return Date.now() - seenAt <= holdSec * 1000 ? rate : null;
 }
 // A canvas takes its paragraph direction from the interface language, so in Hebrew everything
