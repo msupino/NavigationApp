@@ -5028,6 +5028,18 @@ function notamRelevantTime(n, now) {
   if (Number.isFinite(start)) return start;
   return Infinity;
 }
+function notamAirfieldLabel(code) {
+  const icao = String(code || '').trim().toUpperCase();
+  if (!icao) return '';
+  if (icao === 'LLLL') return icao + ' — ' + (S.notamFilterGlobal || 'Global (FIR)');
+  const airfield = typeof airfieldByIcao === 'function' ? airfieldByIcao(icao) : null;
+  if (!airfield) return icao;
+  const preferHebrew = S.airfieldLabelField === 'he';
+  const name = preferHebrew
+    ? (airfield.he || airfield.en)
+    : (airfield.en || airfield.he);
+  return name ? icao + ' — ' + name : icao;
+}
 function sortNotamsForFlight(items, mode) {
   const route = notamSortRoute();
   const endpointNames = new Set();
@@ -5062,6 +5074,14 @@ function sortNotamsForFlight(items, mode) {
         : (a, b) => rank(a) - rank(b) ||
           notamRelevantTime(a, now) - notamRelevantTime(b, now) || idOrder(a, b);
   return (Array.isArray(items) ? items.slice() : []).sort(compare);
+}
+const NOTAM_MODAL_SIZE_KEY = 'navaid.notamModalSize';
+function storedNotamModalSize() {
+  try {
+    const size = JSON.parse(lsGet(NOTAM_MODAL_SIZE_KEY) || 'null');
+    return size && Number.isFinite(size.w) && Number.isFinite(size.h) &&
+      size.w > 0 && size.h > 0 ? size : null;
+  } catch (e) { return null; }
 }
 function showNotamModal(only, opts) {
   // Behave like every other chart modal: opening closes any other open chart
@@ -5117,7 +5137,7 @@ function showNotamModal(only, opts) {
   // (FIR-wide / mixed). Updates when the filter narrows the list.
   const updateTitle = (subset) => {
     const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
-    const scope = ic.length === 1 ? ic[0] : 'LLLL';
+    const scope = ic.length === 1 ? notamAirfieldLabel(ic[0]) : 'LLLL';
     h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length;
   };
   updateTitle(shown);
@@ -5162,7 +5182,8 @@ function showNotamModal(only, opts) {
   const notamHay = (n) => {
     if (!_hayCache.has(n)) {
       const dec = (typeof decodeNotam === 'function') ? decodeNotam(n) : '';
-      _hayCache.set(n, ((n.id || '') + ' ' + (n.icao || '') + ' ' + (n.text || '') + ' ' + dec).toUpperCase());
+      _hayCache.set(n, ((n.id || '') + ' ' + notamAirfieldLabel(n.icao) + ' ' +
+        (n.text || '') + ' ' + dec).toUpperCase());
     }
     return _hayCache.get(n);
   };
@@ -5304,7 +5325,7 @@ function showNotamModal(only, opts) {
       const cnt = shown.filter(n => String(n.icao || '').toUpperCase() === c).length;
       const o = document.createElement('option');
       o.value = c;
-      o.textContent = (c === 'LLLL' ? (S.notamFilterGlobal || 'Global (FIR)') : c)
+      o.textContent = (c === 'LLLL' ? (S.notamFilterGlobal || 'Global (FIR)') : notamAirfieldLabel(c))
         + ' (' + cnt + ')';
       sel.appendChild(o);
     }
@@ -5326,12 +5347,36 @@ function showNotamModal(only, opts) {
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);
-  // Lock the modal's height (capped to the viewport) so filtering doesn't
-  // resize it AND the list scrolls inside instead of overflowing the screen —
-  // a long single-airfield list (e.g. LLBG) stays fully scrollable.
-  const hCap = Math.round(window.innerHeight * 0.84);
-  box.style.height = Math.min(box.offsetHeight, hCap) + 'px';
-  const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
+  // Give the sheet an explicit width AND height. Content changes (future
+  // checkbox, search, ICAO filter) then affect only the scrollable list, not
+  // the window around it. Native CSS resize lets the pilot choose a size; the
+  // device-local dimensions are restored next time and clamped to this screen.
+  const widthCap = Math.max(240, Math.round(window.innerWidth * 0.92));
+  const heightCap = Math.max(180, Math.round(window.innerHeight * 0.84));
+  const savedSize = storedNotamModalSize();
+  box.style.width = Math.min(savedSize ? Math.max(240, savedSize.w) : box.offsetWidth, widthCap) + 'px';
+  box.style.height = Math.min(savedSize ? Math.max(180, savedSize.h) : box.offsetHeight, heightCap) + 'px';
+  const saveSize = () => {
+    if (!box.isConnected) return;
+    try {
+      localStorage.setItem(NOTAM_MODAL_SIZE_KEY, JSON.stringify({
+        w: Math.round(box.offsetWidth), h: Math.round(box.offsetHeight),
+      }));
+    } catch (e) { /* storage unavailable */ }
+  };
+  let sizeSaveTimer = null;
+  const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+    clearTimeout(sizeSaveTimer);
+    sizeSaveTimer = setTimeout(saveSize, 120);
+  }) : null;
+  if (sizeObserver) sizeObserver.observe(box);
+  const dismiss = () => {
+    clearTimeout(sizeSaveTimer);
+    saveSize();
+    if (sizeObserver) sizeObserver.disconnect();
+    back.remove();
+    document.removeEventListener('keydown', onKey);
+  };
   // Let closeOpenChartModals() (other charts opening) close this one too.
   back._navaidClose = dismiss;
   // Escape closes THIS modal and stops there. Without the stopPropagation the same keypress
