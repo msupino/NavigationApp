@@ -2097,6 +2097,20 @@ test('the sheet fits a 280px screen too, footer included', async ({ page }) => {
   }
 });
 
+test('the printable cross-country form identifies NavAid and its feedback address', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
+  const attribution = page.locator('.xc-navaid-foot');
+  await expect(attribution).toContainText('Created using NavAid');
+  await expect(attribution).toContainText('https://navaid.supino.org');
+  await expect(attribution).toContainText('navaid@supino.org');
+  await page.emulateMedia({ media: 'print' });
+  await page.evaluate(() => document.body.classList.add('printing-xc'));
+  await expect(attribution).toBeVisible();
+  await page.emulateMedia({ media: null });
+});
+
 test('the flight-type row really gets the full width it asks for', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 812 });
   await boot(page);
