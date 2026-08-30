@@ -2358,6 +2358,11 @@ body.theme-light .notam-sort-sel,
 body.theme-light .notam-find {
   border-color: #c6ccd6; background: #eef1f6; color: #2b3340;
 }
+.modal.wide.notam-modal {
+  min-height: min(220px, 84vh);
+  resize: both;
+  overflow: hidden;
+}
 .notam-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .notam-item { border: 1px solid #3a3636; border-radius: 6px; padding: 6px 8px; background: rgba(255, 255, 255, 0.03); }
 .notam-item-clickable { cursor: pointer; }

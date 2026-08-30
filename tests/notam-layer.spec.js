@@ -342,6 +342,37 @@ test('a long single-airfield NOTAM list scrolls within the viewport', async ({ p
   await expect(page.locator('.notam-item').last()).toBeInViewport();
 });
 
+test('NOTAM sheet keeps and restores its size while its contents change', async ({ page }) => {
+  const now = Date.now();
+  const iso = value => new Date(value).toISOString();
+  await boot(page, { generatedAt: iso(now), notams: [
+    { id: 'A1/26', icao: 'LLBG', start: iso(now - 3600000), end: iso(now + 3600000),
+      geom: null, text: 'ACTIVE' },
+    { id: 'A2/26', icao: 'LLBG', start: iso(now + 3600000), end: iso(now + 7200000),
+      geom: null, text: 'FUTURE' },
+  ] });
+  await page.locator('#notam-list-btn').click();
+  const modal = page.locator('.notam-modal');
+  const initial = await modal.evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight }));
+  await modal.locator('#notam-show-all').check();
+  await expect(modal.locator('.notam-item')).toHaveCount(2);
+  expect(await modal.evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight }))).toEqual(initial);
+
+  await modal.evaluate(el => {
+    el.style.width = '760px';
+    el.style.height = '480px';
+  });
+  await expect.poll(() => page.evaluate(() => {
+    try { return JSON.parse(localStorage.getItem('navaid.notamModalSize')); }
+    catch (e) { return null; }
+  })).toEqual({ w: 760, h: 480 });
+  await modal.locator('.modal-close-x').click();
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
+  await expect(page.locator('.notam-modal')).toBeVisible();
+  expect(await page.locator('.notam-modal').evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight })))
+    .toEqual({ w: 760, h: 480 });
+});
+
 test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
     { id: 'A0001/26', icao: 'LLLL', end: '', geom: null, text: 'A0001/26 LLLL global one.' },
