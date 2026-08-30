@@ -149,6 +149,21 @@ test('NOTAM sheet sorts route hazards, endpoint fields, FIR-wide notices, then o
   expect(ids.map(value => value.split('·')[0].trim())).toEqual([
     'R1/26', 'R2/26', 'D1/26', 'E1/26', 'G1/26', 'O1/26',
   ]);
+  const sort = page.locator('.notam-modal .notam-sort-sel');
+  await expect(sort).toHaveValue('relevance');
+  await sort.selectOption('number');
+  expect((await page.locator('.notam-modal .notam-id').allTextContents())
+    .map(value => value.split('·')[0].trim())).toEqual([
+    'D1/26', 'E1/26', 'G1/26', 'O1/26', 'R1/26', 'R2/26',
+  ]);
+  await sort.selectOption('end');
+  expect((await page.locator('.notam-modal .notam-id').allTextContents())
+    .map(value => value.split('·')[0].trim())).toEqual([
+    'R1/26', 'R2/26', 'D1/26', 'E1/26', 'G1/26', 'O1/26',
+  ]);
+  await page.locator('.notam-modal .modal-close-x').click();
+  await page.evaluate(() => showNotamModal([notams[0]]));
+  await expect(page.locator('.notam-modal .notam-sort-sel')).toBeVisible();
 });
 
 test('toggling the overlay loads NOTAMs and draws without error', async ({ page }) => {

@@ -5028,7 +5028,7 @@ function notamRelevantTime(n, now) {
   if (Number.isFinite(start)) return start;
   return Infinity;
 }
-function sortNotamsForFlight(items) {
+function sortNotamsForFlight(items, mode) {
   const route = notamSortRoute();
   const endpointNames = new Set();
   if (route.length >= 2) {
@@ -5048,10 +5048,20 @@ function sortNotamsForFlight(items) {
     if (icao === 'LLLL') return 2;
     return 3;
   };
-  return (Array.isArray(items) ? items.slice() : []).sort((a, b) =>
-    rank(a) - rank(b) ||
-    notamRelevantTime(a, now) - notamRelevantTime(b, now) ||
-    String(a && a.id || '').localeCompare(String(b && b.id || '')));
+  const idOrder = (a, b) => String(a && a.id || '').localeCompare(
+    String(b && b.id || ''), undefined, { numeric: true, sensitivity: 'base' });
+  const timeOrder = field => (a, b) => {
+    const aTime = Date.parse(a && a[field] || '');
+    const bTime = Date.parse(b && b[field] || '');
+    return (Number.isFinite(aTime) ? aTime : Infinity) -
+      (Number.isFinite(bTime) ? bTime : Infinity) || idOrder(a, b);
+  };
+  const compare = mode === 'number' ? idOrder
+    : mode === 'start' ? timeOrder('start')
+      : mode === 'end' ? timeOrder('end')
+        : (a, b) => rank(a) - rank(b) ||
+          notamRelevantTime(a, now) - notamRelevantTime(b, now) || idOrder(a, b);
+  return (Array.isArray(items) ? items.slice() : []).sort(compare);
 }
 function showNotamModal(only, opts) {
   // Behave like every other chart modal: opening closes any other open chart
@@ -5092,13 +5102,14 @@ function showNotamModal(only, opts) {
   // A single-NOTAM view (a map click) is neither: it shows what was clicked.
   const clicked = (Array.isArray(only) && only.length) ? only : null;
   let timeFrame = 'active';
+  let sortMode = 'relevance';
   const feedFor = (frame) => {
     let feed;
     if (clicked) feed = clicked;
     else if (frame === 'all') feed = Array.isArray(notams) ? notams.slice() : [];
     else feed = (typeof activeNotams === 'function') ? activeNotams()
       : (Array.isArray(notams) ? notams : []);
-    return sortNotamsForFlight(feed);
+    return sortNotamsForFlight(feed, sortMode);
   };
   let shown = feedFor(timeFrame);
   const h = document.createElement('h3');
@@ -5224,13 +5235,33 @@ function showNotamModal(only, opts) {
   // The row renders for any list view, even when only one NOTAM is in force -- that is
   // exactly when the time-frame toggle matters, since the rest are waiting to start. A
   // single-NOTAM view (a map click) has nothing to narrow and gets no row.
+  const fw = document.createElement('div');
+  fw.className = 'notam-filter';
+  const sortSel = document.createElement('select');
+  sortSel.className = 'notam-sort-sel';
+  sortSel.setAttribute('aria-label', S.notamSortLabel || 'Sort NOTAMs');
+  for (const [value, label] of [
+    ['relevance', S.notamSortRelevance || 'Relevance'],
+    ['number', S.notamSortNumber || 'NOTAM number'],
+    ['start', S.notamSortStart || 'Start time'],
+    ['end', S.notamSortEnd || 'End time'],
+  ]) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    sortSel.appendChild(option);
+  }
+  sortSel.onchange = () => {
+    sortMode = sortSel.value;
+    shown = feedFor(timeFrame);
+    renderList();
+  };
+  fw.appendChild(sortSel);
   if (!clicked || shown.length > 1) {
     // Freetext search sits with the airfield dropdown; it renders even for a
     // single-airfield feed (the dropdown alone used to gate the whole row) --
     // but not for a single-NOTAM view (a map click), where there is nothing
     // to narrow.
-    const fw = document.createElement('div');
-    fw.className = 'notam-filter';
     const find = document.createElement('input');
     find.type = 'search';
     find.className = 'notam-find'; find.dir = 'auto';
@@ -5282,8 +5313,8 @@ function showNotamModal(only, opts) {
     sel.onchange = () => { filterIcao = sel.value; renderList(); };
     fw.appendChild(sel);
     }
-    box.appendChild(fw);
   }
+  box.appendChild(fw);
   rawBtn.onclick = () => {
     rawMode = !rawMode;
     rawBtn.textContent = rawMode ? (S.notamDecoded || 'Decoded') : (S.notamRaw || 'Raw');

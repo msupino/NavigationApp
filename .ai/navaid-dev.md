@@ -732,7 +732,9 @@ as a machine-readable registry.
   explicit map geometry intersects the planned route first, then departure and
   destination airfield notices, FIR-wide (`LLLL`) notices, and other airfields.
   Within each group, the next relevant start or end time comes first. Search,
-  ICAO filtering, chart filtering, and the active/all choice do not change.
+  ICAO filtering, chart filtering, and the active/all choice do not change. A
+  selector in every NOTAM sheet can instead order the current result by natural
+  NOTAM number, start time, or end time; relevance is the default.
 - `navaid.showReporting` — `'0'` / `'1'` for mandatory-reporting badges.
 - `navaid.showMsa` — `'0'` / `'1'` for the leg-inspector MSA row.
 - `navaid.showAirspace` — `'0'` / `'1'` for the AIP airspace layer (prohibited,
