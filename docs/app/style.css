@@ -2342,7 +2342,8 @@ body.theme-light .notam-when { color: #16406e; background: #dbe8fb; border-color
 body.theme-light .notam-when-past { color: #6b4c14; background: #f6ead2; border-color: #d3b477; }
 
 .notam-filter { margin: 0 0 8px; display: flex; gap: 6px; flex-wrap: wrap; }
-.notam-filter-sel {
+.notam-filter-sel,
+.notam-sort-sel {
   font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 5px;
   border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
   max-width: 100%;
@@ -2353,6 +2354,7 @@ body.theme-light .notam-when-past { color: #6b4c14; background: #f6ead2; border-
   flex: 1 1 160px; min-width: 120px;
 }
 body.theme-light .notam-filter-sel,
+body.theme-light .notam-sort-sel,
 body.theme-light .notam-find {
   border-color: #c6ccd6; background: #eef1f6; color: #2b3340;
 }
