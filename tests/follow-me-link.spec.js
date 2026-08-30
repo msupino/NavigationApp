@@ -1703,3 +1703,34 @@ test('a truncated follower URL keeps ordinary route onboarding', async ({ page }
   await expect(page.locator('#empty-route-hint')).toBeVisible();
   expect(await page.evaluate(() => routePrimingArmed())).toBe(true);
 });
+
+test('the menu copies a link before any position is flowing, and says positions start later', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    setTune('featureFollowMe', true);
+    // No position source on: this is a pilot on the ground, pre-sharing before the flight.
+    window.gpsPositionLive = () => false;
+    window.gpsRecording = false;
+    window.prompt = () => '4X-PRE';
+    let copied = null;
+    // Force the clipboard path (no share sheet in the test browser).
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+    navigator.clipboard.writeText = (t) => { copied = t; return Promise.resolve(); };
+    const toasts = [];
+    window.showToast = (t) => toasts.push(t);
+    refreshFollowMeControl();
+    document.getElementById('follow-me').click();
+    await new Promise(r => setTimeout(r, 40));
+    // Let the session finish connecting so the teardown's retained-clear has a socket to ack.
+    if (window.__sockets.length) window.__sockets[window.__sockets.length - 1].connack();
+    await new Promise(r => setTimeout(r, 20));
+    const status = NavAid.followMe.status();
+    await NavAid.followMe.stop();
+    if (window.__sockets.length) window.__sockets[window.__sockets.length - 1].connack();
+    return { copied, toasts, status };
+  });
+  expect(got.copied).toMatch(/\?follow=[^#]+#k=/);       // a real link, key in the fragment
+  expect(got.status).not.toBe('idle');                    // a session actually started
+  expect(got.toasts.some(t => /positions start once/i.test(t))).toBe(true);
+  expect(got.toasts.some(t => /needs a position/i.test(t))).toBe(false);  // no refusal
+});
