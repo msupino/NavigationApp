@@ -3560,15 +3560,12 @@ function followMeOffered() {
       }
       return;
     }
-    // Refuse rather than share a link that will never move.
+    // A link can be shared BEFORE the aeroplane is moving -- copied on the ground and sent
+    // ahead of the flight -- because the viewer already says "waiting for a position" until
+    // one arrives. So this no longer refuses without a fix; it just notes, after copying,
+    // that nothing moves until Location or Record is on.
     const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
       || (typeof gpsRecording !== 'undefined' && gpsRecording);
-    if (!live) {
-      if (typeof showToast === 'function') {
-        showToast(S.followMeNoFix || 'Follow me needs a position: turn on Location or Record first.');
-      }
-      return;
-    }
     // Ask for the aircraft code. Nothing verifies it -- a pilot can type anything -- but a
     // shared link with no name on it is a puzzle for whoever opens it, so it is required.
     const asked = window.prompt(S.followMeAskCode || 'Aircraft code (e.g. 4X-CDE)', f.code() || '');
@@ -3600,7 +3597,11 @@ function followMeOffered() {
       try { await navigator.clipboard.writeText(link); copied = true; } catch (e) { /* denied */ }
     }
     if (copied && typeof showToast === 'function') {
-      showToast(S.followMeCopied || 'Follow-me link copied.');
+      // Ground vs air: on the ground the link is real but the map will not move until a fix
+      // is flowing, and a pilot who does not know that thinks the link is broken.
+      showToast(live
+        ? (S.followMeCopied || 'Follow-me link copied.')
+        : (S.followMeCopiedNoFix || 'Follow-me link copied — positions start once Location or Record is on.'));
     } else if (!shared && !cancelled && typeof showToast === 'function') {
       showToast(S.followMeShareFailed || 'Follow me started, but the link could not be shared or copied.');
     }
