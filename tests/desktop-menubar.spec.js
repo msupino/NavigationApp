@@ -249,7 +249,10 @@ test.describe('Desktop menubar layout', () => {
     let box = await page.locator('#inspector').boundingBox();
     const vw = 1280;
     if (!box) throw new Error('no box');
-    expect(box.x + box.width).toBeGreaterThan(vw - 40);
+    // The default remains on the English/right half, while reserving the
+    // bottom-right rotate/zoom control column instead of touching the edge.
+    expect(box.x + box.width).toBeGreaterThan(vw - 120);
+    expect(box.x + box.width).toBeLessThan(vw - 40);
     expect(box.x).toBeGreaterThan(vw / 2);
 
     // Hebrew — left-anchored.

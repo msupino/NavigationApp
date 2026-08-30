@@ -216,7 +216,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Inspector:** `#insp-title` is an `<input>` — for waypoints it's
   the editable name (placeholder `WP N`); for legs it's read-only
   `Leg N`; for notes it's read-only and a textarea + color picker
-  below holds the body. Opening a multi-point chooser clears the previous selection and
+  below holds the body. There is one shared inspector element; changing the selection
+  replaces its contents rather than stacking another inspector. On a fresh English/LTR
+  desktop profile its default right-side position reserves the bottom-right map-control
+  column, while Hebrew/RTL keeps the inspector on the left. A saved dragged position remains
+  authoritative. Opening a multi-point chooser clears the previous selection and
   closes the previous inspector. Choosing an item closes the chooser and opens only that
   item's inspector or NOTAM details. The global
   `keydown` handler bails out when

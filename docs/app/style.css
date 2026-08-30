@@ -1709,7 +1709,12 @@ body.theme-light #aircraft-custom input {
      should cover the inspector, not sit behind it. */
   z-index: 2320;
   top: var(--navaid-inspector-default-top, 96px);
-  right: 12px;
+  /* A fresh profile has no dragged inspector position yet. Keep that default panel left of
+     the bottom-right rotate/zoom column: a tall first airfield inspector otherwise covered
+     both controls, then appeared to fix itself when a shorter inspector replaced it. The
+     shared map-control clearance tracks the wider touch controls too. Dragged positions use
+     inline left/top/right values and are intentionally unaffected. */
+  right: calc(12px + var(--navaid-map-ctrl-clear, 52px));
   width: 280px;
   background: rgba(20, 18, 18, 0.95);
   border: 1px solid #3a3636;
