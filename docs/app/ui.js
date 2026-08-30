@@ -7980,15 +7980,24 @@ function refreshMapAfterToolbarModeChange() {
     if (anySectionOpen()) window.closeToolbarMenus();
   });
   // ...but the document 'click' above is exactly what Leaflet swallows on a real
-  // touch: it synthesises the map tap and the native click never reaches document,
-  // so tapping the map left the menu open on a phone. Hook Leaflet's OWN map event,
-  // which always fires, and close on the press so any map interaction -- a tap to add
-  // a point, or the start of a pan -- dismisses an open menu. Desktop is already
-  // handled by the pointerdown listener above, so this is mobile-only.
+  // touch: it handles the tap itself and re-fires it as the map's OWN 'click' event
+  // rather than letting a native click bubble to document, so tapping the map left
+  // the menu open on a phone. Hook that map 'click' -- it fires reliably on a tap on
+  // every device (and Leaflet suppresses it after a drag, so a pan-release does not
+  // count). 'mousedown' is added for the mouse, where it closes on the press. Desktop
+  // is already handled by the pointerdown listener above, so this is mobile-only.
   if (typeof map !== 'undefined' && map && typeof map.on === 'function') {
-    map.on('mousedown', () => {
+    map.on('click mousedown', () => {
       if (toolbarUsesDesktopMenu()) return;
+      // Two things are "the menu" on a phone: the open section (sub-menu) AND the expanded
+      // toolbar column (main menu) that covers half the map. A map tap dismisses both --
+      // closing only the section left the column sitting over the chart.
       if (anySectionOpen()) window.closeToolbarMenus();
+      const bar = document.getElementById('toolbar');
+      if (bar && !bar.classList.contains('collapsed')
+          && typeof window.collapseToolbarForMapTool === 'function') {
+        window.collapseToolbarForMapTool();
+      }
     });
   }
   document.addEventListener('keydown', e => {
