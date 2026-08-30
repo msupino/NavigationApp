@@ -127,24 +127,55 @@ test('opacity reset restores the default', async ({ page }) => {
   expect(parseFloat(o)).toBeCloseTo(parseFloat(def), 2);
 });
 
-test('wind field renders in a non-rotating pane', async ({ page }) => {
+test('wind field renders in a screen-fixed transparent pane', async ({ page }) => {
   await boot(page);
   await loadWind(page);
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
-  // The velocity canvas draws in bearing-aware screen coords, so its pane must
-  // stay un-transformed (a second transform would break the north-up render).
+  // The velocity canvas draws in bearing-aware screen coords. It must be a direct child of
+  // the map container, not mapPane: an animated canvas composited with the transformed tile
+  // panes could blank one underlying tile column until the wind field was removed.
   const r = await page.evaluate(() => {
     const pane = map.getPane('windfield');
     const c = pane && pane.querySelector('canvas');
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const canvasRect = c && c.getBoundingClientRect();
     return {
       paneTransform: getComputedStyle(pane).transform,        // must be 'none'
+      paneParentIsMapContainer: pane.parentElement === map.getContainer(),
       canvasInWindfieldPane: !!c,
       canvasRendered: !!(c && c.width > 0 && c.height > 0),
+      canvasOffsetX: canvasRect && canvasRect.left - mapRect.left,
+      canvasOffsetY: canvasRect && canvasRect.top - mapRect.top,
+      paneBackground: getComputedStyle(pane).backgroundColor,
+      canvasBackground: c && getComputedStyle(c).backgroundColor,
     };
   });
   expect(r.paneTransform).toBe('none');         // wind-field pane is NOT rotated
+  expect(r.paneParentIsMapContainer).toBe(true);
   expect(r.canvasInWindfieldPane).toBe(true);
   expect(r.canvasRendered).toBe(true);
+  expect(Math.abs(r.canvasOffsetX)).toBeLessThan(1);
+  expect(Math.abs(r.canvasOffsetY)).toBeLessThan(1);
+  expect(r.paneBackground).toBe('rgba(0, 0, 0, 0)');
+  expect(r.canvasBackground).toBe('rgba(0, 0, 0, 0)');
+});
+
+test('wind canvas stays at the map origin after pan and rotation', async ({ page }) => {
+  await boot(page);
+  await loadWind(page);
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  await page.evaluate(() => {
+    map.panBy([260, 90], { animate: false });
+    map.setBearing(35);
+  });
+  await page.waitForTimeout(600);                // debounced field rebuild after rotation
+  const offset = await page.evaluate(() => {
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const canvasRect = document.querySelector('.leaflet-windfield-pane canvas').getBoundingClientRect();
+    return { x: canvasRect.left - mapRect.left, y: canvasRect.top - mapRect.top };
+  });
+  expect(Math.abs(offset.x)).toBeLessThan(1);
+  expect(Math.abs(offset.y)).toBeLessThan(1);
 });
 
 // Deliberately replaces "a rotated map hides the wind field and shows a north-up note".
