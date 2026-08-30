@@ -116,7 +116,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Base map:** Leaflet with six base layers in one `layers` object:
   CVFR / Nav / Low Alt / Heli (live from `https://flight-maps.com`,
   with `exportUrl` entries on `https://navaid-tiles.supino.org` for PNG
-  download rendering) / Satellite (Esri) / OSM.
+  download rendering) / Satellite (Esri) / OSM. Chart tile requests are clipped
+  to the published pyramid bounds and failed cells render as transparent tiles,
+  so the underlay remains visible at chart edges and during a tile failure.
   Selection persisted at `localStorage['navaid.layer']` and restored
   *before* `L.map()` runs (no CVFR flash on reload).
 - **Automatic offline CVFR:** `app/offline-tiles.js` maintains the complete CVFR tile pyramid

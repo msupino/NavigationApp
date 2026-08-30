@@ -4045,9 +4045,28 @@ function finishLatLng(lat, lng) {
 // out-of-coverage tile fetches, which would otherwise return 404 and trip
 // the "X of Y map tiles failed to load" warning when the viewport extends
 // past the chart (the typical case at low zoom).
-const FM_BOUNDS = { south: 28.3, west: 33.7, north: 34.3, east: 36.6 };
-const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13,
-               chartBounds: FM_BOUNDS };
+// The tile pyramid's longitudinal edges fall exactly on Web Mercator tile boundaries.
+// Keeping the older rounded 33.7/36.6 values made Leaflet request the adjacent, unpublished
+// columns at low zoom. A failed <img> can paint as an opaque pale rectangle in WebKit, hiding
+// the underlay. Clip display requests to the real pyramid and make every network failure
+// explicitly transparent so an unavailable chart cell always reveals the map below it.
+const FM_BOUNDS = { south: 28.3, west: 33.75, north: 34.3, east: 36.5625 };
+const FM_RENDER_BOUNDS = [
+  [FM_BOUNDS.south + 1e-6, FM_BOUNDS.west + 1e-6],
+  [FM_BOUNDS.north - 1e-6, FM_BOUNDS.east - 1e-6],
+];
+const TRANSPARENT_TILE_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+const TILE = {
+  minZoom: 6,
+  maxZoom: 16,
+  maxNativeZoom: 13,
+  chartBounds: FM_BOUNDS,
+  // A tiny inset avoids floating-point overlap with the unpublished neighbour tile.
+  bounds: FM_RENDER_BOUNDS,
+  noWrap: true,
+  errorTileUrl: TRANSPARENT_TILE_URL,
+};
 const FM_ATTR =
   'Charts © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
 const NAVAID_TILE_BASE = 'https://navaid-tiles.supino.org';

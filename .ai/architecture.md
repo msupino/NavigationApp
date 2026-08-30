@@ -53,7 +53,9 @@ reference points, callouts, and overlays on `#overlay`, a canvas above the map.
 CVFR, Navigation, Low Alt, and Helicopters chart tiles load live from
 `https://flight-maps.com`. Their `exportUrl` layer options point at
 `https://navaid-tiles.supino.org` so PNG export/download can fetch readable
-mirror tiles for canvas composition.
+mirror tiles for canvas composition. Chart layers are clipped to the published
+tile-pyramid bounds and use an explicit transparent error tile; missing edge or
+network tiles therefore reveal the selected underlay instead of WebKit's broken-image box.
 
 Only CVFR is maintained for in-flight offline use. `offline-tiles.js` audits the expected
 z7–13 CVFR pyramid against `navaid-tiles-v1`, removes legacy tiles from other chart layers,
