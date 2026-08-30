@@ -18,10 +18,10 @@ const DATA = {
   ],
 };
 
-async function boot(page, body) {
+async function boot(page, body, lang = 'en') {
   await page.route(NOTAM_RE, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body || DATA) }));
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.sec.charts', '1'); } catch (e) {} });
-  await page.goto('?lang=en');
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() => typeof draw === 'function' && document.getElementById('notam-cb'));
 }
 
@@ -120,6 +120,50 @@ test('NOTAM list button reveals when data loads and lists all NOTAMs', async ({ 
   // Esc closes.
   await page.keyboard.press('Escape');
   await expect(page.locator('.modal-back .notam-modal')).toHaveCount(0);
+});
+
+test('NOTAM sheet sorts route hazards, endpoint fields, FIR-wide notices, then others', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'O1/26', icao: 'LLBG', end: '2035-01-01T00:00:00Z', geom: null,
+      text: 'OTHER AIRFIELD' },
+    { id: 'G1/26', icao: 'LLLL', end: '2034-01-01T00:00:00Z', geom: null,
+      text: 'FIR WIDE' },
+    { id: 'E1/26', icao: 'LLHZ', end: '2033-01-01T00:00:00Z', geom: null,
+      text: 'DEPARTURE FIELD' },
+    { id: 'D1/26', icao: 'LLHA', end: '2032-06-01T00:00:00Z', geom: null,
+      text: 'DESTINATION FIELD' },
+    { id: 'R2/26', icao: 'LLLL', end: '2032-01-01T00:00:00Z',
+      geom: { type: 'circle', lat: 32, lng: 34.9, radiusNm: 2 }, text: 'ROUTE CIRCLE' },
+    { id: 'R1/26', icao: 'LLLL', end: '2031-01-01T00:00:00Z',
+      geom: { type: 'polygon', coords: [[31.99, 34.79], [32.01, 34.79], [32.01, 34.81], [31.99, 34.81]] },
+      text: 'ROUTE POLYGON' },
+  ] });
+  await page.evaluate(() => {
+    state.waypoints = [
+      { name: 'LLHZ', lat: 32, lng: 34.7 },
+      { name: 'LLHA', lat: 32, lng: 35.1 },
+    ];
+  });
+  await page.locator('#notam-list-btn').click();
+  const ids = await page.locator('.notam-modal .notam-id').allTextContents();
+  expect(ids.map(value => value.split('·')[0].trim())).toEqual([
+    'R1/26', 'R2/26', 'D1/26', 'E1/26', 'G1/26', 'O1/26',
+  ]);
+  const sort = page.locator('.notam-modal .notam-sort-sel');
+  await expect(sort).toHaveValue('relevance');
+  await sort.selectOption('number');
+  expect((await page.locator('.notam-modal .notam-id').allTextContents())
+    .map(value => value.split('·')[0].trim())).toEqual([
+    'D1/26', 'E1/26', 'G1/26', 'O1/26', 'R1/26', 'R2/26',
+  ]);
+  await sort.selectOption('end');
+  expect((await page.locator('.notam-modal .notam-id').allTextContents())
+    .map(value => value.split('·')[0].trim())).toEqual([
+    'R1/26', 'R2/26', 'D1/26', 'E1/26', 'G1/26', 'O1/26',
+  ]);
+  await page.locator('.notam-modal .modal-close-x').click();
+  await page.evaluate(() => showNotamModal([notams[0]]));
+  await expect(page.locator('.notam-modal .notam-sort-sel')).toBeVisible();
 });
 
 test('toggling the overlay loads NOTAMs and draws without error', async ({ page }) => {
@@ -298,6 +342,37 @@ test('a long single-airfield NOTAM list scrolls within the viewport', async ({ p
   await expect(page.locator('.notam-item').last()).toBeInViewport();
 });
 
+test('NOTAM sheet keeps and restores its size while its contents change', async ({ page }) => {
+  const now = Date.now();
+  const iso = value => new Date(value).toISOString();
+  await boot(page, { generatedAt: iso(now), notams: [
+    { id: 'A1/26', icao: 'LLBG', start: iso(now - 3600000), end: iso(now + 3600000),
+      geom: null, text: 'ACTIVE' },
+    { id: 'A2/26', icao: 'LLBG', start: iso(now + 3600000), end: iso(now + 7200000),
+      geom: null, text: 'FUTURE' },
+  ] });
+  await page.locator('#notam-list-btn').click();
+  const modal = page.locator('.notam-modal');
+  const initial = await modal.evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight }));
+  await modal.locator('#notam-show-all').check();
+  await expect(modal.locator('.notam-item')).toHaveCount(2);
+  expect(await modal.evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight }))).toEqual(initial);
+
+  await modal.evaluate(el => {
+    el.style.width = '760px';
+    el.style.height = '480px';
+  });
+  await expect.poll(() => page.evaluate(() => {
+    try { return JSON.parse(localStorage.getItem('navaid.notamModalSize')); }
+    catch (e) { return null; }
+  })).toEqual({ w: 760, h: 480 });
+  await modal.locator('.modal-close-x').click();
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
+  await expect(page.locator('.notam-modal')).toBeVisible();
+  expect(await page.locator('.notam-modal').evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight })))
+    .toEqual({ w: 760, h: 480 });
+});
+
 test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
     { id: 'A0001/26', icao: 'LLLL', end: '', geom: null, text: 'A0001/26 LLLL global one.' },
@@ -319,8 +394,9 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await sel.selectOption('LLBG');
   await expect(modal.locator('.notam-item')).toHaveCount(1);
   await expect(modal).toContainText('Ben Gurion');
-  // Title scope follows the filter (airfield code, not LLLL).
-  await expect(modal.locator('h3')).toContainText('(LLBG)');
+  // Title and option identify the airfield, not just its ICAO code.
+  await expect(sel.locator('option[value="LLBG"]')).toContainText('LLBG — Tel Aviv / Ben Gurion');
+  await expect(modal.locator('h3')).toContainText('LLBG — Tel Aviv / Ben Gurion');
   expect(await modal.evaluate(el => Math.round(el.getBoundingClientRect().height))).toBe(modalH);
   // Globals only.
   await sel.selectOption('LLLL');
@@ -328,6 +404,25 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   // Back to all.
   await sel.selectOption('');
   await expect(modal.locator('.notam-item')).toHaveCount(4);
+});
+
+test('NOTAM airfield title, filter, and search use the localized airfield name', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'C1590/26', icao: 'LLRS', end: '', geom: null, text: 'DEPARTING VIA TYONA.' },
+    { id: 'A0001/26', icao: 'LLLL', end: '', geom: null, text: 'FIR WIDE.' },
+  ] }, 'he');
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.some(a => a.name === 'LLRS'));
+  await page.locator('#notam-list-btn').click();
+  const modal = page.locator('.notam-modal');
+  const filter = modal.locator('.notam-filter-sel');
+  await expect(filter.locator('option[value="LLRS"]')).toContainText('LLRS — ראשון לציון');
+  await filter.selectOption('LLRS');
+  await expect(modal.locator('h3')).toContainText('LLRS — ראשון לציון');
+  await filter.selectOption('');
+  await modal.locator('.notam-find').fill('ראשון לציון');
+  await expect(modal.locator('.notam-item')).toHaveCount(1);
+  await expect(modal).toContainText('C1590/26');
 });
 
 test('NOTAM time-slider label matches the unified look-ahead format', async ({ page }) => {

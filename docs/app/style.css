@@ -2342,7 +2342,8 @@ body.theme-light .notam-when { color: #16406e; background: #dbe8fb; border-color
 body.theme-light .notam-when-past { color: #6b4c14; background: #f6ead2; border-color: #d3b477; }
 
 .notam-filter { margin: 0 0 8px; display: flex; gap: 6px; flex-wrap: wrap; }
-.notam-filter-sel {
+.notam-filter-sel,
+.notam-sort-sel {
   font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 5px;
   border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
   max-width: 100%;
@@ -2353,8 +2354,14 @@ body.theme-light .notam-when-past { color: #6b4c14; background: #f6ead2; border-
   flex: 1 1 160px; min-width: 120px;
 }
 body.theme-light .notam-filter-sel,
+body.theme-light .notam-sort-sel,
 body.theme-light .notam-find {
   border-color: #c6ccd6; background: #eef1f6; color: #2b3340;
+}
+.modal.wide.notam-modal {
+  min-height: min(220px, 84vh);
+  resize: both;
+  overflow: hidden;
 }
 .notam-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .notam-item { border: 1px solid #3a3636; border-radius: 6px; padding: 6px 8px; background: rgba(255, 255, 255, 0.03); }
@@ -6504,6 +6511,12 @@ body.theme-light .xc-input.xc-rw { background: #fff; border-color: #c9c4c4; }
 @media (min-width: 420px) {
   .xc-foot { justify-content: space-between; }   /* as printed, once there is room */
 }
+.xc-navaid-foot {
+  margin-top: 5px;
+  text-align: center;
+  font-size: 10px;
+  color: #9a9494;
+}
 
 body.theme-light .xc-input {
   color: #1c1a1a;
@@ -6514,6 +6527,7 @@ body.theme-light .xc-t th,
 body.theme-light .xc-t td,
 body.theme-light .xc-foot,
 body.theme-light .xc-sig-pad { border-color: #8f8a8a; }
+body.theme-light .xc-navaid-foot { color: #5f6670; }
 
 /* Print: the sheet only, on white, with the field values as printed text. */
 @media print {
@@ -6569,6 +6583,7 @@ body.theme-light .xc-sig-pad { border-color: #8f8a8a; }
   body.printing-xc .xc-sigs,
   body.printing-xc .xc-foot,
   body.printing-xc .xc-t th { color: #111; }
+  body.printing-xc .xc-navaid-foot { color: #111; }
   body.printing-xc .xc-t th,
   body.printing-xc .xc-t td,
   body.printing-xc .xc-foot { border-color: #111; }

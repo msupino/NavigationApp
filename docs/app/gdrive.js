@@ -337,7 +337,7 @@ function gdriveSync() {
 // EXPLICIT allowlist — new or sensitive keys never sync by accident. Excluded
 // on purpose: navaid.ai.baseUrl (decides where data is sent — a synced blob
 // must not be able to redirect it), device-local panel geometry (*Pos,
-// navaid.ai.panelSize), toolbar section state (navaid.sec.*), local-tile
+// navaid.ai.panelSize, navaid.notamModalSize), toolbar section state (navaid.sec.*), local-tile
 // flags, and the in-progress working route (navaid.route, which the route
 // library already covers).
 // Provider/model choices and the flight-plan profile are portable. AI credentials and

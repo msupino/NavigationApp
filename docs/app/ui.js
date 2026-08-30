@@ -4942,6 +4942,147 @@ async function ensureNotams() {
   if (typeof buildNotamRouteLines === 'function') buildNotamRouteLines();
   refreshNotamListBtn();
 }
+
+// Sort the NOTAM sheet for flight planning. Map geometry that touches the
+// planned route matters first, followed by the departure/destination fields,
+// FIR-wide notices, and the remaining aerodromes. This changes presentation
+// only: the chart filter, active/all choice, and search still decide what is
+// included.
+const NOTAM_ROUTE_CORRIDOR_KM = 1.852; // 1 NM around line-only NOTAM geometry
+function notamSortRoute() {
+  const wps = (typeof state !== 'undefined' && Array.isArray(state.waypoints))
+    ? state.waypoints : [];
+  return wps.filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng))
+    .map(w => [w.lat, w.lng]);
+}
+function notamSortSegmentsIntersect(a, b, c, d) {
+  const cross = (p, q, r) =>
+    (q[1] - p[1]) * (r[0] - p[0]) - (q[0] - p[0]) * (r[1] - p[1]);
+  const on = (p, q, r) => Math.abs(cross(p, q, r)) < 1e-10 &&
+    r[0] >= Math.min(p[0], q[0]) - 1e-10 && r[0] <= Math.max(p[0], q[0]) + 1e-10 &&
+    r[1] >= Math.min(p[1], q[1]) - 1e-10 && r[1] <= Math.max(p[1], q[1]) + 1e-10;
+  const abC = cross(a, b, c), abD = cross(a, b, d);
+  const cdA = cross(c, d, a), cdB = cross(c, d, b);
+  return ((abC > 0 && abD < 0) || (abC < 0 && abD > 0)) &&
+      ((cdA > 0 && cdB < 0) || (cdA < 0 && cdB > 0)) ||
+    on(a, b, c) || on(a, b, d) || on(c, d, a) || on(c, d, b);
+}
+function notamSortPointInPolygon(point, polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i], b = polygon[j];
+    const crosses = (a[0] > point[0]) !== (b[0] > point[0]) &&
+      point[1] < (b[1] - a[1]) * (point[0] - a[0]) / (b[0] - a[0]) + a[1];
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+function notamSortPolygonHitsRoute(polygon, route) {
+  if (!Array.isArray(polygon) || polygon.length < 3 || route.length < 2) return false;
+  if (route.some(point => notamSortPointInPolygon(point, polygon))) return true;
+  for (let r = 1; r < route.length; r++) {
+    for (let p = 0; p < polygon.length; p++) {
+      if (notamSortSegmentsIntersect(route[r - 1], route[r], polygon[p],
+          polygon[(p + 1) % polygon.length])) return true;
+    }
+  }
+  return false;
+}
+function notamSortLineHitsRoute(line, route) {
+  if (!Array.isArray(line) || line.length < 2 || route.length < 2) return false;
+  for (let r = 1; r < route.length; r++) {
+    for (let p = 1; p < line.length; p++) {
+      if (notamSortSegmentsIntersect(route[r - 1], route[r], line[p - 1], line[p]) ||
+          notamPerpKm(line[p - 1], route[r - 1], route[r]) <= NOTAM_ROUTE_CORRIDOR_KM ||
+          notamPerpKm(line[p], route[r - 1], route[r]) <= NOTAM_ROUTE_CORRIDOR_KM ||
+          notamPerpKm(route[r - 1], line[p - 1], line[p]) <= NOTAM_ROUTE_CORRIDOR_KM ||
+          notamPerpKm(route[r], line[p - 1], line[p]) <= NOTAM_ROUTE_CORRIDOR_KM) return true;
+    }
+  }
+  return false;
+}
+function notamAffectsPlannedRoute(n, route) {
+  if (!n || route.length < 2) return false;
+  const g = n.geom;
+  if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng)) {
+    const radiusKm = Math.max(0, Number(g.radiusNm) || 0) * 1.852;
+    for (let i = 1; i < route.length; i++) {
+      if (notamPerpKm([g.lat, g.lng], route[i - 1], route[i]) <= radiusKm) return true;
+    }
+  } else if (g && g.type === 'polygon' && notamSortPolygonHitsRoute(g.coords, route)) {
+    return true;
+  } else if (g && g.type === 'line' && notamSortLineHitsRoute(g.coords, route)) {
+    return true;
+  }
+  if (Array.isArray(n._routeLines) &&
+      n._routeLines.some(line => notamSortLineHitsRoute(line.coords, route))) return true;
+  if (typeof notamBubbleAreas === 'function' &&
+      notamBubbleAreas(n).some(area => notamSortPolygonHitsRoute(area.coords, route))) return true;
+  return false;
+}
+function notamRelevantTime(n, now) {
+  const start = Date.parse(n && n.start || '');
+  const end = Date.parse(n && n.end || '');
+  if (Number.isFinite(start) && start > now) return start;
+  if (Number.isFinite(end)) return end;
+  if (Number.isFinite(start)) return start;
+  return Infinity;
+}
+function notamAirfieldLabel(code) {
+  const icao = String(code || '').trim().toUpperCase();
+  if (!icao) return '';
+  if (icao === 'LLLL') return icao + ' — ' + (S.notamFilterGlobal || 'Global (FIR)');
+  const airfield = typeof airfieldByIcao === 'function' ? airfieldByIcao(icao) : null;
+  if (!airfield) return icao;
+  const preferHebrew = S.airfieldLabelField === 'he';
+  const name = preferHebrew
+    ? (airfield.he || airfield.en)
+    : (airfield.en || airfield.he);
+  return name ? icao + ' — ' + name : icao;
+}
+function sortNotamsForFlight(items, mode) {
+  const route = notamSortRoute();
+  const endpointNames = new Set();
+  if (route.length >= 2) {
+    const wps = state.waypoints;
+    for (const wp of [wps[0], wps[wps.length - 1]]) {
+      for (const value of [wp && wp.name, wp && wp.icao]) {
+        const name = String(value || '').trim().toUpperCase();
+        if (name) endpointNames.add(name);
+      }
+    }
+  }
+  const now = Date.now();
+  const rank = n => {
+    if (notamAffectsPlannedRoute(n, route)) return 0;
+    const icao = String(n && n.icao || '').toUpperCase();
+    if (endpointNames.has(icao)) return 1;
+    if (icao === 'LLLL') return 2;
+    return 3;
+  };
+  const idOrder = (a, b) => String(a && a.id || '').localeCompare(
+    String(b && b.id || ''), undefined, { numeric: true, sensitivity: 'base' });
+  const timeOrder = field => (a, b) => {
+    const aTime = Date.parse(a && a[field] || '');
+    const bTime = Date.parse(b && b[field] || '');
+    return (Number.isFinite(aTime) ? aTime : Infinity) -
+      (Number.isFinite(bTime) ? bTime : Infinity) || idOrder(a, b);
+  };
+  const compare = mode === 'number' ? idOrder
+    : mode === 'start' ? timeOrder('start')
+      : mode === 'end' ? timeOrder('end')
+        : (a, b) => rank(a) - rank(b) ||
+          notamRelevantTime(a, now) - notamRelevantTime(b, now) || idOrder(a, b);
+  return (Array.isArray(items) ? items.slice() : []).sort(compare);
+}
+const NOTAM_MODAL_SIZE_KEY = 'navaid.notamModalSize';
+function storedNotamModalSize() {
+  try {
+    const size = JSON.parse(lsGet(NOTAM_MODAL_SIZE_KEY) || 'null');
+    return size && Number.isFinite(size.w) && Number.isFinite(size.h) &&
+      size.w > 0 && size.h > 0 ? size : null;
+  } catch (e) { return null; }
+}
 function showNotamModal(only, opts) {
   // Behave like every other chart modal: opening closes any other open chart
   // modal (and a prior NOTAM list, since it's tagged below) + the toolbar
@@ -4981,13 +5122,14 @@ function showNotamModal(only, opts) {
   // A single-NOTAM view (a map click) is neither: it shows what was clicked.
   const clicked = (Array.isArray(only) && only.length) ? only : null;
   let timeFrame = 'active';
+  let sortMode = 'relevance';
   const feedFor = (frame) => {
     let feed;
     if (clicked) feed = clicked;
     else if (frame === 'all') feed = Array.isArray(notams) ? notams.slice() : [];
     else feed = (typeof activeNotams === 'function') ? activeNotams()
       : (Array.isArray(notams) ? notams : []);
-    return feed;
+    return sortNotamsForFlight(feed, sortMode);
   };
   let shown = feedFor(timeFrame);
   const h = document.createElement('h3');
@@ -4995,7 +5137,7 @@ function showNotamModal(only, opts) {
   // (FIR-wide / mixed). Updates when the filter narrows the list.
   const updateTitle = (subset) => {
     const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
-    const scope = ic.length === 1 ? ic[0] : 'LLLL';
+    const scope = ic.length === 1 ? notamAirfieldLabel(ic[0]) : 'LLLL';
     h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length;
   };
   updateTitle(shown);
@@ -5040,7 +5182,8 @@ function showNotamModal(only, opts) {
   const notamHay = (n) => {
     if (!_hayCache.has(n)) {
       const dec = (typeof decodeNotam === 'function') ? decodeNotam(n) : '';
-      _hayCache.set(n, ((n.id || '') + ' ' + (n.icao || '') + ' ' + (n.text || '') + ' ' + dec).toUpperCase());
+      _hayCache.set(n, ((n.id || '') + ' ' + notamAirfieldLabel(n.icao) + ' ' +
+        (n.text || '') + ' ' + dec).toUpperCase());
     }
     return _hayCache.get(n);
   };
@@ -5113,13 +5256,33 @@ function showNotamModal(only, opts) {
   // The row renders for any list view, even when only one NOTAM is in force -- that is
   // exactly when the time-frame toggle matters, since the rest are waiting to start. A
   // single-NOTAM view (a map click) has nothing to narrow and gets no row.
+  const fw = document.createElement('div');
+  fw.className = 'notam-filter';
+  const sortSel = document.createElement('select');
+  sortSel.className = 'notam-sort-sel';
+  sortSel.setAttribute('aria-label', S.notamSortLabel || 'Sort NOTAMs');
+  for (const [value, label] of [
+    ['relevance', S.notamSortRelevance || 'Relevance'],
+    ['number', S.notamSortNumber || 'NOTAM number'],
+    ['start', S.notamSortStart || 'Start time'],
+    ['end', S.notamSortEnd || 'End time'],
+  ]) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    sortSel.appendChild(option);
+  }
+  sortSel.onchange = () => {
+    sortMode = sortSel.value;
+    shown = feedFor(timeFrame);
+    renderList();
+  };
+  fw.appendChild(sortSel);
   if (!clicked || shown.length > 1) {
     // Freetext search sits with the airfield dropdown; it renders even for a
     // single-airfield feed (the dropdown alone used to gate the whole row) --
     // but not for a single-NOTAM view (a map click), where there is nothing
     // to narrow.
-    const fw = document.createElement('div');
-    fw.className = 'notam-filter';
     const find = document.createElement('input');
     find.type = 'search';
     find.className = 'notam-find'; find.dir = 'auto';
@@ -5162,7 +5325,7 @@ function showNotamModal(only, opts) {
       const cnt = shown.filter(n => String(n.icao || '').toUpperCase() === c).length;
       const o = document.createElement('option');
       o.value = c;
-      o.textContent = (c === 'LLLL' ? (S.notamFilterGlobal || 'Global (FIR)') : c)
+      o.textContent = (c === 'LLLL' ? (S.notamFilterGlobal || 'Global (FIR)') : notamAirfieldLabel(c))
         + ' (' + cnt + ')';
       sel.appendChild(o);
     }
@@ -5171,8 +5334,8 @@ function showNotamModal(only, opts) {
     sel.onchange = () => { filterIcao = sel.value; renderList(); };
     fw.appendChild(sel);
     }
-    box.appendChild(fw);
   }
+  box.appendChild(fw);
   rawBtn.onclick = () => {
     rawMode = !rawMode;
     rawBtn.textContent = rawMode ? (S.notamDecoded || 'Decoded') : (S.notamRaw || 'Raw');
@@ -5184,12 +5347,36 @@ function showNotamModal(only, opts) {
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);
-  // Lock the modal's height (capped to the viewport) so filtering doesn't
-  // resize it AND the list scrolls inside instead of overflowing the screen —
-  // a long single-airfield list (e.g. LLBG) stays fully scrollable.
-  const hCap = Math.round(window.innerHeight * 0.84);
-  box.style.height = Math.min(box.offsetHeight, hCap) + 'px';
-  const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
+  // Give the sheet an explicit width AND height. Content changes (future
+  // checkbox, search, ICAO filter) then affect only the scrollable list, not
+  // the window around it. Native CSS resize lets the pilot choose a size; the
+  // device-local dimensions are restored next time and clamped to this screen.
+  const widthCap = Math.max(240, Math.round(window.innerWidth * 0.92));
+  const heightCap = Math.max(180, Math.round(window.innerHeight * 0.84));
+  const savedSize = storedNotamModalSize();
+  box.style.width = Math.min(savedSize ? Math.max(240, savedSize.w) : box.offsetWidth, widthCap) + 'px';
+  box.style.height = Math.min(savedSize ? Math.max(180, savedSize.h) : box.offsetHeight, heightCap) + 'px';
+  const saveSize = () => {
+    if (!box.isConnected) return;
+    try {
+      localStorage.setItem(NOTAM_MODAL_SIZE_KEY, JSON.stringify({
+        w: Math.round(box.offsetWidth), h: Math.round(box.offsetHeight),
+      }));
+    } catch (e) { /* storage unavailable */ }
+  };
+  let sizeSaveTimer = null;
+  const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+    clearTimeout(sizeSaveTimer);
+    sizeSaveTimer = setTimeout(saveSize, 120);
+  }) : null;
+  if (sizeObserver) sizeObserver.observe(box);
+  const dismiss = () => {
+    clearTimeout(sizeSaveTimer);
+    saveSize();
+    if (sizeObserver) sizeObserver.disconnect();
+    back.remove();
+    document.removeEventListener('keydown', onKey);
+  };
   // Let closeOpenChartModals() (other charts opening) close this one too.
   back._navaidClose = dismiss;
   // Escape closes THIS modal and stops there. Without the stopPropagation the same keypress
