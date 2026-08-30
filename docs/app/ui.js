@@ -4591,10 +4591,32 @@ if (windDepartSlider) {
     velocityPatched = true;
   }
 
+  // leaflet-velocity's bundled CanvasLayer assumes its pane lives under mapPane and moves
+  // the canvas by containerPointToLayerPoint([0, 0]) after every pan. Our wind pane is a
+  // direct child of the map container because the field itself is already calculated in
+  // container/screen coordinates. Keep that one canvas at the container origin; otherwise
+  // it is shifted by a map/tile transform and can also provoke a blank composited tile strip.
+  function patchVelocityCanvasPosition() {
+    const proto = (typeof L !== 'undefined' && L.CanvasLayer && L.CanvasLayer.prototype) || null;
+    if (!proto || proto._navaidScreenFixedMovePatched || typeof proto._onLayerDidMove !== 'function') return;
+    const originalMove = proto._onLayerDidMove;
+    proto._onLayerDidMove = function () {
+      const windPane = this._map && this._map.getPane && this._map.getPane('windfield');
+      if (windPane && this.options && this.options.pane === windPane) {
+        if (this._canvas) L.DomUtil.setPosition(this._canvas, L.point(0, 0));
+        this.drawLayer();
+        return;
+      }
+      return originalMove.apply(this, arguments);
+    };
+    proto._navaidScreenFixedMovePatched = true;
+  }
+
   // Create (or recreate) the velocity layer from the current store + bearing.
   function buildLayer() {
     if (!store) return;
     patchVelocityScale();
+    patchVelocityCanvasPosition();
     if (layer) { map.removeLayer(layer); layer = null; }
     layer = L.velocityLayer({
       displayValues: false,

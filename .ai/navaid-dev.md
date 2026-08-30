@@ -786,7 +786,10 @@ as a machine-readable registry.
   View/Set beside the layer picker; `defaultBaseLayer` seeds it.
 - `navaid.showWind` — `'0'` / `'1'` for wind inputs, arrows, and readout.
 - `navaid.windField`, `navaid.windFieldAlt`, `navaid.windFieldOpacity`, and
-  `navaid.wxTime` — wind-field visibility and device-local forecast scrub state.
+  `navaid.wxTime` — wind-field visibility and device-local forecast scrub state. The
+  leaflet-velocity canvas is a direct child of the map container, not `mapPane`: its vectors
+  are already calculated in screen coordinates, and keeping the animated canvas outside the
+  transformed tile panes prevents pan/rotation offsets and blank composited tile columns.
 - `navaid.showSigmet` — `'0'` / `'1'` for the SIGMET overlay.
 - `navaid.showVorStations` — `'0'` / `'1'` for VOR/DME station markers.
 - `navaid.showVor` — legacy VOR marker key, migrated once to
