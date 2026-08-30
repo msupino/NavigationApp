@@ -5028,6 +5028,18 @@ function notamRelevantTime(n, now) {
   if (Number.isFinite(start)) return start;
   return Infinity;
 }
+function notamAirfieldLabel(code) {
+  const icao = String(code || '').trim().toUpperCase();
+  if (!icao) return '';
+  if (icao === 'LLLL') return icao + ' — ' + (S.notamFilterGlobal || 'Global (FIR)');
+  const airfield = typeof airfieldByIcao === 'function' ? airfieldByIcao(icao) : null;
+  if (!airfield) return icao;
+  const preferHebrew = S.airfieldLabelField === 'he';
+  const name = preferHebrew
+    ? (airfield.he || airfield.en)
+    : (airfield.en || airfield.he);
+  return name ? icao + ' — ' + name : icao;
+}
 function sortNotamsForFlight(items, mode) {
   const route = notamSortRoute();
   const endpointNames = new Set();
@@ -5117,7 +5129,7 @@ function showNotamModal(only, opts) {
   // (FIR-wide / mixed). Updates when the filter narrows the list.
   const updateTitle = (subset) => {
     const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
-    const scope = ic.length === 1 ? ic[0] : 'LLLL';
+    const scope = ic.length === 1 ? notamAirfieldLabel(ic[0]) : 'LLLL';
     h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length;
   };
   updateTitle(shown);
@@ -5162,7 +5174,8 @@ function showNotamModal(only, opts) {
   const notamHay = (n) => {
     if (!_hayCache.has(n)) {
       const dec = (typeof decodeNotam === 'function') ? decodeNotam(n) : '';
-      _hayCache.set(n, ((n.id || '') + ' ' + (n.icao || '') + ' ' + (n.text || '') + ' ' + dec).toUpperCase());
+      _hayCache.set(n, ((n.id || '') + ' ' + notamAirfieldLabel(n.icao) + ' ' +
+        (n.text || '') + ' ' + dec).toUpperCase());
     }
     return _hayCache.get(n);
   };
@@ -5304,7 +5317,7 @@ function showNotamModal(only, opts) {
       const cnt = shown.filter(n => String(n.icao || '').toUpperCase() === c).length;
       const o = document.createElement('option');
       o.value = c;
-      o.textContent = (c === 'LLLL' ? (S.notamFilterGlobal || 'Global (FIR)') : c)
+      o.textContent = (c === 'LLLL' ? (S.notamFilterGlobal || 'Global (FIR)') : notamAirfieldLabel(c))
         + ' (' + cnt + ')';
       sel.appendChild(o);
     }

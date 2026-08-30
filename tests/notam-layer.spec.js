@@ -18,10 +18,10 @@ const DATA = {
   ],
 };
 
-async function boot(page, body) {
+async function boot(page, body, lang = 'en') {
   await page.route(NOTAM_RE, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body || DATA) }));
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.sec.charts', '1'); } catch (e) {} });
-  await page.goto('?lang=en');
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() => typeof draw === 'function' && document.getElementById('notam-cb'));
 }
 
@@ -363,8 +363,9 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await sel.selectOption('LLBG');
   await expect(modal.locator('.notam-item')).toHaveCount(1);
   await expect(modal).toContainText('Ben Gurion');
-  // Title scope follows the filter (airfield code, not LLLL).
-  await expect(modal.locator('h3')).toContainText('(LLBG)');
+  // Title and option identify the airfield, not just its ICAO code.
+  await expect(sel.locator('option[value="LLBG"]')).toContainText('LLBG — Tel Aviv / Ben Gurion');
+  await expect(modal.locator('h3')).toContainText('LLBG — Tel Aviv / Ben Gurion');
   expect(await modal.evaluate(el => Math.round(el.getBoundingClientRect().height))).toBe(modalH);
   // Globals only.
   await sel.selectOption('LLLL');
@@ -372,6 +373,25 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   // Back to all.
   await sel.selectOption('');
   await expect(modal.locator('.notam-item')).toHaveCount(4);
+});
+
+test('NOTAM airfield title, filter, and search use the localized airfield name', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'C1590/26', icao: 'LLRS', end: '', geom: null, text: 'DEPARTING VIA TYONA.' },
+    { id: 'A0001/26', icao: 'LLLL', end: '', geom: null, text: 'FIR WIDE.' },
+  ] }, 'he');
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.some(a => a.name === 'LLRS'));
+  await page.locator('#notam-list-btn').click();
+  const modal = page.locator('.notam-modal');
+  const filter = modal.locator('.notam-filter-sel');
+  await expect(filter.locator('option[value="LLRS"]')).toContainText('LLRS — ראשון לציון');
+  await filter.selectOption('LLRS');
+  await expect(modal.locator('h3')).toContainText('LLRS — ראשון לציון');
+  await filter.selectOption('');
+  await modal.locator('.notam-find').fill('ראשון לציון');
+  await expect(modal.locator('.notam-item')).toHaveCount(1);
+  await expect(modal).toContainText('C1590/26');
 });
 
 test('NOTAM time-slider label matches the unified look-ahead format', async ({ page }) => {

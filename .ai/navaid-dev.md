@@ -735,6 +735,11 @@ as a machine-readable registry.
   ICAO filtering, chart filtering, and the active/all choice do not change. A
   selector in every NOTAM sheet can instead order the current result by natural
   NOTAM number, start time, or end time; relevance is the default.
+  A single-airfield sheet title and each aerodrome filter option show the ICAO
+  code plus the localized name from `airfields.json` (for example,
+  `LLRS — Rishon LeZion` / `LLRS — ראשון לציון`). Unknown codes remain
+  ICAO-only, while `LLLL` keeps its FIR-wide label. Airfield names are also
+  included in the sheet's text search.
 - `navaid.showReporting` — `'0'` / `'1'` for mandatory-reporting badges.
 - `navaid.showMsa` — `'0'` / `'1'` for the leg-inspector MSA row.
 - `navaid.showAirspace` — `'0'` / `'1'` for the AIP airspace layer (prohibited,
