@@ -7973,12 +7973,24 @@ function refreshMapAfterToolbarModeChange() {
   // Mobile / floating toolbar: close the open section on a tap outside it.
   // Uses 'click' (not pointerdown) because on touch devices Leaflet's map can
   // swallow the pointer event before it bubbles to document — the same 'click'
-  // path that dismisses the inspector, so it fires reliably on a real tap.
+  // path that dismisses the inspector.
   document.addEventListener('click', e => {
     if (toolbarUsesDesktopMenu()) return;
     if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
     if (anySectionOpen()) window.closeToolbarMenus();
   });
+  // ...but the document 'click' above is exactly what Leaflet swallows on a real
+  // touch: it synthesises the map tap and the native click never reaches document,
+  // so tapping the map left the menu open on a phone. Hook Leaflet's OWN map event,
+  // which always fires, and close on the press so any map interaction -- a tap to add
+  // a point, or the start of a pan -- dismisses an open menu. Desktop is already
+  // handled by the pointerdown listener above, so this is mobile-only.
+  if (typeof map !== 'undefined' && map && typeof map.on === 'function') {
+    map.on('mousedown', () => {
+      if (toolbarUsesDesktopMenu()) return;
+      if (anySectionOpen()) window.closeToolbarMenus();
+    });
+  }
   document.addEventListener('keydown', e => {
     if (toolbarUsesDesktopMenu() && e.key === 'Escape') closeDesktopMenus();
   });
