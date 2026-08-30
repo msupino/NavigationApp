@@ -89,6 +89,33 @@ test.describe('Base map tile hosts', () => {
     });
   });
 
+  test('chart coverage does not render failed tile columns as pale bands', async ({ page }) => {
+    await boot(page);
+    const result = await page.evaluate(() => {
+      const layer = layers.CVFR;
+      const coords = (x, y) => Object.assign(L.point(x, y), { z: 8 });
+      const failedTile = document.createElement('img');
+      layer._tileOnError(() => {}, failedTile, new Event('error'));
+      return {
+        westOutside: layer._isValidTile(coords(151, 103)),
+        westInside: layer._isValidTile(coords(152, 103)),
+        eastInside: layer._isValidTile(coords(153, 103)),
+        eastOutside: layer._isValidTile(coords(154, 103)),
+        noWrap: layer.options.noWrap,
+        failedTileUrl: failedTile.src,
+      };
+    });
+
+    expect(result).toEqual({
+      westOutside: false,
+      westInside: true,
+      eastInside: true,
+      eastOutside: false,
+      noWrap: true,
+      failedTileUrl: expect.stringMatching(/^data:image\/png;base64,/),
+    });
+  });
+
   test('export tile fetch uses hosted mirror instead of live Flight Maps', async ({ page }) => {
     let liveHits = 0;
     let exportHits = 0;
