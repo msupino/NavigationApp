@@ -122,6 +122,50 @@ test('NOTAM list button reveals when data loads and lists all NOTAMs', async ({ 
   await expect(page.locator('.modal-back .notam-modal')).toHaveCount(0);
 });
 
+test('NOTAM sheet sorts route hazards, endpoint fields, FIR-wide notices, then others', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'O1/26', icao: 'LLBG', end: '2035-01-01T00:00:00Z', geom: null,
+      text: 'OTHER AIRFIELD' },
+    { id: 'G1/26', icao: 'LLLL', end: '2034-01-01T00:00:00Z', geom: null,
+      text: 'FIR WIDE' },
+    { id: 'E1/26', icao: 'LLHZ', end: '2033-01-01T00:00:00Z', geom: null,
+      text: 'DEPARTURE FIELD' },
+    { id: 'D1/26', icao: 'LLHA', end: '2032-06-01T00:00:00Z', geom: null,
+      text: 'DESTINATION FIELD' },
+    { id: 'R2/26', icao: 'LLLL', end: '2032-01-01T00:00:00Z',
+      geom: { type: 'circle', lat: 32, lng: 34.9, radiusNm: 2 }, text: 'ROUTE CIRCLE' },
+    { id: 'R1/26', icao: 'LLLL', end: '2031-01-01T00:00:00Z',
+      geom: { type: 'polygon', coords: [[31.99, 34.79], [32.01, 34.79], [32.01, 34.81], [31.99, 34.81]] },
+      text: 'ROUTE POLYGON' },
+  ] });
+  await page.evaluate(() => {
+    state.waypoints = [
+      { name: 'LLHZ', lat: 32, lng: 34.7 },
+      { name: 'LLHA', lat: 32, lng: 35.1 },
+    ];
+  });
+  await page.locator('#notam-list-btn').click();
+  const ids = await page.locator('.notam-modal .notam-id').allTextContents();
+  expect(ids.map(value => value.split('·')[0].trim())).toEqual([
+    'R1/26', 'R2/26', 'D1/26', 'E1/26', 'G1/26', 'O1/26',
+  ]);
+  const sort = page.locator('.notam-modal .notam-sort-sel');
+  await expect(sort).toHaveValue('relevance');
+  await sort.selectOption('number');
+  expect((await page.locator('.notam-modal .notam-id').allTextContents())
+    .map(value => value.split('·')[0].trim())).toEqual([
+    'D1/26', 'E1/26', 'G1/26', 'O1/26', 'R1/26', 'R2/26',
+  ]);
+  await sort.selectOption('end');
+  expect((await page.locator('.notam-modal .notam-id').allTextContents())
+    .map(value => value.split('·')[0].trim())).toEqual([
+    'R1/26', 'R2/26', 'D1/26', 'E1/26', 'G1/26', 'O1/26',
+  ]);
+  await page.locator('.notam-modal .modal-close-x').click();
+  await page.evaluate(() => showNotamModal([notams[0]]));
+  await expect(page.locator('.notam-modal .notam-sort-sel')).toBeVisible();
+});
+
 test('toggling the overlay loads NOTAMs and draws without error', async ({ page }) => {
   await boot(page);
   await page.locator('#notam-cb').check();
