@@ -728,6 +728,11 @@ as a machine-readable registry.
   its default-off **Include not yet active** checkbox and access to the full
   feed, including when the selected airfield currently has no active entry. The
   choice is transient and adds no `localStorage` key.
+- The NOTAM sheet orders its current result for flight planning: notices whose
+  explicit map geometry intersects the planned route first, then departure and
+  destination airfield notices, FIR-wide (`LLLL`) notices, and other airfields.
+  Within each group, the next relevant start or end time comes first. Search,
+  ICAO filtering, chart filtering, and the active/all choice do not change.
 - `navaid.showReporting` — `'0'` / `'1'` for mandatory-reporting badges.
 - `navaid.showMsa` — `'0'` / `'1'` for the leg-inspector MSA row.
 - `navaid.showAirspace` — `'0'` / `'1'` for the AIP airspace layer (prohibited,
