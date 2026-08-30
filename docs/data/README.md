@@ -15,7 +15,7 @@ without archaeology. `scripts/aip-drift.py` answers the same question for the ch
 | `ifr-overlays.json` | AIP instrument charts, georeferenced by `scripts/build-ifr-overlays.py` | AIP packs of May 2026 |
 | `lsa-areas.json` | LSA bubble polygons + altitude bands from the Low Alt chart legend | chart legend |
 | `notam-borders.json` | geoBoundaries gbOpen ADM0, Israel-side arcs per neighbour | gbOpen |
-| `notam.json` · `wx.json` · `sigmet.json` | Live feeds (autorouter/EAD, NOAA AWC), refreshed by workflow into their own branches | continuous |
+| `notam.json` · `wx.json` · `sigmet.json` | Live feeds (IAA Mobile AeroInfo, NOAA AWC), refreshed by workflow into their own branches | continuous |
 | `plate-titles.json` | Designations read from the CAA's AIP index by `scripts/aip-plate-titles.mjs` | refreshed daily |
 | `route-templates.json` | In-repo, hand-maintained | — |
 | `terrain.json` | SRTM elevation grid, downsampled for MSA / terrain tint | SRTM v3 |
