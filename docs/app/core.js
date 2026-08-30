@@ -4250,13 +4250,14 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 // to mapPane and are skipped by rotation. Force into rotatePane when available.
 map.createPane('basemapUnderlay', map._rotatePane || undefined);
 map.getPane('basemapUnderlay').style.zIndex = 150;        // below tilePane (200)
-// Wind-field (leaflet-velocity) pane: deliberately NOT in the rotate pane.
-// leaflet-velocity draws in bearing-aware container (screen) coordinates, so
-// its canvas must stay screen-aligned; putting it in the rotate pane would
-// transform it a second time and break the field on a rotated map. A plain
-// mapPane child is never rotated. zIndex sits above the chart tiles (rotatePane
-// is 400) but below the app's own #overlay route canvas.
-map.createPane('windfield');
+// Wind-field (leaflet-velocity) pane: deliberately outside mapPane and its rotatePane.
+// leaflet-velocity draws in bearing-aware container (screen) coordinates, so its canvas
+// must stay screen-aligned. A mapPane child is not rotated, but it is still translated and
+// composited with the tile panes during pans; Safari/Chromium could then leave an entire
+// underlying tile column blank until the animated canvas was removed. A direct map-container
+// child has exactly the coordinate system the library draws in. ui.js keeps its canvas at 0,0.
+// zIndex sits above the chart tiles but below the app controls.
+map.createPane('windfield', map.getContainer());
 map.getPane('windfield').style.zIndex = 410;
 // What sits UNDER the chart. It was always OSM, to fill in around the FIR-only charts. Any
 // chart can take that place now -- "ATS over CVFR" and "ATS over Satellite" are the two the

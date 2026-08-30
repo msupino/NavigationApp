@@ -63,6 +63,15 @@ html.app-booting .leaflet-control-container { visibility: hidden; }
 
 .leaflet-container { background: #e7ebf0; }   /* same in light + dark — see #map */
 
+/* The animated wind field is a screen-fixed canvas over the chart. Keep the pane and canvas
+   explicitly transparent and non-interactive: they must never become a painted map backdrop
+   or intercept a map gesture while the particles animate. */
+.leaflet-windfield-pane,
+.leaflet-windfield-pane canvas {
+  background: transparent;
+  pointer-events: none;
+}
+
 #toolbar {
   position: absolute;
   z-index: 1100;
