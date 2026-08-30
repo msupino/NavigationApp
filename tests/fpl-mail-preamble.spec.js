@@ -41,8 +41,8 @@ test('Hebrew session: preamble in Hebrew, plan block still English', async ({ pa
 
 test('filed mail ends with localized NavAid attribution outside the ICAO block', async ({ page }) => {
   for (const [lang, lead] of [
-    ['en', 'Created using NavAid — comments and feedback:'],
-    ['he', 'נוצר באמצעות NavAid — הערות ומשוב:'],
+    ['en', 'Created using NavAid — https://navaid.supino.org — comments and feedback:'],
+    ['he', 'נוצר באמצעות NavAid — https://navaid.supino.org — הערות ומשוב:'],
   ]) {
     await boot(page, lang);
     const url = await page.evaluate(r => fplMailtoUrl({
@@ -50,7 +50,7 @@ test('filed mail ends with localized NavAid attribution outside the ICAO block',
     }, { reg: '4XDAZ', depTimeLocal: '11:05' }), RES);
     const body = new URL(url).searchParams.get('body');
     expect(body).toContain(RES.text);
-    expect(body).toContain(lead + ' marco@supino.org');
+    expect(body).toContain(lead + ' navaid@supino.org');
     expect(body.indexOf(RES.text)).toBeLessThan(body.indexOf(lead));
   }
 });

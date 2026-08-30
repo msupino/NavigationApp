@@ -1172,10 +1172,12 @@ function fplIsPublishedAddress(addr, kind) {
 // Conservative: one address, no display name, no separators. Anything else could smuggle
 // extra mailto headers (a "?bcc=" tail) into the URL built from this field.
 const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-const FPL_ATTRIBUTION_EMAIL = 'marco@supino.org';
+const FPL_ATTRIBUTION_URL = 'https://navaid.supino.org';
+const FPL_ATTRIBUTION_EMAIL = 'navaid@supino.org';
 function fplAttributionText() {
-  return (S.fplAttribution || 'Created using NavAid — comments and feedback:') +
-    ' ' + FPL_ATTRIBUTION_EMAIL;
+  return (S.fplAttribution || 'Created using NavAid') + ' — ' +
+    FPL_ATTRIBUTION_URL + ' — ' +
+    (S.fplFeedback || 'comments and feedback:') + ' ' + FPL_ATTRIBUTION_EMAIL;
 }
 // Encode for a mailto URL, but leave the @ readable: percent-encoding it made some
 // clients show a mangled recipient, while ?, & and spaces must not survive.
@@ -10735,10 +10737,14 @@ function showFplXcForm(opts) {
   const attribution = document.createElement('div');
   attribution.className = 'xc-navaid-foot';
   const attributionLead = document.createElement('span');
-  attributionLead.textContent = (S.fplAttribution || 'Created using NavAid — comments and feedback:') + ' ';
+  attributionLead.textContent = (S.fplAttribution || 'Created using NavAid') + ' — ';
+  const attributionUrl = document.createElement('bdi');
+  attributionUrl.textContent = FPL_ATTRIBUTION_URL;
+  const attributionFeedback = document.createElement('span');
+  attributionFeedback.textContent = ' — ' + (S.fplFeedback || 'comments and feedback:') + ' ';
   const attributionAddress = document.createElement('bdi');
   attributionAddress.textContent = FPL_ATTRIBUTION_EMAIL;
-  attribution.append(attributionLead, attributionAddress);
+  attribution.append(attributionLead, attributionUrl, attributionFeedback, attributionAddress);
 
   // --- controls (screen only) ------------------------------------------
   const btns = document.createElement('div');

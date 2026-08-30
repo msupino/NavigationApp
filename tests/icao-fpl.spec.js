@@ -2103,7 +2103,8 @@ test('the printable cross-country form identifies NavAid and its feedback addres
   await page.evaluate(() => showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' }));
   const attribution = page.locator('.xc-navaid-foot');
   await expect(attribution).toContainText('Created using NavAid');
-  await expect(attribution).toContainText('marco@supino.org');
+  await expect(attribution).toContainText('https://navaid.supino.org');
+  await expect(attribution).toContainText('navaid@supino.org');
   await page.emulateMedia({ media: 'print' });
   await page.evaluate(() => document.body.classList.add('printing-xc'));
   await expect(attribution).toBeVisible();
