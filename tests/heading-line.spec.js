@@ -372,3 +372,55 @@ test('distance and time marks are drawn in different colours', async ({ page }) 
   expect(min.color.toLowerCase()).toBe(want.min.toLowerCase());
   expect(want.nm.toLowerCase()).not.toBe(want.min.toLowerCase());
 });
+
+test('GPS course jitter on a straight track does not curve the predictor', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    resetHeadingPredictor();
+    // Flying straight east at 100 kt, one fix a second. GPS *course* wanders a few tenths
+    // of a degree each fix -- ordinary receiver noise, not a turn. A two-point estimate
+    // reads the last wobble (89.7 -> 90.3 in 1 s = 0.6 deg/s) as a turn; the window must not.
+    setTune('livePredictorTurnMinDegSec', 0.25);   // the OLD low floor, so only the maths saves it
+    setTune('livePredictorTurnSmoothing', 0.5);
+    const now = Date.now();
+    // Six seconds of dead-straight east, then ONE noisy fix a degree off. A two-point
+    // estimate reads that last fix as a 1 deg/s turn; the window sees one outlier among
+    // six flat samples and keeps the line straight.
+    const jitter = [90, 90, 90, 90, 90, 90, 91];
+    let last = null;
+    jitter.forEach((h, i) => {
+      const t = now - (jitter.length - 1 - i) * 1000;
+      drawHeadingLine({ lat: 32.1, lng: 34.9, t }, h, 100,
+        { trackKey: 'jit', sampleTime: t, receivedAt: t });
+      last = window.__headingLine;
+    });
+    return { curved: last.curved, turnRate: last.turnRate };
+  });
+  expect(out.curved).toBe(false);                 // straight, despite the last two fixes differing
+  expect(Math.abs(out.turnRate || 0)).toBeLessThan(0.25);
+});
+
+test('a steady turn buried in course jitter is still measured', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    resetHeadingPredictor();
+    setTune('livePredictorTurnMinDegSec', 0.25);
+    setTune('livePredictorTurnSmoothing', 0.5);
+    const now = Date.now();
+    // A real 2 deg/s right turn, each fix nudged by GPS noise. The slope survives; the noise
+    // averages out.
+    const wobble = [0.3, -0.2, 0.25, -0.15, 0.2, -0.1, 0.15];
+    let last = null;
+    wobble.forEach((w, i) => {
+      const t = now - (wobble.length - 1 - i) * 1000;
+      const h = ((i * 2 + w) % 360 + 360) % 360;   // ramp 0,2,4,… plus wobble
+      drawHeadingLine({ lat: 32.1, lng: 34.9, t }, h, 120,
+        { trackKey: 'turn', sampleTime: t, receivedAt: t });
+      last = window.__headingLine;
+    });
+    return { curved: last.curved, turnRate: last.turnRate };
+  });
+  expect(out.curved).toBe(true);
+  expect(out.turnRate).toBeGreaterThan(1.5);
+  expect(out.turnRate).toBeLessThan(2.5);         // ~2 deg/s, not thrown off by the wobble
+});
