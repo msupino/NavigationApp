@@ -470,6 +470,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   and delete buttons. The Nav log button opens a print-ready kneeboard
   document; its comm-change radio-frequency list is sorted by route waypoint
   order, not by note insertion order.
+- **Filed-plan attribution:** the ICAO filing email ends with a localized
+  `Created using NavAid` footer with `https://navaid.supino.org` and
+  `navaid@supino.org`, after (never inside) the machine-readable `(FPL-...)`
+  block. The printable cross-country authority form carries the same localized
+  attribution below its official revision footer.
 - **Vertical profile / TOC (there is no TOD):** `routeProfile()` in `core.js`
   draws per-leg altitude ramps in the flight-plan modal and emits map markers
   while the plan is open. The only ramp is the departure climb — that is where
