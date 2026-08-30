@@ -39,6 +39,22 @@ test('Hebrew session: preamble in Hebrew, plan block still English', async ({ pa
   expect(body).not.toMatch(/\(FPL-[^)]*[֐-׿]/);   // no Hebrew inside the block
 });
 
+test('filed mail ends with localized NavAid attribution outside the ICAO block', async ({ page }) => {
+  for (const [lang, lead] of [
+    ['en', 'Created using NavAid — comments and feedback:'],
+    ['he', 'נוצר באמצעות NavAid — הערות ומשוב:'],
+  ]) {
+    await boot(page, lang);
+    const url = await page.evaluate(r => fplMailtoUrl({
+      ...r, to: 'ais@iaa.gov.il', dof: '260805',
+    }, { reg: '4XDAZ', depTimeLocal: '11:05' }), RES);
+    const body = new URL(url).searchParams.get('body');
+    expect(body).toContain(RES.text);
+    expect(body).toContain(lead + ' marco@supino.org');
+    expect(body.indexOf(RES.text)).toBeLessThan(body.indexOf(lead));
+  }
+});
+
 test('arrival is departure plus EET, and wraps past midnight', async ({ page }) => {
   await boot(page, 'en');
   const out = await page.evaluate(() => ({

@@ -6511,6 +6511,12 @@ body.theme-light .xc-input.xc-rw { background: #fff; border-color: #c9c4c4; }
 @media (min-width: 420px) {
   .xc-foot { justify-content: space-between; }   /* as printed, once there is room */
 }
+.xc-navaid-foot {
+  margin-top: 5px;
+  text-align: center;
+  font-size: 10px;
+  color: #9a9494;
+}
 
 body.theme-light .xc-input {
   color: #1c1a1a;
@@ -6521,6 +6527,7 @@ body.theme-light .xc-t th,
 body.theme-light .xc-t td,
 body.theme-light .xc-foot,
 body.theme-light .xc-sig-pad { border-color: #8f8a8a; }
+body.theme-light .xc-navaid-foot { color: #5f6670; }
 
 /* Print: the sheet only, on white, with the field values as printed text. */
 @media print {
@@ -6576,6 +6583,7 @@ body.theme-light .xc-sig-pad { border-color: #8f8a8a; }
   body.printing-xc .xc-sigs,
   body.printing-xc .xc-foot,
   body.printing-xc .xc-t th { color: #111; }
+  body.printing-xc .xc-navaid-foot { color: #111; }
   body.printing-xc .xc-t th,
   body.printing-xc .xc-t td,
   body.printing-xc .xc-foot { border-color: #111; }

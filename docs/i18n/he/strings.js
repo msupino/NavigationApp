@@ -515,6 +515,7 @@ window.S = {
   fplCopy: 'העתק',
   fplCopied: 'תוכנית הטיסה הועתקה.',
   fplOpenMail: 'הגש תוכנית טיסה',
+  fplAttribution: 'נוצר באמצעות NavAid — הערות ומשוב:',
   fplNext: 'המשך',
   fplBack: 'חזור',
   fplMailNote: 'ייפתח הדואל שלך עם התוכנית מוכנה לשליחה. השליחה נעשית על ידך, והאישור חוזר אליך.',

@@ -1172,6 +1172,11 @@ function fplIsPublishedAddress(addr, kind) {
 // Conservative: one address, no display name, no separators. Anything else could smuggle
 // extra mailto headers (a "?bcc=" tail) into the URL built from this field.
 const FPL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+const FPL_ATTRIBUTION_EMAIL = 'marco@supino.org';
+function fplAttributionText() {
+  return (S.fplAttribution || 'Created using NavAid — comments and feedback:') +
+    ' ' + FPL_ATTRIBUTION_EMAIL;
+}
 // Encode for a mailto URL, but leave the @ readable: percent-encoding it made some
 // clients show a mangled recipient, while ?, & and spaces must not survive.
 // Builds the mailto URL for a plan. `replyTo` is the pilot's own address: on a borrowed
@@ -1233,8 +1238,12 @@ function fplMailtoUrl(res, opts) {
   const dep = String(o.depTimeLocal || '').trim();
   const subject = 'FPL ' + (o.reg ? fplRegistration(o.reg) + ' ' : '') +
     res.dep + '-' + res.dest + ' ' + res.dof + (dep ? ' ' + dep : '');
+  // Attribution stays outside the machine-readable (FPL-...) block. AIS can
+  // parse the exact ICAO payload while a human recipient still knows which
+  // tool produced the mail and where to send feedback.
+  const body = fplMailPreamble(res, o) + res.text + '\n\n' + fplAttributionText();
   const q = ['subject=' + encodeURIComponent(subject),
-    'body=' + encodeURIComponent(fplMailPreamble(res, o) + res.text)];
+    'body=' + encodeURIComponent(body)];
   const reply = String(o.replyTo || '').trim();
   if (reply && FPL_EMAIL_RE.test(reply)) {
     q.push('cc=' + fplMailtoAddress(reply));
@@ -10723,6 +10732,13 @@ function showFplXcForm(opts) {
     d.textContent = t;
     footer.appendChild(d);
   }
+  const attribution = document.createElement('div');
+  attribution.className = 'xc-navaid-foot';
+  const attributionLead = document.createElement('span');
+  attributionLead.textContent = (S.fplAttribution || 'Created using NavAid — comments and feedback:') + ' ';
+  const attributionAddress = document.createElement('bdi');
+  attributionAddress.textContent = FPL_ATTRIBUTION_EMAIL;
+  attribution.append(attributionLead, attributionAddress);
 
   // --- controls (screen only) ------------------------------------------
   const btns = document.createElement('div');
@@ -10821,7 +10837,7 @@ function showFplXcForm(opts) {
   addModalCloseX(box, close);
 
   box.append(header, legend, dateLine, scrollWrap(t1), scrollWrap(t2), scrollWrap(t3),
-    lines, sigs, footer);
+    lines, sigs, footer, attribution);
   if (recipientNote) box.appendChild(recipientNote);
   box.appendChild(btns);
   back.appendChild(box);
