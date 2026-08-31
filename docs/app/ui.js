@@ -6421,14 +6421,22 @@ if (airmetCb) {
 if (typeof loadAirmets === 'function') {
   loadAirmets().then(() => {
     refreshAirmetGroup();
+    if (typeof refreshAirmetBtn === 'function') refreshAirmetBtn();
     if (window.showAirmet) draw();
   });
 }
 window.refreshAirmetGroup = refreshAirmetGroup;
-const airmetListBtn = document.getElementById('airmet-list-btn');
-if (airmetListBtn) {
-  airmetListBtn.onclick = () => { if (typeof showAirmetDecoded === 'function') showAirmetDecoded(); };
+// The decoded-text list lives in Charts, beside the SIGMET button, and appears only when an
+// AIRMET is active -- the same pattern SIGMET uses. refreshAirmetGroup already tracks the
+// Extra-layers toggle group; this tracks the Charts button.
+const airmetBtn = document.getElementById('airmet-btn');
+function refreshAirmetBtn() {
+  if (airmetBtn) airmetBtn.hidden = !(Array.isArray(window.airmets) && window.airmets.length > 0);
 }
+if (airmetBtn) {
+  airmetBtn.onclick = () => { if (typeof showAirmetDecoded === 'function') showAirmetDecoded(); };
+}
+window.refreshAirmetBtn = refreshAirmetBtn;
 
 // --- LSA airspace bubbles overlay toggle (Extra layers) ------------------
 const LSA_BUBBLES_KEY = 'navaid.showLsaBubbles';
@@ -8057,6 +8065,7 @@ function refreshMapAfterToolbarModeChange() {
       'sigwx-btn',
       'pwx-btn',
       'sigmet-btn',
+      'airmet-btn',
       'notam-list-btn',
       'lsa-list-btn',
       'mosaic-btn',

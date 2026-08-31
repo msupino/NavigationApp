@@ -4548,14 +4548,14 @@ function showSigmetDecoded() {
     const item = document.createElement('div');
     item.dir = 'ltr';                 // SIGMET text is LTR even in Hebrew mode
     item.style.cssText = 'margin:10px 0;padding:8px;border-left:4px solid ' +
-      sigmetHazardColor(s.hazard) + ';background:rgba(255,255,255,0.04);direction:ltr;text-align:left';
+      sigmetHazardColor(s.hazard) + ';direction:ltr;text-align:left';
     const dec = document.createElement('div');
     dec.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px';
     dec.textContent = decodeSigmet(s);
     item.appendChild(dec);
     if (s.raw) {
       const raw = document.createElement('div');
-      raw.style.cssText = 'font:11px/1.4 monospace;color:#b9b3b3;white-space:pre-wrap';
+      raw.style.cssText = 'font:11px/1.4 monospace;opacity:0.7;white-space:pre-wrap';
       raw.textContent = (S.sigmetRaw || 'Raw') + ': ' + s.raw;
       item.appendChild(raw);
     }
@@ -4605,15 +4605,17 @@ function showAirmetDecoded() {
   for (const a of window.airmets) {
     const item = document.createElement('div');
     item.dir = 'ltr';                 // AIRMET text is LTR even in Hebrew mode
-    item.style.cssText = 'margin:10px 0;padding:8px;border-left:4px solid ' + col +
-      ';background:rgba(255,255,255,0.04);direction:ltr;text-align:left';
+    // Inherit the modal's own (theme-aware) text colour; only the hazard bar is coloured.
+    // The earlier hard-coded grey-on-faint-white read as white-on-white in the light theme.
+    item.style.cssText = 'margin:10px 0;padding:8px;border-inline-start:4px solid ' + col +
+      ';direction:ltr;text-align:left';
     const dec = document.createElement('div');
     dec.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px';
     dec.textContent = [String(a.hazard || 'AIRMET'), airmetValidityText(a)].filter(Boolean).join('  \u00b7  ');
     item.appendChild(dec);
     if (a.raw) {
       const raw = document.createElement('div');
-      raw.style.cssText = 'font:11px/1.4 monospace;color:#b9b3b3;white-space:pre-wrap';
+      raw.style.cssText = 'font:11px/1.4 monospace;opacity:0.7;white-space:pre-wrap';
       raw.textContent = (S.airmetRaw || S.sigmetRaw || 'Raw') + ': ' + a.raw;
       item.appendChild(raw);
     }
