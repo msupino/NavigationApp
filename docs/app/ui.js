@@ -4952,7 +4952,13 @@ function syncNotamTime() {
   if (notamTimeVal) notamTimeVal.textContent = notamTimeLabel(h);
 }
 if (notamTimeEl) {
-  notamTimeEl.oninput = () => { syncNotamTime(); refreshNotamListBtn(); draw(); };
+  notamTimeEl.oninput = () => {
+    syncNotamTime(); refreshNotamListBtn();
+    // AIRMET rides the same look-ahead: refresh its count/controls when the slider moves.
+    if (typeof refreshAirmetGroup === 'function') refreshAirmetGroup();
+    if (typeof refreshAirmetBtn === 'function') refreshAirmetBtn();
+    draw();
+  };
   syncNotamTime();
 }
 async function ensureNotams() {

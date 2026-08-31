@@ -216,3 +216,20 @@ test('the AIRMET toggle shows an item count, including (0)', async ({ page }) =>
   await expect(page.locator('#airmet-count')).toHaveText(/\(2\)/);
   await expect(page.locator('#airmet-btn-count')).toHaveText(/\(2\)/);
 });
+
+test('AIRMET rides the look-ahead slider: scrubbing past validTo removes it', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const now = Date.now();
+    window.airmets = [{ hazard: 'MT OBSC',
+      validFrom: new Date(now - 3600e3).toISOString(),        // started an hour ago
+      validTo: new Date(now + 2 * 3600e3).toISOString(),      // valid for 2 more hours
+      coords: [[32, 35], [33, 35], [32, 34]] }];
+    window.showAirmet = true;
+    const at = h => { window.notamViewTime = h ? (now + h * 3600e3) : null; return activeAirmets().length; };
+    return { live: at(0), plus1: at(1), plus3: at(3) };   // 3h ahead is past validTo
+  });
+  expect(out.live).toBe(1);      // in force now
+  expect(out.plus1).toBe(1);     // still in force +1h
+  expect(out.plus3).toBe(0);     // scrubbed past its end -> gone
+});
