@@ -12,6 +12,7 @@ const URL_KEYS = ['routeGraphUrl', 'airfieldsUrl', 'routeTemplatesUrl', 'vorUrl'
 const SAME_IN_BOTH = [
   'choosePointNotam', 'notamInspLabel',        // NOTAM
   'tbSigmet', 'sigmetReadout',                 // SIGMET
+  'tbAirmet',                                  // AIRMET -- an ICAO product name, same word in Hebrew
   'atis', 'wxMetar', 'plateCategoryStar',      // ATIS / METAR / STAR
   // The density-altitude row names where its temperature came from. A METAR is called a
   // METAR in Hebrew too -- the observation type, not a word to translate.

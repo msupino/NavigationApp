@@ -1312,6 +1312,27 @@ async function loadAirmets(force) {
 }
 window.loadAirmets = loadAirmets;
 
+// Which AIRMET areas contain a tapped point, smallest first -- so a tap opens the tightest
+// hazard when they overlap. Mirrors airspaceAtLatLng.
+function airmetsAtLatLng(latlng) {
+  if (!window.showAirmet || !Array.isArray(airmets) || !airmets.length || !latlng) return [];
+  const pt = proj(latlng);
+  const out = [];
+  for (let i = 0; i < airmets.length; i++) {
+    const poly = (airmets[i].coords || []).map(c => proj({ lat: c[0], lng: c[1] }));
+    if (poly.length < 3 || !notamPointInPoly(pt, poly)) continue;
+    let a2 = 0;
+    for (let j = 0; j < poly.length; j++) {
+      const q = poly[(j + 1) % poly.length];
+      a2 += poly[j].x * q.y - q.x * poly[j].y;
+    }
+    out.push({ index: i, size: Math.abs(a2) });
+  }
+  out.sort((x, y) => x.size - y.size);
+  return out.map(h => h.index);
+}
+window.airmetsAtLatLng = airmetsAtLatLng;
+
 // AIRMETs are advisory, lower-severity than SIGMETs, and they all share one look here: a
 // single tunable colour rather than the SIGMET per-hazard palette. The hazard word still
 // labels each area, so an MT OBSC reads differently from an IFR without needing its own hue.
