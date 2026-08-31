@@ -512,38 +512,6 @@
     </div>
 
     <!-- Export / Import: route file operations. -->
-    <div class="tb-section" data-sec="export">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
-      <div class="tb-section-body">
-        <select id="export-select" data-i18n-title="tbExportTitle" data-i18n-aria="tbExportMenu">
-          <option value="" data-i18n="tbExportMenu" selected></option>
-          <option value="json" data-i18n="tbExport"></option>
-          <option value="json-track" data-i18n="tbTrackExport"></option>
-          <option value="gpx" data-i18n="tbGpxExport"></option>
-          <option value="pln" data-i18n="tbPlnExport"></option>
-          <option value="fms" data-i18n="tbFmsExport"></option>
-          <option value="fdr" data-i18n="tbFdrExport"></option>
-        </select>
-        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
-        <button id="route-library" type="button" data-i18n="tbRouteLibrary" data-i18n-title="tbRouteLibraryTitle"></button>
-        <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
-        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
-        <!-- Follow me: a live position link, relayed by a public broker and encrypted before
-             it gets there. Hidden until the gist offers it (featureFollowMe). -->
-        <button id="follow-me" type="button" hidden data-i18n-title="tbFollowMeTitle">
-          <span class="follow-me-button-icon" aria-hidden="true">📡</span>
-          <span class="follow-me-button-label" data-i18n="tbFollowMe"></span>
-        </button>
-        <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
-        <!-- Moved here from the Edit menu: wiping every saved route + setting sat
-             directly beside everyday actions (Undo / Clear / Fit), one slip away.
-             It belongs with the other data-management controls. -->
-        <hr class="tb-danger-sep">
-        <button id="clear-store" type="button" class="danger"
-                data-i18n="tbClearStore" data-i18n-title="tbClearStoreTitle"></button>
-      </div>
-    </div>
-
     <!-- Weather: SIGMET, wind, and the IMS PWX wind/temperature chart overlay. -->
     <div class="tb-section" data-sec="weather">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecWeather"></div>
@@ -752,6 +720,38 @@
         </div>
         </div>
         </div>
+      </div>
+    </div>
+
+    <div class="tb-section" data-sec="export">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
+      <div class="tb-section-body">
+        <select id="export-select" data-i18n-title="tbExportTitle" data-i18n-aria="tbExportMenu">
+          <option value="" data-i18n="tbExportMenu" selected></option>
+          <option value="json" data-i18n="tbExport"></option>
+          <option value="json-track" data-i18n="tbTrackExport"></option>
+          <option value="gpx" data-i18n="tbGpxExport"></option>
+          <option value="pln" data-i18n="tbPlnExport"></option>
+          <option value="fms" data-i18n="tbFmsExport"></option>
+          <option value="fdr" data-i18n="tbFdrExport"></option>
+        </select>
+        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
+        <button id="route-library" type="button" data-i18n="tbRouteLibrary" data-i18n-title="tbRouteLibraryTitle"></button>
+        <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
+        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
+        <!-- Follow me: a live position link, relayed by a public broker and encrypted before
+             it gets there. Hidden until the gist offers it (featureFollowMe). -->
+        <button id="follow-me" type="button" hidden data-i18n-title="tbFollowMeTitle">
+          <span class="follow-me-button-icon" aria-hidden="true">📡</span>
+          <span class="follow-me-button-label" data-i18n="tbFollowMe"></span>
+        </button>
+        <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
+        <!-- Moved here from the Edit menu: wiping every saved route + setting sat
+             directly beside everyday actions (Undo / Clear / Fit), one slip away.
+             It belongs with the other data-management controls. -->
+        <hr class="tb-danger-sep">
+        <button id="clear-store" type="button" class="danger"
+                data-i18n="tbClearStore" data-i18n-title="tbClearStoreTitle"></button>
       </div>
     </div>
 
