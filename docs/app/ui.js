@@ -6448,6 +6448,7 @@ const airmetBtn = document.getElementById('airmet-btn');
 function refreshAirmetBtn() {
   // The list button never disappears either -- it dims when there is nothing to list.
   if (airmetBtn) { airmetBtn.hidden = false; airmetBtn.disabled = !(typeof activeAirmets === 'function' && activeAirmets().length > 0); }
+  setLayerCount('airmet-btn-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
 }
 if (airmetBtn) {
   airmetBtn.onclick = () => { if (typeof showAirmetDecoded === 'function') showAirmetDecoded(); };
