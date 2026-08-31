@@ -2818,6 +2818,34 @@ function appendAirfieldWeather(body, af) {
   body.appendChild(sec);
 
   let showRaw = false, data = null;
+  // AD/WS (aerodrome / wind-shear) warnings for this field, from the IMS feed. Shown in every
+  // branch -- even with no METAR/TAF -- and always present with a "None" line when the field
+  // has none in force, so absence is stated rather than left ambiguous.
+  const appendAdWs = () => {
+    const warns = (typeof airfieldWarningsFor === 'function') ? airfieldWarningsFor(icao) : [];
+    const wrap = document.createElement('div');
+    wrap.className = 'wx-block wx-adws';
+    wrap.dir = 'ltr';
+    const t = document.createElement('span');
+    t.className = 'wx-label';
+    t.textContent = S.wxAdWs || 'AD / WS warnings';
+    wrap.appendChild(t);
+    if (!warns.length) {
+      const none = document.createElement('div');
+      none.className = 'wx-line wx-adws-none';
+      none.dir = 'auto';
+      none.textContent = S.wxAdWsNone || 'None';
+      wrap.appendChild(none);
+    } else {
+      for (const w of warns) {
+        const d = document.createElement('div');
+        d.className = 'wx-line';
+        d.textContent = w.raw || w.product;
+        wrap.appendChild(d);
+      }
+    }
+    bodyEl.appendChild(wrap);
+  };
   const load = (force) => {
     bodyEl.textContent = S.wxLoading || 'Loading…';
     refreshBtn.disabled = true;
@@ -2827,9 +2855,9 @@ function appendAirfieldWeather(body, af) {
   refreshBtn.onclick = () => load(true);
   const render = () => {
     bodyEl.innerHTML = '';
-    if (!data || data.unsupported) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; return; }
-    if (data.error) { bodyEl.textContent = S.wxError || 'Weather unavailable'; return; }
-    if (!data.metar && !data.taf) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; return; }
+    if (!data || data.unsupported) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; appendAdWs(); return; }
+    if (data.error) { bodyEl.textContent = S.wxError || 'Weather unavailable'; appendAdWs(); return; }
+    if (!data.metar && !data.taf) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; appendAdWs(); return; }
     const block = (label, lines) => {
       const b = document.createElement('div');
       b.className = 'wx-block';
@@ -2879,6 +2907,7 @@ function appendAirfieldWeather(body, af) {
         bodyEl.appendChild(age);
       }
     }
+    appendAdWs();
   };
   load(false);
 }

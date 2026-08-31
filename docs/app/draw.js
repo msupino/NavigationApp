@@ -1292,6 +1292,9 @@ async function loadAirmets(force) {
   const parse = d => {
     const list = Array.isArray(d && d.airmets) ? d.airmets : [];
     airmetMeta = { generatedAt: (d && d.generatedAt) || null };
+    // The IMS feed carries the per-aerodrome AD/WS warnings in the same file.
+    window.airfieldWarnings = (d && d.airfieldWarnings && typeof d.airfieldWarnings === 'object')
+      ? d.airfieldWarnings : {};
     return list.filter(a => a && Array.isArray(a.coords));
   };
   try {
@@ -1311,6 +1314,24 @@ async function loadAirmets(force) {
   return airmets;
 }
 window.loadAirmets = loadAirmets;
+
+// The AD/WS (aerodrome / wind-shear) warnings in force for one field, by ICAO. An expired
+// warning is not a current one: past validTo it is history, before validFrom it has not
+// started, a missing bound is open. Self-contained so the airfield panel does not depend on
+// the AIRMET layer's own validity helper.
+function airfieldWarningInForce(w, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const from = w && w.validFrom ? Date.parse(w.validFrom) : NaN;
+  const to = w && w.validTo ? Date.parse(w.validTo) : NaN;
+  if (Number.isFinite(from) && t < from) return false;
+  if (Number.isFinite(to) && t > to) return false;
+  return true;
+}
+function airfieldWarningsFor(icao) {
+  const all = (window.airfieldWarnings && window.airfieldWarnings[String(icao || '').toUpperCase()]) || [];
+  return all.filter(w => airfieldWarningInForce(w));
+}
+window.airfieldWarningsFor = airfieldWarningsFor;
 
 // Which AIRMET areas contain a tapped point, smallest first -- so a tap opens the tightest
 // hazard when they overlap. Mirrors airspaceAtLatLng.
