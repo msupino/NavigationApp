@@ -36,14 +36,14 @@ test.describe('Social media preview image', () => {
     await page.addInitScript(() => {
       try {
         localStorage.clear(); sessionStorage.clear();
-        for (const s of ['build','view','display','charts','export','print'])
-          localStorage.setItem('navaid.sec.' + s, '1');
+        // A social card is the CHART with a route on it, not the app's open menus. Leave every
+        // toolbar section CLOSED (do not seed navaid.sec.*) so the map fills the frame.
         // CVFR layer matches the published Israel aeronautical chart that
         // the site is built around.
         localStorage.setItem('navaid.layer', 'CVFR');
       } catch (e) {}
     });
-    await page.goto('?lang=en');
+    await page.goto('?lang=he');
     await page.waitForFunction(() =>
       typeof state !== 'undefined' && typeof draw === 'function');
     await page.evaluate(route => {
@@ -52,8 +52,16 @@ test.describe('Social media preview image', () => {
       fitView();
       draw();
     }, ROUTE);
-    // Wait for tiles to settle.
-    await page.waitForTimeout(1500);
+    // Drop the boot screen -- it draws over the map inline in <head>, and the app removes it
+    // only after its own load path; the preview must not capture it.
+    await page.evaluate(() => {
+      const b = document.getElementById('boot-loading'); if (b) b.remove();
+      // The search dock/overlay is app chrome, not chart -- keep the card clean.
+      const so = document.getElementById('search-overlay'); if (so) so.classList.add('hidden');
+      const box = document.querySelector('.search-dock, .wp-search-dock'); if (box) box.style.display = 'none';
+    });
+    // Let the chart tiles actually paint before the shot (a bare 1.5s left a grey map).
+    await page.waitForTimeout(3500);
     await page.screenshot({
       path: path.join(__dirname, '..', 'docs', 'assets', 'og-preview.jpg'),
       type: 'jpeg',
