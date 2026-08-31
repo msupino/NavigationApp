@@ -309,6 +309,35 @@ test.describe('Service worker', () => {
     expect(shown).toEqual([true, false, false, true]);
   });
 
+  test('a second controllerchange for the same build does not re-ask', async ({ page }) => {
+    // Real browsers can fire controllerchange more than once per activation, each time with
+    // a DIFFERENT controller wrapper. Keyed on the worker object, the second one re-armed and
+    // prompted again for the same deploy. Keyed on the update generation, it does not.
+    await page.goto('?lang=en');
+    const reappeared = await page.evaluate(async () => {
+      document.getElementById('build-update-notice')?.remove();
+      const swListeners = {};
+      const workerListeners = new Map();
+      const worker = state => ({ state, addEventListener(t, cb) { workerListeners.set(this, cb); } });
+      const installing = worker('installing');
+      const reg = { installing, waiting: null, addEventListener() {}, update() { return Promise.resolve(); } };
+      const fakeSw = { controller: {}, addEventListener(t, cb) { swListeners[t] = cb; }, register() { return Promise.resolve(reg); } };
+      await watchServiceWorkerUpdates(fakeSw);
+      installing.state = 'installed';
+      workerListeners.get(installing)();            // the one prompt for this deploy
+      const first = !!document.getElementById('build-update-notice');
+      // The pilot dismisses it (or reloads) -- the element goes away, synchronously.
+      document.getElementById('build-update-notice')?.remove();
+      // The browser then fires further controllerchange events for the SAME activation, each
+      // with a fresh controller wrapper. None may resurrect the prompt.
+      fakeSw.controller = {}; swListeners.controllerchange();
+      fakeSw.controller = {}; swListeners.controllerchange();
+      return { first, cameBack: !!document.getElementById('build-update-notice') };
+    });
+    expect(reappeared.first).toBe(true);             // one deploy, one prompt...
+    expect(reappeared.cameBack).toBe(false);         // ...and dismissing it stays dismissed
+  });
+
   test('Service-worker update checks are throttled after registration', async ({ page }) => {
     await page.goto('?lang=en');
     const updates = await page.evaluate(async () => {
