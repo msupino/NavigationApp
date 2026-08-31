@@ -186,10 +186,21 @@ test('no active AIRMET still publishes — emptiness is real information', async
   expect(JSON.parse(written['airmet/airmet.json']).airmets).toEqual([]);
 });
 
-test('a malformed IMS response withholds AIRMET, preserving last-good', async () => {
+test('a valid IMS response with no area_warnings publishes empty (absence is real)', async () => {
+  // The IMS OMITS area_warnings entirely when none are in force. That is "no AIRMETs",
+  // not a bad fetch -- it must publish empty so an expired area stops being served.
   const { result, written } = await run({
     isigmet: { body: [] }, metar: { body: [] }, taf: { body: [] },
-    ims: { body: { data: {} } },                    // no area_warnings key
+    ims: { body: { data: { metars: {}, atis: {}, tafors: {} } } },
+  });
+  expect(result.airmet).toBe('published');
+  expect(JSON.parse(written['airmet/airmet.json']).airmets).toEqual([]);
+});
+
+test('a truly malformed IMS response withholds AIRMET, preserving last-good', async () => {
+  const { result, written } = await run({
+    isigmet: { body: [] }, metar: { body: [] }, taf: { body: [] },
+    ims: { body: { data: null } },                  // no data object at all
   });
   expect(result.airmet).toBe('skipped');
   expect(written['airmet/airmet.json']).toBeUndefined();

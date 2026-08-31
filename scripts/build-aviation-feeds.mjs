@@ -242,21 +242,24 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch, p
   } catch (e) { warn('isigmet:', e.message); }
   const sigmets = selectSigmets(sig, { firs, bbox });
 
-  // IMS aviation feed -> AIRMETs for the Tel Aviv FIR. Same fail-closed shape as SIGMET: a
-  // non-array or missing area_warnings is treated as a bad fetch, not "no warnings".
+  // IMS aviation feed -> AIRMETs for the Tel Aviv FIR. Fail-closed like SIGMET, but the bar
+  // for "good fetch" is a valid `data` OBJECT -- not the presence of area_warnings. The IMS
+  // OMITS area_warnings (and warnings) entirely when none are in force, which is the common
+  // case; treating that absence as a bad fetch froze the last AIRMET in the branch forever
+  // (it never republished empty, so an expired area kept being served). A missing key is
+  // "none", only a failed fetch or a non-object data withholds.
   let airmets = [], airfieldWarnings = {}, airmetOk = false;
   try {
     const body = await fetchJson(IMS_AVIATION, fetchImpl);
     const data = body && body.data;
-    const areas = data && data.area_warnings;
-    if (data && areas !== undefined && (areas === null || typeof areas === 'object')) {
+    if (data && typeof data === 'object') {
+      const areas = data.area_warnings;
+      if (areas != null && typeof areas !== 'object') throw new Error('area_warnings is not an object');
       airmets = parseImsAirmets(areas || {});
-      // The same fetch carries the per-aerodrome AD/WS warnings; a missing `warnings` key
-      // simply means none are in force.
       airfieldWarnings = parseImsAirfieldWarnings(data.warnings || {});
       airmetOk = true;
     } else {
-      throw new Error('aviation_data has no data.area_warnings');
+      throw new Error('aviation_data has no data object');
     }
   } catch (e) { warn('ims airmet:', e.message); }
 
