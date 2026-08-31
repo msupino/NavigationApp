@@ -4796,7 +4796,7 @@ if (windDepartSlider) {
 // --- SIGMET chart button (modal list, no map overlay) ---------------
 const sigmetBtn = document.getElementById('sigmet-btn');
 function refreshSigmetBtn() {
-  if (sigmetBtn) sigmetBtn.hidden = !(Array.isArray(sigmets) && sigmets.length > 0);
+  if (sigmetBtn) sigmetBtn.hidden = !(typeof activeSigmets === 'function' && activeSigmets().length > 0);
 }
 if (sigmetBtn) {
   sigmetBtn.onclick = async () => {

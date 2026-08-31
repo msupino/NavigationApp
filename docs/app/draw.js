@@ -1247,6 +1247,26 @@ async function loadSigmets(force) {
     return sigmets;
   }
 }
+// SIGMET validity comes from NOAA as UNIX SECONDS (not an ISO string like the AIRMET's),
+// so it is compared in that unit. Same rule: outside [from, to] it is not in force. A
+// missing bound is open. Used to gate the SIGMET list button and the decoded list, so a
+// SIGMET that has aged out of force -- but still sits in a not-yet-refreshed sigmet.json --
+// is not offered as if current.
+function sigmetActive(s, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  // NOAA uses 0 for an absent bound; treat any non-positive value as open, not epoch.
+  const from = (s && s.validFrom > 0) ? s.validFrom * 1000 : NaN;
+  const to = (s && s.validTo > 0) ? s.validTo * 1000 : NaN;
+  if (Number.isFinite(from) && t < from) return false;
+  if (Number.isFinite(to) && t > to) return false;
+  return true;
+}
+window.sigmetActive = sigmetActive;
+function activeSigmets() {
+  return Array.isArray(sigmets) ? sigmets.filter(s => sigmetActive(s)) : [];
+}
+window.activeSigmets = activeSigmets;
+
 function drawSigmets() {
   octx.save();
   for (const s of sigmets) {

@@ -87,3 +87,38 @@ test('falls back to same-origin data/sigmet.json when the raw branch fails', asy
   expect(await page.evaluate(() => sigmets.length)).toBe(0);
   await expect(page.locator('#sigmet-btn')).toBeHidden();   // nothing active → no button
 });
+
+test('an expired SIGMET hides the button and is not listed', async ({ page }) => {
+  await page.route('**raw.githubusercontent.com/**sigmet-data/**', r => r.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: null, sigmets: [{
+      firId: 'LLLL', firName: 'TEL AVIV', hazard: 'TURB', qualifier: 'SEV',
+      base: 8000, top: 18000,
+      validFrom: 1577836800, validTo: 1577851200,   // 2020-01-01, long expired
+      coords: [[33, 34], [33, 35], [31, 35], [31, 34]],
+      raw: 'LLLL SIGMET 9 VALID ... EXPIRED-MARKER',
+    }] }),
+  }));
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => Array.isArray(sigmets) && sigmets.length === 1);
+  // The datum is present but out of force: no active SIGMET, so no button.
+  expect(await page.evaluate(() => activeSigmets().length)).toBe(0);
+  expect(await page.evaluate(() => document.getElementById('sigmet-btn').hidden)).toBe(true);
+  // Even opened directly, the decoded list skips the expired one.
+  await page.evaluate(() => { if (typeof showSigmetDecoded === 'function') showSigmetDecoded(); });
+  expect(await page.evaluate(() => !!document.querySelector('.modal-back .modal'))).toBe(false);
+});
+
+test('a non-positive validTo (NOAA no-bound) stays in force', async ({ page }) => {
+  await page.route('**raw.githubusercontent.com/**sigmet-data/**', r => r.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: null, sigmets: [{
+      firId: 'LLLL', firName: 'TEL AVIV', hazard: 'TS', base: 0, top: 30000,
+      validFrom: 0, validTo: 0, coords: [[33, 34], [33, 35], [31, 35]], raw: 'open',
+    }] }),
+  }));
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => Array.isArray(sigmets) && sigmets.length === 1);
+  expect(await page.evaluate(() => activeSigmets().length)).toBe(1);   // 0/0 = open, still active
+  expect(await page.evaluate(() => document.getElementById('sigmet-btn').hidden)).toBe(false);
+});
