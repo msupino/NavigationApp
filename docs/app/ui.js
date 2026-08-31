@@ -28,12 +28,22 @@ function routeIntroOn() {
   } catch (e) { /* malformed URL: fall back to the ordinary intro rule */ }
   return typeof tune !== 'function' || tune('featureRouteIntro') !== false;
 }
+// The remote config lands AFTER this file, and featureRouteIntro is one of its keys. Painting
+// the first-route hint from the baked default and letting the gist remove it a moment later
+// is a visible flash for a site that has the intro switched OFF. So the hint is not CREATED
+// until the gist has had its say (success or failure); an already-shown hint is still removed
+// the instant the gist says off.
+let routeIntroGistSettled = false;
+window.__markRouteIntroGistSettled = () => { routeIntroGistSettled = true; };
 function refreshEmptyRouteHint() {
   const empty = !state.waypoints || !state.waypoints.length;
   let el = document.getElementById('empty-route-hint');
   if (!routeIntroOn()) { if (el) el.remove(); refreshPrimingCursor(); return; }
   if (!empty || state.mode) { if (el) el.remove(); refreshPrimingCursor(); return; }
   if (!el) {
+    // Wait for the gist before a first paint -- otherwise a site that turned the intro off
+    // still flashes it for one network round-trip.
+    if (!routeIntroGistSettled) { refreshPrimingCursor(); return; }
     // The flag is written when the hint is CREATED, and an element already on screen
     // is left alone, so marking it seen cannot make it vanish mid-read.
     if (emptyRouteHintSeen()) { refreshPrimingCursor(); return; }
@@ -8974,6 +8984,10 @@ if (typeof loadRemoteConfig === "function") {
       const el = document.getElementById(id);
       if (el) el.value = tune(keys[0]);
     }
+    // The gist has settled (whatever it said, or a failed fetch that returned 0): the intro
+    // may now paint per its final value, and never before.
+    if (typeof window.__markRouteIntroGistSettled === "function") window.__markRouteIntroGistSettled();
+    if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (!n) return;
     if (typeof applyTuningCssVars === "function") applyTuningCssVars();
     // Gist may have flipped a default-layer-visibility bool — reconcile the
