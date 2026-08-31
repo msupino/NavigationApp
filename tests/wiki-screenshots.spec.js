@@ -51,6 +51,13 @@ async function boot(page, lang) {
   await page.goto('?lang=' + lang);
   await page.waitForFunction(() =>
     typeof state !== 'undefined' && typeof draw === 'function' && !!window.airfields);
+  // The boot splash sits above everything at a high z-index; element-clipped
+  // shots (e.g. the Extra-layers panel body) otherwise capture the splash,
+  // not the UI. Drop it once the app is live.
+  await page.evaluate(() => {
+    const el = document.getElementById('boot-loading');
+    if (el) el.remove();
+  });
 }
 
 async function seedRoute(page) {
@@ -85,7 +92,9 @@ test.describe('wiki screenshots', () => {
   // ── Flight Plan modal ────────────────────────────────────────────────────
   for (const [name, lang] of [['03-flight-plan', 'en'], ['03-flight-plan-he', 'he']]) {
     test(name, async ({ page }) => {
-      await page.setViewportSize({ width: 1280, height: 820 });
+      // The plan modal (vertical profile + full leg table incl. the Freq
+      // column) is wider than 1280 and gets clipped on the right; give it room.
+      await page.setViewportSize({ width: 1600, height: 900 });
       await boot(page, lang);
       await seedRoute(page);
       await page.evaluate(() => showFlightPlan());
