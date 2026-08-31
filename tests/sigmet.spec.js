@@ -44,7 +44,7 @@ test('the SIGMET chart button appears on boot when active SIGMETs load', async (
   // Eager boot load populates sigmets and unhides the Charts-section button.
   await page.waitForFunction(() => Array.isArray(sigmets) && sigmets.length === 1);
   await page.waitForFunction(() => {
-    const b = document.getElementById('sigmet-btn'); return b && b.hidden === false;
+    const b = document.getElementById('sigmet-btn'); return b && b.disabled === false;
   });
   // No map overlay is drawn any more — draw() must stay clean with SIGMETs loaded.
   await page.evaluate(() => {
@@ -59,7 +59,7 @@ test('clicking the SIGMET button opens the decoded-list modal', async ({ page })
     r.fulfill({ contentType: 'application/json', body: JSON.stringify(SAMPLE) }));
   await boot(page);
   await page.waitForFunction(() => {
-    const b = document.getElementById('sigmet-btn'); return b && b.hidden === false;
+    const b = document.getElementById('sigmet-btn'); return b && b.disabled === false;
   });
   await page.evaluate(() => document.getElementById('sigmet-btn').click());
   const modal = page.locator('.modal-back .modal');
@@ -68,14 +68,15 @@ test('clicking the SIGMET button opens the decoded-list modal', async ({ page })
   await expect(modal).toContainText(/Obscured Thunderstorm/);
 });
 
-test('empty feed leaves the SIGMET button hidden', async ({ page }) => {
+test('empty feed dims the SIGMET button but never hides it', async ({ page }) => {
   await page.route('**raw.githubusercontent.com/**sigmet-data/**', r =>
     r.fulfill({ contentType: 'application/json',
       body: JSON.stringify({ generatedAt: null, sigmets: [] }) }));
   await boot(page);
   await page.waitForFunction(() => Array.isArray(sigmets));
   expect(await page.evaluate(() => sigmets.length)).toBe(0);
-  await expect(page.locator('#sigmet-btn')).toBeHidden();
+  await expect(page.locator('#sigmet-btn')).toBeVisible();     // never disappears
+  await expect(page.locator('#sigmet-btn')).toBeDisabled();    // dimmed instead
 });
 
 test('falls back to same-origin data/sigmet.json when the raw branch fails', async ({ page }) => {
@@ -85,10 +86,11 @@ test('falls back to same-origin data/sigmet.json when the raw branch fails', asy
   // The committed placeholder is an empty list — load must resolve, not throw.
   await page.waitForFunction(() => Array.isArray(sigmets));
   expect(await page.evaluate(() => sigmets.length)).toBe(0);
-  await expect(page.locator('#sigmet-btn')).toBeHidden();   // nothing active → no button
+  await expect(page.locator('#sigmet-btn')).toBeVisible();      // present, just dimmed
+  await expect(page.locator('#sigmet-btn')).toBeDisabled();
 });
 
-test('an expired SIGMET hides the button and is not listed', async ({ page }) => {
+test('an expired SIGMET dims the button and is not listed', async ({ page }) => {
   await page.route('**raw.githubusercontent.com/**sigmet-data/**', r => r.fulfill({
     contentType: 'application/json',
     body: JSON.stringify({ generatedAt: null, sigmets: [{
@@ -103,7 +105,8 @@ test('an expired SIGMET hides the button and is not listed', async ({ page }) =>
   await page.waitForFunction(() => Array.isArray(sigmets) && sigmets.length === 1);
   // The datum is present but out of force: no active SIGMET, so no button.
   expect(await page.evaluate(() => activeSigmets().length)).toBe(0);
-  expect(await page.evaluate(() => document.getElementById('sigmet-btn').hidden)).toBe(true);
+  expect(await page.evaluate(() => document.getElementById('sigmet-btn').hidden)).toBe(false);   // never hidden
+  expect(await page.evaluate(() => document.getElementById('sigmet-btn').disabled)).toBe(true);  // dimmed
   // Even opened directly, the decoded list skips the expired one.
   await page.evaluate(() => { if (typeof showSigmetDecoded === 'function') showSigmetDecoded(); });
   expect(await page.evaluate(() => !!document.querySelector('.modal-back .modal'))).toBe(false);

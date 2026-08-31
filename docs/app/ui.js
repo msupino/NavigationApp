@@ -4796,7 +4796,8 @@ if (windDepartSlider) {
 // --- SIGMET chart button (modal list, no map overlay) ---------------
 const sigmetBtn = document.getElementById('sigmet-btn');
 function refreshSigmetBtn() {
-  if (sigmetBtn) sigmetBtn.hidden = !(typeof activeSigmets === 'function' && activeSigmets().length > 0);
+  // Dim, never hide: the SIGMET button stays in Charts and greys out when none is active.
+  if (sigmetBtn) { sigmetBtn.hidden = false; sigmetBtn.disabled = !(typeof activeSigmets === 'function' && activeSigmets().length > 0); }
 }
 if (sigmetBtn) {
   sigmetBtn.onclick = async () => {
@@ -4867,7 +4868,8 @@ function refreshNotamListBtn() {
   // it also drives the toggle's disabled state, and tying that to the filtered
   // count would let the timeline slider disable (and uncheck) the overlay.
   const shownHere = (typeof activeNotams === 'function') ? activeNotams() : [];
-  if (notamListBtn) notamListBtn.hidden = !(have && shownHere.length);
+  // Dim, never hide -- the NOTAM list button stays put and greys when there is nothing to list.
+  if (notamListBtn) { notamListBtn.hidden = false; notamListBtn.disabled = !(have && shownHere.length); }
   // Gray out the NOTAM toggle when the feed has no data (source currently
   // unavailable). Data-driven: every call re-evaluates, so when a non-empty
   // feed is present the toggle is enabled again. (The feed is loaded once per
@@ -6405,7 +6407,9 @@ try {
 const airmetCb = document.getElementById('airmet-cb');
 function refreshAirmetGroup() {
   const group = document.getElementById('airmet-group');
-  if (group) group.hidden = !(typeof activeAirmets === 'function' && activeAirmets().length > 0);
+  // The Show AIRMETs toggle stays put like every other layer toggle -- a control must not
+  // vanish when its data is momentarily absent. The layer just draws nothing while none is in force.
+  if (group) group.hidden = false;
 }
 if (airmetCb) {
   airmetCb.checked = showAirmet;
@@ -6431,7 +6435,8 @@ window.refreshAirmetGroup = refreshAirmetGroup;
 // Extra-layers toggle group; this tracks the Charts button.
 const airmetBtn = document.getElementById('airmet-btn');
 function refreshAirmetBtn() {
-  if (airmetBtn) airmetBtn.hidden = !(typeof activeAirmets === 'function' && activeAirmets().length > 0);
+  // The list button never disappears either -- it dims when there is nothing to list.
+  if (airmetBtn) { airmetBtn.hidden = false; airmetBtn.disabled = !(typeof activeAirmets === 'function' && activeAirmets().length > 0); }
 }
 if (airmetBtn) {
   airmetBtn.onclick = () => { if (typeof showAirmetDecoded === 'function') showAirmetDecoded(); };

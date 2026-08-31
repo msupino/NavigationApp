@@ -144,7 +144,8 @@ test('NOTAM sheet sorts route hazards, endpoint fields, FIR-wide notices, then o
       { name: 'LLHA', lat: 32, lng: 35.1 },
     ];
   });
-  await page.locator('#notam-list-btn').click();
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
   const ids = await page.locator('.notam-modal .notam-id').allTextContents();
   expect(ids.map(value => value.split('·')[0].trim())).toEqual([
     'R1/26', 'R2/26', 'D1/26', 'E1/26', 'G1/26', 'O1/26',
@@ -181,10 +182,11 @@ test('toggling the overlay loads NOTAMs and draws without error', async ({ page 
   await expect(page.locator('#notam-cb')).toBeChecked();
 });
 
-test('no NOTAMs → list button stays hidden', async ({ page }) => {
+test('no NOTAMs → list button dims but never disappears', async ({ page }) => {
   await boot(page, { generatedAt: null, notams: [] });
   await page.waitForTimeout(400);
-  await expect(page.locator('#notam-list-btn')).toBeHidden();
+  await expect(page.locator('#notam-list-btn')).toBeVisible();
+  await expect(page.locator('#notam-list-btn')).toBeDisabled();
 });
 
 test('NOTAMs decode to plain English; Raw toggle shows the source text', async ({ page }) => {
@@ -199,6 +201,7 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   expect(dec).toContain('installed');               // CS condition
   expect(dec).toContain('above mean sea level');    // AMSL expanded
   expect(dec).toContain('between');                 // BTN expanded
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
   await page.evaluate(() => document.getElementById('notam-list-btn').click());
   const modal = page.locator('.modal-back .notam-modal');
   await expect(modal.locator('.notam-text')).toContainText('above mean sea level');
@@ -325,6 +328,7 @@ test('a long single-airfield NOTAM list scrolls within the viewport', async ({ p
   }
   many.push({ id: 'A1/26', icao: 'LLLL', end: '', geom: null, text: 'global' });
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: many });
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
   await page.evaluate(() => document.getElementById('notam-list-btn').click());
   await page.locator('.notam-modal .notam-filter-sel').selectOption('LLBG');
   const info = await page.evaluate(() => {
@@ -351,7 +355,8 @@ test('NOTAM sheet keeps and restores its size while its contents change', async 
     { id: 'A2/26', icao: 'LLBG', start: iso(now + 3600000), end: iso(now + 7200000),
       geom: null, text: 'FUTURE' },
   ] });
-  await page.locator('#notam-list-btn').click();
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
   const modal = page.locator('.notam-modal');
   const initial = await modal.evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight }));
   await modal.locator('#notam-show-all').check();
@@ -367,6 +372,7 @@ test('NOTAM sheet keeps and restores its size while its contents change', async 
     catch (e) { return null; }
   })).toEqual({ w: 760, h: 480 });
   await modal.locator('.modal-close-x').click();
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
   await page.evaluate(() => document.getElementById('notam-list-btn').click());
   await expect(page.locator('.notam-modal')).toBeVisible();
   expect(await page.locator('.notam-modal').evaluate(el => ({ w: el.offsetWidth, h: el.offsetHeight })))
@@ -380,6 +386,7 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
     { id: 'B0001/26', icao: 'LLBG', end: '', geom: null, text: 'B0001/26 LLBG Ben Gurion RWY.' },
     { id: 'H0001/26', icao: 'LLHA', end: '', geom: null, text: 'H0001/26 LLHA Haifa apron.' },
   ] });
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
   await page.evaluate(() => document.getElementById('notam-list-btn').click());
   const modal = page.locator('.modal-back .notam-modal');
   await expect(modal.locator('.notam-item')).toHaveCount(4);
@@ -413,7 +420,8 @@ test('NOTAM airfield title, filter, and search use the localized airfield name',
   ] }, 'he');
   await page.evaluate(() => loadAirfields && loadAirfields());
   await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.some(a => a.name === 'LLRS'));
-  await page.locator('#notam-list-btn').click();
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
   const modal = page.locator('.notam-modal');
   const filter = modal.locator('.notam-filter-sel');
   await expect(filter.locator('option[value="LLRS"]')).toContainText('LLRS — ראשון לציון');
@@ -530,6 +538,7 @@ test('timeline slider scrubs which NOTAMs are active', async ({ page }) => {
   expect(await page.evaluate(() => activeNotams().map(n => n.id).sort()))
     .toEqual(['N-LATER/26', 'N-NOW/26']);
   // Modal title reflects the scrubbed count.
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
   await page.evaluate(() => document.getElementById('notam-list-btn').click());
   await expect(page.locator('.modal-back .notam-modal h3')).toContainText('2');
 });
@@ -576,6 +585,7 @@ test('clicking a NOTAM area on the map opens just that NOTAM', async ({ page }) 
 test('clicking a NOTAM in the list closes the modal and blinks it on the map', async ({ page }) => {
   await boot(page);
   // Overlay off to start; clicking a list item should also turn it on.
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
   await page.evaluate(() => document.getElementById('notam-list-btn').click());
   const modal = page.locator('.modal-back .notam-modal');
   await expect(modal).toBeVisible();
@@ -623,6 +633,7 @@ test('expired NOTAMs are filtered out; modal shows the active count', async ({ p
     { id: 'X2/26', text: 'expired', end: past, geom: null, icao: 'LLBG' },
     { id: 'X3/26', text: 'perm', end: 'PERM', geom: null, icao: 'LLHA' },
   ] });
+  await expect(page.locator('#notam-list-btn')).toBeEnabled();
   await page.evaluate(() => document.getElementById('notam-list-btn').click());
   const modal = page.locator('.modal-back .notam-modal');
   await expect(modal.locator('.notam-item')).toHaveCount(2);    // expired dropped
@@ -637,7 +648,8 @@ test('empty NOTAM feed grays out and disables the Show NOTAMs toggle', async ({ 
   await expect(cb).toBeDisabled();
   const label = page.locator('label').filter({ has: cb });
   await expect(label).toHaveClass(/navtoggle-disabled/);
-  await expect(page.locator('#notam-list-btn')).toBeHidden();
+  await expect(page.locator('#notam-list-btn')).toBeVisible();
+  await expect(page.locator('#notam-list-btn')).toBeDisabled();
 });
 
 test('empty feed unchecks the NOTAM toggle but preserves the saved on-preference', async ({ page }) => {

@@ -53,19 +53,26 @@ test('the layer draws a filled, dotted polygon only when it is on', async ({ pag
   expect(out.off.texts).toBe(0);
 });
 
-test('the toggle group is revealed only when an AIRMET is active', async ({ page }) => {
+test('the AIRMET toggle stays put; the list button dims when none is active', async ({ page }) => {
   await boot(page);
   const seen = await page.evaluate(() => {
     window.airmets = [];
-    refreshAirmetGroup();
-    const empty = document.getElementById('airmet-group').hidden;
-    window.airmets = [{ hazard: 'MT OBSC', coords: [[32, 35], [33, 35], [32, 34]] }];
-    refreshAirmetGroup();
-    const active = document.getElementById('airmet-group').hidden;
-    return { empty, active };
+    refreshAirmetGroup(); refreshAirmetBtn();
+    const emptyGroupHidden = document.getElementById('airmet-group').hidden;
+    const emptyBtnHidden = document.getElementById('airmet-btn').hidden;
+    const emptyBtnDisabled = document.getElementById('airmet-btn').disabled;
+    window.airmets = [{ hazard: 'MT OBSC', validFrom: '2020-01-01T00:00:00Z', validTo: '2099-01-01T00:00:00Z',
+      coords: [[32, 35], [33, 35], [32, 34]] }];
+    refreshAirmetGroup(); refreshAirmetBtn();
+    const activeBtnDisabled = document.getElementById('airmet-btn').disabled;
+    return { emptyGroupHidden, emptyBtnHidden, emptyBtnDisabled, activeBtnDisabled,
+             groupHiddenActive: document.getElementById('airmet-group').hidden };
   });
-  expect(seen.empty).toBe(true);    // no AIRMET -> group hidden
-  expect(seen.active).toBe(false);  // active AIRMET -> group shown
+  expect(seen.emptyGroupHidden).toBe(false);   // toggle never disappears
+  expect(seen.emptyBtnHidden).toBe(false);     // list button never disappears
+  expect(seen.emptyBtnDisabled).toBe(true);    // it dims when nothing to list
+  expect(seen.activeBtnDisabled).toBe(false);  // enabled once an AIRMET is active
+  expect(seen.groupHiddenActive).toBe(false);
 });
 
 test('the AIRMET text is readable — button and a tap on the area both open the decoded modal', async ({ page }) => {
@@ -154,6 +161,7 @@ test('an expired AIRMET is not drawn, listed, or exposed as a toggle', async ({ 
       active: activeHazards, dotted,
       groupHidden: document.getElementById('airmet-group').hidden,
       btnHidden: document.getElementById('airmet-btn').hidden,
+      btnDisabled: document.getElementById('airmet-btn').disabled,
       listsExpired: /expired-marker/.test(modalText),
       listsOpen: /open-marker|IFR/.test(modalText),
     };
@@ -162,11 +170,12 @@ test('an expired AIRMET is not drawn, listed, or exposed as a toggle', async ({ 
   expect(out.dotted).toBe(1);               // the expired polygon is not drawn
   expect(out.groupHidden).toBe(false);
   expect(out.btnHidden).toBe(false);
+  expect(out.btnDisabled).toBe(false);        // has an active AIRMET -> enabled
   expect(out.listsOpen).toBe(true);
   expect(out.listsExpired).toBe(false);
 });
 
-test('when every AIRMET has expired the layer disappears entirely', async ({ page }) => {
+test('when every AIRMET has expired nothing draws but the controls stay', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     window.airmets = [{ hazard: 'MT OBSC', validFrom: '2020-01-01T00:00:00Z',
@@ -178,11 +187,13 @@ test('when every AIRMET has expired the layer disappears entirely', async ({ pag
     octx.setLineDash = function (d) { if (d && d.length && d[0] === 2) dotted++; return os.apply(this, [d]); };
     draw();
     octx.setLineDash = os;
-    return { dotted, group: document.getElementById('airmet-group').hidden,
-             btn: document.getElementById('airmet-btn').hidden, active: activeAirmets().length };
+    return { dotted, groupHidden: document.getElementById('airmet-group').hidden,
+             btnHidden: document.getElementById('airmet-btn').hidden,
+             btnDisabled: document.getElementById('airmet-btn').disabled, active: activeAirmets().length };
   });
   expect(out.active).toBe(0);
-  expect(out.dotted).toBe(0);
-  expect(out.group).toBe(true);
-  expect(out.btn).toBe(true);
+  expect(out.dotted).toBe(0);            // nothing drawn
+  expect(out.groupHidden).toBe(false);   // ...but the toggle stays
+  expect(out.btnHidden).toBe(false);     // ...and the button stays,
+  expect(out.btnDisabled).toBe(true);    // dimmed
 });
