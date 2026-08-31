@@ -43,7 +43,7 @@ test('the assistant reads the whole FIR, not just the chart on screen', async ({
   expect(src).not.toMatch(/activeNotams\(\)/);   // no bare call left behind
 });
 
-test('the NOTAM list button hides when this chart has nothing to list', async ({ page }) => {
+test('the NOTAM list button dims (never hides) when this chart has nothing to list', async ({ page }) => {
   await bootNotam(page);
   const out = await page.evaluate(async () => {
     const btn = document.getElementById('notam-list-btn');
@@ -52,14 +52,16 @@ test('the NOTAM list button hides when this chart has nothing to list', async ({
       sel.value = n; sel.onchange();
       await new Promise(r => setTimeout(r, 300));
       if (typeof refreshNotamListBtn === 'function') refreshNotamListBtn();
-      return { shown: activeNotams().length, hidden: btn.hidden, cbDisabled: document.getElementById('notam-cb').disabled };
+      return { shown: activeNotams().length, hidden: btn.hidden, disabled: btn.disabled, cbDisabled: document.getElementById('notam-cb').disabled };
     };
     return { cvfr: await go('CVFR'), lsa: await go('Low Alt') };
   });
   expect(out.cvfr.shown).toBe(0);
-  expect(out.cvfr.hidden).toBe(true);        // nothing to open
+  expect(out.cvfr.hidden).toBe(false);       // never disappears...
+  expect(out.cvfr.disabled).toBe(true);      // ...just dims, nothing to open
   expect(out.lsa.shown).toBe(1);
   expect(out.lsa.hidden).toBe(false);        // the ultralight NOTAM lives here
+  expect(out.lsa.disabled).toBe(false);      // and it is enabled
   // The toggle itself stays usable either way — it is gated on feed presence, so
   // the timeline slider can never disable and uncheck the overlay.
   expect(out.cvfr.cbDisabled).toBe(false);

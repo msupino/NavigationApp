@@ -186,10 +186,21 @@ test('no active AIRMET still publishes — emptiness is real information', async
   expect(JSON.parse(written['airmet/airmet.json']).airmets).toEqual([]);
 });
 
-test('a malformed IMS response withholds AIRMET, preserving last-good', async () => {
+test('a valid IMS response with no area_warnings publishes empty (absence is real)', async () => {
+  // The IMS OMITS area_warnings entirely when none are in force. That is "no AIRMETs",
+  // not a bad fetch -- it must publish empty so an expired area stops being served.
   const { result, written } = await run({
     isigmet: { body: [] }, metar: { body: [] }, taf: { body: [] },
-    ims: { body: { data: {} } },                    // no area_warnings key
+    ims: { body: { data: { metars: {}, atis: {}, tafors: {} } } },
+  });
+  expect(result.airmet).toBe('published');
+  expect(JSON.parse(written['airmet/airmet.json']).airmets).toEqual([]);
+});
+
+test('a truly malformed IMS response withholds AIRMET, preserving last-good', async () => {
+  const { result, written } = await run({
+    isigmet: { body: [] }, metar: { body: [] }, taf: { body: [] },
+    ims: { body: { data: null } },                  // no data object at all
   });
   expect(result.airmet).toBe('skipped');
   expect(written['airmet/airmet.json']).toBeUndefined();
@@ -261,4 +272,20 @@ test('a self-crossing WI vertex order is repaired into a simple polygon', async 
   const a = mod.parseImsAirmets({ '1': { wid: '1', issue_date: '2026-08-31 03:00',
     lines: [{ content: 'LLLL AIRMET 1 VALID 310300/310700 MT OBSC OBS WI N3255 E03535 - N3315 E03535 - N3018 E03435 - N3042 E03426 - N3255 E03535 =' }] } });
   expect(selfCrosses(a[0].coords)).toBe(false);
+});
+
+test('per-aerodrome AD/WS warnings are keyed by ICAO, AIRMETs excluded', async () => {
+  const mod = await import('../scripts/build-aviation-feeds.mjs');
+  const w = mod.parseImsAirfieldWarnings({
+    a: [{ valid_from: '2026-08-31 12:00', content: 'LLBG AD WRNG 1 VALID 311200/311800 SFC WIND 320/25KT MAX 38KT=' }],
+    b: [{ content: 'LLBG WS WRNG 2 VALID 311200/311400 WS APCH RWY 12 SFC WIND 090/08KT 500FT WIND 180/35KT=' }],
+    c: [{ content: 'LLHA AD WRNG 1 VALID 010300/010900 TS GR=' }],
+    d: [{ content: 'LLLL AIRMET 1 VALID 310300/310700 MT OBSC' }],   // not an AD/WS -> excluded
+  });
+  expect(Object.keys(w).sort()).toEqual(['LLBG', 'LLHA']);
+  expect(w.LLBG.map(x => x.product)).toEqual(['AD', 'WS']);
+  expect(w.LLBG[0].validFrom).toBe('2026-08-31T12:00:00.000Z');
+  expect(w.LLHA[0].product).toBe('AD');
+  expect(mod.parseImsAirfieldWarnings({})).toEqual({});          // none in force
+  expect(mod.parseImsAirfieldWarnings(null)).toEqual({});
 });

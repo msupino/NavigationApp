@@ -51,7 +51,7 @@ test('clicking the SIGMET chart button opens the decoded list', async ({ page })
   // Eager boot load populates sigmets and unhides the Charts-section button.
   await page.waitForFunction(() => Array.isArray(sigmets) && sigmets.length === 1);
   await page.waitForFunction(() => {
-    const b = document.getElementById('sigmet-btn'); return b && b.hidden === false;
+    const b = document.getElementById('sigmet-btn'); return b && b.disabled === false;
   });
   await page.evaluate(() => document.getElementById('sigmet-btn').click());
   const modal = page.locator('.modal-title', { hasText: /SIGMET/i });

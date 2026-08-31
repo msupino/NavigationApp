@@ -175,3 +175,51 @@ test('a non-ICAO field gets no METAR, but keeps its density altitude', async ({ 
   expect(shown.refresh).toBe(false);
   expect(shown.metarBody).toBe(false);
 });
+
+// AD/WS (aerodrome / wind-shear) warnings from the IMS feed, shown in the airfield WX box.
+async function openLLBG(page) {
+  await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    const index = airfields.findIndex(a => a.name === 'LLBG');
+    state.selected = { type: 'airfield', index };
+    showInspector();
+  });
+}
+
+test('the WX box lists a field\'s active AD/WS warnings', async ({ page }) => {
+  await mockWx(page);
+  await page.route('**airmet-data/airmet.json**', r => r.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: null, airmets: [], airfieldWarnings: { LLBG: [
+      { product: 'AD', validFrom: '2020-01-01T00:00:00Z', validTo: '2099-01-01T00:00:00Z',
+        raw: 'LLBG AD WRNG 1 VALID 311200/311800 SFC WIND 320/25KT MAX 38KT=' },
+      { product: 'WS', validFrom: '2020-01-01T00:00:00Z', validTo: null,
+        raw: 'LLBG WS WRNG 2 VALID 311200/311400 WS APCH RWY 12=' },
+      { product: 'AD', validFrom: '2020-01-01T00:00:00Z', validTo: '2020-01-02T00:00:00Z',
+        raw: 'LLBG AD WRNG 9 EXPIRED-MARKER=' },        // expired -> not shown
+    ] } }),
+  }));
+  await boot(page);
+  await page.evaluate(() => loadAirmets(true));
+  await openLLBG(page);
+  const wx = page.locator('#insp-body .wx-section');
+  await expect(wx.locator('.wx-adws')).toContainText('Aerodrome / Wind-shear');
+  await expect(wx.locator('.wx-adws')).toContainText('SFC WIND 320/25KT');
+  await expect(wx.locator('.wx-adws')).toContainText('WS APCH RWY 12');
+  await expect(wx.locator('.wx-adws')).not.toContainText('EXPIRED-MARKER');   // expired filtered
+  await expect(wx.locator('.wx-adws-none')).toHaveCount(0);                   // has data -> no None
+});
+
+test('the WX box says None when a field has no AD/WS warning', async ({ page }) => {
+  await mockWx(page);
+  await page.route('**airmet-data/airmet.json**', r => r.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: null, airmets: [], airfieldWarnings: {} }),
+  }));
+  await boot(page);
+  await page.evaluate(() => loadAirmets(true));
+  await openLLBG(page);
+  const wx = page.locator('#insp-body .wx-section');
+  await expect(wx.locator('.wx-adws')).toContainText('Aerodrome / Wind-shear');
+  await expect(wx.locator('.wx-adws-none')).toHaveText('None');
+});

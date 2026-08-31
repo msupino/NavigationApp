@@ -194,3 +194,21 @@ test.describe('the featureRouteIntro switch', () => {
     expect(await page.evaluate(() => tune('featureRouteIntro'))).toBe(true);
   });
 });
+
+test('a gist with featureRouteIntro:false shows no hint and no priming', async ({ page }) => {
+  // The real cause of "why does it show me the wizard": the intro used to paint from the
+  // baked default before the gist (which loads after ui.js) said off. With the gist gated
+  // behind the settle flag, an off gist yields no hint at all.
+  await page.route(/navaid-config\.json/, r => r.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ featureRouteIntro: false }),
+  }));
+  await page.goto('?lang=en');                     // gist ENABLED
+  await page.waitForFunction(() => typeof draw === 'function' && tune('featureRouteIntro') === false);
+  await page.evaluate(() => { state.waypoints = []; state.legs = []; syncLegs(); state.mode = null; draw(); });
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => !!document.getElementById('empty-route-hint'))).toBe(false);
+  // A plain click does nothing, since the intro is off.
+  await page.evaluate(() => map.fire('click', { latlng: L.latLng(32.18, 34.83) }));
+  await page.waitForTimeout(80);
+  expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
+});
