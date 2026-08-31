@@ -197,3 +197,20 @@ test('when every AIRMET has expired nothing draws but the controls stay', async 
   expect(out.btnHidden).toBe(false);     // ...and the button stays,
   expect(out.btnDisabled).toBe(true);    // dimmed
 });
+
+test('the AIRMET toggle shows an item count, including (0)', async ({ page }) => {
+  await page.route('**/airmet.json', route => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ generatedAt: null, airmets: [] }),
+  }));
+  await boot(page);
+  await page.evaluate(async () => { await loadAirmets(true); refreshAirmetGroup(); });
+  await expect(page.locator('#airmet-count')).toHaveText(/\(0\)/);   // zero shown, not hidden
+  await page.evaluate(() => {
+    window.airmets = [
+      { hazard: 'MT OBSC', validFrom: '2020-01-01T00:00:00Z', validTo: '2099-01-01T00:00:00Z', coords: [[32,35],[33,35],[32,34]] },
+      { hazard: 'IFR', validFrom: '2020-01-01T00:00:00Z', validTo: null, coords: [[31,34],[32,34],[31,35]] },
+    ];
+    refreshAirmetGroup();
+  });
+  await expect(page.locator('#airmet-count')).toHaveText(/\(2\)/);
+});

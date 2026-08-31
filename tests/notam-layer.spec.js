@@ -723,3 +723,15 @@ test('a 2-digit day-of-month with no trailing year still reads as a date', async
   expect(out.withTime).toContain('25 MAY 1400LT');
   expect(out.oneDigit).toContain('5 MAY for');
 });
+
+test('the NOTAM toggle shows the active item count', async ({ page }) => {
+  const now = Date.now(); const iso = v => new Date(v).toISOString();
+  await boot(page, { generatedAt: iso(now), notams: [
+    { id: 'A1/26', icao: 'LLBG', start: iso(now - 3600000), end: iso(now + 3600000), geom: null, text: 'a' },
+    { id: 'A2/26', icao: 'LLHA', start: iso(now - 3600000), end: iso(now + 3600000), geom: null, text: 'b' },
+    { id: 'A3/26', icao: 'LLBG', start: iso(now - 7200000), end: iso(now - 3600000), geom: null, text: 'expired' },
+  ] });
+  await page.waitForFunction(() => Array.isArray(notams) && notams.length === 3);
+  await page.evaluate(() => refreshNotamListBtn());
+  await expect(page.locator('#notam-count')).toHaveText(/\(2\)/);   // expired one not counted
+});

@@ -493,7 +493,7 @@
         <button id="pwx-btn" type="button" hidden
                 data-i18n="tbPwxCharts" data-i18n-title="tbPwxChartsTitle"></button>
         <!-- Active-SIGMET decoded list (modal). Hidden until SIGMET data loads. -->
-        <button id="sigmet-btn" type="button" disabled data-i18n="tbSigmet" data-i18n-title="tbSigmetTitle"></button>
+        <button id="sigmet-btn" type="button" disabled data-i18n-title="tbSigmetTitle"><span data-i18n="tbSigmet"></span><span class="layer-count" id="sigmet-count" aria-hidden="true"></span></button>
         <!-- Active-AIRMET decoded list (modal). Hidden until an AIRMET is active. -->
         <button id="airmet-btn" type="button" disabled data-i18n="tbAirmet" data-i18n-title="tbAirmetTitle"></button>
         <!-- Active-NOTAM text list (modal). Hidden until notam data loads; the
@@ -564,7 +564,7 @@
               <span class="slider-val" id="lookahead-time-val"></span>
             </label>
             <label class="navtoggle" data-i18n-title="tbShowNotamTitle">
-              <input type="checkbox" id="notam-cb"> <span data-i18n="tbShowNotam"></span>
+              <input type="checkbox" id="notam-cb"> <span data-i18n="tbShowNotam"></span><span class="layer-count" id="notam-count" aria-hidden="true"></span>
             </label>
             <div id="notam-controls" hidden>
               <input type="range" id="notam-time" min="0" max="72" step="1" value="0" hidden>
@@ -575,7 +575,7 @@
                reports at least one active AIRMET. -->
           <div id="airmet-group" class="tb-group-box">
             <label class="navtoggle" data-i18n-title="tbShowAirmetTitle">
-              <input type="checkbox" id="airmet-cb"> <span data-i18n="tbShowAirmet"></span>
+              <input type="checkbox" id="airmet-cb"> <span data-i18n="tbShowAirmet"></span><span class="layer-count" id="airmet-count" aria-hidden="true"></span>
             </label>
           </div>
           <div class="tb-group-box">

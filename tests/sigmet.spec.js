@@ -125,3 +125,16 @@ test('a non-positive validTo (NOAA no-bound) stays in force', async ({ page }) =
   expect(await page.evaluate(() => activeSigmets().length)).toBe(1);   // 0/0 = open, still active
   expect(await page.evaluate(() => document.getElementById('sigmet-btn').hidden)).toBe(false);
 });
+
+test('the SIGMET button shows an item count', async ({ page }) => {
+  await page.route('**raw.githubusercontent.com/**sigmet-data/**', r => r.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ generatedAt: null, sigmets: [
+      { firId: 'LLLL', hazard: 'TS', base: 0, top: 30000, validFrom: 0, validTo: 0, coords: [[33,34],[33,35],[31,35]], raw: 'a' },
+      { firId: 'LLLL', hazard: 'TURB', base: 0, top: 30000, validFrom: 0, validTo: 0, coords: [[32,34],[32,35],[31,34]], raw: 'b' },
+    ] }),
+  }));
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => Array.isArray(sigmets) && sigmets.length === 2);
+  await page.evaluate(() => refreshSigmetBtn());
+  await expect(page.locator('#sigmet-count')).toHaveText(/\(2\)/);
+});
