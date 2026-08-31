@@ -13,7 +13,7 @@ async function boot(page) {
       sigmets: [{
         firId: 'LLLL', firName: 'TEL AVIV', hazard: 'TURB', qualifier: 'SEV',
         base: 8000, top: 18000, dir: 'SE', spd: 20,
-        validFrom: 1781503200, validTo: 1781517600,   // 06:00Z – 10:00Z 2026-06-14
+        validFrom: 1781503200, validTo: 33260716800,   // opens 2026-06-14, far-future end so it stays in force for the test
         coords: [[33.1, 34.5], [33.1, 35.5], [31.6, 35.6], [31.5, 34.6]],
         raw: 'LLLL SIGMET 2 VALID ... SEV TURB FCST',
       }],

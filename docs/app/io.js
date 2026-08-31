@@ -4519,7 +4519,9 @@ function routeFileSlug() {
 // Plain-language SIGMET list (clicking the corner readout). Each entry shows
 // the decoded sentence plus the raw text underneath.
 function showSigmetDecoded() {
-  if (!Array.isArray(sigmets) || !sigmets.length) return;
+  const list = typeof activeSigmets === 'function' ? activeSigmets()
+    : (Array.isArray(sigmets) ? sigmets : []);
+  if (!list.length) return;
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
@@ -4544,7 +4546,7 @@ function showSigmetDecoded() {
     close();
   }
   addModalCloseX(box, close);
-  for (const s of sigmets) {
+  for (const s of list) {
     const item = document.createElement('div');
     item.dir = 'ltr';                 // SIGMET text is LTR even in Hebrew mode
     item.style.cssText = 'margin:10px 0;padding:8px;border-left:4px solid ' +
@@ -4582,7 +4584,9 @@ function airmetValidityText(a) {
   return (S.airmetValid || 'Valid') + ' ' + from + ' \u2192 ' + to;
 }
 function showAirmetDecoded() {
-  if (!Array.isArray(window.airmets) || !window.airmets.length) return;
+  const list = typeof activeAirmets === 'function' ? activeAirmets()
+    : (Array.isArray(window.airmets) ? window.airmets : []);
+  if (!list.length) return;
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
@@ -4602,7 +4606,7 @@ function showAirmetDecoded() {
   }
   addModalCloseX(box, close);
   const col = (typeof tune === 'function' && tune('airmetColor')) || '#6b8e23';
-  for (const a of window.airmets) {
+  for (const a of list) {
     const item = document.createElement('div');
     item.dir = 'ltr';                 // AIRMET text is LTR even in Hebrew mode
     // Inherit the modal's own (theme-aware) text colour; only the hazard bar is coloured.
