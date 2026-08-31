@@ -1,0 +1,6 @@
+{
+ "generatedAt": null,
+ "source": "IMS area warnings (ims.gov.il)",
+ "note": "Same-origin fallback. Live data is published to the airmet-data branch by aviation-data.yml; the app reads that first and falls back to this file offline / on first run.",
+ "airmets": []
+}

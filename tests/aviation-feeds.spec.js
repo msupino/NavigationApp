@@ -13,7 +13,8 @@ const IDS = ['LLBG', 'LLHZ'];
 
 // A fetch stand-in: one entry per endpoint, each either a body or an { status } to fail with.
 const fakeFetch = plan => async url => {
-  const kind = url.includes('isigmet') ? 'isigmet' : url.includes('metar') ? 'metar' : 'taf';
+  const kind = url.includes('ims.gov.il') ? 'ims'
+    : url.includes('isigmet') ? 'isigmet' : url.includes('metar') ? 'metar' : 'taf';
   const spec = plan[kind];
   if (!spec) return { ok: false, status: 500, json: async () => ({}) };
   if (spec.status) return { ok: false, status: spec.status, json: async () => ({}) };
@@ -140,4 +141,91 @@ test('the publish predicates are exported and say what they mean', async () => {
   expect(mod.wxPublishable({ metarsOk: true, tafsOk: true, stations: {} })).toBe(false);
   expect(mod.wxPublishable({ metarsOk: false, tafsOk: true, stations: { LLBG: {} } })).toBe(false);
   expect(mod.wxPublishable({ metarsOk: true, tafsOk: false, stations: { LLBG: {} } })).toBe(false);
+});
+
+// --- AIRMET (IMS Tel Aviv FIR) --------------------------------------------------------
+// The real feed shape: data.area_warnings is an object keyed by warning id; each carries
+// lines[].content whose join is a raw ICAO AIRMET, polygon and validity inside the text.
+const imsArea = (wid, content, issue = '2026-08-31 03:00') => ({
+  data: { area_warnings: { [wid]: {
+    wid, issue_date: issue,
+    lines: [{ content: 'LLLL AIRMET 1 VALID 310300/310700 LLBD-' }, { content }],
+  } } },
+});
+const MT_OBSC = 'LLLL TEL AVIV FIR MT OBSC OBS WI N3255 E03535 - N3315 E03535 - '
+  + 'N3018 E03435 - N3042 E03426 - N3255 E03535 STNR WKN=';
+
+test('an IMS area warning becomes an AIRMET with polygon, hazard and UTC validity', async () => {
+  const { result, written, mod } = await run({
+    isigmet: { body: [] }, metar: { body: [] }, taf: { body: [] },
+    ims: { body: imsArea('42559', MT_OBSC) },
+  });
+  expect(result.airmet).toBe('published');
+  const a = JSON.parse(written['airmet/airmet.json']).airmets;
+  expect(a).toHaveLength(1);
+  expect(a[0].id).toBe('42559');
+  expect(a[0].hazard).toBe('MT OBSC');
+  // DDMM: N3255 -> 32 + 55/60, E03535 -> 35 + 35/60
+  expect(a[0].coords[0]).toEqual([32.91667, 35.58333]);
+  expect(a[0].coords).toHaveLength(5);              // closed ring
+  // UTC from the raw "VALID 310300/310700", not the item's local times
+  expect(a[0].validFrom).toBe('2026-08-31T03:00:00.000Z');
+  expect(a[0].validTo).toBe('2026-08-31T07:00:00.000Z');
+  void mod;
+});
+
+test('no active AIRMET still publishes — emptiness is real information', async () => {
+  const { result, written } = await run({
+    isigmet: { body: [] }, metar: { body: [] }, taf: { body: [] },
+    ims: { body: { data: { area_warnings: {} } } },
+  });
+  expect(result.airmet).toBe('published');
+  expect(JSON.parse(written['airmet/airmet.json']).airmets).toEqual([]);
+});
+
+test('a malformed IMS response withholds AIRMET, preserving last-good', async () => {
+  const { result, written } = await run({
+    isigmet: { body: [] }, metar: { body: [] }, taf: { body: [] },
+    ims: { body: { data: {} } },                    // no area_warnings key
+  });
+  expect(result.airmet).toBe('skipped');
+  expect(written['airmet/airmet.json']).toBeUndefined();
+});
+
+test('an HTTP error from IMS withholds AIRMET but does not block SIGMET', async () => {
+  const { result } = await run({
+    isigmet: { body: [{ firId: 'LLLL', hazard: 'TS', coords: [{ lat: 32, lon: 34.9 }] }] },
+    metar: { body: [] }, taf: { body: [] }, ims: { status: 503 },
+  });
+  expect(result.sigmet).toBe('published');
+  expect(result.airmet).toBe('skipped');
+});
+
+test('the AIRMET helpers are exported and parse the raw text', async () => {
+  const mod = await import('../scripts/build-aviation-feeds.mjs');
+  expect(mod.airmetPublishable({ airmetOk: true })).toBe(true);
+  expect(mod.airmetPublishable({ airmetOk: false })).toBe(false);
+  expect(mod.classifyAirmet('... MT OBSC ...')).toBe('MT OBSC');
+  expect(mod.classifyAirmet('... SFC WIND ...')).toBe('SFC WIND');
+  expect(mod.classifyAirmet('nothing recognised')).toBe('AIRMET');
+  // S/W hemispheres and DDMM minutes
+  expect(mod.parseAirmetCoords('WI S0130 W00045')).toEqual([[-1.5, -0.75]]);
+  expect(mod.parseAirmetValidity('VALID 010600/010900', '2026-09-01'))
+    .toEqual({ validFrom: '2026-09-01T06:00:00.000Z', validTo: '2026-09-01T09:00:00.000Z' });
+});
+
+test('AD and WS warnings in the same bucket are not mislabelled as AIRMET', async () => {
+  const mod = await import('../scripts/build-aviation-feeds.mjs');
+  expect(mod.airmetProduct('LLLL AIRMET 1 VALID ...')).toBe('AIRMET');
+  expect(mod.airmetProduct('LLHA AD WRNG 1')).toBe('AD');
+  expect(mod.airmetProduct('LLBG WS WRNG 2 WIND SHEAR')).toBe('WS');
+  // A bucket holding an AD warning alongside the AIRMET yields only the AIRMET.
+  const airmets = mod.parseImsAirmets({
+    '1': { wid: '1', issue_date: '2026-08-31 03:00',
+           lines: [{ content: 'LLLL AIRMET 1 VALID 310300/310700 MT OBSC OBS WI N3255 E03535 - N3315 E03535 - N3018 E03435 =' }] },
+    '2': { wid: '2', issue_date: '2026-08-31 03:00',
+           lines: [{ content: 'LLHA AD WRNG 1 VALID 310300/310700 TS' }] },
+  });
+  expect(airmets).toHaveLength(1);
+  expect(airmets[0].id).toBe('1');
 });
