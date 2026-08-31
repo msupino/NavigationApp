@@ -315,7 +315,7 @@ window.S = {
   wxNone: 'אין METAR / TAF לשדה זה',
   wxError: 'מזג אוויר לא זמין (לא מקוון או חסום)',
   wxMetar: 'METAR',
-  wxAdWs: 'אזהרות AD / WS',
+  wxAdWs: 'אזהרות שדה / גזירת רוח (AD / WS)',
   wxAdWsNone: 'אין',
   wxTaf: 'TAF',
   wxShowRaw: 'הצג גולמי',

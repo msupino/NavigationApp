@@ -203,7 +203,7 @@ test('the WX box lists a field\'s active AD/WS warnings', async ({ page }) => {
   await page.evaluate(() => loadAirmets(true));
   await openLLBG(page);
   const wx = page.locator('#insp-body .wx-section');
-  await expect(wx.locator('.wx-adws')).toContainText('AD / WS');
+  await expect(wx.locator('.wx-adws')).toContainText('Aerodrome / Wind-shear');
   await expect(wx.locator('.wx-adws')).toContainText('SFC WIND 320/25KT');
   await expect(wx.locator('.wx-adws')).toContainText('WS APCH RWY 12');
   await expect(wx.locator('.wx-adws')).not.toContainText('EXPIRED-MARKER');   // expired filtered
@@ -220,6 +220,6 @@ test('the WX box says None when a field has no AD/WS warning', async ({ page }) 
   await page.evaluate(() => loadAirmets(true));
   await openLLBG(page);
   const wx = page.locator('#insp-body .wx-section');
-  await expect(wx.locator('.wx-adws')).toContainText('AD / WS');
+  await expect(wx.locator('.wx-adws')).toContainText('Aerodrome / Wind-shear');
   await expect(wx.locator('.wx-adws-none')).toHaveText('None');
 });
