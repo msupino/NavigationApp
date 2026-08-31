@@ -67,3 +67,66 @@ test('the toggle group is revealed only when an AIRMET is active', async ({ page
   expect(seen.empty).toBe(true);    // no AIRMET -> group hidden
   expect(seen.active).toBe(false);  // active AIRMET -> group shown
 });
+
+test('the AIRMET text is readable — button and a tap on the area both open the decoded modal', async ({ page }) => {
+  await page.route('**/airmet.json', route => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: null, airmets: [AIRMET] }),
+  }));
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    await loadAirmets(true);
+    refreshAirmetGroup();
+    refreshAirmetBtn();
+    window.showAirmet = true;
+    // 1. The AIRMET button in Charts appears when active and opens the decoded modal.
+    const btn = document.getElementById('airmet-btn');
+    const btnShown = !btn.hidden;
+    btn.click();
+    const modal = document.querySelector('.modal-back .modal');
+    const byBtn = modal ? modal.textContent : '';
+    // close it
+    document.querySelector('.modal-back')._navaidClose();
+    const closed = !document.querySelector('.modal-back');
+    // 2. A tap inside the polygon opens the same modal.
+    map.setView([31.7, 35.0], 8);
+    const centre = { lat: 31.7, lng: 35.0 };
+    map.fire('click', {
+      latlng: L.latLng(centre.lat, centre.lng),
+      containerPoint: map.latLngToContainerPoint(centre),
+      layerPoint: map.latLngToLayerPoint(centre),
+      originalEvent: new MouseEvent('click'),
+    });
+    const byTap = !!document.querySelector('.modal-back .modal');
+    return { byBtn, closed, byTap, btnShown };
+  });
+  expect(out.btnShown).toBe(true);            // hidden until an AIRMET is active
+  expect(out.byBtn).toContain('MT OBSC');
+  expect(out.byBtn).toMatch(/Valid.*Z/);                // validity in Zulu
+  expect(out.byBtn).toContain('AIRMET 1 VALID');        // the raw ICAO line
+  expect(out.closed).toBe(true);
+  expect(out.byTap).toBe(true);                         // tapping the area reopened it
+});
+
+test('the decoded text inherits the theme colour instead of a hardcoded grey', async ({ page }) => {
+  await page.route('**/airmet.json', route => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: null, airmets: [AIRMET] }),
+  }));
+  await boot(page);
+  const styles = await page.evaluate(async () => {
+    await loadAirmets(true);
+    showAirmetDecoded();
+    const modal = document.querySelector('.modal-back .modal');
+    // Deepest match: the item div also contains this text, so take the innermost (last).
+    const raw = [...modal.querySelectorAll('div')].filter(d => /VALID 310300/.test(d.textContent)).pop();
+    const hazard = [...modal.querySelectorAll('div')].find(d => /MT OBSC/.test(d.textContent) && !/VALID/.test(d.textContent));
+    return { rawStyle: raw.getAttribute('style') || '', hazardStyle: hazard.getAttribute('style') || '' };
+  });
+  // The white-on-white bug was a fixed light-theme grey. The muted line must instead carry
+  // no colour of its own (so it inherits the theme's text colour) and be dimmed by opacity.
+  expect(styles.rawStyle).not.toMatch(/color\s*:/);
+  expect(styles.rawStyle).toMatch(/opacity/);
+  // The hazard headline never sets a colour either -- it reads in whatever the theme uses.
+  expect(styles.hazardStyle).not.toMatch(/color\s*:/);
+});
