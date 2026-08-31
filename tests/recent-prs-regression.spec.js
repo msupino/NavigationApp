@@ -57,13 +57,15 @@ test.describe('#218 — Show/pin label relabel', () => {
 // #238 — toolbar section order.
 // ---------------------------------------------------------------------------
 test.describe('#238 — toolbar section order', () => {
-  test('sections render in order: build, view, display, plan, charts, export, weather, print', async ({ page }) => {
+  test('sections render in order: build, view, display, plan, charts, weather, export, print', async ({ page }) => {
     await boot(page);
     const order = await page.locator('#toolbar .tb-section').evaluateAll(els =>
       els.map(el => el.getAttribute('data-sec')));
     // 'plan' is the standalone Flight-plan action promoted out of Charts — it sits
     // just before it, so the reference tables stay grouped after the main output.
-    expect(order).toEqual(['build', 'view', 'display', 'plan', 'charts', 'export', 'weather', 'print']);
+    // Export/Import sits after Extra layers (weather) and just before Print -- the output
+    // actions group at the end, after the map-layer controls.
+    expect(order).toEqual(['build', 'view', 'display', 'plan', 'charts', 'weather', 'export', 'print']);
   });
 });
 
