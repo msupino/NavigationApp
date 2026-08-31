@@ -4830,6 +4830,14 @@ map.on('click', e => {
     return;
   }
   if (downHit) { downHit = false; return; }
+  // Tap an AIRMET area (in inspect mode, nothing higher-priority hit) to read its text --
+  // a polygon labelled only "MT OBSC" does not carry the validity or movement. Inspect mode
+  // only, so it never competes with dropping a waypoint in add/note mode.
+  if (!state.mode && window.showAirmet && typeof airmetsAtLatLng === 'function'
+      && typeof showAirmetDecoded === 'function' && airmetsAtLatLng(e.latlng).length) {
+    showAirmetDecoded();
+    return;
+  }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.
   // First click on an empty route ARMS add mode -- but only while the one-time hint is
   // actually on screen telling the user to do it. Keying this off "route is empty" alone

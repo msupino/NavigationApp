@@ -4567,6 +4567,65 @@ function showSigmetDecoded() {
   window.addEventListener('keydown', onEsc);
 }
 
+// The AIRMET areas are drawn on the map, but a polygon does not carry its own hazard,
+// validity or movement -- those are in the raw text. This modal lists every active AIRMET's
+// hazard, its start/end in Zulu, and the raw ICAO line. Opened from the layer's text button
+// and by tapping an area. Mirrors showSigmetDecoded.
+function airmetValidityText(a) {
+  const z = t => {
+    const d = new Date(t);
+    if (isNaN(d)) return '';
+    return d.toISOString().slice(5, 16).replace('T', ' ') + 'Z';   // MM-DD HH:MMZ
+  };
+  const from = z(a && a.validFrom), to = z(a && a.validTo);
+  if (!from && !to) return '';
+  return (S.airmetValid || 'Valid') + ' ' + from + ' \u2192 ' + to;
+}
+function showAirmetDecoded() {
+  if (!Array.isArray(window.airmets) || !window.airmets.length) return;
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  box.style.cssText = 'max-width:560px;max-height:80vh;overflow:auto';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.airmetModalTitle || 'Active AIRMETs';
+  box.appendChild(title);
+  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  back._navaidClose = close;
+  function onEsc(e) {
+    if (e.key !== 'Escape') return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    close();
+  }
+  addModalCloseX(box, close);
+  const col = (typeof tune === 'function' && tune('airmetColor')) || '#6b8e23';
+  for (const a of window.airmets) {
+    const item = document.createElement('div');
+    item.dir = 'ltr';                 // AIRMET text is LTR even in Hebrew mode
+    item.style.cssText = 'margin:10px 0;padding:8px;border-left:4px solid ' + col +
+      ';background:rgba(255,255,255,0.04);direction:ltr;text-align:left';
+    const dec = document.createElement('div');
+    dec.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px';
+    dec.textContent = [String(a.hazard || 'AIRMET'), airmetValidityText(a)].filter(Boolean).join('  \u00b7  ');
+    item.appendChild(dec);
+    if (a.raw) {
+      const raw = document.createElement('div');
+      raw.style.cssText = 'font:11px/1.4 monospace;color:#b9b3b3;white-space:pre-wrap';
+      raw.textContent = (S.airmetRaw || S.sigmetRaw || 'Raw') + ': ' + a.raw;
+      item.appendChild(raw);
+    }
+    box.appendChild(item);
+  }
+  back.appendChild(box);
+  document.body.appendChild(back);
+  back.addEventListener('mousedown', e => { if (e.target === back) close(); });
+  window.addEventListener('keydown', onEsc);
+}
+window.showAirmetDecoded = showAirmetDecoded;
+
 // Show a pre-export modal so the user can decide which overlays and base
 // layer appear in the PNG, independently of the current screen settings.
 // True when the Print section head sits on the toolbar's top row. When the

@@ -67,3 +67,39 @@ test('the toggle group is revealed only when an AIRMET is active', async ({ page
   expect(seen.empty).toBe(true);    // no AIRMET -> group hidden
   expect(seen.active).toBe(false);  // active AIRMET -> group shown
 });
+
+test('the AIRMET text is readable — button and a tap on the area both open the decoded modal', async ({ page }) => {
+  await page.route('**/airmet.json', route => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: null, airmets: [AIRMET] }),
+  }));
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    await loadAirmets(true);
+    refreshAirmetGroup();
+    window.showAirmet = true;
+    // 1. The list button opens the modal with the raw text + validity.
+    document.getElementById('airmet-list-btn').click();
+    const modal = document.querySelector('.modal-back .modal');
+    const byBtn = modal ? modal.textContent : '';
+    // close it
+    document.querySelector('.modal-back')._navaidClose();
+    const closed = !document.querySelector('.modal-back');
+    // 2. A tap inside the polygon opens the same modal.
+    map.setView([31.7, 35.0], 8);
+    const centre = { lat: 31.7, lng: 35.0 };
+    map.fire('click', {
+      latlng: L.latLng(centre.lat, centre.lng),
+      containerPoint: map.latLngToContainerPoint(centre),
+      layerPoint: map.latLngToLayerPoint(centre),
+      originalEvent: new MouseEvent('click'),
+    });
+    const byTap = !!document.querySelector('.modal-back .modal');
+    return { byBtn, closed, byTap };
+  });
+  expect(out.byBtn).toContain('MT OBSC');
+  expect(out.byBtn).toMatch(/Valid.*Z/);                // validity in Zulu
+  expect(out.byBtn).toContain('AIRMET 1 VALID');        // the raw ICAO line
+  expect(out.closed).toBe(true);
+  expect(out.byTap).toBe(true);                         // tapping the area reopened it
+});

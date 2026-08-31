@@ -6425,6 +6425,10 @@ if (typeof loadAirmets === 'function') {
   });
 }
 window.refreshAirmetGroup = refreshAirmetGroup;
+const airmetListBtn = document.getElementById('airmet-list-btn');
+if (airmetListBtn) {
+  airmetListBtn.onclick = () => { if (typeof showAirmetDecoded === 'function') showAirmetDecoded(); };
+}
 
 // --- LSA airspace bubbles overlay toggle (Extra layers) ------------------
 const LSA_BUBBLES_KEY = 'navaid.showLsaBubbles';
