@@ -4,6 +4,7 @@ name: Update aviation data (SIGMET + METAR/TAF)
 # directly (the API blocks browser CORS) and publishes each to its own orphan
 # data branch, read by the app from raw.githubusercontent.com:
 #   - SIGMETs for the Israel region  -> sigmet-data/sigmet.json
+#   - AIRMETs (IMS Tel Aviv FIR)      -> airmet-data/airmet.json
 #   - METAR/TAF for Israeli fields   -> wx-data/wx.json
 
 on:
@@ -35,7 +36,7 @@ jobs:
           FIRS: 'LLLL,LCCC,LCNC,HECC,OLBB,OJAC,OSTT,LTAA'
           IDS: 'LLBG,LLHA,LLOV,LLER,LLES,LLEK,LLIB,LLMG,LLNV,LLRD,LLRM,LLBS,LLHZ'
         run: |
-          mkdir -p sigmet wx
+          mkdir -p sigmet wx airmet
           # The build lives in scripts/build-aviation-feeds.mjs so the publish rules can be
           # unit-tested. They decide whether a feed is published at all, and a scheduled
           # workflow cannot be exercised before it reaches the default branch, so tests are
@@ -60,4 +61,5 @@ jobs:
                   "$2" )
           }
           publish sigmet sigmet-data sigmet-bot sigmet.json
+          publish airmet airmet-data airmet-bot airmet.json
           publish wx     wx-data     wx-bot     wx.json

@@ -576,6 +576,7 @@ NavAid.tuningDefaults = {
   sigmetDashOnPx: { value: 8, min: 1, max: 60, step: 1, label: 'SIGMET dash on (px)' },
   sigmetDashOffPx: { value: 5, min: 0, max: 60, step: 1, label: 'SIGMET dash gap (px)' },
   sigmetLabelFontPx: { value: 12, min: 6, max: 32, step: 1, label: 'SIGMET label font (px)' },
+  airmetColor: { value: '#6b8e23', type: 'color', label: 'AIRMET area color' },
   lsaLineWidthPx: { value: 2, min: 0.25, max: 10, step: 0.25, label: 'LSA bubble outline width (px)' },
   lsaLabelFontPx: { value: 15, min: 8, max: 28, step: 1, label: 'LSA bubble name font size (px)' },
   lsaMetaFontPx: { value: 12, min: 6, max: 22, step: 1, label: 'LSA bubble alt/hours font size (px)' },
@@ -800,6 +801,7 @@ NavAid.tuningDefaults = {
   defaultShowReporting: { value: false, type: 'bool', label: 'Default: show reporting points' },
   defaultForceSnap: { value: false, type: 'bool', label: 'Default: force snap' },
   defaultShowNotam: { value: false, type: 'bool', label: 'Default: show NOTAMs' },
+  defaultShowAirmet: { value: false, type: 'bool', label: 'Default: show AIRMETs' },
   defaultShowWind: { value: false, type: 'bool', label: 'Default: show wind' },
   defaultWindField: { value: false, type: 'bool', label: 'Default: show wind field' },
   defaultImsPwx: { value: false, type: 'bool', label: 'Default: show IMS PWX overlay' },
@@ -927,7 +929,7 @@ NavAid.tuningGroups = [
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing'] },
   { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
-  { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
+  { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx', 'airmetColor'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor', 'featureNotamFreqRows'] },
   { name: 'Overlay opacity', keys: ['overlayOpacity'] },
@@ -950,7 +952,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1361,6 +1363,8 @@ window.S = Object.assign({
   tbSigmetTitle: 'Active international SIGMET hazard areas for the Israel region (source: NOAA AWC)',
   tbShowNotam: 'Show NOTAMs',
   tbShowNotamTitle: 'Overlay active NOTAM areas for the Israel FIR (LLLL). Click “NOTAM list” for the full texts. Planning aid only.',
+  tbShowAirmet: 'Show AIRMETs',
+  tbShowAirmetTitle: 'Overlay active IMS AIRMET hazard areas for the Tel Aviv FIR (mountain obscuration, IFR, surface wind). Source: ims.gov.il. Planning aid only.',
   tbNotamList: '📋 NOTAM list',
   tbNotamListTitle: 'Show all active NOTAMs for the Israel FIR as text',
   tbLsaList: '📋 LSA bubbles',
@@ -2538,6 +2542,7 @@ var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
 var showLsaBubbles = true;  // LSA airspace bubbles overlay (Low Alt layer; default on)
 var showAirspace = false;   // prohibited / restricted / TMA from the AIP (Extra layers)
+var showAirmet = false;     // IMS Tel Aviv FIR AIRMET hazard areas (Extra layers)
 // Auto-route on the MAP: adding a reporting point extends the route along the published
 // corridor between it and the previous point, instead of a straight line. CVFR only for
 // now (the maintainer's scope); filing-time expansion stays independent of this.

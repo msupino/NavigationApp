@@ -235,6 +235,8 @@ window.S = {
   tbSigmetTitle: 'אזורי מפגע SIGMET פעילים עבור אזור ישראל (מקור: NOAA AWC)',
   tbShowNotam: 'הצג NOTAM',
   tbShowNotamTitle: 'הצג אזורי NOTAM פעילים עבור FIR ישראל (LLLL). לחץ על "רשימת NOTAM" לטקסט המלא. אמצעי תכנון בלבד.',
+  tbShowAirmet: 'הצג AIRMET',
+  tbShowAirmetTitle: 'הצג אזורי AIRMET פעילים של השמ״ט עבור FIR תל אביב (ערפול הרים, IFR, רוח פני שטח). מקור: ims.gov.il. אמצעי תכנון בלבד.',
   tbNotamList: '📋 רשימת NOTAM',
   tbLsaList: '📋 בועות LSA',
   tbLsaListTitle: 'רשימת בועות מרחב LSA; לחצו על אחת כדי להתמקד בה',
