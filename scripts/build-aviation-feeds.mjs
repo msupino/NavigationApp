@@ -90,6 +90,40 @@ export function airmetProduct(text) {
   if (/\bAD\s*WRNG\b|AERODROME\s+WARNING/i.test(t)) return 'AD';
   return 'OTHER';
 }
+// SIGMET/AIRMET "WI" coordinates are an ordered vertex list. The IMS occasionally lists
+// them in an order that, drawn point-to-point, crosses itself -- a bowtie rather than the
+// intended area (observed: a Golan-to-Negev corridor whose four corners were listed
+// N, N, S, S, so the two long edges crossed). When that happens the corners are still the
+// right corners; only the traversal order is wrong. Reorder by angle about the centroid,
+// which turns any self-crossing list of convex/star-shaped points into a simple polygon.
+// A ring that is already simple is returned unchanged, so well-formed multi-point areas are
+// never altered.
+export function repairRing(coords) {
+  let ring = Array.isArray(coords) ? coords.filter(c => Array.isArray(c) && c.length === 2) : [];
+  // These lists usually repeat the first point to close the ring; drop it so it does not
+  // sit as a zero-length edge (and skew the centroid) during the check and reorder.
+  if (ring.length > 1) {
+    const a = ring[0], b = ring[ring.length - 1];
+    if (a[0] === b[0] && a[1] === b[1]) ring = ring.slice(0, -1);
+  }
+  if (ring.length < 4) return ring;                 // 3 points cannot self-cross
+  const ccw = (A, B, C) => (C[0] - A[0]) * (B[1] - A[1]) - (B[0] - A[0]) * (C[1] - A[1]);
+  const inter = (a, b, c, d) =>
+    (ccw(a, c, d) > 0) !== (ccw(b, c, d) > 0) && (ccw(a, b, c) > 0) !== (ccw(a, b, d) > 0);
+  const n = ring.length;
+  let crosses = false;
+  for (let i = 0; i < n && !crosses; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (Math.abs(i - j) <= 1 || Math.abs(i - j) === n - 1) continue;
+      if (inter(ring[i], ring[(i + 1) % n], ring[j], ring[(j + 1) % n])) { crosses = true; break; }
+    }
+  }
+  if (!crosses) return ring;
+  const cx = ring.reduce((s, p) => s + p[0], 0) / n;
+  const cy = ring.reduce((s, p) => s + p[1], 0) / n;
+  return ring.slice().sort((a, b) => Math.atan2(a[0] - cx, a[1] - cy) - Math.atan2(b[0] - cx, b[1] - cy));
+}
+
 export function parseImsAirmets(areaWarnings) {
   const items = areaWarnings && typeof areaWarnings === 'object' ? Object.values(areaWarnings) : [];
   const out = [];
@@ -101,7 +135,7 @@ export function parseImsAirmets(areaWarnings) {
     const { validFrom, validTo } = parseAirmetValidity(raw, String((w && w.issue_date) || '').slice(0, 10));
     out.push({
       id: String((w && w.wid) || ''), hazard: classifyAirmet(raw),
-      validFrom, validTo, coords: parseAirmetCoords(raw), raw,
+      validFrom, validTo, coords: repairRing(parseAirmetCoords(raw)), raw,
     });
   }
   return out;

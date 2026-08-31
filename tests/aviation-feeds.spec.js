@@ -165,9 +165,12 @@ test('an IMS area warning becomes an AIRMET with polygon, hazard and UTC validit
   expect(a).toHaveLength(1);
   expect(a[0].id).toBe('42559');
   expect(a[0].hazard).toBe('MT OBSC');
-  // DDMM: N3255 -> 32 + 55/60, E03535 -> 35 + 35/60
-  expect(a[0].coords[0]).toEqual([32.91667, 35.58333]);
-  expect(a[0].coords).toHaveLength(5);              // closed ring
+  // DDMM: N3255 -> 32 + 55/60, E03535 -> 35 + 35/60. The ring is repaired to a simple
+  // polygon (see the self-crossing test below), so assert the corners are present rather
+  // than a fixed order, and that the closing duplicate is dropped.
+  expect(a[0].coords).toHaveLength(4);
+  expect(a[0].coords).toContainEqual([32.91667, 35.58333]);
+  expect(a[0].coords).toContainEqual([30.3, 34.58333]);
   // UTC from the raw "VALID 310300/310700", not the item's local times
   expect(a[0].validFrom).toBe('2026-08-31T03:00:00.000Z');
   expect(a[0].validTo).toBe('2026-08-31T07:00:00.000Z');
@@ -228,4 +231,34 @@ test('AD and WS warnings in the same bucket are not mislabelled as AIRMET', asyn
   });
   expect(airmets).toHaveLength(1);
   expect(airmets[0].id).toBe('1');
+});
+
+test('a self-crossing WI vertex order is repaired into a simple polygon', async () => {
+  const mod = await import('../scripts/build-aviation-feeds.mjs');
+  const seg = (a, b, c, d) => {
+    const ccw = (A, B, C) => (C[0] - A[0]) * (B[1] - A[1]) - (B[0] - A[0]) * (C[1] - A[1]);
+    return (ccw(a, c, d) > 0) !== (ccw(b, c, d) > 0) && (ccw(a, b, c) > 0) !== (ccw(a, b, d) > 0);
+  };
+  const selfCrosses = r => {
+    const n = r.length;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      if (Math.abs(i - j) <= 1 || Math.abs(i - j) === n - 1) continue;
+      if (seg(r[i], r[(i + 1) % n], r[j], r[(j + 1) % n])) return true;
+    }
+    return false;
+  };
+  // The live MT OBSC corners, listed N, N, S, S -- drawn in order they bowtie.
+  const raw = [[32.9167, 35.5833], [33.25, 35.5833], [30.3, 34.5833], [30.7, 34.4333]];
+  expect(selfCrosses(raw)).toBe(true);
+  const fixed = mod.repairRing(raw);
+  expect(selfCrosses(fixed)).toBe(false);          // repaired to a simple polygon
+  expect(fixed).toHaveLength(4);                    // same corners, reordered
+  expect([...fixed].sort()).toEqual([...raw].sort());
+  // A polygon that is already simple is returned untouched (order preserved).
+  const simple = [[32, 34], [33, 34], [33, 35], [32, 35]];
+  expect(mod.repairRing(simple)).toEqual(simple);
+  // The full parse applies the repair.
+  const a = mod.parseImsAirmets({ '1': { wid: '1', issue_date: '2026-08-31 03:00',
+    lines: [{ content: 'LLLL AIRMET 1 VALID 310300/310700 MT OBSC OBS WI N3255 E03535 - N3315 E03535 - N3018 E03435 - N3042 E03426 - N3255 E03535 =' }] } });
+  expect(selfCrosses(a[0].coords)).toBe(false);
 });
