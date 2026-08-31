@@ -1023,7 +1023,7 @@ function draw() {
   drawAirfields();
   drawVors();
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
-  if (window.showAirmet && Array.isArray(airmets) && airmets.length) drawAirmets();
+  if (window.showAirmet && typeof activeAirmets === 'function' && activeAirmets().length) drawAirmets();
   drawLegs();
   drawWaypoints();
   // After the route and its discs, not before: drawn underneath, the line ran straight through
@@ -1319,6 +1319,7 @@ function airmetsAtLatLng(latlng) {
   const pt = proj(latlng);
   const out = [];
   for (let i = 0; i < airmets.length; i++) {
+    if (!airmetActive(airmets[i])) continue;
     const poly = (airmets[i].coords || []).map(c => proj({ lat: c[0], lng: c[1] }));
     if (poly.length < 3 || !notamPointInPoly(pt, poly)) continue;
     let a2 = 0;
@@ -1339,11 +1340,32 @@ window.airmetsAtLatLng = airmetsAtLatLng;
 function airmetColor() {
   return (typeof tune === 'function' && tune('airmetColor')) || '#6b8e23';
 }
+// An AIRMET is only drawn while it is in force: past its validTo it is history, before its
+// validFrom it has not started. The feed republishes on a cron, so airmet.json can still
+// carry one that has just expired -- and a long-open tab would otherwise keep drawing it.
+// Filtering here (as the NOTAM layer filters by its active window) means an expired area
+// drops on the next redraw without waiting for the feed or a reload. A missing bound is open.
+function airmetActive(a, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const from = a && a.validFrom ? Date.parse(a.validFrom) : NaN;
+  const to = a && a.validTo ? Date.parse(a.validTo) : NaN;
+  if (Number.isFinite(from) && t < from) return false;
+  if (Number.isFinite(to) && t > to) return false;
+  return true;
+}
+window.airmetActive = airmetActive;
+// The active AIRMETs right now -- what the map, the hit-test, the count and the list all use.
+function activeAirmets() {
+  return Array.isArray(window.airmets) ? window.airmets.filter(a => airmetActive(a)) : [];
+}
+window.activeAirmets = activeAirmets;
+
 function drawAirmets() {
-  if (!Array.isArray(airmets) || !airmets.length) return;
+  const active = activeAirmets();
+  if (!active.length) return;
   octx.save();
   const col = airmetColor();
-  for (const a of airmets) {
+  for (const a of active) {
     const pts = (a.coords || [])
       .filter(c => Array.isArray(c) && c.length === 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]))
       .map(c => proj({ lat: c[0], lng: c[1] }));

@@ -6405,7 +6405,7 @@ try {
 const airmetCb = document.getElementById('airmet-cb');
 function refreshAirmetGroup() {
   const group = document.getElementById('airmet-group');
-  if (group) group.hidden = !(Array.isArray(window.airmets) && window.airmets.length > 0);
+  if (group) group.hidden = !(typeof activeAirmets === 'function' && activeAirmets().length > 0);
 }
 if (airmetCb) {
   airmetCb.checked = showAirmet;
@@ -6431,7 +6431,7 @@ window.refreshAirmetGroup = refreshAirmetGroup;
 // Extra-layers toggle group; this tracks the Charts button.
 const airmetBtn = document.getElementById('airmet-btn');
 function refreshAirmetBtn() {
-  if (airmetBtn) airmetBtn.hidden = !(Array.isArray(window.airmets) && window.airmets.length > 0);
+  if (airmetBtn) airmetBtn.hidden = !(typeof activeAirmets === 'function' && activeAirmets().length > 0);
 }
 if (airmetBtn) {
   airmetBtn.onclick = () => { if (typeof showAirmetDecoded === 'function') showAirmetDecoded(); };
