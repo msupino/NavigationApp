@@ -733,5 +733,6 @@ test('the NOTAM toggle shows the active item count', async ({ page }) => {
   ] });
   await page.waitForFunction(() => Array.isArray(notams) && notams.length === 3);
   await page.evaluate(() => refreshNotamListBtn());
-  await expect(page.locator('#notam-count')).toHaveText(/\(2\)/);   // expired one not counted
+  await expect(page.locator('#notam-count')).toHaveText(/\(2\)/);        // Extra-layers toggle
+  await expect(page.locator('#notam-list-count')).toHaveText(/\(2\)/);   // Charts list button
 });

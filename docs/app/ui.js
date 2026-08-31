@@ -4880,6 +4880,7 @@ function refreshNotamListBtn() {
   // Dim, never hide -- the NOTAM list button stays put and greys when there is nothing to list.
   if (notamListBtn) { notamListBtn.hidden = false; notamListBtn.disabled = !(have && shownHere.length); }
   setLayerCount('notam-count', shownHere.length);
+  setLayerCount('notam-list-count', shownHere.length);
   // Gray out the NOTAM toggle when the feed has no data (source currently
   // unavailable). Data-driven: every call re-evaluates, so when a non-empty
   // feed is present the toggle is enabled again. (The feed is loaded once per
