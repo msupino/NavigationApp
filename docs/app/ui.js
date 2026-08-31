@@ -6392,6 +6392,40 @@ if (airspaceCb) {
   };
 }
 
+// --- AIRMET overlay toggle (Extra layers) -------------------------------
+// IMS Tel Aviv FIR AIRMETs, drawn as dotted hazard polygons. The group box is hidden until
+// the feed reports at least one active AIRMET, the same way the SIGMET list button appears
+// only when there is something to show.
+const AIRMET_KEY = 'navaid.showAirmet';
+try {
+  const stored = lsGet(AIRMET_KEY);
+  if (stored !== null) window.showAirmet = stored === '1';
+  else if (typeof tune === 'function') window.showAirmet = tune('defaultShowAirmet') === true;
+} catch (e) { /* storage unavailable */ }
+const airmetCb = document.getElementById('airmet-cb');
+function refreshAirmetGroup() {
+  const group = document.getElementById('airmet-group');
+  if (group) group.hidden = !(Array.isArray(window.airmets) && window.airmets.length > 0);
+}
+if (airmetCb) {
+  airmetCb.checked = showAirmet;
+  airmetCb.onchange = e => {
+    window.showAirmet = e.target.checked;
+    try { localStorage.setItem(AIRMET_KEY, showAirmet ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    draw();
+  };
+}
+// Eager load on boot: reveal the toggle if an AIRMET is active, and draw it if the pilot
+// (or the gist default) already had the layer on.
+if (typeof loadAirmets === 'function') {
+  loadAirmets().then(() => {
+    refreshAirmetGroup();
+    if (window.showAirmet) draw();
+  });
+}
+window.refreshAirmetGroup = refreshAirmetGroup;
+
 // --- LSA airspace bubbles overlay toggle (Extra layers) ------------------
 const LSA_BUBBLES_KEY = 'navaid.showLsaBubbles';
 try {
@@ -9865,6 +9899,7 @@ NavAid.defaultVisibilityMap = [
   // shared key, conclude the pilot had never chosen, and stamp the shipped
   // default over the current chart's real preference.
   ['notam-cb', () => notamPrefKey(), 'defaultShowNotam'],
+  ['airmet-cb', 'navaid.showAirmet', 'defaultShowAirmet'],
   ['show-wind-cb', 'navaid.showWind', 'defaultShowWind'],
   ['windfield-cb', 'navaid.windField', 'defaultWindField'],
   ['ims-pwx-cb', 'navaid.imsPwx', 'defaultImsPwx'],

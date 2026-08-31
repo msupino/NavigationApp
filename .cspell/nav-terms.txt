@@ -342,3 +342,5 @@ wpSize
 yellowAlpha
 ZOOM
 zoom
+AIRMET
+AIRMETs

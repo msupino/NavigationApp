@@ -1023,6 +1023,7 @@ function draw() {
   drawAirfields();
   drawVors();
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
+  if (window.showAirmet && Array.isArray(airmets) && airmets.length) drawAirmets();
   drawLegs();
   drawWaypoints();
   // After the route and its discs, not before: drawn underneath, the line ran straight through
@@ -1077,6 +1078,15 @@ function draw() {
 // offline / first-run fallback.
 const SIGMET_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/sigmet-data/sigmet.json';
+// Israeli AIRMETs (Tel Aviv FIR mountain obscuration, IFR, surface wind) come from the IMS,
+// which NOAA's SIGMET feed does not carry. A scheduled Action copies them to the
+// `airmet-data` branch, exactly as the SIGMET and IMS-chart feeds are. data/airmet.json is
+// the offline / first-run fallback.
+const AIRMET_URL =
+  'https://raw.githubusercontent.com/msupino/NavigationApp/airmet-data/airmet.json';
+let airmets = null;
+let airmetMeta = null;
+window.airmets = airmets;
 // NOTAMs: a scheduled Action queries the FAA NOTAM API for the Israel FIR
 // (LLLL), normalises geometry, and publishes notam.json to the `notam-data`
 // branch (filename unchanged there). data/notam.json is the offline /
@@ -1262,6 +1272,77 @@ function drawSigmets() {
     cx /= pts.length; cy /= pts.length;
     const label = (String(s.hazard || '') +
                    (s.qualifier ? ' ' + s.qualifier : '')).trim();
+    if (label) {
+      octx.font = 'bold ' + tune('sigmetLabelFontPx') + 'px sans-serif';
+      octx.textAlign = 'center';
+      octx.lineWidth = 3;
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+      octx.strokeText(label, cx, cy);
+      octx.fillStyle = col;
+      octx.fillText(label, cx, cy);
+    }
+  }
+  octx.textAlign = 'left';
+  octx.restore();
+}
+
+// --- AIRMETs (IMS Tel Aviv FIR area hazards) --------------------------------
+async function loadAirmets(force) {
+  if (airmets !== null && !force) return airmets;
+  const parse = d => {
+    const list = Array.isArray(d && d.airmets) ? d.airmets : [];
+    airmetMeta = { generatedAt: (d && d.generatedAt) || null };
+    return list.filter(a => a && Array.isArray(a.coords));
+  };
+  try {
+    const res = await fetch(AIRMET_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    airmets = parse(await res.json());
+  } catch (e) {
+    try {
+      const res2 = await fetch('data/airmet.json');
+      airmets = parse(await res2.json());
+    } catch (e2) {
+      airmets = [];
+      airmetMeta = { generatedAt: null };
+    }
+  }
+  window.airmets = airmets;
+  return airmets;
+}
+window.loadAirmets = loadAirmets;
+
+// AIRMETs are advisory, lower-severity than SIGMETs, and they all share one look here: a
+// single tunable colour rather than the SIGMET per-hazard palette. The hazard word still
+// labels each area, so an MT OBSC reads differently from an IFR without needing its own hue.
+function airmetColor() {
+  return (typeof tune === 'function' && tune('airmetColor')) || '#6b8e23';
+}
+function drawAirmets() {
+  if (!Array.isArray(airmets) || !airmets.length) return;
+  octx.save();
+  const col = airmetColor();
+  for (const a of airmets) {
+    const pts = (a.coords || [])
+      .filter(c => Array.isArray(c) && c.length === 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+      .map(c => proj({ lat: c[0], lng: c[1] }));
+    if (pts.length < 3) continue;
+    octx.beginPath();
+    octx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
+    octx.closePath();
+    octx.fillStyle = colorWithAlpha(col, tune('sigmetFillAlpha'));
+    octx.fill();
+    // Dotted, to read as distinct from the SIGMET dashes on the same map.
+    octx.setLineDash([2, tune('sigmetDashOffPx')]);
+    octx.lineWidth = tune('sigmetLineWidthPx');
+    octx.strokeStyle = col;
+    octx.stroke();
+    octx.setLineDash([]);
+    let cx = 0, cy = 0;
+    for (const p of pts) { cx += p.x; cy += p.y; }
+    cx /= pts.length; cy /= pts.length;
+    const label = String(a.hazard || 'AIRMET').trim();
     if (label) {
       octx.font = 'bold ' + tune('sigmetLabelFontPx') + 'px sans-serif';
       octx.textAlign = 'center';
