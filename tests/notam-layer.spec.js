@@ -736,3 +736,25 @@ test('the NOTAM toggle shows the active item count', async ({ page }) => {
   await expect(page.locator('#notam-count')).toHaveText(/\(2\)/);        // Extra-layers toggle
   await expect(page.locator('#notam-list-count')).toHaveText(/\(2\)/);   // Charts list button
 });
+
+test('the NOTAM count sits at the end of the label in a Hebrew (RTL) session', async ({ page }) => {
+  const now = Date.now(); const iso = v => new Date(v).toISOString();
+  await boot(page, { generatedAt: iso(now), notams: [
+    { id: 'A1/26', icao: 'LLBG', start: iso(now - 3600000), end: iso(now + 3600000), geom: null, text: 'a' },
+  ] }, 'he');
+  await page.waitForFunction(() => Array.isArray(notams) && notams.length === 1);
+  await page.evaluate(() => refreshNotamListBtn());
+  const pos = await page.evaluate(() => {
+    const btn = document.getElementById('notam-list-btn');
+    const label = btn.querySelector('[data-i18n="tbNotamList"]');
+    const count = document.getElementById('notam-list-count');
+    // Force it visible/measurable regardless of the section's collapse state.
+    btn.style.display = 'inline-block'; btn.hidden = false;
+    return { countLeft: count.getBoundingClientRect().left, labelLeft: label.getBoundingClientRect().left,
+             countText: count.textContent, bidi: getComputedStyle(count).unicodeBidi };
+  });
+  expect(pos.countText).toMatch(/\(1\)/);
+  expect(pos.bidi).toBe('isolate');
+  // RTL: the logical end of the line is the visual LEFT, so the count is left of the label.
+  expect(pos.countLeft).toBeLessThan(pos.labelLeft);
+});
