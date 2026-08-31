@@ -14,7 +14,7 @@ async function boot(page) {
 
 const AIRMET = {
   id: '42559', hazard: 'MT OBSC',
-  validFrom: '2026-08-31T03:00:00.000Z', validTo: '2026-08-31T07:00:00.000Z',
+  validFrom: '2020-01-01T00:00:00.000Z', validTo: '2099-01-01T00:00:00.000Z',
   coords: [[32.91667, 35.58333], [33.25, 35.58333], [30.3, 34.58333], [30.7, 34.43333], [32.91667, 35.58333]],
   raw: 'LLLL AIRMET 1 VALID 310300/310700 MT OBSC OBS WI ... =',
 };
@@ -129,4 +129,60 @@ test('the decoded text inherits the theme colour instead of a hardcoded grey', a
   expect(styles.rawStyle).toMatch(/opacity/);
   // The hazard headline never sets a colour either -- it reads in whatever the theme uses.
   expect(styles.hazardStyle).not.toMatch(/color\s*:/);
+});
+
+test('an expired AIRMET is not drawn, listed, or exposed as a toggle', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const past = { hazard: 'MT OBSC', validFrom: '2020-01-01T00:00:00Z', validTo: '2020-01-01T04:00:00Z',
+                   coords: [[32.9, 35.5], [33.2, 35.5], [30.3, 34.5], [30.7, 34.4]], raw: 'expired-marker' };
+    const open = { hazard: 'IFR', validFrom: '2020-01-01T00:00:00Z', validTo: null,
+                   coords: [[31.9, 34.9], [32.1, 34.9], [32.0, 35.1]], raw: 'open-marker' };
+    window.airmets = [past, open];
+    map.setView([31.7, 35.0], 8);
+    window.showAirmet = true;
+    refreshAirmetGroup(); refreshAirmetBtn();
+    const activeHazards = activeAirmets().map(a => a.hazard);
+    // Count AIRMET areas specifically by their dotted outline ([2, ...]), not every map fill.
+    let dotted = 0; const os = octx.setLineDash;
+    octx.setLineDash = function (d) { if (d && d.length && d[0] === 2) dotted++; return os.apply(this, [d]); };
+    draw();
+    octx.setLineDash = os;
+    showAirmetDecoded();
+    const modalText = document.querySelector('.modal-back .modal')?.textContent || '';
+    return {
+      active: activeHazards, dotted,
+      groupHidden: document.getElementById('airmet-group').hidden,
+      btnHidden: document.getElementById('airmet-btn').hidden,
+      listsExpired: /expired-marker/.test(modalText),
+      listsOpen: /open-marker|IFR/.test(modalText),
+    };
+  });
+  expect(out.active).toEqual(['IFR']);      // only the in-force one
+  expect(out.dotted).toBe(1);               // the expired polygon is not drawn
+  expect(out.groupHidden).toBe(false);
+  expect(out.btnHidden).toBe(false);
+  expect(out.listsOpen).toBe(true);
+  expect(out.listsExpired).toBe(false);
+});
+
+test('when every AIRMET has expired the layer disappears entirely', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    window.airmets = [{ hazard: 'MT OBSC', validFrom: '2020-01-01T00:00:00Z',
+      validTo: '2020-01-01T04:00:00Z', coords: [[32, 35], [33, 35], [32, 34]], raw: 'x' }];
+    window.showAirmet = true;
+    refreshAirmetGroup(); refreshAirmetBtn();
+    map.setView([32.3, 34.7], 8);
+    let dotted = 0; const os = octx.setLineDash;
+    octx.setLineDash = function (d) { if (d && d.length && d[0] === 2) dotted++; return os.apply(this, [d]); };
+    draw();
+    octx.setLineDash = os;
+    return { dotted, group: document.getElementById('airmet-group').hidden,
+             btn: document.getElementById('airmet-btn').hidden, active: activeAirmets().length };
+  });
+  expect(out.active).toBe(0);
+  expect(out.dotted).toBe(0);
+  expect(out.group).toBe(true);
+  expect(out.btn).toBe(true);
 });
