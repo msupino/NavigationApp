@@ -1359,8 +1359,9 @@ function airmetsAtLatLng(latlng) {
   if (!window.showAirmet || !Array.isArray(airmets) || !airmets.length || !latlng) return [];
   const pt = proj(latlng);
   const out = [];
+  const viewNow = Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
   for (let i = 0; i < airmets.length; i++) {
-    if (!airmetActive(airmets[i])) continue;
+    if (!airmetActive(airmets[i], viewNow)) continue;
     const poly = (airmets[i].coords || []).map(c => proj({ lat: c[0], lng: c[1] }));
     if (poly.length < 3 || !notamPointInPoly(pt, poly)) continue;
     let a2 = 0;
@@ -1397,7 +1398,10 @@ function airmetActive(a, now) {
 window.airmetActive = airmetActive;
 // The active AIRMETs right now -- what the map, the hit-test, the count and the list all use.
 function activeAirmets() {
-  return Array.isArray(window.airmets) ? window.airmets.filter(a => airmetActive(a)) : [];
+  // Same look-ahead time the NOTAM layer scrubs to: with the timeline slider forward, an
+  // AIRMET past its validTo drops out, exactly as a NOTAM does. null = live "now".
+  const now = Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
+  return Array.isArray(window.airmets) ? window.airmets.filter(a => airmetActive(a, now)) : [];
 }
 window.activeAirmets = activeAirmets;
 
