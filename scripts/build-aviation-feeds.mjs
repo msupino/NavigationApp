@@ -141,6 +141,29 @@ export function parseImsAirmets(areaWarnings) {
   return out;
 }
 
+// IMS `data.warnings` carries the per-aerodrome products -- AD WRNG (aerodrome) and WS WRNG
+// (wind shear) -- keyed by an internal id, each an array of lines whose text names the field
+// and the warning. These are point warnings, not FIR polygons, so they do not belong on the
+// AIRMET map; they surface in the airfield weather panel. Key them by ICAO (the first token
+// of the raw text) with the product, validity and raw line, so a field can show its own.
+export function parseImsAirfieldWarnings(warnings) {
+  const out = {};
+  const groups = warnings && typeof warnings === 'object' ? Object.values(warnings) : [];
+  for (const g of groups) {
+    const arr = Array.isArray(g) ? g : [g];
+    const raw = arr.map(l => l && l.content).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    if (!raw) continue;
+    const product = airmetProduct(raw);
+    if (product !== 'AD' && product !== 'WS') continue;   // this map is aerodrome AD/WS only
+    const icao = (raw.match(/\b(LL[A-Z]{2})\b/) || [])[1];
+    if (!icao) continue;
+    const { validFrom, validTo } = parseAirmetValidity(raw,
+      String((arr[0] && arr[0].valid_from) || '').slice(0, 10));
+    (out[icao] = out[icao] || []).push({ product, validFrom, validTo, raw });
+  }
+  return out;
+}
+
 // --- METAR / TAF (Israeli fields) ---------------------------------------------------
 export function collectStations(metars, tafs) {
   const stations = {};
@@ -221,12 +244,16 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch, p
 
   // IMS aviation feed -> AIRMETs for the Tel Aviv FIR. Same fail-closed shape as SIGMET: a
   // non-array or missing area_warnings is treated as a bad fetch, not "no warnings".
-  let airmets = [], airmetOk = false;
+  let airmets = [], airfieldWarnings = {}, airmetOk = false;
   try {
     const body = await fetchJson(IMS_AVIATION, fetchImpl);
-    const areas = body && body.data && body.data.area_warnings;
-    if (areas !== undefined && (areas === null || typeof areas === 'object')) {
+    const data = body && body.data;
+    const areas = data && data.area_warnings;
+    if (data && areas !== undefined && (areas === null || typeof areas === 'object')) {
       airmets = parseImsAirmets(areas || {});
+      // The same fetch carries the per-aerodrome AD/WS warnings; a missing `warnings` key
+      // simply means none are in force.
+      airfieldWarnings = parseImsAirfieldWarnings(data.warnings || {});
       airmetOk = true;
     } else {
       throw new Error('aviation_data has no data.area_warnings');
@@ -264,7 +291,8 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch, p
     stations: Object.keys(stations).length };
   if (airmetPublishable({ airmetOk })) {
     write('airmet/airmet.json', JSON.stringify({
-      generatedAt: new Date().toISOString(), source: 'IMS area warnings (ims.gov.il)', airmets,
+      generatedAt: new Date().toISOString(), source: 'IMS area warnings (ims.gov.il)',
+      airmets, airfieldWarnings,
     }, null, 1));
     log('AIRMETs:', airmets.length);
     result.airmet = 'published';

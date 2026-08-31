@@ -344,3 +344,4 @@ ZOOM
 zoom
 AIRMET
 AIRMETs
+adws
