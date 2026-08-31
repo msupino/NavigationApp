@@ -8715,64 +8715,54 @@ function watchServiceWorkerUpdates(sw) {
   const controlledAtStart = !!sw.controller;
   let hadController = controlledAtStart;
   let firstInstallWorker = null;
-  let updateCycleWorker = null;
-  let updateCycleNotified = false;
-  let updateControllerChangePending = false;
-  const beginUpdateCycle = worker => {
-    if (!worker || worker === updateCycleWorker) return;
-    updateCycleWorker = worker;
-    updateCycleNotified = false;
-    updateControllerChangePending = false;
-  };
-  const notifyForUpdateCycle = worker => {
-    beginUpdateCycle(worker);
-    if (updateCycleNotified) return;
-    updateCycleNotified = true;
-    // skipWaiting() makes this same update emit controllerchange after its installed /
-    // activated state. Remember that expected echo even if the browser gives the
-    // controller a different JS wrapper from the installing worker.
-    updateControllerChangePending = true;
+  // Dedup by an update GENERATION, not by worker-object identity. sw.js calls skipWaiting()
+  // + clients.claim(), so every deploy fires a controllerchange -- and a browser can fire it
+  // more than once, each time handing back a DIFFERENT controller wrapper. Keying the "have I
+  // already asked?" flag on the worker object therefore re-armed on the second controllerchange
+  // and prompted again for the same build. The generation advances only when a genuinely new
+  // INSTALLING worker appears (updatefound / the initial registration); controllerchange never
+  // starts a new generation, it only announces the current one, once.
+  let generation = 0;
+  let notifiedGeneration = -1;
+  const maybeNotice = () => {
+    if (!hadController) return;                    // the first control is not an update
+    if (notifiedGeneration === generation) return; // already asked for this build
+    notifiedGeneration = generation;
     showBuildUpdateNotice();
   };
-  const notifyIfUpdate = () => {
-    if (!hadController) {
-      hadController = true;
-      return;
-    }
-    if (updateControllerChangePending) {
-      updateControllerChangePending = false;
-      return;
-    }
-    notifyForUpdateCycle(sw.controller);
-    hadController = true;
+  const watchInstalling = worker => {
+    if (!worker || typeof worker.addEventListener !== 'function') return;
+    // The very first install on a page that had no controller is the app arriving, not an
+    // update -- it must never prompt, and must not consume a generation.
+    const isInitial = !controlledAtStart && worker === firstInstallWorker;
+    if (!isInitial) generation += 1;
+    worker.addEventListener('statechange', () => {
+      if ((worker.state === 'installed' || worker.state === 'activated') && !isInitial) {
+        maybeNotice();
+      }
+    });
   };
   if (typeof sw.addEventListener === 'function') {
-    sw.addEventListener('controllerchange', notifyIfUpdate);
+    sw.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; }
+      maybeNotice();
+    });
   }
   return sw.register('sw.js').then(reg => {
-    const watchWorker = worker => {
-      if (!worker || typeof worker.addEventListener !== 'function') return;
-      beginUpdateCycle(worker);
-      worker.addEventListener('statechange', () => {
-        if ((worker.state === 'installed' || worker.state === 'activated') &&
-            hadController) {
-          if (!controlledAtStart && worker === firstInstallWorker) return;
-          notifyForUpdateCycle(worker);
-        }
-      });
-    };
-    if (!controlledAtStart && reg) firstInstallWorker = reg.installing || reg.waiting || null;
-    if (reg && reg.waiting && hadController && reg.waiting !== firstInstallWorker) {
-      notifyForUpdateCycle(reg.waiting);
+    if (!reg) return reg;
+    if (!controlledAtStart) firstInstallWorker = reg.installing || reg.waiting || null;
+    // A build that finished installing before this code attached its listeners is already
+    // waiting: announce it once (a real update, since the page is controlled).
+    if (reg.waiting && hadController && reg.waiting !== firstInstallWorker) {
+      generation += 1;
+      maybeNotice();
     }
-    if (reg) {
-      buildUpdateRegistration = reg;
-      watchWorker(reg.installing);
-      if (typeof reg.addEventListener === 'function') {
-        reg.addEventListener('updatefound', () => watchWorker(reg.installing));
-      }
-      requestBuildUpdateCheck('load', { force: true, serviceWorker: sw });
+    buildUpdateRegistration = reg;
+    watchInstalling(reg.installing);
+    if (typeof reg.addEventListener === 'function') {
+      reg.addEventListener('updatefound', () => watchInstalling(reg.installing));
     }
+    requestBuildUpdateCheck('load', { force: true, serviceWorker: sw });
     return reg;
   }).catch(() => null);
 }
