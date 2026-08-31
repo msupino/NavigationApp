@@ -1370,6 +1370,10 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.selected).toEqual({ type: 'wp', index: 0 });
     await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
 
+    // Close the toolbar dropdowns first: the boot opens every section, and a real click at the
+    // centred waypoint would otherwise land on a Charts button (the offline-maps opener) that
+    // the always-visible layer buttons pushed under this point.
+    await page.evaluate(() => { if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus(); });
     await page.mouse.click(center.x, center.y);
     await expect.poll(() => page.evaluate(() => state.notes.filter(n => n && n.cc).length)).toBe(0);
 

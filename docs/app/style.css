@@ -1938,6 +1938,12 @@ body.theme-light #aircraft-custom input {
 body.theme-light .wind-fetch-status.windfield-loading { color: #1f252c; }
 /* A toggle whose data source is currently unavailable (e.g. NOTAM feed down). */
 .navtoggle-disabled { opacity: 0.45; cursor: not-allowed; }
+/* The "(n)" count beside a layer control: quieter than the label, tabular so the width does
+   not jump between 9 and 10 items. unicode-bidi:isolate keeps "(53)" a self-contained unit at
+   the logical end of the line -- without it, in a Hebrew label that ends in a Latin word
+   ("רשימת NOTAM"), the neutral parentheses merged with that word and the count landed in the
+   middle ("רשימת (53) NOTAM"). Isolated, it reads "רשימת NOTAM (53)". */
+.layer-count { opacity: 0.65; font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
 .navtoggle-disabled input { pointer-events: none; }
 .row input.is-default,
 .charts-alt-input.is-default,

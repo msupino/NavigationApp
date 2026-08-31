@@ -1443,6 +1443,8 @@ window.S = Object.assign({
   wxNone: 'No METAR / TAF for this field',
   wxError: 'Weather unavailable (offline or proxy blocked)',
   wxMetar: 'METAR',
+  wxAdWs: 'Aerodrome / Wind-shear warnings (AD / WS)',
+  wxAdWsNone: 'None',
   wxTaf: 'TAF',
   wxShowRaw: 'Show raw',
   wxShowDecoded: 'Show decoded',
