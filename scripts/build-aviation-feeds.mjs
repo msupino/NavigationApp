@@ -408,10 +408,10 @@ async function fetchIaaWeatherRaw() {
   while ((m = re.exec(listDec))) rowIds.push(m[1]);
   console.log('IAA weather rows: ' + rowIds.length);
   const metars = [], tafs = [];
-  let dbg = 0;
   for (const id of [...new Set(rowIds)]) {
-    const txt = strip(curl(MB + '/maiDetails.aspx?rowID=' + id, MB + '/maiNotam.aspx'));
-    if (dbg < 2) { console.log('IAA detail[' + id + '] (' + txt.length + '): ' + txt.slice(0, 220)); dbg++; }
+    // The weather rows navigate to maiDetails.aspx?rowID=X&scrpos=0&mode=weather (per the
+    // page's own rowClicked); without &mode=weather the request is blocked (Error 100).
+    const txt = strip(curl(MB + '/maiDetails.aspx?rowID=' + id + '&scrpos=0&mode=weather', MB + '/maiWeather.aspx'));
     if (!txt || /Block ID|Error 100/.test(txt)) continue;
     const mt = txt.match(/\b((?:METAR|SPECI)\s+LL[A-Z]{2}\b[\s\S]*?)(?:=|$)/);
     const tf = txt.match(/\bTAF(?:\s+(?:AMD|COR))?\s+LL[A-Z]{2}\b[\s\S]*?(?:=|$)/);
