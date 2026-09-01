@@ -8,6 +8,7 @@ async function mockWx(page, onHit) {
     if (onHit) onHit();
     r.fulfill({ contentType: 'application/json', body: JSON.stringify({
       generatedAt: '2026-06-14T06:00:00Z',
+      source: 'IAA (brin.iaa.gov.il MobileAeroinfo)',
       stations: { LLBG: { metar: METAR[0], taf: TAF[0] } },
     }) });
   });
@@ -98,6 +99,9 @@ test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ pa
   await expect(wx).toContainText('Wind 270° 12 kt');
   await expect(wx).toContainText('METAR');
   await expect(wx).toContainText('TAF');
+  await expect(wx.locator('.wx-updated')).toContainText('IAA');   // the source is shown
+  expect(await page.evaluate(() => wxSourceShort('NOAA AWC'))).toBe('AWC');
+  expect(await page.evaluate(() => wxSourceShort('IAA (brin.iaa.gov.il MobileAeroinfo)'))).toBe('IAA');
   // Toggle to raw.
   await page.locator('.wx-toggle').click();
   await expect(wx).toContainText('27012G20KT');     // raw METAR token
