@@ -60,8 +60,23 @@ test.describe('Social media preview image', () => {
       const so = document.getElementById('search-overlay'); if (so) so.classList.add('hidden');
       const box = document.querySelector('.search-dock, .wp-search-dock'); if (box) box.style.display = 'none';
     });
-    // Let the chart tiles actually paint before the shot (a bare 1.5s left a grey map).
-    await page.waitForTimeout(3500);
+    // Wait for the chart tiles to actually finish loading before the shot -- a blind sleep
+    // left a grey map when tiles were slow. Leaflet tile layers fire 'load' when the visible
+    // set is in; resolve as soon as every URL-backed layer is settled, with a hard cap so a
+    // stalled tile backend can't hang the generator. (Mirrors the app's own wait in ui.js.)
+    await page.evaluate(() => new Promise(resolve => {
+      const layers = [];
+      map.eachLayer(l => { if (l && l._url && typeof l.once === 'function') layers.push(l); });
+      if (!layers.length) return resolve();
+      let pending = layers.length;
+      const cap = setTimeout(resolve, 8000);
+      const one = () => { if (--pending === 0) { clearTimeout(cap); resolve(); } };
+      for (const l of layers) {
+        if (l._loading) l.once('load', one);   // still fetching -> wait for its 'load'
+        else one();                            // already settled
+      }
+    }));
+    await page.waitForTimeout(400);   // let the last tiles paint
     await page.screenshot({
       path: path.join(__dirname, '..', 'docs', 'assets', 'og-preview.jpg'),
       type: 'jpeg',
