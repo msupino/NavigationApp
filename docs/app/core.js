@@ -3915,7 +3915,7 @@ function decodeMetar(m) {
   if (m.visib != null && String(m.visib).trim() !== '') p.push('Vis ' + m.visib + (/^[0-9.]+$/.test(String(m.visib)) ? ' SM' : ''));
   if (m.wxString) p.push(decodeWxString(m.wxString));
   const cl = wxClouds(m.clouds); if (cl) p.push(cl);
-  if (m.temp != null) p.push('Temp ' + Math.round(m.temp) + '°C' +
+  if (m.temp != null) p.push('Temperature ' + Math.round(m.temp) + '°C' +
     (m.dewp != null ? ' / dew ' + Math.round(m.dewp) + '°C' : ''));
   if (m.altim != null) p.push('QNH ' + fmtQnhBoth(m.altim));
   return p.join(' · ');

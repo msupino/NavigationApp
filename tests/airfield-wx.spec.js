@@ -57,7 +57,7 @@ test('decodeMetar renders wind/vis/wx/cloud/temp/QNH', async ({ page }) => {
   expect(txt).toContain('light rain');
   expect(txt).toContain('mist');
   expect(txt).toContain('Few 3000 ft');
-  expect(txt).toContain('Temp 24°C');
+  expect(txt).toContain('Temperature 24°C');
   expect(txt).toContain('QNH 1013 hPa');
 });
 

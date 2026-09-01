@@ -2810,6 +2810,16 @@ function appendAirfieldWeather(body, af) {
     if (typeof window.speakOnDemandStop === 'function') window.speakOnDemandStop();
     if (speakingBtn) { setSpeakIcon(speakingBtn, false); speakingBtn = null; }
   };
+  // Speech-only formatting: a QNH is read digit-by-digit on the radio ("one zero one zero",
+  // "two niner eight three"), not as a cardinal number ("one thousand ten"). Spell the hPa
+  // and inches figures as separate digits for the spoken string; the displayed text is left
+  // as-is. Applied to what is read aloud, not to the panel.
+  const speechify = (t) => String(t)
+    // Wind direction is read as separate digits + "degrees" ("three five zero degrees"),
+    // like on the radio. The (?!C) guard leaves a temperature ("29°C") as a cardinal number.
+    .replace(/(\d{1,3})°(?!C)/g, (_, n) => n.split('').join(' ') + ' degrees')
+    .replace(/(\d{3,4})(\s*hPa)/g, (_, n, u) => n.split('').join(' ') + u)
+    .replace(/(\d{2})\.(\d{2})\s*[″"]/g, (_, a, b) => (a + b).split('').join(' ') + ' inches');
   const speakSection = (btn, textFn) => {
     if (speakingBtn === btn) { stopSpeak(); return; }   // same button toggles off
     stopSpeak();                                        // switch away from another section
@@ -2818,7 +2828,7 @@ function appendAirfieldWeather(body, af) {
     if (!text) return;
     speakingBtn = btn; setSpeakIcon(btn, true);
     // Always English: METAR/TAF decode to English, and raw codes are English/ICAO.
-    Promise.resolve(window.speakOnDemand(text, 'en-US'))
+    Promise.resolve(window.speakOnDemand(speechify(text), 'en-US'))
       .then(() => { if (speakingBtn === btn) { setSpeakIcon(btn, false); speakingBtn = null; } });
   };
   // A 🔊 button for one section (`what` = METAR/TAF), dimmed (never hidden) when no engine.
