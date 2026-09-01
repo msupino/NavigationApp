@@ -324,6 +324,7 @@ window.S = {
   wxSpeak: 'הקרא',
   wxStopSpeak: 'עצור הקראה',
   wxUpdated: 'עודכן',
+  wxSource: 'מקור',
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'לא ניתן לשחזר את המסלול השמור, לכן הנתונים המקוריים נשמרו ולא נדרסו. ' +

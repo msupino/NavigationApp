@@ -1452,6 +1452,7 @@ window.S = Object.assign({
   wxSpeak: 'Read aloud',
   wxStopSpeak: 'Stop reading',
   wxUpdated: 'Updated',
+  wxSource: 'via',
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'Saved route could not be restored, so the original saved data was preserved. ' +
@@ -3827,7 +3828,7 @@ const WX_URL = 'https://raw.githubusercontent.com/msupino/NavigationApp/wx-data/
 var _wxFile = null;
 async function loadWxFile(force) {
   if (!force && _wxFile && Date.now() - _wxFile.t < 5 * 60000) return _wxFile;
-  const parse = d => ({ t: Date.now(), stations: (d && d.stations) || {}, generatedAt: (d && d.generatedAt) || null });
+  const parse = d => ({ t: Date.now(), stations: (d && d.stations) || {}, generatedAt: (d && d.generatedAt) || null, source: (d && d.source) || null });
   try {
     const r = await fetch(WX_URL + '?_=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -3852,9 +3853,18 @@ async function fetchAirfieldWx(icao, force) {
     metar: st.metar || null,
     taf: st.taf || null,
     generatedAt: file.generatedAt,
+    source: file.source || null,
     error: !!file.error && !st.metar && !st.taf,
   };
 }
+// A short label for the weather feed's source, for the inspector: "IAA" or "AWC".
+function wxSourceShort(source) {
+  const s = String(source || '');
+  if (/IAA/i.test(s)) return 'IAA';
+  if (/AWC|NOAA/i.test(s)) return 'AWC';
+  return s.split(/[\s(]/)[0] || '';
+}
+window.wxSourceShort = wxSourceShort;
 const WX_CLOUD = {
   SKC: 'Clear', CLR: 'Clear', NSC: 'No significant cloud', NCD: 'No cloud',
   FEW: 'Few', SCT: 'Scattered', BKN: 'Broken', OVC: 'Overcast', VV: 'Vertical visibility',
@@ -3913,11 +3923,13 @@ function fmtQnhBoth(hPa) {
 }
 window.fmtQnhBoth = fmtQnhBoth;
 
+// Visibility arrives already in kilometres from the feed (IAA is native metric; the AWC
+// fallback is converted at the feed), so it is just labelled. "10+" reads "10+ km".
 function decodeMetar(m) {
   if (!m) return '';
   const p = [];
   const w = wxWind(m.wdir, m.wspd, m.wgst); if (w) p.push(w);
-  if (m.visib != null && String(m.visib).trim() !== '') p.push('Visibility ' + m.visib + (/^[0-9.]+$/.test(String(m.visib)) ? ' SM' : ''));
+  if (m.visib != null && String(m.visib).trim() !== '') p.push('Visibility ' + m.visib + ' km');
   if (m.wxString) p.push(decodeWxString(m.wxString));
   const cl = wxClouds(m.clouds); if (cl) p.push(cl);
   if (m.temp != null) p.push('Temperature ' + Math.round(m.temp) + '°C' +
@@ -3943,7 +3955,7 @@ function decodeTaf(t) {
     // decode: TEMPO = temporary fluctuations, BECMG = a gradual change, FM = from that time.
     const tag = ch === 'TEMPO' ? 'Temporary ' : ch === 'BECMG' ? 'Becoming ' : 'From ';
     const w = wxWind(f.wdir, f.wspd, f.wgst); if (w) seg.push(w);
-    if (f.visib != null && String(f.visib).trim() !== '') seg.push('Visibility ' + f.visib + (/^[0-9.]+$/.test(String(f.visib)) ? ' SM' : ''));
+    if (f.visib != null && String(f.visib).trim() !== '') seg.push('Visibility ' + f.visib + ' km');
     if (f.wxString) seg.push(decodeWxString(f.wxString));
     const cl = wxClouds(f.clouds); if (cl) seg.push(cl);
     return { when: tag + hh(f.timeFrom), text: seg.join(' · ') };

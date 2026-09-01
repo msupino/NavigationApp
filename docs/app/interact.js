@@ -2823,6 +2823,7 @@ function appendAirfieldWeather(body, af) {
     // Unit symbols read badly letter-by-letter ("kay tee"); spell them for the voice only.
     .replace(/\bkt\b/g, 'knots')
     .replace(/\bft\b/g, 'feet')
+    .replace(/\bkm\b/g, 'kilometers')
     .replace(/\bSM\b/g, 'statute miles');
   const speakSection = (btn, textFn) => {
     if (speakingBtn === btn) { stopSpeak(); return; }   // same button toggles off
@@ -2971,9 +2972,11 @@ function appendAirfieldWeather(body, af) {
         const age = document.createElement('div');
         age.className = 'wx-updated';
         age.dir = 'auto';      // "עודכן 18:19Z" reads correctly in RTL too
+        const src = (typeof wxSourceShort === 'function') ? wxSourceShort(data.source) : '';
         age.textContent = (S.wxUpdated || 'Updated') + ' ' +
           String(upd.getUTCHours()).padStart(2, '0') + ':' +
-          String(upd.getUTCMinutes()).padStart(2, '0') + 'Z';
+          String(upd.getUTCMinutes()).padStart(2, '0') + 'Z' +
+          (src ? ' · ' + (S.wxSource || 'via') + ' ' + src : '');
         bodyEl.appendChild(age);
       }
     }
