@@ -408,8 +408,10 @@ async function fetchIaaWeatherRaw() {
   while ((m = re.exec(listDec))) rowIds.push(m[1]);
   console.log('IAA weather rows: ' + rowIds.length);
   const metars = [], tafs = [];
+  let dbg = 0;
   for (const id of [...new Set(rowIds)]) {
     const txt = strip(curl(MB + '/maiDetails.aspx?rowID=' + id, MB + '/maiNotam.aspx'));
+    if (dbg < 2) { console.log('IAA detail[' + id + '] (' + txt.length + '): ' + txt.slice(0, 220)); dbg++; }
     if (!txt || /Block ID|Error 100/.test(txt)) continue;
     const mt = txt.match(/\b((?:METAR|SPECI)\s+LL[A-Z]{2}\b[\s\S]*?)(?:=|$)/);
     const tf = txt.match(/\bTAF(?:\s+(?:AMD|COR))?\s+LL[A-Z]{2}\b[\s\S]*?(?:=|$)/);
