@@ -21,12 +21,12 @@ const fakeFetch = plan => async url => {
   return { ok: true, status: 200, json: async () => spec.body };
 };
 
-async function run(plan) {
+async function run(plan, iaaRaw = null) {
   const mod = await import('../scripts/build-aviation-feeds.mjs');
   const written = {};
   const result = await mod.buildAviationFeeds({
     firs: FIRS, ids: IDS, bbox: BBOX,
-    fetchImpl: fakeFetch(plan),
+    fetchImpl: fakeFetch(plan), iaaRaw,
     write: (file, body) => { written[file] = body; },
     log: () => {}, warn: () => {},
   });
@@ -288,4 +288,43 @@ test('per-aerodrome AD/WS warnings are keyed by ICAO, AIRMETs excluded', async (
   expect(w.LLHA[0].product).toBe('AD');
   expect(mod.parseImsAirfieldWarnings({})).toEqual({});          // none in force
   expect(mod.parseImsAirfieldWarnings(null)).toEqual({});
+});
+
+// --- IAA-primary weather source (with AWC fallback), visibility normalised to km ---------
+test('smVisToKm converts the AWC statute-mile fallback to km', async () => {
+  const mod = await import('../scripts/build-aviation-feeds.mjs');
+  expect(mod.smVisToKm('6+')).toBe('10+');     // P6SM marker -> 10+ km
+  expect(mod.smVisToKm('4.35')).toBe('7');     // 4.35 SM -> 7 km
+  expect(mod.smVisToKm('')).toBe('');
+});
+
+test('IAA raw is used as the primary weather source when it parses enough fields', async () => {
+  const iaaRaw = {
+    metars: [
+      'METAR LLBG 011520Z 33009KT CAVOK 31/18 Q1009',
+      'METAR LLHA 011450Z 34010KT 7000 FEW030 30/22 Q1009',
+      'METAR LLHZ 011450Z 30010KT 9999 SCT045 29/20 Q1010',
+    ],
+    tafs: ['TAF LLHZ 011105Z 0112/0212 33012KT CAVOK'],
+  };
+  const { written } = await run({
+    isigmet: { body: [] }, metar: { body: [metar('LLBG')] }, taf: { body: [taf('LLBG')] },
+  }, iaaRaw);
+  const wx = JSON.parse(written['wx/wx.json']);
+  expect(wx.source).toMatch(/IAA/);
+  expect(Object.keys(wx.stations).sort()).toEqual(['LLBG', 'LLHA', 'LLHZ']);
+  expect(wx.stations.LLHA.metar.visib).toBe('7');       // native km, from the raw METAR
+  expect(wx.stations.LLBG.metar.visib).toBe('10+');
+});
+
+test('a thin/blocked IAA result falls back to AWC, converted to km', async () => {
+  const { written } = await run({
+    isigmet: { body: [] },
+    metar: { body: [{ icaoId: 'LLBG', rawOb: 'LLBG', visib: '6+' }, { icaoId: 'LLHZ', rawOb: 'LLHZ', visib: '4.35' }] },
+    taf: { body: [taf('LLBG')] },
+  }, { metars: ['METAR LLBG 011520Z 33009KT CAVOK'], tafs: [] });   // only 1 station -> too thin
+  const wx = JSON.parse(written['wx/wx.json']);
+  expect(wx.source).toBe('NOAA AWC');
+  expect(wx.stations.LLBG.metar.visib).toBe('10+');     // AWC SM normalised to km
+  expect(wx.stations.LLHZ.metar.visib).toBe('7');
 });

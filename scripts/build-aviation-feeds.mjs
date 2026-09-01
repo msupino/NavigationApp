@@ -10,6 +10,27 @@
 // before it reaches main. Unit coverage is the only pre-merge signal there is.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { iaaStations } from './parse-metar.mjs';
+
+// AWC reports visibility in statute miles; the app now displays kilometres, and the IAA feed
+// is already km, so normalise the AWC fallback to km too. P6SM ("6+") is the ">=10 km" marker.
+export function smVisToKm(v) {
+  const s = String(v == null ? '' : v).trim();
+  const m = s.match(/^([0-9.]+)(\+?)$/);
+  if (!m) return s;
+  if (m[2]) return '10+';                       // 6+ SM -> "10+ km"
+  const km = Math.round(parseFloat(m[1]) * 1.60934 * 10) / 10;
+  return (km >= 10 ? '10+' : String(km).replace(/\.0$/, ''));
+}
+export function normalizeAwcVis(stations) {
+  for (const st of Object.values(stations || {})) {
+    if (st.metar && st.metar.visib != null) st.metar.visib = smVisToKm(st.metar.visib);
+    if (st.taf && Array.isArray(st.taf.fcsts)) {
+      for (const f of st.taf.fcsts) if (f.visib != null) f.visib = smVisToKm(f.visib);
+    }
+  }
+  return stations;
+}
 
 const UA = { 'User-Agent': 'NavAid-aviation-bot' };
 const AWC = 'https://aviationweather.gov/api/data/';
@@ -227,7 +248,7 @@ async function fetchJson(url, fetchImpl) {
 }
 
 export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch, prevUrl = null,
-  write = writeFileSync, log = console.log, warn = console.error } = {}) {
+  iaaRaw = null, write = writeFileSync, log = console.log, warn = console.error } = {}) {
   // Assign only what has been validated. The inline original did `x = await api(...)` and
   // THEN checked Array.isArray, so a 200 carrying a JSON object (an error envelope, a quota
   // notice) left a non-array in the variable: the catch set ok=false as intended, but the
@@ -277,7 +298,22 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch, p
     tafs = body;
     tafsOk = true;
   } catch (e) { warn(e.message); }
-  const stations = collectStations(metars, tafs);
+  // IAA (brin.iaa.gov.il MobileAeroinfo) is the primary source: native Israeli OPMET, already
+  // metric, and it carries fields AWC does not ingest (e.g. Herzliya). The raw METAR/TAF text
+  // is fetched by the workflow (Radware-gated, curl-only) and passed in as iaaRaw; AWC stays
+  // the fallback so weather never goes dark if IAA is blocked. AWC's statute-mile visibility
+  // is normalised to km so BOTH sources publish the same km value the app renders.
+  const awcStations = normalizeAwcVis(collectStations(metars, tafs));
+  let iaa = {};
+  try {
+    if (iaaRaw && (iaaRaw.metars || iaaRaw.tafs)) iaa = iaaStations(iaaRaw.metars || [], iaaRaw.tafs || []);
+  } catch (e) { warn('iaa parse:', e.message); }
+  // Use IAA only when it parsed a sensible number of fields — at least as many as AWC, and
+  // never fewer than 3. A thin IAA result (a partial page, a parse regression) falls back to
+  // AWC rather than shipping a near-empty weather feed.
+  const useIaa = Object.keys(iaa).length >= Math.max(3, Object.keys(awcStations).length);
+  const stations = useIaa ? iaa : awcStations;
+  const wxSource = useIaa ? 'IAA (brin.iaa.gov.il MobileAeroinfo)' : 'NOAA AWC';
   // How many stations the live feed already carries. Fetched, not assumed: if it cannot be
   // read (first run, branch missing, network) the baseline is 0 and any non-empty result
   // publishes -- the same behaviour this script had before the gate existed.
@@ -311,9 +347,10 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch, p
   } else {
     warn('::error::SIGMET publish skipped; preserving last-good branch.');
   }
-  if (wxPublishable({ metarsOk, tafsOk, stations, baseline })) {
+  // When IAA supplied the stations, its own success stands in for the AWC ok flags.
+  if (wxPublishable({ metarsOk: useIaa || metarsOk, tafsOk: useIaa || tafsOk, stations, baseline })) {
     write('wx/wx.json', JSON.stringify({
-      generatedAt: new Date().toISOString(), source: 'NOAA AWC', stations,
+      generatedAt: new Date().toISOString(), source: wxSource, stations,
     }));
     log('WX stations:', Object.keys(stations).length);
     result.wx = 'published';
@@ -331,12 +368,61 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch, p
   return result;
 }
 
+// Fetch the raw METAR/TAF from IAA's MobileAeroinfo (the primary weather source). Same
+// Radware-gated, curl-only, list -> detail pattern the NOTAM job uses: the list page carries
+// truncated previews + row ids, the full text is on maiDetails.aspx?rowID=. Network + curl,
+// so this stays out of the pure buildAviationFeeds() and only runs from the CLI; failure
+// returns null and the build falls back to AWC. Verified in CI, like NOTAM.
+async function fetchIaaWeatherRaw() {
+  const { execFileSync } = await import('node:child_process');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const UA_S = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+  const MB = 'https://brin.iaa.gov.il/MobileAeroinfo';
+  const JAR = join(tmpdir(), 'iaa-wx-jar.txt');
+  const curl = (url, referer) => {
+    try {
+      return execFileSync('curl', ['-sS', '-f', '-m', '30', '--retry', '4', '--retry-all-errors',
+        '-A', UA_S, '-b', JAR, '-c', JAR, '-H', 'Referer: ' + referer,
+        '-H', 'Accept: text/html,application/xhtml+xml', url],
+        { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+    } catch (e) { return ''; }
+  };
+  const strip = h => String(h).replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+  try {
+    execFileSync('rm', ['-f', JAR]);
+  } catch (e) { /* fresh jar */ }
+  const list = curl(MB + '/maiWeather.aspx', MB + '/maiNotam.aspx');
+  if (!list || /Block ID|Error 100/.test(list)) { console.error('iaa weather list blocked/empty'); return null; }
+  // Each clickable row: rowClicked('id') ... preview beginning "METAR|SPECI|TAF LLxx".
+  const rowIds = [];
+  const re = /rowClicked\('(\d+)'\)/g; let m;
+  while ((m = re.exec(list))) rowIds.push(m[1]);
+  const metars = [], tafs = [];
+  for (const id of [...new Set(rowIds)]) {
+    const txt = strip(curl(MB + '/maiDetails.aspx?rowID=' + id, MB + '/maiWeather.aspx'));
+    if (!txt || /Block ID|Error 100/.test(txt)) continue;
+    const mt = txt.match(/\b((?:METAR|SPECI)\s+LL[A-Z]{2}\b[\s\S]*?)(?:=|$)/);
+    const tf = txt.match(/\bTAF(?:\s+(?:AMD|COR))?\s+LL[A-Z]{2}\b[\s\S]*?(?:=|$)/);
+    if (mt) metars.push(mt[1].trim());
+    if (tf) tafs.push(tf[0].trim());
+  }
+  if (!metars.length && !tafs.length) { console.error('iaa weather: no messages parsed'); return null; }
+  console.log('IAA raw: ' + metars.length + ' METAR, ' + tafs.length + ' TAF');
+  return { metars, tafs };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const split = v => (v || '').split(',').map(s => s.trim()).filter(Boolean);
+  let iaaRaw = null;
+  try { iaaRaw = await fetchIaaWeatherRaw(); } catch (e) { console.error('iaa fetch:', e.message); }
   await buildAviationFeeds({
     firs: split(process.env.FIRS),
     ids: split(process.env.IDS),
     bbox: { s: 28, n: 35, w: 32, e: 38 },
+    iaaRaw,
     // The live feed, used only as the coverage baseline. Overridable so the workflow can
     // point at a fork's branch; unset simply means "publish whatever we got".
     prevUrl: process.env.PREV_WX_URL ||

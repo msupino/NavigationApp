@@ -22,12 +22,12 @@ async function boot(page) {
 
 const METAR = [{
   icaoId: 'LLBG', rawOb: 'LLBG 140650Z 27012G20KT 9999 FEW030 SCT100 24/18 Q1013',
-  wdir: 270, wspd: 12, wgst: 20, visib: '6+', wxString: '-RA BR',
+  wdir: 270, wspd: 12, wgst: 20, visib: '10+', wxString: '-RA BR',
   temp: 24, dewp: 18, altim: 1013, clouds: [{ cover: 'FEW', base: 3000 }, { cover: 'SCT', base: 10000 }],
 }];
 const TAF = [{
   icaoId: 'LLBG', rawTAF: 'TAF LLBG 140500Z 1406/1506 28010KT 9999 SCT035',
-  fcsts: [{ timeFrom: 1781503200, wdir: 280, wspd: 10, visib: '6+', clouds: [{ cover: 'SCT', base: 3500 }] }],
+  fcsts: [{ timeFrom: 1781503200, wdir: 280, wspd: 10, visib: '10+', clouds: [{ cover: 'SCT', base: 3500 }] }],
 }];
 
 function rgbParts(cssColor) {
@@ -66,9 +66,9 @@ test('decodeTaf expands BECMG/TEMPO and drops an empty visibility', async ({ pag
   await boot(page);
   const T = {
     fcsts: [
-      { fcstChange: '', timeFrom: 1781503200, wdir: 'VRB', wspd: 4, visib: '6+', clouds: [{ cover: 'SCT', base: 3000 }] },
+      { fcstChange: '', timeFrom: 1781503200, wdir: 'VRB', wspd: 4, visib: '10+', clouds: [{ cover: 'SCT', base: 3000 }] },
       { fcstChange: 'TEMPO', timeFrom: 1781510400, wdir: 150, wspd: 5, visib: '', clouds: [{ cover: 'BKN', base: 2500 }] },
-      { fcstChange: 'BECMG', timeFrom: 1781535600, wdir: 290, wspd: 10, visib: '6+', clouds: [{ cover: 'FEW', base: 3000 }] },
+      { fcstChange: 'BECMG', timeFrom: 1781535600, wdir: 290, wspd: 10, visib: '10+', clouds: [{ cover: 'FEW', base: 3000 }] },
     ],
   };
   const out = await page.evaluate(t => decodeTaf(t), T);
@@ -80,7 +80,7 @@ test('decodeTaf expands BECMG/TEMPO and drops an empty visibility', async ({ pag
   // Empty visibility must not leave a dangling "Vis" with no value.
   expect(out[1].text).not.toContain('Vis');
   expect(out[1].text).toContain('Broken 2500 ft');
-  expect(out[0].text).toContain('Visibility 10+ km');   // a real visibility (6+ SM) shown in km
+  expect(out[0].text).toContain('Visibility 10+ km');   // a real visibility, shown in km
 });
 
 test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ page }) => {

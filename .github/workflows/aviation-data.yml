@@ -6,6 +6,9 @@ name: Update aviation data (SIGMET + METAR/TAF)
 #   - SIGMETs for the Israel region  -> sigmet-data/sigmet.json
 #   - AIRMETs (IMS Tel Aviv FIR)      -> airmet-data/airmet.json
 #   - METAR/TAF for Israeli fields   -> wx-data/wx.json
+# Weather is sourced primarily from IAA MobileAeroinfo (native Israeli OPMET, metric,
+# curl-fetched past the Radware wall like the NOTAM job), with AWC as the fallback;
+# visibility is normalised to kilometres for both.
 
 on:
   schedule:

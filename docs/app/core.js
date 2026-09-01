@@ -3913,21 +3913,13 @@ function fmtQnhBoth(hPa) {
 }
 window.fmtQnhBoth = fmtQnhBoth;
 
-// AWC reports visibility in statute miles; Israel uses kilometres for horizontal distance,
-// so convert. A "6+" (AWC's P6SM, "6 or more") keeps its "+": ~10 km or more. A non-numeric
-// value (should not occur in the JSON, but be safe) is left untouched.
-const SM_PER_KM = 1.60934;
-function visKm(v) {
-  const s = String(v == null ? '' : v).trim();
-  const m = s.match(/^([0-9.]+)(\+?)$/);
-  if (!m) return s;
-  return Math.round(parseFloat(m[1]) * SM_PER_KM) + m[2] + ' km';
-}
+// Visibility arrives already in kilometres from the feed (IAA is native metric; the AWC
+// fallback is converted at the feed), so it is just labelled. "10+" reads "10+ km".
 function decodeMetar(m) {
   if (!m) return '';
   const p = [];
   const w = wxWind(m.wdir, m.wspd, m.wgst); if (w) p.push(w);
-  if (m.visib != null && String(m.visib).trim() !== '') p.push('Visibility ' + visKm(m.visib));
+  if (m.visib != null && String(m.visib).trim() !== '') p.push('Visibility ' + m.visib + ' km');
   if (m.wxString) p.push(decodeWxString(m.wxString));
   const cl = wxClouds(m.clouds); if (cl) p.push(cl);
   if (m.temp != null) p.push('Temperature ' + Math.round(m.temp) + '°C' +
@@ -3953,7 +3945,7 @@ function decodeTaf(t) {
     // decode: TEMPO = temporary fluctuations, BECMG = a gradual change, FM = from that time.
     const tag = ch === 'TEMPO' ? 'Temporary ' : ch === 'BECMG' ? 'Becoming ' : 'From ';
     const w = wxWind(f.wdir, f.wspd, f.wgst); if (w) seg.push(w);
-    if (f.visib != null && String(f.visib).trim() !== '') seg.push('Visibility ' + visKm(f.visib));
+    if (f.visib != null && String(f.visib).trim() !== '') seg.push('Visibility ' + f.visib + ' km');
     if (f.wxString) seg.push(decodeWxString(f.wxString));
     const cl = wxClouds(f.clouds); if (cl) seg.push(cl);
     return { when: tag + hh(f.timeFrom), text: seg.join(' · ') };
