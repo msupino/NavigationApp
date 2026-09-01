@@ -70,8 +70,9 @@ test('METAR and TAF have separate buttons; each reads only its own section (deco
   // METAR button → only the METAR, decoded.
   await metarBtn(page).click();
   let said = (await spoken(page)).join(' ');
-  expect(said).toContain('Wind 270° 12 kt gust 20');   // decoded METAR wind
-  expect(said).not.toContain('280');                    // NOT the TAF's 280° wind
+  expect(said).toContain('Wind 2 7 0 degrees');         // wind dir spoken as digits
+  expect(said).toContain('Temperature 24');             // temp stays a cardinal number
+  expect(said).not.toContain('2 8 0');                  // NOT the TAF's 280° wind
   expect(said).not.toContain('27012G20KT');             // decoded, not raw
   await expect(metarBtn(page)).toHaveText('⏹');
   await expect(tafBtn(page)).toHaveText('🔊');           // the other stays idle
@@ -79,7 +80,7 @@ test('METAR and TAF have separate buttons; each reads only its own section (deco
   // TAF button → stops the METAR read (one at a time) and reads only the TAF.
   await tafBtn(page).click();
   said = (await spoken(page)).join(' ');
-  expect(said).toContain('280');                         // decoded TAF wind
+  expect(said).toContain('2 8 0 degrees');               // decoded TAF wind, spoken as digits
   await expect(tafBtn(page)).toHaveText('⏹');
   await expect(metarBtn(page)).toHaveText('🔊');
   expect(await page.evaluate(() => window.__stopped)).toBeGreaterThan(0);
@@ -87,6 +88,21 @@ test('METAR and TAF have separate buttons; each reads only its own section (deco
   // Pressing the speaking button again stops it.
   await tafBtn(page).click();
   await expect(tafBtn(page)).toHaveText('🔊');
+});
+
+test('QNH is spoken digit-by-digit, but shown as a number', async ({ page }) => {
+  await stubTts(page);
+  await mockWx(page);
+  await openLLBG(page);
+
+  // Panel keeps the human-readable number.
+  await expect(page.locator('.wx-block', { hasText: 'METAR' })).toContainText('1013 hPa');
+
+  await metarBtn(page).click();
+  const said = (await spoken(page)).join(' ');
+  expect(said).toContain('1 0 1 3');            // hPa read as separate digits
+  expect(said).not.toContain('1013 hPa');       // not the cardinal number
+  expect(said).toContain('2 9 9 1 inches');     // 29.91" read as digits + "inches"
 });
 
 test('with the raw toggle on, each button speaks its own raw code', async ({ page }) => {
@@ -111,7 +127,7 @@ test('the voice is English even in a Hebrew session (decoded METAR/TAF is Englis
   await openLLBG(page, 'he');
   await metarBtn(page).click();
   expect(await page.evaluate(() => window.__spokenLang.slice())).toContain('en-US');
-  expect((await spoken(page)).join(' ')).toContain('Wind 270°');   // still the English decode
+  expect((await spoken(page)).join(' ')).toContain('Wind 2 7 0 degrees');   // still the English decode
 });
 
 test('the speak buttons are dimmed, not hidden, when no speech engine exists', async ({ page }) => {
