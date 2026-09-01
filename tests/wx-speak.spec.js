@@ -56,51 +56,63 @@ async function openLLBG(page) {
 }
 
 const spoken = page => page.evaluate(() => window.__spoken.slice());
+const metarBtn = page => page.locator('.wx-block', { hasText: 'METAR' }).locator('.wx-speak');
+const tafBtn = page => page.locator('.wx-block', { hasText: 'TAF' }).locator('.wx-speak');
 
-test('the speak button reads the decoded METAR and TAF aloud', async ({ page }) => {
+test('METAR and TAF have separate buttons; each reads only its own section (decoded)', async ({ page }) => {
   await stubTts(page);
   await mockWx(page);
   await openLLBG(page);
 
-  const btn = page.locator('.wx-speak');
-  await expect(btn).toBeEnabled();
-  await btn.click();
+  await expect(metarBtn(page)).toBeEnabled();
+  await expect(tafBtn(page)).toBeEnabled();
 
-  const said = (await spoken(page)).join(' ');
-  expect(said).toContain('LLBG');
-  expect(said).toContain('Wind 270° 12 kt gust 20');   // decoded METAR
-  expect(said).toContain('TAF');                        // TAF section is read too
-  expect(said).not.toContain('27012G20KT');             // NOT the raw METAR code while decoded
-  expect(said).not.toContain('1406/1506');              // NOT the raw TAF code while decoded
-  await expect(btn).toHaveText('⏹');                    // now in the speaking state
+  // METAR button → only the METAR, decoded.
+  await metarBtn(page).click();
+  let said = (await spoken(page)).join(' ');
+  expect(said).toContain('Wind 270° 12 kt gust 20');   // decoded METAR wind
+  expect(said).not.toContain('280');                    // NOT the TAF's 280° wind
+  expect(said).not.toContain('27012G20KT');             // decoded, not raw
+  await expect(metarBtn(page)).toHaveText('⏹');
+  await expect(tafBtn(page)).toHaveText('🔊');           // the other stays idle
 
-  await btn.click();                                    // second press stops
+  // TAF button → stops the METAR read (one at a time) and reads only the TAF.
+  await tafBtn(page).click();
+  said = (await spoken(page)).join(' ');
+  expect(said).toContain('280');                         // decoded TAF wind
+  await expect(tafBtn(page)).toHaveText('⏹');
+  await expect(metarBtn(page)).toHaveText('🔊');
   expect(await page.evaluate(() => window.__stopped)).toBeGreaterThan(0);
-  await expect(btn).toHaveText('🔊');
+
+  // Pressing the speaking button again stops it.
+  await tafBtn(page).click();
+  await expect(tafBtn(page)).toHaveText('🔊');
 });
 
-test('with the raw toggle on, it speaks the raw code', async ({ page }) => {
+test('with the raw toggle on, each button speaks its own raw code', async ({ page }) => {
   await stubTts(page);
   await mockWx(page);
   await openLLBG(page);
 
   await page.locator('.wx-toggle').click();             // switch to raw
   await expect(page.locator('#insp-body .wx-section')).toContainText('27012G20KT');
-  await page.locator('.wx-speak').click();
 
-  const said = (await spoken(page)).join(' ');
-  expect(said).toContain('27012G20KT');                 // raw METAR token
-  expect(said).toContain('1406/1506');                  // raw TAF token
+  await metarBtn(page).click();
+  expect((await spoken(page)).join(' ')).toContain('27012G20KT');   // raw METAR token
+  expect((await spoken(page)).join(' ')).not.toContain('1406/1506'); // not the TAF's
+
+  await tafBtn(page).click();
+  expect((await spoken(page)).join(' ')).toContain('1406/1506');    // raw TAF token
 });
 
-test('the speak button is dimmed, not hidden, when no speech engine exists', async ({ page }) => {
+test('the speak buttons are dimmed, not hidden, when no speech engine exists', async ({ page }) => {
   await page.addInitScript(() => {
     try { Object.defineProperty(window, 'speechSynthesis', { value: undefined, configurable: true }); } catch (e) {}
     // no window.Capacitor -> _nativeTts() is null, so ttsAvailable() is false
   });
   await mockWx(page);
   await openLLBG(page);
-  const btn = page.locator('.wx-speak');
-  await expect(btn).toBeVisible();       // present (dim-never-hide)
-  await expect(btn).toBeDisabled();      // but dimmed: nothing can speak
+  await expect(metarBtn(page)).toBeVisible();       // present (dim-never-hide)
+  await expect(metarBtn(page)).toBeDisabled();      // but dimmed: nothing can speak
+  await expect(tafBtn(page)).toBeDisabled();
 });
