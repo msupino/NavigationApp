@@ -4786,6 +4786,8 @@ if (windDepartSlider) {
   const master = document.getElementById('lookahead-time');
   const masterVal = document.getElementById('lookahead-time-val');
   const targets = ['notam-time', 'wind-depart', 'windfield-time'].map(id => document.getElementById(id));
+  // Cascade the master value to the mirror sliders + the readout. Does NOT touch the target
+  // instant, so the tick below can call it to move the slider without re-anchoring "now".
   function sync() {
     const h = master ? (parseInt(master.value, 10) || 0) : 0;
     if (masterVal) masterVal.textContent = notamTimeLabel(h);
@@ -4795,9 +4797,30 @@ if (windDepartSlider) {
       t.dispatchEvent(new Event('input'));
     }
   }
-  if (master) {
-    master.oninput = sync;
+  // A forward look-ahead points at a fixed absolute instant (top of the target hour). The
+  // pilot picking "+3h" means "the situation at 15:00Z", not "always three hours out" -- so
+  // as the clock advances we walk the slider back toward live (+3h -> +2h -> ... -> now) and
+  // snap it to live once now catches up, the hazard layers dropping what has since expired.
+  function onUserInput() {
+    const h = master ? (parseInt(master.value, 10) || 0) : 0;
+    window.lookaheadTarget = h ? (topOfHour(Date.now()) + h * 3600e3) : null;
     sync();
+  }
+  // Close the gap as time goes by. Anchored to top-of-hour on both sides, so the remaining
+  // hours step down cleanly with no rounding drift. Only ever decreases; never re-anchors.
+  function lookaheadTick() {
+    if (!master || window.lookaheadTarget == null) return;
+    const remainingH = Math.max(0, Math.round((window.lookaheadTarget - topOfHour(Date.now())) / 3600e3));
+    if (remainingH === (parseInt(master.value, 10) || 0)) return;
+    master.value = String(remainingH);
+    if (remainingH === 0) window.lookaheadTarget = null;   // reached live
+    sync();
+  }
+  window.lookaheadTick = lookaheadTick;   // exposed so tests can advance it deterministically
+  if (master) {
+    master.oninput = onUserInput;
+    onUserInput();
+    setInterval(lookaheadTick, 60000);
   }
 })();
 
@@ -4819,6 +4842,43 @@ if (sigmetBtn) {
 if (typeof loadSigmets === 'function') {
   loadSigmets().then(refreshSigmetBtn);
 }
+
+// --- Live hazard re-poll (NOTAM + SIGMET + AIRMET) --------------------------
+// These three feeds were each fetched once at boot and never again, so a NOTAM,
+// SIGMET or AIRMET issued or cancelled mid-session only appeared after a manual
+// reload — the map markers, the decoded lists and the dim-never-hide counts all
+// froze at boot. Re-fetch them on a timer (same shape as the weather-manifest
+// poll) and redraw. Only a feed already loaded is refreshed: one the pilot has
+// never used stays null and is fetched fresh when they first turn it on. The
+// redraw respects the look-ahead slider — draw() and the counts read the scrubbed
+// view time — so a future scrub still filters what is shown.
+async function refreshHazardFeeds() {
+  if (document.hidden) return;   // don't burn requests polling a backgrounded tab
+  const jobs = [];
+  if (typeof loadNotam === 'function' && typeof notams !== 'undefined' && notams !== null) {
+    jobs.push(loadNotam(true).then(() => {
+      if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
+      if (typeof buildNotamRouteLines === 'function') buildNotamRouteLines();
+      if (typeof refreshNotamListBtn === 'function') refreshNotamListBtn();
+    }));
+  }
+  if (typeof loadSigmets === 'function' && typeof sigmets !== 'undefined' && sigmets !== null) {
+    jobs.push(loadSigmets(true).then(() => {
+      if (typeof refreshSigmetBtn === 'function') refreshSigmetBtn();
+    }));
+  }
+  if (typeof loadAirmets === 'function' && typeof airmets !== 'undefined' && airmets !== null) {
+    jobs.push(loadAirmets(true).then(() => {
+      if (typeof refreshAirmetGroup === 'function') refreshAirmetGroup();
+      if (typeof refreshAirmetBtn === 'function') refreshAirmetBtn();
+    }));
+  }
+  if (!jobs.length) return;
+  try { await Promise.all(jobs); } catch (e) { /* a feed error keeps its last-good data */ }
+  if (typeof draw === 'function') draw();
+}
+window.refreshHazardFeeds = refreshHazardFeeds;   // exposed so tests can trigger a re-poll
+setInterval(refreshHazardFeeds, 10 * 60 * 1000);
 
 // --- NOTAM overlay + list (FAA NOTAM API, Israel FIR LLLL) ----------
 // Whether the overlay is on is remembered PER CHART: the NOTAM feed is FIR-wide
@@ -9166,6 +9226,44 @@ const NavWxTime = (function () {
     try { localStorage.setItem(KEY, sel.value); } catch (e) {}
     notify(false);
   });
+  // --- Live re-poll: keep the shared dropdown current without a page reload ---
+  // Each weather feed registers a refetch that re-reads its manifest (so the
+  // overlays redraw against the newest run) and reports two lists: `add` -- the
+  // times that belong in the dropdown for the current view -- and `avail` --
+  // every time the feed still offers. We poll them on a timer so a left-open
+  // tab picks up newly published valid times and advances its auto-selected
+  // time as Zulu passes; and if the pilot's PINNED time has aged out of EVERY
+  // feed we drop the pin and fall back to nearest-now, rather than leaving the
+  // overlay pointing at a chart that no longer exists.
+  const feeds = [];
+  function register(refetch) { if (typeof refetch === 'function') feeds.push(refetch); }
+  function prune(keys) {
+    if (!sel) return;
+    for (const o of Array.from(sel.options)) if (!keys.has(o.value)) sel.removeChild(o);
+  }
+  async function poll() {
+    if (!sel || !feeds.length) return;
+    let add = [], avail = [];
+    for (const f of feeds) {
+      try {
+        const r = await f();
+        if (r && Array.isArray(r.add)) add = add.concat(r.add);
+        if (r && Array.isArray(r.avail)) avail = avail.concat(r.avail);
+      } catch (e) { /* one feed unreachable this round */ }
+    }
+    const availKeys = new Set(avail.filter(t => t && t.valid).map(keyOf));
+    if (!availKeys.size) return;          // every feed unreachable -> keep what we have
+    ensure(add);                          // add new options; advance the default while unpinned
+    prune(availKeys);                     // drop times no feed offers any more
+    if (sel.options.length && !availKeys.has(sel.value)) {
+      // The selected time -- a pilot pin or an earlier default -- is gone from every feed.
+      pinned = false;
+      try { localStorage.removeItem(KEY); } catch (e) {}
+      reseed();
+    }
+    notify(true);                         // overlays redraw against the refreshed manifests
+  }
+  if (sel) setInterval(poll, 10 * 60 * 1000);
   const api = {
     value: () => (sel ? sel.value : ''),
     // Does this manifest entry belong to the selected option? Both sides may lack a day
@@ -9179,6 +9277,8 @@ const NavWxTime = (function () {
     },
     ensure,
     prefer,
+    register,   // a feed registers its refetch() so poll() keeps the dropdown live
+    poll,       // exposed for tests to trigger a re-poll deterministically
     // Called for BOTH a pilot change and a programmatic re-seed; the argument says which,
     // so a subscriber can redraw either way but only persist a real choice.
     onChange: fn => { if (typeof fn === 'function') subs.push(fn); },
@@ -9371,21 +9471,28 @@ const NavWxAvailability = (function () {
   // Opacity is the shared #wx-opacity slider (NavWxOpacity) — re-apply on change.
   NavWxOpacity.onChange(() => { if (layer) layer.setOpacity(NavWxOpacity.value()); });
 
-  fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
-    .then(r => (r.ok ? r.json() : null))
-    .then(m => {
-      if (!m || !Array.isArray(m.levels) || !m.levels.length || !m.bounds) return;
-      manifest = m;
-      // List levels lowest-altitude first (FL030 before FL050) so the default
-      // selection is the lowest CVFR level — higher hPa number = lower altitude.
-      const ordered = m.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
-      for (const lv of ordered) {
-        const o = document.createElement('option');
-        o.value = lv.level;
-        o.textContent = lv.label || (lv.level + ' hPa');
-        levelSel.appendChild(o);
-      }
-      fillTimes();
+  // Apply a (re-)fetched manifest. `first` restores the saved selection only on the
+  // initial load; a later re-poll must not drag the pilot's choice around. Returns the
+  // {add, avail} time lists NavWxTime.poll uses (add = the selected level's times, the ones
+  // that belong in the dropdown now; avail = every level's times, so a pinned time at any
+  // level still counts as available and is not treated as gone).
+  function ingest(m, first) {
+    if (!m || !Array.isArray(m.levels) || !m.levels.length || !m.bounds) return null;
+    manifest = m;
+    // List levels lowest-altitude first (FL030 before FL050) so the default
+    // selection is the lowest CVFR level — higher hPa number = lower altitude.
+    // Only append levels not already listed, so a re-poll never duplicates them.
+    const have = new Set(Array.from(levelSel.options, o => o.value));
+    const ordered = m.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+    for (const lv of ordered) {
+      if (have.has(lv.level)) continue;
+      const o = document.createElement('option');
+      o.value = lv.level;
+      o.textContent = lv.label || (lv.level + ' hPa');
+      levelSel.appendChild(o);
+    }
+    fillTimes();
+    if (first) {
       // Restore the saved selection + on/off so a reload keeps the overlay.
       try {
         const sv = JSON.parse(lsGet(KEY) || 'null');
@@ -9396,18 +9503,31 @@ const NavWxAvailability = (function () {
           if (sv.on) { cb.checked = true; controls.hidden = false; }
         }
       } catch (e) { /* storage unavailable */ }
-      // The shared #wx-time dropdown was seeded to now (Zulu) by NavWxTime.
-      updateLayer();
-      // Show the model run time (cropped off the chart's bottom band).
-      const runEl = document.getElementById('ims-pwx-run');
-      if (runEl && /^\d{12}$/.test(m.run || '')) {
-        const r = m.run;
-        runEl.textContent = (S.tbImsPwxRun || 'Model run') + ': ' +
-          r.slice(6, 8) + '/' + r.slice(4, 6) + ' ' + r.slice(8, 10) + ':' + r.slice(10, 12) + 'Z';
-      }
-      box.hidden = false;          // reveal the control now that data exists
-    })
-    .catch(() => { /* no ims-data branch yet → stay hidden */ });
+    }
+    // The shared #wx-time dropdown was seeded to now (Zulu) by NavWxTime.
+    updateLayer();
+    // Show the model run time (cropped off the chart's bottom band).
+    const runEl = document.getElementById('ims-pwx-run');
+    if (runEl && /^\d{12}$/.test(m.run || '')) {
+      const r = m.run;
+      runEl.textContent = (S.tbImsPwxRun || 'Model run') + ': ' +
+        r.slice(6, 8) + '/' + r.slice(4, 6) + ' ' + r.slice(8, 10) + ':' + r.slice(10, 12) + 'Z';
+    }
+    box.hidden = false;          // reveal the control now that data exists
+    const cur = currentLevel();
+    return {
+      add: (cur && cur.times) || [],
+      avail: m.levels.reduce((a, lv) => a.concat(lv.times || []), []),
+    };
+  }
+  function fetchPwx(first) {
+    return fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(m => ingest(m, first))
+      .catch(() => null);   // no ims-data branch yet / offline → stay hidden, keep list
+  }
+  fetchPwx(true);
+  NavWxTime.register(() => fetchPwx(false));
 })();
 
 // --- IMS SIGWX significant-weather charts (in-app image viewer) ------
@@ -9875,20 +9995,34 @@ const NavWxAvailability = (function () {
   // Opacity is the shared #wx-opacity slider (NavWxOpacity) — re-render on change.
   NavWxOpacity.onChange(() => updateLayer());
 
-  fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
-    .then(r => (r.ok ? r.json() : null))
-    .then(m => {
-      if (!m || !Array.isArray(m.times) || !m.times.length) return;
-      manifest = m;
-      fillTimes();
-      box.hidden = false;
+  // Apply a (re-)fetched manifest. `first` restores persisted state only on the initial
+  // load. Returns {add, avail} for NavWxTime.poll (SIGWX offers one flat time list, so the
+  // two are identical). A re-poll's redraw is driven by poll()'s notify → onChange below.
+  function ingest(m, first) {
+    if (!m || !Array.isArray(m.times)) return null;
+    // Initial load waits for a non-empty run before revealing the control; a re-poll
+    // accepts an empty run (a feed that momentarily has no charts).
+    if (first && !m.times.length) return null;
+    manifest = m;
+    fillTimes();
+    box.hidden = false;
+    if (first) {
       // Restore persisted state.
       let saved = null;
       try { saved = JSON.parse(lsGet(KEY) || 'null'); } catch (e) { /* */ }
       // The shared #wx-time dropdown was seeded to now (Zulu) by NavWxTime.
       if (saved && saved.on) { cb.checked = true; controls.hidden = false; updateLayer(); }
-    })
-    .catch(() => { /* manifest unreachable → stay hidden */ });
+    }
+    return { add: m.times, avail: m.times };
+  }
+  function fetchSigwx(first) {
+    return fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(m => ingest(m, first))
+      .catch(() => null);   // manifest unreachable → stay hidden, keep current list
+  }
+  fetchSigwx(true);
+  NavWxTime.register(() => fetchSigwx(false));
 })();
 
 // --- Default layer visibility ---------------------------------------------
