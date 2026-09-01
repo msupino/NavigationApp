@@ -2815,6 +2815,9 @@ function appendAirfieldWeather(body, af) {
   // and inches figures as separate digits for the spoken string; the displayed text is left
   // as-is. Applied to what is read aloud, not to the panel.
   const speechify = (t) => String(t)
+    // Wind direction is read as separate digits + "degrees" ("three five zero degrees"),
+    // like on the radio. The (?!C) guard leaves a temperature ("29°C") as a cardinal number.
+    .replace(/(\d{1,3})°(?!C)/g, (_, n) => n.split('').join(' ') + ' degrees')
     .replace(/(\d{3,4})(\s*hPa)/g, (_, n, u) => n.split('').join(' ') + u)
     .replace(/(\d{2})\.(\d{2})\s*[″"]/g, (_, a, b) => (a + b).split('').join(' ') + ' inches');
   const speakSection = (btn, textFn) => {
