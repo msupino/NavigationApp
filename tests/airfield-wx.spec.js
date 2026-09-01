@@ -175,6 +175,9 @@ test('Hebrew no-data message reads RTL, not garbled LTR', async ({ page }) => {
   // Body follows content direction (dir=auto) so the Hebrew prose resolves RTL
   // from its first strong char instead of being forced LTR and reordered.
   expect(await body.getAttribute('dir')).toBe('auto');
+  // And it must actually COMPUTE to rtl — the CSS must not force direction:ltr, or the words
+  // reorder ("אין" lands at the end) even with dir=auto. This is what the attribute check missed.
+  expect(await body.evaluate(el => getComputedStyle(el).direction)).toBe('rtl');
 });
 
 // A field with no ICAO code publishes no METAR -- so no observation, no refresh button and
