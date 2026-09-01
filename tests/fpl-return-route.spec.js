@@ -736,6 +736,20 @@ test('a live route-closure NOTAM reroutes the expansion', async ({ page }) => {
   // honours them for the departure time. Close SFAIM-APOLN by NOTAM: the 4XDAZ outbound
   // must leave via another published corridor instead of the standard SFAIM chain -- and
   // with no NOTAM, the standard chain is back.
+  //
+  // The closure is filtered by the LIVE clock (activeNotams), so freeze it inside the
+  // fixture NOTAM's window. Without this the test was a time bomb: it only passed while the
+  // real wall-clock happened to sit inside start..end, and started failing the day the
+  // window's end (2026-09-01) arrived.
+  await page.addInitScript(() => {
+    const fixed = Date.UTC(2026, 7, 15, 8, 0);   // 2026-08-15 08:00Z: inside 08-01..09-01, in 0500-1400
+    const RealDate = Date;
+    // eslint-disable-next-line no-global-assign
+    Date = class extends RealDate {
+      constructor(...a) { super(...(a.length ? a : [fixed])); }
+      static now() { return fixed; }
+    };
+  });
   await boot(page);
   const r = await page.evaluate(async ({ profile }) => {
     const mk = async () => {
