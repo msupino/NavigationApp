@@ -244,3 +244,28 @@ test('the WX box says None when a field has no AD/WS warning', async ({ page }) 
   await expect(wx.locator('.wx-adws')).toContainText('Aerodrome / Wind-shear');
   await expect(wx.locator('.wx-adws-none')).toHaveText('None');
 });
+
+test('the AD/WS label follows content direction — RTL in a Hebrew session', async ({ page }) => {
+  await mockWx(page);
+  await page.route('**airmet-data/airmet.json**', r => r.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: null, airmets: [], airfieldWarnings: {} }),
+  }));
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => typeof state !== 'undefined' &&
+    typeof showInspector === 'function' && typeof fetchAirfieldWx === 'function');
+  await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    if (typeof loadAirmets === 'function') await loadAirmets(true);
+    const index = airfields.findIndex(a => a.name === 'LLBG');
+    state.selected = { type: 'airfield', index };
+    showInspector();
+  });
+  const adws = page.locator('#insp-body .wx-adws');
+  // dir=auto (not forced ltr): the UA lays each line out from its first strong char via
+  // bidi-plaintext, so the Hebrew label + its "(AD / WS)" render in the right order. (The
+  // CSS `direction` stays inherited; plaintext is what reorders, so that's what we assert.)
+  expect(await adws.getAttribute('dir')).toBe('auto');
+  expect(await adws.evaluate(el => getComputedStyle(el).unicodeBidi)).toBe('isolate');
+  await expect(adws).toContainText('אזהרות שדה');   // Hebrew label present
+});

@@ -4100,6 +4100,9 @@ body.theme-light .airspace-now.is-active { color: #b3261e; }
   background: #ffd966; border-radius: 3px; padding: 0 5px; margin-bottom: 2px;
 }
 .wx-line { line-height: 1.4; }
+/* AD/WS is localized prose (RTL in Hebrew); the code blocks above are LTR. Let this block
+   align to its own start edge so the Hebrew label/"None" sit right, not forced left. */
+.wx-adws { text-align: start; }
 .wx-line.wx-raw { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: #c9c4c4; }
 .wx-toggle {
   font: inherit; font-size: 11px; color: #9fd0ff; background: none; border: none;
