@@ -3925,11 +3925,18 @@ window.fmtQnhBoth = fmtQnhBoth;
 
 // Visibility arrives already in kilometres from the feed (IAA is native metric; the AWC
 // fallback is converted at the feed), so it is just labelled. "10+" reads "10+ km".
+// Visibility comes from the feed already in kilometres; "10+" is the ">=10 km" marker
+// (CAVOK / 9999 / P6SM) and reads as a phrase, everything else as "<n> km".
+function visLabel(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return '';
+  return s === '10+' ? '10 km or more' : s + ' km';
+}
 function decodeMetar(m) {
   if (!m) return '';
   const p = [];
   const w = wxWind(m.wdir, m.wspd, m.wgst); if (w) p.push(w);
-  if (m.visib != null && String(m.visib).trim() !== '') p.push('Visibility ' + m.visib + ' km');
+  if (m.visib != null && String(m.visib).trim() !== '') p.push('Visibility ' + visLabel(m.visib));
   if (m.wxString) p.push(decodeWxString(m.wxString));
   const cl = wxClouds(m.clouds); if (cl) p.push(cl);
   if (m.temp != null) p.push('Temperature ' + Math.round(m.temp) + '°C' +
@@ -3955,7 +3962,7 @@ function decodeTaf(t) {
     // decode: TEMPO = temporary fluctuations, BECMG = a gradual change, FM = from that time.
     const tag = ch === 'TEMPO' ? 'Temporary ' : ch === 'BECMG' ? 'Becoming ' : 'From ';
     const w = wxWind(f.wdir, f.wspd, f.wgst); if (w) seg.push(w);
-    if (f.visib != null && String(f.visib).trim() !== '') seg.push('Visibility ' + f.visib + ' km');
+    if (f.visib != null && String(f.visib).trim() !== '') seg.push('Visibility ' + visLabel(f.visib));
     if (f.wxString) seg.push(decodeWxString(f.wxString));
     const cl = wxClouds(f.clouds); if (cl) seg.push(cl);
     return { when: tag + hh(f.timeFrom), text: seg.join(' · ') };
