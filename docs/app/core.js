@@ -1449,6 +1449,8 @@ window.S = Object.assign({
   wxShowRaw: 'Show raw',
   wxShowDecoded: 'Show decoded',
   wxRefresh: 'Refresh weather',
+  wxSpeak: 'Read aloud',
+  wxStopSpeak: 'Stop reading',
   wxUpdated: 'Updated',
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
