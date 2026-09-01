@@ -3884,8 +3884,13 @@ function decodeWxString(s) {
 }
 function wxClouds(clouds) {
   if (!Array.isArray(clouds) || !clouds.length) return '';
-  return clouds.map(c => (WX_CLOUD[c.cover] || c.cover) +
+  const body = clouds.map(c => (WX_CLOUD[c.cover] || c.cover) +
     (Number.isFinite(c.base) ? ' ' + c.base + ' ft' : '')).join(', ');
+  // Label the segment "Clouds …" when it lists actual layers (Few/Scattered/Broken/Overcast),
+  // so it reads like the others (Wind, Visibility, …). A sky-condition phrase stands alone —
+  // "Clouds Clear" / "Clouds No significant cloud" would read wrong.
+  const LAYER = { FEW: 1, SCT: 1, BKN: 1, OVC: 1 };
+  return clouds.some(c => LAYER[c.cover]) ? 'Clouds ' + body : body;
 }
 function wxWind(dir, spd, gst) {
   if (spd === 0) return 'Wind calm';
