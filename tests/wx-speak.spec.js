@@ -26,13 +26,13 @@ async function mockWx(page) {
 // resolves when stop() is called, so the button stays in its "speaking" (⏹) state until stop.
 async function stubTts(page) {
   await page.addInitScript(() => {
-    window.__spoken = []; window.__stopped = 0;
+    window.__spoken = []; window.__spokenLang = []; window.__stopped = 0;
     let resolveSpeak = null;
     window.Capacitor = {
       isNativePlatform: () => true,
       Plugins: {
         TextToSpeech: {
-          speak: (o) => { window.__spoken.push(o.text); return new Promise(res => { resolveSpeak = res; }); },
+          speak: (o) => { window.__spoken.push(o.text); window.__spokenLang.push(o.lang); return new Promise(res => { resolveSpeak = res; }); },
           stop: () => { window.__stopped++; if (resolveSpeak) { resolveSpeak(); resolveSpeak = null; } return Promise.resolve(); },
           getSupportedLanguages: () => Promise.resolve({ languages: ['en-US', 'he-IL'] }),
         },
@@ -41,8 +41,8 @@ async function stubTts(page) {
   });
 }
 
-async function openLLBG(page) {
-  await page.goto('?lang=en');
+async function openLLBG(page, lang = 'en') {
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() => typeof showInspector === 'function' &&
     typeof fetchAirfieldWx === 'function' && typeof window.speakOnDemand === 'function');
   await page.evaluate(async () => {
@@ -103,6 +103,15 @@ test('with the raw toggle on, each button speaks its own raw code', async ({ pag
 
   await tafBtn(page).click();
   expect((await spoken(page)).join(' ')).toContain('1406/1506');    // raw TAF token
+});
+
+test('the voice is English even in a Hebrew session (decoded METAR/TAF is English)', async ({ page }) => {
+  await stubTts(page);
+  await mockWx(page);
+  await openLLBG(page, 'he');
+  await metarBtn(page).click();
+  expect(await page.evaluate(() => window.__spokenLang.slice())).toContain('en-US');
+  expect((await spoken(page)).join(' ')).toContain('Wind 270°');   // still the English decode
 });
 
 test('the speak buttons are dimmed, not hidden, when no speech engine exists', async ({ page }) => {

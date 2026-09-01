@@ -2064,17 +2064,23 @@ window.ttsAvailable = ttsAvailable;
 // or a fresh read, stops the previous one). Same native-first, web-fallback path and language
 // resolution as gpsSpeak. Returns a promise that resolves when the utterance finishes, so the
 // caller can flip its button back from "stop" to "speak".
-function speakOnDemand(text) {
+function speakOnDemand(text, lang) {
   _ttsStopEngine();
   if (!text) return Promise.resolve();
   const tts = _nativeTts();
-  const lang = (typeof window !== 'undefined' && window.__navLang === 'he') ? 'he-IL' : 'en-US';
+  // A caller can force the voice language (the METAR/TAF reader passes 'en-US': the decoded
+  // text is always English, so a Hebrew-session voice would only mispronounce it). Otherwise
+  // follow the interface language, as the in-flight alerts do.
+  const fallback = (typeof window !== 'undefined' && window.__navLang === 'he') ? 'he-IL' : 'en-US';
+  const useLang = lang || fallback;
   if (tts && typeof tts.speak === 'function') {
-    return _gpsResolveVoiceLang(tts)
+    // With a forced language, use it directly; otherwise resolve against the device's voices.
+    const resolveLang = lang ? Promise.resolve(useLang) : _gpsResolveVoiceLang(tts);
+    return resolveLang
       .then(function (voiceLang) { return tts.speak({ text: text, lang: voiceLang, category: 'playback' }); })
       .catch(function () { /* best-effort: a TTS failure must not throw at the caller */ });
   }
-  return _webSpeak(text, lang).catch(function () { /* best-effort */ });
+  return _webSpeak(text, useLang).catch(function () { /* best-effort */ });
 }
 window.speakOnDemand = speakOnDemand;
 function speakOnDemandStop() { _ttsStopEngine(); }

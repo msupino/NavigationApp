@@ -2817,7 +2817,8 @@ function appendAirfieldWeather(body, af) {
     const text = textFn();
     if (!text) return;
     speakingBtn = btn; setSpeakIcon(btn, true);
-    Promise.resolve(window.speakOnDemand(text))
+    // Always English: METAR/TAF decode to English, and raw codes are English/ICAO.
+    Promise.resolve(window.speakOnDemand(text, 'en-US'))
       .then(() => { if (speakingBtn === btn) { setSpeakIcon(btn, false); speakingBtn = null; } });
   };
   // A 🔊 button for one section (`what` = METAR/TAF), dimmed (never hidden) when no engine.
