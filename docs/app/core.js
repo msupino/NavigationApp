@@ -3856,14 +3856,14 @@ async function fetchAirfieldWx(icao, force) {
   };
 }
 const WX_CLOUD = {
-  SKC: 'Clear', CLR: 'Clear', NSC: 'No sig cloud', NCD: 'No cloud',
-  FEW: 'Few', SCT: 'Scattered', BKN: 'Broken', OVC: 'Overcast', VV: 'Vert vis',
+  SKC: 'Clear', CLR: 'Clear', NSC: 'No significant cloud', NCD: 'No cloud',
+  FEW: 'Few', SCT: 'Scattered', BKN: 'Broken', OVC: 'Overcast', VV: 'Vertical visibility',
 };
 const WX_PHENOM = {
   MI: 'shallow', BC: 'patches', PR: 'partial', DR: 'low drifting', BL: 'blowing',
   SH: 'showers', TS: 'thunderstorm', FZ: 'freezing',
   RA: 'rain', DZ: 'drizzle', SN: 'snow', SG: 'snow grains', PL: 'ice pellets',
-  GR: 'hail', GS: 'small hail', IC: 'ice crystals', UP: 'unknown precip',
+  GR: 'hail', GS: 'small hail', IC: 'ice crystals', UP: 'unknown precipitation',
   BR: 'mist', FG: 'fog', FU: 'smoke', VA: 'volcanic ash', DU: 'dust',
   SA: 'sand', HZ: 'haze', PY: 'spray', PO: 'dust whirls', SQ: 'squalls',
   FC: 'funnel cloud', DS: 'duststorm', SS: 'sandstorm',
@@ -3912,11 +3912,11 @@ function decodeMetar(m) {
   if (!m) return '';
   const p = [];
   const w = wxWind(m.wdir, m.wspd, m.wgst); if (w) p.push(w);
-  if (m.visib != null && String(m.visib).trim() !== '') p.push('Vis ' + m.visib + (/^[0-9.]+$/.test(String(m.visib)) ? ' SM' : ''));
+  if (m.visib != null && String(m.visib).trim() !== '') p.push('Visibility ' + m.visib + (/^[0-9.]+$/.test(String(m.visib)) ? ' SM' : ''));
   if (m.wxString) p.push(decodeWxString(m.wxString));
   const cl = wxClouds(m.clouds); if (cl) p.push(cl);
   if (m.temp != null) p.push('Temperature ' + Math.round(m.temp) + '°C' +
-    (m.dewp != null ? ' / dew ' + Math.round(m.dewp) + '°C' : ''));
+    (m.dewp != null ? ' / Dew point ' + Math.round(m.dewp) + '°C' : ''));
   if (m.altim != null) p.push('QNH ' + fmtQnhBoth(m.altim));
   return p.join(' · ');
 }
@@ -3938,7 +3938,7 @@ function decodeTaf(t) {
     // decode: TEMPO = temporary fluctuations, BECMG = a gradual change, FM = from that time.
     const tag = ch === 'TEMPO' ? 'Temporary ' : ch === 'BECMG' ? 'Becoming ' : 'From ';
     const w = wxWind(f.wdir, f.wspd, f.wgst); if (w) seg.push(w);
-    if (f.visib != null && String(f.visib).trim() !== '') seg.push('Vis ' + f.visib + (/^[0-9.]+$/.test(String(f.visib)) ? ' SM' : ''));
+    if (f.visib != null && String(f.visib).trim() !== '') seg.push('Visibility ' + f.visib + (/^[0-9.]+$/.test(String(f.visib)) ? ' SM' : ''));
     if (f.wxString) seg.push(decodeWxString(f.wxString));
     const cl = wxClouds(f.clouds); if (cl) seg.push(cl);
     return { when: tag + hh(f.timeFrom), text: seg.join(' · ') };
