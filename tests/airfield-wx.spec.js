@@ -61,6 +61,27 @@ test('decodeMetar renders wind/vis/wx/cloud/temp/QNH', async ({ page }) => {
   expect(txt).toContain('QNH 1013 hPa');
 });
 
+test('decodeTaf expands BECMG/TEMPO and drops an empty visibility', async ({ page }) => {
+  await boot(page);
+  const T = {
+    fcsts: [
+      { fcstChange: '', timeFrom: 1781503200, wdir: 'VRB', wspd: 4, visib: '6+', clouds: [{ cover: 'SCT', base: 3000 }] },
+      { fcstChange: 'TEMPO', timeFrom: 1781510400, wdir: 150, wspd: 5, visib: '', clouds: [{ cover: 'BKN', base: 2500 }] },
+      { fcstChange: 'BECMG', timeFrom: 1781535600, wdir: 290, wspd: 10, visib: '6+', clouds: [{ cover: 'FEW', base: 3000 }] },
+    ],
+  };
+  const out = await page.evaluate(t => decodeTaf(t), T);
+  expect(out[0].when).toMatch(/^From /);         // plain FM period
+  expect(out[1].when).toMatch(/^Temporary /);    // TEMPO expanded
+  expect(out[2].when).toMatch(/^Becoming /);     // BECMG expanded
+  expect(out[0].when).not.toContain('BECMG');
+  expect(out[1].when).not.toContain('TEMPO');
+  // Empty visibility must not leave a dangling "Vis" with no value.
+  expect(out[1].text).not.toContain('Vis');
+  expect(out[1].text).toContain('Broken 2500 ft');
+  expect(out[0].text).toContain('Vis 6+');       // a real visibility still shows
+});
+
 test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ page }) => {
   await mockWx(page);
   await boot(page);

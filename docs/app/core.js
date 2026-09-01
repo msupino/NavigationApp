@@ -3912,7 +3912,7 @@ function decodeMetar(m) {
   if (!m) return '';
   const p = [];
   const w = wxWind(m.wdir, m.wspd, m.wgst); if (w) p.push(w);
-  if (m.visib != null) p.push('Vis ' + m.visib + (/^[0-9.]+$/.test(String(m.visib)) ? ' SM' : ''));
+  if (m.visib != null && String(m.visib).trim() !== '') p.push('Vis ' + m.visib + (/^[0-9.]+$/.test(String(m.visib)) ? ' SM' : ''));
   if (m.wxString) p.push(decodeWxString(m.wxString));
   const cl = wxClouds(m.clouds); if (cl) p.push(cl);
   if (m.temp != null) p.push('Temp ' + Math.round(m.temp) + '°C' +
@@ -3934,9 +3934,11 @@ function decodeTaf(t) {
   return fc.map(f => {
     const seg = [];
     const ch = (f.fcstChange || '').toUpperCase();
-    const tag = ch === 'TEMPO' ? 'TEMPO ' : ch === 'BECMG' ? 'BECMG ' : 'From ';
+    // Expand the change indicators rather than leaving the raw codes in the plain-language
+    // decode: TEMPO = temporary fluctuations, BECMG = a gradual change, FM = from that time.
+    const tag = ch === 'TEMPO' ? 'Temporary ' : ch === 'BECMG' ? 'Becoming ' : 'From ';
     const w = wxWind(f.wdir, f.wspd, f.wgst); if (w) seg.push(w);
-    if (f.visib != null) seg.push('Vis ' + f.visib + (/^[0-9.]+$/.test(String(f.visib)) ? ' SM' : ''));
+    if (f.visib != null && String(f.visib).trim() !== '') seg.push('Vis ' + f.visib + (/^[0-9.]+$/.test(String(f.visib)) ? ' SM' : ''));
     if (f.wxString) seg.push(decodeWxString(f.wxString));
     const cl = wxClouds(f.clouds); if (cl) seg.push(cl);
     return { when: tag + hh(f.timeFrom), text: seg.join(' · ') };
