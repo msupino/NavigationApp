@@ -1353,13 +1353,22 @@ function airfieldWarningsFor(icao) {
 }
 window.airfieldWarningsFor = airfieldWarningsFor;
 
+// The look-ahead time the timeline slider scrubs to, shared by every time-filtered hazard
+// layer (AIRMET map/hit-test/count/list and NOTAM). null (slider at live) means "now".
+// One definition keeps the layers in lockstep: change the look-ahead semantics here once,
+// not in three inline copies that could silently diverge.
+function notamViewNow() {
+  return Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
+}
+window.notamViewNow = notamViewNow;
+
 // Which AIRMET areas contain a tapped point, smallest first -- so a tap opens the tightest
 // hazard when they overlap. Mirrors airspaceAtLatLng.
 function airmetsAtLatLng(latlng) {
   if (!window.showAirmet || !Array.isArray(airmets) || !airmets.length || !latlng) return [];
   const pt = proj(latlng);
   const out = [];
-  const viewNow = Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
+  const viewNow = notamViewNow();
   for (let i = 0; i < airmets.length; i++) {
     if (!airmetActive(airmets[i], viewNow)) continue;
     const poly = (airmets[i].coords || []).map(c => proj({ lat: c[0], lng: c[1] }));
@@ -1400,7 +1409,7 @@ window.airmetActive = airmetActive;
 function activeAirmets() {
   // Same look-ahead time the NOTAM layer scrubs to: with the timeline slider forward, an
   // AIRMET past its validTo drops out, exactly as a NOTAM does. null = live "now".
-  const now = Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
+  const now = notamViewNow();
   return Array.isArray(window.airmets) ? window.airmets.filter(a => airmetActive(a, now)) : [];
 }
 window.activeAirmets = activeAirmets;
@@ -1494,7 +1503,7 @@ function notamOnChart(n, prefix) {
 // opts.allCharts skips the chart filter, for callers that mean "the whole feed".
 function activeNotams(opts) {
   // The timeline slider scrubs a look-ahead time; null = live "now".
-  const now = Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
+  const now = notamViewNow();
   if (!Array.isArray(notams)) return [];
   const everyChart = !!(opts && opts.allCharts);
   const prefix = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
