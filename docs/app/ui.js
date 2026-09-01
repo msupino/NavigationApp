@@ -4843,6 +4843,43 @@ if (typeof loadSigmets === 'function') {
   loadSigmets().then(refreshSigmetBtn);
 }
 
+// --- Live hazard re-poll (NOTAM + SIGMET + AIRMET) --------------------------
+// These three feeds were each fetched once at boot and never again, so a NOTAM,
+// SIGMET or AIRMET issued or cancelled mid-session only appeared after a manual
+// reload — the map markers, the decoded lists and the dim-never-hide counts all
+// froze at boot. Re-fetch them on a timer (same shape as the weather-manifest
+// poll) and redraw. Only a feed already loaded is refreshed: one the pilot has
+// never used stays null and is fetched fresh when they first turn it on. The
+// redraw respects the look-ahead slider — draw() and the counts read the scrubbed
+// view time — so a future scrub still filters what is shown.
+async function refreshHazardFeeds() {
+  if (document.hidden) return;   // don't burn requests polling a backgrounded tab
+  const jobs = [];
+  if (typeof loadNotam === 'function' && typeof notams !== 'undefined' && notams !== null) {
+    jobs.push(loadNotam(true).then(() => {
+      if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
+      if (typeof buildNotamRouteLines === 'function') buildNotamRouteLines();
+      if (typeof refreshNotamListBtn === 'function') refreshNotamListBtn();
+    }));
+  }
+  if (typeof loadSigmets === 'function' && typeof sigmets !== 'undefined' && sigmets !== null) {
+    jobs.push(loadSigmets(true).then(() => {
+      if (typeof refreshSigmetBtn === 'function') refreshSigmetBtn();
+    }));
+  }
+  if (typeof loadAirmets === 'function' && typeof airmets !== 'undefined' && airmets !== null) {
+    jobs.push(loadAirmets(true).then(() => {
+      if (typeof refreshAirmetGroup === 'function') refreshAirmetGroup();
+      if (typeof refreshAirmetBtn === 'function') refreshAirmetBtn();
+    }));
+  }
+  if (!jobs.length) return;
+  try { await Promise.all(jobs); } catch (e) { /* a feed error keeps its last-good data */ }
+  if (typeof draw === 'function') draw();
+}
+window.refreshHazardFeeds = refreshHazardFeeds;   // exposed so tests can trigger a re-poll
+setInterval(refreshHazardFeeds, 10 * 60 * 1000);
+
 // --- NOTAM overlay + list (FAA NOTAM API, Israel FIR LLLL) ----------
 // Whether the overlay is on is remembered PER CHART: the NOTAM feed is FIR-wide
 // (one LLLL source, no per-chart split available in it), but what you want on
