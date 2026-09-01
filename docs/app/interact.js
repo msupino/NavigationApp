@@ -2823,6 +2823,7 @@ function appendAirfieldWeather(body, af) {
     // Unit symbols read badly letter-by-letter ("kay tee"); spell them for the voice only.
     .replace(/\bkt\b/g, 'knots')
     .replace(/\bft\b/g, 'feet')
+    .replace(/\bkm\b/g, 'kilometers')
     .replace(/\bSM\b/g, 'statute miles');
   const speakSection = (btn, textFn) => {
     if (speakingBtn === btn) { stopSpeak(); return; }   // same button toggles off
