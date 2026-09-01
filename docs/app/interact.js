@@ -2794,6 +2794,48 @@ function appendAirfieldWeather(body, af) {
   refreshBtn.textContent = '↻';
   refreshBtn.title = S.wxRefresh || 'Refresh weather';
   refreshBtn.setAttribute('aria-label', refreshBtn.title);
+  // Read the weather aloud (decoded, in the app language) — raw METAR/TAF codes are
+  // unintelligible spoken. On-demand, so it works whether or not the in-flight voice alerts
+  // are on; toggles to a stop while talking. Dimmed (never hidden) when no speech engine.
+  const speakBtn = document.createElement('button');
+  speakBtn.type = 'button';
+  speakBtn.className = 'wx-speak';
+  let wxSpeaking = false;
+  const setSpeakIcon = () => {
+    speakBtn.textContent = wxSpeaking ? '⏹' : '🔊';
+    speakBtn.title = wxSpeaking ? (S.wxStopSpeak || 'Stop reading') : (S.wxSpeak || 'Read aloud');
+    speakBtn.setAttribute('aria-label', speakBtn.title);
+  };
+  setSpeakIcon();
+  const wxSpeakStop = () => {
+    if (typeof window.speakOnDemandStop === 'function') window.speakOnDemandStop();
+    wxSpeaking = false; setSpeakIcon();
+  };
+  speakBtn.onclick = () => {
+    if (wxSpeaking) { wxSpeakStop(); return; }
+    if (!data || (!data.metar && !data.taf) || typeof window.speakOnDemand !== 'function') return;
+    // Read what the panel is showing: decoded plain language, or the raw code when the raw
+    // toggle is on (raw is hard to follow spoken, but the pilot asked to hear what's on screen).
+    const parts = [icao];
+    if (data.metar) {
+      const m = showRaw ? (data.metar.rawOb || data.metar.rawText || '') : decodeMetar(data.metar);
+      if (m) parts.push((S.wxMetar || 'METAR') + '. ' + m);
+    }
+    if (data.taf) {
+      let tafTxt;
+      if (showRaw) {
+        tafTxt = data.taf.rawTAF || data.taf.rawText || '';
+      } else {
+        const dec = decodeTaf(data.taf);
+        tafTxt = dec.length ? dec.map(s => s.when + ': ' + s.text).join('. ') : '';
+      }
+      if (tafTxt) parts.push((S.wxTaf || 'TAF') + '. ' + tafTxt);
+    }
+    wxSpeaking = true; setSpeakIcon();
+    Promise.resolve(window.speakOnDemand(parts.join('. '))).then(() => { wxSpeaking = false; setSpeakIcon(); });
+  };
+  speakBtn.disabled = true;   // enabled by render() once a METAR/TAF has loaded
+  head.appendChild(speakBtn);
   head.appendChild(refreshBtn);
   sec.appendChild(head);
   // Density altitude first, with its own time slider above it: the slider is what the
@@ -2805,6 +2847,7 @@ function appendAirfieldWeather(body, af) {
     if (!sec.querySelector('.da-group')) return;
     headLbl.textContent = S.wxTitleNoMetar || S.densityAltitude || 'Density altitude';
     refreshBtn.remove();
+    speakBtn.remove();   // nothing to read: no METAR/TAF for a field with no ICAO code
     body.appendChild(sec);
     return;
   }
@@ -2847,6 +2890,7 @@ function appendAirfieldWeather(body, af) {
     bodyEl.appendChild(wrap);
   };
   const load = (force) => {
+    wxSpeakStop();   // a refresh replaces the report being read; stop mid-sentence
     bodyEl.textContent = S.wxLoading || 'Loading…';
     refreshBtn.disabled = true;
     fetchAirfieldWx(icao, force).then(d => { data = d; refreshBtn.disabled = false; render(); })
@@ -2855,6 +2899,9 @@ function appendAirfieldWeather(body, af) {
   refreshBtn.onclick = () => load(true);
   const render = () => {
     bodyEl.innerHTML = '';
+    // Enabled only once there is a METAR or TAF to read, and only where a speech engine exists.
+    speakBtn.disabled = !((typeof window.ttsAvailable === 'function' && window.ttsAvailable())
+      && data && !data.error && (data.metar || data.taf));
     if (!data || data.unsupported) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; appendAdWs(); return; }
     if (data.error) { bodyEl.textContent = S.wxError || 'Weather unavailable'; appendAdWs(); return; }
     if (!data.metar && !data.taf) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; appendAdWs(); return; }
@@ -2893,7 +2940,7 @@ function appendAirfieldWeather(body, af) {
     toggle.type = 'button';
     toggle.className = 'wx-toggle';
     toggle.textContent = showRaw ? (S.wxShowDecoded || 'Show decoded') : (S.wxShowRaw || 'Show raw');
-    toggle.onclick = () => { showRaw = !showRaw; render(); };
+    toggle.onclick = () => { wxSpeakStop(); showRaw = !showRaw; render(); };   // content changes: stop any read
     bodyEl.appendChild(toggle);
     if (data.generatedAt) {
       const upd = new Date(data.generatedAt);

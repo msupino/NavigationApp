@@ -321,6 +321,8 @@ window.S = {
   wxShowRaw: 'הצג גולמי',
   wxShowDecoded: 'הצג מפוענח',
   wxRefresh: 'רענן מזג אוויר',
+  wxSpeak: 'הקרא',
+  wxStopSpeak: 'עצור הקראה',
   wxUpdated: 'עודכן',
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
   errSavedRouteCorrupt: function(msg) {

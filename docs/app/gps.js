@@ -2040,6 +2040,45 @@ function gpsSpeak(text) {
   }).catch(function () { /* best-effort: never let a TTS failure break the chain */ });
 }
 window.gpsSpeak = gpsSpeak;
+
+// Stop whatever the engine is saying, without touching the in-flight alert epoch (unlike
+// gpsStopSpeaking, which also silences queued alerts). Shared by the on-demand reader below.
+function _ttsStopEngine() {
+  const tts = _nativeTts();
+  if (tts && typeof tts.stop === 'function') { try { tts.stop(); } catch (e) { /* */ } }
+  try {
+    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.cancel) speechSynthesis.cancel();
+  } catch (e) { /* */ }
+}
+// Is any speech engine available at all? Native plugin in the APK, or the browser's
+// speechSynthesis on the web. Lets a UI dim its speak button when neither exists.
+function ttsAvailable() {
+  if (_nativeTts()) return true;
+  return typeof window !== 'undefined' && !!window.speechSynthesis &&
+    typeof window.SpeechSynthesisUtterance === 'function';
+}
+window.ttsAvailable = ttsAvailable;
+// On-demand speech for a UI button (reading a METAR/TAF aloud), independent of the in-flight
+// voice-alerts setting: pressing the button IS the intent, so it speaks whether or not the
+// automatic cockpit alerts are enabled. Interrupts anything already speaking (a second press,
+// or a fresh read, stops the previous one). Same native-first, web-fallback path and language
+// resolution as gpsSpeak. Returns a promise that resolves when the utterance finishes, so the
+// caller can flip its button back from "stop" to "speak".
+function speakOnDemand(text) {
+  _ttsStopEngine();
+  if (!text) return Promise.resolve();
+  const tts = _nativeTts();
+  const lang = (typeof window !== 'undefined' && window.__navLang === 'he') ? 'he-IL' : 'en-US';
+  if (tts && typeof tts.speak === 'function') {
+    return _gpsResolveVoiceLang(tts)
+      .then(function (voiceLang) { return tts.speak({ text: text, lang: voiceLang, category: 'playback' }); })
+      .catch(function () { /* best-effort: a TTS failure must not throw at the caller */ });
+  }
+  return _webSpeak(text, lang).catch(function () { /* best-effort */ });
+}
+window.speakOnDemand = speakOnDemand;
+function speakOnDemandStop() { _ttsStopEngine(); }
+window.speakOnDemandStop = speakOnDemandStop;
 window.gpsVoiceAlertsOn = gpsVoiceAlertsOn;
 
 // Native (APK) local-notifications plugin, mirroring _bgGeo()'s access pattern -- the
