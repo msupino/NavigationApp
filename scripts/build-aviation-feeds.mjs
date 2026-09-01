@@ -400,13 +400,16 @@ async function fetchIaaWeatherRaw() {
   } catch (e) { /* fresh jar */ }
   const list = curl(MB + '/maiWeather.aspx', MB + '/maiNotam.aspx');
   if (!list || /Block ID|Error 100/.test(list)) { console.error('iaa weather list blocked/empty'); return null; }
-  // Each clickable row: rowClicked('id') ... preview beginning "METAR|SPECI|TAF LLxx".
+  // Each clickable row: rowClicked('id') — but the site encodes the quotes as &#39;, so decode
+  // entities first (the NOTAM job does the same) or the ids never match and nothing is fetched.
+  const listDec = list.replace(/&#39;/g, "'");
   const rowIds = [];
   const re = /rowClicked\('(\d+)'\)/g; let m;
-  while ((m = re.exec(list))) rowIds.push(m[1]);
+  while ((m = re.exec(listDec))) rowIds.push(m[1]);
+  console.log('IAA weather rows: ' + rowIds.length);
   const metars = [], tafs = [];
   for (const id of [...new Set(rowIds)]) {
-    const txt = strip(curl(MB + '/maiDetails.aspx?rowID=' + id, MB + '/maiWeather.aspx'));
+    const txt = strip(curl(MB + '/maiDetails.aspx?rowID=' + id, MB + '/maiNotam.aspx'));
     if (!txt || /Block ID|Error 100/.test(txt)) continue;
     const mt = txt.match(/\b((?:METAR|SPECI)\s+LL[A-Z]{2}\b[\s\S]*?)(?:=|$)/);
     const tf = txt.match(/\bTAF(?:\s+(?:AMD|COR))?\s+LL[A-Z]{2}\b[\s\S]*?(?:=|$)/);

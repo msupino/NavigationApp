@@ -54,7 +54,7 @@ test('decodeMetar renders wind/vis/wx/cloud/temp/QNH', async ({ page }) => {
   await boot(page);
   const txt = await page.evaluate(m => decodeMetar(m), METAR[0]);
   expect(txt).toContain('Wind 270° 12 kt gust 20');
-  expect(txt).toContain('Visibility 10+ km');
+  expect(txt).toContain('Visibility 10 km or more');
   expect(txt).toContain('Dew point 18°C');
   expect(txt).toContain('light rain');
   expect(txt).toContain('mist');
@@ -81,7 +81,7 @@ test('decodeTaf expands BECMG/TEMPO and drops an empty visibility', async ({ pag
   // Empty visibility must not leave a dangling "Vis" with no value.
   expect(out[1].text).not.toContain('Vis');
   expect(out[1].text).toContain('Broken 2500 ft');
-  expect(out[0].text).toContain('Visibility 10+ km');   // a real visibility, shown in km
+  expect(out[0].text).toContain('Visibility 10 km or more');   // a real visibility, shown in km
 });
 
 test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ page }) => {
