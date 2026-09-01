@@ -89,6 +89,21 @@ test('METAR and TAF have separate buttons; each reads only its own section (deco
   await expect(tafBtn(page)).toHaveText('🔊');
 });
 
+test('QNH is spoken digit-by-digit, but shown as a number', async ({ page }) => {
+  await stubTts(page);
+  await mockWx(page);
+  await openLLBG(page);
+
+  // Panel keeps the human-readable number.
+  await expect(page.locator('.wx-block', { hasText: 'METAR' })).toContainText('1013 hPa');
+
+  await metarBtn(page).click();
+  const said = (await spoken(page)).join(' ');
+  expect(said).toContain('1 0 1 3');            // hPa read as separate digits
+  expect(said).not.toContain('1013 hPa');       // not the cardinal number
+  expect(said).toContain('2 9 9 1 inches');     // 29.91" read as digits + "inches"
+});
+
 test('with the raw toggle on, each button speaks its own raw code', async ({ page }) => {
   await stubTts(page);
   await mockWx(page);
