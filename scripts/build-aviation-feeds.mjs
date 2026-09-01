@@ -388,9 +388,13 @@ async function fetchIaaWeatherRaw() {
         { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
     } catch (e) { return ''; }
   };
-  const strip = h => String(h).replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+  // Strip every tag (which removes <script>/</script> too) and decode a few entities, then
+  // pull the OPMET lines out by their fixed "METAR|TAF LLxx" shape. We never render this HTML
+  // — it is only scanned for METAR/TAF strings — and script text cannot match that shape, so
+  // no separate <script>…</script> removal is needed (and none of the incomplete-sanitization
+  // it would invite).
+  const strip = h => String(h).replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
   try {
     execFileSync('rm', ['-f', JAR]);
   } catch (e) { /* fresh jar */ }
