@@ -2863,9 +2863,13 @@ function appendAirfieldWeather(body, af) {
     const warns = (typeof airfieldWarningsFor === 'function') ? airfieldWarningsFor(icao) : [];
     const wrap = document.createElement('div');
     wrap.className = 'wx-block wx-adws';
-    wrap.dir = 'ltr';
+    // The label and the "None" line are localized prose — RTL in Hebrew — so let them follow
+    // content direction rather than forcing LTR (which mis-ordered the Hebrew label and its
+    // "(AD / WS)" parenthetical). The warning bodies below are IMS codes and stay LTR.
+    wrap.dir = 'auto';
     const t = document.createElement('span');
     t.className = 'wx-label';
+    t.dir = 'auto';
     t.textContent = S.wxAdWs || 'AD / WS warnings';
     wrap.appendChild(t);
     if (!warns.length) {
@@ -2878,6 +2882,7 @@ function appendAirfieldWeather(body, af) {
       for (const w of warns) {
         const d = document.createElement('div');
         d.className = 'wx-line';
+        d.dir = 'ltr';                 // warning bodies are IMS codes: keep them left-to-right
         d.textContent = w.raw || w.product;
         wrap.appendChild(d);
       }
