@@ -4786,6 +4786,8 @@ if (windDepartSlider) {
   const master = document.getElementById('lookahead-time');
   const masterVal = document.getElementById('lookahead-time-val');
   const targets = ['notam-time', 'wind-depart', 'windfield-time'].map(id => document.getElementById(id));
+  // Cascade the master value to the mirror sliders + the readout. Does NOT touch the target
+  // instant, so the tick below can call it to move the slider without re-anchoring "now".
   function sync() {
     const h = master ? (parseInt(master.value, 10) || 0) : 0;
     if (masterVal) masterVal.textContent = notamTimeLabel(h);
@@ -4795,9 +4797,30 @@ if (windDepartSlider) {
       t.dispatchEvent(new Event('input'));
     }
   }
-  if (master) {
-    master.oninput = sync;
+  // A forward look-ahead points at a fixed absolute instant (top of the target hour). The
+  // pilot picking "+3h" means "the situation at 15:00Z", not "always three hours out" -- so
+  // as the clock advances we walk the slider back toward live (+3h -> +2h -> ... -> now) and
+  // snap it to live once now catches up, the hazard layers dropping what has since expired.
+  function onUserInput() {
+    const h = master ? (parseInt(master.value, 10) || 0) : 0;
+    window.lookaheadTarget = h ? (topOfHour(Date.now()) + h * 3600e3) : null;
     sync();
+  }
+  // Close the gap as time goes by. Anchored to top-of-hour on both sides, so the remaining
+  // hours step down cleanly with no rounding drift. Only ever decreases; never re-anchors.
+  function lookaheadTick() {
+    if (!master || window.lookaheadTarget == null) return;
+    const remainingH = Math.max(0, Math.round((window.lookaheadTarget - topOfHour(Date.now())) / 3600e3));
+    if (remainingH === (parseInt(master.value, 10) || 0)) return;
+    master.value = String(remainingH);
+    if (remainingH === 0) window.lookaheadTarget = null;   // reached live
+    sync();
+  }
+  window.lookaheadTick = lookaheadTick;   // exposed so tests can advance it deterministically
+  if (master) {
+    master.oninput = onUserInput;
+    onUserInput();
+    setInterval(lookaheadTick, 60000);
   }
 })();
 
