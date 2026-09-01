@@ -7,12 +7,12 @@ const { test, expect } = require('./_setup');
 
 const METAR = {
   icaoId: 'LLBG', rawOb: 'LLBG 140650Z 27012G20KT 9999 FEW030 SCT100 24/18 Q1013',
-  wdir: 270, wspd: 12, wgst: 20, visib: '6+', temp: 24, dewp: 18, altim: 1013,
+  wdir: 270, wspd: 12, wgst: 20, visib: '10+', temp: 24, dewp: 18, altim: 1013,
   clouds: [{ cover: 'FEW', base: 3000 }, { cover: 'SCT', base: 10000 }],
 };
 const TAF = {
   icaoId: 'LLBG', rawTAF: 'TAF LLBG 140500Z 1406/1506 28010KT 9999 SCT035',
-  fcsts: [{ timeFrom: 1781503200, wdir: 280, wspd: 10, visib: '6+', clouds: [{ cover: 'SCT', base: 3500 }] }],
+  fcsts: [{ timeFrom: 1781503200, wdir: 280, wspd: 10, visib: '10+', clouds: [{ cover: 'SCT', base: 3500 }] }],
 };
 
 async function mockWx(page) {

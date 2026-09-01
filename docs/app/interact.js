@@ -2972,9 +2972,11 @@ function appendAirfieldWeather(body, af) {
         const age = document.createElement('div');
         age.className = 'wx-updated';
         age.dir = 'auto';      // "עודכן 18:19Z" reads correctly in RTL too
+        const src = (typeof wxSourceShort === 'function') ? wxSourceShort(data.source) : '';
         age.textContent = (S.wxUpdated || 'Updated') + ' ' +
           String(upd.getUTCHours()).padStart(2, '0') + ':' +
-          String(upd.getUTCMinutes()).padStart(2, '0') + 'Z';
+          String(upd.getUTCMinutes()).padStart(2, '0') + 'Z' +
+          (src ? ' · ' + (S.wxSource || 'via') + ' ' + src : '');
         bodyEl.appendChild(age);
       }
     }
