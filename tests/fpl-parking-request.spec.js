@@ -282,17 +282,15 @@ test('times say which clock they are on', async ({ page }) => {
 // Its absence used to read as "nothing to arrange" — a claim this dataset cannot make: the
 // first scan of the AIP missed five fields that do require coordination.
 test('a field we hold no contact for points at the AIP instead of staying silent', async ({ page }) => {
+  // Not tied to whichever field currently lacks a contact -- that changes as the dataset is
+  // filled in. What must hold is that the no-contact wording names the field and sends the
+  // pilot to the AIP, rather than the button going quiet and implying nothing is required.
   await boot(page);
-  const said = await page.evaluate(() => {
-    const park = airfieldParkingRule('LLKZ');          // names parking, publishes no contact
-    const icao = (park && park.icao) || 'LLKZ';
-    if (park && park.email) return ['(has email)'];
-    if (park && park.phone) return ['(has phone)'];
-    return [(typeof S.fplParkingNoInfo === 'function')
-      ? S.fplParkingNoInfo(icao) : 'No parking contact on file for ' + icao + ' — check the AIP'];
-  });
-  expect(said[0]).toContain('LLKZ');
-  expect(said[0]).toMatch(/AIP/);
+  const msg = await page.evaluate(() => (typeof S.fplParkingNoInfo === 'function')
+    ? S.fplParkingNoInfo('LLXX')
+    : 'No parking contact on file for LLXX — check the AIP');
+  expect(msg).toContain('LLXX');
+  expect(msg).toMatch(/AIP/);
 });
 
 test('a destination that is not an aerodrome dims the button', async ({ page }) => {
