@@ -9678,8 +9678,11 @@ function showFplDialog() {
   }
   function onEsc(e) {
     if (e.key !== 'Escape') return;
-    // A dialog stacked on this one (the cross-country form) owns Escape while it is up.
+    // A dialog stacked on this one owns Escape while it is up: the cross-country form, or the
+    // parking request opened from this step. Without the second check this handler is the one
+    // registered first, so Escape closed THIS dialog out from under the request sitting on it.
     if (fplXcOpen) return;
+    if (document.querySelector('.modal-back[data-chart-modal="parking-request"]')) return;
     // stopImmediatePropagation, not stopPropagation: the flight-plan panel's Escape
     // listener sits on `document` too, and stopPropagation does not stop another
     // listener on the SAME node -- so the panel closed underneath this dialog and

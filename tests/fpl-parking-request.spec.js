@@ -59,7 +59,7 @@ test('the request is addressed to the destination and carries the plan details',
   expect(body).toContain('licence 12345');
   expect(body).toContain('LLBG');                 // from
   expect(body).toContain('LLHZ');                 // to
-  expect(body).toContain('260902');               // date of flight
+  expect(body).toContain('02/09/2026');            // date of flight, as a person reads it
   expect(body).toContain('08:15');                // departure time as typed
   const subject = decodeURIComponent((url.match(/subject=([^&]*)/) || [])[1] || '');
   expect(subject).toContain('4XDAZ');
@@ -107,7 +107,7 @@ test('the dialog names the recipient and previews exactly what will be sent', as
   await expect(modal).toContainText('MerkazTi@iaa.gov.il');      // cc, per the clause
   const preview = await modal.locator('.parking-preview').inputValue();
   expect(preview).toContain('LLHZ');
-  expect(preview).toContain('260902');
+  expect(preview).toContain('02/09/2026');
   expect(preview).not.toContain('[ transit');                    // no placeholder left to guess
 });
 
@@ -167,13 +167,40 @@ test('the departure line carries no aerodrome code, and dates read the same way'
   // destination is named two lines above, so the code is dropped rather than patched.
   await boot(page);
   const out = await page.evaluate(() => fplParkingText({ dep: 'LLHA', dest: 'LLHZ', dof: '260902' },
-    airfieldParkingRule('LLHZ'), { until: '02/09/2026 20:00' }).body);
+    airfieldParkingRule('LLHZ'), { until: '02/09/2026 20:00', depTimeLocal: '19:30' }).body);
   expect(out).toContain('Expected departure from destination: 02/09/2026 20:00');
   expect(out).not.toMatch(/Expected departure from destination: *LLHZ/);
   // ...and the date of flight is written the way a person reads it, not as the raw ICAO DOF
   // sitting next to an already-formatted date in the same message.
   expect(out).toContain('02/09/2026,  departure');
   expect(out).not.toContain('260902');
+});
+
+test('Escape over the filing dialog closes only the request', async ({ page }) => {
+  // The real stack is three deep: plan panel -> ICAO filing dialog -> parking request. The
+  // filing dialog's Escape listener is registered BEFORE this one, so without it standing
+  // down, Escape closed the dialog underneath instead of the request on top.
+  await boot(page);
+  await page.evaluate(() => {
+    // Stand-in for the filing dialog: same marker the real one is found by.
+    const back = document.createElement('div');
+    back.className = 'modal-back fpl-modal';
+    back.id = 'stub-filing';
+    document.body.appendChild(back);
+    // ...with an Escape handler registered first, exactly as the real one is.
+    window.__stubClosed = false;
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (document.querySelector('.modal-back[data-chart-modal="parking-request"]')) return;
+      window.__stubClosed = true;
+      back.remove();
+    }, true);
+  });
+  await openDialog(page);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-chart-modal="parking-request"]')).toHaveCount(0);  // request gone
+  expect(await page.evaluate(() => window.__stubClosed)).toBe(false);                 // filing dialog kept
+  await expect(page.locator('#stub-filing')).toHaveCount(1);
 });
 
 test('Escape closes the dialog without taking the flight plan with it', async ({ page }) => {
