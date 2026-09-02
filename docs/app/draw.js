@@ -2989,6 +2989,9 @@ async function loadAirfields() {
       clearance: a.clearance,
       plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
+      // Prior-parking coordination the AIP requires at this field (address/phone + rule),
+      // read by the flight plan's parking-request button. Absent for fields that ask nothing.
+      parking: (a.parking && typeof a.parking === 'object') ? a.parking : null,
       circuit_overlay: a.circuit_overlay || null,
       training_overlay: a.training_overlay || null,
       cvfr_overlay: a.cvfr_overlay || null,
