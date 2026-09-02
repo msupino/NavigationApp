@@ -6950,3 +6950,10 @@ body.theme-light .follow-me-ctrl button { color: #3b4350; background: rgba(255,2
 .parking-modal .fpl-actions {
   display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center;
 }
+/* Date + time sit on one line, and wrap together rather than splitting across the row. The
+   date needs the room -- at an even split its picker was clipped mid-year ("09/02/202"). */
+.parking-when { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.parking-when input[type="date"] { flex: 3 1 0; min-width: 0; }
+.parking-when input[type="time"] { flex: 2 1 0; min-width: 0; }
+/* The label column is generous on a wide dialog and starves the controls on a narrow one. */
+@media (max-width: 560px) { .parking-label { flex-basis: 34%; } }

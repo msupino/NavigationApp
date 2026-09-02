@@ -1279,11 +1279,15 @@ function fplParkingText(res, park, opts) {
     [(S.fplParkingUntil || 'Expected departure from') + ' ' + park.icao, o.until || '[ date / time ]'],
   ];
   if (o.handling) rows.push([S.fplParkingFHandling || 'Handling', o.handling]);
+  // Pad the labels into a column only for a left-to-right message. In Hebrew the padding is
+  // laid out from the other side and turns the block into a ragged mess, so the lines are
+  // written plainly and the reader's own mail client handles the bidi.
+  const rtl = /[\u0590-\u05FF]/.test(rows.map(r => r[0]).join(''));
   const wide = rows.reduce((w, r) => Math.max(w, r[0].length), 0);
   const lines = [
     (S.fplParkingIntro || 'I request parking approval for the following flight:'),
     '',
-    ...rows.map(([k, v]) => '  ' + (k + ':').padEnd(wide + 2) + v),
+    ...rows.map(([k, v]) => (rtl ? k + ': ' + v : '  ' + (k + ':').padEnd(wide + 2) + v)),
   ];
   if (o.notes) lines.push('', String(o.notes));
   lines.push(
@@ -1302,6 +1306,13 @@ function fplParkingText(res, park, opts) {
 // wanted -- and a pilot who lands in a mail draft full of "[ ... ]" placeholders has to guess
 // what the field expects. Pick the answers here, see exactly what will be sent, edit it if
 // needed, then hand it to the mail client.
+// The plan carries the date of flight as YYMMDD (ICAO field 18 DOF); a date input wants
+// ISO. Two-digit years are this century -- the AIP form has no room for another.
+function fplDofToIsoDate(dof) {
+  const m = /^(\d{2})(\d{2})(\d{2})$/.exec(String(dof || ''));
+  return m ? `20${m[1]}-${m[2]}-${m[3]}` : '';
+}
+
 function showParkingRequestModal(res, park, opts) {
   const o = opts || {};
   if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
@@ -1355,11 +1366,26 @@ function showParkingRequestModal(res, park, opts) {
     kindSel.appendChild(op);
   }
   field(S.fplParkingKind || 'Parking', kindSel);
-  const untilEl = document.createElement('input');
-  untilEl.type = 'text';
-  untilEl.placeholder = S.fplParkingUntilHint || 'e.g. 03/09 14:00';
-  untilEl.dir = 'ltr';
-  field((S.fplParkingUntil || 'Expected departure from') + ' ' + park.icao, untilEl);
+  // Native date/time pickers, as the filing step uses: a free-text "03/09 14:00" is a format
+  // the pilot has to guess and the desk has to interpret, and on a phone it is a keyboard
+  // where a picker belongs. Defaulted to the flight's own date so the common case (leaving
+  // again the same day) is one tap.
+  const untilWrap = document.createElement('span');
+  untilWrap.className = 'parking-when';
+  const untilDate = document.createElement('input');
+  untilDate.type = 'date';
+  untilDate.value = fplDofToIsoDate(res.dof);
+  const untilTime = document.createElement('input');
+  untilTime.type = 'time';
+  untilWrap.append(untilDate, untilTime);
+  field((S.fplParkingUntil || 'Expected departure from') + ' ' + park.icao, untilWrap);
+  // What the message prints: the local conventions the desk reads, not the ISO the input holds.
+  const untilText = () => {
+    const d = untilDate.value, t = untilTime.value;
+    if (!d && !t) return '';
+    const dd = d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
+    return [dd, t].filter(Boolean).join(' ');
+  };
   const fuelEl = document.createElement('input');
   fuelEl.type = 'checkbox';
   field(S.fplParkingFuel || 'Refuelling requested', fuelEl);
@@ -1374,14 +1400,16 @@ function showParkingRequestModal(res, park, opts) {
   const preview = document.createElement('textarea');
   preview.className = 'parking-preview';
   preview.rows = 12;
-  preview.dir = 'ltr';
+  // The message is written in the interface language, so the box that shows it follows the
+  // content: forcing LTR laid Hebrew lines out backwards (the colon jumping to the far side).
+  preview.dir = 'auto';
   preview.setAttribute('aria-label', S.fplParkingPreview || 'Message');
   let edited = false;
   preview.addEventListener('input', () => { edited = true; });
   const compose = () => fplParkingText(res, park, {
     depTimeLocal: o.depTimeLocal,
     kind: kindSel.options[kindSel.selectedIndex].textContent,
-    until: untilEl.value.trim(),
+    until: untilText(),
     handling: fuelEl.checked ? (S.fplParkingFuel || 'Refuelling requested') : '',
     notes: notesEl.value.trim(),
   });
@@ -1391,7 +1419,7 @@ function showParkingRequestModal(res, park, opts) {
     preview.value = compose().body;
   };
   refresh();
-  for (const el of [kindSel, untilEl, fuelEl, notesEl]) {
+  for (const el of [kindSel, untilDate, untilTime, fuelEl, notesEl]) {
     el.addEventListener('input', refresh);
     el.addEventListener('change', refresh);
   }
@@ -1430,7 +1458,7 @@ function showParkingRequestModal(res, park, opts) {
   back.addEventListener('click', e => { if (e.target === back) close(); });
   document.addEventListener('keydown', onEsc, true);
   document.body.appendChild(back);
-  untilEl.focus();
+  untilDate.focus();
 }
 window.showParkingRequestModal = showParkingRequestModal;
 

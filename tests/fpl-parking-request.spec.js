@@ -117,11 +117,12 @@ test('choosing options rewrites the message', async ({ page }) => {
   const modal = page.locator('.modal-back[data-chart-modal="parking-request"]');
   const preview = modal.locator('.parking-preview');
   await modal.locator('select').selectOption({ index: 1 });      // Overnight
-  await modal.locator('input[type="text"]').fill('03/09 14:00');
+  await modal.locator('input[type="date"]').fill('2026-09-03');
+  await modal.locator('input[type="time"]').fill('14:00');
   await modal.locator('input[type="checkbox"]').check();
   const text = await preview.inputValue();
   expect(text).toContain('Overnight');
-  expect(text).toContain('03/09 14:00');
+  expect(text).toContain('03/09/2026 14:00');   // written the way the desk reads it
   expect(text).toContain('Refuelling requested');
 });
 
@@ -142,4 +143,18 @@ test('the dialog closes on Escape', async ({ page }) => {
   await expect(modal).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(modal).toHaveCount(0);
+});
+
+test('the departure date/time are pickers, defaulted to the day of the flight', async ({ page }) => {
+  await boot(page);
+  await openDialog(page);
+  const modal = page.locator('.modal-back[data-chart-modal="parking-request"]');
+  // Native pickers rather than a free-text format the pilot has to guess at.
+  await expect(modal.locator('input[type="date"]')).toHaveCount(1);
+  await expect(modal.locator('input[type="time"]')).toHaveCount(1);
+  // Seeded from the plan's own date of flight (DOF 260902), so the usual case is one tap.
+  expect(await modal.locator('input[type="date"]').inputValue()).toBe('2026-09-02');
+  // A date with no time still reads sensibly.
+  await modal.locator('input[type="date"]').fill('2026-09-04');
+  expect(await modal.locator('.parking-preview').inputValue()).toContain('04/09/2026');
 });
