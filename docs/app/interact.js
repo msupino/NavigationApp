@@ -2853,13 +2853,13 @@ function appendAirfieldWeather(body, af) {
   // pilot came here to move, and a control that sits under the numbers it changes is a
   // control you scroll past.
   appendAirfieldDensityAltitude(sec, af);
+  // A field with no ICAO code files no METAR/TAF, but "nothing here" is worth stating: the box
+  // used to end at the density altitude, so the pilot could not tell an unreported field from
+  // one whose report simply had not loaded. Fall through and render the same three blocks,
+  // each reading "No information" -- minus the controls that would have nothing to act on.
   if (!hasWx) {
-    // No observation to fetch: the box is the density altitude, and its heading says so.
     if (!sec.querySelector('.da-group')) return;
-    headLbl.textContent = S.wxTitleNoMetar || S.densityAltitude || 'Density altitude';
     refreshBtn.remove();
-    body.appendChild(sec);
-    return;
   }
   const bodyEl = document.createElement('div');
   bodyEl.className = 'wx-body';
@@ -2918,39 +2918,16 @@ function appendAirfieldWeather(body, af) {
   const render = () => {
     stopSpeak();                       // a rebuild discards the buttons a read was tied to
     bodyEl.innerHTML = '';
-    // No report is still a state worth labelling. Rendered as bare prose it sat unframed above
-    // the AD/WS badge and the two read as unrelated fragments; give it the same
-    // label + line block the warnings use, so "no METAR/TAF" and "no AD/WS" match.
-    const stateBlock = (msg) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'wx-block wx-state';
-      // Inherit the interface direction rather than reading it from the content: this block's
-      // label is always Latin ("METAR / TAF"), so dir=auto would resolve it LTR and park the
-      // badge on the left in a Hebrew session while the AD/WS badge (Hebrew label) sat on the
-      // right. The message line below keeps dir=auto so its own words order correctly.
-      const t = document.createElement('span');
-      t.className = 'wx-label';
-      t.textContent = (S.wxMetar || 'METAR') + ' / ' + (S.wxTaf || 'TAF');
-      wrap.appendChild(t);
-      const line = document.createElement('div');
-      line.className = 'wx-line';
-      line.dir = 'auto';
-      line.textContent = msg;
-      wrap.appendChild(line);
-      bodyEl.appendChild(wrap);
-    };
-    // With the block labelled, the line repeats itself if it names the products again
-    // ("METAR / TAF" over "no METAR/TAF for this field"), so absence reads as the same short
-    // word the warnings block uses. wxAdWsNone is that word ("None" / "אין"); it is shared by
-    // both blocks now, which is exactly what makes them look like a pair.
-    const noneText = S.wxAdWsNone || 'None';
-    if (!data || data.unsupported) { stateBlock(noneText); appendAdWs(); return; }
-    if (data.error) { stateBlock(S.wxError || 'Weather unavailable'); appendAdWs(); return; }
-    if (!data.metar && !data.taf) { stateBlock(noneText); appendAdWs(); return; }
+    // Three blocks, always, each with its own badge: METAR, TAF, and AD/WS (appended last).
+    // Each shows its report when there is one and "No information" when there is not, so the
+    // box reads the same whatever a field publishes -- and a field that files a TAF but no
+    // METAR now says so instead of silently omitting the row.
+    const noneText = S.wxAdWsNone || 'No information';
     const block = (label, lines, spkBtn) => {
       const b = document.createElement('div');
       b.className = 'wx-block';
-      b.dir = 'ltr';                   // METAR/TAF codes are always left-to-right
+      // Wrappers inherit the interface direction; the LTR code lines pin their own. (dir here
+      // would resolve from the Latin label and park the badge on the wrong side in Hebrew.)
       const t = document.createElement('span');
       t.className = 'wx-label';
       t.textContent = label;
@@ -2959,12 +2936,31 @@ function appendAirfieldWeather(body, af) {
       for (const ln of lines) {
         const d = document.createElement('div');
         d.className = 'wx-line' + (showRaw ? ' wx-raw' : '');
-        d.textContent = ln;
+        d.dir = 'ltr';                     // METAR/TAF codes are always left-to-right
         b.appendChild(d);
+        d.textContent = ln;
       }
       return b;
     };
-    if (data.metar) {
+    // The "nothing to show" line is prose, not a code, so it follows content direction.
+    const emptyBlock = (label, msg) => {
+      const b = document.createElement('div');
+      b.className = 'wx-block wx-state';
+      const t = document.createElement('span');
+      t.className = 'wx-label';
+      t.textContent = label;
+      b.appendChild(t);
+      const d = document.createElement('div');
+      d.className = 'wx-line';
+      d.dir = 'auto';
+      d.textContent = msg;
+      b.appendChild(d);
+      return b;
+    };
+    // A failed fetch is not the same as a field that publishes nothing: say which.
+    const missing = (data && data.error) ? (S.wxError || 'Weather unavailable') : noneText;
+
+    if (data && data.metar) {
       const lines = showRaw ? [data.metar.rawOb || data.metar.rawText || '']
         : [decodeMetar(data.metar)];
       const spk = makeSpeakBtn(S.wxMetar || 'METAR', () => {
@@ -2972,8 +2968,10 @@ function appendAirfieldWeather(body, af) {
         return txt ? (icao + '. ' + (S.wxMetar || 'METAR') + '. ' + txt) : '';
       });
       bodyEl.appendChild(block(S.wxMetar || 'METAR', lines.filter(Boolean), spk));
+    } else {
+      bodyEl.appendChild(emptyBlock(S.wxMetar || 'METAR', missing));
     }
-    if (data.taf) {
+    if (data && data.taf) {
       let lines;
       if (showRaw) {
         lines = [data.taf.rawTAF || data.taf.rawText || ''];
@@ -2988,7 +2986,11 @@ function appendAirfieldWeather(body, af) {
         return txt ? (icao + '. ' + (S.wxTaf || 'TAF') + '. ' + txt) : '';
       });
       bodyEl.appendChild(block(S.wxTaf || 'TAF', lines.filter(Boolean), spk));
+    } else {
+      bodyEl.appendChild(emptyBlock(S.wxTaf || 'TAF', missing));
     }
+    // Nothing to toggle between when neither product has a report.
+    if (!data || (!data.metar && !data.taf)) { appendAdWs(); return; }
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'wx-toggle';
@@ -3011,7 +3013,9 @@ function appendAirfieldWeather(body, af) {
     }
     appendAdWs();
   };
-  load(false);
+  // Nothing to fetch without an ICAO code: render the empty state straight away.
+  if (hasWx) load(false);
+  else { data = { unsupported: true }; render(); }
 }
 
 // Split the inspector's actions from its data rows: they go into one sticky block so

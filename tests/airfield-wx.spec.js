@@ -150,8 +150,9 @@ test('refresh button re-fetches (force, bypassing cache)', async ({ page }) => {
   await page.locator('.wx-refresh').click();
   await expect(page.locator('#insp-body .wx-section')).toContainText('Wind 270°');
   expect(calls).toBeGreaterThan(before);          // re-fetched, not served from cache
-  // METAR/TAF code blocks forced LTR regardless of UI language.
-  expect(await page.locator('.wx-block').first().getAttribute('dir')).toBe('ltr');
+  // The METAR/TAF code LINES are forced LTR regardless of UI language (the block wrapper
+  // inherits the interface direction so its badge sits on the correct side).
+  expect(await page.locator('.wx-block .wx-line').first().getAttribute('dir')).toBe('ltr');
 });
 
 test('Hebrew no-data message reads RTL, not garbled LTR', async ({ page }) => {
@@ -175,12 +176,12 @@ test('Hebrew no-data message reads RTL, not garbled LTR', async ({ page }) => {
   // The box follows the interface direction (inherited RTL), and the message line follows its
   // own content -- so the Hebrew reads in the right order and the badges sit on the right.
   expect(await body.evaluate(el => getComputedStyle(el).direction)).toBe('rtl');
-  const state = page.locator('#insp-body .wx-state');
+  const state = page.locator('#insp-body .wx-state').first();
   // And it must actually COMPUTE to rtl — the CSS must not force direction:ltr, or the words
   // reorder ("אין" lands at the end) even with dir=auto. This is what the attribute check missed.
   expect(await state.evaluate(el => getComputedStyle(el).direction)).toBe('rtl');   // inherits the RTL page
   // ...and the message line itself resolves from its own content.
-  const line = page.locator('#insp-body .wx-state .wx-line');
+  const line = page.locator('#insp-body .wx-state .wx-line').first();
   expect(await line.getAttribute('dir')).toBe('auto');
 });
 
@@ -188,7 +189,7 @@ test('Hebrew no-data message reads RTL, not garbled LTR', async ({ page }) => {
 // no "Weather" heading. It does still have weather, though, and density altitude is computed
 // from a forecast that needs only a position: Gvulot and Kedem used to get no box at all,
 // and with it no density altitude, for want of four letters.
-test('a non-ICAO field gets no METAR, but keeps its density altitude', async ({ page }) => {
+test('a non-ICAO field keeps its density altitude and states there is no report', async ({ page }) => {
   await boot(page);
   const shown = await page.evaluate(() => {
     const body = document.createElement('div');
@@ -196,17 +197,20 @@ test('a non-ICAO field gets no METAR, but keeps its density altitude', async ({ 
     const sec = body.querySelector('.wx-section');
     return {
       section: !!sec,
-      heading: sec ? sec.querySelector('.wx-head').textContent.trim() : '',
       refresh: !!(sec && sec.querySelector('.wx-refresh')),
-      metarBody: !!(sec && sec.querySelector('.wx-body')),
       da: !!(sec && sec.querySelector('.da-group')),
+      labels: sec ? Array.from(sec.querySelectorAll('.wx-label'), e => e.textContent) : [],
+      lines: sec ? Array.from(sec.querySelectorAll('.wx-block .wx-line'), e => e.textContent) : [],
     };
   });
   expect(shown.section).toBe(true);
   expect(shown.da).toBe(true);
-  expect(shown.heading).toBe('Density altitude');   // not "Weather (METAR / TAF)"
-  expect(shown.refresh).toBe(false);
-  expect(shown.metarBody).toBe(false);
+  expect(shown.refresh).toBe(false);          // nothing to re-fetch without an ICAO code
+  // "Nothing here" is stated, not left to inference: the same three labelled blocks, each
+  // saying so. Previously the box ended at the density altitude, and an unreported field
+  // looked identical to one whose report had simply not loaded.
+  expect(shown.labels).toEqual(['METAR', 'TAF', 'Aerodrome / Wind-shear warnings (AD / WS)']);
+  expect(shown.lines).toEqual(['No information', 'No information', 'No information']);
 });
 
 // AD/WS (aerodrome / wind-shear) warnings from the IMS feed, shown in the airfield WX box.
