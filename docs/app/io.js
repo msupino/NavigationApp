@@ -1232,6 +1232,66 @@ function fplMailPreamble(res, o) {
   if (arrT) lines.push(S.fplMailArrival(dest, arrT), '');
   return lines.join('\n') + '\n';
 }
+// --- parking request -----------------------------------------------------------------
+// Several Israeli fields require parking to be arranged before departure (AIP): Herzliya for
+// anything over an hour, overnight or maintenance; Haifa's helicopter apron; and visiting
+// aircraft at Megiddo, Habonim, Ein Yahav and Kiryat Shmona. The rule and the published
+// address live in airfields.json beside the field, so this reads the dataset rather than
+// hard-coding a list that would drift from the AIP.
+function airfieldParkingRule(icao) {
+  const code = String(icao || '').trim().toUpperCase();
+  if (!/^[A-Z]{4}$/.test(code)) return null;
+  const list = (typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : null;
+  if (!list) return null;
+  const af = list.find(a => String(a && a.name || '').toUpperCase() === code);
+  if (!af || !af.parking) return null;
+  return Object.assign({ icao: code, label: af.en || af.he || code }, af.parking);
+}
+window.airfieldParkingRule = airfieldParkingRule;
+
+// A parking request built from the plan the pilot has already filled in: registration, type,
+// crew, the two aerodromes and the date/time. Nothing is invented -- a detail the profile does
+// not carry is left as a blank for the pilot to complete, rather than guessed at.
+function fplParkingMailtoUrl(res, park, opts) {
+  const o = opts || {};
+  const p = (typeof fplProfileRead === 'function') ? fplProfileRead() : {};
+  const reg = (typeof fplRegistration === 'function' ? fplRegistration(p.reg || '') : (p.reg || '')) || '[REG]';
+  const dep = String(o.depTimeLocal || '').trim();
+  const blank = v => (String(v == null ? '' : v).trim() || '—');
+  const subject = (S.fplParkingSubject || 'Parking request') + ' — ' + reg +
+    ' at ' + park.icao + ', ' + res.dof;
+  const lines = [
+    (S.fplParkingIntro || 'I request parking approval for the following flight:'),
+    '',
+    '  Aircraft:       ' + reg + ' (' + blank(p.type) + ')',
+    '  Pilot in command: ' + blank(p.pic) + (p.license ? ', licence ' + p.license : ''),
+    '  Mobile:         ' + blank(p.cell),
+    '  Persons on board: ' + blank(p.persons),
+    '  From:           ' + res.dep,
+    '  To:             ' + park.icao + ' (' + park.label + ')',
+    '  Date of flight: ' + res.dof + (dep ? ',  departure ' + dep : ''),
+    '  Parking:        [ transit over 1 h / overnight / maintenance ]',
+    '  Expected departure from ' + park.icao + ': [ date / time ]',
+    '',
+    (S.fplParkingAsk || 'Please confirm the assigned stand and any restrictions.'),
+    '',
+    blank(p.pic) + (p.cell ? ' — ' + p.cell : ''),
+    '',
+    fplAttributionText(),
+  ];
+  const q = ['subject=' + encodeURIComponent(subject),
+    'body=' + encodeURIComponent(lines.join('\n'))];
+  const reply = String(p.replyTo || '').trim();
+  if (reply && FPL_EMAIL_RE.test(reply)) {
+    q.push('cc=' + fplMailtoAddress(reply));
+    q.push('reply-to=' + fplMailtoAddress(reply));
+  }
+  // No published address for this field (the AIP names a phone only): open an empty To: so
+  // the pilot addresses it themselves rather than sending the request nowhere.
+  return 'mailto:' + (park.email ? fplMailtoAddress(park.email) : '') + '?' + q.join('&');
+}
+window.fplParkingMailtoUrl = fplParkingMailtoUrl;
+
 function fplMailtoUrl(res, opts) {
   const o = opts || {};
   // Departure time in the subject, as the filing services themselves do ("FPL - date -
@@ -10328,13 +10388,32 @@ function showFplDialog() {
       if (first) first.focus();
       return false;
     };
+    // Several Israeli fields require parking to be arranged BEFORE you depart (AIP: Herzliya
+    // over an hour or overnight, Haifa's helicopter apron, Megiddo/Habonim/Kiryat Shmona
+    // visiting aircraft). The plan already holds everything such a request needs, so offer to
+    // write it here rather than making the pilot retype it into a mail client. Shown only for
+    // a destination the AIP actually asks this of.
+    const parkAf = (typeof airfieldParkingRule === 'function') ? airfieldParkingRule(res.dest) : null;
+    let parkBtn = null;
+    if (parkAf) {
+      parkBtn = document.createElement('button');
+      parkBtn.type = 'button';
+      parkBtn.id = 'fpl-parking';
+      parkBtn.textContent = S.fplParking || 'Request parking';
+      parkBtn.title = (S.fplParkingTitle || 'Email a parking request to the destination') +
+        (parkAf.email ? ' — ' + parkAf.email : '');
+      parkBtn.onclick = () => {
+        location.href = fplParkingMailtoUrl(res, parkAf, { depTimeLocal: state1.time });
+        fallback.hidden = false;      // same no-mail-client note the filing button uses
+      };
+    }
     const backBtn = document.createElement('button');
     backBtn.type = 'button';
     backBtn.id = 'fpl-back';
     backBtn.className = 'modal-cancel';
     backBtn.textContent = S.fplBack || 'Back';
     backBtn.onclick = renderDetails;
-    btns.append(copy, mail, backBtn);
+    btns.append(copy, mail, ...(parkBtn ? [parkBtn] : []), backBtn);
     body.appendChild(btns);
   }
 

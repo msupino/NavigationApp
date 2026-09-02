@@ -480,7 +480,10 @@
    "en": "Habonim",
    "lat": 32.65,
    "lng": 34.93278,
-   "plates": [
+"parking": {
+    "rule": "always"
+   },
+      "plates": [
     "LLBO_Ground_Diagram.pdf",
     "LLBO_airport_Chart.pdf",
     "LLBO_airport_Circuit.pdf",
@@ -520,7 +523,11 @@
    "lat": 31.28694,
    "lng": 34.72278,
    "elev_ft": 656,
-   "plates": [
+"parking": {
+    "email": "Office@ayit.co.il",
+    "rule": "landing"
+   },
+      "plates": [
     "LLBS_airport_Annex Alef.pdf",
     "LLBS_airport_Annex Bet.pdf",
     "LLBS_airport_Annex Daled.pdf",
@@ -654,7 +661,11 @@
    "lat": 30.62167,
    "lng": 35.20306,
    "elev_ft": -164,
-   "plates": [
+"parking": {
+    "email": "yonatan@arava.co.il",
+    "rule": "always"
+   },
+      "plates": [
     "LLEY_airport_Annex Alef.pdf",
     "LLEY_airport_CVFR.pdf",
     "LLEY_airport_Chart.pdf",
@@ -732,7 +743,11 @@
    "lng": 35.04278,
    "elev_ft": 28,
    "atis": "135.40 MHz",
-   "plates": [
+"parking": {
+    "email": "mail_haifaairport@iaa.gov.il",
+    "rule": "heli"
+   },
+      "plates": [
     "LLHA_airport_Annex Alef.pdf",
     "LLHA_airport_Annex Bet 2.pdf",
     "LLHA_airport_Annex Bet 3.pdf",
@@ -838,7 +853,12 @@
    "lng": 34.83444,
    "elev_ft": 121,
    "clearance": "121.70 MHz",
-   "plates": [
+"parking": {
+    "email": "MerkazTi@iaa.gov.il",
+    "phone": "09-9719580",
+    "rule": "over1h"
+   },
+      "plates": [
     "LLHZ_airport_Annex Alef.pdf",
     "LLHZ_airport_Annex Chet.pdf",
     "LLHZ_airport_Annex Gimel.pdf",
@@ -1136,7 +1156,10 @@
    "lat": 33.21417,
    "lng": 35.59417,
    "elev_ft": 376,
-   "plates": [
+"parking": {
+    "rule": "always"
+   },
+      "plates": [
     "LLKS_Ground_Diagram.pdf",
     "LLKS_airport_CVFR.pdf",
     "LLKS_airport_Chart.pdf"
@@ -1202,7 +1225,10 @@
    "lat": 32.59722,
    "lng": 35.23472,
    "elev_ft": 200,
-   "plates": [
+"parking": {
+    "rule": "always"
+   },
+      "plates": [
     "LLMG_airport_Annex Alef.pdf",
     "LLMG_airport_Annex Daled.pdf",
     "LLMG_airport_CVFR.pdf",
