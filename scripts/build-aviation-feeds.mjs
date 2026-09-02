@@ -321,7 +321,16 @@ export async function buildAviationFeeds({ firs, ids, bbox, fetchImpl = fetch, p
   if (prevUrl) {
     try {
       const prev = await fetchJson(prevUrl, fetchImpl);
-      baseline = Object.keys((prev && prev.stations) || {}).length;
+      // Compare like with like. The coverage gate exists to catch a source that suddenly
+      // answers with fewer fields than it used to -- not to block a DIFFERENT source that
+      // simply carries fewer. IAA publishes more stations than AWC, so once IAA had run, an
+      // AWC fallback (its usual 5 against a 10-station baseline) failed the gate and NOTHING
+      // was published: the feed froze for as long as IAA stayed blocked, which is exactly the
+      // outage the fallback exists to prevent. Only apply the baseline when the last-good file
+      // came from the same source we are about to publish.
+      const prevSource = String((prev && prev.source) || '');
+      const sameSource = (useIaa ? /IAA/i.test(prevSource) : !/IAA/i.test(prevSource));
+      baseline = sameSource ? Object.keys((prev && prev.stations) || {}).length : 0;
     } catch (e) { warn('last-good wx.json unreadable (' + e.message + '); publishing on any data'); }
   }
 
@@ -413,10 +422,16 @@ async function fetchIaaWeatherRaw() {
     // page's own rowClicked); without &mode=weather the request is blocked (Error 100).
     const txt = strip(curl(MB + '/maiDetails.aspx?rowID=' + id + '&scrpos=0&mode=weather', MB + '/maiWeather.aspx'));
     if (!txt || /Block ID|Error 100/.test(txt)) continue;
-    const mt = txt.match(/\b((?:METAR|SPECI)\s+LL[A-Z]{2}\b[\s\S]*?)(?:=|$)/);
-    const tf = txt.match(/\bTAF(?:\s+(?:AMD|COR))?\s+LL[A-Z]{2}\b[\s\S]*?(?:=|$)/);
+    // strip() collapses the page to ONE line, so an unanchored "$" is end-of-document: a
+    // report that is not '='-terminated used to capture the TAF and the trailing page chrome
+    // into rawOb, and parseMetar then read a stray 4-digit number as visibility and the TAF's
+    // TSRA/BKN tokens as current weather. Terminate on '=', on the next report's keyword, or
+    // after a sane report length -- never at end-of-page.
+    const END = '(?:=|(?=\\s(?:METAR|SPECI|TAF)\\b))';
+    const mt = txt.match(new RegExp('\\b((?:METAR|SPECI)\\s+LL[A-Z]{2}\\b[\\s\\S]{0,400}?)' + END));
+    const tf = txt.match(new RegExp('\\b(TAF(?:\\s+(?:AMD|COR))?\\s+LL[A-Z]{2}\\b[\\s\\S]{0,900}?)' + END));
     if (mt) metars.push(mt[1].trim());
-    if (tf) tafs.push(tf[0].trim());
+    if (tf) tafs.push(tf[1].trim());
   }
   if (!metars.length && !tafs.length) { console.error('iaa weather: no messages parsed'); return null; }
   console.log('IAA raw: ' + metars.length + ' METAR, ' + tafs.length + ' TAF');

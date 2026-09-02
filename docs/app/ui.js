@@ -4879,6 +4879,17 @@ async function refreshHazardFeeds() {
 }
 window.refreshHazardFeeds = refreshHazardFeeds;   // exposed so tests can trigger a re-poll
 setInterval(refreshHazardFeeds, 10 * 60 * 1000);
+// The timer skips hidden tabs, so a backgrounded app could come back showing hazards up to
+// ten minutes stale with nothing saying so. Re-poll as soon as it is looked at again --
+// throttled, so flicking between apps does not spam the feeds.
+let _hazardVisAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  const now = Date.now();
+  if (now - _hazardVisAt < 60000) return;
+  _hazardVisAt = now;
+  refreshHazardFeeds();
+});
 
 // --- NOTAM overlay + list (FAA NOTAM API, Israel FIR LLLL) ----------
 // Whether the overlay is on is remembered PER CHART: the NOTAM feed is FIR-wide
@@ -5008,7 +5019,14 @@ function notamTimeLabel(h) {
 }
 function syncNotamTime() {
   const h = notamTimeEl ? (parseInt(notamTimeEl.value, 10) || 0) : 0;
-  window.notamViewTime = h ? (Date.now() + h * 3600e3) : null;
+  // Filter at the instant the readout NAMES. The label (and lookaheadTarget) are anchored to
+  // the top of the hour, so an un-anchored Date.now() + h here drifted by up to 59 minutes:
+  // at 12:40Z with +3h the panel said "15:00Z" while the hazard layers filtered at 15:40Z,
+  // hiding anything that expired in between. Prefer the slider's own target when it is set.
+  window.notamViewTime = h
+    ? (Number.isFinite(window.lookaheadTarget) ? window.lookaheadTarget
+      : topOfHour(Date.now()) + h * 3600e3)
+    : null;
   if (notamTimeVal) notamTimeVal.textContent = notamTimeLabel(h);
 }
 if (notamTimeEl) {
@@ -9235,8 +9253,11 @@ const NavWxTime = (function () {
   // time as Zulu passes; and if the pilot's PINNED time has aged out of EVERY
   // feed we drop the pin and fall back to nearest-now, rather than leaving the
   // overlay pointing at a chart that no longer exists.
+  // Each feed keeps the times it last successfully published, so a round where it fails can
+  // reuse them instead of looking like "this feed offers nothing" (which would prune away
+  // every time only it publishes, taking its overlay off the map for ten minutes).
   const feeds = [];
-  function register(refetch) { if (typeof refetch === 'function') feeds.push(refetch); }
+  function register(refetch) { if (typeof refetch === 'function') feeds.push({ fn: refetch, lastAvail: [] }); }
   function prune(keys) {
     if (!sel) return;
     for (const o of Array.from(sel.options)) if (!keys.has(o.value)) sel.removeChild(o);
@@ -9244,18 +9265,31 @@ const NavWxTime = (function () {
   async function poll() {
     if (!sel || !feeds.length) return;
     let add = [], avail = [];
+    // A feed that fails this round contributes its LAST-GOOD times rather than nothing, so a
+    // single 500/timeout cannot prune away every time only that feed publishes (which took its
+    // overlay off the map until the next successful poll).
     for (const f of feeds) {
-      try {
-        const r = await f();
-        if (r && Array.isArray(r.add)) add = add.concat(r.add);
-        if (r && Array.isArray(r.avail)) avail = avail.concat(r.avail);
-      } catch (e) { /* one feed unreachable this round */ }
+      let r = null;
+      try { r = await f.fn(); } catch (e) { /* one feed unreachable this round */ }
+      if (r && Array.isArray(r.add)) add = add.concat(r.add);
+      if (r && Array.isArray(r.avail)) {
+        f.lastAvail = r.avail;
+        avail = avail.concat(r.avail);
+      } else {
+        avail = avail.concat(f.lastAvail);      // failed this round -> keep what it last offered
+      }
     }
     const availKeys = new Set(avail.filter(t => t && t.valid).map(keyOf));
     if (!availKeys.size) return;          // every feed unreachable -> keep what we have
     ensure(add);                          // add new options; advance the default while unpinned
-    prune(availKeys);                     // drop times no feed offers any more
-    if (sel.options.length && !availKeys.has(sel.value)) {
+    // The selection BEFORE pruning: removing the selected <option> makes the browser re-run
+    // its selectedness algorithm and fall back to options[0], so testing sel.value after the
+    // prune always sees an available key and the release below could never fire -- a pinned
+    // time that vanished from the feed silently became "whatever is first", usually the
+    // oldest chart, with the pin still set so no later poll could re-seed it.
+    const was = sel.value;
+    prune(availKeys);
+    if (sel.options.length && !availKeys.has(was)) {
       // The selected time -- a pilot pin or an earlier default -- is gone from every feed.
       pinned = false;
       try { localStorage.removeItem(KEY); } catch (e) {}
@@ -9520,11 +9554,16 @@ const NavWxAvailability = (function () {
       avail: m.levels.reduce((a, lv) => a.concat(lv.times || []), []),
     };
   }
+  // A failed refresh must not read as "this feed offers nothing" -- that would prune away
+  // every PWX-only valid time. Report the manifest still in memory instead.
+  const heldTimes = () => (manifest && Array.isArray(manifest.levels))
+    ? { add: [], avail: manifest.levels.reduce((a, lv) => a.concat(lv.times || []), []) }
+    : null;
   function fetchPwx(first) {
     return fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null))
-      .then(m => ingest(m, first))
-      .catch(() => null);   // no ims-data branch yet / offline → stay hidden, keep list
+      .then(m => ingest(m, first) || heldTimes())
+      .catch(() => heldTimes());   // no ims-data branch yet / offline → keep the list we have
   }
   fetchPwx(true);
   NavWxTime.register(() => fetchPwx(false));
@@ -10015,11 +10054,15 @@ const NavWxAvailability = (function () {
     }
     return { add: m.times, avail: m.times };
   }
+  // As in the PWX overlay: a failed refresh reports the times we still hold, so one bad round
+  // cannot prune the SIGWX-only entries out of the shared dropdown.
+  const heldTimes = () => (manifest && Array.isArray(manifest.times))
+    ? { add: [], avail: manifest.times } : null;
   function fetchSigwx(first) {
     return fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null))
-      .then(m => ingest(m, first))
-      .catch(() => null);   // manifest unreachable → stay hidden, keep current list
+      .then(m => ingest(m, first) || heldTimes())
+      .catch(() => heldTimes());   // manifest unreachable → keep the list we have
   }
   fetchSigwx(true);
   NavWxTime.register(() => fetchSigwx(false));

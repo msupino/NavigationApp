@@ -92,7 +92,10 @@ export function parseMetar(raw) {
     if (m) { out.altim = Number(m[1]); continue; }
     m = tok.match(/^A(\d{4})$/);                                  // altimeter inHg → hPa
     if (m) { out.altim = Math.round((Number(m[1]) / 100) * 33.8639); continue; }
-    if (tok === 'NOSIG' || tok === 'RMK') break;                 // trend/remarks: stop
+    // Stop at the trend/remarks section. TEMPO and BECMG are legal METAR trend indicators
+    // (like NOSIG), and everything after them is a FORECAST, not the observation: without
+    // this a trend's "TSRA BKN012" was reported as the weather happening now.
+    if (tok === 'NOSIG' || tok === 'RMK' || tok === 'TEMPO' || tok === 'BECMG') break;
     bodyToks.push(tok);
   }
   const body = parseBody(bodyToks);

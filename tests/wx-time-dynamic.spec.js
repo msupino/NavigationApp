@@ -109,3 +109,54 @@ test('a pinned time that ages out of the feed is pruned and falls back to neares
   expect(await labels(page)).toEqual(['21/06/2026 12:00Z', '21/06/2026 18:00Z']);
   expect(await selected(page)).toBe('21/06/2026 12:00Z');
 });
+
+test('a pinned LAST option that ages out re-seeds to nearest-now, not to options[0]', async ({ page }) => {
+  // The regression the earlier test could not see: removing the selected <option> makes the
+  // browser fall back to options[0] on its own, so a release that tested sel.value AFTER the
+  // prune always saw an available key and never fired. Pinning the LAST option separates the
+  // two outcomes -- options[0] is 06:00 (six hours stale), nearest-now is 12:00.
+  await freezeNoon(page);
+  const holder = {
+    pwx: { generatedAt: '2026-06-21T06:00:00Z', bounds: BOUNDS,
+      levels: [pwxLevel([t('06:00', 'a'), t('12:00', 'b'), t('18:00', 'c')])] },
+    sigwx: null,
+  };
+  await serve(page, holder);
+  await page.waitForFunction(() => document.querySelectorAll('#wx-time option').length === 3);
+
+  await page.evaluate(() => {
+    const s = document.getElementById('wx-time');
+    const o = Array.from(s.options).find(x => x.textContent === '21/06/2026 18:00Z');
+    s.value = o.value;
+    s.dispatchEvent(new Event('change'));
+  });
+  expect(await selected(page)).toBe('21/06/2026 18:00Z');
+
+  // 18:00 disappears from the feed; 06:00 and 12:00 remain.
+  holder.pwx = { generatedAt: '2026-06-21T12:00:00Z', bounds: BOUNDS,
+    levels: [pwxLevel([t('06:00', 'a'), t('12:00', 'b')])] };
+  await repoll(page);
+  await page.waitForFunction(() =>
+    !Array.from(document.querySelectorAll('#wx-time option')).some(o => o.textContent === '21/06/2026 18:00Z'));
+  // Nearest to the frozen 12:00Z now — NOT the browser's options[0] fallback (06:00).
+  expect(await selected(page)).toBe('21/06/2026 12:00Z');
+});
+
+test('a feed that fails this round does not prune the times it publishes', async ({ page }) => {
+  // PWX answers, SIGWX 500s. SIGWX-only times must survive: pruning on a half-answered round
+  // deleted them and removed that overlay for the next ten minutes.
+  await freezeNoon(page);
+  const holder = {
+    pwx: { generatedAt: '2026-06-21T12:00:00Z', bounds: BOUNDS, levels: [pwxLevel([t('12:00', 'b')])] },
+    sigwx: { generatedAt: '2026-06-21T12:00:00Z', times: [
+      { valid: '21:00', day: '21/06/2026', png: 'ims/sigwx/z.png' }] },
+  };
+  await serve(page, holder);
+  await page.waitForFunction(() => document.querySelectorAll('#wx-time option').length === 2);
+  expect(await labels(page)).toContain('21/06/2026 21:00Z');
+
+  holder.sigwx = null;              // SIGWX fetch now fails (404 -> null)
+  await repoll(page);
+  // Its time is still offered: one feed failing is not evidence the other's times are gone.
+  expect(await labels(page)).toContain('21/06/2026 21:00Z');
+});

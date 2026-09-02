@@ -328,3 +328,28 @@ test('a thin/blocked IAA result falls back to AWC, converted to km', async () =>
   expect(wx.stations.LLBG.metar.visib).toBe('10+');     // AWC SM normalised to km
   expect(wx.stations.LLHZ.metar.visib).toBe('7');
 });
+
+test('the coverage baseline only applies within the same source', async () => {
+  // IAA publishes more stations than AWC. Once IAA had run, an AWC fallback failed the
+  // coverage gate against the IAA-sized baseline and NOTHING was published — the feed froze
+  // for as long as IAA stayed blocked, which is the outage the fallback exists to prevent.
+  const mod = await import('../scripts/build-aviation-feeds.mjs');
+  const written = {};
+  const prev = { source: 'IAA (brin.iaa.gov.il MobileAeroinfo)',
+    stations: Object.fromEntries('ABCDEFGHIJ'.split('').map(c => ['LL' + c + c, { metar: {} }])) };
+  const fetchImpl = async url => {
+    if (url.includes('wx.json')) return { ok: true, status: 200, json: async () => prev };
+    if (url.includes('isigmet')) return { ok: true, status: 200, json: async () => [] };
+    if (url.includes('ims.gov.il')) return { ok: false, status: 500, json: async () => ({}) };
+    if (url.includes('metar')) return { ok: true, status: 200, json: async () => [metar('LLBG'), metar('LLHA'), metar('LLER'), metar('LLIB'), metar('LLHZ')] };
+    return { ok: true, status: 200, json: async () => [taf('LLBG')] };
+  };
+  await mod.buildAviationFeeds({
+    firs: FIRS, ids: IDS, bbox: BBOX, fetchImpl, iaaRaw: null,   // IAA blocked -> AWC fallback
+    prevUrl: 'https://example.invalid/wx.json',
+    write: (f, b) => { written[f] = b; }, log: () => {}, warn: () => {},
+  });
+  const wx = JSON.parse(written['wx/wx.json']);      // published, not frozen
+  expect(wx.source).toBe('NOAA AWC');
+  expect(Object.keys(wx.stations)).toHaveLength(5);
+});
