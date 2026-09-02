@@ -7020,4 +7020,5 @@ body.theme-light .parking-preview {
   border-inline-start: 2px solid #4b4646;
   text-align: start;
 }
+.route-library-gdrive-pii[hidden] { display: none; }
 body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start-color: #c7cedb; }

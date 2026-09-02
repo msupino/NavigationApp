@@ -2526,13 +2526,16 @@ function showRouteLibraryModal(focusSave) {
     setChk.checked = (typeof settingsSyncEnabled === 'function' && settingsSyncEnabled());
     setChk.onchange = () => {
       if (typeof setSettingsSyncEnabled === 'function') setSettingsSyncEnabled(setChk.checked);
+      syncSetHint();
     };
     setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Sync settings too')));
-    // Always shown, not only when ticked: what the box would upload is exactly what the
-    // pilot needs before ticking it.
+    // Shown only while the box is ticked — it describes what the tick is currently doing,
+    // not a standing warning about the sync button beside it, which uploads none of this.
     const setHint = document.createElement('div');
     setHint.className = 'route-library-gdrive-pii';
     setHint.textContent = S.routeLibraryGdriveSyncPii || '';
+    const syncSetHint = () => { setHint.hidden = !setChk.checked; };
+    syncSetHint();
     syncBtn.onclick = () => {
       syncBtn.disabled = true;
       setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
