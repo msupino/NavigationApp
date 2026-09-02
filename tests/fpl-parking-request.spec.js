@@ -87,3 +87,59 @@ test('details the profile does not carry are left blank, never invented', async 
   expect(body).toContain('[REG]');       // an unfilled registration says so
   expect(body).toContain('—');           // and the other unknowns are dashes to complete
 });
+
+// --- the dialog ------------------------------------------------------------------------
+// The AIP asks for things the plan cannot know — which kind of parking, until when, whether
+// fuel is wanted — so the button opens a dialog rather than dropping the pilot into a mail
+// draft full of "[ ... ]" placeholders to guess at.
+const openDialog = page => page.evaluate(() => {
+  showParkingRequestModal({ dep: 'LLBG', dest: 'LLHZ', dof: '260902' },
+    airfieldParkingRule('LLHZ'), { depTimeLocal: '08:15' });
+});
+
+test('the dialog names the recipient and previews exactly what will be sent', async ({ page }) => {
+  await boot(page);
+  await openDialog(page);
+  const modal = page.locator('.modal-back[data-chart-modal="parking-request"]');
+  await expect(modal).toBeVisible();
+  // The address is stated: a pilot cannot sanity-check a recipient they cannot see.
+  await expect(modal).toContainText('llhz.ops@iaa.gov.il');
+  await expect(modal).toContainText('MerkazTi@iaa.gov.il');      // cc, per the clause
+  const preview = await modal.locator('.parking-preview').inputValue();
+  expect(preview).toContain('LLHZ');
+  expect(preview).toContain('260902');
+  expect(preview).not.toContain('[ transit');                    // no placeholder left to guess
+});
+
+test('choosing options rewrites the message', async ({ page }) => {
+  await boot(page);
+  await openDialog(page);
+  const modal = page.locator('.modal-back[data-chart-modal="parking-request"]');
+  const preview = modal.locator('.parking-preview');
+  await modal.locator('select').selectOption({ index: 1 });      // Overnight
+  await modal.locator('input[type="text"]').fill('03/09 14:00');
+  await modal.locator('input[type="checkbox"]').check();
+  const text = await preview.inputValue();
+  expect(text).toContain('Overnight');
+  expect(text).toContain('03/09 14:00');
+  expect(text).toContain('Refuelling requested');
+});
+
+test('an edited message is the pilot\'s and is not rewritten under them', async ({ page }) => {
+  await boot(page);
+  await openDialog(page);
+  const modal = page.locator('.modal-back[data-chart-modal="parking-request"]');
+  const preview = modal.locator('.parking-preview');
+  await preview.fill('my own wording');
+  await modal.locator('select').selectOption({ index: 2 });      // changing an option now
+  expect(await preview.inputValue()).toBe('my own wording');     // must not clobber the edit
+});
+
+test('the dialog closes on Escape', async ({ page }) => {
+  await boot(page);
+  await openDialog(page);
+  const modal = page.locator('.modal-back[data-chart-modal="parking-request"]');
+  await expect(modal).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
+});

@@ -1252,7 +1252,9 @@ window.airfieldParkingRule = airfieldParkingRule;
 // A parking request built from the plan the pilot has already filled in: registration, type,
 // crew, the two aerodromes and the date/time. Nothing is invented -- a detail the profile does
 // not carry is left as a blank for the pilot to complete, rather than guessed at.
-function fplParkingMailtoUrl(res, park, opts) {
+// Subject and body, built from the plan plus whatever the pilot chose in the dialog. Split
+// out from the mailto so the dialog can show exactly what will be sent, and edit it.
+function fplParkingText(res, park, opts) {
   const o = opts || {};
   const p = (typeof fplProfileRead === 'function') ? fplProfileRead() : {};
   const reg = (typeof fplRegistration === 'function' ? fplRegistration(p.reg || '') : (p.reg || '')) || '[REG]';
@@ -1260,28 +1262,188 @@ function fplParkingMailtoUrl(res, park, opts) {
   const blank = v => (String(v == null ? '' : v).trim() || '—');
   const subject = (S.fplParkingSubject || 'Parking request') + ' — ' + reg +
     ' at ' + park.icao + ', ' + res.dof;
+  // Labels are localised too: a Hebrew intro over English field names read as two messages
+  // spliced together, and these go to Israeli operations desks. The values (registration,
+  // ICAO codes, times) stay as they are in either language.
+  const rows = [
+    [S.fplParkingFAircraft || 'Aircraft', reg + ' (' + blank(p.type) + ')'],
+    [S.fplParkingFPic || 'Pilot in command',
+      blank(p.pic) + (p.license ? ', ' + (S.fplParkingFLicence || 'licence') + ' ' + p.license : '')],
+    [S.fplParkingFMobile || 'Mobile', blank(p.cell)],
+    [S.fplParkingFPob || 'Persons on board', blank(p.persons)],
+    [S.fplParkingFFrom || 'From', res.dep],
+    [S.fplParkingFTo || 'To', park.icao + ' (' + park.label + ')'],
+    [S.fplParkingFDof || 'Date of flight',
+      res.dof + (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + dep : '')],
+    [S.fplParkingKind || 'Parking', o.kind || '[ transit over 1 h / overnight / maintenance ]'],
+    [(S.fplParkingUntil || 'Expected departure from') + ' ' + park.icao, o.until || '[ date / time ]'],
+  ];
+  if (o.handling) rows.push([S.fplParkingFHandling || 'Handling', o.handling]);
+  const wide = rows.reduce((w, r) => Math.max(w, r[0].length), 0);
   const lines = [
     (S.fplParkingIntro || 'I request parking approval for the following flight:'),
     '',
-    '  Aircraft:       ' + reg + ' (' + blank(p.type) + ')',
-    '  Pilot in command: ' + blank(p.pic) + (p.license ? ', licence ' + p.license : ''),
-    '  Mobile:         ' + blank(p.cell),
-    '  Persons on board: ' + blank(p.persons),
-    '  From:           ' + res.dep,
-    '  To:             ' + park.icao + ' (' + park.label + ')',
-    '  Date of flight: ' + res.dof + (dep ? ',  departure ' + dep : ''),
-    '  Parking:        [ transit over 1 h / overnight / maintenance ]',
-    '  Expected departure from ' + park.icao + ': [ date / time ]',
+    ...rows.map(([k, v]) => '  ' + (k + ':').padEnd(wide + 2) + v),
+  ];
+  if (o.notes) lines.push('', String(o.notes));
+  lines.push(
     '',
     (S.fplParkingAsk || 'Please confirm the assigned stand and any restrictions.'),
     '',
     blank(p.pic) + (p.cell ? ' — ' + p.cell : ''),
     '',
     fplAttributionText(),
-  ];
+  );
+  return { subject, body: lines.join('\n'), replyTo: String(p.replyTo || '').trim() };
+}
+
+// The parking request as a dialog rather than a straight jump to the mail client: the AIP
+// asks for things the plan cannot know -- which kind of parking, until when, whether fuel is
+// wanted -- and a pilot who lands in a mail draft full of "[ ... ]" placeholders has to guess
+// what the field expects. Pick the answers here, see exactly what will be sent, edit it if
+// needed, then hand it to the mail client.
+function showParkingRequestModal(res, park, opts) {
+  const o = opts || {};
+  if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  back.dataset.chartModal = 'parking-request';
+  const box = document.createElement('div');
+  box.className = 'modal parking-modal';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  const close = () => { back.remove(); document.removeEventListener('keydown', onEsc, true); };
+  function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+  back._navaidClose = close;
+
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.style.cursor = 'default';
+  title.textContent = (S.fplParking || 'Request parking') + ' — ' + park.icao;
+  box.appendChild(title);
+
+  // Who it goes to, stated plainly: the pilot is about to send a flight document to a real
+  // desk, and an address they cannot see is one they cannot sanity-check.
+  const to = document.createElement('div');
+  to.className = 'fpl-hint';
+  to.dir = 'auto';
+  to.textContent = (S.fplParkingTo || 'To') + ': ' + (park.email || (S.fplParkingNoAddress || 'no published address — you will need to fill it in')) +
+    (park.opsEmail ? '  ·  cc ' + park.opsEmail : '') + (park.phone ? '  ·  ☎ ' + park.phone : '');
+  box.appendChild(to);
+
+  const form = document.createElement('div');
+  form.className = 'parking-form';
+  const field = (labelText, el) => {
+    const row = document.createElement('label');
+    row.className = 'parking-row';
+    const l = document.createElement('span');
+    l.className = 'parking-label';
+    l.dir = 'auto';
+    l.textContent = labelText;
+    row.append(l, el);
+    form.appendChild(row);
+    return el;
+  };
+  const kindSel = document.createElement('select');
+  for (const [val, label] of [
+    ['transit', S.fplParkingTransit || 'Transit (over 1 hour)'],
+    ['overnight', S.fplParkingOvernight || 'Overnight'],
+    ['maintenance', S.fplParkingMaintenance || 'Maintenance'],
+  ]) {
+    const op = document.createElement('option');
+    op.value = val; op.textContent = label;
+    kindSel.appendChild(op);
+  }
+  field(S.fplParkingKind || 'Parking', kindSel);
+  const untilEl = document.createElement('input');
+  untilEl.type = 'text';
+  untilEl.placeholder = S.fplParkingUntilHint || 'e.g. 03/09 14:00';
+  untilEl.dir = 'ltr';
+  field((S.fplParkingUntil || 'Expected departure from') + ' ' + park.icao, untilEl);
+  const fuelEl = document.createElement('input');
+  fuelEl.type = 'checkbox';
+  field(S.fplParkingFuel || 'Refuelling requested', fuelEl);
+  const notesEl = document.createElement('textarea');
+  notesEl.rows = 2;
+  notesEl.dir = 'auto';
+  notesEl.placeholder = S.fplParkingNotesHint || 'Anything else the field should know';
+  field(S.fplParkingNotes || 'Notes', notesEl);
+  box.appendChild(form);
+
+  // The message itself, editable. What is shown is what is sent.
+  const preview = document.createElement('textarea');
+  preview.className = 'parking-preview';
+  preview.rows = 12;
+  preview.dir = 'ltr';
+  preview.setAttribute('aria-label', S.fplParkingPreview || 'Message');
+  let edited = false;
+  preview.addEventListener('input', () => { edited = true; });
+  const compose = () => fplParkingText(res, park, {
+    depTimeLocal: o.depTimeLocal,
+    kind: kindSel.options[kindSel.selectedIndex].textContent,
+    until: untilEl.value.trim(),
+    handling: fuelEl.checked ? (S.fplParkingFuel || 'Refuelling requested') : '',
+    notes: notesEl.value.trim(),
+  });
+  const refresh = () => {
+    // An edited message is the pilot's; the options stop rewriting it under them.
+    if (edited) return;
+    preview.value = compose().body;
+  };
+  refresh();
+  for (const el of [kindSel, untilEl, fuelEl, notesEl]) {
+    el.addEventListener('input', refresh);
+    el.addEventListener('change', refresh);
+  }
+  box.appendChild(preview);
+
+  const btns = document.createElement('div');
+  btns.className = 'fpl-actions';
+  const send = document.createElement('button');
+  send.type = 'button';
+  send.className = 'fpl-primary';
+  send.textContent = S.fplParkingSend || 'Open in mail';
+  send.onclick = () => {
+    const t = compose();
+    location.href = fplParkingMailtoUrl(res, park, { subject: t.subject, body: preview.value });
+    close();
+  };
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.textContent = S.fplCopy || 'Copy';
+  copy.onclick = () => {
+    const text = preview.value;
+    const write = (navigator.clipboard && navigator.clipboard.writeText)
+      ? navigator.clipboard.writeText(text) : Promise.reject(new Error('no clipboard API'));
+    write.then(() => showToast(S.fplCopied)).catch(() => window.prompt(S.fplCopied, text));
+  };
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'modal-cancel';
+  cancel.textContent = S.fplBack || 'Back';
+  cancel.onclick = close;
+  btns.append(send, copy, cancel);
+  box.appendChild(btns);
+
+  if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
+  back.appendChild(box);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  document.addEventListener('keydown', onEsc, true);
+  document.body.appendChild(back);
+  untilEl.focus();
+}
+window.showParkingRequestModal = showParkingRequestModal;
+
+function fplParkingMailtoUrl(res, park, opts) {
+  const o = opts || {};
+  const p = (typeof fplProfileRead === 'function') ? fplProfileRead() : {};
+  const t = (o.subject != null && o.body != null)
+    ? { subject: o.subject, body: o.body, replyTo: String(p.replyTo || '').trim() }
+    : fplParkingText(res, park, o);
+  const subject = t.subject;
   const q = ['subject=' + encodeURIComponent(subject),
-    'body=' + encodeURIComponent(lines.join('\n'))];
-  const reply = String(p.replyTo || '').trim();
+    'body=' + encodeURIComponent(t.body)];
+  const reply = t.replyTo;
   const cc = [];
   // Herzliya publishes a coordination address AND an operations centre, and its parking rule
   // names the operations centre as who the approval is executed with -- so both belong on the
@@ -10408,10 +10570,7 @@ function showFplDialog() {
       parkBtn.textContent = S.fplParking || 'Request parking';
       parkBtn.title = (S.fplParkingTitle || 'Email a parking request to the destination') +
         (parkAf.email ? ' — ' + parkAf.email : '');
-      parkBtn.onclick = () => {
-        location.href = fplParkingMailtoUrl(res, parkAf, { depTimeLocal: state1.time });
-        fallback.hidden = false;      // same no-mail-client note the filing button uses
-      };
+      parkBtn.onclick = () => showParkingRequestModal(res, parkAf, { depTimeLocal: state1.time });
     }
     const backBtn = document.createElement('button');
     backBtn.type = 'button';

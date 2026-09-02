@@ -6929,3 +6929,24 @@ body.theme-light .follow-me-banner.stale { color: #4a1c08; background: rgba(255,
    because the cost of not noticing is a link still broadcasting after the flight. */
 .follow-me-ctrl button.follow-me-on { color: #7ee08a; border-color: #4e8f58; }
 body.theme-light .follow-me-ctrl button { color: #3b4350; background: rgba(255,255,255,0.9); border-color: #cdd3db; }
+
+/* Parking-request dialog: the AIP asks for things the plan cannot know (which kind of
+   parking, until when, fuel), so they are chosen here and the message is shown -- and
+   editable -- before it is handed to the mail client. */
+.parking-modal { max-width: 560px; }
+.parking-form { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.parking-row { display: flex; align-items: center; gap: 8px; }
+.parking-label { flex: 0 0 42%; font-size: 12px; opacity: 0.85; }
+.parking-row select,
+.parking-row input[type="text"],
+.parking-row textarea { flex: 1 1 auto; min-width: 0; }
+.parking-row input[type="checkbox"] { margin-inline-end: auto; }
+.parking-preview {
+  width: 100%; box-sizing: border-box; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px; line-height: 1.4; resize: vertical;
+}
+/* The dialog's own action row: .fpl-actions is laid out for the filing step's wider modal,
+   and without this the three buttons ran together with no gap. */
+.parking-modal .fpl-actions {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center;
+}
