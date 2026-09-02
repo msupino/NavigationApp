@@ -138,7 +138,10 @@ test('the opt-in names the personal data it uploads, before it is ticked', async
   const txt = (await hint.textContent()) || '';
   // "settings" reads as preferences; the licence number is the word that corrects that.
   expect(txt.toLowerCase()).toContain('licence');
-  expect(txt).toMatch(/stay on this device/i);
+  expect(txt).toMatch(/never leave this device/i);
+  // The scope is the point: routes sync without this box, so the line must say the upload
+  // is conditional on the tick rather than describing Drive sync as a whole.
+  expect(txt.toLowerCase()).toContain('only with this ticked');
   await page.locator('.route-library-gdrive-settings input').check();
   await expect(hint).toBeVisible();            // and it does not vanish once ticked
 });
