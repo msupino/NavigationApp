@@ -3384,13 +3384,26 @@ for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadR
   } catch (e) { /* */ }
   header.addEventListener('mousedown', function (e) {
     if (e.target.closest('#insp-close')) return;               // close button stays clickable
+    // Not on a phone: there the inspector is a bottom sheet pinned to both edges, not a
+    // floating panel, and dragging it has no meaning. A tap on the header is just a tap.
+    if (isNarrow()) return;
     // The title line (#insp-title) is read-only for every inspector type — the
     // waypoint name is edited via a separate row in the body — so the whole
     // header, title included, is a drag handle.
     const r = insp.getBoundingClientRect();
     const off = { x: e.clientX - r.left, y: e.clientY - r.top };
-    insp.style.right = 'auto';
+    // Nothing is repositioned until the pointer actually MOVES. Releasing `right` on
+    // mousedown re-laid the panel out on every press, drag or not -- and a tap is a
+    // mousedown, so simply touching the header collapsed the sheet from edge-to-edge to
+    // shrink-to-fit and left it that way for every later open.
+    let dragging = false;
+    const start = { x: e.clientX, y: e.clientY };
     const onMove = function (ev) {
+      if (!dragging) {
+        if (Math.abs(ev.clientX - start.x) < 3 && Math.abs(ev.clientY - start.y) < 3) return;
+        dragging = true;
+        insp.style.right = 'auto';
+      }
       const x = Math.max(0, Math.min(window.innerWidth - insp.offsetWidth, ev.clientX - off.x));
       const y = Math.max(0, Math.min(window.innerHeight - insp.offsetHeight, ev.clientY - off.y));
       const printBox = document.querySelector('.modal-back.export-options .modal.export-floating');
@@ -3402,6 +3415,7 @@ for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadR
     const onUp = function () {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      if (!dragging) return;            // a press that never moved is not a new position
       const r2 = insp.getBoundingClientRect();
       try { localStorage.setItem(navLangPosKey(INSP_POS_KEY), JSON.stringify({ x: r2.left, y: r2.top })); }
       catch (e2) { /* */ }
