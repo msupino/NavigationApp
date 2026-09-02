@@ -158,3 +158,18 @@ test('the departure date/time are pickers, defaulted to the day of the flight', 
   await modal.locator('input[type="date"]').fill('2026-09-04');
   expect(await modal.locator('.parking-preview').inputValue()).toContain('04/09/2026');
 });
+
+test('the Hebrew prefix hyphen attaches to the aerodrome code', async ({ page }) => {
+  // "מ-" is a prefix: it binds to the code with no space. "מ- LLHA" is as wrong as
+  // "from-LLHA" would be in English, where the same label DOES take a space.
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const mk = () => fplParkingText({ dep: 'LLBG', dest: 'LLHA', dof: '260902' },
+      airfieldParkingRule('LLHA'), { until: '02/09/2026 14:00' }).body;
+    return mk();
+  });
+  expect(out).toContain('LLHA');
+  // English build (the spec boots ?lang=en) keeps its space.
+  expect(out).toContain('Expected departure from LLHA');
+  expect(out).not.toContain('from  LLHA');
+});

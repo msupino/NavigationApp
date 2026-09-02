@@ -1276,7 +1276,7 @@ function fplParkingText(res, park, opts) {
     [S.fplParkingFDof || 'Date of flight',
       res.dof + (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + dep : '')],
     [S.fplParkingKind || 'Parking', o.kind || '[ transit over 1 h / overnight / maintenance ]'],
-    [(S.fplParkingUntil || 'Expected departure from') + ' ' + park.icao, o.until || '[ date / time ]'],
+    [fplParkingUntilLabel(park.icao), o.until || '[ date / time ]'],
   ];
   if (o.handling) rows.push([S.fplParkingFHandling || 'Handling', o.handling]);
   // Pad the labels into a column only for a left-to-right message. In Hebrew the padding is
@@ -1308,6 +1308,13 @@ function fplParkingText(res, park, opts) {
 // needed, then hand it to the mail client.
 // The plan carries the date of flight as YYMMDD (ICAO field 18 DOF); a date input wants
 // ISO. Two-digit years are this century -- the AIP form has no room for another.
+// "Expected departure from LLHA", but the Hebrew label ends in a prefix hyphen (מ-), which
+// attaches to the code with no space -- "מ- LLHA" is wrong the way "from-LLHA" would be.
+function fplParkingUntilLabel(icao) {
+  const lbl = S.fplParkingUntil || 'Expected departure from';
+  return lbl + (/[-\u05BE\u2010-\u2015]$/.test(lbl) ? '' : ' ') + icao;
+}
+
 function fplDofToIsoDate(dof) {
   const m = /^(\d{2})(\d{2})(\d{2})$/.exec(String(dof || ''));
   return m ? `20${m[1]}-${m[2]}-${m[3]}` : '';
@@ -1378,7 +1385,7 @@ function showParkingRequestModal(res, park, opts) {
   const untilTime = document.createElement('input');
   untilTime.type = 'time';
   untilWrap.append(untilDate, untilTime);
-  field((S.fplParkingUntil || 'Expected departure from') + ' ' + park.icao, untilWrap);
+  field(fplParkingUntilLabel(park.icao), untilWrap);
   // What the message prints: the local conventions the desk reads, not the ISO the input holds.
   const untilText = () => {
     const d = untilDate.value, t = untilTime.value;
