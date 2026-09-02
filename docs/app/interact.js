@@ -2880,10 +2880,11 @@ function appendAirfieldWeather(body, af) {
     const warns = (typeof airfieldWarningsFor === 'function') ? airfieldWarningsFor(icao) : [];
     const wrap = document.createElement('div');
     wrap.className = 'wx-block wx-adws';
-    // The label and the "None" line are localized prose — RTL in Hebrew — so let them follow
-    // content direction rather than forcing LTR (which mis-ordered the Hebrew label and its
-    // "(AD / WS)" parenthetical). The warning bodies below are IMS codes and stay LTR.
-    wrap.dir = 'auto';
+    // Inherit the interface direction, like the METAR/TAF state block. dir=auto here looked
+    // LTR: auto-detection SKIPS bidi-isolated children, and both the label and the message
+    // line carry their own dir=auto, so the wrapper saw no direction-setting text and fell
+    // back to LTR -- parking this badge on the left while the METAR/TAF badge sat on the
+    // right. The label and line keep dir=auto so their own words order correctly.
     const t = document.createElement('span');
     t.className = 'wx-label';
     t.dir = 'auto';
