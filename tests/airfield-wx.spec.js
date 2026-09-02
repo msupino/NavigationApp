@@ -171,13 +171,17 @@ test('Hebrew no-data message reads RTL, not garbled LTR', async ({ page }) => {
     showInspector();
   });
   const body = page.locator('#insp-body .wx-body');
-  await expect(body).toContainText('אין METAR / TAF לשדה זה');
-  // Body follows content direction (dir=auto) so the Hebrew prose resolves RTL
-  // from its first strong char instead of being forced LTR and reordered.
-  expect(await body.getAttribute('dir')).toBe('auto');
+  await expect(body).toContainText('אין מידע');
+  // The box follows the interface direction (inherited RTL), and the message line follows its
+  // own content -- so the Hebrew reads in the right order and the badges sit on the right.
+  expect(await body.evaluate(el => getComputedStyle(el).direction)).toBe('rtl');
+  const state = page.locator('#insp-body .wx-state');
   // And it must actually COMPUTE to rtl — the CSS must not force direction:ltr, or the words
   // reorder ("אין" lands at the end) even with dir=auto. This is what the attribute check missed.
-  expect(await body.evaluate(el => getComputedStyle(el).direction)).toBe('rtl');
+  expect(await state.evaluate(el => getComputedStyle(el).direction)).toBe('rtl');   // inherits the RTL page
+  // ...and the message line itself resolves from its own content.
+  const line = page.locator('#insp-body .wx-state .wx-line');
+  expect(await line.getAttribute('dir')).toBe('auto');
 });
 
 // A field with no ICAO code publishes no METAR -- so no observation, no refresh button and
@@ -250,7 +254,7 @@ test('the WX box says None when a field has no AD/WS warning', async ({ page }) 
   await openLLBG(page);
   const wx = page.locator('#insp-body .wx-section');
   await expect(wx.locator('.wx-adws')).toContainText('Aerodrome / Wind-shear');
-  await expect(wx.locator('.wx-adws-none')).toHaveText('None');
+  await expect(wx.locator('.wx-adws-none')).toHaveText('No information');
 });
 
 test('the AD/WS label follows content direction — RTL in a Hebrew session', async ({ page }) => {
@@ -270,10 +274,16 @@ test('the AD/WS label follows content direction — RTL in a Hebrew session', as
     showInspector();
   });
   const adws = page.locator('#insp-body .wx-adws');
-  // dir=auto (not forced ltr): the UA lays each line out from its first strong char via
-  // bidi-plaintext, so the Hebrew label + its "(AD / WS)" render in the right order. (The
-  // CSS `direction` stays inherited; plaintext is what reorders, so that's what we assert.)
-  expect(await adws.getAttribute('dir')).toBe('auto');
-  expect(await adws.evaluate(el => getComputedStyle(el).unicodeBidi)).toBe('isolate');
+  // Both blocks must sit on the SAME side. dir=auto on a wrapper skips bidi-isolated children,
+  // and the label + line each carry their own dir=auto -- so the wrapper saw no
+  // direction-setting text and fell back to LTR, putting this badge on the left while the
+  // METAR/TAF badge sat on the right. Wrappers inherit the interface direction instead.
+  expect(await adws.evaluate(el => getComputedStyle(el).direction)).toBe('rtl');
+  const rightEdge = await adws.evaluate(el => el.getBoundingClientRect().right);
+  const labelRight = await adws.locator('.wx-label').evaluate(el => el.getBoundingClientRect().right);
+  expect(rightEdge - labelRight).toBeLessThan(24);      // badge hugs the right edge, not the left
+  // The label keeps dir=auto so its Hebrew and the trailing "(AD / WS)" order correctly
+  // within the badge, even though the wrapper now inherits the page direction.
+  expect(await adws.locator('.wx-label').getAttribute('dir')).toBe('auto');
   await expect(adws).toContainText('אזהרות שדה');   // Hebrew label present
 });

@@ -2863,9 +2863,11 @@ function appendAirfieldWeather(body, af) {
   }
   const bodyEl = document.createElement('div');
   bodyEl.className = 'wx-body';
-  // Follow content direction: prose messages (loading / no-data / error) read
-  // RTL in Hebrew, while METAR/TAF code blocks force LTR on themselves.
-  bodyEl.dir = 'auto';
+  // The body holds MIXED content -- localized prose, Latin product labels, LTR code blocks --
+  // so it follows the interface direction (inherited) rather than sniffing its own first
+  // strong character. dir=auto here read the Latin "METAR / TAF" label and flipped the whole
+  // box to LTR in a Hebrew session, pushing the badges to the wrong side. Each prose line
+  // keeps its own dir=auto, and the code blocks pin dir=ltr.
   bodyEl.textContent = S.wxLoading || 'Loading…';
   sec.appendChild(bodyEl);
   body.appendChild(sec);
@@ -2878,10 +2880,11 @@ function appendAirfieldWeather(body, af) {
     const warns = (typeof airfieldWarningsFor === 'function') ? airfieldWarningsFor(icao) : [];
     const wrap = document.createElement('div');
     wrap.className = 'wx-block wx-adws';
-    // The label and the "None" line are localized prose — RTL in Hebrew — so let them follow
-    // content direction rather than forcing LTR (which mis-ordered the Hebrew label and its
-    // "(AD / WS)" parenthetical). The warning bodies below are IMS codes and stay LTR.
-    wrap.dir = 'auto';
+    // Inherit the interface direction, like the METAR/TAF state block. dir=auto here looked
+    // LTR: auto-detection SKIPS bidi-isolated children, and both the label and the message
+    // line carry their own dir=auto, so the wrapper saw no direction-setting text and fell
+    // back to LTR -- parking this badge on the left while the METAR/TAF badge sat on the
+    // right. The label and line keep dir=auto so their own words order correctly.
     const t = document.createElement('span');
     t.className = 'wx-label';
     t.dir = 'auto';
@@ -2915,9 +2918,35 @@ function appendAirfieldWeather(body, af) {
   const render = () => {
     stopSpeak();                       // a rebuild discards the buttons a read was tied to
     bodyEl.innerHTML = '';
-    if (!data || data.unsupported) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; appendAdWs(); return; }
-    if (data.error) { bodyEl.textContent = S.wxError || 'Weather unavailable'; appendAdWs(); return; }
-    if (!data.metar && !data.taf) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; appendAdWs(); return; }
+    // No report is still a state worth labelling. Rendered as bare prose it sat unframed above
+    // the AD/WS badge and the two read as unrelated fragments; give it the same
+    // label + line block the warnings use, so "no METAR/TAF" and "no AD/WS" match.
+    const stateBlock = (msg) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'wx-block wx-state';
+      // Inherit the interface direction rather than reading it from the content: this block's
+      // label is always Latin ("METAR / TAF"), so dir=auto would resolve it LTR and park the
+      // badge on the left in a Hebrew session while the AD/WS badge (Hebrew label) sat on the
+      // right. The message line below keeps dir=auto so its own words order correctly.
+      const t = document.createElement('span');
+      t.className = 'wx-label';
+      t.textContent = (S.wxMetar || 'METAR') + ' / ' + (S.wxTaf || 'TAF');
+      wrap.appendChild(t);
+      const line = document.createElement('div');
+      line.className = 'wx-line';
+      line.dir = 'auto';
+      line.textContent = msg;
+      wrap.appendChild(line);
+      bodyEl.appendChild(wrap);
+    };
+    // With the block labelled, the line repeats itself if it names the products again
+    // ("METAR / TAF" over "no METAR/TAF for this field"), so absence reads as the same short
+    // word the warnings block uses. wxAdWsNone is that word ("None" / "אין"); it is shared by
+    // both blocks now, which is exactly what makes them look like a pair.
+    const noneText = S.wxAdWsNone || 'None';
+    if (!data || data.unsupported) { stateBlock(noneText); appendAdWs(); return; }
+    if (data.error) { stateBlock(S.wxError || 'Weather unavailable'); appendAdWs(); return; }
+    if (!data.metar && !data.taf) { stateBlock(noneText); appendAdWs(); return; }
     const block = (label, lines, spkBtn) => {
       const b = document.createElement('div');
       b.className = 'wx-block';

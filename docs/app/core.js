@@ -1444,7 +1444,7 @@ window.S = Object.assign({
   wxError: 'Weather unavailable (offline or proxy blocked)',
   wxMetar: 'METAR',
   wxAdWs: 'Aerodrome / Wind-shear warnings (AD / WS)',
-  wxAdWsNone: 'None',
+  wxAdWsNone: 'No information',
   wxTaf: 'TAF',
   wxShowRaw: 'Show raw',
   wxShowDecoded: 'Show decoded',
