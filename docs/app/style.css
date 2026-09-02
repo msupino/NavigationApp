@@ -6929,3 +6929,72 @@ body.theme-light .follow-me-banner.stale { color: #4a1c08; background: rgba(255,
    because the cost of not noticing is a link still broadcasting after the flight. */
 .follow-me-ctrl button.follow-me-on { color: #7ee08a; border-color: #4e8f58; }
 body.theme-light .follow-me-ctrl button { color: #3b4350; background: rgba(255,255,255,0.9); border-color: #cdd3db; }
+
+/* Parking-request dialog: the AIP asks for things the plan cannot know (which kind of
+   parking, until when, fuel), so they are chosen here and the message is shown -- and
+   editable -- before it is handed to the mail client. */
+.parking-modal { max-width: 560px; }
+.parking-form { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.parking-row { display: flex; align-items: center; gap: 8px; }
+.parking-label { flex: 0 0 42%; font-size: 12px; opacity: 0.85; }
+.parking-row select,
+.parking-row input[type="text"],
+.parking-row textarea { flex: 1 1 auto; min-width: 0; }
+.parking-row input[type="checkbox"] { margin-inline-end: auto; }
+.parking-preview {
+  width: 100%; box-sizing: border-box; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px; line-height: 1.4; resize: vertical;
+}
+/* The dialog's own action row: .fpl-actions is laid out for the filing step's wider modal,
+   and without this the three buttons ran together with no gap. */
+.parking-modal .fpl-actions {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center;
+}
+/* Date + time sit on one line, and wrap together rather than splitting across the row. The
+   date needs the room -- at an even split its picker was clipped mid-year ("09/02/202"). */
+.parking-when { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.parking-when input[type="date"] { flex: 3 1 0; min-width: 0; }
+.parking-when input[type="time"] { flex: 2 1 0; min-width: 0; }
+/* The label column is generous on a wide dialog and starves the controls on a narrow one. */
+@media (max-width: 560px) { .parking-label { flex-basis: 34%; } }
+/* The filing step's action row gained a fourth button and wrapped, dropping Back onto a line
+   of its own. Keep it one row and let the labels shrink instead. */
+.fpl-actions { flex-wrap: nowrap; }
+.fpl-actions button { white-space: nowrap; min-width: 0; }
+@media (max-width: 620px) { .fpl-actions button { font-size: 13px; padding-inline: 10px; } }
+
+/* The dialog's controls follow the theme like the filing step's do. Without color-scheme the
+   native date/time widgets render their own light chrome -- and the calendar and clock glyphs
+   come out dark-on-dark -- so a dark dialog held four white boxes. */
+.parking-form select,
+.parking-form input,
+.parking-form textarea,
+.parking-preview { color-scheme: dark; }
+body.theme-light .parking-form select,
+body.theme-light .parking-form input,
+body.theme-light .parking-form textarea,
+body.theme-light .parking-preview { color-scheme: light; }
+.parking-form select,
+.parking-form input[type="date"],
+.parking-form input[type="time"],
+.parking-form textarea,
+.parking-preview {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #201d1d;
+  border: 1px solid #3a3636;
+  border-radius: 6px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+}
+.parking-preview { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; }
+body.theme-light .parking-form select,
+body.theme-light .parking-form input[type="date"],
+body.theme-light .parking-form input[type="time"],
+body.theme-light .parking-form textarea,
+body.theme-light .parking-preview {
+  color: #1f252c; background: #fff; border-color: #c9d3de;
+}
+/* A required field the pilot has not filled: outlined, not hidden behind a disabled button. */
+.parking-form .fpl-need { border-color: #e0a33a; outline: 1px solid #e0a33a; }
