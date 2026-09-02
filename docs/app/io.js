@@ -1282,10 +1282,16 @@ function fplParkingMailtoUrl(res, park, opts) {
   const q = ['subject=' + encodeURIComponent(subject),
     'body=' + encodeURIComponent(lines.join('\n'))];
   const reply = String(p.replyTo || '').trim();
+  const cc = [];
+  // Herzliya publishes a coordination address AND an operations centre, and its parking rule
+  // names the operations centre as who the approval is executed with -- so both belong on the
+  // request rather than making the pilot forward it on.
+  if (park.opsEmail) cc.push(fplMailtoAddress(park.opsEmail));
   if (reply && FPL_EMAIL_RE.test(reply)) {
-    q.push('cc=' + fplMailtoAddress(reply));
+    cc.push(fplMailtoAddress(reply));
     q.push('reply-to=' + fplMailtoAddress(reply));
   }
+  if (cc.length) q.push('cc=' + cc.join(','));
   // No published address for this field (the AIP names a phone only): open an empty To: so
   // the pilot addresses it themselves rather than sending the request nowhere.
   return 'mailto:' + (park.email ? fplMailtoAddress(park.email) : '') + '?' + q.join('&');

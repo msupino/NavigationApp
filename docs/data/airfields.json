@@ -854,7 +854,8 @@
    "elev_ft": 121,
    "clearance": "121.70 MHz",
 "parking": {
-    "email": "MerkazTi@iaa.gov.il",
+    "email": "llhz.ops@iaa.gov.il",
+    "opsEmail": "MerkazTi@iaa.gov.il",
     "phone": "09-9719580",
     "rule": "over1h"
    },

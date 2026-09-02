@@ -23,7 +23,10 @@ test('the parking rule is read from the dataset, per the AIP', async ({ page }) 
     junk: airfieldParkingRule('nope'),
   }));
   // Herzliya publishes the Operations Centre address; the rule is "over an hour".
-  expect(seen.hz.email).toBe('MerkazTi@iaa.gov.il');
+  // The 2026-08-06 amendment added a dedicated "email for coordination"; the operations
+  // centre it names for executing the approval is kept alongside and cc'd.
+  expect(seen.hz.email).toBe('llhz.ops@iaa.gov.il');
+  expect(seen.hz.opsEmail).toBe('MerkazTi@iaa.gov.il');
   expect(seen.hz.rule).toBe('over1h');
   expect(seen.ha.email).toBe('mail_haifaairport@iaa.gov.il');
   expect(seen.mg.rule).toBe('always');   // Megiddo names a phone, not an address
@@ -45,10 +48,11 @@ test('the request is addressed to the destination and carries the plan details',
       { depTimeLocal: '08:15' });
   });
   const body = decodeURIComponent((url.match(/body=([^&]*)/) || [])[1] || '');
-  expect(url.startsWith('mailto:MerkazTi@iaa.gov.il?')).toBe(true);   // the published address
+  expect(url.startsWith('mailto:llhz.ops@iaa.gov.il?')).toBe(true);   // the published coordination address
   // The address keeps its literal @ (percent-encoding it mangles some clients) — same rule
   // the filing button uses — and the registration is normalised exactly as it is for the FPL.
-  expect(url).toContain('cc=pilot@example.com');                      // pilot stays on the thread
+  expect(url).toContain('MerkazTi@iaa.gov.il');                       // ops centre cc'd, per the clause
+  expect(url).toContain('pilot@example.com');                         // pilot stays on the thread
   expect(body).toContain('4XDAZ');
   expect(body).toContain('C172');
   expect(body).toContain('A. Pilot');
