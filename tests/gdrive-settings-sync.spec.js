@@ -127,6 +127,31 @@ test('the route library shows a "Sync settings too" checkbox that persists the o
   expect(await page.evaluate(() => localStorage.getItem('navaid.syncSettings'))).toBe('1');
 });
 
+test('the opt-in names the personal data it uploads, before it is ticked', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(() => typeof showRouteLibraryModal === 'function' && gdriveConfigured());
+  await page.evaluate(() => showRouteLibraryModal());
+  const hint = page.locator('.route-library-gdrive-pii');
+  // Visible with the box still UNticked: what it would upload is what decides the tick.
+  await expect(page.locator('.route-library-gdrive-settings input')).not.toBeChecked();
+  await expect(hint).toBeVisible();
+  const txt = (await hint.textContent()) || '';
+  // "settings" reads as preferences; the licence number is the word that corrects that.
+  expect(txt.toLowerCase()).toContain('licence');
+  expect(txt).toMatch(/stay on this device/i);
+  await page.locator('.route-library-gdrive-settings input').check();
+  await expect(hint).toBeVisible();            // and it does not vanish once ticked
+});
+
+test('the upload disclosure is translated, not left in English', async ({ page }) => {
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => typeof showRouteLibraryModal === 'function' && gdriveConfigured());
+  await page.evaluate(() => showRouteLibraryModal());
+  const txt = (await page.locator('.route-library-gdrive-pii').textContent()) || '';
+  expect(txt).toMatch(/[\u0590-\u05FF]/);      // Hebrew present
+  expect(txt).toContain('רישיון');              // and it still names the licence
+});
+
 test('a fresh device (no snapshot) does not outrank an existing remote', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {

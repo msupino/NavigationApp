@@ -2528,6 +2528,11 @@ function showRouteLibraryModal(focusSave) {
       if (typeof setSettingsSyncEnabled === 'function') setSettingsSyncEnabled(setChk.checked);
     };
     setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Sync settings too')));
+    // Always shown, not only when ticked: what the box would upload is exactly what the
+    // pilot needs before ticking it.
+    const setHint = document.createElement('div');
+    setHint.className = 'route-library-gdrive-pii';
+    setHint.textContent = S.routeLibraryGdriveSyncPii || '';
     syncBtn.onclick = () => {
       syncBtn.disabled = true;
       setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
@@ -2578,7 +2583,7 @@ function showRouteLibraryModal(focusSave) {
         })
         .then(() => { syncBtn.disabled = false; });
     };
-    gd.append(syncBtn, setLabel, status);
+    gd.append(syncBtn, setLabel, setHint, status);
     body.append(gd);
   }
 

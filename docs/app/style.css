@@ -7004,3 +7004,14 @@ body.theme-light .parking-preview {
 .parking-contact-modal { max-width: 380px; }
 .parking-contact-body { font-size: 13px; line-height: 1.5; white-space: pre-line; margin: 6px 0 12px; }
 .parking-contact-modal .fpl-actions { display: flex; justify-content: flex-end; }
+
+/* What the "Sync settings too" box uploads. Sits under the checkbox, full width, so the
+   pilot details it names are read before the box is ticked, not after. */
+.route-library-gdrive-pii {
+  flex-basis: 100%;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #9a9494;
+  margin-top: 2px;
+}
+body.theme-light .route-library-gdrive-pii { color: #6b7787; }
