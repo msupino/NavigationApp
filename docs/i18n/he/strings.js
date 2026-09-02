@@ -629,6 +629,7 @@ window.S = {
   tbWindFieldOpacityReset: 'אפס בהירות',
   tbWindFieldTime: 'זמן',
   windFieldLoading: 'טוען שדה רוח…',
+  wxChartLoading: 'טוען תרשים…',
   windFieldErr: 'שדה הרוח אינו זמין',
   // עוזר AI (assistant.js)
   assistantTitle: 'עוזר תכנון טיסה',

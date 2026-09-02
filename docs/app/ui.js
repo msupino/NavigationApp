@@ -9404,6 +9404,7 @@ const NavWxAvailability = (function () {
 
   let manifest = null;
   let layer = null;
+  let pwxGen = 0, pwxUrl = null;      // in-flight chart generation + the URL it is loading
 
   const currentLevel = () => (manifest && manifest.levels.find(l => l.level === levelSel.value)) || null;
   const currentTime = () => {
@@ -9416,15 +9417,27 @@ const NavWxAvailability = (function () {
   }
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
+  // These charts are large PNGs (a quarter of a megabyte, seconds on a phone link), and until
+  // one decodes the map simply does not change -- so enabling the layer, changing level, or
+  // scrubbing the valid time all looked like nothing was happening. Say so while it loads.
+  const statusEl = document.getElementById('ims-pwx-status');
+  const showLoading = (on) => {
+    if (!statusEl) return;
+    statusEl.classList.toggle('windfield-loading', !!on);
+    statusEl.style.display = on ? '' : 'none';
+    if (on) statusEl.textContent = S.wxChartLoading || 'Loading chart…';
+  };
   function updateLayer() {
     if (!cb.checked || !manifest) {
       removeLayer();
+      showLoading(false);
       NavWxAvailability.set('pwx', false);
       return;
     }
     const t = currentTime();
     if (!t) {
       removeLayer();
+      showLoading(false);
       NavWxAvailability.set('pwx', true);
       return;
     }
@@ -9439,10 +9452,20 @@ const NavWxAvailability = (function () {
     const bounds = [[cLat - hLat + dLat, cLng - hLng + dLng],
                     [cLat + hLat + dLat, cLng + hLng + dLng]];
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    // Only banner a URL that is actually being fetched: re-rendering the same chart (an
+    // opacity nudge, a pan) must not flash "Loading…". A generation token keeps a slow
+    // earlier image from clearing the banner a newer selection has just raised.
+    const gen = ++pwxGen;
+    const settle = () => { if (gen === pwxGen) showLoading(false); };
+    if (url !== pwxUrl) { pwxUrl = url; showLoading(true); }
     if (!layer) {
       layer = L.imageOverlay(url, bounds, { opacity: NavWxOpacity.value(), interactive: false, pane: 'overlayPane', className: 'ims-pwx-layer' });
+      layer.on('load', settle);
+      layer.on('error', settle);
       layer.addTo(map);
     } else {
+      layer.once('load', settle);
+      layer.once('error', settle);
       layer.setUrl(url);
       layer.setBounds(bounds);
       layer.setOpacity(NavWxOpacity.value());
@@ -9969,24 +9992,40 @@ const NavWxAvailability = (function () {
   // change the valid time while one is in flight. Without a generation token a slower crop
   // of the OLD chart lands after the new one and paints stale weather under the new label
   // -- the same class of defect as the simulator's ended-session poll.
-  let sigwxGen = 0;
+  let sigwxGen = 0, sigwxUrl = null;   // in-flight crop generation + the chart URL it is for
+  // The SIGWX sheet is the heaviest chart here -- a ~0.5 MB PNG, then three canvas crops
+  // before anything paints, so several seconds can pass with the map unchanged. Say it is
+  // loading, on enable AND on every valid-time change, and clear it when the map panel (the
+  // one the pilot is waiting for) is placed, or on failure.
+  const statusEl = document.getElementById('sigwx-ov-status');
+  const showLoading = (on) => {
+    if (!statusEl) return;
+    statusEl.classList.toggle('windfield-loading', !!on);
+    statusEl.style.display = on ? '' : 'none';
+    if (on) statusEl.textContent = S.wxChartLoading || 'Loading chart…';
+  };
   function updateLayer() {
     const gen = ++sigwxGen;
     if (!cb.checked || !manifest) {
       removeLayers();
+      showLoading(false);
       NavWxAvailability.set('sigwx', false);
       return;
     }
     const t = currentTime();
     if (!t) {
       removeLayers();
+      showLoading(false);
       NavWxAvailability.set('sigwx', true);
       return;
     }
     NavWxAvailability.set('sigwx', false);
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    // A cached crop resolves immediately, so only banner what actually has to be fetched.
+    if (url !== sigwxUrl) { sigwxUrl = url; showLoading(true); }
     cropPanel(url, CROP_MAP, true).then(data => {
       if (gen !== sigwxGen) return;                 // a newer selection won
+      showLoading(false);
       if (!cb.checked) { removeLayers(); return; }
       place('map', data, boundsFrom(BOUNDS_MAP, 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale'), NavWxOpacity.value());
       applyRotation();
@@ -9996,6 +10035,7 @@ const NavWxAvailability = (function () {
       // selection had already placed: the chart went blank while the checkbox stayed on and
       // #wx-time still read the new time, so nothing on screen said the weather was gone.
       if (gen !== sigwxGen || !cb.checked) return;
+      showLoading(false);
       removeLayers();
     });
     const tblOp = off('sigwxTblOpacity') || 0.92;

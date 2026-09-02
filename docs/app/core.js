@@ -1778,6 +1778,7 @@ window.S = Object.assign({
   tbWindFieldOpacityReset: 'Reset opacity',
   tbWindFieldTime: 'Time',
   windFieldLoading: 'Loading wind field…',
+  wxChartLoading: 'Loading chart…',
   windFieldErr: 'Wind field unavailable',
   // AI assistant (assistant.js)
   assistantTitle: 'Flight plan assistant',
