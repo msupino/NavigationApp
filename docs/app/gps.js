@@ -2064,9 +2064,24 @@ window.ttsAvailable = ttsAvailable;
 // or a fresh read, stops the previous one). Same native-first, web-fallback path and language
 // resolution as gpsSpeak. Returns a promise that resolves when the utterance finishes, so the
 // caller can flip its button back from "stop" to "speak".
+// Stop only a read this module started. Tracked so a stop cannot silence a cockpit alert.
+var _onDemandActive = false;
 function speakOnDemand(text, lang) {
-  _ttsStopEngine();
+  // Queue behind an in-flight COCKPIT ALERT rather than cancelling it. Both share one engine,
+  // so the old unconditional stop truncated a leg-approach/altitude/TOP alert mid-sentence
+  // whenever the pilot tapped a chart's read-aloud -- and the alert's chain then moved on as
+  // if it had been spoken. Interrupting another on-demand READ is still wanted, so only that
+  // is stopped here; the alert chain is awaited instead.
+  _onDemandStop();
   if (!text) return Promise.resolve();
+  const chain = (typeof window !== 'undefined' && window.__gpsSpeakChain) || Promise.resolve();
+  return chain.catch(function () { /* a failed alert must not block a read */ })
+    .then(function () { return _speakOnDemandNow(text, lang); });
+}
+// The actual utterance, once nothing else is talking.
+function _speakOnDemandNow(text, lang) {
+  _onDemandActive = true;                  // a stop from here on is ours to honour
+  const done = function (v) { _onDemandActive = false; return v; };
   const tts = _nativeTts();
   // A caller can force the voice language (the METAR/TAF reader passes 'en-US': the decoded
   // text is always English, so a Hebrew-session voice would only mispronounce it). Otherwise
@@ -2078,12 +2093,13 @@ function speakOnDemand(text, lang) {
     const resolveLang = lang ? Promise.resolve(useLang) : _gpsResolveVoiceLang(tts);
     return resolveLang
       .then(function (voiceLang) { return tts.speak({ text: text, lang: voiceLang, category: 'playback' }); })
-      .catch(function () { /* best-effort: a TTS failure must not throw at the caller */ });
+      .then(done, done);   // clear the flag whether it spoke or failed
   }
-  return _webSpeak(text, useLang).catch(function () { /* best-effort */ });
+  return _webSpeak(text, useLang).then(done, done);
 }
 window.speakOnDemand = speakOnDemand;
-function speakOnDemandStop() { _ttsStopEngine(); }
+function _onDemandStop() { if (_onDemandActive) { _onDemandActive = false; _ttsStopEngine(); } }
+function speakOnDemandStop() { _onDemandStop(); }
 window.speakOnDemandStop = speakOnDemandStop;
 window.gpsVoiceAlertsOn = gpsVoiceAlertsOn;
 

@@ -57,3 +57,14 @@ test('iaaStations assembles the app station map from raw strings', () => {
   expect(st.LLBG.metar.visib).toBe('10+');
   expect(st.LLHZ.taf.fcsts.length).toBeGreaterThan(0);
 });
+
+test('a METAR trend group is not read as the current observation', () => {
+  // TEMPO/BECMG start a FORECAST trend; everything after belongs to it, not to the report.
+  const m = P.parseMetar('METAR LLBG 011520Z 33009KT 9999 SCT040 31/18 Q1009 TEMPO 4000 TSRA BKN012');
+  expect(m.visib).toBe('10+');                       // the observed 9999, not the trend's 4000
+  expect(m.wxString).toBe('');                       // TSRA is forecast, not happening now
+  expect(m.clouds).toEqual([{ cover: 'SCT', base: 4000 }]);   // no BKN012 from the trend
+  const b = P.parseMetar('METAR LLHA 011450Z 34010KT 9999 FEW030 30/22 Q1009 BECMG 3000 BR');
+  expect(b.visib).toBe('10+');
+  expect(b.wxString).toBe('');
+});

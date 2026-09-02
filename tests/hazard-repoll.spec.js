@@ -100,3 +100,24 @@ test('a feed the pilot never used is not re-fetched by the poll', async ({ page 
   await repoll(page);
   expect(notamHits).toBe(before);   // poll skipped the never-loaded NOTAM feed
 });
+
+test('a failed re-poll keeps the live hazards, not the bundled snapshot', async ({ page }) => {
+  // The re-poll force-reloads; on a network failure the loaders fall back to the repo's
+  // offline data/*.json (or []). That is right at boot and wrong in flight: a flaky link
+  // would replace the live NOTAM set with a stale/empty one until the next good poll.
+  let live = true;
+  await page.route('**notam-data/notam.json**', r => live
+    ? r.fulfill({ contentType: 'application/json', body: JSON.stringify({ notams: [notam('A0001/26'), notam('A0002/26')] }) })
+    : r.abort());
+  await page.route('**/data/notam.json', r => r.fulfill({    // the bundled snapshot
+    contentType: 'application/json', body: JSON.stringify({ notams: [notam('OLD/00')] }) }));
+  await boot(page);
+  await page.evaluate(() => loadNotam(true));
+  expect(await notamCount(page)).toBe(2);
+
+  live = false;                       // the feed goes unreachable mid-session
+  await repoll(page);
+  expect(await notamCount(page)).toBe(2);                       // still the live pair...
+  const ids = await page.evaluate(() => activeNotams().map(n => n.id));
+  expect(ids).not.toContain('OLD/00');                          // ...not the stale snapshot
+});
