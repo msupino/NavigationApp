@@ -23,10 +23,30 @@ const UA = 'NavAid/1.0 (+https://navaid.supino.org) aip-plate-titles';
 const BYOP = 'docs/byop';
 const OUT = 'docs/data/plate-titles.json';
 
+// The index is served by an Azure app service that sleeps: the first request after an idle
+// spell routinely returns 504 while the instance wakes, and a single attempt turned that into
+// a failed daily run (observed twice in a row). Retry with a widening pause -- read-only, and
+// still only a handful of requests a day against their index.
+const INDEX_TRIES = 4;
 async function fetchIndex() {
-  const res = await fetch(INDEX_URL, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`index fetch failed: ${res.status}`);
-  return res.json();
+  let last = '';
+  for (let i = 0; i < INDEX_TRIES; i++) {
+    if (i) await new Promise(r => setTimeout(r, 5000 * i));   // 5s, 10s, 15s
+    try {
+      const res = await fetch(INDEX_URL, {
+        headers: { 'User-Agent': UA, Accept: 'application/json' },
+        signal: AbortSignal.timeout(60000),   // a hung socket must not stall the whole job
+      });
+      if (res.ok) return res.json();
+      last = `HTTP ${res.status}`;
+      // 4xx is an answer, not a nap: retrying it just repeats the same refusal.
+      if (res.status < 500 && res.status !== 429) break;
+    } catch (e) {
+      last = e.message || String(e);
+    }
+    console.error(`index fetch attempt ${i + 1}/${INDEX_TRIES} failed: ${last}`);
+  }
+  throw new Error(`index fetch failed: ${last}`);
 }
 
 // The tree is {aip: {he|en: {AIP: {id: {TITLE, FILES:[...], SUB: {...}}}}}}; FILES entries
