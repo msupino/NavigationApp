@@ -10678,29 +10678,47 @@ function showFplDialog() {
     // Several Israeli fields require parking to be arranged BEFORE you depart (AIP: Herzliya
     // over an hour or overnight, Haifa's helicopter apron, Megiddo/Habonim/Kiryat Shmona
     // visiting aircraft). The plan already holds everything such a request needs, so offer to
-    // write it here rather than making the pilot retype it into a mail client. Shown only for
-    // a destination the AIP actually asks this of.
+    // write it here rather than making the pilot retype it into a mail client.
+    //
+    // The button is always here for an aerodrome destination, even one we hold nothing for:
+    // its absence used to read as "nothing to arrange", which is not something this dataset
+    // can promise -- the first scan of the AIP missed five fields that do require it. Saying
+    // "check the AIP" is honest; showing nothing is a claim.
     const parkAf = (typeof airfieldParkingRule === 'function') ? airfieldParkingRule(res.dest) : null;
-    let parkBtn = null;
-    if (parkAf) {
-      parkBtn = document.createElement('button');
-      parkBtn.type = 'button';
-      parkBtn.id = 'fpl-parking';
-      parkBtn.textContent = S.fplParking || 'Request parking';
-      parkBtn.title = parkAf.email
+    const destIsAerodrome = (typeof airfieldByIcao === 'function')
+      ? !!airfieldByIcao(res.dest)
+      : !!parkAf;
+    const parkBtn = document.createElement('button');
+    parkBtn.type = 'button';
+    parkBtn.id = 'fpl-parking';
+    parkBtn.textContent = S.fplParking || 'Request parking';
+    if (!destIsAerodrome) {
+      // Landing away from an aerodrome: there is no operator to write to. Dimmed rather than
+      // removed, so the control keeps its place and says why it cannot be used.
+      parkBtn.disabled = true;
+      parkBtn.title = S.fplParkingNotAerodrome || 'The destination is not an aerodrome';
+    } else {
+      parkBtn.title = parkAf && parkAf.email
         ? (S.fplParkingTitle || 'Email a parking request to the destination') + ' — ' + parkAf.email
         : (S.fplParkingPhoneOnly || 'Parking is coordinated by phone with the operator') +
-          (parkAf.phone ? ' — ' + parkAf.phone : '');
+          (parkAf && parkAf.phone ? ' — ' + parkAf.phone : '');
       parkBtn.onclick = () => {
-        // A field that publishes only a phone number cannot be written to: opening the dialog
-        // there produced a draft with an empty To:, a request that looks sent and goes
-        // nowhere. The button stays live and says why -- a dead control explains nothing, and
-        // the pilot still has to learn this field wants coordination, and by what number.
-        if (!parkAf.email) {
-          const msg = (typeof S.fplParkingNoEmail === 'function')
-            ? S.fplParkingNoEmail(parkAf.icao)
-            : 'No email defined in AIP for ' + parkAf.icao;
-          showToast(parkAf.phone ? msg + ' — ☎ ' + parkAf.phone : msg);
+        // Only an address can be written to. A field that publishes a phone gets the number;
+        // a field we hold nothing for says so and points at the AIP, rather than opening a
+        // draft addressed to nobody or implying there is nothing to arrange.
+        const icao = (parkAf && parkAf.icao) || String(res.dest || '').toUpperCase();
+        if (!parkAf || !parkAf.email) {
+          let msg;
+          if (parkAf && parkAf.phone) {
+            msg = ((typeof S.fplParkingNoEmail === 'function')
+              ? S.fplParkingNoEmail(icao) : 'No email defined in AIP for ' + icao) +
+              ' — ☎ ' + parkAf.phone;
+          } else {
+            msg = (typeof S.fplParkingNoInfo === 'function')
+              ? S.fplParkingNoInfo(icao)
+              : 'No parking contact on file for ' + icao + ' — check the AIP';
+          }
+          showToast(msg);
           return;
         }
         showParkingRequestModal(res, parkAf, { depTimeLocal: state1.time });
@@ -10712,7 +10730,7 @@ function showFplDialog() {
     backBtn.className = 'modal-cancel';
     backBtn.textContent = S.fplBack || 'Back';
     backBtn.onclick = renderDetails;
-    btns.append(copy, mail, ...(parkBtn ? [parkBtn] : []), backBtn);
+    btns.append(copy, mail, parkBtn, backBtn);
     body.appendChild(btns);
   }
 

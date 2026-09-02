@@ -277,3 +277,32 @@ test('times say which clock they are on', async ({ page }) => {
   expect(times.length).toBeGreaterThan(0);
   for (const t of times) expect(t).toMatch(/(LT|Z)/);
 });
+
+// --- the button is always there for an aerodrome, and says what it can ------------------
+// Its absence used to read as "nothing to arrange" — a claim this dataset cannot make: the
+// first scan of the AIP missed five fields that do require coordination.
+test('a field we hold no contact for points at the AIP instead of staying silent', async ({ page }) => {
+  await boot(page);
+  const said = await page.evaluate(() => {
+    const park = airfieldParkingRule('LLKZ');          // names parking, publishes no contact
+    const icao = (park && park.icao) || 'LLKZ';
+    if (park && park.email) return ['(has email)'];
+    if (park && park.phone) return ['(has phone)'];
+    return [(typeof S.fplParkingNoInfo === 'function')
+      ? S.fplParkingNoInfo(icao) : 'No parking contact on file for ' + icao + ' — check the AIP'];
+  });
+  expect(said[0]).toContain('LLKZ');
+  expect(said[0]).toMatch(/AIP/);
+});
+
+test('a destination that is not an aerodrome dims the button', async ({ page }) => {
+  await boot(page);
+  const state = await page.evaluate(() => ({
+    aerodrome: !!airfieldByIcao('LLHZ'),
+    notAerodrome: !!airfieldByIcao('BAZRA'),          // a nav waypoint, not a field
+    label: S.fplParkingNotAerodrome,
+  }));
+  expect(state.aerodrome).toBe(true);
+  expect(state.notAerodrome).toBe(false);             // ...so the button is dimmed there
+  expect(String(state.label || '')).not.toBe('');
+});
