@@ -680,6 +680,68 @@
         }
       ],
       "layer": "cvfr"
+    },
+    {
+      "id": "llhz-llmg-eiron",
+      "name": "Herzliya to Megiddo",
+      "he": "הרצליה למגידו",
+      "description": "CVFR route from Herzliya up the coast and through Eiron to Megiddo.",
+      "heDescription": "מסלול CVFR מהרצליה לאורך החוף ודרך עירון למגידו.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLHZ",
+        "BAZRA",
+        "DEROR",
+        "SHARO",
+        "HADRA",
+        "EIRON",
+        "ZMGID",
+        "LLMG"
+      ],
+      "notes": [
+        {
+          "cc": "DEROR",
+          "freqName": "PLUTO_WEST",
+          "freqAuto": true
+        },
+        {
+          "cc": "ZMGID",
+          "freqName": "MEGIDDO",
+          "freqAuto": true
+        }
+      ],
+      "layer": "cvfr"
+    },
+    {
+      "id": "llmg-llhz-eiron",
+      "name": "Megiddo to Herzliya",
+      "he": "מגידו להרצליה",
+      "description": "CVFR route from Megiddo through Eiron and down the coast to Herzliya.",
+      "heDescription": "מסלול CVFR ממגידו דרך עירון ולאורך החוף להרצליה.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLMG",
+        "ZMGID",
+        "EIRON",
+        "HADRA",
+        "SHARO",
+        "DEROR",
+        "BAZRA",
+        "LLHZ"
+      ],
+      "notes": [
+        {
+          "cc": "ZMGID",
+          "freqName": "PLUTO_WEST",
+          "freqAuto": true
+        },
+        {
+          "cc": "DEROR",
+          "freqName": "HERZLIYA",
+          "freqAuto": true
+        }
+      ],
+      "layer": "cvfr"
     }
   ],
   "_comment": "Route templates (shared). Each template carries a \"layer\" tag (cvfr|lsa|heli|any); the app shows templates matching the active base layer (plus any)."

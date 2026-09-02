@@ -6998,3 +6998,9 @@ body.theme-light .parking-preview {
 }
 /* A required field the pilot has not filled: outlined, not hidden behind a disabled button. */
 .parking-form .fpl-need { border-color: #e0a33a; outline: 1px solid #e0a33a; }
+
+/* The parking-contact dialog: a number to write down, so it waits for OK rather than sliding
+   away like a toast. Narrow — it carries one sentence and a phone number. */
+.parking-contact-modal { max-width: 380px; }
+.parking-contact-body { font-size: 13px; line-height: 1.5; white-space: pre-line; margin: 6px 0 12px; }
+.parking-contact-modal .fpl-actions { display: flex; justify-content: flex-end; }
