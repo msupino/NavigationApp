@@ -304,3 +304,26 @@ test('a destination that is not an aerodrome dims the button', async ({ page }) 
   expect(state.notAerodrome).toBe(false);             // ...so the button is dimmed there
   expect(String(state.label || '')).not.toBe('');
 });
+
+test('the phone answer waits for OK and names the field in the interface language', async ({ page }) => {
+  // A toast slides away while the pilot looks for a pen; a phone number has to be written down.
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showParkingContactModal === 'function'
+    && typeof airfieldParkingRule === 'function' && typeof loadAirfields === 'function');
+  await page.evaluate(async () => {
+    if (typeof airfields === 'undefined' || airfields === null) await loadAirfields();
+    const park = airfieldParkingRule('LLMG');
+    showParkingContactModal((S.fplParking || '') + ' — ' + park.label + ' (' + park.icao + ')',
+      S.fplParkingNoEmail(park.label) + '\n☎ ' + park.phone);
+  });
+  const box = page.locator('.parking-contact-modal');
+  await expect(box).toBeVisible();
+  await expect(box).toContainText('מגידו');          // the Hebrew name, not just the code
+  await expect(box).toContainText('LLMG');
+  await expect(box).toContainText('04-6528847');     // the number, still on screen
+  // It waits for the pilot rather than timing out.
+  await page.waitForTimeout(1200);
+  await expect(box).toBeVisible();
+  await box.getByRole('button', { name: /אישור|OK/ }).click();
+  await expect(box).toHaveCount(0);
+});

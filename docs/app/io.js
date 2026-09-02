@@ -1245,7 +1245,10 @@ function airfieldParkingRule(icao) {
   if (!list) return null;
   const af = list.find(a => String(a && a.name || '').toUpperCase() === code);
   if (!af || !af.parking) return null;
-  return Object.assign({ icao: code, label: af.en || af.he || code }, af.parking);
+  // The name in the interface language, as every other airfield label is chosen.
+  const preferHe = (typeof S !== 'undefined' && S.airfieldLabelField === 'he');
+  const label = (preferHe ? (af.he || af.en) : (af.en || af.he)) || code;
+  return Object.assign({ icao: code, label }, af.parking);
 }
 window.airfieldParkingRule = airfieldParkingRule;
 
@@ -1353,6 +1356,54 @@ function fplDofToIsoDate(dof) {
   const m = /^(\d{2})(\d{2})(\d{2})$/.exec(String(dof || ''));
   return m ? `20${m[1]}-${m[2]}-${m[3]}` : '';
 }
+
+// A phone number is something the pilot has to write down, and a toast slides away while they
+// look for a pen. Say it in a dialog that waits for OK. Also used when nothing is on file, so
+// the two answers behave the same way.
+function showParkingContactModal(title, body) {
+  const back = document.createElement('div');
+  back.className = 'modal-back fpl-modal';
+  back.dataset.chartModal = 'parking-contact';
+  const box = document.createElement('div');
+  box.className = 'modal parking-contact-modal';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  const close = () => { back.remove(); document.removeEventListener('keydown', onEsc, true); };
+  function onEsc(e) {
+    if (e.key !== 'Escape') return;
+    e.stopImmediatePropagation();       // the dialogs underneath must not close with it
+    close();
+  }
+  back._navaidClose = close;
+  const t = document.createElement('div');
+  t.className = 'modal-title';
+  t.style.cursor = 'default';
+  t.dir = 'auto';
+  t.textContent = title;
+  box.appendChild(t);
+  const p = document.createElement('div');
+  p.className = 'parking-contact-body';
+  p.dir = 'auto';
+  // The number is a Latin run inside Hebrew prose: isolate it so the line does not reorder.
+  if (typeof fplSetBidiText === 'function') fplSetBidiText(p, body);
+  else p.textContent = body;
+  box.appendChild(p);
+  const btns = document.createElement('div');
+  btns.className = 'fpl-actions';
+  const ok = document.createElement('button');
+  ok.type = 'button';
+  ok.className = 'fpl-primary';
+  ok.textContent = S.ok || 'OK';
+  ok.onclick = close;
+  btns.appendChild(ok);
+  box.appendChild(btns);
+  back.appendChild(box);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  document.addEventListener('keydown', onEsc, true);
+  document.body.appendChild(back);
+  ok.focus();
+}
+window.showParkingContactModal = showParkingContactModal;
 
 function showParkingRequestModal(res, park, opts) {
   const o = opts || {};
@@ -10707,18 +10758,20 @@ function showFplDialog() {
         // a field we hold nothing for says so and points at the AIP, rather than opening a
         // draft addressed to nobody or implying there is nothing to arrange.
         const icao = (parkAf && parkAf.icao) || String(res.dest || '').toUpperCase();
+        // Name the field the way the rest of the interface does, with the code beside it: the
+        // pilot reads "Megiddo", the AIP and the plan are keyed by LLMG.
+        const named = (parkAf && parkAf.label && parkAf.label !== icao)
+          ? parkAf.label + ' (' + icao + ')' : icao;
         if (!parkAf || !parkAf.email) {
-          let msg;
-          if (parkAf && parkAf.phone) {
-            msg = ((typeof S.fplParkingNoEmail === 'function')
-              ? S.fplParkingNoEmail(icao) : 'No email defined in AIP for ' + icao) +
-              ' — ☎ ' + parkAf.phone;
-          } else {
-            msg = (typeof S.fplParkingNoInfo === 'function')
-              ? S.fplParkingNoInfo(icao)
-              : 'No parking contact on file for ' + icao + ' — check the AIP';
-          }
-          showToast(msg);
+          const heading = (S.fplParking || 'Request parking') + ' — ' + named;
+          const body = (parkAf && parkAf.phone)
+            ? ((typeof S.fplParkingNoEmail === 'function')
+              ? S.fplParkingNoEmail(named) : 'No email defined in AIP for ' + named) +
+              '\n☎ ' + parkAf.phone
+            : ((typeof S.fplParkingNoInfo === 'function')
+              ? S.fplParkingNoInfo(named)
+              : 'No parking contact on file for ' + named + ' — check the AIP');
+          showParkingContactModal(heading, body);
           return;
         }
         showParkingRequestModal(res, parkAf, { depTimeLocal: state1.time });

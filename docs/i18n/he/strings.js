@@ -531,6 +531,7 @@ window.S = {
   fplParkingTitle: 'שליחת בקשת חנייה בדוא״ל לשדה היעד',
   fplParkingPhoneOnly: 'תיאום החנייה נעשה טלפונית מול מפעיל המנחת',
   fplParkingNotAerodrome: 'שדה היעד אינו שדה תעופה',
+  ok: 'אישור',
   fplParkingNoInfo: function (icao) { return 'אין פרטי תיאום חנייה עבור ' + icao + ' — יש לבדוק בפמ\u05f4ת'; },
   fplParkingNoEmail: function (icao) { return 'אין כתובת דוא\u05f4ל בפמ\u05f4ת עבור ' + icao; },
   fplParkingSubject: 'בקשת חנייה',
