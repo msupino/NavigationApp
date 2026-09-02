@@ -545,6 +545,7 @@ window.S = {
   fplParkingNotesHint: 'כל דבר נוסף שהשדה צריך לדעת',
   fplParkingPreview: 'הודעה',
   fplParkingSend: 'פתח בדוא״ל',
+  fplParkingLT: 'מקומי',
   fplParkingNeedWhen: 'יש להזין את התאריך והשעה שבהם כלי הטיס עוזב.',
   fplParkingFAircraft: 'כלי טיס',
   fplParkingFPic: 'טייס מפקד',

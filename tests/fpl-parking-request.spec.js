@@ -220,3 +220,16 @@ test('both aerodromes are named the same way', async ({ page }) => {
   expect(body).toMatch(/LLHZ \(/);
   expect(body).toMatch(/LLHA \(/);
 });
+
+test('times say which clock they are on', async ({ page }) => {
+  // An unmarked "19:30" in a mail to an operations desk is the dangerous kind of time: the
+  // pilot means the clock they typed, the desk works in Zulu.
+  await boot(page);
+  const body = await page.evaluate(() => fplParkingText(
+    { dep: 'LLHA', dest: 'LLHZ', dof: '260902' }, airfieldParkingRule('LLHZ'),
+    { depTimeLocal: '19:30', depDateIso: '2026-09-02', until: '02/09/2026 20:00 LT (17:00Z)' }).body);
+  // Every time carries a marker — either "LT (…Z)" or a bare Z where the two coincide.
+  const times = body.match(/\b\d{2}:\d{2}\b[^\n]*/g) || [];
+  expect(times.length).toBeGreaterThan(0);
+  for (const t of times) expect(t).toMatch(/(LT|Z)/);
+});

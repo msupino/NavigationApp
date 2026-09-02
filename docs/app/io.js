@@ -1286,7 +1286,7 @@ function fplParkingText(res, park, opts) {
     [S.fplParkingFTo || 'To', fplAerodromeLabel(park.icao)],
     [S.fplParkingFDof || 'Date of flight',
       (fplDofToDisplay(res.dof) || res.dof) +
-        (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + dep : '')],
+        (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + fplClockPair(o.depDateIso, dep) : '')],
     [S.fplParkingKind || 'Parking', o.kind || '[ transit over 1 h / overnight / maintenance ]'],
     [fplParkingUntilLabel(), o.until || '[ date / time ]'],
   ];
@@ -1324,6 +1324,20 @@ function fplParkingText(res, park, opts) {
 // side -- "LLHZ: 02/09/2026" jumped to the left while the "מ-" it belongs to stayed at the
 // right -- and the destination is already named two lines above, so the code was redundant as
 // well as fragile.
+// A bare "19:30" in a mail to an operations desk is the dangerous kind of time: the pilot
+// means the local clock they typed, the desk works in Zulu. Say both when the date is known
+// enough to convert, and mark the local one either way.
+function fplClockPair(dateIso, timeLocal) {
+  const t = String(timeLocal || '').trim();
+  if (!t) return '';
+  const lt = t + ' ' + (S.fplParkingLT || 'LT');
+  const utc = dateIso ? fplUtcFromLocal(dateIso, t) : null;
+  if (!utc) return lt;
+  const z = utc.eobt.slice(0, 2) + ':' + utc.eobt.slice(2);
+  // On a machine already running UTC the two are the same string; printing it twice is noise.
+  return z === t ? t + 'Z' : lt + ' (' + z + 'Z)';
+}
+
 function fplParkingUntilLabel() {
   return S.fplParkingUntil || 'Expected departure from destination';
 }
@@ -1379,8 +1393,12 @@ function showParkingRequestModal(res, park, opts) {
   const to = document.createElement('div');
   to.className = 'fpl-hint';
   to.dir = 'auto';
-  to.textContent = (S.fplParkingTo || 'To') + ': ' + (park.email || (S.fplParkingNoAddress || 'no published address — you will need to fill it in')) +
-    (park.opsEmail ? '  ·  cc ' + park.opsEmail : '') + (park.phone ? '  ·  ☎ ' + park.phone : '');
+  // Addresses and phone numbers are Latin runs inside Hebrew prose: without isolating them the
+  // whole tail reorders and the label's colon ends up on the far side (":אל"). fplSetBidiText
+  // wraps each run in <bdi>, which is what the filing step already does for the same reason.
+  fplSetBidiText(to, (S.fplParkingTo || 'To') + ': ' +
+    (park.email || (S.fplParkingNoAddress || 'no published address — you will need to fill it in')) +
+    (park.opsEmail ? '  ·  cc ' + park.opsEmail : '') + (park.phone ? '  ·  ☎ ' + park.phone : ''));
   box.appendChild(to);
 
   const form = document.createElement('div');
@@ -1428,7 +1446,8 @@ function showParkingRequestModal(res, park, opts) {
     const d = untilDate.value, t = untilTime.value;
     if (!d && !t) return '';
     const dd = d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
-    return [dd, t].filter(Boolean).join(' ');
+    // Same clock marking as the departure: the pilot picks a local time, the desk reads Zulu.
+    return [dd, t ? fplClockPair(d, t) : ''].filter(Boolean).join(' ');
   };
   const fuelEl = document.createElement('input');
   fuelEl.type = 'checkbox';
@@ -1452,6 +1471,7 @@ function showParkingRequestModal(res, park, opts) {
   preview.addEventListener('input', () => { edited = true; });
   const compose = () => fplParkingText(res, park, {
     depTimeLocal: o.depTimeLocal,
+    depDateIso: fplDofToIsoDate(res.dof),
     kind: kindSel.options[kindSel.selectedIndex].textContent,
     until: untilText(),
     handling: fuelEl.checked ? (S.fplParkingFuel || 'Refuelling requested') : '',
