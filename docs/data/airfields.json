@@ -481,6 +481,7 @@
    "lat": 32.65,
    "lng": 34.93278,
 "parking": {
+    "phone": "04-6391068",
     "rule": "always"
    },
       "plates": [
@@ -1158,6 +1159,7 @@
    "lng": 35.59417,
    "elev_ft": 376,
 "parking": {
+    "phone": "04-6943646",
     "rule": "always"
    },
       "plates": [
@@ -1227,6 +1229,7 @@
    "lng": 35.23472,
    "elev_ft": 200,
 "parking": {
+    "phone": "04-6528847",
     "rule": "always"
    },
       "plates": [
