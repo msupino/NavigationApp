@@ -76,3 +76,16 @@ test('a tick with the slider at live is a no-op', async ({ page }) => {
   expect(await master(page)).toBe(0);
   expect(await viewTime(page)).toBe(null);
 });
+
+test('the hazard filter time is the instant the readout names (top of hour)', async ({ page }) => {
+  // notamViewTime used to be Date.now() + h, while the label and lookaheadTarget were anchored
+  // to the TOP OF THE HOUR — so at 12:40Z with +3h the panel said "15:00Z" while the layers
+  // actually filtered at 15:40Z, hiding anything that expired in between.
+  await freezeMutableClock(page);
+  await page.evaluate(() => { window.__now = Date.UTC(2026, 5, 21, 12, 40); });  // 40 min past
+  await boot(page);
+  await setMaster(page, 3);
+  expect(await readout(page)).toContain('15:00Z');
+  expect(await viewTime(page)).toBe(Date.UTC(2026, 5, 21, 15, 0));   // not 15:40Z
+  expect(await page.evaluate(() => window.lookaheadTarget)).toBe(await viewTime(page));
+});

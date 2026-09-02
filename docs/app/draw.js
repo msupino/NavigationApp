@@ -1105,6 +1105,11 @@ async function loadNotam(force) {
     notams = parse(await res.json());
     return notams;
   } catch (e) {
+    // A REFRESH of data we already hold must never downgrade it: the bundled data/notam.json
+    // is an offline snapshot for first load, and [] is "no NOTAMs at all". Falling back to
+    // either on a mid-flight re-poll (flaky link, raw.githubusercontent timeout) would replace
+    // live hazards with stale or empty ones. Keep the last-good set and try again next poll.
+    if (notams !== null) return notams;
     try {
       const res2 = await fetch('data/notam.json');
       notams = parse(await res2.json());
@@ -1236,6 +1241,7 @@ async function loadSigmets(force) {
     sigmets = parse(await res.json());
     return sigmets;
   } catch (e) {
+    if (sigmets !== null) return sigmets;    // refresh failed -> keep last-good (see loadNotam)
     try {
       const res2 = await fetch('data/sigmet.json');
       sigmets = parse(await res2.json());
@@ -1322,6 +1328,9 @@ async function loadAirmets(force) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     airmets = parse(await res.json());
   } catch (e) {
+    // Refresh failed -> keep last-good (see loadNotam). Re-publish it so window.airmets is
+    // never left out of step with the module-local list this early return skips past.
+    if (airmets !== null) { window.airmets = airmets; return airmets; }
     try {
       const res2 = await fetch('data/airmet.json');
       airmets = parse(await res2.json());
