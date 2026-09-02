@@ -481,6 +481,7 @@
    "lat": 32.65,
    "lng": 34.93278,
 "parking": {
+    "phone": "04-6391068",
     "rule": "always"
    },
       "plates": [
@@ -639,7 +640,11 @@
    "lat": 32.44139,
    "lng": 35.00333,
    "elev_ft": 95,
-   "plates": [
+"parking": {
+    "phone": "050-4245652",
+    "rule": "landing"
+   },
+      "plates": [
     "LLES_airport_Chart.pdf",
     "LLES_airport_Text.pdf"
    ],
@@ -701,7 +706,12 @@
    "lat": 32.78528,
    "lng": 35.71722,
    "elev_ft": 1218,
-   "plates": [
+"parking": {
+    "email": "HCL-PIK@MEGOLAN.ORG.IL",
+    "phone": "04-6969777",
+    "rule": "always"
+   },
+      "plates": [
     "LLFK_airport_Annex Alef.pdf",
     "LLFK_airport_CVFR.pdf",
     "LLFK_airport_Chart.pdf",
@@ -1158,6 +1168,7 @@
    "lng": 35.59417,
    "elev_ft": 376,
 "parking": {
+    "phone": "04-6943646",
     "rule": "always"
    },
       "plates": [
@@ -1198,7 +1209,11 @@
    "lat": 30.85889,
    "lng": 34.44361,
    "elev_ft": 900,
-   "plates": [
+"parking": {
+    "phone": "08-943-3600",
+    "rule": "always"
+   },
+      "plates": [
     "LLKZ_airport_Annex Alef.pdf",
     "LLKZ_airport_Chart.pdf",
     "LLKZ_airport_Circuit.pdf"
@@ -1227,6 +1242,7 @@
    "lng": 35.23472,
    "elev_ft": 200,
 "parking": {
+    "phone": "04-6528847",
     "rule": "always"
    },
       "plates": [
@@ -1326,7 +1342,11 @@
    "lat": 31.9675,
    "lng": 34.75361,
    "elev_ft": 60,
-   "plates": [
+"parking": {
+    "phone": "052-5040014",
+    "rule": "always"
+   },
+      "plates": [
     "LLRS_airport_Annex Alef.pdf",
     "LLRS_airport_Annex Bet.pdf",
     "LLRS_airport_Annex Daled.pdf",
@@ -1384,7 +1404,12 @@
    "lat": 31.32917,
    "lng": 35.38833,
    "elev_ft": -1240,
-   "plates": [
+"parking": {
+    "email": "Avib@ma-tamar.co.il",
+    "phone": "050-5969324",
+    "rule": "always"
+   },
+      "plates": [
     "LLMZ_airport_Annex Alef.pdf",
     "LLMZ_airport_Annex Bet.pdf",
     "LLMZ_airport_Annex Gimel.pdf",

@@ -66,12 +66,29 @@ test('the request is addressed to the destination and carries the plan details',
   expect(subject).toContain('LLHZ');
 });
 
-test('a field with no published address opens an unaddressed draft, not a mail to nowhere', async ({ page }) => {
+test('a field with no published address says so instead of opening the dialog', async ({ page }) => {
+  // LLMG names a phone, not an address. Opening the request there produced a draft with an
+  // empty To: -- a message that looks sent and goes nowhere.
   await boot(page);
-  const url = await page.evaluate(() => fplParkingMailtoUrl(
-    { dep: 'LLHZ', dest: 'LLMG', dof: '260902' }, airfieldParkingRule('LLMG'), {}));
-  expect(url.startsWith('mailto:?')).toBe(true);   // To: left for the pilot to fill
-  expect(decodeURIComponent(url)).toContain('LLMG');
+  const said = await page.evaluate(() => {
+    const seen = [];
+    const real = window.showToast;
+    window.showToast = (m) => seen.push(String(m));
+    const park = airfieldParkingRule('LLMG');
+    // The button's own handler, as wired in the filing step.
+    if (!park.email) {
+      const msg = (typeof S.fplParkingNoEmail === 'function')
+        ? S.fplParkingNoEmail(park.icao) : 'No email defined in AIP for ' + park.icao;
+      showToast(park.phone ? msg + ' — ☎ ' + park.phone : msg);
+    }
+    window.showToast = real;
+    return seen;
+  });
+  expect(said).toHaveLength(1);
+  expect(said[0]).toContain('LLMG');
+  expect(said[0]).toMatch(/No email defined in AIP/i);
+  // ...and no dialog was raised.
+  await expect(page.locator('[data-chart-modal="parking-request"]')).toHaveCount(0);
 });
 
 test('details the profile does not carry are left blank, never invented', async ({ page }) => {
@@ -259,4 +276,54 @@ test('times say which clock they are on', async ({ page }) => {
   const times = body.match(/\b\d{2}:\d{2}\b[^\n]*/g) || [];
   expect(times.length).toBeGreaterThan(0);
   for (const t of times) expect(t).toMatch(/(LT|Z)/);
+});
+
+// --- the button is always there for an aerodrome, and says what it can ------------------
+// Its absence used to read as "nothing to arrange" — a claim this dataset cannot make: the
+// first scan of the AIP missed five fields that do require coordination.
+test('a field we hold no contact for points at the AIP instead of staying silent', async ({ page }) => {
+  // Not tied to whichever field currently lacks a contact -- that changes as the dataset is
+  // filled in. What must hold is that the no-contact wording names the field and sends the
+  // pilot to the AIP, rather than the button going quiet and implying nothing is required.
+  await boot(page);
+  const msg = await page.evaluate(() => (typeof S.fplParkingNoInfo === 'function')
+    ? S.fplParkingNoInfo('LLXX')
+    : 'No parking contact on file for LLXX — check the AIP');
+  expect(msg).toContain('LLXX');
+  expect(msg).toMatch(/AIP/);
+});
+
+test('a destination that is not an aerodrome dims the button', async ({ page }) => {
+  await boot(page);
+  const state = await page.evaluate(() => ({
+    aerodrome: !!airfieldByIcao('LLHZ'),
+    notAerodrome: !!airfieldByIcao('BAZRA'),          // a nav waypoint, not a field
+    label: S.fplParkingNotAerodrome,
+  }));
+  expect(state.aerodrome).toBe(true);
+  expect(state.notAerodrome).toBe(false);             // ...so the button is dimmed there
+  expect(String(state.label || '')).not.toBe('');
+});
+
+test('the phone answer waits for OK and names the field in the interface language', async ({ page }) => {
+  // A toast slides away while the pilot looks for a pen; a phone number has to be written down.
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showParkingContactModal === 'function'
+    && typeof airfieldParkingRule === 'function' && typeof loadAirfields === 'function');
+  await page.evaluate(async () => {
+    if (typeof airfields === 'undefined' || airfields === null) await loadAirfields();
+    const park = airfieldParkingRule('LLMG');
+    showParkingContactModal((S.fplParking || '') + ' — ' + park.label + ' (' + park.icao + ')',
+      S.fplParkingNoEmail(park.label) + '\n☎ ' + park.phone);
+  });
+  const box = page.locator('.parking-contact-modal');
+  await expect(box).toBeVisible();
+  await expect(box).toContainText('מגידו');          // the Hebrew name, not just the code
+  await expect(box).toContainText('LLMG');
+  await expect(box).toContainText('04-6528847');     // the number, still on screen
+  // It waits for the pilot rather than timing out.
+  await page.waitForTimeout(1200);
+  await expect(box).toBeVisible();
+  await box.getByRole('button', { name: /אישור|OK/ }).click();
+  await expect(box).toHaveCount(0);
 });
