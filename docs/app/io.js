@@ -10687,9 +10687,24 @@ function showFplDialog() {
       parkBtn.type = 'button';
       parkBtn.id = 'fpl-parking';
       parkBtn.textContent = S.fplParking || 'Request parking';
-      parkBtn.title = (S.fplParkingTitle || 'Email a parking request to the destination') +
-        (parkAf.email ? ' — ' + parkAf.email : '');
-      parkBtn.onclick = () => showParkingRequestModal(res, parkAf, { depTimeLocal: state1.time });
+      parkBtn.title = parkAf.email
+        ? (S.fplParkingTitle || 'Email a parking request to the destination') + ' — ' + parkAf.email
+        : (S.fplParkingPhoneOnly || 'Parking is coordinated by phone with the operator') +
+          (parkAf.phone ? ' — ' + parkAf.phone : '');
+      parkBtn.onclick = () => {
+        // A field that publishes only a phone number cannot be written to: opening the dialog
+        // there produced a draft with an empty To:, a request that looks sent and goes
+        // nowhere. The button stays live and says why -- a dead control explains nothing, and
+        // the pilot still has to learn this field wants coordination, and by what number.
+        if (!parkAf.email) {
+          const msg = (typeof S.fplParkingNoEmail === 'function')
+            ? S.fplParkingNoEmail(parkAf.icao)
+            : 'No email defined in AIP for ' + parkAf.icao;
+          showToast(parkAf.phone ? msg + ' — ☎ ' + parkAf.phone : msg);
+          return;
+        }
+        showParkingRequestModal(res, parkAf, { depTimeLocal: state1.time });
+      };
     }
     const backBtn = document.createElement('button');
     backBtn.type = 'button';

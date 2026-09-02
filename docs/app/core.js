@@ -1663,6 +1663,8 @@ window.S = Object.assign({
   fplOpenMail: 'Submit flight plan',
   fplParking: 'Request parking',
   fplParkingTitle: 'Email a parking request to the destination',
+  fplParkingPhoneOnly: 'Parking is coordinated by phone with the operator',
+  fplParkingNoEmail: function (icao) { return 'No email defined in AIP for ' + icao; },
   fplParkingSubject: 'Parking request',
   fplParkingIntro: 'I request parking approval for the following flight:',
   fplParkingAsk: 'Please confirm the assigned stand and any restrictions.',

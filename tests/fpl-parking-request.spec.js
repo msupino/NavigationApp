@@ -66,12 +66,29 @@ test('the request is addressed to the destination and carries the plan details',
   expect(subject).toContain('LLHZ');
 });
 
-test('a field with no published address opens an unaddressed draft, not a mail to nowhere', async ({ page }) => {
+test('a field with no published address says so instead of opening the dialog', async ({ page }) => {
+  // LLMG names a phone, not an address. Opening the request there produced a draft with an
+  // empty To: -- a message that looks sent and goes nowhere.
   await boot(page);
-  const url = await page.evaluate(() => fplParkingMailtoUrl(
-    { dep: 'LLHZ', dest: 'LLMG', dof: '260902' }, airfieldParkingRule('LLMG'), {}));
-  expect(url.startsWith('mailto:?')).toBe(true);   // To: left for the pilot to fill
-  expect(decodeURIComponent(url)).toContain('LLMG');
+  const said = await page.evaluate(() => {
+    const seen = [];
+    const real = window.showToast;
+    window.showToast = (m) => seen.push(String(m));
+    const park = airfieldParkingRule('LLMG');
+    // The button's own handler, as wired in the filing step.
+    if (!park.email) {
+      const msg = (typeof S.fplParkingNoEmail === 'function')
+        ? S.fplParkingNoEmail(park.icao) : 'No email defined in AIP for ' + park.icao;
+      showToast(park.phone ? msg + ' — ☎ ' + park.phone : msg);
+    }
+    window.showToast = real;
+    return seen;
+  });
+  expect(said).toHaveLength(1);
+  expect(said[0]).toContain('LLMG');
+  expect(said[0]).toMatch(/No email defined in AIP/i);
+  // ...and no dialog was raised.
+  await expect(page.locator('[data-chart-modal="parking-request"]')).toHaveCount(0);
 });
 
 test('details the profile does not carry are left blank, never invented', async ({ page }) => {

@@ -529,6 +529,8 @@ window.S = {
   fplOpenMail: 'הגש תוכנית טיסה',
   fplParking: 'בקשת חנייה',
   fplParkingTitle: 'שליחת בקשת חנייה בדוא״ל לשדה היעד',
+  fplParkingPhoneOnly: 'תיאום החנייה נעשה טלפונית מול מפעיל המנחת',
+  fplParkingNoEmail: function (icao) { return 'אין כתובת דוא\u05f4ל בפמ\u05f4ת עבור ' + icao; },
   fplParkingSubject: 'בקשת חנייה',
   fplParkingIntro: 'אבקש אישור חנייה עבור הטיסה הבאה:',
   fplParkingAsk: 'נא לאשר את עמדת החנייה והמגבלות.',
