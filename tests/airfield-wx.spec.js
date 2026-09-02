@@ -282,10 +282,8 @@ test('the AD/WS label follows content direction — RTL in a Hebrew session', as
   const rightEdge = await adws.evaluate(el => el.getBoundingClientRect().right);
   const labelRight = await adws.locator('.wx-label').evaluate(el => el.getBoundingClientRect().right);
   expect(rightEdge - labelRight).toBeLessThan(24);      // badge hugs the right edge, not the left
-  // dir=auto (not forced ltr): the UA lays each line out from its first strong char via
-  // bidi-plaintext, so the Hebrew label + its "(AD / WS)" render in the right order. (The
-  // CSS `direction` stays inherited; plaintext is what reorders, so that's what we assert.)
-  expect(await adws.getAttribute('dir')).toBe('auto');
-  expect(await adws.evaluate(el => getComputedStyle(el).unicodeBidi)).toBe('isolate');
+  // The label keeps dir=auto so its Hebrew and the trailing "(AD / WS)" order correctly
+  // within the badge, even though the wrapper now inherits the page direction.
+  expect(await adws.locator('.wx-label').getAttribute('dir')).toBe('auto');
   await expect(adws).toContainText('אזהרות שדה');   // Hebrew label present
 });
