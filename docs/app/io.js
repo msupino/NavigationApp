@@ -1254,6 +1254,17 @@ window.airfieldParkingRule = airfieldParkingRule;
 // not carry is left as a blank for the pilot to complete, rather than guessed at.
 // Subject and body, built from the plan plus whatever the pilot chose in the dialog. Split
 // out from the mailto so the dialog can show exactly what will be sent, and edit it.
+// Both ends read the same way: the destination had a name only because the parking lookup
+// happened to carry one, so "From: LLHZ / To: LLHA (Haifa)" named one aerodrome and not the
+// other. A code with no dataset entry stays a bare code.
+function fplAerodromeLabel(icao) {
+  const code = String(icao || '').trim().toUpperCase();
+  const list = (typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : null;
+  const af = list ? list.find(a => String(a && a.name || '').toUpperCase() === code) : null;
+  const name = af && (af.en || af.he);
+  return name ? code + ' (' + name + ')' : code;
+}
+
 function fplParkingText(res, park, opts) {
   const o = opts || {};
   const p = (typeof fplProfileRead === 'function') ? fplProfileRead() : {};
@@ -1271,8 +1282,8 @@ function fplParkingText(res, park, opts) {
       blank(p.pic) + (p.license ? ', ' + (S.fplParkingFLicence || 'licence') + ' ' + p.license : '')],
     [S.fplParkingFMobile || 'Mobile', blank(p.cell)],
     [S.fplParkingFPob || 'Persons on board', blank(p.persons)],
-    [S.fplParkingFFrom || 'From', res.dep],
-    [S.fplParkingFTo || 'To', park.icao + ' (' + park.label + ')'],
+    [S.fplParkingFFrom || 'From', fplAerodromeLabel(res.dep)],
+    [S.fplParkingFTo || 'To', fplAerodromeLabel(park.icao)],
     [S.fplParkingFDof || 'Date of flight',
       res.dof + (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + dep : '')],
     [S.fplParkingKind || 'Parking', o.kind || '[ transit over 1 h / overnight / maintenance ]'],
@@ -1322,16 +1333,30 @@ function fplDofToIsoDate(dof) {
 
 function showParkingRequestModal(res, park, opts) {
   const o = opts || {};
-  if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+  // NOT closeOpenChartModals(): that deliberately closes the flight plan as well ("only one
+  // chart on screen"), and this dialog is opened FROM the plan and sits on top of it -- so it
+  // took the plan down on the way up, and Escape then looked like it closed both.
   const back = document.createElement('div');
-  back.className = 'modal-back';
+  // `fpl-modal` on the BACKDROP is what the flight-plan panel looks for: its Escape handler
+  // stands down for a dialog opened FROM it (see flightPlanEscape), and without that marker
+  // Escape closed this request AND the plan underneath it. The panel's listener is registered
+  // first, so stopImmediatePropagation here cannot help -- the panel has to be the one to defer.
+  back.className = 'modal-back fpl-modal';
   back.dataset.chartModal = 'parking-request';
   const box = document.createElement('div');
   box.className = 'modal parking-modal';
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
   const close = () => { back.remove(); document.removeEventListener('keydown', onEsc, true); };
-  function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+  // stopImmediatePropagation, not stopPropagation: the flight-plan panel's own Escape
+  // listener sits on `document` too, and stopPropagation does not stop another listener on
+  // the SAME node -- so Escape closed this dialog AND the plan underneath it, taking the
+  // half-filled request with it. Same trap the cross-country form already documents.
+  function onEsc(e) {
+    if (e.key !== 'Escape') return;
+    e.stopImmediatePropagation();
+    close();
+  }
   back._navaidClose = close;
 
   const title = document.createElement('div');
@@ -1375,15 +1400,18 @@ function showParkingRequestModal(res, park, opts) {
   field(S.fplParkingKind || 'Parking', kindSel);
   // Native date/time pickers, as the filing step uses: a free-text "03/09 14:00" is a format
   // the pilot has to guess and the desk has to interpret, and on a phone it is a keyboard
-  // where a picker belongs. Defaulted to the flight's own date so the common case (leaving
-  // again the same day) is one tap.
+  // where a picker belongs. NOT seeded from the plan: when the aircraft leaves again is not
+  // in the plan at all -- an overnight stay departs the following day -- so a prefilled date
+  // would be a guess presented as an answer. Both are required instead; it is the one thing
+  // the field is being asked to reserve.
   const untilWrap = document.createElement('span');
   untilWrap.className = 'parking-when';
   const untilDate = document.createElement('input');
   untilDate.type = 'date';
-  untilDate.value = fplDofToIsoDate(res.dof);
+  untilDate.required = true;
   const untilTime = document.createElement('input');
   untilTime.type = 'time';
+  untilTime.required = true;
   untilWrap.append(untilDate, untilTime);
   field(fplParkingUntilLabel(park.icao), untilWrap);
   // What the message prints: the local conventions the desk reads, not the ISO the input holds.
@@ -1430,6 +1458,14 @@ function showParkingRequestModal(res, park, opts) {
     el.addEventListener('input', refresh);
     el.addEventListener('change', refresh);
   }
+  for (const el of [untilDate, untilTime]) {
+    const clear = () => {
+      if (el.value) el.classList.remove('fpl-need');
+      if (untilDate.value && untilTime.value) missing.hidden = true;
+    };
+    el.addEventListener('input', clear);
+    el.addEventListener('change', clear);
+  }
   box.appendChild(preview);
 
   const btns = document.createElement('div');
@@ -1438,7 +1474,23 @@ function showParkingRequestModal(res, park, opts) {
   send.type = 'button';
   send.className = 'fpl-primary';
   send.textContent = S.fplParkingSend || 'Open in mail';
+  const missing = document.createElement('div');
+  missing.className = 'fpl-warn';
+  missing.hidden = true;
+  missing.dir = 'auto';
+  missing.textContent = S.fplParkingNeedWhen || 'Enter the date and time the aircraft leaves again.';
+  box.appendChild(missing);
   send.onclick = () => {
+    // The one thing the field is being asked to reserve is a slot until a time. Sending
+    // without it just starts a second exchange, so say what is missing and mark the boxes --
+    // enabled button, as the filing step does, because a disabled control explains nothing.
+    if (!untilDate.value || !untilTime.value) {
+      missing.hidden = false;
+      untilDate.classList.toggle('fpl-need', !untilDate.value);
+      untilTime.classList.toggle('fpl-need', !untilTime.value);
+      (untilDate.value ? untilTime : untilDate).focus();
+      return;
+    }
     const t = compose();
     location.href = fplParkingMailtoUrl(res, park, { subject: t.subject, body: preview.value });
     close();

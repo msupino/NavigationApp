@@ -152,8 +152,10 @@ test('the departure date/time are pickers, defaulted to the day of the flight', 
   // Native pickers rather than a free-text format the pilot has to guess at.
   await expect(modal.locator('input[type="date"]')).toHaveCount(1);
   await expect(modal.locator('input[type="time"]')).toHaveCount(1);
-  // Seeded from the plan's own date of flight (DOF 260902), so the usual case is one tap.
-  expect(await modal.locator('input[type="date"]').inputValue()).toBe('2026-09-02');
+  // NOT seeded from the plan: when the aircraft leaves again is not in the plan (an overnight
+  // stay departs the next day), so a prefilled date would be a guess presented as an answer.
+  expect(await modal.locator('input[type="date"]').inputValue()).toBe('');
+  expect(await modal.locator('input[type="time"]').inputValue()).toBe('');
   // A date with no time still reads sensibly.
   await modal.locator('input[type="date"]').fill('2026-09-04');
   expect(await modal.locator('.parking-preview').inputValue()).toContain('04/09/2026');
@@ -172,4 +174,49 @@ test('the Hebrew prefix hyphen attaches to the aerodrome code', async ({ page })
   // English build (the spec boots ?lang=en) keeps its space.
   expect(out).toContain('Expected departure from LLHA');
   expect(out).not.toContain('from  LLHA');
+});
+
+test('Escape closes the dialog without taking the flight plan with it', async ({ page }) => {
+  // The plan's own Escape listener is on `document` too, so a plain stopPropagation left both
+  // handlers running: the request closed and the half-filled plan closed underneath it.
+  await boot(page);
+  await page.evaluate(() => {
+    // A route, so the flight-plan modal has something to show.
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'LLBG' }, { lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+    showFlightPlan();
+  });
+  const plan = page.locator('.modal-back').filter({ hasNot: page.locator('[data-chart-modal="parking-request"]') });
+  await expect(plan.first()).toBeVisible();
+  const planCount = await page.locator('.modal-back').count();
+
+  await openDialog(page);
+  await expect(page.locator('[data-chart-modal="parking-request"]')).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-chart-modal="parking-request"]')).toHaveCount(0);   // dialog gone
+  expect(await page.locator('.modal-back').count()).toBe(planCount);                   // plan still up
+});
+
+test('the request will not send without the date and time it leaves again', async ({ page }) => {
+  await boot(page);
+  await openDialog(page);
+  const modal = page.locator('.modal-back[data-chart-modal="parking-request"]');
+  await modal.getByRole('button', { name: /open in mail/i }).click();
+  await expect(modal).toContainText(/date and time/i);      // says what is missing...
+  await expect(modal).toBeVisible();                        // ...and stays open
+  await expect(modal.locator('input[type="date"]')).toHaveClass(/fpl-need/);
+  // Filling them clears the mark.
+  await modal.locator('input[type="date"]').fill('2026-09-03');
+  await modal.locator('input[type="time"]').fill('14:00');
+  await expect(modal.locator('input[type="date"]')).not.toHaveClass(/fpl-need/);
+});
+
+test('both aerodromes are named the same way', async ({ page }) => {
+  await boot(page);
+  const body = await page.evaluate(() => fplParkingText(
+    { dep: 'LLHZ', dest: 'LLHA', dof: '260902' }, airfieldParkingRule('LLHA'), {}).body);
+  // "From: LLHZ / To: LLHA (Haifa)" named one end and not the other.
+  expect(body).toMatch(/LLHZ \(/);
+  expect(body).toMatch(/LLHA \(/);
 });

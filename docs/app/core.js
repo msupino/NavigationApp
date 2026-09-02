@@ -1679,6 +1679,7 @@ window.S = Object.assign({
   fplParkingNotesHint: 'Anything else the field should know',
   fplParkingPreview: 'Message',
   fplParkingSend: 'Open in mail',
+  fplParkingNeedWhen: 'Enter the date and time the aircraft leaves again.',
   fplParkingFAircraft: 'Aircraft',
   fplParkingFPic: 'Pilot in command',
   fplParkingFLicence: 'licence',
