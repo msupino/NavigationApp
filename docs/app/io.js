@@ -1285,9 +1285,10 @@ function fplParkingText(res, park, opts) {
     [S.fplParkingFFrom || 'From', fplAerodromeLabel(res.dep)],
     [S.fplParkingFTo || 'To', fplAerodromeLabel(park.icao)],
     [S.fplParkingFDof || 'Date of flight',
-      res.dof + (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + dep : '')],
+      (fplDofToDisplay(res.dof) || res.dof) +
+        (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + dep : '')],
     [S.fplParkingKind || 'Parking', o.kind || '[ transit over 1 h / overnight / maintenance ]'],
-    [fplParkingUntilLabel(park.icao), o.until || '[ date / time ]'],
+    [fplParkingUntilLabel(), o.until || '[ date / time ]'],
   ];
   if (o.handling) rows.push([S.fplParkingFHandling || 'Handling', o.handling]);
   // Pad the labels into a column only for a left-to-right message. In Hebrew the padding is
@@ -1319,11 +1320,19 @@ function fplParkingText(res, park, opts) {
 // needed, then hand it to the mail client.
 // The plan carries the date of flight as YYMMDD (ICAO field 18 DOF); a date input wants
 // ISO. Two-digit years are this century -- the AIP form has no room for another.
-// "Expected departure from LLHA", but the Hebrew label ends in a prefix hyphen (מ-), which
-// attaches to the code with no space -- "מ- LLHA" is wrong the way "from-LLHA" would be.
-function fplParkingUntilLabel(icao) {
-  const lbl = S.fplParkingUntil || 'Expected departure from';
-  return lbl + (/[-\u05BE\u2010-\u2015]$/.test(lbl) ? '' : ' ') + icao;
+// No aerodrome code in this label. Embedded in an RTL line the Latin run reorders to the far
+// side -- "LLHZ: 02/09/2026" jumped to the left while the "מ-" it belongs to stayed at the
+// right -- and the destination is already named two lines above, so the code was redundant as
+// well as fragile.
+function fplParkingUntilLabel() {
+  return S.fplParkingUntil || 'Expected departure from destination';
+}
+
+// YYMMDD -> DD/MM/YYYY. The raw ICAO form belongs in the filed plan, not in a mail a person
+// reads: "260902" sat next to a formatted "02/09/2026" in the same message.
+function fplDofToDisplay(dof) {
+  const m = /^(\d{2})(\d{2})(\d{2})$/.exec(String(dof || ''));
+  return m ? `${m[3]}/${m[2]}/20${m[1]}` : '';
 }
 
 function fplDofToIsoDate(dof) {
@@ -1413,7 +1422,7 @@ function showParkingRequestModal(res, park, opts) {
   untilTime.type = 'time';
   untilTime.required = true;
   untilWrap.append(untilDate, untilTime);
-  field(fplParkingUntilLabel(park.icao), untilWrap);
+  field(fplParkingUntilLabel(), untilWrap);
   // What the message prints: the local conventions the desk reads, not the ISO the input holds.
   const untilText = () => {
     const d = untilDate.value, t = untilTime.value;

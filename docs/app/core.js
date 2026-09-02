@@ -1672,7 +1672,7 @@ window.S = Object.assign({
   fplParkingTransit: 'Transit (over 1 hour)',
   fplParkingOvernight: 'Overnight',
   fplParkingMaintenance: 'Maintenance',
-  fplParkingUntil: 'Expected departure from',
+  fplParkingUntil: 'Expected departure from destination',
   fplParkingUntilHint: 'e.g. 03/09 14:00',
   fplParkingFuel: 'Refuelling requested',
   fplParkingNotes: 'Notes',

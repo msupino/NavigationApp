@@ -161,19 +161,19 @@ test('the departure date/time are pickers, defaulted to the day of the flight', 
   expect(await modal.locator('.parking-preview').inputValue()).toContain('04/09/2026');
 });
 
-test('the Hebrew prefix hyphen attaches to the aerodrome code', async ({ page }) => {
-  // "מ-" is a prefix: it binds to the code with no space. "מ- LLHA" is as wrong as
-  // "from-LLHA" would be in English, where the same label DOES take a space.
+test('the departure line carries no aerodrome code, and dates read the same way', async ({ page }) => {
+  // An aerodrome code embedded in this label reordered to the far side of an RTL line --
+  // "LLHZ: 02/09/2026" jumped left while the "מ-" it belonged to stayed right. The
+  // destination is named two lines above, so the code is dropped rather than patched.
   await boot(page);
-  const out = await page.evaluate(() => {
-    const mk = () => fplParkingText({ dep: 'LLBG', dest: 'LLHA', dof: '260902' },
-      airfieldParkingRule('LLHA'), { until: '02/09/2026 14:00' }).body;
-    return mk();
-  });
-  expect(out).toContain('LLHA');
-  // English build (the spec boots ?lang=en) keeps its space.
-  expect(out).toContain('Expected departure from LLHA');
-  expect(out).not.toContain('from  LLHA');
+  const out = await page.evaluate(() => fplParkingText({ dep: 'LLHA', dest: 'LLHZ', dof: '260902' },
+    airfieldParkingRule('LLHZ'), { until: '02/09/2026 20:00' }).body);
+  expect(out).toContain('Expected departure from destination: 02/09/2026 20:00');
+  expect(out).not.toMatch(/Expected departure from destination: *LLHZ/);
+  // ...and the date of flight is written the way a person reads it, not as the raw ICAO DOF
+  // sitting next to an already-formatted date in the same message.
+  expect(out).toContain('02/09/2026,  departure');
+  expect(out).not.toContain('260902');
 });
 
 test('Escape closes the dialog without taking the flight plan with it', async ({ page }) => {

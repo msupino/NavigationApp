@@ -538,7 +538,7 @@ window.S = {
   fplParkingTransit: 'מעבר (מעל שעה)',
   fplParkingOvernight: 'לילה',
   fplParkingMaintenance: 'אחזקה',
-  fplParkingUntil: 'המראה צפויה מ-',
+  fplParkingUntil: 'המראה צפויה מהיעד',
   fplParkingUntilHint: 'לדוגמה 03/09 14:00',
   fplParkingFuel: 'נדרש תדלוק',
   fplParkingNotes: 'הערות',
