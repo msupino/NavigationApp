@@ -1293,7 +1293,7 @@ window.S = Object.assign({
   routeLibraryGdriveSyncSettings: 'Sync settings too',
   // Named in full because the pilot profile is personal data leaving the device, and
   // a checkbox reading "settings" does not suggest a licence number is among them.
-  routeLibraryGdriveSyncPii: 'Carries your pilot details (name, licence, phone) and aircraft profile to Drive. Your filing address and AI keys stay on this device.',
+  routeLibraryGdriveSyncPii: 'Only with this ticked: your pilot details (name, licence, phone) and aircraft profile go to Drive too. Routes sync either way. Your filing address and AI keys never leave this device.',
   routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
   routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = REPLACE this device\'s values with the ones from Drive.\nCancel = do nothing (sync again to choose).',
   routeLibraryGdriveKeepThisDevice: 'Keep THIS device\'s settings and update Google Drive?',

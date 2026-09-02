@@ -160,7 +160,7 @@ window.S = {
   searchKindRouteWp: 'במסלול שלך',
   searchKindNote: 'הערה',
   routeLibraryGdriveSyncSettings: 'סנכרן גם הגדרות',
-  routeLibraryGdriveSyncPii: 'מעביר ל-Drive את פרטי הטייס (שם, רישיון, טלפון) ואת פרופיל המטוס. כתובת ההגשה ומפתחות ה-AI נשארים במכשיר הזה.',
+  routeLibraryGdriveSyncPii: 'רק כשהתיבה מסומנת: גם פרטי הטייס (שם, רישיון, טלפון) ופרופיל המטוס עולים ל‑Drive. מסלולים מסתנכרנים כך או כך. כתובת ההגשה ומפתחות ה‑AI לא עולים לעולם.',
   routeLibraryGdriveSettingsApplied: 'ההגדרות עודכנו — טוען מחדש…',
   routeLibraryGdriveFirstSyncConflict: 'גם למכשיר הזה וגם ל-Google Drive יש הגדרות עבור: {keys}.\n\nאישור = להחליף את הערכים של המכשיר הזה בערכים מה-Drive.\nביטול = לא לעשות דבר (אפשר לסנכרן שוב ולבחור).',
   routeLibraryGdriveKeepThisDevice: 'לשמור על ההגדרות של המכשיר הזה ולעדכן את Google Drive?',
