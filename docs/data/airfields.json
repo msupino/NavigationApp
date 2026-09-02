@@ -637,7 +637,7 @@
     "LLES_airport_Text.pdf"
    ],
    "runways": [
-    "09/27"
+    "10/28"
    ]
   },
   {
@@ -1063,8 +1063,7 @@
     }
    ],
    "runways": [
-    "15/33",
-    "05/23"
+    "15/33"
    ],
    "circuit_overlay": {
     "png": "LLIB_circuit.png",
