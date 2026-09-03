@@ -143,6 +143,10 @@ test('the opt-in names the personal data it uploads, once it is ticked', async (
   // "settings" reads as preferences; the licence number is the word that corrects that.
   expect(txt.toLowerCase()).toContain('licence');
   expect(txt).toMatch(/never leave this device/i);
+  // navaid.fpl.replyTo is the pilot's own address and IS on the allowlist, so the line
+  // must name email — "the AIS filing address stays local" otherwise reads as "no
+  // address leaves", which is the opposite of what happens.
+  expect(txt.toLowerCase()).toContain('email');
   await chk.uncheck();
   await expect(hint).toBeHidden();             // and it goes away with the opt-in
 });
