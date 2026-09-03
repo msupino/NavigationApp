@@ -1739,6 +1739,24 @@ body.theme-light #aircraft-custom input {
 /* The header stays put; only the body scrolls. */
 #insp-body { overflow-y: auto; }
 #inspector.hidden { display: none; }
+/* Text zoom for the panel. `zoom` reflows (a transform would not), so the sheet keeps its
+   width and scrolls normally at any size. Two fingers on the body are the panel's own pinch. */
+#insp-body { touch-action: pan-y; }
+/* flex:none so the title (flex:1, min-width:0) gives up space instead of the buttons, and a
+   gap so a long airfield name cannot crowd them. */
+#insp-zoom { display: inline-flex; flex: none; gap: 4px; margin-inline: 6px; }
+#insp-zoom button {
+  min-width: 26px;
+  padding: 1px 6px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  border-radius: 4px;
+  cursor: pointer;
+}
+/* Dimmed at the ends of the range, never removed. */
+#insp-zoom button:disabled { opacity: 0.45; cursor: default; }
+
 
 #insp-header {
   display: flex;

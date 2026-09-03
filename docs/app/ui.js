@@ -7783,6 +7783,64 @@ document.getElementById('tool-reset-all-markers').onclick = () => {
   }
   draw();
 };
+// --- Inspector text zoom ---------------------------------------------------
+// The app ships user-scalable=no, so the browser's own pinch cannot enlarge a panel that
+// is mostly small print -- frequencies, runway designators, a decoded METAR. CSS `zoom`
+// (not `transform: scale`) because it REFLOWS: the bottom sheet keeps its width, wraps,
+// and scrolls normally at any size, which a transform would break.
+const INSP_ZOOM_KEY = 'navaid.inspZoom';       // device-local: a reading preference for THIS screen
+const INSP_ZOOM_MIN = 0.8, INSP_ZOOM_MAX = 2;
+
+function inspZoomGet() {
+  const v = parseFloat(localStorage.getItem(INSP_ZOOM_KEY));
+  return Number.isFinite(v) ? Math.min(INSP_ZOOM_MAX, Math.max(INSP_ZOOM_MIN, v)) : 1;
+}
+
+function applyInspZoom(next) {
+  const z = Math.min(INSP_ZOOM_MAX, Math.max(INSP_ZOOM_MIN, Math.round(next * 20) / 20));
+  const body = document.getElementById('insp-body');
+  if (body) body.style.zoom = String(z);
+  try { localStorage.setItem(INSP_ZOOM_KEY, String(z)); } catch (e) { /* private mode */ }
+  // Dimmed at the ends of the range, never removed.
+  const out = document.getElementById('insp-zoom-out');
+  const inn = document.getElementById('insp-zoom-in');
+  if (out) out.disabled = z <= INSP_ZOOM_MIN;
+  if (inn) inn.disabled = z >= INSP_ZOOM_MAX;
+  return z;
+}
+
+(function wireInspectorZoom() {
+  const out = document.getElementById('insp-zoom-out');
+  const inn = document.getElementById('insp-zoom-in');
+  const body = document.getElementById('insp-body');
+  if (!out || !inn || !body) return;
+  // Header buttons must not start the panel drag that the header bar owns.
+  const stop = e => { e.stopPropagation(); };
+  for (const b of [out, inn]) { b.addEventListener('mousedown', stop); b.addEventListener('touchstart', stop, { passive: true }); }
+  out.onclick = () => applyInspZoom(inspZoomGet() - 0.1);
+  inn.onclick = () => applyInspZoom(inspZoomGet() + 0.1);
+
+  // Pinch anywhere in the panel body. Two fingers raise no click, so the rows underneath
+  // keep working; one finger stays a plain scroll of the sheet.
+  let d0 = 0, z0 = 1;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  body.addEventListener('touchstart', e => {
+    if (e.touches.length !== 2) return;
+    d0 = dist([e.touches[0], e.touches[1]]);
+    z0 = inspZoomGet();
+  }, { passive: true });
+  body.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !d0) return;
+    e.preventDefault();
+    applyInspZoom(z0 * (dist([e.touches[0], e.touches[1]]) / d0));
+  }, { passive: false });
+  const end = e => { if (e.touches.length < 2) d0 = 0; };
+  body.addEventListener('touchend', end, { passive: true });
+  body.addEventListener('touchcancel', end, { passive: true });
+
+  applyInspZoom(inspZoomGet());     // restore the size this screen was left at
+})();
+
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();
