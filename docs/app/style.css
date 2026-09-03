@@ -2828,6 +2828,14 @@ body.theme-light .shortcuts-help-keys kbd {
   position: absolute;
   margin: 0;
 }
+/* Chart modals reuse the flight plan's non-blocking backdrop so the map stays pannable
+   underneath, and inherited its 2000 with it — below the inspector (2320). Opening the
+   field plates from an airfield inspector then drew them UNDER the panel that launched
+   them, which on a phone is a bottom sheet covering most of the screen. Clear the
+   inspector but stay below the toolbar dropdowns (2330/2340), exactly as .export-place
+   does at 2325. The backdrop is pointer-events:none, so raising it captures nothing.
+   The flight plan itself carries no data-chart-modal and keeps 2000 deliberately. */
+.modal-back.flight-plan[data-chart-modal] { z-index: 2325; }
 /* Export modal while placing the flight-plan card: clear the backdrop so the
    map (and the draggable card) stays reachable underneath the dialog. */
 .modal-back.export-place {
@@ -7006,12 +7014,19 @@ body.theme-light .parking-preview {
 .parking-contact-modal .fpl-actions { display: flex; justify-content: flex-end; }
 
 /* What the "Sync settings too" box uploads. Sits under the checkbox, full width, so the
-   pilot details it names are read before the box is ticked, not after. */
+   pilot details it names are read before the box is ticked, not after. The rule reads as
+   attached to the checkbox rather than to the whole row: plain route sync uploads none of
+   this, and a caption centred under both controls would say otherwise. Logical inline-start
+   so it lands on the correct side in Hebrew. */
 .route-library-gdrive-pii {
   flex-basis: 100%;
   font-size: 11px;
   line-height: 1.35;
   color: #9a9494;
-  margin-top: 2px;
+  margin-top: 4px;
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid #4b4646;
+  text-align: start;
 }
-body.theme-light .route-library-gdrive-pii { color: #6b7787; }
+.route-library-gdrive-pii[hidden] { display: none; }
+body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start-color: #c7cedb; }
