@@ -57,6 +57,21 @@ test.describe('plate viewer', () => {
     await expect(page.locator('.plate-zoom-pct')).toHaveText('600%');
     await expect(zoomOut).toBeEnabled();           // and the other end reopens
   });
+
+  test('the gist can move the plate zoom ceiling and step', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await boot(page);
+    await page.evaluate(() => { setTune('plateZoomMax', 3); setTune('plateZoomStep', 2); });
+    await page.waitForFunction(() => typeof showPlateViewer === 'function');
+    await page.evaluate(() => showPlateViewer('LLHZ_airport_CVFR.pdf', 'LLHZ VAC'));
+    const zoomIn = page.locator('.plate-zoom-btn').last();
+    await zoomIn.click();
+    await expect(page.locator('.plate-zoom-pct')).toHaveText('200%');   // the tuned step
+    await zoomIn.click();
+    await expect(page.locator('.plate-zoom-pct')).toHaveText('300%');   // the tuned ceiling
+    await expect(zoomIn).toBeVisible();
+    await expect(zoomIn).toBeDisabled();
+  });
 });
 
 test.describe('satellite thumbnail', () => {

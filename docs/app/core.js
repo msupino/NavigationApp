@@ -149,6 +149,16 @@ NavAid.tuningDefaults = {
   satelliteExpandedZoom: { value: 17, min: 10, max: 20, step: 1, label: 'Satellite zoom when the preview is opened out' },
   satelliteMinZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Closest satellite zoom the slider allows' },
   satelliteMaxZoom: { value: 18, min: 12, max: 20, step: 1, label: 'Furthest satellite zoom the slider allows' },
+
+  // Zoom controls the app owns itself. The app ships user-scalable=no, so browser pinch
+  // cannot enlarge any of these surfaces and the limits are ours to set.
+  inspZoomSmallest: { value: 1, min: 0.5, max: 1, step: 0.05, label: 'Smallest inspector text size (1 = normal)' },
+  inspZoomLargest: { value: 2, min: 1.2, max: 4, step: 0.1, label: 'Largest inspector text size' },
+  inspZoomStep: { value: 0.1, min: 0.05, max: 0.5, step: 0.05, label: 'Inspector zoom step per button press' },
+  plateZoomMax: { value: 6, min: 2, max: 12, step: 0.5, label: 'Largest plate zoom (1 = fit width)' },
+  plateZoomStep: { value: 1.5, min: 1.1, max: 3, step: 0.1, label: 'Plate zoom factor per button press' },
+  plateZoomDoubleTap: { value: 2.5, min: 1.5, max: 6, step: 0.5, label: 'Plate zoom a double tap jumps to' },
+  wxStaleAfterMin: { value: 90, min: 15, max: 360, step: 15, label: 'Age before a METAR is flagged old (min)' },
   vorRangeRingColor: { value: '#1d6fe0', type: 'color', label: 'VOR range ring color' },
   vorRangeRingAlpha: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'VOR range ring opacity (0-1)' },
   vorRangeRingWidthPx: { value: 1.5, min: 0.5, max: 6, step: 0.5, label: 'VOR range ring width (px)' },
@@ -894,6 +904,7 @@ NavAid.tuningGroups = [
     'featureFollowMePersist'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
+  { name: 'Zoom', keys: ['inspZoomSmallest', 'inspZoomLargest', 'inspZoomStep', 'plateZoomMax', 'plateZoomStep', 'plateZoomDoubleTap', 'wxStaleAfterMin'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
   { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
   { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },
@@ -1456,6 +1467,7 @@ window.S = Object.assign({
   wxStopSpeak: 'Stop reading',
   wxUpdated: 'Updated',
   wxSource: 'via',
+  wxStale: 'older than expected — check the source',
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'Saved route could not be restored, so the original saved data was preserved. ' +
@@ -3974,6 +3986,73 @@ function visLabel(v) {
   if (!s) return '';
   return s === '10+' ? '10 km or more' : s + ' km';
 }
+// When a report was issued. The IAA detail page states this outright ("Created: 03/09/2026
+// 05:24", UTC) and the feed carries it through as `created`; that is the number the IAA site
+// shows and the one a pilot cross-checks. Only when it is absent (the AWC fallback source)
+// is it reconstructed from the DDHHMMZ group that follows the station id.
+//
+// That group carries a day of month but no month, so a bare Date.UTC() with the current month
+// can land on a day that month does not have -- "31" read on 1 October became 1 October,
+// a date in the FUTURE. Build candidates for this month and last, keep only those whose day
+// survived the round trip, and take the most recent one that is not ahead of now.
+function wxDayHourUtc(day, hh, mm, ref) {
+  const out = [];
+  for (const back of [0, 1]) {
+    const t = Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() - back, day, hh, mm);
+    if (new Date(t).getUTCDate() === day) out.push(t);   // rejects e.g. 31 September
+  }
+  const past = out.filter(t => t - ref.getTime() <= 2 * 3600e3);   // small clock skew allowed
+  return past.length ? Math.max(...past) : null;
+}
+
+function wxReportTime(raw, now) {
+  const g = /\b(?:METAR|SPECI|TAF)(?:\s+(?:AMD|COR))?\s+[A-Z]{4}\s+(\d{2})(\d{2})(\d{2})Z\b/
+    .exec(String(raw || '')) || /\b(\d{2})(\d{2})(\d{2})Z\b/.exec(String(raw || ''));
+  if (!g) return null;
+  const day = +g[1], hh = +g[2], mm = +g[3];
+  if (day < 1 || day > 31 || hh > 23 || mm > 59) return null;
+  const t = wxDayHourUtc(day, hh, mm, now instanceof Date ? now : new Date());
+  return t === null ? null : t;
+}
+
+// Issue time for one report: the feed's own `created` first, the raw group as fallback.
+function wxIssuedAt(rep, now) {
+  if (!rep) return null;
+  if (rep.created) {
+    const t = Date.parse(rep.created);
+    if (!isNaN(t)) return t;
+  }
+  return wxReportTime(rep.rawOb || rep.rawTAF || rep.rawText || '', now);
+}
+
+// TAF validity end: the DDHH/DDHH group after the issue time. A TAF whose period has run out
+// is stale in a way its issue time alone does not show. Hour 24 is legal and means midnight.
+function wxTafValidTo(raw, now) {
+  const g = /\b(\d{2})(\d{2})\/(\d{2})(\d{2})\b/.exec(String(raw || ''));
+  if (!g) return null;
+  const day = +g[3], hh = +g[4];
+  if (day < 1 || day > 31 || hh > 24) return null;
+  const ref = now instanceof Date ? now : new Date();
+  for (const back of [0, -1, 1]) {                 // a validity end is normally in the FUTURE
+    const t = Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + back, day, 0, 0) + hh * 3600e3;
+    const probe = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + back, day));
+    if (probe.getUTCDate() !== day) continue;
+    if (Math.abs(t - ref.getTime()) <= 3 * 24 * 3600e3) return t;
+  }
+  return null;
+}
+
+// "03/09 05:24Z" -- day and month with the time, because a bare 05:24Z beside a report
+// that turns out to be from yesterday reads as this morning. The IAA states the full date
+// ("Created: 03/09/2026 05:24") and shows it that way round, so the order matches the source
+// a pilot is comparing against. Year is omitted: nothing in a live weather feed is a year old.
+function wxHhmmZ(epoch) {
+  const d = new Date(epoch);
+  const p2 = n => String(n).padStart(2, '0');
+  return p2(d.getUTCDate()) + '/' + p2(d.getUTCMonth() + 1) + ' ' +
+         p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes()) + 'Z';
+}
+
 function decodeMetar(m) {
   if (!m) return '';
   const p = [];

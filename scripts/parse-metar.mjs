@@ -173,9 +173,24 @@ export function parseTaf(raw, now = new Date()) {
 }
 
 // Assemble the app's stations map from arrays of raw METAR/TAF strings (the IAA feed).
+// Entries are either a raw string or { raw, created } -- the IAA detail page states its own
+// publication time and it is worth more than anything reconstructed from the report text.
+const rawOf = e => (e && typeof e === 'object') ? e.raw : e;
+const createdOf = e => (e && typeof e === 'object') ? (e.created || null) : null;
+
 export function iaaStations(rawMetars, rawTafs, now = new Date()) {
   const stations = {};
-  for (const r of rawMetars || []) { const m = parseMetar(r); if (m && m.icaoId) (stations[m.icaoId] ||= {}).metar = m; }
-  for (const r of rawTafs || []) { const t = parseTaf(r, now); if (t && t.icaoId) (stations[t.icaoId] ||= {}).taf = t; }
+  for (const e of rawMetars || []) {
+    const m = parseMetar(rawOf(e));
+    if (!m || !m.icaoId) continue;
+    if (createdOf(e)) m.created = createdOf(e);
+    (stations[m.icaoId] ||= {}).metar = m;
+  }
+  for (const e of rawTafs || []) {
+    const t = parseTaf(rawOf(e), now);
+    if (!t || !t.icaoId) continue;
+    if (createdOf(e)) t.created = createdOf(e);
+    (stations[t.icaoId] ||= {}).taf = t;
+  }
   return stations;
 }
