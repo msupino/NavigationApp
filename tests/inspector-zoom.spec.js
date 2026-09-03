@@ -73,3 +73,37 @@ test('pressing a zoom button does not start the header drag', async ({ page }) =
   // handler would pin the panel to a new position on the first press.
   expect(after).toBeCloseTo(before, 0);
 });
+
+test('two fingers on the body pinch it larger', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await openAirfield(page);
+  // The buttons are the desktop/precision path; on a phone the gesture is the point, and
+  // the app ships user-scalable=no so nothing else would pick this up.
+  const r = await page.evaluate(() => {
+    const el = document.getElementById('insp-body');
+    const mk = (type, pts) => {
+      const touches = pts.map((p, i) => new Touch({ identifier: i, target: el, clientX: p[0], clientY: p[1] }));
+      return new TouchEvent(type, { touches, targetTouches: touches, changedTouches: touches, bubbles: true, cancelable: true });
+    };
+    const before = getComputedStyle(el).zoom;
+    el.dispatchEvent(mk('touchstart', [[100, 300], [200, 300]]));
+    el.dispatchEvent(mk('touchmove', [[60, 300], [240, 300]]));      // spread 100 -> 180
+    const after = getComputedStyle(el).zoom;
+    el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [], bubbles: true }));
+    return { before: parseFloat(before), after: parseFloat(after) };
+  });
+  expect(r.before).toBeCloseTo(1, 2);
+  expect(r.after).toBeGreaterThan(r.before);
+  // Pinching out again returns it, so the gesture is not one-way.
+  const back = await page.evaluate(() => {
+    const el = document.getElementById('insp-body');
+    const mk = (type, pts) => {
+      const touches = pts.map((p, i) => new Touch({ identifier: i, target: el, clientX: p[0], clientY: p[1] }));
+      return new TouchEvent(type, { touches, targetTouches: touches, changedTouches: touches, bubbles: true, cancelable: true });
+    };
+    el.dispatchEvent(mk('touchstart', [[60, 300], [240, 300]]));
+    el.dispatchEvent(mk('touchmove', [[100, 300], [200, 300]]));
+    return parseFloat(getComputedStyle(el).zoom);
+  });
+  expect(back).toBeLessThan(r.after);
+});
