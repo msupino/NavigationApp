@@ -3046,10 +3046,10 @@ function appendAirfieldWeather(body, af) {
         const txt = showRaw ? (data.metar.rawOb || data.metar.rawText || '') : decodeMetar(data.metar);
         return txt ? (icao + '. ' + (S.wxMetar || 'METAR') + '. ' + txt) : '';
       });
-      // A METAR is issued at least hourly, so one over 90 minutes old is a gap worth seeing.
+      // A METAR is issued at least hourly, so one past wxStaleAfterMin is a gap worth seeing.
       const mAt = wxIssuedAt(data.metar);
       bodyEl.appendChild(block(S.wxMetar || 'METAR', lines.filter(Boolean), spk,
-        mAt ? { epoch: mAt, stale: Date.now() - mAt > 90 * 60e3 } : null));
+        mAt ? { epoch: mAt, stale: Date.now() - mAt > tune('wxStaleAfterMin') * 60e3 } : null));
     } else {
       bodyEl.appendChild(emptyBlock(S.wxMetar || 'METAR', missing));
     }
@@ -3218,6 +3218,10 @@ function dragLockedNow(kind) {
 
 function showInspector() {
   const insp = document.getElementById('inspector');
+  // Re-sync the text zoom to the current tuning: the gist arrives after the wiring runs, so
+  // a deployment that widened or narrowed the range would otherwise not reach the buttons
+  // until the pilot pressed one.
+  if (typeof applyInspZoom === 'function' && typeof inspZoomGet === 'function') applyInspZoom(inspZoomGet());
   const title = document.getElementById('insp-title');
   const body = document.getElementById('insp-body');
   // Not while the aircraft is being tracked: the panel covers the map, and in flight the

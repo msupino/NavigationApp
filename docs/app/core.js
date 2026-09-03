@@ -149,6 +149,16 @@ NavAid.tuningDefaults = {
   satelliteExpandedZoom: { value: 17, min: 10, max: 20, step: 1, label: 'Satellite zoom when the preview is opened out' },
   satelliteMinZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Closest satellite zoom the slider allows' },
   satelliteMaxZoom: { value: 18, min: 12, max: 20, step: 1, label: 'Furthest satellite zoom the slider allows' },
+
+  // Zoom controls the app owns itself. The app ships user-scalable=no, so browser pinch
+  // cannot enlarge any of these surfaces and the limits are ours to set.
+  inspZoomSmallest: { value: 1, min: 0.5, max: 1, step: 0.05, label: 'Smallest inspector text size (1 = normal)' },
+  inspZoomLargest: { value: 2, min: 1.2, max: 4, step: 0.1, label: 'Largest inspector text size' },
+  inspZoomStep: { value: 0.1, min: 0.05, max: 0.5, step: 0.05, label: 'Inspector zoom step per button press' },
+  plateZoomMax: { value: 6, min: 2, max: 12, step: 0.5, label: 'Largest plate zoom (1 = fit width)' },
+  plateZoomStep: { value: 1.5, min: 1.1, max: 3, step: 0.1, label: 'Plate zoom factor per button press' },
+  plateZoomDoubleTap: { value: 2.5, min: 1.5, max: 6, step: 0.5, label: 'Plate zoom a double tap jumps to' },
+  wxStaleAfterMin: { value: 90, min: 15, max: 360, step: 15, label: 'Age before a METAR is flagged old (min)' },
   vorRangeRingColor: { value: '#1d6fe0', type: 'color', label: 'VOR range ring color' },
   vorRangeRingAlpha: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'VOR range ring opacity (0-1)' },
   vorRangeRingWidthPx: { value: 1.5, min: 0.5, max: 6, step: 0.5, label: 'VOR range ring width (px)' },
@@ -894,6 +904,7 @@ NavAid.tuningGroups = [
     'featureFollowMePersist'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
+  { name: 'Zoom', keys: ['inspZoomSmallest', 'inspZoomLargest', 'inspZoomStep', 'plateZoomMax', 'plateZoomStep', 'plateZoomDoubleTap', 'wxStaleAfterMin'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
   { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
   { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },

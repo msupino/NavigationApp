@@ -118,3 +118,31 @@ test('a smaller size stored by an older build is clamped back to normal', async 
   await openAirfield(page);                       // reload with the stale value
   expect(parseFloat(await zoomOf(page))).toBeCloseTo(1, 2);
 });
+
+test('the gist can move the ceiling, the floor and the step', async ({ page }) => {
+  await openAirfield(page);
+  await page.evaluate(() => {
+    setTune('inspZoomLargest', 1.5);
+    setTune('inspZoomStep', 0.25);
+  });
+  const inn = page.locator('#insp-zoom-in');
+  await inn.click();
+  expect(parseFloat(await zoomOf(page))).toBeCloseTo(1.25, 2);   // the tuned step, not 0.1
+  await inn.click();
+  expect(parseFloat(await zoomOf(page))).toBeCloseTo(1.5, 2);    // the tuned ceiling
+  await expect(inn).toBeVisible();
+  await expect(inn).toBeDisabled();
+});
+
+test('the floor can be lowered by the gist, but never is by default', async ({ page }) => {
+  await openAirfield(page);
+  // Default keeps the panel at the size it has always been (see "keep the minimum like
+  // current static"); a deployment that wants smaller text can still ask for it.
+  await expect(page.locator('#insp-zoom-out')).toBeDisabled();
+  await page.evaluate(() => setTune('inspZoomSmallest', 0.7));
+  // The gist lands after the wiring has run, so the next OPEN of the panel is what re-syncs
+  // the buttons — not a reload, which would discard the tuning we just set.
+  await page.evaluate(() => showInspector());
+  await page.locator('#insp-zoom-out').click();
+  expect(parseFloat(await zoomOf(page))).toBeLessThan(1);
+});

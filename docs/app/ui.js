@@ -7789,25 +7789,27 @@ document.getElementById('tool-reset-all-markers').onclick = () => {
 // (not `transform: scale`) because it REFLOWS: the bottom sheet keeps its width, wraps,
 // and scrolls normally at any size, which a transform would break.
 const INSP_ZOOM_KEY = 'navaid.inspZoom';       // device-local: a reading preference for THIS screen
-// Floor at 1, the size the panel has always been: this control exists to make small print
+// Read from the tuning gist at use time, so a change applies without a reload. The floor
+// defaults to 1, the size the panel has always been: this control exists to make small print
 // readable, and anything below today's size is a way to make the panel worse, not better.
-const INSP_ZOOM_MIN = 1, INSP_ZOOM_MAX = 2;
+const inspZoomMin = () => tune('inspZoomSmallest');
+const inspZoomMax = () => tune('inspZoomLargest');
 
 function inspZoomGet() {
   const v = parseFloat(localStorage.getItem(INSP_ZOOM_KEY));
-  return Number.isFinite(v) ? Math.min(INSP_ZOOM_MAX, Math.max(INSP_ZOOM_MIN, v)) : 1;
+  return Number.isFinite(v) ? Math.min(inspZoomMax(), Math.max(inspZoomMin(), v)) : inspZoomMin();
 }
 
 function applyInspZoom(next) {
-  const z = Math.min(INSP_ZOOM_MAX, Math.max(INSP_ZOOM_MIN, Math.round(next * 20) / 20));
+  const z = Math.min(inspZoomMax(), Math.max(inspZoomMin(), Math.round(next * 20) / 20));
   const body = document.getElementById('insp-body');
   if (body) body.style.zoom = String(z);
   try { localStorage.setItem(INSP_ZOOM_KEY, String(z)); } catch (e) { /* private mode */ }
   // Dimmed at the ends of the range, never removed.
   const out = document.getElementById('insp-zoom-out');
   const inn = document.getElementById('insp-zoom-in');
-  if (out) out.disabled = z <= INSP_ZOOM_MIN;
-  if (inn) inn.disabled = z >= INSP_ZOOM_MAX;
+  if (out) out.disabled = z <= inspZoomMin();
+  if (inn) inn.disabled = z >= inspZoomMax();
   return z;
 }
 
@@ -7819,8 +7821,8 @@ function applyInspZoom(next) {
   // Header buttons must not start the panel drag that the header bar owns.
   const stop = e => { e.stopPropagation(); };
   for (const b of [out, inn]) { b.addEventListener('mousedown', stop); b.addEventListener('touchstart', stop, { passive: true }); }
-  out.onclick = () => applyInspZoom(inspZoomGet() - 0.1);
-  inn.onclick = () => applyInspZoom(inspZoomGet() + 0.1);
+  out.onclick = () => applyInspZoom(inspZoomGet() - tune('inspZoomStep'));
+  inn.onclick = () => applyInspZoom(inspZoomGet() + tune('inspZoomStep'));
 
   // Pinch anywhere in the panel body. Two fingers raise no click, so the rows underneath
   // keep working; one finger stays a plain scroll of the sheet.
