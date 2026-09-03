@@ -141,3 +141,38 @@ test('the speak buttons are dimmed, not hidden, when no speech engine exists', a
   await expect(metarBtn(page)).toBeDisabled();      // but dimmed: nothing can speak
   await expect(tafBtn(page)).toBeDisabled();
 });
+
+test('closing the inspector stops the read', async ({ page }) => {
+  await stubTts(page);
+  await mockWx(page);
+  await openLLBG(page);
+  await metarBtn(page).click();
+  await expect(metarBtn(page)).toHaveText('⏹');
+  const before = await page.evaluate(() => window.__stopped);
+
+  await page.locator('#insp-close').click();
+  await expect(page.locator('#inspector')).toBeHidden();
+  // Closing destroys the button the read was tied to, so nothing was left to press: the
+  // voice has to be stopped for the pilot rather than by them.
+  expect(await page.evaluate(() => window.__stopped)).toBeGreaterThan(before);
+});
+
+test('selecting something with no weather box stops the read', async ({ page }) => {
+  await stubTts(page);
+  await mockWx(page);
+  await openLLBG(page);
+  await tafBtn(page).click();
+  await expect(tafBtn(page)).toHaveText('⏹');
+  const before = await page.evaluate(() => window.__stopped);
+
+  // An airfield re-render stops speech on its own (the weather section rebuilds); a
+  // waypoint builds no weather box at all, which is the path that used to leave the voice
+  // running with its stop button gone.
+  await page.evaluate(() => {
+    state.route = [{ lat: 32.0, lng: 34.9, name: 'WP 1' }];
+    state.selected = { type: 'wp', index: 0 };
+    showInspector();
+  });
+  await expect(page.locator('#insp-body .wx-section')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__stopped)).toBeGreaterThan(before);
+});

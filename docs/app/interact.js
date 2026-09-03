@@ -3218,6 +3218,12 @@ function dragLockedNow(kind) {
 
 function showInspector() {
   const insp = document.getElementById('inspector');
+  // Closing the panel -- or rebuilding it onto a selection with no weather box -- destroys the
+  // stop button a read was tied to, leaving the voice running with nothing to stop it. An
+  // airfield re-render already stops speech (the weather section does that itself when it
+  // rebuilds); this covers closing, Escape, the tracking lock, and every non-airfield
+  // selection, which between them are the paths that left it orphaned.
+  if (typeof window.speakOnDemandStop === 'function') window.speakOnDemandStop();
   // Re-sync the text zoom to the current tuning: the gist arrives after the wiring runs, so
   // a deployment that widened or narrowed the range would otherwise not reach the buttons
   // until the pilot pressed one.
