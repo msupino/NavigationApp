@@ -5621,6 +5621,9 @@ function showExportModal() {
   } else if (!floatPanel) {
     const insp = document.getElementById('inspector');
     if (insp) insp.classList.add('hidden');
+    // Hiding the panel behind a modal puts its stop button out of reach as surely as
+    // closing it does.
+    if (typeof window.speakOnDemandStop === 'function') window.speakOnDemandStop();
   }
   document.addEventListener('keydown', onEsc);
 }
