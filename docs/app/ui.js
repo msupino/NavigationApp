@@ -7789,7 +7789,9 @@ document.getElementById('tool-reset-all-markers').onclick = () => {
 // (not `transform: scale`) because it REFLOWS: the bottom sheet keeps its width, wraps,
 // and scrolls normally at any size, which a transform would break.
 const INSP_ZOOM_KEY = 'navaid.inspZoom';       // device-local: a reading preference for THIS screen
-const INSP_ZOOM_MIN = 0.8, INSP_ZOOM_MAX = 2;
+// Floor at 1, the size the panel has always been: this control exists to make small print
+// readable, and anything below today's size is a way to make the panel worse, not better.
+const INSP_ZOOM_MIN = 1, INSP_ZOOM_MAX = 2;
 
 function inspZoomGet() {
   const v = parseFloat(localStorage.getItem(INSP_ZOOM_KEY));

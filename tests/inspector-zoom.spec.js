@@ -23,6 +23,8 @@ const zoomOf = page => page.locator('#insp-body').evaluate(e => getComputedStyle
 test('the buttons scale the panel body', async ({ page }) => {
   await openAirfield(page);
   expect(await zoomOf(page)).toBe('1');
+  // Opens at the floor, so zoom-out starts dimmed rather than shrinking the panel.
+  await expect(page.locator('#insp-zoom-out')).toBeDisabled();
   await page.locator('#insp-zoom-in').click();
   expect(parseFloat(await zoomOf(page))).toBeCloseTo(1.1, 2);
   await page.locator('#insp-zoom-out').click();
@@ -61,7 +63,9 @@ test('the buttons dim at the ends of the range rather than disappearing', async 
   for (let i = 0; i < 30 && await out.isEnabled(); i++) await out.click();
   await expect(out).toBeVisible();
   await expect(out).toBeDisabled();
-  expect(parseFloat(await zoomOf(page))).toBeCloseTo(0.8, 2);
+  // The floor is the panel's normal size: zooming out past what it has always been would
+  // only make the small print smaller.
+  expect(parseFloat(await zoomOf(page))).toBeCloseTo(1, 2);
 });
 
 test('pressing a zoom button does not start the header drag', async ({ page }) => {
@@ -106,4 +110,11 @@ test('two fingers on the body pinch it larger', async ({ page }) => {
     return parseFloat(getComputedStyle(el).zoom);
   });
   expect(back).toBeLessThan(r.after);
+});
+
+test('a smaller size stored by an older build is clamped back to normal', async ({ page }) => {
+  await openAirfield(page);
+  await page.evaluate(() => localStorage.setItem('navaid.inspZoom', '0.8'));
+  await openAirfield(page);                       // reload with the stale value
+  expect(parseFloat(await zoomOf(page))).toBeCloseTo(1, 2);
 });
