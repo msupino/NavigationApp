@@ -6786,6 +6786,123 @@ function showPlateViewer(filename, label) {
   box.appendChild(loading);
   box.appendChild(viewer);
 
+  // --- Zoom ---------------------------------------------------------------
+  // An approach plate is a dense A4 sheet scaled to a phone's width; the minima
+  // table and the frequencies are the parts a pilot actually needs off it, and at
+  // fit-width they are a few pixels tall. Page zoom cannot help here -- the app
+  // ships user-scalable=no so a stray two-finger touch cannot leave the whole
+  // cockpit UI scaled and offset -- so the viewer owns the gesture itself.
+  //
+  // Zoom is applied as the image's WIDTH rather than a transform, so the existing
+  // overflow:auto wrapper keeps doing the panning and the scroll position stays
+  // meaningful. Anchoring keeps the point under the fingers (or the double tap)
+  // still while the scale changes.
+  const ZOOM_MIN = 1, ZOOM_MAX = 6;
+  let zoom = 1;
+
+  function plateImgs() { return viewer.querySelectorAll('.plate-canvas'); }
+
+  function applyZoom(next, ax, ay) {
+    const z0 = zoom;
+    const z1 = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+    if (z1 === z0) return;
+    zoom = z1;
+    for (const img of plateImgs()) img.style.width = (z1 * 100) + '%';
+    // Keep the anchor point under the finger: it sits at (scroll + a) in content
+    // space, which scales with the zoom.
+    if (typeof ax === 'number') {
+      viewer.scrollLeft = (viewer.scrollLeft + ax) * (z1 / z0) - ax;
+      viewer.scrollTop = (viewer.scrollTop + ay) * (z1 / z0) - ay;
+    }
+    pct.textContent = Math.round(z1 * 100) + '%';
+    // Dimmed, never hidden: the pilot can see the limit has been reached rather
+    // than reaching for a control that vanished.
+    zoomOut.disabled = z1 <= ZOOM_MIN;
+    zoomIn.disabled = z1 >= ZOOM_MAX;
+    viewer.classList.toggle('plate-zoomed', z1 > 1);
+  }
+
+  function centreAnchor() {
+    return [viewer.clientWidth / 2, viewer.clientHeight / 2];
+  }
+
+  const zoomBar = document.createElement('div');
+  zoomBar.className = 'plate-zoom';
+  const zoomOut = document.createElement('button');
+  zoomOut.type = 'button';
+  zoomOut.className = 'plate-zoom-btn';
+  zoomOut.textContent = '\u2212';
+  zoomOut.title = S.zoomOut || 'Zoom out';
+  zoomOut.setAttribute('aria-label', zoomOut.title);
+  zoomOut.onclick = () => applyZoom(zoom / 1.5, ...centreAnchor());
+  const pct = document.createElement('button');
+  pct.type = 'button';
+  pct.className = 'plate-zoom-pct';
+  pct.textContent = '100%';
+  pct.title = S.plateZoomReset || 'Fit width';
+  pct.onclick = () => applyZoom(1, ...centreAnchor());
+  const zoomIn = document.createElement('button');
+  zoomIn.type = 'button';
+  zoomIn.className = 'plate-zoom-btn';
+  zoomIn.textContent = '+';
+  zoomIn.title = S.zoomIn || 'Zoom in';
+  zoomIn.setAttribute('aria-label', zoomIn.title);
+  zoomIn.onclick = () => applyZoom(zoom * 1.5, ...centreAnchor());
+  zoomBar.append(zoomOut, pct, zoomIn);
+  box.appendChild(zoomBar);
+  zoomOut.disabled = true;
+
+  // Pinch. Two fingers only: one finger stays a plain scroll of the wrapper.
+  let pinchDist = 0, pinchZoom = 1, pinchAx = 0, pinchAy = 0;
+  const touchDist = t =>
+    Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+  viewer.addEventListener('touchstart', e => {
+    if (e.touches.length !== 2) return;
+    const t = [e.touches[0], e.touches[1]];
+    const r = viewer.getBoundingClientRect();
+    pinchDist = touchDist(t);
+    pinchZoom = zoom;
+    pinchAx = (t[0].clientX + t[1].clientX) / 2 - r.left;
+    pinchAy = (t[0].clientY + t[1].clientY) / 2 - r.top;
+  }, { passive: true });
+
+  viewer.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !pinchDist) return;
+    e.preventDefault();                      // the browser would try to scroll both axes
+    const d = touchDist([e.touches[0], e.touches[1]]);
+    applyZoom(pinchZoom * (d / pinchDist), pinchAx, pinchAy);
+  }, { passive: false });
+
+  const endPinch = e => { if (e.touches.length < 2) pinchDist = 0; };
+  viewer.addEventListener('touchend', endPinch, { passive: true });
+  viewer.addEventListener('touchcancel', endPinch, { passive: true });
+
+  // Double tap toggles between fit-width and a readable magnification, anchored
+  // where the pilot tapped -- usually straight onto the minima box.
+  let lastTap = 0, lastX = 0, lastY = 0;
+  viewer.addEventListener('touchend', e => {
+    if (e.touches.length || e.changedTouches.length !== 1 || pinchDist) return;
+    const t = e.changedTouches[0];
+    const now = Date.now();
+    const near = Math.abs(t.clientX - lastX) < 30 && Math.abs(t.clientY - lastY) < 30;
+    if (now - lastTap < 300 && near) {
+      const r = viewer.getBoundingClientRect();
+      applyZoom(zoom > 1 ? 1 : 2.5, t.clientX - r.left, t.clientY - r.top);
+      lastTap = 0;
+      return;
+    }
+    lastTap = now; lastX = t.clientX; lastY = t.clientY;
+  }, { passive: true });
+
+  // Desktop: ctrl/cmd + wheel, the gesture every map and PDF reader already uses.
+  viewer.addEventListener('wheel', e => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    const r = viewer.getBoundingClientRect();
+    applyZoom(zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+
   const att = document.createElement('div');
   att.className = 'plate-attribution';
   att.textContent = S.plateAttribution;
