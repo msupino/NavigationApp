@@ -2610,7 +2610,12 @@ function showRouteMosaicModal() {
 window.showRouteMosaicModal = showRouteMosaicModal;
 
 function appendSatelliteSnippet(body, point, label) {
-  const snippet = buildSatelliteSnippet(point);
+  // The thumbnail is a fixed-zoom 3x3 tile grid, not a Leaflet map, so it had no
+  // zoom of any kind: the only way to see more was to open it out. Zooming here
+  // means re-rendering the grid at another tile zoom, which is what buildSatelliteSnippet
+  // already does when given one.
+  let snipZoom = tune('satellitePreviewZoom');
+  let snippet = buildSatelliteSnippet(point, { zoom: snipZoom });
   if (!snippet) return;
   hookSatelliteSnippetRotation();
   const section = document.createElement('div');
@@ -2620,22 +2625,85 @@ function appendSatelliteSnippet(body, point, label) {
   const title = document.createElement('label');
   title.textContent = S.satelliteSnippet || 'Satellite';
   head.appendChild(title);
+  const zoomBar = document.createElement('div');
+  zoomBar.className = 'sat-zoom';
+  const zOut = document.createElement('button');
+  zOut.type = 'button';
+  zOut.className = 'sat-zoom-btn';
+  zOut.textContent = '\u2212';
+  zOut.title = S.zoomOut || 'Zoom out';
+  zOut.setAttribute('aria-label', zOut.title);
+  const zIn = document.createElement('button');
+  zIn.type = 'button';
+  zIn.className = 'sat-zoom-btn';
+  zIn.textContent = '+';
+  zIn.title = S.zoomIn || 'Zoom in';
+  zIn.setAttribute('aria-label', zIn.title);
+  zoomBar.append(zOut, zIn);
+  head.appendChild(zoomBar);
   const expand = document.createElement('button');
   expand.type = 'button';
   expand.className = 'satellite-expand-hint';
   expand.textContent = S.satelliteExpand || 'Expand';
   head.appendChild(expand);
   section.appendChild(head);
-  snippet.tabIndex = 0;
-  snippet.setAttribute('role', 'button');
-  snippet.setAttribute('aria-label', S.satelliteSnippetOpen || 'Expand satellite view');
   const open = () => showSatellitePreviewModal(point, label);
-  snippet.addEventListener('click', open);
-  snippet.addEventListener('keydown', e => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault();
-    open();
-  });
+
+  // A pinch is two fingers and never raises a click, so tap-to-expand survives it.
+  let pinch0 = 0, pinchZ = snipZoom;
+  const dist2 = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+  function wire(el) {
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', S.satelliteSnippetOpen || 'Expand satellite view');
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      open();
+    });
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length !== 2) return;
+      pinch0 = dist2([e.touches[0], e.touches[1]]);
+      pinchZ = snipZoom;
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (e.touches.length !== 2 || !pinch0) return;
+      e.preventDefault();
+      // Tile zoom is integral: one level per doubling of the finger spread.
+      const steps = Math.round(Math.log2(dist2([e.touches[0], e.touches[1]]) / pinch0));
+      setZoom(pinchZ + steps);
+    }, { passive: false });
+    const endPinch = e => { if (e.touches.length < 2) pinch0 = 0; };
+    el.addEventListener('touchend', endPinch, { passive: true });
+    el.addEventListener('touchcancel', endPinch, { passive: true });
+  }
+
+  function setZoom(next) {
+    const z = Math.max(tune('satelliteMinZoom'),
+                       Math.min(tune('satelliteMaxZoom'), Math.round(next)));
+    if (z === snipZoom) return;
+    const fresh = buildSatelliteSnippet(point, { zoom: z });
+    if (!fresh) return;
+    snipZoom = z;
+    wire(fresh);
+    snippet.replaceWith(fresh);
+    snippet = fresh;
+    hookSatelliteSnippetRotation();
+    syncZoomBtns();
+  }
+
+  // Dimmed at the ends of the range, never removed.
+  function syncZoomBtns() {
+    zOut.disabled = snipZoom <= tune('satelliteMinZoom');
+    zIn.disabled = snipZoom >= tune('satelliteMaxZoom');
+  }
+  zOut.onclick = e => { e.stopPropagation(); setZoom(snipZoom - 1); };
+  zIn.onclick = e => { e.stopPropagation(); setZoom(snipZoom + 1); };
+  syncZoomBtns();
+
+  wire(snippet);
   expand.onclick = open;
   section.appendChild(snippet);
   body.appendChild(section);
