@@ -75,9 +75,10 @@ test.describe('plate viewer', () => {
 });
 
 test.describe('satellite thumbnail', () => {
-  async function openInspector(page) {
+  async function openInspector(page, opts = {}) {
     await boot(page);
     await page.waitForFunction(() => typeof appendSatelliteSnippet === 'function');
+    if (opts.buttons) await page.evaluate(() => setTune('featureSatZoomButtons', true));
     await page.evaluate(() => {
       const body = document.getElementById('insp-body');
       body.innerHTML = '';
@@ -86,17 +87,45 @@ test.describe('satellite thumbnail', () => {
     });
   }
 
-  test('the thumbnail zooms by re-rendering the tile grid', async ({ page }) => {
+  const pinch = (page, from, to) => page.evaluate(([a, b]) => {
+    const el = document.querySelector('.satellite-snippet');
+    const mk = (type, pts) => {
+      const touches = pts.map((p, i) => new Touch({ identifier: i, target: el, clientX: p[0], clientY: p[1] }));
+      return new TouchEvent(type, { touches, targetTouches: touches, changedTouches: touches, bubbles: true, cancelable: true });
+    };
+    el.dispatchEvent(mk('touchstart', [[100, 100], [100 + a, 100]]));
+    el.dispatchEvent(mk('touchmove', [[100, 100], [100 + b, 100]]));
+    el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [], bubbles: true }));
+  }, [from, to]);
+
+  test('the -/+ pair is off unless the gist asks for it', async ({ page }) => {
     await openInspector(page);
-    const snip = page.locator('.satellite-snippet');
-    const before = await snip.getAttribute('data-zoom');
-    await page.locator('.sat-zoom-btn').last().click();
+    // Not a platform or data condition hiding a control: only the gist may remove one, and
+    // here it has. The header keeps its room for a long airfield name.
+    await expect(page.locator('.sat-zoom-btn')).toHaveCount(0);
+    await expect(page.locator('.satellite-snippet')).toBeVisible();
+  });
+
+  test('pinch still resizes the thumbnail with the buttons gone', async ({ page }) => {
+    await openInspector(page);
+    const before = await page.locator('.satellite-snippet').getAttribute('data-zoom');
+    await pinch(page, 100, 220);                    // spread apart -> zoom in
+    await expect(page.locator('.satellite-snippet'))
+      .not.toHaveAttribute('data-zoom', String(before));
+  });
+
+  test('with the gist switch on, the buttons are back and work', async ({ page }) => {
+    await openInspector(page, { buttons: true });
+    const btns = page.locator('.sat-zoom-btn');
+    await expect(btns).toHaveCount(2);
+    const before = await page.locator('.satellite-snippet').getAttribute('data-zoom');
+    await btns.last().click();
     await expect(page.locator('.satellite-snippet'))
       .toHaveAttribute('data-zoom', String(Number(before) + 1));
   });
 
   test('zooming does not consume the tap that opens the full view', async ({ page }) => {
-    await openInspector(page);
+    await openInspector(page, { buttons: true });
     // The zoom buttons stopPropagation, and the replaced snippet is re-wired, so a
     // tap on the thumbnail after zooming still opens the expanded satellite map.
     await page.locator('.sat-zoom-btn').last().click();
@@ -105,8 +134,8 @@ test.describe('satellite thumbnail', () => {
     await expect(page.locator('.satellite-preview-modal')).toBeVisible();
   });
 
-  test('the thumbnail keeps its zoom buttons at the ends of the range', async ({ page }) => {
-    await openInspector(page);
+  test('the buttons dim at the ends of the range rather than disappearing', async ({ page }) => {
+    await openInspector(page, { buttons: true });
     const zOut = page.locator('.sat-zoom-btn').first();
     for (let i = 0; i < 20 && await zOut.isEnabled(); i++) await zOut.click();
     await expect(zOut).toBeVisible();

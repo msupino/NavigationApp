@@ -2625,22 +2625,30 @@ function appendSatelliteSnippet(body, point, label) {
   const title = document.createElement('label');
   title.textContent = S.satelliteSnippet || 'Satellite';
   head.appendChild(title);
-  const zoomBar = document.createElement('div');
-  zoomBar.className = 'sat-zoom';
-  const zOut = document.createElement('button');
-  zOut.type = 'button';
-  zOut.className = 'sat-zoom-btn';
-  zOut.textContent = '\u2212';
-  zOut.title = S.zoomOut || 'Zoom out';
-  zOut.setAttribute('aria-label', zOut.title);
-  const zIn = document.createElement('button');
-  zIn.type = 'button';
-  zIn.className = 'sat-zoom-btn';
-  zIn.textContent = '+';
-  zIn.title = S.zoomIn || 'Zoom in';
-  zIn.setAttribute('aria-label', zIn.title);
-  zoomBar.append(zOut, zIn);
-  head.appendChild(zoomBar);
+  // The -/+ pair is gist-gated and off by default: the pinch below does the same job without
+  // taking room from a long airfield name in a narrow header. A gist switch is the only thing
+  // allowed to remove a control outright, which is exactly what this is -- when the switch is
+  // on the buttons are present and behave normally, and nothing else hides them.
+  const showZoomBtns = tune('featureSatZoomButtons');
+  let zOut = null, zIn = null;
+  if (showZoomBtns) {
+    const zoomBar = document.createElement('div');
+    zoomBar.className = 'sat-zoom';
+    zOut = document.createElement('button');
+    zOut.type = 'button';
+    zOut.className = 'sat-zoom-btn';
+    zOut.textContent = '\u2212';
+    zOut.title = S.zoomOut || 'Zoom out';
+    zOut.setAttribute('aria-label', zOut.title);
+    zIn = document.createElement('button');
+    zIn.type = 'button';
+    zIn.className = 'sat-zoom-btn';
+    zIn.textContent = '+';
+    zIn.title = S.zoomIn || 'Zoom in';
+    zIn.setAttribute('aria-label', zIn.title);
+    zoomBar.append(zOut, zIn);
+    head.appendChild(zoomBar);
+  }
   const expand = document.createElement('button');
   expand.type = 'button';
   expand.className = 'satellite-expand-hint';
@@ -2694,13 +2702,16 @@ function appendSatelliteSnippet(body, point, label) {
     syncZoomBtns();
   }
 
-  // Dimmed at the ends of the range, never removed.
+  // Dimmed at the ends of the range, never removed -- when the gist has them at all.
   function syncZoomBtns() {
+    if (!zOut || !zIn) return;
     zOut.disabled = snipZoom <= tune('satelliteMinZoom');
     zIn.disabled = snipZoom >= tune('satelliteMaxZoom');
   }
-  zOut.onclick = e => { e.stopPropagation(); setZoom(snipZoom - 1); };
-  zIn.onclick = e => { e.stopPropagation(); setZoom(snipZoom + 1); };
+  if (zOut && zIn) {
+    zOut.onclick = e => { e.stopPropagation(); setZoom(snipZoom - 1); };
+    zIn.onclick = e => { e.stopPropagation(); setZoom(snipZoom + 1); };
+  }
   syncZoomBtns();
 
   wire(snippet);
@@ -3218,6 +3229,12 @@ function dragLockedNow(kind) {
 
 function showInspector() {
   const insp = document.getElementById('inspector');
+  // Closing the panel -- or rebuilding it onto a selection with no weather box -- destroys the
+  // stop button a read was tied to, leaving the voice running with nothing to stop it. An
+  // airfield re-render already stops speech (the weather section does that itself when it
+  // rebuilds); this covers closing, Escape, the tracking lock, and every non-airfield
+  // selection, which between them are the paths that left it orphaned.
+  if (typeof window.speakOnDemandStop === 'function') window.speakOnDemandStop();
   // Re-sync the text zoom to the current tuning: the gist arrives after the wiring runs, so
   // a deployment that widened or narrowed the range would otherwise not reach the buttons
   // until the pilot pressed one.
