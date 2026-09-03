@@ -7783,6 +7783,71 @@ document.getElementById('tool-reset-all-markers').onclick = () => {
   }
   draw();
 };
+// --- Inspector text zoom ---------------------------------------------------
+// The app ships user-scalable=no, so the browser's own pinch cannot enlarge a panel that
+// is mostly small print -- frequencies, runway designators, a decoded METAR. CSS `zoom`
+// (not `transform: scale`) because it REFLOWS: the bottom sheet keeps its width, wraps,
+// and scrolls normally at any size, which a transform would break.
+const INSP_ZOOM_KEY = 'navaid.inspZoom';       // device-local: a reading preference for THIS screen
+// Read from the tuning gist at use time, so a change applies without a reload. The floor
+// defaults to 1, the size the panel has always been: this control exists to make small print
+// readable, and anything below today's size is a way to make the panel worse, not better.
+const inspZoomMin = () => tune('inspZoomSmallest');
+const inspZoomMax = () => tune('inspZoomLargest');
+
+function inspZoomGet() {
+  // Reading localStorage THROWS where site data is blocked, not just writing to it. This
+  // runs during load, so an unguarded read took the rest of ui.js down with it.
+  let v = NaN;
+  try { v = parseFloat(localStorage.getItem(INSP_ZOOM_KEY)); } catch (e) { /* blocked */ }
+  return Number.isFinite(v) ? Math.min(inspZoomMax(), Math.max(inspZoomMin(), v)) : inspZoomMin();
+}
+
+function applyInspZoom(next) {
+  const z = Math.min(inspZoomMax(), Math.max(inspZoomMin(), Math.round(next * 20) / 20));
+  const body = document.getElementById('insp-body');
+  if (body) body.style.zoom = String(z);
+  try { localStorage.setItem(INSP_ZOOM_KEY, String(z)); } catch (e) { /* private mode */ }
+  // Dimmed at the ends of the range, never removed.
+  const out = document.getElementById('insp-zoom-out');
+  const inn = document.getElementById('insp-zoom-in');
+  if (out) out.disabled = z <= inspZoomMin();
+  if (inn) inn.disabled = z >= inspZoomMax();
+  return z;
+}
+
+(function wireInspectorZoom() {
+  const out = document.getElementById('insp-zoom-out');
+  const inn = document.getElementById('insp-zoom-in');
+  const body = document.getElementById('insp-body');
+  if (!out || !inn || !body) return;
+  // Header buttons must not start the panel drag that the header bar owns.
+  const stop = e => { e.stopPropagation(); };
+  for (const b of [out, inn]) { b.addEventListener('mousedown', stop); b.addEventListener('touchstart', stop, { passive: true }); }
+  out.onclick = () => applyInspZoom(inspZoomGet() - tune('inspZoomStep'));
+  inn.onclick = () => applyInspZoom(inspZoomGet() + tune('inspZoomStep'));
+
+  // Pinch anywhere in the panel body. Two fingers raise no click, so the rows underneath
+  // keep working; one finger stays a plain scroll of the sheet.
+  let d0 = 0, z0 = 1;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  body.addEventListener('touchstart', e => {
+    if (e.touches.length !== 2) return;
+    d0 = dist([e.touches[0], e.touches[1]]);
+    z0 = inspZoomGet();
+  }, { passive: true });
+  body.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !d0) return;
+    e.preventDefault();
+    applyInspZoom(z0 * (dist([e.touches[0], e.touches[1]]) / d0));
+  }, { passive: false });
+  const end = e => { if (e.touches.length < 2) d0 = 0; };
+  body.addEventListener('touchend', end, { passive: true });
+  body.addEventListener('touchcancel', end, { passive: true });
+
+  applyInspZoom(inspZoomGet());     // restore the size this screen was left at
+})();
+
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();

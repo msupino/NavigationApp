@@ -430,8 +430,16 @@ async function fetchIaaWeatherRaw() {
     const END = '(?:=|(?=\\s(?:METAR|SPECI|TAF)\\b))';
     const mt = txt.match(new RegExp('\\b((?:METAR|SPECI)\\s+LL[A-Z]{2}\\b[\\s\\S]{0,400}?)' + END));
     const tf = txt.match(new RegExp('\\b(TAF(?:\\s+(?:AMD|COR))?\\s+LL[A-Z]{2}\\b[\\s\\S]{0,900}?)' + END));
-    if (mt) metars.push(mt[1].trim());
-    if (tf) tafs.push(tf[1].trim());
+    // The detail page states when the IAA published the message -- "Created: 03/09/2026 05:24",
+    // UTC, and the number the IAA site itself shows. Carry it: the DDHHMMZ group inside the
+    // report has no month, so reconstructing a date from it is guesswork around the turn of
+    // a month, and this is the value a pilot cross-checks against the source.
+    const cm = /Created:\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/.exec(txt);
+    const created = cm
+      ? new Date(Date.UTC(+cm[3], +cm[2] - 1, +cm[1], +cm[4], +cm[5])).toISOString()
+      : null;
+    if (mt) metars.push({ raw: mt[1].trim(), created });
+    if (tf) tafs.push({ raw: tf[1].trim(), created });
   }
   if (!metars.length && !tafs.length) { console.error('iaa weather: no messages parsed'); return null; }
   console.log('IAA raw: ' + metars.length + ' METAR, ' + tafs.length + ' TAF');

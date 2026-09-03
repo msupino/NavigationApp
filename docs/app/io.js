@@ -6797,7 +6797,7 @@ function showPlateViewer(filename, label) {
   // overflow:auto wrapper keeps doing the panning and the scroll position stays
   // meaningful. Anchoring keeps the point under the fingers (or the double tap)
   // still while the scale changes.
-  const ZOOM_MIN = 1, ZOOM_MAX = 6;
+  const ZOOM_MIN = 1, ZOOM_MAX = tune('plateZoomMax');
   let zoom = 1;
 
   function plateImgs() { return viewer.querySelectorAll('.plate-canvas'); }
@@ -6834,7 +6834,7 @@ function showPlateViewer(filename, label) {
   zoomOut.textContent = '\u2212';
   zoomOut.title = S.zoomOut || 'Zoom out';
   zoomOut.setAttribute('aria-label', zoomOut.title);
-  zoomOut.onclick = () => applyZoom(zoom / 1.5, ...centreAnchor());
+  zoomOut.onclick = () => applyZoom(zoom / tune('plateZoomStep'), ...centreAnchor());
   const pct = document.createElement('button');
   pct.type = 'button';
   pct.className = 'plate-zoom-pct';
@@ -6847,7 +6847,7 @@ function showPlateViewer(filename, label) {
   zoomIn.textContent = '+';
   zoomIn.title = S.zoomIn || 'Zoom in';
   zoomIn.setAttribute('aria-label', zoomIn.title);
-  zoomIn.onclick = () => applyZoom(zoom * 1.5, ...centreAnchor());
+  zoomIn.onclick = () => applyZoom(zoom * tune('plateZoomStep'), ...centreAnchor());
   zoomBar.append(zoomOut, pct, zoomIn);
   box.appendChild(zoomBar);
   zoomOut.disabled = true;
@@ -6888,7 +6888,7 @@ function showPlateViewer(filename, label) {
     const near = Math.abs(t.clientX - lastX) < 30 && Math.abs(t.clientY - lastY) < 30;
     if (now - lastTap < 300 && near) {
       const r = viewer.getBoundingClientRect();
-      applyZoom(zoom > 1 ? 1 : 2.5, t.clientX - r.left, t.clientY - r.top);
+      applyZoom(zoom > 1 ? 1 : tune('plateZoomDoubleTap'), t.clientX - r.left, t.clientY - r.top);
       lastTap = 0;
       return;
     }
