@@ -7848,6 +7848,76 @@ function applyInspZoom(next) {
   applyInspZoom(inspZoomGet());     // restore the size this screen was left at
 })();
 
+// --- Inspector resize ------------------------------------------------------
+// A 280px panel is right for a waypoint and cramped for a big airfield -- charts, comms,
+// two weather reports. CSS `resize` rather than a hand-rolled grip: the panel already has
+// overflow:hidden, so the native corner works with no pointer handling of its own, and it
+// respects the max-height cap that keeps a tall panel on screen.
+//
+// Desktop only, like the header drag: on a phone the inspector is a full-width bottom sheet
+// with a capped height, so there is no free dimension to drag and the grip would sit over
+// the content.
+const INSP_SIZE_KEY = 'navaid.inspSize';   // device-local: geometry for THIS screen
+
+function inspSizeGet() {
+  // Reading localStorage throws where site data is blocked, not just writing.
+  try {
+    const o = JSON.parse(localStorage.getItem(INSP_SIZE_KEY) || 'null');
+    if (o && Number.isFinite(o.w) && Number.isFinite(o.h)) return o;
+  } catch (e) { /* blocked or malformed */ }
+  return null;
+}
+
+// Same breakpoint as the header-drag guard. That one's isNarrow() is a const inside another
+// function, so it cannot be borrowed here -- a `typeof isNarrow === 'function'` test would
+// silently be false and leave the grip on the phone sheet.
+const inspNarrow = () => !!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches);
+
+function inspResizeEnabled() {
+  return tune('featureInspectorResize') && !inspNarrow();
+}
+
+function applyInspSize() {
+  const insp = document.getElementById('inspector');
+  if (!insp) return;
+  const on = inspResizeEnabled();
+  insp.classList.toggle('insp-resizable', on);
+  if (!on) {
+    // A width saved on a desktop must not follow the panel into the phone layout, where the
+    // sheet is full-width by design.
+    insp.style.width = '';
+    insp.style.height = '';
+    return;
+  }
+  const sz = inspSizeGet();
+  if (!sz) return;
+  insp.style.width = sz.w + 'px';
+  insp.style.height = sz.h + 'px';
+}
+
+(function wireInspectorResize() {
+  const insp = document.getElementById('inspector');
+  if (!insp || typeof ResizeObserver !== 'function') return;
+  let t = null;
+  const ro = new ResizeObserver(() => {
+    if (!inspResizeEnabled()) return;
+    // The observer fires continuously through a drag; only the resting size is worth storing.
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const r = insp.getBoundingClientRect();
+      if (r.width < 40 || r.height < 40) return;          // mid-teardown / hidden
+      try {
+        localStorage.setItem(INSP_SIZE_KEY, JSON.stringify({ w: Math.round(r.width), h: Math.round(r.height) }));
+      } catch (e) { /* private mode */ }
+    }, 250);
+  });
+  ro.observe(insp);
+  applyInspSize();
+  // The phone/desktop split is a media query, so a rotation or a window resize can move the
+  // panel between the two layouts.
+  window.addEventListener('resize', applyInspSize);
+})();
+
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();

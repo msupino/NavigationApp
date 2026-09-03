@@ -1739,6 +1739,17 @@ body.theme-light #aircraft-custom input {
 /* The header stays put; only the body scrolls. */
 #insp-body { overflow-y: auto; }
 #inspector.hidden { display: none; }
+/* Drag the corner to resize. Native CSS resize: the panel already has overflow:hidden, so
+   the grip works with no pointer handling of its own and still honours the max-height cap
+   that keeps a tall panel on screen. Gated by featureInspectorResize and desktop-only, so
+   the class is absent rather than the property overridden. */
+#inspector.insp-resizable {
+  resize: both;
+  min-width: 220px;
+  min-height: 120px;
+  max-width: calc(100vw - 24px);
+}
+
 /* Text zoom for the panel. `zoom` reflows (a transform would not), so the sheet keeps its
    width and scrolls normally at any size. Two fingers on the body are the panel's own pinch. */
 #insp-body { touch-action: pan-y; }
