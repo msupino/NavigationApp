@@ -7850,14 +7850,19 @@ function applyInspZoom(next) {
 
 // --- Inspector resize ------------------------------------------------------
 // A 280px panel is right for a waypoint and cramped for a big airfield -- charts, comms,
-// two weather reports. CSS `resize` rather than a hand-rolled grip: the panel already has
-// overflow:hidden, so the native corner works with no pointer handling of its own, and it
-// respects the max-height cap that keeps a tall panel on screen.
+// two weather reports.
+//
+// An explicit grip rather than CSS `resize`, because the CSS resizer cannot be moved off
+// the corner the writing direction puts it on: bottom-right in LTR, bottom-LEFT in Hebrew.
+// The panel pins its LEFT edge (applyInspPos does the same when dragged), so in Hebrew the
+// CSS grip landed on the pinned edge and could not follow the finger at all. Pinning left
+// and top makes right and bottom the free edges in BOTH directions, so one physical
+// bottom-right grip is correct either way.
 //
 // Desktop only, like the header drag: on a phone the inspector is a full-width bottom sheet
-// with a capped height, so there is no free dimension to drag and the grip would sit over
-// the content.
+// with a capped height, so there is no free dimension to drag.
 const INSP_SIZE_KEY = 'navaid.inspSize';   // device-local: geometry for THIS screen
+const INSP_MIN_W = 220, INSP_MIN_H = 120;
 
 function inspSizeGet() {
   // Reading localStorage throws where site data is blocked, not just writing.
@@ -7866,6 +7871,12 @@ function inspSizeGet() {
     if (o && Number.isFinite(o.w) && Number.isFinite(o.h)) return o;
   } catch (e) { /* blocked or malformed */ }
   return null;
+}
+
+function inspSizeSave(w, h) {
+  try {
+    localStorage.setItem(INSP_SIZE_KEY, JSON.stringify({ w: Math.round(w), h: Math.round(h) }));
+  } catch (e) { /* private mode */ }
 }
 
 // Same breakpoint as the header-drag guard. That one's isNarrow() is a const inside another
@@ -7891,27 +7902,49 @@ function applyInspSize() {
   }
   const sz = inspSizeGet();
   if (!sz) return;
-  insp.style.width = sz.w + 'px';
-  insp.style.height = sz.h + 'px';
+  insp.style.width = Math.max(INSP_MIN_W, sz.w) + 'px';
+  insp.style.height = Math.max(INSP_MIN_H, sz.h) + 'px';
 }
 
 (function wireInspectorResize() {
   const insp = document.getElementById('inspector');
-  if (!insp || typeof ResizeObserver !== 'function') return;
-  let t = null;
-  const ro = new ResizeObserver(() => {
+  if (!insp) return;
+  const grip = document.createElement('div');
+  grip.className = 'insp-grip';
+  grip.title = S.inspResize || 'Resize';
+  grip.setAttribute('aria-hidden', 'true');   // pointer affordance; the panel is not a widget
+  insp.appendChild(grip);
+
+  let sx = 0, sy = 0, sw = 0, sh = 0;
+  const onMove = e => {
+    // Pin left/top so the gripped edges are the ones that move. The header drag already
+    // pins left, so this agrees with a dragged panel instead of fighting it.
+    const w = Math.max(INSP_MIN_W, sw + (e.clientX - sx));
+    const h = Math.max(INSP_MIN_H, sh + (e.clientY - sy));
+    insp.style.width = w + 'px';
+    insp.style.height = h + 'px';
+  };
+  const onUp = e => {
+    grip.releasePointerCapture?.(e.pointerId);
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    const r = insp.getBoundingClientRect();
+    inspSizeSave(r.width, r.height);
+  };
+  grip.addEventListener('pointerdown', e => {
     if (!inspResizeEnabled()) return;
-    // The observer fires continuously through a drag; only the resting size is worth storing.
-    clearTimeout(t);
-    t = setTimeout(() => {
-      const r = insp.getBoundingClientRect();
-      if (r.width < 40 || r.height < 40) return;          // mid-teardown / hidden
-      try {
-        localStorage.setItem(INSP_SIZE_KEY, JSON.stringify({ w: Math.round(r.width), h: Math.round(r.height) }));
-      } catch (e) { /* private mode */ }
-    }, 250);
+    e.preventDefault();
+    e.stopPropagation();          // the header drag and the map must not see this
+    const r = insp.getBoundingClientRect();
+    insp.style.left = Math.round(r.left) + 'px';
+    insp.style.top = Math.round(r.top) + 'px';
+    insp.style.right = 'auto';
+    sx = e.clientX; sy = e.clientY; sw = r.width; sh = r.height;
+    grip.setPointerCapture?.(e.pointerId);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   });
-  ro.observe(insp);
+
   applyInspSize();
   // The phone/desktop split is a media query, so a rotation or a window resize can move the
   // panel between the two layouts.

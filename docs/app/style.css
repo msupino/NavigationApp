@@ -1739,16 +1739,38 @@ body.theme-light #aircraft-custom input {
 /* The header stays put; only the body scrolls. */
 #insp-body { overflow-y: auto; }
 #inspector.hidden { display: none; }
-/* Drag the corner to resize. Native CSS resize: the panel already has overflow:hidden, so
-   the grip works with no pointer handling of its own and still honours the max-height cap
-   that keeps a tall panel on screen. Gated by featureInspectorResize and desktop-only, so
-   the class is absent rather than the property overridden. */
+/* Drag the corner to resize. An explicit grip, not CSS `resize`: the CSS resizer sits at
+   the corner the writing direction chooses -- bottom-right in LTR, bottom-LEFT in Hebrew --
+   and the panel pins its LEFT edge, so in Hebrew that put the grip on the edge that cannot
+   move. Pinning left/top leaves right and bottom free in both directions, which is why one
+   PHYSICAL bottom-right grip is right either way. Gated by featureInspectorResize and
+   desktop-only, so the class is absent rather than a property overridden. */
 #inspector.insp-resizable {
-  resize: both;
   min-width: 220px;
   min-height: 120px;
   max-width: calc(100vw - 24px);
 }
+.insp-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;          /* the grip owns the gesture; the body must not scroll under it */
+  z-index: 1;
+  /* Two hairlines, the usual corner-grip idiom. */
+  background:
+    linear-gradient(315deg, transparent 0 4px, #6f6a6a 4px 5px, transparent 5px 7px,
+                    #6f6a6a 7px 8px, transparent 8px);
+}
+body.theme-light .insp-grip {
+  background:
+    linear-gradient(315deg, transparent 0 4px, #9aa3b2 4px 5px, transparent 5px 7px,
+                    #9aa3b2 7px 8px, transparent 8px);
+}
+/* No grip means no gesture: hide it with the feature rather than leaving a dead affordance. */
+#inspector:not(.insp-resizable) .insp-grip { display: none; }
 
 /* Text zoom for the panel. `zoom` reflows (a transform would not), so the sheet keeps its
    width and scrolls normally at any size. Two fingers on the body are the panel's own pinch. */

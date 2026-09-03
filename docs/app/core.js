@@ -2239,6 +2239,7 @@ window.S = Object.assign({
   trafficTrack: 'Track',
   plateDownload: 'Download',
   zoomIn: 'Zoom in',
+  inspResize: 'Resize',
   zoomOut: 'Zoom out',
   plateZoomReset: 'Fit width',
   plateOpenTab: 'Open in new tab',

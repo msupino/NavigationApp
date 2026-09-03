@@ -24,36 +24,80 @@ async function boot(page, size = DESKTOP) {
   await openAirfield(page);
 }
 
-const resizeCss = page => page.locator('#inspector').evaluate(e => getComputedStyle(e).resize);
+const gripVisible = page => page.locator('.insp-grip').isVisible();
+
+// Drag the grip by (dx, dy) with real pointer events.
+async function dragGrip(page, dx, dy) {
+  const g = await page.locator('.insp-grip').boundingBox();
+  await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(g.x + g.width / 2 + dx, g.y + g.height / 2 + dy, { steps: 8 });
+  await page.mouse.up();
+}
 
 test('the panel offers a resize grip on the desktop layout', async ({ page }) => {
   await boot(page);
-  expect(await resizeCss(page)).toBe('both');
+  expect(await gripVisible(page)).toBe(true);
 });
 
 test('the phone bottom sheet has no grip — there is no free dimension to drag', async ({ page }) => {
   await boot(page, PHONE);
   // Full-width sheet with a capped height: a grip would sit over the content and move
   // nothing. Same rule the header drag already follows.
-  expect(await resizeCss(page)).toBe('none');
+  expect(await gripVisible(page)).toBe(false);
+});
+
+test('dragging the grip widens the panel and the corner follows the cursor', async ({ page }) => {
+  await boot(page);
+  const before = await page.locator('#inspector').boundingBox();
+  // Widen and shorten: a big airfield panel already sits at the max-height cap that keeps it
+  // on screen, so upward growth is correctly refused and only shrinking proves the axis.
+  await dragGrip(page, 120, -100);
+  const after = await page.locator('#inspector').boundingBox();
+  expect(Math.round(after.width - before.width)).toBeGreaterThan(100);
+  expect(Math.round(before.height - after.height)).toBeGreaterThan(70);
+  // The gripped edges are the ones that moved: left and top stayed put, so the corner
+  // tracked the cursor instead of the opposite side sliding away from it.
+  expect(Math.round(after.x)).toBe(Math.round(before.x));
+  expect(Math.round(after.y)).toBe(Math.round(before.y));
+});
+
+test('the grip tracks the cursor in Hebrew too', async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await openAirfield(page);
+  expect(await page.locator('#inspector').evaluate(e => getComputedStyle(e).direction)).toBe('rtl');
+  const before = await page.locator('#inspector').boundingBox();
+  await dragGrip(page, 100, 60);
+  const after = await page.locator('#inspector').boundingBox();
+  // The CSS resizer would have been at the bottom-LEFT here, on the pinned edge. The
+  // explicit grip is physically bottom-right in both directions.
+  expect(Math.round(after.width - before.width)).toBeGreaterThan(80);
+  expect(Math.round(after.x)).toBe(Math.round(before.x));
+});
+
+test('the grip cannot shrink the panel to nothing', async ({ page }) => {
+  await boot(page);
+  await dragGrip(page, -900, -900);
+  const box = await page.locator('#inspector').boundingBox();
+  expect(box.width).toBeGreaterThanOrEqual(220);
+  expect(box.height).toBeGreaterThanOrEqual(120);
 });
 
 test('the size is remembered and restored on this device', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => {
-    const el = document.getElementById('inspector');
-    el.style.width = '420px';
-    el.style.height = '500px';
-  });
-  // The observer debounces; wait for the write rather than racing it.
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('navaid.inspSize')), { timeout: 5000 })
-    .toContain('420');
+  const before = await page.locator('#inspector').boundingBox();
+  await dragGrip(page, 140, 0);
+  const want = Math.round((await page.locator('#inspector').boundingBox()).width);
+  expect(want).toBeGreaterThan(Math.round(before.width));
+  expect(await page.evaluate(() => localStorage.getItem('navaid.inspSize'))).toContain('"w"');
 
   await page.goto('?lang=en');
   await page.waitForFunction(() => !document.getElementById('boot-loading'));
   await openAirfield(page);
   const box = await page.locator('#inspector').boundingBox();
-  expect(Math.round(box.width)).toBe(420);
+  expect(Math.round(box.width)).toBe(want);
 });
 
 test('a desktop size does not follow the panel into the phone layout', async ({ page }) => {
@@ -71,11 +115,11 @@ test('a desktop size does not follow the panel into the phone layout', async ({ 
 
 test('the gist can remove the grip', async ({ page }) => {
   await boot(page);
-  expect(await resizeCss(page)).toBe('both');
+  expect(await gripVisible(page)).toBe(true);
   await page.evaluate(() => { setTune('featureInspectorResize', false); applyInspSize(); });
   // Only a gist switch may remove a control outright — this is that switch, not a platform
   // or data condition hiding one.
-  expect(await resizeCss(page)).toBe('none');
+  expect(await gripVisible(page)).toBe(false);
 });
 
 test('a blocked localStorage does not stop the panel opening', async ({ page }) => {
