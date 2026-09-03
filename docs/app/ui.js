@@ -7796,7 +7796,10 @@ const inspZoomMin = () => tune('inspZoomSmallest');
 const inspZoomMax = () => tune('inspZoomLargest');
 
 function inspZoomGet() {
-  const v = parseFloat(localStorage.getItem(INSP_ZOOM_KEY));
+  // Reading localStorage THROWS where site data is blocked, not just writing to it. This
+  // runs during load, so an unguarded read took the rest of ui.js down with it.
+  let v = NaN;
+  try { v = parseFloat(localStorage.getItem(INSP_ZOOM_KEY)); } catch (e) { /* blocked */ }
   return Number.isFinite(v) ? Math.min(inspZoomMax(), Math.max(inspZoomMin(), v)) : inspZoomMin();
 }
 
