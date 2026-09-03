@@ -4561,8 +4561,50 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
 .plate-canvas {
   display: block;
   width: 100%;
+  /* Zoom sets width above 100%; without this the image would be clamped back to
+     the wrapper and the wrapper would never gain anything to scroll. */
+  max-width: none;
   margin: 0 auto 8px;
 }
+/* One finger scrolls the sheet; two are the viewer's own pinch, taken in JS. */
+.plate-canvas-wrap { touch-action: pan-x pan-y; }
+/* Zoomed in, the sheet is wider than the box, and centring it hides the left
+   edge behind the scroll origin. */
+.plate-canvas-wrap.plate-zoomed { text-align: start; }
+/* Snippet zoom sits in the head beside Expand, so the thumbnail itself keeps its
+   whole area as the tap target that opens the full view. */
+.sat-zoom { display: inline-flex; gap: 4px; margin-inline-start: auto; }
+.sat-zoom-btn {
+  min-width: 28px;
+  padding: 1px 6px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.sat-zoom-btn:disabled { opacity: 0.45; cursor: default; }
+/* Two fingers on the thumbnail are the snippet's own pinch, taken in JS. */
+.satellite-snippet { touch-action: pan-y; }
+.plate-zoom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.plate-zoom-btn,
+.plate-zoom-pct {
+  padding: 4px 10px;
+  font-size: 14px;
+  line-height: 1.2;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.plate-zoom-btn { min-width: 40px; font-weight: 700; }
+.plate-zoom-pct { min-width: 64px; font-variant-numeric: tabular-nums; }
+/* Dimmed at the ends of the range, never removed. */
+.plate-zoom-btn:disabled { opacity: 0.45; cursor: default; }
 .plate-loading {
   position: absolute;
   inset: 50% 0 auto;
