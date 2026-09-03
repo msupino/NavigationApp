@@ -1456,6 +1456,7 @@ window.S = Object.assign({
   wxStopSpeak: 'Stop reading',
   wxUpdated: 'Updated',
   wxSource: 'via',
+  wxStale: 'older than expected — check the source',
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'Saved route could not be restored, so the original saved data was preserved. ' +
@@ -3974,6 +3975,68 @@ function visLabel(v) {
   if (!s) return '';
   return s === '10+' ? '10 km or more' : s + ' km';
 }
+// When a report was issued. The IAA detail page states this outright ("Created: 03/09/2026
+// 05:24", UTC) and the feed carries it through as `created`; that is the number the IAA site
+// shows and the one a pilot cross-checks. Only when it is absent (the AWC fallback source)
+// is it reconstructed from the DDHHMMZ group that follows the station id.
+//
+// That group carries a day of month but no month, so a bare Date.UTC() with the current month
+// can land on a day that month does not have -- "31" read on 1 October became 1 October,
+// a date in the FUTURE. Build candidates for this month and last, keep only those whose day
+// survived the round trip, and take the most recent one that is not ahead of now.
+function wxDayHourUtc(day, hh, mm, ref) {
+  const out = [];
+  for (const back of [0, 1]) {
+    const t = Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() - back, day, hh, mm);
+    if (new Date(t).getUTCDate() === day) out.push(t);   // rejects e.g. 31 September
+  }
+  const past = out.filter(t => t - ref.getTime() <= 2 * 3600e3);   // small clock skew allowed
+  return past.length ? Math.max(...past) : null;
+}
+
+function wxReportTime(raw, now) {
+  const g = /\b(?:METAR|SPECI|TAF)(?:\s+(?:AMD|COR))?\s+[A-Z]{4}\s+(\d{2})(\d{2})(\d{2})Z\b/
+    .exec(String(raw || '')) || /\b(\d{2})(\d{2})(\d{2})Z\b/.exec(String(raw || ''));
+  if (!g) return null;
+  const day = +g[1], hh = +g[2], mm = +g[3];
+  if (day < 1 || day > 31 || hh > 23 || mm > 59) return null;
+  const t = wxDayHourUtc(day, hh, mm, now instanceof Date ? now : new Date());
+  return t === null ? null : t;
+}
+
+// Issue time for one report: the feed's own `created` first, the raw group as fallback.
+function wxIssuedAt(rep, now) {
+  if (!rep) return null;
+  if (rep.created) {
+    const t = Date.parse(rep.created);
+    if (!isNaN(t)) return t;
+  }
+  return wxReportTime(rep.rawOb || rep.rawTAF || rep.rawText || '', now);
+}
+
+// TAF validity end: the DDHH/DDHH group after the issue time. A TAF whose period has run out
+// is stale in a way its issue time alone does not show. Hour 24 is legal and means midnight.
+function wxTafValidTo(raw, now) {
+  const g = /\b(\d{2})(\d{2})\/(\d{2})(\d{2})\b/.exec(String(raw || ''));
+  if (!g) return null;
+  const day = +g[3], hh = +g[4];
+  if (day < 1 || day > 31 || hh > 24) return null;
+  const ref = now instanceof Date ? now : new Date();
+  for (const back of [0, -1, 1]) {                 // a validity end is normally in the FUTURE
+    const t = Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + back, day, 0, 0) + hh * 3600e3;
+    const probe = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + back, day));
+    if (probe.getUTCDate() !== day) continue;
+    if (Math.abs(t - ref.getTime()) <= 3 * 24 * 3600e3) return t;
+  }
+  return null;
+}
+
+function wxHhmmZ(epoch) {
+  const d = new Date(epoch);
+  return String(d.getUTCHours()).padStart(2, '0') + ':' +
+         String(d.getUTCMinutes()).padStart(2, '0') + 'Z';
+}
+
 function decodeMetar(m) {
   if (!m) return '';
   const p = [];

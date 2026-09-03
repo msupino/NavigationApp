@@ -2991,7 +2991,7 @@ function appendAirfieldWeather(body, af) {
     // box reads the same whatever a field publishes -- and a field that files a TAF but no
     // METAR now says so instead of silently omitting the row.
     const noneText = S.wxAdWsNone || 'No information';
-    const block = (label, lines, spkBtn) => {
+    const block = (label, lines, spkBtn, stamp) => {
       const b = document.createElement('div');
       b.className = 'wx-block';
       // Wrappers inherit the interface direction; the LTR code lines pin their own. (dir here
@@ -3000,6 +3000,17 @@ function appendAirfieldWeather(body, af) {
       t.className = 'wx-label';
       t.textContent = label;
       b.appendChild(t);
+      // The report's OWN issue time, not when we fetched it: this is the number the IAA site
+      // prints beside the same message, so the two can be compared without arithmetic.
+      if (stamp && stamp.epoch) {
+        const ts = document.createElement('span');
+        ts.className = 'wx-time' + (stamp.stale ? ' wx-time-stale' : '');
+        ts.dir = 'ltr';
+        ts.textContent = wxHhmmZ(stamp.epoch);
+        ts.title = new Date(stamp.epoch).toUTCString() +
+          (stamp.stale ? ' — ' + (S.wxStale || 'older than expected') : '');
+        b.appendChild(ts);
+      }
       if (spkBtn) b.appendChild(spkBtn);   // this section's own 🔊
       for (const ln of lines) {
         const d = document.createElement('div');
@@ -3035,7 +3046,10 @@ function appendAirfieldWeather(body, af) {
         const txt = showRaw ? (data.metar.rawOb || data.metar.rawText || '') : decodeMetar(data.metar);
         return txt ? (icao + '. ' + (S.wxMetar || 'METAR') + '. ' + txt) : '';
       });
-      bodyEl.appendChild(block(S.wxMetar || 'METAR', lines.filter(Boolean), spk));
+      // A METAR is issued at least hourly, so one over 90 minutes old is a gap worth seeing.
+      const mAt = wxIssuedAt(data.metar);
+      bodyEl.appendChild(block(S.wxMetar || 'METAR', lines.filter(Boolean), spk,
+        mAt ? { epoch: mAt, stale: Date.now() - mAt > 90 * 60e3 } : null));
     } else {
       bodyEl.appendChild(emptyBlock(S.wxMetar || 'METAR', missing));
     }
@@ -3053,7 +3067,12 @@ function appendAirfieldWeather(body, af) {
         else { const dec = decodeTaf(data.taf); txt = dec.length ? dec.map(s => s.when + ': ' + s.text).join('. ') : ''; }
         return txt ? (icao + '. ' + (S.wxTaf || 'TAF') + '. ' + txt) : '';
       });
-      bodyEl.appendChild(block(S.wxTaf || 'TAF', lines.filter(Boolean), spk));
+      // A TAF is stale once its validity period has run out, which its issue time alone
+      // does not show -- a 30-hour TAF issued yesterday is perfectly current.
+      const tAt = wxIssuedAt(data.taf);
+      const tTo = wxTafValidTo(data.taf.rawTAF || data.taf.rawText || '');
+      bodyEl.appendChild(block(S.wxTaf || 'TAF', lines.filter(Boolean), spk,
+        tAt ? { epoch: tAt, stale: tTo !== null && Date.now() > tTo } : null));
     } else {
       bodyEl.appendChild(emptyBlock(S.wxTaf || 'TAF', missing));
     }
@@ -3065,17 +3084,16 @@ function appendAirfieldWeather(body, af) {
     toggle.textContent = showRaw ? (S.wxShowDecoded || 'Show decoded') : (S.wxShowRaw || 'Show raw');
     toggle.onclick = () => { stopSpeak(); showRaw = !showRaw; render(); };   // content changes: stop any read
     bodyEl.appendChild(toggle);
-    if (data.generatedAt) {
-      const upd = new Date(data.generatedAt);
-      if (!isNaN(upd.getTime())) {
+    // Where the reports came from. The times used to live here too -- but that was OUR fetch
+    // time, a fact about the feed rather than about the weather, and it could not be compared
+    // with anything the IAA publishes. Each report now carries its own issue time instead.
+    {
+      const src = (typeof wxSourceShort === 'function') ? wxSourceShort(data.source) : '';
+      if (src) {
         const age = document.createElement('div');
         age.className = 'wx-updated';
-        age.dir = 'auto';      // "עודכן 18:19Z" reads correctly in RTL too
-        const src = (typeof wxSourceShort === 'function') ? wxSourceShort(data.source) : '';
-        age.textContent = (S.wxUpdated || 'Updated') + ' ' +
-          String(upd.getUTCHours()).padStart(2, '0') + ':' +
-          String(upd.getUTCMinutes()).padStart(2, '0') + 'Z' +
-          (src ? ' · ' + (S.wxSource || 'via') + ' ' + src : '');
+        age.dir = 'auto';      // reads correctly in RTL too
+        age.textContent = (S.wxSource || 'via') + ' ' + src;
         bodyEl.appendChild(age);
       }
     }

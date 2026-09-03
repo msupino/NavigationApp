@@ -5092,7 +5092,18 @@ body.theme-light .point-choice-meta,
 body.theme-light .satellite-snippet-head label,
 body.theme-light .satellite-caption,
 body.theme-light .wx-head,
-body.theme-light .wx-updated,
+body.theme-light /* The report's own issue time, beside its METAR/TAF badge. Latin digits in a Hebrew box,
+   so it pins its own direction; muted until it is old, then it has to be noticed. */
+.wx-time {
+  margin-inline-start: 6px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: #9a9494;
+}
+.wx-time-stale { color: #e0a33a; font-weight: 700; }
+body.theme-light .wx-time { color: #6b7787; }
+body.theme-light .wx-time-stale { color: #a86a00; }
+.wx-updated,
 body.theme-light #insp-close,
 body.theme-light #mag-settings-close,
 body.theme-light #search-close,
