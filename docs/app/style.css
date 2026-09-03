@@ -7006,12 +7006,19 @@ body.theme-light .parking-preview {
 .parking-contact-modal .fpl-actions { display: flex; justify-content: flex-end; }
 
 /* What the "Sync settings too" box uploads. Sits under the checkbox, full width, so the
-   pilot details it names are read before the box is ticked, not after. */
+   pilot details it names are read before the box is ticked, not after. The rule reads as
+   attached to the checkbox rather than to the whole row: plain route sync uploads none of
+   this, and a caption centred under both controls would say otherwise. Logical inline-start
+   so it lands on the correct side in Hebrew. */
 .route-library-gdrive-pii {
   flex-basis: 100%;
   font-size: 11px;
   line-height: 1.35;
   color: #9a9494;
-  margin-top: 2px;
+  margin-top: 4px;
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid #4b4646;
+  text-align: start;
 }
-body.theme-light .route-library-gdrive-pii { color: #6b7787; }
+.route-library-gdrive-pii[hidden] { display: none; }
+body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start-color: #c7cedb; }
