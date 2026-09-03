@@ -89,7 +89,10 @@ test('the METAR badge shows the report time, and dims until it is old', async ({
   });
   const t = page.locator('.wx-block').first().locator('.wx-time');
   await expect(t).toBeVisible();
-  await expect(t).toHaveText(hhmm.slice(0, 2) + ':' + hhmm.slice(2) + 'Z');
+  const dd = String(recent.getUTCDate()).padStart(2, '0');
+  const mo = String(recent.getUTCMonth() + 1).padStart(2, '0');
+  // Day and month, not a bare time: 05:24Z beside a report from yesterday reads as today.
+  await expect(t).toHaveText(dd + '/' + mo + ' ' + hhmm.slice(0, 2) + ':' + hhmm.slice(2) + 'Z');
   await expect(t).not.toHaveClass(/wx-time-stale/);
 });
 
@@ -103,7 +106,7 @@ test('a METAR hours old is marked stale in the box', async ({ page }) => {
   const t = page.locator('.wx-block').first().locator('.wx-time');
   await expect(t).toHaveClass(/wx-time-stale/);
   // The whole point of the badge: it names a time a pilot can compare, not "4 hours ago".
-  await expect(t).toHaveText(/^\d{2}:\d{2}Z$/);
+  await expect(t).toHaveText(/^\d{2}\/\d{2} \d{2}:\d{2}Z$/);
 });
 
 test('the source line no longer claims a time of its own', async ({ page }) => {

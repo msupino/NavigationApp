@@ -4031,10 +4031,15 @@ function wxTafValidTo(raw, now) {
   return null;
 }
 
+// "03/09 05:24Z" -- day and month with the time, because a bare 05:24Z beside a report
+// that turns out to be from yesterday reads as this morning. The IAA states the full date
+// ("Created: 03/09/2026 05:24") and shows it that way round, so the order matches the source
+// a pilot is comparing against. Year is omitted: nothing in a live weather feed is a year old.
 function wxHhmmZ(epoch) {
   const d = new Date(epoch);
-  return String(d.getUTCHours()).padStart(2, '0') + ':' +
-         String(d.getUTCMinutes()).padStart(2, '0') + 'Z';
+  const p2 = n => String(n).padStart(2, '0');
+  return p2(d.getUTCDate()) + '/' + p2(d.getUTCMonth() + 1) + ' ' +
+         p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes()) + 'Z';
 }
 
 function decodeMetar(m) {
