@@ -135,3 +135,40 @@ test('a blocked localStorage does not stop the panel opening', async ({ page }) 
   await openAirfield(page);
   expect(errors.filter(m => /insecure|SecurityError/i.test(m))).toEqual([]);
 });
+
+test('a panel resized on desktop stays reachable after a rotation to a narrow screen', async ({ page }) => {
+  await boot(page);
+  await dragGrip(page, 150, -80);
+  const desk = await page.locator('#inspector').boundingBox();
+  expect(desk.x).toBeGreaterThan(400);            // pinned well to the right of a phone screen
+
+  // Rotate / switch to the phone layout without a reload: the media query flips, but inline
+  // styles the grip wrote would still beat the sheet's own left/right/bottom.
+  await page.setViewportSize(PHONE);
+  await page.waitForFunction(() => !document.getElementById('inspector').style.left);
+  const box = await page.locator('#inspector').boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(PHONE.width);
+  expect(box.width).toBeGreaterThan(PHONE.width - 40);   // full-width sheet again
+  for (const prop of ['left', 'top', 'right', 'width', 'height']) {
+    expect(await page.locator('#inspector').evaluate((e, p) => e.style[p], prop)).toBe('');
+  }
+});
+
+test('a panel larger than the window is pulled back inside it', async ({ page }) => {
+  await boot(page);
+  // State a panel can genuinely be left in: sized and pinned in a big window, which is then
+  // made smaller. Set directly rather than dragged, so the case is exercised exactly.
+  await page.evaluate(() => {
+    const e = document.getElementById('inspector');
+    e.style.left = '1100px'; e.style.top = '700px'; e.style.right = 'auto';
+    e.style.width = '600px'; e.style.height = '600px';
+  });
+  await page.setViewportSize({ width: 760, height: 700 });
+  await page.evaluate(() => applyInspSize());
+  const box = await page.locator('#inspector').boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(760);
+  // At least the header has to remain on screen, or there is nothing left to grab.
+  expect(box.y).toBeLessThan(700 - 30);
+});
