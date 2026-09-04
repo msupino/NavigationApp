@@ -3532,6 +3532,242 @@ function closeFlightPlan() {
   try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
 }
 
+// A labelled number input for the aircraft profile row. Pure DOM construction with no
+// state of its own -- it was nested only because that is where it was first needed.
+function mkAcInput(id, label, title, min, max, step) {
+  const wrap = document.createElement('label');
+  wrap.title = title || label;
+  const lbl = document.createElement('span');
+  lbl.textContent = label + ': ';
+  wrap.appendChild(lbl);
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.id = id;
+  inp.min = min; inp.max = max; inp.step = step;
+  inp.style.width = '60px';
+  wrap.appendChild(inp);
+  return wrap;
+}
+
+// The flight plan as CSV. Reads the rendered table rather than the model, so what is
+// exported is exactly what the pilot sees -- hidden columns stay hidden. `table` and
+// `scrollArea` were closed over; they are arguments now, which is the whole change.
+function flightPlanCsv(table, scrollArea) {
+  const visibleHeaders = Array.from(table.querySelectorAll('thead th'))
+    .filter(th => !(th.classList && th.classList.contains('fp-col-hidden')))
+    // data-csv is the stable export name; the visible text may carry units or other
+    // wording that must never reach the file.
+    .map(th => (th.dataset && th.dataset.csv) || th.textContent || '')
+    .filter(h => h.trim() !== '');
+  const columnCount = visibleHeaders.length;
+  // A spreadsheet EVALUATES any cell that opens with =, +, - or @, so a waypoint named
+  // =WEBSERVICE(...) -- a name can arrive from an imported route or a share link, and is
+  // never validated beyond "is a string" -- becomes a live formula the moment the pilot
+  // opens the export. Quoting is not a defence: it is CSV syntax, and the formula runs
+  // inside the quotes. Such cells are prefixed with an apostrophe, which every
+  // formula-evaluating spreadsheet reads as "this is text" and does not display.
+  // Real numbers are left alone: -5 is a value, not an attack, and prefixing it would
+  // turn every negative figure in the plan into text.
+  const NUMERIC = /^[-+]?(\d+(\.\d+)?|\.\d+)([eE][-+]?\d+)?$/;
+  const csvCell = value => {
+    let s = String(value == null ? '' : value).replace(/\r?\n|\r/g, ' ').trim();
+    if (/^[=+\-@\t\r]/.test(s) && !NUMERIC.test(s)) s = "'" + s;
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const rowValues = row => {
+    const values = [];
+    for (const cell of row.children) {
+      if (cell.classList && cell.classList.contains('fp-del')) continue;
+      if (cell.classList && cell.classList.contains('fp-col-hidden')) continue;
+      const span = Math.max(1, cell.colSpan || 1);
+      const input = cell.querySelector('input');
+      const radialVal = cell.querySelector('.fp-radial-val');
+      const value = input ? input.value
+        : (radialVal ? radialVal.textContent : cell.textContent);
+      values.push(value);
+      for (let i = 1; i < span && values.length < columnCount; i++) values.push('');
+      if (values.length >= columnCount) break;
+    }
+    while (values.length < columnCount) values.push('');
+    return values.slice(0, columnCount);
+  };
+  const addTable = (rows, section, planTable) => {
+    rows.push([section]);
+    rows.push(visibleHeaders);
+    planTable.querySelectorAll('tbody tr, tfoot tr').forEach(row => {
+      rows.push(rowValues(row));
+    });
+  };
+  const rows = [];
+  const tables = Array.from(scrollArea.querySelectorAll('.flight-table'));
+  tables.forEach((planTable, idx) => {
+    if (idx > 0) rows.push([]);
+    addTable(rows, idx === 0 ? S.flightPlan : S.fpReturn, planTable);
+  });
+  return rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
+}
+
+// Kneeboard nav-log: a print-ready window built from the RENDERED tables, so it carries
+// exactly what the pilot is looking at. `scrollArea` was the only thing it closed over
+// (the `i` and `tr` that a naive scan reports are arrow parameters, not captures), so it
+// lifts out with one argument and no behaviour change.
+function exportNavLog(scrollArea) {
+  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+  const esc = escapeXml;               // one escaper, defined in core.js
+  const lang = (window.__navLang === 'he') ? 'he' : 'en';
+  const dir = lang === 'he' ? 'rtl' : 'ltr';
+  const dep = esc(wpLabel(0));
+  const dest = esc(wpLabel(state.waypoints.length - 1));
+
+  // Per-leg table(s): clone the live flight-plan tables, freeze inputs to
+  // their current values, and drop the delete column.
+  const tablesHtml = Array.from(scrollArea.querySelectorAll('.flight-table')).map(t => {
+    const clone = t.cloneNode(true);
+    // cloneNode copies attributes, not live .value state (a <select>'s
+    // selection resets to its first option) — read each value from the
+    // ORIGINAL element, pairing originals and clones by document order.
+    const origEls = t.querySelectorAll('input, select');
+    clone.querySelectorAll('input, select').forEach((el, i) => {
+      const live = origEls[i];
+      const val = live ? live.value : el.value;
+      const span = document.createElement('span');
+      if (el.classList.contains('fp-leg-vor')) {
+        // Per-leg VOR picker: print the EFFECTIVE ident (override or the
+        // route-wide reference), so each Radial row says which VOR it's from.
+        const ident = val || (typeof vorRef === 'string' && vorRef) || '';
+        span.textContent = ident ? ident + ' ' : '';
+        span.className = 'nl-vor-ident';
+      } else {
+        span.textContent = val || '';
+      }
+      el.replaceWith(span);
+    });
+    clone.querySelectorAll('.fp-col-hidden').forEach(el => el.remove());
+    clone.querySelectorAll('[data-fp-col="delete"], .fp-del').forEach(el => el.remove());
+    // The delete column has no .fp-del marker in the header / Total rows —
+    // it's just an empty trailing cell. Drop it so the table has no stray
+    // box on the far side (tbody delete cells were removed above).
+    const headRow = clone.querySelector('thead tr');
+    if (headRow && headRow.lastElementChild &&
+        !headRow.lastElementChild.textContent.trim()) headRow.lastElementChild.remove();
+    clone.querySelectorAll('tfoot tr').forEach(tr => {
+      if (tr.lastElementChild && !tr.lastElementChild.textContent.trim()) {
+        tr.lastElementChild.remove();
+      }
+    });
+    return clone.outerHTML;
+  }).join('<div class="nl-gap"></div>');
+
+  // Wrap LTR content (codes, frequencies) in an isolate so it doesn't
+  // reorder against surrounding Hebrew in the RTL nav log.
+  const ltr = s => '<span dir="ltr" style="unicode-bidi:isolate">' + esc(s) + '</span>';
+  // Frequency list from comm-change callout notes on the route. Use route
+  // waypoint order, not note insertion order, so the kneeboard reads along
+  // the flight path. The label uses the localized call-sign name (Hebrew in
+  // he mode), not the raw catalog id.
+  const routeNoteOrder = item => {
+    const wpi = item && Number.isInteger(item.wpi) && item.wpi >= 0
+      ? item.wpi : Number.MAX_SAFE_INTEGER;
+    return wpi;
+  };
+  const freqs = (state.notes || [])
+    .map((n, idx) => ({
+      n,
+      idx,
+      wpi: (n && n.cc && typeof commCalloutWaypointIndex === 'function')
+        ? commCalloutWaypointIndex(n) : -1,
+    }))
+    .filter(item => item.n && item.n.cc)
+    .sort((a, b) => routeNoteOrder(a) - routeNoteOrder(b) || a.idx - b.idx)
+    .map(({ n }) => {
+    const wp = (typeof navName === 'function' ? navName(n.cc) : n.cc) || n.cc;
+    const name = typeof commNoteName === 'function' ? commNoteName(n) : (n.freqName || '');
+    const fq = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
+    return '<li>' + esc(wp) + (name ? ' \u2014 ' + esc(name) : '') +
+      (fq ? ' \u2014 ' + ltr(fq + ' MHz') : '') + '</li>';
+  }).join('');
+
+  // Airport frequency block (tower/primary + clearance + ATIS) for the
+  // departure and arrival airfields.
+  const airfieldFreqHtml = (wp, code, sectionLabel) => {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+    if (!af) return '';
+    const item = (label, val) => '<li>' + esc(label) + ' — ' + ltr(val) + '</li>';
+    const items = [];
+    const primary = typeof airfieldPrimaryText === 'function' ? airfieldPrimaryText(af) : '';
+    if (primary) items.push(item(S.primary || 'Primary', primary));
+    const clr = typeof airfieldClearanceText === 'function' ? airfieldClearanceText(af) : '';
+    if (clr) items.push(item(S.clearance || 'Clearance', clr));
+    const atis = typeof airfieldAtisText === 'function' ? airfieldAtisText(af) : '';
+    if (atis) items.push(item(S.atis || 'ATIS', atis));
+    if (!items.length) return '';
+    return '<h2>' + ltr(code) + ' — ' + esc(sectionLabel) + '</h2><ul>' + items.join('') + '</ul>';
+  };
+  const lastIdx = state.waypoints.length - 1;
+  let depFreqHtml = airfieldFreqHtml(state.waypoints[0], wpLabel(0),
+    S.navLogDepFreqs || 'Departure frequencies');
+  if (lastIdx > 0) {
+    depFreqHtml += airfieldFreqHtml(state.waypoints[lastIdx], wpLabel(lastIdx),
+      S.navLogArrFreqs || 'Arrival frequencies');
+  }
+
+  // Reference VOR(s) feeding the Radial/DME columns — the route-wide
+  // selection plus any distinct per-leg overrides — with their frequencies,
+  // so the printed log carries what to tune.
+  const vorIdents = [];
+  const pushVor = id => {
+    if (id && typeof id === 'string' && !vorIdents.includes(id)) vorIdents.push(id);
+  };
+  pushVor(typeof vorRef === 'string' ? vorRef : null);
+  (state.legs || []).forEach(l => pushVor(l && l.vorRef));
+  const vorHtml = vorIdents
+    .map(id => (typeof vorByIdent === 'function' ? vorByIdent(id) : null))
+    .filter(Boolean)
+    .map(v => ltr(v.ident) + ' \u2014 ' + esc((lang === 'he' && v.he) ? v.he : v.name) +
+              (v.freq ? ' \u2014 ' + ltr(v.freq + ' MHz') : ''))
+    .join(' \u00b7 ');
+
+  const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+  const today = new Date().toISOString().slice(0, 10);
+  const title = (S.navLogTitle || 'NavAid \u2014 Nav Log') + ' \u00b7 ' + dep + ' \u2192 ' + dest;
+
+  const html =
+    '<!DOCTYPE html><html lang="' + lang + '" dir="' + dir + '"><head>' +
+    '<meta charset="utf-8"><title>' + esc(title) + '</title><style>' +
+    '@page{size:A4 portrait;margin:12mm}' +
+    'body{font:13px/1.4 system-ui,Arial,sans-serif;color:#111;margin:0}' +
+    'h1{font-size:18px;margin:0 0 2px}.nl-sub{color:#555;margin:0 0 10px}' +
+    '.nl-meta{margin:0 0 12px}.nl-meta b{display:inline-block;min-width:110px}' +
+    'table{border-collapse:collapse;width:100%;font-size:12px}' +
+    'th,td{border:1px solid #999;padding:3px 5px;text-align:' +
+      (dir === 'rtl' ? 'right' : 'left') + '}' +
+    'thead th{background:#eee}.nl-gap{height:14px}' +
+    '.nl-vor-ident{font-weight:600;color:#555;margin-inline-end:2px}' +
+    'h2{font-size:14px;margin:16px 0 4px}ul{margin:4px 0;padding-inline-start:18px}' +
+    '</style></head><body>' +
+    '<h1>' + esc(S.navLogTitle || 'NavAid \u2014 Nav Log') + '</h1>' +
+    '<p class="nl-sub">' + dep + ' \u2192 ' + dest + '</p>' +
+    '<div class="nl-meta">' +
+      '<div><b>' + esc(S.navLogDate || 'Date') + ':</b> ' + today + '</div>' +
+      '<div><b>' + esc(S.tbAircraft || 'Aircraft') + ':</b> ' +
+        esc(S.tbGph || 'GPH') + ' ' + esc(ac.gph) + ' \u00b7 ' +
+        esc(S.tbTaxiGal || 'Taxi/T.O.') + ' ' + esc(ac.taxiGal) + '</div>' +
+      (vorHtml ? '<div><b>' + esc(S.navLogVor || 'Reference VOR') + ':</b> ' + vorHtml + '</div>' : '') +
+    '</div>' +
+    depFreqHtml +
+    tablesHtml +
+    (freqs ? '<h2>' + esc(S.navLogFreqs || 'Frequencies') + '</h2><ul>' + freqs + '</ul>' : '') +
+    '</body></html>';
+
+  const w = window.open('', '_blank');
+  if (!w) { alert(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { try { w.print(); } catch (e) { /* user can print manually */ } }, 300);
+}
+
 function showFlightPlan() {
   if (refreshFlightPlan) return;        // dedupe — modal already open
   if (state.legs.length === 0) {
@@ -3584,20 +3820,6 @@ function showFlightPlan() {
   fpAircraft.appendChild(acLbl);
   const acInputDiv = document.createElement('div');
   acInputDiv.id = 'aircraft-custom';
-  function mkAcInput(id, label, title, min, max, step) {
-    const wrap = document.createElement('label');
-    wrap.title = title || label;
-    const lbl = document.createElement('span');
-    lbl.textContent = label + ': ';
-    wrap.appendChild(lbl);
-    const inp = document.createElement('input');
-    inp.type = 'number';
-    inp.id = id;
-    inp.min = min; inp.max = max; inp.step = step;
-    inp.style.width = '60px';
-    wrap.appendChild(inp);
-    return wrap;
-  }
   acInputDiv.appendChild(mkAcInput('aircraft-gph', S.tbGph, S.tbGphTitle, 1, 50, 0.5));
   acInputDiv.appendChild(mkAcInput('aircraft-taxi', S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1));
   fpAircraft.appendChild(acInputDiv);
@@ -4491,63 +4713,9 @@ function showFlightPlan() {
   }
   syncFpColumnVisibility();
 
-  function flightPlanCsv() {
-    const visibleHeaders = Array.from(table.querySelectorAll('thead th'))
-      .filter(th => !(th.classList && th.classList.contains('fp-col-hidden')))
-      // data-csv is the stable export name; the visible text may carry units or other
-      // wording that must never reach the file.
-      .map(th => (th.dataset && th.dataset.csv) || th.textContent || '')
-      .filter(h => h.trim() !== '');
-    const columnCount = visibleHeaders.length;
-    // A spreadsheet EVALUATES any cell that opens with =, +, - or @, so a waypoint named
-    // =WEBSERVICE(...) -- a name can arrive from an imported route or a share link, and is
-    // never validated beyond "is a string" -- becomes a live formula the moment the pilot
-    // opens the export. Quoting is not a defence: it is CSV syntax, and the formula runs
-    // inside the quotes. Such cells are prefixed with an apostrophe, which every
-    // formula-evaluating spreadsheet reads as "this is text" and does not display.
-    // Real numbers are left alone: -5 is a value, not an attack, and prefixing it would
-    // turn every negative figure in the plan into text.
-    const NUMERIC = /^[-+]?(\d+(\.\d+)?|\.\d+)([eE][-+]?\d+)?$/;
-    const csvCell = value => {
-      let s = String(value == null ? '' : value).replace(/\r?\n|\r/g, ' ').trim();
-      if (/^[=+\-@\t\r]/.test(s) && !NUMERIC.test(s)) s = "'" + s;
-      return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    };
-    const rowValues = row => {
-      const values = [];
-      for (const cell of row.children) {
-        if (cell.classList && cell.classList.contains('fp-del')) continue;
-        if (cell.classList && cell.classList.contains('fp-col-hidden')) continue;
-        const span = Math.max(1, cell.colSpan || 1);
-        const input = cell.querySelector('input');
-        const radialVal = cell.querySelector('.fp-radial-val');
-        const value = input ? input.value
-          : (radialVal ? radialVal.textContent : cell.textContent);
-        values.push(value);
-        for (let i = 1; i < span && values.length < columnCount; i++) values.push('');
-        if (values.length >= columnCount) break;
-      }
-      while (values.length < columnCount) values.push('');
-      return values.slice(0, columnCount);
-    };
-    const addTable = (rows, section, planTable) => {
-      rows.push([section]);
-      rows.push(visibleHeaders);
-      planTable.querySelectorAll('tbody tr, tfoot tr').forEach(row => {
-        rows.push(rowValues(row));
-      });
-    };
-    const rows = [];
-    const tables = Array.from(scrollArea.querySelectorAll('.flight-table'));
-    tables.forEach((planTable, idx) => {
-      if (idx > 0) rows.push([]);
-      addTable(rows, idx === 0 ? S.flightPlan : S.fpReturn, planTable);
-    });
-    return rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
-  }
 
   function exportFlightPlanCsv() {
-    const blob = new Blob(['\ufeff', flightPlanCsv()], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob(['\ufeff', flightPlanCsv(table, scrollArea)], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'flight-plan-' + routeFileSlug() + '-' + fileStamp() + '.csv';
@@ -4558,162 +4726,6 @@ function showFlightPlan() {
   // Kneeboard nav-log: open a clean, print-ready document (header +
   // per-leg table(s) + frequency list) in a new window and trigger print, so
   // the pilot saves a PDF via the browser. Renders Hebrew RTL natively.
-  function exportNavLog() {
-    if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
-    const esc = escapeXml;               // one escaper, defined in core.js
-    const lang = (window.__navLang === 'he') ? 'he' : 'en';
-    const dir = lang === 'he' ? 'rtl' : 'ltr';
-    const dep = esc(wpLabel(0));
-    const dest = esc(wpLabel(state.waypoints.length - 1));
-
-    // Per-leg table(s): clone the live flight-plan tables, freeze inputs to
-    // their current values, and drop the delete column.
-    const tablesHtml = Array.from(scrollArea.querySelectorAll('.flight-table')).map(t => {
-      const clone = t.cloneNode(true);
-      // cloneNode copies attributes, not live .value state (a <select>'s
-      // selection resets to its first option) — read each value from the
-      // ORIGINAL element, pairing originals and clones by document order.
-      const origEls = t.querySelectorAll('input, select');
-      clone.querySelectorAll('input, select').forEach((el, i) => {
-        const live = origEls[i];
-        const val = live ? live.value : el.value;
-        const span = document.createElement('span');
-        if (el.classList.contains('fp-leg-vor')) {
-          // Per-leg VOR picker: print the EFFECTIVE ident (override or the
-          // route-wide reference), so each Radial row says which VOR it's from.
-          const ident = val || (typeof vorRef === 'string' && vorRef) || '';
-          span.textContent = ident ? ident + ' ' : '';
-          span.className = 'nl-vor-ident';
-        } else {
-          span.textContent = val || '';
-        }
-        el.replaceWith(span);
-      });
-      clone.querySelectorAll('.fp-col-hidden').forEach(el => el.remove());
-      clone.querySelectorAll('[data-fp-col="delete"], .fp-del').forEach(el => el.remove());
-      // The delete column has no .fp-del marker in the header / Total rows —
-      // it's just an empty trailing cell. Drop it so the table has no stray
-      // box on the far side (tbody delete cells were removed above).
-      const headRow = clone.querySelector('thead tr');
-      if (headRow && headRow.lastElementChild &&
-          !headRow.lastElementChild.textContent.trim()) headRow.lastElementChild.remove();
-      clone.querySelectorAll('tfoot tr').forEach(tr => {
-        if (tr.lastElementChild && !tr.lastElementChild.textContent.trim()) {
-          tr.lastElementChild.remove();
-        }
-      });
-      return clone.outerHTML;
-    }).join('<div class="nl-gap"></div>');
-
-    // Wrap LTR content (codes, frequencies) in an isolate so it doesn't
-    // reorder against surrounding Hebrew in the RTL nav log.
-    const ltr = s => '<span dir="ltr" style="unicode-bidi:isolate">' + esc(s) + '</span>';
-    // Frequency list from comm-change callout notes on the route. Use route
-    // waypoint order, not note insertion order, so the kneeboard reads along
-    // the flight path. The label uses the localized call-sign name (Hebrew in
-    // he mode), not the raw catalog id.
-    const routeNoteOrder = item => {
-      const wpi = item && Number.isInteger(item.wpi) && item.wpi >= 0
-        ? item.wpi : Number.MAX_SAFE_INTEGER;
-      return wpi;
-    };
-    const freqs = (state.notes || [])
-      .map((n, idx) => ({
-        n,
-        idx,
-        wpi: (n && n.cc && typeof commCalloutWaypointIndex === 'function')
-          ? commCalloutWaypointIndex(n) : -1,
-      }))
-      .filter(item => item.n && item.n.cc)
-      .sort((a, b) => routeNoteOrder(a) - routeNoteOrder(b) || a.idx - b.idx)
-      .map(({ n }) => {
-      const wp = (typeof navName === 'function' ? navName(n.cc) : n.cc) || n.cc;
-      const name = typeof commNoteName === 'function' ? commNoteName(n) : (n.freqName || '');
-      const fq = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
-      return '<li>' + esc(wp) + (name ? ' \u2014 ' + esc(name) : '') +
-        (fq ? ' \u2014 ' + ltr(fq + ' MHz') : '') + '</li>';
-    }).join('');
-
-    // Airport frequency block (tower/primary + clearance + ATIS) for the
-    // departure and arrival airfields.
-    const airfieldFreqHtml = (wp, code, sectionLabel) => {
-      const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
-      if (!af) return '';
-      const item = (label, val) => '<li>' + esc(label) + ' — ' + ltr(val) + '</li>';
-      const items = [];
-      const primary = typeof airfieldPrimaryText === 'function' ? airfieldPrimaryText(af) : '';
-      if (primary) items.push(item(S.primary || 'Primary', primary));
-      const clr = typeof airfieldClearanceText === 'function' ? airfieldClearanceText(af) : '';
-      if (clr) items.push(item(S.clearance || 'Clearance', clr));
-      const atis = typeof airfieldAtisText === 'function' ? airfieldAtisText(af) : '';
-      if (atis) items.push(item(S.atis || 'ATIS', atis));
-      if (!items.length) return '';
-      return '<h2>' + ltr(code) + ' — ' + esc(sectionLabel) + '</h2><ul>' + items.join('') + '</ul>';
-    };
-    const lastIdx = state.waypoints.length - 1;
-    let depFreqHtml = airfieldFreqHtml(state.waypoints[0], wpLabel(0),
-      S.navLogDepFreqs || 'Departure frequencies');
-    if (lastIdx > 0) {
-      depFreqHtml += airfieldFreqHtml(state.waypoints[lastIdx], wpLabel(lastIdx),
-        S.navLogArrFreqs || 'Arrival frequencies');
-    }
-
-    // Reference VOR(s) feeding the Radial/DME columns — the route-wide
-    // selection plus any distinct per-leg overrides — with their frequencies,
-    // so the printed log carries what to tune.
-    const vorIdents = [];
-    const pushVor = id => {
-      if (id && typeof id === 'string' && !vorIdents.includes(id)) vorIdents.push(id);
-    };
-    pushVor(typeof vorRef === 'string' ? vorRef : null);
-    (state.legs || []).forEach(l => pushVor(l && l.vorRef));
-    const vorHtml = vorIdents
-      .map(id => (typeof vorByIdent === 'function' ? vorByIdent(id) : null))
-      .filter(Boolean)
-      .map(v => ltr(v.ident) + ' \u2014 ' + esc((lang === 'he' && v.he) ? v.he : v.name) +
-                (v.freq ? ' \u2014 ' + ltr(v.freq + ' MHz') : ''))
-      .join(' \u00b7 ');
-
-    const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
-    const today = new Date().toISOString().slice(0, 10);
-    const title = (S.navLogTitle || 'NavAid \u2014 Nav Log') + ' \u00b7 ' + dep + ' \u2192 ' + dest;
-
-    const html =
-      '<!DOCTYPE html><html lang="' + lang + '" dir="' + dir + '"><head>' +
-      '<meta charset="utf-8"><title>' + esc(title) + '</title><style>' +
-      '@page{size:A4 portrait;margin:12mm}' +
-      'body{font:13px/1.4 system-ui,Arial,sans-serif;color:#111;margin:0}' +
-      'h1{font-size:18px;margin:0 0 2px}.nl-sub{color:#555;margin:0 0 10px}' +
-      '.nl-meta{margin:0 0 12px}.nl-meta b{display:inline-block;min-width:110px}' +
-      'table{border-collapse:collapse;width:100%;font-size:12px}' +
-      'th,td{border:1px solid #999;padding:3px 5px;text-align:' +
-        (dir === 'rtl' ? 'right' : 'left') + '}' +
-      'thead th{background:#eee}.nl-gap{height:14px}' +
-      '.nl-vor-ident{font-weight:600;color:#555;margin-inline-end:2px}' +
-      'h2{font-size:14px;margin:16px 0 4px}ul{margin:4px 0;padding-inline-start:18px}' +
-      '</style></head><body>' +
-      '<h1>' + esc(S.navLogTitle || 'NavAid \u2014 Nav Log') + '</h1>' +
-      '<p class="nl-sub">' + dep + ' \u2192 ' + dest + '</p>' +
-      '<div class="nl-meta">' +
-        '<div><b>' + esc(S.navLogDate || 'Date') + ':</b> ' + today + '</div>' +
-        '<div><b>' + esc(S.tbAircraft || 'Aircraft') + ':</b> ' +
-          esc(S.tbGph || 'GPH') + ' ' + esc(ac.gph) + ' \u00b7 ' +
-          esc(S.tbTaxiGal || 'Taxi/T.O.') + ' ' + esc(ac.taxiGal) + '</div>' +
-        (vorHtml ? '<div><b>' + esc(S.navLogVor || 'Reference VOR') + ':</b> ' + vorHtml + '</div>' : '') +
-      '</div>' +
-      depFreqHtml +
-      tablesHtml +
-      (freqs ? '<h2>' + esc(S.navLogFreqs || 'Frequencies') + '</h2><ul>' + freqs + '</ul>' : '') +
-      '</body></html>';
-
-    const w = window.open('', '_blank');
-    if (!w) { alert(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => { try { w.print(); } catch (e) { /* user can print manually */ } }, 300);
-  }
 
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
@@ -4745,7 +4757,7 @@ function showFlightPlan() {
   navLogBtn.type = 'button';
   navLogBtn.textContent = S.tbNavLog || 'Nav log (PDF)';
   navLogBtn.title = S.tbNavLogTitle || 'Open a printable kneeboard nav log (save as PDF)';
-  navLogBtn.onclick = exportNavLog;
+  navLogBtn.onclick = () => exportNavLog(scrollArea);
   btns.appendChild(navLogBtn);
   // File the plan from the panel where the pilot has just read it back.
   const fplBtn = document.createElement('button');
