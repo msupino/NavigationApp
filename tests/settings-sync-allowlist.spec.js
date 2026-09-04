@@ -98,6 +98,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.tracks\./,          'which recorded tracks are drawn locally'],
   [/^navaid\.plateAirfield$/,     'last plate viewed, per device'],
   [/^navaid\.inspZoom$/,          'inspector text size is a reading preference for this screen'],
+  [/^navaid\.inspSize$/,          'inspector width/height is panel geometry, per device'],
   [/^navaid\.windField(Alt|Opacity)$/, 'transient overlay state'],
   // Whether a device speaks depends on the device, not the pilot: the phone in the
   // cockpit should talk, the desktop browser it was planned on should not start talking
