@@ -7894,16 +7894,47 @@ function applyInspSize() {
   const on = inspResizeEnabled();
   insp.classList.toggle('insp-resizable', on);
   if (!on) {
-    // A width saved on a desktop must not follow the panel into the phone layout, where the
-    // sheet is full-width by design.
+    // Everything the grip wrote has to go, not just the size. The grip pins left/top inline,
+    // and inline styles beat the phone layout's own left/right/bottom -- so a panel resized
+    // on a desktop kept `left: 936px` after a rotation and sat off the side of a 390px
+    // screen with no way to reach it.
     insp.style.width = '';
     insp.style.height = '';
+    insp.style.left = '';
+    insp.style.top = '';
+    insp.style.right = '';
     return;
   }
   const sz = inspSizeGet();
-  if (!sz) return;
-  insp.style.width = Math.max(INSP_MIN_W, sz.w) + 'px';
-  insp.style.height = Math.max(INSP_MIN_H, sz.h) + 'px';
+  if (sz) {
+    insp.style.width = Math.max(INSP_MIN_W, sz.w) + 'px';
+    insp.style.height = Math.max(INSP_MIN_H, sz.h) + 'px';
+  }
+  clampInspToViewport();
+}
+
+// A desktop window can also be made smaller than the panel that was sized in it. Keep the
+// panel inside the viewport whatever it was left at: a control the pilot cannot reach is
+// worse than one that is smaller than they asked for.
+function clampInspToViewport() {
+  const insp = document.getElementById('inspector');
+  if (!insp || insp.classList.contains('hidden')) return;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const r = insp.getBoundingClientRect();
+  const w = Math.min(r.width, Math.max(INSP_MIN_W, vw - 16));
+  const h = Math.min(r.height, Math.max(INSP_MIN_H, vh - 16));
+  if (Math.round(w) !== Math.round(r.width)) insp.style.width = Math.round(w) + 'px';
+  if (Math.round(h) !== Math.round(r.height)) insp.style.height = Math.round(h) + 'px';
+  // Only reposition a panel the grip or the drag has actually pinned; an untouched one is
+  // still anchored by CSS and must stay that way.
+  if (insp.style.left) {
+    const left = Math.max(8, Math.min(parseFloat(insp.style.left) || 0, vw - w - 8));
+    insp.style.left = Math.round(left) + 'px';
+  }
+  if (insp.style.top) {
+    const top = Math.max(8, Math.min(parseFloat(insp.style.top) || 0, vh - Math.min(h, 40) - 8));
+    insp.style.top = Math.round(top) + 'px';
+  }
 }
 
 (function wireInspectorResize() {
