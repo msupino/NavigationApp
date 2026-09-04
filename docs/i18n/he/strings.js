@@ -997,6 +997,7 @@ window.S = {
   plateOpen: 'פתח',
   plateDownload: 'הורד',
   zoomIn: 'הגדל',
+  inspResize: 'שינוי גודל',
   zoomOut: 'הקטן',
   plateZoomReset: 'התאם לרוחב',
   platePlaceOnMap: '🗺 הצג על המפה',
