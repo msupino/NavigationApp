@@ -48,7 +48,6 @@ jobs:
             --state open \
             --json number \
             --jq '.[0].number // empty')
-          CREATED=false
           AHEAD=$(gh api "repos/${{ github.repository }}/compare/main...dev" --jq '.ahead_by')
           if [ -z "$PR" ] && [ "$AHEAD" -eq 0 ]; then
             echo "dev has nothing new to promote"
@@ -56,7 +55,6 @@ jobs:
             exit 0
           fi
           if [ -z "$PR" ]; then
-            CREATED=true
             SHA=$(git rev-parse --short HEAD)
             gh pr create \
               --base main \
@@ -105,7 +103,6 @@ jobs:
           {
             echo "needed=true"
             echo "pr=$PR"
-            echo "dispatch_checks=$CREATED"
             if [ "$ARMED" = "true" ]; then
               echo "dispatch_watcher=false"
             else
