@@ -25,9 +25,9 @@ After both decisions, PNGs not referenced by either live manifest are pruned.
 - `wx.json` - weather metadata/source configuration.
 - `sigmet.json` - SIGMET/FIR display data.
 - `notam.json` - offline fallback for the NOTAM layer (empty stub). Live data is
-  the `notam-data` orphan branch, published daily by
-  `.github/workflows/notam.yml` from autorouter (Eurocontrol EAD) for the Israel
-  FIR (LLLL). The app fetches the branch first and falls back to this file.
+  the `notam-data` orphan branch, published hourly by
+  `.github/workflows/notam.yml` from the IAA (brin.iaa.gov.il MobileAeroinfo) for
+  the Israel FIR (LLLL). The app fetches the branch first and falls back to this file.
 - `notam-borders.json` - Israel international border arcs (per neighbour:
   Lebanon/Syria/Egypt/Jordan; Israel-side `[lat,lng]` vertices, from
   geoBoundaries ADM0). Used to geocode prose "border buffer" NOTAMs
@@ -37,8 +37,12 @@ After both decisions, PNGs not referenced by either live manifest are pruned.
 
 The NOTAM layer is fed by a scheduled Action, not a hand-maintained file:
 
-- `.github/workflows/notam.yml` pulls Israel-FIR NOTAMs from autorouter
-  (Eurocontrol EAD) and force-pushes `notam.json` to the `notam-data` branch.
+- `.github/workflows/notam.yml` pulls Israel-FIR NOTAMs hourly from the IAA
+  (`brin.iaa.gov.il/MobileAeroinfo`) and force-pushes `notam.json` to the
+  `notam-data` branch. The IAA is the authoritative national source and needs no
+  credentials; it carries the domestic C-series (airfield / CVFR / UAS / airspace
+  closures) that the international feeds -- autorouter (Eurocontrol EAD), FAA SWIM
+  -- do not. Those fed an earlier, daily version of this job and no longer do.
 - The app reads that branch (raw.githubusercontent) and renders areas from each
   NOTAM's `geom` (polygon / circle / line), with airport count badges for
   coordinate-less airport NOTAMs and a full-text list modal.

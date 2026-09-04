@@ -78,9 +78,14 @@ test('no user-facing string is left in English in a Hebrew session', async ({ pa
 test('every S.<key> referenced in code is defined, so no English fallback is reachable', async ({ page }) => {
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => typeof S === 'object' && S.tbExport);
-  const sources = ['app/core.js', 'app/draw.js', 'app/interact.js', 'app/io.js', 'app/ui.js',
-    'app/gps.js', 'app/gdrive.js', 'app/assistant.js', 'app/terrain.js', 'app/offline-tiles.js'];
-  const undefinedKeys = await page.evaluate(async (files) => {
+  // Read the list from index.html rather than repeating it. The hand-kept list had drifted
+  // to 10 of the 16 scripts the app loads -- traffic.js, followme.js, density-altitude.js,
+  // editor.js, alt-pair-directions.js and route-graph-shapes.js were never scanned, so an
+  // English fallback added in any of them was invisible to this test.
+  const undefinedKeys = await page.evaluate(async () => {
+    const html = await (await fetch('index.html')).text();
+    const files = [...new Set([...html.matchAll(/'(app\/[a-z0-9-]+\.js)'/g)].map(m => m[1]))];
+    if (files.length < 12) return ['index.html: script list not found (' + files.length + ')'];
     const out = [];
     for (const f of files) {
       let text = '';
@@ -93,6 +98,23 @@ test('every S.<key> referenced in code is defined, so no English fallback is rea
       }
     }
     return out;
-  }, sources);
+  });
   expect(undefinedKeys).toEqual([]);
+});
+
+// The list above is only as good as its source. If index.html stops matching the pattern the
+// scan reads, the previous test silently checks nothing -- which is how it came to cover 10
+// files out of 16.
+test('the scan covers every app script the page loads', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  const seen = await page.evaluate(async () => {
+    const html = await (await fetch('index.html')).text();
+    return [...new Set([...html.matchAll(/'(app\/[a-z0-9-]+\.js)'/g)].map(m => m[1]))];
+  });
+  const loaded = await page.evaluate(() =>
+    [...document.querySelectorAll('script[src]')]
+      .map(s => s.getAttribute('src').split('?')[0])
+      .filter(s => s.startsWith('app/')));
+  expect(loaded.length).toBeGreaterThan(0);
+  expect([...loaded].sort()).toEqual([...seen].sort());
 });
