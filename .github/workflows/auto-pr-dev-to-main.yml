@@ -113,18 +113,38 @@ jobs:
             fi
           } >> "$GITHUB_OUTPUT"
 
-      - name: Dispatch checks for a newly created promotion PR
-        if: steps.promotion.outputs.dispatch_checks == 'true'
+      - name: Dispatch any checks the promotion PR never received
+        if: steps.promotion.outputs.needed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.promotion.outputs.pr }}
         run: |
           set -euo pipefail
-          # Creation with GITHUB_TOKEN can suppress pull_request events. An
-          # existing PR receives normal synchronize checks when dev advances;
-          # dispatching copies there can cancel each other and poison the SHA.
-          gh workflow run CI --ref dev
-          gh workflow run Deploy --ref dev
-          gh workflow run Review --ref dev
+          # Creation with GITHUB_TOKEN suppresses pull_request events, so a NEW promotion PR
+          # needs its checks dispatched by hand. The previous version stopped there, on the
+          # assumption that an EXISTING PR picks up synchronize checks when dev advances --
+          # which does not hold when dev advances via a GITHUB_TOKEN merge, because that
+          # fires no events either. The promotion PR then sat forever on a required `CodeQL`
+          # context nothing would ever produce, with no failing check to point at. Three
+          # promotions stalled that way and were unblocked by dispatching Review by hand.
+          #
+          # So: dispatch what is MISSING rather than guessing from how the PR came to exist.
+          # Only push and workflow_dispatch runs count -- Review's own pull_request run on a
+          # dev -> main PR skips every job by design (see review.yml), so its presence proves
+          # nothing. Dispatching only what is absent is also what keeps this from cancelling
+          # a live run through the concurrency group.
+          SHA=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+          for WF in CI Deploy Review; do
+            HAVE=$(gh run list --workflow="$WF" --branch dev --limit 50 \
+              --json headSha,event \
+              --jq "[.[] | select(.headSha == \"$SHA\" and (.event == \"push\" or .event == \"workflow_dispatch\"))] | length")
+            if [ "$HAVE" -eq 0 ]; then
+              echo "Dispatching $WF for $SHA (no push/dispatch run found)"
+              gh workflow run "$WF" --ref dev
+            else
+              echo "$WF already has $HAVE run(s) for $SHA -- not dispatching"
+            fi
+          done
 
       - name: Arm promotion auto-merge watcher
         if: steps.promotion.outputs.dispatch_watcher == 'true'
