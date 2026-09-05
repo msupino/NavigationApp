@@ -114,3 +114,97 @@ test('the tooltip follows a later title change', async ({ page }) => {
   await page.evaluate(() => { document.getElementById('insp-title').value = 'Some Other Field'; });
   expect(await page.locator('#insp-title').getAttribute('title')).toBe('Some Other Field');
 });
+
+// --- 5. An obstacle is not a frequency ------------------------------------------
+// "DRILLING TOWER ERECTED WI LLBG CTR" matched \bTOWER\b and badged Ben Gurion with a
+// frequency NOTAM about a drilling rig. TOWER is the one term in that alternation that is
+// also a physical thing, so the exclusion is decided on the Q-code subject the feed states.
+const NOTAMS = [
+  { id: 'A0720/26', icao: 'LLBG', type: 'OBCE',
+    text: 'DRILLING TOWER ERECTED WI LLBG CTR, AT YAHUD/IAI INDUSTRY. LIT AND DAY MARKED.',
+    start: '2026-09-02T14:24:00Z', end: '2036-12-31T23:59:00Z' },
+  { id: 'A0685/26', icao: 'LLBG', type: 'CACS',
+    text: 'NEW FREQ INSTL FOR CLEARANCE BFR TAXI (CPT) 121.800MHZ.',
+    start: '2026-09-02T14:24:00Z', end: '2036-12-31T23:59:00Z' },
+];
+
+test('an obstacle NOTAM is not treated as a frequency NOTAM', async ({ page }) => {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof airfieldFreqNotams === 'function');
+  const ids = await page.evaluate((list) => {
+    window.activeNotams = () => list;
+    return airfieldFreqNotams('LLBG').map(n => n.id);
+  }, NOTAMS);
+  // The drilling rig is out; the genuine clearance-frequency NOTAM stays in.
+  expect(ids).not.toContain('A0720/26');
+  expect(ids).toContain('A0685/26');
+});
+
+test('the loose match is still loose for everything that is not an obstacle', async ({ page }) => {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof airfieldFreqNotams === 'function');
+  // Under-inclusion loses a comms requirement, which costs more than an extra read, so
+  // "requires radio" area NOTAMs and withdrawn navaid frequencies must keep matching.
+  const kept = await page.evaluate(() => {
+    const probe = [
+      { icao: 'LLXX', type: 'ACLP', text: 'GLD ACT. PILOT SHALL MAKE TWO WAY RADIO COM WITH ATC.' },
+      { icao: 'LLXX', type: 'NMAS', text: 'VOR/DME RAM FREQ 113.850MHZ WITHDRAWN FOR MAINT.' },
+      { icao: 'LLXX', type: 'OBCE', text: 'CRANE ERECTED. TOWER LIT AND DAY MARKED.' },
+    ];
+    window.activeNotams = () => probe;
+    return airfieldFreqNotams('LLXX').map(n => n.type);
+  });
+  expect(kept).toEqual(['ACLP', 'NMAS']);
+});
+
+// --- 6. The NOTAM list has to say how much there is, and whose it is -------------
+const FIR_NOTAMS = Array.from({ length: 25 }, (_, i) => ({
+  id: 'A' + String(700 + i) + '/26',
+  icao: i % 2 ? 'LLBG' : 'LLHA',
+  type: 'CACS',
+  text: 'TEST NOTAM ' + i + ' TEL AVIV CONTROL FREQ 123.050MHZ NOT AVBL.',
+  start: '2026-09-02T00:00:00Z', end: '2036-12-31T23:59:00Z',
+}));
+
+async function openNotamList(page, list) {
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof showNotamModal === 'function');
+  await page.evaluate((l) => { window.activeNotams = () => l; showNotamModal(); }, list);
+  await expect(page.locator('.notam-modal')).toBeVisible();
+}
+
+test('every card names the airfield it belongs to', async ({ page }) => {
+  await openNotamList(page, FIR_NOTAMS);
+  const ids = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.notam-id'), e => e.textContent || ''));
+  expect(ids.length).toBeGreaterThan(0);
+  // The FIR view mixes airfields under one (LLLL) header; without this every card looked
+  // alike and there was nothing saying which field a NOTAM was actually about.
+  expect(ids.every(t => /LL[A-Z]{2}/.test(t))).toBe(true);
+  expect(ids.some(t => t.includes('LLBG'))).toBe(true);
+  expect(ids.some(t => t.includes('LLHA'))).toBe(true);
+});
+
+test('a long list opens tall and says there is more below', async ({ page }) => {
+  await openNotamList(page, FIR_NOTAMS);
+  const box = await page.locator('.notam-modal').boundingBox();
+  // Opening at content height made a 52-entry list look like a two-entry one.
+  expect(box.height).toBeGreaterThan(DESK.height * 0.5);
+  const list = page.locator('.notam-list');
+  await expect(list).toHaveClass(/notam-list-more/);
+});
+
+test('the "more below" fade goes away at the end of the list', async ({ page }) => {
+  await openNotamList(page, FIR_NOTAMS);
+  const list = page.locator('.notam-list');
+  await expect(list).toHaveClass(/notam-list-more/);
+  await list.evaluate(e => { e.scrollTop = e.scrollHeight; });
+  // A fade that stayed on at the bottom would claim content that is not there.
+  await expect(list).not.toHaveClass(/notam-list-more/);
+});
+
+test('a short list never claims there is more', async ({ page }) => {
+  await openNotamList(page, FIR_NOTAMS.slice(0, 2));
+  await expect(page.locator('.notam-list')).not.toHaveClass(/notam-list-more/);
+});

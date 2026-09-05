@@ -2432,11 +2432,29 @@ body.theme-light .notam-find {
   border-color: #c6ccd6; background: #eef1f6; color: #2b3340;
 }
 .modal.wide.notam-modal {
+  /* A tall default, not just a floor: the list routinely holds dozens of NOTAMs, and opening
+     at content height made a 52-entry list look like a two-entry one. A stored size from the
+     resize grip is an inline style and still wins over this. */
   min-height: min(220px, 84vh);
+  height: min(78vh, 860px);
   resize: both;
   overflow: hidden;
 }
-.notam-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.notam-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+/* Only while something is actually below: a permanent fade would claim there is more at the
+   end of every list. Set by syncMore() on scroll and on resize. */
+.notam-list-more {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+}
 .notam-item { border: 1px solid #3a3636; border-radius: 6px; padding: 6px 8px; background: rgba(255, 255, 255, 0.03); }
 .notam-item-clickable { cursor: pointer; }
 .notam-item-clickable:hover { border-color: #c9a227; background: rgba(255, 212, 0, 0.08); }

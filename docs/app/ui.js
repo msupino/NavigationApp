@@ -5312,6 +5312,22 @@ function showNotamModal(only, opts) {
     codeFeed.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
   const list = document.createElement('div');
   list.className = 'notam-list';
+  // "Is there more?" has to be answerable without scrolling to find out. A card cut mid-way
+  // reads as a rendering glitch as easily as it reads as an overflow, so the list carries a
+  // fade only while something is actually below it -- and drops it at the bottom, so the
+  // fade never lies about content that is not there.
+  const syncMore = () => {
+    const more = list.scrollHeight - list.clientHeight - list.scrollTop > 4;
+    list.classList.toggle('notam-list-more', more);
+  };
+  list.addEventListener('scroll', syncMore, { passive: true });
+  // Content arrives after this runs (filtering, decode, raw toggle), so re-check when the
+  // box or its contents change rather than only once.
+  if (typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(syncMore);
+    ro.observe(list);
+  }
+  setTimeout(syncMore, 0);
   // Freetext match: id, ICAO, raw and decoded text -- whichever the pilot is
   // reading. Decoded once per NOTAM per modal open, cached in a modal-local Map
   // so stale expansions don't survive a SW update mid-session.
@@ -5348,7 +5364,12 @@ function showNotamModal(only, opts) {
       it.className = 'notam-item';
       const id = document.createElement('div');
       id.className = 'notam-id'; id.dir = 'ltr';
-      id.textContent = n.id + (n.end ? '  ·  ' + n.end : '');
+      // The ICAO, always. This list is opened per-airfield AND for the whole FIR, and in the
+      // FIR view every card looked alike: a header reading (LLLL) over NOTAMs that are
+      // actually about LLBG, LLHA and the rest, with nothing on the card saying which.
+      // Redundant in the single-airfield view, which costs four characters.
+      const where = String(n.icao || '').toUpperCase();
+      id.textContent = n.id + (where ? '  ·  ' + where : '') + (n.end ? '  ·  ' + n.end : '');
       const tx = document.createElement('pre');
       tx.className = 'notam-text'; tx.dir = 'ltr';
       tx._raw = n.text || '';
