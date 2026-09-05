@@ -7661,6 +7661,14 @@ function renderFreqTable(freqSection) {
     tableWrap.classList.toggle('scroll-end', from < max - 1);
   };
   tableWrap.addEventListener('scroll', markOverflow, { passive: true });
+  // renderFreqTable() runs again in place (restoring defaults rebuilds the table), and each
+  // pass used to add another window listener that nothing removed -- three re-renders, three
+  // listeners, each holding on to the detached tableWrap it closed over. Drop the previous
+  // one before registering this pass, and hand the close path something to release.
+  if (freqSection._navaidMarkOverflow) {
+    window.removeEventListener('resize', freqSection._navaidMarkOverflow);
+  }
+  freqSection._navaidMarkOverflow = markOverflow;
   window.addEventListener('resize', markOverflow);
   requestAnimationFrame(markOverflow);
 
@@ -7716,7 +7724,15 @@ function renderFreqTable(freqSection) {
 function showFreqTableModal() {
   if (!prepareChartModal('freq-table')) return;
   const modal = createDraggableModal(S.tbFreqTable || S.freqTableTitle || 'Freq table',
-    'modal wide', () => clearOpenChartModal('freq-table'),
+    'modal wide', () => {
+      // The table's resize listener is on window, so closing the modal has to take it off
+      // or one stays behind holding a detached table for the rest of the session.
+      if (freqSection._navaidMarkOverflow) {
+        window.removeEventListener('resize', freqSection._navaidMarkOverflow);
+        freqSection._navaidMarkOverflow = null;
+      }
+      clearOpenChartModal('freq-table');
+    },
     { nonBlocking: true, chartKind: 'freq-table' });
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';

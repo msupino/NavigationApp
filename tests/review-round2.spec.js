@@ -388,3 +388,32 @@ test('closing the NOTAM list releases its window listener', async ({ page }) => 
   // Bound to window, so it outlives the modal unless the teardown takes it off.
   expect(leaked).toBe(0);
 });
+
+// --- 11. A re-render must not stack window listeners ----------------------------
+test('the frequency table does not stack a resize listener per re-render', async ({ page }) => {
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await page.waitForFunction(() => typeof showFreqTableModal === 'function');
+  const r = await page.evaluate(async () => {
+    let n = 0;
+    const add = window.addEventListener.bind(window);
+    const rm = window.removeEventListener.bind(window);
+    window.addEventListener = (t, f, o) => { if (t === 'resize') n++; return add(t, f, o); };
+    window.removeEventListener = (t, f, o) => { if (t === 'resize') n--; return rm(t, f, o); };
+    showFreqTableModal();
+    await new Promise(res => setTimeout(res, 800));      // catalog load, then first render
+    const afterOpen = n;
+    // Restoring defaults rebuilds the table in place; it used to add a listener each pass,
+    // every one holding the detached tableWrap it closed over.
+    const sec = document.querySelector('.charts-freq-section');
+    for (let i = 0; i < 3; i++) renderFreqTable(sec);
+    const afterRenders = n;
+    const back = document.querySelector('.modal-back[data-chart-modal="freq-table"]');
+    if (back && back._navaidClose) back._navaidClose();
+    return { afterOpen, afterRenders, afterClose: n };
+  });
+  expect(r.afterOpen).toBe(1);
+  expect(r.afterRenders).toBe(1);      // was 4: one per render, none removed
+  expect(r.afterClose).toBe(0);        // and the last one goes when the modal does
+});
