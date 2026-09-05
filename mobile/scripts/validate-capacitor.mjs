@@ -161,8 +161,14 @@ if (fs.existsSync(iosInfo)) {
   const bound = text.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/);
   if (!bound) {
     fail('iOS WKAppBoundDomains missing while limitsNavigationsToAppBoundDomains is true');
-  } else if (!new RegExp('<string>' + host.replace(/\./g, '\\.') + '</string>').test(bound[1])) {
-    fail('iOS WKAppBoundDomains does not list server.url host ' + host);
+  } else {
+    // Compare the parsed entries rather than building a regex out of the host: escaping only
+    // dots leaves backslashes and every other metacharacter unescaped (CodeQL
+    // js/incomplete-sanitization), and an exact string match is what is wanted anyway.
+    const domains = [...bound[1].matchAll(/<string>([^<]*)<\/string>/g)].map(m => m[1].trim());
+    if (!domains.includes(host)) {
+      fail('iOS WKAppBoundDomains does not list server.url host ' + host);
+    }
   }
 
   const locationPurpose = text.match(
