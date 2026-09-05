@@ -4080,7 +4080,10 @@ function wxHhmmZ(epoch) {
 // state on any given evening.
 function wxReportHasContent(rep) {
   if (!rep) return false;
-  if (/\bNIL\b/.test(String(rep.rawOb || rep.rawTAF || rep.rawText || ''))) return false;
+  // Anchored to the report body: a full report whose REMARKS contain NIL is still a report.
+  const raw = String(rep.rawOb || rep.rawTAF || rep.rawText || '');
+  if (/\b\d{6}Z\s+(?:AUTO\s+|COR\s+|AMD\s+)*NIL\b/.test(raw) ||
+      /^\s*(?:METAR|SPECI|TAF)(?:\s+(?:COR|AMD))?\s+[A-Z]{4}\s+NIL\b/.test(raw)) return false;
   const has = v => v !== null && v !== undefined && v !== '';
   if (has(rep.wdir) || has(rep.wspd) || has(rep.visib) || has(rep.temp) ||
       has(rep.dewp) || has(rep.altim) || String(rep.wxString || '').trim()) return true;

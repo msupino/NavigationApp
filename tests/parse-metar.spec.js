@@ -68,3 +68,15 @@ test('a METAR trend group is not read as the current observation', () => {
   expect(b.visib).toBe('10+');
   expect(b.wxString).toBe('');
 });
+
+test('NIL is a report body, not a word anywhere in the text', () => {
+  // Anchoring matters: "... 24/18 Q1013 RMK NIL SIG" is a full report whose REMARKS contain
+  // NIL, and matching it anywhere dropped the whole station from the feed.
+  expect(P.parseMetar('METAR LLHA 051850Z NIL')).toBeNull();
+  expect(P.parseMetar('METAR LLHA NIL')).toBeNull();
+  expect(P.parseMetar('METAR LLHA 051850Z AUTO NIL')).toBeNull();
+  const kept = P.parseMetar('METAR LLBG 051920Z 27012KT 9999 SCT030 24/18 Q1013 RMK NIL SIG');
+  expect(kept).not.toBeNull();
+  expect(kept.temp).toBe(24);
+  expect(kept.altim).toBe(1013);
+});
