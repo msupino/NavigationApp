@@ -161,3 +161,26 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(uiJs).toContain("'serviceWorker' in navigator && !isNativeLocalOrigin()");
   });
 });
+
+// The validator asserts display name, local networking, location purpose and the plugin
+// allowlist -- but not the one whose drift breaks the app outright. With
+// limitsNavigationsToAppBoundDomains on, WKWebView refuses to navigate anywhere outside
+// WKAppBoundDomains, and the whole app is loaded from server.url.
+test('the iOS app-bound domain covers the URL the shell actually loads', () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'mobile', 'capacitor.config.json'), 'utf8'));
+  expect(cfg.ios.limitsNavigationsToAppBoundDomains).toBe(true);
+  const host = new URL(cfg.server.url).host;
+  const plist = fs.readFileSync(path.join(__dirname, '..', 'mobile', 'ios/App/App/Info.plist'), 'utf8');
+  const bound = plist.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/);
+  expect(bound).not.toBeNull();
+  expect(bound[1]).toContain('<string>' + host + '</string>');
+});
+
+test('the offline shell speaks both languages', () => {
+  // It loads no strings and no JS, and it is what a pilot sees when the site cannot be
+  // reached -- precisely when they cannot switch language.
+  const html = fs.readFileSync(path.join(__dirname, '..', 'mobile', 'shell/index.html'), 'utf8');
+  expect(html).toMatch(/[\u0590-\u05FF]/);
+  expect(html).toContain('dir="rtl"');
+  expect(html).toMatch(/needs a network connection/i);
+});
