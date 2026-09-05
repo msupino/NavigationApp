@@ -3098,7 +3098,13 @@ const ROUTE_LIBRARY_KEY = 'navaid.routes';
 // Preserve a corrupt raw blob, flag it, and block writes until the
 // user recovers (export raw) or explicitly clears it (persist with force).
 function loadRouteLibrary() {
-  const raw = localStorage.getItem(ROUTE_LIBRARY_KEY);
+  // READING localStorage throws where site data is blocked, not only writing to it. This
+  // ran unguarded, so the whole Saved Routes dialog threw on open and the feature was
+  // unreachable in a private window. Blocked storage is emphatically NOT corruption: it
+  // must not raise routeLibraryCorrupt, which flags the user's data damaged and blocks
+  // writes to protect it.
+  let raw = null;
+  try { raw = localStorage.getItem(ROUTE_LIBRARY_KEY); } catch (e) { raw = null; }
   if (raw == null || raw === '') { NavAid.routeLibraryCorrupt = false; return []; }
   try {
     const a = JSON.parse(raw);

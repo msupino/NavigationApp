@@ -5312,6 +5312,22 @@ function showNotamModal(only, opts) {
     codeFeed.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
   const list = document.createElement('div');
   list.className = 'notam-list';
+  // "Is there more?" has to be answerable without scrolling to find out. A card cut mid-way
+  // reads as a rendering glitch as easily as it reads as an overflow, so the list carries a
+  // fade only while something is actually below it -- and drops it at the bottom, so the
+  // fade never lies about content that is not there.
+  const syncMore = () => {
+    const more = list.scrollHeight - list.clientHeight - list.scrollTop > 4;
+    list.classList.toggle('notam-list-more', more);
+  };
+  list.addEventListener('scroll', syncMore, { passive: true });
+  // Content arrives after this runs (filtering, decode, raw toggle), so re-check when the
+  // box or its contents change rather than only once.
+  if (typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(syncMore);
+    ro.observe(list);
+  }
+  setTimeout(syncMore, 0);
   // Freetext match: id, ICAO, raw and decoded text -- whichever the pilot is
   // reading. Decoded once per NOTAM per modal open, cached in a modal-local Map
   // so stale expansions don't survive a SW update mid-session.
@@ -5348,7 +5364,12 @@ function showNotamModal(only, opts) {
       it.className = 'notam-item';
       const id = document.createElement('div');
       id.className = 'notam-id'; id.dir = 'ltr';
-      id.textContent = n.id + (n.end ? '  ·  ' + n.end : '');
+      // The ICAO, always. This list is opened per-airfield AND for the whole FIR, and in the
+      // FIR view every card looked alike: a header reading (LLLL) over NOTAMs that are
+      // actually about LLBG, LLHA and the rest, with nothing on the card saying which.
+      // Redundant in the single-airfield view, which costs four characters.
+      const where = String(n.icao || '').toUpperCase();
+      id.textContent = n.id + (where ? '  ·  ' + where : '') + (n.end ? '  ·  ' + n.end : '');
       const tx = document.createElement('pre');
       tx.className = 'notam-text'; tx.dir = 'ltr';
       tx._raw = n.text || '';
@@ -5506,6 +5527,49 @@ function showNotamModal(only, opts) {
       }));
     } catch (e) { /* storage unavailable */ }
   };
+  // Corner grip. The native CSS resizer was here, but the modal is flex-centred: widening it
+  // pushed BOTH edges out, so the corner moved at half the cursor's speed, and the handle
+  // itself sits bottom-LEFT in Hebrew, where centring makes it just as unhelpful. Pinning
+  // the top-left first makes right and bottom the free edges in either direction, so one
+  // physical bottom-right grip tracks the cursor 1:1.
+  const grip = document.createElement('div');
+  grip.className = 'notam-grip resize-grip';
+  grip.title = S.inspResize || 'Resize';
+  grip.setAttribute('aria-hidden', 'true');
+  box.appendChild(grip);
+  let gx = 0, gy = 0, gw = 0, gh = 0;
+  const onGripMove = (e) => {
+    // Clamped to the viewport: a window made smaller than the box it was sized in must not
+    // leave the modal reaching past the screen with its controls out of reach.
+    const maxW = Math.max(240, window.innerWidth - 16);
+    const maxH = Math.max(180, window.innerHeight - 16);
+    const left = parseFloat(box.style.left) || 0;
+    const top = parseFloat(box.style.top) || 0;
+    box.style.width = Math.min(Math.max(240, gw + (e.clientX - gx)), maxW - left) + 'px';
+    box.style.height = Math.min(Math.max(180, gh + (e.clientY - gy)), maxH - top) + 'px';
+  };
+  const onGripUp = (e) => {
+    grip.releasePointerCapture?.(e.pointerId);
+    window.removeEventListener('pointermove', onGripMove);
+    window.removeEventListener('pointerup', onGripUp);
+    saveSize();
+  };
+  grip.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const r = box.getBoundingClientRect();
+    // Take the box out of the backdrop's flex centring and pin where it already is, so the
+    // gripped edges are the ones that move.
+    box.style.position = 'absolute';
+    box.style.margin = '0';
+    box.style.left = Math.round(r.left) + 'px';
+    box.style.top = Math.round(r.top) + 'px';
+    gx = e.clientX; gy = e.clientY; gw = r.width; gh = r.height;
+    grip.setPointerCapture?.(e.pointerId);
+    window.addEventListener('pointermove', onGripMove);
+    window.addEventListener('pointerup', onGripUp);
+  });
+
   let sizeSaveTimer = null;
   const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
     clearTimeout(sizeSaveTimer);
@@ -7941,7 +8005,7 @@ function clampInspToViewport() {
   const insp = document.getElementById('inspector');
   if (!insp) return;
   const grip = document.createElement('div');
-  grip.className = 'insp-grip';
+  grip.className = 'insp-grip resize-grip';
   grip.title = S.inspResize || 'Resize';
   grip.setAttribute('aria-hidden', 'true');   // pointer affordance; the panel is not a widget
   insp.appendChild(grip);
@@ -7980,6 +8044,22 @@ function clampInspToViewport() {
   // The phone/desktop split is a media query, so a rotation or a window resize can move the
   // panel between the two layouts.
   window.addEventListener('resize', applyInspSize);
+})();
+
+// The inspector title is a readonly input assigned from a dozen places, and a long name
+// ("LLBG / Tel Aviv / Ben Gurion") is simply cut off -- no ellipsis, nothing to hover. Make
+// the tooltip follow the value once, here, rather than at each assignment: a call site added
+// later then cannot forget it. CSS adds the ellipsis so the clip at least looks deliberate.
+(function wireInspectorTitleTooltip() {
+  const el = document.getElementById('insp-title');
+  if (!el) return;
+  const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  if (!d || !d.get || !d.set) return;
+  Object.defineProperty(el, 'value', {
+    configurable: true,
+    get() { return d.get.call(this); },
+    set(v) { d.set.call(this, v); this.title = v == null ? '' : String(v); },
+  });
 })();
 
 document.getElementById('insp-close').onclick = () => {

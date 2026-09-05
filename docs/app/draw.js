@@ -1862,11 +1862,25 @@ function drawNotams() {
 //
 // So: no value is read out, nothing is substituted, and the badge is a pointer.
 const FREQ_MENTION_RE = /\b(?:FREQ|FREQUENCY|TWR|TOWER|AFIS|ATIS|RADIO|QDM)\b|\b1[0-3][0-9]\.[0-9]{1,3}\b/;
+// The word TOWER is the one term above that is also a THING: "DRILLING TOWER ERECTED WI
+// LLBG CTR" is an obstacle, not the ATC tower, and it was badging LLBG with a frequency
+// NOTAM about a drilling rig. Decided on the Q-code subject rather than by blacklisting
+// words, because the feed states what the NOTAM is about: A0720/26 is type OBCE -- subject
+// OB (obstacle), condition CE (erected). An obstacle NOTAM never changes a frequency.
+//
+// Only obstacles are excluded, and only when the type says so. The rest of the loose match
+// stays loose on purpose: over-inclusion costs the pilot two lines of reading, while
+// under-inclusion loses a comms requirement. Of the 7 NOTAMs this matched across a live
+// 95-NOTAM feed, exactly one was the obstacle; the other six -- a withdrawn VOR frequency,
+// unavailable CTL frequencies, a new clearance frequency and two "requires radio" area
+// NOTAMs -- are all genuine and are untouched by this.
+const NOTAM_SUBJECT_OBSTACLE = /^OB/;
 function airfieldFreqNotams(icao) {
   const code = String(icao || '').toUpperCase();
   if (!code || typeof activeNotams !== 'function') return [];
   return activeNotams().filter(function (n) {
     if (!n || String(n.icao || '').toUpperCase() !== code) return false;
+    if (NOTAM_SUBJECT_OBSTACLE.test(String(n.type || '').toUpperCase())) return false;
     return FREQ_MENTION_RE.test(String(n.text || '').toUpperCase());
   });
 }
