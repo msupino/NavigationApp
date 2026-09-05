@@ -1274,8 +1274,12 @@ function fplParkingText(res, park, opts) {
   const reg = (typeof fplRegistration === 'function' ? fplRegistration(p.reg || '') : (p.reg || '')) || '[REG]';
   const dep = String(o.depTimeLocal || '').trim();
   const blank = v => (String(v == null ? '' : v).trim() || '—');
+  // A plan with no date of flight yet left the literal string "undefined" in both the
+  // subject line and the body of a message addressed to an airfield operations desk. Every
+  // other field already went through blank(); these two were concatenating res.dof raw.
+  const dofDisp = fplDofToDisplay(res.dof) || (res.dof == null ? '' : String(res.dof).trim());
   const subject = (S.fplParkingSubject || 'Parking request') + ' — ' + reg +
-    ' at ' + park.icao + ', ' + res.dof;
+    ' at ' + park.icao + (dofDisp ? ', ' + dofDisp : '');
   // Labels are localised too: a Hebrew intro over English field names read as two messages
   // spliced together, and these go to Israeli operations desks. The values (registration,
   // ICAO codes, times) stay as they are in either language.
@@ -1288,8 +1292,8 @@ function fplParkingText(res, park, opts) {
     [S.fplParkingFFrom || 'From', fplAerodromeLabel(res.dep)],
     [S.fplParkingFTo || 'To', fplAerodromeLabel(park.icao)],
     [S.fplParkingFDof || 'Date of flight',
-      (fplDofToDisplay(res.dof) || res.dof) +
-        (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + fplClockPair(o.depDateIso, dep) : '')],
+      blank(dofDisp +
+        (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + fplClockPair(o.depDateIso, dep) : ''))],
     [S.fplParkingKind || 'Parking', o.kind || '[ transit over 1 h / overnight / maintenance ]'],
     [fplParkingUntilLabel(), o.until || '[ date / time ]'],
   ];
@@ -7478,8 +7482,15 @@ function renderFreqTable(freqSection) {
         ? airfieldFreqNotamTitle(r.notam, r.readOnly ? '' : part.def)
         : 'NOTAM ' + r.notam.id;
     }
-    const partName = (part.label ? ' ' + part.label : '');
-    tr.dataset.search = [r.af.name, r.af.en, r.af.he, r.flabel, part.label, part.freq, part.def]
+    // Same data-derived label as the inspector's comm rows, and it needs the same
+    // translation: this table was still printing "ATIS Arrival" in a Hebrew session while
+    // the row beside it read "בן גוריון מגדל". The search index below keeps the RAW label
+    // too, so typing either language still finds the row.
+    const partName = (part.label
+      ? ' ' + ((typeof commPartLabel === 'function') ? commPartLabel(part.label) : part.label)
+      : '');
+    tr.dataset.search = [r.af.name, r.af.en, r.af.he, r.flabel, part.label,
+      (typeof commPartLabel === 'function' ? commPartLabel(part.label) : ''), part.freq, part.def]
       .filter(Boolean).join(' ').toLocaleLowerCase();
     tr.dataset.icao = r.af.name || '';
     const name = document.createElement('td');
