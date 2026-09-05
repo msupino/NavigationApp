@@ -153,6 +153,24 @@ if (fs.existsSync(iosInfo)) {
       !/<key>NSLocalNetworkUsageDescription<\/key>\s*<string>[^<]+<\/string>/.test(text)) {
     fail('iOS local simulator bridge access is not declared');
   }
+  // limitsNavigationsToAppBoundDomains is on, which means WKWebView refuses to navigate
+  // anywhere outside WKAppBoundDomains. The APK/IPA loads the whole app from server.url, so
+  // a mismatch here is not a degraded feature -- it is a white screen. Everything else in
+  // this file is checked; this was the one whose drift breaks the app outright.
+  const host = new URL(config.server.url).host;
+  const bound = text.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/);
+  if (!bound) {
+    fail('iOS WKAppBoundDomains missing while limitsNavigationsToAppBoundDomains is true');
+  } else {
+    // Compare the parsed entries rather than building a regex out of the host: escaping only
+    // dots leaves backslashes and every other metacharacter unescaped (CodeQL
+    // js/incomplete-sanitization), and an exact string match is what is wanted anyway.
+    const domains = [...bound[1].matchAll(/<string>([^<]*)<\/string>/g)].map(m => m[1].trim());
+    if (!domains.includes(host)) {
+      fail('iOS WKAppBoundDomains does not list server.url host ' + host);
+    }
+  }
+
   const locationPurpose = text.match(
     /<key>NSLocationWhenInUseUsageDescription<\/key>\s*<string>([^<]*)<\/string>/,
   );
