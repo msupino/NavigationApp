@@ -1,2 +1,6 @@
 paho-mqtt>=2,<3
-cryptography>=42,<47
+# >=49: everything from 42.0.0 to 48.0.0 is affected by GHSA-jwv3-5hgf-82ww (duplicate
+# self-signed intermediates cause exponential X.509 path building). These scripts only use
+# AESGCM and never build a certificate path, so the exposure was nil -- but the old ceiling
+# was <47, which pinned them inside the vulnerable range with no way to reach the fix.
+cryptography>=49,<50
