@@ -3059,7 +3059,8 @@ function appendAirfieldWeather(body, af) {
     // A failed fetch is not the same as a field that publishes nothing: say which.
     const missing = (data && data.error) ? (S.wxError || 'Weather unavailable') : noneText;
 
-    if (data && data.metar) {
+    // A NIL report is a station saying it has nothing, not a report to display.
+    if (data && wxReportHasContent(data.metar)) {
       const lines = showRaw ? [data.metar.rawOb || data.metar.rawText || '']
         : [decodeMetar(data.metar)];
       const spk = makeSpeakBtn(S.wxMetar || 'METAR', () => {
@@ -3073,7 +3074,7 @@ function appendAirfieldWeather(body, af) {
     } else {
       bodyEl.appendChild(emptyBlock(S.wxMetar || 'METAR', missing));
     }
-    if (data && data.taf) {
+    if (data && wxReportHasContent(data.taf)) {
       let lines;
       if (showRaw) {
         lines = [data.taf.rawTAF || data.taf.rawText || ''];
@@ -3097,7 +3098,9 @@ function appendAirfieldWeather(body, af) {
       bodyEl.appendChild(emptyBlock(S.wxTaf || 'TAF', missing));
     }
     // Nothing to toggle between when neither product has a report.
-    if (!data || (!data.metar && !data.taf)) { appendAdWs(); return; }
+    if (!data || (!wxReportHasContent(data.metar) && !wxReportHasContent(data.taf))) {
+      appendAdWs(); return;
+    }
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'wx-toggle';

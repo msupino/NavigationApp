@@ -417,3 +417,73 @@ test('the frequency table does not stack a resize listener per re-render', async
   expect(r.afterRenders).toBe(1);      // was 4: one per render, none removed
   expect(r.afterClose).toBe(0);        // and the last one goes when the modal does
 });
+
+// --- 12. "NIL" is a station saying it has nothing --------------------------------
+// "METAR LLHA 051850Z NIL" parses to an object of nulls. The panel treated that as a report
+// it had: a METAR badge with a timestamp, a speak button, and an empty body — which reads as
+// "measured, nothing to say" rather than "not measured". Two Israeli fields sit in this state
+// on a normal evening.
+const NIL_METAR = {
+  icaoId: 'LLBG', rawOb: 'METAR LLBG 051850Z NIL',
+  wdir: null, wspd: null, wgst: null, visib: null, temp: null, dewp: null,
+  altim: null, clouds: [], wxString: '',
+};
+
+async function wxWith(page, stations) {
+  await page.route('**wx-data/wx.json**', r => r.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: new Date().toISOString(),
+      source: 'IAA (brin.iaa.gov.il MobileAeroinfo)', stations }),
+  }));
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await page.waitForFunction(() => typeof showInspector === 'function' && typeof state !== 'undefined');
+  await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLBG') };
+    showInspector();
+  });
+  await expect(page.locator('#insp-body .wx-section')).toBeVisible();
+}
+
+const metarBlockText = page => page.evaluate(() => {
+  const b = Array.from(document.querySelectorAll('#insp-body .wx-block'))
+    .find(x => (x.querySelector('.wx-label') || {}).textContent === 'METAR');
+  return b ? b.textContent.replace(/\s+/g, ' ').trim() : null;
+});
+
+test('a NIL METAR reads as no information, not as an empty report', async ({ page }) => {
+  await wxWith(page, { LLBG: { metar: Object.assign({}, NIL_METAR, {
+    created: new Date(Date.now() - 10 * 60e3).toISOString() }) } });
+  const txt = await metarBlockText(page);
+  expect(txt).toMatch(/No information/i);
+  // No timestamp and no speak button: both claim there is something to read.
+  expect(txt).not.toMatch(/\d{2}:\d{2}Z/);
+  expect(txt).not.toContain('🔊');
+});
+
+test('a real METAR is still shown in full', async ({ page }) => {
+  await wxWith(page, { LLBG: { metar: {
+    icaoId: 'LLBG', rawOb: 'METAR LLBG 051920Z VRB03KT CAVOK 27/21 Q1012',
+    created: new Date(Date.now() - 10 * 60e3).toISOString(),
+    wdir: 'VRB', wspd: 3, visib: '10+', temp: 27, dewp: 21, altim: 1012, clouds: [] } } });
+  const txt = await metarBlockText(page);
+  expect(txt).toMatch(/\d{2}:\d{2}Z/);
+  expect(txt).toMatch(/27/);
+  expect(txt).not.toMatch(/No information/i);
+});
+
+test('wxReportHasContent distinguishes a NIL report from a thin one', async ({ page }) => {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof wxReportHasContent === 'function');
+  const r = await page.evaluate(() => ({
+    nil: wxReportHasContent({ rawOb: 'METAR LLHA 051850Z NIL', temp: null, clouds: [] }),
+    empty: wxReportHasContent({ rawOb: '', clouds: [] }),
+    absent: wxReportHasContent(null),
+    // A report carrying only cloud, or only a temperature, is still a report.
+    cloudOnly: wxReportHasContent({ rawOb: 'METAR X 1Z SCT025', clouds: [{ cover: 'SCT', base: 2500 }] }),
+    tempOnly: wxReportHasContent({ rawOb: 'METAR X 1Z 27/21', temp: 27, clouds: [] }),
+  }));
+  expect(r).toEqual({ nil: false, empty: false, absent: false, cloudOnly: true, tempOnly: true });
+});
