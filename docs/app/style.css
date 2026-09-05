@@ -1812,6 +1812,8 @@ body.theme-light .insp-grip {
   padding: 0;
   outline: none;
   unicode-bidi: plaintext;
+  /* A long name is cut; say so with an ellipsis. The tooltip carries the full text. */
+  text-overflow: ellipsis;
 }
 #insp-title::placeholder { color: #8a8484; }
 #insp-title:read-only { cursor: move; }

@@ -310,6 +310,8 @@ window.S = {
   vorRadialDme: function(rad, dme) { return 'R-' + rad + '° / ' + dme + ' NM'; },
   primary: 'ראשי',
   atis: 'ATIS',
+  commArrival: 'נחיתה',
+  commDeparture: 'המראה',
   clearance: 'קלירנס',
   wxTitle: 'מזג אוויר (METAR / TAF)',
   wxLoading: 'טוען מזג אוויר…',

@@ -1456,6 +1456,8 @@ window.S = Object.assign({
   },
   primary: 'Primary',
   atis: 'ATIS',
+  commArrival: 'Arrival',
+  commDeparture: 'Departure',
   clearance: 'Clearance',
   wxTitle: 'Weather (METAR / TAF)',
   wxLoading: 'Loading weather…',
@@ -3742,6 +3744,18 @@ function airfieldFieldParts(af, field) {
     const o = ov[key];
     return { label: p.label, freq: o || p.freq, def: p.freq, key, overridden: !!o && o !== p.freq };
   });
+}
+// The label half of a comm part ("Arrival", "Departure") is parsed out of the English text
+// in airfields.json, so it is data rather than a string key and no i18n scan can see it --
+// a Hebrew session read "ATIS Arrival". Translate the ones the dataset actually uses and
+// pass anything else through unchanged, so a new label degrades to English instead of
+// vanishing.
+function commPartLabel(label) {
+  const k = String(label || '').trim().toLowerCase();
+  if (!k) return '';
+  if (k === 'arrival') return S.commArrival || label;
+  if (k === 'departure') return S.commDeparture || label;
+  return label;
 }
 // Override-aware display string for an airfield field.
 function airfieldFieldText(af, field) {

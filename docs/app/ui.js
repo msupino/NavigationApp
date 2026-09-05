@@ -7982,6 +7982,22 @@ function clampInspToViewport() {
   window.addEventListener('resize', applyInspSize);
 })();
 
+// The inspector title is a readonly input assigned from a dozen places, and a long name
+// ("LLBG / Tel Aviv / Ben Gurion") is simply cut off -- no ellipsis, nothing to hover. Make
+// the tooltip follow the value once, here, rather than at each assignment: a call site added
+// later then cannot forget it. CSS adds the ellipsis so the clip at least looks deliberate.
+(function wireInspectorTitleTooltip() {
+  const el = document.getElementById('insp-title');
+  if (!el) return;
+  const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  if (!d || !d.get || !d.set) return;
+  Object.defineProperty(el, 'value', {
+    configurable: true,
+    get() { return d.get.call(this); },
+    set(v) { d.set.call(this, v); this.title = v == null ? '' : String(v); },
+  });
+})();
+
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();
