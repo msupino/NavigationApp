@@ -262,3 +262,71 @@ test('the grip cannot push the list off the screen', async ({ page }) => {
   expect(box.x + box.width).toBeLessThanOrEqual(DESK.width);
   expect(box.y + box.height).toBeLessThanOrEqual(DESK.height);
 });
+
+// --- 8. The same data-derived label, in the frequency table ---------------------
+// Fixing the inspector left this one: the table still printed "ATIS Arrival" beside a row
+// reading "בן גוריון מגדל". Two render paths, one data source.
+test('the frequency table translates comm part labels too', async ({ page }) => {
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await page.waitForFunction(() => typeof showFreqTableModal === 'function');
+  await page.evaluate(() => showFreqTableModal());
+  await expect(page.locator('.charts-freq-label').first()).toBeVisible();
+  const labels = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.charts-freq-label'), e => e.textContent || ''));
+  expect(labels.some(t => t.includes('ATIS'))).toBe(true);
+  expect(labels.join(' | ')).not.toMatch(/Arrival|Departure/);
+  expect(labels.some(t => t.includes('נחיתה'))).toBe(true);
+  expect(labels.some(t => t.includes('המראה'))).toBe(true);
+});
+
+test('the frequency search still matches the English label', async ({ page }) => {
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await page.waitForFunction(() => typeof showFreqTableModal === 'function');
+  await page.evaluate(() => showFreqTableModal());
+  await expect(page.locator('.charts-freq-label').first()).toBeVisible();
+  // A pilot typing either spelling has to find the row, so the index keeps both.
+  const idx = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('tr[data-search]'), e => e.dataset.search).join(' | '));
+  expect(idx).toContain('arrival');
+  expect(idx).toContain('נחיתה');
+});
+
+// --- 9. No raw undefined in a message sent to an airfield -----------------------
+test('a parking request with no date of flight never says "undefined"', async ({ page }) => {
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await page.waitForFunction(() => typeof fplParkingText === 'function' && typeof airfieldParkingRule === 'function');
+  const out = await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    const park = airfieldParkingRule('LLHZ');
+    // A plan the pilot has not dated yet: res.dof is simply absent.
+    const t = fplParkingText({ dep: 'LLBG', dest: 'LLHZ', reg: '4X-ABC' }, park, {});
+    return { subject: t.subject, body: t.body };
+  });
+  // This text is addressed to an airfield operations desk; a raw JS value in it is not a
+  // cosmetic defect.
+  expect(out.subject).not.toMatch(/undefined/);
+  expect(out.body).not.toMatch(/undefined/);
+  // The date line is still present, just blank rather than broken.
+  expect(out.body).toMatch(/—/);
+});
+
+test('a parking request with a date still shows it', async ({ page }) => {
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await page.waitForFunction(() => typeof fplParkingText === 'function' && typeof airfieldParkingRule === 'function');
+  const out = await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    const park = airfieldParkingRule('LLHZ');
+    const t = fplParkingText({ dep: 'LLBG', dest: 'LLHZ', reg: '4X-ABC', dof: '260902' }, park, {});
+    return { subject: t.subject, body: t.body };
+  });
+  expect(out.subject).toContain('02/09/2026');
+  expect(out.body).toContain('02/09/2026');
+});
