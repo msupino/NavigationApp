@@ -330,3 +330,61 @@ test('a parking request with a date still shows it', async ({ page }) => {
   expect(out.subject).toContain('02/09/2026');
   expect(out.body).toContain('02/09/2026');
 });
+
+// --- 10. Two defects introduced by the fixes above ------------------------------
+test('the date row has no dangling comma when only a departure time is set', async ({ page }) => {
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await page.waitForFunction(() => typeof fplParkingText === 'function' && typeof airfieldParkingRule === 'function');
+  const line = await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    const park = airfieldParkingRule('LLHZ');
+    // Removing "undefined" left the separator behind: "Date of flight:  ,  departure 12:00".
+    const t = fplParkingText({ dep: 'LLBG', dest: 'LLHZ', reg: '4X-ABC' }, park, { depTimeLocal: '12:00' });
+    return (t.body.split('\n').find(l => /Date of flight/i.test(l)) || '').trim();
+  });
+  expect(line).not.toMatch(/:\s*,/);
+  expect(line).toMatch(/departure 12:00/);
+});
+
+test('a NOTAM list pinned by the grip is pulled back when the window shrinks', async ({ page }) => {
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await page.waitForFunction(() => typeof showNotamModal === 'function');
+  await page.evaluate((l) => { window.activeNotams = () => l; showNotamModal(); }, FIR_NOTAMS);
+  // The state the grip leaves behind: absolutely positioned, sized for a big window.
+  await page.evaluate(() => {
+    const b = document.querySelector('.notam-modal');
+    b.style.position = 'absolute'; b.style.margin = '0';
+    b.style.left = '900px'; b.style.top = '600px'; b.style.width = '600px'; b.style.height = '500px';
+  });
+  await page.setViewportSize({ width: 700, height: 600 });
+  await expect.poll(async () => {
+    const b = await page.locator('.notam-modal').boundingBox();
+    return Math.round(b.x + b.width) <= 700 && Math.round(b.y) < 600;
+  }, { timeout: 4000 }).toBe(true);
+});
+
+test('closing the NOTAM list releases its window listener', async ({ page }) => {
+  await page.setViewportSize(DESK);
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => !document.getElementById('boot-loading'));
+  await page.waitForFunction(() => typeof showNotamModal === 'function');
+  const leaked = await page.evaluate((l) => {
+    window.activeNotams = () => l;
+    let n = 0;
+    const add = window.addEventListener.bind(window);
+    const rm = window.removeEventListener.bind(window);
+    window.addEventListener = (t, f, o) => { if (t === 'resize') n++; return add(t, f, o); };
+    window.removeEventListener = (t, f, o) => { if (t === 'resize') n--; return rm(t, f, o); };
+    for (let i = 0; i < 3; i++) {
+      showNotamModal();
+      document.querySelector('.modal-back[data-chart-modal="notam-list"]')._navaidClose();
+    }
+    return n;
+  }, FIR_NOTAMS);
+  // Bound to window, so it outlives the modal unless the teardown takes it off.
+  expect(leaked).toBe(0);
+});

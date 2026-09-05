@@ -1291,9 +1291,11 @@ function fplParkingText(res, park, opts) {
     [S.fplParkingFPob || 'Persons on board', blank(p.persons)],
     [S.fplParkingFFrom || 'From', fplAerodromeLabel(res.dep)],
     [S.fplParkingFTo || 'To', fplAerodromeLabel(park.icao)],
+    // Join what exists rather than concatenating a separator onto a possibly-empty date:
+    // a plan with a departure time but no date read "Date of flight:  ,  departure 12:00 LT".
     [S.fplParkingFDof || 'Date of flight',
-      blank(dofDisp +
-        (dep ? ',  ' + (S.fplParkingFDep || 'departure') + ' ' + fplClockPair(o.depDateIso, dep) : ''))],
+      blank([dofDisp, dep ? (S.fplParkingFDep || 'departure') + ' ' + fplClockPair(o.depDateIso, dep) : '']
+        .filter(Boolean).join(',  '))],
     [S.fplParkingKind || 'Parking', o.kind || '[ transit over 1 h / overnight / maintenance ]'],
     [fplParkingUntilLabel(), o.until || '[ date / time ]'],
   ];
