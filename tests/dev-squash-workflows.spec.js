@@ -75,18 +75,29 @@ test.describe('dev workflow guards', () => {
     expect(yml).toContain('[ "$BEHIND" -eq 0 ] && break');
   });
 
-  test('Auto PR dispatches checks only for a new promotion and arms once', () => {
+  test('Auto PR dispatches the checks a promotion is missing, and arms once', () => {
     const yml = workflow('auto-pr-dev-to-main.yml');
     expect(yml).not.toContain('git push origin dev');
-    expect(yml).toContain('CREATED=false');
-    expect(yml).toContain('CREATED=true');
-    expect(yml).toContain('echo "dispatch_checks=$CREATED"');
-    expect(yml).toContain("if: steps.promotion.outputs.dispatch_checks == 'true'");
+    // Dispatch is gated on the promotion being needed, NOT on the PR being newly created.
+    // The old `CREATED` gate assumed an existing PR would pick up synchronize checks when
+    // dev advanced; a GITHUB_TOKEN merge fires no events, so it received none and sat on a
+    // required CodeQL context nothing would produce.
+    expect(yml).toContain("if: steps.promotion.outputs.needed == 'true'");
+    expect(yml).not.toContain('dispatch_checks');
+    expect(yml).not.toContain('CREATED=');
+    // What decides a dispatch is whether a run already exists for the PR head SHA...
+    expect(yml).toContain("SHA=$(gh pr view \"$PR\" --json headRefOid --jq '.headRefOid')");
+    expect(yml).toContain('for WF in CI Deploy Review; do');
+    expect(yml).toContain('gh workflow run "$WF" --ref dev');
+    // ...counting only runs that actually report contexts. Review's own pull_request run on
+    // a dev -> main PR skips every job by design, so counting it would make the gap look
+    // filled while producing nothing.
+    expect(yml).toContain('.event == \\"push\\" or .event == \\"workflow_dispatch\\"');
+    // Dispatching only what is absent is also what stops this cancelling a live run through
+    // the concurrency group.
+    expect(yml).toContain('[ "$HAVE" -eq 0 ]');
     expect(yml).toContain("if: steps.promotion.outputs.dispatch_watcher == 'true'");
     expect(yml).toContain("'.autoMergeRequest != null'");
-    expect(yml).toContain('gh workflow run CI --ref dev');
-    expect(yml).toContain('gh workflow run Deploy --ref dev');
-    expect(yml).toContain('gh workflow run Review --ref dev');
     expect(yml).toContain('gh workflow run "Draft + auto-merge"');
     expect(yml).toContain('--ref dev');
     expect(yml).toContain('-f pr="$PR"');
