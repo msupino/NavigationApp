@@ -70,10 +70,14 @@ function parseBody(tokens) {
 
 // A raw METAR (with or without the leading "METAR"/"SPECI") → the app's metar object.
 export function parseMetar(raw) {
-  // "METAR LLHA 051850Z NIL" is a station reporting that it has no observation. Parsing it
-  // yields an object of nulls, and a feed carrying that is indistinguishable downstream
-  // from a report with content.
-  if (/\bNIL\b/.test(String(raw || ''))) return null;
+  // NIL is a report body, not a word: "METAR LLHA 051850Z NIL" says the station has no
+  // observation. Matching it anywhere threw away real weather -- "... 24/18 Q1013 RMK NIL
+  // SIG" is a full report whose REMARKS happen to contain NIL, and the whole station was
+  // being dropped from the feed. Anchor it to the slot right after the time group.
+  if (/\b\d{6}Z\s+(?:AUTO\s+|COR\s+|AMD\s+)*NIL\b/.test(String(raw || '')) ||
+      /^\s*(?:METAR|SPECI|TAF)(?:\s+(?:COR|AMD))?\s+[A-Z]{4}\s+NIL\b/.test(String(raw || ''))) {
+    return null;
+  }
   const clean = String(raw || '').replace(/=$/, '').trim().replace(/\s+/g, ' ');
   const toks = clean.split(' ');
   let i = 0;

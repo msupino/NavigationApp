@@ -479,11 +479,19 @@ test('wxReportHasContent distinguishes a NIL report from a thin one', async ({ p
   await page.waitForFunction(() => typeof wxReportHasContent === 'function');
   const r = await page.evaluate(() => ({
     nil: wxReportHasContent({ rawOb: 'METAR LLHA 051850Z NIL', temp: null, clouds: [] }),
+    nilNoTime: wxReportHasContent({ rawOb: 'METAR LLHA NIL', temp: null, clouds: [] }),
+    nilAuto: wxReportHasContent({ rawOb: 'METAR LLHA 051850Z AUTO NIL', temp: null, clouds: [] }),
     empty: wxReportHasContent({ rawOb: '', clouds: [] }),
     absent: wxReportHasContent(null),
     // A report carrying only cloud, or only a temperature, is still a report.
     cloudOnly: wxReportHasContent({ rawOb: 'METAR X 1Z SCT025', clouds: [{ cover: 'SCT', base: 2500 }] }),
     tempOnly: wxReportHasContent({ rawOb: 'METAR X 1Z 27/21', temp: 27, clouds: [] }),
+    // NIL is a report BODY, not a word. A full report whose remarks contain NIL is a report,
+    // and matching it anywhere threw the whole station's weather away.
+    nilInRemarks: wxReportHasContent({
+      rawOb: 'METAR LLBG 051920Z 27012KT 9999 SCT030 24/18 Q1013 RMK NIL SIG',
+      wdir: 270, wspd: 12, temp: 24, dewp: 18, altim: 1013, clouds: [{ cover: 'SCT', base: 3000 }] }),
   }));
-  expect(r).toEqual({ nil: false, empty: false, absent: false, cloudOnly: true, tempOnly: true });
+  expect(r).toEqual({ nil: false, nilNoTime: false, nilAuto: false, empty: false, absent: false,
+    cloudOnly: true, tempOnly: true, nilInRemarks: true });
 });
