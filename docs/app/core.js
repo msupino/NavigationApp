@@ -4073,6 +4073,22 @@ function wxHhmmZ(epoch) {
          p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes()) + 'Z';
 }
 
+// A station can file "METAR LLHA 051850Z NIL" -- the report exists, and says there is no
+// observation. Parsed, that is an object of nulls, which the panel treated as a report it
+// had: a METAR badge with a timestamp, a speak button, and an empty body, which reads as
+// "measured, and nothing to say" rather than "not measured". Two Israeli fields sit in this
+// state on any given evening.
+function wxReportHasContent(rep) {
+  if (!rep) return false;
+  if (/\bNIL\b/.test(String(rep.rawOb || rep.rawTAF || rep.rawText || ''))) return false;
+  const has = v => v !== null && v !== undefined && v !== '';
+  if (has(rep.wdir) || has(rep.wspd) || has(rep.visib) || has(rep.temp) ||
+      has(rep.dewp) || has(rep.altim) || String(rep.wxString || '').trim()) return true;
+  if (Array.isArray(rep.clouds) && rep.clouds.length) return true;
+  if (Array.isArray(rep.fcsts) && rep.fcsts.length) return true;
+  return false;
+}
+
 function decodeMetar(m) {
   if (!m) return '';
   const p = [];
