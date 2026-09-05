@@ -5570,6 +5570,24 @@ function showNotamModal(only, opts) {
     window.addEventListener('pointerup', onGripUp);
   });
 
+  // Once the grip has pinned the box it is absolutely positioned, so a window made smaller
+  // afterwards leaves it reaching past the screen with its close button out of reach --
+  // exactly the way a resized inspector became unreachable. Clamp on window resize, not only
+  // while dragging.
+  const clampToViewport = () => {
+    if (!box.isConnected || box.style.position !== 'absolute') return;
+    const maxW = Math.max(240, window.innerWidth - 16);
+    const maxH = Math.max(180, window.innerHeight - 16);
+    const w = Math.min(box.offsetWidth, maxW);
+    const h = Math.min(box.offsetHeight, maxH);
+    box.style.width = w + 'px';
+    box.style.height = h + 'px';
+    box.style.left = Math.round(Math.max(8, Math.min(parseFloat(box.style.left) || 0, window.innerWidth - w - 8))) + 'px';
+    // Keep the header reachable even if the box is taller than the window.
+    box.style.top = Math.round(Math.max(8, Math.min(parseFloat(box.style.top) || 0, window.innerHeight - 40))) + 'px';
+  };
+  window.addEventListener('resize', clampToViewport);
+
   let sizeSaveTimer = null;
   const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
     clearTimeout(sizeSaveTimer);
@@ -5580,6 +5598,9 @@ function showNotamModal(only, opts) {
     clearTimeout(sizeSaveTimer);
     saveSize();
     if (sizeObserver) sizeObserver.disconnect();
+    // The clamp is bound to window, so it outlives the modal unless it comes off here --
+    // every open would leave another listener holding a detached box.
+    window.removeEventListener('resize', clampToViewport);
     back.remove();
     document.removeEventListener('keydown', onKey);
   };
