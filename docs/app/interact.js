@@ -1784,12 +1784,21 @@ function appendAirfieldDensityAltitude(body, af) {
     const h = parseInt(slider.value, 10) || 0;
     setWhen(h);
     let tempC = null, qnh = null, from = '';
+    // When the observation was made. obsTime is an AWC field; the IAA feed -- the primary
+    // source since the switch -- builds its METAR objects from scratch and has never carried
+    // one, so this gate silently went dead and density altitude stopped using the measured
+    // temperature at every Israeli field. It fell through to the forecast, or printed "no
+    // temperature available" directly above a live observation showing a temperature.
+    // wxIssuedAt() prefers the feed's stated `created` and reads the DDHHMMZ group when that
+    // is absent, so it answers for both sources.
+    const metarAt = (typeof wxIssuedAt === 'function') ? wxIssuedAt(metar) : null;
     const metarAgeMin = metar && metar.obsTime
-      ? (Date.now() - Number(metar.obsTime) * 1000) / 60000 : null;
-    // No obsTime, no claim: an observation of unknown age was being treated as current
+      ? (Date.now() - Number(metar.obsTime) * 1000) / 60000
+      : (metarAt !== null ? (Date.now() - metarAt) / 60000 : null);
+    // No time at all, no claim: an observation of unknown age was being treated as current
     // forever, so a station that stopped reporting kept feeding "now" into the density
-    // altitude. Unknown age falls through to the forecast, which at least knows what hour
-    // it is describing.
+    // altitude. Unknown age still falls through to the forecast, which at least knows what
+    // hour it is describing.
     const metarFresh = metar && metarAgeMin !== null
       && metarAgeMin <= ((typeof tune === 'function' && tune('daMetarMaxAgeMin')) || 90);
     if (!h && metarFresh && Number.isFinite(Number(metar.temp))) {
@@ -1936,7 +1945,7 @@ function appendAirfieldFrequencyRows(body, af) {
       return;
     }
     for (const p of parts) {
-      const rowLabel = p.label ? label + ' ' + p.label : label;
+      const rowLabel = p.label ? label + ' ' + commPartLabel(p.label) : label;
       // Only the first part can carry a change: the NOTAMs seen state one frequency per
       // service, and guessing which of "Arrival / Departure" they meant would be a guess.
       const c = (chg && p === parts[0]) ? chg : null;
