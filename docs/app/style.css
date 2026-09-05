@@ -1750,21 +1750,24 @@ body.theme-light #aircraft-custom input {
   min-height: 120px;
   max-width: calc(100vw - 24px);
 }
-.insp-grip {
+/* Corner grip, shared by the inspector and the NOTAM list. Physically bottom-right in both
+   writing directions: CSS `resize` puts its handle where the direction chooses, and both
+   hosts pin their top-left before resizing, so right and bottom are the free edges either
+   way. Two hairlines, the usual corner-grip idiom. */
+.resize-grip {
   position: absolute;
   right: 0;
   bottom: 0;
   width: 16px;
   height: 16px;
   cursor: nwse-resize;
-  touch-action: none;          /* the grip owns the gesture; the body must not scroll under it */
-  z-index: 1;
-  /* Two hairlines, the usual corner-grip idiom. */
+  touch-action: none;          /* the grip owns the gesture; content must not scroll under it */
+  z-index: 2;
   background:
     linear-gradient(315deg, transparent 0 4px, #6f6a6a 4px 5px, transparent 5px 7px,
                     #6f6a6a 7px 8px, transparent 8px);
 }
-body.theme-light .insp-grip {
+body.theme-light .resize-grip {
   background:
     linear-gradient(315deg, transparent 0 4px, #9aa3b2 4px 5px, transparent 5px 7px,
                     #9aa3b2 7px 8px, transparent 8px);
@@ -2437,8 +2440,11 @@ body.theme-light .notam-find {
      resize grip is an inline style and still wins over this. */
   min-height: min(220px, 84vh);
   height: min(78vh, 860px);
-  resize: both;
+  /* No `resize: both`: the native handle sits where the writing direction puts it, and the
+     modal is flex-centred, so widening moved both edges and the corner tracked at half the
+     cursor's speed. An explicit grip pins the top-left first -- see notamGrip in ui.js. */
   overflow: hidden;
+  position: relative;
 }
 .notam-list {
   flex: 1 1 auto;

@@ -5527,6 +5527,49 @@ function showNotamModal(only, opts) {
       }));
     } catch (e) { /* storage unavailable */ }
   };
+  // Corner grip. The native CSS resizer was here, but the modal is flex-centred: widening it
+  // pushed BOTH edges out, so the corner moved at half the cursor's speed, and the handle
+  // itself sits bottom-LEFT in Hebrew, where centring makes it just as unhelpful. Pinning
+  // the top-left first makes right and bottom the free edges in either direction, so one
+  // physical bottom-right grip tracks the cursor 1:1.
+  const grip = document.createElement('div');
+  grip.className = 'notam-grip resize-grip';
+  grip.title = S.inspResize || 'Resize';
+  grip.setAttribute('aria-hidden', 'true');
+  box.appendChild(grip);
+  let gx = 0, gy = 0, gw = 0, gh = 0;
+  const onGripMove = (e) => {
+    // Clamped to the viewport: a window made smaller than the box it was sized in must not
+    // leave the modal reaching past the screen with its controls out of reach.
+    const maxW = Math.max(240, window.innerWidth - 16);
+    const maxH = Math.max(180, window.innerHeight - 16);
+    const left = parseFloat(box.style.left) || 0;
+    const top = parseFloat(box.style.top) || 0;
+    box.style.width = Math.min(Math.max(240, gw + (e.clientX - gx)), maxW - left) + 'px';
+    box.style.height = Math.min(Math.max(180, gh + (e.clientY - gy)), maxH - top) + 'px';
+  };
+  const onGripUp = (e) => {
+    grip.releasePointerCapture?.(e.pointerId);
+    window.removeEventListener('pointermove', onGripMove);
+    window.removeEventListener('pointerup', onGripUp);
+    saveSize();
+  };
+  grip.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const r = box.getBoundingClientRect();
+    // Take the box out of the backdrop's flex centring and pin where it already is, so the
+    // gripped edges are the ones that move.
+    box.style.position = 'absolute';
+    box.style.margin = '0';
+    box.style.left = Math.round(r.left) + 'px';
+    box.style.top = Math.round(r.top) + 'px';
+    gx = e.clientX; gy = e.clientY; gw = r.width; gh = r.height;
+    grip.setPointerCapture?.(e.pointerId);
+    window.addEventListener('pointermove', onGripMove);
+    window.addEventListener('pointerup', onGripUp);
+  });
+
   let sizeSaveTimer = null;
   const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
     clearTimeout(sizeSaveTimer);
@@ -7962,7 +8005,7 @@ function clampInspToViewport() {
   const insp = document.getElementById('inspector');
   if (!insp) return;
   const grip = document.createElement('div');
-  grip.className = 'insp-grip';
+  grip.className = 'insp-grip resize-grip';
   grip.title = S.inspResize || 'Resize';
   grip.setAttribute('aria-hidden', 'true');   // pointer affordance; the panel is not a widget
   insp.appendChild(grip);

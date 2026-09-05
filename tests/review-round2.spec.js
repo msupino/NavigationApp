@@ -208,3 +208,57 @@ test('a short list never claims there is more', async ({ page }) => {
   await openNotamList(page, FIR_NOTAMS.slice(0, 2));
   await expect(page.locator('.notam-list')).not.toHaveClass(/notam-list-more/);
 });
+
+// --- 7. The NOTAM list resizes, and the grip tracks the cursor -------------------
+async function dragNotamGrip(page, dx, dy) {
+  const g = await page.locator('.notam-grip').boundingBox();
+  await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(g.x + g.width / 2 + dx, g.y + g.height / 2 + dy, { steps: 10 });
+  await page.mouse.up();
+}
+
+for (const lang of ['en', 'he']) {
+  test(`the NOTAM list resizes and the corner follows the cursor (${lang})`, async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await page.goto('?lang=' + lang);
+    await page.waitForFunction(() => !document.getElementById('boot-loading'));
+    await page.waitForFunction(() => typeof showNotamModal === 'function');
+    await page.evaluate((l) => { window.activeNotams = () => l; showNotamModal(); }, FIR_NOTAMS);
+    await expect(page.locator('.notam-modal')).toBeVisible();
+
+    const before = await page.locator('.notam-modal').boundingBox();
+    await dragNotamGrip(page, 140, 80);
+    const after = await page.locator('.notam-modal').boundingBox();
+    // 1:1 with the cursor. Flex centring used to move both edges, so the box grew by only
+    // half the drag and the corner slid away from the pointer.
+    expect(Math.round(after.width - before.width)).toBeGreaterThan(120);
+    // Height grows too, but stops at the 84vh cap that keeps the box on screen -- it opens
+    // at 78vh, so there is only ~6vh of headroom to take.
+    expect(after.height).toBeGreaterThan(before.height);
+    expect(after.height).toBeLessThanOrEqual(Math.round(DESK.height * 0.84) + 1);
+    // Top-left pinned, so the gripped edges are the ones that moved.
+    expect(Math.round(after.x)).toBe(Math.round(before.x));
+    expect(Math.round(after.y)).toBe(Math.round(before.y));
+  });
+}
+
+test('the resized NOTAM list is remembered', async ({ page }) => {
+  await openNotamList(page, FIR_NOTAMS);
+  await dragNotamGrip(page, 120, 40);
+  const want = Math.round((await page.locator('.notam-modal').boundingBox()).width);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('navaid.notamModalSize')),
+    { timeout: 5000 }).toContain('"w"');
+  await page.evaluate(() => { document.querySelector('.modal-back[data-chart-modal="notam-list"]').remove(); });
+  await page.evaluate((l) => { window.activeNotams = () => l; showNotamModal(); }, FIR_NOTAMS);
+  const again = Math.round((await page.locator('.notam-modal').boundingBox()).width);
+  expect(Math.abs(again - want)).toBeLessThanOrEqual(2);
+});
+
+test('the grip cannot push the list off the screen', async ({ page }) => {
+  await openNotamList(page, FIR_NOTAMS);
+  await dragNotamGrip(page, 4000, 4000);
+  const box = await page.locator('.notam-modal').boundingBox();
+  expect(box.x + box.width).toBeLessThanOrEqual(DESK.width);
+  expect(box.y + box.height).toBeLessThanOrEqual(DESK.height);
+});
