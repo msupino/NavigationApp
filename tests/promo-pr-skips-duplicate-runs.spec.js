@@ -90,7 +90,12 @@ test('the conditions the guard was added to are still intact', () => {
 test('the promotion workflow still dispatches the runs that report those contexts', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/auto-pr-dev-to-main.yml'), 'utf8');
   // Without these the guard above would leave the promotion with no checks at all.
-  expect(src).toContain('gh workflow run CI --ref dev');
-  expect(src).toContain('gh workflow run Deploy --ref dev');
-  expect(src).toContain('gh workflow run Review --ref dev');
+  // The three used to be dispatched as three literal lines; they are now one loop, so this
+  // asserts the workflows are still named and still dispatched, not how the call is spelled.
+  expect(src).toContain('for WF in CI Deploy Review; do');
+  expect(src).toContain('gh workflow run "$WF" --ref dev');
+  // And that the loop can actually reach the dispatch: it fires when no run exists yet for
+  // the PR head SHA. A dev advanced by a GITHUB_TOKEN merge emits no events, so without this
+  // an existing promotion PR gets no checks at all and blocks on a context nothing produces.
+  expect(src).toContain('[ "$HAVE" -eq 0 ]');
 });
