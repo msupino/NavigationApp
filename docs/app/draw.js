@@ -1021,6 +1021,8 @@ function draw() {
   drawReportingBadges();
   drawCommChangeRings();
   drawAirfields();
+  // Surface-wind barbs sit on top of the airfield triangles they belong to.
+  if (typeof drawAirfieldWind === 'function') drawAirfieldWind();
   drawVors();
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
   if (window.showAirmet && typeof activeAirmets === 'function' && activeAirmets().length) drawAirmets();
