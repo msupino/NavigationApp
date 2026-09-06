@@ -518,6 +518,33 @@ for (const lang of ['en', 'he']) {
   });
 }
 
+test('zoomed out past the gate the layer draws nothing, and the gate is tunable', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => { if (airfields === null) await loadAirfields(); });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await page.locator('#airfield-wind-cb').check();
+  await expect.poll(() => page.evaluate(() => !!window.NavAid.afWind._store())).toBe(true);
+  // Count what the layer actually paints, by tallying strokes on the overlay canvas.
+  const drawnAt = (z) => page.evaluate((zoom) => {
+    map.setZoom(zoom);
+    let n = 0;
+    const orig = octx.stroke;
+    octx.stroke = function () { n++; return orig.apply(this, arguments); };
+    try { drawAirfieldWind(); } finally { octx.stroke = orig; }
+    return n;
+  }, z);
+  // At country zoom 27 full-size barbs overlap each other and the airfields they belong to,
+  // and their labels are suppressed there anyway: a scatter of dashes, not a wind picture.
+  expect(await drawnAt(8)).toBe(0);
+  expect(await drawnAt(10)).toBeGreaterThan(0);
+  // The gate moves with the tunable, in both directions.
+  await page.evaluate(() => { NavAid.tuningDefaults.afWindMinZoom.value = 11; });
+  expect(await drawnAt(10)).toBe(0);
+  await page.evaluate(() => { NavAid.tuningDefaults.afWindMinZoom.value = 4; });
+  expect(await drawnAt(8)).toBeGreaterThan(0);
+  await page.evaluate(() => { NavAid.tuningDefaults.afWindMinZoom.value = 9; });
+});
+
 // --- the tunables ------------------------------------------------------------
 // Every threshold in this layer is a registry entry, so a gist can move it without a
 // release. These check the knobs are wired to the behaviour rather than merely declared.

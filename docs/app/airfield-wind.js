@@ -339,7 +339,13 @@
     if (typeof octx === 'undefined' || !octx || typeof proj !== 'function') return;
     if (!store) return;
     const hrs = lookaheadHours();
-    const showText = typeof map !== 'undefined' && map.getZoom() >= tn('afWindLabelMinZoom', 10);
+    const zoom = (typeof map !== 'undefined' && map.getZoom) ? map.getZoom() : 99;
+    // Zoomed out to the whole country, 27 barbs at full size stop being a wind picture and
+    // become a scatter of dashes over the chart -- they overlap each other and the airfields
+    // they belong to, and the labels are suppressed at that zoom anyway. Same gate the
+    // airfield and nav-waypoint labels already use, one level lower.
+    if (zoom < tn('afWindMinZoom', 9)) return;
+    const showText = zoom >= tn('afWindLabelMinZoom', 10);
     const bearing = (typeof map !== 'undefined' && map.getBearing) ? (map.getBearing() || 0) : 0;
     const color = tn('afWindBarbColor', '#0b6fb8');
     const offset = tn('afWindOffsetPx', 12);
