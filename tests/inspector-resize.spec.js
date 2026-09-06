@@ -26,6 +26,30 @@ async function boot(page, size = DESKTOP) {
 
 const gripVisible = page => page.locator('.insp-grip').isVisible();
 
+async function moveInspector(page, x, y) {
+  const header = await page.locator('#insp-header').boundingBox();
+  await page.mouse.move(header.x + 10, header.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(x + 10, y + 10, { steps: 8 });
+  await page.mouse.up();
+}
+
+async function expectInspectorInsideViewport(page) {
+  const viewport = page.viewportSize();
+  for (const selector of ['#inspector', '.insp-grip']) {
+    await expect.poll(async () => {
+      const box = await page.locator(selector).boundingBox();
+      return box && box.x >= 0 && box.y >= 0 &&
+        box.x + box.width <= viewport.width && box.y + box.height <= viewport.height;
+    }).toBe(true);
+    const box = await page.locator(selector).boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  }
+}
+
 // Drag the grip by (dx, dy) with real pointer events.
 async function dragGrip(page, dx, dy) {
   const g = await page.locator('.insp-grip').boundingBox();
@@ -49,6 +73,7 @@ test('the phone bottom sheet has no grip — there is no free dimension to drag'
 
 test('dragging the grip widens the panel and the corner follows the cursor', async ({ page }) => {
   await boot(page);
+  await moveInspector(page, 350, 96);
   const before = await page.locator('#inspector').boundingBox();
   // Widen and shorten: a big airfield panel already sits at the max-height cap that keeps it
   // on screen, so upward growth is correctly refused and only shrinking proves the axis.
@@ -87,6 +112,7 @@ test('the grip cannot shrink the panel to nothing', async ({ page }) => {
 
 test('the size is remembered and restored on this device', async ({ page }) => {
   await boot(page);
+  await moveInspector(page, 350, 96);
   const before = await page.locator('#inspector').boundingBox();
   await dragGrip(page, 140, 0);
   const want = Math.round((await page.locator('#inspector').boundingBox()).width);
@@ -169,6 +195,45 @@ test('a panel larger than the window is pulled back inside it', async ({ page })
   const box = await page.locator('#inspector').boundingBox();
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(760);
-  // At least the header has to remain on screen, or there is nothing left to grab.
-  expect(box.y).toBeLessThan(700 - 30);
+  await expectInspectorInsideViewport(page);
+});
+
+for (const lang of ['en', 'he']) {
+  test(`resizing at the screen edges keeps the full inspector reachable (${lang})`, async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(`?lang=${lang}`);
+    await openAirfield(page);
+    await moveInspector(page, 850, 100);
+    await dragGrip(page, 900, 900);
+    await expectInspectorInsideViewport(page);
+    await dragGrip(page, -60, -60);
+    await expectInspectorInsideViewport(page);
+  });
+}
+
+test('restoring a low saved position keeps the body and grip above the bottom edge', async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.addInitScript(() => {
+    localStorage.setItem('navaid.inspPos.en', JSON.stringify({ x: 850, y: 740 }));
+    localStorage.setItem('navaid.inspSize', JSON.stringify({ w: 400, h: 500 }));
+  });
+  await page.goto('?lang=en');
+  await openAirfield(page);
+  await expectInspectorInsideViewport(page);
+});
+
+test('late inspector content growth keeps its bottom controls reachable', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const body = document.getElementById('insp-body');
+    body.replaceChildren(document.createTextNode('Short report'));
+  });
+  await moveInspector(page, 350, 650);
+  await page.evaluate(() => {
+    const report = document.createElement('div');
+    report.style.height = '500px';
+    report.textContent = 'Loaded report';
+    document.getElementById('insp-body').appendChild(report);
+  });
+  await expectInspectorInsideViewport(page);
 });
