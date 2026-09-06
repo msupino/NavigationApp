@@ -4141,6 +4141,22 @@ body.theme-light .msa-low .val { color: #c0392b; }
   padding: 2px 6px;
   white-space: nowrap;
 }
+/* Head/cross components per runway, under the runway chips. Monospace so the numbers of
+   several runways line up in a column the eye can scan. */
+.runway-wind-row { flex-wrap: wrap; gap: 4px; align-items: flex-start; }
+.runway-wind { display: flex; flex-direction: column; gap: 2px; }
+.runway-wind-line {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #e8e8e8;
+  white-space: nowrap;
+}
+.runway-wind-note {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-block-start: 2px;
+}
+body.theme-light .runway-wind-line { color: #1a1a1a; }
 .insp-notam-link {
   font: inherit;
   font-size: 12px;

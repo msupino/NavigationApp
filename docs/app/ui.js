@@ -4803,11 +4803,86 @@ if (windDepartSlider) {
   NavAid.refreshWindField = () => { if (cb.checked && !busy) addLayer(); };
 })();
 
-// --- Unified look-ahead time slider (drives NOTAM + wind-depart + windfield) ---
+// --- Airfield surface-wind barbs (Open-Meteo 10 m, shared look-ahead) --------
+// The layer itself lives in app/airfield-wind.js; this is its switch. One batched fetch on
+// enable, then the shared slider re-samples what was fetched -- dragging the look-ahead
+// never touches the network.
+(function airfieldWindControl() {
+  const cb = document.getElementById('airfield-wind-cb');
+  if (!cb) return;
+  const statusEl = document.getElementById('airfield-wind-status');
+  const timeSlider = document.getElementById('airfield-wind-time');
+  const KEY = 'navaid.airfieldWind';
+  const af = () => (window.NavAid && window.NavAid.afWind) || null;
+
+  function featureOn() {
+    return typeof tune !== 'function' || tune('featureAirfieldWind') !== false;
+  }
+  function say(msg, loading) {
+    if (!statusEl) return;
+    statusEl.classList.toggle('windfield-loading', !!loading);
+    statusEl.style.display = msg ? '' : 'none';
+    statusEl.textContent = msg || '';
+  }
+  // Re-runnable for the same reason the return-path flag is: the tuning gist loads after
+  // this file, so switching the feature back on has to bring the row back without a reload.
+  function refreshFeature() {
+    const on = featureOn();
+    const row = cb.closest('label');
+    if (row) row.hidden = !on;
+    if (!on) {
+      window.showAirfieldWind = false;
+      cb.checked = false;
+      say('');
+      if (af()) af().clear();
+      if (typeof draw === 'function') draw();
+    }
+  }
+  NavAid.refreshAirfieldWindFeature = refreshFeature;
+
+  let busy = false;
+  let gen = 0;                  // a request belongs to the switch-on that started it
+  async function enable() {
+    const a = af();
+    if (!a) { say(S.afWindErr || 'Airfield wind unavailable'); cb.checked = false; return; }
+    busy = true;
+    const mine = ++gen;
+    say(S.afWindLoading || 'Loading airfield wind…', true);
+    let ok = false;
+    try { ok = await a.enable(); } catch (e) { ok = false; }
+    busy = false;
+    if (mine !== gen || !cb.checked) return;      // superseded, or switched off meanwhile
+    say(ok ? '' : (S.afWindErr || 'Airfield wind unavailable'));
+    if (!ok) { cb.checked = false; window.showAirfieldWind = false; }
+  }
+
+  cb.onchange = () => {
+    gen++;
+    window.showAirfieldWind = cb.checked;
+    try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* storage blocked */ }
+    if (cb.checked) { if (!busy) enable(); } else { say(''); }
+    if (typeof draw === 'function') draw();
+  };
+  // The slider is driven by the shared look-ahead above: re-sample the cached hours and
+  // redraw. No fetch -- everything the slider can reach was fetched on enable.
+  if (timeSlider) {
+    timeSlider.addEventListener('input', () => {
+      if (window.showAirfieldWind && typeof draw === 'function') draw();
+    });
+  }
+  refreshFeature();
+  // Remembered across sessions, like the wind field. A blocked storage read is not a
+  // preference, so it falls through to the shipped default.
+  try { if (lsGet(KEY) === '1' && featureOn()) cb.checked = true; } catch (e) { /* storage blocked */ }
+  window.showAirfieldWind = !!cb.checked;
+  if (cb.checked) enable();
+}());
+
+// --- Unified look-ahead time slider (drives NOTAM + wind-depart + windfield + airfield wind) ---
 (function () {
   const master = document.getElementById('lookahead-time');
   const masterVal = document.getElementById('lookahead-time-val');
-  const targets = ['notam-time', 'wind-depart', 'windfield-time'].map(id => document.getElementById(id));
+  const targets = ['notam-time', 'wind-depart', 'windfield-time', 'airfield-wind-time'].map(id => document.getElementById(id));
   // Cascade the master value to the mirror sliders + the readout. Does NOT touch the target
   // instant, so the tick below can call it to move the slider without re-anchoring "now".
   function sync() {
@@ -10468,6 +10543,7 @@ NavAid.defaultVisibilityMap = [
   ['airmet-cb', 'navaid.showAirmet', 'defaultShowAirmet'],
   ['show-wind-cb', 'navaid.showWind', 'defaultShowWind'],
   ['windfield-cb', 'navaid.windField', 'defaultWindField'],
+  ['airfield-wind-cb', 'navaid.airfieldWind', 'defaultAirfieldWind'],
   ['ims-pwx-cb', 'navaid.imsPwx', 'defaultImsPwx'],
   ['sigwx-ov-cb', 'navaid.sigwxOv', 'defaultSigwxOv'],
   ['lsa-cb', 'navaid.showLsaBubbles', 'defaultShowLsaBubbles'],

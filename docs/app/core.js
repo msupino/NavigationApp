@@ -643,6 +643,22 @@ NavAid.tuningDefaults = {
   windFieldMinVelocity: { value: 0, min: 0, max: 20, step: 1, label: 'Wind field min velocity (m/s)' },
   windFieldHoursAhead: { value: 24, min: 1, max: 48, step: 1, label: 'Wind field forecast slider range (h)' },
   windFieldForecastDays: { value: 2, min: 1, max: 7, step: 1, label: 'Wind field forecast fetch days' },
+  // Airfield surface-wind barbs. The barb is a standard met symbol, so its proportions are
+  // conventional rather than free -- these exist to make it legible on a phone in daylight,
+  // not to redesign it.
+  afWindBarbLenPx: { value: 26, min: 10, max: 60, step: 1, label: 'Airfield wind barb shaft length (px)' },
+  afWindBarbTickPx: { value: 9, min: 3, max: 20, step: 0.5, label: 'Airfield wind barb feather length (px)' },
+  afWindBarbTickGapPx: { value: 4.5, min: 2, max: 12, step: 0.5, label: 'Airfield wind barb feather spacing (px)' },
+  afWindBarbWidthPx: { value: 1.6, min: 0.5, max: 5, step: 0.1, label: 'Airfield wind barb line width (px)' },
+  afWindCalmRadiusPx: { value: 4, min: 2, max: 12, step: 0.5, label: 'Airfield wind calm ring radius (px)' },
+  afWindBarbColor: { value: '#0b6fb8', type: 'color', label: 'Airfield wind barb colour' },
+  afWindOffsetPx: { value: 12, min: 0, max: 40, step: 1, label: 'Airfield wind barb offset from marker (px)' },
+  afWindLabelFontPx: { value: 11, min: 7, max: 20, step: 1, label: 'Airfield wind label font (px)' },
+  afWindLabelHaloPx: { value: 3, min: 0, max: 8, step: 0.5, label: 'Airfield wind label halo (px)' },
+  afWindLabelMinZoom: { value: 10, min: 5, max: 15, step: 1, label: 'Airfield wind label min zoom' },
+  afWindGustDeltaKt: { value: 5, min: 1, max: 20, step: 1, label: 'Airfield wind: show gust when it exceeds mean by (kt)' },
+  afWindRunwayMinKt: { value: 3, min: 0, max: 20, step: 1, label: 'Airfield wind: runway components need at least (kt)' },
+  featureAirfieldWind: { value: true, type: 'bool', label: 'Feature: airfield surface-wind barbs' },
 
   liveAircraftRadiusPx: { value: 12, min: 6, max: 48, step: 1, label: 'Live aircraft size (px)' },
   liveHeadingLineWidthPx: { value: 2, min: 0.5, max: 6, step: 0.5, label: 'Live heading line width (px)' },
@@ -819,6 +835,7 @@ NavAid.tuningDefaults = {
   defaultShowAirmet: { value: false, type: 'bool', label: 'Default: show AIRMETs' },
   defaultShowWind: { value: false, type: 'bool', label: 'Default: show wind' },
   defaultWindField: { value: false, type: 'bool', label: 'Default: show wind field' },
+  defaultAirfieldWind: { value: false, type: 'bool', label: 'Default: show airfield wind' },
   defaultImsPwx: { value: false, type: 'bool', label: 'Default: show IMS PWX overlay' },
   defaultSigwxOv: { value: false, type: 'bool', label: 'Default: show SIGWX overlay' },
   defaultShowLsaBubbles: { value: true, type: 'bool', label: 'Default: show LSA' },
@@ -953,6 +970,7 @@ NavAid.tuningGroups = [
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
+  { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'featureAirfieldWind'] },
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the
@@ -968,7 +986,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1829,6 +1847,18 @@ window.S = Object.assign({
   },
   windFetchErr: 'Wind fetch failed — check connection',
   tbWindField: 'Show wind field',
+  tbAirfieldWind: 'Show airfield wind',
+  tbAirfieldWindTitle: 'Surface wind barb at every airfield, at the look-ahead time above',
+  afWindLoading: 'Loading airfield wind…',
+  afWindErr: 'Airfield wind unavailable',
+  afWindCalmLabel: 'CALM',
+  afWindRunwayLabel: 'Wind on runway',
+  afWindHead: 'head',
+  afWindTail: 'tail',
+  afWindCross: 'cross',
+  afWindFromLeft: 'from the left',
+  afWindFromRight: 'from the right',
+  afWindModelNote: 'Forecast model wind, not an observation',
   tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
   tbWindFieldAlt: 'Altitude',
   tbWindFieldOpacity: 'Field opacity',

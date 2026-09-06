@@ -574,6 +574,15 @@
             </div>
             <div id="windfield-status" class="wind-fetch-status" style="display:none"></div>
           </div>
+          <!-- Surface wind at every airfield: 10 m Open-Meteo forecast as a met barb,
+               scrubbed by the shared look-ahead slider above. -->
+          <div class="tb-group-box">
+            <label class="navtoggle" data-i18n-title="tbAirfieldWindTitle">
+              <input type="checkbox" id="airfield-wind-cb"> <span data-i18n="tbAirfieldWind"></span>
+            </label>
+            <input type="range" id="airfield-wind-time" min="0" max="24" step="1" value="0" hidden>
+            <div id="airfield-wind-status" class="wind-fetch-status" style="display:none"></div>
+          </div>
         </div>
         <div class="tb-layer-frame">
         <div class="tb-frame-title" data-i18n="tbGrpWxCharts"></div>
@@ -1056,6 +1065,7 @@
         'app/traffic.js' + v,
         'app/followme.js' + v,
         'app/density-altitude.js' + v,
+        'app/airfield-wind.js' + v,
         'app/editor.js' + v,
         'app/assistant.js' + v,
         'app/offline-tiles.js' + v
