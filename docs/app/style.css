@@ -4150,8 +4150,11 @@ body.theme-light .msa-low .val { color: #c0392b; }
    they liked, a wide panel put all three on one line and the time landed sandwiched between
    the label and the figures, reading as though it belonged to neither. */
 .runway-wind { display: flex; flex-direction: column; gap: 2px; flex: 0 0 100%; }
-/* The time sits at the far end of the label line -- right in LTR, left in RTL. */
-.runway-wind-when { font-size: 10px; opacity: 0.85; white-space: nowrap; margin-inline-start: auto; }
+/* The time sits at the far end of the label line -- right in LTR, left in RTL. That comes
+   from .row's own justify-content: space-between, which is direction-agnostic. An
+   auto inline-start margin here fought it and only worked in LTR: in Hebrew the time ended
+   up tucked against the label instead of out at the edge. */
+.runway-wind-when { font-size: 10px; opacity: 0.85; white-space: nowrap; }
 /* A figure and its unit are one token and never split across lines. */
 .runway-wind-qty { white-space: nowrap; }
 .runway-wind-line {

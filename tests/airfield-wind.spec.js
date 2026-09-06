@@ -578,18 +578,26 @@ for (const lang of ['en', 'he']) {
         el.style.maxWidth = px + 'px';
       }, width);
       const got = await page.evaluate(() => {
-        const row = document.querySelector('#insp-body .runway-wind-row');
-        const box = (sel) => row.querySelector(sel).getBoundingClientRect();
+        const rowEl = document.querySelector('#insp-body .runway-wind-row');
+        const box = (sel) => rowEl.querySelector(sel).getBoundingClientRect();
+        const row = rowEl.getBoundingClientRect();
         const label = box('label'), when = box('.runway-wind-when'), line = box('.runway-wind-line');
         return {
           timeOnLabelLine: Math.abs(when.top - label.top) < 6,
           componentsBelow: line.top > label.bottom - 4,
-          // The time sits at the far end of the label line: past the label in LTR,
-          // before it in RTL. Written as a direction-agnostic check.
-          timePastLabel: document.dir === 'rtl' ? when.right <= label.left : when.left >= label.right,
+          // The time sits at the FAR end of the label line, flush to the panel edge -- past
+          // the label in LTR, before it in RTL. Checked as a distance to that edge, not
+          // merely as "on the other side of the label": an auto inline-start margin here
+          // passed the weaker check while leaving the time tucked against the label in
+          // Hebrew and out at the edge in English.
+          gapToFarEdge: document.dir === 'rtl'
+            ? Math.round(when.left - row.left)
+            : Math.round(row.right - when.right),
         };
       });
-      expect(got).toEqual({ timeOnLabelLine: true, componentsBelow: true, timePastLabel: true });
+      expect(got.timeOnLabelLine).toBe(true);
+      expect(got.componentsBelow).toBe(true);
+      expect(got.gapToFarEdge).toBeLessThanOrEqual(2);
     }
   });
 }
