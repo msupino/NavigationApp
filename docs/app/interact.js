@@ -2830,6 +2830,82 @@ function appendAirfieldRunways(body, af) {
   }
   row.appendChild(chips);
   body.appendChild(row);
+  appendRunwayWind(body, af);
+}
+
+// What the wind is doing to each runway, at the look-ahead time the map is showing.
+// A runway designator is magnetic and the model wind is true, so the wind is converted --
+// see the note in app/airfield-wind.js. Only the components are shown, never a "use this
+// runway" instruction: which end is in use is the field's decision, and on a quiet strip it
+// is the pilot's, but neither is arithmetic's.
+function appendRunwayWind(body, af) {
+  const aw = window.NavAid && window.NavAid.afWind;
+  if (!aw || !af || !Array.isArray(af.runways) || !af.runways.length) return;
+  const row = document.createElement('div');
+  row.className = 'row runway-wind-row';
+  const lbl = document.createElement('label');
+  lbl.textContent = S.afWindRunwayLabel || 'Wind on runway';
+  row.appendChild(lbl);
+  const box = document.createElement('div');
+  box.className = 'runway-wind';
+  row.appendChild(box);
+  body.appendChild(row);
+
+  const render = (sample) => {
+    box.textContent = '';
+    if (!sample) { row.hidden = true; return; }
+    const minKt = (typeof tune === 'function' ? tune('afWindRunwayMinKt') : 3);
+    const dirMag = (typeof toMagnetic === 'function') ? toMagnetic(sample.dirTrue) : sample.dirTrue;
+    if (sample.kt < minKt) {
+      // Below a few knots the components are noise, and four decimal places of noise read
+      // as precision. Say it is calm and stop.
+      const d = document.createElement('div');
+      d.className = 'runway-wind-line';
+      d.textContent = S.afWindCalmLabel || 'CALM';
+      box.appendChild(d);
+      row.hidden = false;
+      return;
+    }
+    for (const pair of af.runways) {
+      const c = aw.favouredEnd(pair, dirMag, sample.kt);
+      if (!c) continue;
+      const head = Math.round(c.headKt);
+      const cross = Math.round(c.crossKt);
+      const side = c.crossSide === 'L' ? (S.afWindFromLeft || 'from the left')
+        : c.crossSide === 'R' ? (S.afWindFromRight || 'from the right') : '';
+      // A negative head component is a tailwind, and calling it "head -3" makes a pilot do
+      // the sign in their head at the one moment they should not have to.
+      const along = head >= 0
+        ? (S.afWindHead || 'head') + ' ' + head + ' kt'
+        : (S.afWindTail || 'tail') + ' ' + Math.abs(head) + ' kt';
+      const d = document.createElement('div');
+      d.className = 'runway-wind-line';
+      d.textContent = c.end + ': ' + along + ', ' + (S.afWindCross || 'cross') + ' ' + cross + ' kt'
+        + (side ? ' ' + side : '');
+      box.appendChild(d);
+    }
+    const note = document.createElement('div');
+    note.className = 'runway-wind-note';
+    note.dir = 'auto';
+    // Which wind these components were computed from. A reported wind and a forecast wind
+    // carry different weight on short final, and the numbers alone do not show which is which.
+    note.textContent = sample.observed
+      ? (S.afWindObsNote || 'Reported wind, from the METAR')
+      : (S.afWindModelNote || 'Forecast model wind, not an observation');
+    box.appendChild(note);
+    row.hidden = !box.children.length;
+  };
+
+  row.hidden = true;
+  const hrs = aw.lookaheadHours();
+  const have = aw.resolvedFor(af, hrs);
+  if (have) { render(have); return; }
+  // Nothing fetched yet: one batched request covers every airfield and is cached for half
+  // an hour, so opening a second inspector costs nothing.
+  const list = (typeof airfields !== 'undefined' && airfields) || [];
+  Promise.all([aw.fetchWinds(list), aw.loadObserved()])
+    .then(() => { if (row.isConnected) render(aw.resolvedFor(af, aw.lookaheadHours())); })
+    .catch(() => { /* no wind line rather than an error in the inspector */ });
 }
 
 function appendPointCoordinateRows(body, point) {
