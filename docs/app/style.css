@@ -4147,6 +4147,7 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .af-wind-legend { font-size: 10px; opacity: 0.75; margin-block-start: 2px; }
 .runway-wind-row { flex-wrap: wrap; gap: 4px; align-items: flex-start; }
 .runway-wind { display: flex; flex-direction: column; gap: 2px; }
+.runway-wind-when { font-size: 10px; opacity: 0.85; white-space: nowrap; }
 .runway-wind-line {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;

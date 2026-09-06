@@ -392,6 +392,38 @@ test('the inspector note names which wind the components came from', async ({ pa
   await expect(page.locator('#insp-body .runway-wind-note')).toContainText('not an observation');
 });
 
+test('the runway row says WHICH hour its components are for', async ({ page }) => {
+  await boot(page, { dir: 100, kt: 15, metar: null });
+  await page.waitForFunction(() => typeof showInspector === 'function');
+  await openAirfield(page, 'LLHZ');
+  const when = page.locator('#insp-body .runway-wind-when');
+  await expect(when).toBeVisible();
+  await expect(when).toContainText('Z');                 // a Zulu clock, not a bare number
+  const live = (await when.textContent()).trim();
+
+  // Move the shared look-ahead: the row must follow it, not keep the hour it opened on.
+  // Driven through the element rather than the UI, so the open inspector is not disturbed
+  // by opening the toolbar section the slider lives in.
+  await page.evaluate(() => {
+    const el = document.getElementById('lookahead-time');
+    el.value = '5';
+    el.dispatchEvent(new Event('input'));
+  });
+  await expect(when).toContainText('+5');
+  expect((await when.textContent()).trim()).not.toBe(live);
+});
+
+test('an observation is stamped with when it was made, not with the slider', async ({ page }) => {
+  await boot(page, { dir: 270, kt: 12, metarAgeMin: 20 });
+  await page.waitForFunction(() => typeof showInspector === 'function');
+  await openAirfield(page, 'LLHZ');                      // reports a METAR, so live is observed
+  const when = page.locator('#insp-body .runway-wind-when');
+  await expect(page.locator('#insp-body .runway-wind-note')).toContainText('Reported wind');
+  // wxHhmmZ renders DD/MM HH:MMZ -- a report time, not a "+Nh" offset.
+  await expect(when).toContainText('/');
+  await expect(when).not.toContainText('+');
+});
+
 // --- the tunables ------------------------------------------------------------
 // Every threshold in this layer is a registry entry, so a gist can move it without a
 // release. These check the knobs are wired to the behaviour rather than merely declared.

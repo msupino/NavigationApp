@@ -2846,14 +2846,39 @@ function appendRunwayWind(body, af) {
   const lbl = document.createElement('label');
   lbl.textContent = S.afWindRunwayLabel || 'Wind on runway';
   row.appendChild(lbl);
+  // WHEN these components are for. Without it the row read as the wind now, whatever the
+  // look-ahead slider was set to -- a crosswind figure for 12:00Z presented as the present
+  // is worse than no figure, because a pilot has no way to tell it is not.
+  const whenEl = document.createElement('span');
+  whenEl.className = 'val runway-wind-when';
+  whenEl.dir = 'ltr';                 // a clock is a clock in both languages
+  row.appendChild(whenEl);
   const box = document.createElement('div');
   box.className = 'runway-wind';
   row.appendChild(box);
   body.appendChild(row);
 
+  // "+6h · 12:00Z" in Hebrew is one string with an RTL run in the middle, and the bidi
+  // algorithm hands the digits to it. Each part gets its own <bdi>, as the density-altitude
+  // readout does for the same reason.
+  const setWhen = (text) => {
+    whenEl.textContent = '';
+    String(text || '').split(' · ').forEach((part, i) => {
+      if (i) whenEl.appendChild(document.createTextNode(' · '));
+      const bdi = document.createElement('bdi');
+      bdi.textContent = part;
+      whenEl.appendChild(bdi);
+    });
+  };
+
   const render = (sample) => {
     box.textContent = '';
-    if (!sample) { row.hidden = true; return; }
+    if (!sample) { row.hidden = true; setWhen(''); return; }
+    // An observation is stamped with when it was MADE; a forecast with the hour it is FOR.
+    // Those are different claims and the row says which it is showing.
+    setWhen(sample.observed
+      ? (Number.isFinite(sample.t) && typeof wxHhmmZ === 'function' ? wxHhmmZ(sample.t) : '')
+      : (typeof notamTimeLabel === 'function' ? notamTimeLabel(aw.lookaheadHours()) : ''));
     const minKt = (typeof tune === 'function' ? tune('afWindRunwayMinKt') : 3);
     const dirMag = (typeof toMagnetic === 'function') ? toMagnetic(sample.dirTrue) : sample.dirTrue;
     if (sample.kt < minKt) {
@@ -2897,6 +2922,17 @@ function appendRunwayWind(body, af) {
   };
 
   row.hidden = true;
+  // The slider can move while this inspector is open, and a stale row would then show one
+  // hour's components under another hour's label. Follows the slider until the row goes.
+  const timeEl = document.getElementById('airfield-wind-time');
+  if (timeEl) {
+    const onTime = () => {
+      if (!row.isConnected) { timeEl.removeEventListener('input', onTime); return; }
+      render(aw.resolvedFor(af, aw.lookaheadHours()));
+    };
+    timeEl.addEventListener('input', onTime);
+  }
+
   const hrs = aw.lookaheadHours();
   const have = aw.resolvedFor(af, hrs);
   if (have) { render(have); return; }
