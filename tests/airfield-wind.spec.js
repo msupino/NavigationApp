@@ -440,14 +440,18 @@ test('the Hebrew row uses knots in Hebrew and reads runway-first', async ({ page
   const order = await page.evaluate(() => {
     const el = document.querySelector('#insp-body .runway-wind-line');
     const bdi = el.querySelector('bdi');
-    const t = el.childNodes[1], str = t.textContent;
     const items = [{ p: 'id', x: bdi.getBoundingClientRect().left }];
-    for (const probe of ['משמאל', 'מימין']) {
-      const i = str.indexOf(probe);
-      if (i < 0) continue;
-      const r = document.createRange();
-      r.setStart(t, i); r.setEnd(t, i + probe.length);
-      items.push({ p: 'side', x: r.getBoundingClientRect().left });
+    // Walk every text node: the line is built from elements now, so the side word is not
+    // in any fixed child. A probe pinned to childNodes[1] silently found nothing.
+    for (const node of el.childNodes) {
+      if (node.nodeType !== 3) continue;
+      for (const probe of ['משמאל', 'מימין']) {
+        const i = node.textContent.indexOf(probe);
+        if (i < 0) continue;
+        const r = document.createRange();
+        r.setStart(node, i); r.setEnd(node, i + probe.length);
+        items.push({ p: 'side', x: r.getBoundingClientRect().left });
+      }
     }
     items.sort((a, b) => b.x - a.x);
     return items.map(i => i.p);
@@ -466,6 +470,45 @@ test('the runway id keeps its colon on the right side of the number in Hebrew', 
   await expect(bdi).toHaveText('10:');
   expect(await bdi.getAttribute('dir')).toBe('ltr');
 });
+
+for (const lang of ['en', 'he']) {
+  test('a narrow inspector wraps the runway line without ever splitting a figure (' + lang + ')', async ({ page }) => {
+    // 25 kt at 55 deg off the runway: two digits for BOTH the head and the cross component,
+    // which is the longest this line gets.
+    await boot(page, { lang, dir: 55, kt: 25, metar: null });
+    await page.waitForFunction(() => typeof showInspector === 'function');
+    await openAirfield(page, 'LLHZ');
+    await expect(page.locator('#insp-body .runway-wind-line').first()).toBeVisible();
+    // Squeeze the panel until the line has to wrap. A pilot can drag it this narrow, and
+    // the components must survive it.
+    await page.evaluate(() => {
+      const el = document.getElementById('inspector');
+      el.style.width = '190px';
+      el.style.maxWidth = '190px';
+    });
+    const got = await page.evaluate(() => {
+      const line = document.querySelector('#insp-body .runway-wind-line');
+      const box = line.getBoundingClientRect();
+      const parent = line.parentElement.getBoundingClientRect();
+      // An RTL span yields one client rect PER BIDI RUN, so counting rects reports splits
+      // that are not there. Distinct rect tops is the honest measure of "how many lines".
+      const qty = [...line.querySelectorAll('.runway-wind-qty')].map(q =>
+        new Set([...q.getClientRects()].map(r => Math.round(r.top))).size);
+      return {
+        wrapped: box.height > 20,
+        qtyLines: qty,
+        overflowRight: Math.round(box.right - parent.right),
+        overflowLeft: Math.round(parent.left - box.left),
+      };
+    });
+    expect(got.wrapped).toBe(true);                 // the case this test exists for
+    // "cross 19" ending one line and "kt" starting the next is a crosswind a pilot can
+    // misread at a glance. Every figure stays whole.
+    expect(got.qtyLines).toEqual([1, 1]);
+    expect(got.overflowRight).toBeLessThanOrEqual(0);
+    expect(got.overflowLeft).toBeLessThanOrEqual(0);
+  });
+}
 
 // --- the tunables ------------------------------------------------------------
 // Every threshold in this layer is a registry entry, so a gist can move it without a

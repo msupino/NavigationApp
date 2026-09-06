@@ -2901,9 +2901,16 @@ function appendRunwayWind(body, af) {
       // A negative head component is a tailwind, and calling it "head -3" makes a pilot do
       // the sign in their head at the one moment they should not have to.
       const kt = S.afWindKt || 'kt';
-      const along = head >= 0
-        ? (S.afWindHead || 'head') + ' ' + head + ' ' + kt
-        : (S.afWindTail || 'tail') + ' ' + Math.abs(head) + ' ' + kt;
+      // A figure and its unit are one thing and must never be split across a line break --
+      // "cross 10" at the end of one line and "kt" at the start of the next is a crosswind
+      // a pilot can misread at a glance. Everything else in the line may wrap normally.
+      const qty = (n) => {
+        const sp = document.createElement('span');
+        sp.className = 'runway-wind-qty';
+        sp.textContent = n + ' ' + kt;
+        return sp;
+      };
+      const alongWord = head >= 0 ? (S.afWindHead || 'head') : (S.afWindTail || 'tail');
       const d = document.createElement('div');
       d.className = 'runway-wind-line';
       // The runway id is built as its own isolated LTR run. Left in the text it is a number
@@ -2912,8 +2919,9 @@ function appendRunwayWind(body, af) {
       const id = document.createElement('bdi');
       id.dir = 'ltr';
       id.textContent = c.end + ':';
-      d.append(id, ' ' + along + ', ' + (S.afWindCross || 'cross') + ' ' + cross + ' '
-        + (S.afWindKt || 'kt') + (side ? ' ' + side : ''));
+      d.append(id, ' ' + alongWord + ' ', qty(Math.abs(head)),
+        ', ' + (S.afWindCross || 'cross') + ' ', qty(cross),
+        side ? ' ' + side : '');
       box.appendChild(d);
     }
     const note = document.createElement('div');
