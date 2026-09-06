@@ -674,6 +674,8 @@ window.S = {
   afWindFromLeft: 'משמאל',
   afWindFromRight: 'מימין',
   afWindModelNote: 'רוח מתחזית מודל, לא תצפית',
+  afWindObsNote: 'רוח מדווחת, מתוך ה־METAR',
+  afWindLegend: 'נוצה מלאה = מדווח · מקווקו = תחזית',
   tbWindFieldTitle: 'שדה רוחות עיליות מונפש (~3000 רגל) ממקור Open-Meteo חי',
   tbWindFieldAlt: 'גובה',
   tbWindFieldOpacity: 'בהירות שדה',

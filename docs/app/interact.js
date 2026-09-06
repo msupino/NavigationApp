@@ -2887,20 +2887,24 @@ function appendRunwayWind(body, af) {
     const note = document.createElement('div');
     note.className = 'runway-wind-note';
     note.dir = 'auto';
-    note.textContent = S.afWindModelNote || 'Forecast model wind, not an observation';
+    // Which wind these components were computed from. A reported wind and a forecast wind
+    // carry different weight on short final, and the numbers alone do not show which is which.
+    note.textContent = sample.observed
+      ? (S.afWindObsNote || 'Reported wind, from the METAR')
+      : (S.afWindModelNote || 'Forecast model wind, not an observation');
     box.appendChild(note);
     row.hidden = !box.children.length;
   };
 
   row.hidden = true;
   const hrs = aw.lookaheadHours();
-  const have = aw.sampleFor(af, hrs);
+  const have = aw.resolvedFor(af, hrs);
   if (have) { render(have); return; }
   // Nothing fetched yet: one batched request covers every airfield and is cached for half
   // an hour, so opening a second inspector costs nothing.
   const list = (typeof airfields !== 'undefined' && airfields) || [];
-  Promise.resolve(aw.fetchWinds(list))
-    .then(() => { if (row.isConnected) render(aw.sampleFor(af, aw.lookaheadHours())); })
+  Promise.all([aw.fetchWinds(list), aw.loadObserved()])
+    .then(() => { if (row.isConnected) render(aw.resolvedFor(af, aw.lookaheadHours())); })
     .catch(() => { /* no wind line rather than an error in the inspector */ });
 }
 

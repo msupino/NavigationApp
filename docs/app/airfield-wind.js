@@ -143,6 +143,48 @@
     return inflight;
   }
 
+  // --- observed wind ----------------------------------------------------------
+  // Five Israeli fields publish a METAR. At live time their wind is MEASURED, and a
+  // measurement beats a model every time -- so those fields draw their own report rather
+  // than the forecast, and draw it as a solid barb while every model barb is dashed. The
+  // moment the slider leaves live there is no observation for that hour and everything
+  // reverts to the model, dashed, which is the honest picture.
+  let obs = null;                             // ICAO -> { dirTrue, kt, gustKt, at }
+  async function loadObserved(opts) {
+    const o = opts || {};
+    const load = o.loadWxFile || (typeof loadWxFile === 'function' ? loadWxFile : null);
+    if (!load) { obs = obs || {}; return obs; }
+    try {
+      const file = await load();
+      const out = {};
+      for (const icao of Object.keys((file && file.stations) || {})) {
+        const m = file.stations[icao] && file.stations[icao].metar;
+        if (!m) continue;
+        // A variable wind has no direction to draw, and a barb pointing anywhere in
+        // particular would be inventing one. Those fields fall back to the model.
+        const d = num(m.wdir);
+        const kt = num(m.wspd);
+        if (d === null || kt === null) continue;
+        const at = (typeof wxIssuedAt === 'function') ? wxIssuedAt(m) : null;
+        out[icao] = { dirTrue: norm360(Math.round(d)), kt: Math.round(kt), gustKt: num(m.wgst), at };
+      }
+      obs = out;
+    } catch (e) {
+      obs = obs || {};
+    }
+    return obs;
+  }
+  // An observation is only worth more than the model while it is current. A METAR is issued
+  // at least hourly, so one well past that is a gap, not a reading.
+  function observedFor(af) {
+    const icao = String((af && af.name) || '').toUpperCase();
+    const o = obs && obs[icao];
+    if (!o) return null;
+    const maxAge = tn('afWindObsMaxAgeMin', 0) || tn('wxStaleAfterMin', 75);
+    if (o.at !== null && o.at !== undefined && Date.now() - o.at > maxAge * 60e3) return null;
+    return o;
+  }
+
   // The hour nearest the requested look-ahead. Nearest, not the next one up: a slider at
   // +3 h with the clock at 14:50 means 18:00 to a pilot, not 17:00. Past the fetched range
   // by more than an hour there is nothing honest to show, so it returns null and the
@@ -162,6 +204,21 @@
     const g = store.gs[idx] && store.gs[idx][best];
     return { t: store.times[best], dirTrue: norm360(Math.round(d)), kt: Math.round(s), gustKt: Number.isFinite(g) ? Math.round(g) : null };
   }
+  // What to draw for one airfield at one look-ahead: the field's own report when the slider
+  // is at live and it has a current one, the model otherwise. `observed` is what the barb
+  // style and the inspector note key off, so neither can drift from the number shown.
+  function resolvedFor(af, hoursAhead, nowMs) {
+    const hrs = Number(hoursAhead) || 0;
+    if (hrs === 0) {
+      const o = observedFor(af);
+      if (o) return { dirTrue: o.dirTrue, kt: o.kt, gustKt: o.gustKt, t: o.at, observed: true };
+    }
+    const i = store ? store.keys.indexOf(fieldKey(af)) : -1;
+    if (i < 0) return null;
+    const m = sampleAt(i, hrs, nowMs);
+    return m ? Object.assign({ observed: false }, m) : null;
+  }
+
   // By ICAO, for the inspector -- which knows an airfield, not its index in a fetch.
   function sampleFor(af, hoursAhead, nowMs) {
     if (!store || !af) return null;
@@ -178,7 +235,7 @@
   // --- rendering --------------------------------------------------------------
   // Drawn on the same overlay canvas as the airfield triangles, through the same proj(),
   // so it rotates with the map bearing and lands in the PNG export like every other symbol.
-  function drawBarb(ctx, x, y, dirScreenDeg, kt, color) {
+  function drawBarb(ctx, x, y, dirScreenDeg, kt, color, observed) {
     const ticks = barbTicks(kt);
     if (!ticks) return;
     const shaft = tn('afWindBarbLenPx', 26);
@@ -193,6 +250,10 @@
     ctx.fillStyle = color;
     ctx.lineWidth = tn('afWindBarbWidthPx', 1.6);
     ctx.lineCap = 'round';
+    // Dashed means modelled. A measured wind and a forecast wind are not the same claim,
+    // and at a glance on a moving map the line style is the only part of a barb the eye
+    // reads without stopping to count feathers.
+    if (!observed) ctx.setLineDash([tn('afWindModelDashPx', 3), tn('afWindModelGapPx', 2.5)]);
     if (ticks.calm) {
       ctx.beginPath();
       ctx.arc(0, 0, tn('afWindCalmRadiusPx', 4), 0, Math.PI * 2);
@@ -204,6 +265,9 @@
     ctx.moveTo(0, 0);
     ctx.lineTo(shaft, 0);
     ctx.stroke();
+    // Only the shaft carries the dash. A dashed feather is a feather you cannot count, and
+    // counting them is how the speed is read.
+    ctx.setLineDash([]);
     // Feathers hang off the upwind end, growing back toward the airfield.
     const pennantW = tn('afWindPennantWidthFactor', 1.6);
     const pennantGap = tn('afWindPennantGapFactor', 0.4);
@@ -262,18 +326,21 @@
     octx.textAlign = 'center';
     octx.textBaseline = 'top';
     for (const af of airfields) {
-      const i = store.keys.indexOf(fieldKey(af));
-      if (i < 0) continue;
-      const s = sampleAt(i, hrs);
+      const s = resolvedFor(af, hrs);
       if (!s) continue;
       const p = proj(af);
-      drawBarb(octx, p.x, p.y - offset, s.dirTrue - bearing, s.kt, color);
+      drawBarb(octx, p.x, p.y - offset, s.dirTrue - bearing, s.kt,
+        s.observed ? tn('afWindObsColor', '#0b6fb8') : color, s.observed);
       if (showText) {
         const txt = windLabel(s);
         octx.lineWidth = tn('afWindLabelHaloPx', 3);
         octx.strokeStyle = tn('overlayLabelHaloColor', '#ffffff');
         octx.strokeText(txt, p.x, p.y + offset);
-        octx.fillStyle = color;
+        // A forecast reads a shade lighter than a measurement, so the two are still
+        // distinguishable where the barb is small and the number is what gets read.
+        const base = s.observed ? tn('afWindObsColor', '#0b6fb8') : color;
+        octx.fillStyle = (!s.observed && typeof colorWithAlpha === 'function')
+          ? colorWithAlpha(base, tn('afWindModelLabelAlpha', 0.75)) : base;
         octx.fillText(txt, p.x, p.y + offset);
       }
     }
@@ -283,11 +350,13 @@
   // Switch-on: fetch once, then redraw. Failures are reported by the caller.
   async function enable(opts) {
     const list = (typeof airfields !== 'undefined' && airfields) || [];
-    const got = await fetchWinds(list, opts);
+    // The observations are a bonus, not a precondition: a wx feed that is down leaves an
+    // all-model layer, which is exactly what the layer was for.
+    const [got] = await Promise.all([fetchWinds(list, opts), loadObserved(opts)]);
     if (typeof draw === 'function') draw();
     return !!got;
   }
-  function clear() { store = null; }
+  function clear() { store = null; obs = null; }
 
   NS.afWind = {
     barbTicks,
@@ -298,6 +367,9 @@
     fetchWinds,
     sampleAt,
     sampleFor,
+    resolvedFor,
+    observedFor,
+    loadObserved,
     windLabel,
     lookaheadHours,
     enable,

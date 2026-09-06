@@ -4818,6 +4818,14 @@ if (windDepartSlider) {
   function featureOn() {
     return typeof tune !== 'function' || tune('featureAirfieldWind') !== false;
   }
+  // A dashed barb means forecast and a solid one means reported, and nothing on the map can
+  // say that for itself. The legend sits with the switch, and only while the layer is on.
+  const legendEl = document.getElementById('airfield-wind-legend');
+  function legend() {
+    if (!legendEl) return;
+    legendEl.hidden = !cb.checked;
+    legendEl.textContent = cb.checked ? (S.afWindLegend || '') : '';
+  }
   function say(msg, loading) {
     if (!statusEl) return;
     statusEl.classList.toggle('windfield-loading', !!loading);
@@ -4861,6 +4869,7 @@ if (windDepartSlider) {
     window.showAirfieldWind = cb.checked;
     try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* storage blocked */ }
     if (cb.checked) { if (!busy) enable(); } else { say(''); }
+    legend();
     if (typeof draw === 'function') draw();
   };
   // The slider is driven by the shared look-ahead above: re-sample the cached hours and
@@ -4875,6 +4884,7 @@ if (windDepartSlider) {
   // preference, so it falls through to the shipped default.
   try { if (lsGet(KEY) === '1' && featureOn()) cb.checked = true; } catch (e) { /* storage blocked */ }
   window.showAirfieldWind = !!cb.checked;
+  legend();
   if (cb.checked) enable();
 }());
 

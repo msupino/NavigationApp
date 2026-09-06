@@ -36,6 +36,30 @@ function windBody(url, opts) {
   return JSON.stringify(new Array(count).fill(one));
 }
 
+// The published wx feed. LLHZ reports a METAR; every other field does not, which is the
+// real shape of it -- 5 stations out of 27. `created` is what wxIssuedAt reads first, so the
+// report's age is exact rather than inferred from a hand-written DDHHMMZ group.
+async function mockWx(page, metar, ageMin) {
+  const at = new Date(Date.now() - (ageMin === undefined ? 10 : ageMin) * 60e3);
+  const dd = String(at.getUTCDate()).padStart(2, '0');
+  const hhmm = String(at.getUTCHours()).padStart(2, '0') + String(at.getUTCMinutes()).padStart(2, '0');
+  await page.route('**wx-data/wx.json**', r => r.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      source: 'IAA (brin.iaa.gov.il MobileAeroinfo)',
+      stations: metar === null ? {} : {
+        LLHZ: { metar: Object.assign({
+          icaoId: 'LLHZ',
+          rawOb: 'LLHZ ' + dd + hhmm + 'Z 02018KT 9999 FEW030 24/18 Q1013',
+          created: at.toISOString(),
+          wdir: 20, wspd: 18, wgst: null,
+        }, metar || {}) },
+      },
+    }),
+  }));
+}
+
 async function mockWind(page, opts, onUrl) {
   await page.route(OM_RE, r => {
     const url = r.request().url();
@@ -45,7 +69,9 @@ async function mockWind(page, opts, onUrl) {
 }
 
 async function boot(page, opts, onUrl) {
-  await mockWind(page, opts, onUrl);
+  const o = opts || {};
+  await mockWx(page, o.metar === undefined ? {} : o.metar, o.metarAgeMin);
+  await mockWind(page, o, onUrl);
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof map !== 'undefined'
     && window.NavAid && window.NavAid.afWind
@@ -240,7 +266,7 @@ async function openAirfield(page, icao) {
 test('the inspector gives head and cross components for the runway', async ({ page }) => {
   // LLHZ is 10/28. A 100 degrees TRUE wind is 095 magnetic here, so runway 10 has almost
   // all of it as headwind.
-  await boot(page, { dir: 100, kt: 15 });
+  await boot(page, { dir: 100, kt: 15, metar: null });
   await page.waitForFunction(() => typeof showInspector === 'function');
   await openAirfield(page, 'LLHZ');
   const line = page.locator('#insp-body .runway-wind-line');
@@ -255,7 +281,7 @@ test('the inspector gives head and cross components for the runway', async ({ pa
 test('a tailwind is called a tailwind, not a negative headwind', async ({ page }) => {
   // Wind from 280 true on LLHZ 10/28: runway 28 is the favoured end, so the line shows a
   // head component there rather than a minus sign on runway 10.
-  await boot(page, { dir: 280, kt: 14 });
+  await boot(page, { dir: 280, kt: 14, metar: null });
   await page.waitForFunction(() => typeof showInspector === 'function');
   await openAirfield(page, 'LLHZ');
   const line = page.locator('#insp-body .runway-wind-line').first();
@@ -264,7 +290,7 @@ test('a tailwind is called a tailwind, not a negative headwind', async ({ page }
 });
 
 test('a nearly calm forecast says calm instead of rounding noise into components', async ({ page }) => {
-  await boot(page, { dir: 40, kt: 1 });
+  await boot(page, { dir: 40, kt: 1, metar: null });
   await page.waitForFunction(() => typeof showInspector === 'function');
   await openAirfield(page, 'LLHZ');
   await expect(page.locator('#insp-body .runway-wind-line').first()).toHaveText('CALM');
@@ -275,6 +301,95 @@ test('an airfield with no published runways gets no runway-wind row', async ({ p
   await page.waitForFunction(() => typeof showInspector === 'function');
   await openAirfield(page, 'GVULT');            // a strip, no runway designators in the data
   await expect(page.locator('#insp-body .runway-wind-row')).toHaveCount(0);
+});
+
+// --- measured against modelled ----------------------------------------------
+
+test('at live, a field with a METAR draws its own reported wind, not the model', async ({ page }) => {
+  // Model says 270/12 everywhere; LLHZ reports 020/18.
+  await boot(page, { dir: 270, kt: 12 });
+  await page.evaluate(async () => { if (airfields === null) await loadAirfields(); });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await page.locator('#airfield-wind-cb').check();
+  await expect.poll(() => page.evaluate(() => !!window.NavAid.afWind._store())).toBe(true);
+  const got = await page.evaluate(() => {
+    const w = window.NavAid.afWind;
+    const at = (n) => airfields.find(a => a.name === n);
+    return { llhz: w.resolvedFor(at('LLHZ'), 0), llks: w.resolvedFor(at('LLKS'), 0) };
+  });
+  expect(got.llhz).toMatchObject({ dirTrue: 20, kt: 18, observed: true });
+  expect(got.llks).toMatchObject({ dirTrue: 270, kt: 12, observed: false });
+});
+
+test('scrubbing off live puts the reporting field back on the model, since no report exists for that hour', async ({ page }) => {
+  await boot(page, { dir: 270, kt: 12 });
+  await page.evaluate(async () => { if (airfields === null) await loadAirfields(); });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await page.locator('#airfield-wind-cb').check();
+  await expect.poll(() => page.evaluate(() => !!window.NavAid.afWind._store())).toBe(true);
+  const got = await page.evaluate(() => {
+    const w = window.NavAid.afWind;
+    const llhz = airfields.find(a => a.name === 'LLHZ');
+    return { live: w.resolvedFor(llhz, 0), ahead: w.resolvedFor(llhz, 3) };
+  });
+  expect(got.live.observed).toBe(true);
+  expect(got.ahead).toMatchObject({ dirTrue: 270, kt: 12, observed: false });
+});
+
+test('a stale METAR is a gap, not a reading, and falls back to the model', async ({ page }) => {
+  await boot(page, { dir: 270, kt: 12, metarAgeMin: 360 });
+  await page.evaluate(async () => { if (airfields === null) await loadAirfields(); });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await page.locator('#airfield-wind-cb').check();
+  await expect.poll(() => page.evaluate(() => !!window.NavAid.afWind._store())).toBe(true);
+  const got = await page.evaluate(() =>
+    window.NavAid.afWind.resolvedFor(airfields.find(a => a.name === 'LLHZ'), 0));
+  expect(got).toMatchObject({ dirTrue: 270, observed: false });
+});
+
+test('a variable-direction report has no direction to draw, so the model stands', async ({ page }) => {
+  await boot(page, { dir: 270, kt: 12, metar: { wdir: 'VRB', wspd: 3 } });
+  await page.evaluate(async () => { if (airfields === null) await loadAirfields(); });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await page.locator('#airfield-wind-cb').check();
+  await expect.poll(() => page.evaluate(() => !!window.NavAid.afWind._store())).toBe(true);
+  const got = await page.evaluate(() =>
+    window.NavAid.afWind.resolvedFor(airfields.find(a => a.name === 'LLHZ'), 0));
+  expect(got).toMatchObject({ observed: false });
+});
+
+test('a wx feed that is down leaves an all-model layer rather than no layer', async ({ page }) => {
+  await boot(page, { dir: 270, kt: 12, metar: null });
+  await page.evaluate(async () => { if (airfields === null) await loadAirfields(); });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await page.locator('#airfield-wind-cb').check();
+  await expect.poll(() => page.evaluate(() => !!window.NavAid.afWind._store())).toBe(true);
+  const got = await page.evaluate(() =>
+    window.NavAid.afWind.resolvedFor(airfields.find(a => a.name === 'LLHZ'), 0));
+  expect(got).toMatchObject({ dirTrue: 270, observed: false });
+});
+
+test('the legend explaining solid against dashed shows only while the layer is on', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => { if (airfields === null) await loadAirfields(); });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await expect(page.locator('#airfield-wind-legend')).toBeHidden();
+  await page.locator('#airfield-wind-cb').check();
+  const legend = page.locator('#airfield-wind-legend');
+  await expect(legend).toBeVisible();
+  await expect(legend).toContainText('reported');
+  await expect(legend).toContainText('forecast');
+  await page.locator('#airfield-wind-cb').uncheck();
+  await expect(legend).toBeHidden();
+});
+
+test('the inspector note names which wind the components came from', async ({ page }) => {
+  await boot(page, { dir: 270, kt: 12 });
+  await page.waitForFunction(() => typeof showInspector === 'function');
+  await openAirfield(page, 'LLHZ');                       // reports a METAR
+  await expect(page.locator('#insp-body .runway-wind-note')).toContainText('Reported wind');
+  await openAirfield(page, 'LLKS');                       // does not
+  await expect(page.locator('#insp-body .runway-wind-note')).toContainText('not an observation');
 });
 
 // --- the tunables ------------------------------------------------------------

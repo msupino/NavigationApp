@@ -671,6 +671,13 @@ NavAid.tuningDefaults = {
   afWindFullTickSlantFactor: { value: 0.9, min: 0, max: 3, step: 0.05, label: 'Airfield wind full-feather slant (× feather spacing)' },
   afWindHalfTickSlantFactor: { value: 0.45, min: 0, max: 3, step: 0.05, label: 'Airfield wind half-feather slant (× feather spacing)' },
   afWindHalfTickLenFactor: { value: 0.5, min: 0.1, max: 1, step: 0.05, label: 'Airfield wind half-feather length (× full feather)' },
+  // Measured against modelled. The five fields that publish a METAR draw their own report
+  // at live time, solid; every forecast barb is dashed.
+  afWindObsColor: { value: '#0b6fb8', type: 'color', label: 'Airfield wind reported-barb colour' },
+  afWindModelDashPx: { value: 3, min: 1, max: 12, step: 0.5, label: 'Airfield wind forecast dash length (px)' },
+  afWindModelGapPx: { value: 2.5, min: 0.5, max: 12, step: 0.5, label: 'Airfield wind forecast dash gap (px)' },
+  afWindModelLabelAlpha: { value: 0.75, min: 0.2, max: 1, step: 0.05, label: 'Airfield wind forecast label opacity' },
+  afWindObsMaxAgeMin: { value: 0, min: 0, max: 360, step: 5, label: 'Airfield wind: reported wind counts as current for (min, 0 = follow the weather setting)' },
   featureAirfieldWind: { value: true, type: 'bool', label: 'Feature: airfield surface-wind barbs' },
 
   liveAircraftRadiusPx: { value: 12, min: 6, max: 48, step: 1, label: 'Live aircraft size (px)' },
@@ -983,7 +990,7 @@ NavAid.tuningGroups = [
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
-  { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'featureAirfieldWind'] },
+  { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the
@@ -1872,6 +1879,8 @@ window.S = Object.assign({
   afWindFromLeft: 'from the left',
   afWindFromRight: 'from the right',
   afWindModelNote: 'Forecast model wind, not an observation',
+  afWindObsNote: 'Reported wind, from the METAR',
+  afWindLegend: 'Solid barb = reported · dashed = forecast',
   tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
   tbWindFieldAlt: 'Altitude',
   tbWindFieldOpacity: 'Field opacity',
