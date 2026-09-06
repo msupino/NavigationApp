@@ -4148,14 +4148,17 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .runway-wind-row { flex-wrap: wrap; gap: 4px; align-items: flex-start; }
 .runway-wind { display: flex; flex-direction: column; gap: 2px; }
 .runway-wind-when { font-size: 10px; opacity: 0.85; white-space: nowrap; }
+/* A figure and its unit are one token and never split across lines. */
+.runway-wind-qty { white-space: nowrap; }
 .runway-wind-line {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
   color: #e8e8e8;
-  /* Wraps rather than running off the panel: "cross 10 kt from the left" is longer than a
+  /* Wraps at word boundaries rather than running off the panel: the line is longer than a
      narrow inspector, and a crosswind figure clipped at the edge is the one number here
-     that must never be half-read. */
-  overflow-wrap: anywhere;
+     that must never be half-read. NOT overflow-wrap:anywhere, which breaks inside a figure
+     -- "10" at the end of a line and "kt" at the start of the next, or worse, "1" and "0". */
+  overflow-wrap: break-word;
 }
 .runway-wind-note {
   font-size: 10px;

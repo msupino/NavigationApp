@@ -72,7 +72,7 @@ async function boot(page, opts, onUrl) {
   const o = opts || {};
   await mockWx(page, o.metar === undefined ? {} : o.metar, o.metarAgeMin);
   await mockWind(page, o, onUrl);
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=' + (o.lang || 'en') + '&nogist');
   await page.waitForFunction(() => typeof map !== 'undefined'
     && window.NavAid && window.NavAid.afWind
     && document.getElementById('airfield-wind-cb'));
@@ -422,6 +422,145 @@ test('an observation is stamped with when it was made, not with the slider', asy
   // wxHhmmZ renders DD/MM HH:MMZ -- a report time, not a "+Nh" offset.
   await expect(when).toContainText('/');
   await expect(when).not.toContainText('+');
+});
+
+test('the Hebrew row uses knots in Hebrew and reads runway-first', async ({ page }) => {
+  await boot(page, { lang: 'he', dir: 100, kt: 15, metar: null });
+  await page.waitForFunction(() => typeof showInspector === 'function');
+  await openAirfield(page, 'LLHZ');
+  const line = page.locator('#insp-body .runway-wind-line').first();
+  await expect(line).toBeVisible();
+  // The app writes knots as קשר everywhere else; a Latin unit here also drops an LTR run
+  // into the middle of an RTL line, which is what made it read as a jumble.
+  await expect(line).toContainText('קשר');
+  expect(await line.textContent()).not.toContain('kt');
+
+  // Reading order is right-to-left: the runway id comes first, the side last. Asserted by
+  // geometry -- the visual order is the thing that was wrong, and the string cannot show it.
+  const order = await page.evaluate(() => {
+    const el = document.querySelector('#insp-body .runway-wind-line');
+    const bdi = el.querySelector('bdi');
+    const items = [{ p: 'id', x: bdi.getBoundingClientRect().left }];
+    // Walk every child, text node or element: the line is assembled from spans and the side
+    // word has already moved between the two. A probe pinned to one child silently found
+    // nothing and passed vacuously -- twice.
+    for (const node of el.childNodes) {
+      for (const probe of ['משמאל', 'מימין']) {
+        const i = node.textContent.indexOf(probe);
+        if (i < 0) continue;
+        let box;
+        if (node.nodeType === 3) {
+          const r = document.createRange();
+          r.setStart(node, i); r.setEnd(node, i + probe.length);
+          box = r.getBoundingClientRect();
+        } else {
+          box = node.getBoundingClientRect();
+        }
+        items.push({ p: 'side', x: box.left });
+      }
+    }
+    items.sort((a, b) => b.x - a.x);
+    return items.map(i => i.p);
+  });
+  expect(order).toContain('side');               // else this asserts nothing at all
+  expect(order[0]).toBe('id');                   // rightmost, so read first
+  expect(order[order.length - 1]).toBe('side');
+});
+
+for (const [lang, side] of [['en', 'right'], ['he', 'left']]) {
+  test('the colon sits against the words it introduces, on the ' + side + ' in ' + lang, async ({ page }) => {
+    await boot(page, { lang, dir: 100, kt: 15, metar: null });
+    await page.waitForFunction(() => typeof showInspector === 'function');
+    await openAirfield(page, 'LLHZ');
+    await expect(page.locator('#insp-body .runway-wind-line').first()).toBeVisible();
+    const got = await page.evaluate(() => {
+      const line = document.querySelector('#insp-body .runway-wind-line');
+      const bdi = line.querySelector('bdi');
+      const t = line.childNodes[1];                 // ": head " / ": חזיתית "
+      const r = document.createRange();
+      r.setStart(t, 0); r.setEnd(t, 1);             // the colon itself
+      return {
+        id: bdi.textContent,
+        idLeft: bdi.getBoundingClientRect().left,
+        idRight: bdi.getBoundingClientRect().right,
+        colonLeft: r.getBoundingClientRect().left,
+      };
+    });
+    // The number is its own bdi so its digits never reorder; the colon is left to bidi so it
+    // lands against the text that follows -- to the right of the number in English, to the
+    // left of it in Hebrew. Forcing the pair into an LTR isolate put the colon on the far
+    // right in Hebrew, first glyph the eye meets, pointing away from what it introduces.
+    expect(got.id).toBe('10');
+    if (side === 'right') expect(got.colonLeft).toBeGreaterThanOrEqual(got.idRight - 1);
+    else expect(got.colonLeft).toBeLessThanOrEqual(got.idLeft + 1);
+  });
+}
+
+for (const lang of ['en', 'he']) {
+  test('a narrow inspector wraps the runway line without ever splitting a figure (' + lang + ')', async ({ page }) => {
+    // 25 kt at 55 deg off the runway: two digits for BOTH the head and the cross component,
+    // which is the longest this line gets.
+    await boot(page, { lang, dir: 55, kt: 25, metar: null });
+    await page.waitForFunction(() => typeof showInspector === 'function');
+    await openAirfield(page, 'LLHZ');
+    await expect(page.locator('#insp-body .runway-wind-line').first()).toBeVisible();
+    // Squeeze the panel until the line has to wrap. A pilot can drag it this narrow, and
+    // the components must survive it.
+    await page.evaluate(() => {
+      const el = document.getElementById('inspector');
+      el.style.width = '190px';
+      el.style.maxWidth = '190px';
+    });
+    const got = await page.evaluate(() => {
+      const line = document.querySelector('#insp-body .runway-wind-line');
+      const box = line.getBoundingClientRect();
+      const parent = line.parentElement.getBoundingClientRect();
+      // An RTL span yields one client rect PER BIDI RUN, so counting rects reports splits
+      // that are not there. Distinct rect tops is the honest measure of "how many lines".
+      const qty = [...line.querySelectorAll('.runway-wind-qty')].map(q =>
+        new Set([...q.getClientRects()].map(r => Math.round(r.top))).size);
+      return {
+        wrapped: box.height > 20,
+        qtyLines: qty,
+        overflowRight: Math.round(box.right - parent.right),
+        overflowLeft: Math.round(parent.left - box.left),
+      };
+    });
+    expect(got.wrapped).toBe(true);                 // the case this test exists for
+    // "cross 19" ending one line and "kt" starting the next is a crosswind a pilot can
+    // misread at a glance. Every figure stays whole -- and so does the side phrase, which
+    // is three words in English and used to wrap as "... from the" with a lone "left".
+    expect(got.qtyLines).toEqual([1, 1, 1]);
+    expect(got.overflowRight).toBeLessThanOrEqual(0);
+    expect(got.overflowLeft).toBeLessThanOrEqual(0);
+  });
+}
+
+test('zoomed out past the gate the layer draws nothing, and the gate is tunable', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => { if (airfields === null) await loadAirfields(); });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await page.locator('#airfield-wind-cb').check();
+  await expect.poll(() => page.evaluate(() => !!window.NavAid.afWind._store())).toBe(true);
+  // Count what the layer actually paints, by tallying strokes on the overlay canvas.
+  const drawnAt = (z) => page.evaluate((zoom) => {
+    map.setZoom(zoom);
+    let n = 0;
+    const orig = octx.stroke;
+    octx.stroke = function () { n++; return orig.apply(this, arguments); };
+    try { drawAirfieldWind(); } finally { octx.stroke = orig; }
+    return n;
+  }, z);
+  // At country zoom 27 full-size barbs overlap each other and the airfields they belong to,
+  // and their labels are suppressed there anyway: a scatter of dashes, not a wind picture.
+  expect(await drawnAt(8)).toBe(0);
+  expect(await drawnAt(10)).toBeGreaterThan(0);
+  // The gate moves with the tunable, in both directions.
+  await page.evaluate(() => { NavAid.tuningDefaults.afWindMinZoom.value = 11; });
+  expect(await drawnAt(10)).toBe(0);
+  await page.evaluate(() => { NavAid.tuningDefaults.afWindMinZoom.value = 4; });
+  expect(await drawnAt(8)).toBeGreaterThan(0);
+  await page.evaluate(() => { NavAid.tuningDefaults.afWindMinZoom.value = 9; });
 });
 
 // --- the tunables ------------------------------------------------------------
