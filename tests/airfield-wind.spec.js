@@ -467,16 +467,34 @@ test('the Hebrew row uses knots in Hebrew and reads runway-first', async ({ page
   expect(order[order.length - 1]).toBe('side');
 });
 
-test('the runway id keeps its colon on the right side of the number in Hebrew', async ({ page }) => {
-  await boot(page, { lang: 'he', dir: 100, kt: 15, metar: null });
-  await page.waitForFunction(() => typeof showInspector === 'function');
-  await openAirfield(page, 'LLHZ');
-  // Left as plain text, "10:" is a number followed by a neutral colon and bidi moves the
-  // colon to the far side -- the row read ":10". Its own isolated LTR run fixes that.
-  const bdi = page.locator('#insp-body .runway-wind-line bdi').first();
-  await expect(bdi).toHaveText('10:');
-  expect(await bdi.getAttribute('dir')).toBe('ltr');
-});
+for (const [lang, side] of [['en', 'right'], ['he', 'left']]) {
+  test('the colon sits against the words it introduces, on the ' + side + ' in ' + lang, async ({ page }) => {
+    await boot(page, { lang, dir: 100, kt: 15, metar: null });
+    await page.waitForFunction(() => typeof showInspector === 'function');
+    await openAirfield(page, 'LLHZ');
+    await expect(page.locator('#insp-body .runway-wind-line').first()).toBeVisible();
+    const got = await page.evaluate(() => {
+      const line = document.querySelector('#insp-body .runway-wind-line');
+      const bdi = line.querySelector('bdi');
+      const t = line.childNodes[1];                 // ": head " / ": חזיתית "
+      const r = document.createRange();
+      r.setStart(t, 0); r.setEnd(t, 1);             // the colon itself
+      return {
+        id: bdi.textContent,
+        idLeft: bdi.getBoundingClientRect().left,
+        idRight: bdi.getBoundingClientRect().right,
+        colonLeft: r.getBoundingClientRect().left,
+      };
+    });
+    // The number is its own bdi so its digits never reorder; the colon is left to bidi so it
+    // lands against the text that follows -- to the right of the number in English, to the
+    // left of it in Hebrew. Forcing the pair into an LTR isolate put the colon on the far
+    // right in Hebrew, first glyph the eye meets, pointing away from what it introduces.
+    expect(got.id).toBe('10');
+    if (side === 'right') expect(got.colonLeft).toBeGreaterThanOrEqual(got.idRight - 1);
+    else expect(got.colonLeft).toBeLessThanOrEqual(got.idLeft + 1);
+  });
+}
 
 for (const lang of ['en', 'he']) {
   test('a narrow inspector wraps the runway line without ever splitting a figure (' + lang + ')', async ({ page }) => {

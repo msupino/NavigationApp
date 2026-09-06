@@ -2914,16 +2914,17 @@ function appendRunwayWind(body, af) {
       const alongWord = head >= 0 ? (S.afWindHead || 'head') : (S.afWindTail || 'tail');
       const d = document.createElement('div');
       d.className = 'runway-wind-line';
-      // The runway id is built as its own isolated LTR run. Left in the text it is a number
-      // followed by a neutral colon, and the bidi algorithm moves that colon to the far side
-      // in Hebrew -- the row read ":28" rather than "28:".
+      // The runway id is a <bdi> around the NUMBER ONLY, with the colon left in the running
+      // text where it belongs. Forcing "28:" into an LTR isolate put the colon on the far
+      // right in Hebrew -- the first glyph the eye meets, pointing away from the text it
+      // introduces. Left to bidi, the colon sits against the words that follow it: to their
+      // right in English, to their left in Hebrew, which is what a colon is for.
       const id = document.createElement('bdi');
-      id.dir = 'ltr';
-      id.textContent = c.end + ':';
+      id.textContent = c.end;
       // "from the left" is three words, and left to itself English wrapped as "... from the"
       // with a lone "left" on the next line. It says one thing, so it breaks as one thing --
       // the same treatment the figures get, and it keeps LTR as tidy as RTL already was.
-      d.append(id, ' ' + alongWord + ' ', qty(Math.abs(head)),
+      d.append(id, ': ' + alongWord + ' ', qty(Math.abs(head)),
         ', ' + (S.afWindCross || 'cross') + ' ', qty(cross));
       if (sideText) d.append(' ', atom(sideText));
       box.appendChild(d);
