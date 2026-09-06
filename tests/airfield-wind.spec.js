@@ -441,21 +441,28 @@ test('the Hebrew row uses knots in Hebrew and reads runway-first', async ({ page
     const el = document.querySelector('#insp-body .runway-wind-line');
     const bdi = el.querySelector('bdi');
     const items = [{ p: 'id', x: bdi.getBoundingClientRect().left }];
-    // Walk every text node: the line is built from elements now, so the side word is not
-    // in any fixed child. A probe pinned to childNodes[1] silently found nothing.
+    // Walk every child, text node or element: the line is assembled from spans and the side
+    // word has already moved between the two. A probe pinned to one child silently found
+    // nothing and passed vacuously -- twice.
     for (const node of el.childNodes) {
-      if (node.nodeType !== 3) continue;
       for (const probe of ['משמאל', 'מימין']) {
         const i = node.textContent.indexOf(probe);
         if (i < 0) continue;
-        const r = document.createRange();
-        r.setStart(node, i); r.setEnd(node, i + probe.length);
-        items.push({ p: 'side', x: r.getBoundingClientRect().left });
+        let box;
+        if (node.nodeType === 3) {
+          const r = document.createRange();
+          r.setStart(node, i); r.setEnd(node, i + probe.length);
+          box = r.getBoundingClientRect();
+        } else {
+          box = node.getBoundingClientRect();
+        }
+        items.push({ p: 'side', x: box.left });
       }
     }
     items.sort((a, b) => b.x - a.x);
     return items.map(i => i.p);
   });
+  expect(order).toContain('side');               // else this asserts nothing at all
   expect(order[0]).toBe('id');                   // rightmost, so read first
   expect(order[order.length - 1]).toBe('side');
 });
@@ -503,8 +510,9 @@ for (const lang of ['en', 'he']) {
     });
     expect(got.wrapped).toBe(true);                 // the case this test exists for
     // "cross 19" ending one line and "kt" starting the next is a crosswind a pilot can
-    // misread at a glance. Every figure stays whole.
-    expect(got.qtyLines).toEqual([1, 1]);
+    // misread at a glance. Every figure stays whole -- and so does the side phrase, which
+    // is three words in English and used to wrap as "... from the" with a lone "left".
+    expect(got.qtyLines).toEqual([1, 1, 1]);
     expect(got.overflowRight).toBeLessThanOrEqual(0);
     expect(got.overflowLeft).toBeLessThanOrEqual(0);
   });
