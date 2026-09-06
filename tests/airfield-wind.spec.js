@@ -563,6 +563,37 @@ test('zoomed out past the gate the layer draws nothing, and the gate is tunable'
   await page.evaluate(() => { NavAid.tuningDefaults.afWindMinZoom.value = 9; });
 });
 
+for (const lang of ['en', 'he']) {
+  test('the time stays on the label line and the components start their own (' + lang + ')', async ({ page }) => {
+    await boot(page, { lang, dir: 100, kt: 15, metar: null });
+    await page.waitForFunction(() => typeof showInspector === 'function');
+    await openAirfield(page, 'LLHZ');
+    await expect(page.locator('#insp-body .runway-wind-line').first()).toBeVisible();
+    // Wide and narrow: a wide panel used to fit label, time and figures on ONE line, which
+    // left the time sandwiched between the label and the numbers, belonging to neither.
+    for (const width of [420, 260]) {
+      await page.evaluate((px) => {
+        const el = document.getElementById('inspector');
+        el.style.width = px + 'px';
+        el.style.maxWidth = px + 'px';
+      }, width);
+      const got = await page.evaluate(() => {
+        const row = document.querySelector('#insp-body .runway-wind-row');
+        const box = (sel) => row.querySelector(sel).getBoundingClientRect();
+        const label = box('label'), when = box('.runway-wind-when'), line = box('.runway-wind-line');
+        return {
+          timeOnLabelLine: Math.abs(when.top - label.top) < 6,
+          componentsBelow: line.top > label.bottom - 4,
+          // The time sits at the far end of the label line: past the label in LTR,
+          // before it in RTL. Written as a direction-agnostic check.
+          timePastLabel: document.dir === 'rtl' ? when.right <= label.left : when.left >= label.right,
+        };
+      });
+      expect(got).toEqual({ timeOnLabelLine: true, componentsBelow: true, timePastLabel: true });
+    }
+  });
+}
+
 // --- the tunables ------------------------------------------------------------
 // Every threshold in this layer is a registry entry, so a gist can move it without a
 // release. These check the knobs are wired to the behaviour rather than merely declared.
