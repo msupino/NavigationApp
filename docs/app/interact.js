@@ -2896,17 +2896,37 @@ function appendRunwayWind(body, af) {
       if (!c) continue;
       const head = Math.round(c.headKt);
       const cross = Math.round(c.crossKt);
-      const side = c.crossSide === 'L' ? (S.afWindFromLeft || 'from the left')
+      const sideText = c.crossSide === 'L' ? (S.afWindFromLeft || 'from the left')
         : c.crossSide === 'R' ? (S.afWindFromRight || 'from the right') : '';
       // A negative head component is a tailwind, and calling it "head -3" makes a pilot do
       // the sign in their head at the one moment they should not have to.
-      const along = head >= 0
-        ? (S.afWindHead || 'head') + ' ' + head + ' kt'
-        : (S.afWindTail || 'tail') + ' ' + Math.abs(head) + ' kt';
+      const kt = S.afWindKt || 'kt';
+      // A figure and its unit are one thing and must never be split across a line break --
+      // "cross 10" at the end of one line and "kt" at the start of the next is a crosswind
+      // a pilot can misread at a glance. Everything else in the line may wrap normally.
+      const atom = (text) => {
+        const sp = document.createElement('span');
+        sp.className = 'runway-wind-qty';
+        sp.textContent = text;
+        return sp;
+      };
+      const qty = (n) => atom(n + ' ' + kt);
+      const alongWord = head >= 0 ? (S.afWindHead || 'head') : (S.afWindTail || 'tail');
       const d = document.createElement('div');
       d.className = 'runway-wind-line';
-      d.textContent = c.end + ': ' + along + ', ' + (S.afWindCross || 'cross') + ' ' + cross + ' kt'
-        + (side ? ' ' + side : '');
+      // The runway id is a <bdi> around the NUMBER ONLY, with the colon left in the running
+      // text where it belongs. Forcing "28:" into an LTR isolate put the colon on the far
+      // right in Hebrew -- the first glyph the eye meets, pointing away from the text it
+      // introduces. Left to bidi, the colon sits against the words that follow it: to their
+      // right in English, to their left in Hebrew, which is what a colon is for.
+      const id = document.createElement('bdi');
+      id.textContent = c.end;
+      // "from the left" is three words, and left to itself English wrapped as "... from the"
+      // with a lone "left" on the next line. It says one thing, so it breaks as one thing --
+      // the same treatment the figures get, and it keeps LTR as tidy as RTL already was.
+      d.append(id, ': ' + alongWord + ' ', qty(Math.abs(head)),
+        ', ' + (S.afWindCross || 'cross') + ' ', qty(cross));
+      if (sideText) d.append(' ', atom(sideText));
       box.appendChild(d);
     }
     const note = document.createElement('div');
