@@ -1878,6 +1878,7 @@ window.S = Object.assign({
   afWindHead: 'head',
   afWindTail: 'tail',
   afWindCross: 'cross',
+  afWindKt: 'kt',
   afWindFromLeft: 'from the left',
   afWindFromRight: 'from the right',
   afWindModelNote: 'Forecast model wind, not an observation',

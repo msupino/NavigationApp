@@ -2900,13 +2900,20 @@ function appendRunwayWind(body, af) {
         : c.crossSide === 'R' ? (S.afWindFromRight || 'from the right') : '';
       // A negative head component is a tailwind, and calling it "head -3" makes a pilot do
       // the sign in their head at the one moment they should not have to.
+      const kt = S.afWindKt || 'kt';
       const along = head >= 0
-        ? (S.afWindHead || 'head') + ' ' + head + ' kt'
-        : (S.afWindTail || 'tail') + ' ' + Math.abs(head) + ' kt';
+        ? (S.afWindHead || 'head') + ' ' + head + ' ' + kt
+        : (S.afWindTail || 'tail') + ' ' + Math.abs(head) + ' ' + kt;
       const d = document.createElement('div');
       d.className = 'runway-wind-line';
-      d.textContent = c.end + ': ' + along + ', ' + (S.afWindCross || 'cross') + ' ' + cross + ' kt'
-        + (side ? ' ' + side : '');
+      // The runway id is built as its own isolated LTR run. Left in the text it is a number
+      // followed by a neutral colon, and the bidi algorithm moves that colon to the far side
+      // in Hebrew -- the row read ":28" rather than "28:".
+      const id = document.createElement('bdi');
+      id.dir = 'ltr';
+      id.textContent = c.end + ':';
+      d.append(id, ' ' + along + ', ' + (S.afWindCross || 'cross') + ' ' + cross + ' '
+        + (S.afWindKt || 'kt') + (side ? ' ' + side : ''));
       box.appendChild(d);
     }
     const note = document.createElement('div');

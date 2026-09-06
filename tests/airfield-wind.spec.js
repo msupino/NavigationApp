@@ -72,7 +72,7 @@ async function boot(page, opts, onUrl) {
   const o = opts || {};
   await mockWx(page, o.metar === undefined ? {} : o.metar, o.metarAgeMin);
   await mockWind(page, o, onUrl);
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=' + (o.lang || 'en') + '&nogist');
   await page.waitForFunction(() => typeof map !== 'undefined'
     && window.NavAid && window.NavAid.afWind
     && document.getElementById('airfield-wind-cb'));
@@ -422,6 +422,49 @@ test('an observation is stamped with when it was made, not with the slider', asy
   // wxHhmmZ renders DD/MM HH:MMZ -- a report time, not a "+Nh" offset.
   await expect(when).toContainText('/');
   await expect(when).not.toContainText('+');
+});
+
+test('the Hebrew row uses knots in Hebrew and reads runway-first', async ({ page }) => {
+  await boot(page, { lang: 'he', dir: 100, kt: 15, metar: null });
+  await page.waitForFunction(() => typeof showInspector === 'function');
+  await openAirfield(page, 'LLHZ');
+  const line = page.locator('#insp-body .runway-wind-line').first();
+  await expect(line).toBeVisible();
+  // The app writes knots as קשר everywhere else; a Latin unit here also drops an LTR run
+  // into the middle of an RTL line, which is what made it read as a jumble.
+  await expect(line).toContainText('קשר');
+  expect(await line.textContent()).not.toContain('kt');
+
+  // Reading order is right-to-left: the runway id comes first, the side last. Asserted by
+  // geometry -- the visual order is the thing that was wrong, and the string cannot show it.
+  const order = await page.evaluate(() => {
+    const el = document.querySelector('#insp-body .runway-wind-line');
+    const bdi = el.querySelector('bdi');
+    const t = el.childNodes[1], str = t.textContent;
+    const items = [{ p: 'id', x: bdi.getBoundingClientRect().left }];
+    for (const probe of ['משמאל', 'מימין']) {
+      const i = str.indexOf(probe);
+      if (i < 0) continue;
+      const r = document.createRange();
+      r.setStart(t, i); r.setEnd(t, i + probe.length);
+      items.push({ p: 'side', x: r.getBoundingClientRect().left });
+    }
+    items.sort((a, b) => b.x - a.x);
+    return items.map(i => i.p);
+  });
+  expect(order[0]).toBe('id');                   // rightmost, so read first
+  expect(order[order.length - 1]).toBe('side');
+});
+
+test('the runway id keeps its colon on the right side of the number in Hebrew', async ({ page }) => {
+  await boot(page, { lang: 'he', dir: 100, kt: 15, metar: null });
+  await page.waitForFunction(() => typeof showInspector === 'function');
+  await openAirfield(page, 'LLHZ');
+  // Left as plain text, "10:" is a number followed by a neutral colon and bidi moves the
+  // colon to the far side -- the row read ":10". Its own isolated LTR run fixes that.
+  const bdi = page.locator('#insp-body .runway-wind-line bdi').first();
+  await expect(bdi).toHaveText('10:');
+  expect(await bdi.getAttribute('dir')).toBe('ltr');
 });
 
 // --- the tunables ------------------------------------------------------------
