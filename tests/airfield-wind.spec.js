@@ -563,6 +563,45 @@ test('zoomed out past the gate the layer draws nothing, and the gate is tunable'
   await page.evaluate(() => { NavAid.tuningDefaults.afWindMinZoom.value = 9; });
 });
 
+for (const lang of ['en', 'he']) {
+  test('the time stays on the label line and the components start their own (' + lang + ')', async ({ page }) => {
+    await boot(page, { lang, dir: 100, kt: 15, metar: null });
+    await page.waitForFunction(() => typeof showInspector === 'function');
+    await openAirfield(page, 'LLHZ');
+    await expect(page.locator('#insp-body .runway-wind-line').first()).toBeVisible();
+    // Wide and narrow: a wide panel used to fit label, time and figures on ONE line, which
+    // left the time sandwiched between the label and the numbers, belonging to neither.
+    for (const width of [420, 260]) {
+      await page.evaluate((px) => {
+        const el = document.getElementById('inspector');
+        el.style.width = px + 'px';
+        el.style.maxWidth = px + 'px';
+      }, width);
+      const got = await page.evaluate(() => {
+        const rowEl = document.querySelector('#insp-body .runway-wind-row');
+        const box = (sel) => rowEl.querySelector(sel).getBoundingClientRect();
+        const row = rowEl.getBoundingClientRect();
+        const label = box('label'), when = box('.runway-wind-when'), line = box('.runway-wind-line');
+        return {
+          timeOnLabelLine: Math.abs(when.top - label.top) < 6,
+          componentsBelow: line.top > label.bottom - 4,
+          // The time sits at the FAR end of the label line, flush to the panel edge -- past
+          // the label in LTR, before it in RTL. Checked as a distance to that edge, not
+          // merely as "on the other side of the label": an auto inline-start margin here
+          // passed the weaker check while leaving the time tucked against the label in
+          // Hebrew and out at the edge in English.
+          gapToFarEdge: document.dir === 'rtl'
+            ? Math.round(when.left - row.left)
+            : Math.round(row.right - when.right),
+        };
+      });
+      expect(got.timeOnLabelLine).toBe(true);
+      expect(got.componentsBelow).toBe(true);
+      expect(got.gapToFarEdge).toBeLessThanOrEqual(2);
+    }
+  });
+}
+
 // --- the tunables ------------------------------------------------------------
 // Every threshold in this layer is a registry entry, so a gist can move it without a
 // release. These check the knobs are wired to the behaviour rather than merely declared.
