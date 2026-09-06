@@ -713,6 +713,11 @@ as a machine-readable registry.
   `navLangPosRead()` adopts a legacy bare position key into the active
   language's key and leaves the bare key available for the other language.
   Position keys and other panel geometry are device-local.
+- `navaid.inspSize` — device-local desktop inspector width and height. The full
+  panel is clamped to the viewport on opening and window resize. Phone layout
+  ignores these dimensions without overwriting the saved desktop preference.
+- `navaid.inspZoom` — device-local inspector reading zoom, bounded by the
+  `inspZoomSmallest` and `inspZoomLargest` tunables.
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
 - `navaid.yellowAlpha` — Label-opacity slider value (waypoint labels).

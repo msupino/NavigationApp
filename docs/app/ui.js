@@ -8102,7 +8102,7 @@ function clampInspToViewport() {
     insp.style.left = Math.round(left) + 'px';
   }
   if (insp.style.top) {
-    const top = Math.max(8, Math.min(parseFloat(insp.style.top) || 0, vh - Math.min(h, 40) - 8));
+    const top = Math.max(8, Math.min(parseFloat(insp.style.top) || 0, vh - h - 8));
     insp.style.top = Math.round(top) + 'px';
   }
 }
@@ -8118,10 +8118,12 @@ function clampInspToViewport() {
 
   let sx = 0, sy = 0, sw = 0, sh = 0;
   const onMove = e => {
-    // Pin left/top so the gripped edges are the ones that move. The header drag already
-    // pins left, so this agrees with a dragged panel instead of fighting it.
-    const w = Math.max(INSP_MIN_W, sw + (e.clientX - sx));
-    const h = Math.max(INSP_MIN_H, sh + (e.clientY - sy));
+    if (!inspResizeEnabled()) return;
+    const r = insp.getBoundingClientRect();
+    const maxW = Math.max(INSP_MIN_W, window.innerWidth - r.left - 8);
+    const maxH = Math.max(INSP_MIN_H, window.innerHeight - r.top - 8);
+    const w = Math.min(maxW, Math.max(INSP_MIN_W, sw + (e.clientX - sx)));
+    const h = Math.min(maxH, Math.max(INSP_MIN_H, sh + (e.clientY - sy)));
     insp.style.width = w + 'px';
     insp.style.height = h + 'px';
   };
@@ -8129,6 +8131,9 @@ function clampInspToViewport() {
     grip.releasePointerCapture?.(e.pointerId);
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+    if (!inspResizeEnabled()) return;
+    clampInspToViewport();
     const r = insp.getBoundingClientRect();
     inspSizeSave(r.width, r.height);
   };
@@ -8136,6 +8141,7 @@ function clampInspToViewport() {
     if (!inspResizeEnabled()) return;
     e.preventDefault();
     e.stopPropagation();          // the header drag and the map must not see this
+    clampInspToViewport();
     const r = insp.getBoundingClientRect();
     insp.style.left = Math.round(r.left) + 'px';
     insp.style.top = Math.round(r.top) + 'px';
@@ -8144,12 +8150,19 @@ function clampInspToViewport() {
     grip.setPointerCapture?.(e.pointerId);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
   });
 
   applyInspSize();
   // The phone/desktop split is a media query, so a rotation or a window resize can move the
   // panel between the two layouts.
   window.addEventListener('resize', applyInspSize);
+  // Weather and chart content can grow after the inspector has opened.
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => {
+      if (!inspNarrow()) clampInspToViewport();
+    }).observe(insp);
+  }
 })();
 
 // The inspector title is a readonly input assigned from a dozen places, and a long name

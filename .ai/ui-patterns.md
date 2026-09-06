@@ -30,6 +30,16 @@ Keep inspectors consistent across equivalent object types:
 When adding a row, use the existing row builders (`textRow`, `numberRow`,
 `inputRow`, `selectRow`) unless the layout truly needs custom markup.
 
+Desktop inspector resizing keeps the moving corner within the viewport while
+preserving the opposite corner. Reopening a selection or resizing the window
+clamps the whole panel, including its body and resize grip, onto the screen.
+At phone width the inspector uses its bottom-sheet geometry; desktop inline
+position and dimensions must not override it.
+
+`navaid.inspSize` stores the desktop width and height, and `navaid.inspZoom`
+stores the inspector reading zoom. Both are device-local. A temporary viewport
+clamp does not replace the preferred saved size; a completed resize gesture does.
+
 ## Charts
 
 Charts are modal tools, not route inspectors.
