@@ -652,7 +652,9 @@ NavAid.tuningDefaults = {
   afWindBarbWidthPx: { value: 1.6, min: 0.5, max: 5, step: 0.1, label: 'Airfield wind barb line width (px)' },
   afWindCalmRadiusPx: { value: 4, min: 2, max: 12, step: 0.5, label: 'Airfield wind calm ring radius (px)' },
   afWindBarbColor: { value: '#0b6fb8', type: 'color', label: 'Airfield wind barb colour' },
-  afWindOffsetPx: { value: 12, min: 0, max: 40, step: 1, label: 'Airfield wind barb offset from marker (px)' },
+  afWindOffsetPx: { value: 12, min: 0, max: 40, step: 1, label: 'Airfield wind label offset from marker (px)' },
+  afWindStartGapPx: { value: 7, min: 0, max: 30, step: 1, label: 'Airfield wind barb gap from marker (px)' },
+  afWindBarbHaloPx: { value: 2.6, min: 0, max: 8, step: 0.2, label: 'Airfield wind barb halo (px)' },
   afWindLabelFontPx: { value: 11, min: 7, max: 20, step: 1, label: 'Airfield wind label font (px)' },
   afWindLabelHaloPx: { value: 3, min: 0, max: 8, step: 0.5, label: 'Airfield wind label halo (px)' },
   afWindLabelMinZoom: { value: 10, min: 5, max: 15, step: 1, label: 'Airfield wind label min zoom' },
@@ -990,7 +992,7 @@ NavAid.tuningGroups = [
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
-  { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
+  { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindStartGapPx', 'afWindBarbHaloPx', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the
