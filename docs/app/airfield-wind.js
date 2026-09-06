@@ -238,66 +238,88 @@
   function drawBarb(ctx, x, y, dirScreenDeg, kt, color, observed) {
     const ticks = barbTicks(kt);
     if (!ticks) return;
+    const gap = tn('afWindStartGapPx', 7);         // clear of the airfield triangle
     const shaft = tn('afWindBarbLenPx', 26);
     const tick = tn('afWindBarbTickPx', 9);
     const step = tn('afWindBarbTickGapPx', 4.5);
+    const pennantW = tn('afWindPennantWidthFactor', 1.6);
+    const pennantGap = tn('afWindPennantGapFactor', 0.4);
+    // The barb is a ray FROM the airfield toward where the wind is coming from, so it reads
+    // as belonging to that field. Drawn floating above the marker it looked like a separate
+    // symbol that happened to be nearby.
+    const path = (ctx2) => {
+      if (ticks.calm) {
+        ctx2.beginPath();
+        ctx2.arc(0, 0, tn('afWindCalmRadiusPx', 4), 0, Math.PI * 2);
+        ctx2.stroke();
+        return;
+      }
+      ctx2.beginPath();
+      ctx2.moveTo(gap, 0);
+      ctx2.lineTo(gap + shaft, 0);
+      ctx2.stroke();
+      // Only the shaft carries the dash. A dashed feather is a feather you cannot count,
+      // and counting them is how the speed is read.
+      const dash = ctx2.getLineDash();
+      ctx2.setLineDash([]);
+      let at = gap + shaft;
+      for (let i = 0; i < ticks.pennants; i++) {
+        ctx2.beginPath();
+        ctx2.moveTo(at, 0);
+        ctx2.lineTo(at - step * pennantW, -tick);
+        ctx2.lineTo(at - step * pennantW * 2, 0);
+        ctx2.closePath();
+        ctx2.fill();
+        ctx2.stroke();
+        at -= step * pennantW * 2 + step * pennantGap;
+      }
+      for (let i = 0; i < ticks.fulls; i++) {
+        ctx2.beginPath();
+        ctx2.moveTo(at, 0);
+        ctx2.lineTo(at - step * tn('afWindFullTickSlantFactor', 0.9), -tick);
+        ctx2.stroke();
+        at -= step;
+      }
+      if (ticks.halves) {
+        // A lone half tick never sits at the very end of the shaft: there it reads as a full
+        // tick that lost half its length to the edge of the drawing.
+        if (!ticks.fulls && !ticks.pennants) at -= step;
+        ctx2.beginPath();
+        ctx2.moveTo(at, 0);
+        ctx2.lineTo(at - step * tn('afWindHalfTickSlantFactor', 0.45),
+          -tick * tn('afWindHalfTickLenFactor', 0.5));
+        ctx2.stroke();
+      }
+      ctx2.setLineDash(dash);
+    };
+
     ctx.save();
     ctx.translate(x, y);
     // Canvas 0 deg is +x and the shaft has to point at where the wind comes FROM, which on
     // a north-up screen is -y for 0 deg. Hence the -90.
     ctx.rotate((dirScreenDeg - 90) * Math.PI / 180);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const width = tn('afWindBarbWidthPx', 1.6);
+    const halo = tn('afWindBarbHaloPx', 2.6);
+    // A halo first, for the same reason every label on this map has one: the VFR chart
+    // underneath is dense yellow, green and magenta, and an unhaloed thin line disappears
+    // into it exactly where the pilot is looking.
+    if (halo > 0) {
+      ctx.strokeStyle = tn('overlayLabelHaloColor', '#ffffff');
+      ctx.fillStyle = tn('overlayLabelHaloColor', '#ffffff');
+      ctx.lineWidth = width + halo;
+      ctx.setLineDash([]);          // the halo is solid under a dashed shaft, so the dash reads
+      path(ctx);
+    }
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = tn('afWindBarbWidthPx', 1.6);
-    ctx.lineCap = 'round';
+    ctx.lineWidth = width;
     // Dashed means modelled. A measured wind and a forecast wind are not the same claim,
     // and at a glance on a moving map the line style is the only part of a barb the eye
     // reads without stopping to count feathers.
-    if (!observed) ctx.setLineDash([tn('afWindModelDashPx', 3), tn('afWindModelGapPx', 2.5)]);
-    if (ticks.calm) {
-      ctx.beginPath();
-      ctx.arc(0, 0, tn('afWindCalmRadiusPx', 4), 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-      return;
-    }
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(shaft, 0);
-    ctx.stroke();
-    // Only the shaft carries the dash. A dashed feather is a feather you cannot count, and
-    // counting them is how the speed is read.
-    ctx.setLineDash([]);
-    // Feathers hang off the upwind end, growing back toward the airfield.
-    const pennantW = tn('afWindPennantWidthFactor', 1.6);
-    const pennantGap = tn('afWindPennantGapFactor', 0.4);
-    let at = shaft;
-    for (let i = 0; i < ticks.pennants; i++) {
-      ctx.beginPath();
-      ctx.moveTo(at, 0);
-      ctx.lineTo(at - step * pennantW, -tick);
-      ctx.lineTo(at - step * pennantW * 2, 0);
-      ctx.closePath();
-      ctx.fill();
-      at -= step * pennantW * 2 + step * pennantGap;
-    }
-    for (let i = 0; i < ticks.fulls; i++) {
-      ctx.beginPath();
-      ctx.moveTo(at, 0);
-      ctx.lineTo(at - step * tn('afWindFullTickSlantFactor', 0.9), -tick);
-      ctx.stroke();
-      at -= step;
-    }
-    if (ticks.halves) {
-      // A lone half tick never sits at the very end of the shaft: there it reads as a full
-      // tick that lost half its length to the edge of the drawing. Standard practice moves
-      // it one step in.
-      if (!ticks.fulls && !ticks.pennants) at -= step;
-      ctx.beginPath();
-      ctx.moveTo(at, 0);
-      ctx.lineTo(at - step * tn('afWindHalfTickSlantFactor', 0.45), -tick * tn('afWindHalfTickLenFactor', 0.5));
-      ctx.stroke();
-    }
+    ctx.setLineDash(observed ? [] : [tn('afWindModelDashPx', 3), tn('afWindModelGapPx', 2.5)]);
+    path(ctx);
     ctx.restore();
   }
 
@@ -329,7 +351,7 @@
       const s = resolvedFor(af, hrs);
       if (!s) continue;
       const p = proj(af);
-      drawBarb(octx, p.x, p.y - offset, s.dirTrue - bearing, s.kt,
+      drawBarb(octx, p.x, p.y, s.dirTrue - bearing, s.kt,
         s.observed ? tn('afWindObsColor', '#0b6fb8') : color, s.observed);
       if (showText) {
         const txt = windLabel(s);

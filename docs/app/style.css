@@ -4151,7 +4151,10 @@ body.theme-light .msa-low .val { color: #c0392b; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
   color: #e8e8e8;
-  white-space: nowrap;
+  /* Wraps rather than running off the panel: "cross 10 kt from the left" is longer than a
+     narrow inspector, and a crosswind figure clipped at the edge is the one number here
+     that must never be half-read. */
+  overflow-wrap: anywhere;
 }
 .runway-wind-note {
   font-size: 10px;

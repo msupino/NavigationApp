@@ -445,10 +445,14 @@ test('how far past the forecast a barb may be drawn is tunable', async ({ page }
   await expect.poll(() => page.evaluate(() => !!window.NavAid.afWind._store())).toBe(true);
   const got = await page.evaluate(() => {
     const w = window.NavAid.afWind;
-    // The mock serves 48 hours from today 00:00Z, so +47 h from now is past its end.
-    const before = !!w.sampleAt(0, 47);
-    NavAid.tuningDefaults.afWindSampleToleranceMin.value = 360;
-    const after = !!w.sampleAt(0, 47);
+    // Three hours past the last hour the mock serves. Derived from the store rather than a
+    // fixed +47, which only lands past the end at certain times of day -- the first version
+    // of this test passed at 05:00Z and failed at 06:00Z.
+    const times = w._store().times;
+    const pastEndH = (times[times.length - 1] - Date.now()) / 3600e3 + 3;
+    const before = !!w.sampleAt(0, pastEndH);          // 90 min of slack: too far
+    NavAid.tuningDefaults.afWindSampleToleranceMin.value = 4 * 60;
+    const after = !!w.sampleAt(0, pastEndH);           // 4 h of slack: reaches it
     NavAid.tuningDefaults.afWindSampleToleranceMin.value = 90;
     return { before, after };
   });
