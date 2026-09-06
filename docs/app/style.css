@@ -4158,9 +4158,13 @@ body.theme-light .msa-low .val { color: #c0392b; }
 /* A figure and its unit are one token and never split across lines. */
 .runway-wind-qty { white-space: nowrap; }
 .runway-wind-line {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-  color: #e8e8e8;
+  /* The inspector's own value font, not a monospace of its own: every other value in this
+     panel is the system face at 13px, and a monospace block read as a different kind of
+     thing. Tabular figures keep several runways lined up, which is what the monospace was
+     really for. Colour is inherited, so it follows the theme instead of being re-stated
+     (and re-stated again for light). */
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
   /* Wraps at word boundaries rather than running off the panel: the line is longer than a
      narrow inspector, and a crosswind figure clipped at the edge is the one number here
      that must never be half-read. NOT overflow-wrap:anywhere, which breaks inside a figure
@@ -4172,7 +4176,6 @@ body.theme-light .msa-low .val { color: #c0392b; }
   opacity: 0.7;
   margin-block-start: 2px;
 }
-body.theme-light .runway-wind-line { color: #1a1a1a; }
 .insp-notam-link {
   font: inherit;
   font-size: 12px;
