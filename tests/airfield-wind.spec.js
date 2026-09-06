@@ -277,6 +277,82 @@ test('an airfield with no published runways gets no runway-wind row', async ({ p
   await expect(page.locator('#insp-body .runway-wind-row')).toHaveCount(0);
 });
 
+// --- the tunables ------------------------------------------------------------
+// Every threshold in this layer is a registry entry, so a gist can move it without a
+// release. These check the knobs are wired to the behaviour rather than merely declared.
+
+test('the calm threshold is tunable and moves both the barb and the label', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => {
+    const w = window.NavAid.afWind;
+    const before = { calm: w.barbTicks(4).calm, label: w.windLabel({ dirTrue: 90, kt: 4, gustKt: null }) };
+    NavAid.tuningDefaults.afWindCalmMaxKt.value = 5;
+    const after = { calm: w.barbTicks(4).calm, label: w.windLabel({ dirTrue: 90, kt: 4, gustKt: null }) };
+    NavAid.tuningDefaults.afWindCalmMaxKt.value = 2;
+    return { before, after };
+  });
+  expect(got.before).toEqual({ calm: false, label: '090/4' });
+  expect(got.after).toEqual({ calm: true, label: 'CALM' });
+});
+
+test('the crosswind deadband is tunable', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => {
+    const w = window.NavAid.afWind;
+    const at = () => w.endComponents('09', 92, 10).crossSide;   // ~0.35 kt of crosswind
+    const before = at();
+    NavAid.tuningDefaults.afWindCrossDeadbandKt.value = 0.1;
+    const after = at();
+    NavAid.tuningDefaults.afWindCrossDeadbandKt.value = 0.5;
+    return { before, after };
+  });
+  expect(got.before).toBe('');            // too small to name a side
+  expect(got.after).toBe('R');
+});
+
+test('the fetch window is tunable and reaches the request', async ({ page }) => {
+  const urls = [];
+  await boot(page, {}, u => urls.push(u));
+  await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    NavAid.tuningDefaults.afWindForecastDays.value = 4;
+  });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await page.locator('#airfield-wind-cb').check();
+  await expect.poll(() => urls.find(u => u.includes('wind_speed_10m')) || '').toContain('forecast_days=4');
+});
+
+test('how far past the forecast a barb may be drawn is tunable', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => { if (airfields === null) await loadAirfields(); });
+  await showToolbarControl(page, '#airfield-wind-cb');
+  await page.locator('#airfield-wind-cb').check();
+  await expect.poll(() => page.evaluate(() => !!window.NavAid.afWind._store())).toBe(true);
+  const got = await page.evaluate(() => {
+    const w = window.NavAid.afWind;
+    // The mock serves 48 hours from today 00:00Z, so +47 h from now is past its end.
+    const before = !!w.sampleAt(0, 47);
+    NavAid.tuningDefaults.afWindSampleToleranceMin.value = 360;
+    const after = !!w.sampleAt(0, 47);
+    NavAid.tuningDefaults.afWindSampleToleranceMin.value = 90;
+    return { before, after };
+  });
+  expect(got.before).toBe(false);
+  expect(got.after).toBe(true);
+});
+
+test('the barb feather proportions are tunable, and the 5/10/50 kt meanings are not', async ({ page }) => {
+  await boot(page);
+  const keys = await page.evaluate(() => Object.keys(NavAid.tuningDefaults).filter(k => k.startsWith('afWind')));
+  for (const k of ['afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor',
+    'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindCacheMin']) {
+    expect(keys).toContain(k);
+  }
+  // No knob may redefine what a feather MEANS: a barb whose ticks are worth 7 kt is not a
+  // barb, and a pilot reading it would be reading it wrong.
+  expect(keys.filter(k => /KtPerTick|TickValue|UnitKt/i.test(k))).toEqual([]);
+});
+
 // --- the gist switch --------------------------------------------------------
 
 test('the gist can withdraw the whole feature, and switching it back needs no reload', async ({ page }) => {

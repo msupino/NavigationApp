@@ -658,6 +658,19 @@ NavAid.tuningDefaults = {
   afWindLabelMinZoom: { value: 10, min: 5, max: 15, step: 1, label: 'Airfield wind label min zoom' },
   afWindGustDeltaKt: { value: 5, min: 1, max: 20, step: 1, label: 'Airfield wind: show gust when it exceeds mean by (kt)' },
   afWindRunwayMinKt: { value: 3, min: 0, max: 20, step: 1, label: 'Airfield wind: runway components need at least (kt)' },
+  afWindCalmMaxKt: { value: 2, min: 0, max: 10, step: 1, label: 'Airfield wind: at or below this is calm (kt)' },
+  afWindCrossDeadbandKt: { value: 0.5, min: 0, max: 5, step: 0.1, label: 'Airfield wind: crosswind below this names no side (kt)' },
+  afWindCacheMin: { value: 30, min: 1, max: 240, step: 1, label: 'Airfield wind: keep a fetched forecast for (min)' },
+  afWindForecastDays: { value: 2, min: 1, max: 7, step: 1, label: 'Airfield wind forecast fetch days' },
+  afWindSampleToleranceMin: { value: 90, min: 15, max: 360, step: 15, label: 'Airfield wind: draw nothing past the forecast by (min)' },
+  // Barb feather proportions, as multiples of the feather spacing. The 5/10/50 kt meanings
+  // are the met convention and are deliberately NOT tunable -- a barb whose ticks mean
+  // something else is not a barb. These only govern how it is drawn.
+  afWindPennantWidthFactor: { value: 1.6, min: 0.5, max: 4, step: 0.1, label: 'Airfield wind pennant width (× feather spacing)' },
+  afWindPennantGapFactor: { value: 0.4, min: 0, max: 3, step: 0.1, label: 'Airfield wind gap after a pennant (× feather spacing)' },
+  afWindFullTickSlantFactor: { value: 0.9, min: 0, max: 3, step: 0.05, label: 'Airfield wind full-feather slant (× feather spacing)' },
+  afWindHalfTickSlantFactor: { value: 0.45, min: 0, max: 3, step: 0.05, label: 'Airfield wind half-feather slant (× feather spacing)' },
+  afWindHalfTickLenFactor: { value: 0.5, min: 0.1, max: 1, step: 0.05, label: 'Airfield wind half-feather length (× full feather)' },
   featureAirfieldWind: { value: true, type: 'bool', label: 'Feature: airfield surface-wind barbs' },
 
   liveAircraftRadiusPx: { value: 12, min: 6, max: 48, step: 1, label: 'Live aircraft size (px)' },
@@ -970,7 +983,7 @@ NavAid.tuningGroups = [
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
-  { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'featureAirfieldWind'] },
+  { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'featureAirfieldWind'] },
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the

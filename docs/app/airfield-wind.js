@@ -34,11 +34,11 @@
   // 10 kt, pennant 50 kt, rounded to the nearest 5. Calm gets a ring rather than a bare
   // shaft, because a shaft with no feathers and a shaft the reader has not looked closely
   // at yet are the same picture.
-  const CALM_MAX_KT = 2;
+  const calmMaxKt = () => tn('afWindCalmMaxKt', 2);
   function barbTicks(kt) {
     const v = num(kt);
     if (v === null || v < 0) return null;
-    if (v <= CALM_MAX_KT) return { calm: true, pennants: 0, fulls: 0, halves: 0 };
+    if (v <= calmMaxKt()) return { calm: true, pennants: 0, fulls: 0, halves: 0 };
     let units = Math.round(v / 5);            // one unit = 5 kt = one half tick
     const pennants = Math.floor(units / 10);
     units -= pennants * 10;
@@ -73,7 +73,7 @@
       end: String(end),
       headKt: s * Math.cos(rad),
       crossKt: Math.abs(cross),
-      crossSide: Math.abs(cross) < 0.5 ? '' : (cross > 0 ? 'R' : 'L'),
+      crossSide: Math.abs(cross) < tn('afWindCrossDeadbandKt', 0.5) ? '' : (cross > 0 ? 'R' : 'L'),
     };
   }
   // The end of a runway pair a pilot would use for this wind: the one with the head
@@ -96,7 +96,7 @@
   // the request listed them. Sampling is local: the slider re-reads this, never refetches.
   let store = null;
   let inflight = null;
-  const TTL_MS = 30 * 60e3;                 // an hourly forecast does not move faster
+  const ttlMs = () => tn('afWindCacheMin', 30) * 60e3;      // an hourly forecast does not move faster
 
   function fieldKey(af) { return String((af && af.name) || '') + '@' + Number(af.lat).toFixed(3) + ',' + Number(af.lng).toFixed(3); }
 
@@ -105,15 +105,15 @@
     const afs = (list || []).filter(a => a && Number.isFinite(Number(a.lat)) && Number.isFinite(Number(a.lng)));
     if (!afs.length) return null;
     const keys = afs.map(fieldKey);
-    if (store && Date.now() - store.at < TTL_MS && String(store.keys) === String(keys)) return store;
+    if (store && Date.now() - store.at < ttlMs() && String(store.keys) === String(keys)) return store;
     if (inflight) return inflight;
-    // forecast_days=2 for the same reason the per-leg fetch uses 3: the slider reaches
-    // +24 h, and a "now" late in the UTC day pushes that over the next day boundary.
+    // Two days by default for the same reason the per-leg fetch uses three: the slider
+    // reaches +24 h, and a "now" late in the UTC day pushes that over the next day boundary.
     const url = 'https://api.open-meteo.com/v1/forecast'
       + '?latitude=' + afs.map(a => Number(a.lat).toFixed(3)).join(',')
       + '&longitude=' + afs.map(a => Number(a.lng).toFixed(3)).join(',')
       + '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m'
-      + '&wind_speed_unit=kn&timezone=UTC&forecast_days=2';
+      + '&wind_speed_unit=kn&timezone=UTC&forecast_days=' + tn('afWindForecastDays', 2);
     const doFetch = o.fetch || window.fetch.bind(window);
     inflight = (async () => {
       try {
@@ -155,7 +155,7 @@
       const gap = Math.abs(store.times[i] - want);
       if (gap < bestGap) { best = i; bestGap = gap; }
     }
-    if (best < 0 || bestGap > 3600e3 * 1.5) return null;
+    if (best < 0 || bestGap > tn('afWindSampleToleranceMin', 90) * 60e3) return null;
     const s = store.sp[idx] && store.sp[idx][best];
     const d = store.di[idx] && store.di[idx][best];
     if (!Number.isFinite(s) || !Number.isFinite(d)) return null;
@@ -205,20 +205,22 @@
     ctx.lineTo(shaft, 0);
     ctx.stroke();
     // Feathers hang off the upwind end, growing back toward the airfield.
+    const pennantW = tn('afWindPennantWidthFactor', 1.6);
+    const pennantGap = tn('afWindPennantGapFactor', 0.4);
     let at = shaft;
     for (let i = 0; i < ticks.pennants; i++) {
       ctx.beginPath();
       ctx.moveTo(at, 0);
-      ctx.lineTo(at - step * 1.6, -tick);
-      ctx.lineTo(at - step * 1.6 * 2, 0);
+      ctx.lineTo(at - step * pennantW, -tick);
+      ctx.lineTo(at - step * pennantW * 2, 0);
       ctx.closePath();
       ctx.fill();
-      at -= step * 1.6 * 2 + step * 0.4;
+      at -= step * pennantW * 2 + step * pennantGap;
     }
     for (let i = 0; i < ticks.fulls; i++) {
       ctx.beginPath();
       ctx.moveTo(at, 0);
-      ctx.lineTo(at - step * 0.9, -tick);
+      ctx.lineTo(at - step * tn('afWindFullTickSlantFactor', 0.9), -tick);
       ctx.stroke();
       at -= step;
     }
@@ -229,7 +231,7 @@
       if (!ticks.fulls && !ticks.pennants) at -= step;
       ctx.beginPath();
       ctx.moveTo(at, 0);
-      ctx.lineTo(at - step * 0.45, -tick * 0.5);
+      ctx.lineTo(at - step * tn('afWindHalfTickSlantFactor', 0.45), -tick * tn('afWindHalfTickLenFactor', 0.5));
       ctx.stroke();
     }
     ctx.restore();
@@ -238,7 +240,7 @@
   function windLabel(s) {
     if (!s) return '';
     const str = (typeof S === 'object' && S) || {};
-    if (s.kt <= CALM_MAX_KT) return str.afWindCalmLabel || 'CALM';
+    if (s.kt <= calmMaxKt()) return str.afWindCalmLabel || 'CALM';
     const dir = String(s.dirTrue).padStart(3, '0') + '/';
     const gust = s.gustKt && s.gustKt >= s.kt + tn('afWindGustDeltaKt', 5) ? 'G' + s.gustKt : '';
     return dir + s.kt + gust;
