@@ -1,0 +1,1473 @@
+{
+ "generatedAt": "2026-09-07T00:24:56.402Z",
+ "source": "IAA (brin.iaa.gov.il MobileAeroinfo)",
+ "fir": "LLLL",
+ "notams": [
+  {
+   "id": "C1881/26",
+   "icao": "LLHZ",
+   "type": "ACLP",
+   "text": "CTR CLSD TO ALL FLT, EXC PARTICIPATING ACFT IN FLYPAST AND AEROBATICS FLT.",
+   "start": "2026-09-10T15:00:00Z",
+   "end": "2026-09-10T15:20:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0731/26",
+   "icao": "LLER",
+   "type": "ACLP",
+   "text": "CTR/CTA CLSD TO ALL FLT, EXC AIR FORCE ACT. CTN ADZ.",
+   "start": "2026-09-07T03:55:00Z",
+   "end": "2026-09-07T04:10:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1880/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS ACT WILL TAKE PLACE AT ADERET. AN AREA BTN FLW PSN FM GND UP TO 3,500FT AMSL CLSD TO ALL FLT INCLUDING AGRICULTURE FLT 314107N0345919E 313846N0345857E 313804N0350116E 313931N0350342E 314131N0350134E. CTN ADZ.",
+   "start": "2026-09-08T06:00:00Z",
+   "end": "2026-09-09T11:30:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      31.685277777777777,
+      34.98861111111111
+     ],
+     [
+      31.64611111111111,
+      34.9825
+     ],
+     [
+      31.634444444444444,
+      35.02111111111111
+     ],
+     [
+      31.65861111111111,
+      35.06166666666666
+     ],
+     [
+      31.691944444444445,
+      35.02611111111111
+     ]
+    ]
+   }
+  },
+  {
+   "id": "A0728/26",
+   "icao": "LLHA",
+   "type": "FALC",
+   "text": "AD CLSD TO ALL FLT INCLUDING HEL, DUE WIP. IN CASE OF EMERG AVBL WI 10MIN.",
+   "start": "2026-10-06T05:25:00Z",
+   "end": "2026-10-06T10:00:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1874/26",
+   "icao": "LLLL",
+   "type": "WCLW",
+   "text": "CAPTIVE BALLOON WILL TAKE PLACE AT HACHULA-LAKE, FM GND UP TO 400M AGL. LIT AND DAY MARKED. AN AREA WI 0.54NM RADIUS CENTERED ON PSN 330622N0353454E CLSD FM GND UP TO 2,000FT AMSL. IN CASE OF EMERG LOWERED WI 10MIN. CTN ADZ.",
+   "start": "2026-09-06T15:00:00Z",
+   "end": "2026-09-13T02:00:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 33.10611111111111,
+    "lng": 35.58166666666667,
+    "radiusNm": 0.54
+   }
+  },
+  {
+   "id": "C1873/26",
+   "icao": "LLLL",
+   "type": "WCLW",
+   "text": "CAPTIVE BALLOON WILL TAKE PLACE AT HACHULA-LAKE, FM GND UP TO 400M AGL. LIT AND DAY MARKED. AN AREA WI 0.54NM RADIUS CENTERED ON PSN 330646N0353414E CLSD FM GND UP TO 2,200FT AMSL. OPS OF AGRICULTURE FLT WITH 15MIN PPR FM ATC. IN CASE OF EMERG LOWERED WI 10MIN. CTN ADZ.",
+   "start": "2026-09-07T02:00:00Z",
+   "end": "2026-09-12T14:00:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 33.11277777777778,
+    "lng": 35.57055555555556,
+    "radiusNm": 0.54
+   }
+  },
+  {
+   "id": "C1872/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "AN AREA AT KFAR-TAVOR WI 1.1NM RADIUS CENTERED ON PSN 324241N0352429E CLSD FM GND UP TO 1,500FT AMSL TO ALL FLT, OPS OF AGRICULTURE FLT AVBL WITH 15MIN PPR FM ATC. CTN ADZ.",
+   "start": "2026-09-07T06:30:00Z",
+   "end": "2026-09-07T13:00:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 32.71138888888889,
+    "lng": 35.408055555555556,
+    "radiusNm": 1.1
+   }
+  },
+  {
+   "id": "C1871/26",
+   "icao": "LLLL",
+   "type": "ARLC",
+   "text": "ULTRALIGHT AND HEL RTE CLSD TAVOR-ZGLNI .",
+   "start": "2026-09-07T07:30:00Z",
+   "end": "2026-09-07T09:00:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 32.733333333333334,
+    "lng": 35.416666666666664,
+    "radiusNm": 3
+   }
+  },
+  {
+   "id": "C1870/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "AN AREA AT KFAR TAVOR CLSD FM GND UP TO 7,000FT AMSL TO ALL FLT BTN FLW PSN 324355N0352454E 324150N0352458E 324157N0352129E 324400N0352124E. OPS OF AGRICULTURE FLT WI 15MIN PPR FM ATC. CTN ADZ.",
+   "start": "2026-09-07T07:30:00Z",
+   "end": "2026-09-07T09:00:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      32.731944444444444,
+      35.415
+     ],
+     [
+      32.697222222222216,
+      35.41611111111111
+     ],
+     [
+      32.69916666666666,
+      35.35805555555556
+     ],
+     [
+      32.733333333333334,
+      35.35666666666667
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1869/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS ACT WILL TAKE PLACE AT KELCH. AN AREA FM GND UP TO 2,500FT AMSL CLSD TO ALL FLT BTN FLW PSN 313226N0344801E 313225N0345409E 313144N0345409E 313129N0345246E 313129N0345126E 313125N0344843E OPS OF AGRICULTURE FLT WI 15MIN PPR FM ATC. CTN ADZ.",
+   "start": "2026-09-06T05:00:00Z",
+   "end": "2026-09-09T15:00:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      31.540555555555557,
+      34.80027777777777
+     ],
+     [
+      31.540277777777778,
+      34.902499999999996
+     ],
+     [
+      31.528888888888886,
+      34.902499999999996
+     ],
+     [
+      31.52472222222222,
+      34.879444444444445
+     ],
+     [
+      31.52472222222222,
+      34.85722222222223
+     ],
+     [
+      31.52361111111111,
+      34.81194444444444
+     ]
+    ]
+   }
+  },
+  {
+   "id": "A0724/26",
+   "icao": "LLBG",
+   "type": "MRLC",
+   "text": "RWY 03/21 CLSD EXC RWY INT 03/30 DUE WIP.",
+   "start": "2026-09-08T05:00:00Z",
+   "end": "2026-09-08T10:00:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0722/26",
+   "icao": "LLBG",
+   "type": "MRLC",
+   "text": "RWY 12/30 CLSD EXC RWY INT DUE WIP.",
+   "start": "2026-09-07T05:00:00Z",
+   "end": "2026-09-07T13:00:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1868/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "ULTRALIGHT BUBBLE A-WEST (BMGWA) CLSD.",
+   "start": "2026-09-07T06:30:00Z",
+   "end": "2026-09-07T13:00:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 32.7,
+    "lng": 35.35,
+    "radiusNm": 6
+   }
+  },
+  {
+   "id": "C1867/26",
+   "icao": "LLLL",
+   "type": "ARLC",
+   "text": "CVFR RTE CLSD EVLYM-AHIUD-AAKKO-SMRAT.",
+   "start": "2026-09-08T09:20:00Z",
+   "end": "2026-09-08T16:45:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 32.88333333333333,
+    "lng": 35.11666666666667,
+    "radiusNm": 5
+   }
+  },
+  {
+   "id": "C1866/26",
+   "icao": "LLLL",
+   "type": "ARLC",
+   "text": "CVFR RTE CLSD EVLYM-AHIUD-AAKKO-SMRAT.",
+   "start": "2026-09-07T06:00:00Z",
+   "end": "2026-09-07T10:00:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 32.88333333333333,
+    "lng": 35.11666666666667,
+    "radiusNm": 5
+   }
+  },
+  {
+   "id": "C1862/26",
+   "icao": "LLLL",
+   "type": "WCLW",
+   "text": "CAPTIVE BALLOON WILL TAKE PLACE AT RAHAT, UP TO 2,200FT AMSL. AN AREA WI 0.4NM RADIUS CENTERED ON PSN 312252N0344541E CLSD FM GND UP TO 2,200FT AMSL TO ALL FLT INCLUDING AGRICULTURE FLT. CTN ADZ",
+   "start": "2026-09-08T00:01:00Z",
+   "end": "2026-09-11T02:50:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 31.38111111111111,
+    "lng": 34.76138888888889,
+    "radiusNm": 0.4
+   }
+  },
+  {
+   "id": "C1861/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS ACT WILL TAKE PLACE AT MISHMAR-DAVID. AN AREA WI 0.2NM RADIUS CENTERED ON PSN 314901N0345351E CLSD TO ALL FLT FM GND UP TO 1,500FT AMSL. OPS OF AGRICULTURE FLT AVBL WITH 15MIN PPR FM ATC. CTN ADZ.",
+   "start": "2026-09-08T14:30:00Z",
+   "end": "2026-09-08T17:30:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 31.816944444444445,
+    "lng": 34.8975,
+    "radiusNm": 0.2
+   }
+  },
+  {
+   "id": "C1860/26",
+   "icao": "LLLL",
+   "type": "WSLW",
+   "text": "AN AREA WI 1KM RADIUS CENTERED ON PSN 315455N0345500E AT GEZER POWER PLANT CLSD FM GND UP TO 1,200FT AMSL, DUE TO GAS EMISSION. CTN ADZ.",
+   "start": "2026-09-05T17:00:00Z",
+   "end": "2029-09-05T19:00:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 31.915277777777778,
+    "lng": 34.916666666666664,
+    "radiusNm": 0.539957
+   }
+  },
+  {
+   "id": "A0720/26",
+   "icao": "LLBG",
+   "type": "OBCE",
+   "text": "DRILLING TOWER ERECTED WI LLBG CTR, AT YAHUD/IAI INDUSTRY. AN AREA BTN FLW PSN CLSD FM GND UP TO 72M 236FT AMSL 320152N0345416E 320150N0345416E 320150N0345413E 320152N0345413E. LIT AND DAY MARKED. CTN ADZ.",
+   "start": "2026-09-02T14:24:00Z",
+   "end": "2026-12-31T23:59:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      32.03111111111111,
+      34.904444444444444
+     ],
+     [
+      32.03055555555555,
+      34.904444444444444
+     ],
+     [
+      32.03055555555555,
+      34.90361111111111
+     ],
+     [
+      32.03111111111111,
+      34.90361111111111
+     ]
+    ]
+   }
+  },
+  {
+   "id": "A0719/26",
+   "icao": "LLHA",
+   "type": "FUAU",
+   "text": "SELF SER REFUEL FOR ACFT NOT AVBL. COOR WITH PAZ-AVIATION FOR REFUELING BY VEHICLE ONLY.",
+   "start": "2026-09-02T13:44:00Z",
+   "end": "2026-12-31T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1857/26",
+   "icao": "LLLL",
+   "type": "WMLW",
+   "text": "FRNG WILL TAKE PLACE AT RAMAT-BEKA WI LLP14. AN AREA BTN THE FLW PSN 310542N0345314E 310541N0345352E 310509N0345351E 310453N0345313E CLSD FM GND UP TO 12,000FT AMSL. CTN ADZ.",
+   "start": "2026-09-03T05:00:00Z",
+   "end": "2026-09-30T15:00:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      31.095,
+      34.88722222222222
+     ],
+     [
+      31.09472222222222,
+      34.897777777777776
+     ],
+     [
+      31.085833333333333,
+      34.8975
+     ],
+     [
+      31.08138888888889,
+      34.886944444444445
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1854/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT YERUHAM, FM GND UP TO 250M AGL. AN AREA BTN FLW PSN 305830N0345551E 305823N0345644E 305803N0345708E 305709N0345649E 305624N0345614E 305652N0345453E CLSD FM GND UP TO 2,800FT AMSL. CTN ADZ.",
+   "start": "2026-09-06T03:00:00Z",
+   "end": "2026-09-08T16:20:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      30.974999999999998,
+      34.93083333333333
+     ],
+     [
+      30.973055555555554,
+      34.94555555555555
+     ],
+     [
+      30.967499999999998,
+      34.952222222222225
+     ],
+     [
+      30.9525,
+      34.94694444444444
+     ],
+     [
+      30.94,
+      34.93722222222222
+     ],
+     [
+      30.947777777777777,
+      34.914722222222224
+     ]
+    ]
+   }
+  },
+  {
+   "id": "A0718/26",
+   "icao": "LLLL",
+   "type": "OATT",
+   "text": "TRIGGER NOTAM - NIL AIRAC AIP AMDT WEF 01 OCT 2026.",
+   "start": "2026-10-01T00:01:00Z",
+   "end": "2026-10-14T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1853/26",
+   "icao": "LLLL",
+   "type": "OATT",
+   "text": "TRIGGER NOTAM - NIL AIRAC DOM AIP AMDT WEF 01 OCT 2026.",
+   "start": "2026-10-01T00:01:00Z",
+   "end": "2026-10-14T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0715/26",
+   "icao": "LLER",
+   "type": "NMAS",
+   "text": "VOR/DME RAM FREQ 113.850MHZ WITHDRAWN FOR MAINT.",
+   "start": "2026-09-08T07:00:00Z",
+   "end": "2026-09-08T08:00:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0710/26",
+   "icao": "LLLL",
+   "type": "CAAS",
+   "text": "TEL AVIV CTL FLW FREQ TEMPO NOT AVBL 123.050MHZ, 132.050MHZ, 135.625MHZ.",
+   "start": "2026-08-31T09:45:00Z",
+   "end": "2026-11-30T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0709/26",
+   "icao": "LLER",
+   "type": "FALT",
+   "text": "AD CLSD TO ALL FLT INCLUDING HEL, DUE WIP. IN CASE OF EMERG OR MEDEVAC HEL AVBL WI 10MIN.",
+   "start": "2026-09-08T15:35:00Z",
+   "end": "2026-09-09T18:15:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1843/26",
+   "icao": "LLRS",
+   "type": "CACI",
+   "text": "FLT DEPARTING AIRSTRIP NB VIA TYONA PILOT SHALL CONTACT PLUTO CTL FOR IDENT OVER TYONA.",
+   "start": "2026-08-30T13:26:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1842/26",
+   "icao": "LLMG",
+   "type": "ACLP",
+   "text": "GLD ACT AVBL S OF ROAD NR 85 AND ROAD NR 91, MAX 10 GLIDERS AIRBORNE APPROVED. PILOT SHALL MAKE TWO WAY RADIO COMM WITH ATC AND OPR TRANSPONDER.",
+   "start": "2026-08-30T13:12:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1841/26",
+   "icao": "LLLL",
+   "type": "WPLW",
+   "text": "PJE WILL TAKE PLACE AT SHUNRAH. AN AREA FM GND UP TO 2,800FT AMSL CLSD BTN FLW PSN 305416N0342843E 305436N0342531E 310025N0343407E 305642N0343528E. OPS OF AGRICULTURE FLT WITH 15MIN PPR FM ATC. CTN ADZ.",
+   "start": "2026-09-07T05:30:00Z",
+   "end": "2026-09-09T09:30:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      30.904444444444444,
+      34.478611111111114
+     ],
+     [
+      30.91,
+      34.42527777777777
+     ],
+     [
+      31.006944444444443,
+      34.56861111111112
+     ],
+     [
+      30.945,
+      34.59111111111111
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1840/26",
+   "icao": "LLGV",
+   "type": "ACLP",
+   "text": "CTR AVBL FOR UAS/UAV OR AGRICULTURE FLT ONLY.",
+   "start": "2026-08-30T12:57:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1839/26",
+   "icao": "LLLL",
+   "type": "ARLT",
+   "text": "CVFR AND HEL RTE CLSD AT 1,200FT, AVBL BIDIRECTIONAL AT 800FT AMSL ONLY TYONA-SUPER-NTAIM-BOVED-NAGID-YAVNE-ZASHD.",
+   "start": "2026-09-09T04:00:00Z",
+   "end": "2026-09-09T20:30:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 31.916666666666668,
+    "lng": 34.766666666666666,
+    "radiusNm": 8
+   }
+  },
+  {
+   "id": "C1837/26",
+   "icao": "LLKS",
+   "type": "FALC",
+   "text": "AIRSTRIP CLSD TO ALL FLT.",
+   "start": "2026-08-30T12:46:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1838/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "LLER TRG AREA HAR BERECH CLSD TO ALL FLT.",
+   "start": "2026-08-30T12:47:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 29.766666666666666,
+    "lng": 34.916666666666664,
+    "radiusNm": 5
+   }
+  },
+  {
+   "id": "C1835/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "LLIB TRG AREA NR A AND B CLSD.",
+   "start": "2026-08-30T12:45:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 33.13333333333333,
+    "lng": 35.6,
+    "radiusNm": 6
+   }
+  },
+  {
+   "id": "C1836/26",
+   "icao": "LLIB",
+   "type": "ACLP",
+   "text": "DEP/ARR AVBL VIA SOUTH ENTRY/EXIT ONLY. OPS OF ACFT AVBL WITH MAX 10 PAX ON BOARD. PJE PROHIBITED.",
+   "start": "2026-08-30T12:46:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1833/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "ULTRALIGHT BUBBLE CLSD HAHULA (BHULA), KARMIEL (BKRML).",
+   "start": "2026-08-30T12:30:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1834/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "ULTRALIGHT BUBBLE RAMAT HAGOLAN (BRGOL) CLSD N OF ROAD NR 91.",
+   "start": "2026-08-30T12:31:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1832/26",
+   "icao": "LLLL",
+   "type": "AELP",
+   "text": "ULTRALIGHT BUBBLE SHDEROT NORTH (BDRTN) AVBL UP TO 1,000FT AMSL, SHDEROT SOUTH (BDRTS) AVBL E OF ROAD NR 34 AND NE OF ROAD NR 25 UP TO 1,000FT AMSL AND CLSD W OF ROAD NR 34 AND SW OF ROAD NR 25. CTN ADZ.",
+   "start": "2026-08-30T12:29:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1828/26",
+   "icao": "LLLL",
+   "type": "AELP",
+   "text": "AN AREA FM SYRIA BOUNDRAY TO 6KM WB CLSD TO ALL DOM FLT, EXC POLICE, FIREFIGHTING, MEDEVAC FLT OR UAS/UAV FLT FOR EMERG, SECURITY, MEDEVAC PURPOSES ONLY. ALL EMERG APPROVED FLT SHALL COORD WITH ATC AND MABBAH.",
+   "start": "2026-08-30T12:26:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1829/26",
+   "icao": "LLLL",
+   "type": "AELP",
+   "text": "OPS OF FLT FM JORDAN BOUNDRAY TO 6KM WB REQUIRES TRANSPONDER OPERATING DRG ALL THE FLT AND MAINTANING TWO WAY RADIO COM WITH ATC.",
+   "start": "2026-08-30T12:27:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1830/26",
+   "icao": "LLLL",
+   "type": "AELP",
+   "text": "OPS OF FLT FM EGYPT BOUNDRAY TO 6KM WB REQUIRES TRANSPONDER OPERATING DRG ALL THE FLT AND MAINTANING TWO WAY RADIO COM WITH ATC.",
+   "start": "2026-08-30T12:27:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1831/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "PILOT SHALL FLY AT MNM 500FT AGL WI ULTRALIGHT BUBBLE, TKOF/LDG AVBL HARROD (BHROD), NAAMA (BNAMM), ALMOG (BLMOG).",
+   "start": "2026-08-30T12:28:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1825/26",
+   "icao": "LLLL",
+   "type": "AELP",
+   "text": "AN AREA AT GAZA-STRIP BTN FLW PSN CLSD TO ALL FLT, EXC PPR FLT FM IAF OR AGRICULTURE FLT, EMERG, MEDEVAC HEL 310714N0341759E 310818N0343709E 310550N0344003E 310818N0344800E 311316N0344737E 311900N0344023E 312552N0344447E 313452N0344528E 313649N0344411E 313923N0343600E 314259N0343316E 315055N0343648E 315113N0343244E 315551N0343443E 315601N0340959E 315145N0340414E 314613N0340054E 311927N0341305E. OPS FLT FM GAZA-STRIP BOUNDRAY TO 6KM OUTWARD AVBL BY PPR FM IAF AND CAAI AND ENTRY APPROVAL FM IDF (MABBAH) BY PHONE NR 08-9115730. CTN ADZ.",
+   "start": "2026-08-30T12:25:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      31.120555555555555,
+      34.29972222222222
+     ],
+     [
+      31.138333333333332,
+      34.619166666666665
+     ],
+     [
+      31.09722222222222,
+      34.6675
+     ],
+     [
+      31.138333333333332,
+      34.8
+     ],
+     [
+      31.22111111111111,
+      34.79361111111111
+     ],
+     [
+      31.316666666666666,
+      34.67305555555555
+     ],
+     [
+      31.43111111111111,
+      34.74638888888889
+     ],
+     [
+      31.58111111111111,
+      34.757777777777775
+     ],
+     [
+      31.613611111111112,
+      34.73638888888889
+     ],
+     [
+      31.656388888888888,
+      34.6
+     ],
+     [
+      31.71638888888889,
+      34.55444444444444
+     ],
+     [
+      31.84861111111111,
+      34.61333333333334
+     ],
+     [
+      31.853611111111114,
+      34.54555555555555
+     ],
+     [
+      31.930833333333336,
+      34.578611111111115
+     ],
+     [
+      31.933611111111112,
+      34.16638888888889
+     ],
+     [
+      31.8625,
+      34.07055555555556
+     ],
+     [
+      31.77027777777778,
+      34.015
+     ],
+     [
+      31.324166666666667,
+      34.21805555555556
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1826/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "AN AREA N OF ROAD NR 85 AND ROAD NR 91 CLSD TO ALL DOM FLT, EXC ULTRALIGHT BUBBLE BZVUE, EMERG, OIL RIG FLT, MEDEVAC HEL OR PPR FLT FM IAF. CTN ADZ.",
+   "start": "2026-08-30T12:25:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1827/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "AN AREA FM LEBANON BOUNDRAY TO 8KM SB CLSD TO ALL DOM FLT, EXC POLICE, FIREFIGHTING, MEDEVAC FLT OR UAS/UAV FLT FOR EMERG, SECURITY, MEDEVAC PURPOSES ONLY. ALL EMERG APPROVED FLT SHALL COORD WITH ATC AND MABBAH.",
+   "start": "2026-08-30T12:26:00Z",
+   "end": "2026-10-31T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1823/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT YERUHAM, FM GND UP TO 600M AGL. AN AREA WI 0.3NM RADIUS CENTERED ON PSN 305819N0345601E CLSD FM GND UP TO 3,700FT AMSL. CTN ADZ.",
+   "start": "2026-09-06T03:00:00Z",
+   "end": "2026-09-10T14:30:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 30.971944444444443,
+    "lng": 34.933611111111105,
+    "radiusNm": 0.3
+   }
+  },
+  {
+   "id": "A0701/26",
+   "icao": "LLBG",
+   "type": "OBCE",
+   "text": "CRANE ERECTED WI LLBG CTR, AT YAHUD/IAI INDUSTRY. AN AREA BTN FLW PSN CLSD FM GND UP TO 74.50M 245FT AMSL 320152N0345416E 320150N0345416E 320150N0345413E 320152N0345413E. LIT AND DAY MARKED. CTN ADZ.",
+   "start": "2026-10-01T00:01:00Z",
+   "end": "2026-12-31T20:59:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      32.03111111111111,
+      34.904444444444444
+     ],
+     [
+      32.03055555555555,
+      34.904444444444444
+     ],
+     [
+      32.03055555555555,
+      34.90361111111111
+     ],
+     [
+      32.03111111111111,
+      34.90361111111111
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1822/26",
+   "icao": "LLLL",
+   "type": "WPLW",
+   "text": "PJE WILL TAKE PLACE AT REVIVIM. AN AREA FM GND UP 2,400FT AMSL CLSD BTN FLW PSN 310712N0344550E 310511N0343920E 310455N0343655E 305931N0343815E 310035N0344409E 310359N0344720E 310712N0344550E. OPS OF AGRICULTURE FLT AVBL WITH 15MIN PPR FM ATC CTN ADZ.",
+   "start": "2026-09-07T05:30:00Z",
+   "end": "2026-09-09T09:30:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      31.12,
+      34.763888888888886
+     ],
+     [
+      31.086388888888887,
+      34.65555555555555
+     ],
+     [
+      31.081944444444446,
+      34.61527777777778
+     ],
+     [
+      30.991944444444446,
+      34.6375
+     ],
+     [
+      31.009722222222223,
+      34.73583333333333
+     ],
+     [
+      31.06638888888889,
+      34.788888888888884
+     ],
+     [
+      31.12,
+      34.763888888888886
+     ]
+    ]
+   }
+  },
+  {
+   "id": "A0698/26",
+   "icao": "LLHA",
+   "type": "ACLP",
+   "text": "CIRCUIT EXER PROHIBITED, EXC ACFT ATR C/S HFA. LDG PROHIBITED EXC PPR FLT FM AD MANAGEMENT OR FM ATC. EXP DLA FOR DEP FLT.",
+   "start": "2026-09-10T15:15:00Z",
+   "end": "2026-09-10T17:00:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0696/26",
+   "icao": "LLBG",
+   "type": "MRLT",
+   "text": "RWY 12 CLSD FOR TKOF ONLY, EXC RWY INT DUE CRANE.",
+   "start": "2026-09-02T04:00:00Z",
+   "end": "2026-09-15T08:00:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0695/26",
+   "icao": "LLBG",
+   "type": "OBCE",
+   "text": "CRANE ERECTED WI LLBG CTR, AT EL-AL JUNCTION. AN AREA FM GND UP TO 100M 360FT AMSL CLSD BTN FLW PSN 315924N0345425E 315922N0345423E 315924N0345419E 315926N0345421E. CTN ADZ.",
+   "start": "2026-09-02T04:00:00Z",
+   "end": "2026-09-15T08:00:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      31.990000000000002,
+      34.90694444444444
+     ],
+     [
+      31.989444444444445,
+      34.906388888888884
+     ],
+     [
+      31.990000000000002,
+      34.905277777777776
+     ],
+     [
+      31.990555555555556,
+      34.905833333333334
+     ]
+    ]
+   }
+  },
+  {
+   "id": "A0694/26",
+   "icao": "LLNV",
+   "type": "MXAR",
+   "text": "TWY Z LOCATED S OF RWY 07/25, MARKED AND LIT AS RWY, AVBL FOR TWY, LDG/TKOFF ON TWY Z AVBL BY ATC ONLY. DIRECTIONS 06/24. CTN ADZ.",
+   "start": "2026-08-27T10:28:00Z",
+   "end": "2026-11-30T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0693/26",
+   "icao": "LLNV",
+   "type": "SEAU",
+   "text": "RADAR SER NOT AVBL.",
+   "start": "2026-08-27T10:25:00Z",
+   "end": "2026-11-30T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0691/26",
+   "icao": "LLHA",
+   "type": "CACS",
+   "text": "NEW FREQ INSTL FOR CLEARANCE BFR TAXI (CPT) 121.800MHZ. DEP FLT SHALL CTC TWR ON CPT FREQ BFR STARTING UP ENGINE.",
+   "start": "2026-08-27T05:18:00Z",
+   "end": "2026-11-30T21:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1803/26",
+   "icao": "LLLL",
+   "type": "WCLW",
+   "text": "CAPTIVE BALLOON WILL TAKE PLACE AT RAHAT, UP TO 1,700FT AMSL. AN AREA WI 0.4NM RADIUS CENTERED ON PSN 312252N0344541E CLSD FM GND UP TO 2,200FT AMSL TO ALL FLT INCLUDING AGRICULTURE FLT. CTN ADZ",
+   "start": "2026-08-31T00:01:00Z",
+   "end": "2026-09-07T20:59:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 31.38111111111111,
+    "lng": 34.76138888888889,
+    "radiusNm": 0.4
+   }
+  },
+  {
+   "id": "A0688/26",
+   "icao": "LLLL",
+   "type": "GWAU",
+   "text": "POSS INTRP TO AIRBORNE GNSS EQPT WI TEL-AVIV FIR.",
+   "start": "2026-08-26T09:47:00Z",
+   "end": "2026-10-31T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1799/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT KESARYA UP TO 100M AGL, AN AREA WI 0.8NM RADIUS CENTERED ON PSN 322941N0345439E CLSD FM GND UP TO 500FT AMSL. CTN ADZ.",
+   "start": "2026-09-01T19:00:00Z",
+   "end": "2026-10-01T03:00:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 32.49472222222222,
+    "lng": 34.91083333333333,
+    "radiusNm": 0.8
+   }
+  },
+  {
+   "id": "C1798/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS ACT WILL TAKE PLACE AT TAANACHIM AND GADISH. AN AREA CLSD FM GND UP TO 100M AGL 560FT AMSL BTN FLW PSN 323333N0351719E 323219N0351747E 323221N0351759E 323207N0351803E 323201N0351722E 323254N0351640E 323313N0351637E 323317N0351558E 323335N0351558E. AN AREA WI 400M RADIUS CENTERED ON PSN 323309N0351447E CLSD FM GND UP TO 100M AGL, 560FT AMSL. OPS OF AGRICULTURE FLT WITH 15MIN PPR FM ATC. CTN ADZ.",
+   "start": "2026-09-01T00:01:00Z",
+   "end": "2026-09-30T20:59:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      32.55916666666666,
+      35.28861111111111
+     ],
+     [
+      32.53861111111111,
+      35.296388888888885
+     ],
+     [
+      32.53916666666667,
+      35.29972222222222
+     ],
+     [
+      32.53527777777778,
+      35.30083333333333
+     ],
+     [
+      32.53361111111111,
+      35.28944444444444
+     ],
+     [
+      32.54833333333333,
+      35.27777777777778
+     ],
+     [
+      32.55361111111111,
+      35.276944444444446
+     ],
+     [
+      32.55472222222222,
+      35.26611111111111
+     ],
+     [
+      32.55972222222222,
+      35.26611111111111
+     ],
+     [
+      32.552499999999995,
+      35.24638888888889
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1797/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT EITANIM-HOSPITAL. AN AREA WI 0.3NM RADIUS CENTERED ON PSN 314643N0350539E CLSD FM GND UP TO 100M AGL, 2,800FT AMSL. CTN ADZ.",
+   "start": "2026-09-01T07:00:00Z",
+   "end": "2026-09-30T15:00:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 31.77861111111111,
+    "lng": 35.094166666666666,
+    "radiusNm": 0.3
+   }
+  },
+  {
+   "id": "C1796/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT PARK-REEM. AN AREA WI 0.5NM RADIUS CENTERED ON PSN 314633N0344520E CLSD FM GND UP TO 25M AGL 300FT AMSL. OPS AVBL WITH PPR FM ATC ONLY. CTN ADZ.",
+   "start": "2026-09-01T00:01:00Z",
+   "end": "2026-09-30T20:59:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 31.77583333333333,
+    "lng": 34.75555555555555,
+    "radiusNm": 0.5
+   }
+  },
+  {
+   "id": "C1795/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT MAGEN-SHAUL, UP TO 100M AGL. AN AREA BTN THE FLW PSN CLSD FM GND UP TO 1,500FT AMSL 323145N0351642E 323024N0351638E 323039N0352004E 323139N0351954E 323153N0351930E 323159N0351907E CTN ADZ.",
+   "start": "2026-09-01T00:01:00Z",
+   "end": "2026-09-30T20:59:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      32.52916666666667,
+      35.27833333333333
+     ],
+     [
+      32.50666666666667,
+      35.27722222222222
+     ],
+     [
+      32.51083333333333,
+      35.33444444444444
+     ],
+     [
+      32.527499999999996,
+      35.33166666666667
+     ],
+     [
+      32.53138888888889,
+      35.325
+     ],
+     [
+      32.533055555555556,
+      35.31861111111112
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1789/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT NESHER WI LLHA CTR FM GND UP TO 460M AGL 1,510FT AMSL, BTN FLW PSN 324637N0350134E 324629N0350037E 324552N0350043E 324514N0350131E 324513N0350243E 324559N0350245E 324617N0350207E. CTN ADZ.",
+   "start": "2026-09-01T00:01:00Z",
+   "end": "2026-09-30T20:59:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      32.776944444444446,
+      35.02611111111111
+     ],
+     [
+      32.77472222222222,
+      35.01027777777778
+     ],
+     [
+      32.76444444444444,
+      35.011944444444445
+     ],
+     [
+      32.75388888888889,
+      35.025277777777774
+     ],
+     [
+      32.75361111111111,
+      35.04527777777778
+     ],
+     [
+      32.76638888888889,
+      35.045833333333334
+     ],
+     [
+      32.771388888888886,
+      35.03527777777778
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1788/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT DALIA/TZAFIT, WI ULTRALIGHT BUBBLE GOVRIN SOUTH (BGOVS) UP TO 100M AGL. AN AREA BTN THE FLW PSN CLSD FM GND UP TO 1,400FT AMSL 314353N0345038E 314339N0345010E 314221N0344925E 314150N0345023E 314222N0345118E 314323N0345123E. CTN ADZ.",
+   "start": "2026-09-01T00:01:00Z",
+   "end": "2026-09-30T20:59:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      31.731388888888887,
+      34.84388888888889
+     ],
+     [
+      31.7275,
+      34.836111111111116
+     ],
+     [
+      31.70583333333333,
+      34.82361111111111
+     ],
+     [
+      31.697222222222223,
+      34.83972222222222
+     ],
+     [
+      31.70611111111111,
+      34.855000000000004
+     ],
+     [
+      31.723055555555554,
+      34.85638888888889
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1785/26",
+   "icao": "LLLL",
+   "type": "ARLC",
+   "text": "HEL RTE CLSD KTORA-SIZFN-SITIM-ZZHOR. BMNUH-ZZHOR-MESAR-RUHOT. ZOFAR-HRGVS-RUHOT-KNFHA-RAMLY-MIDRS. LLEY-NNAHS-MIDRS. NNAHS-RAMLY.",
+   "start": "2026-09-07T03:00:00Z",
+   "end": "2026-09-08T06:30:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1784/26",
+   "icao": "LLLL",
+   "type": "ARLC",
+   "text": "CVFR RTE CLSD SIZFN-SITIM-ZZHOR. SIZFN-YAHEL. BMNUH-ZZHOR-MESAR-RUHOT. ZOFAR-HRGVS-RUHOT-OVDAT-BOKER.",
+   "start": "2026-09-07T03:00:00Z",
+   "end": "2026-09-08T06:30:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1783/26",
+   "icao": "LLLL",
+   "type": "ARLC",
+   "text": "HEL RTE CLSD KTORA-YAHEL-BMNUH-ZOFAR-HAZVA-ARAVA-ZOHAR.",
+   "start": "2026-09-07T03:00:00Z",
+   "end": "2026-09-08T06:30:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1782/26",
+   "icao": "LLLL",
+   "type": "ARLC",
+   "text": "CVFR RTE CLSD KTORA-YAHEL-BMNUH-ZOFAR-HAZVA-ARAVA-ZOHAR.",
+   "start": "2026-09-07T03:00:00Z",
+   "end": "2026-09-08T06:30:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1781/26",
+   "icao": "LLIB",
+   "type": "FALT",
+   "text": "AD CLSD TO ALL FLT, DUE WIP. OPS OF HEL AVBL BY PPR FM ATC. IN CASE OF EMERG OR MEDEVAC HEL AVBL WI 10MIN.",
+   "start": "2026-09-17T06:00:00Z",
+   "end": "2026-09-17T09:00:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0668/26",
+   "icao": "LLBG",
+   "type": "FALT",
+   "text": "CLOSURE FOR LDG BTN 0100-0200LMT (2200-2300UTC) TEMPO WITHDRAWN.",
+   "start": "2026-08-18T08:37:00Z",
+   "end": "2026-09-30T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0669/26",
+   "icao": "LLBG",
+   "type": "FALT",
+   "text": "NIGHT RESTRICTIONS BTN 0140-0500LMT (2240-0200UTC) TEMPO WITHDRAWN.",
+   "start": "2026-08-18T08:38:00Z",
+   "end": "2026-09-30T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0670/26",
+   "icao": "LLBG",
+   "type": "FALT",
+   "text": "RESTRICTIONS OF LDG 4 ENGINE ACFT WI LLBG TEMPO WITHDRAWN.",
+   "start": "2026-08-18T08:38:00Z",
+   "end": "2026-09-30T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1698/26",
+   "icao": "LLIB",
+   "type": "OBCE",
+   "text": "2 OBST PSN 325907.85N0353409.91E HGT 2M AGL AND 1M AGL. CTN ADZ.",
+   "start": "2026-08-06T06:45:00Z",
+   "end": "PERM",
+   "geom": null
+  },
+  {
+   "id": "C1678/26",
+   "icao": "LLLL",
+   "type": "OATT",
+   "text": "TRIGGER NOTAM - NIL AIRAC DOM AIP AMDT WEF 03 SEP 2026.",
+   "start": "2026-09-03T00:01:00Z",
+   "end": "2026-09-16T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0630/26",
+   "icao": "LLLL",
+   "type": "OATT",
+   "text": "TRIGGER NOTAM - NIL AIRAC AIP AMDT WEF 03 SEP 2026.",
+   "start": "2026-09-03T00:01:00Z",
+   "end": "2026-09-16T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "C1656/26",
+   "icao": "LLIB",
+   "type": "FUAU",
+   "text": "REFUELING ALL TYP OF AIRCRAFT/HEL NOT AVBL.",
+   "start": "2026-08-03T12:11:00Z",
+   "end": "2026-10-31T20:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0616/26",
+   "icao": "LLLL",
+   "type": "RRCA",
+   "text": "LLR01 ACTIVATED H24, XNG MERVA NOT AVBL EXC BY ATC. TFC TO/FM LLHA AVBL VIA MERVA BIDIRECTIONAL AT 5,000FT AMSL. ISRAEL AIP, PART ENR 5.1, PAGE ENR 5.1-3, PARA 2, CHART ENR 6-1 REF.",
+   "start": "2026-08-06T16:30:00Z",
+   "end": "PERM",
+   "geom": null
+  },
+  {
+   "id": "C1556/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT LOD TRAIN, FM GND UP TO 40M AGL, BTN FLW PSN 315630N0345208E 315644N0345204E 315703N0345210E 315718N0345229E 315716N0345249E 315710N0345306E 315657N0345311E 315645N0345305E 315631N0345249E 315624N0345228E CTN ADZ.",
+   "start": "2026-08-01T00:01:00Z",
+   "end": "2026-09-30T20:59:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      31.941666666666666,
+      34.86888888888889
+     ],
+     [
+      31.945555555555554,
+      34.867777777777775
+     ],
+     [
+      31.950833333333332,
+      34.86944444444445
+     ],
+     [
+      31.955,
+      34.874722222222225
+     ],
+     [
+      31.954444444444444,
+      34.88027777777778
+     ],
+     [
+      31.952777777777776,
+      34.885
+     ],
+     [
+      31.949166666666667,
+      34.88638888888889
+     ],
+     [
+      31.945833333333333,
+      34.88472222222222
+     ],
+     [
+      31.941944444444445,
+      34.88027777777778
+     ],
+     [
+      31.94,
+      34.87444444444444
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1541/26",
+   "icao": "LLHZ",
+   "type": "MRLT",
+   "text": "THE FLW ELEMENTS PENETRATING RWY STRIP TWY PENETRATING S OF RWY 10. FENCE PENETRATING NW OF RWY 10. POLES HEIGHT 1.20M AGL E OF RWY 28. CTN ADZ.",
+   "start": "2026-07-21T12:44:00Z",
+   "end": "PERM",
+   "geom": null
+  },
+  {
+   "id": "C1361/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT ASHDOD, FM GND UP TO 100M AGL. AN AREA BTN FLW PSN CLSD FM GND UP TO 950FT AMSL 315119N0344122E 315127N0344037E 315123N0344007E 315132N0343931E 315055N0343917E 315038N0344013E 315035N0344120E. CTN ADZ.",
+   "start": "2026-07-01T00:01:00Z",
+   "end": "2026-12-31T21:59:00Z",
+   "geom": {
+    "type": "polygon",
+    "coords": [
+     [
+      31.85527777777778,
+      34.68944444444444
+     ],
+     [
+      31.8575,
+      34.676944444444445
+     ],
+     [
+      31.85638888888889,
+      34.66861111111111
+     ],
+     [
+      31.85888888888889,
+      34.65861111111111
+     ],
+     [
+      31.84861111111111,
+      34.65472222222222
+     ],
+     [
+      31.843888888888888,
+      34.67027777777778
+     ],
+     [
+      31.843055555555555,
+      34.68888888888888
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C1281/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "AN AREA AT GOLANI-INTERCHANGE WI 0.6NM RADIUS CENTRED ON PSN 324600N0352530E CLSD TO ALL FLT INCLUDING AGRICULTURE FLT, FM GND UP TO 1,500FT AMSL. CTN ADZ.",
+   "start": "2026-06-15T11:46:00Z",
+   "end": "PERM",
+   "geom": {
+    "type": "circle",
+    "lat": 32.766666666666666,
+    "lng": 35.425,
+    "radiusNm": 0.6
+   }
+  },
+  {
+   "id": "A0475/26",
+   "icao": "LLHA",
+   "type": "OBCE",
+   "text": "CRANE ERECTED WI LLHA CTR, FM GND UP TO 26M 89FT AGL, 29M 95FT AMSL. AN AREA WI 0.3NM RADIUS CENTERED ON PSN 324910.1N0350231.28E CLSD FM GND UP TO 100FT AMSL. CTN ADZ.",
+   "start": "2026-06-15T06:44:00Z",
+   "end": "2026-09-30T20:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0467/26",
+   "icao": "LLER",
+   "type": "LPAS",
+   "text": "PAPI RWY 19 EAST U/S.",
+   "start": "2026-06-10T05:37:00Z",
+   "end": "2026-09-10T23:59:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0354/26",
+   "icao": "LLBG",
+   "type": "FALC",
+   "text": "AD CLSD DUE WIP.",
+   "start": "2026-10-16T15:00:00Z",
+   "end": "2026-10-16T19:55:00Z",
+   "geom": null
+  },
+  {
+   "id": "A0281/26",
+   "icao": "LLHA",
+   "type": "MPLC",
+   "text": "ACFT STAND J10 CLSD.",
+   "start": "2026-03-25T11:46:00Z",
+   "end": "PERM",
+   "geom": null
+  },
+  {
+   "id": "C0431/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "OPS OF UAS/UAV OR MODEL ACFT WI 500M RADIUS CENTERED ON PSN 320418N0344709.6E FM GND UP TO 300FT AMSL PROHIBITED. DOM AIP, PART A-17, PAGE 5, PARA 1A.C. AND NISPACH C. REF.",
+   "start": "2026-02-11T11:25:00Z",
+   "end": "PERM",
+   "geom": {
+    "type": "circle",
+    "lat": 32.06666666666667,
+    "lng": 34.78333333333333,
+    "radiusNm": 1
+   }
+  },
+  {
+   "id": "A0117/26",
+   "icao": "LLBG",
+   "type": "MXLT",
+   "text": "TWY W4 PCR 1,520/F/C/X/T. ISRAEL AIP, PART AD, CHART AD 2 LLBG ADC-1 REF.",
+   "start": "2026-01-29T16:39:00Z",
+   "end": "PERM",
+   "geom": null
+  },
+  {
+   "id": "A0116/26",
+   "icao": "LLBG",
+   "type": "MRLT",
+   "text": "RWY 08/26 PCR 880/F/C/X/T. ISRAEL AIP, PART AD, PAGE AD-2-LLBG-6, TABLE 2.12 REF.",
+   "start": "2026-01-29T16:32:00Z",
+   "end": "PERM",
+   "geom": null
+  },
+  {
+   "id": "C0037/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "OPS OF HOT-AIR BALLOON AT MOLEDET-CENTER WI 4.5KM RADIUS SEMI-CIRCLE TO EAST CENTERED ON PSN 323732.9N0352302.1E PROHIBITED. CTN ADZ.",
+   "start": "2026-01-01T16:50:00Z",
+   "end": "2026-12-31T21:59:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 32.6,
+    "lng": 35.416666666666664,
+    "radiusNm": 5
+   }
+  },
+  {
+   "id": "C0032/26",
+   "icao": "LLLL",
+   "type": "AELC",
+   "text": "AN AREA AT NAURA WI LLMG TRG AREA B-WEST WI 2.2KM RADIUS CENTERED ON PSN 323732.9N0352302.1E CLSD TO ALL FLT INCLUDING AGRICULTURE FLT, FM GND UP TO 10,000FT AMSL. CTN ADZ.",
+   "start": "2026-01-01T11:56:00Z",
+   "end": "2026-12-31T21:59:00Z",
+   "geom": {
+    "type": "circle",
+    "lat": 32.63333333333333,
+    "lng": 35.38333333333333,
+    "radiusNm": 2
+   }
+  },
+  {
+   "id": "C0010/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS ACT WILL TAKE PLACE AT LATRUN. AN AREA BTN THE FLW PSNS N314945E0345822 N314949E0345806 N314936E0345743 N314910E0345813 CLSD FM GND UP TO 300FT AGL, 950FT AMSL. CTN ADZ. DOM AIP, PART B-03, CHART A, B-08, CHART A. REF.",
+   "start": "2026-01-01T06:40:00Z",
+   "end": "PERM",
+   "geom": {
+    "type": "circle",
+    "lat": 31.816666666666666,
+    "lng": 34.96666666666667,
+    "radiusNm": 1
+   }
+  },
+  {
+   "id": "C0005/26",
+   "icao": "LLLL",
+   "type": "WULW",
+   "text": "UAS/UAV ACT WILL TAKE PLACE AT OR-AKIVA INDUSTRY AREA. AN AREA BTN THE FLW PSN CLSD FM GND UP TO 500FT AMSL N323122E0345511 N323119E0345512 N323119E0345515 N323123E0345514. CTN ADZ. DOM AIP, PART A-17, PAGE 10, PARA 3. NISPACH 2 REF.",
+   "start": "2026-01-01T06:30:00Z",
+   "end": "PERM",
+   "geom": {
+    "type": "circle",
+    "lat": 32.516666666666666,
+    "lng": 34.916666666666664,
+    "radiusNm": 1
+   }
+  }
+ ],
+ "detailOk": 110,
+ "detailTotal": 110
+}
