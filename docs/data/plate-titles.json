@@ -122,8 +122,8 @@
   "annex": "",
   "he": "דפי מלל",
   "en": "",
-  "modified": "",
-  "source": "aip-text"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLBO_airport_Circuit.pdf": {
   "annex": "נספח ב",
@@ -174,6 +174,34 @@
   "modified": "2024-10-31",
   "source": "aip"
  },
+ "LLER_ADC_3_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "AIRCRAFT PARKING CHART - APRON V - ICAO",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLER_ADC_RST_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "AIRCRAFT PARKING CHART - APRON R, S, T - ICAO",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLER_ADC_U_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "AIRCRAFT PARKING CHART - APRON U - ICAO",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLER_ADC_V1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "AERODROME CHART",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
  "LLER_APPROACH_ILS 01.pdf": {
   "annex": "",
   "he": "",
@@ -202,12 +230,82 @@
   "modified": "2026-08-06",
   "source": "aip"
  },
- "LLER_airport_Chart.pdf": {
+ "LLER_SID_01-1_en.pdf": {
   "annex": "",
-  "he": "דברי מלל",
-  "en": "AERODROME CHART - ICAO",
-  "modified": "",
-  "source": "aip-text"
+  "he": "",
+  "en": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 01, NURIT 1F",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLER_SID_01NH_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 01, NURIT 2H",
+  "modified": "2025-09-30",
+  "source": "aip"
+ },
+ "LLER_SID_19-1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 19, NURIT 1K",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLER_SID_19-3_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 19, NURIT 1J",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLER_SID_19NM_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 19, NURIT 1M",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLER_SID_19NN_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 19, NURIT 1N",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLER_STAR_01-1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "STANDARD ARRIVAL CHART INSTRUMENT (STAR) - ICAO RWY 01, NURIT 1D",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLER_STAR_01-2_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "STANDARD ARRIVAL CHART INSTRUMENT (STAR) - ICAO RWY 01, NURIT 1B",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLER_VAC_01-1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "RNAV VISUAL APPROACH RWY01",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLER_VAC_19-1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "RNAV VISUAL APPROACH RWY19",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLER_VFRTA_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "TRAINING AREAS",
+  "modified": "2025-05-15",
+  "source": "aip"
  },
  "LLES_airport_Chart.pdf": {
   "annex": "",
@@ -241,8 +339,8 @@
   "annex": "",
   "he": "דפי מלל",
   "en": "",
-  "modified": "",
-  "source": "aip-text"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLEY_airport_Circuit.pdf": {
   "annex": "נספח ב",
@@ -269,8 +367,8 @@
   "annex": "",
   "he": "דפי מלל",
   "en": "",
-  "modified": "",
-  "source": "aip-text"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLFK_airport_Circuit.pdf": {
   "annex": "נספח ב'",
@@ -294,18 +392,18 @@
   "source": "aip"
  },
  "LLHA_airport_Annex Alef.pdf": {
-  "annex": "נספח א",
+  "annex": "נספח א'",
   "he": "תרשים השדה",
   "en": "AERODROME CHART - ICAO",
-  "modified": "",
-  "source": "aip-annex"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLHA_airport_Annex Bet 2.pdf": {
   "annex": "נספח ב'-2",
   "he": "תרשים החניה - רחבה N",
   "en": "AIRCRAFT PARKING CHART - APRON N - ICAO",
-  "modified": "",
-  "source": "aip-annex"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLHA_airport_Annex Bet 3.pdf": {
   "annex": "נספח ב'-3",
@@ -315,18 +413,18 @@
   "source": "aip"
  },
  "LLHA_airport_Annex Bet 4.pdf": {
-  "annex": "נספח ב",
-  "he": "AIRCRAFT PARKING CHART - ICAO",
+  "annex": "נספח ב'",
+  "he": "תרשים החניה",
   "en": "",
-  "modified": "",
-  "source": "pdf"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLHA_airport_Annex Bet.pdf": {
-  "annex": "נספח ב",
-  "he": "תרשים החניה",
+  "annex": "נספח ב'-1",
+  "he": "תרשים החניה - רחבה G",
   "en": "AIRCRAFT PARKING CHART - APRON G",
-  "modified": "",
-  "source": "aip-annex"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLHA_airport_Annex Chet.pdf": {
   "annex": "נספח ח'",
@@ -357,11 +455,11 @@
   "source": "aip"
  },
  "LLHA_airport_Annex Tet.pdf": {
-  "annex": "נספח ט",
+  "annex": "נספח ט'",
   "he": "מפת מכשולים מסלול 15-33",
   "en": "AERODROME OBSTACLE CHART - TYPE A RWY 15-33 - ICAO",
-  "modified": "",
-  "source": "aip-annex"
+  "modified": "2025-05-15",
+  "source": "aip"
  },
  "LLHA_airport_Annex Zayin.pdf": {
   "annex": "נספח ז'",
@@ -378,11 +476,11 @@
   "source": "aip"
  },
  "LLHZ_airport_Annex Alef.pdf": {
-  "annex": "נספח א",
+  "annex": "נספח א'",
   "he": "תרשים השדה",
   "en": "",
-  "modified": "",
-  "source": "aip-annex"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLHZ_airport_Annex Chet.pdf": {
   "annex": "נספח ח'",
@@ -570,8 +668,8 @@
   "annex": "",
   "he": "דפי מלל",
   "en": "",
-  "modified": "",
-  "source": "aip-text"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLKZ_airport_Annex Alef.pdf": {
   "annex": "נספח א'",
@@ -637,11 +735,11 @@
   "source": "aip"
  },
  "LLMZ_airport_Annex Alef.pdf": {
-  "annex": "נספח א",
+  "annex": "נספח א'",
   "he": "תרשים המנחת",
   "en": "",
-  "modified": "",
-  "source": "aip-annex"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLMZ_airport_Annex Bet.pdf": {
   "annex": "נספח ב'",
@@ -659,17 +757,17 @@
  },
  "LLMZ_airport_CVFR.pdf": {
   "annex": "נספח ג'",
-  "he": "כניסה ויציאה נתיבי CVFR",
+  "he": "נתיבי כניסה ויציאה",
   "en": "",
-  "modified": "",
-  "source": "pdf"
+  "modified": "2023-05-17",
+  "source": "aip"
  },
  "LLMZ_airport_Chart.pdf": {
   "annex": "",
   "he": "דפי מלל",
   "en": "",
-  "modified": "",
-  "source": "aip-text"
+  "modified": "2026-08-06",
+  "source": "aip"
  },
  "LLRS_airport_Annex Alef.pdf": {
   "annex": "נספח א",
