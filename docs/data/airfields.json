@@ -1448,8 +1448,7 @@
    "plates": [
     "LLAR_airport_CVFR.pdf",
     "LLAR_airport_Chart.pdf",
-    "LLAR_airport_Circuit.pdf",
-    "LLAR_airport_Text.pdf"
+    "LLAR_airport_Circuit.pdf"
    ],
    "circuit_overlay": {
     "png": "LLAR_circuit.png",
