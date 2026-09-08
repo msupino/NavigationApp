@@ -28,16 +28,28 @@ test('the script only reports, and never writes into the snapshot folders', () =
   expect(src).toMatch(/refreshes nothing/i);
 });
 
-// The CAA publishes one pack per aerodrome, not one file per plate: every plate we ship is a
-// page extracted from that pack. So the useful report is "this pack was amended, and these
-// of ours came out of it" -- the unit a person can actually act on.
+// Ben Gurion is published as one pack per aerodrome, and every LLBG plate we ship is a page
+// extracted from it, so the useful report there is "this pack was amended, and these of ours
+// came out of it". It is NOT universal: Haifa, Eilat and the strips publish per-annex files,
+// which is how 25 of those plates were refreshed one by one.
 test('drift is reported against the pack it came from', () => {
   const src = fs.readFileSync(SCRIPT, 'utf8');
   expect(src).toContain('packs_by_field');
   expect(src).toMatch(/amended/);
-  // ...and an aerodrome the index no longer carries at all is called out, not silently
-  // grouped with the rest: LLAR has left the AIP.
-  expect(src).toMatch(/aerodrome withdrawn/i);
+});
+
+// An aerodrome with no pack title is not an aerodrome that has left the AIP. This test used
+// to assert the opposite -- it required the report to say "aerodrome withdrawn?" and its
+// comment claimed LLAR had left. Arad had not: the index carries three of its annexes, two
+// of which match ours by hash. The label was a guess reading as a fact, and acting on it
+// would have deleted a published chart.
+test('a missing pack is not reported as a missing aerodrome', () => {
+  const src = fs.readFileSync(SCRIPT, 'utf8');
+  expect(src).not.toMatch(/aerodrome withdrawn/i);
+  // Files present but no pack title -- say exactly that...
+  expect(src).toMatch(/published per file, no single pack/);
+  // ...and keep a distinct line for the case that really does mean gone.
+  expect(src).toMatch(/nothing for this aerodrome in the index/);
 });
 
 test('the workflow runs it, and keeps one issue rather than a pile', () => {
