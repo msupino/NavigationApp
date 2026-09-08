@@ -612,10 +612,6 @@
     "LLER_ADC_RST_en.pdf",
     "LLER_ADC_U_en.pdf",
     "LLER_ADC_V1_en.pdf",
-    "LLER_IAC_01-2_en.pdf",
-    "LLER_IAC_01RNP_en.pdf",
-    "LLER_IAC_19ILS_V1_en.pdf",
-    "LLER_IAC_19RNP_en.pdf",
     "LLER_SID_01-1_en.pdf",
     "LLER_SID_01NH_en.pdf",
     "LLER_SID_19-1_en.pdf",
@@ -626,8 +622,7 @@
     "LLER_STAR_01-2_en.pdf",
     "LLER_VAC_01-1_en.pdf",
     "LLER_VAC_19-1_en.pdf",
-    "LLER_VFRTA_en.pdf",
-    "LLER_airport_Chart.pdf"
+    "LLER_VFRTA_en.pdf"
    ],
    "runways": [
     "01/19"
