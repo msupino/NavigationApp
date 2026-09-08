@@ -1,0 +1,9 @@
+{
+ "_comment": "Plates we ship that are NOT byte-for-byte the CAA's file, with the upstream file each was derived from. aip-drift.py reads this: a derived plate whose source hash is still in the index is current (our transform, not staleness), and one whose source hash has gone is genuinely stale and must be re-derived. Without it a derived plate can never hash-match and sits in the drift report forever, mislabelled.",
+ "docs/byop/LLAR_airport_CVFR.pdf": {
+  "title": "ערד - נספח ג' -נתיבי כניסה ויציאה",
+  "source": "b14cf8511ccec6cc7b10fedbd76a191a5d24313fb22ea4f8fe0dc8b99a00df91e433147ff81c422ce4fd0152d5093b3a94e6800f22b1549084bc24eeaa82c2b3",
+  "transform": "rotated 90 degrees to portrait; the georeferenced CVFR overlay corners were fitted against this orientation",
+  "verified": "2026-09-08"
+ }
+}
