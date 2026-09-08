@@ -38,6 +38,21 @@ ROOT = Path(__file__).resolve().parent.parent
 INDEX_URL = 'https://apiaip.azurewebsites.net/getJson'
 UA = 'NavAid/1.0 (+https://navaid.supino.org) aip-drift'
 WATCHED = [ROOT / 'docs' / 'byop', ROOT / 'docs' / 'byop-enr']
+DERIVED_MAP = ROOT / 'docs' / 'data' / 'plate-derived.json'
+
+
+def derived_sources():
+    """Plates we ship that are not byte-for-byte the CAA's file -> the upstream hash.
+
+    A rotated or otherwise reworked plate can never hash-match the index, so without this it
+    is reported as drifted on every run, for ever, with the cause guessed at. What actually
+    matters for those is whether the file they came FROM is still what the CAA serves.
+    """
+    try:
+        raw = json.loads(DERIVED_MAP.read_text(encoding='utf-8'))
+    except Exception:
+        return {}
+    return {k: v for k, v in raw.items() if not k.startswith('_') and isinstance(v, dict)}
 
 
 def fetch_index():
@@ -94,20 +109,58 @@ def packs_by_field(entries):
     return out
 
 
+def classify(rel, own_hash, current, derived):
+    """current | reworked | drifted, for one shipped plate.
+
+    `reworked` is the narrow case: we changed the file ourselves and the file we changed is
+    STILL what the CAA serves. The moment the source hash leaves the index the answer goes
+    back to `drifted` -- otherwise this map would hide a stale chart behind our own edit,
+    which is worse than the mislabelled report it exists to fix.
+    """
+    if own_hash in current:
+        return 'current'
+    d = derived.get(rel)
+    if d and d.get('source') in current:
+        return 'reworked'
+    return 'drifted'
+
+
+def selftest():
+    """Offline checks for classify(). Run by tests/aip-drift-derived.spec.js."""
+    cur = {'aaa': 1, 'bbb': 1}
+    der = {'x.pdf': {'source': 'bbb'}, 'y.pdf': {'source': 'gone'}}
+    cases = [
+        ('plain file, hash published', ('p.pdf', 'aaa', cur, der), 'current'),
+        ('plain file, hash gone', ('p.pdf', 'zzz', cur, der), 'drifted'),
+        ('derived, source published', ('x.pdf', 'zzz', cur, der), 'reworked'),
+        ('derived, source amended away', ('y.pdf', 'zzz', cur, der), 'drifted'),
+        ('derived but byte-identical', ('x.pdf', 'aaa', cur, der), 'current'),
+        ('no derived map at all', ('x.pdf', 'zzz', cur, {}), 'drifted'),
+    ]
+    bad = 0
+    for label, args, want in cases:
+        got = classify(*args)
+        ok = got == want
+        bad += 0 if ok else 1
+        print('%-4s %-32s -> %s' % ('ok' if ok else 'FAIL', label, got))
+    return 1 if bad else 0
+
+
 def main():
+    if '--selftest' in sys.argv:
+        return selftest()
     idx = fetch_index()
     current = index_files(idx)
-    fresh, drifted = [], []
+    derived = derived_sources()
+    fresh, drifted, reworked = [], [], []
 
     for folder in WATCHED:
         if not folder.exists():
             continue
         for pdf in sorted(folder.glob('*.pdf')):
             rel = str(pdf.relative_to(ROOT))
-            if sha512(pdf) in current:
-                fresh.append(rel)
-            else:
-                drifted.append(rel)
+            kind = classify(rel, sha512(pdf), current, derived)
+            (fresh if kind == 'current' else reworked if kind == 'reworked' else drifted).append(rel)
 
     by_field = {}
     for rel in drifted:
@@ -117,12 +170,26 @@ def main():
 
     packs = packs_by_field(current)
     print('AIP index: %d files served today' % len(current))
-    print('snapshots: %d current, %d drifted' % (len(fresh), len(drifted)))
+    print('snapshots: %d current, %d drifted%s'
+          % (len(fresh), len(drifted),
+             (', %d reworked from a source that is still published' % len(reworked)) if reworked else ''))
+    for rel in reworked:
+        d = derived.get(rel, {})
+        print('  ok     %-38s %s' % (Path(rel).name[:38], d.get('transform', 'derived locally')))
     for field in sorted(by_field):
         names = by_field[field]
         pack = packs.get(field)
-        where = ('  <- %s, amended %s' % (pack[0][:44], pack[1])) if pack else \
-                '  <- no pack in the index (aerodrome withdrawn?)'
+        if pack:
+            where = '  <- %s, amended %s' % (pack[0][:44], pack[1])
+        elif any(field in str(e.get('TITLE', '')).upper() or field in str(e.get('TITLE', ''))
+                 for e in current.values()):
+            # The index has files for this aerodrome, just not one titled as a pack. Saying
+            # "withdrawn?" here reads as a fact about the aerodrome and is not one: Arad was
+            # reported withdrawn for as long as this line existed while the AIP carried three
+            # of its annexes.
+            where = '  <- published per file, no single pack'
+        else:
+            where = '  <- nothing for this aerodrome in the index'
         print('  %-6s %2d%s' % (field, len(names), where))
         print('         %s' % (', '.join(n[:40] for n in names[:4])
                                + ('' if len(names) <= 4 else ', …')))
