@@ -38,9 +38,11 @@ test.describe('Note resize', () => {
   test('size slider scales state.notes[i].size and grows the drawn rect', async ({ page }) => {
     await bootWithNote(page);
     const before = await page.evaluate(() => { const r = noteRect(0); return { w: r.w, h: r.h }; });
-    // The range input in the note inspector is the size slider.
+    // The note inspector holds more than one slider now (rotation too), so name the row.
     await page.evaluate(() => {
-      const inp = document.querySelector('#insp-body input[type=range]');
+      const row = [...document.querySelectorAll('#insp-body .row')]
+        .find(el => el.textContent.includes('Size'));
+      const inp = row.querySelector('input[type=range]');
       inp.value = '1.5';                       // top of the symmetric 0.5–1.5 range
       inp.dispatchEvent(new Event('input', { bubbles: true }));
     });
@@ -53,9 +55,10 @@ test.describe('Note resize', () => {
   test('the note size slider has a ↻ reset to default (100%)', async ({ page }) => {
     await bootWithNote(page);
     await page.evaluate(() => { state.notes[0].size = 2.5; state.selected = { type: 'note', index: 0 }; showInspector(); });
-    // Target the size row's reset specifically — the colour row also has a
-    // ↻ reset now, so scope to the row that holds the range slider.
-    const reset = page.locator('#insp-body .row:has(input[type="range"]) .slider-reset');
+    // Target the size row's reset specifically — the colour row also has a ↻ reset, and
+    // rotation is a second slider, so scope to the Size row by name.
+    const reset = page.locator('#insp-body .row:has(input[type="range"])', { hasText: 'Size' })
+      .locator('.slider-reset');
     await expect(reset).toHaveCount(1);
     await reset.click();
     expect(await page.evaluate(() => state.notes[0].size)).toBe(1);
