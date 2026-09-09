@@ -18,8 +18,10 @@
     "@capacitor/android": "8.4.0",
     "@capacitor/app": "^8.0.1",
     "@capacitor/core": "8.4.0",
+    "@capacitor/filesystem": "^8.0.1",
     "@capacitor/ios": "8.4.0",
     "@capacitor/local-notifications": "^8.2.1",
+    "@capacitor/share": "^8.0.1",
     "@capgo/capacitor-social-login": "^8.3.35"
   },
   "devDependencies": {

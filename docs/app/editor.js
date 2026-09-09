@@ -436,9 +436,7 @@
       else document.execCommand('copy');
     };
     box.querySelector('#ed-dl').onclick = function () {
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([json()], { type: 'application/json' }));
-      a.download = 'editor-' + Date.now() + '.json'; a.click();
+      saveFile(new Blob([json()], { type: 'application/json' }), 'editor-' + Date.now() + '.json');
       URL.revokeObjectURL(a.href);
     };
     makeDraggable(box, box.querySelector('#ed-head'));
