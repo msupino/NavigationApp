@@ -2307,6 +2307,11 @@ window.S = Object.assign({
   trafficType: 'Type',
   trafficTrack: 'Track',
   plateDownload: 'Download',
+  // A file leaves the app either through the browser's download or, on the phone, through
+  // the system share sheet -- so the wording has to fit both without naming a folder.
+  saveShareTitle: 'Save or send',
+  errSaveFailed: 'That file could not be saved.',
+  errSaveNeedsAppUpdate: 'Saving files needs a newer version of the NavAid app. Update it, or export from the website.',
   zoomIn: 'Zoom in',
   inspResize: 'Resize',
   zoomOut: 'Zoom out',

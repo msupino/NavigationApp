@@ -6,6 +6,8 @@
     "limitsNavigationsToAppBoundDomains": true,
     "includePlugins": [
       "@capacitor-community/text-to-speech",
+      "@capacitor/filesystem",
+      "@capacitor/share",
       "@capacitor/local-notifications",
       "@capgo/capacitor-social-login"
     ]
