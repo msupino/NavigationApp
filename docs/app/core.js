@@ -1944,6 +1944,7 @@ window.S = Object.assign({
   shapeOval: 'Oval',
   color: 'Color',
   noteSize: 'Size',
+  noteRotation: 'Rotation',
   deleteNote: '🗑 Delete note (D)',
   latitude: 'Latitude',
   longitude: 'Longitude',
