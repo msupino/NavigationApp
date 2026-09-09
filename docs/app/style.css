@@ -4143,6 +4143,90 @@ body.theme-light .msa-low .val { color: #c0392b; }
 }
 /* Head/cross components per runway, under the runway chips. Monospace so the numbers of
    several runways line up in a column the eye can scan. */
+/* The map's own clock. Sits on the chart above the attribution, because a pilot scrubbing
+   forward is watching the map, not the menu. Only the control takes pointer events -- the
+   strip around it must stay draggable, or the slider would eat a pan. */
+.map-time {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 22px;                       /* clear of the Leaflet attribution */
+  z-index: 620;                       /* over the canvas overlay, under modals and the toolbar */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  /* Leave the right-hand column alone: the coordinate readout and the zoom keys live there,
+     and a centred group with a long track was reaching under both. */
+  padding: 0 132px 0 10px;
+  pointer-events: none;               /* the strip is not a control */
+}
+.map-time > * { pointer-events: auto; }
+.map-time[hidden] { display: none !important; }
+/* Nothing time-dependent is switched on: the clock stays put and says so by going quiet,
+   rather than vanishing and leaving the pilot to wonder where it went. */
+.map-time.idle { opacity: 0.45; }
+.map-time.idle #map-time-slider { filter: grayscale(1); }
+.map-time input[type="range"] {
+  flex: 0 1 420px;
+  max-width: 420px;
+  accent-color: #0b6fb8;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.map-time-read,
+.map-time-charts {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f252c;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+/* What the weather charts could actually give you. They publish at 00/03/06/12/18Z, so at
+   +3h the NOTAMs are exactly 15:00Z while SIGWX may only have 12:00Z -- said out loud here
+   rather than left as a silent disagreement between two layers. */
+.map-time-charts { opacity: 0.85; font-size: 11px; }
+.map-time-now {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f252c;
+  cursor: pointer;
+}
+.map-time-now:disabled { opacity: 0.5; cursor: default; }
+/* A phone has no room for a 520px slider beside two readouts, and the bottom of the map is
+   already spoken for -- legend bottom-left, coordinate readout centre, zoom buttons
+   bottom-right. Sit ABOVE that furniture and stack the labels over the slider, or the clock
+   lands underneath the coordinates and the zoom keys eat the right-hand end of the track. */
+@media (max-width: 680px) {
+  /* The bottom of a phone screen is entirely spoken for -- legend, coordinate readout, zoom
+     column, and a two-line route hint across the middle -- and raising the clock far enough
+     to clear all of it covered the map. So on a phone it lives at the TOP instead, under the
+     toolbar and clear of the Zulu clock, where nothing else sits. */
+  /* The bottom of a phone screen is crowded -- legend, coordinate readout, zoom column, and
+     a two-line route hint across the middle -- but the top is worse: the toolbar panel drops
+     over anything placed there. So sit above the hint, with the right-hand column reserved
+     for the zoom keys. */
+  .map-time {
+    flex-wrap: wrap;
+    gap: 4px;
+    bottom: 205px;
+    padding: 0 96px 0 8px;
+  }
+  .map-time input[type="range"] { flex: 1 1 100%; order: 2; max-width: none; }
+  .map-time-now { order: 1; }
+  .map-time-read, .map-time-charts { order: 1; font-size: 11px; }
+}
+body.theme-light .map-time-read,
+body.theme-light .map-time-charts,
+body.theme-light .map-time-now { background: rgba(255, 255, 255, 0.95); }
+
 /* Legend for the airfield-wind barb styles, under its toolbar switch. */
 .af-wind-legend { font-size: 10px; opacity: 0.75; margin-block-start: 2px; }
 .runway-wind-row { flex-wrap: wrap; gap: 4px; align-items: baseline; }

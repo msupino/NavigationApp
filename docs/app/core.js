@@ -682,6 +682,8 @@ NavAid.tuningDefaults = {
   afWindModelLabelAlpha: { value: 0.75, min: 0.2, max: 1, step: 0.05, label: 'Airfield wind forecast label opacity' },
   afWindObsMaxAgeMin: { value: 0, min: 0, max: 360, step: 5, label: 'Airfield wind: reported wind counts as current for (min, 0 = follow the weather setting)' },
   featureAirfieldWind: { value: true, type: 'bool', label: 'Feature: airfield surface-wind barbs' },
+  featureMapClock: { value: true, type: 'bool', label: 'Feature: the look-ahead clock on the map' },
+  mapClockHoursAhead: { value: 24, min: 1, max: 48, step: 1, label: 'Map clock range (h ahead)' },
 
   liveAircraftRadiusPx: { value: 12, min: 6, max: 48, step: 1, label: 'Live aircraft size (px)' },
   liveHeadingLineWidthPx: { value: 2, min: 0.5, max: 6, step: 0.5, label: 'Live heading line width (px)' },
@@ -993,6 +995,9 @@ NavAid.tuningGroups = [
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
+  // The map's own clock: one control for every time-dependent layer, so it is not a
+  // setting that belongs under any single layer's heading.
+  { name: 'Map clock', keys: ['featureMapClock', 'mapClockHoursAhead'] },
   { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindMinZoom', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindStartGapPx', 'afWindBarbHaloPx', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
@@ -1885,6 +1890,11 @@ window.S = Object.assign({
   afWindModelNote: 'Forecast model wind, not an observation',
   afWindObsNote: 'Reported wind, from the METAR',
   afWindLegend: 'Solid barb = reported · dashed = forecast',
+  mapTimeNow: 'Now',
+  mapTimeNowTitle: 'Back to live: show every layer as it is right now',
+  mapTimeLabel: 'Look ahead',
+  mapTimeCharts: 'charts',
+  mapTimeChartsTitle: 'Weather charts are published at 00/03/06/12/18Z, so they show the newest sheet issued by the hour you picked',
   tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
   tbWindFieldAlt: 'Altitude',
   tbWindFieldOpacity: 'Field opacity',
