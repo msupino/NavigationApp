@@ -69,6 +69,48 @@
   "modified": "2022-08-01",
   "source": "aip"
  },
+ "LLBG_ATC_SMAC.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "ATC Surveillance Minimum Altitude Chart",
+  "modified": "2023-06-15",
+  "source": "aip"
+ },
+ "LLBG_Ground_Aiport Chart.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Aerodrome Chart",
+  "modified": "2026-08-06",
+  "source": "aip"
+ },
+ "LLBG_Ground_GA Apron.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Aircraft Parking-docking Chart - ICAO APRON V",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLBG_Ground_H+X Apron.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Aircraft parking chart - ICAO Terminal 3 APRON H, X",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLBG_Ground_N Apron.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Aircraft parking chart - ICAO Terminal 1 APRON N",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLBG_Ground_Terminal 1 Parking.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Aircraft parking-docking chart ICAO Terminal 1",
+  "modified": "2025-08-13",
+  "source": "aip"
+ },
  "LLBG_SID_12-26-30 (Pidet+Ripud).pdf": {
   "annex": "",
   "he": "",
@@ -90,6 +132,27 @@
   "modified": "2024-10-31",
   "source": "aip"
  },
+ "LLBG_STAR_12-30-1_V2_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Standard Arrival chart instrument (STAR) - ICAO RWY 12, 30 NINET 1, GODED 2",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
+ "LLBG_STAR_21-26-1_V2_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Standard arrival chart instrument (STAR) - ICAO - RWY s 21,26 AMMOS 1A, 1B, AMMIT 1A, SALAM 2A",
+  "modified": "2024-10-31",
+  "source": "aip"
+ },
+ "LLBG_STAR_30-2_V1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Standard Arrival chart instrument (STAR) - ICAO ILS RWY 30 VETEK 1A, ADLOD 1A, 1B",
+  "modified": "2024-10-31",
+  "source": "aip"
+ },
  "LLBG_TRANSITION_ERREZ 1A.pdf": {
   "annex": "",
   "he": "",
@@ -97,11 +160,32 @@
   "modified": "2023-05-17",
   "source": "aip"
  },
+ "LLBG_VAC_21NAMIM_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Visual approach chart NAMIM approach RWY 21",
+  "modified": "2025-05-15",
+  "source": "aip"
+ },
  "LLBG_VAC_30-2_V1_en.pdf": {
   "annex": "",
   "he": "",
   "en": "Visual approach chart GAVRI approach RWY 30",
   "modified": "2023-11-02",
+  "source": "aip"
+ },
+ "LLBG_VAC_30-3_v1_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Visual approach chart ROMIE approach RWY 30",
+  "modified": "2024-05-16",
+  "source": "aip"
+ },
+ "LLBG_VAC_en.pdf": {
+  "annex": "",
+  "he": "",
+  "en": "Visual approach chart",
+  "modified": "2022-08-01",
   "source": "aip"
  },
  "LLBO_Ground_Diagram.pdf": {
