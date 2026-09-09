@@ -110,6 +110,33 @@ test('the angle rides along when the route is saved and loaded again', async ({ 
   expect(round.afterLoad).toBe(135);
 });
 
+test('a saved route keeps the angle, through the library and its validator', async ({ page }) => {
+  await boot(page);
+  // The Saved-routes library is a different path from the JSON export: it stores
+  // serializeRoute() and applies it back through validateRoute() and applyRouteData(). A
+  // validator that rejected an unknown field, or a load path missing the property, would
+  // lose the angle exactly where a pilot expects it kept.
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.3, lng: 35.1, name: 'B' }];
+    syncLegs();
+    state.notes = [{ lat: 32.1, lng: 34.95, text: 'ridge', rot: 60 }];
+  });
+  const round = await page.evaluate(() => {
+    const entry = routeLibrarySaveCurrent('rot test');
+    const stored = entry && entry.data.notes[0].rot;
+    const invalid = typeof validateRoute === 'function' ? validateRoute(entry.data) : null;
+    state.notes = [];
+    state.waypoints = [];
+    syncLegs();
+    const applied = routeLibraryApply(entry);
+    return { stored, invalid, applied, after: state.notes.length ? state.notes[0].rot : null };
+  });
+  expect(round.stored).toBe(60);
+  expect(round.invalid, 'the validator must not reject a route carrying a note angle').toBeNull();
+  expect(round.applied).toBe(true);
+  expect(round.after).toBe(60);
+});
+
 test('a note left straight adds nothing to the saved file', async ({ page }) => {
   await boot(page);
   await addNote(page);
