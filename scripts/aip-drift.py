@@ -39,6 +39,23 @@ INDEX_URL = 'https://apiaip.azurewebsites.net/getJson'
 UA = 'NavAid/1.0 (+https://navaid.supino.org) aip-drift'
 WATCHED = [ROOT / 'docs' / 'byop', ROOT / 'docs' / 'byop-enr']
 DERIVED_MAP = ROOT / 'docs' / 'data' / 'plate-derived.json'
+SOURCES_MAP = ROOT / 'docs' / 'data' / 'plate-sources.json'
+
+
+def plate_names():
+    """Our path -> what the CAA calls the chart, recorded while our copy still matched.
+
+    A drifted plate is one whose hash the index no longer knows, so the index cannot say
+    what it was. This can: the name was written down by scripts/aip-plate-sources.py back
+    when the hash still resolved. It turns "some file changed" into "the CAA amended the
+    Aircraft Parking-docking Chart - ICAO APRON V".
+    """
+    try:
+        raw = json.loads(SOURCES_MAP.read_text(encoding='utf-8'))
+    except Exception:
+        return {}
+    return {k: v.get('title', '') for k, v in raw.items()
+            if not k.startswith('_') and isinstance(v, dict)}
 
 
 def derived_sources():
@@ -152,6 +169,7 @@ def main():
     idx = fetch_index()
     current = index_files(idx)
     derived = derived_sources()
+    named = plate_names()
     fresh, drifted, reworked = [], [], []
 
     for folder in WATCHED:
@@ -191,8 +209,15 @@ def main():
         else:
             where = '  <- nothing for this aerodrome in the index'
         print('  %-6s %2d%s' % (field, len(names), where))
-        print('         %s' % (', '.join(n[:40] for n in names[:4])
-                               + ('' if len(names) <= 4 else ', …')))
+        # Name the charts we can: a filename is ours, the title is the CAA's, and the title
+        # is what a person needs in order to go and find the replacement. Files recorded
+        # before they drifted get a name; ones that drifted before plate-sources.json
+        # existed do not, and are listed plainly rather than padded with blanks.
+        titled = [(n, named.get('docs/byop/' + n) or named.get('docs/byop-enr/' + n)) for n in names]
+        for n, title in titled[:12]:
+            print('         %-42s %s' % (n[:42], title or ''))
+        if len(titled) > 12:
+            print('         … and %d more' % (len(titled) - 12))
 
     if '--json' in sys.argv:
         out = Path(sys.argv[sys.argv.index('--json') + 1])
