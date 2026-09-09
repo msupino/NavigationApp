@@ -4932,10 +4932,25 @@ if (windDepartSlider) {
     return !!(cb && cb.checked);
   });
 
+  // "+14h · 21:00Z" is a Hebrew word, a number and a clock in one string, and in an RTL
+  // paragraph the bidi algorithm runs them together: "+14ש · 21:00Z" rendered as
+  // "+1421:00 · שZ", with the digits merged and the Z adrift. Each part gets its own <bdi>
+  // so no run can reach into its neighbour -- the same treatment the density-altitude
+  // readout needs, for the same reason.
+  function setParts(el, text) {
+    if (!el) return;
+    el.textContent = '';
+    String(text || '').split(' · ').forEach((part, i) => {
+      if (i) el.appendChild(document.createTextNode(' · '));
+      const bdi = document.createElement('bdi');
+      bdi.textContent = part;
+      el.appendChild(bdi);
+    });
+  }
   function label() {
     const h = parseInt(slider.value, 10) || 0;
-    if (read) read.textContent = (typeof notamTimeLabel === 'function')
-      ? notamTimeLabel(h) : (h ? '+' + h + 'h' : 'now');
+    setParts(read, (typeof notamTimeLabel === 'function')
+      ? notamTimeLabel(h) : (h ? '+' + h + 'h' : 'now'));
     if (nowBtn) nowBtn.disabled = h === 0;
   }
   // Pull the weather charts to the hour, and say which sheet that turned out to be. Only
@@ -4956,7 +4971,14 @@ if (windDepartSlider) {
     const picked = NavWxTime.followInstant(instant);
     charts.hidden = !picked;
     if (picked) {
-      charts.textContent = (S.mapTimeCharts || 'charts') + ' ' + picked;
+      // Label and timestamp are separate runs: "מפות" beside "09/09/2026 18:00Z" ran
+      // together into "Zמפות 09/09/2026 18:00", carrying the Z to the wrong end.
+      charts.textContent = '';
+      const word = document.createElement('bdi');
+      word.textContent = S.mapTimeCharts || 'charts';
+      const when = document.createElement('bdi');
+      when.textContent = picked;
+      charts.append(word, ' ', when);
       charts.title = S.mapTimeChartsTitle || '';
     }
   }

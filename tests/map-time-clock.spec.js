@@ -127,6 +127,44 @@ test('before the first published sheet it shows the earliest rather than nothing
   expect(picked).toContain('18:00');
 });
 
+test('the Hebrew readout is not run together by the bidi algorithm', async ({ page }) => {
+  // Reported garbled: "+14ש · 21:00Z" rendered as "+1421:00 · שZ" -- digits merged, Z adrift
+  // -- and "מפות 09/09/2026 18:00Z" as "Zמפות 09/09/2026 18:00". Both came from forcing
+  // dir="ltr" on a span holding a Hebrew word AND a clock. Each run is isolated instead.
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => document.getElementById('map-time-slider')
+    && !document.documentElement.classList.contains('app-booting'));
+  const got = await page.evaluate(() => {
+    const sel = document.getElementById('wx-time');
+    const n = new Date();
+    const day = String(n.getUTCDate()).padStart(2, '0') + '/'
+      + String(n.getUTCMonth() + 1).padStart(2, '0') + '/' + n.getUTCFullYear();
+    sel.innerHTML = '';
+    const o = document.createElement('option');
+    o.value = day + '|18:00'; o.textContent = day + ' 18:00Z';
+    sel.appendChild(o);
+    const cb = document.getElementById('sigwx-ov-cb');
+    cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true }));
+    const s = document.getElementById('map-time-slider');
+    s.value = '6'; s.dispatchEvent(new Event('input'));
+    // Right-to-left order on screen is what a Hebrew reader actually gets; the string alone
+    // cannot show the bug.
+    const order = (el) => [...el.querySelectorAll('bdi')]
+      .map(b => ({ t: b.textContent, x: b.getBoundingClientRect().left }))
+      .sort((a, b) => b.x - a.x).map(b => b.t);
+    return { read: order(document.getElementById('map-time-read')),
+             charts: order(document.getElementById('map-time-charts')) };
+  });
+  // The offset is read first, then the clock it names.
+  expect(got.read.length).toBe(2);
+  expect(got.read[0]).toMatch(/^\+6/);
+  expect(got.read[1]).toMatch(/^\d{2}:\d{2}Z$/);
+  // The word, then the timestamp -- with the Z still on the end of the time.
+  expect(got.charts.length).toBe(2);
+  expect(got.charts[0]).not.toMatch(/\d/);
+  expect(got.charts[1]).toMatch(/18:00Z$/);
+});
+
 for (const [name, w, h] of [['desktop', 1200, 850], ['phone', 390, 780]]) {
   test('the clock does not sit on top of the other map furniture (' + name + ')', async ({ page }) => {
     // Found by looking, not by testing: at first the readout landed underneath the
