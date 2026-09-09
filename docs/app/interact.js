@@ -3648,6 +3648,18 @@ function showInspector() {
         note.color = v; draw();
       }, NOTE_DEFAULT_COLOR));
       if (!note.rp) {
+        // Turn the note on the chart. Independent of the map's own rotation and of the leg
+        // it sits beside: a label that reads along a coastline or a runway has an angle of
+        // its own, and nothing else should move it.
+        body.appendChild(rangeRow(S.noteRotation || 'Rotation',
+          Number.isFinite(note.rot) ? note.rot : 0, 0, 355, 5,
+          v => Math.round(v) + '\u00b0', v => {
+            note.rot = v;
+            if (typeof persist === 'function') persist();
+            draw();
+          }, 0));   // ↻ lays it straight again
+      }
+      if (!note.rp) {
         body.appendChild(rangeRow(S.noteSize || 'Size',
           Number.isFinite(note.size) ? note.size : 1, 0.5, 1.5, 0.25,   // symmetric → default 100% sits mid-track
           v => Math.round(v * 100) + '%', v => {
