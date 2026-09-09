@@ -4901,122 +4901,6 @@ if (windDepartSlider) {
   if (cb.checked) enable();
 }());
 
-// --- The map's own clock ----------------------------------------------------
-// Every time-dependent layer answered to a control buried in a menu, and two different ones
-// at that: a look-ahead slider for NOTAM and the winds, a valid-time dropdown for the
-// weather charts. A pilot scrubbing forward is looking at the CHART, so the clock belongs
-// on it -- and there should be one of them.
-//
-// This is the face of the existing look-ahead, not a second mechanism: it moves
-// #lookahead-time, which already cascades to every mirror and carries the walk-back-to-live
-// tick. What it adds is the weather charts, which publish at 00/03/06/12/18Z and so cannot
-// follow an hourly clock exactly. They snap to the newest sheet at or before the chosen
-// hour, and the readout says which one that is rather than leaving two layers quietly
-// disagreeing about what "now + 3" means.
-(function mapClock() {
-  const el = document.getElementById('map-time');
-  const slider = document.getElementById('map-time-slider');
-  const read = document.getElementById('map-time-read');
-  const charts = document.getElementById('map-time-charts');
-  const nowBtn = document.getElementById('map-time-now');
-  const master = document.getElementById('lookahead-time');
-  if (!el || !slider || !master) return;
-
-  const featureOn = () => typeof tune !== 'function' || tune('featureMapClock') !== false;
-  // Which layers actually answer to a clock. Plates, airspace and terrain do not, so with
-  // only those up the control has nothing to move and says so by going quiet.
-  const TIMED = ['notam-cb', 'airmet-cb', 'show-wind-cb', 'windfield-cb', 'airfield-wind-cb',
-                 'ims-pwx-cb', 'sigwx-ov-cb'];
-  const anyTimedLayer = () => TIMED.some(id => {
-    const cb = document.getElementById(id);
-    return !!(cb && cb.checked);
-  });
-
-  // "+14h · 21:00Z" is a Hebrew word, a number and a clock in one string, and in an RTL
-  // paragraph the bidi algorithm runs them together: "+14ש · 21:00Z" rendered as
-  // "+1421:00 · שZ", with the digits merged and the Z adrift. Each part gets its own <bdi>
-  // so no run can reach into its neighbour -- the same treatment the density-altitude
-  // readout needs, for the same reason.
-  function setParts(el, text) {
-    if (!el) return;
-    el.textContent = '';
-    String(text || '').split(' · ').forEach((part, i) => {
-      if (i) el.appendChild(document.createTextNode(' · '));
-      const bdi = document.createElement('bdi');
-      bdi.textContent = part;
-      el.appendChild(bdi);
-    });
-  }
-  function label() {
-    const h = parseInt(slider.value, 10) || 0;
-    setParts(read, (typeof notamTimeLabel === 'function')
-      ? notamTimeLabel(h) : (h ? '+' + h + 'h' : 'now'));
-    if (nowBtn) nowBtn.disabled = h === 0;
-  }
-  // Pull the weather charts to the hour, and say which sheet that turned out to be. Only
-  // while one of them is on: moving the shared dropdown for a layer nobody is looking at
-  // would overwrite a choice the pilot made for later.
-  function syncCharts() {
-    if (!charts) return;
-    const on = ['ims-pwx-cb', 'sigwx-ov-cb'].some(id => {
-      const cb = document.getElementById(id);
-      return !!(cb && cb.checked);
-    });
-    if (!on || typeof NavWxTime === 'undefined' || !NavWxTime.followInstant) {
-      charts.hidden = true;
-      return;
-    }
-    const h = parseInt(slider.value, 10) || 0;
-    const instant = (typeof topOfHour === 'function' ? topOfHour(Date.now()) : Date.now()) + h * 3600e3;
-    const picked = NavWxTime.followInstant(instant);
-    charts.hidden = !picked;
-    if (picked) {
-      // Label and timestamp are separate runs: "מפות" beside "09/09/2026 18:00Z" ran
-      // together into "Zמפות 09/09/2026 18:00", carrying the Z to the wrong end.
-      charts.textContent = '';
-      const word = document.createElement('bdi');
-      word.textContent = S.mapTimeCharts || 'charts';
-      const when = document.createElement('bdi');
-      when.textContent = picked;
-      charts.append(word, ' ', when);
-      charts.title = S.mapTimeChartsTitle || '';
-    }
-  }
-  function refresh() {
-    el.hidden = !featureOn();
-    el.classList.toggle('idle', !anyTimedLayer());
-    label();
-  }
-  NavAid.refreshMapClock = refresh;
-
-  slider.addEventListener('input', () => {
-    // Drive the master and let it cascade: NOTAM, wind effect, wind field and airfield wind
-    // are already wired to it, and it owns the "+3h means 15:00Z" anchoring.
-    master.value = slider.value;
-    master.dispatchEvent(new Event('input'));
-    label();
-    syncCharts();
-  });
-  // The master moves on its own as the clock catches up (lookaheadTick walks it back toward
-  // live). Follow it, or the map would keep showing an offset the layers no longer use.
-  master.addEventListener('input', () => {
-    if (slider.value !== master.value) { slider.value = master.value; label(); syncCharts(); }
-  });
-  if (nowBtn) nowBtn.addEventListener('click', () => {
-    slider.value = '0';
-    slider.dispatchEvent(new Event('input'));
-  });
-  // A layer switched on or off changes whether the clock has anything to move, and whether
-  // the charts line needs to be there.
-  for (const id of TIMED) {
-    const cb = document.getElementById(id);
-    if (cb) cb.addEventListener('change', () => { refresh(); syncCharts(); });
-  }
-  slider.max = String(Math.round((typeof tune === 'function' && tune('mapClockHoursAhead')) || 24));
-  refresh();
-  syncCharts();
-}());
-
 // --- Unified look-ahead time slider (drives NOTAM + wind-depart + windfield + airfield wind) ---
 (function () {
   const master = document.getElementById('lookahead-time');
@@ -9904,6 +9788,137 @@ const NavWxTime = (function () {
   };
   return api;
 })();
+
+// --- The map's own clock ----------------------------------------------------
+// Every time-dependent layer answered to a control buried in a menu, and two different ones
+// at that: a look-ahead slider for NOTAM and the winds, a valid-time dropdown for the
+// weather charts. A pilot scrubbing forward is looking at the CHART, so the clock belongs
+// on it -- and there should be one of them.
+//
+// This is the face of the existing look-ahead, not a second mechanism: it moves
+// #lookahead-time, which already cascades to every mirror and carries the walk-back-to-live
+// tick. What it adds is the weather charts, which publish at 00/03/06/12/18Z and so cannot
+// follow an hourly clock exactly. They snap to the newest sheet at or before the chosen
+// hour, and the readout says which one that is rather than leaving two layers quietly
+// disagreeing about what "now + 3" means.
+(function mapClock() {
+  const el = document.getElementById('map-time');
+  const slider = document.getElementById('map-time-slider');
+  const read = document.getElementById('map-time-read');
+  const charts = document.getElementById('map-time-charts');
+  const nowBtn = document.getElementById('map-time-now');
+  const master = document.getElementById('lookahead-time');
+  if (!el || !slider || !master) return;
+
+  const featureOn = () => typeof tune !== 'function' || tune('featureMapClock') !== false;
+  // Which layers actually answer to a clock. Plates, airspace and terrain do not, so with
+  // only those up the control has nothing to move and says so by going quiet.
+  const TIMED = ['notam-cb', 'airmet-cb', 'show-wind-cb', 'windfield-cb', 'airfield-wind-cb',
+                 'ims-pwx-cb', 'sigwx-ov-cb'];
+  const anyTimedLayer = () => TIMED.some(id => {
+    const cb = document.getElementById(id);
+    return !!(cb && cb.checked);
+  });
+
+  // "+14h · 21:00Z" is a Hebrew word, a number and a clock in one string, and in an RTL
+  // paragraph the bidi algorithm runs them together: "+14ש · 21:00Z" rendered as
+  // "+1421:00 · שZ", with the digits merged and the Z adrift. Each part gets its own <bdi>
+  // so no run can reach into its neighbour -- the same treatment the density-altitude
+  // readout needs, for the same reason.
+  function setParts(el, text) {
+    if (!el) return;
+    el.textContent = '';
+    String(text || '').split(' · ').forEach((part, i) => {
+      if (i) el.appendChild(document.createTextNode(' · '));
+      const bdi = document.createElement('bdi');
+      bdi.textContent = part;
+      el.appendChild(bdi);
+    });
+  }
+  function label() {
+    const h = parseInt(slider.value, 10) || 0;
+    setParts(read, (typeof notamTimeLabel === 'function')
+      ? notamTimeLabel(h) : (h ? '+' + h + 'h' : 'now'));
+    if (nowBtn) nowBtn.disabled = h === 0;
+  }
+  const chartsOn = () => ['ims-pwx-cb', 'sigwx-ov-cb'].some(id => {
+    const cb = document.getElementById(id);
+    return !!(cb && cb.checked);
+  });
+  // Pull the charts to the hour. ONLY on a scrub: moving the clock is a request about time,
+  // but switching a layer on is not. Doing it on toggle overwrote a valid time the pilot had
+  // chosen from the dropdown -- pick the SIGWX-only 18:00 sheet, enable the overlays, and the
+  // selection jumped back to whatever was newest by now.
+  function pullCharts() {
+    if (!charts || !chartsOn()) return showCharts();
+    if (!NavWxTime.followInstant) return showCharts();
+    const h = parseInt(slider.value, 10) || 0;
+    const instant = (typeof topOfHour === 'function' ? topOfHour(Date.now()) : Date.now()) + h * 3600e3;
+    NavWxTime.followInstant(instant);
+    showCharts();
+  }
+  // Say which sheet is on screen, reading the shared dropdown rather than moving it.
+  function showCharts() {
+    if (!charts) return;
+    const sel = document.getElementById('wx-time');
+    const picked = (chartsOn() && sel && sel.selectedIndex >= 0)
+      ? (sel.options[sel.selectedIndex].textContent || '') : '';
+    charts.hidden = !picked;
+    if (picked) {
+      // Label and timestamp are separate runs: "מפות" beside "09/09/2026 18:00Z" ran
+      // together into "Zמפות 09/09/2026 18:00", carrying the Z to the wrong end.
+      charts.textContent = '';
+      const word = document.createElement('bdi');
+      word.textContent = S.mapTimeCharts || 'charts';
+      const when = document.createElement('bdi');
+      when.textContent = picked;
+      charts.append(word, ' ', when);
+      charts.title = S.mapTimeChartsTitle || '';
+    }
+  }
+  function refresh() {
+    el.hidden = !featureOn();
+    el.classList.toggle('idle', !anyTimedLayer());
+    label();
+  }
+  NavAid.refreshMapClock = refresh;
+
+  slider.addEventListener('input', () => {
+    // Drive the master and let it cascade: NOTAM, wind effect, wind field and airfield wind
+    // are already wired to it, and it owns the "+3h means 15:00Z" anchoring.
+    master.value = slider.value;
+    master.dispatchEvent(new Event('input'));
+    label();
+    pullCharts();
+  });
+  // The master moves on its own as the clock catches up (lookaheadTick walks it back toward
+  // live). Follow it, or the map would keep showing an offset the layers no longer use.
+  master.addEventListener('input', () => {
+    if (slider.value !== master.value) { slider.value = master.value; label(); pullCharts(); }
+  });
+  if (nowBtn) nowBtn.addEventListener('click', () => {
+    slider.value = '0';
+    slider.dispatchEvent(new Event('input'));
+  });
+  // A layer switched on or off changes whether the clock has anything to move, and whether
+  // the charts line needs to be there.
+  for (const id of TIMED) {
+    const cb = document.getElementById(id);
+    // Only the label follows a toggle -- the selection is the pilot's until they scrub.
+    if (cb) cb.addEventListener('change', () => { refresh(); showCharts(); });
+  }
+  slider.max = String(Math.round((typeof tune === 'function' && tune('mapClockHoursAhead')) || 24));
+  refresh();
+  showCharts();
+  // Keep the label honest when the dropdown moves for its own reasons (a feed arriving with
+  // a closer valid time, or the pilot choosing one).
+  // Wired AFTER NavWxTime is built, so this is a plain reference. It used to sit earlier in
+  // the file behind a `typeof NavWxTime !== 'undefined'` guard -- which throws for a const in
+  // its temporal dead zone rather than reporting "undefined", taking the whole script down
+  // and leaving the weather dropdown empty.
+  NavWxTime.onChange(showCharts);
+}());
+
 
 // Shared opacity for the IMS weather-chart overlays — one #wx-opacity slider
 // fades both the wind/temp (PWX) and SIGWX overlays. Single owner: seeds the

@@ -75,11 +75,16 @@ test('with nothing time-dependent on, the clock goes quiet instead of vanishing'
   // House rule: dim, never hide. A control that disappears is a control the pilot hunts for.
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(true);
   expect(await page.evaluate(() => document.getElementById('map-time').hidden)).toBe(false);
-  await page.evaluate(() => {
-    const cb = document.getElementById('notam-cb');
+  // The wind-effect toggle, because it does not fetch on enable: NOTAM and the wind grids
+  // switch themselves back off when their feed cannot be reached, which in a test looks
+  // exactly like the clock ignoring the toggle.
+  const on = await page.evaluate(() => {
+    const cb = document.getElementById('show-wind-cb');
     cb.checked = true;
     cb.dispatchEvent(new Event('change', { bubbles: true }));
+    return cb.checked;
   });
+  expect(on, 'the layer stayed on').toBe(true);
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(false);
 });
 
