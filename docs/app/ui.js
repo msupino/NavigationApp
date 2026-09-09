@@ -4888,6 +4888,100 @@ if (windDepartSlider) {
   if (cb.checked) enable();
 }());
 
+// --- The map's own clock ----------------------------------------------------
+// Every time-dependent layer answered to a control buried in a menu, and two different ones
+// at that: a look-ahead slider for NOTAM and the winds, a valid-time dropdown for the
+// weather charts. A pilot scrubbing forward is looking at the CHART, so the clock belongs
+// on it -- and there should be one of them.
+//
+// This is the face of the existing look-ahead, not a second mechanism: it moves
+// #lookahead-time, which already cascades to every mirror and carries the walk-back-to-live
+// tick. What it adds is the weather charts, which publish at 00/03/06/12/18Z and so cannot
+// follow an hourly clock exactly. They snap to the newest sheet at or before the chosen
+// hour, and the readout says which one that is rather than leaving two layers quietly
+// disagreeing about what "now + 3" means.
+(function mapClock() {
+  const el = document.getElementById('map-time');
+  const slider = document.getElementById('map-time-slider');
+  const read = document.getElementById('map-time-read');
+  const charts = document.getElementById('map-time-charts');
+  const nowBtn = document.getElementById('map-time-now');
+  const master = document.getElementById('lookahead-time');
+  if (!el || !slider || !master) return;
+
+  const featureOn = () => typeof tune !== 'function' || tune('featureMapClock') !== false;
+  // Which layers actually answer to a clock. Plates, airspace and terrain do not, so with
+  // only those up the control has nothing to move and says so by going quiet.
+  const TIMED = ['notam-cb', 'airmet-cb', 'show-wind-cb', 'windfield-cb', 'airfield-wind-cb',
+                 'ims-pwx-cb', 'sigwx-ov-cb'];
+  const anyTimedLayer = () => TIMED.some(id => {
+    const cb = document.getElementById(id);
+    return !!(cb && cb.checked);
+  });
+
+  function label() {
+    const h = parseInt(slider.value, 10) || 0;
+    if (read) read.textContent = (typeof notamTimeLabel === 'function')
+      ? notamTimeLabel(h) : (h ? '+' + h + 'h' : 'now');
+    if (nowBtn) nowBtn.disabled = h === 0;
+  }
+  // Pull the weather charts to the hour, and say which sheet that turned out to be. Only
+  // while one of them is on: moving the shared dropdown for a layer nobody is looking at
+  // would overwrite a choice the pilot made for later.
+  function syncCharts() {
+    if (!charts) return;
+    const on = ['ims-pwx-cb', 'sigwx-ov-cb'].some(id => {
+      const cb = document.getElementById(id);
+      return !!(cb && cb.checked);
+    });
+    if (!on || typeof NavWxTime === 'undefined' || !NavWxTime.followInstant) {
+      charts.hidden = true;
+      return;
+    }
+    const h = parseInt(slider.value, 10) || 0;
+    const instant = (typeof topOfHour === 'function' ? topOfHour(Date.now()) : Date.now()) + h * 3600e3;
+    const picked = NavWxTime.followInstant(instant);
+    charts.hidden = !picked;
+    if (picked) {
+      charts.textContent = (S.mapTimeCharts || 'charts') + ' ' + picked;
+      charts.title = S.mapTimeChartsTitle || '';
+    }
+  }
+  function refresh() {
+    el.hidden = !featureOn();
+    el.classList.toggle('idle', !anyTimedLayer());
+    label();
+  }
+  NavAid.refreshMapClock = refresh;
+
+  slider.addEventListener('input', () => {
+    // Drive the master and let it cascade: NOTAM, wind effect, wind field and airfield wind
+    // are already wired to it, and it owns the "+3h means 15:00Z" anchoring.
+    master.value = slider.value;
+    master.dispatchEvent(new Event('input'));
+    label();
+    syncCharts();
+  });
+  // The master moves on its own as the clock catches up (lookaheadTick walks it back toward
+  // live). Follow it, or the map would keep showing an offset the layers no longer use.
+  master.addEventListener('input', () => {
+    if (slider.value !== master.value) { slider.value = master.value; label(); syncCharts(); }
+  });
+  if (nowBtn) nowBtn.addEventListener('click', () => {
+    slider.value = '0';
+    slider.dispatchEvent(new Event('input'));
+  });
+  // A layer switched on or off changes whether the clock has anything to move, and whether
+  // the charts line needs to be there.
+  for (const id of TIMED) {
+    const cb = document.getElementById(id);
+    if (cb) cb.addEventListener('change', () => { refresh(); syncCharts(); });
+  }
+  slider.max = String(Math.round((typeof tune === 'function' && tune('mapClockHoursAhead')) || 24));
+  refresh();
+  syncCharts();
+}());
+
 // --- Unified look-ahead time slider (drives NOTAM + wind-depart + windfield + airfield wind) ---
 (function () {
   const master = document.getElementById('lookahead-time');
@@ -9552,6 +9646,18 @@ function imsNearestTimeIndex(times) {
 // its own entry by valid alone, whichever feed lost the race then rendered a chart 24 h from
 // the day printed on the selected option. Use NavWxTime.match(entry) to resolve rather than
 // comparing to the raw value.
+// "05/08/2026" + "18:00" -> epoch ms. The option carries the day precisely so a valid time
+// can be resolved without guessing which day it belongs to.
+function wxOptionEpoch(day, valid) {
+  const d = String(day || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const v = String(valid || '').match(/^(\d{1,2}):(\d{2})$/);
+  if (!v) return null;
+  const now = new Date();
+  const [Y, M, D] = d ? [+d[3], +d[2] - 1, +d[1]]
+                      : [now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()];
+  return Date.UTC(Y, M, D, +v[1], +v[2]);
+}
+
 const NavWxTime = (function () {
   const KEY = 'navaid.wxTime';
   const sel = document.getElementById('wx-time');
@@ -9731,6 +9837,30 @@ const NavWxTime = (function () {
     },
     ensure,
     prefer,
+    // Move to the newest chart published at or before `ms`. The map clock is continuous and
+    // these feeds are not -- they publish at 00/03/06/12/18Z -- so "the chart for 15:00Z" is
+    // whatever was last issued by then. Returns the option text so the caller can say which
+    // sheet is actually on screen; scrubbing the clock is an explicit request and therefore
+    // overrides a pin, exactly as changing level does.
+    followInstant(ms) {
+      if (!sel || !sel.options.length || !Number.isFinite(ms)) return '';
+      let best = null;
+      for (const o of sel.options) {
+        const { day, valid } = parse(o.value);
+        const t = wxOptionEpoch(day, valid);
+        if (t === null) continue;
+        if (t <= ms && (!best || t > best.t)) best = { t, o };
+      }
+      // Before the first published sheet there is nothing earlier to fall back to; show the
+      // earliest rather than nothing, which is what the dropdown would have seeded anyway.
+      const pick = best ? best.o : sel.options[0];
+      if (sel.value !== pick.value) {
+        sel.value = pick.value;
+        pinned = true;              // the clock is now the choice, and poll() must not re-seed it
+        notify(true);
+      }
+      return pick.textContent || '';
+    },
     register,   // a feed registers its refetch() so poll() keeps the dropdown live
     poll,       // exposed for tests to trigger a re-poll deterministically
     // Called for BOTH a pilot change and a programmatic re-seed; the argument says which,
