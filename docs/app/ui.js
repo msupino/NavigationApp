@@ -3281,6 +3281,19 @@ document.getElementById('clear').onclick = () => {
     map.setBearing(0);
     if (typeof refreshOrientControl === 'function') refreshOrientControl();
   }
+  // Extra layers were switched on for THIS flight: the plates for the fields it visits, the
+  // NOTAMs along it, the wind at the hour it was planned for. Clear map is "start again", and
+  // starting again on a chart still carrying the last flight's overlays is the state this
+  // button exists to escape. Each toggle is turned off through its own handler, so the layer
+  // tears itself down (and persists the choice) exactly as if it had been clicked.
+  const extra = document.querySelector('.tb-section[data-sec="weather"]');
+  if (extra) {
+    for (const cb of extra.querySelectorAll('input[type="checkbox"]')) {
+      if (!cb.checked) continue;
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
   showInspector(); draw();
 };
 document.getElementById('tool-reset-all-wp-names').onclick = () => {
