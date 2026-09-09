@@ -1,0 +1,535 @@
+{
+ "_note": "What each plate we ship IS, in the CAA index's own words. Written by scripts/aip-plate-sources.py from a file whose hash matched the index, so every entry is a fact rather than a guess. The title is what survives an amendment: the hash changes, our filename means nothing to the CAA, the title stays.",
+ "docs/byop-enr/AD-2.2_LLHA_Haifa.pdf": {
+  "title": "AD 2.2 HAIFA - LLHA",
+  "modified": "2026-08-06"
+ },
+ "docs/byop-enr/AD-2.5_LLBG_Ben-Gurion.pdf": {
+  "title": "AD 2.5 TEL-AVIV-BEN-GURION - LLBG",
+  "modified": "2026-08-06"
+ },
+ "docs/byop-enr/AD-2.7_LLER_Eilat-Ramon.pdf": {
+  "title": "AD 2.7 EILAT - ILAN AND ASAF RAMON - LLER",
+  "modified": "2026-08-06"
+ },
+ "docs/byop-enr/ENR-2.1_FIR-TMA.pdf": {
+  "title": "ENR 2.1 FIR, TMA",
+  "modified": "2026-08-06"
+ },
+ "docs/byop-enr/ENR-2.2_other-regulated.pdf": {
+  "title": "ENR 2.2 Other regulated airspace",
+  "modified": "2022-08-01"
+ },
+ "docs/byop-enr/ENR-5.1_prohibited-restricted-danger.pdf": {
+  "title": "ENR 5.1 Prohibited, restricted and danger areas",
+  "modified": "2025-05-15"
+ },
+ "docs/byop-enr/ENR-5.2_military-training.pdf": {
+  "title": "ENR 5.2 Military exercise and training areas",
+  "modified": "2022-08-01"
+ },
+ "docs/byop/LLAR_airport_Chart.pdf": {
+  "title": "ערד - נספח א_ תרשים המנחת",
+  "modified": "2021-08-21"
+ },
+ "docs/byop/LLAR_airport_Circuit.pdf": {
+  "title": "ערד - נספח ב_ תרשים ההקפה",
+  "modified": "2021-08-21"
+ },
+ "docs/byop/LLBG_APPROACH_ILS 21.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO ILS RWY 21",
+  "modified": "2024-10-31"
+ },
+ "docs/byop/LLBG_APPROACH_ILS 26.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO ILS RWY 26",
+  "modified": "2023-11-02"
+ },
+ "docs/byop/LLBG_APPROACH_LOC 12.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO LOC RWY 12",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLBG_APPROACH_LOC 21.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO LOC RWY 21",
+  "modified": "2024-08-12"
+ },
+ "docs/byop/LLBG_APPROACH_PATC 12.pdf": {
+  "title": "Precision Approach Terrain Chart - ICAO RWY 12",
+  "modified": "2022-08-01"
+ },
+ "docs/byop/LLBG_APPROACH_RNP 08.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO RNP RWY 08",
+  "modified": "2024-08-12"
+ },
+ "docs/byop/LLBG_APPROACH_RNP X 21.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO RNP X RWY 21",
+  "modified": "2022-08-01"
+ },
+ "docs/byop/LLBG_ATC_SMAC.pdf": {
+  "title": "ATC Surveillance Minimum Altitude Chart - ICAO",
+  "modified": "2023-06-15"
+ },
+ "docs/byop/LLBG_Ground_Aiport Chart.pdf": {
+  "title": "Aerodrome Chart - ICAO",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLBG_Ground_GA Apron.pdf": {
+  "title": "Aircraft Parking-docking Chart - ICAO APRON V",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLBG_Ground_H+X Apron.pdf": {
+  "title": "Aircraft parking chart - ICAO Terminal 3 APRON H, X",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLBG_Ground_N Apron.pdf": {
+  "title": "Aircraft parking chart - ICAO Terminal 1 APRON N",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLBG_Ground_Terminal 1 Parking.pdf": {
+  "title": "Aircraft parking-docking chart – ICAO Terminal 1",
+  "modified": "2025-08-13"
+ },
+ "docs/byop/LLBG_SID_12-26-30 (Pidet+Ripud).pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 PIDET 2C, 1E, 1F, RIPUD 1E, 1F",
+  "modified": "2024-10-31"
+ },
+ "docs/byop/LLBG_STAR_08-1_V1_en.pdf": {
+  "title": "Standard Arrival Chart Instrument (STAR) - ICAO RWY 08 PURLA 1A",
+  "modified": "2024-10-31"
+ },
+ "docs/byop/LLBG_STAR_12-1_V1_en.pdf": {
+  "title": "Standard Arrival chart instrument (STAR) - ICAO RWY 12 AMMIT 1B, SALAM 2B",
+  "modified": "2024-10-31"
+ },
+ "docs/byop/LLBG_STAR_12-30-1_V2_en.pdf": {
+  "title": "Standard Arrival chart instrument (STAR) - ICAO RWY 12, 30 NINET 1, GODED 2",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLBG_STAR_21-26-1_V2_en.pdf": {
+  "title": "Standard arrival chart instrument (STAR) - ICAO - RWY_s 21,26 AMMOS 1A, 1B, AMMIT 1A, SALAM 2A",
+  "modified": "2024-10-31"
+ },
+ "docs/byop/LLBG_STAR_30-2_V1_en.pdf": {
+  "title": "Standard Arrival chart instrument (STAR) - ICAO ILS RWY 30 VETEK 1A, ADLOD 1A, 1B",
+  "modified": "2024-10-31"
+ },
+ "docs/byop/LLBG_TRANSITION_ERREZ 1A.pdf": {
+  "title": "RNAV Transition Instrument - RWYs 21,26 ERREZ 1A",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLBG_VAC_21NAMIM_en.pdf": {
+  "title": "Visual approach chart NAMIM approach RWY 21",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLBG_VAC_30-2_V1_en.pdf": {
+  "title": "Visual approach chart GAVRI approach RWY 30",
+  "modified": "2023-11-02"
+ },
+ "docs/byop/LLBG_VAC_30-3_v1_en.pdf": {
+  "title": "Visual approach chart ROMIE approach RWY 30",
+  "modified": "2024-05-16"
+ },
+ "docs/byop/LLBG_VAC_en.pdf": {
+  "title": "Visual approach chart",
+  "modified": "2022-08-01"
+ },
+ "docs/byop/LLBO_Ground_Diagram.pdf": {
+  "title": "הבונים - נספח א_ תרשים המנחת",
+  "modified": "2021-08-21"
+ },
+ "docs/byop/LLBO_airport_Chart.pdf": {
+  "title": "מנחת הבונים - LLBO - דפי מלל",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLBO_airport_Circuit.pdf": {
+  "title": "הבונים - נספח ב_ תרשים ההקפה",
+  "modified": "2021-08-21"
+ },
+ "docs/byop/LLBO_airport_Routes.pdf": {
+  "title": "הבונים - נספח ג_ כניסה ויציאה לנתיבי CVFR",
+  "modified": "2021-08-21"
+ },
+ "docs/byop/LLBS_airport_Annex Alef.pdf": {
+  "title": "באר שבע - נספח א' - תרשים המנחת",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLBS_airport_Annex Bet.pdf": {
+  "title": "באר שבע - נספח ב' - תרשים ההקפה",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLBS_airport_Annex Daled.pdf": {
+  "title": "באר שבע - נספח ד' - אזורי אימון",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLBS_airport_Annex Gimel.pdf": {
+  "title": "באר שבע - נספח ג' - נתיבי כניסה ויציאה",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLBS_airport_Chart.pdf": {
+  "title": "מנחת באר-שבע - LLBS - דפי מלל",
+  "modified": "2024-10-31"
+ },
+ "docs/byop/LLER_ADC_3_en.pdf": {
+  "title": "AIRCRAFT PARKING CHART - APRON V - ICAO",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLER_ADC_RST_en.pdf": {
+  "title": "AIRCRAFT PARKING CHART - APRON R, S, T - ICAO",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLER_ADC_U_en.pdf": {
+  "title": "AIRCRAFT PARKING CHART - APRON U - ICAO",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLER_ADC_V1_en.pdf": {
+  "title": "AERODROME CHART - ICAO",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_APPROACH_ILS 01.pdf": {
+  "title": "INSTRUMENT APPROACH CHART- ICAO ILS RWY 01",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_APPROACH_ILS 19.pdf": {
+  "title": "INSTRUMENT APPROACH CHART- ICAO ILS RWY 19 - ICAO",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLER_APPROACH_RNP 01.pdf": {
+  "title": "INSTRUMENT APPROACH CHART - ICAO RNP RWY 01",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_APPROACH_RNP 19.pdf": {
+  "title": "INSTRUMENT APPROACH CHART- ICAO RNP RWY 19",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLER_SID_01-1_en.pdf": {
+  "title": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 01, NURIT 1F",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLER_SID_01NH_en.pdf": {
+  "title": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 01, NURIT 2H",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLER_SID_19-1_en.pdf": {
+  "title": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 19, NURIT 1K",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_SID_19-3_en.pdf": {
+  "title": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 19, NURIT 1J",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_SID_19NM_en.pdf": {
+  "title": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 19, NURIT 1M",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_SID_19NN_en.pdf": {
+  "title": "STANDARD DEPARTURE CHART INSTRUMENT (SID) - ICAO RWY 19, NURIT 1N",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_STAR_01-1_en.pdf": {
+  "title": "STANDARD ARRIVAL CHART INSTRUMENT (STAR) - ICAO RWY 01, NURIT 1D",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_STAR_01-2_en.pdf": {
+  "title": "STANDARD ARRIVAL CHART INSTRUMENT (STAR) - ICAO RWY 01, NURIT 1B",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_VAC_01-1_en.pdf": {
+  "title": "RNAV VISUAL APPROACH RWY01",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLER_VAC_19-1_en.pdf": {
+  "title": "RNAV VISUAL APPROACH RWY19",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLER_VFRTA_en.pdf": {
+  "title": "TRAINING AREAS",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLES_airport_Chart.pdf": {
+  "title": "מנחת עין שמר - LLES - דפי מלל",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLES_airport_Text.pdf": {
+  "title": "עין שמר - נספח ג_ תרשים עזיבה והצטרפות לכטבם",
+  "modified": "2021-08-21"
+ },
+ "docs/byop/LLEY_airport_Annex Alef.pdf": {
+  "title": "עין יהב - נספח א' תרשים המנחת",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLEY_airport_CVFR.pdf": {
+  "title": "עין יהב - נספח ג_ כניסה ויציאה לנתיבי CVFR",
+  "modified": "2021-08-21"
+ },
+ "docs/byop/LLEY_airport_Chart.pdf": {
+  "title": "מנחת עין יהב - LLEY - דפי מלל",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLEY_airport_Circuit.pdf": {
+  "title": "עין יהב - נספח ב_ תרשים ההקפה",
+  "modified": "2021-08-21"
+ },
+ "docs/byop/LLFK_airport_Annex Alef.pdf": {
+  "title": "פיק - נספח א' תרשים המנחת",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLFK_airport_CVFR.pdf": {
+  "title": "פיק - נספח ג' כניסה ויציאה לנתיבי CVFR",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLFK_airport_Chart.pdf": {
+  "title": "מנחת פיק - LLFK - דפי מלל",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLFK_airport_Circuit.pdf": {
+  "title": "פיק - נספח ב' תרשים ההקפה",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLFK_airport_Text.pdf": {
+  "title": "פיק - נספח ה' הצטרפות ועזיבה - כטבם",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHA_STAR_GALIM.pdf": {
+  "title": "STANDARD ARRIVAL CHART INSTRUMENT (STAR) - GALIM1A, GALIM 1B",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLHA_airport_Annex Alef.pdf": {
+  "title": "חיפה - נספח א' - תרשים השדה",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLHA_airport_Annex Bet 2.pdf": {
+  "title": "חיפה - נספח ב'-2 תרשים החניה - רחבה N",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLHA_airport_Annex Bet 3.pdf": {
+  "title": "חיפה - נספח ב'-3 תרשים החניה - רחבה Z",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLHA_airport_Annex Bet 4.pdf": {
+  "title": "חיפה - נספח ב' תרשים החניה",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLHA_airport_Annex Bet.pdf": {
+  "title": "חיפה - נספח ב'-1 תרשים החניה - רחבה G",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLHA_airport_Annex Chet.pdf": {
+  "title": "חיפה - נספח ח' הצטרפות בתקלת קשר מנתיבי CVFR",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLHA_airport_Annex Daled.pdf": {
+  "title": "חיפה - נספח ד' נתיבי כניסה ויציאה בגובה נמוך",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLHA_airport_Annex Gimel.pdf": {
+  "title": "חיפה - נספח ג' נתיבי כניסה-יציאה (CVFR)",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLHA_airport_Annex He.pdf": {
+  "title": "חיפה - נספח ה' אזורי האימון",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLHA_airport_Annex Tet.pdf": {
+  "title": "חיפה - נספח ט' מפת מכשולים מסלול 15-33",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLHA_airport_Annex Zayin.pdf": {
+  "title": "חיפה - נספח ז' תרשים ההקפה",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLHA_airport_Chart.pdf": {
+  "title": "שדה תעופה חיפה - LLHA - דברי מלל",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLHZ_airport_Annex Alef.pdf": {
+  "title": "הרצליה - נספח א' - תרשים השדה",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLHZ_airport_Annex Chet.pdf": {
+  "title": "הרצליה - נספח ח' יציאה לנתיבי ATS",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Annex Gimel.pdf": {
+  "title": "הרצליה - נספח ג' - כניסה ויציאה לנתיבי התובלה הנמוכים",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Annex He.pdf": {
+  "title": "הרצליה - נספח ה' - נתיבי יציאה וכניסה גובה נמוך",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Annex Tet.pdf": {
+  "title": "הרצליה - נספח ט' עמדות חנייה ברחבות C ,B ,A",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Annex Yud Alef 2.pdf": {
+  "title": "הרצליה - נספח יא'-2 עמדות חנייה ברחבה D",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Annex Yud Alef 3.pdf": {
+  "title": "הרצליה - נספח יא' עמדות חנייה ברחבה G",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLHZ_airport_Annex Yud Alef.pdf": {
+  "title": "הרצליה - נספח יא'-1 עמדות חנייה ברחבה E",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Annex Yud Bet.pdf": {
+  "title": "הרצליה - נספח יב' תרשים ההקפה",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Annex Yud Gimel.pdf": {
+  "title": "הרצליה - נספח יג' הצטרפות באובדן קשר מנתיבי CVFR",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Annex Yud.pdf": {
+  "title": "הרצליה - נספח י' עמדות חנייה ברחבה F",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Annex Zayin.pdf": {
+  "title": "הרצליה - נספח ז' - אזורי האימון",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLHZ_airport_Chart.pdf": {
+  "title": "שדה תעופה הרצליה - LLHZ - דברי מלל",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLIB_airport_Annex Alef.pdf": {
+  "title": "ראש פינה - נספח א' - תרשים השדה",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLIB_airport_Annex Bet.pdf": {
+  "title": "ראש פינה - נספח ב' - תרשים עמדות חנייה",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLIB_airport_Annex Chet.pdf": {
+  "title": "ראש פינה - נספח ח' אזורי דאיה מקומית",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLIB_airport_Annex Daled.pdf": {
+  "title": "ראש פינה - נספח ד' הצטרפות בתקלת קשר מנתיבי CVFR",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLIB_airport_Annex Gimel.pdf": {
+  "title": "ראש פינה - נספח ג' נתיבי כניסה ויציאה",
+  "modified": "2023-11-02"
+ },
+ "docs/byop/LLIB_airport_Annex He.pdf": {
+  "title": "ראש פינה - נספח ה' תרשים ההקפה",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLIB_airport_Annex Vav.pdf": {
+  "title": "ראש פינה - נספח ו' STANDARD INSTRUMENT DEPARTURE RWY 15 and 33",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLIB_airport_Annex Yud Alef.pdf": {
+  "title": "ראש פינה - נספח יא' Visual appraoch chart",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLIB_airport_Annex Yud Bet.pdf": {
+  "title": "ראש פינה - נספח יב' Hot-Spots",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLIB_airport_Annex Yud.pdf": {
+  "title": "ראש פינה - נספח י' אזורי אימון",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLIB_airport_Annex Zayin.pdf": {
+  "title": "ראש פינה - נספח ז' תהליך גישה VOR",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLIB_airport_Chart.pdf": {
+  "title": "שדה תעופה ראש פינה - LLIB - דברי מלל",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLKS_Ground_Diagram.pdf": {
+  "title": "קרית שמונה - נספח א' תרשים המנחת",
+  "modified": "2022-04-13"
+ },
+ "docs/byop/LLKS_airport_CVFR.pdf": {
+  "title": "קרית שמונה - נספח ב' הקפה ונתיבי כניסה-יציאה CVFR",
+  "modified": "2021-11-02"
+ },
+ "docs/byop/LLKS_airport_Chart.pdf": {
+  "title": "מנחת קרית שמונה - LLKS - דפי מלל",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLKZ_airport_Annex Alef.pdf": {
+  "title": "קציעות - נספח א' - תרשים המנחת",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLKZ_airport_Chart.pdf": {
+  "title": "מנחת קציעות - LLKZ - דפי מלל",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLKZ_airport_Circuit.pdf": {
+  "title": "קציעות - נספח ב' - תרשים הקפה",
+  "modified": "2022-04-13"
+ },
+ "docs/byop/LLMG_airport_Annex Alef.pdf": {
+  "title": "מגידו - נספח א' - תרשים המנחת",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLMG_airport_Annex Daled.pdf": {
+  "title": "מגידו - נספח ד' - אזורי אימון",
+  "modified": "2023-11-02"
+ },
+ "docs/byop/LLMG_airport_CVFR.pdf": {
+  "title": "מגידו - נספח ג' - נתיבי כניסה ויציאה - CVFR",
+  "modified": "2022-04-13"
+ },
+ "docs/byop/LLMG_airport_Chart.pdf": {
+  "title": "מנחת מגידו - LLMG - דפי מלל",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLMG_airport_Circuit.pdf": {
+  "title": "מגידו - נספח ב' - תרשים ההקפה",
+  "modified": "2022-04-13"
+ },
+ "docs/byop/LLMG_departure_CVFR.pdf": {
+  "title": "מגידו - נספח ה' - הצטרפות ועזיבה - כטבם",
+  "modified": "2022-04-13"
+ },
+ "docs/byop/LLMZ_airport_Annex Alef.pdf": {
+  "title": "מצדה - נספח א' תרשים המנחת",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLMZ_airport_Annex Bet.pdf": {
+  "title": "מצדה - נספח ב' תרשים הקפה",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLMZ_airport_Annex Gimel.pdf": {
+  "title": "מצדה - נספח ג' - נתיבי כניסה ויציאה",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLMZ_airport_Chart.pdf": {
+  "title": "מנחת מצדה - LLMZ - דפי מלל",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLRS_airport_Annex Alef.pdf": {
+  "title": "ראשון לציון - נספח א_ - תרשים המנחת",
+  "modified": "2024-10-31"
+ },
+ "docs/byop/LLRS_airport_Annex Bet.pdf": {
+  "title": "ראשון לציון - נספח ב_ - תרשים הקפה",
+  "modified": "2024-10-31"
+ },
+ "docs/byop/LLRS_airport_Annex Daled.pdf": {
+  "title": "ראשון לציון - נספח ד' - אזורי אימון והמתנה - אזמ",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLRS_airport_Annex Gimel.pdf": {
+  "title": "ראשון לציון - נספח ג' - נתיבי כניסה ויציאה אזמ",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLRS_airport_Annex He.pdf": {
+  "title": "ראשון לציון - נספח ה' - כניסה מנתיב התובלה הנמוך מצפון",
+  "modified": "2025-09-30"
+ },
+ "docs/byop/LLRS_airport_Annex Vav.pdf": {
+  "title": "ראשון לציון - נספח ו' - משוח נחיתה למסוקים",
+  "modified": "2023-05-17"
+ },
+ "docs/byop/LLRS_airport_Chart.pdf": {
+  "title": "מנחת ראשון לציון - LLRS - דפי מלל",
+  "modified": "2025-09-30"
+ }
+}
