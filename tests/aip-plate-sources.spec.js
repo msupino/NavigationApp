@@ -11,7 +11,6 @@
 const { test, expect } = require('./_setup');
 const { readFileSync, existsSync } = require('fs');
 const { join } = require('path');
-const { createHash } = require('crypto');
 
 const root = join(__dirname, '..');
 const mapPath = join(root, 'docs/data/plate-sources.json');
