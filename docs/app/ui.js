@@ -2281,11 +2281,7 @@ function showRouteLibraryModal(focusSave) {
     if (!corrupt && !lib.length) { alert(S.routeLibraryExportEmpty || 'No saved routes to export yet.'); return; }
     const payload = corrupt ? NavAid.routeLibraryCorruptRaw : JSON.stringify(lib, null, 2);
     const blob = new Blob([payload], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'navaid-routes-' + fileStamp() + '.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    saveFile(blob, 'navaid-routes-' + fileStamp() + '.json');
   };
   const importBtn = document.createElement('button');
   importBtn.type = 'button';

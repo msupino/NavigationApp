@@ -1235,22 +1235,14 @@ function gpsTrackToGpx(entry) {
 }
 function downloadGpsTrackGpx(entry) {
   const blob = new Blob([gpsTrackToGpx(entry)], { type: 'application/gpx+xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = (entry.name || 'track').replace(/[^\w\-]+/g, '_') + '.gpx';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // revoking synchronously after click can abort the download (Firefox/Safari)
+  saveFile(blob, (entry.name || 'track').replace(/[^\w\-]+/g, '_') + '.gpx');
 }
 function downloadGpsTrackJson(entry) {
   // A single-entry LIBRARY array, not a bare entry: that is the shape load()
   // recognises, so an exported track can be imported back. A lone object went
   // through the single-route validator and failed with "root.waypoints: missing".
   const blob = new Blob([JSON.stringify([entry], null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = (entry.name || 'track').replace(/[^\w\-]+/g, '_') + '.json';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  saveFile(blob, (entry.name || 'track').replace(/[^\w\-]+/g, '_') + '.json');
 }
 
 // Breadcrumb of the in-progress recording, drawn on the overlay.

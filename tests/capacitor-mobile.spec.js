@@ -61,6 +61,10 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(name[1]).toMatch(/^\d+\.\d+$/);
     expect(config.ios.includePlugins).toEqual([
       '@capacitor-community/text-to-speech',
+      // Saving a file: iOS has the same hole as Android -- a WKWebView has no download
+      // manager, so an export leaves through the share sheet on both.
+      '@capacitor/filesystem',
+      '@capacitor/share',
       '@capacitor/local-notifications',
       '@capgo/capacitor-social-login',
     ]);

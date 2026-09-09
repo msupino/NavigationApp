@@ -12,7 +12,9 @@ dependencies {
     implementation project(':capacitor-community-background-geolocation')
     implementation project(':capacitor-community-text-to-speech')
     implementation project(':capacitor-app')
+    implementation project(':capacitor-filesystem')
     implementation project(':capacitor-local-notifications')
+    implementation project(':capacitor-share')
     implementation project(':capgo-capacitor-social-login')
 
 }

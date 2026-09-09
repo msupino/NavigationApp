@@ -1069,11 +1069,7 @@ function save() {
   }
   const data = serializeRoute();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = routeFileSlug() + '-' + fileStamp() + '.json';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // revoking synchronously after click can abort the download (Firefox/Safari)
+  saveFile(blob, routeFileSlug() + '-' + fileStamp() + '.json');
 }
 
 // --- ICAO flight plan (FPL) -------------------------------------------
@@ -2401,11 +2397,7 @@ function exportGpx() {
     '  </rte>\n' +
     '</gpx>\n';
   const blob = new Blob([gpx], { type: 'application/gpx+xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = routeFileSlug() + '-' + fileStamp() + '.gpx';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
+  saveFile(blob, routeFileSlug() + '-' + fileStamp() + '.gpx');
 }
 
 // --- PLN export (MSFS / FSX flight plan) -------------------------------
@@ -2492,11 +2484,7 @@ function exportPln() {
     '    </FlightPlan.FlightPlan>\n' +
     '</SimBase.Document>\n';
   const blob = new Blob([pln], { type: 'application/xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = routeFileSlug() + '-' + fileStamp() + '.pln';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
+  saveFile(blob, routeFileSlug() + '-' + fileStamp() + '.pln');
 }
 
 // --- X-Plane FMS export -----------------------------------------------------
@@ -2558,11 +2546,7 @@ function exportFms() {
   lines.push('');
 
   const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = routeFileSlug() + '-' + fileStamp() + '.fms';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
+  saveFile(blob, routeFileSlug() + '-' + fileStamp() + '.fms');
 }
 
 // --- X-Plane FDR export -----------------------------------------------------
@@ -2760,11 +2744,7 @@ function exportFdr() {
   ].join('\n');
 
   const blob = new Blob([fdr], { type: 'text/plain' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = routeFileSlug() + '-' + fileStamp() + '.fdr';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
+  saveFile(blob, routeFileSlug() + '-' + fileStamp() + '.fdr');
 }
 
 // --- GPX import --------------------------------------------------------
@@ -4730,11 +4710,7 @@ function showFlightPlan() {
 
   function exportFlightPlanCsv() {
     const blob = new Blob(['\ufeff', flightPlanCsv(table, scrollArea)], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'flight-plan-' + routeFileSlug() + '-' + fileStamp() + '.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    saveFile(blob, 'flight-plan-' + routeFileSlug() + '-' + fileStamp() + '.csv');
   }
 
   // Kneeboard nav-log: open a clean, print-ready document (header +
@@ -5706,11 +5682,7 @@ function exportA4x2Tiles(out, W, H, done) {
     // where a fixed 22px label would print ~2 mm tall and be illegible.
     drawA4x2TileMarks(cx, t, tiles.length, ppmX / 1000);
     const dl = (blob) => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'navigation-' + routeFileSlug() + '-A4x2-p' + t.n + 'of2-' + fileStamp() + '.png';
-      a.click();
-      URL.revokeObjectURL(a.href);
+      saveFile(blob, 'navigation-' + routeFileSlug() + '-A4x2-p' + t.n + 'of2-' + fileStamp() + '.png');
       setTimeout(nextTile, 400);   // stagger so the browser allows both downloads
     };
     c.toBlob(b => {
@@ -6033,12 +6005,8 @@ function exportPNG(mode) {
           openPrintWindow(blob, (framed && pageSize) ? paperW : 0, (framed && pageSize) ? paperH : 0);
           return;
         }
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'navigation-' + routeFileSlug() + '-' + (pageSize || baseName) +
-                     '-' + fileStamp() + '.png';
-        a.click();
-        URL.revokeObjectURL(a.href);
+        saveFile(blob, 'navigation-' + routeFileSlug() + '-' + (pageSize || baseName) +
+                 '-' + fileStamp() + '.png');
       };
       if (framed && pageSize) {
         const ppmX = Math.round(W * 1000 / paperW);
@@ -6308,11 +6276,7 @@ async function flyRoute() {
       '</Document>\n</kml>\n';
     const blob = new Blob([kml],
       { type: 'application/vnd.google-earth.kml+xml' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'navaid-flythrough-' + routeFileSlug() + '-' + fileStamp() + '.kml';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    saveFile(blob, 'navaid-flythrough-' + routeFileSlug() + '-' + fileStamp() + '.kml');
   }
 
   function onPick(mode) {
@@ -6946,12 +6910,7 @@ function showPlateViewer(filename, label) {
   btns.appendChild(openTab);
   const download = document.createElement('button');
   download.textContent = S.plateDownload;
-  download.onclick = () => {
-    const a = document.createElement('a');
-    a.href = pdfUrl;
-    a.download = filename;
-    a.click();
-  };
+  download.onclick = () => { saveFileFromUrl(pdfUrl, filename); };
   btns.appendChild(download);
   // Some of these sheets are drawn on the map. Reading one in the viewer and then hunting
   // through Extra layers for the toggle that shows it -- and, for an instrument chart, for

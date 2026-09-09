@@ -44,6 +44,8 @@ if (config.ios?.limitsNavigationsToAppBoundDomains !== true) {
 // Android but exclude it from the iOS plugin graph explicitly.
 const expectedIosPlugins = [
   '@capacitor-community/text-to-speech',
+  '@capacitor/filesystem',
+  '@capacitor/share',
   '@capacitor/local-notifications',
   '@capgo/capacitor-social-login',
 ];

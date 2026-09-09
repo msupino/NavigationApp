@@ -163,7 +163,10 @@ test('the Hebrew readout is not run together by the bidi algorithm', async ({ pa
   // The offset is read first, then the clock it names.
   expect(got.read.length).toBe(2);
   expect(got.read[0]).toMatch(/^\+6/);
-  expect(got.read[1]).toMatch(/^\d{2}:\d{2}Z$/);
+  // A look-ahead that crosses midnight UTC names the day too, and must: "00:00Z" alone on
+  // the evening of the 9th is a time the pilot would read as this morning. Caught by CI at
+  // 18:xxZ, where +6h is tomorrow.
+  expect(got.read[1]).toMatch(/^(?:\d{2}-\d{2} )?\d{2}:\d{2}Z$/);
   // The word, then the timestamp -- with the Z still on the end of the time.
   expect(got.charts.length).toBe(2);
   expect(got.charts[0]).not.toMatch(/\d/);
