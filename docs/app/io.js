@@ -1037,6 +1037,7 @@ function serializeRoute() {
       ...(n.freq ? { freq: n.freq } : {}),
       ...(n.freqAuto === true ? { freqAuto: true } : {}),
       ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
+      ...(Number.isFinite(n.rot) && n.rot ? { rot: n.rot } : {}),   // the note's own angle; 0 is the default and is omitted
       ...(n.rp && Number.isInteger(n.rp.leg) ? { rp: { leg: n.rp.leg, t: r5(n.rp.t) } } : {}),
     })),
   };
@@ -3069,6 +3070,7 @@ function applyRouteData(d) {
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
     ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
+    ...(Number.isFinite(n.rot) && n.rot ? { rot: n.rot } : {}),
     ...(n.rp && Number.isInteger(n.rp.leg)
       ? { rp: { leg: n.rp.leg, t: Number.isFinite(n.rp.t) ? n.rp.t : 0.5 } } : {}),
   }));
@@ -6628,6 +6630,7 @@ function restoreRoute() {
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
     ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
+    ...(Number.isFinite(n.rot) && n.rot ? { rot: n.rot } : {}),
     ...(n.rp && Number.isInteger(n.rp.leg)
       ? { rp: { leg: n.rp.leg, t: Number.isFinite(n.rp.t) ? n.rp.t : 0.5 } } : {}),
   }));

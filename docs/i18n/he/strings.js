@@ -726,6 +726,7 @@ window.S = {
   shapeOval: 'אליפסה',
   color: 'צבע',
   noteSize: 'גודל',
+  noteRotation: 'סיבוב',
   deleteNote: '🗑 מחק הערה (D)',
   latitude: 'קו רוחב',
   longitude: 'קו אורך',

@@ -5155,13 +5155,21 @@ function noteFont(n) {
 // two were 90° apart: clicking the visible oval missed it and clicking empty map
 // beside it grabbed it.
 function noteDrawAngle(n) {
-  if (!n || !n.rp) return 0;
+  // The note's own angle, set from its inspector and belonging to nothing else: not the map
+  // bearing, not the leg it sits beside. A note is a piece of paper laid on the chart, and
+  // this is which way round the pilot laid it. Kept in degrees on the note so it survives
+  // save/load and reads plainly in an exported route.
+  const user = (n && Number.isFinite(n.rot)) ? n.rot * Math.PI / 180 : 0;
+  if (!n || !n.rp) return user;
   const A = state.waypoints[n.rp.leg], B = state.waypoints[n.rp.leg + 1];
   if (!A || !B) return 0;
   const pa = proj(A), pb = proj(B);
   let ang = Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
   if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
-  return ang;
+  // An identification-point oval is aligned ACROSS its leg by rule, so its own angle is
+  // added to that rather than replacing it. hitNote shares this function, so the clickable
+  // region turns with whatever is painted.
+  return ang + user;
 }
 
 function noteRect(i) {
