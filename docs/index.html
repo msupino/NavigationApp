@@ -232,6 +232,18 @@
   </div>
   <div id="map"></div>
   <canvas id="overlay"></canvas>
+  <!-- One clock for every time-dependent layer, on the map rather than inside a menu: a
+       pilot scrubbing forward is looking at the chart, not at the toolbar. It drives the
+       shared look-ahead (NOTAM, wind effect, wind field, airfield wind) and pulls the
+       weather charts to the newest sheet published at or before the chosen hour. -->
+  <div id="map-time" class="map-time" hidden>
+    <button id="map-time-now" type="button" class="map-time-now"
+            data-i18n="mapTimeNow" data-i18n-title="mapTimeNowTitle"></button>
+    <input type="range" id="map-time-slider" min="0" max="24" step="1" value="0"
+           data-i18n-aria="mapTimeLabel">
+    <span id="map-time-read" class="map-time-read"></span>
+    <span id="map-time-charts" class="map-time-charts" hidden></span>
+  </div>
   <!-- GPS recording indicator: a red dot in a square, shown top-right only while
        a track is being recorded, so the recording state is unmistakable. -->
   <div id="gps-rec-indicator" hidden aria-hidden="true" title="Recording GPS track">
