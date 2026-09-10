@@ -3605,9 +3605,10 @@ function followMeOffered() {
     // that nothing moves until Location or Record is on.
     const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
       || (typeof gpsRecording !== 'undefined' && gpsRecording);
-    // Ask for the aircraft code. Nothing verifies it -- a pilot can type anything -- but a
-    // shared link with no name on it is a puzzle for whoever opens it, so it is required.
-    const asked = window.prompt(S.followMeAskCode || 'Aircraft code (e.g. 4X-CDE)', f.code() || '');
+    // Ask for an identifier. Nothing verifies it -- a pilot can type anything, and an
+    // aircraft code is only the obvious choice -- but a shared link with no name on it is a
+    // puzzle for whoever opens it, so something is required.
+    const asked = window.prompt(S.followMeAskCode || 'Identifier, for example an aircraft code (4X-CDE)', f.code() || '');
     if (asked === null) return;                     // cancelled: share nothing
     const link = await f.start(asked);
     if (!link) {
@@ -3618,7 +3619,7 @@ function followMeOffered() {
           ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
           : failure === 'storage'
             ? (S.followMeStartFailed || 'Follow me could not start on this device.')
-            : (S.followMeNeedCode || 'Follow me needs an aircraft code.'));
+            : (S.followMeNeedCode || 'Follow me needs an identifier.'));
       }
       return;
     }
