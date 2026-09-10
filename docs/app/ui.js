@@ -3605,9 +3605,10 @@ function followMeOffered() {
     // that nothing moves until Location or Record is on.
     const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
       || (typeof gpsRecording !== 'undefined' && gpsRecording);
-    // Ask for the aircraft code. Nothing verifies it -- a pilot can type anything -- but a
-    // shared link with no name on it is a puzzle for whoever opens it, so it is required.
-    const asked = window.prompt(S.followMeAskCode || 'Aircraft code (e.g. 4X-CDE)', f.code() || '');
+    // Ask for an identifier. Nothing verifies it -- a pilot can type anything, and an
+    // aircraft code is only the obvious choice -- but a shared link with no name on it is a
+    // puzzle for whoever opens it, so something is required.
+    const asked = window.prompt(S.followMeAskCode || 'Identifier, for example an aircraft code (4X-CDE)', f.code() || '');
     if (asked === null) return;                     // cancelled: share nothing
     const link = await f.start(asked);
     if (!link) {
@@ -3618,7 +3619,7 @@ function followMeOffered() {
           ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
           : failure === 'storage'
             ? (S.followMeStartFailed || 'Follow me could not start on this device.')
-            : (S.followMeNeedCode || 'Follow me needs an aircraft code.'));
+            : (S.followMeNeedCode || 'Follow me needs an identifier.'));
       }
       return;
     }
@@ -4901,13 +4902,21 @@ if (windDepartSlider) {
 (function () {
   const master = document.getElementById('lookahead-time');
   const masterVal = document.getElementById('lookahead-time-val');
-  const targets = ['notam-time', 'wind-depart', 'windfield-time', 'airfield-wind-time'].map(id => document.getElementById(id));
+  const fixed = ['notam-time', 'wind-depart', 'windfield-time', 'airfield-wind-time'].map(id => document.getElementById(id));
+  // The density-altitude slider is built fresh inside each airfield inspector and destroyed
+  // with it, so it cannot be looked up once at boot like the others. Collected at each sync
+  // instead: a mirror that exists right now is a mirror that gets the value, and one that
+  // has been closed simply is not there.
+  // Not a hidden panel's: the inspector can be closed by adding a class without its body
+  // being rebuilt, and a slider nobody can see is not a face of this clock.
+  const daMirrors = () => Array.from(document.querySelectorAll('#inspector:not(.hidden) input.da-time'));
+  const targets = () => fixed.concat(daMirrors());
   // Cascade the master value to the mirror sliders + the readout. Does NOT touch the target
   // instant, so the tick below can call it to move the slider without re-anchoring "now".
   function sync() {
     const h = master ? (parseInt(master.value, 10) || 0) : 0;
     if (masterVal) masterVal.textContent = notamTimeLabel(h);
-    for (const t of targets) {
+    for (const t of targets()) {
       if (!t) continue;
       t.value = String(Math.min(h, parseInt(t.max, 10) || 24));
       t.dispatchEvent(new Event('input'));
@@ -9836,6 +9845,11 @@ const NavWxTime = (function () {
     const cb = document.getElementById(id);
     return !!(cb && cb.checked);
   });
+  // An open airfield panel is a timed layer too: its density altitude answers to this clock
+  // and is the number a pilot scrubs forward FOR. Reported: with no extra layer on, the
+  // clock is barely visible -- and that is exactly when someone reading a field's density
+  // altitude needs to find it.
+  const inspectorTimed = () => !!document.querySelector('#inspector:not(.hidden) input.da-time');
 
   // "+14h · 21:00Z" is a Hebrew word, a number and a clock in one string, and in an RTL
   // paragraph the bidi algorithm runs them together: "+14ש · 21:00Z" rendered as
@@ -9895,10 +9909,17 @@ const NavWxTime = (function () {
   }
   function refresh() {
     el.hidden = !featureOn();
-    el.classList.toggle('idle', !anyTimedLayer());
+    el.classList.toggle('idle', !anyTimedLayer() && !inspectorTimed());
     label();
   }
   NavAid.refreshMapClock = refresh;
+  // The inspector is rebuilt from scratch on every selection, so what it contains cannot be
+  // asked once. Watching it is cheaper than making every caller that opens or closes a panel
+  // remember to say so -- and refresh() is a class toggle and a label.
+  const inspector = document.getElementById('inspector');
+  if (inspector && typeof MutationObserver === 'function') {
+    new MutationObserver(() => refresh()).observe(inspector, { childList: true, subtree: true });
+  }
 
   slider.addEventListener('input', () => {
     // Drive the master and let it cascade: NOTAM, wind effect, wind field and airfield wind
