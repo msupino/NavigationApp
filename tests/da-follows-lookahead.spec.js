@@ -24,7 +24,8 @@ async function openAirfield(page) {
     state.selected = { type: 'airfield', af: af, index: 0 };
     showInspector();
   });
-  await page.waitForSelector('input.da-time');
+  // Attached, not visible: it is a hidden mirror now, like notam-time.
+  await page.waitForSelector('input.da-time', { state: 'attached' });
 }
 
 const daSlider = page => page.evaluate(() => document.querySelector('input.da-time').value);
@@ -47,20 +48,39 @@ test('scrubbing the shared clock moves the density-altitude slider with it', asy
   expect(await daWhen(page)).toContain('+6');
 });
 
-test('moving the density-altitude slider moves every other timed layer', async ({ page }) => {
+test('the panel offers no clock of its own', async ({ page }) => {
   await boot(page);
   await openAirfield(page);
+  // There is one clock and it is on the map. A second slider inside the panel read as a
+  // control of something else -- the runway wind beside it names an hour without offering
+  // one to change, and so does this. The element stays as a hidden mirror, which is what
+  // notam-time and windfield-time already are.
+  const seen = await page.evaluate(() => {
+    const s = document.querySelector('#inspector input.da-time');
+    return { present: !!s, hidden: s.hidden, painted: s.getClientRects().length > 0,
+             visibleRanges: document.querySelectorAll('#insp-body input[type=range]:not([hidden])').length };
+  });
+  expect(seen.present).toBe(true);
+  expect(seen.hidden).toBe(true);
+  expect(seen.painted, 'a hidden mirror is not drawn').toBe(false);
+  expect(seen.visibleRanges).toBe(0);
+  // And the hour it is showing is still named, beside the figure it belongs to.
+  expect(await daWhen(page)).toBeTruthy();
+});
+
+test('the mirror never drags the shared clock down to its own limit', async ({ page }) => {
+  await boot(page);
+  await setMaster(page, 9);
+  await openAirfield(page);
+  // A panel whose forecast reaches fewer hours than the map clock clamps its own value.
+  // Writing that back would pull every other layer to this panel's horizon.
   await page.evaluate(() => {
     const s = document.querySelector('input.da-time');
+    s.max = '4';
     s.value = '4';
     s.dispatchEvent(new Event('input'));
   });
-  expect(await masterVal(page)).toBe('4');
-  expect(await page.evaluate(() => document.getElementById('notam-time').value)).toBe('4');
-  expect(await page.evaluate(() => document.getElementById('airfield-wind-time').value)).toBe('4');
-  // It is one clock, so the instant is anchored the same way a scrub anchors it.
-  expect(await page.evaluate(() =>
-    Math.round((window.lookaheadTarget - Date.now()) / 3600e3))).toBeGreaterThanOrEqual(3);
+  expect(await masterVal(page)).toBe('9');
 });
 
 test('a panel opened while the chart is scrubbed forward opens on that hour', async ({ page }) => {

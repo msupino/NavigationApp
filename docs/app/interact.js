@@ -1732,31 +1732,33 @@ function appendAirfieldDensityAltitude(body, af) {
   const maxH = Math.round((typeof tune === 'function' && tune('daForecastHours')) || 24);
   const timeRow = document.createElement('div');
   timeRow.className = 'row da-time-row';
-  // The slider sits at the top of the Weather box, where an unlabelled control reads as
-  // though it moved the whole box -- the METAR below it included. It says what it moves.
   const timeLbl = document.createElement('label');
   timeLbl.textContent = S.daWhen || 'Density altitude at';
   timeRow.appendChild(timeLbl);
+  // There is one clock, and it is on the map. A second slider here read as a control of its
+  // own -- the runway wind beside it names an hour without offering one, and so does this
+  // now. It stays in the document as a hidden mirror, which is exactly what notam-time and
+  // windfield-time are: that is how the shared look-ahead reaches a panel.
   const slider = document.createElement('input');
   slider.type = 'range';
   slider.min = '0';
   slider.max = String(maxH);
   slider.step = '1';
-  // A panel opened while the chart is already scrubbed forward must open on the same hour.
+  slider.hidden = true;
+  // A panel opened while the chart is already scrubbed forward opens on the same hour.
   // Density altitude is the number a pilot scrubs forward FOR -- to find an hour that is
-  // flyable -- so an inspector that quietly reset it to now would answer a question nobody
-  // asked, next to layers all showing something else.
+  // flyable -- so a panel that quietly reset it to now would answer a question nobody asked,
+  // next to layers all showing something else.
   const master = document.getElementById('lookahead-time');
   const masterH = master ? (parseInt(master.value, 10) || 0) : 0;
   slider.value = String(Math.min(masterH, maxH));
   slider.className = 'da-time';
-  slider.setAttribute('aria-label', S.daWhen || 'Valid time');
   const when = document.createElement('span');
   when.className = 'val da-when';
   when.dir = 'ltr';                 // a clock is a clock in both languages
   timeRow.append(slider, when);
-  // The slider goes ABOVE the numbers it changes: a control under its own read-out is a
-  // control the pilot scrolls past to find, having already read a figure for the wrong hour.
+  // The hour goes ABOVE the numbers it describes: a figure read before the hour it belongs
+  // to is a figure read for the wrong hour.
   sec.insertBefore(timeRow, sec.firstChild);
   body.appendChild(sec);
 
@@ -1853,17 +1855,11 @@ function appendAirfieldDensityAltitude(body, af) {
     valRow.classList.toggle('da-warn', da > elev + over);
   }
 
-  // Both directions. The shared look-ahead cascades INTO this slider by finding it in the
-  // document (see the cascade in ui.js), and moving it here moves the shared clock, exactly
-  // as the map clock does -- one control, several faces, rather than two clocks disagreeing
-  // about what hour the pilot is looking at.
-  slider.oninput = () => {
-    if (master && master.value !== slider.value) {
-      master.value = slider.value;
-      master.dispatchEvent(new Event('input'));   // anchors the instant, then cascades back
-    }
-    render();
-  };
+  // One way now. The shared look-ahead cascades INTO this mirror by finding it in the
+  // document (see the cascade in ui.js) and fires its 'input'; nothing here writes back,
+  // which also means a panel whose forecast reaches fewer hours than the map clock cannot
+  // drag the map clock down to its own limit.
+  slider.oninput = render;
   render();
 
   // Both sources arrive late; each redraws what it can.
