@@ -4324,10 +4324,18 @@ body.theme-light .wx-time { color: #6b7787; }
 body.theme-light .wx-time-stale { color: #a86a00; }
 
 .wx-block { margin-bottom: 6px; }
-.wx-label {
+/* The badge a block in this panel wears to name itself. It started on METAR, TAF and the
+   AD/WS warnings alone, which left the panel reading as two kinds of thing: three yellow
+   labels and four plain ones, with nothing to say why. Every section heading wears it now,
+   so the badge means "this is a block" rather than "this is weather". */
+.wx-label,
+.insp-section-badge {
   display: inline-block; font-size: 10px; font-weight: 700; color: #231F20;
   background: #ffd966; border-radius: 3px; padding: 0 5px; margin-bottom: 2px;
 }
+/* A section heading is a heading, so it keeps the size it had -- the 10px above is for a
+   product label inside a block, not for the name of the block itself. */
+.insp-section-badge { font-size: 11px; }
 .wx-line { line-height: 1.4; }
 /* AD/WS is localized prose (RTL in Hebrew); the code blocks above are LTR. Let this block
    align to its own start edge so the Hebrew label/"None" sit right, not forced left. */

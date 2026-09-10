@@ -1885,6 +1885,7 @@ function appendAirfieldComms(body, af) {
   const head = document.createElement('div');
   head.className = 'insp-frame-head';
   const lbl = document.createElement('span');
+  lbl.className = 'insp-section-badge';
   lbl.textContent = S.commTitle || 'Communication';
   head.appendChild(lbl);
   sec.appendChild(head);
@@ -2644,6 +2645,7 @@ function appendSatelliteSnippet(body, point, label) {
   const head = document.createElement('div');
   head.className = 'satellite-snippet-head';
   const title = document.createElement('label');
+  title.className = 'insp-section-badge';
   title.textContent = S.satelliteSnippet || 'Satellite';
   head.appendChild(title);
   // The -/+ pair is gist-gated and off by default: the pinch below does the same job without
@@ -3016,6 +3018,7 @@ function appendAirfieldWeather(body, af) {
   const head = document.createElement('div');
   head.className = 'wx-head';
   const headLbl = document.createElement('span');
+  headLbl.className = 'insp-section-badge';
   headLbl.textContent = S.wxTitle || 'Weather';
   head.appendChild(headLbl);
   // Refresh button — re-fetch bypassing the cache (recover from a failed

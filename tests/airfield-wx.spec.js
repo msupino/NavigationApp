@@ -291,3 +291,43 @@ test('the AD/WS label follows content direction — RTL in a Hebrew session', as
   expect(await adws.locator('.wx-label').getAttribute('dir')).toBe('auto');
   await expect(adws).toContainText('אזהרות שדה');   // Hebrew label present
 });
+
+// Reported: some things in the inspector have a yellow highlight and some do not. Inside one
+// airfield panel the METAR, TAF and AD/WS blocks wore a badge and Communication, Weather and
+// Satellite were plain text -- three yellow labels and three plain ones, with nothing in the
+// panel to say why the difference existed. It reads as one set now.
+test('every section in the airfield panel names itself the same way', async ({ page }) => {
+  await mockWx(page);
+  await boot(page);
+  await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    const index = airfields.findIndex(a => a.name === 'LLBG');
+    state.selected = { type: 'airfield', index };
+    showInspector();
+  });
+  await page.waitForSelector('#insp-body .wx-section .wx-label');
+  const badged = await page.evaluate(() => {
+    const body = document.getElementById('insp-body');
+    const heads = {
+      Communication: body.querySelector('.insp-frame-head > span'),
+      Weather: body.querySelector('.wx-head > span'),
+      Satellite: body.querySelector('.satellite-snippet-head > label'),
+    };
+    const style = (el) => {
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      return { badge: el.classList.contains('insp-section-badge'), bg: cs.backgroundColor };
+    };
+    const wx = body.querySelector('.wx-label');
+    return {
+      heads: Object.fromEntries(Object.entries(heads).map(([k, v]) => [k, style(v)])),
+      productBg: wx ? getComputedStyle(wx).backgroundColor : null,
+    };
+  });
+  for (const [name, got] of Object.entries(badged.heads)) {
+    expect(got, name + ' has no heading element').not.toBeNull();
+    expect(got.badge, name + ' is not badged').toBe(true);
+    // The same yellow as the METAR/TAF badge: one treatment, not two that nearly match.
+    expect(got.bg, name + ' wears a different yellow').toBe(badged.productBg);
+  }
+});
