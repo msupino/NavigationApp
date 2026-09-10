@@ -214,3 +214,95 @@ test('the gist can withdraw the clock, and it comes back without a reload', asyn
   });
   expect(await page.evaluate(() => document.getElementById('map-time').hidden)).toBe(false);
 });
+
+// Reported from the phone: the slider on the map is not visible. It is not -- on a phone the
+// inspector is a bottom sheet up to 62dvh tall sitting exactly where the map clock lives, and
+// the panel is full of readings that answer to that clock. So the panel carries its own face
+// of it, at the top, where the map's copy cannot be reached.
+test.describe('the clock on the panel', () => {
+  const openPanel = (page) => page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }];
+    syncLegs();
+    state.selected = { type: 'wp', index: 0 };
+    showInspector();
+  });
+
+  test('a phone gets it, a desktop does not', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 780 });
+    await boot(page);
+    await openPanel(page);
+    await expect(page.locator('#insp-time')).toBeVisible();
+
+    await page.setViewportSize({ width: 1200, height: 850 });
+    // Two controls for one clock is what the map copy already is; on a desktop it is in
+    // plain sight, so the panel's copy stands down.
+    await expect(page.locator('#insp-time')).toBeHidden();
+  });
+
+  test('it is the same clock, not a second one', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 780 });
+    await boot(page);
+    await openPanel(page);
+    await page.evaluate(() => {
+      const s = document.getElementById('insp-time-slider');
+      s.value = '4';
+      s.dispatchEvent(new Event('input'));
+    });
+    expect(await page.evaluate(() => document.getElementById('lookahead-time').value)).toBe('4');
+    expect(await page.evaluate(() => document.getElementById('map-time-slider').value)).toBe('4');
+    await expect(page.locator('#insp-time-read')).toContainText('+4');
+    // And the other way: the map clock moving carries the panel with it.
+    await page.evaluate(() => {
+      const s = document.getElementById('map-time-slider');
+      s.value = '2';
+      s.dispatchEvent(new Event('input'));
+    });
+    expect(await page.evaluate(() => document.getElementById('insp-time-slider').value)).toBe('2');
+    await expect(page.locator('#insp-time-read')).toContainText('+2');
+  });
+
+  test('its Now button goes back to live, and is dead at live', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 780 });
+    await boot(page);
+    await openPanel(page);
+    await expect(page.locator('#insp-time-now')).toBeDisabled();
+    await page.evaluate(() => {
+      const s = document.getElementById('insp-time-slider');
+      s.value = '6'; s.dispatchEvent(new Event('input'));
+    });
+    await expect(page.locator('#insp-time-now')).toBeEnabled();
+    await page.evaluate(() => document.getElementById('insp-time-now').click());
+    expect(await page.evaluate(() => document.getElementById('lookahead-time').value)).toBe('0');
+    await expect(page.locator('#insp-time-now')).toBeDisabled();
+  });
+
+  test('the gist withdraws both faces together', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 780 });
+    await boot(page);
+    await openPanel(page);
+    await page.evaluate(() => {
+      NavAid.tuningDefaults.featureMapClock.value = false;
+      NavAid.refreshMapClock();
+    });
+    expect(await page.evaluate(() => document.getElementById('insp-time').hidden)).toBe(true);
+    await page.evaluate(() => {
+      NavAid.tuningDefaults.featureMapClock.value = true;
+      NavAid.refreshMapClock();
+    });
+    expect(await page.evaluate(() => document.getElementById('insp-time').hidden)).toBe(false);
+  });
+
+  test('the panel repainting itself does not send the clock into a loop', async ({ page }) => {
+    // The strip lives inside the inspector, and the clock watches the inspector to know
+    // whether a density altitude is on screen. Watching the whole panel meant watching its
+    // own readout being rewritten: refresh, mutation, refresh -- the tab hung before the
+    // load event ever fired, and every spec in the suite timed out at page.goto.
+    await page.setViewportSize({ width: 390, height: 780 });
+    await boot(page);
+    await openPanel(page);
+    await expect(page.locator('#insp-time-read')).not.toBeEmpty();
+    // Still answering after a repaint: a hung page cannot run this at all.
+    await page.evaluate(() => showInspector());
+    expect(await page.evaluate(() => 1 + 1)).toBe(2);
+  });
+});

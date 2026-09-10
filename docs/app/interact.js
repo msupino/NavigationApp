@@ -2978,9 +2978,31 @@ function appendRunwayWind(body, af) {
     .catch(() => { /* no wind line rather than an error in the inspector */ });
 }
 
+// One row, not two. A latitude without its longitude is not a position, and the pair is
+// short enough to read across a line -- two rows spent a quarter of a phone's panel saying
+// what fits on one.
 function appendPointCoordinateRows(body, point) {
-  body.appendChild(textRow(S.latitude, fmtLatLng(point.lat, 'N', 'S')));
-  body.appendChild(textRow(S.longitude, fmtLatLng(point.lng, 'E', 'W')));
+  body.appendChild(coordRow(fmtLatLng(point.lat, 'N', 'S'), fmtLatLng(point.lng, 'E', 'W')));
+}
+
+// The two halves are Latin digits and letters inside a panel that may be running in Hebrew,
+// so each is isolated: left to the bidi algorithm the pair is reordered into a longitude
+// followed by a latitude, which is a different place.
+function coordRow(lat, lng) {
+  const row = document.createElement('div');
+  row.className = 'row coord-row';
+  const l = document.createElement('label');
+  l.textContent = S.coordinates || 'Position';
+  const v = document.createElement('span');
+  v.className = 'val coord-val';
+  for (const [i, part] of [lat, lng].entries()) {
+    if (i) v.appendChild(document.createTextNode(' '));
+    const bdi = document.createElement('bdi');
+    bdi.textContent = part;
+    v.appendChild(bdi);
+  }
+  row.append(l, v);
+  return row;
 }
 
 function airfieldInspectorTitle(af) {
@@ -3875,8 +3897,7 @@ function showInspector() {
       Number.isFinite(ac.track) ? String(Math.round(ac.track)).padStart(3, '0') + '°' : '—'));
     if (ac.type) body.appendChild(textRow(S.trafficType || 'Type', ac.type));
     if (ac.squawk) body.appendChild(textRow(S.trafficSquawk || 'Squawk', ac.squawk));
-    body.appendChild(textRow(S.latitude, fmtLatLng(ac.lat, 'N', 'S')));
-    body.appendChild(textRow(S.longitude, fmtLatLng(ac.lon, 'E', 'W')));
+    body.appendChild(coordRow(fmtLatLng(ac.lat, 'N', 'S'), fmtLatLng(ac.lon, 'E', 'W')));
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
     if (!nw) {
