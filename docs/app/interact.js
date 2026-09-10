@@ -1742,7 +1742,13 @@ function appendAirfieldDensityAltitude(body, af) {
   slider.min = '0';
   slider.max = String(maxH);
   slider.step = '1';
-  slider.value = '0';
+  // A panel opened while the chart is already scrubbed forward must open on the same hour.
+  // Density altitude is the number a pilot scrubs forward FOR -- to find an hour that is
+  // flyable -- so an inspector that quietly reset it to now would answer a question nobody
+  // asked, next to layers all showing something else.
+  const master = document.getElementById('lookahead-time');
+  const masterH = master ? (parseInt(master.value, 10) || 0) : 0;
+  slider.value = String(Math.min(masterH, maxH));
   slider.className = 'da-time';
   slider.setAttribute('aria-label', S.daWhen || 'Valid time');
   const when = document.createElement('span');
@@ -1847,7 +1853,17 @@ function appendAirfieldDensityAltitude(body, af) {
     valRow.classList.toggle('da-warn', da > elev + over);
   }
 
-  slider.oninput = render;
+  // Both directions. The shared look-ahead cascades INTO this slider by finding it in the
+  // document (see the cascade in ui.js), and moving it here moves the shared clock, exactly
+  // as the map clock does -- one control, several faces, rather than two clocks disagreeing
+  // about what hour the pilot is looking at.
+  slider.oninput = () => {
+    if (master && master.value !== slider.value) {
+      master.value = slider.value;
+      master.dispatchEvent(new Event('input'));   // anchors the instant, then cascades back
+    }
+    render();
+  };
   render();
 
   // Both sources arrive late; each redraws what it can.

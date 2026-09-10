@@ -2063,8 +2063,11 @@ window.S = Object.assign({
   followMeReconnecting: 'Follow me: reconnecting — tap to stop',
   followMeStopping: 'Follow me: stopping — clearing the last position',
   followMeStoppingShort: 'Stopping sharing…',
-  followMeAskCode: 'Aircraft code (e.g. 4X-CDE)\n\nUses a public best-effort relay. Anyone with the link can view or submit positions.',
-  followMeNeedCode: 'Follow me needs an aircraft code — whoever opens the link has to know which aeroplane it is.',
+  // Nothing verifies this, and a pilot can type anything -- a callsign, a name, a leg. It is
+  // required only so the link means something to whoever opens it, so it asks for an
+  // identifier and offers the aircraft code as the obvious one rather than demanding it.
+  followMeAskCode: 'Identifier, for example an aircraft code (4X-CDE)\n\nUses a public best-effort relay. Anyone with the link can view or submit positions.',
+  followMeNeedCode: 'Follow me needs an identifier — whoever opens the link has to know what it is following.',
   followMeStartFailed: 'Follow me could not start because this device cannot store the private session.',
   followMeWaiting: 'Follow me: waiting for a position…',
   followMeLastFix: (sec) => (sec < 90 ? 'Last position ' + sec + 's ago'
