@@ -4912,6 +4912,11 @@ if (windDepartSlider) {
       t.value = String(Math.min(h, parseInt(t.max, 10) || 24));
       t.dispatchEvent(new Event('input'));
     }
+    // The map clock is a second face on this same slider, and the tick below moves the
+    // slider without anyone touching it. An 'input' event would be a lie -- nobody typed --
+    // and firing one here would re-enter onUserInput and re-anchor the target instant, which
+    // this mechanism must never do. Followers get their own event instead.
+    if (master) master.dispatchEvent(new CustomEvent('navaid:lookahead'));
   }
   // A forward look-ahead points at a fixed absolute instant (top of the target hour). The
   // pilot picking "+3h" means "the situation at 15:00Z", not "always three hours out" -- so
@@ -4924,10 +4929,26 @@ if (windDepartSlider) {
   }
   // Close the gap as time goes by. Anchored to top-of-hour on both sides, so the remaining
   // hours step down cleanly with no rounding drift. Only ever decreases; never re-anchors.
+  // The hour these readouts NAME moves even when the slider does not. At live there is no
+  // walk-back left to do, but "now" is a different hour than it was an hour ago -- so a chart
+  // left open across the top of the hour went on naming, and filtering at, the hour it was
+  // opened in until the page was reloaded. Reported as: the time sliders in Extra layers do
+  // not progress over time, you have to refresh.
+  let anchoredHour = topOfHour(Date.now());
   function lookaheadTick() {
-    if (!master || window.lookaheadTarget == null) return;
-    const remainingH = Math.max(0, Math.round((window.lookaheadTarget - topOfHour(Date.now())) / 3600e3));
-    if (remainingH === (parseInt(master.value, 10) || 0)) return;
+    if (!master) return;
+    const now = topOfHour(Date.now());
+    const rolled = now !== anchoredHour;
+    anchoredHour = now;
+    if (window.lookaheadTarget == null) {
+      if (rolled) sync();          // live, and the hour turned over: re-read the clock
+      return;
+    }
+    const remainingH = Math.max(0, Math.round((window.lookaheadTarget - now) / 3600e3));
+    if (remainingH === (parseInt(master.value, 10) || 0)) {
+      if (rolled) sync();
+      return;
+    }
     master.value = String(remainingH);
     if (remainingH === 0) window.lookaheadTarget = null;   // reached live
     sync();
@@ -9889,9 +9910,15 @@ const NavWxTime = (function () {
   });
   // The master moves on its own as the clock catches up (lookaheadTick walks it back toward
   // live). Follow it, or the map would keep showing an offset the layers no longer use.
-  master.addEventListener('input', () => {
-    if (slider.value !== master.value) { slider.value = master.value; label(); pullCharts(); }
-  });
+  const followMaster = () => {
+    const moved = slider.value !== master.value;
+    if (moved) slider.value = master.value;
+    // Relabel either way: at live the slider never moves, and the hour it names still does.
+    label();
+    if (moved) pullCharts();
+  };
+  master.addEventListener('input', followMaster);
+  master.addEventListener('navaid:lookahead', followMaster);
   if (nowBtn) nowBtn.addEventListener('click', () => {
     slider.value = '0';
     slider.dispatchEvent(new Event('input'));
