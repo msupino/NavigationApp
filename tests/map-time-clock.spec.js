@@ -292,6 +292,31 @@ test.describe('the clock on the panel', () => {
     expect(await page.evaluate(() => document.getElementById('insp-time').hidden)).toBe(false);
   });
 
+  test('the track keeps its width as the hour it names grows', async ({ page }) => {
+    // Reported: the slider in the inspector shrinks because the time text gets longer. It
+    // did -- they shared a line, and the readout grows from "18:00Z" to "+24h · 09-11
+    // 14:00Z" as the slider moves, so the control being dragged narrowed under the finger
+    // dragging it. The same lesson the map clock learned on a phone.
+    await page.setViewportSize({ width: 390, height: 780 });
+    await boot(page);
+    await openPanel(page);
+    const at = (h) => page.evaluate((v) => {
+      const s = document.getElementById('insp-time-slider');
+      s.value = String(v);
+      s.dispatchEvent(new Event('input'));
+      return { w: Math.round(s.getBoundingClientRect().width),
+               label: document.getElementById('insp-time-read').textContent };
+    }, h);
+    const now = await at(0);
+    const mid = await at(9);
+    const end = await at(24);
+    expect(mid.w).toBe(now.w);
+    expect(end.w).toBe(now.w);
+    expect(end.label).toMatch(/\+24/);      // the longest label really was on screen
+    // And it is worth dragging: a track squeezed to a stub is a control in name only.
+    expect(now.w).toBeGreaterThan(200);
+  });
+
   test('the panel repainting itself does not send the clock into a loop', async ({ page }) => {
     // The strip lives inside the inspector, and the clock watches the inspector to know
     // whether a density altitude is on screen. Watching the whole panel meant watching its

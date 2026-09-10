@@ -2746,15 +2746,29 @@ body.theme-light .shortcuts-help-keys kbd {
        lay the actions out in a wrapping row so they cost one line, not three. */
     max-height: 62dvh;
   }
+  /* Two lines: the button and the hour above, the track across the whole width below. On
+     one line the readout and the slider shared the row, and the readout is not a fixed
+     width -- it grows from "18:00Z" to "+24h · 09-11 14:00Z" as the slider moves, so the
+     control being dragged shrank under the finger dragging it. The same lesson the map
+     clock learned on a phone, and the density-altitude slider before it. */
   .insp-time:not([hidden]) {
     display: flex;
     align-items: center;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 2px 6px;
     padding: 4px 8px 2px;
     border-bottom: 1px solid #3a3636;
   }
-  .insp-time input[type="range"] { flex: 1 1 auto; min-width: 0; height: 24px; }
-  .insp-time-read { font-size: 11px; white-space: nowrap; opacity: 0.85; }
+  .insp-time .map-time-now { order: 1; }
+  .insp-time-read { order: 2; font-size: 11px; white-space: nowrap; opacity: 0.85; }
+  .insp-time input[type="range"] {
+    order: 3;
+    flex: 1 1 100%;              /* its own line, so its width is the panel's, not the label's */
+    width: auto;
+    min-width: 0;
+    height: 24px;
+    margin: 0;
+  }
   #insp-body .insp-actions {
     display: flex;
     flex-wrap: wrap;
