@@ -329,9 +329,9 @@ test('the row does not reflow between the short and long labels', async ({ page 
 
 // Where it sits matters as much as what it says. Temperature and QNH are what density
 // altitude is made of, and the METAR they come from prints directly below it — so it
-// belongs inside Weather, above the satellite thumbnail, with its slider above the numbers
-// the slider changes.
-test('it lives in the Weather box, slider first, above the satellite', async ({ page }) => {
+// belongs inside Weather, above the satellite thumbnail, with the hour above the numbers it
+// belongs to -- and the runway wind directly after it.
+test('it lives in the Weather box, hour first, above the satellite', async ({ page }) => {
   await boot(page);
   await open(page, 'LLHA');
   const layout = await page.evaluate(() => {
@@ -347,11 +347,18 @@ test('it lives in the Weather box, slider first, above the satellite', async ({ 
       sliderFirst: /da-time-row/.test(kids[0] || ''),
       beforeSatellite: sat ? order(wx, sat) : null,
       wxBeforeSat: sat ? order(document.querySelector('.da-row'), sat) : null,
+      // Density altitude and the wind on each runway answer one question between them --
+      // can this aeroplane use this runway today -- so they are read together, not a
+      // satellite photograph apart.
+      runwayWindNext: order(wx, document.querySelector('.runway-wind-row')),
+      runwayWindBeforeSat: sat ? order(document.querySelector('.runway-wind-row'), sat) : null,
     };
   });
   expect(layout.inside).toBe(true);            // inside the Weather frame, not above it
-  expect(layout.sliderFirst).toBe(true);       // the control before its own read-out
+  expect(layout.sliderFirst).toBe(true);       // the hour before the figure it belongs to
   if (layout.beforeSatellite !== null) expect(layout.beforeSatellite).toBe(true);
+  expect(layout.runwayWindNext).toBe(true);
+  if (layout.runwayWindBeforeSat !== null) expect(layout.runwayWindBeforeSat).toBe(true);
 });
 
 // Radios grouped and titled: on a field with a tower, a clearance and an ATIS this is five

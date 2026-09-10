@@ -2996,9 +2996,12 @@ function appendAirfieldDetailRows(body, af, label) {
   // Density altitude lives under Weather, because temperature and QNH are what it is made
   // of -- and the METAR it reads them from is printed directly below it.
   appendAirfieldWeather(body, af);
+  // The runways, and what the wind is doing to each of them, come straight after: density
+  // altitude and head/crosswind are two halves of one question -- can this aeroplane use
+  // this runway today -- and they were being read a satellite photograph apart.
+  appendAirfieldRunways(body, af);
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
   appendVorRadialRow(body, af.lat, af.lng);
-  appendAirfieldRunways(body, af);
   appendAirfieldNotams(body, af);
   appendAirfieldPlates(body, af);
 }
