@@ -1738,6 +1738,13 @@ body.theme-light #aircraft-custom input {
 }
 /* The header stays put; only the body scrolls. */
 #insp-body { overflow-y: auto; }
+/* The map's clock, repeated at the top of the panel. Desktop keeps it off: the map copy is
+   in plain sight there, and a second one would be two controls for one clock. On a phone the
+   panel is a bottom sheet up to 62dvh tall sitting over the map copy, and everything in the
+   panel that names an hour -- density altitude, the wind on each runway -- answers to it. */
+.insp-time { display: none; }
+.insp-time[hidden] { display: none !important; }
+.coord-val { white-space: nowrap; }
 #inspector.hidden { display: none; }
 /* Drag the corner to resize. An explicit grip, not CSS `resize`: the CSS resizer sits at
    the corner the writing direction chooses -- bottom-right in LTR, bottom-LEFT in Hebrew --
@@ -2738,6 +2745,29 @@ body.theme-light .shortcuts-help-keys kbd {
        with no sign there was more below. Give the sheet more of the screen and
        lay the actions out in a wrapping row so they cost one line, not three. */
     max-height: 62dvh;
+  }
+  /* Two lines: the button and the hour above, the track across the whole width below. On
+     one line the readout and the slider shared the row, and the readout is not a fixed
+     width -- it grows from "18:00Z" to "+24h · 09-11 14:00Z" as the slider moves, so the
+     control being dragged shrank under the finger dragging it. The same lesson the map
+     clock learned on a phone, and the density-altitude slider before it. */
+  .insp-time:not([hidden]) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    padding: 4px 8px 2px;
+    border-bottom: 1px solid #3a3636;
+  }
+  .insp-time .map-time-now { order: 1; }
+  .insp-time-read { order: 2; font-size: 11px; white-space: nowrap; opacity: 0.85; }
+  .insp-time input[type="range"] {
+    order: 3;
+    flex: 1 1 100%;              /* its own line, so its width is the panel's, not the label's */
+    width: auto;
+    min-width: 0;
+    height: 24px;
+    margin: 0;
   }
   #insp-body .insp-actions {
     display: flex;
@@ -4324,10 +4354,18 @@ body.theme-light .wx-time { color: #6b7787; }
 body.theme-light .wx-time-stale { color: #a86a00; }
 
 .wx-block { margin-bottom: 6px; }
-.wx-label {
+/* The badge a block in this panel wears to name itself. It started on METAR, TAF and the
+   AD/WS warnings alone, which left the panel reading as two kinds of thing: three yellow
+   labels and four plain ones, with nothing to say why. Every section heading wears it now,
+   so the badge means "this is a block" rather than "this is weather". */
+.wx-label,
+.insp-section-badge {
   display: inline-block; font-size: 10px; font-weight: 700; color: #231F20;
   background: #ffd966; border-radius: 3px; padding: 0 5px; margin-bottom: 2px;
 }
+/* A section heading is a heading, so it keeps the size it had -- the 10px above is for a
+   product label inside a block, not for the name of the block itself. */
+.insp-section-badge { font-size: 11px; }
 .wx-line { line-height: 1.4; }
 /* AD/WS is localized prose (RTL in Hebrew); the code blocks above are LTR. Let this block
    align to its own start edge so the Hebrew label/"None" sit right, not forced left. */

@@ -9834,6 +9834,14 @@ const NavWxTime = (function () {
   const charts = document.getElementById('map-time-charts');
   const nowBtn = document.getElementById('map-time-now');
   const master = document.getElementById('lookahead-time');
+  // The same clock at the top of the inspector. On a phone the panel is a bottom sheet that
+  // covers the map's copy, and the panel is full of readings that answer to it -- density
+  // altitude, the wind on each runway, the NOTAM list. CSS decides where it is worth having;
+  // this code treats it as one more face.
+  const inspStrip = document.getElementById('insp-time');
+  const inspSlider = document.getElementById('insp-time-slider');
+  const inspRead = document.getElementById('insp-time-read');
+  const inspNow = document.getElementById('insp-time-now');
   if (!el || !slider || !master) return;
 
   const featureOn = () => typeof tune !== 'function' || tune('featureMapClock') !== false;
@@ -9868,9 +9876,13 @@ const NavWxTime = (function () {
   }
   function label() {
     const h = parseInt(slider.value, 10) || 0;
-    setParts(read, (typeof notamTimeLabel === 'function')
-      ? notamTimeLabel(h) : (h ? '+' + h + 'h' : 'now'));
+    const text = (typeof notamTimeLabel === 'function')
+      ? notamTimeLabel(h) : (h ? '+' + h + 'h' : 'now');
+    setParts(read, text);
+    setParts(inspRead, text);
     if (nowBtn) nowBtn.disabled = h === 0;
+    if (inspNow) inspNow.disabled = h === 0;
+    if (inspSlider && inspSlider.value !== slider.value) inspSlider.value = slider.value;
   }
   const chartsOn = () => ['ims-pwx-cb', 'sigwx-ov-cb'].some(id => {
     const cb = document.getElementById(id);
@@ -9909,6 +9921,10 @@ const NavWxTime = (function () {
   }
   function refresh() {
     el.hidden = !featureOn();
+    // The panel's copy is withdrawn by the same gist switch. Where it is shown at all is a
+    // question for the stylesheet, not for this: a control the layout does not have room
+    // for is not the same thing as a feature that has been turned off.
+    if (inspStrip) inspStrip.hidden = !featureOn();
     el.classList.toggle('idle', !anyTimedLayer() && !inspectorTimed());
     label();
   }
@@ -9916,18 +9932,26 @@ const NavWxTime = (function () {
   // The inspector is rebuilt from scratch on every selection, so what it contains cannot be
   // asked once. Watching it is cheaper than making every caller that opens or closes a panel
   // remember to say so -- and refresh() is a class toggle and a label.
-  const inspector = document.getElementById('inspector');
-  if (inspector && typeof MutationObserver === 'function') {
-    new MutationObserver(() => refresh()).observe(inspector, { childList: true, subtree: true });
+  // The BODY, not the whole panel. The strip above it is repainted by refresh() -- rewriting
+  // the text of its own readout -- so observing the panel meant observing our own writes:
+  // refresh, mutation, refresh, and the tab hung before the load event ever fired.
+  const inspBody = document.getElementById('insp-body');
+  if (inspBody && typeof MutationObserver === 'function') {
+    new MutationObserver(() => refresh()).observe(inspBody, { childList: true, subtree: true });
   }
 
-  slider.addEventListener('input', () => {
+  const scrubbed = () => {
     // Drive the master and let it cascade: NOTAM, wind effect, wind field and airfield wind
     // are already wired to it, and it owns the "+3h means 15:00Z" anchoring.
     master.value = slider.value;
     master.dispatchEvent(new Event('input'));
     label();
     pullCharts();
+  };
+  slider.addEventListener('input', scrubbed);
+  if (inspSlider) inspSlider.addEventListener('input', () => {
+    slider.value = inspSlider.value;
+    scrubbed();
   });
   // The master moves on its own as the clock catches up (lookaheadTick walks it back toward
   // live). Follow it, or the map would keep showing an offset the layers no longer use.
@@ -9940,10 +9964,12 @@ const NavWxTime = (function () {
   };
   master.addEventListener('input', followMaster);
   master.addEventListener('navaid:lookahead', followMaster);
-  if (nowBtn) nowBtn.addEventListener('click', () => {
+  const backToLive = () => {
     slider.value = '0';
     slider.dispatchEvent(new Event('input'));
-  });
+  };
+  if (nowBtn) nowBtn.addEventListener('click', backToLive);
+  if (inspNow) inspNow.addEventListener('click', backToLive);
   // A layer switched on or off changes whether the clock has anything to move, and whether
   // the charts line needs to be there.
   for (const id of TIMED) {
@@ -9952,6 +9978,7 @@ const NavWxTime = (function () {
     if (cb) cb.addEventListener('change', () => { refresh(); showCharts(); });
   }
   slider.max = String(Math.round((typeof tune === 'function' && tune('mapClockHoursAhead')) || 24));
+  if (inspSlider) inspSlider.max = slider.max;
   refresh();
   showCharts();
   // Keep the label honest when the dropdown moves for its own reasons (a feed arriving with

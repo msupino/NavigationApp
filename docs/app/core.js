@@ -1948,6 +1948,7 @@ window.S = Object.assign({
   deleteNote: '🗑 Delete note (D)',
   latitude: 'Latitude',
   longitude: 'Longitude',
+  coordinates: 'Position',
   satelliteSnippet: 'Satellite',
   satelliteExpand: 'Expand',
   satelliteSnippetTitle: 'Satellite view',

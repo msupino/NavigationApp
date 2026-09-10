@@ -735,6 +735,7 @@ window.S = {
   deleteNote: '🗑 מחק הערה (D)',
   latitude: 'קו רוחב',
   longitude: 'קו אורך',
+  coordinates: 'מיקום',
   satelliteSnippet: 'לוויין',
   satelliteExpand: 'הגדל',
   satelliteSnippetTitle: 'תצוגת לוויין',

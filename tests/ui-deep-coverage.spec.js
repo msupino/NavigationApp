@@ -137,8 +137,11 @@ test.describe('Inspector panel', () => {
       syncLegs(); draw(); showInspector();
     }, LLHZ);
     const bodyText = await page.locator('#insp-body').textContent();
-    expect(bodyText).toMatch(/Latitude/);
-    expect(bodyText).toMatch(/Longitude/);
+    // One row, not two: a latitude without its longitude is not a position, and the pair
+    // fits a line. Both halves still have to be there, in that order.
+    expect(bodyText).toMatch(/Position/);
+    expect(await page.locator('#insp-body .coord-val').textContent())
+      .toMatch(/^\s*\d+°[\d.]+['′]?[NS]\s+\d+°[\d.]+['′]?[EW]\s*$/u);
   });
 
   test('waypoint inspector shows an expandable satellite snippet', async ({ page }) => {

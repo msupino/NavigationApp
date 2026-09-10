@@ -996,6 +996,17 @@
       </div>
       <button id="insp-close" data-i18n-title="inspCloseTitle" data-i18n-aria="inspCloseLabel">×</button>
     </div>
+    <!-- The same clock again, at the top of the panel. On a phone the inspector is a bottom
+         sheet up to 62dvh tall and the map's own clock sits at bottom:205px, so an open
+         panel covers it -- and the panel is full of things that answer to it. Shown only
+         where that is true; on a desktop the map clock is in plain sight. -->
+    <div id="insp-time" class="insp-time" hidden>
+      <button id="insp-time-now" type="button" class="map-time-now"
+              data-i18n="mapTimeNow" data-i18n-title="mapTimeNowTitle"></button>
+      <input type="range" id="insp-time-slider" min="0" max="24" step="1" value="0"
+             data-i18n-aria="mapTimeLabel">
+      <span id="insp-time-read" class="insp-time-read"></span>
+    </div>
     <div id="insp-body"></div>
   </div>
 
