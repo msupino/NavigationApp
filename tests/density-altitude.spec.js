@@ -217,9 +217,9 @@ test('pressure is given in both scales', async ({ page }) => {
 });
 
 // The label is a date and a clock ("+24h · 08-26 14:00Z") and the panel is narrow. Left to
-// wrap, it broke into two lines and shoved the slider around under the finger dragging it --
-// the one thing a control being dragged must not do. Squeezed here to the width a phone with
-// large system type gives it, which is where it was first seen.
+// wrap it broke into two lines, which on a row whose whole job is to name one hour reads as
+// two. Squeezed here to the width a phone with large system type gives it, which is where it
+// was first seen.
 test('the time label never wraps the row', async ({ page }) => {
   await page.setViewportSize({ width: 380, height: 720 });
   await boot(page);
@@ -233,40 +233,40 @@ test('the time label never wraps the row', async ({ page }) => {
     s2.dispatchEvent(new Event('input', { bubbles: true }));
   });
   const geo = await page.evaluate(() => {
-    const slider = document.querySelector('.da-time');
     const label = document.querySelector('.da-when');
-    const s3 = slider.getBoundingClientRect(), l = label.getBoundingClientRect();
+    const l = label.getBoundingClientRect();
     return {
       labelH: Math.round(l.height),
       // 'normal' line-height parses to NaN, so measure against the font size instead.
       oneLine: l.height < parseFloat(getComputedStyle(label).fontSize) * 1.8,
-      sameLine: Math.abs((s3.top + s3.height / 2) - (l.top + l.height / 2)) < 6,
-      sliderW: Math.round(s3.width),
+      // The caption above it may drop to its own line at this width; the hour may not be cut
+      // to make room. A truncated time is the one thing on this row that cannot be read.
+      clipped: label.scrollWidth > label.clientWidth + 1,
     };
   });
   expect(geo.oneLine).toBe(true);         // the label itself is one line, not two
-  expect(geo.sliderW).toBeGreaterThan(30);      // ...and the slider is still draggable
+  expect(geo.clipped).toBe(false);
 });
 
-// The label's text grows as the slider moves ("13:00Z" -> "+24h · 08-26 14:00Z"). With a
-// flexible slider, the readout re-sized the control being dragged: the thumb slid out from
-// under the finger pushing it.
-test('the slider keeps its width as its own label grows', async ({ page }) => {
+// The label's text grows as the shared clock moves ("13:00Z" -> "+24h · 08-26 14:00Z"), and
+// the row must not change shape around it.
+test('the row holds its shape as the hour it names grows', async ({ page }) => {
   await boot(page);
   await open(page, 'LLHA');
-  const widths = await page.evaluate(async () => {
+  const geo = await page.evaluate(async () => {
     const sl = document.querySelector('.da-time');
+    const row = document.querySelector('.da-time-row');
     const at = (v) => {
       sl.value = String(v);
       sl.dispatchEvent(new Event('input', { bubbles: true }));
-      return Math.round(sl.getBoundingClientRect().width);
+      return Math.round(row.getBoundingClientRect().height);
     };
     return { now: at(0), mid: at(9), end: at(sl.max),
              label: document.querySelector('.da-when').textContent };
   });
-  expect(widths.mid).toBe(widths.now);
-  expect(widths.end).toBe(widths.now);
-  expect(widths.label).toMatch(/\+24/);      // the longest label really was on screen
+  expect(geo.mid).toBe(geo.now);
+  expect(geo.end).toBe(geo.now);
+  expect(geo.label).toMatch(/\+24/);      // the longest label really was on screen
 });
 
 // Hebrew is written right to left; a clock is not. The label "+21ש · 08-26 11:00Z" was being
@@ -375,9 +375,10 @@ test('the frequencies sit in a Communication frame', async ({ page }) => {
   expect(comms.borrowsWxClass).toBe(false);
 });
 
-// The slider sits at the top of the Weather box. Unlabelled, it read as though it moved the
-// whole box — the METAR below it included — rather than the density altitude alone.
-test('the slider says what it moves, and sits in the DA group', async ({ page }) => {
+// The hour sits at the top of the Weather box, above the figure it belongs to. Unlabelled it
+// read as though it applied to the whole box — the METAR below it included — rather than to
+// the density altitude alone.
+test('the hour says what it belongs to, and sits in the DA group', async ({ page }) => {
   await boot(page);
   await open(page, 'LLHA');
   const out = await page.evaluate(() => {
@@ -388,8 +389,9 @@ test('the slider says what it moves, and sits in the DA group', async ({ page })
     const cs = group ? getComputedStyle(group) : null;
     return {
       label: row.querySelector('label').textContent.trim(),
-      aria: row.querySelector('input[type=range]').getAttribute('aria-label'),
-      // The group has a rule down its side, so slider + figure + conditions read as one
+      // The panel offers no clock of its own: there is one, and it is on the map.
+      visibleSliders: row.querySelectorAll('input[type=range]:not([hidden])').length,
+      // The group has a rule down its side, so hour + figure + conditions read as one
       // block and the observation below it as another.
       ruled: cs ? parseFloat(cs.borderInlineStartWidth) > 0 : false,
       // ...and the METAR is outside that block.
@@ -398,10 +400,10 @@ test('the slider says what it moves, and sits in the DA group', async ({ page })
     };
   });
   expect(out.label).toBe('Density altitude at');
-  expect(out.aria).toBe('Density altitude at');
+  expect(out.visibleSliders).toBe(0);
   expect(out.ruled).toBe(true);
   expect(out.metarInGroup).toBe(false);
-  expect(out.rowsInGroup).toBe(3);          // slider, the figure, the conditions it used
+  expect(out.rowsInGroup).toBe(3);          // the hour, the figure, the conditions it used
 });
 
 // In Hebrew the caption is longer than in English, and the clock was being cut to "+5ש · …".
@@ -419,20 +421,16 @@ test('the clock is never truncated, in either language', async ({ page }) => {
     await page.waitForTimeout(500);
     const out = await page.evaluate(() => {
       const s2 = document.querySelector('.da-time');
-      s2.value = String(s2.max);                    // the longest label the slider produces
+      s2.value = String(s2.max);                    // the longest label the hour produces
       s2.dispatchEvent(new Event('input', { bubbles: true }));
       const el = document.querySelector('.da-when');
-      const row = document.querySelector('.da-time-row');
       return {
         clipped: el.scrollWidth > el.clientWidth + 1,
         text: el.textContent,
-        sliderFullWidth: Math.round(s2.getBoundingClientRect().width) >=
-                         Math.round(row.getBoundingClientRect().width) - 8,
       };
     });
     expect(out.clipped, lang).toBe(false);
     expect(out.text, lang).toMatch(/\d\d:\d\dZ$/);   // the hour survived to the end
-    expect(out.sliderFullWidth, lang).toBe(true);
   }
 });
 
