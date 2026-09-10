@@ -18,7 +18,6 @@ async function freezeMutableClock(page) {
   await page.addInitScript(() => {
     window.__now = Date.UTC(2026, 5, 21, 12, 0);   // 12:00Z, exactly top of the hour
     const RealDate = Date;
-    // eslint-disable-next-line no-global-assign
     Date = class extends RealDate {
       constructor(...a) { super(...(a.length ? a : [window.__now])); }
       static now() { return window.__now; }
