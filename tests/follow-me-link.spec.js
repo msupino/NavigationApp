@@ -186,7 +186,8 @@ test('one session at a time, and stopping ends it', async ({ page }) => {
     await new Promise(r => setTimeout(r, 10));
     await F.stop();
     const after = { sharing: F.sharing(), same: a === b, sockets: window.__sockets.length };
-    // ...and a new session is a NEW link: nothing survives the flight it belonged to.
+    // The link outlives the flight now: same device, same link. (With persistence off it
+    // would be a new one -- that policy is covered where it is the subject.)
     const c = await F.start('4X-CDE');
     const reused = c === a;
     window.__sockets[window.__sockets.length - 1].connack();
@@ -199,7 +200,7 @@ test('one session at a time, and stopping ends it', async ({ page }) => {
   expect(got.same).toBe(true);
   expect(got.sockets).toBe(1);
   expect(got.sharing).toBe(false);
-  expect(got.reused).toBe(false);
+  expect(got.reused).toBe(true);
 });
 
 // The code is required, and it is a LABEL: nothing verifies it. A shared link with no name
@@ -659,16 +660,19 @@ test('an encryption already in flight cannot republish after Stop', async ({ pag
       pendingBeforeAck,
       statusAfterAck: F.status(),
       storedAfterAck: localStorage.getItem('navaid.followMeSession'),
+      // normalised below: the record may be kept, but never as consent to share
       retainedPayloads: afterDelete.filter(f =>
         (f[0] & 0xf0) === 0x30 && (f[0] & 1) && ((f[0] >> 1) & 3) === 0).length,
     };
   });
+  expect(revoked(got.storedAfterAck), 'a stop must leave nothing a reload would resume').toBe(true);
+  got.storedAfterAck = 'revoked';
   expect(got).toEqual({
     published: false,
     statusBeforeAck: 'stopping',
     pendingBeforeAck: true,
     statusAfterAck: 'idle',
-    storedAfterAck: null,
+    storedAfterAck: 'revoked',
     retainedPayloads: 0,
   });
 });
@@ -866,7 +870,7 @@ test('simultaneous Stops keep one cleanup owner through PUBACK', async ({ page, 
   // PUBACK and completion in both tabs afterward, not a particular scheduler-dependent result.
   expect(results.every(result => typeof result.pending === 'boolean')).toBe(true);
   expect(results.some(result => result.pending === false)).toBe(true);
-  expect(await page.evaluate(() => localStorage.getItem('navaid.followMeSession'))).toBe(null);
+  expect(revoked(await page.evaluate(() => localStorage.getItem('navaid.followMeSession')))).toBe(true);
   expect(await page.evaluate(() => NavAid.followMe.status())).toBe('idle');
   expect(await other.evaluate(() => NavAid.followMe.status())).toBe('idle');
   await other.close();
@@ -909,7 +913,8 @@ test('Stop serializes with a session still initializing in another tab', async (
     status: NavAid.followMe.status(),
     stored: localStorage.getItem('navaid.followMeSession'),
   }));
-  expect(got).toEqual({ status: 'idle', stored: null });
+  expect(got.status).toBe('idle');
+  expect(revoked(got.stored)).toBe(true);
   await other.close();
 });
 
@@ -1199,6 +1204,16 @@ test('a dropped socket reconnects and re-subscribes; stopping does not', async (
 
 // A share that dies with the app is a share nobody can rely on: the pilot is at 2000 feet
 // and is not going to re-send a link. These four tests pin what survives and what does not.
+// Stop revokes CONSENT. Whether the record is then thrown away or kept marked "not sharing"
+// is the persistence policy's business (featureFollowMePersist), and both are correct -- what
+// must never survive a stop is a record a reload would resume from.
+function revoked(raw) {
+  if (raw == null) return true;
+  let o = null;
+  try { o = JSON.parse(raw); } catch (e) { return false; }
+  return !!o && o.on === false && o.pendingStop === false;
+}
+
 async function shareOnce(page, code) {
   return page.evaluate(async (reg) => {
     const F = NavAid.followMe;
@@ -1319,9 +1334,6 @@ test('boot does not auto-open Follow Me MQTT for the simulator', async ({ page }
 // deliberate and stated in the code: a link already shared keeps working under the next name.
 test('renaming does not mint a new link, and the name is remembered', async ({ page }) => {
   await boot(page);
-  // As the gist now has it: the link outlives a deliberate stop. Without persistence a stop
-  // clears the capability outright, and nothing could be reused under any name.
-  await page.evaluate(() => setTune('featureFollowMePersist', true));
   const a = await shareOnce(page, '4X-AAA');
   const b = await shareOnce(page, '4X-BBB');
   expect(b).toBe(a);
@@ -1335,7 +1347,6 @@ test('renaming does not mint a new link, and the name is remembered', async ({ p
 
 test('New link is now the only thing that breaks a shared link', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => setTune('featureFollowMePersist', true));
   const first = await shareOnce(page, '4X-KEEP');
   const fresh = await page.evaluate(async () => {
     const orig = window.WebSocket;
@@ -1352,8 +1363,12 @@ test('New link is now the only thing that breaks a shared link', async ({ page }
   expect(await page.evaluate(() => NavAid.followMe.code())).toBe('4X-KEEP');
 });
 
+// The pre-persistence behaviour, kept under test because the gist can still ask for it: a
+// deliberate stop throws the capability away, and a session older than the window is not
+// offered back.
 test('stopping kills the link, and an expired session is not resumed', async ({ page }) => {
   await boot(page);
+  await page.evaluate(() => setTune('featureFollowMePersist', false));
   const got = await page.evaluate(async () => {
     const F = NavAid.followMe;
     const orig = window.WebSocket;
@@ -1574,7 +1589,7 @@ test('stopping while disconnected retries and completes retained-position cleanu
   expect(got.beforeAck.status).toBe('stopping');
   expect(got.beforeAck.stored).toMatchObject({ pendingStop: true, on: false });
   expect(got.beforeAck.deadToast).toBe(false);
-  expect(got.cleared).toBe(null);
+  expect(revoked(got.cleared)).toBe(true);
   expect(got.retainedDelete).toBe(true);
   expect(got.toasts.some(text => /link is dead/i.test(text))).toBe(true);
 });
@@ -1772,4 +1787,25 @@ test('the menu copies a link before any position is flowing, and says positions 
   expect(got.status).not.toBe('idle');                    // a session actually started
   expect(got.toasts.some(t => /positions start once/i.test(t))).toBe(true);
   expect(got.toasts.some(t => /needs a position/i.test(t))).toBe(false);  // no refusal
+});
+
+// "Same device, same URL, always" cannot depend on a network fetch succeeding. The gist can
+// still withdraw it, but the shipped default has to be the promise -- a pilot on ?nogist,
+// offline at first boot, or with the config request failing would otherwise fall back to the
+// 12-hour expiry and hand out a link that quietly stops matching the one already shared.
+test('the same link comes back with no gist at all', async ({ page }) => {
+  await boot(page);                      // boots with ?nogist: no remote config, ever
+  expect(await page.evaluate(() => NavAid.tuningDefaults.featureFollowMePersist.value)).toBe(true);
+  const first = await shareOnce(page, '4X-SAME');
+  // A day later, having stopped deliberately in between.
+  await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem('navaid.followMeSession'));
+    raw.at = Date.now() - 25 * 3600000;
+    localStorage.setItem('navaid.followMeSession', JSON.stringify(raw));
+  });
+  expect(await shareOnce(page, '4X-SAME')).toBe(first);
+  // And through a reload, which is the case the pilot actually meets: the app was killed.
+  await page.reload();
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
+  expect(await shareOnce(page, '4X-SAME')).toBe(first);
 });

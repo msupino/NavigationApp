@@ -812,8 +812,12 @@ NavAid.tuningDefaults = {
   // club WhatsApp group. It only ever shows a position while the pilot is actually sharing
   // -- between flights whoever holds it sees "waiting for a position" -- but it does mean a
   // standing invitation to every future flight, so it is off unless someone asks for it.
-  featureFollowMePersist: { value: false, type: 'bool',
-    label: 'Feature: keep one follow-me link per aircraft, forever' },
+  // One link per device, for good. Default ON in the code, not only in the gist: a pilot on
+  // ?nogist, offline at first boot, or with the config fetch failing would otherwise fall
+  // back to the 12-hour expiry and hand out a link that quietly stops matching the one
+  // already shared. "Always the same link" cannot depend on a network fetch succeeding.
+  featureFollowMePersist: { value: true, type: 'bool',
+    label: 'Feature: keep one follow-me link per device, forever' },
   // The one-time nudge that teaches a first-time visitor the core action, plus the click
   // priming that goes with it (an empty map's first plain click drops a waypoint instead of
   // inspecting). Both are the same onboarding gesture, so one switch governs them: off, and
