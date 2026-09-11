@@ -831,6 +831,8 @@ NavAid.tuningDefaults = {
   // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
   // it, let alone weigh it. Both live here so they can be tuned from the gist without a
   // deploy, like every other number in the app.
+  profileSpeedColor: { value: '#e0a33e', type: 'color', label: 'Profile: planned-speed trace' },
+  routeProfileHeightPx: { value: 150, min: 80, max: 400, step: 10, label: 'Saved-route profile height (px)' },
   reverseWarnMs: { value: 10000, min: 1000, max: 30000, step: 500, label: 'Reverse warning (ms)' },
   // Reversing the route turns the chart the other way round too: what was ahead of the
   // aircraft is now behind it, and a map left facing the old direction reads as the flight
@@ -986,7 +988,7 @@ NavAid.tuningGroups = [
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing'] },
   { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
-  { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
+  { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileSpeedColor', 'routeProfileHeightPx', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx', 'airmetColor'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor', 'featureNotamFreqRows'] },
@@ -1303,6 +1305,9 @@ window.S = Object.assign({
   routeLibraryDeleteConfirm: 'Delete this saved route?',
   routeLibraryReplaceConfirm: 'Replace the current route with this saved route?',
   routeLibraryExport: 'Export library',
+  routeLibraryProfile: 'Profile',
+  routeLibraryProfileTitle: 'Altitude and planned speed along this saved route, without loading it',
+  routeProfileNothing: 'Not enough route to draw a profile.',
   routeLibraryImport: 'Import library',
   routeLibraryImportNone: 'No valid routes in that file',
   routeLibrarySaved: function (name) { return name + ' saved'; },
@@ -3870,8 +3875,8 @@ function toHMS(hours) {
 // --- vertical profile: top-of-climb / top-of-descent --------------------
 // Default GA climb/descent performance (C172-ish) lives in the tune registry.
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
-function routeEndpointElev(i) {
-  const wp = state.waypoints[i];
+function routeEndpointElev(i, wps) {
+  const wp = (wps || state.waypoints)[i];
   if (!wp) return null;
   const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
   return af && Number.isFinite(af.elev_ft) ? af.elev_ft : null;
@@ -3884,7 +3889,10 @@ function routeEndpointElev(i) {
 // Returns per-leg
 // time/fuel, altitude-vs-distance vertices (pts), and wpCum (cumulative NM at
 // each waypoint, for the distance axis).
-function routeProfile(ac, legIndexes) {
+// `route` lets this run on a route that is not the one being flown -- a saved entry read
+// out of the library, profiled without loading it over the pilot's working route. Omitted,
+// it is the live route exactly as before.
+function routeProfile(ac, legIndexes, route) {
   ac = ac || (typeof aircraft === 'object' && aircraft) || {};
   // V/S shapes the PICTURE, never the clock. Leg time is dist / speed, full stop, so
   // the kite, the plan, the totals and the nav log cannot disagree, and the ETE never
@@ -3894,7 +3902,8 @@ function routeProfile(ac, legIndexes) {
   const climbFpm = vs > 0 ? vs : (ac.climbFpm > 0 ? ac.climbFpm : tune('profileClimbFpm'));
   const climbKt = ac.climbKt > 0 ? ac.climbKt : tune('profileClimbKt');
   const gph = ac.gph > 0 ? ac.gph : tune('defaultGph');
-  const legs = state.legs || [], wps = state.waypoints || [];
+  const src = route || state;
+  const legs = src.legs || [], wps = src.waypoints || [];
   const indexes = Array.isArray(legIndexes)
     ? legIndexes.filter(i => Number.isInteger(i) && i >= 0 && i < legs.length)
     : legs.map((_, i) => i);
@@ -3936,7 +3945,7 @@ function routeProfile(ac, legIndexes) {
     // Does this leg start ON an airfield? Then it climbs from that field's elevation
     // to its own altitude at the V/S, over however much distance that takes (capped
     // at the leg). Everything else is drawn level.
-    const startElev = routeEndpointElev(sourceIndex);
+    const startElev = routeEndpointElev(sourceIndex, wps);
     const climbs = altKnown(sourceIndex) && startElev != null && cr > startElev;
     const startAlt = climbs ? startElev : cr;
     const climbDist = climbs

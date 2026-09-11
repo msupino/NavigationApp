@@ -2213,6 +2213,83 @@ function showRouteTemplatesModal() {
   });
 }
 
+// The saved-route profile: altitude and planned speed against distance, for an entry in the
+// library, drawn without loading it over the route the pilot is working on. Everything comes
+// from the saved data itself -- no fetch, so it works with the aeroplane on the ground and
+// the phone in flight mode.
+function renderRouteProfilePanel(panel, entry) {
+  panel.innerHTML = '';
+  const data = entry && entry.data;
+  const route = { waypoints: (data && data.waypoints) || [], legs: (data && data.legs) || [] };
+  if (route.waypoints.length < 2 || !route.legs.length) {
+    const none = document.createElement('p');
+    none.className = 'route-profile-empty';
+    none.textContent = S.routeProfileNothing || 'Not enough route to draw a profile.';
+    panel.appendChild(none);
+    return;
+  }
+  const prof = (typeof routeProfile === 'function')
+    ? routeProfile(undefined, null, route) : null;
+  if (prof) {
+    const totals = document.createElement('div');
+    totals.className = 'route-profile-totals';
+    totals.dir = 'ltr';                       // distance, clock and fuel read left to right
+    const fmtT = (hh) => {
+      const m = Math.round((hh || 0) * 60);
+      return m < 60 ? m + ' min' : Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
+    };
+    // Each figure isolated: three Latin quantities in a row that may be laid out RTL.
+    for (const part of [prof.totalDist.toFixed(1) + ' NM', fmtT(prof.totalTimeH),
+      prof.totalFuel > 0 ? prof.totalFuel.toFixed(1) + ' gal' : '']) {
+      if (!part) continue;
+      if (totals.childNodes.length) totals.appendChild(document.createTextNode(' \u00b7 '));
+      const bdi = document.createElement('bdi');
+      bdi.textContent = part;
+      totals.appendChild(bdi);
+    }
+    panel.appendChild(totals);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.className = 'route-profile-canvas';
+  panel.appendChild(canvas);
+  let paintedW = 0;
+  const paint = () => {
+    const cssW = Math.max(200, Math.round(panel.clientWidth || 260));
+    paintedW = cssW;
+    const cssH = Math.round((typeof tune === 'function' && tune('routeProfileHeightPx')) || 150);
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    // Height in px, width left to the stylesheet (100%). An inline pixel width beats the
+    // percentage, so the canvas stopped following the panel and started DRIVING it: each
+    // paint measured the panel, set that width, widened the modal, and measured wider next
+    // time -- the whole window walking sideways across the screen.
+    canvas.style.height = cssH + 'px';
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    if (typeof drawVerticalProfile === 'function') {
+      drawVerticalProfile(ctx, 0, 0, cssW, cssH, { route: route, speed: true });
+    }
+  };
+  paint();
+  // The library modal is draggable and resizable, and the strip is only readable at the
+  // width it is actually given.
+  // Only on a WIDTH change. Painting sets the canvas's own height, which resizes the panel,
+  // which fires the observer again -- a loop that leaves the row visibly twitching and never
+  // settles. The strip only cares how wide it is.
+  if (typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(() => {
+      if (!panel.isConnected || panel.hidden) return;
+      const w = Math.max(200, Math.round(panel.clientWidth || 260));
+      if (w !== paintedW) paint();
+    });
+    ro.observe(panel);
+  }
+}
+if (typeof window !== 'undefined') window.renderRouteProfilePanel = renderRouteProfilePanel;
+
 function showRouteLibraryModal(focusSave) {
   if (typeof prepareChartModal === 'function') {
     if (!prepareChartModal('route-library')) return;
@@ -2451,6 +2528,27 @@ function showRouteLibraryModal(focusSave) {
         if (currentRouteLibraryId === entry.id) currentRouteLibraryId = null;
         if (persistRouteLibrary(all)) render();
       };
+      // The profile of a route you have not loaded. Reading a saved route used to mean
+      // replacing the one on the map with it -- so checking "was that the one at 3500?"
+      // cost the pilot their working route, or a save first.
+      const profile = document.createElement('button');
+      profile.type = 'button';
+      profile.className = 'route-library-profile';
+      profile.textContent = S.routeLibraryProfile || 'Profile';
+      profile.title = S.routeLibraryProfileTitle || '';
+      profile.setAttribute('aria-expanded', 'false');
+      const panel = document.createElement('div');
+      panel.className = 'route-profile-panel';
+      panel.hidden = true;
+      profile.onclick = () => {
+        const open = panel.hidden;
+        panel.hidden = !open;
+        profile.setAttribute('aria-expanded', String(open));
+        profile.classList.toggle('is-open', open);
+        if (open) renderRouteProfilePanel(panel, entry);
+        else panel.innerHTML = '';
+      };
+
       if (isGps) {
         const gpx = document.createElement('button');
         gpx.type = 'button';
@@ -2462,10 +2560,11 @@ function showRouteLibraryModal(focusSave) {
         json.onclick = () => { if (typeof downloadGpsTrackJson === 'function') downloadGpsTrackJson(entry); };
         actions.append(loadBtn, rename, gpx, json, del);   // read-only track: Show/Hide + GPX + JSON
       } else {
-        actions.append(loadBtn, save, rename, dup, del);
+        actions.append(loadBtn, profile, save, rename, dup, del);
       }
       row.append(main, actions);
       list.appendChild(row);
+      if (!isGps) list.appendChild(panel);
     }
   }
 

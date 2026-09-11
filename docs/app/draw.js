@@ -734,10 +734,12 @@ if (typeof window !== 'undefined') {
 // The profile is drawn from `wpCum` (cumulative NM per waypoint), so distance maps back to a
 // position by finding the segment that contains it and interpolating between its ends. That
 // is the same straight line drawLegs() paints, so silhouette and map agree.
-function profileTerrainSamples(prof) {
+function profileTerrainSamples(prof, route) {
   if (typeof terrainHasCoverage !== 'function' || !terrainHasCoverage()) return null;
   if (!prof || !Array.isArray(prof.wpCum) || prof.wpCum.length < 2 || !(prof.totalDist > 0)) return null;
-  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  // Same `route` escape as routeProfile: the ground under a saved route is not the ground
+  // under whatever happens to be drawn on the map.
+  const wps = (route && route.waypoints) || (typeof state !== 'undefined' && state.waypoints) || [];
   const idx = Array.isArray(prof.wpIndexes) ? prof.wpIndexes : [];
   const n = Math.max(2, Math.round(tune('profileTerrainSamples')));
   const out = [];
@@ -758,17 +760,28 @@ if (typeof window !== 'undefined') window.profileTerrainSamples = profileTerrain
 
 // Render the altitude-vs-distance profile strip onto a canvas context within
 // (x,y,w,h). Used by the Flight Plan modal.
-function drawVerticalProfile(ctx, x, y, w, h) {
+// `opts.route` profiles a route that is not the one on the map -- a saved entry, read out
+// of the library and drawn without loading it. `opts.speed` adds the planned speed as a
+// second trace on its own axis: altitude says how high, speed says how fast, and together
+// they are what the leg was planned to be.
+function drawVerticalProfile(ctx, x, y, w, h, opts) {
   if (typeof routeProfile !== 'function') return;
-  const visibleIndexes = typeof legDirVisibleIndexes === 'function'
-    ? legDirVisibleIndexes() : (state.legs || []).map((_, i) => i);
-  const prof = routeProfile(undefined, visibleIndexes);
+  const o = opts || {};
+  const route = o.route || null;
+  const srcLegs = (route ? route.legs : state.legs) || [];
+  const srcWps = (route ? route.waypoints : state.waypoints) || [];
+  // A saved route has no direction filter: every leg of it is the route.
+  const visibleIndexes = route
+    ? srcLegs.map((_, i) => i)
+    : (typeof legDirVisibleIndexes === 'function'
+      ? legDirVisibleIndexes() : srcLegs.map((_, i) => i));
+  const prof = routeProfile(undefined, visibleIndexes, route || undefined);
   if (!prof.pts.length || prof.totalDist <= 0) return;
   const alts = prof.pts.map(p => p.alt);
   // Terrain first: it decides the vertical scale as much as the plan does. A route planned
   // at 2000 ft over ground that reaches 3000 would otherwise draw a silhouette clipped flat
   // at the top of the strip -- the one case the picture exists to show.
-  const terrain = (typeof profileTerrainSamples === 'function') ? profileTerrainSamples(prof) : null;
+  const terrain = (typeof profileTerrainSamples === 'function') ? profileTerrainSamples(prof, route) : null;
   const terrainFt = terrain ? terrain.filter(t => t.ft != null).map(t => t.ft) : [];
   const msaBuf = (typeof tune === 'function') ? tune('msaBufferFt') : 1000;
   const headroom = (typeof tune === 'function') ? tune('profileHeadroomFt') : 400;
@@ -919,6 +932,60 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   };
   for (const t of prof.tocs) dot(t, tune('profileTocColor'), S.toc || 'TOC');
 
+  // Planned speed, on its own scale, as a step: a leg is flown at one speed and changes at
+  // the waypoint, so a sloped line between legs would draw an acceleration nobody planned.
+  // Dotted and thin, because it is the second question the picture answers -- the altitude
+  // trace and the terrain under it stay the first.
+  if (o.speed) {
+    const kt = [];
+    for (let i = 0; i < prof.legs.length; i++) {
+      const sourceIndex = prof.wpIndexes && Number.isInteger(prof.wpIndexes[i]) ? prof.wpIndexes[i] : i;
+      const v = srcLegs[sourceIndex] && Number(srcLegs[sourceIndex].flightSpeed);
+      kt.push(Number.isFinite(v) && v > 0 ? v : null);
+    }
+    const known = kt.filter(v => v != null);
+    if (known.length) {
+      const maxV = Math.max.apply(null, known) * 1.15 + 5;
+      const pv = v => baseY - (v / (maxV || 1)) * plotH;
+      ctx.save();
+      ctx.strokeStyle = tune('profileSpeedColor');
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      let cumD = 0;
+      for (let i = 0; i < kt.length; i++) {
+        const d0 = cumD;
+        cumD += prof.legs[i] ? prof.legs[i].dist : 0;
+        if (kt[i] == null) continue;            // a leg with no speed draws no claim
+        ctx.beginPath();
+        ctx.moveTo(px(d0), pv(kt[i]));
+        ctx.lineTo(px(cumD), pv(kt[i]));
+        ctx.stroke();
+        // The riser to the next leg's speed, so the steps read as one trace.
+        if (i + 1 < kt.length && kt[i + 1] != null) {
+          ctx.beginPath();
+          ctx.moveTo(px(cumD), pv(kt[i]));
+          ctx.lineTo(px(cumD), pv(kt[i + 1]));
+          ctx.stroke();
+        }
+      }
+      ctx.setLineDash([]);
+      // Right-hand axis: a couple of labels only. The trace is a shape to compare against
+      // the altitude line, not a number to read off to the knot.
+      ctx.textBaseline = 'middle';
+      ctx.font = '8px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = tune('profileSpeedColor');
+      const vStep = maxV > 240 ? 100 : maxV > 120 ? 50 : 25;
+      for (let v = vStep; v < maxV; v += vStep) {
+        ctx.fillText(String(v), x + w - 14, pv(v));
+      }
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'right';
+      ctx.fillText('kt', x + w - 2, y + 2);
+      ctx.restore();
+    }
+  }
+
   // X axis: at each waypoint a tick + cumulative NM + cumulative time, plus a
   // short waypoint id, with a faint gridline up through the plot so you can
   // read where each altitude change happens along the course.
@@ -928,7 +995,7 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const gap = last > 0 ? plotW / last : plotW;  // px between adjacent waypoints (ticks span plotW, not full w)
   const wpId = i => {
     const sourceIndex = prof.wpIndexes && Number.isInteger(prof.wpIndexes[i]) ? prof.wpIndexes[i] : i;
-    const wp = state.waypoints[sourceIndex];
+    const wp = srcWps[sourceIndex];
     if (!wp) return '';
     return String(wp.code || wp.name || '').slice(0, 4).toUpperCase();
   };
