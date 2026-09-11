@@ -769,6 +769,11 @@
           <span class="follow-me-button-icon" aria-hidden="true">📡</span>
           <span class="follow-me-button-label" data-i18n="tbFollowMe"></span>
         </button>
+        <!-- The link now outlives the flight, the stop and the aircraft's name: one link per
+             device, for good. So the only way to take a link back from whoever it reached is
+             to mint a new one, and that has to be a control, not a console call. -->
+        <button id="follow-me-new" type="button" hidden
+                data-i18n="tbFollowMeNewLink" data-i18n-title="tbFollowMeNewLinkTitle"></button>
         <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
         <!-- Moved here from the Edit menu: wiping every saved route + setting sat
              directly beside everyday actions (Undo / Clear / Fit), one slip away.

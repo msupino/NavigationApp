@@ -186,7 +186,8 @@ test('one session at a time, and stopping ends it', async ({ page }) => {
     await new Promise(r => setTimeout(r, 10));
     await F.stop();
     const after = { sharing: F.sharing(), same: a === b, sockets: window.__sockets.length };
-    // ...and a new session is a NEW link: nothing survives the flight it belonged to.
+    // The link outlives the flight now: same device, same link. (With persistence off it
+    // would be a new one -- that policy is covered where it is the subject.)
     const c = await F.start('4X-CDE');
     const reused = c === a;
     window.__sockets[window.__sockets.length - 1].connack();
@@ -199,7 +200,7 @@ test('one session at a time, and stopping ends it', async ({ page }) => {
   expect(got.same).toBe(true);
   expect(got.sockets).toBe(1);
   expect(got.sharing).toBe(false);
-  expect(got.reused).toBe(false);
+  expect(got.reused).toBe(true);
 });
 
 // The code is required, and it is a LABEL: nothing verifies it. A shared link with no name
@@ -659,16 +660,19 @@ test('an encryption already in flight cannot republish after Stop', async ({ pag
       pendingBeforeAck,
       statusAfterAck: F.status(),
       storedAfterAck: localStorage.getItem('navaid.followMeSession'),
+      // normalised below: the record may be kept, but never as consent to share
       retainedPayloads: afterDelete.filter(f =>
         (f[0] & 0xf0) === 0x30 && (f[0] & 1) && ((f[0] >> 1) & 3) === 0).length,
     };
   });
+  expect(revoked(got.storedAfterAck), 'a stop must leave nothing a reload would resume').toBe(true);
+  got.storedAfterAck = 'revoked';
   expect(got).toEqual({
     published: false,
     statusBeforeAck: 'stopping',
     pendingBeforeAck: true,
     statusAfterAck: 'idle',
-    storedAfterAck: null,
+    storedAfterAck: 'revoked',
     retainedPayloads: 0,
   });
 });
@@ -866,7 +870,7 @@ test('simultaneous Stops keep one cleanup owner through PUBACK', async ({ page, 
   // PUBACK and completion in both tabs afterward, not a particular scheduler-dependent result.
   expect(results.every(result => typeof result.pending === 'boolean')).toBe(true);
   expect(results.some(result => result.pending === false)).toBe(true);
-  expect(await page.evaluate(() => localStorage.getItem('navaid.followMeSession'))).toBe(null);
+  expect(revoked(await page.evaluate(() => localStorage.getItem('navaid.followMeSession')))).toBe(true);
   expect(await page.evaluate(() => NavAid.followMe.status())).toBe('idle');
   expect(await other.evaluate(() => NavAid.followMe.status())).toBe('idle');
   await other.close();
@@ -909,7 +913,8 @@ test('Stop serializes with a session still initializing in another tab', async (
     status: NavAid.followMe.status(),
     stored: localStorage.getItem('navaid.followMeSession'),
   }));
-  expect(got).toEqual({ status: 'idle', stored: null });
+  expect(got.status).toBe('idle');
+  expect(revoked(got.stored)).toBe(true);
   await other.close();
 });
 
@@ -1199,6 +1204,16 @@ test('a dropped socket reconnects and re-subscribes; stopping does not', async (
 
 // A share that dies with the app is a share nobody can rely on: the pilot is at 2000 feet
 // and is not going to re-send a link. These four tests pin what survives and what does not.
+// Stop revokes CONSENT. Whether the record is then thrown away or kept marked "not sharing"
+// is the persistence policy's business (featureFollowMePersist), and both are correct -- what
+// must never survive a stop is a record a reload would resume from.
+function revoked(raw) {
+  if (raw == null) return true;
+  let o = null;
+  try { o = JSON.parse(raw); } catch (e) { return false; }
+  return !!o && o.on === false && o.pendingStop === false;
+}
+
 async function shareOnce(page, code) {
   return page.evaluate(async (reg) => {
     const F = NavAid.followMe;
@@ -1313,15 +1328,66 @@ test('boot does not auto-open Follow Me MQTT for the simulator', async ({ page }
   expect(got.stored).toMatchObject({ reg: '4X-SIM', on: true });
 });
 
-test('a different aircraft code never inherits the previous link', async ({ page }) => {
+// The link belongs to the DEVICE, not to the name typed into the box. Nothing verifies that
+// name -- it is a label for whoever opens the link -- and a pilot fixing a typo, renaming the
+// aeroplane or flying a different one is not asking for a new link to hand round. The cost is
+// deliberate and stated in the code: a link already shared keeps working under the next name.
+test('renaming does not mint a new link, and the name is remembered', async ({ page }) => {
   await boot(page);
   const a = await shareOnce(page, '4X-AAA');
   const b = await shareOnce(page, '4X-BBB');
-  expect(b).not.toBe(a);
+  expect(b).toBe(a);
+  // The identifier itself still follows what was typed last: it is what the banner and the
+  // viewer show, and what the prompt offers next time.
+  expect(await page.evaluate(() => NavAid.followMe.code())).toBe('4X-BBB');
+  expect(await page.evaluate(() => (NavAid.followMe._stored() || {}).reg)).toBe('4X-BBB');
+  // Case and stray spaces are the same aeroplane, not a third one.
+  expect(await shareOnce(page, ' 4x-bbb ')).toBe(a);
 });
 
+// The other way round, for a fleet that shares one standing link per AEROPLANE: a machine's
+// followers must never be handed the next machine's flight because the same phone shared it.
+test('the gist can put the identifier back inside the link', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => setTune('followMeLinkPerName', true));
+  const a = await shareOnce(page, '4X-AAA');
+  const b = await shareOnce(page, '4X-BBB');
+  expect(b).not.toBe(a);
+  // What it guarantees is that a rename never INHERITS the previous aeroplane's followers.
+  // It does not remember a link per aeroplane: one record is kept per device, so coming back
+  // to the first name mints a third link rather than recovering the first.
+  const again = await shareOnce(page, '4X-AAA');
+  expect(again).not.toBe(a);
+  expect(again).not.toBe(b);
+  // Switched off, a rename keeps whatever link the device is holding now.
+  await page.evaluate(() => setTune('followMeLinkPerName', false));
+  expect(await shareOnce(page, '4X-CCC')).toBe(again);
+});
+
+test('New link is now the only thing that breaks a shared link', async ({ page }) => {
+  await boot(page);
+  const first = await shareOnce(page, '4X-KEEP');
+  const fresh = await page.evaluate(async () => {
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await NavAid.followMe.newLink();
+    const sock = window.__sockets[window.__sockets.length - 1];
+    if (sock) sock.connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.WebSocket = orig;
+    return link;
+  });
+  expect(fresh).not.toBe(first);
+  // ...and the name survives the new link: it was the capability that was thrown away.
+  expect(await page.evaluate(() => NavAid.followMe.code())).toBe('4X-KEEP');
+});
+
+// The pre-persistence behaviour, kept under test because the gist can still ask for it: a
+// deliberate stop throws the capability away, and a session older than the window is not
+// offered back.
 test('stopping kills the link, and an expired session is not resumed', async ({ page }) => {
   await boot(page);
+  await page.evaluate(() => setTune('featureFollowMePersist', false));
   const got = await page.evaluate(async () => {
     const F = NavAid.followMe;
     const orig = window.WebSocket;
@@ -1542,7 +1608,7 @@ test('stopping while disconnected retries and completes retained-position cleanu
   expect(got.beforeAck.status).toBe('stopping');
   expect(got.beforeAck.stored).toMatchObject({ pendingStop: true, on: false });
   expect(got.beforeAck.deadToast).toBe(false);
-  expect(got.cleared).toBe(null);
+  expect(revoked(got.cleared)).toBe(true);
   expect(got.retainedDelete).toBe(true);
   expect(got.toasts.some(text => /link is dead/i.test(text))).toBe(true);
 });
@@ -1740,4 +1806,131 @@ test('the menu copies a link before any position is flowing, and says positions 
   expect(got.status).not.toBe('idle');                    // a session actually started
   expect(got.toasts.some(t => /positions start once/i.test(t))).toBe(true);
   expect(got.toasts.some(t => /needs a position/i.test(t))).toBe(false);  // no refusal
+});
+
+// "Same device, same URL, always" cannot depend on a network fetch succeeding. The gist can
+// still withdraw it, but the shipped default has to be the promise -- a pilot on ?nogist,
+// offline at first boot, or with the config request failing would otherwise fall back to the
+// 12-hour expiry and hand out a link that quietly stops matching the one already shared.
+test('the same link comes back with no gist at all', async ({ page }) => {
+  await boot(page);                      // boots with ?nogist: no remote config, ever
+  expect(await page.evaluate(() => NavAid.tuningDefaults.featureFollowMePersist.value)).toBe(true);
+  const first = await shareOnce(page, '4X-SAME');
+  // A day later, having stopped deliberately in between.
+  await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem('navaid.followMeSession'));
+    raw.at = Date.now() - 25 * 3600000;
+    localStorage.setItem('navaid.followMeSession', JSON.stringify(raw));
+  });
+  expect(await shareOnce(page, '4X-SAME')).toBe(first);
+  // And through a reload, which is the case the pilot actually meets: the app was killed.
+  await page.reload();
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
+  expect(await shareOnce(page, '4X-SAME')).toBe(first);
+});
+
+// New link is now the ONLY way to take a shared link back: a stop does not do it, and nor
+// does renaming the aeroplane. It was reachable only from the console, which is not a place
+// a pilot goes. It is a control.
+test.describe('New link, in the interface', () => {
+  const wire = async (page) => {
+    await page.evaluate(() => {
+      setTune('featureFollowMe', true);
+      window.confirm = () => true;
+      window.__toasts = [];
+      window.showToast = (m) => window.__toasts.push(String(m));
+      // Neither the share sheet nor the clipboard exists in a test browser tab; the link is
+      // captured instead of being handed anywhere.
+      window.__handed = [];
+      window.handOverFollowMeLink = (link) => { window.__handed.push(link); return Promise.resolve(true); };
+      if (typeof refreshFollowMeControl === 'function') refreshFollowMeControl();
+    });
+  };
+
+  test('it is offered once this device holds a link, and not before', async ({ page }) => {
+    await boot(page);
+    await wire(page);
+    // Nothing shared yet: nothing to burn.
+    expect(await page.evaluate(() => document.getElementById('follow-me-new').hidden)).toBe(true);
+    await shareOnce(page, '4X-NEW');
+    await page.evaluate(() => refreshFollowMeControl());
+    expect(await page.evaluate(() => document.getElementById('follow-me-new').hidden)).toBe(false);
+  });
+
+  test('pressing it replaces the link and says the old one is dead', async ({ page }) => {
+    await boot(page);
+    await wire(page);
+    const first = await shareOnce(page, '4X-NEW');
+    await page.evaluate(async () => {
+      refreshFollowMeControl();
+      window.WebSocket = window.StubSocket;
+      document.getElementById('follow-me-new').click();
+      await new Promise(r => setTimeout(r, 80));
+    });
+    const after = await page.evaluate(() => ({ handed: window.__handed, toasts: window.__toasts,
+      held: !!NavAid.followMe._stored() }));
+    // Not sharing at that moment -- shareOnce stops when it is done -- so there is nothing to
+    // connect: the capability is thrown away and the NEXT share mints a new one.
+    expect(after.held).toBe(false);
+    expect(after.toasts.join(' ')).toMatch(/dead/i);
+    expect(await shareOnce(page, '4X-NEW')).not.toBe(first);
+    // The name is the label, not the capability: it survives.
+    expect(await page.evaluate(() => NavAid.followMe.code())).toBe('4X-NEW');
+  });
+
+  test('declining the confirmation changes nothing', async ({ page }) => {
+    await boot(page);
+    await wire(page);
+    const first = await shareOnce(page, '4X-KEEPIT');
+    await page.evaluate(async () => {
+      window.confirm = () => false;
+      refreshFollowMeControl();
+      document.getElementById('follow-me-new').click();
+      await new Promise(r => setTimeout(r, 30));
+    });
+    expect(await page.evaluate(() => window.__handed.length)).toBe(0);
+    expect(await shareOnce(page, '4X-KEEPIT')).toBe(first);
+  });
+
+  test('the gist can withdraw the control without withdrawing Follow me', async ({ page }) => {
+    await boot(page);
+    await wire(page);
+    await shareOnce(page, '4X-FLEET');
+    const shown = await page.evaluate(() => {
+      setTune('featureFollowMeNewLink', false);
+      refreshFollowMeControl();
+      const newHidden = document.getElementById('follow-me-new').hidden;
+      const followHidden = document.getElementById('follow-me').hidden;
+      setTune('featureFollowMeNewLink', true);
+      refreshFollowMeControl();
+      return { newHidden, followHidden, backAgain: document.getElementById('follow-me-new').hidden };
+    });
+    expect(shown.newHidden).toBe(true);
+    expect(shown.followHidden).toBe(false);     // Follow me itself is untouched
+    expect(shown.backAgain).toBe(false);        // and it comes back without a reload
+  });
+});
+
+// Reported from the phone: the keyboard inserts a space after the word it autocompletes, so
+// the identifier goes out carrying it. Trimming the ends was not enough -- a space landing
+// mid-word survived, and the name on the link was not the name that was typed.
+test('spaces the keyboard adds are not part of the identifier', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => {
+    const F = NavAid.followMe;
+    return {
+      trailing: F.setCode('4X-CDE '),
+      inner: F.setCode('4X- CDE'),
+      many: F.setCode('  4x  cde  '),
+      // The 12-character cap is applied after the spaces go, so a name is not shortened by
+      // whitespace it never meant to have.
+      long: F.setCode('4X CDE FOXTROT ECHO'),
+      remembered: F.code(),
+    };
+  });
+  expect(got.trailing).toBe('4X-CDE');
+  expect(got.inner).toBe('4X-CDE');
+  expect(got.many).toBe('4XCDE');
+  expect(got.long).toBe('4XCDEFOXTROT');      // 12 characters, counted after the spaces go
+  expect(got.remembered).toBe(got.long);
 });
