@@ -462,22 +462,76 @@ test.describe('flown against planned', () => {
     state.legs[0].flightSpeed = 100;
   });
 
-  test('no route on the map, no comparison offered', async ({ page }) => {
+  test('with no plan anywhere, no comparison is offered', async ({ page }) => {
     await boot(page);
     await seedTrack(page);
     await openLibrary(page);
     await page.locator('.route-library-profile').first().click();
-    // Nothing to compare with, so no control promising one.
+    // No route on the map and no saved route: nothing to compare with, so no control
+    // promising one.
     await expect(page.locator('.route-profile-compare')).toHaveCount(0);
   });
 
-  test('a route on the map brings the comparison with it', async ({ page }) => {
+  test('a saved plan is offered without being loaded', async ({ page }) => {
+    await boot(page);
+    // A plan in the library and NOTHING on the map. Comparing used to mean loading the
+    // route first, which costs the pilot whatever they were working on.
+    await page.evaluate(() => {
+      const t0 = Date.parse('2026-09-11T06:00:00Z');
+      const track = [];
+      for (let i = 0; i < 20; i++) track.push({ lat: 32 + i * 0.02, lng: 34.9, t: t0 + i * 60000, alt: 300 + i * 40 });
+      persistRouteLibrary([
+        { id: 'plan-1', name: 'LLHZ - LLHA 4000 ft', savedAt: new Date().toISOString(),
+          data: { waypoints: [{ lat: 32, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 34.9, name: 'B' }],
+            legs: [{ inboundAltitude: 4000, flightSpeed: 100 }], notes: [] } },
+        { id: 'trk', name: 'nav ex', kind: 'gps', savedAt: new Date().toISOString(), track: track },
+      ]);
+      state.waypoints = [];
+      syncLegs();
+    });
+    await openLibrary(page);
+    await page.locator('.route-library-profile').last().click();
+    const options = await page.evaluate(() =>
+      [...document.querySelectorAll('.route-profile-compare-sel option')].map(o => o.textContent));
+    expect(options).toContain('LLHZ - LLHA 4000 ft');
+    // No route on the map, so that entry is not offered.
+    expect(options.join(' ')).not.toMatch(/route on the map/);
+
+    const drew = await page.evaluate(async () => {
+      const seen = [];
+      const real = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (k, o) {
+        const ctx = real.call(this, k, o);
+        if (ctx && k === '2d' && !ctx.__spy) {
+          ctx.__spy = true;
+          const rs = ctx.stroke.bind(ctx);
+          ctx.stroke = () => { seen.push(String(ctx.strokeStyle).toLowerCase()); rs(); };
+        }
+        return ctx;
+      };
+      const sel = document.querySelector('.route-profile-compare-sel');
+      sel.value = 'plan-1';
+      sel.dispatchEvent(new Event('change'));
+      await new Promise(r => setTimeout(r, 50));
+      HTMLCanvasElement.prototype.getContext = real;
+      return { seen, plan: NavAid.tuningDefaults.profilePlanColor.value.toLowerCase(),
+               live: state.waypoints.length };
+    });
+    expect(drew.seen).toContain(drew.plan);
+    // ...and the working route is still untouched, which is the whole point.
+    expect(drew.live).toBe(0);
+  });
+
+  test('the route on the map is offered first when there is one', async ({ page }) => {
     await boot(page);
     await seedTrack(page);
     await drawPlan(page);
     await openLibrary(page);
     await page.locator('.route-library-profile').first().click();
-    await expect(page.locator('.route-profile-compare')).toHaveCount(1);
+    const options = await page.evaluate(() =>
+      [...document.querySelectorAll('.route-profile-compare-sel option')].map(o => o.value));
+    expect(options[0]).toBe('');        // nothing, by default: the comparison is opt-in
+    expect(options[1]).toBe('map');     // then what the pilot is looking at
   });
 
   test('the plan is drawn beside the flight, and only when asked', async ({ page }) => {
@@ -573,7 +627,11 @@ test.describe('the expanded profile', () => {
     await page.locator('.route-library-profile').first().click();
     // Switch the comparison on in the PANEL, then expand: the big picture must show what
     // the small one is showing, because it shares its paint function.
-    await page.locator('.route-profile-compare input').check();
+    await page.evaluate(() => {
+      const sel = document.querySelector('.route-profile-compare-sel');
+      sel.value = 'map';
+      sel.dispatchEvent(new Event('change'));
+    });
     const planColour = await page.evaluate(() => {
       const seen = [];
       const real = HTMLCanvasElement.prototype.getContext;

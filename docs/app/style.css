@@ -3162,6 +3162,7 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
    grey with black text whatever the app is wearing -- fine in the light theme, a bright
    rectangle in the dark one. */
 .route-library-filter-select,
+.route-profile-compare-sel,
 #ims-pwx-controls select,
 .charts-freq-filter-sel,
 #export-vor-select,
@@ -3179,6 +3180,7 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
    viewer's 13px is set earlier in the file and would otherwise be dropped to the inherited
    16px, which is how this was caught. */
 .route-library-filter-select { font-size: 12px; }
+.route-profile-compare-sel { font-size: 11px; }
 /* Beside the search box it filters with, which is 13px. */
 .charts-freq-filter-sel { font-size: 13px; }
 /* The export sheet's own controls are 13px. */
@@ -3325,11 +3327,12 @@ body.theme-light .route-library-tools button:hover { background: #eef3f9; }
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 4px;
+  margin: 0 0 4px;
   font-size: 11px;
   opacity: 0.85;
   cursor: pointer;
 }
+.route-profile-compare-sel { min-width: 0; flex: 0 1 auto; max-width: 60%; }
 .route-library-profile.is-open { border-color: #8a8080; }
 
 .route-library-open {
@@ -5339,6 +5342,7 @@ body.theme-light .row select,
 body.theme-light .row textarea,
 body.theme-light .route-profile-expand,
 body.theme-light .route-library-filter-select,
+body.theme-light .route-profile-compare-sel,
 body.theme-light #ims-pwx-controls select,
 body.theme-light .charts-freq-filter-sel,
 body.theme-light #export-vor-select,

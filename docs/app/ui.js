@@ -2498,13 +2498,29 @@ function renderTrackProfilePanel(panel, entry) {
   // the level-off was late, where the descent started early. Offered only when there IS a
   // route on the map to compare against -- the map's route, because that is the one the
   // pilot has in front of them.
-  const planRoute = () => ((typeof state !== 'undefined' && state.waypoints
+  // Any plan, not only the one on the map. Comparing used to mean LOADING the route first,
+  // which replaces whatever the pilot was working on -- the exact cost the profile panel
+  // exists to avoid. A saved route is read the same way the panel reads one: without
+  // loading it.
+  const mapRoute = () => ((typeof state !== 'undefined' && state.waypoints
     && state.waypoints.length > 1 && state.legs && state.legs.length)
     ? { waypoints: state.waypoints.slice(), legs: state.legs.slice() } : null);
-  let comparing = false;
+  const savedPlans = () => {
+    const all = (typeof loadRouteLibrary === 'function') ? loadRouteLibrary() : [];
+    return all.filter(e => e && !e.deleted && e.kind !== 'gps' && e.data
+      && Array.isArray(e.data.waypoints) && e.data.waypoints.length > 1
+      && Array.isArray(e.data.legs) && e.data.legs.length);
+  };
+  const planFor = (choice) => {
+    if (choice === 'map') return mapRoute();
+    const hit = savedPlans().find(e => e.id === choice);
+    return hit ? { waypoints: hit.data.waypoints, legs: hit.data.legs } : null;
+  };
+  let comparing = '';
   const paintStrip = (ctx, x, y, w, h) => {
     if (typeof drawTrackProfile !== 'function') return;
-    drawTrackProfile(ctx, x, y, w, h, pts, comparing ? { plan: planRoute() } : undefined);
+    const plan = comparing ? planFor(comparing) : null;
+    drawTrackProfile(ctx, x, y, w, h, pts, plan ? { plan: plan } : undefined);
   };
 
   const expand = () => showProfileModal(entry && entry.name, totals.textContent, paintStrip);
@@ -2531,16 +2547,30 @@ function renderTrackProfilePanel(panel, entry) {
   };
   paint();
 
-  if (planRoute()) {
+  const plans = savedPlans();
+  if (mapRoute() || plans.length) {
+    // Above the strip, not under it: a control below the picture it changes is one the
+    // pilot scrolls past, having already read the picture without it. The density-altitude
+    // row follows the same rule.
     const row = document.createElement('label');
     row.className = 'route-profile-compare';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.onchange = () => { comparing = cb.checked; paint(); };
     const text = document.createElement('span');
-    text.textContent = S.trackProfileCompare || 'Compare with the route on the map';
-    row.append(cb, text);
-    panel.appendChild(row);
+    text.textContent = S.trackProfileCompareWith || 'Compare with';
+    const sel = document.createElement('select');
+    sel.className = 'route-profile-compare-sel';
+    const add = (value, label) => {
+      const o = document.createElement('option');
+      o.value = value;
+      o.textContent = label;
+      sel.appendChild(o);
+    };
+    add('', S.trackProfileCompareNone || '— nothing —');
+    // The route on the map first when there is one: it is what the pilot is looking at.
+    if (mapRoute()) add('map', S.trackProfileCompareMap || 'the route on the map');
+    for (const e of plans) add(e.id, e.name);
+    sel.onchange = () => { comparing = sel.value; paint(); };
+    row.append(text, sel);
+    panel.insertBefore(row, canvas);
   }
   if (typeof ResizeObserver === 'function') {
     const ro = new ResizeObserver(() => {
