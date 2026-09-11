@@ -1,8 +1,7 @@
 // @ts-check
 // Spoken in-flight alerts. Native TTS in the APK is the reliable in-flight path; a
 // window.speechSynthesis fallback lets the feature be heard and tested in a browser too,
-// where it is a testing aid only (browsers suspend speech when backgrounded). See
-// docs/superpowers/specs/2026-08-13-voice-alerts-design.md
+// where it is a testing aid only (browsers suspend speech when backgrounded).
 const { test, expect } = require('./_setup');
 
 test.describe('gpsSpokenDigits', () => {

@@ -3,7 +3,7 @@
 // (NOTAMs / weather / airfield & VOR lookups) and can drive the route, by
 // giving an LLM a set of tools that call the app's existing functions.
 //
-// Design (see docs/superpowers/specs): provider-agnostic BYOK — the model runs
+// Design: provider-agnostic BYOK — the model runs
 // in the browser with the user's own key (default: Google Gemini free tier),
 // so the app stays a pure static site. Safety is TIERED: read tools run freely;
 // route mutations apply immediately but are Undo-able (existing undo stack);
