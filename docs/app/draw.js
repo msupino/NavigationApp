@@ -760,6 +760,203 @@ if (typeof window !== 'undefined') window.profileTerrainSamples = profileTerrain
 
 // Render the altitude-vs-distance profile strip onto a canvas context within
 // (x,y,w,h). Used by the Flight Plan modal.
+// What a recording actually did, as opposed to what a route was planned to do: altitude and
+// ground speed against distance flown. Neither is planned -- the altitude is what the
+// receiver reported and the speed is derived from consecutive fixes -- so nothing here is
+// dashed to mean "assumed"; it is all measurement, with the gaps left as gaps.
+//
+// Returns { d, ft, kt } samples in track order, cumulative NM in `d`. Altitude arrives in
+// metres from the Geolocation API (and is often absent entirely on a phone that has no
+// barometer and a poor fix), so `ft` is null wherever the receiver said nothing.
+function trackProfileSamples(pts, smoothWindow) {
+  const out = [];
+  if (!Array.isArray(pts) || pts.length < 2) return out;
+  const metres = (a, b) => (typeof _gpsMetres === 'function')
+    ? _gpsMetres(a, b)
+    : (typeof geo === 'function' ? geo(a, b).dist * 1852 : 0);
+  let cum = 0;
+  const raw = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    if (i > 0) cum += metres(pts[i - 1], p) / 1852;
+    // Ground speed between this fix and the last: metres over seconds. A recording carries
+    // no speed of its own -- the exported GPX does not either -- so it is derived, which is
+    // exactly what the live readout does when the receiver gives no speed.
+    let kt = null;
+    if (i > 0 && Number.isFinite(p.t) && Number.isFinite(pts[i - 1].t)) {
+      const dt = (p.t - pts[i - 1].t) / 1000;
+      if (dt > 0) kt = (metres(pts[i - 1], p) / dt) * 1.943844;
+    }
+    raw.push({ d: cum, ft: Number.isFinite(p.alt) ? p.alt * 3.28084 : null, kt: kt });
+  }
+  // A GPS-derived speed is noisy: one fix landing a few metres off turns into a spike of
+  // tens of knots. Smoothed over a short run of fixes, which is what makes the trace
+  // readable as a flight rather than as receiver noise.
+  const win = Math.max(1, Math.round(smoothWindow || 5));
+  for (let i = 0; i < raw.length; i++) {
+    let sum = 0, n = 0;
+    for (let k = Math.max(0, i - win + 1); k <= i; k++) {
+      if (raw[k].kt != null) { sum += raw[k].kt; n++; }
+    }
+    out.push({ d: raw[i].d, ft: raw[i].ft, kt: n ? sum / n : null });
+  }
+  return out;
+}
+if (typeof window !== 'undefined') window.trackProfileSamples = trackProfileSamples;
+
+// The recorded-track profile. Same axes and the same colours as the planned one -- ft on
+// the left, kt on the right, terrain filled underneath -- so the two read as the same
+// picture of two different things. No TOC, no safe-altitude line and nothing dashed: a
+// recording has no plan to be measured against, and marking one would invent it.
+function drawTrackProfile(ctx, x, y, w, h, pts) {
+  const samples = (typeof trackProfileSamples === 'function')
+    ? trackProfileSamples(pts, tune('trackProfileSmoothFixes')) : [];
+  const totalDist = samples.length ? samples[samples.length - 1].d : 0;
+  if (samples.length < 2 || !(totalDist > 0)) return false;
+  const fts = samples.map(p => p.ft).filter(v => v != null);
+  const kts = samples.map(p => p.kt).filter(v => v != null);
+  const axisH = tune('profileAxisHeightPx');
+  const yPad = tune('profileYPadPx');
+  const plotH = Math.max(10, h - axisH);
+  const plotW = Math.max(10, w - yPad);
+  const x0 = x + yPad;
+  const baseY = y + plotH;
+  const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+  const px = d => rtl ? x0 + plotW - (d / totalDist) * plotW : x0 + (d / totalDist) * plotW;
+  // Terrain sets the scale as much as the flight does: a recording that passed 500 ft over
+  // a 2000 ft ridge is the one picture worth having.
+  const terrain = [];
+  if (typeof terrainMaxAtLatLng === 'function' && typeof terrainHasCoverage === 'function'
+      && terrainHasCoverage()) {
+    const n = Math.max(2, Math.round(tune('profileTerrainSamples')));
+    for (let i = 0; i <= n; i++) {
+      const frac = i / n;
+      const at = Math.min(pts.length - 1, Math.round(frac * (pts.length - 1)));
+      const ft = terrainMaxAtLatLng(pts[at].lat, pts[at].lng);
+      terrain.push({ d: totalDist * frac, ft: Number.isFinite(ft) ? ft : null });
+    }
+  }
+  const terrainFt = terrain.filter(t => t.ft != null).map(t => t.ft);
+  const maxA = Math.max(
+    (fts.length ? Math.max.apply(null, fts) : 0) * 1.1 + 100,
+    terrainFt.length ? Math.max.apply(null, terrainFt) + tune('profileHeadroomFt') : 0, 500);
+  const minA = 0;
+  const py = a => baseY - ((a - minA) / (maxA - minA || 1)) * plotH;
+
+  ctx.save();
+  ctx.fillStyle = tune('profileBgColor');
+  ctx.fillRect(x, y, w, h);
+  const niceSteps = [100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+  const yStep = niceSteps.find(st => (maxA - minA) / st <= 5) || 50000;
+  ctx.textBaseline = 'middle';
+  ctx.font = '8px sans-serif';
+  for (let a = 0; a <= maxA; a += yStep) {
+    const gy = py(a);
+    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), 0.16);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0, gy + 0.5); ctx.lineTo(x + w, gy + 0.5); ctx.stroke();
+    ctx.fillStyle = tune('profileTextColor');
+    ctx.textAlign = 'right';
+    ctx.fillText(String(a), x0 - 3, gy);
+  }
+  ctx.fillStyle = tune('profileTextColor');
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('ft', x + 2, y + 2);
+  ctx.strokeStyle = tune('profileGroundColor');
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x0, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
+  if (terrain.length) {
+    let run = [];
+    const runs = [];
+    for (const t of terrain) {
+      if (t.ft == null) { if (run.length) runs.push(run); run = []; continue; }
+      run.push(t);
+    }
+    if (run.length) runs.push(run);
+    for (const r of runs) {
+      if (r.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(px(r[0].d), py(minA));
+      for (const t of r) ctx.lineTo(px(t.d), py(t.ft));
+      ctx.lineTo(px(r[r.length - 1].d), py(minA));
+      ctx.closePath();
+      ctx.fillStyle = colorWithAlpha(tune('profileTerrainColor'), 0.85);
+      ctx.fill();
+    }
+  }
+  // Altitude, in runs: a receiver that reported no height leaves a gap rather than a line
+  // drawn straight across ground it never measured.
+  if (fts.length) {
+    ctx.strokeStyle = tune('profileLineColor');
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    let open = false;
+    ctx.beginPath();
+    for (const p of samples) {
+      if (p.ft == null) { if (open) { ctx.stroke(); open = false; } continue; }
+      if (!open) { ctx.beginPath(); ctx.moveTo(px(p.d), py(p.ft)); open = true; continue; }
+      ctx.lineTo(px(p.d), py(p.ft));
+    }
+    if (open) ctx.stroke();
+  } else {
+    ctx.fillStyle = tune('profileTextColor');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '10px sans-serif';
+    ctx.fillText(S.trackProfileNoAlt || 'No altitude recorded', x + w / 2, y + plotH / 2);
+  }
+  // Ground speed, on its own scale, as one continuous line: unlike a planned leg this is a
+  // measurement every few seconds, so it genuinely varies between samples.
+  if (kts.length) {
+    const maxV = Math.max.apply(null, kts) * 1.35 + 5;
+    const pv = v => baseY - (v / (maxV || 1)) * plotH;
+    ctx.strokeStyle = tune('profileSpeedColor');
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    let open = false;
+    for (const p of samples) {
+      if (p.kt == null) { if (open) { ctx.stroke(); open = false; } continue; }
+      if (!open) { ctx.beginPath(); ctx.moveTo(px(p.d), pv(p.kt)); open = true; continue; }
+      ctx.lineTo(px(p.d), pv(p.kt));
+    }
+    if (open) ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = tune('profileSpeedColor');
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.font = '8px sans-serif';
+    const vStep = maxV > 240 ? 100 : maxV > 120 ? 50 : 25;
+    for (let v = vStep; v < maxV; v += vStep) ctx.fillText(String(v), x + w - 14, pv(v));
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'right';
+    ctx.fillText('kt', x + w - 2, y + 2);
+  }
+  // Distance axis: this one has no waypoints to tick, so it is marked at round numbers.
+  ctx.textBaseline = 'top';
+  ctx.lineWidth = 1;
+  const dSteps = [1, 2, 5, 10, 20, 50, 100];
+  const dStep = dSteps.find(st => totalDist / st <= 6) || 200;
+  for (let d = 0; d <= totalDist + 0.001; d += dStep) {
+    const lx = px(d);
+    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), 0.18);
+    ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(lx, baseY); ctx.stroke();
+    ctx.strokeStyle = tune('profileAxisColor');
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 3.5); ctx.stroke();
+    ctx.fillStyle = tune('profileNmTextColor');
+    ctx.font = '8px sans-serif';
+    ctx.textAlign = d === 0 ? 'left' : 'center';
+    ctx.fillText(String(Math.round(d)), lx, baseY + 4);
+  }
+  ctx.fillStyle = tune('profileTimeTextColor');
+  ctx.font = '7px sans-serif';
+  ctx.textAlign = rtl ? 'left' : 'right';
+  ctx.fillText('NM', rtl ? x + 2 : x + w - 2, baseY + 4);
+  ctx.restore();
+  return true;
+}
+if (typeof window !== 'undefined') window.drawTrackProfile = drawTrackProfile;
+
 // `opts.route` profiles a route that is not the one on the map -- a saved entry, read out
 // of the library and drawn without loading it. `opts.speed` adds the planned speed as a
 // second trace on its own axis: altitude says how high, speed says how fast, and together

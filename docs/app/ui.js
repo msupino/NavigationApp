@@ -2219,6 +2219,10 @@ function showRouteTemplatesModal() {
 // the phone in flight mode.
 function renderRouteProfilePanel(panel, entry) {
   panel.innerHTML = '';
+  // A recording is not a plan: it has no legs and no planned altitude, but it has what was
+  // actually flown -- the height the receiver reported and the speed between fixes. That is
+  // the more useful picture of the two, and it was the one missing.
+  if (entry && entry.kind === 'gps') return renderTrackProfilePanel(panel, entry);
   const data = entry && entry.data;
   const route = { waypoints: (data && data.waypoints) || [], legs: (data && data.legs) || [] };
   if (route.waypoints.length < 2 || !route.legs.length) {
@@ -2289,6 +2293,69 @@ function renderRouteProfilePanel(panel, entry) {
   }
 }
 if (typeof window !== 'undefined') window.renderRouteProfilePanel = renderRouteProfilePanel;
+
+// The same panel for a recording: distance flown, time taken, and the height and ground
+// speed that were measured along the way.
+function renderTrackProfilePanel(panel, entry) {
+  const pts = (typeof trackPointsFromEntry === 'function') ? trackPointsFromEntry(entry) : [];
+  if (pts.length < 2) {
+    const none = document.createElement('p');
+    none.className = 'route-profile-empty';
+    none.textContent = S.routeProfileNothing || 'Not enough route to draw a profile.';
+    panel.appendChild(none);
+    return;
+  }
+  const totals = document.createElement('div');
+  totals.className = 'route-profile-totals';
+  totals.dir = 'ltr';
+  const nm = (typeof trackDistanceNm === 'function') ? trackDistanceNm(pts) : 0;
+  const t0 = Number(pts[0].t), t1 = Number(pts[pts.length - 1].t);
+  const mins = (Number.isFinite(t0) && Number.isFinite(t1) && t1 > t0) ? (t1 - t0) / 60000 : 0;
+  const alts = pts.map(p => p.alt).filter(v => Number.isFinite(v)).map(v => v * 3.28084);
+  const parts = [nm.toFixed(1) + ' NM'];
+  if (mins > 0) {
+    parts.push(mins < 60 ? Math.round(mins) + ' min'
+      : Math.floor(mins / 60) + ':' + String(Math.round(mins % 60)).padStart(2, '0'));
+  }
+  if (alts.length) parts.push('max ' + Math.round(Math.max.apply(null, alts)) + ' ft');
+  parts.push(S.trackProfileFlown || 'flown');
+  for (const part of parts) {
+    if (totals.childNodes.length) totals.appendChild(document.createTextNode(' \u00b7 '));
+    const bdi = document.createElement('bdi');
+    bdi.textContent = part;
+    totals.appendChild(bdi);
+  }
+  panel.appendChild(totals);
+
+  const canvas = document.createElement('canvas');
+  canvas.className = 'route-profile-canvas';
+  panel.appendChild(canvas);
+  let paintedW = 0;
+  const paint = () => {
+    const cssW = Math.max(200, Math.round(panel.clientWidth || 260));
+    paintedW = cssW;
+    const cssH = Math.round((typeof tune === 'function' && tune('routeProfileHeightPx')) || 150);
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.height = cssH + 'px';
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    if (typeof drawTrackProfile === 'function') drawTrackProfile(ctx, 0, 0, cssW, cssH, pts);
+  };
+  paint();
+  if (typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(() => {
+      if (!panel.isConnected || panel.hidden) return;
+      const w = Math.max(200, Math.round(panel.clientWidth || 260));
+      if (w !== paintedW) paint();
+    });
+    ro.observe(panel);
+  }
+}
+if (typeof window !== 'undefined') window.renderTrackProfilePanel = renderTrackProfilePanel;
 
 function showRouteLibraryModal(focusSave) {
   if (typeof prepareChartModal === 'function') {
@@ -2535,7 +2602,7 @@ function showRouteLibraryModal(focusSave) {
       profile.type = 'button';
       profile.className = 'route-library-profile';
       profile.textContent = S.routeLibraryProfile || 'Profile';
-      profile.title = S.routeLibraryProfileTitle || '';
+      profile.title = (isGps ? S.trackProfileTitle : S.routeLibraryProfileTitle) || '';
       profile.setAttribute('aria-expanded', 'false');
       const panel = document.createElement('div');
       panel.className = 'route-profile-panel';
@@ -2558,13 +2625,13 @@ function showRouteLibraryModal(focusSave) {
         json.type = 'button';
         json.textContent = S.routeLibraryExportJson || 'JSON';
         json.onclick = () => { if (typeof downloadGpsTrackJson === 'function') downloadGpsTrackJson(entry); };
-        actions.append(loadBtn, rename, gpx, json, del);   // read-only track: Show/Hide + GPX + JSON
+        actions.append(loadBtn, profile, rename, gpx, json, del);  // Show/Hide + Profile + GPX + JSON
       } else {
         actions.append(loadBtn, profile, save, rename, dup, del);
       }
       row.append(main, actions);
       list.appendChild(row);
-      if (!isGps) list.appendChild(panel);
+      list.appendChild(panel);
     }
   }
 
