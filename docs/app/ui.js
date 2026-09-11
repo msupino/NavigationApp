@@ -2513,6 +2513,40 @@ function showRouteLibraryModal(focusSave) {
     setTimeout(() => { try { nameInput.focus(); nameInput.select(); } catch (e) { /* */ } }, 0);
   }
 
+  // Which of the two kinds to show. A pilot with a season of recordings opens this menu to
+  // find a ROUTE, and should not have to scroll past forty flights to reach it. Remembered
+  // per device: it is a view preference, not something to carry to another phone.
+  const FILTER_KEY = 'navaid.routeLibraryFilter';
+  const readFilter = () => {
+    try {
+      const v = localStorage.getItem(FILTER_KEY);
+      return (v === 'route' || v === 'gps') ? v : 'all';
+    } catch (e) { return 'all'; }
+  };
+  const filterRow = document.createElement('div');
+  filterRow.className = 'route-library-filter';
+  const filterLbl = document.createElement('label');
+  filterLbl.textContent = S.routeLibraryShowLabel || 'Show';
+  const filterSel = document.createElement('select');
+  filterSel.className = 'route-library-filter-select';
+  for (const [value, text] of [
+    ['all', S.routeLibraryShowAll || 'Everything'],
+    ['route', S.routeLibraryGroupRoutes || 'Saved routes'],
+    ['gps', S.routeLibraryGroupTracks || 'Recordings'],
+  ]) {
+    const o = document.createElement('option');
+    o.value = value;
+    o.textContent = text;
+    filterSel.appendChild(o);
+  }
+  filterSel.value = readFilter();
+  filterLbl.appendChild(filterSel);
+  filterRow.appendChild(filterLbl);
+  filterSel.onchange = () => {
+    try { localStorage.setItem(FILTER_KEY, filterSel.value); } catch (e) { /* storage off */ }
+    render();
+  };
+
   const list = document.createElement('div');
   list.className = 'route-library-list';
 
@@ -2574,15 +2608,50 @@ function showRouteLibraryModal(focusSave) {
     list.innerHTML = '';
     // Route entries carry `data`; GPS track entries carry `track` (no route
     // data). Include both; exclude tombstones.
-    const entries = loadRouteLibrary().filter(e => e && !e.deleted &&
+    const all = loadRouteLibrary().filter(e => e && !e.deleted &&
       (e.data || (e.kind === 'gps' && Array.isArray(e.track) && e.track.length)));
+    const want = filterSel.value;
+    const entries = want === 'all' ? all
+      : all.filter(e => (e.kind === 'gps') === (want === 'gps'));
+    // The filter stays on screen either way: a library that looks empty because of a choice
+    // the pilot forgot making is worse than one that is actually empty.
+    filterRow.hidden = !all.length;
     if (!entries.length) {
       const empty = document.createElement('p');
       empty.className = 'route-library-empty';
-      empty.textContent = S.routeLibraryEmpty || 'No saved routes yet';
+      empty.textContent = all.length
+        ? (want === 'gps' ? (S.routeLibraryNoTracks || 'No recordings yet.')
+          : (S.routeLibraryNoRoutes || 'No saved routes yet.'))
+        : (S.routeLibraryEmpty || 'No saved routes yet');
       list.appendChild(empty);
       return;
     }
+    // Two frames, because they are two kinds of thing. A saved route is a plan you load and
+    // fly; a recording is what happened, and it is never loaded over the route on the map.
+    // Mixed in one list they were told apart only by the buttons on the row, so the shape of
+    // the list changed as you scrolled it.
+    const frames = {};
+    const frameFor = (isGps) => {
+      const key = isGps ? 'gps' : 'route';
+      if (frames[key]) return frames[key].body;
+      const sec = document.createElement('div');
+      sec.className = 'route-library-group route-library-group-' + key;
+      const head = document.createElement('div');
+      head.className = 'route-library-group-head';
+      head.textContent = isGps
+        ? (S.routeLibraryGroupTracks || 'Recordings')
+        : (S.routeLibraryGroupRoutes || 'Saved routes');
+      const count = document.createElement('span');
+      count.className = 'route-library-group-count';
+      count.dir = 'ltr';
+      head.appendChild(count);
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'route-library-group-body';
+      sec.append(head, bodyEl);
+      frames[key] = { section: sec, body: bodyEl, count: count, n: 0 };
+      return bodyEl;
+    };
+
     for (const entry of entries) {
       const row = document.createElement('div');
       row.className = 'route-library-row';
@@ -2736,12 +2805,22 @@ function showRouteLibraryModal(focusSave) {
         actions.append(loadBtn, profile, save, rename, dup, del);
       }
       row.append(main, actions);
-      list.appendChild(row);
-      list.appendChild(panel);
+      const into = frameFor(isGps);
+      into.appendChild(row);
+      into.appendChild(panel);
+      frames[isGps ? 'gps' : 'route'].n++;
+    }
+    // Plans first: that is what the menu is opened for. A frame with nothing in it is not
+    // drawn at all -- an empty "Recordings" heading is a question, not an answer.
+    for (const key of ['route', 'gps']) {
+      const f = frames[key];
+      if (!f || !f.n) continue;
+      f.count.textContent = String(f.n);
+      list.appendChild(f.section);
     }
   }
 
-  body.append(saveRow, list, tools);
+  body.append(saveRow, filterRow, list, tools);
 
   // loadRouteLibrary() sets this flag when the saved library is corrupt.
   // Surface it with recovery actions and note that saving is blocked
