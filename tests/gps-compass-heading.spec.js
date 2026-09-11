@@ -4,7 +4,7 @@
 // only there. Course and heading are different quantities (they differ by the drift angle,
 // which the off-course alert is built on), and a phone reads where it is clamped, through
 // a steel airframe. So: fallback only, below taxi speed, and marked in the readout as
-// `045m` rather than passed off as a GPS course's `045°`.
+// `~045°` rather than passed off as a GPS course's `045°`.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -36,13 +36,16 @@ const fix = (page, course, speedMs) => page.evaluate(([c, s]) => {
 
 const readout = (page) => page.evaluate(() => gpsReadoutHeading());
 
-test('with no GPS course, the compass supplies the heading — marked with m', async ({ page }) => {
+test('with no GPS course, the compass supplies the heading — marked with a tilde', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => startLiveLocation());
   await compass(page, 90);                       // pointing east, magnetic
   await fix(page, null, 0);                      // stationary: no course
   expect(await page.evaluate(() => gpsOwn.hdgCompass)).toBe(true);
-  expect(await readout(page)).toBe('090m');      // magnetic in, magnetic out
+  // The degree sign stays on whatever the source, so the number always reads as a heading.
+  // A trailing 'm' -- for magnetic -- was read as metres, beside an altitude in feet.
+  expect(await readout(page)).toBe('~090\u00b0');   // magnetic in, magnetic out
+  expect(await readout(page)).not.toContain('m');
 });
 
 test('a real GPS course always wins, and reads in degrees', async ({ page }) => {
@@ -52,8 +55,29 @@ test('a real GPS course always wins, and reads in degrees', async ({ page }) => 
   await fix(page, 180, 30);                      // moving, with a course
   expect(await page.evaluate(() => gpsOwn.hdgCompass)).toBe(false);
   const shown = await readout(page);
-  expect(shown.endsWith('°')).toBe(true);
+  expect(shown.endsWith('\u00b0')).toBe(true);
   expect(shown).not.toContain('m');
+  // No tilde: this one is measured, not approximated.
+  expect(shown.startsWith('~')).toBe(false);
+});
+
+test('the line says what the tilde means', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startLiveLocation());
+  await compass(page, 90);
+  await fix(page, null, 0);                      // stationary: the compass stands in
+  const withCompass = await page.evaluate(() => {
+    gpsUpdateReadout();
+    return document.getElementById('gps-readout').title;
+  });
+  expect(withCompass).toMatch(/compass/i);
+  await fix(page, 180, 30);                      // moving: a real course
+  const withCourse = await page.evaluate(() => {
+    gpsUpdateReadout();
+    return document.getElementById('gps-readout').title;
+  });
+  // Cleared, so a stale explanation cannot sit on a line that no longer carries one.
+  expect(withCourse).toBe('');
 });
 
 test('above taxi speed the compass is ignored even with no course', async ({ page }) => {
@@ -87,7 +111,7 @@ test('anything but an earth-referenced reading is refused', async ({ page }) => 
     // Explicitly relative.
     explicitFalse: _gpsCompassFromEvent({ alpha: 270, absolute: false }),
     // No `absolute` field at all: a gyro-only alpha drifting from an arbitrary start.
-    // This used to be accepted and printed as a confident `045m`.
+    // This used to be accepted and printed as a confident heading.
     missing: _gpsCompassFromEvent({ alpha: 270 }),
     absolute: _gpsCompassFromEvent({ alpha: 270, absolute: true }),
     // iOS says so directly, and needs no `absolute`.

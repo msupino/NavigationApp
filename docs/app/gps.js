@@ -750,6 +750,12 @@ function gpsAltitudeForCompare() {
 // element and the notice carries dir="auto", taking its own base from its own text.
 function gpsSetReadout(el, parts, staleText) {
   el.textContent = '';
+  // The tilde is one character doing a job; the title says what it is for anyone who
+  // wonders. Cleared when the heading is a real course, so a stale explanation cannot sit
+  // on a line that no longer carries one.
+  const compass = !!(typeof gpsOwn === 'object' && gpsOwn && gpsOwn.hdgCompass);
+  el.title = compass ? ((typeof S === 'object' && S && S.gpsHeadingCompass)
+    || 'Heading from the phone compass, not a GPS course') : '';
   const measured = parts.join(' · ');
   if (measured) el.appendChild(document.createTextNode(measured));
   if (!staleText) return;
@@ -799,8 +805,12 @@ function gpsReadoutHeading() {
   const r = ((Math.round(mag) % 360) + 360) % 360;
   const shown = (typeof pad3 === 'function') ? pad3(r) : String(r);
   // A compass heading is where the phone points, not where the aircraft is going: it gets
-  // its own mark rather than being dressed up as a GPS course.
-  return shown + (gpsOwn.hdgCompass ? 'm' : '\u00b0');
+  // its own mark rather than being dressed up as a GPS course. The mark used to be a
+  // trailing 'm' -- for magnetic -- and was read as metres, beside an altitude in feet. The
+  // degree sign now stays on whatever the source, so the number is always plainly a
+  // heading, and a leading tilde says the instrument is approximate. One character, and
+  // this line has no width to spare.
+  return (gpsOwn.hdgCompass ? '~' : '') + shown + '\u00b0';
 }
 // Altitude as the altimeter would read it, plus the subscale setting that goes with it.
 // One helper so the recording and live branches cannot drift apart.
