@@ -813,6 +813,21 @@ if (typeof window !== 'undefined') window.drawProfileLegend = drawProfileLegend;
 // Returns { d, ft, kt } samples in track order, cumulative NM in `d`. Altitude arrives in
 // metres from the Geolocation API (and is often absent entirely on a phone that has no
 // barometer and a poor fix), so `ft` is null wherever the receiver said nothing.
+// A recorded altitude is the receiver's GEOMETRIC height: metres above the WGS84 ellipsoid,
+// which is not the number on the altimeter. Every other altitude in the app is put through
+// gpsIndicatedAltitudeFt() before it is shown or compared -- the readout, the alerts, the
+// altitude-off-plan watch -- so the profile has to be as well, or the same flight reads ~59 ft
+// higher here than it did in the cockpit.
+//
+// The QNH of the day is not recorded, so the temperature term cannot be applied: passing an
+// explicit null asks for the geoid part alone, which is the half that does not need it.
+function trackAltFt(metres) {
+  if (!Number.isFinite(metres)) return null;
+  const ft = metres * 3.28084;
+  return (typeof gpsIndicatedAltitudeFt === 'function') ? gpsIndicatedAltitudeFt(ft, null) : ft;
+}
+if (typeof window !== 'undefined') window.trackAltFt = trackAltFt;
+
 function trackProfileSamples(pts, smoothWindow) {
   const out = [];
   if (!Array.isArray(pts) || pts.length < 2) return out;
@@ -832,7 +847,7 @@ function trackProfileSamples(pts, smoothWindow) {
       const dt = (p.t - pts[i - 1].t) / 1000;
       if (dt > 0) kt = (metres(pts[i - 1], p) / dt) * 1.943844;
     }
-    raw.push({ d: cum, ft: Number.isFinite(p.alt) ? p.alt * 3.28084 : null, kt: kt });
+    raw.push({ d: cum, ft: trackAltFt(p.alt), kt: kt });
   }
   // A GPS-derived speed is noisy: one fix landing a few metres off turns into a spike of
   // tens of knots. Smoothed over a short run of fixes, which is what makes the trace
