@@ -106,3 +106,74 @@ test('a chart withdrawn by the gist can still fall back', async ({ page }) => {
   });
   expect(allowed).toBe(true);
 });
+
+// Reported: the warning about changing layers with a route loaded is too short. It was --
+// every toast shared one hard-coded 2500 ms, which is fine for "Copied" and nowhere near
+// enough for a sentence explaining why a control just refused. A refusal that vanishes
+// before it has been read looks like a control that broke.
+//
+// So the duration comes from the sentence: notice + words/wpm, floored and capped.
+test('a toast is timed by how long it takes to read', async ({ page }) => {
+  // Not boot(): that replaces showToast with a collector, and this is about the real one.
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof toastReadMs === 'function'
+    && window.NavAid && NavAid.tuningDefaults.toastReadWpm);
+  const got = await page.evaluate(() => {
+    const d = NavAid.tuningDefaults;
+    const words = (n) => new Array(n).fill('word').join(' ');
+    return {
+      floorShort: toastReadMs('Copied', false),
+      floorWarn: toastReadMs('Copied', true),
+      min: d.toastMinMs.value, warnMin: d.toastWarnMinMs.value, cap: d.toastMaxMs.value,
+      // 60 words at 180 wpm is 20 s of reading, so the cap is what answers.
+      long: toastReadMs(words(600), false),
+      // 30 words: 10 s of reading plus the notice beat, well clear of both floors.
+      mid: toastReadMs(words(30), false),
+      midWarn: toastReadMs(words(30), true),
+      notice: d.toastNoticeMs.value, wpm: d.toastReadWpm.value,
+    };
+  });
+  // A two-word acknowledgement is held by the floor, not by its own reading time.
+  expect(got.floorShort).toBe(got.min);
+  // `warn` raises the floor and nothing else: a short warning is still a short read.
+  expect(got.floorWarn).toBe(got.warnMin);
+  expect(got.warnMin).toBeGreaterThan(got.min);
+  // In the middle the formula itself decides, and warn changes nothing there.
+  expect(got.mid).toBe(Math.round(got.notice + (30 / got.wpm) * 60000));
+  expect(got.midWarn).toBe(got.mid);
+  // And nothing parks itself over the chart for ever.
+  expect(got.long).toBe(got.cap);
+});
+
+test('showToast arms the timer the formula asked for', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showToast === 'function' && typeof toastReadMs === 'function');
+  const got = await page.evaluate(() => {
+    const seen = [];
+    const real = window.setTimeout;
+    window.setTimeout = function (fn, ms) { seen.push(ms); return real(fn, ms); };
+    const text = 'a refusal with rather more words in it than an acknowledgement has';
+    showToast(text);
+    showToast(text, { warn: true });
+    showToast('explicit', { ms: 1234 });     // a caller with its own reason still wins
+    window.setTimeout = real;
+    return { armed: seen.filter(ms => ms > 300), want: toastReadMs(text, false) };
+  });
+  expect(got.armed).toEqual([got.want, got.want, 1234]);
+});
+
+test('the chart refusal is a warning, not an acknowledgement', async ({ page }) => {
+  await boot(page);
+  await drawRoute(page);
+  const asked = await page.evaluate(() => {
+    let opts = null;
+    const real = window.showToast;
+    window.showToast = (msg, o) => { opts = o; return real(msg, o); };
+    const sel = document.getElementById('layer-select');
+    sel.value = 'ATS';
+    sel.onchange();
+    window.showToast = real;
+    return opts;
+  });
+  expect(asked).toEqual({ warn: true });
+});

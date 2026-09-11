@@ -105,7 +105,7 @@ function setMode(mode) {
   // that will not arm. Leaving a mode is always allowed.
   if (mode && typeof routeEditLocked === 'function' && routeEditLocked()) {
     if (typeof showToast === 'function') {
-      showToast(S.editLockBlockedToast || 'Route is locked');
+      showToast(S.editLockBlockedToast || 'Route is locked', { warn: true });
     }
     mode = null;
   }
@@ -310,7 +310,7 @@ function layerSwitchAllowed(active, target) {
   const say = typeof S.errRouteChartLocked === 'function'
     ? S.errRouteChartLocked(named)
     : 'This route was planned on the ' + named + ' chart. Clear or save it first.';
-  if (typeof showToast === 'function') showToast(say);
+  if (typeof showToast === 'function') showToast(say, { warn: true });
   else try { alert(say); } catch (e) { /* no way to say it; the switch is still refused */ }
   return false;
 }
