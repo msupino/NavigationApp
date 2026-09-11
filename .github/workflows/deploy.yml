@@ -501,6 +501,30 @@ jobs:
   # Branch protection requires a check named exactly `e2e-deployed`, which a matrix
   # job cannot provide (it becomes `e2e-deployed-shard (1)`), hence the gate job at
   # the end -- do not rename either without updating the required checks.
+  # Same decision as CI's, from the same composite action: a diff that cannot reach a
+  # browser test does not need the suite run twice against a preview either.
+  scope:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    outputs:
+      e2e: ${{ steps.scope.outputs.e2e }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/test-scope
+      - name: Say so
+        run: |
+          echo "e2e: ${{ steps.scope.outputs.e2e }} (${{ steps.scope.outputs.why }})" >> "$GITHUB_STEP_SUMMARY"
+
   e2e-deployed-shard:
     # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
     # pull_request runs land in `action_required` and sit there unapproved, while the
@@ -514,10 +538,11 @@ jobs:
       github.base_ref != 'main') &&
       (github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' &&
-       github.ref_name == 'dev'))
+       github.ref_name == 'dev')) &&
+      needs.scope.outputs.e2e == 'full'
     # Pull requests never deploy. Test the Pages artifact produced by `build`
     # through a local HTTP server so deploy-time rewrites are still covered.
-    needs: build
+    needs: [build, scope]
     runs-on: ubuntu-latest
     permissions:
       contents: read
