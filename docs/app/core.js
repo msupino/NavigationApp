@@ -2489,6 +2489,7 @@ window.S = Object.assign({
   atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS is not available in this browser.',
   // Prefixes an age in seconds: "GPS fix 47s" — the fix is that old, not that recent.
+  gpsHeadingCompass: 'Heading from the phone compass, not a GPS course',
   gpsFixStale: 'GPS fix',
   wpLabel: 'WP',
   gpsNoTrack: 'No track recorded.',

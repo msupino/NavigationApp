@@ -1344,6 +1344,7 @@ window.S = {
   },
   atisMarkerLabel: 'ATIS',
   gpsUnsupported: 'GPS אינו זמין בדפדפן זה.',
+  gpsHeadingCompass: 'כיוון ממצפן הטלפון, לא מסלול GPS',
   gpsFixStale: 'קליטת GPS מלפני',
   wpLabel: 'צד״ר',
   gpsNoTrack: 'לא הוקלט מסלול.',

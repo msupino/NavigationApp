@@ -748,8 +748,35 @@ function gpsAltitudeForCompare() {
 // Hebrew ("קליטת GPS מלפני") is two Hebrew words either side of a Latin one, and an LTR
 // base reverses how they read. So the measurements are written into an LTR-isolated
 // element and the notice carries dir="auto", taking its own base from its own text.
+// Render the line, and if it does not fit, drop the least useful field and try again.
+// The toolbar is a fixed 240px panel with overflow hidden, so a line that is too long is
+// not wrapped -- it is CUT, and the tail it loses is the heading. Trimming a field the
+// pilot can find elsewhere beats truncating one they cannot.
+//
+// `parts` is ordered as it reads; `droppable` names indices in the order they may go.
+function gpsFitReadout(el, parts, staleText, droppable) {
+  const order = Array.isArray(droppable) ? droppable.slice() : [];
+  let shown = parts.slice();
+  gpsSetReadout(el, shown.filter(p => p != null), staleText);
+  // clientWidth is 0 while the element is hidden (the desktop toolbar hides this line unless
+  // a fix is driving the map); nothing to fit, and nothing to trim on a guess.
+  let guard = order.length;
+  while (guard-- > 0 && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
+    const drop = order.shift();
+    if (drop === undefined) break;
+    shown[drop] = null;
+    gpsSetReadout(el, shown.filter(p => p != null), staleText);
+  }
+}
+
 function gpsSetReadout(el, parts, staleText) {
   el.textContent = '';
+  // The tilde is one character doing a job; the title says what it is for anyone who
+  // wonders. Cleared when the heading is a real course, so a stale explanation cannot sit
+  // on a line that no longer carries one.
+  const compass = !!(typeof gpsOwn === 'object' && gpsOwn && gpsOwn.hdgCompass);
+  el.title = compass ? ((typeof S === 'object' && S && S.gpsHeadingCompass)
+    || 'Heading from the phone compass, not a GPS course') : '';
   const measured = parts.join(' · ');
   if (measured) el.appendChild(document.createTextNode(measured));
   if (!staleText) return;
@@ -799,16 +826,23 @@ function gpsReadoutHeading() {
   const r = ((Math.round(mag) % 360) + 360) % 360;
   const shown = (typeof pad3 === 'function') ? pad3(r) : String(r);
   // A compass heading is where the phone points, not where the aircraft is going: it gets
-  // its own mark rather than being dressed up as a GPS course.
-  return shown + (gpsOwn.hdgCompass ? 'm' : '\u00b0');
+  // its own mark rather than being dressed up as a GPS course. The mark used to be a
+  // trailing 'm' -- for magnetic -- and was read as metres, beside an altitude in feet. The
+  // degree sign now stays on whatever the source, so the number is always plainly a
+  // heading, and a leading tilde says the instrument is approximate. One character, and
+  // this line has no width to spare.
+  return (gpsOwn.hdgCompass ? '~' : '') + shown + '\u00b0';
 }
 // Altitude as the altimeter would read it, plus the subscale setting that goes with it.
 // One helper so the recording and live branches cannot drift apart.
+// Always two slots, `null` where there is nothing to say: the caller names fields by index
+// when deciding what may be dropped on a narrow panel, and an index that moves depending on
+// whether the QNH has arrived yet would drop the wrong one. Nulls are filtered on render.
 function gpsPushAltitudeParts(parts) {
   const alt = gpsAltitudeForCompare();
-  if (alt != null) parts.push(Math.round(alt) + ' ft');
+  parts.push(alt != null ? Math.round(alt) + ' ft' : null);
   const inHg = gpsQnh && gpsFormatInHg(gpsQnh.inHg);
-  if (inHg) parts.push(inHg + '\u2033');     // 29.83" -- the subscale setting, not a length
+  parts.push(inHg ? inHg + '\u2033' : null);   // 29.83" -- the subscale setting, not a length
 }
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
@@ -823,12 +857,17 @@ function gpsUpdateReadout() {
     const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
     const mm = String(Math.floor(secs / 60)).padStart(2, '0');
     const ss = String(secs % 60).padStart(2, '0');
-    const parts = [gpsTrack.length + ' pts · ' + mm + ':' + ss];
-    if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
+    // Ordered as it reads. The last two arguments say what may go, and in what order, when
+    // the panel is too narrow: the subscale setting first (it is a setting, and the airfield
+    // panel carries it too), then the point count, then the elapsed clock. Speed, altitude
+    // and heading are the instrument and are never dropped.
+    const parts = [gpsTrack.length + ' pts', mm + ':' + ss,
+      gpsLastGS != null ? Math.round(gpsLastGS) + ' kt' : null];
+    const altAt = parts.length;
     gpsPushAltitudeParts(parts);
     const hdgRec = gpsReadoutHeading();
     if (hdgRec) parts.push(hdgRec);
-    gpsSetReadout(el, parts, gpsStaleText());
+    gpsFitReadout(el, parts, gpsStaleText(), [altAt + 1, 0, 1]);
     return;
   }
   // Not recording, but still a live position source (plain "show location", or a
@@ -838,14 +877,14 @@ function gpsUpdateReadout() {
   // show nothing at all outside a recording; reported live: "show alt like gps mode
   // shows alt in sim mode".
   if (liveActive) {
-    const parts = [];
-    if (gpsLastGS != null) parts.push(Math.round(gpsLastGS) + ' kt');
+    const parts = [gpsLastGS != null ? Math.round(gpsLastGS) + ' kt' : null];
+    const altAt = parts.length;
     gpsPushAltitudeParts(parts);
     // Same fields whether the position comes from the device GPS or a connected
     // simulator -- both land in gpsOwn, and this branch already serves both.
     const hdgLive = gpsReadoutHeading();
     if (hdgLive) parts.push(hdgLive);
-    gpsSetReadout(el, parts, gpsStaleText());
+    gpsFitReadout(el, parts, gpsStaleText(), [altAt + 1]);
     return;
   }
   // Nothing active: a stale leftover fix is still worth saying (the map may still show

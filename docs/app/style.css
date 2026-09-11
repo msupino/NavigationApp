@@ -2171,6 +2171,12 @@ body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  /* Bounded by the panel it sits in. The toolbar is a fixed 240px with overflow-x hidden,
+     so a footer row that sizes itself to its content does not widen the panel -- it is
+     silently CUT by it, and the live readout was losing its heading off the right edge. */
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   gap: 4px 12px;
   margin-top: 2px;
   padding: 4px 6px 6px;
@@ -2230,6 +2236,20 @@ body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
   }
   #toolbar > #footer-links .gps-footer-btn {
     flex: 0 1 auto;
+  }
+  /* The instrument line gets a line of its own. Sharing the row with the Record and
+     Location buttons left it about 220px on a 390px phone for a string that wants 360 --
+     so it wrapped, and "104 kt · 2450 ft · 070°" broke across two lines mid-reading. It is
+     read at arm's length in a cockpit: one line, or it is not a readout.
+     Nothing is dropped to make it fit -- it takes the width instead, and ellipsis is the
+     last resort rather than a wrap. */
+  #toolbar > #footer-links .footer-gps-readout.live-active:not(:empty) {
+    flex: 1 0 100%;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 4px;
   }
   #toolbar > #footer-links .gps-footer-btn .footer-link-text {
     min-width: 0;
