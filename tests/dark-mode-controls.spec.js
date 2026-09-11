@@ -17,6 +17,9 @@ async function boot(page, theme) {
       data: { waypoints: [{ lat: 32, lng: 34.9, name: 'A' }, { lat: 32.2, lng: 35, name: 'B' }],
         legs: [{}], notes: [] } }]);
     showRouteLibraryModal();
+    // The export sheet owns two of its own, and is a plain modal rather than a chart one, so
+    // it can sit open alongside the library.
+    if (typeof showExportModal === 'function') { try { showExportModal(); } catch (e) { /* */ } }
     const modal = document.createElement('div');
     modal.className = 'modal sigwx-modal';
     const sel = document.createElement('select');
