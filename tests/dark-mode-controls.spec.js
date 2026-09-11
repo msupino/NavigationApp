@@ -26,6 +26,19 @@ async function boot(page, theme) {
   });
 }
 
+// The frequency table is its own chart modal, and opening one closes another -- so it gets
+// its own boot rather than joining the sweep above.
+async function bootFreqTable(page, theme) {
+  await page.addInitScript((t) => { try { localStorage.setItem('navaid.theme', t); } catch (e) {} }, theme);
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showFreqTableModal === 'function');
+  await page.evaluate(() => showFreqTableModal());
+  // Its aerodrome filter is built only once the rows are in, and only when they cover more
+  // than one field.
+  await page.waitForSelector('.charts-freq-filter-sel', { state: 'attached', timeout: 10000 })
+    .catch(() => { /* no frequency data in this run */ });
+}
+
 const readSelects = (page) => page.evaluate(() => {
   const rgb = (c) => { const m = String(c).match(/[\d.]+/g); return m ? m.slice(0, 3).map(Number) : [0, 0, 0]; };
   const lum = (c) => {
@@ -62,6 +75,22 @@ for (const [theme, wantLight] of [['dark', false], ['light', true]]) {
     expect(poor).toEqual([]);
   });
 }
+
+test('the frequency table filter matches the box it filters with', async ({ page }) => {
+  await bootFreqTable(page, 'dark');
+  const got = await page.evaluate(() => {
+    const sel = document.querySelector('.charts-freq-filter-sel');
+    const box = document.querySelector('.charts-freq-search');
+    if (!sel || !box) return null;
+    const a = getComputedStyle(sel), b = getComputedStyle(box);
+    return { selBg: a.backgroundColor, boxBg: b.backgroundColor, selSize: a.fontSize, boxSize: b.fontSize };
+  });
+  test.skip(!got, 'no frequency rows in this run');
+  // It sits directly beside the search input; two controls on one line that disagree about
+  // what colour a control is read as two different kinds of thing.
+  expect(got.selBg).toBe(got.boxBg);
+  expect(got.selSize).toBe(got.boxSize);
+});
 
 test('the two that were missed keep their own size', async ({ page }) => {
   await boot(page, 'dark');
