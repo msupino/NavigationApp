@@ -840,6 +840,10 @@ window.S = {
   tbImport: '⬆ ייבא',
   tbImportTitle: 'ייבא JSON מסלול',
   tbShare: '🔗 שתף מסלול',
+  errRouteChartLocked: function (chart) {
+    return 'המסלול תוכנן על מפת ' + chart + '. ל-CVFR, ATS ו-Low Alt יש נקודות דיווח משלהן, '
+      + 'ולכן המסלול לא יהיה אותו מסלול על מפה אחרת. נקו את המסלול, או שמרו אותו, לפני המעבר.';
+  },
   tbFollowMe: 'עקבו אחריי',
   followMeSharingNow: 'משתפים את המיקום שלכם — הקישו כדי להפסיק',
   followMeConnecting: 'עקבו אחריי: מתחבר — הקישו כדי להפסיק',

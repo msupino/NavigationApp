@@ -836,6 +836,22 @@ NavAid.tuningDefaults = {
   trackProfileSmoothFixes: { value: 5, min: 1, max: 60, step: 1,
     label: 'Recorded profile: fixes averaged for ground speed' },
   reverseWarnMs: { value: 10000, min: 1000, max: 30000, step: 500, label: 'Reverse warning (ms)' },
+  // How long a toast stays up, from how long it takes to READ. One fixed duration cannot be
+  // right for both "Copied" and a three-line explanation of why a control just refused --
+  // reported as: the layer-change warning is too short.
+  //
+  //   ms = notice + (words / wpm) * 60000, clamped to [floor, cap]
+  //
+  // The notice allowance is the beat before reading begins: the eye has to find the thing
+  // that just appeared. Adults read screen prose at roughly 200-250 wpm; 180 is deliberately
+  // slower, because a toast is read once, in a cockpit, beside a moving map. The floor keeps
+  // a two-word acknowledgement on screen long enough to register, and the cap stops a long
+  // message from parking itself over the chart.
+  toastReadWpm: { value: 180, min: 60, max: 400, step: 10, label: 'Toast: reading speed (words/min)' },
+  toastNoticeMs: { value: 1000, min: 0, max: 5000, step: 100, label: 'Toast: time to notice it (ms)' },
+  toastMinMs: { value: 2500, min: 800, max: 20000, step: 100, label: 'Toast: minimum (ms)' },
+  toastWarnMinMs: { value: 4000, min: 800, max: 30000, step: 100, label: 'Toast: minimum for a warning (ms)' },
+  toastMaxMs: { value: 20000, min: 2000, max: 60000, step: 500, label: 'Toast: maximum (ms)' },
   // Reversing the route turns the chart the other way round too: what was ahead of the
   // aircraft is now behind it, and a map left facing the old direction reads as the flight
   // it is no longer. Off puts the old behaviour back (the bearing is left alone).
@@ -1018,7 +1034,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -2068,6 +2084,11 @@ window.S = Object.assign({
   tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
   tbShare: '🔗 Share route',
+  errRouteChartLocked: function (chart) {
+    return 'This route was planned on the ' + chart + ' chart. CVFR, ATS and Low Alt each have '
+      + 'their own waypoints, so the route would not mean the same thing on another one. '
+      + 'Clear the route, or save it, before switching.';
+  },
   tbFollowMe: 'Follow me',
   followMeSharingNow: 'Sharing your position — tap to stop',
   followMeConnecting: 'Follow me: connecting — tap to stop',

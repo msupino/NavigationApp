@@ -1248,6 +1248,7 @@ test('automatic resume says sharing only after the broker connects', async ({ pa
     window.showToast = (message, opts) => window.__resumeToasts.push({
       text: String(message),
       ms: opts && opts.ms,
+      warn: !!(opts && opts.warn),
     });
     await new Promise(r => setTimeout(r, 30));
     return { status: NavAid.followMe.status(), toasts: window.__resumeToasts.slice() };
@@ -1264,7 +1265,13 @@ test('automatic resume says sharing only after the broker connects', async ({ pa
   expect(after.status).toBe('connected');
   const resumed = after.toasts.find(item => /still sharing/i.test(item.text));
   expect(resumed).toBeTruthy();
-  expect(resumed.ms).toBe(6000);
+  // "Still sharing" is a warning, not an acknowledgement: it says a link the pilot may think
+  // is dead is still live, and it has to stay up long enough to be read. How long is the
+  // gist's business now (toastWarnMs), so the test asks for the intent, not the number.
+  expect(resumed.warn).toBe(true);
+  expect(resumed.ms).toBeUndefined();
+  expect(await page.evaluate(() => NavAid.tuningDefaults.toastWarnMinMs.value))
+    .toBeGreaterThan(await page.evaluate(() => NavAid.tuningDefaults.toastMinMs.value));
 });
 
 test('boot keeps a stored sharing link idle when every position source is off', async ({ page }) => {
