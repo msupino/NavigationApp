@@ -234,7 +234,11 @@
     try { return (localStorage.getItem(CODE_KEY) || '').trim(); } catch (e) { return ''; }
   }
   function followMeSetCode(code) {
-    const clean = String(code || '').trim().toUpperCase().slice(0, 12);
+    // Every space goes, not just the ends. A phone keyboard with autocorrect on adds one
+    // after the word it just completed -- so "4X-CDE" arrives as "4X-CDE " and, when the
+    // pilot keeps typing, as "4X- CDE". Trimming the ends left the inner one, and the
+    // identifier that went out on the link was not the one that was typed.
+    const clean = String(code || '').replace(/\s+/g, '').toUpperCase().slice(0, 12);
     try { localStorage.setItem(CODE_KEY, clean); } catch (e) { /* storage unavailable */ }
     return clean;
   }

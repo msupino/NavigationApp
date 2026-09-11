@@ -1910,3 +1910,27 @@ test.describe('New link, in the interface', () => {
     expect(shown.backAgain).toBe(false);        // and it comes back without a reload
   });
 });
+
+// Reported from the phone: the keyboard inserts a space after the word it autocompletes, so
+// the identifier goes out carrying it. Trimming the ends was not enough -- a space landing
+// mid-word survived, and the name on the link was not the name that was typed.
+test('spaces the keyboard adds are not part of the identifier', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => {
+    const F = NavAid.followMe;
+    return {
+      trailing: F.setCode('4X-CDE '),
+      inner: F.setCode('4X- CDE'),
+      many: F.setCode('  4x  cde  '),
+      // The 12-character cap is applied after the spaces go, so a name is not shortened by
+      // whitespace it never meant to have.
+      long: F.setCode('4X CDE FOXTROT ECHO'),
+      remembered: F.code(),
+    };
+  });
+  expect(got.trailing).toBe('4X-CDE');
+  expect(got.inner).toBe('4X-CDE');
+  expect(got.many).toBe('4XCDE');
+  expect(got.long).toBe('4XCDEFOXTROT');      // 12 characters, counted after the spaces go
+  expect(got.remembered).toBe(got.long);
+});
