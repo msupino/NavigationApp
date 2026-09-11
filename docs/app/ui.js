@@ -3132,7 +3132,7 @@ document.getElementById('reverse').onclick = () => {
   // matters. Ordinary toast: no blink, no long dwell, because nothing is wrong.
   if (!state.waypoints || state.waypoints.length < 2) {
     if (typeof showToast === 'function') {
-      showToast(S.reverseNoRoute || 'No route to reverse');
+      showToast(S.reverseNoRoute || 'No route to reverse', { warn: true });
     }
     return;
   }
@@ -3649,11 +3649,12 @@ function followMeOffered() {
       if (typeof showToast === 'function') {
         const stopping = typeof f.status === 'function' && f.status() === 'stopping';
         const failure = typeof f.startFailure === 'function' ? f.startFailure() : null;
+        // Stopping is progress; the other two are refusals, and only they need the floor.
         showToast(stopping
           ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
           : failure === 'storage'
             ? (S.followMeStartFailed || 'Follow me could not start on this device.')
-            : (S.followMeNeedCode || 'Follow me needs an identifier.'));
+            : (S.followMeNeedCode || 'Follow me needs an identifier.'), { warn: !stopping });
       }
       return;
     }
@@ -3677,7 +3678,8 @@ function followMeOffered() {
         ? (S.followMeCopied || 'Follow-me link copied.')
         : (S.followMeCopiedNoFix || 'Follow-me link copied — positions start once Location or Record is on.'));
     } else if (!shared && !cancelled && typeof showToast === 'function') {
-      showToast(S.followMeShareFailed || 'Follow me started, but the link could not be shared or copied.');
+      showToast(S.followMeShareFailed || 'Follow me started, but the link could not be shared or copied.',
+        { warn: true });
     }
   });
   refresh();

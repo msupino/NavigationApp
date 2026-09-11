@@ -7266,7 +7266,8 @@ function renderFreqTable(freqSection) {
       // empty list: the row is about to stop existing anyway.
       if (hit.length && typeof showNotamModal === 'function') showNotamModal(hit, { keepCharts: true });
       else if (typeof showToast === 'function') {
-        showToast((S.freqSourceNotamGone || 'NOTAM no longer in the feed') + ' (' + notam.id + ')');
+        showToast((S.freqSourceNotamGone || 'NOTAM no longer in the feed') + ' (' + notam.id + ')',
+          { warn: true });
       }
     };
     td.appendChild(btn);
@@ -7962,7 +7963,7 @@ async function focusAltitudePairSegment(segment, closeModal, keepFocusVisible, f
   const to = altitudePairEndpoint(segment.to);
   if (!from || !to) {
     if (typeof showToast === 'function') {
-      showToast(S.altPairsLocationMissing || 'Pair endpoints not found');
+      showToast(S.altPairsLocationMissing || 'Pair endpoints not found', { warn: true });
     }
     return false;
   }
@@ -8151,7 +8152,7 @@ function renderAltitudePairsTable(altSection, opts) {
         opts.keepOpenOnFocus ? 'pinned' : 'manual').catch(err => {
         console.warn('Failed to focus leg-altitude pair:', err);
         if (typeof showToast === 'function') {
-          showToast(S.altPairsLocationMissing || 'Pair endpoints not found');
+          showToast(S.altPairsLocationMissing || 'Pair endpoints not found', { warn: true });
         }
       });
     });

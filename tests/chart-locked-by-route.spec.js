@@ -177,3 +177,52 @@ test('the chart refusal is a warning, not an acknowledgement', async ({ page }) 
   });
   expect(asked).toEqual({ warn: true });
 });
+
+// Every toast is timed by its own words. What is opt-in is the WARNING FLOOR, and the point
+// of a floor is that a refusal is never as brief as an acknowledgement -- so the call sites
+// that refuse, or report something that failed, have to ask for it. This is the list; if a
+// new refusal is added without it, that is what this test is here to notice.
+test('every refusal and outage asks for the warning floor', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showToast === 'function');
+  const src = await page.evaluate(async () => {
+    const files = ['app/ui.js', 'app/io.js', 'app/draw.js', 'app/traffic.js', 'app/followme.js'];
+    const out = {};
+    for (const f of files) out[f] = await (await fetch(f + '?v=src')).text();
+    return out;
+  });
+  // Each entry: the string a call site shows, and the file it lives in.
+  const mustWarn = [
+    ['app/ui.js', 'editLockBlockedToast'],       // the route is locked: the edit refused
+    ['app/ui.js', 'reverseNoRoute'],             // nothing to reverse
+    ['app/ui.js', 'followMeShareFailed'],        // the link could not be shared
+    ['app/ui.js', 'errRouteChartLocked'],        // the chart change refused
+    ['app/io.js', 'routeLibraryGdriveAutoSyncFailed'],
+    ['app/io.js', 'freqSourceNotamGone'],
+    ['app/io.js', 'altPairsLocationMissing'],
+    ['app/draw.js', 'airspaceUnavailable'],
+    ['app/traffic.js', 'trafficUnavailable'],
+  ];
+  const missing = [];
+  for (const [file, key] of mustWarn) {
+    const text = src[file] || '';
+    const at = text.indexOf(key);
+    if (at < 0) { missing.push(key + ' (string gone from ' + file + ')'); continue; }
+    // The options object follows the message, within the same call.
+    const window300 = text.slice(at, at + 400);
+    if (!/warn:\s*(true|!stopping)/.test(window300)) missing.push(key + ' in ' + file);
+  }
+  expect(missing).toEqual([]);
+});
+
+test('an acknowledgement does not borrow the warning floor', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof toastReadMs === 'function');
+  // "Copied" is two words and should go as soon as it has registered. A floor meant for a
+  // refusal would leave it sitting over the chart for twice as long as it earns.
+  const got = await page.evaluate(() => ({
+    ack: toastReadMs('Route link copied to clipboard', false),
+    warn: toastReadMs('Route link copied to clipboard', true),
+  }));
+  expect(got.ack).toBeLessThan(got.warn);
+});
