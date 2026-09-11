@@ -234,7 +234,11 @@
     try { return (localStorage.getItem(CODE_KEY) || '').trim(); } catch (e) { return ''; }
   }
   function followMeSetCode(code) {
-    const clean = String(code || '').trim().toUpperCase().slice(0, 12);
+    // Every space goes, not just the ends. A phone keyboard with autocorrect on adds one
+    // after the word it just completed -- so "4X-CDE" arrives as "4X-CDE " and, when the
+    // pilot keeps typing, as "4X- CDE". Trimming the ends left the inner one, and the
+    // identifier that went out on the link was not the one that was typed.
+    const clean = String(code || '').replace(/\s+/g, '').toUpperCase().slice(0, 12);
     try { localStorage.setItem(CODE_KEY, clean); } catch (e) { /* storage unavailable */ }
     return clean;
   }
@@ -481,9 +485,22 @@
       // consent while WebCrypto or another tab delayed this Start request.
       const prev = storedSession();
       if (prev && prev.pendingStop) return null;
-      // Same aeroplane, same link: this makes a restart survivable. A different code gets
-      // a new topic and key, so followers of the previous aircraft cannot inherit it.
-      const reuse = !!(prev && prev.reg === reg);
+      // One link per DEVICE by default, not per identifier. The identifier is a label for
+      // whoever opens the link -- nothing verifies it, and a pilot renaming the aeroplane,
+      // fixing a typo or flying a different one is not asking for a new link to hand round.
+      // So the topic and key follow the device, and the name typed now is simply the name it
+      // goes out under.
+      //
+      // The cost, stated plainly: a link shared under one identifier keeps working when the
+      // next flight goes out under another. `New link` is what breaks that.
+      //
+      // A fleet that wants the opposite -- so a machine's followers cannot be carried to the
+      // next machine by the phone that shared it -- turns followMeLinkPerName on, and a
+      // different name mints a new topic and key again. That is all it does: one session is
+      // stored per device, so it prevents inheritance rather than remembering a link per
+      // aeroplane, and returning to an earlier name mints a third link.
+      const perName = tune('followMeLinkPerName') === true;
+      const reuse = !!prev && (!perName || prev.reg === reg);
       const id = reuse ? prev.id : b64url.from(randomBytes(16));
       const rawKeyB64 = reuse ? prev.k : b64url.from(randomBytes(32));
       const s = await openPublisher({

@@ -3824,18 +3824,63 @@ try {
 // The button is offered only when the gist says so, and only does anything while a position
 // source is live: a link that shows nothing is worse than no link, because the person
 // watching cannot tell the difference from a pilot who has landed.
+// Getting the link to a person: the share sheet where there is one -- on a phone that is how
+// it reaches WhatsApp -- and the clipboard everywhere else. Used when sharing starts and
+// again when a new link replaces the old one, because a link nobody has been given is not
+// much use to the pilot who just asked for it.
+async function handOverFollowMeLink(link, live) {
+  let shared = false;
+  let cancelled = false;
+  if (navigator.share) {
+    try { await navigator.share({ title: S.tbFollowMe || 'Follow me', url: link }); shared = true; }
+    catch (e) { cancelled = !!(e && e.name === 'AbortError'); }
+  }
+  let copied = false;
+  if (!shared && !cancelled && navigator.clipboard && navigator.clipboard.writeText) {
+    try { await navigator.clipboard.writeText(link); copied = true; } catch (e) { /* denied */ }
+  }
+  if (copied && typeof showToast === 'function') {
+    // Ground vs air: on the ground the link is real but the map will not move until a fix is
+    // flowing, and a pilot who does not know that thinks the link is broken.
+    showToast(live
+      ? (S.followMeCopied || 'Follow-me link copied.')
+      : (S.followMeCopiedNoFix || 'Follow-me link copied — positions start once Location or Record is on.'));
+  } else if (!shared && !cancelled && typeof showToast === 'function') {
+    showToast(S.followMeShareFailed || 'Follow me started, but the link could not be shared or copied.',
+      { warn: true });
+  }
+  return shared || copied;
+}
+if (typeof window !== 'undefined') window.handOverFollowMeLink = handOverFollowMeLink;
+
 function followMeOffered() {
   return typeof tune === 'function' && tune('featureFollowMe') === true;
 }
+// The escape hatch is gist-gated on its own. It is the only way to take a link back now, so
+// it ships ON -- but a fleet that shares one standing link per aeroplane, and does not want a
+// pilot breaking it mid-season, can withdraw the control without losing Follow me itself.
+function followMeNewLinkOffered() {
+  return typeof tune !== 'function' || tune('featureFollowMeNewLink') !== false;
+}
+window.followMeNewLinkOffered = followMeNewLinkOffered;
 (function wireFollowMe() {
   const btn = document.getElementById('follow-me');
   if (!btn) return;
   const btnLabel = btn.querySelector('.follow-me-button-label');
   const F = () => (window.NavAid && window.NavAid.followMe) || null;
+  const newBtn = document.getElementById('follow-me-new');
   function refresh() {
     btn.hidden = !followMeOffered();
     const f = F();
     const status = f && typeof f.status === 'function' ? f.status() : 'idle';
+    // Offered whenever this device HAS a link to throw away -- sharing or not. The link
+    // outlives the stop now, so "burn it" is a thing you want while idle: you stopped
+    // sharing yesterday and have since thought better of who has it.
+    if (newBtn) {
+      const held = !!(f && typeof f._stored === 'function' && f._stored());
+      newBtn.hidden = !followMeOffered() || !followMeNewLinkOffered() || !held;
+      newBtn.disabled = status === 'stopping';
+    }
     const active = status !== 'idle';
     const text = status === 'stopping'
       ? (S.followMeStoppingShort || 'Stopping sharing…')
@@ -3855,6 +3900,38 @@ function followMeOffered() {
     btn.title = label;
     btn.setAttribute('aria-label', label);
   }
+  if (newBtn) newBtn.addEventListener('click', async () => {
+    const f = F();
+    if (!f || typeof f.newLink !== 'function') return;
+    // Confirmed, and the confirmation says what is actually lost: not "are you sure" but
+    // who stops being able to watch.
+    const ask = S.followMeNewLinkConfirm || 'Start a new follow-me link?';
+    try { if (!confirm(ask)) return; } catch (e) { /* no confirm: go ahead */ }
+    const link = await f.newLink();
+    // Sharing right now: a fresh link comes back and is handed straight over. Idle: there is
+    // nothing to connect, so the stored capability is simply thrown away and the next share
+    // mints a new one. Both are the button doing its job -- what fails is the record still
+    // being there afterwards.
+    const held = !!(typeof f._stored === 'function' && f._stored());
+    const done = !!link || !held;
+    refresh();
+    if (typeof showToast === 'function') {
+      showToast(done
+        ? (link
+          ? (S.followMeNewLinkDone || 'New follow-me link — the old one is dead.')
+          : (S.followMeNewLinkBurned || 'That link is dead. The next time you share, it will be a new one.'))
+        : (S.followMeNewLinkFailed || 'Could not start a new link on this device.'),
+      { warn: !done });
+    }
+    // Straight onto the clipboard when one was minted while sharing: a new link nobody has
+    // is not much use, and the pilot asked for it precisely to hand it to someone.
+    if (link) {
+      const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
+        || (typeof gpsRecording !== 'undefined' && gpsRecording);
+      await handOverFollowMeLink(link, live);
+    }
+  });
+
   btn.addEventListener('click', async () => {
     const f = F();
     if (!f) return;
@@ -3896,28 +3973,7 @@ function followMeOffered() {
       return;
     }
     refresh();
-    // The share sheet where there is one -- on a phone that is how a link reaches WhatsApp --
-    // and the clipboard everywhere else.
-    let shared = false;
-    let cancelled = false;
-    if (navigator.share) {
-      try { await navigator.share({ title: S.tbFollowMe || 'Follow me', url: link }); shared = true; }
-      catch (e) { cancelled = !!(e && e.name === 'AbortError'); }
-    }
-    let copied = false;
-    if (!shared && !cancelled && navigator.clipboard && navigator.clipboard.writeText) {
-      try { await navigator.clipboard.writeText(link); copied = true; } catch (e) { /* denied */ }
-    }
-    if (copied && typeof showToast === 'function') {
-      // Ground vs air: on the ground the link is real but the map will not move until a fix
-      // is flowing, and a pilot who does not know that thinks the link is broken.
-      showToast(live
-        ? (S.followMeCopied || 'Follow-me link copied.')
-        : (S.followMeCopiedNoFix || 'Follow-me link copied — positions start once Location or Record is on.'));
-    } else if (!shared && !cancelled && typeof showToast === 'function') {
-      showToast(S.followMeShareFailed || 'Follow me started, but the link could not be shared or copied.',
-        { warn: true });
-    }
+    await handOverFollowMeLink(link, live);
   });
   refresh();
   window.refreshFollowMeControl = refresh;
