@@ -760,6 +760,51 @@ if (typeof window !== 'undefined') window.profileTerrainSamples = profileTerrain
 
 // Render the altitude-vs-distance profile strip onto a canvas context within
 // (x,y,w,h). Used by the Flight Plan modal.
+// A key for the strip, drawn INSIDE the canvas so the exported picture carries it too --
+// a profile sent to someone else is exactly the one that cannot be explained in person.
+// Entries are {color, dash, fill, text}; it lays them out in one row and stops when the row
+// runs out, so a narrow panel drops the last entry rather than overprinting the plot.
+function drawProfileLegend(ctx, x, y, w, items) {
+  if (typeof tune === 'function' && tune('profileLegend') === false) return;
+  const list = (items || []).filter(Boolean);
+  if (!list.length) return;
+  ctx.save();
+  ctx.font = '8px sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  const swatch = 12, gap = 5, pad = 10;
+  // Right to left in an RTL interface: the key reads with everything else on the page.
+  const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+  let used = 0;
+  const widths = list.map(it => swatch + gap + ctx.measureText(it.text).width + pad);
+  const total = widths.reduce((a, b) => a + b, 0);
+  let cursor = rtl ? x + w - Math.min(total, w) : x;
+  for (let i = 0; i < list.length; i++) {
+    if (used + widths[i] > w) break;
+    const it = list[i];
+    const cy = y + 4;
+    if (it.fill) {
+      ctx.fillStyle = colorWithAlpha(it.color, 0.85);
+      ctx.fillRect(cursor, cy - 3, swatch, 6);
+    } else {
+      ctx.strokeStyle = it.color;
+      ctx.lineWidth = it.width || 2;
+      ctx.setLineDash(it.dash || []);
+      ctx.beginPath();
+      ctx.moveTo(cursor, cy + 0.5);
+      ctx.lineTo(cursor + swatch, cy + 0.5);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.fillStyle = tune('profileTextColor');
+    ctx.fillText(it.text, cursor + swatch + gap, cy);
+    cursor += widths[i];
+    used += widths[i];
+  }
+  ctx.restore();
+}
+if (typeof window !== 'undefined') window.drawProfileLegend = drawProfileLegend;
+
 // What a recording actually did, as opposed to what a route was planned to do: altitude and
 // ground speed against distance flown. Neither is planned -- the altitude is what the
 // receiver reported and the speed is derived from consecutive fixes -- so nothing here is
@@ -932,6 +977,16 @@ function drawTrackProfile(ctx, x, y, w, h, pts) {
     ctx.textAlign = 'right';
     ctx.fillText('kt', x + w - 2, y + 2);
   }
+  if (typeof drawProfileLegend === 'function') {
+    drawProfileLegend(ctx, x0, y + 2, plotW - 16, [
+      fts.length && { color: tune('profileLineColor'), text: S.profileLegendAlt || 'altitude' },
+      kts.length && { color: tune('profileSpeedColor'), dash: [3, 3], width: 1.5,
+        text: S.profileLegendGs || 'ground speed' },
+      terrainFt.length && { color: tune('profileTerrainColor'), fill: true,
+        text: S.profileLegendTerrain || 'terrain' },
+    ]);
+  }
+
   // Distance axis: this one has no waypoints to tick, so it is marked at round numbers.
   ctx.textBaseline = 'top';
   ctx.lineWidth = 1;
@@ -1181,6 +1236,20 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
       ctx.fillText('kt', x + w - 2, y + 2);
       ctx.restore();
     }
+  }
+
+  // The key, along the top of the plot: the altitude line is the obvious one, the rest are
+  // not -- a dashed red line and a dotted amber one are only guesses until they are named.
+  if (typeof drawProfileLegend === 'function') {
+    drawProfileLegend(ctx, x0, y + 2, plotW - 16, [
+      { color: tune('profileLineColor'), text: S.profileLegendAlt || 'altitude' },
+      o.speed && { color: tune('profileSpeedColor'), dash: [3, 3], width: 1.5,
+        text: S.profileLegendPlannedSpeed || 'planned speed' },
+      terrain && { color: tune('profileMsaColor'), dash: [4, 3], width: 1,
+        text: S.profileLegendMsa || 'safe alt' },
+      terrain && { color: tune('profileTerrainColor'), fill: true,
+        text: S.profileLegendTerrain || 'terrain' },
+    ]);
   }
 
   // X axis: at each waypoint a tick + cumulative NM + cumulative time, plus a
