@@ -3186,13 +3186,39 @@ body.theme-light .route-library-actions button:hover,
 body.theme-light .route-library-tools button:hover { background: #eef3f9; }
 .route-library-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* The name column keeps a floor. With `minmax(0, 1fr)` a sixth action button was enough
+     to squeeze it to zero width in a narrow modal -- the row still measured 100px tall,
+     with nothing readable or clickable in it. */
+  grid-template-columns: minmax(120px, 1fr) auto;
   gap: 8px;
   align-items: center;
   border: 1px solid #443f3f;
   border-radius: 6px;
   padding: 6px 8px;
 }
+/* The profile of a saved route, opened under its own row rather than in a window of its
+   own: the row above it is the label, and the list keeps its place while you look. */
+.route-profile-panel {
+  box-sizing: border-box;
+  max-width: 100%;
+  border: 1px solid #443f3f;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  margin: -4px 0 2px;
+  padding: 6px 8px 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.route-profile-panel[hidden] { display: none !important; }
+.route-profile-totals {
+  font-size: 11px;
+  opacity: 0.85;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+.route-profile-canvas { display: block; width: 100%; max-width: 100%; border-radius: 4px; }
+.route-profile-empty { font-size: 12px; opacity: 0.75; margin: 2px 0; }
+.route-library-profile.is-open { border-color: #8a8080; }
+
 .route-library-open {
   display: grid;
   gap: 2px;
