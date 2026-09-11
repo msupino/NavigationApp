@@ -833,7 +833,7 @@ window.S = {
   tbExportTitle: 'ייצא מסלול (JSON / GPX / PLN)',
   tbImport: '⬆ ייבא',
   tbImportTitle: 'ייבא JSON מסלול',
-  tbShare: '🔗 שתף',
+  tbShare: '🔗 שתף מסלול',
   tbFollowMe: 'עקבו אחריי',
   followMeSharingNow: 'משתפים את המיקום שלכם — הקישו כדי להפסיק',
   followMeConnecting: 'עקבו אחריי: מתחבר — הקישו כדי להפסיק',
