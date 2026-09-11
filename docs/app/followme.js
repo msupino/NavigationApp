@@ -958,7 +958,7 @@
       if (typeof window.showToast === 'function') {
         window.showToast(
           S.followMeResumed || 'Follow me: still sharing — the same link as before still works.',
-          { ms: 6000 }
+          { warn: true }
         );
       }
     }).catch(() => { /* nothing stored, or storage is off */ });

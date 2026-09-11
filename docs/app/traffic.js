@@ -212,7 +212,8 @@
       const quiet = Math.max(1, (typeof tune === 'function' && tune('trafficFailsBeforeWarn')) || 3);
       if (fails === quiet && !window.trafficAircraft.length && typeof showToast === 'function') {
         const why = (e && e.message) || '';
-        showToast((S.trafficUnavailable || 'Live traffic unavailable') + (why ? ' (' + why + ')' : ''));
+        showToast((S.trafficUnavailable || 'Live traffic unavailable') + (why ? ' (' + why + ')' : ''),
+          { warn: true });
       }
     } finally {
       inFlight = false;
