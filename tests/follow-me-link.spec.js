@@ -1345,6 +1345,25 @@ test('renaming does not mint a new link, and the name is remembered', async ({ p
   expect(await shareOnce(page, ' 4x-bbb ')).toBe(a);
 });
 
+// The other way round, for a fleet that shares one standing link per AEROPLANE: a machine's
+// followers must never be handed the next machine's flight because the same phone shared it.
+test('the gist can put the identifier back inside the link', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => setTune('followMeLinkPerName', true));
+  const a = await shareOnce(page, '4X-AAA');
+  const b = await shareOnce(page, '4X-BBB');
+  expect(b).not.toBe(a);
+  // What it guarantees is that a rename never INHERITS the previous aeroplane's followers.
+  // It does not remember a link per aeroplane: one record is kept per device, so coming back
+  // to the first name mints a third link rather than recovering the first.
+  const again = await shareOnce(page, '4X-AAA');
+  expect(again).not.toBe(a);
+  expect(again).not.toBe(b);
+  // Switched off, a rename keeps whatever link the device is holding now.
+  await page.evaluate(() => setTune('followMeLinkPerName', false));
+  expect(await shareOnce(page, '4X-CCC')).toBe(again);
+});
+
 test('New link is now the only thing that breaks a shared link', async ({ page }) => {
   await boot(page);
   const first = await shareOnce(page, '4X-KEEP');
@@ -1808,4 +1827,86 @@ test('the same link comes back with no gist at all', async ({ page }) => {
   await page.reload();
   await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
   expect(await shareOnce(page, '4X-SAME')).toBe(first);
+});
+
+// New link is now the ONLY way to take a shared link back: a stop does not do it, and nor
+// does renaming the aeroplane. It was reachable only from the console, which is not a place
+// a pilot goes. It is a control.
+test.describe('New link, in the interface', () => {
+  const wire = async (page) => {
+    await page.evaluate(() => {
+      setTune('featureFollowMe', true);
+      window.confirm = () => true;
+      window.__toasts = [];
+      window.showToast = (m) => window.__toasts.push(String(m));
+      // Neither the share sheet nor the clipboard exists in a test browser tab; the link is
+      // captured instead of being handed anywhere.
+      window.__handed = [];
+      window.handOverFollowMeLink = (link) => { window.__handed.push(link); return Promise.resolve(true); };
+      if (typeof refreshFollowMeControl === 'function') refreshFollowMeControl();
+    });
+  };
+
+  test('it is offered once this device holds a link, and not before', async ({ page }) => {
+    await boot(page);
+    await wire(page);
+    // Nothing shared yet: nothing to burn.
+    expect(await page.evaluate(() => document.getElementById('follow-me-new').hidden)).toBe(true);
+    await shareOnce(page, '4X-NEW');
+    await page.evaluate(() => refreshFollowMeControl());
+    expect(await page.evaluate(() => document.getElementById('follow-me-new').hidden)).toBe(false);
+  });
+
+  test('pressing it replaces the link and says the old one is dead', async ({ page }) => {
+    await boot(page);
+    await wire(page);
+    const first = await shareOnce(page, '4X-NEW');
+    await page.evaluate(async () => {
+      refreshFollowMeControl();
+      window.WebSocket = window.StubSocket;
+      document.getElementById('follow-me-new').click();
+      await new Promise(r => setTimeout(r, 80));
+    });
+    const after = await page.evaluate(() => ({ handed: window.__handed, toasts: window.__toasts,
+      held: !!NavAid.followMe._stored() }));
+    // Not sharing at that moment -- shareOnce stops when it is done -- so there is nothing to
+    // connect: the capability is thrown away and the NEXT share mints a new one.
+    expect(after.held).toBe(false);
+    expect(after.toasts.join(' ')).toMatch(/dead/i);
+    expect(await shareOnce(page, '4X-NEW')).not.toBe(first);
+    // The name is the label, not the capability: it survives.
+    expect(await page.evaluate(() => NavAid.followMe.code())).toBe('4X-NEW');
+  });
+
+  test('declining the confirmation changes nothing', async ({ page }) => {
+    await boot(page);
+    await wire(page);
+    const first = await shareOnce(page, '4X-KEEPIT');
+    await page.evaluate(async () => {
+      window.confirm = () => false;
+      refreshFollowMeControl();
+      document.getElementById('follow-me-new').click();
+      await new Promise(r => setTimeout(r, 30));
+    });
+    expect(await page.evaluate(() => window.__handed.length)).toBe(0);
+    expect(await shareOnce(page, '4X-KEEPIT')).toBe(first);
+  });
+
+  test('the gist can withdraw the control without withdrawing Follow me', async ({ page }) => {
+    await boot(page);
+    await wire(page);
+    await shareOnce(page, '4X-FLEET');
+    const shown = await page.evaluate(() => {
+      setTune('featureFollowMeNewLink', false);
+      refreshFollowMeControl();
+      const newHidden = document.getElementById('follow-me-new').hidden;
+      const followHidden = document.getElementById('follow-me').hidden;
+      setTune('featureFollowMeNewLink', true);
+      refreshFollowMeControl();
+      return { newHidden, followHidden, backAgain: document.getElementById('follow-me-new').hidden };
+    });
+    expect(shown.newHidden).toBe(true);
+    expect(shown.followHidden).toBe(false);     // Follow me itself is untouched
+    expect(shown.backAgain).toBe(false);        // and it comes back without a reload
+  });
 });

@@ -818,6 +818,15 @@ NavAid.tuningDefaults = {
   // already shared. "Always the same link" cannot depend on a network fetch succeeding.
   featureFollowMePersist: { value: true, type: 'bool',
     label: 'Feature: keep one follow-me link per device, forever' },
+  featureFollowMeNewLink: { value: true, type: 'bool',
+    label: 'Feature: offer "New link" to burn the shared follow-me link' },
+  // Off: one link per device -- renaming the aircraft keeps the link everyone already has.
+  // On: the identifier is part of the capability, so a different name mints a different link
+  // and the followers of one aircraft can never be handed the next flight of another. Note
+  // what it does NOT do: one session is stored per device, so going back to an earlier name
+  // mints a third link rather than recovering the older one.
+  followMeLinkPerName: { value: false, type: 'bool',
+    label: 'Follow me: a different identifier gets a different link' },
   // The one-time nudge that teaches a first-time visitor the core action, plus the click
   // priming that goes with it (an empty map's first plain click drops a waypoint instead of
   // inspecting). Both are the same onboarding gesture, so one switch governs them: off, and
@@ -977,7 +986,7 @@ NavAid.tuningGroups = [
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'followMeBroker', 'followMeRateSec',
     'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'followMeResumeHr',
-    'featureFollowMePersist'] },
+    'featureFollowMePersist', 'featureFollowMeNewLink', 'followMeLinkPerName'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
   { name: 'Zoom', keys: ['inspZoomSmallest', 'inspZoomLargest', 'inspZoomStep', 'plateZoomMax', 'plateZoomStep', 'plateZoomDoubleTap', 'wxStaleAfterMin'] },
@@ -2114,6 +2123,12 @@ window.S = Object.assign({
   // Nothing verifies this, and a pilot can type anything -- a callsign, a name, a leg. It is
   // required only so the link means something to whoever opens it, so it asks for an
   // identifier and offers the aircraft code as the obvious one rather than demanding it.
+  tbFollowMeNewLink: '🔑 New link',
+  tbFollowMeNewLinkTitle: 'Throw this device\u2019s follow-me link away and start a new one. Anyone still holding the old link loses it.',
+  followMeNewLinkConfirm: 'Start a new follow-me link?\n\nThe link this device has been sharing stops working for everyone who has it, including anyone you meant to keep.',
+  followMeNewLinkDone: 'New follow-me link — the old one is dead.',
+  followMeNewLinkBurned: 'That link is dead. The next time you share, it will be a new one.',
+  followMeNewLinkFailed: 'Could not start a new link on this device.',
   followMeAskCode: 'Identifier, for example an aircraft code (4X-CDE)\n\nUses a public best-effort relay. Anyone with the link can view or submit positions.',
   followMeNeedCode: 'Follow me needs an identifier — whoever opens the link has to know what it is following.',
   followMeStartFailed: 'Follow me could not start because this device cannot store the private session.',

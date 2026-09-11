@@ -481,15 +481,22 @@
       // consent while WebCrypto or another tab delayed this Start request.
       const prev = storedSession();
       if (prev && prev.pendingStop) return null;
-      // One link per DEVICE, not per identifier. The identifier is a label for whoever opens
-      // the link -- nothing verifies it, and a pilot renaming the aeroplane, fixing a typo or
-      // flying a different one is not asking for a new link to hand round. So the topic and
-      // key follow the device, and the name typed now is simply the name it goes out under.
+      // One link per DEVICE by default, not per identifier. The identifier is a label for
+      // whoever opens the link -- nothing verifies it, and a pilot renaming the aeroplane,
+      // fixing a typo or flying a different one is not asking for a new link to hand round.
+      // So the topic and key follow the device, and the name typed now is simply the name it
+      // goes out under.
       //
-      // The cost, stated plainly: a link shared while sharing as one identifier keeps
-      // working when the next flight goes out under another. `New link` is what breaks that,
-      // and it is now the only thing that does.
-      const reuse = !!prev;
+      // The cost, stated plainly: a link shared under one identifier keeps working when the
+      // next flight goes out under another. `New link` is what breaks that.
+      //
+      // A fleet that wants the opposite -- so a machine's followers cannot be carried to the
+      // next machine by the phone that shared it -- turns followMeLinkPerName on, and a
+      // different name mints a new topic and key again. That is all it does: one session is
+      // stored per device, so it prevents inheritance rather than remembering a link per
+      // aeroplane, and returning to an earlier name mints a third link.
+      const perName = tune('followMeLinkPerName') === true;
+      const reuse = !!prev && (!perName || prev.reg === reg);
       const id = reuse ? prev.id : b64url.from(randomBytes(16));
       const rawKeyB64 = reuse ? prev.k : b64url.from(randomBytes(32));
       const s = await openPublisher({
