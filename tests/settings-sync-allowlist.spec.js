@@ -151,6 +151,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.apkReloadedForBuild$/, 'APK self-reload bookkeeping'],
   [/^navaid\.toolbarPosDesktop$/, 'panel geometry (the *Pos rule misses this suffix)'],
   [/^navaid\.wxTime$/,           'forecast valid-time pick, only reused if still offered'],
+  [/^navaid\.notamSeen$/,        'which NOTAMs this device has already shown the pilot -- a record of what THIS person has read, not a setting; syncing it would mark a new phone as having read them'],
   [/^navaid\.routeLibraryFilter$/, 'which half of the saved-route library is on screen -- a view choice made on THIS device while looking for something, not a setting worth carrying to another'],
   // navaid.ifrSheet.<ICAO>: which instrument chart is drawn for that field. The key is
   // composed per airfield and the sync layer carries exact keys only, so the allowlist

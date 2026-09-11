@@ -5878,6 +5878,45 @@ function storedNotamModalSize() {
       size.w > 0 && size.h > 0 ? size : null;
   } catch (e) { return null; }
 }
+// Which NOTAMs this device has already been shown. The pre-flight question is not "what is
+// in force" -- the list answers that -- but "what has CHANGED since I last looked", and a
+// pilot re-reading forty NOTAMs to find the one new one is a pilot who stops reading them.
+//
+// Ids only, with the time first seen, so the store stays small and says nothing about where
+// anyone flew. Device-local by the same reasoning as the rest of the map state: it records
+// what THIS pilot has read, not a setting worth carrying to another phone.
+const NOTAM_SEEN_KEY = 'navaid.notamSeen';
+function notamSeenRead() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(NOTAM_SEEN_KEY) || '{}');
+    return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+  } catch (e) { return {}; }
+}
+// Marked as read only when the list is CLOSED, not when it is drawn: a modal opened and
+// dismissed in a second has not been read, and marking on render would clear the badges the
+// pilot opened it to see.
+function notamSeenMark(ids) {
+  if (!ids || !ids.length) return;
+  const seen = notamSeenRead();
+  const now = Date.now();
+  for (const id of ids) if (id && !seen[id]) seen[id] = now;
+  // A NOTAM that left the feed cannot come back new, but its id would sit here for ever.
+  // Anything older than the cap goes; the feed's own entries are far shorter-lived.
+  const keepMs = Math.max(1, (typeof tune === 'function' ? tune('notamSeenDays') : 90)) * 86400000;
+  for (const id of Object.keys(seen)) if (now - seen[id] > keepMs) delete seen[id];
+  try { localStorage.setItem(NOTAM_SEEN_KEY, JSON.stringify(seen)); } catch (e) { /* full */ }
+}
+// First run has nothing stored, and every NOTAM in the country is not "new" -- that is not a
+// diff, it is noise on the one occasion the pilot has no way to tell the difference.
+function notamIsNew(n, seen, firstRun) {
+  return !firstRun && !!n && !!n.id && !Object.prototype.hasOwnProperty.call(seen, n.id);
+}
+if (typeof window !== 'undefined') {
+  window.notamSeenRead = notamSeenRead;
+  window.notamSeenMark = notamSeenMark;
+  window.notamIsNew = notamIsNew;
+}
+
 function showNotamModal(only, opts) {
   // Behave like every other chart modal: opening closes any other open chart
   // modal (and a prior NOTAM list, since it's tagged below) + the toolbar
@@ -5928,12 +5967,19 @@ function showNotamModal(only, opts) {
   };
   let shown = feedFor(timeFrame);
   const h = document.createElement('h3');
+  // Read once, for the life of this modal: the badges must not move while the pilot is
+  // reading, and marking happens on close.
+  const seenBefore = notamSeenRead();
+  const firstRun = Object.keys(seenBefore).length === 0;
   // Title scope: when the shown set is one airfield, name it; otherwise LLLL
   // (FIR-wide / mixed). Updates when the filter narrows the list.
   const updateTitle = (subset) => {
     const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
     const scope = ic.length === 1 ? notamAirfieldLabel(ic[0]) : 'LLLL';
-    h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length;
+    const fresh = subset.filter(n => notamIsNew(n, seenBefore, firstRun)).length;
+    h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length
+      + (fresh ? ' · ' + (typeof S.notamNewCount === 'function'
+        ? S.notamNewCount(fresh) : fresh + ' new') : '');
   };
   updateTitle(shown);
   box.appendChild(h);
@@ -6023,6 +6069,15 @@ function showNotamModal(only, opts) {
       // Redundant in the single-airfield view, which costs four characters.
       const where = String(n.icao || '').toUpperCase();
       id.textContent = n.id + (where ? '  ·  ' + where : '') + (n.end ? '  ·  ' + n.end : '');
+      // Not seen on this device before. The badge is what makes the list answerable at a
+      // glance: everything else on the card is as true today as it was last week.
+      if (notamIsNew(n, seenBefore, firstRun)) {
+        it.classList.add('notam-item-new');
+        const tag = document.createElement('span');
+        tag.className = 'notam-new-tag';
+        tag.textContent = S.notamNew || 'NEW';
+        id.appendChild(tag);
+      }
       const tx = document.createElement('pre');
       tx.className = 'notam-text'; tx.dir = 'ltr';
       tx._raw = n.text || '';
@@ -6248,6 +6303,11 @@ function showNotamModal(only, opts) {
   }) : null;
   if (sizeObserver) sizeObserver.observe(box);
   const dismiss = () => {
+    // Read on the way out, not on the way in: a list opened and dismissed in a second has
+    // not been read, and marking on render would clear the very badges it was opened for.
+    // Everything the pilot could see is marked, not only what the filter left showing --
+    // scrolling past a card is reading it, and a filter is not a promise to come back.
+    try { notamSeenMark(shown.map(n => n && n.id).filter(Boolean)); } catch (e) { /* storage */ }
     clearTimeout(sizeSaveTimer);
     saveSize();
     if (sizeObserver) sizeObserver.disconnect();
