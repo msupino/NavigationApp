@@ -2057,7 +2057,7 @@ window.S = Object.assign({
   tbExportTitle: 'Export route (JSON / GPX / PLN / FDR)',
   tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
-  tbShare: '🔗 Share',
+  tbShare: '🔗 Share route',
   tbFollowMe: 'Follow me',
   followMeSharingNow: 'Sharing your position — tap to stop',
   followMeConnecting: 'Follow me: connecting — tap to stop',
