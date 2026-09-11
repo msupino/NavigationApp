@@ -2171,6 +2171,12 @@ body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  /* Bounded by the panel it sits in. The toolbar is a fixed 240px with overflow-x hidden,
+     so a footer row that sizes itself to its content does not widen the panel -- it is
+     silently CUT by it, and the live readout was losing its heading off the right edge. */
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   gap: 4px 12px;
   margin-top: 2px;
   padding: 4px 6px 6px;
@@ -3176,6 +3182,7 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
    grey with black text whatever the app is wearing -- fine in the light theme, a bright
    rectangle in the dark one. */
 .route-library-filter-select,
+.route-profile-compare-sel,
 #ims-pwx-controls select,
 .charts-freq-filter-sel,
 #export-vor-select,
@@ -3193,6 +3200,7 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
    viewer's 13px is set earlier in the file and would otherwise be dropped to the inherited
    16px, which is how this was caught. */
 .route-library-filter-select { font-size: 12px; }
+.route-profile-compare-sel { font-size: 11px; }
 /* Beside the search box it filters with, which is 13px. */
 .charts-freq-filter-sel { font-size: 13px; }
 /* The export sheet's own controls are 13px. */
@@ -3313,8 +3321,38 @@ body.theme-light .route-library-tools button:hover { background: #eef3f9; }
   cursor: pointer;
 }
 .route-profile-export:hover { background: #3c3737; }
+.route-profile-expand {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.route-profile-expand:hover { background: #3c3737; }
+/* The expanded strip: as wide as the window allows, and tall enough to read a comparison
+   rather than only recognise its shape. */
+.route-profile-modal { width: min(96vw, 1100px); max-width: 96vw; }
+/* Above the library it was opened from. Both are non-blocking, so the library stays there
+   to go back to -- but the thing just asked for has to be the thing in front. */
+.modal-back:has(.route-profile-modal) { z-index: 2350; }
+.route-profile-modal-body { min-width: 0; }
 .route-profile-canvas { display: block; width: 100%; max-width: 100%; border-radius: 4px; }
 .route-profile-empty { font-size: 12px; opacity: 0.75; margin: 2px 0; }
+.route-profile-compare {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-size: 11px;
+  opacity: 0.85;
+  cursor: pointer;
+}
+.route-profile-compare-sel { min-width: 0; flex: 0 1 auto; max-width: 60%; }
 .route-library-profile.is-open { border-color: #8a8080; }
 
 .route-library-open {
@@ -5322,7 +5360,9 @@ body.theme-light .row input[type="number"],
 body.theme-light .row input[type="text"],
 body.theme-light .row select,
 body.theme-light .row textarea,
+body.theme-light .route-profile-expand,
 body.theme-light .route-library-filter-select,
+body.theme-light .route-profile-compare-sel,
 body.theme-light #ims-pwx-controls select,
 body.theme-light .charts-freq-filter-sel,
 body.theme-light #export-vor-select,
