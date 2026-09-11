@@ -1,0 +1,79 @@
+name: Test scope
+description: >
+  Decide how much of the e2e suite a change needs. Used by CI and Deploy so the two
+  cannot drift apart about what "relevant" means.
+
+outputs:
+  e2e:
+    description: full (run the sharded suite) | specs (run only the changed spec files) | none
+    value: ${{ steps.decide.outputs.e2e }}
+  specs:
+    description: space-separated spec paths, when e2e is "specs"
+    value: ${{ steps.decide.outputs.specs }}
+  why:
+    description: one line naming what decided it, for the job summary
+    value: ${{ steps.decide.outputs.why }}
+
+runs:
+  using: composite
+  steps:
+    - id: decide
+      shell: bash
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: |
+        set -euo pipefail
+
+        # Anything that is not a pull request -- a push to dev or main, a manual run --
+        # gets the whole suite. Those are the merge points; they are not the place to be
+        # clever about coverage.
+        if [ "${{ github.event_name }}" != "pull_request" ]; then
+          echo "e2e=full" >> "$GITHUB_OUTPUT"
+          echo "specs=" >> "$GITHUB_OUTPUT"
+          echo "why=not a pull request" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        FILES=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+        if [ -z "$FILES" ]; then
+          echo "e2e=none" >> "$GITHUB_OUTPUT"
+          echo "specs=" >> "$GITHUB_OUTPUT"
+          echo "why=no files changed" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        FULL=0; SPECS=""; OTHER=0; REASON=""
+        while IFS= read -r f; do
+          [ -n "$f" ] || continue
+          case "$f" in
+            # The app itself, plus everything the suite's own machinery rests on. A shared
+            # fixture or the Playwright config changes what EVERY spec does, so neither is
+            # a "tests-only" change.
+            docs/superpowers/*) OTHER=1 ;;
+            docs/*|playwright.config.js|package.json|package-lock.json|tests/_*)
+              FULL=1; REASON="${REASON:-$f}" ;;
+            tests/*.spec.js) SPECS="$SPECS $f" ;;
+            # Workflows decide how the suite runs at all: a change here has to be proved by
+            # running it.
+            .github/workflows/*|.github/actions/*) FULL=1; REASON="${REASON:-$f}" ;;
+            *) OTHER=1 ;;
+          esac
+        done <<< "$FILES"
+
+        if [ "$FULL" = "1" ]; then
+          echo "e2e=full" >> "$GITHUB_OUTPUT"
+          echo "specs=" >> "$GITHUB_OUTPUT"
+          echo "why=$REASON changed" >> "$GITHUB_OUTPUT"
+        elif [ -n "$SPECS" ]; then
+          # Only spec files: run exactly those. A spec that fails here fails for its own
+          # reasons, because nothing it tests has moved.
+          echo "e2e=specs" >> "$GITHUB_OUTPUT"
+          echo "specs=$(echo $SPECS)" >> "$GITHUB_OUTPUT"
+          echo "why=only spec files changed" >> "$GITHUB_OUTPUT"
+        else
+          # scripts/, mobile/, markdown, plan documents: nothing the browser loads.
+          echo "e2e=none" >> "$GITHUB_OUTPUT"
+          echo "specs=" >> "$GITHUB_OUTPUT"
+          echo "why=nothing the app serves was touched" >> "$GITHUB_OUTPUT"
+        fi
