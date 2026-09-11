@@ -1313,11 +1313,43 @@ test('boot does not auto-open Follow Me MQTT for the simulator', async ({ page }
   expect(got.stored).toMatchObject({ reg: '4X-SIM', on: true });
 });
 
-test('a different aircraft code never inherits the previous link', async ({ page }) => {
+// The link belongs to the DEVICE, not to the name typed into the box. Nothing verifies that
+// name -- it is a label for whoever opens the link -- and a pilot fixing a typo, renaming the
+// aeroplane or flying a different one is not asking for a new link to hand round. The cost is
+// deliberate and stated in the code: a link already shared keeps working under the next name.
+test('renaming does not mint a new link, and the name is remembered', async ({ page }) => {
   await boot(page);
+  // As the gist now has it: the link outlives a deliberate stop. Without persistence a stop
+  // clears the capability outright, and nothing could be reused under any name.
+  await page.evaluate(() => setTune('featureFollowMePersist', true));
   const a = await shareOnce(page, '4X-AAA');
   const b = await shareOnce(page, '4X-BBB');
-  expect(b).not.toBe(a);
+  expect(b).toBe(a);
+  // The identifier itself still follows what was typed last: it is what the banner and the
+  // viewer show, and what the prompt offers next time.
+  expect(await page.evaluate(() => NavAid.followMe.code())).toBe('4X-BBB');
+  expect(await page.evaluate(() => (NavAid.followMe._stored() || {}).reg)).toBe('4X-BBB');
+  // Case and stray spaces are the same aeroplane, not a third one.
+  expect(await shareOnce(page, ' 4x-bbb ')).toBe(a);
+});
+
+test('New link is now the only thing that breaks a shared link', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => setTune('featureFollowMePersist', true));
+  const first = await shareOnce(page, '4X-KEEP');
+  const fresh = await page.evaluate(async () => {
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await NavAid.followMe.newLink();
+    const sock = window.__sockets[window.__sockets.length - 1];
+    if (sock) sock.connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.WebSocket = orig;
+    return link;
+  });
+  expect(fresh).not.toBe(first);
+  // ...and the name survives the new link: it was the capability that was thrown away.
+  expect(await page.evaluate(() => NavAid.followMe.code())).toBe('4X-KEEP');
 });
 
 test('stopping kills the link, and an expired session is not resumed', async ({ page }) => {
