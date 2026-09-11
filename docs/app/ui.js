@@ -2256,10 +2256,23 @@ function showRouteTemplatesModal() {
 // Handed to saveFile(), which is the anchor in a browser and the system share sheet on a
 // phone -- the one place that knows how a file leaves this app.
 // The figures, and beside them the one thing you can do with the picture.
-function profileHeadRow(totals, name, subtitle, paint) {
+function profileHeadRow(totals, name, subtitle, paint, onExpand) {
   const head = document.createElement('div');
   head.className = 'route-profile-head';
   head.appendChild(totals);
+  // A 150px strip is enough to see the shape of a flight and not enough to read it -- and
+  // the comparison against a plan is exactly the thing worth reading. Full width, several
+  // times the height, over the map.
+  if (onExpand) {
+    const grow = document.createElement('button');
+    grow.type = 'button';
+    grow.className = 'route-profile-expand';
+    grow.textContent = S.routeProfileExpand || '⤢';
+    grow.title = S.routeProfileExpandTitle || '';
+    grow.setAttribute('aria-label', S.routeProfileExpandTitle || 'Expand the profile');
+    grow.onclick = onExpand;
+    head.appendChild(grow);
+  }
   const save = document.createElement('button');
   save.type = 'button';
   save.className = 'route-profile-export';
@@ -2269,6 +2282,57 @@ function profileHeadRow(totals, name, subtitle, paint) {
   head.appendChild(save);
   return head;
 }
+
+// The same strip, given room. It takes the SAME paint function the panel uses, so the big
+// picture cannot drift from the small one -- including whatever the pilot has switched on in
+// the panel, because the function closes over that.
+function showProfileModal(title, subtitle, paint) {
+  if (typeof createDraggableModal !== 'function') return;
+  const modal = createDraggableModal(title || (S.routeLibraryTitle || 'Route'),
+    'modal route-profile-modal', null, { nonBlocking: true });
+  const body = document.createElement('div');
+  body.className = 'route-profile-modal-body';
+  if (subtitle) {
+    const sub = document.createElement('div');
+    sub.className = 'route-profile-totals';
+    sub.dir = 'ltr';
+    sub.textContent = subtitle;
+    body.appendChild(sub);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.className = 'route-profile-canvas';
+  body.appendChild(canvas);
+  modal.box.appendChild(body);
+  if (typeof modal.show === 'function') modal.show();
+  let paintedW = 0;
+  const draw = () => {
+    const cssW = Math.max(320, Math.round(body.clientWidth || 640));
+    paintedW = cssW;
+    const cssH = Math.max(180, Math.round(Math.min(window.innerHeight * 0.55, cssW * 0.42)));
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.height = cssH + 'px';
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    paint(ctx, 0, 0, cssW, cssH);
+  };
+  draw();
+  // Width only, for the same reason the panel watches width only: painting sets the
+  // canvas's own height, and reacting to that is a loop.
+  if (typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(() => {
+      if (!body.isConnected) return;
+      const w = Math.max(320, Math.round(body.clientWidth || 640));
+      if (w !== paintedW) draw();
+    });
+    ro.observe(body);
+  }
+  return modal;
+}
+if (typeof window !== 'undefined') window.showProfileModal = showProfileModal;
 
 function exportProfilePng(title, subtitle, paint) {
   const w = Math.round((typeof tune === 'function' && tune('profileExportWidthPx')) || 1200);
@@ -2348,12 +2412,13 @@ function renderRouteProfilePanel(panel, entry) {
       bdi.textContent = part;
       totals.appendChild(bdi);
     }
-    panel.appendChild(profileHeadRow(totals, entry && entry.name, totals.textContent,
-      (ctx, x, y, w, h) => {
-        if (typeof drawVerticalProfile === 'function') {
-          drawVerticalProfile(ctx, x, y, w, h, { route: route, speed: true });
-        }
-      }));
+    const paintPlan = (ctx, x, y, w, h) => {
+      if (typeof drawVerticalProfile === 'function') {
+        drawVerticalProfile(ctx, x, y, w, h, { route: route, speed: true });
+      }
+    };
+    panel.appendChild(profileHeadRow(totals, entry && entry.name, totals.textContent, paintPlan,
+      () => showProfileModal(entry && entry.name, totals.textContent, paintPlan)));
   }
   const canvas = document.createElement('canvas');
   canvas.className = 'route-profile-canvas';
@@ -2428,10 +2493,23 @@ function renderTrackProfilePanel(panel, entry) {
     bdi.textContent = part;
     totals.appendChild(bdi);
   }
+  // A recording answers "what did it do"; the plan answers "what was it meant to do". Put
+  // them on one picture and you have the debrief: where the climb actually finished, where
+  // the level-off was late, where the descent started early. Offered only when there IS a
+  // route on the map to compare against -- the map's route, because that is the one the
+  // pilot has in front of them.
+  const planRoute = () => ((typeof state !== 'undefined' && state.waypoints
+    && state.waypoints.length > 1 && state.legs && state.legs.length)
+    ? { waypoints: state.waypoints.slice(), legs: state.legs.slice() } : null);
+  let comparing = false;
+  const paintStrip = (ctx, x, y, w, h) => {
+    if (typeof drawTrackProfile !== 'function') return;
+    drawTrackProfile(ctx, x, y, w, h, pts, comparing ? { plan: planRoute() } : undefined);
+  };
+
+  const expand = () => showProfileModal(entry && entry.name, totals.textContent, paintStrip);
   panel.appendChild(profileHeadRow(totals, entry && entry.name, totals.textContent,
-    (ctx, x, y, w, h) => {
-      if (typeof drawTrackProfile === 'function') drawTrackProfile(ctx, x, y, w, h, pts);
-    }));
+    paintStrip, expand));
 
   const canvas = document.createElement('canvas');
   canvas.className = 'route-profile-canvas';
@@ -2449,9 +2527,21 @@ function renderTrackProfilePanel(panel, entry) {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssH);
-    if (typeof drawTrackProfile === 'function') drawTrackProfile(ctx, 0, 0, cssW, cssH, pts);
+    paintStrip(ctx, 0, 0, cssW, cssH);
   };
   paint();
+
+  if (planRoute()) {
+    const row = document.createElement('label');
+    row.className = 'route-profile-compare';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.onchange = () => { comparing = cb.checked; paint(); };
+    const text = document.createElement('span');
+    text.textContent = S.trackProfileCompare || 'Compare with the route on the map';
+    row.append(cb, text);
+    panel.appendChild(row);
+  }
   if (typeof ResizeObserver === 'function') {
     const ro = new ResizeObserver(() => {
       if (!panel.isConnected || panel.hidden) return;

@@ -439,3 +439,159 @@ test('the totals agree with the strip about the highest point', async ({ page })
       { lat: 32.84092, lng: 34.98354, t: 2, alt: 664 }], 1).map(p => p.ft)));
   expect(max).toBe(Math.round(strip));
 });
+
+// A recording says what the flight did; the plan says what it was meant to do. On one
+// picture that is the debrief -- where the climb actually finished, where the level-off was
+// late, where the descent started early.
+test.describe('flown against planned', () => {
+  const seedTrack = (page) => page.evaluate(() => {
+    const t0 = Date.parse('2026-09-11T06:00:00Z');
+    const track = [];
+    for (let i = 0; i < 20; i++) {
+      track.push({ lat: 32.0 + i * 0.02, lng: 34.9, t: t0 + i * 60000, alt: 300 + i * 40 });
+    }
+    const all = loadRouteLibrary();
+    all.unshift({ id: 'trk-cmp', name: 'nav ex', kind: 'gps',
+      savedAt: new Date().toISOString(), track: track });
+    persistRouteLibrary(all);
+  });
+  const drawPlan = (page) => page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 34.9, name: 'B' }];
+    syncLegs();
+    state.legs[0].inboundAltitude = 2000;
+    state.legs[0].flightSpeed = 100;
+  });
+
+  test('no route on the map, no comparison offered', async ({ page }) => {
+    await boot(page);
+    await seedTrack(page);
+    await openLibrary(page);
+    await page.locator('.route-library-profile').first().click();
+    // Nothing to compare with, so no control promising one.
+    await expect(page.locator('.route-profile-compare')).toHaveCount(0);
+  });
+
+  test('a route on the map brings the comparison with it', async ({ page }) => {
+    await boot(page);
+    await seedTrack(page);
+    await drawPlan(page);
+    await openLibrary(page);
+    await page.locator('.route-library-profile').first().click();
+    await expect(page.locator('.route-profile-compare')).toHaveCount(1);
+  });
+
+  test('the plan is drawn beside the flight, and only when asked', async ({ page }) => {
+    await boot(page);
+    await drawPlan(page);
+    const strokes = await page.evaluate(() => {
+      const t0 = Date.parse('2026-09-11T06:00:00Z');
+      const pts = [];
+      for (let i = 0; i < 20; i++) pts.push({ lat: 32 + i * 0.02, lng: 34.9, t: t0 + i * 60000, alt: 300 + i * 40 });
+      const plan = { waypoints: state.waypoints.slice(), legs: state.legs.slice() };
+      const record = (o) => {
+        const seen = [];
+        const c = document.createElement('canvas');
+        c.width = 500; c.height = 200;
+        const ctx = c.getContext('2d');
+        const realStroke = ctx.stroke.bind(ctx);
+        ctx.stroke = () => { seen.push(String(ctx.strokeStyle).toLowerCase()); realStroke(); };
+        drawTrackProfile(ctx, 0, 0, 500, 200, pts, o);
+        return seen;
+      };
+      return { without: record(undefined), with: record({ plan: plan }),
+               planColor: NavAid.tuningDefaults.profilePlanColor.value.toLowerCase() };
+    });
+    expect(strokes.without).not.toContain(strokes.planColor);
+    expect(strokes.with).toContain(strokes.planColor);
+  });
+
+  test('a flight that turned back early looks short against its plan', async ({ page }) => {
+    await boot(page);
+    const geometry = await page.evaluate(() => {
+      // 12 NM flown against a 24 NM plan. Stretching each to the full width would draw them
+      // as the same trip; the flown line has to END halfway.
+      const t0 = Date.parse('2026-09-11T06:00:00Z');
+      const pts = [];
+      for (let i = 0; i < 12; i++) pts.push({ lat: 32 + i * 0.018, lng: 34.9, t: t0 + i * 60000, alt: 1000 });
+      state.waypoints = [{ lat: 32, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 34.9, name: 'B' }];
+      syncLegs();
+      state.legs[0].inboundAltitude = 2000;
+      const plan = { waypoints: state.waypoints.slice(), legs: state.legs.slice() };
+      let maxX = 0;
+      const c = document.createElement('canvas');
+      c.width = 500; c.height = 200;
+      const ctx = c.getContext('2d');
+      const flownColor = NavAid.tuningDefaults.profileLineColor.value.toLowerCase();
+      const realLine = ctx.lineTo.bind(ctx);
+      ctx.lineTo = (x, y) => {
+        if (String(ctx.strokeStyle).toLowerCase() === flownColor) maxX = Math.max(maxX, x);
+        realLine(x, y);
+      };
+      drawTrackProfile(ctx, 0, 0, 500, 200, pts, { plan: plan });
+      return { flownEndsAt: Math.round(maxX), width: 500 };
+    });
+    // Well short of the right-hand edge: the two share one distance scale.
+    expect(geometry.flownEndsAt).toBeLessThan(geometry.width * 0.75);
+    expect(geometry.flownEndsAt).toBeGreaterThan(geometry.width * 0.25);
+  });
+});
+
+// 150px is enough to see the shape of a flight and not enough to read it -- and a
+// comparison against the plan is exactly the thing worth reading.
+test.describe('the expanded profile', () => {
+  test('opens larger, from either kind of entry', async ({ page }) => {
+    await boot(page);
+    await saveRoute(page, 'a planned route');
+    await openLibrary(page);
+    await page.locator('.route-library-profile').first().click();
+    const small = await page.evaluate(() =>
+      Math.round(document.querySelector('.route-profile-canvas').getBoundingClientRect().width));
+    await page.locator('.route-profile-expand').first().click();
+    await expect(page.locator('.route-profile-modal')).toBeVisible();
+    const big = await page.evaluate(() => {
+      const c = document.querySelector('.route-profile-modal .route-profile-canvas');
+      const r = c.getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height) };
+    });
+    expect(big.w).toBeGreaterThan(small);
+    expect(big.h).toBeGreaterThan(150);
+  });
+
+  test('it draws what the panel draws, comparison included', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      const t0 = Date.parse('2026-09-11T06:00:00Z');
+      const track = [];
+      for (let i = 0; i < 16; i++) track.push({ lat: 32 + i * 0.02, lng: 34.9, t: t0 + i * 60000, alt: 400 + i * 50 });
+      persistRouteLibrary([{ id: 'trk-x', name: 'nav ex', kind: 'gps',
+        savedAt: new Date().toISOString(), track: track }]);
+      state.waypoints = [{ lat: 32, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 34.9, name: 'B' }];
+      syncLegs();
+      state.legs[0].inboundAltitude = 2500;
+    });
+    await openLibrary(page);
+    await page.locator('.route-library-profile').first().click();
+    // Switch the comparison on in the PANEL, then expand: the big picture must show what
+    // the small one is showing, because it shares its paint function.
+    await page.locator('.route-profile-compare input').check();
+    const planColour = await page.evaluate(() => {
+      const seen = [];
+      const real = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (k, o) {
+        const ctx = real.call(this, k, o);
+        if (ctx && k === '2d' && !ctx.__spy) {
+          ctx.__spy = true;
+          const rs = ctx.stroke.bind(ctx);
+          ctx.stroke = () => { seen.push(String(ctx.strokeStyle).toLowerCase()); rs(); };
+        }
+        return ctx;
+      };
+      window.__seen = seen;
+      document.querySelector('.route-profile-expand').click();
+      HTMLCanvasElement.prototype.getContext = real;
+      return NavAid.tuningDefaults.profilePlanColor.value.toLowerCase();
+    });
+    const seen = await page.evaluate(() => window.__seen);
+    expect(seen).toContain(planColour);
+  });
+});

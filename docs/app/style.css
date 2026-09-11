@@ -3299,8 +3299,37 @@ body.theme-light .route-library-tools button:hover { background: #eef3f9; }
   cursor: pointer;
 }
 .route-profile-export:hover { background: #3c3737; }
+.route-profile-expand {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.route-profile-expand:hover { background: #3c3737; }
+/* The expanded strip: as wide as the window allows, and tall enough to read a comparison
+   rather than only recognise its shape. */
+.route-profile-modal { width: min(96vw, 1100px); max-width: 96vw; }
+/* Above the library it was opened from. Both are non-blocking, so the library stays there
+   to go back to -- but the thing just asked for has to be the thing in front. */
+.modal-back:has(.route-profile-modal) { z-index: 2350; }
+.route-profile-modal-body { min-width: 0; }
 .route-profile-canvas { display: block; width: 100%; max-width: 100%; border-radius: 4px; }
 .route-profile-empty { font-size: 12px; opacity: 0.75; margin: 2px 0; }
+.route-profile-compare {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.85;
+  cursor: pointer;
+}
 .route-library-profile.is-open { border-color: #8a8080; }
 
 .route-library-open {
@@ -5308,6 +5337,7 @@ body.theme-light .row input[type="number"],
 body.theme-light .row input[type="text"],
 body.theme-light .row select,
 body.theme-light .row textarea,
+body.theme-light .route-profile-expand,
 body.theme-light .route-library-filter-select,
 body.theme-light #ims-pwx-controls select,
 body.theme-light .charts-freq-filter-sel,

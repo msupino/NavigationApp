@@ -868,13 +868,23 @@ if (typeof window !== 'undefined') window.trackProfileSamples = trackProfileSamp
 // the left, kt on the right, terrain filled underneath -- so the two read as the same
 // picture of two different things. No TOC, no safe-altitude line and nothing dashed: a
 // recording has no plan to be measured against, and marking one would invent it.
-function drawTrackProfile(ctx, x, y, w, h, pts) {
+function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
+  const o = opts || {};
   const samples = (typeof trackProfileSamples === 'function')
     ? trackProfileSamples(pts, tune('trackProfileSmoothFixes')) : [];
-  const totalDist = samples.length ? samples[samples.length - 1].d : 0;
-  if (samples.length < 2 || !(totalDist > 0)) return false;
+  const flownDist = samples.length ? samples[samples.length - 1].d : 0;
+  if (samples.length < 2 || !(flownDist > 0)) return false;
   const fts = samples.map(p => p.ft).filter(v => v != null);
   const kts = samples.map(p => p.kt).filter(v => v != null);
+  // The plan this flight was flown against, when there is one. Both are drawn against
+  // absolute distance from the start rather than each being stretched to the full width:
+  // a flight that turned back early has to LOOK short against its plan, not be normalised
+  // into agreeing with it.
+  const plan = (o.plan && typeof routeProfile === 'function'
+    && Array.isArray(o.plan.legs) && o.plan.legs.length)
+    ? routeProfile(undefined, null, o.plan) : null;
+  const planPts = (plan && plan.pts && plan.pts.length > 1 && plan.totalDist > 0) ? plan.pts : null;
+  const totalDist = Math.max(flownDist, planPts ? plan.totalDist : 0);
   const axisH = tune('profileAxisHeightPx');
   const yPad = tune('profileYPadPx');
   const plotH = Math.max(10, h - axisH);
@@ -893,12 +903,14 @@ function drawTrackProfile(ctx, x, y, w, h, pts) {
       const frac = i / n;
       const at = Math.min(pts.length - 1, Math.round(frac * (pts.length - 1)));
       const ft = terrainMaxAtLatLng(pts[at].lat, pts[at].lng);
-      terrain.push({ d: totalDist * frac, ft: Number.isFinite(ft) ? ft : null });
+      // Terrain is sampled along the FLOWN line, so it spans the flown distance.
+      terrain.push({ d: flownDist * frac, ft: Number.isFinite(ft) ? ft : null });
     }
   }
   const terrainFt = terrain.filter(t => t.ft != null).map(t => t.ft);
   const maxA = Math.max(
     (fts.length ? Math.max.apply(null, fts) : 0) * 1.1 + 100,
+    planPts ? Math.max.apply(null, planPts.map(pp => pp.alt)) * 1.1 + 100 : 0,
     terrainFt.length ? Math.max.apply(null, terrainFt) + tune('profileHeadroomFt') : 0, 500);
   const minA = 0;
   const py = a => baseY - ((a - minA) / (maxA - minA || 1)) * plotH;
@@ -944,6 +956,22 @@ function drawTrackProfile(ctx, x, y, w, h, pts) {
       ctx.fillStyle = colorWithAlpha(tune('profileTerrainColor'), 0.85);
       ctx.fill();
     }
+  }
+  // The plan first, so the line that was actually flown sits on top of it. Dashed, in its
+  // own colour: one of these is a measurement and the other is an intention, and a picture
+  // that lets them be confused is worse than either alone.
+  if (planPts) {
+    ctx.save();
+    ctx.strokeStyle = tune('profilePlanColor');
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(px(planPts[0].d), py(planPts[0].alt));
+    for (const pp of planPts) ctx.lineTo(px(pp.d), py(pp.alt));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
   }
   // Altitude, in runs: a receiver that reported no height leaves a gap rather than a line
   // drawn straight across ground it never measured.
@@ -994,7 +1022,10 @@ function drawTrackProfile(ctx, x, y, w, h, pts) {
   }
   if (typeof drawProfileLegend === 'function') {
     drawProfileLegend(ctx, x0, y + 2, plotW - 16, [
-      fts.length && { color: tune('profileLineColor'), text: S.profileLegendAlt || 'altitude' },
+      fts.length && { color: tune('profileLineColor'),
+        text: planPts ? (S.profileLegendFlown || 'flown') : (S.profileLegendAlt || 'altitude') },
+      planPts && { color: tune('profilePlanColor'), dash: [6, 4], width: 1.5,
+        text: S.profileLegendPlanned || 'planned' },
       kts.length && { color: tune('profileSpeedColor'), dash: [3, 3], width: 1.5,
         text: S.profileLegendGs || 'ground speed' },
       terrainFt.length && { color: tune('profileTerrainColor'), fill: true,
