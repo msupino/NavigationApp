@@ -287,7 +287,41 @@ function rebuildLayerPicker() {
   }
 }
 rebuildLayerPicker();
+// The three charts a route can be planned ON. Each carries its own route graph, its own
+// waypoints and its own reporting points, so a route drawn on one is a set of names the
+// other two do not have -- carrying it across silently leaves the pilot reading a plan
+// against a chart it was never built for. The rest of the picker is scenery over the same
+// ground: Navigation, Satellite, OpenStreetMap and the helicopter chart change what is
+// underneath, not what the route means, so they stay free.
+const ROUTE_CHARTS = ['CVFR', 'ATS', 'Low Alt'];
+// Which of them the drawn route belongs to. Remembered rather than read from the active
+// layer, or a detour through Satellite would launder the switch the guard exists to stop.
+let routeChart = null;
+function layerSwitchAllowed(active, target) {
+  const hasRoute = !!(typeof state !== 'undefined' && state.waypoints && state.waypoints.length);
+  if (!hasRoute) { routeChart = null; return true; }        // nothing to strand
+  if (ROUTE_CHARTS.includes(active)) routeChart = active;
+  if (!ROUTE_CHARTS.includes(target)) return true;          // scenery: always free
+  if (!routeChart || routeChart === target) return true;    // back to its own chart, or never left
+  // A chart the gist has just withdrawn must still be able to fall back (rebuildLayerPicker
+  // forces CVFR): a route may not outrank a chart that is no longer in service.
+  if (active && typeof layerOffered === 'function' && !layerOffered(active)) return true;
+  const named = (S.layerLabels && S.layerLabels[routeChart]) || routeChart;
+  const say = typeof S.errRouteChartLocked === 'function'
+    ? S.errRouteChartLocked(named)
+    : 'This route was planned on the ' + named + ' chart. Clear or save it first.';
+  if (typeof showToast === 'function') showToast(say);
+  else try { alert(say); } catch (e) { /* no way to say it; the switch is still refused */ }
+  return false;
+}
+NavAid.layerSwitchAllowed = layerSwitchAllowed;   // named so a test can reach the decision
+
 layerSelect.onchange = () => {
+  const active = (typeof currentLayerName === 'function') ? currentLayerName() : '';
+  if (!layerSwitchAllowed(active, layerSelect.value)) {
+    layerSelect.value = active;      // put the picker back where the map actually is
+    return;
+  }
   for (const name in layers) {
     if (name !== layerSelect.value && map.hasLayer(layers[name])) {
       map.removeLayer(layers[name]);

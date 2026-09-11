@@ -2058,6 +2058,11 @@ window.S = Object.assign({
   tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
   tbShare: '🔗 Share',
+  errRouteChartLocked: function (chart) {
+    return 'This route was planned on the ' + chart + ' chart. CVFR, ATS and Low Alt each have '
+      + 'their own waypoints, so the route would not mean the same thing on another one. '
+      + 'Clear the route, or save it, before switching.';
+  },
   tbFollowMe: 'Follow me',
   followMeSharingNow: 'Sharing your position — tap to stop',
   followMeConnecting: 'Follow me: connecting — tap to stop',
