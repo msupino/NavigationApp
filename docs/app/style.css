@@ -3158,7 +3158,26 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
   font-size: 12px;
   color: #b9b3b3;
 }
-.route-library-filter-select { font: inherit; font-size: 12px; }
+/* Painted like every other control in the app. Left to the browser, a <select> is light
+   grey with black text whatever the app is wearing -- fine in the light theme, a bright
+   rectangle in the dark one. */
+.route-library-filter-select,
+#ims-pwx-controls select,
+.sigwx-modal .sigwx-time {
+  font: inherit;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+/* `font: inherit` above resets size as well, so each states its own AFTER it -- the SIGWX
+   viewer's 13px is set earlier in the file and would otherwise be dropped to the inherited
+   16px, which is how this was caught. */
+.route-library-filter-select { font-size: 12px; }
+.sigwx-modal .sigwx-time { font-size: 13px; }
+#ims-pwx-controls select { font-size: 11px; }   /* the size of every other toolbar select */
 .route-library-group-body { display: flex; flex-direction: column; gap: 6px; }
 .route-library-corrupt {
   margin: 0 0 8px;
@@ -5281,6 +5300,9 @@ body.theme-light .row input[type="number"],
 body.theme-light .row input[type="text"],
 body.theme-light .row select,
 body.theme-light .row textarea,
+body.theme-light .route-library-filter-select,
+body.theme-light #ims-pwx-controls select,
+body.theme-light .sigwx-modal .sigwx-time,
 body.theme-light .modal-row select,
 body.theme-light .fp-aircraft select,
 body.theme-light .fp-aircraft input,
