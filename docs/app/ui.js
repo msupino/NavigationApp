@@ -2251,6 +2251,69 @@ function showRouteTemplatesModal() {
 // library, drawn without loading it over the route the pilot is working on. Everything comes
 // from the saved data itself -- no fetch, so it works with the aeroplane on the ground and
 // the phone in flight mode.
+// The profile as a picture to keep: the same strip, drawn again at export size with the
+// route's name and figures above it, so the file explains itself to whoever it is sent to.
+// Handed to saveFile(), which is the anchor in a browser and the system share sheet on a
+// phone -- the one place that knows how a file leaves this app.
+// The figures, and beside them the one thing you can do with the picture.
+function profileHeadRow(totals, name, subtitle, paint) {
+  const head = document.createElement('div');
+  head.className = 'route-profile-head';
+  head.appendChild(totals);
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.className = 'route-profile-export';
+  save.textContent = S.routeProfileExport || 'PNG';
+  save.title = S.routeProfileExportTitle || '';
+  save.onclick = () => exportProfilePng(name || (S.routeLibraryTitle || 'Route'), subtitle, paint);
+  head.appendChild(save);
+  return head;
+}
+
+function exportProfilePng(title, subtitle, paint) {
+  const w = Math.round((typeof tune === 'function' && tune('profileExportWidthPx')) || 1200);
+  const h = Math.round((typeof tune === 'function' && tune('profileExportHeightPx')) || 420);
+  const head = 46;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return false;
+  ctx.fillStyle = (typeof tune === 'function' && tune('profileBgColor')) || '#141212';
+  ctx.fillRect(0, 0, w, h);
+  // A name typed in Hebrew beside a Latin code cannot be laid out by fillText, which has no
+  // bidi of its own. direction on the context is what canvas offers, and it is enough for a
+  // caption: the name reads in its own direction, the figures are forced LTR below it.
+  const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+  ctx.textBaseline = 'top';
+  ctx.direction = rtl ? 'rtl' : 'ltr';
+  ctx.textAlign = rtl ? 'right' : 'left';
+  const tx = rtl ? w - 12 : 12;
+  ctx.fillStyle = (typeof tune === 'function' && tune('profileTextColor')) || '#e8e8e8';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText(String(title || ''), tx, 10, w - 24);
+  if (subtitle) {
+    ctx.direction = 'ltr';
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = (typeof tune === 'function' && tune('profileNmTextColor')) || '#bdb7b7';
+    ctx.fillText(String(subtitle), tx, 30, w - 24);
+  }
+  ctx.direction = rtl ? 'rtl' : 'ltr';
+  paint(ctx, 0, head, w, h - head);
+  const slug = String(title || 'route').replace(/[^A-Za-z0-9\u0590-\u05FF]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 40) || 'route';
+  const stamp = (typeof fileStamp === 'function') ? fileStamp() : Date.now();
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      if (typeof showToast === 'function') showToast(S.errPngFail || 'Could not render the image.', { warn: true });
+      return;
+    }
+    if (typeof saveFile === 'function') saveFile(blob, slug + '-profile-' + stamp + '.png');
+  }, 'image/png');
+  return true;
+}
+if (typeof window !== 'undefined') window.exportProfilePng = exportProfilePng;
+
 function renderRouteProfilePanel(panel, entry) {
   panel.innerHTML = '';
   // A recording is not a plan: it has no legs and no planned altitude, but it has what was
@@ -2285,7 +2348,12 @@ function renderRouteProfilePanel(panel, entry) {
       bdi.textContent = part;
       totals.appendChild(bdi);
     }
-    panel.appendChild(totals);
+    panel.appendChild(profileHeadRow(totals, entry && entry.name, totals.textContent,
+      (ctx, x, y, w, h) => {
+        if (typeof drawVerticalProfile === 'function') {
+          drawVerticalProfile(ctx, x, y, w, h, { route: route, speed: true });
+        }
+      }));
   }
   const canvas = document.createElement('canvas');
   canvas.className = 'route-profile-canvas';
@@ -2359,7 +2427,10 @@ function renderTrackProfilePanel(panel, entry) {
     bdi.textContent = part;
     totals.appendChild(bdi);
   }
-  panel.appendChild(totals);
+  panel.appendChild(profileHeadRow(totals, entry && entry.name, totals.textContent,
+    (ctx, x, y, w, h) => {
+      if (typeof drawTrackProfile === 'function') drawTrackProfile(ctx, x, y, w, h, pts);
+    }));
 
   const canvas = document.createElement('canvas');
   canvas.className = 'route-profile-canvas';

@@ -3209,12 +3209,34 @@ body.theme-light .route-library-tools button:hover { background: #eef3f9; }
   background: rgba(255, 255, 255, 0.03);
 }
 .route-profile-panel[hidden] { display: none !important; }
+.route-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
 .route-profile-totals {
   font-size: 11px;
   opacity: 0.85;
-  margin-bottom: 4px;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+/* Pushed to the far end, whichever end that is in this writing direction. */
+.route-profile-export {
+  margin-inline-start: auto;
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 11px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.route-profile-export:hover { background: #3c3737; }
 .route-profile-canvas { display: block; width: 100%; max-width: 100%; border-radius: 4px; }
 .route-profile-empty { font-size: 12px; opacity: 0.75; margin: 2px 0; }
 .route-library-profile.is-open { border-color: #8a8080; }
