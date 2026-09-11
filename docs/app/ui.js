@@ -10330,11 +10330,16 @@ const NavWxTime = (function () {
   }
   function refresh() {
     el.hidden = !featureOn();
-    // The panel's copy is withdrawn by the same gist switch. Where it is shown at all is a
-    // question for the stylesheet, not for this: a control the layout does not have room
-    // for is not the same thing as a feature that has been turned off.
-    if (inspStrip) inspStrip.hidden = !featureOn();
-    el.classList.toggle('idle', !anyTimedLayer() && !inspectorTimed());
+    const timed = anyTimedLayer() || inspectorTimed();
+    // The panel's copy exists for one reason: on a phone the sheet covers the map's copy. So
+    // it appears when there is something for a clock to move and not otherwise -- a waypoint,
+    // an ADS-B aircraft or a note has nothing in it that answers to time, and a slider on
+    // that panel is a control offering to change something the pilot cannot see. The map's
+    // own copy dims instead of hiding, because it has a fixed place on the chart and a
+    // control that vanishes from it is one you hunt for; this one is in a panel that is
+    // rebuilt for every selection, so there is no place to keep.
+    if (inspStrip) inspStrip.hidden = !featureOn() || !timed;
+    el.classList.toggle('idle', !timed);
     label();
   }
   NavAid.refreshMapClock = refresh;
