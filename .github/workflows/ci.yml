@@ -14,6 +14,34 @@ permissions:
   contents: read
 
 jobs:
+  # How much of the suite this change needs. A PR that touches only scripts/, mobile/ or a
+  # markdown file cannot break a browser test, and one that touches only spec files needs
+  # those specs and nothing else. Every other PR gets the whole suite, and so does every
+  # push to dev or main -- the merge points are not the place to be clever about coverage.
+  scope:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      e2e: ${{ steps.scope.outputs.e2e }}
+      specs: ${{ steps.scope.outputs.specs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/test-scope
+      - name: Say so
+        run: |
+          echo "e2e: ${{ steps.scope.outputs.e2e }} (${{ steps.scope.outputs.why }})" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.scope.outputs.specs }}" ]; then
+            echo "specs: ${{ steps.scope.outputs.specs }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   native-android:
     # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
     # pull_request runs land in `action_required` and sit there unapproved, while the
@@ -254,10 +282,14 @@ jobs:
     # reports every required context against the very same SHA. Running them again here
     # duplicates the entire suite and leaves a PR that looks blocked on an approval it
     # does not need. See auto-pr-dev-to-main.yml.
+    # ...and skipped entirely when the diff cannot reach a browser test -- see the `scope`
+    # job. A skipped matrix reports as a pass through the `e2e` aggregator below, which is
+    # what branch protection waits on.
     if: >-
-      github.event_name != 'pull_request' ||
+      (github.event_name != 'pull_request' ||
       github.head_ref != 'dev' ||
-      github.base_ref != 'main'
+      github.base_ref != 'main') &&
+      needs.scope.outputs.e2e == 'full'
     runs-on: ubuntu-latest
     # Cold or slow Playwright browser setup can take 6+ minutes before the
     # suite starts; keep enough headroom for one shard of the local e2e run.
@@ -265,7 +297,7 @@ jobs:
     # pile of bogus failures that read like a regression (see the same note on
     # e2e-deployed in deploy.yml).
     timeout-minutes: 20
-    needs: lint
+    needs: [lint, scope]
     strategy:
       # One shard's failure is not the others' business: let them all report, so a
       # single red shard doesn't hide a second, unrelated break.
@@ -340,6 +372,116 @@ jobs:
             test-results/
           retention-days: 7
 
+  # Only spec files changed: run exactly those, unsharded. Nothing they test has moved, so
+  # a failure here is the spec's own.
+  e2e-specs:
+    if: >-
+      (github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main') &&
+      needs.scope.outputs.e2e == 'specs'
+    needs: [lint, scope]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        run: timeout 5m npx playwright install --with-deps chromium || npx playwright install chromium
+
+      - name: Run the changed specs
+        run: |
+          python3 -c "from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler; import functools; ThreadingHTTPServer(('127.0.0.1', 8000), functools.partial(SimpleHTTPRequestHandler, directory='docs')).serve_forever()" & SERVER=$!
+          BASE_URL="http://127.0.0.1:8000" npx playwright test ${{ needs.scope.outputs.specs }}
+          EXIT=$?
+          kill $SERVER 2>/dev/null
+          exit $EXIT
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-specs
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  # A fast first answer, not a gate: it is deliberately NOT in the required checks, so a red
+  # smoke run is a signal to read rather than a blocked merge. Forty tests that boot the app
+  # and drive its main surfaces -- under twenty seconds of actual testing -- so a break that
+  # would fail every shard says so before the shards have finished installing a browser.
+  # It reports its failure honestly rather than swallowing it; `e2e` still decides the merge.
+  smoke:
+    if: >-
+      (github.event_name != 'pull_request' ||
+      github.head_ref != 'dev' ||
+      github.base_ref != 'main') &&
+      needs.scope.outputs.e2e == 'full'
+    needs: [lint, scope]
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        run: timeout 5m npx playwright install --with-deps chromium || npx playwright install chromium
+
+      - name: Run the smoke set
+        run: |
+          python3 -c "from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler; import functools; ThreadingHTTPServer(('127.0.0.1', 8000), functools.partial(SimpleHTTPRequestHandler, directory='docs')).serve_forever()" & SERVER=$!
+          BASE_URL="http://127.0.0.1:8000" npx playwright test \
+            tests/smoke.spec.js \
+            tests/route-library.spec.js \
+            tests/map-time-clock.spec.js \
+            tests/string-parity.spec.js \
+            tests/dark-mode-controls.spec.js \
+            tests/settings-sync-allowlist.spec.js \
+            --reporter=line
+          EXIT=$?
+          kill $SERVER 2>/dev/null
+          exit $EXIT
+
   # The required status check. Exists only so branch protection has one stable
   # name to wait on; it passes when every shard passed.
   e2e:
@@ -354,15 +496,19 @@ jobs:
       github.head_ref != 'dev' ||
       github.base_ref != 'main') &&
       (always())
-    needs: e2e-shard
+    needs: [e2e-shard, e2e-specs]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - name: Check every shard passed
         run: |
-          # 'skipped' counts as a pass only when the whole matrix was skipped with
-          # the job it depends on -- a shard that fails or is cancelled must fail here.
-          case "${{ needs.e2e-shard.result }}" in
-            success|skipped) echo "✅ all e2e shards passed"; exit 0 ;;
-            *) echo "❌ an e2e shard reported '${{ needs.e2e-shard.result }}'"; exit 1 ;;
-          esac
+          # 'skipped' counts as a pass only when the job it depends on was skipped as a
+          # whole -- either the promotion-PR case, or a diff the `scope` job judged unable
+          # to reach a browser test. A shard that FAILS or is cancelled must fail here.
+          for r in "${{ needs.e2e-shard.result }}" "${{ needs.e2e-specs.result }}"; do
+            case "$r" in
+              success|skipped) ;;
+              *) echo "❌ an e2e job reported '$r'"; exit 1 ;;
+            esac
+          done
+          echo "✅ e2e passed (shards: ${{ needs.e2e-shard.result }}, specs: ${{ needs.e2e-specs.result }})"
