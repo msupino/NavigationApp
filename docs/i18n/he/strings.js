@@ -833,7 +833,7 @@ window.S = {
   tbExportTitle: 'ייצא מסלול (JSON / GPX / PLN)',
   tbImport: '⬆ ייבא',
   tbImportTitle: 'ייבא JSON מסלול',
-  tbShare: '🔗 שתף',
+  tbShare: '🔗 שתף מסלול',
   errRouteChartLocked: function (chart) {
     return 'המסלול תוכנן על מפת ' + chart + '. ל-CVFR, ATS ו-Low Alt יש נקודות דיווח משלהן, '
       + 'ולכן המסלול לא יהיה אותו מסלול על מפה אחרת. נקו את המסלול, או שמרו אותו, לפני המעבר.';

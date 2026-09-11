@@ -2057,7 +2057,7 @@ window.S = Object.assign({
   tbExportTitle: 'Export route (JSON / GPX / PLN / FDR)',
   tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
-  tbShare: '🔗 Share',
+  tbShare: '🔗 Share route',
   errRouteChartLocked: function (chart) {
     return 'This route was planned on the ' + chart + ' chart. CVFR, ATS and Low Alt each have '
       + 'their own waypoints, so the route would not mean the same thing on another one. '
