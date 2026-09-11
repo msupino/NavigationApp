@@ -2489,6 +2489,20 @@ body.theme-light .notam-find {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
 }
 .notam-item { border: 1px solid #3a3636; border-radius: 6px; padding: 6px 8px; background: rgba(255, 255, 255, 0.03); }
+/* Not seen on this device before. The whole list is true today; this is the part that was
+   not true last time, which is the question a pre-flight read is actually asking. */
+.notam-item-new { border-color: #c9a227; }
+.notam-new-tag {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #231F20;
+  background: #ffd966;
+  vertical-align: 1px;
+}
 .notam-item-clickable { cursor: pointer; }
 .notam-item-clickable:hover { border-color: #c9a227; background: rgba(255, 212, 0, 0.08); }
 .notam-id { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
