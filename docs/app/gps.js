@@ -887,6 +887,15 @@ function gpsPushAltitudeParts(parts) {
   const inHg = gpsQnh && gpsFormatInHg(gpsQnh.inHg);
   parts.push(inHg ? inHg + '\u2033' : null);   // 29.83" -- the subscale setting, not a length
 }
+// Ground speed for the readout, or a placeholder holding its place.
+// The first fix of a session carries no speed unless the device reports one -- there is no
+// previous fix to derive it from -- so the field used to be absent for a second and then
+// appear, arriving after the altitude and the heading that came with the same fix and
+// shoving them along the line. Reported: "speed shows up after all others". A dash says the
+// number is not in yet without moving anything, and is replaced in place when it arrives.
+function gpsSpeedPart() {
+  return gpsLastGS != null ? Math.round(gpsLastGS) + ' kt' : '\u2014 kt';
+}
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
@@ -904,12 +913,10 @@ function gpsUpdateReadout() {
     // the panel is too narrow: the subscale setting first (it is a setting, and the airfield
     // panel carries it too), then the point count, then the elapsed clock. Speed, altitude
     // and heading are the instrument and are never dropped.
-    const parts = [gpsTrack.length + ' pts', mm + ':' + ss,
-      gpsLastGS != null ? Math.round(gpsLastGS) + ' kt' : null];
+    const parts = [gpsTrack.length + ' pts', mm + ':' + ss, gpsSpeedPart()];
     const altAt = parts.length;
     gpsPushAltitudeParts(parts);
-    const hdgRec = gpsReadoutHeading();
-    if (hdgRec) parts.push(hdgRec);
+    parts.push(gpsReadoutHeading());
     gpsFitReadout(el, parts, gpsStaleText(), [altAt + 1, 0, 1]);
     return;
   }
@@ -920,13 +927,12 @@ function gpsUpdateReadout() {
   // show nothing at all outside a recording; reported live: "show alt like gps mode
   // shows alt in sim mode".
   if (liveActive) {
-    const parts = [gpsLastGS != null ? Math.round(gpsLastGS) + ' kt' : null];
+    const parts = [gpsSpeedPart()];
     const altAt = parts.length;
     gpsPushAltitudeParts(parts);
     // Same fields whether the position comes from the device GPS or a connected
     // simulator -- both land in gpsOwn, and this branch already serves both.
-    const hdgLive = gpsReadoutHeading();
-    if (hdgLive) parts.push(hdgLive);
+    parts.push(gpsReadoutHeading());
     gpsFitReadout(el, parts, gpsStaleText(), [altAt + 1]);
     return;
   }
