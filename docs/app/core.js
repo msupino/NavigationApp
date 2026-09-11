@@ -837,6 +837,7 @@ NavAid.tuningDefaults = {
     label: 'Recorded profile: fixes averaged for ground speed' },
   // The exported picture is not the on-screen strip scaled up: it is drawn again at this
   // size, so the axis labels stay sharp instead of being stretched.
+  profileLegend: { value: true, type: 'bool', label: 'Profile: draw the key on the strip' },
   profileExportWidthPx: { value: 1200, min: 400, max: 4000, step: 50, label: 'Profile export width (px)' },
   profileExportHeightPx: { value: 420, min: 200, max: 2000, step: 20, label: 'Profile export height (px)' },
   reverseWarnMs: { value: 10000, min: 1000, max: 30000, step: 500, label: 'Reverse warning (ms)' },
@@ -1010,7 +1011,7 @@ NavAid.tuningGroups = [
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing'] },
   { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
-  { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileSpeedColor', 'routeProfileHeightPx', 'trackProfileSmoothFixes', 'profileExportWidthPx', 'profileExportHeightPx', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
+  { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileSpeedColor', 'routeProfileHeightPx', 'trackProfileSmoothFixes', 'profileLegend', 'profileExportWidthPx', 'profileExportHeightPx', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx', 'airmetColor'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor', 'featureNotamFreqRows'] },
@@ -1334,6 +1335,11 @@ window.S = Object.assign({
   trackProfileNoAlt: 'No altitude recorded',
   trackProfileFlown: 'flown',
   routeProfileExport: '⤓ PNG',
+  profileLegendAlt: 'altitude',
+  profileLegendPlannedSpeed: 'planned speed',
+  profileLegendGs: 'ground speed',
+  profileLegendTerrain: 'terrain',
+  profileLegendMsa: 'safe alt',
   routeProfileExportTitle: 'Save the profile as an image, or share it',
   routeLibraryImport: 'Import library',
   routeLibraryImportNone: 'No valid routes in that file',

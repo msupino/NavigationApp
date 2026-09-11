@@ -111,6 +111,8 @@ test('the speed trace is a step, drawn only where a speed was planned', async ({
     route.legs = [Object.assign({}, state.legs[0], { inboundAltitude: 2500, flightSpeed: 100 }),
       Object.assign({}, state.legs[1], { inboundAltitude: 4500, flightSpeed: 0 })];
     // A recording context: every line the profile draws, and the colour it used.
+    // The key draws a swatch in the speed colour too, and this test is about the trace.
+    NavAid.tuningDefaults.profileLegend.value = false;
     const seen = [];
     const c = document.createElement('canvas');
     c.width = 400; c.height = 150;
@@ -123,6 +125,7 @@ test('the speed trace is a step, drawn only where a speed was planned', async ({
     ctx.lineTo = (x, y) => { path.push([x, y]); realLine(x, y); };
     ctx.stroke = () => { seen.push({ color: ctx.strokeStyle, path: path.slice(), dash: ctx.getLineDash().join() }); realStroke(); };
     drawVerticalProfile(ctx, 0, 0, 400, 150, { route: route, speed: true });
+    NavAid.tuningDefaults.profileLegend.value = true;
     return { seen, speedColor: NavAid.tuningDefaults.profileSpeedColor.value };
   });
   const speedLines = strokes.seen.filter(s => String(s.color).toLowerCase() === strokes.speedColor.toLowerCase());
@@ -305,4 +308,77 @@ test('a recording exports too, and the picture carries its own caption', async (
   const texts = await page.evaluate(() => window.__texts);
   expect(texts).toContain('nav ex');                       // the name is on the picture
   expect(texts.some(t => /NM/.test(t) && /flown/.test(t))).toBe(true);   // and the figures
+});
+
+// Four things are drawn on one strip -- a solid line, a dotted one, a dashed one and a
+// filled band -- and only the first is self-evident. Unlabelled, the picture asks the pilot
+// to guess which red dashes mean "safe altitude" and which amber dots mean "speed". The key
+// is drawn INSIDE the canvas, so the exported PNG carries it to whoever it is sent to.
+test('the strip names its own lines, on screen and in the export', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => {
+    const texts = [];
+    const c = document.createElement('canvas');
+    c.width = 600; c.height = 200;
+    const ctx = c.getContext('2d');
+    const realFill = ctx.fillText.bind(ctx);
+    ctx.fillText = (t, x, y, m) => { texts.push(String(t)); return realFill(t, x, y, m); };
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
+    syncLegs();
+    state.legs[0].inboundAltitude = 3000;
+    state.legs[0].flightSpeed = 110;
+    const route = { waypoints: state.waypoints.slice(), legs: state.legs.slice() };
+    drawVerticalProfile(ctx, 0, 0, 600, 200, { route: route, speed: true });
+    const planned = texts.slice();
+    texts.length = 0;
+    const t0 = Date.parse('2026-09-11T06:00:00Z');
+    const pts = [];
+    for (let i = 0; i < 8; i++) pts.push({ lat: 32 + i * 0.02, lng: 34.9, t: t0 + i * 60000, alt: 500 });
+    drawTrackProfile(ctx, 0, 0, 600, 200, pts);
+    return { planned, track: texts.slice() };
+  });
+  expect(got.planned).toContain('altitude');
+  expect(got.planned).toContain('planned speed');
+  // A recording has no plan, so it names what it does have: measured ground speed.
+  expect(got.track).toContain('altitude');
+  expect(got.track).toContain('ground speed');
+  expect(got.track).not.toContain('planned speed');
+});
+
+test('a narrow strip drops the last key rather than printing over the plot', async ({ page }) => {
+  await boot(page);
+  const counts = await page.evaluate(() => {
+    const draw = (w) => {
+      const texts = [];
+      const c = document.createElement('canvas');
+      const ctx = c.getContext('2d');
+      const realFill = ctx.fillText.bind(ctx);
+      ctx.fillText = (t) => { texts.push(String(t)); };
+      drawProfileLegend(ctx, 0, 0, w, [
+        { color: '#fff', text: 'altitude' }, { color: '#fff', text: 'planned speed' },
+        { color: '#fff', text: 'safe alt' }, { color: '#fff', text: 'terrain' },
+      ]);
+      realFill.length;            // keep the real one referenced
+      return texts.length;
+    };
+    return { wide: draw(600), narrow: draw(90) };
+  });
+  expect(counts.wide).toBe(4);
+  expect(counts.narrow).toBeLessThan(4);
+  expect(counts.narrow).toBeGreaterThan(0);
+});
+
+test('the gist can take the key away', async ({ page }) => {
+  await boot(page);
+  const drawn = await page.evaluate(() => {
+    NavAid.tuningDefaults.profileLegend.value = false;
+    const texts = [];
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    ctx.fillText = (t) => { texts.push(String(t)); };
+    drawProfileLegend(ctx, 0, 0, 600, [{ color: '#fff', text: 'altitude' }]);
+    NavAid.tuningDefaults.profileLegend.value = true;
+    return texts;
+  });
+  expect(drawn).toEqual([]);
 });
