@@ -3153,7 +3153,8 @@ function scheduleRouteAutoSync() {
       _routeAutoSyncFailed = true;
       if (typeof showToast === 'function') {
         showToast((S && S.routeLibraryGdriveAutoSyncFailed) ||
-          'Not synced to Drive — saved on this device. Sync from Saved routes to retry.');
+          'Not synced to Drive — saved on this device. Sync from Saved routes to retry.',
+          { warn: true });
       }
       if (typeof console !== 'undefined' && console.warn) console.warn('Drive auto-sync failed', err);
     });
@@ -7265,7 +7266,8 @@ function renderFreqTable(freqSection) {
       // empty list: the row is about to stop existing anyway.
       if (hit.length && typeof showNotamModal === 'function') showNotamModal(hit, { keepCharts: true });
       else if (typeof showToast === 'function') {
-        showToast((S.freqSourceNotamGone || 'NOTAM no longer in the feed') + ' (' + notam.id + ')');
+        showToast((S.freqSourceNotamGone || 'NOTAM no longer in the feed') + ' (' + notam.id + ')',
+          { warn: true });
       }
     };
     td.appendChild(btn);
@@ -7961,7 +7963,7 @@ async function focusAltitudePairSegment(segment, closeModal, keepFocusVisible, f
   const to = altitudePairEndpoint(segment.to);
   if (!from || !to) {
     if (typeof showToast === 'function') {
-      showToast(S.altPairsLocationMissing || 'Pair endpoints not found');
+      showToast(S.altPairsLocationMissing || 'Pair endpoints not found', { warn: true });
     }
     return false;
   }
@@ -8150,7 +8152,7 @@ function renderAltitudePairsTable(altSection, opts) {
         opts.keepOpenOnFocus ? 'pinned' : 'manual').catch(err => {
         console.warn('Failed to focus leg-altitude pair:', err);
         if (typeof showToast === 'function') {
-          showToast(S.altPairsLocationMissing || 'Pair endpoints not found');
+          showToast(S.altPairsLocationMissing || 'Pair endpoints not found', { warn: true });
         }
       });
     });
@@ -8830,6 +8832,22 @@ function tryLoadRouteFromUrl() {
 // so the URL can be copied manually.
 // `opts.ms` overrides how long the toast stays up, `opts.blink` makes it pulse. A warning
 // a pilot must actually act on cannot share its dwell time with 'route saved'.
+// How long this particular sentence needs: the beat before the eye finds it, plus the time
+// to read it at a deliberate pace, held between a floor and a cap. `warn` only raises the
+// floor -- a warning that happens to be two words is still a two-word read. An explicit ms
+// from the caller wins over all of it.
+function toastReadMs(msg, warn) {
+  const t = (k, d) => {
+    const v = (typeof tune === 'function') ? tune(k) : 0;
+    return Number.isFinite(v) && v > 0 ? v : d;
+  };
+  const words = String(msg == null ? '' : msg).trim().split(/\s+/).filter(Boolean).length;
+  const read = (words / t('toastReadWpm', 180)) * 60000;
+  const floor = warn ? t('toastWarnMinMs', 4000) : t('toastMinMs', 2500);
+  return Math.round(Math.min(t('toastMaxMs', 20000), Math.max(floor, t('toastNoticeMs', 1000) + read)));
+}
+if (typeof window !== 'undefined') window.toastReadMs = toastReadMs;
+
 function showToast(msg, opts) {
   const o = opts || {};
   const el = document.createElement('div');
@@ -8838,7 +8856,7 @@ function showToast(msg, opts) {
   document.body.appendChild(el);
   void el.offsetWidth;                  // force reflow so the fade-in runs
   el.classList.add('show');
-  const ms = Number.isFinite(o.ms) && o.ms > 0 ? o.ms : 2500;
+  const ms = Number.isFinite(o.ms) && o.ms > 0 ? o.ms : toastReadMs(msg, o.warn);
   setTimeout(() => {
     el.classList.remove('show');
     setTimeout(() => el.remove(), 250);

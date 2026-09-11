@@ -2394,7 +2394,8 @@ async function _fetchAirspace() {
     if (!_airspaceWarned && typeof showToast === 'function') {
       _airspaceWarned = true;
       const why = (e && e.message) || '';
-      showToast((S.airspaceUnavailable || 'Airspace unavailable') + (why ? ' (' + why + ')' : ''));
+      showToast((S.airspaceUnavailable || 'Airspace unavailable') + (why ? ' (' + why + ')' : ''),
+        { warn: true });
     }
     return [];
   }
