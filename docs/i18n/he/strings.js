@@ -108,6 +108,8 @@ window.S = {
   trackProfileTitle: 'הגובה והמהירות שנטסו בפועל בהקלטה הזו',
   trackProfileNoAlt: 'לא הוקלט גובה',
   trackProfileFlown: 'בפועל',
+  routeProfileExport: '⤓ PNG',
+  routeProfileExportTitle: 'שמירת הפרופיל כתמונה, או שיתוף שלו',
   routeLibraryImport: 'ייבא ספרייה',
   routeLibraryImportNone: 'אין מסלולים תקינים בקובץ',
   routeLibrarySaved: function (name) { return name + ' נשמר'; },

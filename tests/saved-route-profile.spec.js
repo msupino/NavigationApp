@@ -245,3 +245,64 @@ test('the panel closes again, and both kinds of entry offer one', async ({ page 
   await btn.first().click();
   await expect(page.locator('.route-profile-panel').first()).toBeHidden();
 });
+
+// A profile worth reading is a profile worth keeping: to a kneeboard, to a student, to the
+// club's group. The picture goes out through saveFile(), which is the browser's download in
+// a browser and the system share sheet on the phone -- the one place that knows how a file
+// leaves this app.
+test('the profile can be saved as an image', async ({ page }) => {
+  await boot(page);
+  await saveRoute(page, 'Herzliya to Haifa');
+  await openLibrary(page);
+  // Catch what would be handed to the platform, without going near it.
+  await page.evaluate(() => {
+    window.__saved = [];
+    window.saveFile = (blob, name) => { window.__saved.push({ name, type: blob.type, size: blob.size }); return Promise.resolve(true); };
+  });
+  await page.locator('.route-library-profile').first().click();
+  await page.locator('.route-profile-export').first().click();
+  await page.waitForFunction(() => window.__saved.length > 0);
+  const [file] = await page.evaluate(() => window.__saved);
+  expect(file.type).toBe('image/png');
+  expect(file.size).toBeGreaterThan(1000);          // a real image, not an empty canvas
+  // Named for the route it is a picture of, and stamped, so two exports do not collide.
+  expect(file.name).toMatch(/^Herzliya-to-Haifa-profile-\d{8}-\d{6}\.png$/);
+});
+
+test('a recording exports too, and the picture carries its own caption', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const t0 = Date.parse('2026-09-11T06:00:00Z');
+    const track = [];
+    for (let i = 0; i < 10; i++) track.push({ lat: 32 + i * 0.02, lng: 34.9, t: t0 + i * 60000, alt: 400 + i * 60 });
+    const all = loadRouteLibrary();
+    all.unshift({ id: 'trk-x', name: 'nav ex', kind: 'gps', savedAt: new Date().toISOString(), track });
+    persistRouteLibrary(all);
+  });
+  await openLibrary(page);
+  const drawn = await page.evaluate(() => {
+    // Record what the exported image is told to write, which is where the name and the
+    // figures end up -- they are not in the strip itself.
+    const texts = [];
+    const realGet = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (kind, o) {
+      const ctx = realGet.call(this, kind, o);
+      if (ctx && kind === '2d' && !ctx.__spied) {
+        ctx.__spied = true;
+        const realFill = ctx.fillText.bind(ctx);
+        ctx.fillText = (t, x, y, m) => { texts.push(String(t)); return realFill(t, x, y, m); };
+      }
+      return ctx;
+    };
+    window.__texts = texts;
+    window.saveFile = () => Promise.resolve(true);
+    return true;
+  });
+  expect(drawn).toBe(true);
+  await page.locator('.route-library-profile').first().click();
+  await page.locator('.route-profile-export').first().click();
+  await page.waitForTimeout(300);
+  const texts = await page.evaluate(() => window.__texts);
+  expect(texts).toContain('nav ex');                       // the name is on the picture
+  expect(texts.some(t => /NM/.test(t) && /flown/.test(t))).toBe(true);   // and the figures
+});

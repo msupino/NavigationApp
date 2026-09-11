@@ -835,6 +835,10 @@ NavAid.tuningDefaults = {
   routeProfileHeightPx: { value: 150, min: 80, max: 400, step: 10, label: 'Saved-route profile height (px)' },
   trackProfileSmoothFixes: { value: 5, min: 1, max: 60, step: 1,
     label: 'Recorded profile: fixes averaged for ground speed' },
+  // The exported picture is not the on-screen strip scaled up: it is drawn again at this
+  // size, so the axis labels stay sharp instead of being stretched.
+  profileExportWidthPx: { value: 1200, min: 400, max: 4000, step: 50, label: 'Profile export width (px)' },
+  profileExportHeightPx: { value: 420, min: 200, max: 2000, step: 20, label: 'Profile export height (px)' },
   reverseWarnMs: { value: 10000, min: 1000, max: 30000, step: 500, label: 'Reverse warning (ms)' },
   // How long a toast stays up, from how long it takes to READ. One fixed duration cannot be
   // right for both "Copied" and a three-line explanation of why a control just refused --
@@ -1006,7 +1010,7 @@ NavAid.tuningGroups = [
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing'] },
   { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
-  { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileSpeedColor', 'routeProfileHeightPx', 'trackProfileSmoothFixes', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
+  { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileSpeedColor', 'routeProfileHeightPx', 'trackProfileSmoothFixes', 'profileExportWidthPx', 'profileExportHeightPx', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx', 'airmetColor'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor', 'featureNotamFreqRows'] },
@@ -1329,6 +1333,8 @@ window.S = Object.assign({
   trackProfileTitle: 'Altitude and ground speed actually flown on this recording',
   trackProfileNoAlt: 'No altitude recorded',
   trackProfileFlown: 'flown',
+  routeProfileExport: '⤓ PNG',
+  routeProfileExportTitle: 'Save the profile as an image, or share it',
   routeLibraryImport: 'Import library',
   routeLibraryImportNone: 'No valid routes in that file',
   routeLibrarySaved: function (name) { return name + ' saved'; },
