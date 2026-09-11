@@ -3163,6 +3163,9 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
    rectangle in the dark one. */
 .route-library-filter-select,
 #ims-pwx-controls select,
+.charts-freq-filter-sel,
+#export-vor-select,
+#export-layer-select,
 .sigwx-modal .sigwx-time {
   font: inherit;
   color: #e8e8e8;
@@ -3176,6 +3179,11 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
    viewer's 13px is set earlier in the file and would otherwise be dropped to the inherited
    16px, which is how this was caught. */
 .route-library-filter-select { font-size: 12px; }
+/* Beside the search box it filters with, which is 13px. */
+.charts-freq-filter-sel { font-size: 13px; }
+/* The export sheet's own controls are 13px. */
+#export-vor-select,
+#export-layer-select { font-size: 13px; }
 .sigwx-modal .sigwx-time { font-size: 13px; }
 #ims-pwx-controls select { font-size: 11px; }   /* the size of every other toolbar select */
 .route-library-group-body { display: flex; flex-direction: column; gap: 6px; }
@@ -5302,6 +5310,9 @@ body.theme-light .row select,
 body.theme-light .row textarea,
 body.theme-light .route-library-filter-select,
 body.theme-light #ims-pwx-controls select,
+body.theme-light .charts-freq-filter-sel,
+body.theme-light #export-vor-select,
+body.theme-light #export-layer-select,
 body.theme-light .sigwx-modal .sigwx-time,
 body.theme-light .modal-row select,
 body.theme-light .fp-aircraft select,
