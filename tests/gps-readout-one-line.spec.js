@@ -61,7 +61,7 @@ test('and with a stale-fix notice appended', async ({ page }) => {
     window.gpsQnh = { inHg: 29.83, hPa: 1010, at: Date.now(), lat: 32, lng: 34.9 };
     // The longest this line ever gets: everything, plus "GPS fix 45s" on the end.
     const el = document.getElementById('gps-readout');
-    gpsSetReadout(el, ['128 pts · 12:34', '104 kt', '2450 ft', '29.83″', '070m'], 'GPS fix 45s');
+    gpsSetReadout(el, ['128 pts · 12:34', '104 kt', '2450 ft', '29.83″', '~070°'], 'GPS fix 45s');
     el.classList.add('live-active');
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
