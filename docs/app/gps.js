@@ -754,21 +754,64 @@ function gpsAltitudeForCompare() {
 // pilot can find elsewhere beats truncating one they cannot.
 //
 // `parts` is ordered as it reads; `droppable` names indices in the order they may go.
+//
+// How many fields are dropped is STICKY, not recomputed from scratch each second. Every
+// value on this line changes width as it is flown -- "9 pts" becomes "10 pts", 990 ft
+// becomes 1000 ft, the elapsed clock ticks, a stale notice counts up -- so a line sitting
+// on the width limit would fit, overflow, fit again, and the pilot would watch the subscale
+// setting and the point count blink in and out of a cockpit instrument. Reported: "the live
+// location info keeps changing the info details".
+//
+// So a field goes when the line OVERFLOWS, and comes back only when it fits with
+// gpsReadoutRefitPx to spare. The gap between those two thresholds is what stops a value one
+// pixel wider than the last one from starting the cycle over.
+let gpsFitKey = '';
+let gpsFitWidth = -1;
+let gpsFitDropped = 0;
+// How wide the text actually is, and how much room it has. scrollWidth answers the first
+// question only while the line is too long -- it never reports LESS than the box, so it
+// cannot say how much room is left, which is the measurement the re-fit needs. A range over
+// the element's own contents measures the text itself, short or long.
+function gpsReadoutRoom(el) {
+  const cs = getComputedStyle(el);
+  const pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  return { text: range.getBoundingClientRect().width, avail: el.clientWidth - pad };
+}
 function gpsFitReadout(el, parts, staleText, droppable) {
   const order = Array.isArray(droppable) ? droppable.slice() : [];
-  let shown = parts.slice();
-  gpsSetReadout(el, shown.filter(p => p != null), staleText);
+  // Which line this is: the recording branch and the live branch offer different fields in
+  // a different order, and a count of dropped fields means nothing across that change.
+  // The panel's own width counts too -- a rotation or a resize is a different question, not
+  // a continuation of the last one.
+  const key = order.join(',') + '/' + parts.length;
+  if (key !== gpsFitKey || el.clientWidth !== gpsFitWidth) {
+    gpsFitKey = key;
+    gpsFitWidth = el.clientWidth;
+    gpsFitDropped = 0;
+  }
+  const render = (n) => {
+    const shown = parts.slice();
+    for (let i = 0; i < n && i < order.length; i++) shown[order[i]] = null;
+    gpsSetReadout(el, shown.filter(p => p != null), staleText);
+    return gpsReadoutRoom(el);
+  };
+  let room = render(gpsFitDropped);
   // clientWidth is 0 while the element is hidden (the desktop toolbar hides this line unless
   // a fix is driving the map); nothing to fit, and nothing to trim on a guess.
-  let guard = order.length;
-  while (guard-- > 0 && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
-    const drop = order.shift();
-    if (drop === undefined) break;
-    shown[drop] = null;
-    gpsSetReadout(el, shown.filter(p => p != null), staleText);
+  if (!el.clientWidth) return;
+  while (gpsFitDropped < order.length && room.text > room.avail + 1) room = render(++gpsFitDropped);
+  // Room again -- but hand a field back only if it still leaves slack afterwards. A field
+  // restored into the last pixel is taken away again by the next foot of climb, and that
+  // blinking is what this whole mechanism is here to stop.
+  const slack = (typeof tune === 'function' && tune('gpsReadoutRefitPx')) || 0;
+  while (gpsFitDropped > 0) {
+    const wider = render(gpsFitDropped - 1);
+    if (wider.text > wider.avail - slack) { render(gpsFitDropped); break; }
+    gpsFitDropped--;
   }
 }
-
 function gpsSetReadout(el, parts, staleText) {
   el.textContent = '';
   // The tilde is one character doing a job; the title says what it is for anyone who
