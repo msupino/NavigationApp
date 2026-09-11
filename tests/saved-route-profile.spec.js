@@ -382,3 +382,60 @@ test('the gist can take the key away', async ({ page }) => {
   });
   expect(drawn).toEqual([]);
 });
+
+// A recorded altitude is the receiver's GEOMETRIC height: metres above the WGS84 ellipsoid.
+// It is not what the altimeter showed, and everything else in the app -- the live readout,
+// the alerts, the altitude-off-plan watch -- puts it through gpsIndicatedAltitudeFt() first.
+// Reported as "saved in ft, shown as metres", from a real recording that starts at Haifa:
+// the numbers looked wrong because the strip was reading ~59 ft high, not because the unit
+// was wrong.
+test('the profile shows the altimeter\'s altitude, not the ellipsoid\'s', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => {
+    // The first fixes of the reported recording, on the ground at Haifa (LLHA, 13 ft).
+    const t0 = 1787034504476;
+    const pts = [
+      { lat: 32.81122, lng: 35.04203, t: t0, alt: 24 },
+      { lat: 32.81168, lng: 35.04276, t: t0 + 236234, alt: 25 },
+      { lat: 32.84092, lng: 34.98354, t: t0 + 677246, alt: 664 },   // the coastal cruise
+    ];
+    const s = trackProfileSamples(pts, 1);
+    return {
+      geoid: NavAid.tuningDefaults.geoidUndulationFt.value,
+      onGround: s[0].ft,
+      cruise: s[2].ft,
+      rawOnGround: 24 * 3.28084,
+    };
+  });
+  // 24 m is 79 ft above the ellipsoid, and Haifa is 13 ft above the sea. The difference is
+  // the geoid, which is why the raw figure looked like nonsense on the ground.
+  expect(Math.round(got.rawOnGround)).toBe(79);
+  expect(Math.round(got.onGround)).toBe(Math.round(got.rawOnGround - got.geoid));
+  expect(got.onGround).toBeLessThan(30);
+  // And the cruise reads as the ~2000 ft it was flown at, not 2179.
+  expect(Math.round(got.cruise)).toBeGreaterThan(2050);
+  expect(Math.round(got.cruise)).toBeLessThan(2130);
+});
+
+test('the totals agree with the strip about the highest point', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const t0 = 1787034504476;
+    const track = [
+      { lat: 32.81122, lng: 35.04203, t: t0, alt: 24 },
+      { lat: 32.84092, lng: 34.98354, t: t0 + 677246, alt: 664 },
+    ];
+    const all = loadRouteLibrary();
+    all.unshift({ id: 'trk-geoid', name: 'Record - geoid', kind: 'gps',
+      savedAt: new Date().toISOString(), track: track });
+    persistRouteLibrary(all);
+  });
+  await openLibrary(page);
+  await page.locator('.route-library-profile').first().click();
+  const totals = await page.locator('.route-profile-totals').first().textContent();
+  const max = Number((totals.match(/max ([\d,]+) ft/) || [])[1].replace(/,/g, ''));
+  const strip = await page.evaluate(() => Math.max.apply(null,
+    trackProfileSamples([{ lat: 32.81122, lng: 35.04203, t: 1, alt: 24 },
+      { lat: 32.84092, lng: 34.98354, t: 2, alt: 664 }], 1).map(p => p.ft)));
+  expect(max).toBe(Math.round(strip));
+});
