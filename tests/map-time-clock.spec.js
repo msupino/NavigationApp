@@ -220,7 +220,21 @@ test('the gist can withdraw the clock, and it comes back without a reload', asyn
 // the panel is full of readings that answer to that clock. So the panel carries its own face
 // of it, at the top, where the map's copy cannot be reached.
 test.describe('the clock on the panel', () => {
+  // A panel with something timed on screen. The wind-effect toggle, because it does not fetch
+  // on enable: NOTAM and the wind grids switch themselves back off when their feed cannot be
+  // reached, which in a test looks exactly like the strip ignoring the toggle.
   const openPanel = (page) => page.evaluate(() => {
+    const cb = document.getElementById('show-wind-cb');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }];
+    syncLegs();
+    state.selected = { type: 'wp', index: 0 };
+    showInspector();
+  });
+
+  // A panel with nothing timed in it, and nothing timed on the map either.
+  const openBarePanel = (page) => page.evaluate(() => {
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }];
     syncLegs();
     state.selected = { type: 'wp', index: 0 };
@@ -274,6 +288,46 @@ test.describe('the clock on the panel', () => {
     await page.evaluate(() => document.getElementById('insp-time-now').click());
     expect(await page.evaluate(() => document.getElementById('lookahead-time').value)).toBe('0');
     await expect(page.locator('#insp-time-now')).toBeDisabled();
+  });
+
+  test('a panel with nothing timed in it is offered no clock', async ({ page }) => {
+    // Reported: why is there a time slider on a waypoint, or on an ADS-B aircraft? Nothing in
+    // either answers to time, and a slider there offers to change something the pilot cannot
+    // see. It appears when there IS something for a clock to move -- a timed layer on the map,
+    // or a density altitude in the panel -- and not otherwise.
+    await page.setViewportSize({ width: 390, height: 780 });
+    await boot(page);
+    await openBarePanel(page);
+    await expect(page.locator('#insp-time')).toBeHidden();
+
+    await page.evaluate(() => {
+      const cb = document.getElementById('show-wind-cb');
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await expect(page.locator('#insp-time')).toBeVisible();
+
+    // ...and goes again when the last timed thing does.
+    await page.evaluate(() => {
+      const cb = document.getElementById('show-wind-cb');
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await expect(page.locator('#insp-time')).toBeHidden();
+  });
+
+  test('an airfield panel brings its own reason for one', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 780 });
+    await boot(page);
+    // No timed layer on the map at all -- but a density altitude on screen answers to the
+    // clock, so the panel that shows it gets the control.
+    await page.evaluate(() => {
+      const af = (window.airfields || []).find(a => Number.isFinite(Number(a.elev_ft)));
+      state.selected = { type: 'airfield', af: af, index: 0 };
+      showInspector();
+    });
+    await page.waitForSelector('#inspector input.da-time', { state: 'attached' });
+    await expect(page.locator('#insp-time')).toBeVisible();
   });
 
   test('the gist withdraws both faces together', async ({ page }) => {
