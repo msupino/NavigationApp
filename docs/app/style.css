@@ -2171,6 +2171,12 @@ body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  /* Bounded by the panel it sits in. The toolbar is a fixed 240px with overflow-x hidden,
+     so a footer row that sizes itself to its content does not widen the panel -- it is
+     silently CUT by it, and the live readout was losing its heading off the right edge. */
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   gap: 4px 12px;
   margin-top: 2px;
   padding: 4px 6px 6px;

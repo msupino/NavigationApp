@@ -21,7 +21,9 @@ async function liveReadout(page, opts) {
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
     const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
-    return { text: el.textContent, lines: Math.round(r.height / lh), width: Math.round(r.width) };
+    const bar = document.getElementById('toolbar').getBoundingClientRect();
+    return { text: el.textContent, lines: Math.round(r.height / lh), width: Math.round(r.width),
+             cut: el.scrollWidth > el.clientWidth + 1, fitsPanel: r.right <= bar.right + 1 };
   }, opts);
 }
 
@@ -32,16 +34,38 @@ async function boot(page, width, lang) {
 }
 
 for (const width of [360, 390, 430, 1280]) {
-  test('one line at ' + width + 'px', async ({ page }) => {
+  test('one line at ' + width + 'px, and inside the panel', async ({ page }) => {
     await boot(page, width);
     const got = await liveReadout(page, { recording: true, compass: true });
-    // Every field is still there -- it takes the width it needs rather than dropping any.
-    expect(got.text).toMatch(/pts/);
+    expect(got.lines).toBe(1);
+    // ...and not merely one line: the toolbar is a fixed 240px panel with overflow hidden,
+    // so a line that is too long is not wrapped, it is CUT, and what it loses is the tail.
+    expect(got.cut, 'the line is truncated inside the panel').toBe(false);
+    expect(got.fitsPanel, 'the line runs past the edge of the panel').toBe(true);
+    // Speed, altitude and heading are the instrument and survive at every width.
     expect(got.text).toMatch(/kt/);
     expect(got.text).toMatch(/ft/);
-    expect(got.lines).toBe(1);
+    expect(got.text).toMatch(/\d{3}°/);
   });
 }
+
+test('a narrow panel drops the bookkeeping before the instrument', async ({ page }) => {
+  await boot(page, 390);
+  const narrow = await liveReadout(page, { recording: true, compass: true });
+  await boot(page, 1280);
+  const wide = await liveReadout(page, { recording: true, compass: true });
+  // With room, everything: point count, elapsed, speed, altitude, subscale, heading.
+  expect(wide.text).toMatch(/pts/);
+  expect(wide.text).toMatch(/12:34/);
+  expect(wide.text).toMatch(/″/);
+  // Without room, the fields a pilot can find elsewhere go first -- the subscale setting,
+  // then the point count, then the elapsed clock. What is left is what is being flown.
+  expect(narrow.text).not.toMatch(/″/);
+  expect(narrow.text).not.toMatch(/pts/);
+  expect(narrow.text).toMatch(/kt/);
+  expect(narrow.text).toMatch(/ft/);
+  expect(narrow.text).toMatch(/°/);
+});
 
 test('one line in Hebrew too, where the words are longer', async ({ page }) => {
   await boot(page, 390, 'he');
