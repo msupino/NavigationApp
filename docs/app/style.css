@@ -3125,6 +3125,41 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
   overflow-y: auto;
 }
 .route-library-empty { color: #b9b3b3; margin: 4px 0; }
+/* A saved route is a plan you load and fly; a recording is what happened, and is never
+   loaded over the route on the map. Two kinds of thing, so two frames -- mixed in one list
+   they were told apart only by the buttons on the row. */
+.route-library-group {
+  border: 1px solid #3a3636;
+  border-radius: 8px;
+  padding: 6px;
+  margin-bottom: 8px;
+}
+.route-library-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #231F20;
+  background: #ffd966;
+  border-radius: 3px;
+  padding: 0 5px;
+  margin-bottom: 6px;
+  align-self: flex-start;
+  width: fit-content;
+}
+.route-library-group-count { opacity: 0.7; font-weight: 600; }
+.route-library-filter { margin: 0 0 8px; }
+.route-library-filter[hidden] { display: none !important; }
+.route-library-filter label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #b9b3b3;
+}
+.route-library-filter-select { font: inherit; font-size: 12px; }
+.route-library-group-body { display: flex; flex-direction: column; gap: 6px; }
 .route-library-corrupt {
   margin: 0 0 8px;
   padding: 8px 10px;
