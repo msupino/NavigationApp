@@ -4212,7 +4212,7 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // Ask for an identifier. Nothing verifies it -- a pilot can type anything, and an
     // aircraft code is only the obvious choice -- but a shared link with no name on it is a
     // puzzle for whoever opens it, so something is required.
-    const asked = window.prompt(S.followMeAskCode || 'Identifier, for example an aircraft code (4X-CDE)', f.code() || '');
+    const asked = await askFollowMeCode(f.code() || followMeDefaultCode());
     if (asked === null) return;                     // cancelled: share nothing
     const link = await f.start(asked);
     if (!link) {
@@ -4234,6 +4234,91 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
   refresh();
   window.refreshFollowMeControl = refresh;
 }());
+
+// What to put in the field when this device has never shared. The phone cannot help here:
+// no browser exposes the device NAME, and the model an Android UA does give ("SM-G991B") says
+// nothing about a flight to whoever opens the link. The route does. Departure and destination
+// are what a follower is actually watching, and a pilot who has a registration types it over
+// this in one go, because the field opens selected.
+// Nothing to guess from, and an empty field is a share nobody makes: the pilot has to think
+// of a name before they can press the button. The link is not identified by this -- the
+// capability key in it is what nobody else can guess -- so two aeroplanes both called NavAid
+// collide with nothing. It is a label on a link, and a default label beats a blank one.
+const FOLLOW_ME_FALLBACK_CODE = 'NavAid';
+function followMeDefaultCode() {
+  const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
+    ? state.waypoints : [];
+  if (wps.length < 2) return FOLLOW_ME_FALLBACK_CODE;
+  // The same charset followMeSetCode keeps: upper case, no spaces.
+  const clean = (w) => String((w && w.name) || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 5);
+  const from = clean(wps[0]);
+  const to = clean(wps[wps.length - 1]);
+  if (!from || !to) return FOLLOW_ME_FALLBACK_CODE;
+  return (from + '-' + to).slice(0, 12);
+}
+window.followMeDefaultCode = followMeDefaultCode;
+
+// Ask for the identifier in the app, not through window.prompt.
+//
+// prompt() is the one dialog a page does not own: a browser may suppress it after the pilot
+// dismisses one ("stop this page creating dialogs"), and an Android WebView shows it only if
+// the host app implements onJsPrompt -- which is exactly where Follow me is used. Reported
+// from the phone: the follow-me icon does not do anything. It did: it opened a dialog nobody
+// saw, and a cancelled dialog shares nothing.
+//
+// It is also a better question. The stored code is in the field, ready to send again; the
+// Hebrew reads right to left while the code itself stays left to right; Enter shares and
+// Escape does not.
+function askFollowMeCode(current) {
+  return new Promise((resolve) => {
+    if (typeof createDraggableModal !== 'function') {
+      // No modal factory (a stripped build): the old question is better than no question.
+      try { resolve(window.prompt(S.followMeAskCode || 'Identifier, for example an aircraft code (4X-CDE)', current || '')); }
+      catch (e) { resolve(null); }
+      return;
+    }
+    let answered = false;
+    const done = (value) => {
+      if (answered) return;
+      answered = true;
+      resolve(value);
+    };
+    const modal = createDraggableModal(S.followMeAskTitle || 'Follow me',
+      'modal follow-me-ask-modal', () => done(null));
+    const text = document.createElement('p');
+    text.className = 'follow-me-ask-text';
+    text.textContent = S.followMeAskCode || 'Identifier, for example an aircraft code (4X-CDE)';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'follow-me-ask-input';
+    input.dir = 'ltr';                         // a registration is Latin in both languages
+    input.value = current || '';
+    input.setAttribute('aria-label', S.followMeAskLabel || 'Identifier');
+    input.autocapitalize = 'characters';
+    input.spellcheck = false;
+    const row = document.createElement('div');
+    row.className = 'follow-me-ask-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'follow-me-ask-cancel';
+    cancel.textContent = S.cancel || 'Cancel';
+    cancel.addEventListener('click', () => { done(null); modal.close(); });
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'follow-me-ask-ok';
+    ok.textContent = S.followMeAskShare || 'Share';
+    const submit = () => { done(input.value); modal.close(); };
+    ok.addEventListener('click', submit);
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); submit(); }
+    });
+    row.append(cancel, ok);
+    modal.box.append(text, input, row);
+    modal.show();
+    try { input.focus(); input.select(); } catch (e) { /* not focusable yet */ }
+  });
+}
+window.askFollowMeCode = askFollowMeCode;
 
 function showReturnFeatureOn() {
   return typeof tune !== 'function' || tune('featureShowReturn') !== false;
