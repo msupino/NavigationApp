@@ -1139,9 +1139,11 @@ test('the banner reads out altitude, speed, track and position', async ({ page }
     await new Promise(r => setTimeout(r, 10));
     const seen = [];
     const url = new URL(link);
-    await F.viewerStart({ search: url.search, hash: url.hash });
-    window.__sockets[1].connack();
-    await new Promise(r => setTimeout(r, 10));
+    // Publish FIRST, then watch. A page cannot do both any more: opening a link stops this
+    // device's own sharing (see followme-viewer-shares.spec.js), so the frames are captured
+    // off the wire here and handed to the viewer afterwards -- which is all the viewer ever
+    // sees anyway.
+    const frames = [];
     // Two fixes: one complete, one with no altitude and no speed at all.
     for (const fix of [{ lat: 32.1, lng: 34.8, alt: 610, kt: 95, trk: 7 },
                        { lat: 32.2, lng: 34.85, trk: 7 }]) {
@@ -1151,7 +1153,14 @@ test('the banner reads out altitude, speed, track and position', async ({ page }
       setTune('followMeRateSec', 1);
       await new Promise(r => setTimeout(r, 1100));
       await F.publish(fix);
-      window.__sockets[1].deliver(new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4)));
+      frames.push(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
+    }
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    const sub = window.__sockets[window.__sockets.length - 1];
+    sub.connack();
+    await new Promise(r => setTimeout(r, 10));
+    for (const frame of frames) {
+      sub.deliver(new Uint8Array(frame));
       await new Promise(r => setTimeout(r, 40));
       seen.push(document.getElementById('follow-me-banner').textContent);
     }

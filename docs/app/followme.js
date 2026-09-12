@@ -487,6 +487,11 @@
 
   async function followMeStart(code) {
     startFailure = null;
+    // One aeroplane per page. A page opened on someone else's link is watching THEM, and a
+    // page that is both watching and sharing has two aircraft on it, two banners, and a
+    // Follow-me control that means two different things. The way to share is to leave the
+    // watch -- which is what the button offers to do.
+    if (viewer) { startFailure = 'viewing'; return null; }
     if (session && sessionAuthorized(session)) {
       return session.status === 'stopping' ? null : session.link;
     }
@@ -587,6 +592,10 @@
     if (session) return null;
     const prev = storedSession();
     if (!prev) return null;
+    // Opened on someone else's link: finish any half-done stop below, but never bring this
+    // device's own sharing back up on a page that is about to watch.
+    const asViewer = !!followMeLinkParams();
+    if (asViewer && !prev.pendingStop) return null;
     if (prev.pendingStop) {
       await withFollowMeLock(async () => {
         const current = rawSession();
@@ -924,6 +933,10 @@
   async function followMeViewerStart(opts) {
     const p = followMeLinkParams(opts && opts.search, opts && opts.hash);
     if (!p) return null;
+    // A share resumed from an earlier flight -- or still running in this tab -- must not
+    // outlive the moment this page becomes a viewer: the pilot opened someone else's link,
+    // and their own position going out from the same screen is not what they asked for.
+    if (session) { try { await followMeStop(); } catch (e) { /* stop is best-effort here */ } }
     const state = await followMeWatch(p.id, p.key, opts);
     viewer = { state, marker: null, timer: 0, rotateHandler: null };
     // Following an aircraft is not route onboarding. Drop any intro that was painted before
@@ -957,11 +970,22 @@
     if (el) el.remove();
     followMeUnwatch();
   }
+  // The same page without the watch: the link's id and key out of the query and the hash,
+  // everything else left as the pilot had it (language, tuning switches, a loaded route).
+  function followMeUrlWithoutWatch() {
+    const url = new URL(location.href);
+    url.searchParams.delete('follow');
+    const hash = (url.hash || '').replace(/^#/, '');
+    const kept = hash.split('&').filter(part => part && !/^k=/.test(part));
+    url.hash = kept.length ? '#' + kept.join('&') : '';
+    return url.toString();
+  }
+
   function followMeViewing() { return !!viewer; }
 
   NS.followMe = {
     viewerStart: followMeViewerStart, viewerStop: followMeViewerStop, viewing: followMeViewing,
-    forceStop: followMeForceStop,
+    forceStop: followMeForceStop, urlWithoutWatch: followMeUrlWithoutWatch,
     viewerFix: () => (viewer && viewer.state && viewer.state.fix) || null,
     viewerDraw: followMeViewerDraw, viewerRefresh: followMeViewerRefresh,
     linkParams: followMeLinkParams, staleSec: followMeStaleSec,

@@ -2186,6 +2186,7 @@ window.S = Object.assign({
   followMeCopied: 'Follow-me link copied.',
   followMeCopiedNoFix: 'Follow-me link copied — positions start once Location or Record is on.',
   followMeShareFailed: 'Follow me started, but the link could not be shared or copied.',
+  followMeLeaveWatchConfirm: 'Sharing your own position stops following this aircraft, and reloads the map without the link. Continue?',
   followMeStoppedLocal: 'Sharing stopped on this phone — the relay never answered. If anyone still has the link, use New link.',
   followMeStopped: 'Follow me: stopped. The link is dead.',
   followMeNoFix: 'Follow me needs a position: turn on Location or Record first.',

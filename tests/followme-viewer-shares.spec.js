@@ -1,10 +1,15 @@
 // @ts-check
-// Asked: what happens when a viewer shares their own location?
+// Asked: what happens when a viewer shares their own location? Answered: it does not.
 //
-// A viewer holds someone else's capability -- the id and key in the link they opened -- and
-// that capability is writable: anyone holding it can publish to that topic, which is what the
-// warning on the share dialog says. So the question matters: pressing Follow Me while watching
-// must mint THIS device's own link and publish nowhere near the one being watched.
+// One aeroplane per page. A page opened on someone else's link is watching THEM, and a page
+// that is both watching and sharing has two aircraft on it, two banners, and a Follow-me
+// control that means two different things. The link also carries a capability that can publish
+// to the topic it watches -- the share dialog says so -- and a share pointed at a capability
+// the device merely holds is the mistake worth ruling out entirely.
+//
+// So: sharing is refused while watching, a share resumed from an earlier flight is stopped
+// when the page becomes a viewer, and pressing the button offers to leave the watch -- which
+// reloads the page without the link, because the watch comes from that URL.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -41,82 +46,91 @@ async function boot(page) {
   await page.evaluate(() => { setTune('featureFollowMe', true); window.gpsLiveOn = true; });
 }
 
-test('a viewer who shares gets their own link, not the one they are watching', async ({ page }) => {
-  await boot(page);
-  const got = await page.evaluate(async () => {
-    const F = NavAid.followMe;
-    // Someone else's link, of the shape the app mints.
-    const watchedId = 'watched000000000';
-    const watchedKey = 'k'.repeat(43);
-    await F.viewerStart({ search: '?follow=' + watchedId, hash: '#k=' + watchedKey });
-    const mine = await F.start('4X-MINE');
-    window.__sockets[window.__sockets.length - 1].connack();
-    await new Promise(r => setTimeout(r, 20));
-    const url = new URL(mine);
-    return {
-      watching: F.viewing(),
-      sharing: F.status(),
-      mineId: url.searchParams.get('follow'),
-      mineKey: url.hash.replace('#k=', ''),
-      watchedId, watchedKey,
-      // What actually went on the wire, per socket.
-      topics: window.__sent.filter(s => (s.frame[0] >> 4) === 3).map(s => {
-        const f = s.frame;
-        let at = 1, digit;
-        do { digit = f[at++]; } while (digit & 0x80);
-        const len = (f[at] << 8) | f[at + 1];
-        return String.fromCharCode(...f.slice(at + 2, at + 2 + len));
-      }),
-    };
-  });
-  // Both at once: still watching, and now sharing.
-  expect(got.watching).toBe(true);
-  expect(got.sharing).not.toBe('idle');
-  // A capability of its own. Nothing of the watched link is reused -- not the topic, not the
-  // key -- so a follower cannot be handed the aeroplane they were watching by mistake.
-  expect(got.mineId).not.toBe(got.watchedId);
-  expect(got.mineKey).not.toBe(got.watchedKey);
-  // And nothing this device publishes goes to the topic it is watching, which the capability
-  // in that link would have allowed.
-  expect(got.topics.some(t => t.includes(got.watchedId))).toBe(false);
-});
-
-test('what the viewer publishes is its own position, under its own name', async ({ page }) => {
+test('a page that is watching does not share', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
     const F = NavAid.followMe;
     await F.viewerStart({ search: '?follow=watched000000000', hash: '#k=' + 'k'.repeat(43) });
-    const mine = await F.start('4X-MINE');
-    window.__sockets[window.__sockets.length - 1].connack();
-    await new Promise(r => setTimeout(r, 20));
-    await F.publish({ lat: 32.1, lng: 34.9, trk: 90 });
-    await new Promise(r => setTimeout(r, 20));
-    const id = new URL(mine).searchParams.get('follow');
-    const published = window.__sent.filter(s => (s.frame[0] >> 4) === 3).map(s => {
-      const f = s.frame;
-      let at = 1, digit;
-      do { digit = f[at++]; } while (digit & 0x80);
-      const len = (f[at] << 8) | f[at + 1];
-      return String.fromCharCode(...f.slice(at + 2, at + 2 + len));
-    });
-    return { id, published };
+    const link = await F.start('4X-MINE');
+    return { link, why: F.startFailure(), viewing: F.viewing(), status: F.status(),
+             sockets: window.__sent.filter(s => (s.frame[0] >> 4) === 3).length };
   });
-  expect(got.published.length).toBeGreaterThan(0);
-  for (const topic of got.published) expect(topic).toContain(got.id);
+  expect(got.link, 'a viewer minted a link').toBe(null);
+  expect(got.why).toBe('viewing');
+  expect(got.viewing).toBe(true);
+  expect(got.status).toBe('idle');
+  // Nothing was published anywhere -- least of all to the topic whose key it is holding.
+  expect(got.sockets).toBe(0);
 });
 
-test('stopping the share leaves the viewer watching', async ({ page }) => {
+test('a share already running is stopped when the page becomes a viewer', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
     const F = NavAid.followMe;
-    await F.viewerStart({ search: '?follow=watched000000000', hash: '#k=' + 'k'.repeat(43) });
     await F.start('4X-MINE');
-    window.__sockets[window.__sockets.length - 1].connack();
+    window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 20));
-    await F.stop();
-    return { viewing: F.viewing(), status: F.status(),
-             banner: !!document.getElementById('follow-me-banner') };
+    const before = F.status();
+    await F.viewerStart({ search: '?follow=watched000000000', hash: '#k=' + 'k'.repeat(43) });
+    const stored = F._stored();
+    return { before, after: F.status(), viewing: F.viewing(), consent: !!(stored && stored.on) };
   });
-  // Two separate things: giving up your own link does not close the one you opened.
-  expect(got).toEqual({ viewing: true, status: 'idle', banner: true });
+  expect(got.before).toBe('connected');
+  // The pilot opened someone else's link; their own position going out from the same screen
+  // is not what they asked for.
+  expect(got.after).toBe('idle');
+  expect(got.consent).toBe(false);
+  expect(got.viewing).toBe(true);
+});
+
+test('a stored share is not resumed on a page opened as a viewer', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    localStorage.setItem('navaid.followMeSession', JSON.stringify({
+      id: 'mine000000000000', k: 'm'.repeat(43), at: Date.now(), seq: 1,
+      reg: '4X-MINE', on: true, pendingStop: false,
+    }));
+  });
+  const got = await page.evaluate(async () => {
+    // The URL the page was opened with is what decides this.
+    history.replaceState(null, '', '?lang=en&nogist&follow=watched000000000#k=' + 'k'.repeat(43));
+    const link = await NavAid.followMe.resume({ resumeSharing: true });
+    return { link, status: NavAid.followMe.status() };
+  });
+  expect(got.link).toBe(null);
+  expect(got.status).toBe('idle');
+});
+
+test('pressing the button offers to leave the watch, and leaving reloads without the link', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    history.replaceState(null, '', '?lang=en&nogist&follow=watched000000000#k=' + 'k'.repeat(43));
+    await F.viewerStart({ search: location.search, hash: location.hash });
+    const asked = [];
+    let sentTo = null;
+    window.confirm = (text) => { asked.push(String(text)); return false; };
+    window.navaidReloadTo = (url) => { sentTo = url; };
+    document.getElementById('follow-me').click();
+    await new Promise(r => setTimeout(r, 30));
+    const declined = { viewing: F.viewing(), sentTo };
+    window.confirm = (text) => { asked.push(String(text)); return true; };
+    document.getElementById('follow-me').click();
+    await new Promise(r => setTimeout(r, 30));
+    return { asked, declined, viewing: F.viewing(), sentTo };
+  });
+  // It says what is actually about to happen, not "Follow me".
+  expect(got.asked[0]).toMatch(/stops following|reload/i);
+  // Declined: still watching, nothing reloaded.
+  expect(got.declined).toEqual({ viewing: true, sentTo: null });
+  // Accepted: the watch is dropped and the page goes to the same place without the link, so
+  // the state a pilot lands in is a normal map, ready to share.
+  expect(got.viewing).toBe(false);
+  expect(got.sentTo).toBeTruthy();
+  const url = new URL(got.sentTo);
+  expect(url.searchParams.get('follow')).toBe(null);
+  expect(url.hash).not.toMatch(/k=/);
+  // ...and what the pilot had set is still there.
+  expect(url.searchParams.get('lang')).toBe('en');
+  expect(url.searchParams.get('nogist')).not.toBe(null);
 });
