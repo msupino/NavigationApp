@@ -30,10 +30,27 @@ function gpsMapLocked() {
 // point. In the air it is the opposite -- a stray tap while flying used to cover the map
 // with the inspector, which is the one thing a pilot is looking at.
 function gpsTrackingLive() {
-  return !!(gpsRecording || gpsLiveOn);
+  const live = !!(gpsRecording || gpsLiveOn);
+  // The "panel stays shut" notice is once per tracking session, not once per install.
+  if (!live) window.__inspTrackingToldThisRun = false;
+  return live;
 }
 // Whether the inspector may open at all right now. The gist can put the old behaviour back
 // (featureInspectorWhileTracking) for anyone who wants a waypoint's details mid-flight.
+// The pilot's own switch (View/Set), which outranks the gist default the way every other
+// remembered choice does. Unset until it is touched, so a gist that turns the feature on
+// still reaches a device that has never opened the menu.
+const INSPECTOR_TRACKING_KEY = 'navaid.inspectorWhileTracking';
+function inspectorWhileTrackingOn() {
+  try {
+    const saved = localStorage.getItem(INSPECTOR_TRACKING_KEY);
+    if (saved === '1') return true;
+    if (saved === '0') return false;
+  } catch (e) { /* storage unavailable */ }
+  return typeof tune === 'function' && tune('featureInspectorWhileTracking') === true;
+}
+window.inspectorWhileTrackingOn = inspectorWhileTrackingOn;
+
 function inspectorAllowedNow(sel) {
   if (!gpsTrackingLive()) return true;
   // Traffic is the exception, and it is the only one: those marks exist ONLY while a fix is
@@ -41,7 +58,7 @@ function inspectorAllowedNow(sel) {
   // nobody could ever read one. A tap on an aircraft is the pilot asking for it by name.
   const s = sel || (typeof state !== 'undefined' && state.selected);
   if (s && s.type === 'traffic') return true;
-  return typeof tune === 'function' && tune('featureInspectorWhileTracking') === true;
+  return inspectorWhileTrackingOn();
 }
 
 // Keep the screen awake while recording so the phone doesn't sleep mid-track.

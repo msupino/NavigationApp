@@ -7609,7 +7609,14 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   background: #141b22;
   color: #eef3f7;
   font-family: monospace;
-  padding: 6px 10px calc(6px + env(safe-area-inset-top, 0px));
+  /* The status bar sits ON the strip in a standalone window -- the clock and the wifi and
+     battery on an iPad, the notch on a phone -- so the inset belongs at the TOP. Three-value
+     padding put it on the bottom instead, which padded the far edge and left the first line
+     under the wifi indicator. Reported from an iPad. The side insets matter in landscape,
+     where the same rounded corner eats the start of the flight name. */
+  padding-top: calc(6px + env(safe-area-inset-top, 0px));
+  padding-bottom: 6px;
+  padding-inline: calc(10px + env(safe-area-inset-left, 0px)) calc(10px + env(safe-area-inset-right, 0px));
   display: grid;
   gap: 2px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
@@ -7657,6 +7664,7 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   z-index: 2400;
   height: calc(52px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
   background: #f7f9fb;
   border-top: 1px solid var(--navaid-ctrl-border-color);
   display: grid;
@@ -7910,3 +7918,18 @@ body.theme-dark .follow-me-ask-input {
 body.theme-dark .follow-me-ask-input::placeholder { color: #7d8b97; }
 body.theme-dark .follow-me-ask-actions button { background: #1e2831; color: #e8eef3; }
 body.theme-dark .follow-me-ask-actions .follow-me-ask-ok { background: #2f7fd0; border-color: #2f7fd0; }
+
+/* ---- the unsafe edges ---------------------------------------------------------------
+   Without viewport-fit=cover, iOS reports every safe-area inset as ZERO -- so a page can
+   carefully reserve room for a status bar and still be drawn under it, which is what an iPad
+   in a standalone window was doing to the data strip. With cover, the insets are real and
+   everything anchored to an edge has to say what it keeps clear of. */
+.leaflet-top { padding-top: env(safe-area-inset-top, 0px); }
+.leaflet-left { padding-left: env(safe-area-inset-left, 0px); }
+.leaflet-right { padding-right: env(safe-area-inset-right, 0px); }
+/* The deck already lifts this corner by its own height plus the inset; adding it again here
+   would reserve the home indicator twice. */
+body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* The floating menu and the clock are the app's own top-anchored chrome. */
+#toolbar { margin-top: env(safe-area-inset-top, 0px); }
+.leaflet-control.zulu-clock { margin-top: calc(var(--navaid-zulu-clock-margin-top, 12px) + env(safe-area-inset-top, 0px)); }

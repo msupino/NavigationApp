@@ -784,3 +784,39 @@ test('the menu does not repeat what the deck and the strip already say', async (
   });
   expect(got).toEqual({ readout: false, gpsRow: false, links: true });
 });
+
+// Reported from an iPad: the top bar is hidden by the status bar -- the clock, the wifi and
+// the battery sit on it in a standalone window. The safe-area inset was being applied to the
+// strip's BOTTOM (a three-value padding shorthand puts the third value there), so the far edge
+// was padded and the first line stayed under the wifi indicator.
+test('the strip keeps clear of the status bar, not of its own bottom edge', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => {
+    const strip = document.getElementById('deck-strip');
+    // Stand in for a standalone window with a status bar over the page.
+    strip.style.setProperty('padding-top', 'calc(6px + 24px)');
+    const cs = getComputedStyle(strip);
+    const line = document.querySelector('.deck-strip-top').getBoundingClientRect();
+    return { top: cs.paddingTop, bottom: cs.paddingBottom, lineTop: Math.round(line.top) };
+  });
+  // The content starts below the inset...
+  expect(got.lineTop).toBeGreaterThanOrEqual(30);
+  // ...and the bottom padding is the plain one: nothing is reserved at the edge the status
+  // bar is nowhere near.
+  expect(got.bottom).toBe('6px');
+});
+
+test('the deck and the strip reserve the side insets too', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => {
+    const read = (sel) => {
+      const cs = getComputedStyle(document.querySelector(sel));
+      return { left: cs.paddingLeft, right: cs.paddingRight };
+    };
+    return { strip: read('#deck-strip'), deck: read('#deck-bar') };
+  });
+  // Zero on a screen with no cut-out, but declared -- landscape on a notched device eats the
+  // start of the flight name and the first deck button otherwise.
+  expect(got.strip.left).toBeTruthy();
+  expect(got.deck.left).toBeTruthy();
+});

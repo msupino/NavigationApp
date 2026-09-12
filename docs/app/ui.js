@@ -4784,6 +4784,24 @@ document.getElementById('wpname-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+// The panel while a position is showing. Off by default: in flight the map is what is being
+// read, and a tap meant to check where you are -- or a stray one on a kneeboard -- should not
+// put a waypoint panel over the chart. But that rule had no control on screen and no voice,
+// so a pilot who wanted the panel had a bug to report rather than a switch to press.
+{
+  const cb = document.getElementById('insp-tracking-cb');
+  if (cb) {
+    cb.checked = typeof inspectorWhileTrackingOn === 'function' ? inspectorWhileTrackingOn() : false;
+    cb.onchange = (e) => {
+      try { localStorage.setItem('navaid.inspectorWhileTracking', e.target.checked ? '1' : '0'); }
+      catch (err) { /* storage unavailable */ }
+      // Turning it on mid-flight should not need a second tap on the waypoint.
+      if (e.target.checked && typeof showInspector === 'function' && state && state.selected) {
+        showInspector();
+      }
+    };
+  }
+}
 // Bumped from navaid.showHotspots when the overlay was switched off for everyone. The gist
 // default only reaches a device that never chose for itself, so anyone who had ever touched
 // this switch -- or ran a build that wrote the value on their behalf -- would have kept it
@@ -11591,6 +11609,9 @@ NavAid.defaultVisibilityMap = [
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
+  // Not a layer, but the same contract: a gist default until the pilot says otherwise, and
+  // then their choice. Nothing to redraw -- the next tap reads it.
+  ['insp-tracking-cb', 'navaid.inspectorWhileTracking', 'featureInspectorWhileTracking'],
   // No checkbox any more (the map button replaced it), so this row carries its own applier:
   // the gist default still has to reach the global the button reads.
   [null, 'navaid.voiceAlerts', 'defaultVoiceAlerts', (on) => {
