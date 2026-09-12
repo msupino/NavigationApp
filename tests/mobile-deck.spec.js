@@ -688,3 +688,99 @@ for (const theme of ['light', 'dark']) {
     expect(got.rec.bar).toMatch(/inset/);
   });
 }
+
+// Reported from the phone: pressing Plan or Menu again should close them. A deck button is a
+// switch, not a way in -- and pressing Menu twice used to cycle the sheet's height, which is
+// the grip's job, leaving Map as the only way back to the chart.
+test('Menu closes what Menu opened', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
+  expect(await page.evaluate(() => document.getElementById('deck-sheet').hidden)).toBe(false);
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
+  const got = await page.evaluate(() => ({
+    sheet: document.getElementById('deck-sheet').hidden,
+    pressed: document.querySelector('.deck-btn-menu').getAttribute('aria-pressed'),
+    // ...and the menu is back in the body, as on every other way out.
+    parent: document.getElementById('toolbar').parentNode.tagName,
+    hosted: document.getElementById('toolbar').classList.contains('deck-hosted'),
+  }));
+  expect(got).toEqual({ sheet: true, pressed: 'false', parent: 'BODY', hosted: false });
+});
+
+test('Plan closes what Plan opened', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
+  await page.waitForSelector('.modal-back.flight-plan');
+  await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
+  const got = await page.evaluate(() => ({
+    plan: !!document.querySelector('.modal-back.flight-plan'),
+    // Through its own door: the flag and the session note go with the window.
+    fpOpen: typeof fpOpen !== 'undefined' ? fpOpen : null,
+    stored: sessionStorage.getItem('navaid.fpOpen'),
+    pressed: document.querySelector('.deck-btn-plan').getAttribute('aria-pressed'),
+  }));
+  expect(got).toEqual({ plan: false, fpOpen: false, stored: null, pressed: 'false' });
+});
+
+test('the grip still owns the height', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
+  await page.evaluate(() => document.querySelector('.deck-sheet-grip').click());
+  // Tapping the grip cycles; tapping the button closes. Two controls, two jobs.
+  await expect.poll(async () => page.evaluate(() =>
+    document.getElementById('deck-sheet').dataset.detent)).toBe('full');
+  expect(await page.evaluate(() => document.getElementById('deck-sheet').hidden)).toBe(false);
+});
+
+// Reported from the phone, with a screenshot: the opened menu showed speed and course again,
+// and the strip could not fit its own line -- the flight name had been squeezed to "... LLHZ".
+const flying = (page) => page.evaluate(() => {
+  state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'HERZLIYA' },
+                     { lat: 32.78, lng: 35.02, name: 'HAIFA' }];
+  syncLegs();
+  draw();
+  window.gpsLiveOn = true;
+  window.gpsLastGS = 0;
+  window.gpsLastAlt = 217;
+  window.gpsAltIsGeometric = false;
+  window.gpsQnh = { inHg: 29.85, hPa: 1011, at: Date.now(), lat: 32, lng: 34.9 };
+  window.gpsOwn = { lat: 32, lng: 34.9, hdg: 241, t: Date.now(), hdgCompass: true };
+  gpsUpdateReadout();
+  NavAid.refreshMobileDeck();
+});
+
+test('the strip fits its own line, dropping the setting before the instrument', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => document.getElementById('deck-strip'));
+  await flying(page);
+  const got = await page.evaluate(() => {
+    const strip = document.getElementById('deck-strip');
+    return { overflow: strip.scrollWidth > strip.clientWidth + 1,
+             vals: document.querySelector('.deck-strip-vals').textContent,
+             leg: document.querySelector('.deck-strip-leg').textContent };
+  });
+  expect(got.overflow, 'the strip runs off the screen').toBe(false);
+  // What is being flown survives whatever had to go...
+  expect(got.vals).toMatch(/kt/);
+  expect(got.vals).toMatch(/ft/);
+  expect(got.vals).toMatch(/°/);
+  // ...and the flight is still named, even if the CSS had to trim it.
+  expect(got.leg).toBe('HERZLIYA → HAIFA');
+});
+
+test('the menu does not repeat what the deck and the strip already say', async ({ page }) => {
+  await boot(page);
+  await flying(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
+  const got = await page.evaluate(() => {
+    const shown = (sel) => { const el = document.querySelector(sel);
+      return !!el && el.getClientRects().length > 0; };
+    return { readout: shown('#deck-sheet #gps-readout'),
+             gpsRow: shown('#deck-sheet .footer-gps-group'),
+             // The links the card carried are still there -- only the duplicates went.
+             links: shown('#deck-sheet #footer-links') };
+  });
+  expect(got).toEqual({ readout: false, gpsRow: false, links: true });
+});

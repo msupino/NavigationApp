@@ -4143,7 +4143,9 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
       : active ? (S.tbFollowMeStop || 'Stop sharing') : (S.tbFollowMe || 'Follow me');
     if (btnLabel) btnLabel.textContent = text;
     btn.classList.toggle('on', status === 'connected');
-    btn.disabled = status === 'stopping';
+    // Not disabled while stopping: pressing it again is how the pilot stops waiting for a
+    // relay that is not going to answer.
+    btn.disabled = false;
     const label = status === 'connected'
       ? (S.followMeSharingNow || 'Sharing your position — tap to stop')
       : status === 'reconnecting'
@@ -4193,13 +4195,32 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     if (!f) return;
     const status = typeof f.status === 'function' ? f.status() : (f.sharing() ? 'connected' : 'idle');
     if (status !== 'idle') {
-      if (status === 'stopping') return;
+      // Already stopping: the press is the pilot asking not to wait for the relay any
+      // longer. It used to be ignored, which is what "stop sharing is stuck" looked like
+      // from the cockpit -- a button that does nothing, on the control you press when you
+      // want the sharing to be over.
+      if (status === 'stopping') {
+        const forced = typeof f.forceStop === 'function'
+          ? await f.forceStop() : { pending: true };
+        refresh();
+        if (typeof showToast === 'function') {
+          showToast(forced && forced.pending === false
+            ? (S.followMeStoppedLocal || 'Sharing stopped on this phone — the relay never answered.')
+            : (S.followMeStopping || 'Follow me: stopping — clearing the last position'),
+          { warn: true });
+        }
+        return;
+      }
       const result = await f.stop();
       refresh();
       if (typeof showToast === 'function') {
-        showToast(result && result.pending
+        // Three different things, and only one of them is "the link is dead".
+        const said = (result && result.pending)
           ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
-          : (S.followMeStopped || 'Follow me: stopped.'));
+          : (result && result.forced)
+            ? (S.followMeStoppedLocal || 'Sharing stopped on this phone — the relay never answered.')
+            : (S.followMeStopped || 'Follow me: stopped.');
+        showToast(said, { warn: !!(result && result.forced) });
       }
       return;
     }

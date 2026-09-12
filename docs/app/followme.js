@@ -348,9 +348,24 @@
     return Promise.resolve().then(action);
   }
 
+  // How long a stop may wait on the relay before it stops here instead. Armed wherever a
+  // stopPromise is created -- pressing Stop, and the boot that finds a stop half-finished --
+  // because the half-finished one is the state a stuck device is already IN, and a bound that
+  // only covers the button would never reach it.
+  function armStopDeadline(s) {
+    if (!s) return;
+    clearTimeout(s.stopDeadlineTimer);
+    s.stopDeadlineTimer = setTimeout(() => {
+      if (session !== s || s.status !== 'stopping') return;
+      s.forcedStop = true;
+      finishStop(s);
+    }, Math.max(1, Number(tune('followMeStopMaxSec')) || 25) * 1000);
+  }
+
   function relinquishPublisher(s) {
     if (!s || session !== s) return;
     s.status = 'stopping';
+    clearTimeout(s.stopDeadlineTimer);
     clearTimeout(s.clearAckTimer);
     clearTimeout(s.revocationRetryTimer);
     s.client.close();
@@ -362,6 +377,7 @@
 
   function finishStop(s) {
     if (!s || session !== s) return;
+    clearTimeout(s.stopDeadlineTimer);
     clearTimeout(s.clearAckTimer);
     clearTimeout(s.revocationRetryTimer);
     s.client.close();
@@ -391,7 +407,7 @@
     }
     session = null;
     refreshSessionControls();
-    if (s.resolveStop) s.resolveStop({ pending: false });
+    if (s.resolveStop) s.resolveStop({ pending: false, forced: !!s.forcedStop });
   }
 
   function clearRetainedAndFinish(s) {
@@ -426,12 +442,14 @@
       seq: Number.isSafeInteger(raw.seq) ? raw.seq : 0,
       lastSentAt: 0, status: pendingStop ? 'stopping' : 'connecting', everConnected: false,
       resolveStop: null, stopPromise: null, clearPacketId: null, clearAckTimer: 0,
+      stopDeadlineTimer: 0, forcedStop: false,
       revocationRetryTimer: 0,
       resolveConnected: null, connectedPromise: null,
       link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k,
     };
     if (pendingStop) {
       s.stopPromise = new Promise(resolve => { s.resolveStop = resolve; });
+      armStopDeadline(s);
     }
     s.connectedPromise = new Promise(resolve => { s.resolveConnected = resolve; });
     session = s;
@@ -525,6 +543,17 @@
     // that dies when you stop sharing.
     s.status = 'stopping';
     s.stopPromise = new Promise(resolve => { s.resolveStop = resolve; });
+    // Stopping waits for the relay to acknowledge the tombstone, and a relay that never
+    // answers -- no signal, a broker down, a captive wifi -- left the button reading
+    // "Stopping sharing…" for ever, disabled, with no way to press it again. Reported from
+    // the phone: stop sharing is stuck, and the control above the lock does nothing (it is
+    // the same button, refusing because the status was still 'stopping').
+    //
+    // The wait is bounded now. When it runs out, sharing stops HERE: consent is revoked on
+    // this device, the publisher closes and nothing more goes out. What cannot be promised
+    // is the retained position already on the relay, so the caller is told the stop was
+    // forced and says so rather than claiming the link is dead.
+    armStopDeadline(s);
     refreshSessionControls();
     broadcastRevocation(s);
     // Serialize the consent change and tombstone behind any publish already at its final
@@ -579,6 +608,18 @@
     const connected = s.status === 'connected' ? true : await s.connectedPromise;
     return connected ? link : null;
   }
+  // The pilot's own way out of a stop that is waiting on a relay that is not answering. Same
+  // ending as the deadline, asked for rather than waited for: consent revoked here, publisher
+  // closed, and the retained position on the relay left unclaimed.
+  function followMeForceStop() {
+    const s = session;
+    if (!s || s.status !== 'stopping') return Promise.resolve({ pending: false, forced: false });
+    s.forcedStop = true;
+    const done = s.stopPromise || Promise.resolve({ pending: false, forced: true });
+    finishStop(s);
+    return done;
+  }
+
   function followMeSharing() { return !!session && session.status !== 'stopping'; }
   function followMeStatus() { return session ? session.status : 'idle'; }
 
@@ -906,6 +947,7 @@
 
   NS.followMe = {
     viewerStart: followMeViewerStart, viewerStop: followMeViewerStop, viewing: followMeViewing,
+    forceStop: followMeForceStop,
     viewerFix: () => (viewer && viewer.state && viewer.state.fix) || null,
     viewerDraw: followMeViewerDraw, viewerRefresh: followMeViewerRefresh,
     linkParams: followMeLinkParams, staleSec: followMeStaleSec,
