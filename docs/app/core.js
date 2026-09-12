@@ -1972,6 +1972,7 @@ window.S = Object.assign({
   deckHere: 'Here',
   deckLabel: 'Primary',
   deckNoRoute: 'No route',
+  deckSheetGrip: 'Drag to resize, tap to change height',
   attribToggle: 'Chart and map credits',
   mapTimeLabel: 'Look ahead',
   mapTimeCharts: 'charts',

@@ -7677,6 +7677,97 @@ body.deck-on #toolbar {
 body.deck-on #inspector { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .map-time { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu time now */
+/* The sheet: one surface for everything that is not the chart, at one of three heights.
+   It sits above the deck and below the strip, and the chart behind it stays live -- that is
+   the point of the peek height. */
+.deck-sheet {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+  z-index: 2390;                      /* over the chart and its controls, under a modal */
+  display: flex;
+  flex-direction: column;
+  background: var(--navaid-ctrl-bg);
+  border-top: 1px solid var(--navaid-ctrl-border-color);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 24px -12px rgba(0, 0, 0, .45);
+  transition: height .18s ease;
+  overflow: hidden;
+}
+.deck-sheet[hidden] { display: none; }
+.deck-sheet-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 4px;
+  border-bottom: 1px solid var(--navaid-ctrl-border-color);
+}
+/* The grip is the control, so it is a target, not a decoration: the drawn bar is 36x4 and
+   the thumb gets 44 high and the full width of its column. */
+.deck-sheet-grip {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: center;
+  width: 96px;
+  min-height: 26px;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: grab;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.deck-sheet-grip::before {
+  content: "";
+  display: block;
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: var(--navaid-ctrl-border-color);
+}
+.deck-sheet-grip:active { cursor: grabbing; }
+.deck-sheet-title {
+  grid-column: 2;
+  grid-row: 2;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+.deck-sheet-close {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: end;
+  min-width: 44px; min-height: 44px;
+  border: 0; background: none; cursor: pointer;
+  font-size: 18px; line-height: 1; color: inherit;
+}
+.deck-sheet-body { flex: 1 1 auto; overflow: auto; -webkit-overflow-scrolling: touch; }
+/* The menu, hosted: it is the same element, so it gives up only the things that made it a
+   floating card -- its corner, its width cap, its own scroll. */
+.deck-sheet #toolbar.deck-hosted {
+  position: static;
+  display: block;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+/* Two controls belong to the floating card, not to the menu: the drag handle moves a card
+   that is now a sheet, and the hamburger closes one. The sheet has a grip and an X. */
+.deck-sheet #toolbar.deck-hosted > #toolbar-handle,
+.deck-sheet #toolbar.deck-hosted > #toolbar-toggle { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .deck-sheet { transition: none; }
+}
+body.theme-dark .deck-sheet { background: #161e26; color: #e8eef3; }
+
 /* A modal is centred in `inset: 0` -- the whole window -- so with the strip and the deck
    fixed over it, the flight plan opened with its heading under the strip and its buttons
    under the deck. Reported: the flight plan is a bit hidden by the top bar. The overlay is

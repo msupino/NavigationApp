@@ -164,9 +164,9 @@ test('the menu opens below the strip, not behind it', async ({ page }) => {
   await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
   const got = await page.evaluate(() => {
     const strip = document.getElementById('deck-strip').getBoundingClientRect();
-    const bar = document.getElementById('toolbar').getBoundingClientRect();
+    const sheet = document.getElementById('deck-sheet').getBoundingClientRect();
     const deck = document.getElementById('deck-bar').getBoundingClientRect();
-    return { clearOfStrip: bar.top >= strip.bottom, clearOfDeck: bar.bottom <= deck.top + 1 };
+    return { clearOfStrip: sheet.top >= strip.bottom, clearOfDeck: sheet.bottom <= deck.top + 1 };
   });
   expect(got).toEqual({ clearOfStrip: true, clearOfDeck: true });
 });
@@ -217,4 +217,116 @@ test('a modal opens between the strip and the deck', async ({ page }) => {
   expect(got.underDeck, 'the buttons are behind the deck').toBe(false);
   // ...and a sheet taller than that gap scrolls inside itself rather than under either.
   expect(got.scrolls).toBe('auto');
+});
+
+// ---- the sheet ----------------------------------------------------------------------
+// A phone has one screen. A panel that is all-or-nothing makes the pilot choose between the
+// chart and the thing they are reading about it, so the sheet has three heights: a peek that
+// leaves the aeroplane and the leg ahead visible, a working half, and a full height for
+// reading. Dragged by its grip, tapped to cycle, dismissed downward.
+const sheetBox = (page) => page.evaluate(() => {
+  const s = document.getElementById('deck-sheet');
+  const r = s.getBoundingClientRect();
+  return { hidden: s.hidden, detent: s.dataset.detent, h: Math.round(r.height), top: Math.round(r.top) };
+});
+
+test('Layers opens the menu inside the sheet, at the working height', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  const box = await sheetBox(page);
+  expect(box.hidden).toBe(false);
+  expect(box.detent).toBe('half');
+  const got = await page.evaluate(() => ({
+    // The menu itself, not a copy of it: every handler and every stored state is the one
+    // that already works.
+    hosted: !!document.getElementById('toolbar').closest('#deck-sheet'),
+    weather: document.querySelector('.tb-section[data-sec="weather"]').classList.contains('open'),
+    pressed: document.querySelector('.deck-btn-layers').getAttribute('aria-pressed'),
+    // ...minus the two controls that belonged to the floating card.
+    handle: document.getElementById('toolbar-handle').getClientRects().length,
+    burger: document.getElementById('toolbar-toggle').getClientRects().length,
+  }));
+  expect(got).toEqual({ hosted: true, weather: true, pressed: 'true', handle: 0, burger: 0 });
+});
+
+test('the grip cycles the three heights', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  const seen = [(await sheetBox(page)).detent];
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => document.querySelector('.deck-sheet-grip').click());
+    seen.push((await sheetBox(page)).detent);
+  }
+  expect(seen).toEqual(['half', 'full', 'peek', 'half']);
+});
+
+test('the peek height leaves the chart worth looking at', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    document.querySelector('.deck-btn-layers').click();
+    document.querySelector('.deck-sheet-grip').click();   // full
+    document.querySelector('.deck-sheet-grip').click();   // peek
+  });
+  const strip = await page.evaluate(() =>
+    Math.round(document.getElementById('deck-strip').getBoundingClientRect().bottom));
+  // The heights animate, so this is the height it settles at, not the frame it passes
+  // through. Two thirds of the space between the strip and the deck is still chart.
+  await expect.poll(async () => (await sheetBox(page)).top - strip)
+    .toBeGreaterThan((844 - strip - 52) * 0.6);
+  expect((await sheetBox(page)).detent).toBe('peek');
+});
+
+test('dragging it down dismisses it, and the menu goes back where it came from', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  const grip = await page.locator('.deck-sheet-grip').boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + 420, { steps: 8 });
+  await page.mouse.up();
+  expect((await sheetBox(page)).hidden).toBe(true);
+  const got = await page.evaluate(() => {
+    const bar = document.getElementById('toolbar');
+    return { parent: bar.parentNode.tagName, hosted: bar.classList.contains('deck-hosted'),
+             collapsed: bar.classList.contains('collapsed') };
+  });
+  // Back in the body, closed, and no longer wearing the sheet's layout.
+  expect(got).toEqual({ parent: 'BODY', hosted: false, collapsed: true });
+});
+
+test('dragging it up snaps to the next height rather than wherever the finger stopped', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  const grip = await page.locator('.deck-sheet-grip').boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y - 150, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await sheetBox(page)).detent).toBe('full');
+});
+
+test('Map closes the sheet', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-map').click());
+  expect((await sheetBox(page)).hidden).toBe(true);
+  expect(await page.evaluate(() =>
+    document.querySelector('.deck-btn-layers').getAttribute('aria-pressed'))).toBe('false');
+});
+
+test('turning the deck off puts the menu back before it goes', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => {
+    NavAid.tuningDefaults.featureMobileDeck.value = false;
+    // The URL override is what is on in this test; drop it the way a config push would.
+    history.replaceState(null, '', '?lang=en&nogist');
+    NavAid.refreshMobileDeck();
+  });
+  const got = await page.evaluate(() => {
+    const bar = document.getElementById('toolbar');
+    return { sheet: !!document.getElementById('deck-sheet'), deck: !!document.getElementById('deck-bar'),
+             parent: bar.parentNode.tagName, hosted: bar.classList.contains('deck-hosted') };
+  });
+  expect(got).toEqual({ sheet: false, deck: false, parent: 'BODY', hosted: false });
 });

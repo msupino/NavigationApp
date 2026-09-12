@@ -714,6 +714,7 @@ window.S = {
   deckHere: 'כאן',
   deckLabel: 'ראשי',
   deckNoRoute: 'אין מסלול',
+  deckSheetGrip: 'גררו לשינוי גובה, הקישו למעבר בין גבהים',
   attribToggle: 'קרדיטים למפות ולדפיות',
   mapTimeLabel: 'הסתכלות קדימה',
   mapTimeCharts: 'מפות',

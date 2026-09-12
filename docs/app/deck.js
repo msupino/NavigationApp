@@ -96,8 +96,181 @@
     { key: 'here', icon: '📍', string: 'deckHere', run: () => click('gps-live') },
   ];
 
+  // ---- the sheet -------------------------------------------------------------------
+  // One surface for everything that is not the chart, dragged between three heights and
+  // dismissed downward. The heights are not decoration: PEEK is a glance that leaves the
+  // aeroplane and the leg ahead of it visible, HALF is the working height for a list, FULL is
+  // for reading. A phone has one screen, and a panel that can only be all-or-nothing forces
+  // a pilot to choose between the chart and the thing they are reading about it.
+  const DETENTS = { peek: 0.34, half: 0.62, full: 0.94 };
+  const DETENT_ORDER = ['peek', 'half', 'full'];
+  let sheet = null;
+  let sheetBody = null;
+  let sheetTitle = null;
+  let sheetKey = '';
+  let sheetDetent = 'half';
+  let restore = null;                       // how to put borrowed DOM back where it was
+
+  const sheetSpace = () => {
+    const stripH = strip ? strip.getBoundingClientRect().height : 0;
+    return Math.max(160, window.innerHeight - stripH - 52);
+  };
+  function applyDetent(name, animate) {
+    sheetDetent = DETENTS[name] ? name : 'half';
+    sheet.dataset.detent = sheetDetent;
+    sheet.style.transition = animate === false ? 'none' : '';
+    sheet.style.height = Math.round(sheetSpace() * DETENTS[sheetDetent]) + 'px';
+    sheet.style.transform = '';
+  }
+
+  function buildSheet() {
+    sheet = document.createElement('section');
+    sheet.id = 'deck-sheet';
+    sheet.className = 'deck-sheet';
+    sheet.hidden = true;
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'false');    // the chart stays live behind it
+    const head = document.createElement('div');
+    head.className = 'deck-sheet-head';
+    const grip = document.createElement('button');
+    grip.type = 'button';
+    grip.className = 'deck-sheet-grip';
+    grip.setAttribute('aria-label', (typeof S === 'object' && S && S.deckSheetGrip)
+      || 'Drag to resize, tap to change height');
+    sheetTitle = document.createElement('h2');
+    sheetTitle.className = 'deck-sheet-title';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'deck-sheet-close';
+    close.textContent = '\u2715';
+    close.setAttribute('aria-label', (typeof S === 'object' && S && S.close) || 'Close');
+    close.addEventListener('click', () => closeSheet());
+    head.append(grip, sheetTitle, close);
+    sheetBody = document.createElement('div');
+    sheetBody.className = 'deck-sheet-body';
+    sheet.append(head, sheetBody);
+    document.body.appendChild(sheet);
+    wireGrip(grip);
+  }
+
+  // Tap cycles up through the heights and back to the smallest; drag goes where the finger
+  // goes and snaps to the nearest. Both, because a tap is what a gloved thumb manages on a
+  // bumpy leg and a drag is what the gesture promises.
+  function wireGrip(grip) {
+    let startY = 0;
+    let startH = 0;
+    let dragged = false;
+    let suppressClick = false;
+    let id = null;
+    const onMove = (ev) => {
+      if (id === null) return;
+      const dy = ev.clientY - startY;
+      if (Math.abs(dy) > 6) dragged = true;
+      const space = sheetSpace();
+      const h = Math.min(space * DETENTS.full, Math.max(60, startH - dy));
+      sheet.style.transition = 'none';
+      sheet.style.height = Math.round(h) + 'px';
+    };
+    const onUp = () => {
+      if (id === null) return;
+      if (grip.releasePointerCapture && grip.hasPointerCapture && grip.hasPointerCapture(id)) {
+        grip.releasePointerCapture(id);
+      }
+      id = null;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      // A tap is handled as a click, so the keyboard and assistive tech get it too. A drag
+      // ends with a click as well, and that one is not a tap.
+      if (!dragged) return;
+      suppressClick = true;
+      const space = sheetSpace();
+      const frac = sheet.getBoundingClientRect().height / space;
+      // Dragged below half of the smallest height: that is a dismissal, not a resize.
+      if (frac < DETENTS.peek * 0.6) { closeSheet(); return; }
+      let best = DETENT_ORDER[0];
+      for (const name of DETENT_ORDER) {
+        if (Math.abs(DETENTS[name] - frac) < Math.abs(DETENTS[best] - frac)) best = name;
+      }
+      applyDetent(best);
+    };
+    grip.addEventListener('pointerdown', (ev) => {
+      id = ev.pointerId;
+      dragged = false;
+      startY = ev.clientY;
+      startH = sheet.getBoundingClientRect().height;
+      grip.setPointerCapture && grip.setPointerCapture(id);
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
+      ev.preventDefault();
+    });
+    grip.addEventListener('click', () => {
+      if (suppressClick) { suppressClick = false; return; }
+      cycleDetent();
+    });
+    grip.addEventListener('keydown', (ev) => {
+      if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        const i = DETENT_ORDER.indexOf(sheetDetent);
+        applyDetent(DETENT_ORDER[Math.min(DETENT_ORDER.length - 1, Math.max(0, i + (ev.key === 'ArrowUp' ? 1 : -1)))]);
+      }
+      if (ev.key === 'Escape') closeSheet();
+    });
+  }
+  function cycleDetent() {
+    const i = DETENT_ORDER.indexOf(sheetDetent);
+    applyDetent(DETENT_ORDER[(i + 1) % DETENT_ORDER.length]);
+  }
+
+  function openSheet(key, title, fill) {
+    if (!sheet) return;
+    if (sheetKey === key && !sheet.hidden) { cycleDetent(); return; }
+    closeSheet({ keepOpen: true });
+    sheetKey = key;
+    sheetTitle.textContent = title;
+    fill(sheetBody);
+    sheet.hidden = false;
+    applyDetent(sheetDetent, false);
+    sync();
+  }
+
+  function closeSheet(opts) {
+    if (!sheet || (sheet.hidden && !restore)) return;
+    // Anything borrowed goes back where it came from, before the sheet is emptied: the menu
+    // is the app's only copy of those controls, and their handlers are on the elements.
+    if (restore) { restore(); restore = null; }
+    sheetBody.replaceChildren();
+    sheetKey = '';
+    if (!opts || !opts.keepOpen) sheet.hidden = true;
+    sync();
+  }
+  NavAid.closeDeckSheet = () => closeSheet();
+
+  // The menu, in the sheet. Not a copy of it: the toolbar element itself is moved in and put
+  // back on close, so every section, handler and stored state is the one that already works.
+  function hostToolbar(body) {
+    const bar = document.getElementById('toolbar');
+    if (!bar) return;
+    const parent = bar.parentNode;
+    const next = bar.nextSibling;
+    const inline = bar.getAttribute('style') || '';
+    bar.removeAttribute('style');              // a dragged position means nothing in a sheet
+    bar.classList.remove('collapsed');
+    bar.classList.add('deck-hosted');
+    body.appendChild(bar);
+    restore = () => {
+      bar.classList.remove('deck-hosted');
+      if (inline) bar.setAttribute('style', inline);
+      if (next && next.parentNode === parent) parent.insertBefore(bar, next);
+      else parent.appendChild(bar);
+      if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
+    };
+  }
+
   // Map is "put everything away": the chart, and nothing over it.
   function showMap() {
+    closeSheet();
     if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
     if (typeof state === 'object' && state && state.selected) {
       state.selected = null;
@@ -105,17 +278,17 @@
     }
   }
 
-  // Layers opens the menu at the section it names. The sheet that replaces the floating card
-  // is step 4; until then this is the same menu, opened for you at the right place.
+  // Layers is the menu, in the sheet, opened at the section it names.
   function showLayers() {
-    if (typeof window.expandToolbar === 'function') window.expandToolbar();
-    const sec = document.querySelector('.tb-section[data-sec="weather"]');
-    if (!sec) return;
-    if (!sec.classList.contains('open')) {
-      const head = sec.querySelector('.tb-section-head');
-      if (head) head.click();
-    }
-    if (typeof sec.scrollIntoView === 'function') sec.scrollIntoView({ block: 'nearest' });
+    openSheet('layers', (typeof S === 'object' && S && S.deckLayers) || 'Layers', (body) => {
+      hostToolbar(body);
+      const sec = document.querySelector('.tb-section[data-sec="weather"]');
+      if (sec && !sec.classList.contains('open')) {
+        const head = sec.querySelector('.tb-section-head');
+        if (head) head.click();
+      }
+      if (sec && typeof sec.scrollIntoView === 'function') sec.scrollIntoView({ block: 'nearest' });
+    });
   }
 
   function buildDeck() {
@@ -181,6 +354,9 @@
     if (buttons.here) {
       buttons.here.setAttribute('aria-pressed', String(!!(typeof gpsLiveOn !== 'undefined' && gpsLiveOn)));
     }
+    for (const key of ['layers']) {
+      if (buttons[key]) buttons[key].setAttribute('aria-pressed', String(sheetKey === key));
+    }
     if (buttons.plan) {
       const fp = document.getElementById('fp-modal') || document.querySelector('.fp-modal');
       buttons.plan.setAttribute('aria-pressed', String(!!(fp && !fp.hidden)));
@@ -197,6 +373,8 @@
   }
 
   function teardown() {
+    closeSheet();
+    if (sheet) { sheet.remove(); sheet = sheetBody = sheetTitle = null; }
     for (const obs of observers) obs.disconnect();
     observers = [];
     if (strip) strip.remove();
@@ -213,6 +391,7 @@
     if (!on) { teardown(); return; }
     buildStrip();
     buildDeck();
+    buildSheet();
     document.body.classList.add('deck-on');
     // The strip reads these three; nothing else needs to tell it anything.
     watch('gps-readout');
