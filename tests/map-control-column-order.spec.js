@@ -75,3 +75,43 @@ test('Leaflet’s own controls still rank below ours', async ({ page }) => {
   // sit under the whole in-flight group, which is what the fallback rank is for.
   expect(zoom).toBeGreaterThan(seen.indexOf('rotate-ctrl'));
 });
+
+// Reported next: the follow-me icon is smaller than the other icons. It was -- 34px with a
+// radius of 8 and a dark ground of its own, in a column of 44px white squares with a radius
+// of 4. A control that looks like it came from somewhere else reads as something else.
+test('every icon in the column is the same square', async ({ page }) => {
+  await boot(page);
+  await goLive(page);
+  const got = await page.evaluate(() => {
+    const sels = ['.voice-ctrl button', '.orient-ctrl button', '.follow-ctrl button',
+      '.follow-me-ctrl button', '.editlock-ctrl button'];
+    return sels.map(sel => {
+      const el = document.querySelector(sel);
+      if (!el) return { sel, missing: true };
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return { sel, w: Math.round(r.width), h: Math.round(r.height),
+               radius: cs.borderTopLeftRadius, font: cs.fontSize };
+    });
+  });
+  expect(got.filter(g => g.missing)).toEqual([]);
+  for (const key of ['w', 'h', 'radius', 'font']) {
+    const values = new Set(got.map(g => g[key]));
+    expect([...values], key + ' disagrees: ' + JSON.stringify(got)).toHaveLength(1);
+  }
+});
+
+test('sharing lights the square, not only the glyph', async ({ page }) => {
+  await boot(page);
+  await goLive(page);
+  const got = await page.evaluate(() => {
+    const btn = document.querySelector('.follow-me-ctrl button');
+    const off = getComputedStyle(btn).backgroundColor;
+    btn.classList.add('follow-me-on');
+    return { off, on: getComputedStyle(btn).backgroundColor };
+  });
+  // The rest of the column shows an engaged state with a tinted ground; a coloured glyph
+  // alone is what a pilot misses, and the cost of missing this one is a link still
+  // broadcasting after the flight.
+  expect(got.on).not.toBe(got.off);
+});
