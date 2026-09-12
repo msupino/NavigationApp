@@ -195,3 +195,26 @@ test('the Hebrew clock line keeps its pieces apart', async ({ page }) => {
   expect(got.pieces).toEqual([got.zulu, got.read]);
   expect(got.pieces[1]).toContain('+2');
 });
+
+// Reported from the phone: the flight plan is a bit hidden by the top bar. A modal centres
+// itself in `inset: 0` -- the whole window -- which with a fixed strip and a fixed deck over
+// it means its heading sits under one and its buttons under the other.
+test('a modal opens between the strip and the deck', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
+  await page.waitForSelector('.modal-back:not(.hidden)');
+  const got = await page.evaluate(() => {
+    const strip = document.getElementById('deck-strip').getBoundingClientRect();
+    const deck = document.getElementById('deck-bar').getBoundingClientRect();
+    const back = document.querySelector('.modal-back:not(.hidden)');
+    const box = back.querySelector('.modal') || back.firstElementChild;
+    const r = box.getBoundingClientRect();
+    return { underStrip: r.top < strip.bottom - 1, underDeck: r.bottom > deck.top + 1,
+             scrolls: getComputedStyle(box).overflowY };
+  });
+  expect(got.underStrip, 'the heading is behind the strip').toBe(false);
+  expect(got.underDeck, 'the buttons are behind the deck').toBe(false);
+  // ...and a sheet taller than that gap scrolls inside itself rather than under either.
+  expect(got.scrolls).toBe('auto');
+});

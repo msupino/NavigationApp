@@ -7677,3 +7677,18 @@ body.deck-on #toolbar {
 body.deck-on #inspector { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .map-time { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu time now */
+/* A modal is centred in `inset: 0` -- the whole window -- so with the strip and the deck
+   fixed over it, the flight plan opened with its heading under the strip and its buttons
+   under the deck. Reported: the flight plan is a bit hidden by the top bar. The overlay is
+   inset to the chart's own space instead, so "centred" means centred in what can be seen,
+   and a tall sheet scrolls between them rather than under them. */
+body.deck-on .modal-back,
+body.deck-on .sim-overlay {
+  top: var(--navaid-deck-strip-h, 46px);
+  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+}
+body.deck-on .modal-back > .modal,
+body.deck-on .sim-overlay > .modal {
+  max-height: 100%;
+  overflow-y: auto;
+}
