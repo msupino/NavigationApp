@@ -90,7 +90,7 @@
   // implements a feature -- it is five shortcuts to controls that already work.
   const ITEMS = [
     { key: 'map', icon: '🗺', string: 'deckMap', run: showMap },
-    { key: 'layers', icon: '▤', string: 'deckLayers', run: showLayers },
+    { key: 'menu', icon: '▤', string: 'deckMenu', run: showMenu },
     { key: 'plan', icon: '📋', string: 'deckPlan', run: () => click('plan') },
     { key: 'record', icon: '⏺', string: 'deckRecord', run: () => click('gps-record') },
     { key: 'here', icon: '📍', string: 'deckHere', run: () => click('gps-live') },
@@ -306,17 +306,16 @@
     }
   }
 
-  // Layers is the menu, in the sheet, opened at the section it names.
-  function showLayers() {
-    openSheet('layers', (typeof S === 'object' && S && S.deckLayers) || 'Layers', (body) => {
-      hostToolbar(body);
-      const sec = document.querySelector('.tb-section[data-sec="weather"]');
-      if (sec && !sec.classList.contains('open')) {
-        const head = sec.querySelector('.tb-section-head');
-        if (head) head.click();
-      }
-      if (sec && typeof sec.scrollIntoView === 'function') sec.scrollIntoView({ block: 'nearest' });
-    });
+  // The menu, in the sheet: the whole menu, at the top of it, with whatever sections the
+  // pilot last left open. It used to jump to Extra layers, which is one section of eight and
+  // not the one most taps are for.
+  //
+  // Opening it puts away what is over the chart first -- a menu drawn on top of the flight
+  // plan is two documents fighting for one screen, and the plan is not what is being read
+  // while a menu is open.
+  function showMenu() {
+    closeOverlays();
+    openSheet('menu', (typeof S === 'object' && S && S.deckMenu) || 'Menu', hostToolbar);
   }
 
   // ---- press and hold on the chart -----------------------------------------------------
@@ -561,7 +560,7 @@
     if (buttons.here) {
       buttons.here.setAttribute('aria-pressed', String(!!(typeof gpsLiveOn !== 'undefined' && gpsLiveOn)));
     }
-    for (const key of ['layers']) {
+    for (const key of ['menu']) {
       if (buttons[key]) buttons[key].setAttribute('aria-pressed', String(sheetKey === key));
     }
     if (buttons.plan) {

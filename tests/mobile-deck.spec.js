@@ -42,7 +42,7 @@ test('a phone gets the strip and the deck', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#deck-bar')).toBeVisible();
   const labels = await page.locator('.deck-btn-label').allTextContents();
-  expect(labels).toEqual(['Map', 'Layers', 'Plan', 'Record', 'Here']);
+  expect(labels).toEqual(['Map', 'Menu', 'Plan', 'Record', 'Here']);
   // The deck replaces the closed menu card in its corner: everything it held is on the deck
   // or one tap inside it, and two menus for one app is how the corner got crowded.
   expect(await page.evaluate(() => getComputedStyle(document.getElementById('toolbar')).display)).toBe('none');
@@ -115,14 +115,20 @@ test('Record and Here light while they are running, not when they were last tapp
   expect(await pressed('here')).toBe('true');
 });
 
-test('Layers opens the menu at the section it names', async ({ page }) => {
+test('Menu puts the flight plan away before it opens', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await route(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
+  await page.waitForSelector('.modal-back.flight-plan');
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   const got = await page.evaluate(() => ({
-    open: !document.getElementById('toolbar').classList.contains('collapsed'),
-    section: document.querySelector('.tb-section[data-sec="weather"]').classList.contains('open'),
+    // A menu drawn on top of the plan is two documents fighting for one screen.
+    overlays: document.querySelectorAll('.modal-back:not(.hidden)').length,
+    fpOpen: typeof fpOpen !== 'undefined' ? fpOpen : null,
+    sheet: document.getElementById('deck-sheet').hidden,
+    hosted: !!document.getElementById('toolbar').closest('#deck-sheet'),
   }));
-  expect(got).toEqual({ open: true, section: true });
+  expect(got).toEqual({ overlays: 0, fpOpen: false, sheet: false, hosted: true });
 });
 
 test('Map puts everything away again', async ({ page }) => {
@@ -131,7 +137,7 @@ test('Map puts everything away again', async ({ page }) => {
   await page.evaluate(() => {
     state.selected = { type: 'leg', index: 0 };
     showInspector();
-    document.querySelector('.deck-btn-layers').click();
+    document.querySelector('.deck-btn-menu').click();
   });
   await page.evaluate(() => document.querySelector('.deck-btn-map').click());
   const got = await page.evaluate(() => ({
@@ -161,7 +167,7 @@ test('the chart furniture moves up out of the deck', async ({ page }) => {
 // were behind an opaque bar.
 test('the menu opens below the strip, not behind it', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   const got = await page.evaluate(() => {
     const strip = document.getElementById('deck-strip').getBoundingClientRect();
     const sheet = document.getElementById('deck-sheet').getBoundingClientRect();
@@ -230,9 +236,9 @@ const sheetBox = (page) => page.evaluate(() => {
   return { hidden: s.hidden, detent: s.dataset.detent, h: Math.round(r.height), top: Math.round(r.top) };
 });
 
-test('Layers opens the menu inside the sheet, at the working height', async ({ page }) => {
+test('Menu opens the menu inside the sheet, at the working height', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   const box = await sheetBox(page);
   expect(box.hidden).toBe(false);
   expect(box.detent).toBe('half');
@@ -240,18 +246,20 @@ test('Layers opens the menu inside the sheet, at the working height', async ({ p
     // The menu itself, not a copy of it: every handler and every stored state is the one
     // that already works.
     hosted: !!document.getElementById('toolbar').closest('#deck-sheet'),
-    weather: document.querySelector('.tb-section[data-sec="weather"]').classList.contains('open'),
-    pressed: document.querySelector('.deck-btn-layers').getAttribute('aria-pressed'),
+    // The whole menu, from the top. It used to jump to Extra layers -- one section of eight,
+    // and not the one most taps are for.
+    forced: document.querySelectorAll('.tb-section.open').length,
+    pressed: document.querySelector('.deck-btn-menu').getAttribute('aria-pressed'),
     // ...minus the two controls that belonged to the floating card.
     handle: document.getElementById('toolbar-handle').getClientRects().length,
     burger: document.getElementById('toolbar-toggle').getClientRects().length,
   }));
-  expect(got).toEqual({ hosted: true, weather: true, pressed: 'true', handle: 0, burger: 0 });
+  expect(got).toEqual({ hosted: true, forced: 0, pressed: 'true', handle: 0, burger: 0 });
 });
 
 test('the grip cycles the three heights', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   const seen = [(await sheetBox(page)).detent];
   for (let i = 0; i < 3; i++) {
     await page.evaluate(() => document.querySelector('.deck-sheet-grip').click());
@@ -263,7 +271,7 @@ test('the grip cycles the three heights', async ({ page }) => {
 test('the peek height leaves the chart worth looking at', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
-    document.querySelector('.deck-btn-layers').click();
+    document.querySelector('.deck-btn-menu').click();
     document.querySelector('.deck-sheet-grip').click();   // full
     document.querySelector('.deck-sheet-grip').click();   // peek
   });
@@ -278,7 +286,7 @@ test('the peek height leaves the chart worth looking at', async ({ page }) => {
 
 test('dragging it down dismisses it, and the menu goes back where it came from', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   const grip = await page.locator('.deck-sheet-grip').boundingBox();
   await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
   await page.mouse.down();
@@ -296,7 +304,7 @@ test('dragging it down dismisses it, and the menu goes back where it came from',
 
 test('dragging it up snaps to the next height rather than wherever the finger stopped', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   const grip = await page.locator('.deck-sheet-grip').boundingBox();
   await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
   await page.mouse.down();
@@ -311,7 +319,7 @@ test('Map clears the chart: the plan, the charts, the menu and the panel', async
   await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
   await page.waitForSelector('.modal-back.flight-plan');
   await page.evaluate(() => {
-    document.querySelector('.deck-btn-layers').click();
+    document.querySelector('.deck-btn-menu').click();
     const sec = document.querySelector('.tb-section[data-sec="charts"] .tb-section-head');
     if (sec) sec.click();
     document.getElementById('route-templates').click();
@@ -339,7 +347,7 @@ test('Map closes the menu', async ({ page }) => {
   await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
   await page.waitForSelector('.modal-back.flight-plan');
   await page.evaluate(() => {
-    document.querySelector('.deck-btn-layers').click();
+    document.querySelector('.deck-btn-menu').click();
     const sec = document.querySelector('.tb-section[data-sec="charts"] .tb-section-head');
     if (sec) sec.click();
   });
@@ -357,16 +365,16 @@ test('Map closes the menu', async ({ page }) => {
 
 test('Map closes the sheet', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   await page.evaluate(() => document.querySelector('.deck-btn-map').click());
   expect((await sheetBox(page)).hidden).toBe(true);
   expect(await page.evaluate(() =>
-    document.querySelector('.deck-btn-layers').getAttribute('aria-pressed'))).toBe('false');
+    document.querySelector('.deck-btn-menu').getAttribute('aria-pressed'))).toBe('false');
 });
 
 test('turning the deck off puts the menu back before it goes', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   await page.evaluate(() => {
     NavAid.tuningDefaults.featureMobileDeck.value = false;
     // The URL override is what is on in this test; drop it the way a config push would.
@@ -515,7 +523,7 @@ test('a locked route refuses both, and says so', async ({ page }) => {
 // were behind the menu that asked for them.
 test('a menu item that opens something puts the menu away', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   expect(await page.evaluate(() => document.getElementById('deck-sheet').hidden)).toBe(false);
   await page.evaluate(() => {
     const sec = document.querySelector('.tb-section[data-sec="charts"] .tb-section-head');
@@ -535,7 +543,7 @@ test('a menu item that opens something puts the menu away', async ({ page }) => 
 
 test('a layer toggle is not "opening something" and leaves the menu up', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   await page.evaluate(() => {
     const cb = document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]');
     if (cb) cb.click();

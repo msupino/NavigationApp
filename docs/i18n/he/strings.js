@@ -708,7 +708,7 @@ window.S = {
   mapTimeNow: 'עכשיו',
   mapTimeNowTitle: 'חזרה לזמן אמת: כל השכבות כפי שהן עכשיו',
   deckMap: 'מפה',
-  deckLayers: 'שכבות',
+  deckMenu: 'תפריט',
   deckPlan: 'תכנית',
   deckRecord: 'הקלטה',
   deckHere: 'כאן',

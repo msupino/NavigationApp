@@ -1966,7 +1966,7 @@ window.S = Object.assign({
   mapTimeNow: 'Now',
   mapTimeNowTitle: 'Back to live: show every layer as it is right now',
   deckMap: 'Map',
-  deckLayers: 'Layers',
+  deckMenu: 'Menu',
   deckPlan: 'Plan',
   deckRecord: 'Record',
   deckHere: 'Here',
