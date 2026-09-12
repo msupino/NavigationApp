@@ -129,3 +129,48 @@ for (const theme of ['light', 'dark']) {
     expect(Math.abs(got.text - got.field), 'the text is not readable in the field').toBeGreaterThan(90);
   });
 }
+
+// Asked for: can the identifier have a default -- the phone's name, or something from the
+// phone? No browser exposes the device name, and the model an Android UA does give
+// ("SM-G991B") tells a follower nothing about a flight. The route does.
+test('a device that has never shared is offered the flight', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    try { localStorage.removeItem('navaid.followMeCode'); } catch (e) { /* */ }
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' },
+                       { lat: 32.78, lng: 35.02, name: 'LLHA' }];
+    syncLegs();
+    draw();
+  });
+  await page.evaluate(() => document.getElementById('follow-me-map').click());
+  await page.waitForSelector('.follow-me-ask-modal');
+  expect(await page.inputValue('.follow-me-ask-input')).toBe('LLHZ-LLHA');
+  // ...and it opens selected, so a registration replaces it in one go rather than being
+  // typed after it.
+  expect(await page.evaluate(() => {
+    const i = document.querySelector('.follow-me-ask-input');
+    return i.selectionStart === 0 && i.selectionEnd === i.value.length;
+  })).toBe(true);
+});
+
+test('a code this device has used before still wins', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    NavAid.followMe.setCode('4X-CDE');
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' },
+                       { lat: 32.78, lng: 35.02, name: 'LLHA' }];
+    syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('follow-me-map').click());
+  await page.waitForSelector('.follow-me-ask-modal');
+  expect(await page.inputValue('.follow-me-ask-input')).toBe('4X-CDE');
+});
+
+test('with no route there is nothing to guess, and it says nothing', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { try { localStorage.removeItem('navaid.followMeCode'); } catch (e) { /* */ } });
+  await page.evaluate(() => document.getElementById('follow-me-map').click());
+  await page.waitForSelector('.follow-me-ask-modal');
+  // An invented identifier would be worse than an empty field: it would be shared.
+  expect(await page.inputValue('.follow-me-ask-input')).toBe('');
+});

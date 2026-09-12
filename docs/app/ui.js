@@ -4212,7 +4212,7 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // Ask for an identifier. Nothing verifies it -- a pilot can type anything, and an
     // aircraft code is only the obvious choice -- but a shared link with no name on it is a
     // puzzle for whoever opens it, so something is required.
-    const asked = await askFollowMeCode(f.code() || '');
+    const asked = await askFollowMeCode(f.code() || followMeDefaultCode());
     if (asked === null) return;                     // cancelled: share nothing
     const link = await f.start(asked);
     if (!link) {
@@ -4234,6 +4234,24 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
   refresh();
   window.refreshFollowMeControl = refresh;
 }());
+
+// What to put in the field when this device has never shared. The phone cannot help here:
+// no browser exposes the device NAME, and the model an Android UA does give ("SM-G991B") says
+// nothing about a flight to whoever opens the link. The route does. Departure and destination
+// are what a follower is actually watching, and a pilot who has a registration types it over
+// this in one go, because the field opens selected.
+function followMeDefaultCode() {
+  const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
+    ? state.waypoints : [];
+  if (wps.length < 2) return '';
+  // The same charset followMeSetCode keeps: upper case, no spaces.
+  const clean = (w) => String((w && w.name) || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 5);
+  const from = clean(wps[0]);
+  const to = clean(wps[wps.length - 1]);
+  if (!from || !to) return '';
+  return (from + '-' + to).slice(0, 12);
+}
+window.followMeDefaultCode = followMeDefaultCode;
 
 // Ask for the identifier in the app, not through window.prompt.
 //
