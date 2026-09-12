@@ -223,9 +223,12 @@
     applyDetent(DETENT_ORDER[(i + 1) % DETENT_ORDER.length]);
   }
 
-  function openSheet(key, title, fill) {
+  // `reopen` says the sheet is being asked for with NEW content -- a second press on the
+  // chart is a question about a different point, not a request to resize the answer to the
+  // last one. A deck button asking for the sheet it already has cycles the height instead.
+  function openSheet(key, title, fill, opts) {
     if (!sheet) return;
-    if (sheetKey === key && !sheet.hidden) { cycleDetent(); return; }
+    if (sheetKey === key && !sheet.hidden && !(opts && opts.reopen)) { cycleDetent(); return; }
     closeSheet({ keepOpen: true });
     sheetKey = key;
     sheetTitle.textContent = title;
@@ -296,6 +299,185 @@
       }
       if (sec && typeof sec.scrollIntoView === 'function') sec.scrollIntoView({ block: 'nearest' });
     });
+  }
+
+  // ---- press and hold on the chart -----------------------------------------------------
+  // The last step of the layout: the chart itself answers a question. Press and hold anywhere
+  // and the sheet says what is there -- the coordinates, the nearest field with its bearing
+  // and distance, the highest terrain in that square -- and offers the two things a pilot
+  // does with a point on a chart: fly to it, or add it to the plan.
+  //
+  // This is how SkyDemon replaces most of its menus, and it is the one part of the deck that
+  // changes how a route is BUILT rather than where a button sits, so it lives here behind the
+  // same switch and does nothing a tap already does.
+  const LONG_PRESS_MS = 500;
+  const LONG_PRESS_SLOP = 10;
+
+  function hereRow(body, label, value) {
+    const row = document.createElement('div');
+    row.className = 'deck-here-row';
+    const k = document.createElement('span');
+    k.textContent = label;
+    const v = document.createElement('bdi');
+    v.className = 'deck-here-value';
+    v.textContent = value;
+    row.append(k, v);
+    body.appendChild(row);
+    return row;
+  }
+
+  // Nearest published field, by great-circle distance -- not by pixels, which is what the
+  // map's own hit-testing uses and which would answer differently at every zoom.
+  function nearestField(latlng) {
+    const list = Array.isArray(window.airfields) ? window.airfields : [];
+    let best = null;
+    for (const af of list) {
+      if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
+      const g = geo(latlng, af);
+      if (!best || g.dist < best.dist) best = { af, dist: g.dist, brg: g.brg };
+    }
+    return best;
+  }
+
+  function fmtBearing(deg) {
+    const mag = (typeof toMagnetic === 'function') ? toMagnetic(deg) : deg;
+    const r = ((Math.round(mag) % 360) + 360) % 360;
+    return (typeof pad3 === 'function' ? pad3(r) : String(r)) + '\u00b0M';
+  }
+
+  function openHere(latlng) {
+    const title = (typeof S === 'object' && S && S.deckHereTitle) || 'What is here';
+    openSheet('here-point', title, (body) => {
+      body.classList.add('deck-here');
+      hereRow(body, (typeof S === 'object' && S && S.deckHereCoords) || 'Position',
+        typeof coordReadoutText === 'function'
+          ? coordReadoutText(latlng.lat, latlng.lng)
+          : latlng.lat.toFixed(4) + ', ' + latlng.lng.toFixed(4));
+      const near = nearestField(latlng);
+      if (near) {
+        // The name the pilot reads on this chart, in the language they are reading it in.
+        const lang = (document.documentElement.lang === 'he') ? 'he' : 'en';
+        const name = near.af[lang] || near.af.en || near.af.name || '';
+        hereRow(body, (typeof S === 'object' && S && S.deckHereNearest) || 'Nearest field',
+          name + '  ' + near.dist.toFixed(1) + ' NM  ' + fmtBearing(near.brg));
+      }
+      const terrain = (typeof terrainMaxAtLatLng === 'function')
+        ? terrainMaxAtLatLng(latlng.lat, latlng.lng) : null;
+      if (Number.isFinite(terrain)) {
+        hereRow(body, (typeof S === 'object' && S && S.deckHereTerrain) || 'Highest terrain',
+          Math.round(terrain) + ' ft');
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'deck-here-actions';
+      // The DELIBERATE lock refuses these; the automatic in-flight one does not. That lock
+      // exists to stop a finger on a phone nudging a waypoint it landed on by accident --
+      // "a default, not a rule", as the lock itself puts it, because a diversion gets
+      // planned in the air. Holding the chart for half a second and then pressing a button
+      // is not an accident, and refusing it would leave Direct to needing a position (so:
+      // in flight) and no lock (so: not in flight), which is nothing at all.
+      const locked = window.editLocked === true && window.editUnlockOverride !== true;
+      const live = typeof gpsOwn === 'object' && gpsOwn
+        && Number.isFinite(gpsOwn.lat) && Number.isFinite(gpsOwn.lng)
+        && typeof gpsPositionLive === 'function' && gpsPositionLive();
+
+      // Dim, never hide: both are real controls, and a control that disappears is one the
+      // pilot hunts for. Each says why it cannot be used.
+      const direct = document.createElement('button');
+      direct.type = 'button';
+      direct.className = 'deck-here-btn';
+      direct.textContent = (typeof S === 'object' && S && S.deckDirectTo) || 'Direct to';
+      direct.disabled = !live || locked;
+      direct.title = locked
+        ? ((typeof S === 'object' && S && S.editLockBlockedToast) || '')
+        : (!live ? ((typeof S === 'object' && S && S.deckDirectNeedsFix)
+          || 'No position yet — turn Location on') : '');
+      direct.addEventListener('click', () => { directTo(latlng); });
+
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'deck-here-btn';
+      add.textContent = (typeof S === 'object' && S && S.deckAddWaypoint) || 'Add waypoint';
+      add.disabled = locked;
+      add.title = locked ? ((typeof S === 'object' && S && S.editLockBlockedToast) || '') : '';
+      add.addEventListener('click', () => { addHere(latlng); });
+
+      actions.append(direct, add);
+      body.appendChild(actions);
+    }, { reopen: true });
+  }
+
+  // A point on the chart, onto the end of the plan -- the same thing the Add tool does with a
+  // tap, including the nav-point snap, so a held point and a tapped one produce the same
+  // waypoint.
+  function addHere(latlng) {
+    if (typeof state !== 'object' || !state) return;
+    const snapped = (typeof applyNavSnap === 'function') ? applyNavSnap(latlng, '') : latlng;
+    const next = { lat: (typeof r5 === 'function' ? r5(snapped.lat) : snapped.lat),
+                   lng: (typeof r5 === 'function' ? r5(snapped.lng) : snapped.lng),
+                   name: snapped.name || '' };
+    state.waypoints.push(next);
+    // syncLegs -> the save path -> recordUndoSnapshot: a point added this way is one undo
+    // step, exactly like a point added with the Add tool.
+    if (typeof syncLegs === 'function') syncLegs();
+    if (typeof draw === 'function') draw();
+    closeSheet();
+  }
+
+  // Straight there from where the aeroplane actually is. A plan already drawn is not thrown
+  // away on a tap: this replaces it, so it asks first.
+  function directTo(latlng) {
+    if (typeof state !== 'object' || !state || !gpsOwn) return;
+    if (state.waypoints.length) {
+      const ask = (typeof S === 'object' && S && S.deckDirectConfirm)
+        || 'Replace the route with a direct leg to this point?';
+      try { if (!confirm(ask)) return; } catch (e) { /* no confirm: go ahead */ }
+    }
+    const here = { lat: gpsOwn.lat, lng: gpsOwn.lng,
+                   name: (typeof S === 'object' && S && S.deckHereNow) || 'NOW' };
+    const snapped = (typeof applyNavSnap === 'function') ? applyNavSnap(latlng, '') : latlng;
+    state.waypoints = [here, { lat: snapped.lat, lng: snapped.lng, name: snapped.name || '' }];
+    if (typeof syncLegs === 'function') syncLegs();
+    if (typeof draw === 'function') draw();
+    closeSheet();
+  }
+
+  let longPress = null;
+  function wireLongPress() {
+    if (longPress || typeof map === 'undefined' || !map || !map.getContainer) return;
+    const el = map.getContainer();
+    let timer = 0;
+    let sx = 0;
+    let sy = 0;
+    const cancel = () => { clearTimeout(timer); timer = 0; };
+    const down = (ev) => {
+      if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+      // Not on the controls that float over the chart: a press there is a press on them.
+      if (ev.target && ev.target.closest && ev.target.closest('.leaflet-control, #deck-sheet')) return;
+      sx = ev.clientX;
+      sy = ev.clientY;
+      cancel();
+      timer = setTimeout(() => {
+        timer = 0;
+        if (!map.containerPointToLatLng) return;
+        const box = el.getBoundingClientRect();
+        openHere(map.containerPointToLatLng([sx - box.left, sy - box.top]));
+      }, LONG_PRESS_MS);
+    };
+    const moved = (ev) => {
+      if (!timer) return;
+      if (Math.abs(ev.clientX - sx) > LONG_PRESS_SLOP || Math.abs(ev.clientY - sy) > LONG_PRESS_SLOP) cancel();
+    };
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('pointermove', moved);
+    for (const name of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(name, cancel);
+    longPress = () => {
+      cancel();
+      el.removeEventListener('pointerdown', down);
+      el.removeEventListener('pointermove', moved);
+      for (const name of ['pointerup', 'pointercancel', 'pointerleave']) el.removeEventListener(name, cancel);
+      longPress = null;
+    };
   }
 
   function buildDeck() {
@@ -381,6 +563,7 @@
 
   function teardown() {
     closeSheet();
+    if (longPress) longPress();
     if (sheet) { sheet.remove(); sheet = sheetBody = sheetTitle = null; }
     for (const obs of observers) obs.disconnect();
     observers = [];
@@ -399,6 +582,7 @@
     buildStrip();
     buildDeck();
     buildSheet();
+    wireLongPress();
     document.body.classList.add('deck-on');
     // The strip reads these three; nothing else needs to tell it anything.
     watch('gps-readout');

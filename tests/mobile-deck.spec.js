@@ -354,3 +354,132 @@ test('turning the deck off puts the menu back before it goes', async ({ page }) 
   });
   expect(got).toEqual({ sheet: false, deck: false, parent: 'BODY', hosted: false });
 });
+
+// ---- press and hold on the chart ----------------------------------------------------
+// The last step of the layout: the chart answers a question. This is the one part of the
+// deck that changes how a route is BUILT rather than where a button sits.
+const press = async (page, x, y, ms) => {
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.waitForTimeout(ms === undefined ? 620 : ms);
+  await page.mouse.up();
+};
+
+test('press and hold says what is under the finger', async ({ page }) => {
+  await boot(page);
+  await press(page, 200, 420);
+  await page.waitForSelector('.deck-here');
+  const got = await page.evaluate(() => ({
+    title: document.querySelector('.deck-sheet-title').textContent,
+    rows: Array.from(document.querySelectorAll('.deck-here-row span:first-child')).map(s => s.textContent),
+    coords: document.querySelector('.deck-here-value').textContent,
+    actions: Array.from(document.querySelectorAll('.deck-here-btn')).map(b => b.textContent),
+  }));
+  expect(got.title).toBe('What is here');
+  expect(got.rows[0]).toBe('Position');
+  expect(got.coords).toMatch(/\d+°/);
+  expect(got.rows).toContain('Nearest field');
+  expect(got.actions).toEqual(['Direct to', 'Add waypoint']);
+});
+
+test('a tap is not a press, and neither is a drag', async ({ page }) => {
+  await boot(page);
+  await press(page, 200, 420, 80);                 // a tap
+  expect(await page.evaluate(() => document.getElementById('deck-sheet').hidden)).toBe(true);
+  // A pan holds the finger down for as long as it likes; it is not asking about a point.
+  await page.mouse.move(200, 420);
+  await page.mouse.down();
+  await page.mouse.move(260, 470, { steps: 6 });
+  await page.waitForTimeout(620);
+  await page.mouse.up();
+  expect(await page.evaluate(() => document.getElementById('deck-sheet').hidden)).toBe(true);
+});
+
+test('Add waypoint puts the held point on the end of the plan', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await press(page, 200, 420);
+  await page.waitForSelector('.deck-here');
+  const before = await page.evaluate(() => state.waypoints.length);
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.deck-here-btn'))
+      .find(b => b.textContent === 'Add waypoint');
+    btn.click();
+  });
+  const got = await page.evaluate(() => ({
+    count: state.waypoints.length,
+    sheet: document.getElementById('deck-sheet').hidden,
+    legs: state.legs.length,
+  }));
+  expect(got.count).toBe(before + 1);
+  expect(got.legs).toBe(got.count - 1);            // the plan, not just a list of points
+  expect(got.sheet).toBe(true);
+});
+
+test('Direct to waits for a position rather than inventing one', async ({ page }) => {
+  await boot(page);
+  await press(page, 200, 420);
+  await page.waitForSelector('.deck-here');
+  const off = await page.evaluate(() => {
+    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
+    return { disabled: b.disabled, why: b.title };
+  });
+  // Dim, never hide -- and it says why.
+  expect(off.disabled).toBe(true);
+  expect(off.why).toMatch(/Location/);
+
+  await page.evaluate(() => {
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.05, lng: 34.85, hdg: 90, t: Date.now() };
+  });
+  // Above the open sheet: the sheet is not the chart, so a press on it is a press on it.
+  await press(page, 200, 200);
+  await page.waitForFunction(() => {
+    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
+    return b && !b.disabled;
+  });
+  await page.evaluate(() => {
+    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
+    b.click();
+  });
+  const got = await page.evaluate(() => ({
+    count: state.waypoints.length,
+    from: state.waypoints[0],
+  }));
+  // Two points: where the aeroplane actually is, and where the finger was.
+  expect(got.count).toBe(2);
+  expect(got.from.lat).toBeCloseTo(32.05, 3);
+});
+
+test('Direct to asks before it throws a plan away', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.05, lng: 34.85, hdg: 90, t: Date.now() };
+  });
+  await press(page, 200, 200);
+  await page.waitForSelector('.deck-here');
+  page.once('dialog', d => d.dismiss());
+  await page.evaluate(() => {
+    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
+    b.click();
+  });
+  // Declined: the route is exactly as it was.
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['HRTZ', 'LLEV']);
+});
+
+test('a locked route refuses both, and says so', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    window.editUnlockOverride = false;
+    window.editLocked = true;
+    if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
+  });
+  await press(page, 200, 420);
+  await page.waitForSelector('.deck-here');
+  const got = await page.evaluate(() => Array.from(document.querySelectorAll('.deck-here-btn'))
+    .map(b => ({ text: b.textContent, disabled: b.disabled })));
+  expect(got.every(b => b.disabled), JSON.stringify(got)).toBe(true);
+});
