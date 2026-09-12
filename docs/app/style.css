@@ -7868,3 +7868,40 @@ body.deck-on .sim-overlay > .modal {
   max-height: 100%;
   overflow-y: auto;
 }
+
+/* Follow me: asking for the identifier. Small, centred, and its own dialog rather than the
+   browser's -- see askFollowMeCode in ui.js for why. */
+.modal.follow-me-ask-modal { max-width: min(420px, 92vw); }
+.follow-me-ask-text { margin: 6px 0 10px; font-size: 13px; line-height: 1.45; }
+.follow-me-ask-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: 600 16px/1.2 monospace;      /* 16px: anything smaller makes iOS zoom the page */
+  text-transform: uppercase;
+  border: 1px solid var(--navaid-ctrl-border-color);
+  border-radius: var(--navaid-ctrl-radius);
+}
+.follow-me-ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.follow-me-ask-actions button {
+  min-height: 44px;
+  min-width: 96px;
+  padding: 0 14px;
+  font: inherit;
+  font-weight: 600;
+  border-radius: var(--navaid-ctrl-radius);
+  border: 1px solid var(--navaid-ctrl-border-color);
+  background: var(--navaid-ctrl-bg);
+  cursor: pointer;
+}
+.follow-me-ask-actions .follow-me-ask-ok { background: #1f5f9e; border-color: #1f5f9e; color: #fff; }
+/* The field is the one white rectangle in a dark dialog if it is left to the browser. */
+body.theme-dark .follow-me-ask-input {
+  background: #0f1620;
+  color: #e8eef3;
+  border-color: #2b3741;
+}
+body.theme-dark .follow-me-ask-input::placeholder { color: #7d8b97; }
+body.theme-dark .follow-me-ask-actions button { background: #1e2831; color: #e8eef3; }
+body.theme-dark .follow-me-ask-actions .follow-me-ask-ok { background: #2f7fd0; border-color: #2f7fd0; }

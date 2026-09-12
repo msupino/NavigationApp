@@ -4212,7 +4212,7 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // Ask for an identifier. Nothing verifies it -- a pilot can type anything, and an
     // aircraft code is only the obvious choice -- but a shared link with no name on it is a
     // puzzle for whoever opens it, so something is required.
-    const asked = window.prompt(S.followMeAskCode || 'Identifier, for example an aircraft code (4X-CDE)', f.code() || '');
+    const asked = await askFollowMeCode(f.code() || '');
     if (asked === null) return;                     // cancelled: share nothing
     const link = await f.start(asked);
     if (!link) {
@@ -4234,6 +4234,68 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
   refresh();
   window.refreshFollowMeControl = refresh;
 }());
+
+// Ask for the identifier in the app, not through window.prompt.
+//
+// prompt() is the one dialog a page does not own: a browser may suppress it after the pilot
+// dismisses one ("stop this page creating dialogs"), and an Android WebView shows it only if
+// the host app implements onJsPrompt -- which is exactly where Follow me is used. Reported
+// from the phone: the follow-me icon does not do anything. It did: it opened a dialog nobody
+// saw, and a cancelled dialog shares nothing.
+//
+// It is also a better question. The stored code is in the field, ready to send again; the
+// Hebrew reads right to left while the code itself stays left to right; Enter shares and
+// Escape does not.
+function askFollowMeCode(current) {
+  return new Promise((resolve) => {
+    if (typeof createDraggableModal !== 'function') {
+      // No modal factory (a stripped build): the old question is better than no question.
+      try { resolve(window.prompt(S.followMeAskCode || 'Identifier, for example an aircraft code (4X-CDE)', current || '')); }
+      catch (e) { resolve(null); }
+      return;
+    }
+    let answered = false;
+    const done = (value) => {
+      if (answered) return;
+      answered = true;
+      resolve(value);
+    };
+    const modal = createDraggableModal(S.followMeAskTitle || 'Follow me',
+      'modal follow-me-ask-modal', () => done(null));
+    const text = document.createElement('p');
+    text.className = 'follow-me-ask-text';
+    text.textContent = S.followMeAskCode || 'Identifier, for example an aircraft code (4X-CDE)';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'follow-me-ask-input';
+    input.dir = 'ltr';                         // a registration is Latin in both languages
+    input.value = current || '';
+    input.setAttribute('aria-label', S.followMeAskLabel || 'Identifier');
+    input.autocapitalize = 'characters';
+    input.spellcheck = false;
+    const row = document.createElement('div');
+    row.className = 'follow-me-ask-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'follow-me-ask-cancel';
+    cancel.textContent = S.cancel || 'Cancel';
+    cancel.addEventListener('click', () => { done(null); modal.close(); });
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'follow-me-ask-ok';
+    ok.textContent = S.followMeAskShare || 'Share';
+    const submit = () => { done(input.value); modal.close(); };
+    ok.addEventListener('click', submit);
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); submit(); }
+    });
+    row.append(cancel, ok);
+    modal.box.append(text, input, row);
+    modal.show();
+    try { input.focus(); input.select(); } catch (e) { /* not focusable yet */ }
+  });
+}
+window.askFollowMeCode = askFollowMeCode;
 
 function showReturnFeatureOn() {
   return typeof tune !== 'function' || tune('featureShowReturn') !== false;
