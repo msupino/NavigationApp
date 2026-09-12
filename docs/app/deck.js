@@ -272,14 +272,32 @@
   }
 
   // Map is "put everything away": the chart, and nothing over it. The sheet, the menu, any
-  // section left open inside it, and the inspector.
+  // section left open inside it, the inspector -- and everything that opened over the chart,
+  // the flight plan and the chart viewers included. Reported twice, and the second time
+  // settled it: a button labelled Map that leaves a table covering the map is a button that
+  // has to be pressed and then followed by hunting for an X.
   //
-  // Not the flight plan. It is the thing being flown FROM -- a pilot tapping Map with the
-  // plan open wants to see where the next leg goes and then go back to the table, and a
-  // button that threw the table away would be one they stopped pressing. It is a
-  // non-blocking modal for exactly that reason: the chart is usable underneath it.
+  // Each overlay is closed through its own door, not by deleting the node: a modal built by
+  // createDraggableModal carries a _navaidClose that also unhooks its Escape handler and its
+  // listeners, and the flight plan has closeFlightPlan(), which clears fpOpen, the stored
+  // session flag and the profile markers it drew on the chart. Removing the element would
+  // leave every one of those behind.
+  function closeOverlays() {
+    if (typeof fpOpen !== 'undefined' && fpOpen && typeof closeFlightPlan === 'function') {
+      closeFlightPlan();
+    }
+    for (const back of document.querySelectorAll('.modal-back, .sim-overlay')) {
+      if (back.classList.contains('hidden')) continue;
+      if (typeof back._navaidClose === 'function') { back._navaidClose(); continue; }
+      const x = back.querySelector('.modal-close-x, .modal-close, .sim-modal-close');
+      if (x) { x.click(); continue; }
+      back.remove();
+    }
+  }
+
   function showMap() {
     closeSheet();
+    closeOverlays();
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
     if (typeof state === 'object' && state && state.selected) {

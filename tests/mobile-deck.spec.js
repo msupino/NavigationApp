@@ -305,7 +305,35 @@ test('dragging it up snaps to the next height rather than wherever the finger st
   await expect.poll(async () => (await sheetBox(page)).detent).toBe('full');
 });
 
-test('Map closes the menu, and leaves the flight plan alone', async ({ page }) => {
+test('Map clears the chart: the plan, the charts, the menu and the panel', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
+  await page.waitForSelector('.modal-back.flight-plan');
+  await page.evaluate(() => {
+    document.querySelector('.deck-btn-layers').click();
+    const sec = document.querySelector('.tb-section[data-sec="charts"] .tb-section-head');
+    if (sec) sec.click();
+    document.getElementById('route-templates').click();
+  });
+  // A chart viewer is a NON-BLOCKING modal, which wears the same `flight-plan` class as the
+  // plan itself (that class is the transparent-backdrop variant, not the plan's identity).
+  await page.waitForSelector('.route-template-modal');
+  await page.evaluate(() => document.querySelector('.deck-btn-map').click());
+  const got = await page.evaluate(() => ({
+    overlays: document.querySelectorAll('.modal-back:not(.hidden), .sim-overlay:not(.hidden)').length,
+    // Closed through its own door: fpOpen and the stored session flag go with it, not just
+    // the element.
+    fpOpen: typeof fpOpen !== 'undefined' ? fpOpen : null,
+    stored: sessionStorage.getItem('navaid.fpOpen'),
+    sheet: document.getElementById('deck-sheet').hidden,
+    menu: document.getElementById('toolbar').classList.contains('collapsed'),
+    sections: document.querySelectorAll('.tb-section.open').length,
+  }));
+  expect(got).toEqual({ overlays: 0, fpOpen: false, stored: null, sheet: true, menu: true, sections: 0 });
+});
+
+test('Map closes the menu', async ({ page }) => {
   await boot(page);
   await route(page);
   await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
@@ -322,11 +350,9 @@ test('Map closes the menu, and leaves the flight plan alone', async ({ page }) =
     // No section left open behind the closed menu: reopening it should show the menu, not
     // whatever was being read last time.
     sections: document.querySelectorAll('.tb-section.open').length,
-    // The plan is the thing being flown from. Map is "show me the chart", not "throw away
-    // the table I am flying".
     plan: !!document.querySelector('.modal-back.flight-plan'),
   }));
-  expect(got).toEqual({ sheet: true, menu: true, sections: 0, plan: true });
+  expect(got).toEqual({ sheet: true, menu: true, sections: 0, plan: false });
 });
 
 test('Map closes the sheet', async ({ page }) => {
