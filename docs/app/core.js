@@ -841,6 +841,7 @@ NavAid.tuningDefaults = {
   // and the map is where a pilot is reading, so it is opted into rather than out of. On
   // brings back the button and the panel with nothing else to configure.
   featureAssistant: { value: false, type: 'bool', label: 'Feature: AI assistant button' },
+  featureMobileDeck: { value: false, type: 'bool', label: 'Feature: phone data strip and bottom deck' },
   // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
   // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
   // it, let alone weigh it. Both live here so they can be tuned from the gist without a
@@ -1057,7 +1058,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1963,6 +1964,13 @@ window.S = Object.assign({
   afWindLegend: 'Solid barb = reported · dashed = forecast',
   mapTimeNow: 'Now',
   mapTimeNowTitle: 'Back to live: show every layer as it is right now',
+  deckMap: 'Map',
+  deckLayers: 'Layers',
+  deckPlan: 'Plan',
+  deckRecord: 'Record',
+  deckHere: 'Here',
+  deckLabel: 'Primary',
+  deckNoRoute: 'No route',
   attribToggle: 'Chart and map credits',
   mapTimeLabel: 'Look ahead',
   mapTimeCharts: 'charts',

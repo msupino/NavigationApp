@@ -7579,3 +7579,90 @@ body.theme-light .parking-preview {
 }
 .route-library-gdrive-pii[hidden] { display: none; }
 body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start-color: #c7cedb; }
+
+/* ---- Option B: the phone data strip and bottom deck ----------------------------------
+   Behind `featureMobileDeck` (off) and narrow screens only; see docs/app/deck.js for why.
+   Everything here hangs off body.deck-on, so with the feature off not one rule applies. */
+.deck-strip {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 2400;                      /* over the map and its controls, under modals */
+  background: #141b22;
+  color: #eef3f7;
+  font-family: monospace;
+  padding: 6px 10px calc(6px + env(safe-area-inset-top, 0px));
+  display: grid;
+  gap: 2px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.deck-strip-top { display: flex; align-items: baseline; gap: 10px; }
+.deck-strip-leg {
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deck-strip-vals {
+  margin-inline-start: auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Nothing is being flown: the numbers are the last fix or nothing at all, and the strip says
+   so by going quiet rather than by emptying. */
+.deck-strip:not(.deck-strip-live) .deck-strip-vals { opacity: .55; }
+.deck-strip-sub {
+  font-size: 10px;
+  color: #93a3b1;
+  display: flex;
+  gap: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.deck-strip-sub[hidden] { display: none; }
+
+.deck-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 2400;
+  height: calc(52px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #f7f9fb;
+  border-top: 1px solid var(--navaid-ctrl-border-color);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.deck-btn {
+  border: 0;
+  background: none;
+  font: inherit;
+  color: #45535f;
+  cursor: pointer;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  padding: 0;
+  touch-action: manipulation;
+}
+.deck-btn i { font-style: normal; font-size: 18px; line-height: 1; }
+.deck-btn-label { font-size: 10px; letter-spacing: .03em; }
+/* Engaged, not merely visited: Record and Here light while they are actually running. */
+.deck-btn[aria-pressed="true"] { color: #b3175f; }
+.deck-btn-record[aria-pressed="true"] i { color: #c0392b; }
+.deck-btn:focus-visible { outline: 2px solid #1f5f9e; outline-offset: -3px; }
+
+body.theme-dark .deck-bar { background: #161e26; color: #e8eef3; }
+body.theme-dark .deck-btn { color: #a9b6c1; }
+
+/* The chart's own furniture moves up out of the deck's way, and the closed menu card gives
+   up its corner: everything it held is on the deck or one tap inside it. */
+body.deck-on .leaflet-bottom { margin-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+body.deck-on #toolbar.collapsed { display: none; }
+body.deck-on #inspector { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+body.deck-on .map-time { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
+body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu time now */

@@ -9074,6 +9074,12 @@ function refreshMapAfterToolbarModeChange() {
     if (typeof toolbarUsesDesktopMenu === 'function' && toolbarUsesDesktopMenu()) return;
     setCollapsed(true, { persist: false });
   };
+  // ...and the way back, for the deck's Layers and Plan buttons: on a phone the menu they
+  // open may be closed, and a button that opens a section of a closed menu does nothing.
+  window.expandToolbar = () => {
+    if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
+    setCollapsed(false, { persist: false });
+  };
   onToolbarDesktopMenuChange(applyResponsiveToolbarMode);
   applyResponsiveToolbarMode();
 })();
@@ -9216,7 +9222,9 @@ function refreshMapAfterToolbarModeChange() {
   // path that dismisses the inspector.
   document.addEventListener('click', e => {
     if (toolbarUsesDesktopMenu()) return;
-    if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
+    // The deck counts as inside: its Layers and Plan buttons OPEN these sections, and this
+    // listener fired on the same click and closed them again.
+    if (e.target && e.target.closest && e.target.closest('#toolbar, #deck-bar')) return;
     if (anySectionOpen()) window.closeToolbarMenus();
   });
   // ...but the document 'click' above is exactly what Leaflet swallows on a real
@@ -10173,6 +10181,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshFollowMeControl === "function") refreshFollowMeControl();
     if (typeof refreshFollowMeMapControl === "function") refreshFollowMeMapControl();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
+    if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();
     // The gist may have turned base layers on or off -- rebuild the picker to match, and
