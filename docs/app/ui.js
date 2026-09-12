@@ -410,7 +410,15 @@ try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unav
 // visibly swapped places as state changed -- reported as "buttons keep switching location".
 // One rank per control, applied by one function: the DOM order follows the ranks, whoever
 // refreshes and in whatever order.
-const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'editlock-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
+//
+// A control missing from this list ranks last, which is the right answer for Leaflet's own
+// zoom and scale and the wrong one for ours: follow-me was never listed, so the moment
+// sharing started its icon appeared BELOW the rotation dial, at the bottom of the column,
+// and everything above it -- the dial included -- jumped up a row. Reported from the
+// cockpit: the follow-me id pushes up the map dial. It belongs with the in-flight group it
+// was built for, next to the follow lock.
+const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'follow-me-ctrl',
+  'editlock-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
 function orderMapControls(corner) {
   if (!corner) return;
   const rank = (el) => {
