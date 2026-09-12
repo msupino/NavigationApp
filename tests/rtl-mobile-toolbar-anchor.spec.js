@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is the layout this file is about, and the phone deck replaces it
+// (see mobile-deck.spec.js). `?deck=0` is the switch a gist -- or a pilot -- uses to have
+// the card back, so these open with it.
 // A touch tablet keeps the floating toolbar even when its viewport is wider than the
 // phone breakpoint. In Hebrew, expanding the menu must not swap its default anchor from
 // the right edge to the left edge.
@@ -15,7 +18,7 @@ test('the Hebrew toolbar stays right-anchored when it expands on a touch tablet'
     localStorage.setItem('navaid.toolbarCollapsed', '1');
     localStorage.removeItem('navaid.toolbarPos.he');
   });
-  await page.goto('?lang=he&nogist');
+  await page.goto('?lang=he&nogist&deck=0');
   await page.waitForFunction(() => {
     const toolbar = document.getElementById('toolbar');
     return toolbar && toolbar.classList.contains('collapsed');

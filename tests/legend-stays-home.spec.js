@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is what this file is about, and the phone deck replaces it: the
+// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
+// can use to have the card back. So these open with the card.
 // Reported: "legend keeps jumping in mobile when changing layers". Reaching the layer picker
 // on a phone means opening the toolbar, which covers the legend; the card was shoved clear
 // AND the shove was written to storage, so it never came back — and every trip to the menu
@@ -18,7 +21,7 @@ async function boot(page, home) {
   // what happens when chrome DOES cover it. See legend-collapsed-mobile.spec.js for the size.
   await page.addInitScript(() => localStorage.setItem('navaid.legendCollapsed', '0'));
   if (home) await page.addInitScript(([k, v]) => localStorage.setItem(k, v), [KEY, JSON.stringify(home)]);
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof map !== 'undefined' && !!document.getElementById('map-legend'));
   await page.waitForSelector('#boot-loading', { state: 'detached', timeout: 15000 });
 }
@@ -88,7 +91,7 @@ test('dragging it still decides where it lives', async ({ page }) => {
 test('expanding a low legend and closing it puts it back', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 560 });
   await page.addInitScript(() => localStorage.setItem('navaid.legendCollapsed', '1'));
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => !!document.querySelector('.map-legend'));
   await page.waitForFunction(() => !document.documentElement.classList.contains('app-booting'));
 

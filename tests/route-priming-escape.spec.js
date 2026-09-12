@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is the layout these phone cases are about, and the deck replaces
+// it (see mobile-deck.spec.js). `?deck=0` is the switch that brings the card back, so
+// they open with it.
 // A fresh session primes the map: the route is empty, the hint is up, and a plain click drops
 // the first waypoint. Reported: "it enters edit mode, ESC doesn't exit from it, button is not
 // marked in edit mode under edit" — the map behaved like a mode nobody had entered, so there
@@ -9,7 +12,7 @@ async function fresh(page) {
   await page.addInitScript(() => {
     try { localStorage.removeItem('navaid.emptyHintSeen'); } catch (e) { /* */ }
   });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof routePrimingArmed === 'function'
     && !!document.getElementById('empty-route-hint'));
 }

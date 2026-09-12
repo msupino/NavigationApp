@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is what this file is about, and the phone deck replaces it: the
+// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
+// can use to have the card back. So these open with the card.
 // The 44px touch-target rule, applied to the controls the earlier pass missed. An
 // earlier round covered the zoom buttons and footer links; the hamburger — the only
 // way to reach any menu on a phone — was still 42x21, the smallest target in the app
@@ -9,7 +12,7 @@ const { test, expect } = require('./_setup');
 test.use({ viewport: { width: 375, height: 812 } });
 
 async function boot(page) {
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof syncLegs === 'function');
 }
 
