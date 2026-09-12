@@ -1964,6 +1964,7 @@ window.S = Object.assign({
   afWindLegend: 'Solid barb = reported · dashed = forecast',
   mapTimeNow: 'Now',
   mapTimeNowTitle: 'Back to live: show every layer as it is right now',
+  attribToggle: 'Chart and map credits',
   mapTimeLabel: 'Look ahead',
   mapTimeCharts: 'charts',
   mapTimeChartsTitle: 'Weather charts are published at 00/03/06/12/18Z, so they show the newest sheet issued by the hour you picked',
