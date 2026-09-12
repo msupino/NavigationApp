@@ -487,6 +487,11 @@
 
   async function followMeStart(code) {
     startFailure = null;
+    // One aeroplane per page. A page opened on someone else's link is watching THEM, and a
+    // page that is both watching and sharing has two aircraft on it, two banners, and a
+    // Follow-me control that means two different things. The way to share is to leave the
+    // watch -- which is what the button offers to do.
+    if (viewer) { startFailure = 'viewing'; return null; }
     if (session && sessionAuthorized(session)) {
       return session.status === 'stopping' ? null : session.link;
     }
@@ -587,6 +592,10 @@
     if (session) return null;
     const prev = storedSession();
     if (!prev) return null;
+    // Opened on someone else's link: finish any half-done stop below, but never bring this
+    // device's own sharing back up on a page that is about to watch.
+    const asViewer = !!followMeLinkParams();
+    if (asViewer && !prev.pendingStop) return null;
     if (prev.pendingStop) {
       await withFollowMeLock(async () => {
         const current = rawSession();
@@ -749,10 +758,19 @@
 
   function followMeViewerPlaceBanner(el) {
     if (!el || !el.isConnected) return;
-    const toolbar = document.getElementById('toolbar');
-    const toolbarBox = toolbar && toolbar.getBoundingClientRect();
+    // Below whatever the app has put at the top of the chart. That used to be the floating
+    // menu; on a phone with the deck it is the data strip, and the menu is not on screen at
+    // all -- so the banner was placed against a toolbar of zero height and drawn under the
+    // strip. Reported: the viewer info is hidden by the top bar.
     const gap = 8;
-    const belowToolbar = toolbarBox && toolbarBox.height ? toolbarBox.bottom + gap : gap;
+    const below = (sel) => {
+      const el2 = document.querySelector(sel);
+      if (!el2) return 0;
+      const box = el2.getBoundingClientRect();
+      return (box.height && el2.getClientRects().length) ? box.bottom : 0;
+    };
+    const top = Math.max(below('#toolbar'), below('#deck-strip'));
+    const belowToolbar = top ? top + gap : gap;
     // An expanded phone menu can consume nearly the whole viewport. Keep the status on-screen
     // in that case; its lower stacking level lets the toolbar remain the usable surface.
     const maxTop = Math.max(gap, window.innerHeight - el.offsetHeight - gap);
@@ -767,10 +785,15 @@
       frame = requestAnimationFrame(() => followMeViewerPlaceBanner(el));
     };
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
-    const toolbar = document.getElementById('toolbar');
     if (observer) {
       observer.observe(el);
-      if (toolbar) observer.observe(toolbar);
+      // Both of the things it sits under: the menu changes height as sections open, and the
+      // strip changes height with the language and with whether its second line has anything
+      // to say.
+      for (const sel of ['#toolbar', '#deck-strip']) {
+        const watched = document.querySelector(sel);
+        if (watched) observer.observe(watched);
+      }
     }
     window.addEventListener('resize', place);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', place);
@@ -910,6 +933,10 @@
   async function followMeViewerStart(opts) {
     const p = followMeLinkParams(opts && opts.search, opts && opts.hash);
     if (!p) return null;
+    // A share resumed from an earlier flight -- or still running in this tab -- must not
+    // outlive the moment this page becomes a viewer: the pilot opened someone else's link,
+    // and their own position going out from the same screen is not what they asked for.
+    if (session) { try { await followMeStop(); } catch (e) { /* stop is best-effort here */ } }
     const state = await followMeWatch(p.id, p.key, opts);
     viewer = { state, marker: null, timer: 0, rotateHandler: null };
     // Following an aircraft is not route onboarding. Drop any intro that was painted before
@@ -943,11 +970,22 @@
     if (el) el.remove();
     followMeUnwatch();
   }
+  // The same page without the watch: the link's id and key out of the query and the hash,
+  // everything else left as the pilot had it (language, tuning switches, a loaded route).
+  function followMeUrlWithoutWatch() {
+    const url = new URL(location.href);
+    url.searchParams.delete('follow');
+    const hash = (url.hash || '').replace(/^#/, '');
+    const kept = hash.split('&').filter(part => part && !/^k=/.test(part));
+    url.hash = kept.length ? '#' + kept.join('&') : '';
+    return url.toString();
+  }
+
   function followMeViewing() { return !!viewer; }
 
   NS.followMe = {
     viewerStart: followMeViewerStart, viewerStop: followMeViewerStop, viewing: followMeViewing,
-    forceStop: followMeForceStop,
+    forceStop: followMeForceStop, urlWithoutWatch: followMeUrlWithoutWatch,
     viewerFix: () => (viewer && viewer.state && viewer.state.fix) || null,
     viewerDraw: followMeViewerDraw, viewerRefresh: followMeViewerRefresh,
     linkParams: followMeLinkParams, staleSec: followMeStaleSec,
