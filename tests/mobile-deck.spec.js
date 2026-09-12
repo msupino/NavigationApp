@@ -305,6 +305,30 @@ test('dragging it up snaps to the next height rather than wherever the finger st
   await expect.poll(async () => (await sheetBox(page)).detent).toBe('full');
 });
 
+test('Map closes the menu, and leaves the flight plan alone', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
+  await page.waitForSelector('.modal-back.flight-plan');
+  await page.evaluate(() => {
+    document.querySelector('.deck-btn-layers').click();
+    const sec = document.querySelector('.tb-section[data-sec="charts"] .tb-section-head');
+    if (sec) sec.click();
+  });
+  await page.evaluate(() => document.querySelector('.deck-btn-map').click());
+  const got = await page.evaluate(() => ({
+    sheet: document.getElementById('deck-sheet').hidden,
+    menu: document.getElementById('toolbar').classList.contains('collapsed'),
+    // No section left open behind the closed menu: reopening it should show the menu, not
+    // whatever was being read last time.
+    sections: document.querySelectorAll('.tb-section.open').length,
+    // The plan is the thing being flown from. Map is "show me the chart", not "throw away
+    // the table I am flying".
+    plan: !!document.querySelector('.modal-back.flight-plan'),
+  }));
+  expect(got).toEqual({ sheet: true, menu: true, sections: 0, plan: true });
+});
+
 test('Map closes the sheet', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => document.querySelector('.deck-btn-layers').click());

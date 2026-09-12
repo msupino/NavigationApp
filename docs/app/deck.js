@@ -268,9 +268,16 @@
     };
   }
 
-  // Map is "put everything away": the chart, and nothing over it.
+  // Map is "put everything away": the chart, and nothing over it. The sheet, the menu, any
+  // section left open inside it, and the inspector.
+  //
+  // Not the flight plan. It is the thing being flown FROM -- a pilot tapping Map with the
+  // plan open wants to see where the next leg goes and then go back to the table, and a
+  // button that threw the table away would be one they stopped pressing. It is a
+  // non-blocking modal for exactly that reason: the chart is usable underneath it.
   function showMap() {
     closeSheet();
+    if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
     if (typeof state === 'object' && state && state.selected) {
       state.selected = null;
