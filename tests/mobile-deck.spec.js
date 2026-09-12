@@ -644,3 +644,47 @@ test('a running button lights its whole cell', async ({ page }) => {
   const rec = await look('record');
   expect(rec.bg).not.toBe(on.bg);
 });
+
+// Both themes, because a lit cell is a colour on a colour and the ground moves underneath it.
+for (const theme of ['light', 'dark']) {
+  test('the running state reads in ' + theme + ' mode', async ({ page }) => {
+    await boot(page);
+    await page.evaluate((th) => {
+      document.body.classList.remove('theme-light', 'theme-dark');
+      document.body.classList.add('theme-' + th);
+      window.gpsLiveOn = true;
+      window.gpsRecording = true;
+      NavAid.refreshMobileDeck();
+    }, theme);
+    const got = await page.evaluate(() => {
+      const rgb = (c) => c.match(/[\d.]+/g).slice(0, 3).map(Number);
+      const lum = (c) => { const [r, g, b] = rgb(c); return 0.299 * r + 0.587 * g + 0.114 * b; };
+      const apart = (a, b) => {
+        const [x, y, z] = rgb(a);
+        const [p, q, r] = rgb(b);
+        return Math.hypot(x - p, y - q, z - r);      // colour, not just brightness
+      };
+      const read = (sel) => {
+        const cs = getComputedStyle(document.querySelector(sel));
+        return { color: cs.color, bar: cs.boxShadow, ground: cs.backgroundColor,
+                 contrast: Math.abs(lum(cs.color) - lum(getComputedStyle(document.getElementById('deck-bar')).backgroundColor)) };
+      };
+      const idle = getComputedStyle(document.querySelector('.deck-btn-plan')).color;
+      const here = read('.deck-btn-here');
+      const rec = read('.deck-btn-record');
+      return { here, rec, fromIdle: apart(here.color, idle), recFromHere: apart(rec.color, here.color) };
+    });
+    // The lit label stands off the bar it sits on...
+    expect(got.here.contrast, 'Location does not stand out').toBeGreaterThan(40);
+    expect(got.rec.contrast, 'Record does not stand out').toBeGreaterThan(40);
+    // ...it is a different colour from a button that is merely sitting there...
+    expect(got.fromIdle, 'lit and idle are the same colour').toBeGreaterThan(40);
+    // ...Record and Location are not the same answer...
+    expect(got.recFromHere, 'the two running states look alike').toBeGreaterThan(40);
+    // ...and each carries the ground and the bar, not only a coloured word.
+    expect(got.here.ground).not.toBe('rgba(0, 0, 0, 0)');
+    expect(got.rec.ground).not.toBe('rgba(0, 0, 0, 0)');
+    expect(got.here.bar).toMatch(/inset/);
+    expect(got.rec.bar).toMatch(/inset/);
+  });
+}
