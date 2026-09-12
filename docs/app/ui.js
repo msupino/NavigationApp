@@ -4197,7 +4197,8 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // not as "Follow me". The reload is what actually leaves -- the watch is wired into the
     // page from the URL it opened with, so the honest way out of it is the page without that
     // URL, which is also the state a pilot expects after saying yes.
-    if (typeof f.viewing === 'function' && f.viewing()) {
+    const watchIsExclusive = !(typeof f.shareWhileViewing === 'function' && f.shareWhileViewing());
+    if (watchIsExclusive && typeof f.viewing === 'function' && f.viewing()) {
       const ask = S.followMeLeaveWatchConfirm
         || 'Sharing your own position stops following this aircraft. Continue?';
       // No confirm at all (a runtime that blocks it, which is the whole reason the identifier

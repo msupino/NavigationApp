@@ -808,6 +808,7 @@ NavAid.tuningDefaults = {
   // crash, a force-quit or a reboot mid-flight resumes the SAME link instead of stranding
   // everyone who already has it. Hours, because a link that outlives the flight is a link
   // that tracks you next week: past this, sharing again mints a new one.
+  featureFollowMeShareWhileViewing: { value: false, type: 'bool', label: 'Follow me: may a page share while it is watching' },
   followMeStopMaxSec: { value: 25, min: 1, max: 300, step: 1, label: 'Follow me: how long Stop waits for the relay (s)' },
   followMeResumeHr: { value: 12, min: 1, max: 48, step: 1,
     label: 'Follow me: resume the same link for (hours)' },
@@ -993,7 +994,7 @@ NavAid.tuningGroups = [
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'followMeBroker', 'followMeRateSec',
-    'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'followMeStopMaxSec', 'followMeResumeHr',
+    'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'followMeStopMaxSec', 'followMeResumeHr',
     'featureFollowMePersist', 'featureFollowMeNewLink', 'followMeLinkPerName'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
