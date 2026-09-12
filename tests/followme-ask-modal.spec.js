@@ -166,11 +166,21 @@ test('a code this device has used before still wins', async ({ page }) => {
   expect(await page.inputValue('.follow-me-ask-input')).toBe('4X-CDE');
 });
 
-test('with no route there is nothing to guess, and it says nothing', async ({ page }) => {
+test('with no route it still offers a name, because a blank field is a share not made', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => { try { localStorage.removeItem('navaid.followMeCode'); } catch (e) { /* */ } });
   await page.evaluate(() => document.getElementById('follow-me-map').click());
   await page.waitForSelector('.follow-me-ask-modal');
-  // An invented identifier would be worse than an empty field: it would be shared.
-  expect(await page.inputValue('.follow-me-ask-input')).toBe('');
+  // Nothing identifies the link except the capability key inside it, so two aeroplanes both
+  // called NavAid collide with nothing. It is a label, and a default label beats a blank one.
+  expect(await page.inputValue('.follow-me-ask-input')).toBe('NavAid');
+});
+
+test('the fallback name is shareable as it stands', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { try { localStorage.removeItem('navaid.followMeCode'); } catch (e) { /* */ } });
+  const stored = await page.evaluate(() => NavAid.followMe.setCode(followMeDefaultCode()));
+  // followMeSetCode is what the share actually stores: upper case, no spaces, capped.
+  expect(stored).toBeTruthy();
+  expect(stored).toBe('NAVAID');
 });

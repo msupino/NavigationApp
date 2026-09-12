@@ -4240,15 +4240,20 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
 // nothing about a flight to whoever opens the link. The route does. Departure and destination
 // are what a follower is actually watching, and a pilot who has a registration types it over
 // this in one go, because the field opens selected.
+// Nothing to guess from, and an empty field is a share nobody makes: the pilot has to think
+// of a name before they can press the button. The link is not identified by this -- the
+// capability key in it is what nobody else can guess -- so two aeroplanes both called NavAid
+// collide with nothing. It is a label on a link, and a default label beats a blank one.
+const FOLLOW_ME_FALLBACK_CODE = 'NavAid';
 function followMeDefaultCode() {
   const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
     ? state.waypoints : [];
-  if (wps.length < 2) return '';
+  if (wps.length < 2) return FOLLOW_ME_FALLBACK_CODE;
   // The same charset followMeSetCode keeps: upper case, no spaces.
   const clean = (w) => String((w && w.name) || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 5);
   const from = clean(wps[0]);
   const to = clean(wps[wps.length - 1]);
-  if (!from || !to) return '';
+  if (!from || !to) return FOLLOW_ME_FALLBACK_CODE;
   return (from + '-' + to).slice(0, 12);
 }
 window.followMeDefaultCode = followMeDefaultCode;
