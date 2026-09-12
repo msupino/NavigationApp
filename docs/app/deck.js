@@ -564,6 +564,7 @@
   function teardown() {
     closeSheet();
     if (longPress) longPress();
+    modalWatch = null;                       // disconnected with the rest, just below
     if (sheet) { sheet.remove(); sheet = sheetBody = sheetTitle = null; }
     for (const obs of observers) obs.disconnect();
     observers = [];
@@ -575,6 +576,29 @@
     document.body.classList.remove('deck-on');
   }
 
+  // A menu item that opens something -- a chart, the route templates, the NOTAM list -- has
+  // finished being a menu. The sheet stayed open over the thing it had just opened, so the
+  // pilot had to put the menu away by hand to see what they asked for. Reported: the menu
+  // hides charts.
+  //
+  // Watched rather than wired into each button: every modal in the app arrives as a
+  // .modal-back on the body, and there are dozens of buttons that make one.
+  let modalWatch = null;
+  function watchModals() {
+    if (modalWatch || typeof MutationObserver !== 'function') return;
+    modalWatch = new MutationObserver((records) => {
+      if (!sheet || sheet.hidden) return;
+      for (const rec of records) {
+        for (const node of rec.addedNodes) {
+          if (node.nodeType !== 1) continue;
+          if (node.matches && node.matches('.modal-back, .sim-overlay')) { closeSheet(); return; }
+        }
+      }
+    });
+    modalWatch.observe(document.body, { childList: true });
+    observers.push(modalWatch);
+  }
+
   function apply() {
     const on = wanted();
     if (on === !!deck) { if (on) sync(); return; }
@@ -583,6 +607,7 @@
     buildDeck();
     buildSheet();
     wireLongPress();
+    watchModals();
     document.body.classList.add('deck-on');
     // The strip reads these three; nothing else needs to tell it anything.
     watch('gps-readout');

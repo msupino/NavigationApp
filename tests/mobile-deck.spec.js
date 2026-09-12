@@ -483,3 +483,37 @@ test('a locked route refuses both, and says so', async ({ page }) => {
     .map(b => ({ text: b.textContent, disabled: b.disabled })));
   expect(got.every(b => b.disabled), JSON.stringify(got)).toBe(true);
 });
+
+// Reported from the phone, with a screenshot: the menu sheet stayed open on top of the
+// route-templates picker it had just opened, so the chart -- and the thing being chosen --
+// were behind the menu that asked for them.
+test('a menu item that opens something puts the menu away', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  expect(await page.evaluate(() => document.getElementById('deck-sheet').hidden)).toBe(false);
+  await page.evaluate(() => {
+    const sec = document.querySelector('.tb-section[data-sec="charts"] .tb-section-head');
+    if (sec) sec.click();
+    document.getElementById('route-templates').click();
+  });
+  await page.waitForSelector('.modal-back');
+  const got = await page.evaluate(() => ({
+    sheet: document.getElementById('deck-sheet').hidden,
+    modal: !!document.querySelector('.modal-back'),
+    // ...and the menu went back where it came from on the way out, as on every other exit.
+    parent: document.getElementById('toolbar').parentNode.tagName,
+    hosted: document.getElementById('toolbar').classList.contains('deck-hosted'),
+  }));
+  expect(got).toEqual({ sheet: true, modal: true, parent: 'BODY', hosted: false });
+});
+
+test('a layer toggle is not "opening something" and leaves the menu up', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  await page.evaluate(() => {
+    const cb = document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]');
+    if (cb) cb.click();
+  });
+  // Switching layers on and off is a run of taps in one place; the sheet is the place.
+  expect(await page.evaluate(() => document.getElementById('deck-sheet').hidden)).toBe(false);
+});
