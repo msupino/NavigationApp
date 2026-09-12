@@ -452,6 +452,10 @@ function refreshVoiceControl() {
   const on = window.voiceAlerts === true;
   voiceBtn.textContent = on ? '\ud83d\udd0a' : '\ud83d\udd07';     // speaker on / muted
   voiceBtn.classList.toggle('voice-on', on);
+  // Every place that starts or stops a live position already calls this -- it is the app's
+  // one notification that a fix has begun or ceased driving the map -- and the map clock
+  // hides itself on the same transition.
+  if (window.NavAid && NavAid.refreshMapClock) NavAid.refreshMapClock();
   voiceBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
   const label = on ? (S.voiceOnTitle || 'Alerts are spoken — tap to silence them')
                    : (S.voiceOffTitle || 'Alerts are silent — tap to have them spoken');
@@ -10478,6 +10482,17 @@ const NavWxTime = (function () {
   if (!el || !slider || !master) return;
 
   const featureOn = () => typeof tune !== 'function' || tune('featureMapClock') !== false;
+  // A live position is the one state where this control is in the way rather than useful: the
+  // pilot is reading the chart under it and the live readout beside it, and the hour they are
+  // flying in is NOW by definition. The clock dims when nothing answers to it -- it has a
+  // fixed place on the chart, and a control that vanishes is one you hunt for -- but flying
+  // is not "nothing to scrub", it is "not now", and the strip sits across the bottom of a
+  // phone screen that has an aircraft on it. Requested: hide the time slider on the map when
+  // showing location. The gist owns the removal, as the house rule requires, and the
+  // look-ahead itself is untouched: every layer still answers to it, and the sliders in Extra
+  // layers and on the inspector still move it.
+  const liveHides = () => (typeof tune !== 'function' || tune('hideMapClockWhileLive') !== false)
+    && typeof gpsPositionLive === 'function' && gpsPositionLive();
   // Which layers actually answer to a clock. Plates, airspace and terrain do not, so with
   // only those up the control has nothing to move and says so by going quiet.
   const TIMED = ['notam-cb', 'airmet-cb', 'show-wind-cb', 'windfield-cb', 'airfield-wind-cb',
@@ -10553,7 +10568,7 @@ const NavWxTime = (function () {
     }
   }
   function refresh() {
-    el.hidden = !featureOn();
+    el.hidden = !featureOn() || liveHides();
     const timed = anyTimedLayer() || inspectorTimed();
     // The panel's copy exists for one reason: on a phone the sheet covers the map's copy. So
     // it appears when there is something for a clock to move and not otherwise -- a waypoint,
