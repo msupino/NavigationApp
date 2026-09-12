@@ -808,6 +808,7 @@ NavAid.tuningDefaults = {
   // crash, a force-quit or a reboot mid-flight resumes the SAME link instead of stranding
   // everyone who already has it. Hours, because a link that outlives the flight is a link
   // that tracks you next week: past this, sharing again mints a new one.
+  followMeStopMaxSec: { value: 25, min: 1, max: 300, step: 1, label: 'Follow me: how long Stop waits for the relay (s)' },
   followMeResumeHr: { value: 12, min: 1, max: 48, step: 1,
     label: 'Follow me: resume the same link for (hours)' },
   // The other end of that trade: one link per aircraft, kept forever, that can live in a
@@ -992,7 +993,7 @@ NavAid.tuningGroups = [
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'followMeBroker', 'followMeRateSec',
-    'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'followMeResumeHr',
+    'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'followMeStopMaxSec', 'followMeResumeHr',
     'featureFollowMePersist', 'featureFollowMeNewLink', 'followMeLinkPerName'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
@@ -2185,6 +2186,7 @@ window.S = Object.assign({
   followMeCopied: 'Follow-me link copied.',
   followMeCopiedNoFix: 'Follow-me link copied — positions start once Location or Record is on.',
   followMeShareFailed: 'Follow me started, but the link could not be shared or copied.',
+  followMeStoppedLocal: 'Sharing stopped on this phone — the relay never answered. If anyone still has the link, use New link.',
   followMeStopped: 'Follow me: stopped. The link is dead.',
   followMeNoFix: 'Follow me needs a position: turn on Location or Record first.',
   tbShareTitle: 'Copy a shareable link to this route to the clipboard',
