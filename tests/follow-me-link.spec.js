@@ -405,7 +405,7 @@ test('the viewer status stays below the toolbar as the mobile menu changes heigh
 
 test('the Hebrew viewer banner keeps telemetry LTR in an RTL segment order', async ({ page }) => {
   await installStub(page);
-  await page.goto('?lang=he&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
   const seen = await page.evaluate(async () => {
     const F = NavAid.followMe;

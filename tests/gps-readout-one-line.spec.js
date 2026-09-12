@@ -1,4 +1,7 @@
 // @ts-check
+// The live readout inside the floating menu card is what this file measures; on a phone
+// the deck now carries those numbers on its strip instead (see mobile-deck.spec.js).
+// `?deck=0` asks for the card, which is still what a wide screen and a deck-off gist get.
 // The live readout is the instrument line: points, elapsed, ground speed, altitude, the
 // subscale setting and the heading. It is read at arm's length in a cockpit, and on a phone
 // it was sharing the footer row with the Record and Location buttons -- about 220px on a
@@ -29,7 +32,7 @@ async function liveReadout(page, opts) {
 
 async function boot(page, width, lang) {
   await page.setViewportSize({ width: width, height: 820 });
-  await page.goto('?lang=' + (lang || 'en') + '&nogist');
+  await page.goto('?lang=' + (lang || 'en') + '&nogist&deck=0');
   await page.waitForFunction(() => typeof gpsUpdateReadout === 'function');
 }
 

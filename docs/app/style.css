@@ -7614,7 +7614,12 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   gap: 2px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
 }
-.deck-strip-top { display: flex; align-items: baseline; gap: 10px; }
+/* The readout inside the menu fits ITSELF to the menu's width, and on a phone that menu is
+   not on screen -- so the strip does its own fitting: the numbers keep their space and the
+   flight name gives way, because a truncated name still names the flight and a truncated
+   altitude is a wrong altitude. */
+.deck-strip { overflow: hidden; }
+.deck-strip-top { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .deck-strip-leg {
   font-family: system-ui, sans-serif;
   font-weight: 600;
@@ -7622,12 +7627,15 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .deck-strip-vals {
   margin-inline-start: auto;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 /* Nothing is being flown: the numbers are the last fix or nothing at all, and the strip says
    so by going quiet rather than by emptying. */

@@ -588,3 +588,33 @@ test('Map takes the search panel and the assistant with it', async ({ page }) =>
   // Map means the chart and nothing over it, whatever put it there.
   expect(got).toEqual({ assistant: 0, search: 0 });
 });
+
+test('the strip fits: the numbers keep their space, the flight name gives way', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => document.getElementById('deck-strip'));
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'HERZLIYA NORTH' },
+                       { lat: 32.6, lng: 35.3, name: 'MEGIDDO SOUTH' }];
+    syncLegs();
+    draw();
+    window.gpsLiveOn = true;
+    window.gpsLastGS = 104;
+    window.gpsLastAlt = 12450;
+    window.gpsAltIsGeometric = false;
+    window.gpsQnh = { inHg: 29.83, hPa: 1010, at: Date.now(), lat: 32, lng: 34.9 };
+    window.gpsOwn = { lat: 32, lng: 34.9, hdg: 75, t: Date.now() };
+    gpsUpdateReadout();
+    NavAid.refreshMobileDeck();
+  });
+  const got = await page.evaluate(() => {
+    const strip = document.getElementById('deck-strip');
+    const vals = document.querySelector('.deck-strip-vals').getBoundingClientRect();
+    return { overflow: strip.scrollWidth > strip.clientWidth + 1,
+             valsInside: vals.right <= strip.getBoundingClientRect().right + 1,
+             text: document.querySelector('.deck-strip-vals').textContent };
+  });
+  expect(got.overflow, 'the strip runs off the screen').toBe(false);
+  expect(got.valsInside, 'the instrument is off the edge').toBe(true);
+  expect(got.text).toContain('kt');
+});
