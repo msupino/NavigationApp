@@ -1,4 +1,6 @@
 // Follow me: a live position link with no server of ours.
+// The floating menu card is the surface these phone measurements are against; on a phone the
+// deck replaces it (see mobile-deck.spec.js), so they ask for the card with `?deck=0`.
 //
 // A public MQTT broker relays the bytes; the payload is encrypted before it gets there and
 // the key rides in the link's fragment, which browsers never send. So the relay carries
@@ -47,7 +49,7 @@ async function installStub(page) {
 
 async function boot(page) {
   await installStub(page);
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
 }
 
@@ -565,7 +567,7 @@ test('the toolbar button keeps its decorative icon when sharing state changes', 
 // test here would pass whether or not the calls were ever hooked up, which is exactly how a
 // feature ends up switched on in the gist and invisible until a reload.
 test('the gist-landing block calls both refreshes', async ({ page }) => {
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   const wired = await page.evaluate(async () => {
     const src = await (await fetch('app/ui.js')).text();
     const at = src.indexOf('loadRemoteConfig().then');
@@ -1068,7 +1070,7 @@ test('publisher CONNECT installs a retained empty Last Will', async ({ page }) =
 // gist lands after that, so a feature-flag check there answered with the baked-in false and
 // the link opened an ordinary map - which is exactly what happened in the air.
 test('the viewer boot does not wait on the gist', async ({ page }) => {
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   const src = await page.evaluate(async () => (await fetch('app/followme.js')).text());
   const at = src.indexOf('function followMeBoot');
   const boot = src.slice(at, at + 900);
@@ -1086,7 +1088,7 @@ test('language selection preserves the follower encryption key on a clean phone'
     try { localStorage.removeItem('navaid.lang'); } catch (e) { /* storage unavailable */ }
   });
   const key = 'A'.repeat(43); // 32 zero bytes, base64url without padding
-  await page.goto('?nogist&follow=test-viewer#k=' + key);
+  await page.goto('?nogist&deck=0&follow=test-viewer#k=' + key);
   await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe && NavAid.followMe.viewing()));
 
   expect(await page.evaluate(() => ({
@@ -1105,7 +1107,7 @@ test('language selection preserves the follower encryption key on a clean phone'
 test('opening a follower link skips route onboarding and locks route editing', async ({ page }) => {
   await installStub(page);
   const key = 'A'.repeat(43); // 32 zero bytes, base64url without padding
-  await page.goto('?lang=en&nogist&follow=test-viewer#k=' + key);
+  await page.goto('?lang=en&nogist&deck=0&follow=test-viewer#k=' + key);
   await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe.viewing()));
 
   await expect(page.locator('#empty-route-hint')).toHaveCount(0);

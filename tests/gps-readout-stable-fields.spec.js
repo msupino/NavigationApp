@@ -1,4 +1,6 @@
 // @ts-check
+// The floating menu card is the surface these phone measurements are against; on a phone the
+// deck replaces it (see mobile-deck.spec.js), so they ask for the card with `?deck=0`.
 // Reported from the cockpit: "the live location info keeps changing the info details".
 //
 // The readout drops a field when the line is too long for the panel, and every value on it
@@ -13,7 +15,7 @@ const { test, expect } = require('./_setup');
 
 async function boot(page, width) {
   await page.setViewportSize({ width: width || 390, height: 820 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof gpsUpdateReadout === 'function'
     && window.NavAid && NavAid.tuningDefaults.gpsReadoutRefitPx);
 }
