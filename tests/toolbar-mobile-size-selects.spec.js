@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is the layout this file is about, and the phone deck replaces it
+// (see mobile-deck.spec.js). `?deck=0` is the switch a gist -- or a pilot -- uses to have
+// the card back, so these open with it.
 // Two mobile toolbar defects reported from a phone:
 //  - the closed menu was four stacked ~50px rows (drag handle, ☰, language, links) and ate a
 //    quarter of the screen, when all three controls are small enough to share one row;
@@ -17,7 +20,7 @@ async function boot(page) {
         localStorage.setItem('navaid.sec.' + s, '1');
     } catch (e) {}
   });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof state !== 'undefined' &&
     !!document.getElementById('toolbar'));
 }
@@ -115,7 +118,7 @@ test('no select is cut off by the panel edge, in either language', async ({ page
           localStorage.setItem('navaid.sec.' + s, '1');
       } catch (e) {}
     });
-    await page.goto('?lang=' + lang + '&nogist');
+    await page.goto('?lang=' + lang + '&nogist&deck=0');
     await page.waitForFunction(() => !!document.getElementById('toolbar'));
     const sels = await eachSectionSelects(page, (sel, tb) => {
       const b = sel.getBoundingClientRect(), p = tb.getBoundingClientRect();
@@ -161,7 +164,7 @@ test('the chevron is drawn in the theme\'s ink, both ways', async ({ page }) => 
 
 test('the closed menu does not cover the Zulu clock, in either language', async ({ page }) => {
   for (const lang of ['en', 'he']) {
-    await page.goto('?lang=' + lang + '&nogist');
+    await page.goto('?lang=' + lang + '&nogist&deck=0');
     await page.waitForFunction(() => !!document.getElementById('toolbar') &&
       !!document.getElementById('zulu-clock'));
     const r = await page.evaluate(() => {
@@ -193,7 +196,7 @@ test('the sim-trigger button (inside the GPS group, overflows the panel like its
   // is hidden, on the left of show location" (RTL mirrors the overflow direction, so
   // there it sat flush against the panel's own left edge instead).
   for (const lang of ['en', 'he']) {
-    await page.goto('?lang=' + lang + '&nogist');
+    await page.goto('?lang=' + lang + '&nogist&deck=0');
     await page.waitForFunction(() => !!document.getElementById('toolbar') &&
       !!document.getElementById('zulu-clock') && !!document.getElementById('sim-trigger'));
     const r = await page.evaluate(() => {
@@ -214,7 +217,7 @@ test('the sim-trigger button (inside the GPS group, overflows the panel like its
 
 test('the sim trigger remains visible and tappable with Android large text', async ({ page }) => {
   for (const lang of ['en', 'he']) {
-    await page.goto('?lang=' + lang + '&nogist');
+    await page.goto('?lang=' + lang + '&nogist&deck=0');
     await page.waitForFunction(() => !!document.getElementById('sim-trigger'));
     const r = await page.evaluate(() => {
       // Android's accessibility font scale enlarges WebView text without widening the
@@ -239,7 +242,7 @@ test('the sim trigger remains visible and tappable with Android large text', asy
 });
 
 test('the closed menu keeps finger-sized targets', async ({ page }) => {
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => !!document.getElementById('toolbar'));
   const taps = await page.evaluate(() => {
     const tb = document.getElementById('toolbar');

@@ -17,14 +17,16 @@
 (function mobileDeck() {
   const NARROW = '(max-width: 680px), (pointer: coarse)';
 
-  // The gist owns the feature; `?deck=1` / `?deck=0` is for looking at it on a phone without
-  // waiting for a config push, the same escape hatch `?tune=1` gives the tuning panel.
+  // On by default now, narrow screens only. `?deck=0` puts the floating menu back without
+  // waiting for a config push, and `?deck=1` brings the deck up on a wide screen to look at
+  // it -- the same escape hatch `?tune=1` gives the tuning panel. The gist still owns the
+  // switch itself.
   function flagOn() {
     let param = null;
     try { param = new URLSearchParams(location.search).get('deck'); } catch (e) { /* no URL */ }
     if (param === '1' || param === 'true') return true;
     if (param === '0' || param === 'false') return false;
-    return typeof tune === 'function' && tune('featureMobileDeck') === true;
+    return typeof tune !== 'function' || tune('featureMobileDeck') !== false;
   }
   const narrow = () => !window.matchMedia || window.matchMedia(NARROW).matches;
   const wanted = () => flagOn() && narrow();

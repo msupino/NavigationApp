@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is what this file is about, and the phone deck replaces it: the
+// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
+// can use to have the card back. So these open with the card.
 // The closed menu card on a phone: the drag handle, the ☰ and the language picker belong on
 // ONE row. As flex items they wrapped as soon as a platform's font made the picker a few
 // pixels wider than the card's cap — reported from a real phone, where the language sat on a
@@ -12,7 +15,7 @@ const { test, expect } = require('./_setup');
 test.use({ viewport: { width: 390, height: 780 }, hasTouch: true });
 
 async function collapsed(page, lang) {
-  await page.goto(`?lang=${lang}&nogist`);
+  await page.goto(`?lang=${lang}&nogist&deck=0`);
   await page.waitForSelector('#toolbar');
   await page.evaluate(() => document.getElementById('toolbar').classList.add('collapsed'));
   return page.evaluate(() => {
@@ -78,7 +81,7 @@ test('an oversized language picker shrinks instead of wrapping', async ({ page }
 // started, which is a control changing place for a reason the pilot cannot see.
 for (const lang of ['en', 'he']) {
   test(`${lang}: the simulator button does not move when the GPS labels change`, async ({ page }) => {
-    await page.goto(`?lang=${lang}&nogist`);
+    await page.goto(`?lang=${lang}&nogist&deck=0`);
     await page.waitForSelector('#toolbar');
     const tops = await page.evaluate(() => {
       document.getElementById('toolbar').classList.add('collapsed');

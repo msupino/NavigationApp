@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is what this file is about, and the phone deck replaces it: the
+// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
+// can use to have the card back. So these open with the card.
 // The card must end where it started whatever the phone's size and however fast the menu is
 // worked: the toolbar collapses over several frames, and an attempt to put the legend back
 // that lands mid-animation reads a bar that is still tall. Sizes chosen so the toolbar wraps
@@ -12,7 +15,7 @@ for (const [w, h] of [[390, 780], [360, 720], [412, 915], [320, 640], [430, 932]
       localStorage.setItem('navaid.legendCollapsed', '0');
       localStorage.setItem('navaid.legendPos.en', JSON.stringify({ x: 12, y: 300 }));
     });
-    await page.goto('?lang=en&nogist');
+    await page.goto('?lang=en&nogist&deck=0');
     await page.waitForSelector('#boot-loading', { state: 'detached', timeout: 15000 });
     const y = () => page.evaluate(() => Math.round(document.getElementById('map-legend').getBoundingClientRect().y));
     const start = await y();

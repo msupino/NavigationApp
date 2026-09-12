@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is what this file is about, and the phone deck replaces it: the
+// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
+// can use to have the card back. So these open with the card.
 // Desktop and floating-mobile toolbar positions use separate storage keys. Crossing the
 // responsive boundary must also separate their live inline geometry.
 const { test, expect } = require('./_setup');
@@ -13,7 +16,7 @@ async function bootDesktop(page, lang, mobilePosition) {
       localStorage.setItem('navaid.toolbarPos.' + language, JSON.stringify(savedMobile));
     }
   }, { language: lang, savedMobile: mobilePosition });
-  await page.goto('?lang=' + lang + '&nogist');
+  await page.goto('?lang=' + lang + '&nogist&deck=0');
   // The wide menubar is almost viewport-wide, so x is clamped; its distinct y proves the
   // saved desktop geometry was applied before the responsive transition.
   await page.waitForFunction(() => document.getElementById('toolbar').style.top === '90px');
@@ -50,7 +53,7 @@ test('a queued desktop restore cannot overwrite mobile after a rapid mode flip',
     localStorage.clear();
     localStorage.setItem('navaid.toolbarPosDesktop.en', JSON.stringify({ x: 120, y: 90 }));
   });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => document.getElementById('toolbar').classList.contains('collapsed'));
 
   await page.evaluate(() => {

@@ -842,7 +842,7 @@ NavAid.tuningDefaults = {
   // and the map is where a pilot is reading, so it is opted into rather than out of. On
   // brings back the button and the panel with nothing else to configure.
   featureAssistant: { value: false, type: 'bool', label: 'Feature: AI assistant button' },
-  featureMobileDeck: { value: false, type: 'bool', label: 'Feature: phone data strip and bottom deck' },
+  featureMobileDeck: { value: true, type: 'bool', label: 'Feature: phone data strip and bottom deck' },
   // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
   // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
   // it, let alone weigh it. Both live here so they can be tuned from the gist without a

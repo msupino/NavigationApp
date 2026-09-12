@@ -1,7 +1,7 @@
 // @ts-check
 // Option B, first slice: a data strip along the top and a deck of five targets along the
-// bottom, on narrow screens only, behind `featureMobileDeck` (off) with `?deck=1` to look at
-// it on a phone without waiting for a config push.
+// bottom, on narrow screens only. On by default (`featureMobileDeck`); `?deck=0` puts the
+// floating menu back without waiting for a config push.
 //
 // The point is where the furniture sits, not what it does: every deck button drives a control
 // that already exists by clicking it, so the state, the persistence and the existing tests of
@@ -15,7 +15,7 @@ const PHONE = { width: 390, height: 844 };
 async function boot(page, opts) {
   const o = opts || {};
   await page.setViewportSize(o.size || PHONE);
-  await page.goto('?lang=en&nogist' + (o.deck === false ? '' : '&deck=1'));
+  await page.goto('?lang=en&nogist' + (o.deck === false ? '&deck=0' : ''));
   await page.waitForFunction(() => typeof draw === 'function' && window.NavAid
     && typeof NavAid.refreshMobileDeck === 'function');
   await page.evaluate(() => {
@@ -31,7 +31,7 @@ const route = (page) => page.evaluate(() => {
   draw();
 });
 
-test('off by default: nothing changes for anyone until the gist says so', async ({ page }) => {
+test('the gist can put the floating menu back', async ({ page }) => {
   await boot(page, { deck: false });
   await expect(page.locator('#deck-bar')).toHaveCount(0);
   await expect(page.locator('#deck-strip')).toHaveCount(0);
@@ -49,7 +49,9 @@ test('a phone gets the strip and the deck', async ({ page }) => {
 });
 
 test('a desktop is not given a phone deck', async ({ page }) => {
-  await boot(page, { size: { width: 1280, height: 900 } });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof draw === 'function');
   await expect(page.locator('#deck-bar')).toHaveCount(0);
 });
 
@@ -182,7 +184,7 @@ test('the menu opens below the strip, not behind it', async ({ page }) => {
 // text node let the bidi algorithm interleave them into something that is not a time.
 test('the Hebrew clock line keeps its pieces apart', async ({ page }) => {
   await page.setViewportSize(PHONE);
-  await page.goto('?lang=he&nogist&deck=1');
+  await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => document.getElementById('deck-strip'));
   await page.evaluate(() => {
     const m = document.getElementById('lookahead-time');

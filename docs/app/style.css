@@ -7691,7 +7691,14 @@ body.deck-on #toolbar {
   overflow-y: auto;
 }
 body.deck-on #inspector { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
-body.deck-on .map-time { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
+/* The bottom of a phone screen, in order upward: the deck, the route hint, the clock. Each
+   was placed for a screen whose bottom edge was the map's; the deck moved that edge. */
+body.deck-on #empty-route-hint { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+body.deck-on .map-time {
+  bottom: calc(124px + env(safe-area-inset-bottom, 0px));
+  /* Clear of the zoom column and its z-level readout, which the deck did not move. */
+  right: 112px;
+}
 body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu time now */
 /* The sheet: one surface for everything that is not the chart, at one of three heights.
    It sits above the deck and below the strip, and the chart behind it stays live -- that is

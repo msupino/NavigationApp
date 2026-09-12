@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is what this file is about, and the phone deck replaces it: the
+// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
+// can use to have the card back. So these open with the card.
 // Coverage for toolbar UI controls whose state must persist across reload.
 // Targets gaps in the existing spec suite: section headers, display checkboxes,
 // sliders, base-map layer, and toolbar collapse state.
@@ -19,7 +22,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('?lang=en');
+  await page.goto('?lang=en&deck=0');
   await page.waitForFunction(() => typeof state !== 'undefined');
 }
 

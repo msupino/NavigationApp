@@ -1,3 +1,6 @@
+// The floating menu card is the layout this file is about, and the phone deck replaces it
+// (see mobile-deck.spec.js). `?deck=0` is the switch a gist -- or a pilot -- uses to have
+// the card back, so these open with it.
 // The collapsed-toolbar toggle is the ONLY way into the eight menus on a phone
 // (display:none from 681px up), and the 44px touch-target rule overrode the base
 // rule's space-between — the three bars stacked into one 6px smudge, so the menu
@@ -40,7 +43,7 @@ function expectLegendUsable({ legend, content, intersects, viewport }) {
 
 test('the mobile menu toggle renders three spaced bars', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => !!document.getElementById('toolbar-toggle'));
   const bars = await page.evaluate(() => {
     const t = document.getElementById('toolbar-toggle');
@@ -63,7 +66,7 @@ test('the mobile menu toggle renders three spaced bars', async ({ page }) => {
 
 test('the toggle opens the menus a first-time phone user needs', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => !!document.getElementById('toolbar-toggle'));
   const hiddenBefore = await page.evaluate(() =>
     [...document.querySelectorAll('#toolbar .tb-section-head')].every(h => h.getBoundingClientRect().height === 0));
@@ -78,7 +81,7 @@ for (const lang of ['en', 'he']) {
   test(`the complete ${lang} legend stays visible beside the expanded short-phone toolbar`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 664 });
     await page.addInitScript(() => localStorage.setItem('navaid.toolbarCollapsed', '0'));
-    await page.goto(`?lang=${lang}&nogist`);
+    await page.goto(`?lang=${lang}&nogist&deck=0`);
     await page.waitForFunction(() => {
       const toolbar = document.getElementById('toolbar');
       const legend = document.getElementById('map-legend');
@@ -102,7 +105,7 @@ for (const lang of ['en', 'he']) {
 
 test('an untouched desktop legend keeps its Leaflet bottom anchor after resize', async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 800 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() =>
     !document.documentElement.classList.contains('app-booting') &&
     document.getElementById('map-legend').getBoundingClientRect().height > 0);
@@ -121,7 +124,7 @@ test('an untouched desktop legend keeps its Leaflet bottom anchor after resize',
 test('a dragged legend is reconciled and remains persistent after a live phone resize', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => localStorage.setItem('navaid.toolbarCollapsed', '0'));
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => {
     const toolbar = document.getElementById('toolbar');
     return !document.documentElement.classList.contains('app-booting') &&
@@ -192,14 +195,14 @@ test('an unset altitude is not clipped: dash on a phone, the word on desktop', a
   };
 
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof showFlightPlan === 'function');
   const phone = await openPlan();
   expect(phone.placeholder).toBe('—');
   expect(phone.textW).toBeLessThanOrEqual(phone.usable);
 
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof showFlightPlan === 'function');
   const desktop = await openPlan();
   expect(desktop.placeholder).toBe('Unknown');
@@ -208,7 +211,7 @@ test('an unset altitude is not clipped: dash on a phone, the word on desktop', a
 
 test('the Hebrew unset-altitude placeholder also fits on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('?lang=he&nogist');
+  await page.goto('?lang=he&nogist&deck=0');
   await page.waitForFunction(() => typeof showFlightPlan === 'function');
   const out = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
@@ -227,7 +230,7 @@ test('the Hebrew unset-altitude placeholder also fits on a phone', async ({ page
 
 test('the phone bottom band does not pile up legend, chip, coords and attribution', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof syncLegs === 'function');
   const boxes = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
@@ -251,7 +254,7 @@ test('the phone bottom band does not pile up legend, chip, coords and attributio
 
 test('the collapsed phone toolbar is no taller than its four visible rows', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => !!document.getElementById('toolbar-toggle'));
   const out = await page.evaluate(() => {
     const tb = document.getElementById('toolbar');
@@ -266,7 +269,7 @@ test('the collapsed phone toolbar is no taller than its four visible rows', asyn
 
 test('the search tip retires after the first search and stays gone', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof runSearch === 'function');
   await expect(page.locator('#wp-search-hint')).toBeVisible();
   await page.fill('#wp-search', 'LLHZ');
@@ -280,7 +283,7 @@ test('the search tip retires after the first search and stays gone', async ({ pa
 
 test('an unset altitude is drawn dashed and captioned, not as a confident line', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof routeProfile === 'function');
   const out = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];

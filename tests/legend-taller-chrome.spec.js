@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is what this file is about, and the phone deck replaces it: the
+// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
+// can use to have the card back. So these open with the card.
 // The legend must not walk whatever the chrome's geometry. CI renders a taller collapsed
 // toolbar than a laptop does, which is what made an earlier version of this fix look right
 // locally and wrong there: the card could not reach its old spot, so it stayed where the
@@ -11,7 +14,7 @@ test('a taller collapsed toolbar still leaves the legend where it was', async ({
     localStorage.setItem('navaid.legendCollapsed', '0');
     localStorage.setItem('navaid.legendPos.en', JSON.stringify({ x: 12, y: 300 }));
   });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForSelector('#boot-loading', { state: 'detached', timeout: 15000 });
   await page.evaluate(() => {
     document.getElementById('toolbar').style.minHeight = '240px';   // a fatter collapsed bar
