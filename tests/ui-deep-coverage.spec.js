@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is the layout these phone cases are about, and the deck replaces
+// it (see mobile-deck.spec.js). `?deck=0` is the switch that brings the card back, so
+// they open with it.
 // Coverage for under-tested interactive UI areas:
 //   - Inspector panel (waypoint click → open, edit name, close)
 //   - Charts modal navigation (open airport row, click plate, plate viewer)
@@ -29,7 +32,7 @@ async function boot(page, lang = 'en') {
       }
     } catch (e) {}
   });
-  await page.goto('?lang=' + lang);
+  await page.goto('?lang=' + lang + '&deck=0');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
   await hideToolbarMenus(page);
 }
@@ -45,7 +48,7 @@ async function bootWithSavedSelection(page, route, selected) {
       sessionStorage.setItem('navaid.selected', JSON.stringify(selected));
     } catch (e) {}
   }, { route, selected });
-  await page.goto('?lang=en');
+  await page.goto('?lang=en&deck=0');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
   await hideToolbarMenus(page);
 }
@@ -380,7 +383,7 @@ test.describe('Inspector panel', () => {
     await expect.poll(() =>
       page.evaluate(() => sessionStorage.getItem('navaid.selected')))
       .toBe('{"type":"wp","index":0}');
-    await page.goto('?lang=he');
+    await page.goto('?lang=he&deck=0');
     await page.waitForFunction(() =>
       state && state.selected && state.selected.type === 'wp' && state.selected.index === 0);
     await expect(page.locator('#lang-select')).toHaveValue('he');
@@ -540,7 +543,7 @@ test.describe('Charts modal navigation', () => {
       { button: '#route-templates', marker: '.route-template-modal' },
     ];
     for (const c of cases) {
-      await page.goto('?lang=en');
+      await page.goto('?lang=en&deck=0');
       await page.waitForFunction(() => typeof state !== 'undefined' &&
         typeof showChartsModal === 'function' &&
         typeof showRouteTemplatesModal === 'function');

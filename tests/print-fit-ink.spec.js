@@ -1,4 +1,7 @@
 // @ts-check
+// The floating menu card is the layout these phone cases are about, and the deck replaces
+// it (see mobile-deck.spec.js). `?deck=0` is the switch that brings the card back, so
+// they open with it.
 // The print-clipping warning has to consider everything the export DRAWS, not just the
 // waypoint coordinates. A leg kite is ~18.5 x 33 mm of ink hanging off its leg, so a
 // route whose waypoints all sit inside the page frame can still print with its labels
@@ -7,7 +10,7 @@ const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof routePageFit === 'function' &&
     typeof routeInkRects === 'function');
 }
@@ -151,7 +154,7 @@ test('Fit page to route stays visible but dimmed when the page already fits', as
 
 test('phone RTL Print menu keeps both Fit actions visible without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('?lang=he&nogist');
+  await page.goto('?lang=he&nogist&deck=0');
   await page.waitForFunction(() => typeof setPage === 'function');
   await page.locator('#toolbar-toggle').click();
   await page.locator('.tb-section[data-sec="print"] .tb-section-head').click();
