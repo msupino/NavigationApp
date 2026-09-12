@@ -3761,6 +3761,16 @@ document.getElementById('clear').onclick = () => {
       cb.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
+  // A recorded track shown from Saved routes is drawn on this map like everything else, and
+  // Clear map is "start again" -- but the flown line stayed, over a chart with nothing else
+  // on it, and the only way to get rid of it was to remember which library row had put it
+  // there. Reported: "clearing map (C) doesnt remove showed recorded track". Hidden through
+  // the overlay's own handler, so the persisted set is rewritten too and the track does not
+  // come back on the next reload.
+  if (typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length
+      && typeof hideTrackOverlay === 'function') {
+    for (const t of shownTracks.slice()) hideTrackOverlay(t.id);
+  }
   showInspector(); draw();
 };
 document.getElementById('tool-reset-all-wp-names').onclick = () => {
