@@ -3448,7 +3448,16 @@ function showInspector() {
     return;
   }
   state.selected = normalized;
+  const wasHidden = insp.classList.contains('hidden');
   insp.classList.remove('hidden');
+  // On a phone the inspector is a bottom sheet over half the chart. With the menu open as
+  // well -- a floating card in the other half -- the map was a strip between two panels, and
+  // the pilot had to put the menu away by hand every time they tapped something. Opening the
+  // panel is the same "get out of the way" moment setMode() already uses, and not persisted:
+  // the menu is where it was left the next time it is opened deliberately.
+  if (wasHidden && typeof window.collapseToolbarForMapTool === 'function') {
+    window.collapseToolbarForMapTool();
+  }
 
   if (state.selected.type === 'leg') {
     const idx = state.selected.index;
