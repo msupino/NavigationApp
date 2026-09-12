@@ -4193,6 +4193,24 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
   btn.addEventListener('click', async () => {
     const f = F();
     if (!f) return;
+    // Watching someone else: sharing means leaving their flight, so it is asked as that and
+    // not as "Follow me". The reload is what actually leaves -- the watch is wired into the
+    // page from the URL it opened with, so the honest way out of it is the page without that
+    // URL, which is also the state a pilot expects after saying yes.
+    if (typeof f.viewing === 'function' && f.viewing()) {
+      const ask = S.followMeLeaveWatchConfirm
+        || 'Sharing your own position stops following this aircraft. Continue?';
+      // No confirm at all (a runtime that blocks it, which is the whole reason the identifier
+      // dialog stopped using prompt) means going ahead: the pilot pressed the button.
+      let leave;
+      try { leave = confirm(ask); } catch (e) { leave = true; }
+      if (!leave) return;
+      if (typeof f.viewerStop === 'function') f.viewerStop();
+      const url = typeof f.urlWithoutWatch === 'function' ? f.urlWithoutWatch() : location.href;
+      if (typeof window.navaidReloadTo === 'function') window.navaidReloadTo(url);
+      else location.replace(url);
+      return;
+    }
     const status = typeof f.status === 'function' ? f.status() : (f.sharing() ? 'connected' : 'idle');
     if (status !== 'idle') {
       // Already stopping: the press is the pilot asking not to wait for the relay any
