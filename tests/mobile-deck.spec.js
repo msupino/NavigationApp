@@ -618,3 +618,29 @@ test('the strip fits: the numbers keep their space, the flight name gives way', 
   expect(got.valsInside, 'the instrument is off the edge').toBe(true);
   expect(got.text).toContain('kt');
 });
+
+// Reported: Location active is not visible enough. A tinted label was all that said it was
+// on, and on a sunlit screen at arm's length that is a shade, not a state.
+test('a running button lights its whole cell', async ({ page }) => {
+  await boot(page);
+  const look = (key) => page.evaluate((k) => {
+    const el = document.querySelector('.deck-btn-' + k);
+    const cs = getComputedStyle(el);
+    return { bg: cs.backgroundColor, shadow: cs.boxShadow, weight: cs.fontWeight, color: cs.color };
+  }, key);
+
+  const off = await look('here');
+  await page.evaluate(() => { window.gpsLiveOn = true; NavAid.refreshMobileDeck(); });
+  const on = await look('here');
+  expect(on.bg, 'no ground').not.toBe(off.bg);
+  expect(on.bg).not.toBe('rgba(0, 0, 0, 0)');
+  expect(on.shadow, 'no bar along the top edge').not.toBe(off.shadow);
+  expect(on.shadow).toMatch(/inset/);
+  expect(on.color).not.toBe(off.color);
+  expect(Number(on.weight)).toBeGreaterThanOrEqual(Number(off.weight));
+
+  // Three different answers to "what is running", each the colour it is elsewhere in the app.
+  await page.evaluate(() => { window.gpsRecording = true; NavAid.refreshMobileDeck(); });
+  const rec = await look('record');
+  expect(rec.bg).not.toBe(on.bg);
+});
