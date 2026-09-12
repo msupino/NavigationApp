@@ -4200,7 +4200,9 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     if (typeof f.viewing === 'function' && f.viewing()) {
       const ask = S.followMeLeaveWatchConfirm
         || 'Sharing your own position stops following this aircraft. Continue?';
-      let leave = true;
+      // No confirm at all (a runtime that blocks it, which is the whole reason the identifier
+      // dialog stopped using prompt) means going ahead: the pilot pressed the button.
+      let leave;
       try { leave = confirm(ask); } catch (e) { leave = true; }
       if (!leave) return;
       if (typeof f.viewerStop === 'function') f.viewerStop();
