@@ -134,3 +134,70 @@ test('pressing the button offers to leave the watch, and leaving reloads without
   expect(url.searchParams.get('lang')).toBe('en');
   expect(url.searchParams.get('nogist')).not.toBe(null);
 });
+
+// ...unless a fleet says otherwise. The rule is a default, not a law of the app: the gist can
+// let a page share while it watches -- a chase plane, a two-aircraft sortie on one phone --
+// and it is off, because the link a viewer holds can publish to the topic it is watching.
+test.describe('with the gist switch on', () => {
+  const allow = (page) => page.evaluate(() => setTune('featureFollowMeShareWhileViewing', true));
+
+  test('a viewer may share, on its own link', async ({ page }) => {
+    await boot(page);
+    await allow(page);
+    const got = await page.evaluate(async () => {
+      const F = NavAid.followMe;
+      const watchedId = 'watched000000000';
+      const watchedKey = 'k'.repeat(43);
+      await F.viewerStart({ search: '?follow=' + watchedId, hash: '#k=' + watchedKey });
+      const mine = await F.start('4X-MINE');
+      window.__sockets[window.__sockets.length - 1].connack();
+      await new Promise(r => setTimeout(r, 20));
+      const url = new URL(mine);
+      return { watching: F.viewing(), status: F.status(),
+               mineId: url.searchParams.get('follow'), mineKey: url.hash.replace('#k=', ''),
+               watchedId, watchedKey };
+    });
+    expect(got.watching).toBe(true);
+    expect(got.status).not.toBe('idle');
+    // Still its OWN capability: the switch permits two aircraft on one page, not publishing
+    // into the link somebody else handed over.
+    expect(got.mineId).not.toBe(got.watchedId);
+    expect(got.mineKey).not.toBe(got.watchedKey);
+  });
+
+  test('opening a link no longer stops a share that is running', async ({ page }) => {
+    await boot(page);
+    await allow(page);
+    const got = await page.evaluate(async () => {
+      const F = NavAid.followMe;
+      await F.start('4X-MINE');
+      window.__sockets[0].connack();
+      await new Promise(r => setTimeout(r, 20));
+      await F.viewerStart({ search: '?follow=watched000000000', hash: '#k=' + 'k'.repeat(43) });
+      return { status: F.status(), viewing: F.viewing() };
+    });
+    expect(got).toEqual({ status: 'connected', viewing: true });
+  });
+
+  test('the button shares instead of offering to leave the watch', async ({ page }) => {
+    await boot(page);
+    await allow(page);
+    const got = await page.evaluate(async () => {
+      const F = NavAid.followMe;
+      await F.viewerStart({ search: '?follow=watched000000000', hash: '#k=' + 'k'.repeat(43) });
+      const asked = [];
+      let sentTo = null;
+      window.confirm = (text) => { asked.push(String(text)); return true; };
+      window.navaidReloadTo = (url) => { sentTo = url; };
+      window.askFollowMeCode = async () => '4X-MINE';
+      document.getElementById('follow-me').click();
+      await new Promise(r => setTimeout(r, 40));
+      return { asked, sentTo, viewing: F.viewing(), status: F.status() };
+    });
+    // No question about leaving, and no reload: it just shares.
+    expect(got.asked.filter(a => /stops following/i.test(a))).toEqual([]);
+    expect(got.sentTo).toBe(null);
+    expect(got.viewing).toBe(true);
+    expect(got.status).not.toBe('idle');
+  });
+});
