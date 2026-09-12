@@ -155,3 +155,43 @@ test('the chart furniture moves up out of the deck', async ({ page }) => {
   });
   expect(clear).toEqual([]);
 });
+
+// Reported from the phone, with a screenshot: the strip was drawn over the top of the open
+// menu, so the language picker and the hamburger -- the row that closes the menu again --
+// were behind an opaque bar.
+test('the menu opens below the strip, not behind it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-layers').click());
+  const got = await page.evaluate(() => {
+    const strip = document.getElementById('deck-strip').getBoundingClientRect();
+    const bar = document.getElementById('toolbar').getBoundingClientRect();
+    const deck = document.getElementById('deck-bar').getBoundingClientRect();
+    return { clearOfStrip: bar.top >= strip.bottom, clearOfDeck: bar.bottom <= deck.top + 1 };
+  });
+  expect(got).toEqual({ clearOfStrip: true, clearOfDeck: true });
+});
+
+// The same screenshot: the second line read "+209:00 · שZ". The Zulu clock is Latin and the
+// Hebrew look-ahead readout is not ("+2ש 09:00Z"), and pouring both into one left-to-right
+// text node let the bidi algorithm interleave them into something that is not a time.
+test('the Hebrew clock line keeps its pieces apart', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto('?lang=he&nogist&deck=1');
+  await page.waitForFunction(() => document.getElementById('deck-strip'));
+  await page.evaluate(() => {
+    const m = document.getElementById('lookahead-time');
+    m.value = '2';
+    m.dispatchEvent(new Event('input'));
+  });
+  const got = await page.evaluate(() => {
+    const sub = document.querySelector('.deck-strip-sub');
+    return {
+      pieces: Array.from(sub.querySelectorAll('bdi')).map(b => b.textContent),
+      zulu: (document.getElementById('zulu-clock').textContent || '').trim(),
+      read: (document.getElementById('map-time-read').textContent || '').trim(),
+    };
+  });
+  // Each source lands in one isolate, intact -- not merged into a single run.
+  expect(got.pieces).toEqual([got.zulu, got.read]);
+  expect(got.pieces[1]).toContain('+2');
+});

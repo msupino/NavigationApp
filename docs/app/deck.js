@@ -74,6 +74,16 @@
     stripSub.className = 'deck-strip-sub';
     strip.append(top, stripSub);
     document.body.appendChild(strip);
+    // The menu opens under the strip, so it has to know how tall the strip is -- which
+    // depends on the language, the font and whether the second line has anything to say.
+    const measure = () => document.documentElement.style.setProperty(
+      '--navaid-deck-strip-h', Math.round(strip.getBoundingClientRect().height) + 'px');
+    if (typeof ResizeObserver === 'function') {
+      const ro = new ResizeObserver(measure);
+      ro.observe(strip);
+      observers.push(ro);
+    }
+    measure();
   }
 
   // Each entry: the id of the button it drives, or a handler of its own. Nothing here
@@ -141,8 +151,27 @@
     if (!strip) return;
     stripLeg.textContent = routeTitle();
     stripVals.textContent = txt('gps-readout');
+    // Measurements read left to right in Hebrew as well; the readout's own element says so
+    // and the copy on the strip has to say it too.
+    stripVals.dir = 'ltr';
+    // Each piece in its own isolate. The Zulu clock is Latin, the look-ahead readout is not
+    // -- in Hebrew it is "+2ש 09:00Z" -- and pouring both into one left-to-right text node
+    // let the bidi algorithm reorder them into "+209:00 · שZ", which is not a time at all.
     const parts = [txt('zulu-clock'), txt('map-time-read')].filter(Boolean);
-    stripSub.textContent = parts.join('  ·  ');
+    stripSub.replaceChildren();
+    parts.forEach((text, i) => {
+      if (i) {
+        const sep = document.createElement('span');
+        sep.className = 'deck-strip-sep';
+        sep.setAttribute('aria-hidden', 'true');
+        sep.textContent = '·';
+        stripSub.appendChild(sep);
+      }
+      const piece = document.createElement('bdi');
+      piece.dir = 'auto';
+      piece.textContent = text;
+      stripSub.appendChild(piece);
+    });
     stripSub.hidden = !parts.length;
     const live = typeof gpsPositionLive === 'function' && gpsPositionLive();
     strip.classList.toggle('deck-strip-live', !!live);
@@ -172,6 +201,7 @@
     observers = [];
     if (strip) strip.remove();
     if (deck) deck.remove();
+    document.documentElement.style.removeProperty('--navaid-deck-strip-h');
     strip = deck = stripLeg = stripVals = stripSub = null;
     for (const key of Object.keys(buttons)) delete buttons[key];
     document.body.classList.remove('deck-on');

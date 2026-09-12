@@ -7587,6 +7587,9 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 2400;                      /* over the map and its controls, under modals */
+  /* The strip is measurements and a route name; each piece carries its own direction, so the
+     container must not impose one. Forcing LTR here turned the Hebrew look-ahead readout
+     ("+2ש 09:00Z") into "+209:00 · שZ". */
   background: #141b22;
   color: #eef3f7;
   font-family: monospace;
@@ -7594,8 +7597,6 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   display: grid;
   gap: 2px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
-  direction: ltr;
-  unicode-bidi: isolate;
 }
 .deck-strip-top { display: flex; align-items: baseline; gap: 10px; }
 .deck-strip-leg {
@@ -7624,6 +7625,7 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   overflow: hidden;
 }
 .deck-strip-sub[hidden] { display: none; }
+.deck-strip-sep { opacity: .6; }
 
 .deck-bar {
   position: fixed;
@@ -7663,6 +7665,15 @@ body.theme-dark .deck-btn { color: #a9b6c1; }
    up its corner: everything it held is on the deck or one tap inside it. */
 body.deck-on .leaflet-bottom { margin-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on #toolbar.collapsed { display: none; }
+/* The open menu starts below the strip. It used to open at the top of the screen with the
+   strip drawn over it, so the language picker and the hamburger -- the row that closes it
+   again -- were behind an opaque bar. Reported: top banner hides menu in new dock. */
+body.deck-on #toolbar {
+  top: calc(var(--navaid-deck-strip-h, 46px) + 8px);
+  max-height: calc(100dvh - var(--navaid-deck-strip-h, 46px) - 52px - 24px
+                   - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
 body.deck-on #inspector { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .map-time { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu time now */
