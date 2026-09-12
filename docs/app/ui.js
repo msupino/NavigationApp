@@ -4197,9 +4197,13 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
       const result = await f.stop();
       refresh();
       if (typeof showToast === 'function') {
-        showToast(result && result.pending
+        // Three different things, and only one of them is "the link is dead".
+        const said = (result && result.pending)
           ? (S.followMeStopping || 'Follow me: stopping — clearing the last position')
-          : (S.followMeStopped || 'Follow me: stopped.'));
+          : (result && result.forced)
+            ? (S.followMeStoppedLocal || 'Sharing stopped on this phone — the relay never answered.')
+            : (S.followMeStopped || 'Follow me: stopped.');
+        showToast(said, { warn: !!(result && result.forced) });
       }
       return;
     }

@@ -7828,6 +7828,11 @@ body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu ti
    that is now a sheet, and the hamburger closes one. The sheet has a grip and an X. */
 .deck-sheet #toolbar.deck-hosted > #toolbar-handle,
 .deck-sheet #toolbar.deck-hosted > #toolbar-toggle { display: none; }
+/* ...and so do Record, Location and the live readout: they are the deck and the strip now,
+   and a menu that repeats them says the same thing twice on a screen with no room to. */
+/* Two ids and a class, to outrank the phone rules that put this row on screen. */
+.deck-sheet #toolbar.deck-hosted > #footer-links .footer-gps-group,
+.deck-sheet #toolbar.deck-hosted > #footer-links #gps-readout { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .deck-sheet { transition: none; }
 }

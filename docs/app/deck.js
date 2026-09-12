@@ -326,7 +326,11 @@
   // Opening it puts away what is over the chart first -- a menu drawn on top of the flight
   // plan is two documents fighting for one screen, and the plan is not what is being read
   // while a menu is open.
+  // A deck button is a switch, not a way in: pressing the one that is already lit closes what
+  // it opened. Reported from the phone -- pressing Menu again cycled the sheet's height, which
+  // is the grip's job, and left the pilot with no way back to the chart except Map.
   function showMenu() {
+    if (sheet && !sheet.hidden && sheetKey === 'menu') { closeSheet(); return; }
     closeOverlays();
     openSheet('menu', (typeof S === 'object' && S && S.deckMenu) || 'Menu', hostToolbar);
   }
@@ -336,6 +340,13 @@
   // watcher that closes the sheet when a modal appears: this is the button that means it,
   // and a button should not depend on being noticed.
   function showPlan() {
+    // Open already: the same press puts it away. closeFlightPlan() rather than the element,
+    // so fpOpen, the stored session flag and the TOC/TOD markers go with it.
+    if (typeof fpOpen !== 'undefined' && fpOpen) {
+      if (typeof closeFlightPlan === 'function') closeFlightPlan();
+      sync();
+      return;
+    }
     closeSheet();
     click('plan');
   }
@@ -548,10 +559,39 @@
   // already carry these values rather than by a second copy of the arithmetic: the live
   // readout has just fitted itself to the width available, the Zulu clock is already ticking,
   // and the map clock already knows which hour is being shown.
+  // The readout fits itself to the menu it lives in, and on a phone that menu is off screen,
+  // so it fits to nothing and hands over every field it has. The strip does the fitting here,
+  // in the readout's own order of importance: the subscale setting first (it is a setting, and
+  // the airfield panel carries it too), then the point count, then the elapsed clock. Speed,
+  // altitude and heading are the instrument and are never dropped -- the flight name gives way
+  // instead, because a shortened name still names the flight.
+  function stripDropRank(chunk) {
+    if (/[\u2033"]/.test(chunk)) return 0;              // 29.85″
+    if (/\bpts\b/.test(chunk)) return 1;
+    if (/^\d{2}:\d{2}$/.test(chunk)) return 2;
+    return 99;                                          // kt, ft, heading: the instrument
+  }
+  function fitStripVals(full) {
+    stripVals.textContent = full;
+    if (!strip.clientWidth) return;
+    const chunks = full.split(' \u00b7 ');
+    const order = chunks
+      .map((c, i) => ({ i, rank: stripDropRank(c) }))
+      .filter(x => x.rank < 99)
+      .sort((a, b) => a.rank - b.rank)
+      .map(x => x.i);
+    const gone = new Set();
+    for (const idx of order) {
+      if (strip.scrollWidth <= strip.clientWidth + 1) return;
+      gone.add(idx);
+      stripVals.textContent = chunks.filter((c, i) => !gone.has(i)).join(' \u00b7 ');
+    }
+  }
+
   function sync() {
     if (!strip) return;
     stripLeg.textContent = routeTitle();
-    stripVals.textContent = txt('gps-readout');
+    fitStripVals(txt('gps-readout'));
     // Measurements read left to right in Hebrew as well; the readout's own element says so
     // and the copy on the strip has to say it too.
     stripVals.dir = 'ltr';

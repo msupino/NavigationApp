@@ -351,6 +351,7 @@
   function relinquishPublisher(s) {
     if (!s || session !== s) return;
     s.status = 'stopping';
+    clearTimeout(s.stopDeadlineTimer);
     clearTimeout(s.clearAckTimer);
     clearTimeout(s.revocationRetryTimer);
     s.client.close();
@@ -362,6 +363,7 @@
 
   function finishStop(s) {
     if (!s || session !== s) return;
+    clearTimeout(s.stopDeadlineTimer);
     clearTimeout(s.clearAckTimer);
     clearTimeout(s.revocationRetryTimer);
     s.client.close();
@@ -391,7 +393,7 @@
     }
     session = null;
     refreshSessionControls();
-    if (s.resolveStop) s.resolveStop({ pending: false });
+    if (s.resolveStop) s.resolveStop({ pending: false, forced: !!s.forcedStop });
   }
 
   function clearRetainedAndFinish(s) {
@@ -426,6 +428,7 @@
       seq: Number.isSafeInteger(raw.seq) ? raw.seq : 0,
       lastSentAt: 0, status: pendingStop ? 'stopping' : 'connecting', everConnected: false,
       resolveStop: null, stopPromise: null, clearPacketId: null, clearAckTimer: 0,
+      stopDeadlineTimer: 0, forcedStop: false,
       revocationRetryTimer: 0,
       resolveConnected: null, connectedPromise: null,
       link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k,
@@ -525,6 +528,22 @@
     // that dies when you stop sharing.
     s.status = 'stopping';
     s.stopPromise = new Promise(resolve => { s.resolveStop = resolve; });
+    // Stopping waits for the relay to acknowledge the tombstone, and a relay that never
+    // answers -- no signal, a broker down, a captive wifi -- left the button reading
+    // "Stopping sharing…" for ever, disabled, with no way to press it again. Reported from
+    // the phone: stop sharing is stuck, and the control above the lock does nothing (it is
+    // the same button, refusing because the status was still 'stopping').
+    //
+    // The wait is bounded now. When it runs out, sharing stops HERE: consent is revoked on
+    // this device, the publisher closes and nothing more goes out. What cannot be promised
+    // is the retained position already on the relay, so the caller is told the stop was
+    // forced and says so rather than claiming the link is dead.
+    clearTimeout(s.stopDeadlineTimer);
+    s.stopDeadlineTimer = setTimeout(() => {
+      if (session !== s || s.status !== 'stopping') return;
+      s.forcedStop = true;
+      finishStop(s);
+    }, Math.max(1, Number(tune('followMeStopMaxSec')) || 25) * 1000);
     refreshSessionControls();
     broadcastRevocation(s);
     // Serialize the consent change and tombstone behind any publish already at its final
