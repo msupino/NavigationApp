@@ -1102,6 +1102,40 @@ setInterval(refreshZuluClock, 1000);
     if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
   }, { passive: false });
 })();
+// --- chart attribution, folded away on a phone -----------------------
+// The notice is required and must stay one tap away, but on a 390px screen it was a
+// permanent full-width row of 11px links along the bottom of the chart -- the smallest text
+// in the app, on the thing a pilot reads least, in the corner the zoom column already uses.
+// Its content moves into a span so ONE rule can fold it: the control mixes elements with
+// bare text nodes (the " | " separators), and a selector cannot hide a text node.
+(function foldAttribution() {
+  const el = document.querySelector('.leaflet-control-attribution');
+  if (!el) return;
+  const body = document.createElement('span');
+  body.className = 'attrib-body';
+  while (el.firstChild) body.appendChild(el.firstChild);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'attrib-toggle';
+  btn.textContent = '\u24d8';                  // ⓘ
+  btn.setAttribute('aria-expanded', 'false');
+  const label = (typeof S === 'object' && S && S.attribToggle) || 'Chart and map credits';
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  btn.addEventListener('click', () => {
+    const open = el.classList.toggle('attrib-open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  // Leaflet re-writes the notice as layers come and go (each tile layer contributes its
+  // own credit), which would drop it straight back into the control beside our span. The
+  // attribution control appends to the element it was given, so hand it the span.
+  el.appendChild(btn);
+  el.appendChild(body);
+  el.classList.add('attrib-compact');
+  if (map && map.attributionControl && map.attributionControl._container === el) {
+    map.attributionControl._container = body;
+  }
+})();
 // --- map legend (bottom-left) ---------------------------------------
 // The legend markup lives in index.html so applyI18n() fills its text at
 // boot; here we lift that element into a Leaflet control so it floats over

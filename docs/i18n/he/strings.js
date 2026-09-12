@@ -707,6 +707,7 @@ window.S = {
   afWindLegend: 'נוצה מלאה = מדווח · מקווקו = תחזית',
   mapTimeNow: 'עכשיו',
   mapTimeNowTitle: 'חזרה לזמן אמת: כל השכבות כפי שהן עכשיו',
+  attribToggle: 'קרדיטים למפות ולדפיות',
   mapTimeLabel: 'הסתכלות קדימה',
   mapTimeCharts: 'מפות',
   mapTimeChartsTitle: 'מפות מזג האוויר מתפרסמות ב־00/03/06/12/18Z, ולכן מוצגת המפה האחרונה שפורסמה עד השעה שנבחרה',
