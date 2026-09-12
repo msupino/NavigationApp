@@ -112,3 +112,61 @@ test('a relay that does answer is still the ordinary stop', async ({ page }) => 
   expect(got.result.forced, 'an acknowledged stop must not read as forced').toBeFalsy();
   expect(got.status).toBe('idle');
 });
+
+// The state a stuck device is already IN: a stop that never finished is written to storage as
+// pendingStop, and the next boot picks it up and waits on the same silent relay. A bound that
+// only covered the button would never reach that device -- it would open stuck, every time.
+test('a stop left half-finished is bounded on the next boot too', async ({ page }) => {
+  await boot(page);
+  // Leave the device exactly as an interrupted stop leaves it.
+  await page.evaluate(() => {
+    const rec = { id: 'stuckid00000000', k: 'a'.repeat(43), at: Date.now(), seq: 3,
+                  reg: '4X-STUCK', on: false, pendingStop: true };
+    localStorage.setItem('navaid.followMe', JSON.stringify(rec));
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.NavAid && NavAid.followMe && typeof setTune === 'function');
+  await page.evaluate(() => {
+    setTune('featureFollowMe', true);
+    setTune('followMeStopMaxSec', 1);
+  });
+  const got = await page.evaluate(async () => {
+    await NavAid.followMe.resume({ resumeSharing: false });
+    const stored = NavAid.followMe._stored();
+    return { status: NavAid.followMe.status(),
+             pendingStop: !!(stored && stored.pendingStop), on: !!(stored && stored.on) };
+  });
+  // It gave up on the relay and finished locally instead of hanging the boot.
+  expect(got.status).toBe('idle');
+  expect(got.pendingStop, 'still half-stopped, so the next boot hangs again').toBe(false);
+  expect(got.on).toBe(false);
+});
+
+// And the pilot's own way out: pressing the button again while it is stopping. It used to be
+// ignored -- which is what "stop sharing is stuck" looks like from the cockpit: a dead button
+// on the control you press when you want the sharing to be over.
+test('pressing Stop again stops waiting for the relay', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => setTune('followMeStopMaxSec', 300));   // the deadline is far away
+  const got = await page.evaluate(async () => {
+    const seen = [];
+    window.showToast = (m) => seen.push(String(m));
+    window.askFollowMeCode = async () => '4X-AGAIN';
+    const btn = document.getElementById('follow-me');
+    btn.click();
+    await new Promise(r => setTimeout(r, 30));
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 30));
+    btn.click();                                   // Stop -- the relay will not answer
+    await new Promise(r => setTimeout(r, 30));
+    const waiting = { status: NavAid.followMe.status(), disabled: btn.disabled };
+    btn.click();                                   // ...and again: do not wait
+    await new Promise(r => setTimeout(r, 60));
+    return { waiting, after: NavAid.followMe.status(), seen };
+  });
+  expect(got.waiting.status).toBe('stopping');
+  // The button is alive while stopping -- that is the whole point of pressing it again.
+  expect(got.waiting.disabled).toBe(false);
+  expect(got.after).toBe('idle');
+  expect(got.seen.some(t => /relay never answered/i.test(t))).toBe(true);
+});

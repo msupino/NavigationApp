@@ -708,7 +708,8 @@ test('Stop falls back to removing consent when its pending-state write fails', a
     Storage.prototype.setItem = realSet;
     return { result, stored: localStorage.getItem('navaid.followMeSession') };
   });
-  expect(stopped).toEqual({ result: { pending: false }, stored: null });
+  // `forced` is part of the answer now: an acknowledged stop is not a forced one.
+  expect(stopped).toEqual({ result: { pending: false, forced: false }, stored: null });
   await other.waitForFunction(() => NavAid.followMe.status() === 'idle');
   expect(await other.evaluate(() => NavAid.followMe.publish({ lat: 32.1, lng: 34.8 }))).toBe(false);
 
@@ -770,7 +771,7 @@ test('Stop stays pending until an unreadable session store can be revoked', asyn
     result: await window.__storageStop,
     status: NavAid.followMe.status(),
     stored: localStorage.getItem('navaid.followMeSession'),
-  }))).toEqual({ result: { pending: false }, status: 'idle', stored: null });
+  }))).toEqual({ result: { pending: false, forced: false }, status: 'idle', stored: null });
 
   const reload = await context.newPage();
   await boot(reload);
