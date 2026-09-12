@@ -1699,6 +1699,7 @@ test('failed native sharing and clipboard do not claim the link was copied', asy
   const toasts = await page.evaluate(async () => {
     setTune('featureFollowMe', true);
     window.gpsLiveOn = true;
+    window.askFollowMeCode = async () => '4X-NOCOPY';
     window.prompt = () => '4X-NOCOPY';
     const seen = [];
     window.showToast = (message) => seen.push(String(message));
@@ -1727,6 +1728,7 @@ test('cancelling the native share sheet does not fall back to clipboard or show 
   const got = await page.evaluate(async () => {
     setTune('featureFollowMe', true);
     window.gpsLiveOn = true;
+    window.askFollowMeCode = async () => '4X-CANCEL';
     window.prompt = () => '4X-CANCEL';
     const toasts = [];
     let clipboardWrites = 0;
@@ -1786,6 +1788,7 @@ test('the menu copies a link before any position is flowing, and says positions 
     // No position source on: this is a pilot on the ground, pre-sharing before the flight.
     window.gpsPositionLive = () => false;
     window.gpsRecording = false;
+    window.askFollowMeCode = async () => '4X-PRE';
     window.prompt = () => '4X-PRE';
     let copied = null;
     // Force the clipboard path (no share sheet in the test browser).
