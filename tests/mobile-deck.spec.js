@@ -42,7 +42,7 @@ test('a phone gets the strip and the deck', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#deck-bar')).toBeVisible();
   const labels = await page.locator('.deck-btn-label').allTextContents();
-  expect(labels).toEqual(['Map', 'Menu', 'Plan', 'Record', 'Here']);
+  expect(labels).toEqual(['Map', 'Menu', 'Plan', 'Record', 'Location']);
   // The deck replaces the closed menu card in its corner: everything it held is on the deck
   // or one tap inside it, and two menus for one app is how the corner got crowded.
   expect(await page.evaluate(() => getComputedStyle(document.getElementById('toolbar')).display)).toBe('none');
@@ -550,4 +550,39 @@ test('a layer toggle is not "opening something" and leaves the menu up', async (
   });
   // Switching layers on and off is a run of taps in one place; the sheet is the place.
   expect(await page.evaluate(() => document.getElementById('deck-sheet').hidden)).toBe(false);
+});
+
+test('Plan puts the menu away before it opens the table', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
+  await page.evaluate(() => document.querySelector('.deck-btn-plan').click());
+  await page.waitForSelector('.modal-back.flight-plan');
+  const got = await page.evaluate(() => ({
+    sheet: document.getElementById('deck-sheet').hidden,
+    // ...and the menu is back where it came from, not stranded inside a hidden sheet.
+    parent: document.getElementById('toolbar').parentNode.tagName,
+    hosted: document.getElementById('toolbar').classList.contains('deck-hosted'),
+    plan: !!document.querySelector('.modal-back.flight-plan'),
+  }));
+  expect(got).toEqual({ sheet: true, parent: 'BODY', hosted: false, plan: true });
+});
+
+test('Map takes the search panel and the assistant with it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    NavAid.tuningDefaults.featureAssistant.value = true;
+    if (typeof refreshAssistantFeature === 'function') refreshAssistantFeature();
+    const fab = document.querySelector('.assistant-fab, #assistant-fab');
+    if (fab) fab.click();
+    const search = document.getElementById('search-trigger');
+    if (search) search.click();
+  });
+  await page.evaluate(() => document.querySelector('.deck-btn-map').click());
+  const got = await page.evaluate(() => ({
+    assistant: document.querySelectorAll('.assistant-panel:not(.hidden)').length,
+    search: document.querySelectorAll('#search-overlay:not(.hidden)').length,
+  }));
+  // Map means the chart and nothing over it, whatever put it there.
+  expect(got).toEqual({ assistant: 0, search: 0 });
 });

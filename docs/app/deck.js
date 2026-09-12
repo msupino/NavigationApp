@@ -91,9 +91,9 @@
   const ITEMS = [
     { key: 'map', icon: '🗺', string: 'deckMap', run: showMap },
     { key: 'menu', icon: '▤', string: 'deckMenu', run: showMenu },
-    { key: 'plan', icon: '📋', string: 'deckPlan', run: () => click('plan') },
+    { key: 'plan', icon: '📋', string: 'deckPlan', run: showPlan },
     { key: 'record', icon: '⏺', string: 'deckRecord', run: () => click('gps-record') },
-    { key: 'here', icon: '📍', string: 'deckHere', run: () => click('gps-live') },
+    { key: 'here', icon: '📍', string: 'deckLocation', run: () => click('gps-live') },
   ];
 
   // ---- the sheet -------------------------------------------------------------------
@@ -304,6 +304,17 @@
       state.selected = null;
       if (typeof showInspector === 'function') showInspector();
     }
+    // The two panels that are neither modals nor the menu: the search overlay and the
+    // assistant. Map means the chart and nothing over it, whatever put it there.
+    // hideSearchOverlay, not closeSearch: the latter only empties the results list, and the
+    // panel itself would stay up with nothing in it.
+    if (typeof hideSearchOverlay === 'function') hideSearchOverlay();
+    const assistant = document.querySelector('.assistant-panel:not(.hidden)');
+    if (assistant) {
+      const x = assistant.querySelector('.assistant-head .assistant-icon-btn:last-of-type');
+      if (x) x.click();
+      else assistant.classList.add('hidden');
+    }
   }
 
   // The menu, in the sheet: the whole menu, at the top of it, with whatever sections the
@@ -316,6 +327,15 @@
   function showMenu() {
     closeOverlays();
     openSheet('menu', (typeof S === 'object' && S && S.deckMenu) || 'Menu', hostToolbar);
+  }
+
+  // ...and the other way round. The plan is a document to be read; the menu is how you got
+  // to it, and it has no business sitting on top of it. Closed here rather than left to the
+  // watcher that closes the sheet when a modal appears: this is the button that means it,
+  // and a button should not depend on being noticed.
+  function showPlan() {
+    closeSheet();
+    click('plan');
   }
 
   // ---- press and hold on the chart -----------------------------------------------------

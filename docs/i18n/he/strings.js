@@ -711,7 +711,7 @@ window.S = {
   deckMenu: 'תפריט',
   deckPlan: 'תכנית',
   deckRecord: 'הקלטה',
-  deckHere: 'כאן',
+  deckLocation: 'מיקום',
   deckLabel: 'ראשי',
   deckNoRoute: 'אין מסלול',
   deckSheetGrip: 'גררו לשינוי גובה, הקישו למעבר בין גבהים',

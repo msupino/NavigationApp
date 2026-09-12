@@ -1969,7 +1969,7 @@ window.S = Object.assign({
   deckMenu: 'Menu',
   deckPlan: 'Plan',
   deckRecord: 'Record',
-  deckHere: 'Here',
+  deckLocation: 'Location',
   deckLabel: 'Primary',
   deckNoRoute: 'No route',
   deckSheetGrip: 'Drag to resize, tap to change height',
