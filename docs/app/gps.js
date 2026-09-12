@@ -1270,7 +1270,12 @@ function trackDistanceNm(points) {
 // Draw all shown track overlays as coloured polylines with start/end dots.
 function drawTracks() {
   if (!_shownTracksBooted) loadShownTrackOverlays();
-  if (!Array.isArray(shownTracks) || !shownTracks.length) return;
+  if (!Array.isArray(shownTracks) || !shownTracks.length) {
+    // The counter is what tests read to tell a drawn line from a remembered one. Left at its
+    // last value it went on reporting a track that had just been hidden.
+    if (typeof window !== 'undefined') window.__tracksDrawn = 0;
+    return;
+  }
   octx.save();
   octx.lineCap = 'round'; octx.lineJoin = 'round';
   const highlightOn = _trackHighlightId && Date.now() < _trackHighlightUntil;
