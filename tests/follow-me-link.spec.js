@@ -1940,3 +1940,33 @@ test('spaces the keyboard adds are not part of the identifier', async ({ page })
   expect(got.long).toBe('4XCDEFOXTROT');      // 12 characters, counted after the spaces go
   expect(got.remembered).toBe(got.long);
 });
+
+// Reported from the phone, with a screenshot: watching a shared position, the banner was drawn
+// under the deck's data strip. It is placed below whatever sits at the top of the chart, and
+// that used to be the floating menu -- which on a phone with the deck is not on screen at all,
+// so it measured a toolbar of zero height and landed in the strip.
+test('the viewer status clears the deck strip too', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installStub(page);
+  await page.goto('?lang=en&nogist');                 // the deck is on by default here
+  await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe)
+    && !!document.getElementById('deck-strip'));
+  const link = await page.evaluate(async () => {
+    const started = await NavAid.followMe.start('TEST');
+    window.__sockets[0].connack();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return started;
+  });
+  await page.evaluate(async followerLink => {
+    const url = new URL(followerLink);
+    await NavAid.followMe.viewerStart({ search: url.search, hash: url.hash });
+  }, link);
+  const got = await page.evaluate(() => {
+    const strip = document.getElementById('deck-strip').getBoundingClientRect();
+    const banner = document.getElementById('follow-me-banner').getBoundingClientRect();
+    const deck = document.getElementById('deck-bar').getBoundingClientRect();
+    return { clear: banner.top >= strip.bottom, onScreen: banner.bottom <= deck.top };
+  });
+  expect(got.clear, 'the banner is under the strip').toBe(true);
+  expect(got.onScreen).toBe(true);
+});

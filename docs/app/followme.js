@@ -749,10 +749,19 @@
 
   function followMeViewerPlaceBanner(el) {
     if (!el || !el.isConnected) return;
-    const toolbar = document.getElementById('toolbar');
-    const toolbarBox = toolbar && toolbar.getBoundingClientRect();
+    // Below whatever the app has put at the top of the chart. That used to be the floating
+    // menu; on a phone with the deck it is the data strip, and the menu is not on screen at
+    // all -- so the banner was placed against a toolbar of zero height and drawn under the
+    // strip. Reported: the viewer info is hidden by the top bar.
     const gap = 8;
-    const belowToolbar = toolbarBox && toolbarBox.height ? toolbarBox.bottom + gap : gap;
+    const below = (sel) => {
+      const el2 = document.querySelector(sel);
+      if (!el2) return 0;
+      const box = el2.getBoundingClientRect();
+      return (box.height && el2.getClientRects().length) ? box.bottom : 0;
+    };
+    const top = Math.max(below('#toolbar'), below('#deck-strip'));
+    const belowToolbar = top ? top + gap : gap;
     // An expanded phone menu can consume nearly the whole viewport. Keep the status on-screen
     // in that case; its lower stacking level lets the toolbar remain the usable surface.
     const maxTop = Math.max(gap, window.innerHeight - el.offsetHeight - gap);
@@ -767,10 +776,15 @@
       frame = requestAnimationFrame(() => followMeViewerPlaceBanner(el));
     };
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
-    const toolbar = document.getElementById('toolbar');
     if (observer) {
       observer.observe(el);
-      if (toolbar) observer.observe(toolbar);
+      // Both of the things it sits under: the menu changes height as sections open, and the
+      // strip changes height with the language and with whether its second line has anything
+      // to say.
+      for (const sel of ['#toolbar', '#deck-strip']) {
+        const watched = document.querySelector(sel);
+        if (watched) observer.observe(watched);
+      }
     }
     window.addEventListener('resize', place);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', place);
