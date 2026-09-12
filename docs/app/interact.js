@@ -3429,6 +3429,19 @@ function showInspector() {
   // map is what the pilot is reading. The selection is dropped with it, so nothing is left
   // highlighted with no panel to explain it. See inspectorAllowedNow (gps.js).
   if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow()) {
+    // Say it once. Reported as a bug -- "the inspector does not open at all" -- because a tap
+    // that is refused in silence is indistinguishable from one that was not noticed, and the
+    // way to allow it was a gist key with no control on screen. Once per tracking session:
+    // the rule exists to keep a stray tap off the chart, and a toast on every stray tap would
+    // be the same clutter by another route.
+    if (state.selected && !window.__inspTrackingToldThisRun) {
+      window.__inspTrackingToldThisRun = true;
+      if (typeof showToast === 'function') {
+        showToast(S.inspectorTrackingBlocked
+          || 'The panel stays shut while your position is showing — turn it on in View/Set.',
+        { warn: true });
+      }
+    }
     state.selected = null;
     insp.classList.add('hidden');
     if (typeof resetInspectorVorRef === 'function') resetInspectorVorRef();

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>NavAid — CVFR Israel Map Navigation Aid &amp; Flight Planner</title>
   <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -391,6 +391,9 @@
         </label>
         <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
           <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbInspectorTrackingTitle">
+          <input type="checkbox" id="insp-tracking-cb"> <span data-i18n="tbInspectorTracking"></span>
         </label>
         <!-- Route BUILDING, not display: adding a point follows the published corridor.
              Ships off -- it changes what the pilot's own route contains, so it is opt-in. -->
