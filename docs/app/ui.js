@@ -10003,6 +10003,47 @@ function showBuildUpdateNotice() {
   document.body.appendChild(el);
 }
 
+// Announcing an update is not the same as one having happened.
+//
+// Reported from an iPad browser: it keeps asking to reload for a new version. The service
+// worker's lifecycle is the only signal the notice had, and on iOS that signal fires for
+// reasons that are not a new build -- Safari evicts a worker and re-installs the SAME bytes,
+// and a claim can arrive more than once. Each of those looked like a deploy.
+//
+// So the lifecycle now only prompts the question, and the answer comes from the build id
+// itself: sw.js carries CACHE='navaid-<sha>' and the running page carries the same sha in
+// NavAid.version. Different means a real deploy; equal means the worker churned and the pilot
+// is told nothing. Announced once per build per tab session, so a page that cannot pick the
+// new build up (an iOS cache serving the old HTML back) asks once instead of on every check.
+//
+// A dev build has no sha to compare, so there the lifecycle is still all there is.
+const BUILD_NOTICE_KEY = 'navaid.buildNoticeFor';
+function announceBuildUpdate(opts) {
+  opts = opts || {};
+  const running = opts.buildId != null ? opts.buildId : currentBuildId();
+  if (!running) { showBuildUpdateNotice(); return Promise.resolve(true); }
+  const doFetch = opts.fetch || ((typeof fetch === 'function') ? (u, o) => fetch(u, o) : null);
+  if (!doFetch) { showBuildUpdateNotice(); return Promise.resolve(true); }
+  const store = opts.storage !== undefined ? opts.storage
+    : (typeof sessionStorage !== 'undefined' ? sessionStorage : null);
+  const now = (opts.now || Date.now)();
+  return Promise.resolve(doFetch('sw.js?fresh=' + now, { cache: 'no-store' }))
+    .then(r => (r && r.ok && typeof r.text === 'function') ? r.text() : '')
+    .then(txt => {
+      const m = /navaid-([A-Za-z0-9]+)/.exec(txt || '');
+      const live = m ? m[1] : '';
+      if (!live || live === 'v6' || live === running) return false;   // unknown / dev / churn
+      let already = '';
+      try { already = (store && store.getItem(BUILD_NOTICE_KEY)) || ''; } catch (e) { /* */ }
+      if (already === live) return false;
+      try { if (store) store.setItem(BUILD_NOTICE_KEY, live); } catch (e) { /* */ }
+      showBuildUpdateNotice();
+      return true;
+    })
+    .catch(() => false);
+}
+window.announceBuildUpdate = announceBuildUpdate;
+
 const BUILD_UPDATE_CHECK_MIN_MS = 5 * 60 * 1000;
 const BUILD_UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 let buildUpdateRegistration = null;
@@ -10085,7 +10126,8 @@ function watchServiceWorkerUpdates(sw) {
     if (!hadController) return;                    // the first control is not an update
     if (notifiedGeneration === generation) return; // already asked for this build
     notifiedGeneration = generation;
-    showBuildUpdateNotice();
+    // ...and then only if the build actually changed. See announceBuildUpdate.
+    announceBuildUpdate();
   };
   const watchInstalling = worker => {
     if (!worker || typeof worker.addEventListener !== 'function') return;
