@@ -779,8 +779,11 @@
       ? S2.followMeRouteOffer(named)
       : ('The pilot is sharing a route' + (named ? ' (' + named + ')' : '')
          + '. Load it? This replaces the route on your map.');
-    let take = true;
-    try { take = confirm(ask); } catch (e) { take = false; }   // no confirm: change nothing
+    // No confirm available means no answer, and no answer means the viewer's own route stays
+    // exactly as it is -- the opposite default to the share button, where the pilot pressing
+    // it IS the answer.
+    let take;
+    try { take = confirm(ask); } catch (e) { take = false; }
     if (!take) return;
     if (typeof applyRouteData !== 'function') return;
     applyRouteData(msg.route);
