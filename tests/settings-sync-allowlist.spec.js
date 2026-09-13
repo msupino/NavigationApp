@@ -149,6 +149,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.followMeCode$/,     'the aircraft code typed for a follow-me link -- belongs to the aeroplane being flown from THIS device, not to the pilot account'],
   [/^navaid\.followMeSession$/,  'the live share topic and its encryption key -- a capability to watch THIS aeroplane right now, not a setting; syncing it would put two devices on one topic and hand the key to every device on the account'],
   [/^navaid\.apkReloadedForBuild$/, 'APK self-reload bookkeeping'],
+  [/^navaid\.buildNoticeFor$/,     'which build this tab has already announced -- session bookkeeping, and a build another device is running says nothing about this one'],
   [/^navaid\.toolbarPosDesktop$/, 'panel geometry (the *Pos rule misses this suffix)'],
   [/^navaid\.wxTime$/,           'forecast valid-time pick, only reused if still offered'],
   [/^navaid\.notamSeen$/,        'which NOTAMs this device has already shown the pilot -- a record of what THIS person has read, not a setting; syncing it would mark a new phone as having read them'],

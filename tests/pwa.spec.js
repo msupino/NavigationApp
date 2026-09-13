@@ -556,3 +556,90 @@ test.describe('APK self-update (native remote-URL shell)', () => {
     expect(r.did).toBe(false);
   });
 });
+
+// Reported from an iPad browser: it keeps asking to reload for a new version.
+//
+// The service worker's lifecycle was the only signal the notice had, and on iOS that signal
+// fires for reasons that are not a deploy -- Safari evicts a worker and re-installs the SAME
+// bytes, and a claim can arrive more than once. The lifecycle now only prompts the question;
+// the answer comes from the build id, which sw.js and the running page both carry.
+test.describe('Build update notice', () => {
+  const swText = (sha) => "const CACHE = 'navaid-" + sha + "';";
+
+  test('a worker that churned on the same build says nothing', async ({ page }) => {
+    await page.goto('?lang=en');
+    const shown = await page.evaluate(async (body) => {
+      document.getElementById('build-update-notice')?.remove();
+      const asked = await announceBuildUpdate({
+        buildId: 'abc1234',
+        storage: null,
+        fetch: () => Promise.resolve({ ok: true, text: () => Promise.resolve(body) }),
+      });
+      return { asked, notice: !!document.getElementById('build-update-notice') };
+    }, swText('abc1234'));
+    expect(shown).toEqual({ asked: false, notice: false });
+  });
+
+  test('a genuinely new build still asks', async ({ page }) => {
+    await page.goto('?lang=en');
+    const shown = await page.evaluate(async (body) => {
+      document.getElementById('build-update-notice')?.remove();
+      const asked = await announceBuildUpdate({
+        buildId: 'abc1234',
+        storage: null,
+        fetch: () => Promise.resolve({ ok: true, text: () => Promise.resolve(body) }),
+      });
+      return { asked, notice: !!document.getElementById('build-update-notice') };
+    }, swText('def5678'));
+    expect(shown).toEqual({ asked: true, notice: true });
+  });
+
+  test('the same new build is announced once per session, not once per check', async ({ page }) => {
+    await page.goto('?lang=en');
+    const seen = await page.evaluate(async (body) => {
+      document.getElementById('build-update-notice')?.remove();
+      const store = { v: {}, getItem(k) { return this.v[k] || null; },
+                      setItem(k, x) { this.v[k] = String(x); } };
+      const call = () => announceBuildUpdate({
+        buildId: 'abc1234',
+        storage: store,
+        fetch: () => Promise.resolve({ ok: true, text: () => Promise.resolve(body) }),
+      });
+      const first = await call();
+      document.getElementById('build-update-notice')?.remove();
+      // The page could not pick the new build up -- an iOS cache handing back the old HTML --
+      // so the next check finds the same difference. Ask once, not on every check.
+      const second = await call();
+      return { first, second, notice: !!document.getElementById('build-update-notice') };
+    }, swText('def5678'));
+    expect(seen).toEqual({ first: true, second: false, notice: false });
+  });
+
+  test('a dev build has no id to compare, so the lifecycle still speaks', async ({ page }) => {
+    await page.goto('?lang=en');
+    const shown = await page.evaluate(async () => {
+      document.getElementById('build-update-notice')?.remove();
+      const asked = await announceBuildUpdate({
+        buildId: '',
+        fetch: () => Promise.reject(new Error('no network in this test')),
+      });
+      return { asked, notice: !!document.getElementById('build-update-notice') };
+    });
+    expect(shown).toEqual({ asked: true, notice: true });
+  });
+
+  test('an unreachable sw.js is not an update', async ({ page }) => {
+    await page.goto('?lang=en');
+    const shown = await page.evaluate(async () => {
+      document.getElementById('build-update-notice')?.remove();
+      const asked = await announceBuildUpdate({
+        buildId: 'abc1234',
+        storage: null,
+        fetch: () => Promise.reject(new Error('offline')),
+      });
+      return { asked, notice: !!document.getElementById('build-update-notice') };
+    });
+    // Offline is the normal state of a phone in the air. It is not a deploy.
+    expect(shown).toEqual({ asked: false, notice: false });
+  });
+});
