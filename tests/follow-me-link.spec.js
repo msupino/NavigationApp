@@ -603,9 +603,21 @@ test('the position is retained while sharing and cleared when it stops', async (
     window.__sent.length = 0;
     const stopped = F.stop();
     await new Promise(r => setTimeout(r, 10));
-    const clear = window.__sent.find(f => (f[0] & 0xf0) === 0x30);
-    const len = F._readLength(new Uint8Array(clear), 1);
-    const topicLen = (clear[len.next] << 8) | clear[len.next + 1];
+    // The POSITION tombstone specifically: stopping also clears the retained route on
+    // <topic>/route, which is published first and at QoS 0. This test is about the one the
+    // stop waits for.
+    const topicOf = (f) => {
+      const l = F._readLength(new Uint8Array(f), 1);
+      const tl = (f[l.next] << 8) | f[l.next + 1];
+      return { topic: String.fromCharCode(...f.slice(l.next + 2, l.next + 2 + tl)),
+               len: l, topicLen: tl };
+    };
+    const clear = window.__sent
+      .filter(f => (f[0] & 0xf0) === 0x30)
+      .find(f => !topicOf(f).topic.endsWith('/route'));
+    const parsed = topicOf(clear);
+    const len = parsed.len;
+    const topicLen = parsed.topicLen;
     const payloadLen = len.value - 2 - topicLen - 2; // QoS 1 packet id
     window.WebSocket = orig;
     await stopped;
@@ -1191,15 +1203,27 @@ test('a dropped socket reconnects and re-subscribes; stopping does not', async (
     await F.viewerStart({ search: url.search, hash: url.hash });
     window.__sockets[1].connack();
     await new Promise(r => setTimeout(r, 10));
-    const subs = () => window.__sent.filter(f => (f[0] & 0xf0) === 0x80).length;
-    const before = { sockets: window.__sockets.length, subs: subs() };
+    // Every topic subscribed so far. A viewer watches two now -- the position and the plan
+    // beside it -- so counting packets alone would say "it re-subscribed" when it had only
+    // got half way back.
+    const subTopics = () => window.__sent.filter(f => (f[0] & 0xf0) === 0x80).map(f => {
+      const l = F._readLength(new Uint8Array(f), 1);
+      const at = l.next + 2;                       // skip the packet id
+      const tl = (f[at] << 8) | f[at + 1];
+      return String.fromCharCode(...f.slice(at + 2, at + 2 + tl));
+    });
+    const subs = () => subTopics().length;
+    const before = { sockets: window.__sockets.length, subs: subs(),
+                     topics: new Set(subTopics()).size };
 
     window.__sockets[1].close();                  // the drop
     await new Promise(r => setTimeout(r, 2300));  // first backoff step is 2s
     const grew = window.__sockets.length;
     window.__sockets[grew - 1].connack();
     await new Promise(r => setTimeout(r, 20));
-    const after = { sockets: grew, subs: subs() };
+    const after = { sockets: grew, subs: subs(),
+                    // What the reconnect asked for, on its own.
+                    again: subTopics().slice(before.subs) };
 
     F.viewerStop(); await F.stop();
     const closed = window.__sockets.length;
@@ -1210,7 +1234,9 @@ test('a dropped socket reconnects and re-subscribes; stopping does not', async (
     return { before, after, closed, settled };
   });
   expect(got.after.sockets).toBe(got.before.sockets + 1);  // it came back...
-  expect(got.after.subs).toBe(got.before.subs + 1);        // ...and re-subscribed
+  // ...and re-subscribed to everything it was watching, not merely to something.
+  expect(got.after.again.sort()).toEqual([...new Set(got.after.again)].sort());
+  expect(got.after.again.length).toBe(got.before.topics);
   expect(got.settled).toBe(got.closed);                    // stop means stop
 });
 
