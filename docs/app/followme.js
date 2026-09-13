@@ -177,6 +177,43 @@
   function randomBytes(n) { return crypto.getRandomValues(new Uint8Array(n)); }
   const importKey = (raw) => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
 
+  // The route JSON, gzipped before it is sealed -- compressing ciphertext buys nothing, and
+  // this is JSON with the same keys repeated once per leg, which is the case gzip is best at:
+  // a 20-waypoint plan with comm changes goes from 7.6 KB to about 0.6 KB. It matters because
+  // the payload is RETAINED: it sits on a free public relay until the share stops, so the
+  // smaller copy is the polite one.
+  //
+  // Old runtimes (iOS before 16.4) have no CompressionStream. A publisher there sends the
+  // plain object and every viewer reads it; a viewer there cannot read a gzipped one, and
+  // gets no route offer -- the position, which is the point of the link, is untouched.
+  //
+  // Which compressor, or none, is the gist's to say: a relay that dislikes a format, or a
+  // fleet on a runtime whose CompressionStream misbehaves, is a config push rather than a
+  // release. 'off' publishes the plain object, which every viewer can read.
+  function routeZipFormat() {
+    const raw = (typeof tune === 'function') ? String(tune('followMeRouteCompress') || '') : 'gzip';
+    return (raw === 'gzip' || raw === 'deflate-raw') ? raw : (raw === 'off' ? '' : 'gzip');
+  }
+  // The format is carried in the packet, not assumed: a viewer that joins after the gist
+  // changed it -- or reads a retained packet written under the old one -- must still inflate
+  // what is actually there.
+  const canDeflate = () => typeof CompressionStream === 'function' && !!routeZipFormat();
+  const canInflate = () => typeof DecompressionStream === 'function';
+  // Sanity ceiling on the way IN, so a hostile or corrupt packet cannot be inflated into
+  // something the JSON parser chokes on.
+  const ROUTE_INFLATE_MAX = 1024 * 1024;
+
+  async function deflateText(text, format) {
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream(format));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  async function inflateText(bytes, format) {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream(format));
+    const out = await new Response(stream).arrayBuffer();
+    if (out.byteLength > ROUTE_INFLATE_MAX) return null;
+    return new TextDecoder().decode(out);
+  }
+
   async function seal(key, obj) {
     const iv = randomBytes(12);
     const data = new TextEncoder().encode(JSON.stringify(obj));
@@ -207,6 +244,11 @@
   const tune = (k, d) => (typeof window.tune === 'function' ? window.tune(k) : d);
   const brokerUrl = () => tune('followMeBroker', 'wss://broker.emqx.io:8084/mqtt');
   const topicFor = (id) => 'navaid/follow/' + id;
+  // The plan travels beside the position, on its own retained topic. Two topics rather than
+  // one packet because they change at completely different rates: a fix every couple of
+  // seconds, a route once a flight. A viewer joining late gets the retained copy of each.
+  const routeTopicFor = (id) => topicFor(id) + '/route';
+  const routeSharingOn = () => typeof tune !== 'function' || tune('featureFollowMeRoute') !== false;
 
   // How old a fix has to be before the viewer stops calling it live. Not a guess about the
   // aeroplane -- a statement about what we know.
@@ -414,6 +456,10 @@
     if (!s || session !== s || !s.client.ready || s.clearPacketId) return false;
     let packetId = null;
     try {
+      // The plan goes with the position: a link that no longer says where the aeroplane is
+      // must not still hand out where it was going.
+      try { s.client.publish(routeTopicFor(s.id), new Uint8Array(0), { retain: true, qos: 0 }); }
+      catch (e) { /* the position tombstone below is the one that gates the stop */ }
       packetId = s.client.publish(
         topicFor(s.id), new Uint8Array(0), { retain: true, qos: 1 });
     } catch (e) { packetId = null; }
@@ -442,7 +488,7 @@
       seq: Number.isSafeInteger(raw.seq) ? raw.seq : 0,
       lastSentAt: 0, status: pendingStop ? 'stopping' : 'connecting', everConnected: false,
       resolveStop: null, stopPromise: null, clearPacketId: null, clearAckTimer: 0,
-      stopDeadlineTimer: 0, forcedStop: false,
+      stopDeadlineTimer: 0, forcedStop: false, lastRouteText: '',
       revocationRetryTimer: 0,
       resolveConnected: null, connectedPromise: null,
       link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k,
@@ -461,6 +507,8 @@
         return;
       }
       s.status = 'connected';
+      // A viewer who opens the link before the aeroplane moves should still see the plan.
+      publishRoute(true).catch(() => { /* the next route change retries */ });
       if (s.resolveConnected) {
         s.resolveConnected(true);
         s.resolveConnected = null;
@@ -634,6 +682,63 @@
 
   // Called from the fix handler. Rate-limited: a public broker is a courtesy, and one
   // position a second is plenty to follow an aeroplane with.
+  // The route as it stands, sealed with the same key. Retained, so it is waiting for whoever
+  // opens the link an hour later, and re-sent when the plan changes -- a diversion agreed in
+  // the air is exactly the thing a follower on the ground wants to see.
+  //
+  // Capped: a public relay is a courtesy, and a route past the cap is not published rather
+  // than half-published. Nothing else stops working if it is refused.
+  async function publishRoute(force) {
+    const s = session;
+    if (!s || s.status === 'stopping' || !routeSharingOn()) return false;
+    if (!s.client.ready || !sessionAuthorized(s)) return false;
+    if (typeof serializeRoute !== 'function' || typeof state === 'undefined') return false;
+    const wps = (state && Array.isArray(state.waypoints)) ? state.waypoints : [];
+    if (wps.length < 2) return false;                 // nothing that is a route yet
+    let body;
+    try { body = serializeRoute(); } catch (e) { return false; }
+    const text = JSON.stringify(body);
+    // Unchanged since the last send: the relay already has it, retained.
+    if (!force && text === s.lastRouteText) return false;
+    const envelope = {
+      from: (wps[0] && wps[0].name) || '',
+      to: (wps[wps.length - 1] && wps[wps.length - 1].name) || '',
+      t: Date.now(),
+    };
+    const format = canDeflate() ? routeZipFormat() : '';
+    if (format) {
+      try {
+        envelope.gz = b64url.from(await deflateText(text, format));
+        envelope.zf = format;                      // say which, rather than let a reader guess
+      } catch (e) { delete envelope.gz; delete envelope.zf; envelope.route = body; }
+    } else {
+      envelope.route = body;
+    }
+    // The cap is about what the relay has to hold, so it is measured on what is actually
+    // sent. A plan too big to publish is not published at all rather than half-published,
+    // and nothing else about the share stops working.
+    const maxKb = Math.max(1, Number(tune('followMeRouteMaxKb')) || 64);
+    const wire = envelope.gz ? envelope.gz.length : text.length;
+    if (wire > maxKb * 1024) return false;
+    s.lastRouteText = text;
+    const payload = await seal(s.key, envelope);
+    if (session !== s || s.status === 'stopping' || !s.client.ready) return false;
+    try { s.client.publish(routeTopicFor(s.id), payload, { retain: true, qos: 0 }); }
+    catch (e) { return false; }
+    return true;
+  }
+
+  // Called wherever the route is persisted: one debounce, so dragging a waypoint does not
+  // publish forty times.
+  let routePublishTimer = 0;
+  function followMeRouteChanged() {
+    if (!session) return;
+    clearTimeout(routePublishTimer);
+    routePublishTimer = setTimeout(() => {
+      publishRoute(false).catch(() => { /* the next change tries again */ });
+    }, Math.max(0, Number(tune('followMeRouteDebounceMs')) || 1500));
+  }
+
   async function followMePublish(fix) {
     if (!session || session.status === 'stopping' || !fix ||
         !Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)) return false;
@@ -704,15 +809,67 @@
   let watch = null;
   function followMeWatching() { return watch ? watch.state : null; }
 
+  // The plan the pilot is flying, offered rather than applied. Loading it REPLACES the route
+  // on this map, and a viewer may well be looking at their own -- so it is a question, asked
+  // once per plan. Answering no means no for that plan: a reconnect re-delivers the same
+  // retained packet, and a second identical question is how a prompt gets dismissed unread.
+  let routeOffered = '';
+  async function onRouteMessage(key, payload) {
+    if (!payload || !payload.length) return;      // cleared: the pilot stopped sharing
+    if (!routeSharingOn()) return;
+    const msg = await open(key, payload);
+    if (!msg) return;
+    let route = msg.route || null;
+    if (!route && msg.gz) {
+      // A publisher that could compress and a viewer that cannot inflate: no offer, and the
+      // position -- which is what the link is for -- carries on regardless.
+      if (!canInflate()) return;
+      // An older publisher sent no format at all, and everything it sent was gzip.
+      const format = msg.zf === 'deflate-raw' ? 'deflate-raw' : 'gzip';
+      try {
+        const text = await inflateText(b64url.to(msg.gz), format);
+        route = text ? JSON.parse(text) : null;
+      } catch (e) { return; }
+    }
+    if (!route) return;
+    if (typeof validateRoute === 'function' && validateRoute(route) !== null) return;
+    const fingerprint = JSON.stringify(route);
+    if (fingerprint === routeOffered) return;
+    routeOffered = fingerprint;
+    const S2 = window.S || {};
+    const named = [msg.from, msg.to].filter(Boolean).join(' \u2192 ');
+    const ask = S2.followMeRouteOffer
+      ? S2.followMeRouteOffer(named)
+      : ('The pilot is sharing a route' + (named ? ' (' + named + ')' : '')
+         + '. Load it? This replaces the route on your map.');
+    // No confirm available means no answer, and no answer means the viewer's own route stays
+    // exactly as it is -- the opposite default to the share button, where the pilot pressing
+    // it IS the answer.
+    let take;
+    try { take = confirm(ask); } catch (e) { take = false; }
+    if (!take) return;
+    if (typeof applyRouteData !== 'function') return;
+    applyRouteData(route);
+    if (typeof draw === 'function') draw();
+    if (typeof showToast === 'function') {
+      showToast(S2.followMeRouteLoaded || 'Route loaded from the pilot you are following.');
+    }
+  }
+
   async function followMeWatch(id, rawKeyB64, opts) {
     if (watch) followMeUnwatch();
     const key = await importKey(b64url.to(rawKeyB64));
     const state = { id, fix: null, at: null, connected: false, lastOrder: -1 };
     const client = mqttConnect(brokerUrl(), Object.assign(
       { clientId: 'navaid-sub-' + id.slice(0, 8) }, opts || {}));
-    client.onOpen = () => { state.connected = true; client.subscribe(topicFor(id)); };
+    client.onOpen = () => {
+      state.connected = true;
+      client.subscribe(topicFor(id));
+      if (routeSharingOn()) client.subscribe(routeTopicFor(id));
+    };
     client.onClose = () => { state.connected = false; };
     client.onMessage = async (topic, payload) => {
+      if (topic === routeTopicFor(id)) { await onRouteMessage(key, payload); return; }
       if (topic !== topicFor(id)) return;
       if (!payload || !payload.length) return;   // the cleared retained value: sharing stopped
       const msg = await open(key, payload);
@@ -737,6 +894,7 @@
     return state;
   }
   function followMeUnwatch() {
+    routeOffered = '';
     if (!watch) return;
     watch.client.close();
     watch = null;
@@ -996,6 +1154,7 @@
   NS.followMe = {
     viewerStart: followMeViewerStart, viewerStop: followMeViewerStop, viewing: followMeViewing,
     forceStop: followMeForceStop, urlWithoutWatch: followMeUrlWithoutWatch,
+    routeChanged: followMeRouteChanged, publishRoute: publishRoute,
     shareWhileViewing: shareWhileViewing,
     viewerFix: () => (viewer && viewer.state && viewer.state.fix) || null,
     viewerDraw: followMeViewerDraw, viewerRefresh: followMeViewerRefresh,
