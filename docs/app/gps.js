@@ -361,7 +361,7 @@ function gpsStopStaleWatchdog() {
 
 function startLiveLocation() {
   if (gpsLiveOn) return;
-  if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
+  if (!navigator.geolocation && !_bgGeo()) { refuse(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
   gpsAcquireWakeLock();
   // A route unlocked by hand during the last session locks again for this one -- see
@@ -1047,14 +1047,14 @@ function onGpsRecError(err) {
   if (!gpsErrFatal(err)) return;              // transient: the watch keeps trying
   stopGpsRecording();
   resetGpsFooterBtn('gps-record', S.tbGpsRecord, '⏺');
-  alert(gpsErrMsg(err));
+  refuse(gpsErrMsg(err));
 }
 function onGpsLiveError(err) {
   if (!gpsLiveOn) return;
   if (!gpsErrFatal(err)) return;
   stopLiveLocation();
   resetGpsFooterBtn('gps-live', S.tbGpsLive, '📍');
-  alert(gpsErrMsg(err));
+  refuse(gpsErrMsg(err));
 }
 
 // Toggle the top-right REC indicator (a pulsing red dot) AND the Record
@@ -1088,7 +1088,7 @@ function updateGpsRecIndicator() {
 
 function startGpsRecording() {
   if (gpsRecording) return;
-  if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
+  if (!navigator.geolocation && !_bgGeo()) { refuse(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsRecording = true;
   gpsStartCompass();
   _gpsUserMovedAt = 0;
@@ -1135,7 +1135,7 @@ function gpsTrackName() {
 function stopGpsRecordingAndSave() {
   const raw = gpsTrack.slice();
   stopGpsRecording();
-  if (raw.length < 2) { alert(S.gpsNoTrack || 'No track recorded.'); return null; }
+  if (raw.length < 2) { refuse(S.gpsNoTrack || 'No track recorded.'); return null; }
   const simplified = simplifyTrack(raw, GPS_SIMPLIFY_EPS_DEG);   // keeps the flown line's shape, drops redundant fixes
   const entry = {
     id: routeLibraryId(),

@@ -81,10 +81,12 @@ test('a refused library write says so instead of looking like success', async ({
       if (k === 'navaid.routes') { const e = new Error('quota'); e.name = 'QuotaExceededError'; throw e; }
       return realSet.call(this, k, v);
     };
-    let alerted = null, toasted = null;
+    // Both channels collected together: the refusal is a toast now, and what matters
+    // is that something said the write failed and nothing claimed an import.
+    const said = [];
     const realAlert = window.alert, realToast = window.showToast;
-    window.alert = m => { alerted = m; };
-    window.showToast = m => { toasted = m; };
+    window.alert = m => { said.push(String(m)); };
+    window.showToast = m => { said.push(String(m)); };
     try {
       load(new File([JSON.stringify(lib)], 'navaid-routes.json', { type: 'application/json' }));
       await new Promise(r => setTimeout(r, 300));
@@ -92,10 +94,12 @@ test('a refused library write says so instead of looking like success', async ({
       Storage.prototype.setItem = realSet;
       window.alert = realAlert; window.showToast = realToast;
     }
-    return { alerted, toasted };
+    return { said };
   });
-  expect(out.alerted).toBeTruthy();     // the failure is reported
-  expect(out.toasted).toBeNull();       // and never reported as an import
+  expect(out.said.length).toBeGreaterThan(0);                  // the failure is reported
+  expect(out.said.some(m => /storage is full/i.test(m))).toBe(true);
+  // ...and nothing claims the import succeeded. ("Nothing was imported" is the refusal.)
+  expect(out.said.some(m => /route\(s\) imported/i.test(m))).toBe(false);
 });
 
 test('entries the import refuses are counted in the message', async ({ page }) => {

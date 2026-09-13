@@ -41,16 +41,22 @@ async function loadRoute(page) {
   }, TWO_WP_ROUTE);
 }
 
-// Upload JSON to the hidden #file input. Returns the alert message or null.
+// Upload JSON to the hidden #file input. Returns whatever the app said -- a toast now, a
+// dialog historically -- or null when it said nothing at all.
 async function uploadAndCapture(page, contents) {
   let alerted = null;
   page.once('dialog', d => { alerted = d.message(); d.accept(); });
+  await page.evaluate(() => {
+    window.__said = [];
+    const real = window.showToast;
+    window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+  });
   await page.setInputFiles('#file', {
     name: 'route.json', mimeType: 'application/json',
     buffer: Buffer.from(contents, 'utf8'),
   });
   await page.waitForTimeout(200);
-  return alerted;
+  return alerted || (await page.evaluate(() => (window.__said || []).join(' '))) || null;
 }
 
 // ---------------------------------------------------------------------------

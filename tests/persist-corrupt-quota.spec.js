@@ -81,6 +81,12 @@ test.describe('Persistence safety (#73 / #80)', () => {
     await boot(page);
     let dialogMsg = null;
     page.on('dialog', d => { dialogMsg = d.message(); d.dismiss(); });
+    // ...or the toast that replaced it, which is what a WebView actually shows.
+    await page.evaluate(() => {
+      window.__said = [];
+      const real = window.showToast;
+      window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    });
     await page.evaluate(() => {
       NavAid.corruptCache = false;
       state.waypoints = [{ lat: 32, lng: 34.9, name: 'A' }];
@@ -93,6 +99,9 @@ test.describe('Persistence safety (#73 / #80)', () => {
     });
     await page.waitForTimeout(700);
     const expected = await page.evaluate(() => S.errStorageFull);
-    expect(dialogMsg).toBe(expected);
+    const said = await page.evaluate(() => window.__said);
+    expect(dialogMsg === expected || said.includes(expected)).toBe(true);
+    // "once": the latch means a second quota failure does not say it again.
+    expect(said.filter(m => m === expected).length).toBeLessThan(2);
   });
 });

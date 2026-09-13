@@ -73,12 +73,22 @@ test.describe('PLN export', () => {
     expect(xml).toContain('<Title>LLSD to LLHA</Title>');
   });
 
-  test('a single waypoint refuses to export', async ({ page }) => {
-    await page.evaluate(() => { state.waypoints = [{ lat: 32, lng: 34, name: 'X' }]; syncLegs(); });
+  test('a single waypoint refuses to export, out loud', async ({ page }) => {
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32, lng: 34, name: 'X' }];
+      syncLegs();
+      // The refusal is a toast rather than alert() -- see refusals-are-visible.spec.js for
+      // why -- so watch both: a dialog would still count, silence would not.
+      window.__said = [];
+      const realToast = window.showToast;
+      window.showToast = (m, o) => { window.__said.push(String(m)); return realToast(m, o); };
+    });
     let fired = false;
     page.once('dialog', d => { fired = true; d.accept(); });
     await page.locator('#export-select').selectOption('pln');
     await page.waitForTimeout(200);
-    expect(fired).toBe(true);
+    const toasts = await page.evaluate(() => window.__said);
+    expect(fired || toasts.length > 0, 'the refusal was silent').toBe(true);
+    if (!fired) expect(toasts.join(' ')).toMatch(/waypoint/i);
   });
 });

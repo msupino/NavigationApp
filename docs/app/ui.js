@@ -311,7 +311,7 @@ function layerSwitchAllowed(active, target) {
     ? S.errRouteChartLocked(named)
     : 'This route was planned on the ' + named + ' chart. Clear or save it first.';
   if (typeof showToast === 'function') showToast(say, { warn: true });
-  else try { alert(say); } catch (e) { /* no way to say it; the switch is still refused */ }
+  else refuse(say);
   return false;
 }
 NavAid.layerSwitchAllowed = layerSwitchAllowed;   // named so a test can reach the decision
@@ -1882,14 +1882,14 @@ async function buildRouteFromQuery(raw) {
   const resolved = [];
   for (const t of tokens) {
     const w = findNavWpToken(t);
-    if (!w) { alert(S.errSearchUnknown(t)); return false; }
+    if (!w) { refuse(S.errSearchUnknown(t)); return false; }
     resolved.push(w);
   }
   // A typed route is vetted before it replaces what is on the map: "LLHZ BAZRA LLHZ BAZRA"
   // asks for a track to be flown three times, and the map can draw it twice at most.
   const over = (typeof routeOverflownTrack === 'function') && routeOverflownTrack(resolved);
   if (over) {
-    alert(S.trackFlownTwiceToast || 'A track can be flown twice, once each way');
+    refuse(S.trackFlownTwiceToast || 'A track can be flown twice, once each way');
     return false;
   }
   if ((state.waypoints.length || state.notes.length) &&
@@ -2141,7 +2141,7 @@ async function applyRouteTemplate(template, speed, closeModal) {
     const msg = typeof S.routeTemplateWrongLayer === 'function'
       ? S.routeTemplateWrongLayer(routeTemplateLabel(template), label(pfx), label(template.layer))
       : 'Can\'t load this route on this layer.';
-    alert(msg);
+    refuse(msg);
     return false;
   }
   const route = await routeFromTemplate(template, speed);
@@ -2266,7 +2266,7 @@ function showRouteTemplatesModal() {
       const nextSpeed = Number(speed.value);
       if (!Number.isFinite(nextSpeed) || nextSpeed <= 0) {
         speed.setAttribute('aria-invalid', 'true');
-        alert(S.routeTemplateBadSpeed || 'Enter a valid speed in knots.');
+        refuse(S.routeTemplateBadSpeed || 'Enter a valid speed in knots.');
         return;
       }
       speed.setAttribute('aria-invalid', 'false');
@@ -2276,7 +2276,7 @@ function showRouteTemplatesModal() {
         if (!ok) apply.disabled = false;
       } catch (e) {
         apply.disabled = false;
-        alert((S.routeTemplateLoadError || 'Could not load route templates.') +
+        refuse((S.routeTemplateLoadError || 'Could not load route templates.') +
           (e && e.message ? '\n' + e.message : ''));
       }
     };
@@ -2728,7 +2728,7 @@ function showRouteLibraryModal(focusSave) {
     const corrupt = NavAid.routeLibraryCorrupt && typeof NavAid.routeLibraryCorruptRaw === 'string';
     const lib = corrupt ? null : loadRouteLibrary().filter(e => e && !e.deleted);
     // An empty library exported as "[]" — a file that imports as nothing.
-    if (!corrupt && !lib.length) { alert(S.routeLibraryExportEmpty || 'No saved routes to export yet.'); return; }
+    if (!corrupt && !lib.length) { refuse(S.routeLibraryExportEmpty || 'No saved routes to export yet.'); return; }
     const payload = corrupt ? NavAid.routeLibraryCorruptRaw : JSON.stringify(lib, null, 2);
     const blob = new Blob([payload], { type: 'application/json' });
     saveFile(blob, 'navaid-routes-' + fileStamp() + '.json');
@@ -2748,8 +2748,8 @@ function showRouteLibraryModal(focusSave) {
     const reader = new FileReader();
     reader.onload = () => {
       let arr;
-      try { arr = JSON.parse(reader.result); } catch (err) { alert(S.errLoadFile + err.message); return; }
-      if (!Array.isArray(arr)) { alert(S.errNotRouteLibrary || 'That file is not a saved-routes library.'); return; }
+      try { arr = JSON.parse(reader.result); } catch (err) { refuse(S.errLoadFile + err.message); return; }
+      if (!Array.isArray(arr)) { refuse(S.errNotRouteLibrary || 'That file is not a saved-routes library.'); return; }
       // Merging (fresh ids, tracks included) is shared with the toolbar Import,
       // which auto-detects a library file — one code path, one behaviour.
       const res = importRouteLibraryArray(arr);
@@ -2760,7 +2760,7 @@ function showRouteLibraryModal(focusSave) {
       // Only claim success (render + toast) if the write actually happened — a
       // corrupt library refuses the write, so don't show a false "imported".
       if (!persistRouteLibrary(res.merged)) {
-        alert(S.errRouteLibraryWriteFailed);   // never claim success on a refused write
+        refuse(S.errRouteLibraryWriteFailed);   // never claim success on a refused write
         return;
       }
       render();
@@ -3833,14 +3833,14 @@ document.getElementById('export-select').onchange = e => {
   if (v === 'json') save();
   else if (v === 'json-track') {
     const shown = (typeof shownTracks !== 'undefined') ? shownTracks : [];
-    if (!shown.length) { alert(S.tbTrackExportNoTrack || 'No GPS track shown — open Saved routes and click Show on a track first.'); return; }
+    if (!shown.length) { refuse(S.tbTrackExportNoTrack || 'No GPS track shown — open Saved routes and click Show on a track first.'); return; }
     const pick = shown[shown.length - 1];
     const entry = (typeof loadRouteLibrary === 'function' ? loadRouteLibrary() : []).find(e => e.id === pick.id);
     // A missing entry means the library could not be read (corrupt blob) or the
     // track is gone. Falling through silently looked identical to a successful
     // export: the picker reset and no file appeared.
     if (!entry || typeof downloadGpsTrackJson !== 'function') {
-      alert(S.errTrackExportFailed || 'That track could not be read from your saved routes.');
+      refuse(S.errTrackExportFailed || 'That track could not be read from your saved routes.');
       return;
     }
     // With several tracks shown, "the last one shown" is not something the user can
@@ -3874,7 +3874,7 @@ function saveRouteFromHeader(e) {
   // Nothing to save on an empty/too-short route — pop an error instead of
   // opening the menu or attempting an overwrite (a route needs >=2 waypoints).
   if (state.waypoints.length < 2) {
-    alert(S.errNothingToSave || S.errNeedWps || 'Nothing to save.');
+    refuse(S.errNothingToSave || S.errNeedWps || 'Nothing to save.');
     return;
   }
   // If the current route came from a saved entry, overwrite that same entry
@@ -5080,7 +5080,7 @@ function applyRouteWindSamples(locs, levels, skipPersist) {
 async function fetchRouteWind() {
   if (!state.legs.length) {
     if (windFetchStatus) windFetchStatus.textContent = '';
-    alert(S.errNeedWps);
+    refuse(S.errNeedWps);
     return;
   }
   if (windFetchStatus) windFetchStatus.textContent = S.windFetching;
@@ -9860,7 +9860,7 @@ if (!_sharedLoaded) {
     NavAid.corruptCache = true;
     const msg = S.errSavedRouteCorrupt(NavAid.corruptCacheError || '');
     console.warn('NavAid: ' + msg);
-    alert(msg);
+    refuse(msg);
   }
 } else {
   syncLegs();
