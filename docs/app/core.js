@@ -810,6 +810,8 @@ NavAid.tuningDefaults = {
   // that tracks you next week: past this, sharing again mints a new one.
   featureFollowMeShareWhileViewing: { value: false, type: 'bool', label: 'Follow me: may a page share while it is watching' },
   featureFollowMeRoute: { value: true, type: 'bool', label: 'Follow me: share the route beside the position' },
+  followMeRouteCompress: { value: 'gzip', type: 'select', options: ['gzip', 'deflate-raw', 'off'],
+    label: 'Follow me: how the shared route is compressed' },
   followMeRouteMaxKb: { value: 64, min: 4, max: 512, step: 4, label: 'Follow me: largest route to share (KB)' },
   followMeRouteDebounceMs: { value: 1500, min: 0, max: 20000, step: 100, label: 'Follow me: wait after a route edit before re-sending (ms)' },
   followMeStopMaxSec: { value: 25, min: 1, max: 300, step: 1, label: 'Follow me: how long Stop waits for the relay (s)' },
@@ -997,7 +999,7 @@ NavAid.tuningGroups = [
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'followMeBroker', 'followMeRateSec',
-    'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',
+    'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',
     'featureFollowMePersist', 'featureFollowMeNewLink', 'followMeLinkPerName'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },

@@ -328,3 +328,92 @@ test('a viewer that cannot inflate is left with the position, not an error', asy
   expect(got.names).toEqual(['MINE', 'OWN']);
   expect(got.watching).toBe(true);
 });
+
+// Which compressor, or none, is the gist's to say: a relay that dislikes a format, or a fleet
+// on a runtime whose CompressionStream misbehaves, should be a config push and not a release.
+const routeEnvelopeKeys = (page, link) => page.evaluate(async (shared) => {
+  // Read our own packet back the way a viewer does -- with the key out of the link -- so this
+  // asserts what is actually on the wire rather than what the publisher meant to send.
+  const rawKey = Uint8Array.from(
+    atob(new URL(shared).hash.replace('#k=', '').replace(/-/g, '+').replace(/_/g, '/')),
+    c => c.charCodeAt(0));
+  const frame = window.__sent.filter(f => (f[0] >> 4) === 3).map(f => {
+    let at = 1, digit;
+    do { digit = f[at++]; } while (digit & 0x80);
+    const len = (f[at] << 8) | f[at + 1];
+    return { topic: String.fromCharCode(...f.slice(at + 2, at + 2 + len)),
+             body: f.slice(at + 2 + len) };
+  }).find(p => p.topic.endsWith('/route'));
+  if (!frame) return null;
+  const key = await crypto.subtle.importKey('raw', rawKey, 'AES-GCM', false, ['decrypt']);
+  const bytes = new Uint8Array(frame.body);
+  const pt = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: bytes.subarray(0, 12) }, key, bytes.subarray(12));
+  return JSON.parse(new TextDecoder().decode(pt));
+}, link);
+
+for (const format of ['gzip', 'deflate-raw']) {
+  test('the gist picks the compressor: ' + format, async ({ page }) => {
+    await boot(page);
+    await bigRoute(page);
+    const link = await page.evaluate(async (f) => {
+      setTune('followMeRouteCompress', f);
+      const out = await NavAid.followMe.start('4X-ZF');
+      window.__sockets[0].connack();
+      await new Promise(r => setTimeout(r, 60));
+      return out;
+    }, format);
+    const env = await routeEnvelopeKeys(page, link);
+    expect(env.zf, 'the packet does not say how it was compressed').toBe(format);
+    expect(env.gz).toBeTruthy();
+    expect(env.route, 'both forms in one packet').toBeUndefined();
+  });
+}
+
+test('the gist can turn the compressor off entirely', async ({ page }) => {
+  await boot(page);
+  await bigRoute(page);
+  const link = await page.evaluate(async () => {
+    setTune('followMeRouteCompress', 'off');
+    const out = await NavAid.followMe.start('4X-ZF');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    return out;
+  });
+  const env = await routeEnvelopeKeys(page, link);
+  expect(env.gz).toBeUndefined();
+  expect(env.route, 'nothing to read').toBeTruthy();
+});
+
+test('a viewer inflates what the packet says it is, whatever the gist says now', async ({ page }) => {
+  await boot(page);
+  await bigRoute(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    setTune('followMeRouteCompress', 'deflate-raw');
+    const link = await F.start('4X-ZF');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    const frame = window.__sent.filter(f => (f[0] >> 4) === 3).map(f => {
+      let at = 1, digit;
+      do { digit = f[at++]; } while (digit & 0x80);
+      const len = (f[at] << 8) | f[at + 1];
+      return { topic: String.fromCharCode(...f.slice(at + 2, at + 2 + len)), frame: f };
+    }).find(p => p.topic.endsWith('/route')).frame;
+    // The gist changes its mind while a retained packet from before is still on the relay.
+    setTune('followMeRouteCompress', 'gzip');
+    state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
+    syncLegs();
+    window.confirm = () => true;
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    const sub = window.__sockets[window.__sockets.length - 1];
+    sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    sub.deliver(frame);
+    await new Promise(r => setTimeout(r, 80));
+    return state.waypoints.length;
+  });
+  // The format travels in the packet, so a reader never has to guess -- or agree.
+  expect(got).toBe(20);
+});

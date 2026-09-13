@@ -186,18 +186,29 @@
   // Old runtimes (iOS before 16.4) have no CompressionStream. A publisher there sends the
   // plain object and every viewer reads it; a viewer there cannot read a gzipped one, and
   // gets no route offer -- the position, which is the point of the link, is untouched.
-  const canDeflate = () => typeof CompressionStream === 'function';
+  //
+  // Which compressor, or none, is the gist's to say: a relay that dislikes a format, or a
+  // fleet on a runtime whose CompressionStream misbehaves, is a config push rather than a
+  // release. 'off' publishes the plain object, which every viewer can read.
+  function routeZipFormat() {
+    const raw = (typeof tune === 'function') ? String(tune('followMeRouteCompress') || '') : 'gzip';
+    return (raw === 'gzip' || raw === 'deflate-raw') ? raw : (raw === 'off' ? '' : 'gzip');
+  }
+  // The format is carried in the packet, not assumed: a viewer that joins after the gist
+  // changed it -- or reads a retained packet written under the old one -- must still inflate
+  // what is actually there.
+  const canDeflate = () => typeof CompressionStream === 'function' && !!routeZipFormat();
   const canInflate = () => typeof DecompressionStream === 'function';
   // Sanity ceiling on the way IN, so a hostile or corrupt packet cannot be inflated into
   // something the JSON parser chokes on.
   const ROUTE_INFLATE_MAX = 1024 * 1024;
 
-  async function gzipText(text) {
-    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+  async function deflateText(text, format) {
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream(format));
     return new Uint8Array(await new Response(stream).arrayBuffer());
   }
-  async function gunzipText(bytes) {
-    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  async function inflateText(bytes, format) {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream(format));
     const out = await new Response(stream).arrayBuffer();
     if (out.byteLength > ROUTE_INFLATE_MAX) return null;
     return new TextDecoder().decode(out);
@@ -694,9 +705,12 @@
       to: (wps[wps.length - 1] && wps[wps.length - 1].name) || '',
       t: Date.now(),
     };
-    if (canDeflate()) {
-      try { envelope.gz = b64url.from(await gzipText(text)); }
-      catch (e) { envelope.route = body; }         // compression failed: send it plainly
+    const format = canDeflate() ? routeZipFormat() : '';
+    if (format) {
+      try {
+        envelope.gz = b64url.from(await deflateText(text, format));
+        envelope.zf = format;                      // say which, rather than let a reader guess
+      } catch (e) { delete envelope.gz; delete envelope.zf; envelope.route = body; }
     } else {
       envelope.route = body;
     }
@@ -810,8 +824,10 @@
       // A publisher that could compress and a viewer that cannot inflate: no offer, and the
       // position -- which is what the link is for -- carries on regardless.
       if (!canInflate()) return;
+      // An older publisher sent no format at all, and everything it sent was gzip.
+      const format = msg.zf === 'deflate-raw' ? 'deflate-raw' : 'gzip';
       try {
-        const text = await gunzipText(b64url.to(msg.gz));
+        const text = await inflateText(b64url.to(msg.gz), format);
         route = text ? JSON.parse(text) : null;
       } catch (e) { return; }
     }
