@@ -3991,7 +3991,11 @@ body.theme-light .charts-cat-chip {
   margin-bottom: 6px;
   font-size: 13px;
 }
-.satellite-snippet-head label {
+/* The muted colour is for a plain caption in this header. The section BADGE is not one:
+   it is the same yellow chip every other section heading in the panel uses, and painting
+   its text grey left "Satellite" washed out beside "AD / WS warnings" -- reported from the
+   panel, in both themes. The badge owns its own colours. */
+.satellite-snippet-head label:not(.insp-section-badge) {
   color: #b9b3b3;
 }
 .satellite-expand-hint {
@@ -5562,7 +5566,7 @@ body.theme-light .modal-close-x,
 body.theme-light .sim-modal-close,
 body.theme-light .modal-close-action,
 body.theme-light .point-choice-meta,
-body.theme-light .satellite-snippet-head label,
+body.theme-light .satellite-snippet-head label:not(.insp-section-badge),
 body.theme-light .satellite-caption,
 body.theme-light .wx-head,
 body.theme-light .wx-updated,
