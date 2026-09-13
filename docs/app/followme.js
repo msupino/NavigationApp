@@ -1123,7 +1123,39 @@
       el.appendChild(group);
     });
     followMeViewerPlaceBanner(el);
-    if (viewer.marker) viewer.marker.setOpacity(stale ? 0.45 : 1);
+    if (viewer.markEl) viewer.markEl.style.opacity = stale ? '0.45' : '1';
+  }
+
+  // The route, its waypoints and their names are painted on #overlay -- a canvas that sits
+  // above the WHOLE Leaflet map, because the map pane is a z-index 400 stacking context and
+  // the canvas is a sibling at the same 400, later in the document. Every Leaflet marker is
+  // therefore under the chart furniture, which is how the followed aeroplane ended up drawn
+  // beneath a reporting point's circle and its name. (The own-ship never had this problem:
+  // draw.js paints it onto that same canvas.)
+  //
+  // So the aeroplane gets its own pane, hung off the map CONTAINER rather than the map pane,
+  // which puts it outside that stacking context -- and is placed by hand, because a pane
+  // outside the map pane does not receive Leaflet's transform. Above the canvas, below the
+  // crosshair and the controls.
+  const FOLLOW_ME_PANE_Z = 640;
+  function followMePane() {
+    let pane = map.getPane('followme');
+    if (!pane) {
+      pane = map.createPane('followme', map.getContainer());
+      pane.style.zIndex = String(FOLLOW_ME_PANE_Z);
+      pane.style.pointerEvents = 'none';
+    }
+    return pane;
+  }
+  // Glue the aeroplane to its fix in container coordinates. Cheap enough to run on every
+  // map move, and it must: nothing else moves it.
+  function followMePlaceMark() {
+    if (!viewer || !viewer.markEl || !viewer.state.fix || typeof map === 'undefined') return;
+    const f = viewer.state.fix;
+    if (!Number.isFinite(f.lat) || !Number.isFinite(f.lng)) return;
+    const p = map.latLngToContainerPoint([f.lat, f.lng]);
+    viewer.markEl.style.left = p.x + 'px';
+    viewer.markEl.style.top = p.y + 'px';
   }
 
   // A top-down aircraft whose unrotated nose points north. A font glyph has a device-specific
@@ -1141,27 +1173,28 @@
     const mapTurn = typeof map.getBearing === 'function' ? map.getBearing() : 0;
     const screenTrack = Number.isFinite(f.trk) ? f.trk + mapTurn : mapTurn;
     const px = Math.round(Number(tune('followMePlanePx', 26)) || 26);
-    const icon = L.divIcon({
-      className: 'follow-me-mark',
-      iconSize: [px, px],
-      iconAnchor: [px / 2, px / 2],
-      html: '<span class="follow-me-arrow" style="transform:rotate('
-        + screenTrack + 'deg)">'
-        + '<svg class="follow-me-plane" viewBox="0 0 24 24" width="' + px + '" height="' + px
-        + '" aria-hidden="true"><path d="' + FOLLOW_ME_PLANE + '"/></svg></span>'
-        + (f.reg ? '<span class="follow-me-label">' + escapeHtml(f.reg) + '</span>' : ''),
-    });
-    if (!viewer.marker) {
-      viewer.marker = L.marker([f.lat, f.lng], { icon, keyboard: false, pane: 'markerPane' })
-        .addTo(map);
+    const first = !viewer.markEl;
+    if (first) {
+      viewer.markEl = document.createElement('div');
+      viewer.markEl.className = 'follow-me-mark';
+      followMePane().appendChild(viewer.markEl);
+    }
+    const el = viewer.markEl;
+    el.style.width = px + 'px';
+    el.style.height = px + 'px';
+    el.innerHTML = '<span class="follow-me-arrow" style="transform:rotate('
+      + screenTrack + 'deg)">'
+      + '<svg class="follow-me-plane" viewBox="0 0 24 24" width="' + px + '" height="' + px
+      + '" aria-hidden="true"><path d="' + FOLLOW_ME_PLANE + '"/></svg></span>'
+      + (f.reg ? '<span class="follow-me-label">' + escapeHtml(f.reg) + '</span>' : '');
+    if (first) {
       map.setView([f.lat, f.lng], Math.max(map.getZoom(), 10));
     } else {
-      viewer.marker.setLatLng([f.lat, f.lng]);
-      viewer.marker.setIcon(icon);
       // A Follow Me link is a live tracker: every new fix owns the map centre. An animated
       // pan can trail rapid updates, so place the reported fix in the centre immediately.
       map.setView([f.lat, f.lng], map.getZoom(), { animate: false });
     }
+    followMePlaceMark();
     if (typeof refreshOrientControl === 'function') refreshOrientControl();
     followMeViewerRefresh();
   }
@@ -1192,9 +1225,16 @@
     window.editUnlockOverride = false;
     document.body.classList.add('follow-me-viewing');
     if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
+    // The map's clock hides while a live aeroplane is on screen, and a follower is watching
+    // one. It asks, so it has to be told when the answer changes.
+    if (NavAid.refreshMapClock) NavAid.refreshMapClock();
     if (typeof map !== 'undefined' && map && map.on) {
       viewer.rotateHandler = () => { if (viewer) followMeViewerDraw(); };
       map.on('rotate rotateend', viewer.rotateHandler);
+      // Nothing else moves the aeroplane: its pane is outside the map pane and gets no
+      // transform, so every pan and zoom has to put it back over its fix.
+      viewer.moveHandler = () => followMePlaceMark();
+      map.on('move zoom zoomend viewreset resize', viewer.moveHandler);
     }
     followMeViewerRefresh();
     // The age has to keep counting even when nothing arrives -- especially then.
@@ -1207,10 +1247,15 @@
     if (viewer.rotateHandler && typeof map !== 'undefined' && map && map.off) {
       map.off('rotate rotateend', viewer.rotateHandler);
     }
-    if (viewer.marker && typeof map !== 'undefined') map.removeLayer(viewer.marker);
+    if (viewer.moveHandler && typeof map !== 'undefined' && map && map.off) {
+      map.off('move zoom zoomend viewreset resize', viewer.moveHandler);
+    }
+    if (viewer.markEl && viewer.markEl.parentNode) viewer.markEl.parentNode.removeChild(viewer.markEl);
+
     viewer = null;
     window.editUnlockOverride = false;
     document.body.classList.remove('follow-me-viewing');
+    if (NavAid.refreshMapClock) NavAid.refreshMapClock();
     if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
     followMeViewerClearBannerLayout();
     const el = document.getElementById('follow-me-banner');

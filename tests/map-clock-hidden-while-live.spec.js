@@ -43,6 +43,28 @@ for (const mode of ['recording', 'sim']) {
   });
 }
 
+// A follower is watching a live aeroplane from the ground: same state, other end of the
+// link. Reported from a follower window -- there is a dimmed time slider on the map, and
+// nothing on that page answers to it.
+test('following someone else\'s aeroplane puts the clock away too', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(() => window.NavAid && NavAid.followMe);
+  expect(await clockHidden(page), 'not following yet').toBe(false);
+  const hiddenWhileViewing = await page.evaluate(() => {
+    // The state the clock asks about, without a broker: viewing() is what it reads.
+    const F = NavAid.followMe;
+    const realViewing = F.viewing;
+    F.viewing = () => true;
+    NavAid.refreshMapClock();
+    const hidden = document.getElementById('map-time').hidden;
+    F.viewing = realViewing;
+    NavAid.refreshMapClock();
+    return hidden;
+  });
+  expect(hiddenWhileViewing).toBe(true);
+  expect(await clockHidden(page), 'and it comes back when the watch ends').toBe(false);
+});
+
 test('the look-ahead keeps running behind it', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {

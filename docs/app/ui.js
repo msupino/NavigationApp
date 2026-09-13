@@ -10729,8 +10729,16 @@ const NavWxTime = (function () {
   // showing location. The gist owns the removal, as the house rule requires, and the
   // look-ahead itself is untouched: every layer still answers to it, and the sliders in Extra
   // layers and on the inspector still move it.
-  const liveHides = () => (typeof tune !== 'function' || tune('hideMapClockWhileLive') !== false)
-    && typeof gpsPositionLive === 'function' && gpsPositionLive();
+  //
+  // Following someone else's aeroplane is the same state seen from the ground: the page is a
+  // live tracker, the hour is now, and nothing on it answers to a look-ahead. Reported from a
+  // follower window: there is a dimmed time slider on the map, although nothing needs it.
+  const liveHides = () => {
+    if (typeof tune === 'function' && tune('hideMapClockWhileLive') === false) return false;
+    if (typeof gpsPositionLive === 'function' && gpsPositionLive()) return true;
+    return !!(window.NavAid && NavAid.followMe && typeof NavAid.followMe.viewing === 'function'
+      && NavAid.followMe.viewing());
+  };
   // Which layers actually answer to a clock. Plates, airspace and terrain do not, so with
   // only those up the control has nothing to move and says so by going quiet.
   const TIMED = ['notam-cb', 'airmet-cb', 'show-wind-cb', 'windfield-cb', 'airfield-wind-cb',
