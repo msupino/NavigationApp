@@ -3391,7 +3391,7 @@ const LOCKABLE_DRAG_KINDS = ['wp', 'note', 'label', 'cumlabel', 'cumlabelret'];
 // the first movement -- what the touch path used to do for waypoints, and what an earlier
 // pass here did for kites -- flashes the panel across the chart on every drag.
 const KITE_DRAG_KINDS = ['label', 'cumlabel', 'cumlabelret'];
-const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick'].concat(KITE_DRAG_KINDS);
+const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick', 'overlaytap'].concat(KITE_DRAG_KINDS);
 // A press on something draggable normally takes the map's drag away, so the gesture moves
 // the thing and not the chart under it. When the route is LOCKED, nothing is going to move
 // -- and taking the pan away anyway left the map stuck under every waypoint, kite, callout
@@ -3407,7 +3407,7 @@ const TAP_OPENS_INSPECTOR_KINDS = ['wp', 'note', 'legtap', 'legclick'].concat(KI
 // holdMapForDrag fell through to disabling the pan and the touch path then swallowed the
 // gesture with preventDefault: on the kneeboard tablet this fix was for, pressing anywhere
 // on the route still froze the chart.
-const PAN_THROUGH_DRAG_KINDS = ['legtap', 'legclick'];
+const PAN_THROUGH_DRAG_KINDS = ['legtap', 'legclick', 'overlaytap'];
 function holdMapForDrag(kind) {
   if (PAN_THROUGH_DRAG_KINDS.indexOf(kind) !== -1) return false;
   if (dragLockedNow(kind)) return false;
@@ -5708,29 +5708,18 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag = { kind: 'page', lx: p.x, ly: p.y };
   }
 
-  // Outside edit mode, a tap on a VOR / airfield / nav-WP marker opens its
-  // read-only inspector (no drag).
-  if (!touchDrag && includeOverlayChoices) {
-    if (activeOvHits.length > 1 && activeOvHits.every(c => c.type === 'notam')) {
-      e.preventDefault();
-      if (typeof showNotamModal === 'function') showNotamModal(activeOvHits.map(c => c.notam));
-      return;
-    }
-    if (activeOvHits.length > 1) {
-      e.preventDefault();
-      showPointChoice(activeOvHits);
-      return;
-    }
-    if (activeOvHits.length) {
-      e.preventDefault();
-      if (activeOvHits[0].type === 'notam') {
-        if (typeof showNotamModal === 'function') showNotamModal([activeOvHits[0].notam]);
-      } else {
-        state.selected = activeOvHits[0];
-        showInspector(); draw();
-      }
-      return;
-    }
+  // Outside edit mode, a tap on a VOR / airfield / nav-WP marker opens its read-only
+  // inspector. On RELEASE, not on the way down: this is the last thing on the chart that
+  // still opened on touchstart, so a finger that landed on a chart point and then dragged the
+  // map got the panel anyway -- reported, repeatedly, as "dragging the map with a finger on a
+  // waypoint still opens the inspector". Every other kind has been decided in endTouch for
+  // some time; this one was reached by an early `return` that skipped that machinery
+  // entirely.
+  //
+  // It drags nothing, so the map pans under the finger (PAN_THROUGH_DRAG_KINDS), and the
+  // release decides: a tap opens what was under it, a pan opens nothing.
+  if (!touchDrag && includeOverlayChoices && activeOvHits.length) {
+    touchDrag = { kind: 'overlaytap', hits: activeOvHits.slice(), prevSelected: selectionBeforeTouch };
   }
 
   if (touchDrag) {
@@ -5775,7 +5764,7 @@ mapEl.addEventListener('touchmove', e => {
   // But it still has to NOTICE, because the release opens the leg inspector for a tap, and
   // browsing the chart with a finger that happened to land on the route was opening the panel
   // on every pan. Travel past the same slop the other drags use makes it a pan, not a tap.
-  if (touchDrag && touchDrag.kind === 'legtap') {
+  if (touchDrag && (touchDrag.kind === 'legtap' || touchDrag.kind === 'overlaytap')) {
     if (e.touches.length === 1 && touchDrag.startX != null && !touchDrag.moved) {
       const q = touchXY(e.touches[0]);
       const far = Math.hypot(q.x - touchDrag.startX, q.y - touchDrag.startY);
@@ -5980,6 +5969,30 @@ function endTouch(evOrCancelled) {
     ' panel=' + (document.getElementById('inspector').classList.contains('hidden') ? 'shut' : 'OPEN'));
   if (isTap) noteTapOpened(touchDrag.startX, touchDrag.startY, touchDrag.selectionBefore);
   else if (touchDrag && !touchDrag.wasDoubleTap) noteTapOpened(null);
+  // A chart point opens on release: what a tap lands on, and nothing at all when the finger
+  // was moving the map. The chooser and the NOTAM sheet wait for the same moment -- a modal
+  // thrown up mid-pan is the same interruption the panel was.
+  if (touchDrag && touchDrag.kind === 'overlaytap') {
+    const hits = touchDrag.hits || [];
+    if (isTap && hits.length) {
+      if (hits.length > 1 && hits.every(c => c.type === 'notam')) {
+        if (typeof showNotamModal === 'function') showNotamModal(hits.map(c => c.notam));
+      } else if (hits.length > 1) {
+        showPointChoice(hits);
+      } else if (hits[0].type === 'notam') {
+        if (typeof showNotamModal === 'function') showNotamModal([hits[0].notam]);
+      } else {
+        state.selected = hits[0];
+        showInspector();
+      }
+      draw();
+    } else if (!isTap) {
+      // A pan leaves the chart as it found it.
+      state.selected = touchDrag.prevSelected || null;
+      showInspector();
+      draw();
+    }
+  }
   // Pressing a leg selects it, which is right for a tap and wrong for a pan: the pilot was
   // moving the chart, and a highlighted leg with no panel explains nothing. Put back whatever
   // was selected when the finger landed.
