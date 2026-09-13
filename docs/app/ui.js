@@ -4360,6 +4360,42 @@ function askFollowMeCode(current) {
 }
 window.askFollowMeCode = askFollowMeCode;
 
+// A yes/no question the page owns. confirm() is a dialog the page does NOT own: a browser
+// may suppress it, and a WebView shows it only when the host app implements onJsConfirm --
+// which the APK does not, so a confirm() there is a question nobody is ever asked, silently
+// answered "no". Same reason refuse() exists for the one-way messages.
+function askYesNo(title, text, okLabel) {
+  return new Promise((resolve) => {
+    if (typeof createDraggableModal !== 'function') {
+      try { resolve(!!window.confirm(text)); } catch (e) { resolve(false); }
+      return;
+    }
+    let answered = false;
+    const done = (value) => { if (!answered) { answered = true; resolve(value); } };
+    const modal = createDraggableModal(title, 'modal follow-me-ask-modal', () => done(false));
+    const body = document.createElement('p');
+    body.className = 'follow-me-ask-text';
+    body.textContent = text;
+    const row = document.createElement('div');
+    row.className = 'follow-me-ask-actions';
+    const no = document.createElement('button');
+    no.type = 'button';
+    no.className = 'follow-me-ask-cancel';
+    no.textContent = S.cancel || 'Cancel';
+    no.addEventListener('click', () => { done(false); modal.close(); });
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'follow-me-ask-ok';
+    yes.textContent = okLabel || S.ok || 'OK';
+    yes.addEventListener('click', () => { done(true); modal.close(); });
+    row.append(no, yes);
+    modal.box.append(body, row);
+    modal.show();
+    try { yes.focus(); } catch (e) { /* not focusable yet */ }
+  });
+}
+window.askYesNo = askYesNo;
+
 function showReturnFeatureOn() {
   return typeof tune !== 'function' || tune('featureShowReturn') !== false;
 }

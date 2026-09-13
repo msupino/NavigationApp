@@ -814,8 +814,17 @@
   // once per plan. Answering no means no for that plan: a reconnect re-delivers the same
   // retained packet, and a second identical question is how a prompt gets dismissed unread.
   let routeOffered = '';
+  // A plan is only worth offering while there is an aeroplane flying it. The retained route
+  // outlives the position on the relay -- a forced stop (the relay never acknowledged the
+  // tombstone) leaves it there, and a viewer subscribing afterwards was asked to load the
+  // route of a flight that had already ended. So the route waits here until a live position
+  // has arrived, and is thrown away with the watch.
+  let routePending = null;
   async function onRouteMessage(key, payload) {
-    if (!payload || !payload.length) return;      // cleared: the pilot stopped sharing
+    if (!payload || !payload.length) {            // cleared: the pilot stopped sharing
+      routePending = null;
+      return;
+    }
     if (!routeSharingOn()) return;
     const msg = await open(key, payload);
     if (!msg) return;
@@ -835,21 +844,43 @@
     if (typeof validateRoute === 'function' && validateRoute(route) !== null) return;
     const fingerprint = JSON.stringify(route);
     if (fingerprint === routeOffered) return;
-    routeOffered = fingerprint;
-    const S2 = window.S || {};
     const named = [msg.from, msg.to].filter(Boolean).join(' \u2192 ');
+    routePending = { route, fingerprint, named };
+    await offerPendingRoute();
+  }
+
+  // True while the link is showing an aeroplane that is actually moving -- the same test the
+  // banner uses to call a feed stale. A route offered against a stale fix is a question about
+  // a flight that is over.
+  function followMeFixIsLive() {
+    if (!watch || !watch.state || !watch.state.fix) return false;
+    const age = followMeAge(watch.state.at);
+    return age !== null && age <= followMeStaleSec();
+  }
+
+  async function offerPendingRoute() {
+    const p = routePending;
+    if (!p || !followMeFixIsLive()) return;
+    if (p.fingerprint === routeOffered) { routePending = null; return; }
+    routeOffered = p.fingerprint;
+    routePending = null;
+    const S2 = window.S || {};
     const ask = S2.followMeRouteOffer
-      ? S2.followMeRouteOffer(named)
-      : ('The pilot is sharing a route' + (named ? ' (' + named + ')' : '')
+      ? S2.followMeRouteOffer(p.named)
+      : ('The pilot is sharing a route' + (p.named ? ' (' + p.named + ')' : '')
          + '. Load it? This replaces the route on your map.');
-    // No confirm available means no answer, and no answer means the viewer's own route stays
-    // exactly as it is -- the opposite default to the share button, where the pilot pressing
-    // it IS the answer.
-    let take;
-    try { take = confirm(ask); } catch (e) { take = false; }
+    // No way to ask means no answer, and no answer means the viewer's own route stays exactly
+    // as it is -- the opposite default to the share button, where the pilot pressing it IS
+    // the answer.
+    let take = false;
+    try {
+      take = typeof window.askYesNo === 'function'
+        ? await window.askYesNo(S2.followMeAskTitle || 'Follow me', ask, S2.followMeRouteLoad || S2.ok || 'Load')
+        : confirm(ask);
+    } catch (e) { take = false; }
     if (!take) return;
     if (typeof applyRouteData !== 'function') return;
-    applyRouteData(route);
+    applyRouteData(p.route);
     if (typeof draw === 'function') draw();
     if (typeof showToast === 'function') {
       showToast(S2.followMeRouteLoaded || 'Route loaded from the pilot you are following.');
@@ -887,6 +918,10 @@
       state.lastOrder = order;
       state.fix = msg;
       state.at = msg.t;
+      // A route that arrived before any position -- the usual order, since both are retained
+      // and the route topic is the smaller one -- gets asked about now that there is an
+      // aeroplane to attach it to.
+      if (routePending) offerPendingRoute();
       followMeViewerDraw();
       if (typeof window.scheduleDraw === 'function') window.scheduleDraw();
     };
@@ -895,6 +930,7 @@
   }
   function followMeUnwatch() {
     routeOffered = '';
+    routePending = null;
     if (!watch) return;
     watch.client.close();
     watch = null;
@@ -999,7 +1035,13 @@
     const bits = [];
     if (Number.isFinite(f.alt)) bits.push(Math.round(f.alt * 3.28084) + ' ft');
     if (Number.isFinite(f.kt)) bits.push(Math.round(f.kt) + ' kt');
-    if (Number.isFinite(f.trk)) bits.push(String(Math.round(f.trk)).padStart(3, '0') + '\u00b0');
+    // The wire carries TRUE -- gpsCompassTrue() undoes the variation before publishing, and
+    // the icon's rotation below is geometry that must stay true. A number a follower reads
+    // out to a pilot is magnetic, like every other course this app prints, and says so.
+    if (Number.isFinite(f.trk)) {
+      const mag = (typeof toMagnetic === 'function') ? toMagnetic(f.trk) : f.trk;
+      bits.push(String(((Math.round(mag) % 360) + 360) % 360).padStart(3, '0') + '\u00b0M');
+    }
     if (Number.isFinite(f.lat) && Number.isFinite(f.lng)) {
       bits.push(f.lat.toFixed(4) + ', ' + f.lng.toFixed(4));
     }
