@@ -177,6 +177,32 @@
   function randomBytes(n) { return crypto.getRandomValues(new Uint8Array(n)); }
   const importKey = (raw) => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
 
+  // The route JSON, gzipped before it is sealed -- compressing ciphertext buys nothing, and
+  // this is JSON with the same keys repeated once per leg, which is the case gzip is best at:
+  // a 20-waypoint plan with comm changes goes from 7.6 KB to about 0.6 KB. It matters because
+  // the payload is RETAINED: it sits on a free public relay until the share stops, so the
+  // smaller copy is the polite one.
+  //
+  // Old runtimes (iOS before 16.4) have no CompressionStream. A publisher there sends the
+  // plain object and every viewer reads it; a viewer there cannot read a gzipped one, and
+  // gets no route offer -- the position, which is the point of the link, is untouched.
+  const canDeflate = () => typeof CompressionStream === 'function';
+  const canInflate = () => typeof DecompressionStream === 'function';
+  // Sanity ceiling on the way IN, so a hostile or corrupt packet cannot be inflated into
+  // something the JSON parser chokes on.
+  const ROUTE_INFLATE_MAX = 1024 * 1024;
+
+  async function gzipText(text) {
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  async function gunzipText(bytes) {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const out = await new Response(stream).arrayBuffer();
+    if (out.byteLength > ROUTE_INFLATE_MAX) return null;
+    return new TextDecoder().decode(out);
+  }
+
   async function seal(key, obj) {
     const iv = randomBytes(12);
     const data = new TextEncoder().encode(JSON.stringify(obj));
@@ -661,17 +687,27 @@
     let body;
     try { body = serializeRoute(); } catch (e) { return false; }
     const text = JSON.stringify(body);
-    const maxKb = Math.max(1, Number(tune('followMeRouteMaxKb')) || 64);
-    if (text.length > maxKb * 1024) return false;
     // Unchanged since the last send: the relay already has it, retained.
     if (!force && text === s.lastRouteText) return false;
-    s.lastRouteText = text;
-    const payload = await seal(s.key, {
-      route: body,
+    const envelope = {
       from: (wps[0] && wps[0].name) || '',
       to: (wps[wps.length - 1] && wps[wps.length - 1].name) || '',
       t: Date.now(),
-    });
+    };
+    if (canDeflate()) {
+      try { envelope.gz = b64url.from(await gzipText(text)); }
+      catch (e) { envelope.route = body; }         // compression failed: send it plainly
+    } else {
+      envelope.route = body;
+    }
+    // The cap is about what the relay has to hold, so it is measured on what is actually
+    // sent. A plan too big to publish is not published at all rather than half-published,
+    // and nothing else about the share stops working.
+    const maxKb = Math.max(1, Number(tune('followMeRouteMaxKb')) || 64);
+    const wire = envelope.gz ? envelope.gz.length : text.length;
+    if (wire > maxKb * 1024) return false;
+    s.lastRouteText = text;
+    const payload = await seal(s.key, envelope);
     if (session !== s || s.status === 'stopping' || !s.client.ready) return false;
     try { s.client.publish(routeTopicFor(s.id), payload, { retain: true, qos: 0 }); }
     catch (e) { return false; }
@@ -768,9 +804,20 @@
     if (!payload || !payload.length) return;      // cleared: the pilot stopped sharing
     if (!routeSharingOn()) return;
     const msg = await open(key, payload);
-    if (!msg || !msg.route) return;
-    if (typeof validateRoute === 'function' && validateRoute(msg.route) !== null) return;
-    const fingerprint = JSON.stringify(msg.route);
+    if (!msg) return;
+    let route = msg.route || null;
+    if (!route && msg.gz) {
+      // A publisher that could compress and a viewer that cannot inflate: no offer, and the
+      // position -- which is what the link is for -- carries on regardless.
+      if (!canInflate()) return;
+      try {
+        const text = await gunzipText(b64url.to(msg.gz));
+        route = text ? JSON.parse(text) : null;
+      } catch (e) { return; }
+    }
+    if (!route) return;
+    if (typeof validateRoute === 'function' && validateRoute(route) !== null) return;
+    const fingerprint = JSON.stringify(route);
     if (fingerprint === routeOffered) return;
     routeOffered = fingerprint;
     const S2 = window.S || {};
@@ -786,7 +833,7 @@
     try { take = confirm(ask); } catch (e) { take = false; }
     if (!take) return;
     if (typeof applyRouteData !== 'function') return;
-    applyRouteData(msg.route);
+    applyRouteData(route);
     if (typeof draw === 'function') draw();
     if (typeof showToast === 'function') {
       showToast(S2.followMeRouteLoaded || 'Route loaded from the pilot you are following.');

@@ -203,3 +203,128 @@ test('the gist can withdraw the whole channel', async ({ page }) => {
   });
   expect(out.some(t => t.endsWith('/route'))).toBe(false);
 });
+
+// ---- gzip -----------------------------------------------------------------------------
+// The payload is RETAINED: it sits on a free public relay until the share stops, so the
+// smaller copy is the polite one. JSON with the same keys repeated once per leg is the case
+// gzip is best at -- a 20-waypoint plan with comm changes goes from about 7.6 KB to 0.6 KB.
+// Compressed BEFORE sealing, because compressing ciphertext buys nothing.
+const routePublishSize = (page) => page.evaluate(() => {
+  const frame = window.__sent.filter(f => (f[0] >> 4) === 3).map(f => {
+    let at = 1, digit;
+    do { digit = f[at++]; } while (digit & 0x80);
+    const len = (f[at] << 8) | f[at + 1];
+    return { topic: String.fromCharCode(...f.slice(at + 2, at + 2 + len)), size: f.length };
+  }).find(p => p.topic.endsWith('/route'));
+  return frame ? frame.size : 0;
+});
+
+const bigRoute = (page) => page.evaluate(() => {
+  state.waypoints = Array.from({ length: 20 }, (_, i) => ({
+    lat: 32 + i * 0.05, lng: 34.8 + i * 0.03, name: 'WPT' + String(i).padStart(2, '0') }));
+  syncLegs();
+  state.notes = state.waypoints.slice(0, 10).map((w) => ({
+    lat: w.lat, lng: w.lng, text: 'CONTACT HERZLIYA TOWER 122.6 AT ' + w.name,
+    cc: w.name, freqName: 'HERZLIYA TWR', freq: '122.600' }));
+});
+
+test('the plan goes out compressed, and is a fraction of the size', async ({ page }) => {
+  await boot(page);
+  await bigRoute(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-GZ');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+  });
+  const gz = await routePublishSize(page);
+
+  // The same route with compression taken away, for comparison and for the old-runtime path.
+  await page.evaluate(() => { window.__CS = window.CompressionStream; delete window.CompressionStream; });
+  await page.evaluate(async () => {
+    window.__sent.length = 0;
+    await NavAid.followMe.publishRoute(true);
+    await new Promise(r => setTimeout(r, 40));
+  });
+  const plain = await routePublishSize(page);
+  expect(plain).toBeGreaterThan(4000);
+  expect(gz, 'gzip bought nothing: ' + gz + ' vs ' + plain).toBeLessThan(plain / 3);
+});
+
+test('a viewer reads either form', async ({ page }) => {
+  await boot(page);
+  await bigRoute(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('4X-GZ');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    const grab = () => window.__sent.filter(f => (f[0] >> 4) === 3).map(f => {
+      let at = 1, digit;
+      do { digit = f[at++]; } while (digit & 0x80);
+      const len = (f[at] << 8) | f[at + 1];
+      return { topic: String.fromCharCode(...f.slice(at + 2, at + 2 + len)), frame: f };
+    }).find(p => p.topic.endsWith('/route'));
+    const zipped = grab().frame;
+    // ...and the same plan from a publisher that could not compress.
+    window.__CS = window.CompressionStream;
+    delete window.CompressionStream;
+    window.__sent.length = 0;
+    await F.publishRoute(true);
+    await new Promise(r => setTimeout(r, 40));
+    const flat = grab().frame;
+    window.CompressionStream = window.__CS;
+
+    const read = async (frame) => {
+      state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
+      syncLegs();
+      F.viewerStop();
+      const url = new URL(link);
+      window.confirm = () => true;
+      await F.viewerStart({ search: url.search, hash: url.hash });
+      const sub = window.__sockets[window.__sockets.length - 1];
+      sub.connack();
+      await new Promise(r => setTimeout(r, 20));
+      sub.deliver(frame);
+      await new Promise(r => setTimeout(r, 80));
+      return state.waypoints.length;
+    };
+    return { fromGz: await read(zipped), fromPlain: await read(flat) };
+  });
+  expect(got.fromGz, 'the gzipped plan did not load').toBe(20);
+  expect(got.fromPlain, 'the uncompressed plan did not load').toBe(20);
+});
+
+test('a viewer that cannot inflate is left with the position, not an error', async ({ page }) => {
+  await boot(page);
+  await bigRoute(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('4X-GZ');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    const frame = window.__sent.filter(f => (f[0] >> 4) === 3).map(f => {
+      let at = 1, digit;
+      do { digit = f[at++]; } while (digit & 0x80);
+      const len = (f[at] << 8) | f[at + 1];
+      return { topic: String.fromCharCode(...f.slice(at + 2, at + 2 + len)), frame: f };
+    }).find(p => p.topic.endsWith('/route')).frame;
+    delete window.DecompressionStream;             // an iOS before 16.4
+    state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
+    syncLegs();
+    let asked = 0;
+    window.confirm = () => { asked++; return true; };
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    const sub = window.__sockets[window.__sockets.length - 1];
+    sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    sub.deliver(frame);
+    await new Promise(r => setTimeout(r, 80));
+    return { asked, names: state.waypoints.map(w => w.name), watching: F.viewing() };
+  });
+  // No offer it cannot honour, no thrown error, and the watch -- which is what the link is
+  // for -- carries on.
+  expect(got.asked).toBe(0);
+  expect(got.names).toEqual(['MINE', 'OWN']);
+  expect(got.watching).toBe(true);
+});
