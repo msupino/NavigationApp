@@ -5080,7 +5080,7 @@ function applyRouteWindSamples(locs, levels, skipPersist) {
 async function fetchRouteWind() {
   if (!state.legs.length) {
     if (windFetchStatus) windFetchStatus.textContent = '';
-    alert(S.errNeedWps);
+    if (typeof navaidRefuse === 'function') navaidRefuse(S.errNeedWps); else alert(S.errNeedWps);
     return;
   }
   if (windFetchStatus) windFetchStatus.textContent = S.windFetching;

@@ -18,15 +18,21 @@ test('exporting an empty route says there is nothing to save instead of writing 
   await boot(page);
   const out = await page.evaluate(() => {
     state.waypoints = []; state.legs = []; state.notes = []; syncLegs(); draw();
-    let alerted = null, downloaded = false;
-    const realAlert = window.alert, realCreate = URL.createObjectURL;
-    window.alert = m => { alerted = m; };
+    // The refusal is a toast now, not alert(): a WebView shows alert() only if the host app
+    // implements it, and a refusal nobody can see reads as a broken button. Both are watched
+    // here, so this passes whichever way it is said and fails if it stops being said at all.
+    let said = null, downloaded = false;
+    const realAlert = window.alert, realCreate = URL.createObjectURL, realToast = window.showToast;
+    window.alert = m => { said = String(m); };
+    window.showToast = (m) => { said = String(m); };
     URL.createObjectURL = () => { downloaded = true; return 'blob:stub'; };
-    try { save(); } finally { window.alert = realAlert; URL.createObjectURL = realCreate; }
-    return { alerted, downloaded };
+    try { save(); } finally {
+      window.alert = realAlert; URL.createObjectURL = realCreate; window.showToast = realToast;
+    }
+    return { said, downloaded };
   });
   expect(out.downloaded).toBe(false);
-  expect(out.alerted).toBeTruthy();
+  expect(out.said).toBeTruthy();
 });
 
 test('a real route still exports', async ({ page }) => {

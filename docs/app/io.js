@@ -1064,7 +1064,7 @@ function save() {
   // An empty route used to export a JSON of empty arrays — a file that looks
   // like a route and imports as nothing. Say so instead.
   if (routeIsEmpty()) {
-    alert(S.errNothingToSave);
+    refuse(S.errNothingToSave);
     return;
   }
   const data = serializeRoute();
@@ -2363,7 +2363,7 @@ function buildIcaoFpl(profile, opts) {
 // --- GPX export --------------------------------------------------------
 function exportGpx() {
   if (state.waypoints.length < 2) {
-    alert(S.errNeedWps);
+    refuse(S.errNeedWps);
     return;
   }
   const wps = state.waypoints;
@@ -2435,7 +2435,7 @@ function xplaneWaypointId(i) {
 }
 function exportPln() {
   if (state.waypoints.length < 2) {
-    alert(S.errNeedWps);
+    refuse(S.errNeedWps);
     return;
   }
   const wps = state.waypoints;
@@ -2508,7 +2508,7 @@ function xplaneAiracCycle(date = new Date()) {
     String(cycleNumber).padStart(2, '0');
 }
 function exportFms() {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return; }
 
   const points = state.waypoints.map((wp, i) => {
     const airfield = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
@@ -2576,7 +2576,7 @@ function fdrDataRow(time, lon, lat, hmsl, hdg, pitch, roll) {
   ].join(',');
 }
 function exportFdr() {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return; }
 
   const DEG = Math.PI / 180;
   // Degrees between two headings via shortest angular path (returns ±deg).
@@ -2775,7 +2775,7 @@ function loadGpx(file) {
         wps.push({ lat: r5(lat), lng: r5(lng), name: name.trim() });
       }
       if (wps.length < 2) {
-        alert(S.errNeedWps);
+        refuse(S.errNeedWps);
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
@@ -2843,7 +2843,7 @@ function loadPln(file) {
         wps.push({ lat: r5(pos.lat), lng: r5(pos.lng), name });
       }
       if (wps.length < 2) {
-        alert(S.errNeedWps);
+        refuse(S.errNeedWps);
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
@@ -3217,7 +3217,7 @@ function defaultSavedRouteName() {
 }
 // Save the current route as a new named library entry. Returns the entry or null.
 function routeLibrarySaveCurrent(name) {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return null; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return null; }
   const list = loadRouteLibrary();
   const entry = {
     id: routeLibraryId(),
@@ -3234,7 +3234,7 @@ function routeLibrarySaveCurrent(name) {
 // place), bumping savedAt so the change wins the Drive merge. Keeps the id and
 // name. Returns the updated entry or null.
 function routeLibraryUpdate(id) {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return null; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return null; }
   const list = loadRouteLibrary();
   const entry = list.find(x => x && x.id === id && !x.deleted);
   if (!entry) return null;
@@ -3607,7 +3607,7 @@ function flightPlanCsv(table, scrollArea) {
 // (the `i` and `tr` that a naive scan reports are arrow parameters, not captures), so it
 // lifts out with one argument and no behaviour change.
 function exportNavLog(scrollArea) {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return; }
   const esc = escapeXml;               // one escaper, defined in core.js
   const lang = (window.__navLang === 'he') ? 'he' : 'en';
   const dir = lang === 'he' ? 'rtl' : 'ltr';
@@ -3763,10 +3763,29 @@ function exportNavLog(scrollArea) {
   setTimeout(() => { try { w.print(); } catch (e) { /* user can print manually */ } }, 300);
 }
 
+// A refusal the pilot can see.
+//
+// alert() is one of the three dialogs a page does not own: a browser may suppress it after one
+// is dismissed, and a WebView shows it only if the host app implements onJsAlert -- which is
+// exactly where this app is used. Reported as "cannot see the buttons or plan at all": the
+// button was answering, with a refusal nobody could see. The toast is the app's own surface,
+// it is on screen in every runtime, and it carries the warning floor these messages deserve.
+function refuse(message) {
+  if (!message) return;
+  if (typeof showToast === 'function') showToast(message, { warn: true });
+  else alert(message);
+}
+window.navaidRefuse = refuse;
+
 function showFlightPlan() {
   if (refreshFlightPlan) return;        // dedupe — modal already open
   if (state.legs.length === 0) {
-    alert(S.errNoLegs);
+    // A toast, not alert(). alert() is one of the three dialogs a page does not own -- a
+    // browser may suppress it after one is dismissed, and a WebView shows it only if the host
+    // app implements onJsAlert. Reported as "cannot see the buttons or plan at all": the
+    // button was answering, with a refusal nobody could see. Same reason the follow-me
+    // identifier stopped using prompt().
+    refuse(S.errNoLegs);
     return;
   }
   closeOpenChartModals();
@@ -6103,7 +6122,7 @@ function pngCrc(data) {
 // --- fly the route (Google Earth) -----------------------------------
 async function flyRoute() {
   if (state.waypoints.length < 2) {
-    alert(S.errNeedWps);
+    refuse(S.errNeedWps);
     return;
   }
   if (airfields === null && typeof loadAirfields === 'function') {
@@ -9726,7 +9745,7 @@ window.simStop  = simStop;
 // --- Toolbar button handler — copy share URL to clipboard. ------------
 function shareRoute() {
   const r = buildShareUrl();
-  if (r.err) { alert(S[r.err]); return; }
+  if (r.err) { refuse(S[r.err]); return; }
   // Clipboard API requires a secure context + user gesture; the button
   // click satisfies the gesture, but http://localhost might fall back.
   const writePromise = (navigator.clipboard && navigator.clipboard.writeText)
@@ -11029,7 +11048,7 @@ function fplXcRouteRows() {
   return rows;
 }
 function showFplXcForm(opts) {
-  if ((state.waypoints || []).length < 2) { alert(S.errFplNeedRoute); return; }
+  if ((state.waypoints || []).length < 2) { refuse(S.errFplNeedRoute); return; }
   const o = opts || {};
   const back = document.createElement('div');
   back.className = 'modal-back fpl-xc-modal';
