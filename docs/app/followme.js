@@ -780,6 +780,7 @@
         lng: Math.round(fix.lng * 1e5) / 1e5,
         alt: Number.isFinite(fix.alt) ? Math.round(fix.alt) : null,
         trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
+        hc: fix.hc ? 1 : null,          // the heading is the compass, not a course made good
         kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
         t: now,
         seq: s.seq,
@@ -1036,11 +1037,14 @@
     if (Number.isFinite(f.alt)) bits.push(Math.round(f.alt * 3.28084) + ' ft');
     if (Number.isFinite(f.kt)) bits.push(Math.round(f.kt) + ' kt');
     // The wire carries TRUE -- gpsCompassTrue() undoes the variation before publishing, and
-    // the icon's rotation below is geometry that must stay true. A number a follower reads
-    // out to a pilot is magnetic, like every other course this app prints, and says so.
+    // the icon's rotation below is geometry that must stay true. The number is rendered by
+    // the pilot's own readout formatter: magnetic, and marked `~` when it is the compass
+    // rather than a course, which is what a stationary aeroplane sends.
     if (Number.isFinite(f.trk)) {
-      const mag = (typeof toMagnetic === 'function') ? toMagnetic(f.trk) : f.trk;
-      bits.push(String(((Math.round(mag) % 360) + 360) % 360).padStart(3, '0') + '\u00b0M');
+      const txt = (typeof gpsHeadingText === 'function')
+        ? gpsHeadingText(f.trk, !!f.hc)
+        : String(Math.round(f.trk)).padStart(3, '0') + '\u00b0';
+      if (txt) bits.push(txt);
     }
     if (Number.isFinite(f.lat) && Number.isFinite(f.lng)) {
       bits.push(f.lat.toFixed(4) + ', ' + f.lng.toFixed(4));

@@ -283,6 +283,7 @@ test('the follower reads the same heading the pilot does, in magnetic', async ({
     // What the pilot's own readout would say for the same fix, through the app's one
     // true -> magnetic conversion.
     const pilot = ((Math.round(toMagnetic(304)) % 360) + 360) % 360;
+    const pilotText = gpsHeadingText(304, false);
     // ...and the drawn nose is unmoved: it points where the aeroplane is actually going.
     const svg = document.querySelector('.follow-me-plane');
     const m = svg.getScreenCTM();
@@ -292,12 +293,45 @@ test('the follower reads the same heading the pilot does, in magnetic', async ({
       (Math.atan2(nose.x - centre.x, -(nose.y - centre.y)) * 180 / Math.PI + 360) % 360);
     F.viewerStop(); await F.stop();
     window.WebSocket = orig;
-    return { banner, pilot, noseBearing };
+    return { banner, pilot, pilotText, noseBearing };
   });
   expect(got.pilot).toBe(299);                  // the default -5 variation
-  expect(got.banner).toContain('299\u00b0M');
+  expect(got.banner).toContain('299\u00b0');
+  expect(got.banner).not.toContain('~');        // a course made good, not the compass
   expect(got.banner).not.toContain('304');
   expect(got.noseBearing).toBe(304);            // the icon stays true
+  // Not merely the same number: the same string the pilot's readout would show.
+  expect(got.banner).toContain(got.pilotText);
+});
+
+// A stationary aeroplane reports no course at all, so the phone falls back to the compass
+// and marks it `~` -- where the instrument points, not where anything is going. A follower
+// reading that number out has to see the same mark, or they are reading a course that does
+// not exist.
+test('a compass heading reaches the follower marked, as it is on the phone', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await F.start('4X-CMP');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.publish({ lat: 32.0, lng: 34.9, trk: 304, kt: 0, hc: true });
+    const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    window.__sockets[1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[1].deliver(pub);
+    await new Promise(r => setTimeout(r, 40));
+    const banner = document.getElementById('follow-me-banner').textContent;
+    F.viewerStop(); await F.stop();
+    window.WebSocket = orig;
+    return { banner, pilotText: gpsHeadingText(304, true) };
+  });
+  expect(got.pilotText).toBe('~299\u00b0');
+  expect(got.banner).toContain('~299\u00b0');
 });
 
 // The viewer: a link opens into watching mode, and the age is always on screen.
@@ -479,7 +513,7 @@ test('the Hebrew viewer banner keeps telemetry LTR in an RTL segment order', asy
   });
   expect(seen.dir).toBe('rtl');
   // 003 true, -5 variation -> 358 magnetic.
-  expect(seen.text.slice(0, 5)).toEqual(['TEST', '1499 ft', '90 kt', '358°M', '32.3728, 34.9068']);
+  expect(seen.text.slice(0, 5)).toEqual(['TEST', '1499 ft', '90 kt', '358°', '32.3728, 34.9068']);
   expect(seen.text[5]).toMatch(/^המיקום האחרון לפני \d+ שניות$/);
   expect(seen.valueDirs).toEqual(['ltr', 'ltr', 'ltr', 'ltr', 'ltr', 'rtl']);
   expect(seen.lefts.every((left, index, all) => index === 0 || all[index - 1] > left)).toBe(true);
@@ -1226,9 +1260,9 @@ test('the banner reads out altitude, speed, track and position', async ({ page }
   });
   expect(got[0]).toContain('2001 ft');          // 610 m read back in feet
   expect(got[0]).toContain('95 kt');
-  // The wire carries true; the banner prints magnetic, like every other course in the app.
-  // 007 true with the default -5 variation is 002 magnetic.
-  expect(got[0]).toContain('002°M');        // track, three digits like a heading
+  // The wire carries true; the banner prints magnetic, exactly as the pilot's own readout
+  // does. 007 true with the default -5 variation is 002 magnetic.
+  expect(got[0]).toContain('002°');        // track, three digits like a heading
   expect(got[0]).toContain('32.1000, 34.8000');
   expect(got[1]).not.toMatch(/ft|kt/);          // nothing invented for what was not sent
   expect(got[1]).toContain('32.2000');
