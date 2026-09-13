@@ -660,6 +660,19 @@ function showPointChoice(candidates) {
   const items = collapseNamedRouteReferenceCandidates(
     collapseLinkedCommRouteCandidates(dedupePointCandidates(candidates)));
   if (!items.length) return false;
+  // The same rule the panel itself obeys, applied one step earlier. While a position is
+  // driving the map a tap does not open a panel over the chart -- but where several things
+  // overlap, or on a frequency-change arrow, the CHOOSER opened first and asked which one,
+  // over the chart, in flight. Reported: the map is locked for selecting a waypoint and the
+  // multiple-waypoint chooser still opens.
+  //
+  // Aircraft are not in this list -- a traffic tap is handled in traffic.js and names its
+  // aeroplane by transponder address, not by a place in one of these arrays -- so there is
+  // nothing here to keep selectable, and the whole question goes.
+  if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow()) {
+    if (typeof noteInspectorRefusedWhileTracking === 'function') noteInspectorRefusedWhileTracking();
+    return false;
+  }
   if (items.length === 1) {
     selectPointCandidate(items[0]);
     return true;
@@ -3411,6 +3424,21 @@ function dragLockedNow(kind) {
   return typeof gpsMapLocked === 'function' && gpsMapLocked();
 }
 
+// Said once per tracking session, by whichever refusal happens first -- the panel, or the
+// chooser that would have asked which point to open in it. Once, because the rule exists to
+// keep a stray tap off the chart and a toast on every stray tap is the same clutter by
+// another route.
+function noteInspectorRefusedWhileTracking() {
+  if (window.__inspTrackingToldThisRun) return;
+  window.__inspTrackingToldThisRun = true;
+  if (typeof showToast === 'function') {
+    showToast(S.inspectorTrackingBlocked
+      || 'The panel stays shut while your position is showing — turn it on in View/Set.',
+    { warn: true });
+  }
+}
+window.noteInspectorRefusedWhileTracking = noteInspectorRefusedWhileTracking;
+
 function showInspector() {
   const insp = document.getElementById('inspector');
   // Closing the panel -- or rebuilding it onto a selection with no weather box -- destroys the
@@ -3434,14 +3462,7 @@ function showInspector() {
     // way to allow it was a gist key with no control on screen. Once per tracking session:
     // the rule exists to keep a stray tap off the chart, and a toast on every stray tap would
     // be the same clutter by another route.
-    if (state.selected && !window.__inspTrackingToldThisRun) {
-      window.__inspTrackingToldThisRun = true;
-      if (typeof showToast === 'function') {
-        showToast(S.inspectorTrackingBlocked
-          || 'The panel stays shut while your position is showing — turn it on in View/Set.',
-        { warn: true });
-      }
-    }
+    if (state.selected) noteInspectorRefusedWhileTracking();
     state.selected = null;
     insp.classList.add('hidden');
     if (typeof resetInspectorVorRef === 'function') resetInspectorVorRef();
