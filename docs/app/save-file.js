@@ -93,20 +93,16 @@
         return true;
       } catch (e) {
         if (wasCancelled(e)) return false;
-        try {
-          alert(((window.S && S.errSaveFailed) || 'That file could not be saved.') +
-            '\n\n' + String((e && e.message) || e));
-        } catch (ignored) { /* an alert is best effort */ }
+        refuse(((window.S && S.errSaveFailed) || 'That file could not be saved.') +
+          '\n\n' + String((e && e.message) || e));
         return false;
       }
     }
     if (isNativeShell()) {
       // An older APK, built before the app could save files. Saying so beats a button that
       // does nothing, which is the bug this whole file exists to end.
-      try {
-        alert((window.S && S.errSaveNeedsAppUpdate) ||
-          'Saving files needs a newer version of the NavAid app. Update it, or export from the website.');
-      } catch (ignored) { /* an alert is best effort */ }
+      refuse((window.S && S.errSaveNeedsAppUpdate) ||
+        'Saving files needs a newer version of the NavAid app. Update it, or export from the website.');
       return false;
     }
     saveViaAnchor(blob, name);
@@ -129,10 +125,8 @@
       if (!r.ok) throw new Error('HTTP ' + r.status);
       blob = await r.blob();
     } catch (e) {
-      try {
-        alert(((window.S && S.errSaveFailed) || 'That file could not be saved.') +
+      refuse(((window.S && S.errSaveFailed) || 'That file could not be saved.') +
           '\n\n' + String((e && e.message) || e));
-      } catch (ignored) { /* an alert is best effort */ }
       return false;
     }
     return saveFile(blob, filename);

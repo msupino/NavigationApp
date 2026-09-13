@@ -38,10 +38,13 @@ async function stubNative(page, opts = {}) {
 async function boot(page) {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof saveFile === 'function' && typeof state !== 'undefined');
-  // Alerts would block the run, and one of these tests is about an alert being raised.
+  // Alerts would block the run, and these tests are about a failure being said out loud
+  // -- which it now is as a toast, since a WebView swallows alert() unless the host
+  // app implements it. Both channels land in the same list.
   await page.evaluate(() => {
     window.__alerts = [];
     window.alert = (m) => { window.__alerts.push(String(m)); };
+    window.showToast = (m) => { window.__alerts.push(String(m)); };
   });
 }
 

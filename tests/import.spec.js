@@ -34,11 +34,18 @@ async function bootWithRoute(page) {
   }, ROUTE);
 }
 
-// Upload a JSON blob to #file. Returns the message body of the alert that fires
-// (or null if no alert). Confirm is dismissed so it doesn't block other tests.
+// Upload a JSON blob to #file. Returns whatever the app SAID about it, or null if it said
+// nothing. Either channel counts: a rejection is a toast now -- a WebView shows alert() only
+// when the host app implements it, so a message said that way is invisible inside the APK --
+// and a dialog would still be a message. Silence is the failure this helper exists to catch.
 async function uploadAndCapture(page, contents) {
   let alerted = null;
   page.once('dialog', d => { alerted = d.message(); d.accept(); });
+  await page.evaluate(() => {
+    window.__said = [];
+    const real = window.showToast;
+    window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+  });
   await page.setInputFiles('#file', {
     name: 'corrupt.json',
     mimeType: 'application/json',
@@ -46,7 +53,8 @@ async function uploadAndCapture(page, contents) {
   });
   // The import is async (FileReader.onload); give it a tick to fire.
   await page.waitForTimeout(150);
-  return alerted;
+  const said = await page.evaluate(() => (window.__said || []).join(' '));
+  return alerted || said || null;
 }
 
 test.describe('Route import rejection', () => {

@@ -100,10 +100,17 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await boot(page);
     const dialogs = [];
     page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
+    await page.evaluate(() => {
+      window.__said = [];
+      const real = window.showToast;
+      window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    });
     // No route built — nothing to save.
     await page.locator('#tool-save-route').click();
     await expect(page.locator('.route-library-modal')).toHaveCount(0);
-    expect(dialogs.some(m => /nothing to save|two waypoints/i.test(m))).toBe(true);
+    // Said out loud through either channel -- the refusal is a toast now.
+    const said = dialogs.concat(await page.evaluate(() => window.__said));
+    expect(said.some(m => /nothing to save|two waypoints/i.test(m))).toBe(true);
     expect(await libLen(page)).toBe(0);
   });
 

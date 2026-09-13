@@ -1241,6 +1241,32 @@ async function loadRemoteConfig() {
   }
 }
 
+// Something the pilot can see.
+//
+// alert() is one of the three dialogs a page does not own: a browser may suppress it after one
+// is dismissed, and a WebView shows it only if the host app implements onJsAlert -- which is
+// exactly where this app runs, inside the APK. A message nobody sees reads as a control that
+// does nothing, which is how three separate bugs arrived: the follow-me identifier through
+// prompt(), Stop through a wait nobody could end, and the flight plan refusing in silence.
+//
+// It also costs a press. A refusal has nothing to acknowledge: it should say what happened and
+// go. The toast does both, and carries the warning floor -- a refusal is never as brief as an
+// acknowledgement.
+//
+// alert() remains the fallback for the case where the toast itself is not up yet (a failure
+// during boot), and for the hidden editor tools, which are desktop-only and expect a dialog
+// they must dismiss before the next step.
+function refuse(message) {
+  if (message == null || message === '') return;
+  const say = String(message);
+  if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
+    window.showToast(say, { warn: true });
+    return;
+  }
+  try { alert(say); } catch (e) { /* no way to say it at all */ }
+}
+if (typeof window !== 'undefined') window.refuse = refuse;
+
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 // Mutable globals are declared with `var` (not `let`) so that they're a true
 // property on the global object. ui.js writes to them via `window.foo = …` —

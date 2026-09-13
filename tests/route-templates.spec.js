@@ -72,6 +72,11 @@ test.describe('route templates', () => {
     await boot(page);
     const dialogs = [];
     page.on('dialog', d => { dialogs.push(d.message()); d.dismiss(); });
+    await page.evaluate(() => {
+      window.__said = [];
+      const real = window.showToast;
+      window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    });
     const r = await page.evaluate(async () => {
       const all = await loadRouteTemplates();
       const tpl = all.find(t => t.layer === 'cvfr') || all[0];
@@ -86,7 +91,9 @@ test.describe('route templates', () => {
     });
     expect(r.okCvfr).toBe(true);     // loads on its own layer
     expect(r.okLsa).toBe(false);     // blocked on Low Alt
-    expect(dialogs.some(m => /Low Alt/.test(m) && new RegExp(r.tplName).test(m))).toBe(true);
+    // The warning is a toast now; a WebView shows alert() only if the host implements it.
+    const said = dialogs.concat(await page.evaluate(() => window.__said));
+    expect(said.some(m => /Low Alt/.test(m) && new RegExp(r.tplName).test(m))).toBe(true);
   });
 
   test('dataset templates reference known points and keep altitude data shared', async () => {

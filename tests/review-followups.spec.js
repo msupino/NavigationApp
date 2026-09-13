@@ -82,15 +82,20 @@ test('the track export says so instead of silently doing nothing', async ({ page
     // A track is shown but the library cannot produce it.
     window.shownTracks = [{ id: 'gone', name: 'Ghost', points: [], color: '#fff' }];
     localStorage.removeItem('navaid.routes');
+    // Either channel counts: the refusal is a toast now -- a WebView shows alert() only when
+    // the host app implements it -- and silence is the failure this test is here to catch.
     let alerted = null, downloaded = false;
-    const realAlert = window.alert, realCreate = URL.createObjectURL;
-    window.alert = m => { alerted = m; };
+    const realAlert = window.alert, realCreate = URL.createObjectURL, realToast = window.showToast;
+    window.alert = m => { alerted = String(m); };
+    window.showToast = m => { alerted = String(m); };
     URL.createObjectURL = () => { downloaded = true; return 'blob:stub'; };
     try {
       const sel = document.getElementById('export-select');
       sel.value = 'json-track';
       sel.onchange({ target: sel });
-    } finally { window.alert = realAlert; URL.createObjectURL = realCreate; }
+    } finally {
+      window.alert = realAlert; URL.createObjectURL = realCreate; window.showToast = realToast;
+    }
     return { alerted, downloaded };
   });
   expect(out.downloaded).toBe(false);

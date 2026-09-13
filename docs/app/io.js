@@ -2751,7 +2751,7 @@ function exportFdr() {
 function loadGpx(file) {
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
   if (file && file.size > MAX_ROUTE_BYTES) {
-    alert(S.errLoadFile + 'file too large (' +
+    refuse(S.errLoadFile + 'file too large (' +
           (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
     return;
   }
@@ -2763,7 +2763,7 @@ function loadGpx(file) {
       if (parseErr) throw new Error('XML parse error: ' + parseErr.textContent);
       const rtepts = xml.querySelectorAll('rtept');
       if (!rtepts.length) {
-        alert(S.errLoadFile + 'no <rtept> elements found in GPX');
+        refuse(S.errLoadFile + 'no <rtept> elements found in GPX');
         return;
       }
       const wps = [];
@@ -2791,7 +2791,7 @@ function loadGpx(file) {
       fitView();
       draw();
     } catch (err) {
-      alert(S.errLoadFile + err.message);
+      refuse(S.errLoadFile + err.message);
     }
   };
   reader.readAsText(file);
@@ -2817,7 +2817,7 @@ function parsePlnLatLng(s) {
 function loadPln(file) {
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
   if (file && file.size > MAX_ROUTE_BYTES) {
-    alert(S.errLoadFile + 'file too large (' +
+    refuse(S.errLoadFile + 'file too large (' +
           (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
     return;
   }
@@ -2829,7 +2829,7 @@ function loadPln(file) {
       if (parseErr) throw new Error('XML parse error: ' + parseErr.textContent);
       const atc = xml.querySelectorAll('ATCWaypoint');
       if (!atc.length) {
-        alert(S.errLoadFile + 'no <ATCWaypoint> elements found in PLN');
+        refuse(S.errLoadFile + 'no <ATCWaypoint> elements found in PLN');
         return;
       }
       const wps = [];
@@ -2859,7 +2859,7 @@ function loadPln(file) {
       fitView();
       draw();
     } catch (err) {
-      alert(S.errLoadFile + err.message);
+      refuse(S.errLoadFile + err.message);
     }
   };
   reader.readAsText(file);
@@ -2957,7 +2957,7 @@ function load(file) {
   // still aborts a user mis-pick (e.g. a PDF / image) instantly.
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
   if (file && file.size > MAX_ROUTE_BYTES) {
-    alert(S.errLoadFile + 'file too large (' +
+    refuse(S.errLoadFile + 'file too large (' +
           (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
     return;
   }
@@ -2967,23 +2967,23 @@ function load(file) {
     try {
       d = JSON.parse(reader.result);
     } catch (err) {
-      alert(S.errLoadFile + err.message);
+      refuse(S.errLoadFile + err.message);
       return;
     }
     // A saved-routes library exported from the Saved routes menu is an ARRAY of
     // entries, not a route. Importing one here used to fail the route validator
     // with "root.waypoints: missing"; merge it into the library instead.
     if (Array.isArray(d)) {
-      if (!looksLikeRouteLibrary(d)) { alert(S.errNotRouteLibrary); return; }
+      if (!looksLikeRouteLibrary(d)) { refuse(S.errNotRouteLibrary); return; }
       const res = importRouteLibraryArray(d);
       if (!res || !res.added) {
-        alert(S.routeLibraryImportNone || 'No valid routes in that file');
+        refuse(S.routeLibraryImportNone || 'No valid routes in that file');
         return;
       }
       if (!persistRouteLibrary(res.merged)) {
         // A refused write (corrupt library / full storage) used to short-circuit
         // the toast and say nothing at all — indistinguishable from success.
-        alert(S.errRouteLibraryWriteFailed);
+        refuse(S.errRouteLibraryWriteFailed);
         return;
       }
       if (typeof showToast === 'function') showToast(routeLibraryImportMessage(res));
@@ -2994,7 +2994,7 @@ function load(file) {
     // so the JSON author can find the typo. Extras are silently allowed.
     const verr = validateRoute(d);
     if (verr) {
-      alert(S.errInvalidRoute(verr));
+      refuse(S.errInvalidRoute(verr));
       return;
     }
     applyRouteData(d);
@@ -3111,7 +3111,7 @@ function persistRouteLibrary(list, opts) {
   // the Saved routes menu passes { force: true }.
   if (NavAid.routeLibraryCorrupt && !(opts && opts.force)) {
     try {
-      alert(S.errRouteLibraryCorrupt ||
+      refuse(S.errRouteLibraryCorrupt ||
         'Your saved-route library is corrupted and could not be read. Export or clear it from the Saved routes menu before saving new routes.');
     } catch (_) { /* alert blocked */ }
     return false;
@@ -3122,7 +3122,7 @@ function persistRouteLibrary(list, opts) {
     scheduleRouteAutoSync();
     return true;
   } catch (e) {
-    alert(S.errStorageFull || 'Storage is full — delete some saved routes or export them.');
+    refuse(S.errStorageFull || 'Storage is full — delete some saved routes or export them.');
     return false;
   }
 }
@@ -3248,7 +3248,7 @@ function routeLibraryUpdate(id) {
 function routeLibraryApply(entry) {
   if (!entry || !entry.data) return false;
   const verr = typeof validateRoute === 'function' ? validateRoute(entry.data) : null;
-  if (verr) { alert(S.errInvalidRoute ? S.errInvalidRoute(verr) : verr); return false; }
+  if (verr) { refuse(S.errInvalidRoute ? S.errInvalidRoute(verr) : verr); return false; }
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.routeLibraryReplaceConfirm ||
         S.routeTemplateReplaceConfirm || 'Replace the current route?')) return false;
@@ -3755,27 +3755,13 @@ function exportNavLog(scrollArea) {
     '</body></html>';
 
   const w = window.open('', '_blank');
-  if (!w) { alert(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
+  if (!w) { refuse(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
   w.document.open();
   w.document.write(html);
   w.document.close();
   w.focus();
   setTimeout(() => { try { w.print(); } catch (e) { /* user can print manually */ } }, 300);
 }
-
-// A refusal the pilot can see.
-//
-// alert() is one of the three dialogs a page does not own: a browser may suppress it after one
-// is dismissed, and a WebView shows it only if the host app implements onJsAlert -- which is
-// exactly where this app is used. Reported as "cannot see the buttons or plan at all": the
-// button was answering, with a refusal nobody could see. The toast is the app's own surface,
-// it is on screen in every runtime, and it carries the warning floor these messages deserve.
-function refuse(message) {
-  if (!message) return;
-  if (typeof showToast === 'function') showToast(message, { warn: true });
-  else alert(message);
-}
-window.navaidRefuse = refuse;
 
 function showFlightPlan() {
   if (refreshFlightPlan) return;        // dedupe — modal already open
@@ -5707,7 +5693,7 @@ function exportA4x2Tiles(out, W, H, done) {
     c.toBlob(b => {
       // A null blob (canvas memory limits) must surface, not silently drop a
       // page — the user would tape together half a chart. Abort the sequence.
-      if (!b) { alert(S.errPngFail); done(); return; }
+      if (!b) { refuse(S.errPngFail); done(); return; }
       b.arrayBuffer()
         .then(buf => dl(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' })))
         .catch(() => dl(b));
@@ -5756,7 +5742,7 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 function openPrintWindow(blob, paperWmm, paperHmm) {
   const url = URL.createObjectURL(blob);
   const w = window.open('', '_blank');
-  if (!w) { try { alert(S.errPopupBlocked || 'Allow pop-ups to print.'); } catch (e) {} URL.revokeObjectURL(url); return; }
+  if (!w) { refuse(S.errPopupBlocked || 'Allow pop-ups to print.'); URL.revokeObjectURL(url); return; }
   const sized = (paperWmm && paperHmm)
     ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
     : `@page{margin:0}img{max-width:100%;display:block}`;
@@ -6000,7 +5986,7 @@ function exportPNG(mode) {
         unlockMap();
         NavAid.exporting = false;
         if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
-        if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
+        if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
       });
       return;
     }
@@ -6011,7 +5997,7 @@ function exportPNG(mode) {
       unlockMap();
       NavAid.exporting = false;
       if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
-      if (!b) { alert(S.errPngFail); return; }
+      if (!b) { refuse(S.errPngFail); return; }
 
       // Embed physical DPI metadata so the PNG prints at the correct
       // physical size on A3 / A4 at 1:250,000 scale.
@@ -6036,7 +6022,7 @@ function exportPNG(mode) {
       } else {
         deliver(b);
       }
-      if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
+      if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
   }).catch(err => {
     // A synchronous throw in the .then body (for example drawImage on a malformed
@@ -6048,7 +6034,7 @@ function exportPNG(mode) {
     unlockMap();
     NavAid.exporting = false;
     if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
-    try { alert(S.errPngFail); } catch (_) { /* alert blocked */ }
+    refuse(S.errPngFail);
   });
 }
 
@@ -6307,7 +6293,7 @@ async function flyRoute() {
       const lat = Number(wps[0].lat), lng = Number(wps[0].lng);
       if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
           !Number.isFinite(lng) || lng < -180 || lng > 180) {
-        alert(S.errBadCoords);
+        refuse(S.errBadCoords);
         return;
       }
       const url = 'https://earth.google.com/web/@' +
@@ -6431,7 +6417,7 @@ function persist() {
       if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
                 e.code === 1014 /* NS_ERROR_DOM_QUOTA_REACHED */)) {
         quotaWarned = true;
-        try { alert(S.errStorageFull); } catch (_) { /* alert blocked */ }
+        refuse(S.errStorageFull);
       }
     }
   }, 500);
@@ -6453,7 +6439,7 @@ function flushPersist() {
     if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
               e.code === 1014 /* NS_ERROR_DOM_QUOTA_REACHED */)) {
       quotaWarned = true;
-      try { alert(S.errStorageFull); } catch (_) { /* alert blocked */ }
+      refuse(S.errStorageFull);
     }
   }
 }
@@ -8849,7 +8835,7 @@ function tryLoadRouteFromUrl() {
 }
 
 // Lightweight non-blocking toast (no popup, no modal). The share action
-// fires often enough that an alert() was disproportionately disruptive —
+// fires often enough that an refuse() was disproportionately disruptive —
 // pilots want the link copied and to keep working. The toast self-removes
 // after 2.5 s; clipboard failures still fall through to a window.prompt
 // so the URL can be copied manually.

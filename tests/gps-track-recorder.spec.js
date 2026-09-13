@@ -1,5 +1,20 @@
 const { test, expect } = require('./_setup');
 
+// alert() and the toast are one channel for these tests: a failure is said out loud as a
+// toast now, because a WebView shows alert() only when the host app implements onJsAlert.
+// Install this after the page is up; ask it whether anything was said.
+async function saidAnything(page) {
+  const dialogs = [];
+  page.on('dialog', d => { dialogs.push(d.message()); d.dismiss().catch(() => {}); });
+  await page.evaluate(() => {
+    window.__said = [];
+    const real = window.showToast;
+    window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+  });
+  return async () => dialogs.length > 0
+    || (await page.evaluate(() => (window.__said || []).length)) > 0;
+}
+
 async function boot(page) {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' && typeof simplifyTrack === 'function');
@@ -670,12 +685,11 @@ test('a 20-second fix gap (watch TIMEOUT) does not kill the recording', async ({
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function');
-  let alerted = false;
-  page.on('dialog', d => { alerted = true; d.dismiss().catch(() => {}); });
+  const alerted = await saidAnything(page);
   await page.locator('#gps-record').click();
   await page.waitForFunction(() => gpsTrack.length >= 2);   // a fix landed AFTER the timeout
   expect(await page.evaluate(() => gpsRecording)).toBe(true);
-  expect(alerted).toBe(false);                              // no scary teardown alert
+  expect(await alerted()).toBe(false);                              // no scary teardown alert
   // ...and a real permission revocation still tears down.
   await page.evaluate(() => onGpsRecError({ code: 1, message: 'denied' }));
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
@@ -701,12 +715,11 @@ test('a codeless MID-watch error (iOS CLError forwarded with no code) does not k
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function');
-  let alerted = false;
-  page.on('dialog', d => { alerted = true; d.dismiss().catch(() => {}); });
+  const alerted = await saidAnything(page);
   await page.locator('#gps-record').click();
   await page.waitForFunction(() => gpsTrack.length >= 2);
   expect(await page.evaluate(() => gpsRecording)).toBe(true);
-  expect(alerted).toBe(false);
+  expect(await alerted()).toBe(false);
 });
 
 test('startLiveLocation rolls back on a synchronous registration throw, same as recording', async ({ page }) => {
@@ -719,11 +732,10 @@ test('startLiveLocation rolls back on a synchronous registration throw, same as 
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startLiveLocation === 'function');
-  let alerted = false;
-  page.on('dialog', d => { alerted = true; d.dismiss().catch(() => {}); });
+  const alerted = await saidAnything(page);
   await page.evaluate(() => startLiveLocation());
   expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
-  expect(alerted).toBe(true);
+  await expect.poll(alerted).toBe(true);
 });
 
 test('an async addWatcher rejection is a registration failure, not a transient blip', async ({ page }) => {
@@ -741,11 +753,10 @@ test('an async addWatcher rejection is a registration failure, not a transient b
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function');
-  let alerted = false;
-  page.on('dialog', d => { alerted = true; d.dismiss().catch(() => {}); });
+  const alerted = await saidAnything(page);
   await page.evaluate(() => startGpsRecording());
   await page.waitForFunction(() => gpsRecording === false, { timeout: 4000 });
-  expect(alerted).toBe(true);
+  await expect.poll(alerted).toBe(true);
 });
 
 // Reported live from the Hebrew UI: the readout showed "kt · 390 ft 18". The string is

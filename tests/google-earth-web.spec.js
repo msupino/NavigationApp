@@ -53,11 +53,17 @@ test.describe('Google Earth Web mode (flyRoute)', () => {
     await page.evaluate(() => { state.waypoints[0].lat = 999; });
     const dialogs = [];
     page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
+    // The confirm is still a dialog; the refusal that follows it is a toast.
+    await page.evaluate(() => {
+      window.__said = [];
+      const real = window.showToast;
+      window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    });
     await page.locator('#fly').click();
     await page.getByRole('button', { name: 'Google Earth Web' }).click();
     const errBadCoords = await page.evaluate(() => S.errBadCoords);
-    // First dialog is the geWebConfirm; the second must be the bad-coords alert.
-    await expect.poll(() => dialogs).toContain(errBadCoords);
+    await expect.poll(async () =>
+      dialogs.concat(await page.evaluate(() => window.__said))).toContain(errBadCoords);
     const opened = await page.evaluate(() => window.__opened);
     expect(opened.length).toBe(0);
   });
