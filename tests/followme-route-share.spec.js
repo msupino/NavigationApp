@@ -213,6 +213,75 @@ test('a route with no live position behind it is not offered', async ({ page }) 
   expect(got.names).toEqual(['LLHZ', 'LLHA']);
 });
 
+// Reported: refreshing the page asks whether to load the route -- the one already on the
+// map. Both topics are retained, so every reload re-delivers the same plan, and `routeOffered`
+// lives in memory. A question whose answer changes nothing is how a prompt gets dismissed
+// unread, and here OK and Cancel genuinely did the same thing.
+test('the plan already on the map is not offered again', async ({ page }) => {
+  await boot(page);
+  const asked = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('4X-RTE');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const fixFrame = await window.__fixFrame();
+    // The viewer is already flying the pilot's plan -- which is what the map looks like
+    // after a reload, once the accepted route has been restored from storage.
+    let n = 0;
+    window.__answer(true, () => { n++; });
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    const sub = window.__sockets[window.__sockets.length - 1];
+    sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    sub.deliver(fixFrame);
+    await new Promise(r => setTimeout(r, 20));
+    sub.deliver(routeFrame.frame);
+    await new Promise(r => setTimeout(r, 80));
+    return { n, names: state.waypoints.map(w => w.name) };
+  });
+  expect(asked.n, 'asked about the route already loaded').toBe(0);
+  expect(asked.names).toEqual(['LLHZ', 'LLHA']);
+});
+
+// ...and a NO has to survive the reload as well, or the question is back on the next refresh.
+test('a plan already declined is not asked about again after a restart', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('4X-RTE');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const fixFrame = await window.__fixFrame();
+    state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
+    syncLegs();
+    let n = 0;
+    window.__answer(false, () => { n++; });
+    const url = new URL(link);
+    const watchOnce = async () => {
+      await F.viewerStart({ search: url.search, hash: url.hash });
+      const sub = window.__sockets[window.__sockets.length - 1];
+      sub.connack();
+      await new Promise(r => setTimeout(r, 20));
+      sub.deliver(fixFrame);
+      await new Promise(r => setTimeout(r, 20));
+      sub.deliver(routeFrame.frame);
+      await new Promise(r => setTimeout(r, 80));
+    };
+    await watchOnce();
+    const first = n;
+    // A fresh watch in the same tab: what a reload does, with the in-memory note gone.
+    F.viewerStop();
+    await watchOnce();
+    return { first, total: n, names: state.waypoints.map(w => w.name) };
+  });
+  expect(got.first).toBe(1);
+  expect(got.total, 'asked again about a plan already declined').toBe(1);
+  expect(got.names, 'the viewer\'s own route was replaced anyway').toEqual(['MINE', 'OWN']);
+});
+
 // A fix that stopped arriving is the same thing a beat later: the banner calls it stale, and
 // a stale aeroplane is not flying the plan either.
 test('a route held against a stale fix is still not offered', async ({ page }) => {
@@ -362,6 +431,9 @@ test('a viewer reads either form', async ({ page }) => {
     const read = async (frame) => {
       state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
       syncLegs();
+      // This test is about reading the packet, not about how often the question is asked:
+      // the two forms carry the SAME plan, which a tab is only ever asked about once.
+      try { sessionStorage.removeItem('navaid.followRouteAsked'); } catch (e) { /* none */ }
       F.viewerStop();
       const url = new URL(link);
       window.__answer(true);

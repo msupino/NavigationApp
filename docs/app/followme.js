@@ -859,12 +859,53 @@
     return age !== null && age <= followMeStaleSec();
   }
 
+  // The route on the viewer's own map, compared the way a pilot would: the same waypoints,
+  // in the same order, in the same places. A route that is already loaded is not a question.
+  function sameAsCurrentRoute(route) {
+    const mine = (typeof state === 'object' && state && Array.isArray(state.waypoints))
+      ? state.waypoints : null;
+    const theirs = route && Array.isArray(route.waypoints) ? route.waypoints : null;
+    if (!mine || !theirs || !mine.length || mine.length !== theirs.length) return false;
+    return mine.every((w, i) => {
+      const o = theirs[i];
+      return o && (w.name || '') === (o.name || '')
+        && Math.abs(w.lat - o.lat) < 1e-6 && Math.abs(w.lng - o.lng) < 1e-6;
+    });
+  }
+
+  // `routeOffered` lives in memory, so a reload asked about the same retained plan all over
+  // again -- reported: refreshing the page asks whether to load the route that is already
+  // loaded. Being already loaded is answered above; an answer of NO has to survive the
+  // reload too, or the question is back on the next refresh. A digest rather than the plan
+  // itself: this is a per-tab note that the question was asked, not a copy of the route.
+  const ROUTE_ASKED_KEY = 'navaid.followRouteAsked';
+  function routeDigest(id, fingerprint) {
+    let h = 0x811c9dc5;
+    const s = id + '|' + fingerprint;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return id.slice(0, 8) + ':' + h.toString(36) + ':' + s.length;
+  }
+  function routeAsked(digest) {
+    try { return sessionStorage.getItem(ROUTE_ASKED_KEY) === digest; } catch (e) { return false; }
+  }
+  function noteRouteAsked(digest) {
+    try { sessionStorage.setItem(ROUTE_ASKED_KEY, digest); } catch (e) { /* no storage */ }
+  }
+
   async function offerPendingRoute() {
     const p = routePending;
     if (!p || !followMeFixIsLive()) return;
     if (p.fingerprint === routeOffered) { routePending = null; return; }
     routeOffered = p.fingerprint;
     routePending = null;
+    // Already flying it: the answer would change nothing on this map.
+    if (sameAsCurrentRoute(p.route)) return;
+    const digest = routeDigest(watch && watch.state ? watch.state.id : '', p.fingerprint);
+    if (routeAsked(digest)) return;
+    noteRouteAsked(digest);          // before the question, so a reload mid-answer is quiet
     const S2 = window.S || {};
     const ask = S2.followMeRouteOffer
       ? S2.followMeRouteOffer(p.named)
