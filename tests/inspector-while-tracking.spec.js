@@ -167,3 +167,39 @@ test('the choice outranks the gist, in both directions', async ({ page }) => {
   });
   expect(got).toEqual({ pilotOff: false, pilotOn: true, gist: true });
 });
+
+// Reported: with the map locked for selecting a waypoint, the multiple-waypoint chooser still
+// opens -- where several points overlap, or on a frequency-change arrow. The panel obeyed the
+// rule; the question that comes BEFORE the panel did not, so in flight a tap still put a
+// modal over the chart asking which point to open.
+test('the point chooser obeys the same rule as the panel', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const seen = [];
+    window.showToast = (m) => seen.push(String(m));
+    startLiveLocation();
+    window.__geoCb({ coords: { latitude: 32, longitude: 34, accuracy: 8 }, timestamp: Date.now() });
+    await new Promise(r => setTimeout(r, 20));
+    // Two things under one finger: the chooser's whole reason to exist.
+    const opened = showPointChoice([{ type: 'wp', index: 0 }, { type: 'wp', index: 1 }]);
+    return { opened, modals: document.querySelectorAll('.point-choice-modal').length,
+             panel: document.getElementById('inspector').classList.contains('hidden'),
+             selected: state.selected, said: seen[0] || '' };
+  });
+  expect(got.opened).toBe(false);
+  expect(got.modals, 'the chooser opened over the chart').toBe(0);
+  expect(got.panel).toBe(true);
+  expect(got.selected).toBe(null);
+  // ...and it says why, in the same words the panel uses.
+  expect(got.said).toMatch(/View\/Set/i);
+});
+
+test('on the ground the chooser is untouched', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => {
+    const opened = showPointChoice([{ type: 'wp', index: 0 }, { type: 'wp', index: 1 }]);
+    return { opened, modals: document.querySelectorAll('.point-choice-modal').length };
+  });
+  expect(got.opened).toBe(true);
+  expect(got.modals).toBe(1);
+});
