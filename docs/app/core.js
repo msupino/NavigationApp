@@ -1645,6 +1645,8 @@ window.S = Object.assign({
   fpCsv: 'CSV',
   fpCsvTitle: 'Export this flight plan as CSV',
   tbNavLog: 'Nav log (PDF)',
+  tbNavLogShort: 'PDF',
+  tbFplShort: '\u2708 FPL',
   tbNavLogTitle: 'Open a printable kneeboard nav log — save as PDF',
   navLogTitle: 'NavAid — Nav Log',
   navLogDate: 'Date',
