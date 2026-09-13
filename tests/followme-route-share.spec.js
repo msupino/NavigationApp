@@ -47,6 +47,26 @@ async function boot(page) {
                        { lat: 32.78, lng: 35.02, name: 'LLHA' }];
     syncLegs();
     draw();
+    // A viewer entertains a route only once a LIVE position has arrived: the retained route
+    // outlives the position on the relay (a forced stop never gets its tombstone away), and
+    // a viewer who subscribed afterwards was asked to load the plan of a finished flight.
+    // So every viewer test here delivers the fix packet first, as the relay would.
+    window.__frames = () => window.__sent.filter(f => (f[0] >> 4) === 3).map(f => {
+      let at = 1, digit;
+      do { digit = f[at++]; } while (digit & 0x80);
+      const len = (f[at] << 8) | f[at + 1];
+      return { topic: String.fromCharCode(...f.slice(at + 2, at + 2 + len)), frame: f };
+    });
+    window.__fixFrame = async () => {
+      await NavAid.followMe.publish({ lat: 32.2, lng: 34.85, trk: 10, kt: 90 });
+      await new Promise(r => setTimeout(r, 20));
+      return window.__frames().filter(p => !p.topic.endsWith('/route')).pop().frame;
+    };
+    // The question is the app's own dialog now, not confirm() -- which a WebView never shows.
+    window.__answer = (yes, sink) => {
+      window.askYesNo = async (title, text) => { if (sink) sink(String(text)); return yes; };
+      window.confirm = (text) => { if (sink) sink(String(text)); return yes; };
+    };
   });
 }
 
@@ -127,21 +147,18 @@ test('the viewer is asked, and yes loads the plan', async ({ page }) => {
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 60));
     // Keep the sealed route packet, then become a viewer with a different route drawn.
-    const routeFrame = window.__sent.filter(f => (f[0] >> 4) === 3).map(f => {
-      let at = 1, digit;
-      do { digit = f[at++]; } while (digit & 0x80);
-      const len = (f[at] << 8) | f[at + 1];
-      const topic = String.fromCharCode(...f.slice(at + 2, at + 2 + len));
-      return { topic, frame: f };
-    }).find(p => p.topic.endsWith('/route'));
+    const fixFrame = await window.__fixFrame();
+    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
     state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
     syncLegs();
     const url = new URL(link);
     const asked = [];
-    window.confirm = (text) => { asked.push(String(text)); return true; };
+    window.__answer(true, (text) => asked.push(text));
     await F.viewerStart({ search: url.search, hash: url.hash });
     const sub = window.__sockets[window.__sockets.length - 1];
     sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    sub.deliver(fixFrame);
     await new Promise(r => setTimeout(r, 20));
     sub.deliver(routeFrame.frame);
     await new Promise(r => setTimeout(r, 60));
@@ -154,6 +171,145 @@ test('the viewer is asked, and yes loads the plan', async ({ page }) => {
   expect(got.names).toEqual(['LLHZ', 'LLHA']);
 });
 
+// Reported: stopping the share produced "the pilot is sharing a route -- load it?" on the
+// device that was following. Both topics are retained, and the route outlives the position:
+// the position tombstone is what the stop waits for, while a stop forced by a relay that
+// never answers leaves BOTH retained -- and either way a viewer subscribing afterwards is
+// handed a plan with no aeroplane flying it. The plan is an attachment to a live position.
+test('a route with no live position behind it is not offered', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('4X-RTE');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    // Both packets are captured while this device is still the publisher -- becoming a
+    // viewer stops the share, and a stopped publisher sends tombstones, not fixes.
+    const fixFrame = await window.__fixFrame();
+    state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
+    syncLegs();
+    let asked = 0;
+    window.__answer(true, () => { asked++; });
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    const sub = window.__sockets[window.__sockets.length - 1];
+    sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    // What a relay hands a viewer after a stop: the route still sitting there retained, and
+    // a position topic that has been cleared.
+    sub.deliver(routeFrame.frame);
+    await new Promise(r => setTimeout(r, 80));
+    const afterDeadLink = { asked, names: state.waypoints.map(w => w.name) };
+    // ...and the same route, once an aeroplane is actually on the link, IS offered: this is
+    // a question of timing, not a channel that has been switched off.
+    sub.deliver(fixFrame);
+    await new Promise(r => setTimeout(r, 80));
+    return { afterDeadLink, asked, names: state.waypoints.map(w => w.name) };
+  });
+  expect(got.afterDeadLink.asked, 'asked about the plan of a flight that has ended').toBe(0);
+  expect(got.afterDeadLink.names).toEqual(['MINE', 'OWN']);
+  expect(got.asked, 'the held route was never offered once a fix arrived').toBe(1);
+  expect(got.names).toEqual(['LLHZ', 'LLHA']);
+});
+
+// Reported: refreshing the page asks whether to load the route -- the one already on the
+// map. Both topics are retained, so every reload re-delivers the same plan, and `routeOffered`
+// lives in memory. A question whose answer changes nothing is how a prompt gets dismissed
+// unread, and here OK and Cancel genuinely did the same thing.
+test('the plan already on the map is not offered again', async ({ page }) => {
+  await boot(page);
+  const asked = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('4X-RTE');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const fixFrame = await window.__fixFrame();
+    // The viewer is already flying the pilot's plan -- which is what the map looks like
+    // after a reload, once the accepted route has been restored from storage.
+    let n = 0;
+    window.__answer(true, () => { n++; });
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    const sub = window.__sockets[window.__sockets.length - 1];
+    sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    sub.deliver(fixFrame);
+    await new Promise(r => setTimeout(r, 20));
+    sub.deliver(routeFrame.frame);
+    await new Promise(r => setTimeout(r, 80));
+    return { n, names: state.waypoints.map(w => w.name) };
+  });
+  expect(asked.n, 'asked about the route already loaded').toBe(0);
+  expect(asked.names).toEqual(['LLHZ', 'LLHA']);
+});
+
+// ...and a NO has to survive the reload as well, or the question is back on the next refresh.
+test('a plan already declined is not asked about again after a restart', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('4X-RTE');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const fixFrame = await window.__fixFrame();
+    state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
+    syncLegs();
+    let n = 0;
+    window.__answer(false, () => { n++; });
+    const url = new URL(link);
+    const watchOnce = async () => {
+      await F.viewerStart({ search: url.search, hash: url.hash });
+      const sub = window.__sockets[window.__sockets.length - 1];
+      sub.connack();
+      await new Promise(r => setTimeout(r, 20));
+      sub.deliver(fixFrame);
+      await new Promise(r => setTimeout(r, 20));
+      sub.deliver(routeFrame.frame);
+      await new Promise(r => setTimeout(r, 80));
+    };
+    await watchOnce();
+    const first = n;
+    // A fresh watch in the same tab: what a reload does, with the in-memory note gone.
+    F.viewerStop();
+    await watchOnce();
+    return { first, total: n, names: state.waypoints.map(w => w.name) };
+  });
+  expect(got.first).toBe(1);
+  expect(got.total, 'asked again about a plan already declined').toBe(1);
+  expect(got.names, 'the viewer\'s own route was replaced anyway').toEqual(['MINE', 'OWN']);
+});
+
+// A fix that stopped arriving is the same thing a beat later: the banner calls it stale, and
+// a stale aeroplane is not flying the plan either.
+test('a route held against a stale fix is still not offered', async ({ page }) => {
+  await boot(page);
+  const asked = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    setTune('followMeStaleSec', 30);
+    const link = await F.start('4X-RTE');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 60));
+    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    let n = 0;
+    window.__answer(true, () => { n++; });
+    const url = new URL(link);
+    const st = await F.viewerStart({ search: url.search, hash: url.hash });
+    const sub = window.__sockets[window.__sockets.length - 1];
+    sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    // A fix from an hour ago, as a retained packet from a finished flight would be.
+    st.fix = { lat: 32.1, lng: 34.8, t: Date.now() - 3600000 };
+    st.at = st.fix.t;
+    sub.deliver(routeFrame.frame);
+    await new Promise(r => setTimeout(r, 80));
+    return n;
+  });
+  expect(asked).toBe(0);
+});
+
 test('no means no, and the same plan is not asked about twice', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
@@ -161,21 +317,18 @@ test('no means no, and the same plan is not asked about twice', async ({ page })
     const link = await F.start('4X-RTE');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 60));
-    const routeFrame = window.__sent.filter(f => (f[0] >> 4) === 3).map(f => {
-      let at = 1, digit;
-      do { digit = f[at++]; } while (digit & 0x80);
-      const len = (f[at] << 8) | f[at + 1];
-      const topic = String.fromCharCode(...f.slice(at + 2, at + 2 + len));
-      return { topic, frame: f };
-    }).find(p => p.topic.endsWith('/route'));
+    const fixFrame = await window.__fixFrame();
+    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
     state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
     syncLegs();
     const asked = [];
-    window.confirm = (text) => { asked.push(String(text)); return false; };
+    window.__answer(false, (text) => asked.push(text));
     const url = new URL(link);
     await F.viewerStart({ search: url.search, hash: url.hash });
     const sub = window.__sockets[window.__sockets.length - 1];
     sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    sub.deliver(fixFrame);
     await new Promise(r => setTimeout(r, 20));
     sub.deliver(routeFrame.frame);
     await new Promise(r => setTimeout(r, 40));
@@ -265,6 +418,7 @@ test('a viewer reads either form', async ({ page }) => {
       return { topic: String.fromCharCode(...f.slice(at + 2, at + 2 + len)), frame: f };
     }).find(p => p.topic.endsWith('/route'));
     const zipped = grab().frame;
+    const fixFrame = await window.__fixFrame();
     // ...and the same plan from a publisher that could not compress.
     window.__CS = window.CompressionStream;
     delete window.CompressionStream;
@@ -277,12 +431,17 @@ test('a viewer reads either form', async ({ page }) => {
     const read = async (frame) => {
       state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
       syncLegs();
+      // This test is about reading the packet, not about how often the question is asked:
+      // the two forms carry the SAME plan, which a tab is only ever asked about once.
+      try { sessionStorage.removeItem('navaid.followRouteAsked'); } catch (e) { /* none */ }
       F.viewerStop();
       const url = new URL(link);
-      window.confirm = () => true;
+      window.__answer(true);
       await F.viewerStart({ search: url.search, hash: url.hash });
       const sub = window.__sockets[window.__sockets.length - 1];
       sub.connack();
+      await new Promise(r => setTimeout(r, 20));
+      sub.deliver(fixFrame);
       await new Promise(r => setTimeout(r, 20));
       sub.deliver(frame);
       await new Promise(r => setTimeout(r, 80));
@@ -312,7 +471,7 @@ test('a viewer that cannot inflate is left with the position, not an error', asy
     state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
     syncLegs();
     let asked = 0;
-    window.confirm = () => { asked++; return true; };
+    window.__answer(true, () => { asked++; });
     const url = new URL(link);
     await F.viewerStart({ search: url.search, hash: url.hash });
     const sub = window.__sockets[window.__sockets.length - 1];
@@ -404,11 +563,14 @@ test('a viewer inflates what the packet says it is, whatever the gist says now',
     setTune('followMeRouteCompress', 'gzip');
     state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
     syncLegs();
-    window.confirm = () => true;
+    window.__answer(true);
+    const fixFrame = await window.__fixFrame();
     const url = new URL(link);
     await F.viewerStart({ search: url.search, hash: url.hash });
     const sub = window.__sockets[window.__sockets.length - 1];
     sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    sub.deliver(fixFrame);
     await new Promise(r => setTimeout(r, 20));
     sub.deliver(frame);
     await new Promise(r => setTimeout(r, 80));

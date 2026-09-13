@@ -2223,6 +2223,7 @@ window.S = Object.assign({
   followMeLeaveWatchConfirm: 'Sharing your own position stops following this aircraft, and reloads the map without the link. Continue?',
   followMeRouteOffer: (named) => 'The pilot is sharing a route' + (named ? ' (' + named + ')' : '')
     + '. Load it? This replaces the route on your map.',
+  followMeRouteLoad: 'Load route',
   followMeRouteLoaded: 'Route loaded from the pilot you are following.',
   followMeStoppedLocal: 'Sharing stopped on this phone — the relay never answered. If anyone still has the link, use New link.',
   followMeStopped: 'Follow me: stopped. The link is dead.',

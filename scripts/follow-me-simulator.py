@@ -4,6 +4,10 @@
 With no route argument this flies the built-in LLHZ -> LLHA CVFR template through
 the route waypoints. An exported NavAid route JSON can be supplied instead.
 
+The plan itself is published too, retained, on <topic>/route -- so a follower is
+offered the route as well as the aeroplane flying it, exactly as the app does.
+Pass --no-route for positions only.
+
     python3 scripts/follow-me-simulator.py
     python3 scripts/follow-me-simulator.py route.json --speed-kt 120 --interval 2
     python3 scripts/follow-me-simulator.py --speed-factor 10
@@ -65,10 +69,15 @@ def validate_waypoints(values):
     return route
 
 
-def load_route_data(path=None):
+def route_document(path=None):
+    """The route file as written -- the same object the app publishes on the route topic."""
     source_path = Path(path) if path else DEFAULT_ROUTE
     with source_path.open(encoding='utf-8') as source:
-        data = json.load(source)
+        return json.load(source)
+
+
+def load_route_data(path=None):
+    data = route_document(path)
     if not isinstance(data, dict):
         raise ValueError('route JSON must be an object')
     route = validate_waypoints(data.get('waypoints'))
@@ -177,6 +186,47 @@ def make_fix(point, code, speed_kt, altitude_ft, sequence, now_ms):
     }
 
 
+# The kite-label sentinel the app writes for a leg nobody has dragged: the offset is
+# computed at render time from the live leg length, so the stored shape carries no `p`.
+DEFAULT_LEG_LABEL = {'a': 0, '_default': 1, '_m': 1}
+
+
+def publishable_route(document):
+    """The route document as the BROWSER's validateRoute() requires it.
+
+    A hand-written route file is not a full export: `notes` and the per-leg kite labels are
+    written by the app and missing here. The viewer validates before it offers the plan, and
+    a route that fails validation is dropped in silence -- so the gaps are filled with the
+    same defaults the app itself would have written, rather than published and ignored.
+    """
+    out = dict(document)
+    out.setdefault('notes', [])
+    legs = []
+    for leg in out.get('legs') or []:
+        filled = dict(leg)
+        filled.setdefault('inLabel', dict(DEFAULT_LEG_LABEL))
+        filled.setdefault('outLabel', dict(DEFAULT_LEG_LABEL))
+        legs.append(filled)
+    out['legs'] = legs
+    return out
+
+
+def route_envelope(document, route, now_ms=None):
+    """What the app publishes on <topic>/route: the plan, and who it is between.
+
+    The browser offers this to a follower rather than applying it, so the envelope has to
+    name the flight (from/to) as well as carry it. `route` is sent uncompressed -- the
+    viewer reads either form, and the app's gzip is an optimisation for a phone on a public
+    relay, not part of the contract.
+    """
+    return {
+        'from': route[0]['name'],
+        'to': route[-1]['name'],
+        't': int(time.time() * 1000) if now_ms is None else now_ms,
+        'route': publishable_route(document),
+    }
+
+
 def seal(key, fix):
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -227,6 +277,8 @@ def main():
     parser.add_argument('--broker', default=DEFAULT_BROKER, help='MQTT WebSocket URL')
     parser.add_argument('--base-url', default=DEFAULT_BASE_URL, help='base URL used in the follower link')
     parser.add_argument('--once', action='store_true', help='stop after one flight (default: loop indefinitely)')
+    parser.add_argument('--no-route', action='store_true',
+                        help='publish positions only, without offering the plan to followers')
     parser.add_argument('--dry-run', action='store_true', help='validate and summarize without connecting')
     args = parser.parse_args()
 
@@ -234,6 +286,7 @@ def main():
     if not code:
         raise SystemExit('aircraft code cannot be empty')
     try:
+        document = route_document(args.route)
         route, legs = load_route_data(args.route)
         points = simulated_points(route, args.speed_kt, args.interval, legs,
                                   args.altitude_ft, args.speed_factor)
@@ -245,6 +298,8 @@ def main():
     total_nm = sum(distance_nm(a, b) for a, b in zip(route, route[1:]))
     print('Route: %s (%0.1f NM, %d fixes)' %
           (' -> '.join(point['name'] for point in route), total_nm, len(points)), file=sys.stderr)
+    if args.no_route:
+        print('Plan: not published (--no-route)', file=sys.stderr)
     timing = ', %.1fx clock' % args.speed_factor if args.speed_factor != 1 else ''
     print('Aircraft: %s, route speed/altitude, every %.1f s%s' %
           (code, args.interval, timing), file=sys.stderr)
@@ -253,6 +308,7 @@ def main():
         return
 
     topic = TOPIC_PREFIX + session_id
+    route_topic = topic + '/route'
     connected = threading.Event()
     client = None
     loop_started = False
@@ -277,6 +333,12 @@ def main():
         if connection_error:
             raise SystemExit('%s (%s)' % (connection_error, args.broker))
         broker_connected = True
+        # The plan, retained, once: a follower who opens the link an hour in is offered the
+        # route as well as the aeroplane flying it. The app publishes this the moment sharing
+        # starts, and the browser only offers it once a live position has arrived.
+        if not args.no_route:
+            client.publish(route_topic, seal(key, route_envelope(document, route)),
+                           qos=0, retain=True)
         print('Publishing to %s. Press Ctrl-C to stop.' % args.broker, file=sys.stderr)
 
         sequence = int(time.time() * 1000)
@@ -304,6 +366,9 @@ def main():
             # useful DNS/connection error with a second exception.
             if broker_connected:
                 try:
+                    # The plan goes with the position: a link that no longer says where the
+                    # aeroplane is must not still hand out where it was going.
+                    client.publish(route_topic, b'', qos=0, retain=True)
                     info = client.publish(topic, b'', qos=1, retain=True)
                     info.wait_for_publish(timeout=10)
                 except KeyboardInterrupt:

@@ -7463,7 +7463,11 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
 }
 .follow-me-mark {
   display: flex; align-items: center; justify-content: center;
-  position: relative;
+  /* Placed in container coordinates by followMePlaceMark(), and centred on its fix here so
+     the coordinate it is given is the aeroplane's, not its top-left corner. */
+  position: absolute;
+  transform: translate(-50%, -50%);
+  will-change: left, top;
 }
 .follow-me-arrow {
   display: flex; align-items: center; justify-content: center;
