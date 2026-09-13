@@ -3779,15 +3779,7 @@ window.navaidRefuse = refuse;
 
 function showFlightPlan() {
   if (refreshFlightPlan) return;        // dedupe — modal already open
-  if (state.legs.length === 0) {
-    // A toast, not alert(). alert() is one of the three dialogs a page does not own -- a
-    // browser may suppress it after one is dismissed, and a WebView shows it only if the host
-    // app implements onJsAlert. Reported as "cannot see the buttons or plan at all": the
-    // button was answering, with a refusal nobody could see. Same reason the follow-me
-    // identifier stopped using prompt().
-    refuse(S.errNoLegs);
-    return;
-  }
+  if (state.legs.length === 0) { refuse(S.errNoLegs); return; }
   closeOpenChartModals();
   clearOpenChartModal();
   // 'flight-plan' variant: backdrop is transparent + pointer-events: none so

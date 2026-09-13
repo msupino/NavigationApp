@@ -7949,3 +7949,11 @@ body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom,
 /* The floating menu and the clock are the app's own top-anchored chrome. */
 #toolbar { margin-top: env(safe-area-inset-top, 0px); }
 .leaflet-control.zulu-clock { margin-top: calc(var(--navaid-zulu-clock-margin-top, 12px) + env(safe-area-inset-top, 0px)); }
+
+/* A modal is centred in the space it has, so anything that changes its height moves the whole
+   panel -- pressing a field, the profile finishing its first paint. On a phone that reads as
+   the sheet jumping under the finger. Anchored to the top of that space instead, it grows
+   downward and stays where it was put. */
+@media (max-width: 680px), (pointer: coarse) {
+  .modal-back, .sim-overlay { align-items: flex-start; }
+}
