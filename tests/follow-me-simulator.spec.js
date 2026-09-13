@@ -90,6 +90,86 @@ test('simulator constructs a fragment-key follower link and supports offline dry
   expect(result.stderr).toContain('Aircraft: TEST');
 });
 
+// Asked for: the simulator publishes a route as well as positions. Both topics are retained,
+// so a follower joining later is offered the plan and the aeroplane flying it.
+test('the simulator publishes the plan on the route topic, and clears it on the way out', () => {
+  const result = runMainWith([
+    'import json',
+    'class Info:',
+    '    def wait_for_publish(self, timeout=None): pass',
+    'class Client:',
+    '    def loop_start(self): pass',
+    '    def loop_stop(self): pass',
+    '    def disconnect(self): pass',
+    '    def publish(self, topic, payload, qos=0, retain=False):',
+    '        print(json.dumps({"topic": topic, "len": len(payload)}), file=sys.stderr)',
+    '        return Info()',
+    'def client(broker, topic, connected):',
+    '    connected.error = None',
+    '    connected.set()',
+    '    return Client()',
+    'module.mqtt_client = client',
+    // One fix and no waiting: this is about which topics are written, not about flying.
+    'module.simulated_points = lambda *a, **k: [{"lat": 32.0, "lng": 34.9, "trk": 90,',
+    '    "waypoint": None, "speed_kt": 90, "altitude_ft": 1500}]',
+    'module.time.sleep = lambda *_a: None',
+  ].join('\n'), ['--once']);
+
+  expect(result.status).toBe(0);
+  const sent = result.stderr.split('\n').filter(l => l.startsWith('{')).map(l => JSON.parse(l));
+  const route = sent.filter(p => p.topic.endsWith('/route'));
+  const position = sent.filter(p => !p.topic.endsWith('/route'));
+  expect(route.length, 'the plan, then its tombstone').toBe(2);
+  expect(route[0].len).toBeGreaterThan(100);          // sealed, and carrying a route
+  expect(route[route.length - 1].len).toBe(0);        // cleared on the way out
+  expect(position.length).toBeGreaterThan(1);
+  expect(position[position.length - 1].len).toBe(0);
+  // Same topic root for both, or a follower subscribes to the wrong pair.
+  expect(route[0].topic).toBe(position[0].topic + '/route');
+});
+
+test('--no-route publishes positions only', () => {
+  const result = runMainWith([
+    'import json',
+    'class Info:',
+    '    def wait_for_publish(self, timeout=None): pass',
+    'class Client:',
+    '    def loop_start(self): pass',
+    '    def loop_stop(self): pass',
+    '    def disconnect(self): pass',
+    '    def publish(self, topic, payload, qos=0, retain=False):',
+    '        print(json.dumps({"topic": topic, "len": len(payload)}), file=sys.stderr)',
+    '        return Info()',
+    'def client(broker, topic, connected):',
+    '    connected.error = None',
+    '    connected.set()',
+    '    return Client()',
+    'module.mqtt_client = client',
+    'module.simulated_points = lambda *a, **k: [{"lat": 32.0, "lng": 34.9, "trk": 90,',
+    '    "waypoint": None, "speed_kt": 90, "altitude_ft": 1500}]',
+    'module.time.sleep = lambda *_a: None',
+  ].join('\n'), ['--once', '--no-route']);
+
+  expect(result.status).toBe(0);
+  const sent = result.stderr.split('\n').filter(l => l.startsWith('{')).map(l => JSON.parse(l));
+  // The tombstone still goes out: a run that published nothing must not leave one behind
+  // either, and clearing a topic that is already empty costs nothing.
+  expect(sent.filter(p => p.topic.endsWith('/route') && p.len > 0)).toEqual([]);
+  expect(result.stderr).toContain('--no-route');
+});
+
+// The envelope is only useful if the browser will take it: this is the same validator the
+// viewer runs before offering the plan at all.
+test('the published plan is one the browser accepts', async ({ page }) => {
+  const env = python('module.route_envelope(module.route_document(), module.load_route(), 1700000000000)');
+  expect(env.from).toBe('LLHZ');
+  expect(env.to).toBe('LLHA');
+  expect(env.t).toBe(1700000000000);
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof validateRoute === 'function');
+  expect(await page.evaluate(r => validateRoute(r), env.route)).toBeNull();
+});
+
 test('MQTT hostname and connection failures exit cleanly without a traceback', () => {
   const result = runMainWith([
     'import socket',

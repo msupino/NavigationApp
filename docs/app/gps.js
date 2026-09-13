@@ -300,7 +300,11 @@ function onLivePosition(pos) {
   // Rate-limited inside; a failure here must never disturb the fix handling around it.
   if (window.NavAid && NavAid.followMe && NavAid.followMe.sharing()) {
     try {
+      // `hc` says the heading is the compass, not a course made good -- a stationary
+      // aeroplane has no course, and a follower must not read one off a phone lying on a
+      // seat. It is the same mark the pilot's own readout shows.
       NavAid.followMe.publish({ lat: p.lat, lng: p.lng, alt: c.altitude, trk: hdg,
+        hc: hdgFromCompass,
         kt: (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed * 1.94384 : null });
     } catch (e) { /* sharing is a courtesy, never a reason to lose a fix */ }
   }
@@ -879,19 +883,28 @@ function gpsSpokenFreq(freq, lang) {
 // reports no course at all). gpsOwn.hdg is TRUE in both paths -- the geolocation API is
 // true-referenced, and the simulator bridge's magnetic value is converted to true in
 // _simFetch -- so this is the one place it turns back into what a pilot reads off the DI.
-function gpsReadoutHeading() {
-  if (!gpsOwn || !Number.isFinite(gpsOwn.hdg)) return null;
-  const mag = (typeof toMagnetic === 'function') ? toMagnetic(gpsOwn.hdg) : gpsOwn.hdg;
+// A true heading as a pilot reads it: magnetic, three digits, and marked when it came from
+// the compass rather than from movement. The Follow me banner renders the same value for a
+// follower on the ground, so this is one function and not two that can drift apart.
+//
+// A compass heading is where the phone points, not where the aircraft is going: it gets its
+// own mark rather than being dressed up as a GPS course. The mark used to be a trailing 'm'
+// -- for magnetic -- and was read as metres, beside an altitude in feet. The degree sign now
+// stays on whatever the source, so the number is always plainly a heading, and a leading
+// tilde says the instrument is approximate. One character, and this line has no width to
+// spare.
+function gpsHeadingText(trueDeg, fromCompass) {
+  if (!Number.isFinite(trueDeg)) return null;
+  const mag = (typeof toMagnetic === 'function') ? toMagnetic(trueDeg) : trueDeg;
   if (!Number.isFinite(mag)) return null;
   const r = ((Math.round(mag) % 360) + 360) % 360;
   const shown = (typeof pad3 === 'function') ? pad3(r) : String(r);
-  // A compass heading is where the phone points, not where the aircraft is going: it gets
-  // its own mark rather than being dressed up as a GPS course. The mark used to be a
-  // trailing 'm' -- for magnetic -- and was read as metres, beside an altitude in feet. The
-  // degree sign now stays on whatever the source, so the number is always plainly a
-  // heading, and a leading tilde says the instrument is approximate. One character, and
-  // this line has no width to spare.
-  return (gpsOwn.hdgCompass ? '~' : '') + shown + '\u00b0';
+  return (fromCompass ? '~' : '') + shown + '\u00b0';
+}
+if (typeof window !== 'undefined') window.gpsHeadingText = gpsHeadingText;
+function gpsReadoutHeading() {
+  if (!gpsOwn) return null;
+  return gpsHeadingText(gpsOwn.hdg, gpsOwn.hdgCompass);
 }
 // Altitude as the altimeter would read it, plus the subscale setting that goes with it.
 // One helper so the recording and live branches cannot drift apart.

@@ -27,6 +27,9 @@ import urllib.parse
 DEFAULT_BROKER = 'wss://broker.emqx.io:8084/mqtt'
 TOPIC = 'navaid/follow/'
 M_TO_FT = 3.28084
+# The app's own default (tuning key magneticVariationDeg): magnetic = true + variation, so
+# -5 means "subtract 5". The wire carries TRUE; every number a pilot reads is magnetic.
+DEFAULT_VARIATION = -5.0
 
 
 def b64url_decode(s):
@@ -45,8 +48,11 @@ def parse_link(link):
         follow = urllib.parse.parse_qs(u.query).get('follow', [''])[0]
         key = urllib.parse.parse_qs(u.fragment.lstrip('#')).get('k', [''])[0]
         if follow and not key:
-            raise SystemExit('link has no #k= fragment: the key is missing, so nothing can '
-                             'be decrypted. Copy the link again, including everything after #')
+            raise SystemExit(
+                'link has no #k= fragment: the key is missing, so nothing can be decrypted.\n'
+                "QUOTE THE LINK: an unquoted URL loses everything after '#' to the shell, "
+                "which reads it as a comment (and '&' backgrounds the command).\n"
+                "    ./scripts/follow-me-tail.py 'https://navaid.supino.org/?follow=...#k=...'")
         if not follow:
             raise SystemExit('link has no ?follow= id')
         return follow, key
@@ -70,14 +76,30 @@ def unseal(key, payload):
         return None
 
 
-def fmt(fix, at):
+def heading_text(fix, variation=DEFAULT_VARIATION):
+    """The heading as the app prints it: magnetic, and marked when it is the compass.
+
+    The wire carries TRUE. A stationary aeroplane reports no course at all, so the phone
+    falls back to its compass and sends `hc` -- where the device points, not where anything
+    is going. Printing that as a course is how a follower reads out a heading nobody is
+    flying, so it keeps the same leading tilde the app's own readout shows.
+    """
+    trk = fix.get('trk')
+    if not isinstance(trk, (int, float)) or isinstance(trk, bool):
+        return None
+    mag = round(trk + variation) % 360
+    return '%s%03d°' % ('~' if fix.get('hc') else '', mag)
+
+
+def fmt(fix, at, variation=DEFAULT_VARIATION):
     bits = ['%.5f, %.5f' % (fix['lat'], fix['lng'])]
     if isinstance(fix.get('alt'), (int, float)):
         bits.append('%d ft' % round(fix['alt'] * M_TO_FT))
     if isinstance(fix.get('kt'), (int, float)):
         bits.append('%d kt' % round(fix['kt']))
-    if isinstance(fix.get('trk'), (int, float)):
-        bits.append('%03d°' % round(fix['trk']))
+    heading = heading_text(fix, variation)
+    if heading:
+        bits.append(heading)
     age = int(max(0, time.time() - fix.get('t', 0) / 1000)) if fix.get('t') else None
     if age is not None:
         # A retained message can be hours old: the broker hands it to every new subscriber.
@@ -103,6 +125,31 @@ def accepted_order(fix, last_order=-1, now_ms=None):
     return int(order)
 
 
+def fmt_route(envelope):
+    """One line for the shared plan: who it is between, and the waypoints in order.
+
+    A publisher may have compressed it (`gz` with `zf` naming the format). Deflating it is
+    two lines of stdlib, and a route nobody can read is the same as no route at all.
+    """
+    route = envelope.get('route')
+    if route is None and isinstance(envelope.get('gz'), str):
+        import zlib
+        raw = b64url_decode(envelope['gz'])
+        fmt_name = envelope.get('zf')
+        # gzip carries its own header (wbits 16+15); deflate-raw carries none (-15).
+        wbits = -15 if fmt_name == 'deflate-raw' else 16 + zlib.MAX_WBITS
+        try:
+            route = json.loads(zlib.decompress(raw, wbits))
+        except Exception:
+            return '# route: could not be read (%s)' % (fmt_name or 'unknown format')
+    names = []
+    if isinstance(route, dict) and isinstance(route.get('waypoints'), list):
+        names = [str(w.get('name') or '?') for w in route['waypoints'] if isinstance(w, dict)]
+    named = ' -> '.join(filter(None, [str(envelope.get('from') or ''), str(envelope.get('to') or '')]))
+    return '# route %s (%d waypoints)%s' % (named or '?', len(names),
+                                            ': ' + ' '.join(names) if names else '')
+
+
 def main():
     import paho.mqtt.client as mqtt
 
@@ -112,6 +159,11 @@ def main():
                     help='wss:// URL of the MQTT broker (default: %(default)s)')
     ap.add_argument('--json', action='store_true', help='one JSON object per line, unformatted')
     ap.add_argument('--once', action='store_true', help='print the first position and exit')
+    ap.add_argument('--variation', type=float, default=DEFAULT_VARIATION,
+                    help='magnetic variation in degrees, negative for east '
+                         '(default: %(default)s, the app\'s own)')
+    ap.add_argument('--no-route', action='store_true',
+                    help='do not print the shared flight plan')
     args = ap.parse_args()
 
     follow, key_b64 = parse_link(args.link)
@@ -124,6 +176,7 @@ def main():
         raise SystemExit('broker must be a ws:// or wss:// URL')
     port = u.port or (443 if u.scheme == 'wss' else 80)
     topic = TOPIC + follow
+    route_topic = topic + '/route'
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, transport='websockets')
     client.ws_set_options(path=u.path or '/mqtt')
@@ -135,6 +188,10 @@ def main():
             raise SystemExit('broker refused the connection: %s' % reason_code)
         print('# watching %s on %s' % (topic, args.broker), file=sys.stderr)
         c.subscribe(topic, qos=0)
+        # The plan travels on its own retained topic -- the pilot's route, offered to
+        # followers. Same key, same envelope.
+        if not args.no_route:
+            c.subscribe(route_topic, qos=0)
 
     last_order = -1
 
@@ -142,13 +199,18 @@ def main():
         nonlocal last_order
         if not msg.payload:
             return                      # the empty retained message: sharing has stopped
+        if msg.topic == route_topic:
+            envelope = unseal(key, msg.payload)
+            if isinstance(envelope, dict):
+                print(json.dumps(envelope) if args.json else fmt_route(envelope), flush=True)
+            return
         fix = unseal(key, msg.payload)
         order = accepted_order(fix, last_order)
         if order is None:
             return
         last_order = order
         at = time.strftime('%H:%M:%S')
-        print(json.dumps(fix) if args.json else fmt(fix, at), flush=True)
+        print(json.dumps(fix) if args.json else fmt(fix, at, args.variation), flush=True)
         if args.once:
             c.disconnect()
 

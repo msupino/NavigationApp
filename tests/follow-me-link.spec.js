@@ -257,6 +257,175 @@ test('the code travels inside the envelope, not beside it', async ({ page }) => 
   expect(seen.inLink).toBe(false);      // ...and it is not in the URL either
 });
 
+// Reported from a real flight: the phone that was sharing read 299, the computer following
+// it read 304. Five degrees is the variation. The wire carries TRUE -- gpsCompassTrue()
+// removes the variation before publishing, and the aircraft icon's rotation is geometry
+// that has to stay true -- but a number a follower reads out to a pilot is magnetic, like
+// every other course this app prints, and it says so.
+test('the follower reads the same heading the pilot does, in magnetic', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await F.start('4X-VAR');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.publish({ lat: 32.0, lng: 34.9, trk: 304, kt: 100 });
+    const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    window.__sockets[1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[1].deliver(pub);
+    await new Promise(r => setTimeout(r, 40));
+    const banner = document.getElementById('follow-me-banner').textContent;
+    // What the pilot's own readout would say for the same fix, through the app's one
+    // true -> magnetic conversion.
+    const pilot = ((Math.round(toMagnetic(304)) % 360) + 360) % 360;
+    const pilotText = gpsHeadingText(304, false);
+    // ...and the drawn nose is unmoved: it points where the aeroplane is actually going.
+    const svg = document.querySelector('.follow-me-plane');
+    const m = svg.getScreenCTM();
+    const nose = new DOMPoint(12, 1.6).matrixTransform(m);
+    const centre = new DOMPoint(12, 12).matrixTransform(m);
+    const noseBearing = Math.round(
+      (Math.atan2(nose.x - centre.x, -(nose.y - centre.y)) * 180 / Math.PI + 360) % 360);
+    F.viewerStop(); await F.stop();
+    window.WebSocket = orig;
+    return { banner, pilot, pilotText, noseBearing };
+  });
+  expect(got.pilot).toBe(299);                  // the default -5 variation
+  expect(got.banner).toContain('299\u00b0');
+  expect(got.banner).not.toContain('~');        // a course made good, not the compass
+  expect(got.banner).not.toContain('304');
+  expect(got.noseBearing).toBe(304);            // the icon stays true
+  // Not merely the same number: the same string the pilot's readout would show.
+  expect(got.banner).toContain(got.pilotText);
+});
+
+// Reported with a screenshot: the aeroplane drawn UNDER a reporting point's circle and its
+// name. Leaflet orders markerPane by latitude, so whether the followed aircraft was visible
+// depended on which waypoint it happened to be flying over.
+test('the followed aircraft is drawn above the chart furniture', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    // A waypoint exactly where the aeroplane is about to be reported: on the chart canvas
+    // that is where the disc and the name are drawn.
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'BZRA' }, { lat: 32.4, lng: 35.1, name: 'B' }];
+    syncLegs();
+    draw();
+    const link = await F.start('4X-TOP');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.publish({ lat: 32.0, lng: 34.9, trk: 90, kt: 100 });
+    // With a route drawn the publisher's first packet is the PLAN; the position is the one
+    // on the bare topic.
+    const pub = new Uint8Array(window.__sent.filter(f => (f[0] & 0xf0) === 0x30 && f.length > 4)
+      .find(f => {
+        let at = 1, digit;
+        do { digit = f[at++]; } while (digit & 0x80);
+        const len = (f[at] << 8) | f[at + 1];
+        return !String.fromCharCode(...f.slice(at + 2, at + 2 + len)).endsWith('/route');
+      }));
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    window.__sockets[1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[1].deliver(pub);
+    await new Promise(r => setTimeout(r, 60));
+    const mark = document.querySelector('.follow-me-mark');
+    const r = mark.getBoundingClientRect();
+    // Who paints on top, asked of the browser. The chart canvas never takes pointer events
+    // -- that is how the map stays pannable underneath it -- so it is made hit-testable for
+    // the length of this question and put back.
+    const canvas = document.getElementById('overlay');
+    const hadPE = canvas.style.pointerEvents;
+    canvas.style.pointerEvents = 'auto';
+    mark.style.pointerEvents = 'auto';
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    canvas.style.pointerEvents = hadPE;
+    mark.style.pointerEvents = '';
+    const onTop = !!top && (top === mark || mark.contains(top));
+    // ...and it is still exactly over the reported fix, not merely on top of everything.
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const point = map.latLngToContainerPoint([32.0, 34.9]);
+    const overFix = Math.abs(r.left + r.width / 2 - mapRect.left - point.x) < 1
+      && Math.abs(r.top + r.height / 2 - mapRect.top - point.y) < 1;
+    F.viewerStop(); await F.stop();
+    window.WebSocket = orig;
+    return { onTop, overFix, topWas: top && (top.className || top.id) };
+  });
+  expect(got.onTop, 'the chart canvas covered the aeroplane, it was ' + got.topWas).toBe(true);
+  expect(got.overFix).toBe(true);
+});
+
+// The pane the aeroplane lives in is outside the map pane, so it gets none of Leaflet's
+// transform: a pan moves the chart and would leave the aeroplane behind.
+test('the aeroplane stays over its fix when the map is panned', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await F.start('4X-PAN');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.publish({ lat: 32.0, lng: 34.9, trk: 90, kt: 100 });
+    const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    window.__sockets[1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[1].deliver(pub);
+    await new Promise(r => setTimeout(r, 60));
+    map.panBy([120, 80], { animate: false });
+    await new Promise(r => setTimeout(r, 60));
+    const mark = document.querySelector('.follow-me-mark').getBoundingClientRect();
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const point = map.latLngToContainerPoint([32.0, 34.9]);
+    F.viewerStop(); await F.stop();
+    window.WebSocket = orig;
+    return { dx: mark.left + mark.width / 2 - mapRect.left - point.x,
+             dy: mark.top + mark.height / 2 - mapRect.top - point.y };
+  });
+  expect(Math.abs(got.dx)).toBeLessThan(1.5);
+  expect(Math.abs(got.dy)).toBeLessThan(1.5);
+});
+
+// A stationary aeroplane reports no course at all, so the phone falls back to the compass
+// and marks it `~` -- where the instrument points, not where anything is going. A follower
+// reading that number out has to see the same mark, or they are reading a course that does
+// not exist.
+test('a compass heading reaches the follower marked, as it is on the phone', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const orig = window.WebSocket;
+    window.WebSocket = window.StubSocket;
+    const link = await F.start('4X-CMP');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 10));
+    await F.publish({ lat: 32.0, lng: 34.9, trk: 304, kt: 0, hc: true });
+    const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
+    const url = new URL(link);
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    window.__sockets[1].connack();
+    await new Promise(r => setTimeout(r, 10));
+    window.__sockets[1].deliver(pub);
+    await new Promise(r => setTimeout(r, 40));
+    const banner = document.getElementById('follow-me-banner').textContent;
+    F.viewerStop(); await F.stop();
+    window.WebSocket = orig;
+    return { banner, pilotText: gpsHeadingText(304, true) };
+  });
+  expect(got.pilotText).toBe('~299\u00b0');
+  expect(got.banner).toContain('~299\u00b0');
+});
+
 // The viewer: a link opens into watching mode, and the age is always on screen.
 test('opening the link watches, names the aircraft and dates the position', async ({ page }) => {
   await boot(page);
@@ -435,7 +604,8 @@ test('the Hebrew viewer banner keeps telemetry LTR in an RTL segment order', asy
     return result;
   });
   expect(seen.dir).toBe('rtl');
-  expect(seen.text.slice(0, 5)).toEqual(['TEST', '1499 ft', '90 kt', '003°', '32.3728, 34.9068']);
+  // 003 true, -5 variation -> 358 magnetic.
+  expect(seen.text.slice(0, 5)).toEqual(['TEST', '1499 ft', '90 kt', '358°', '32.3728, 34.9068']);
   expect(seen.text[5]).toMatch(/^המיקום האחרון לפני \d+ שניות$/);
   expect(seen.valueDirs).toEqual(['ltr', 'ltr', 'ltr', 'ltr', 'ltr', 'rtl']);
   expect(seen.lefts.every((left, index, all) => index === 0 || all[index - 1] > left)).toBe(true);
@@ -1182,7 +1352,9 @@ test('the banner reads out altitude, speed, track and position', async ({ page }
   });
   expect(got[0]).toContain('2001 ft');          // 610 m read back in feet
   expect(got[0]).toContain('95 kt');
-  expect(got[0]).toContain('007°');        // track, three digits like a heading
+  // The wire carries true; the banner prints magnetic, exactly as the pilot's own readout
+  // does. 007 true with the default -5 variation is 002 magnetic.
+  expect(got[0]).toContain('002°');        // track, three digits like a heading
   expect(got[0]).toContain('32.1000, 34.8000');
   expect(got[1]).not.toMatch(/ft|kt/);          // nothing invented for what was not sent
   expect(got[1]).toContain('32.2000');
