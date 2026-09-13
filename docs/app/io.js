@@ -9,10 +9,25 @@
 // so re-opening a dialog cannot accumulate stale handlers.
 function makeModalDraggable(el, handle, key) {
   let dx = 0, dy = 0, dragging = false;
+  // `left`/`top` are resolved by the browser against the element's offset parent, which is
+  // not always the window. Under the phone deck the flight plan's backdrop is inset -- below
+  // the strip, above the deck -- so a position measured in viewport coordinates and written
+  // as left/top landed the panel a strip's height too low, and the drift compounded on every
+  // open, because closing stored the viewport position it had just been moved to.
+  // Everything below works in FRAME coordinates: the offset parent's own box.
+  function frame() {
+    const p = el.offsetParent;
+    if (p && p !== document.body && p !== document.documentElement) {
+      const r = p.getBoundingClientRect();
+      return { left: r.left, top: r.top, w: p.clientWidth, h: p.clientHeight };
+    }
+    return { left: 0, top: 0, w: window.innerWidth, h: window.innerHeight };
+  }
   function clamp(x, y) {
+    const f = frame();
     return {
-      x: Math.max(0, Math.min(window.innerWidth - el.offsetWidth, x)),
-      y: Math.max(0, Math.min(window.innerHeight - el.offsetHeight, y)),
+      x: Math.max(0, Math.min(f.w - el.offsetWidth, x)),
+      y: Math.max(0, Math.min(f.h - el.offsetHeight, y)),
     };
   }
   function setPos(x, y) {
@@ -27,26 +42,48 @@ function makeModalDraggable(el, handle, key) {
       if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
     } catch (e) { /* no stored position */ }
   }
+  // A panel is placed before it is filled: the flight plan is positioned on its title bar
+  // and then grows a profile strip and a leg table under it. Clamped once, while it was two
+  // rows tall, it ended with its last rows under the deck -- which is the "I cannot see the
+  // buttons" report. Re-clamp whenever the panel's own size changes, but only if it is
+  // parked at a position of its own; an unpositioned modal is laid out by the flexbox and
+  // must stay that way.
+  let sizeWatch = null;
+  if (typeof ResizeObserver === 'function') {
+    sizeWatch = new ResizeObserver(() => {
+      if (dragging || !el.style.top) return;
+      setPos(parseFloat(el.style.left) || 0, parseFloat(el.style.top) || 0);
+    });
+    try { sizeWatch.observe(el); } catch (e) { sizeWatch = null; }
+  }
   function start(cx, cy) {
     const r = el.getBoundingClientRect();
-    // Pin to viewport coordinates first: a flex-centred modal has no left/top of its
+    const f = frame();
+    // Pin to the frame's coordinates first: a flex-centred modal has no left/top of its
     // own, so writing them mid-drag made the window jump to a different origin.
     const cs = getComputedStyle(el);
     if (cs.position !== 'fixed' && cs.position !== 'absolute') el.style.position = 'fixed';
     el.style.margin = '0';
-    el.style.left = r.left + 'px';
-    el.style.top = r.top + 'px';
+    el.style.left = (r.left - f.left) + 'px';
+    el.style.top = (r.top - f.top) + 'px';
     dx = cx - r.left; dy = cy - r.top;
     dragging = true;
   }
-  function move(cx, cy) { if (dragging) setPos(cx - dx, cy - dy); }
+  function move(cx, cy) {
+    if (!dragging) return;
+    const f = frame();
+    setPos(cx - dx - f.left, cy - dy - f.top);
+  }
   function end() {
     if (!dragging) return;
     dragging = false;
     if (!key) return;
     const r = el.getBoundingClientRect();
-    try { localStorage.setItem(navLangPosKey(key), JSON.stringify({ x: r.left, y: r.top })); }
-    catch (e) { /* storage unavailable */ }
+    const f = frame();
+    try {
+      localStorage.setItem(navLangPosKey(key),
+        JSON.stringify({ x: r.left - f.left, y: r.top - f.top }));
+    } catch (e) { /* storage unavailable */ }
   }
   function onMouseDown(e) {
     e.preventDefault();
@@ -82,6 +119,7 @@ function makeModalDraggable(el, handle, key) {
     window.removeEventListener('touchmove', onTouchMove, { passive: false });
     window.removeEventListener('touchend', end);
     window.removeEventListener('touchcancel', end);
+    if (sizeWatch) { sizeWatch.disconnect(); sizeWatch = null; }
   };
 }
 
