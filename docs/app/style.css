@@ -6381,6 +6381,22 @@ html[data-theme="light"] #insp-body .insp-actions {
     padding: 0 6px;
   }
   .insp-btn { padding: 11px 7px; }
+  /* A modal's action row is four long labels on one line -- Print, CSV, Nav log (PDF), Submit
+     flight plan -- and on a phone, especially one with the text size turned up, each of them
+     wrapped to three lines and the row ate a third of the sheet. Reported: the buttons can be
+     half the size.
+
+     The height came from the wrapping, not the padding, so the fix is to stop the wrapping:
+     smaller type and tighter sides, which fits each label on one line again. The 44px touch
+     minimum is kept -- that is the button, not the text -- and the row may wrap into two
+     ranks when even that will not fit, which is still half of three lines each. */
+  .modal-btns { flex-wrap: wrap; gap: 6px; }
+  .modal-btns button {
+    font-size: 11.5px;
+    padding: 4px 8px;
+    min-height: 44px;
+    line-height: 1.15;
+  }
   /* The hamburger is THE way to reach every menu on a phone, and it was 42x21 --
      the smallest target in the app sat on its most-used control. */
   #toolbar-toggle {
