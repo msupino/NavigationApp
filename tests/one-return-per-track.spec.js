@@ -134,10 +134,11 @@ test('a typed route asking for three passes is refused before it replaces the ma
   await setRoute(page, [A, C]);
   const out = await page.evaluate(async () => {
     let alerted = '';
-    const realAlert = window.alert;
+    const realAlert = window.alert, realToast = window.showToast;
     window.alert = (m) => { alerted = m; };
+    window.showToast = (m) => { alerted = String(m); };   // the refusal's channel now
     const ok = await buildRouteFromQuery('LLHZ RIDNG LLHZ RIDNG');
-    window.alert = realAlert;
+    window.alert = realAlert; window.showToast = realToast;
     return { ok, alerted, names: state.waypoints.map(w => w.name) };
   });
   expect(out.ok).toBe(false);

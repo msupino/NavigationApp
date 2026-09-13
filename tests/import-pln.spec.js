@@ -59,12 +59,20 @@ test.describe('PLN import', () => {
     await boot(page);
     const empty = '<?xml version="1.0"?><SimBase.Document><FlightPlan.FlightPlan>' +
       '</FlightPlan.FlightPlan></SimBase.Document>';
+    // The refusal is a toast now -- a WebView swallows alert() unless the host app
+    // implements it -- so watch both channels.
     let fired = false;
     page.once('dialog', d => { fired = true; d.accept(); });
+    await page.evaluate(() => {
+      window.__said = [];
+      const real = window.showToast;
+      window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    });
     await page.setInputFiles('#file', {
       name: 'empty.pln', mimeType: 'application/xml', buffer: Buffer.from(empty, 'utf8'),
     });
     await page.waitForTimeout(300);
-    expect(fired).toBe(true);
+    const said = await page.evaluate(() => window.__said);
+    expect(fired || said.length > 0).toBe(true);
   });
 });

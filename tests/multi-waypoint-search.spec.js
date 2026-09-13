@@ -86,13 +86,19 @@ test.describe('Multi-token search route builder (#98)', () => {
     });
     let alerted = null;
     page.once('dialog', d => { alerted = d.message(); d.accept(); });
+    await page.evaluate(() => {
+      window.__said = [];
+      const real = window.showToast;
+      window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    });
 
     await openSearch(page);
     await page.fill('#wp-search', 'BAZRA NOPE_TOKEN');
     await page.locator('#wp-search').press('Enter');
 
     await page.waitForTimeout(150);
-    expect(alerted).toContain('NOPE_TOKEN');
+    const said = alerted || (await page.evaluate(() => (window.__said || []).join(' ')));
+    expect(said).toContain('NOPE_TOKEN');
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names).toEqual(['PRESET']);
   });

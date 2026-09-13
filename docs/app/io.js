@@ -1064,7 +1064,7 @@ function save() {
   // An empty route used to export a JSON of empty arrays — a file that looks
   // like a route and imports as nothing. Say so instead.
   if (routeIsEmpty()) {
-    alert(S.errNothingToSave);
+    refuse(S.errNothingToSave);
     return;
   }
   const data = serializeRoute();
@@ -2363,7 +2363,7 @@ function buildIcaoFpl(profile, opts) {
 // --- GPX export --------------------------------------------------------
 function exportGpx() {
   if (state.waypoints.length < 2) {
-    alert(S.errNeedWps);
+    refuse(S.errNeedWps);
     return;
   }
   const wps = state.waypoints;
@@ -2435,7 +2435,7 @@ function xplaneWaypointId(i) {
 }
 function exportPln() {
   if (state.waypoints.length < 2) {
-    alert(S.errNeedWps);
+    refuse(S.errNeedWps);
     return;
   }
   const wps = state.waypoints;
@@ -2508,7 +2508,7 @@ function xplaneAiracCycle(date = new Date()) {
     String(cycleNumber).padStart(2, '0');
 }
 function exportFms() {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return; }
 
   const points = state.waypoints.map((wp, i) => {
     const airfield = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
@@ -2576,7 +2576,7 @@ function fdrDataRow(time, lon, lat, hmsl, hdg, pitch, roll) {
   ].join(',');
 }
 function exportFdr() {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return; }
 
   const DEG = Math.PI / 180;
   // Degrees between two headings via shortest angular path (returns ±deg).
@@ -2751,7 +2751,7 @@ function exportFdr() {
 function loadGpx(file) {
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
   if (file && file.size > MAX_ROUTE_BYTES) {
-    alert(S.errLoadFile + 'file too large (' +
+    refuse(S.errLoadFile + 'file too large (' +
           (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
     return;
   }
@@ -2763,7 +2763,7 @@ function loadGpx(file) {
       if (parseErr) throw new Error('XML parse error: ' + parseErr.textContent);
       const rtepts = xml.querySelectorAll('rtept');
       if (!rtepts.length) {
-        alert(S.errLoadFile + 'no <rtept> elements found in GPX');
+        refuse(S.errLoadFile + 'no <rtept> elements found in GPX');
         return;
       }
       const wps = [];
@@ -2775,7 +2775,7 @@ function loadGpx(file) {
         wps.push({ lat: r5(lat), lng: r5(lng), name: name.trim() });
       }
       if (wps.length < 2) {
-        alert(S.errNeedWps);
+        refuse(S.errNeedWps);
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
@@ -2791,7 +2791,7 @@ function loadGpx(file) {
       fitView();
       draw();
     } catch (err) {
-      alert(S.errLoadFile + err.message);
+      refuse(S.errLoadFile + err.message);
     }
   };
   reader.readAsText(file);
@@ -2817,7 +2817,7 @@ function parsePlnLatLng(s) {
 function loadPln(file) {
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
   if (file && file.size > MAX_ROUTE_BYTES) {
-    alert(S.errLoadFile + 'file too large (' +
+    refuse(S.errLoadFile + 'file too large (' +
           (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
     return;
   }
@@ -2829,7 +2829,7 @@ function loadPln(file) {
       if (parseErr) throw new Error('XML parse error: ' + parseErr.textContent);
       const atc = xml.querySelectorAll('ATCWaypoint');
       if (!atc.length) {
-        alert(S.errLoadFile + 'no <ATCWaypoint> elements found in PLN');
+        refuse(S.errLoadFile + 'no <ATCWaypoint> elements found in PLN');
         return;
       }
       const wps = [];
@@ -2843,7 +2843,7 @@ function loadPln(file) {
         wps.push({ lat: r5(pos.lat), lng: r5(pos.lng), name });
       }
       if (wps.length < 2) {
-        alert(S.errNeedWps);
+        refuse(S.errNeedWps);
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
@@ -2859,7 +2859,7 @@ function loadPln(file) {
       fitView();
       draw();
     } catch (err) {
-      alert(S.errLoadFile + err.message);
+      refuse(S.errLoadFile + err.message);
     }
   };
   reader.readAsText(file);
@@ -2957,7 +2957,7 @@ function load(file) {
   // still aborts a user mis-pick (e.g. a PDF / image) instantly.
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
   if (file && file.size > MAX_ROUTE_BYTES) {
-    alert(S.errLoadFile + 'file too large (' +
+    refuse(S.errLoadFile + 'file too large (' +
           (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
     return;
   }
@@ -2967,23 +2967,23 @@ function load(file) {
     try {
       d = JSON.parse(reader.result);
     } catch (err) {
-      alert(S.errLoadFile + err.message);
+      refuse(S.errLoadFile + err.message);
       return;
     }
     // A saved-routes library exported from the Saved routes menu is an ARRAY of
     // entries, not a route. Importing one here used to fail the route validator
     // with "root.waypoints: missing"; merge it into the library instead.
     if (Array.isArray(d)) {
-      if (!looksLikeRouteLibrary(d)) { alert(S.errNotRouteLibrary); return; }
+      if (!looksLikeRouteLibrary(d)) { refuse(S.errNotRouteLibrary); return; }
       const res = importRouteLibraryArray(d);
       if (!res || !res.added) {
-        alert(S.routeLibraryImportNone || 'No valid routes in that file');
+        refuse(S.routeLibraryImportNone || 'No valid routes in that file');
         return;
       }
       if (!persistRouteLibrary(res.merged)) {
         // A refused write (corrupt library / full storage) used to short-circuit
         // the toast and say nothing at all — indistinguishable from success.
-        alert(S.errRouteLibraryWriteFailed);
+        refuse(S.errRouteLibraryWriteFailed);
         return;
       }
       if (typeof showToast === 'function') showToast(routeLibraryImportMessage(res));
@@ -2994,7 +2994,7 @@ function load(file) {
     // so the JSON author can find the typo. Extras are silently allowed.
     const verr = validateRoute(d);
     if (verr) {
-      alert(S.errInvalidRoute(verr));
+      refuse(S.errInvalidRoute(verr));
       return;
     }
     applyRouteData(d);
@@ -3111,7 +3111,7 @@ function persistRouteLibrary(list, opts) {
   // the Saved routes menu passes { force: true }.
   if (NavAid.routeLibraryCorrupt && !(opts && opts.force)) {
     try {
-      alert(S.errRouteLibraryCorrupt ||
+      refuse(S.errRouteLibraryCorrupt ||
         'Your saved-route library is corrupted and could not be read. Export or clear it from the Saved routes menu before saving new routes.');
     } catch (_) { /* alert blocked */ }
     return false;
@@ -3122,7 +3122,7 @@ function persistRouteLibrary(list, opts) {
     scheduleRouteAutoSync();
     return true;
   } catch (e) {
-    alert(S.errStorageFull || 'Storage is full — delete some saved routes or export them.');
+    refuse(S.errStorageFull || 'Storage is full — delete some saved routes or export them.');
     return false;
   }
 }
@@ -3217,7 +3217,7 @@ function defaultSavedRouteName() {
 }
 // Save the current route as a new named library entry. Returns the entry or null.
 function routeLibrarySaveCurrent(name) {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return null; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return null; }
   const list = loadRouteLibrary();
   const entry = {
     id: routeLibraryId(),
@@ -3234,7 +3234,7 @@ function routeLibrarySaveCurrent(name) {
 // place), bumping savedAt so the change wins the Drive merge. Keeps the id and
 // name. Returns the updated entry or null.
 function routeLibraryUpdate(id) {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return null; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return null; }
   const list = loadRouteLibrary();
   const entry = list.find(x => x && x.id === id && !x.deleted);
   if (!entry) return null;
@@ -3248,7 +3248,7 @@ function routeLibraryUpdate(id) {
 function routeLibraryApply(entry) {
   if (!entry || !entry.data) return false;
   const verr = typeof validateRoute === 'function' ? validateRoute(entry.data) : null;
-  if (verr) { alert(S.errInvalidRoute ? S.errInvalidRoute(verr) : verr); return false; }
+  if (verr) { refuse(S.errInvalidRoute ? S.errInvalidRoute(verr) : verr); return false; }
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.routeLibraryReplaceConfirm ||
         S.routeTemplateReplaceConfirm || 'Replace the current route?')) return false;
@@ -3607,7 +3607,7 @@ function flightPlanCsv(table, scrollArea) {
 // (the `i` and `tr` that a naive scan reports are arrow parameters, not captures), so it
 // lifts out with one argument and no behaviour change.
 function exportNavLog(scrollArea) {
-  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+  if (state.waypoints.length < 2) { refuse(S.errNeedWps); return; }
   const esc = escapeXml;               // one escaper, defined in core.js
   const lang = (window.__navLang === 'he') ? 'he' : 'en';
   const dir = lang === 'he' ? 'rtl' : 'ltr';
@@ -3755,7 +3755,7 @@ function exportNavLog(scrollArea) {
     '</body></html>';
 
   const w = window.open('', '_blank');
-  if (!w) { alert(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
+  if (!w) { refuse(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
   w.document.open();
   w.document.write(html);
   w.document.close();
@@ -3765,10 +3765,7 @@ function exportNavLog(scrollArea) {
 
 function showFlightPlan() {
   if (refreshFlightPlan) return;        // dedupe — modal already open
-  if (state.legs.length === 0) {
-    alert(S.errNoLegs);
-    return;
-  }
+  if (state.legs.length === 0) { refuse(S.errNoLegs); return; }
   closeOpenChartModals();
   clearOpenChartModal();
   // 'flight-plan' variant: backdrop is transparent + pointer-events: none so
@@ -5696,7 +5693,7 @@ function exportA4x2Tiles(out, W, H, done) {
     c.toBlob(b => {
       // A null blob (canvas memory limits) must surface, not silently drop a
       // page — the user would tape together half a chart. Abort the sequence.
-      if (!b) { alert(S.errPngFail); done(); return; }
+      if (!b) { refuse(S.errPngFail); done(); return; }
       b.arrayBuffer()
         .then(buf => dl(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' })))
         .catch(() => dl(b));
@@ -5745,7 +5742,7 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 function openPrintWindow(blob, paperWmm, paperHmm) {
   const url = URL.createObjectURL(blob);
   const w = window.open('', '_blank');
-  if (!w) { try { alert(S.errPopupBlocked || 'Allow pop-ups to print.'); } catch (e) {} URL.revokeObjectURL(url); return; }
+  if (!w) { refuse(S.errPopupBlocked || 'Allow pop-ups to print.'); URL.revokeObjectURL(url); return; }
   const sized = (paperWmm && paperHmm)
     ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
     : `@page{margin:0}img{max-width:100%;display:block}`;
@@ -5989,7 +5986,7 @@ function exportPNG(mode) {
         unlockMap();
         NavAid.exporting = false;
         if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
-        if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
+        if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
       });
       return;
     }
@@ -6000,7 +5997,7 @@ function exportPNG(mode) {
       unlockMap();
       NavAid.exporting = false;
       if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
-      if (!b) { alert(S.errPngFail); return; }
+      if (!b) { refuse(S.errPngFail); return; }
 
       // Embed physical DPI metadata so the PNG prints at the correct
       // physical size on A3 / A4 at 1:250,000 scale.
@@ -6025,7 +6022,7 @@ function exportPNG(mode) {
       } else {
         deliver(b);
       }
-      if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
+      if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
   }).catch(err => {
     // A synchronous throw in the .then body (for example drawImage on a malformed
@@ -6037,7 +6034,7 @@ function exportPNG(mode) {
     unlockMap();
     NavAid.exporting = false;
     if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
-    try { alert(S.errPngFail); } catch (_) { /* alert blocked */ }
+    refuse(S.errPngFail);
   });
 }
 
@@ -6103,7 +6100,7 @@ function pngCrc(data) {
 // --- fly the route (Google Earth) -----------------------------------
 async function flyRoute() {
   if (state.waypoints.length < 2) {
-    alert(S.errNeedWps);
+    refuse(S.errNeedWps);
     return;
   }
   if (airfields === null && typeof loadAirfields === 'function') {
@@ -6296,7 +6293,7 @@ async function flyRoute() {
       const lat = Number(wps[0].lat), lng = Number(wps[0].lng);
       if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
           !Number.isFinite(lng) || lng < -180 || lng > 180) {
-        alert(S.errBadCoords);
+        refuse(S.errBadCoords);
         return;
       }
       const url = 'https://earth.google.com/web/@' +
@@ -6420,7 +6417,7 @@ function persist() {
       if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
                 e.code === 1014 /* NS_ERROR_DOM_QUOTA_REACHED */)) {
         quotaWarned = true;
-        try { alert(S.errStorageFull); } catch (_) { /* alert blocked */ }
+        refuse(S.errStorageFull);
       }
     }
   }, 500);
@@ -6442,7 +6439,7 @@ function flushPersist() {
     if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
               e.code === 1014 /* NS_ERROR_DOM_QUOTA_REACHED */)) {
       quotaWarned = true;
-      try { alert(S.errStorageFull); } catch (_) { /* alert blocked */ }
+      refuse(S.errStorageFull);
     }
   }
 }
@@ -8838,7 +8835,7 @@ function tryLoadRouteFromUrl() {
 }
 
 // Lightweight non-blocking toast (no popup, no modal). The share action
-// fires often enough that an alert() was disproportionately disruptive —
+// fires often enough that an refuse() was disproportionately disruptive —
 // pilots want the link copied and to keep working. The toast self-removes
 // after 2.5 s; clipboard failures still fall through to a window.prompt
 // so the URL can be copied manually.
@@ -9726,7 +9723,7 @@ window.simStop  = simStop;
 // --- Toolbar button handler — copy share URL to clipboard. ------------
 function shareRoute() {
   const r = buildShareUrl();
-  if (r.err) { alert(S[r.err]); return; }
+  if (r.err) { refuse(S[r.err]); return; }
   // Clipboard API requires a secure context + user gesture; the button
   // click satisfies the gesture, but http://localhost might fall back.
   const writePromise = (navigator.clipboard && navigator.clipboard.writeText)
@@ -11029,7 +11026,7 @@ function fplXcRouteRows() {
   return rows;
 }
 function showFplXcForm(opts) {
-  if ((state.waypoints || []).length < 2) { alert(S.errFplNeedRoute); return; }
+  if ((state.waypoints || []).length < 2) { refuse(S.errFplNeedRoute); return; }
   const o = opts || {};
   const back = document.createElement('div');
   back.className = 'modal-back fpl-xc-modal';

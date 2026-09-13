@@ -2627,7 +2627,7 @@ async function loadNavWaypoints() {
       const verr = validateNavWaypoints(d);
       if (verr) {
         console.warn('nav-waypoints schema error:', verr);
-        alert(S.errInvalidNavWaypoints(verr));
+        refuse(S.errInvalidNavWaypoints(verr));
         return [];
       }
     }
@@ -3371,7 +3371,7 @@ async function loadAirfields() {
     const verr = validateAirfields(d);
     if (verr) {
       console.warn('airfields schema error:', verr);
-      alert(S.errInvalidAirfields(verr));
+      refuse(S.errInvalidAirfields(verr));
       return [];
     }
     airfields = d.airfields.map(a => ({
@@ -3419,7 +3419,7 @@ async function loadVors() {
     const verr = typeof validateVors === 'function' ? validateVors(d) : null;
     if (verr) {
       console.warn('vor schema error:', verr);
-      if (typeof S.errInvalidVors === 'function') alert(S.errInvalidVors(verr));
+      if (typeof S.errInvalidVors === 'function') refuse(S.errInvalidVors(verr));
       return [];
     }
     // Carry the published AIP detail through — the inspector shows type / channel /

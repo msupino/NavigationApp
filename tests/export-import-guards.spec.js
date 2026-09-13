@@ -18,15 +18,21 @@ test('exporting an empty route says there is nothing to save instead of writing 
   await boot(page);
   const out = await page.evaluate(() => {
     state.waypoints = []; state.legs = []; state.notes = []; syncLegs(); draw();
-    let alerted = null, downloaded = false;
-    const realAlert = window.alert, realCreate = URL.createObjectURL;
-    window.alert = m => { alerted = m; };
+    // The refusal is a toast now, not alert(): a WebView shows alert() only if the host app
+    // implements it, and a refusal nobody can see reads as a broken button. Both are watched
+    // here, so this passes whichever way it is said and fails if it stops being said at all.
+    let said = null, downloaded = false;
+    const realAlert = window.alert, realCreate = URL.createObjectURL, realToast = window.showToast;
+    window.alert = m => { said = String(m); };
+    window.showToast = (m) => { said = String(m); };
     URL.createObjectURL = () => { downloaded = true; return 'blob:stub'; };
-    try { save(); } finally { window.alert = realAlert; URL.createObjectURL = realCreate; }
-    return { alerted, downloaded };
+    try { save(); } finally {
+      window.alert = realAlert; URL.createObjectURL = realCreate; window.showToast = realToast;
+    }
+    return { said, downloaded };
   });
   expect(out.downloaded).toBe(false);
-  expect(out.alerted).toBeTruthy();
+  expect(out.said).toBeTruthy();
 });
 
 test('a real route still exports', async ({ page }) => {
@@ -55,13 +61,16 @@ test('exporting an empty library says so instead of writing "[]"', async ({ page
     localStorage.removeItem('navaid.routes');
     showRouteLibraryModal();
     let alerted = null, downloaded = false;
-    const realAlert = window.alert, realCreate = URL.createObjectURL;
-    window.alert = m => { alerted = m; };
+    const realAlert = window.alert, realCreate = URL.createObjectURL, realToast = window.showToast;
+    window.alert = m => { alerted = String(m); };
+    window.showToast = m => { alerted = String(m); };
     URL.createObjectURL = () => { downloaded = true; return 'blob:stub'; };
     try {
       [...document.querySelectorAll('.route-library-tools button')]
         .find(b => /export/i.test(b.textContent)).click();
-    } finally { window.alert = realAlert; URL.createObjectURL = realCreate; }
+    } finally {
+      window.alert = realAlert; URL.createObjectURL = realCreate; window.showToast = realToast;
+    }
     return { alerted, downloaded };
   });
   expect(out.downloaded).toBe(false);
@@ -113,14 +122,17 @@ test('a library round trip keeps GPS tracks', async ({ page }) => {
 test('a JSON array that is not a library is rejected with a clear message', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(async () => {
+    // Refusals are toasts now -- a WebView shows alert() only when the host app
+    // implements it -- so either channel counts; silence is the failure.
     let alerted = null;
-    const realAlert = window.alert;
-    window.alert = m => { alerted = m; };
+    const realAlert = window.alert, realToast = window.showToast;
+    window.alert = m => { alerted = String(m); };
+    window.showToast = m => { alerted = String(m); };
     try {
       const file = new File([JSON.stringify([1, 2, 3])], 'nope.json', { type: 'application/json' });
       load(file);
       await new Promise(r => setTimeout(r, 300));
-    } finally { window.alert = realAlert; }
+    } finally { window.alert = realAlert; window.showToast = realToast; }
     return { alerted };
   });
   expect(out.alerted).toBeTruthy();
