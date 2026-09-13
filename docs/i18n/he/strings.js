@@ -399,6 +399,8 @@ window.S = {
   fpCsv: 'CSV',
   fpCsvTitle: 'ייצוא תכנית הטיסה לקובץ CSV',
   tbNavLog: 'יומן ניווט (PDF)',
+  tbNavLogShort: 'PDF',
+  tbFplShort: '\u2708 הגשה',
   tbNavLogTitle: 'פתח יומן ניווט להדפסה — שמור כ-PDF',
   navLogTitle: 'NavAid — יומן ניווט',
   navLogDate: 'תאריך',

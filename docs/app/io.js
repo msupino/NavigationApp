@@ -4744,9 +4744,16 @@ function showFlightPlan() {
   csvBtn.title = S.fpCsvTitle || 'Export this flight plan as CSV';
   csvBtn.onclick = exportFlightPlanCsv;
   btns.appendChild(csvBtn);
+  // A phone gets the short label. Not a different button -- the same one, named the way a
+  // narrow row can hold: "Nav log (PDF)" and "Submit flight plan" are what turned this row
+  // into three-line blocks. The title keeps the full name for anyone who hovers or reads it
+  // out.
+  const narrowRow = typeof window.matchMedia === 'function'
+    && window.matchMedia('(max-width: 680px), (pointer: coarse)').matches;
   const navLogBtn = document.createElement('button');
   navLogBtn.type = 'button';
-  navLogBtn.textContent = S.tbNavLog || 'Nav log (PDF)';
+  navLogBtn.textContent = narrowRow
+    ? (S.tbNavLogShort || 'PDF') : (S.tbNavLog || 'Nav log (PDF)');
   navLogBtn.title = S.tbNavLogTitle || 'Open a printable kneeboard nav log (save as PDF)';
   navLogBtn.onclick = () => exportNavLog(scrollArea);
   btns.appendChild(navLogBtn);
@@ -4754,7 +4761,7 @@ function showFlightPlan() {
   const fplBtn = document.createElement('button');
   fplBtn.type = 'button';
   fplBtn.id = 'fpl-open';
-  fplBtn.textContent = S.tbFpl || 'Flight plan (FPL)';
+  fplBtn.textContent = narrowRow ? (S.tbFplShort || '\u2708 FPL') : (S.tbFpl || 'Flight plan (FPL)');
   fplBtn.title = (typeof fplIsolate === 'function') ? fplIsolate(S.tbFplTitle || '') : (S.tbFplTitle || '');
   fplBtn.onclick = () => showFplDialog();
   btns.appendChild(fplBtn);

@@ -1789,7 +1789,12 @@ test('both signature pads and every button fit a phone', async ({ page }) => {
     });
     const btns = [...document.querySelectorAll('.fpl-xc-modal .modal-btns button')].map(b => {
       const r = b.getBoundingClientRect();
+      // Line BOXES, not height: these buttons carry a 44px touch minimum, so their box says
+      // nothing about whether the label wrapped.
+      const range = document.createRange();
+      range.selectNodeContents(b);
       return { w: Math.round(r.width), h: Math.round(r.height),
+        lines: range.getClientRects().length,
         lh: parseFloat(getComputedStyle(b).lineHeight) };
     });
     return { pads, btns, overflowX: sheet.scrollWidth - sheet.clientWidth,
@@ -1806,8 +1811,11 @@ test('both signature pads and every button fit a phone', async ({ page }) => {
   }
   expect(phone.padRows).toBe(2);            // stacked on a phone
   expect(phone.overflowX).toBe(0);          // ...so the sheet no longer scrolls sideways
-  // Four buttons squeezed into one row broke every label onto three lines; the ROW wraps now.
-  for (const b of phone.btns) expect(b.h).toBeLessThan(b.lh * 2);
+  // Four buttons squeezed into one row broke every label onto three lines; the row wraps now,
+  // and each label sits on a single line.
+  for (const b of phone.btns) expect(b.lines).toBeLessThanOrEqual(1);
+  // ...and each button is still a finger tall.
+  for (const b of phone.btns) expect(b.h).toBeGreaterThanOrEqual(44);
 });
 
 test('on a wide screen the pads sit side by side and the buttons on one row', async ({ page }) => {
