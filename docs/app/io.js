@@ -6387,6 +6387,11 @@ function persist() {
   // debounced write) so a quick succession of edits collapses into one undo
   // step the same way it collapses into one save.
   recordUndoSnapshot(JSON.stringify(routeSnapshotForStorage()));
+  // Sharing a position shares the plan beside it, so a diversion agreed in the air reaches
+  // the people watching. Debounced inside: this runs on every edit.
+  if (window.NavAid && NavAid.followMe && typeof NavAid.followMe.routeChanged === 'function') {
+    NavAid.followMe.routeChanged();
+  }
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(function tick() {
     // Export started after this timer was scheduled. Don't write (the export mutates
