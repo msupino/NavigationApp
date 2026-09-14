@@ -25,12 +25,11 @@
   // "I understand" is a statement about text a person has read. Switching language is a full
   // reload (lang-select navigates), so asking again is simply a matter of what `accepted()`
   // answers on the way back up.
+  // index.html resolves the language before any of this loads and stamps it on <html> --
+  // ?lang wins, then the stored choice, else Hebrew -- so that attribute is the answer, and
+  // reading the stored key here would only be a second opinion about the same decision.
   function lang() {
-    const html = (document.documentElement.lang || '').toLowerCase();
-    if (html) return html.startsWith('he') ? 'he' : 'en';
-    let stored = '';
-    try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) { /* no storage */ }
-    return stored === 'he' ? 'he' : 'en';
+    return (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
   }
 
   // "<version>|<langs>" -- the wording acknowledged, and every language it was read in.
