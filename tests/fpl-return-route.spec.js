@@ -779,7 +779,7 @@ test('two miscaptured corridor closures do not force absurd detours: NTAIM-SIRNI
   // Both edges shipped with an unconditional closedHint (no hour/weekday bound, so
   // fplEdgeOpen refuses them at any departure time) on ONE direction only -- the
   // reverse direction of the same physical segment carried no hint at all. Confirmed
-  // wrong against fpl.co.il's own network data (active both ways) and against the
+  // wrong against the published route network (active both ways) and against the
   // maintainer's own flown route, which crosses NTAIM->SIRNI directly. Left closed,
   // expansion detoured 71nm through BOVED/YAVNE/ESTOL/SORES/SHARG/LTRUN/AYLON/NSHRM to
   // reach a point 2.67nm away.
