@@ -234,3 +234,41 @@ test('choosing the language already on screen does not navigate', async ({ page 
   expect(page.url()).toBe(before);
   await expect(notice(page)).toBeVisible();
 });
+
+// The control on the notice is the APP's language control, not the notice's: what it picks
+// is what the map, the menu and every panel are in, on this visit and the next one. And with
+// nothing chosen yet, that is Hebrew.
+test('the notice opens in Hebrew by default, and its choice is the app\'s language', async ({ page }) => {
+  await page.goto('?nogist');                 // a first-time visitor: no ?lang at all
+  await page.waitForFunction(() => typeof clearBootLoading === 'function');
+  const first = await page.evaluate(() => ({
+    html: document.documentElement.lang,
+    dir: document.documentElement.dir,
+    menu: document.getElementById('lang-select').value,
+  }));
+  expect(first.html, 'a first visit is not in Hebrew').toBe('he');
+  expect(first.dir).toBe('rtl');
+  expect(first.menu).toBe('he');
+
+  await page.evaluate(() => clearBootLoading());
+  await expect(notice(page)).toBeVisible();
+  await expect(notice(page).locator('.disclaimer-lang-select')).toHaveValue('he');
+  await notice(page).locator('.disclaimer-lang-select').selectOption('en');
+  await page.waitForFunction(() => document.documentElement.lang === 'en');
+
+  // The whole interface followed it, not just the notice.
+  const picked = await page.evaluate(() => ({
+    stored: localStorage.getItem('navaid.lang'),
+    menu: document.getElementById('lang-select').value,
+    dir: document.documentElement.dir,
+  }));
+  expect(picked.stored).toBe('en');
+  expect(picked.menu, 'the menu still says the old language').toBe('en');
+  expect(picked.dir).toBe('ltr');
+
+  // ...and it is still English next time, with no ?lang to carry it.
+  await page.goto('?nogist');
+  await page.waitForFunction(() => typeof clearBootLoading === 'function');
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe('en');
+  expect(await page.evaluate(() => document.getElementById('lang-select').value)).toBe('en');
+});

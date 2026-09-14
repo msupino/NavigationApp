@@ -60,6 +60,10 @@
     select.addEventListener('change', () => {
       const code = select.value;
       if (code === current) return;
+      // This is the app's language, not the notice's. index.html persists whatever ?lang
+      // says on the way back up, but the choice is made HERE -- writing it here says so, and
+      // means a navigation that never completes has still been remembered.
+      try { localStorage.setItem('navaid.lang', code); } catch (e) { /* private mode */ }
       try {
         // Everything else about the address is kept: a follower reading this arrived on
         // ?follow=<id>#k=<key>, and a language switch that dropped either would take the
