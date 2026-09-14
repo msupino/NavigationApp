@@ -154,7 +154,8 @@ test.describe('with the gist switch on', () => {
       await new Promise(r => setTimeout(r, 20));
       const url = new URL(mine);
       return { watching: F.viewing(), status: F.status(),
-               mineId: url.searchParams.get('follow'), mineKey: url.hash.replace('#k=', ''),
+               mineId: url.searchParams.get('follow'),
+               mineKey: /(?:^#?|&)k=([^&]+)/.exec(url.hash)[1],
                watchedId, watchedKey };
     });
     expect(got.watching).toBe(true);

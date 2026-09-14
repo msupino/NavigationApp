@@ -494,7 +494,8 @@ const routeEnvelopeKeys = (page, link) => page.evaluate(async (shared) => {
   // Read our own packet back the way a viewer does -- with the key out of the link -- so this
   // asserts what is actually on the wire rather than what the publisher meant to send.
   const rawKey = Uint8Array.from(
-    atob(new URL(shared).hash.replace('#k=', '').replace(/-/g, '+').replace(/_/g, '/')),
+    // The fragment carries the verify key beside the AES key now: take the k value.
+    atob(/(?:^#?|&)k=([^&]+)/.exec(new URL(shared).hash)[1].replace(/-/g, '+').replace(/_/g, '/')),
     c => c.charCodeAt(0));
   const frame = window.__sent.filter(f => (f[0] >> 4) === 3).map(f => {
     let at = 1, digit;

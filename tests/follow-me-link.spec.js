@@ -15,6 +15,9 @@ const { test, expect } = require('./_setup');
 // outright: boot can now resume a stored session on its own, and a test that quietly
 // starts publishing a position to a public broker is exactly the wrong thing to have in a
 // repository. It also survives a reload, which is how a restart is tested.
+// The link's fragment carries the AES key AND, since packets are signed, the public verify
+// key: `#k=<key>&v=<pub>`. Anything reading the key out of a link has to take the k value
+// rather than everything after the prefix.
 async function installStub(page) {
   await page.addInitScript(() => {
     window.__sent = [];
@@ -102,7 +105,7 @@ test('a session publishes an encrypted position nobody else can read', async ({ 
 
     const url = new URL(link);
     const id = url.searchParams.get('follow');
-    const rawKey = url.hash.replace(/^#k=/, '');
+    const rawKey = /(?:^#?|&)k=([^&]+)/.exec(url.hash)[1];
     // The publish frame: high nibble 3 = PUBLISH. The low bits carry RETAIN, so match the type.
     const pub = window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4);
     const bytes = new Uint8Array(pub);
@@ -145,7 +148,7 @@ test('a watcher decrypts what the pilot published', async ({ page }) => {
     const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
 
     const url = new URL(link);
-    const state = await F.watch(url.searchParams.get('follow'), url.hash.replace(/^#k=/, ''));
+    const state = await F.watch(url.searchParams.get('follow'), /(?:^#?|&)k=([^&]+)/.exec(url.hash)[1]);
     window.__sockets[1].connack();
     await new Promise(r => setTimeout(r, 10));
     const subscribed = window.__sent.some(f => f[0] === 0x82);   // SUBSCRIBE, flags 0x02
@@ -244,7 +247,7 @@ test('the code travels inside the envelope, not beside it', async ({ page }) => 
     const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
     const wire = new TextDecoder().decode(pub);
     const url = new URL(link);
-    const key = await F.importKey(F._b64url.to(url.hash.replace(/^#k=/, '')));
+    const key = await F.importKey(F._b64url.to(/(?:^#?|&)k=([^&]+)/.exec(url.hash)[1]));
     const len = F._readLength(pub, 1);
     const topicLen = (pub[len.next] << 8) | pub[len.next + 1];
     const msg = await F._open(key, pub.subarray(len.next + 2 + topicLen, len.next + len.value));
@@ -1071,13 +1074,28 @@ test('Stop serializes with a session still initializing in another tab', async (
 
   const other = await context.newPage();
   await other.addInitScript(() => {
+    // Held, then let go. A resume imports more than one key now -- the AES key and the
+    // signing key that proves the packets are this aeroplane's -- so releasing "the" import
+    // is releasing a queue: holding one and dropping the rest would deadlock the resume
+    // rather than pause it, which is not what this test is about.
     const originalImport = crypto.subtle.importKey.bind(crypto.subtle);
+    const held = [];
+    let released = false;
     window.__releaseFollowImport = null;
+    const drain = () => { released = true; while (held.length) held.shift()(); };
     Object.defineProperty(crypto.subtle, 'importKey', {
       configurable: true,
-      value: (...args) => new Promise((resolve, reject) => {
-        window.__releaseFollowImport = () => originalImport(...args).then(resolve, reject);
-      }),
+      value: (...args) => {
+        // Once released, imports run normally: a resume imports more than one key now -- the
+        // AES key and the signing key that proves the packets are this aeroplane's -- and
+        // holding the later ones would deadlock the resume rather than pause it, which is
+        // not what this test is about.
+        if (released) return originalImport(...args);
+        return new Promise((resolve, reject) => {
+          held.push(() => originalImport(...args).then(resolve, reject));
+          window.__releaseFollowImport = drain;
+        });
+      },
     });
   });
   await boot(other);
@@ -1689,7 +1707,7 @@ test('retained positions keep their publisher age and replays cannot become fres
     Date.now = realNow;
 
     const url = new URL(link);
-    const state = await F.watch(url.searchParams.get('follow'), url.hash.replace(/^#k=/, ''));
+    const state = await F.watch(url.searchParams.get('follow'), /(?:^#?|&)k=([^&]+)/.exec(url.hash)[1]);
     window.__sockets[1].connack();
     await new Promise(r => setTimeout(r, 10));
     window.__sockets[1].deliver(newFrame);
@@ -1715,7 +1733,7 @@ test('a new viewer accepts timestamp-ordered packets from an older publisher', a
     await new Promise(r => setTimeout(r, 10));
     const url = new URL(link);
     const id = url.searchParams.get('follow');
-    const rawKey = url.hash.replace(/^#k=/, '');
+    const rawKey = /(?:^#?|&)k=([^&]+)/.exec(url.hash)[1];
     const topic = new TextEncoder().encode(F.topicFor(id));
     const key = await F.importKey(F._b64url.to(rawKey));
     const makeFrame = async (fix) => {
