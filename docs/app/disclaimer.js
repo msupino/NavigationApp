@@ -31,12 +31,14 @@
     return S2[key] || fallback;
   }
 
-  // The same control the menu has, on the notice: a dropdown, each language named in itself
-  // -- עברית, English -- because a list whose entries are translated is one a reader cannot
-  // use when the page is in the language they do not read, which is exactly the reader this
-  // is for. Switching is a navigation, as it is in the menu, and the notice opens again on
-  // the other side, which is the point.
-  const LANGUAGES = [['he', 'עברית'], ['en', 'English']];
+  // The same control the menu has, on the notice: a dropdown, listing HE and EN. Two letters
+  // rather than עברית and English, because the whole point of this control is to be usable
+  // by someone who cannot read the page it is sitting on -- and a code that is the same in
+  // both alphabets is legible from either side. The language's own name rides on the option
+  // as its title, for whoever wants it spelt out.
+  // Switching is a navigation, as it is in the menu, and the notice opens again on the other
+  // side, which is the point.
+  const LANGUAGES = [['he', 'HE', 'עברית'], ['en', 'EN', 'English']];
 
   function languageSwitch() {
     const wrap = document.createElement('div');
@@ -45,11 +47,13 @@
     const select = document.createElement('select');
     select.className = 'disclaimer-lang-select';
     select.setAttribute('aria-label', 'Language / שפה');
-    for (const [code, name] of LANGUAGES) {
+    for (const [code, label, name] of LANGUAGES) {
       const option = document.createElement('option');
       option.value = code;
-      option.lang = code;
-      option.textContent = name;
+      option.lang = 'en';                 // HE and EN are Latin, whichever language they name
+      option.textContent = label;
+      option.title = name;
+      option.setAttribute('aria-label', name);
       if (code === current) option.selected = true;
       select.appendChild(option);
     }

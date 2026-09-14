@@ -7994,7 +7994,8 @@ body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom,
 .disclaimer-langs { display: flex; flex: none; }
 /* Each language named in itself, so the list is usable from either side of it. */
 .disclaimer-lang-select {
-  font: 600 12px/1.2 system-ui, sans-serif;
+  font: 700 12px/1.2 system-ui, sans-serif;
+  letter-spacing: 0.04em;
   padding: 5px 8px;
   min-height: 32px;
   border-radius: 4px;

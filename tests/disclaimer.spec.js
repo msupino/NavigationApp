@@ -188,9 +188,12 @@ test('the notice carries a language dropdown, set to the language on screen', as
   await openApp(page);
   const select = notice(page).locator('.disclaimer-lang-select');
   await expect(select).toHaveCount(1);
-  // Each language named in itself: a list whose entries are translated is one a reader
-  // cannot use when the page is in the language they do not read.
-  await expect(select.locator('option')).toHaveText(['עברית', 'English']);
+  // HE and EN: two letters that read the same in both alphabets, because the reader this
+  // control exists for is the one who cannot read the page it is sitting on. The language's
+  // own name is on the option for whoever wants it spelt out.
+  await expect(select.locator('option')).toHaveText(['HE', 'EN']);
+  await expect(select.locator('option').nth(0)).toHaveAttribute('title', 'עברית');
+  await expect(select.locator('option').nth(1)).toHaveAttribute('aria-label', 'English');
   await expect(select).toHaveValue('en');
   await expect(select).toHaveAttribute('aria-label', 'Language / שפה');
 });
