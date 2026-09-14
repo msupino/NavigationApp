@@ -10747,6 +10747,18 @@ const NavWxTime = (function () {
     const cb = document.getElementById(id);
     return !!(cb && cb.checked);
   });
+  // On a phone the strip lies across the bottom of the chart, and the deck's own strip along
+  // the top already carries this clock's readout beside the Zulu time. So when nothing
+  // answers to it there, the dim is not a quieter control -- it is a control taking a band of
+  // chart to say nothing that is not already said two lines away. Reported twice: there is a
+  // dimmed time slider on the map although nothing needs it.
+  //
+  // The desktop keeps dimming: it has the room, the strip has a fixed place, and a control
+  // that vanishes from a fixed place is one a pilot hunts for. The gist can put it back on a
+  // phone too, which is the house rule for removing a control at all.
+  const idleHidesOnPhone = () => document.body.classList.contains('deck-on')
+    && (typeof tune !== 'function' || tune('hideIdleMapClockOnPhone') !== false);
+
   // An open airfield panel is a timed layer too: its density altitude answers to this clock
   // and is the number a pilot scrubs forward FOR. Reported: with no extra layer on, the
   // clock is barely visible -- and that is exactly when someone reading a field's density
@@ -10814,8 +10826,8 @@ const NavWxTime = (function () {
     }
   }
   function refresh() {
-    el.hidden = !featureOn() || liveHides();
     const timed = anyTimedLayer() || inspectorTimed();
+    el.hidden = !featureOn() || liveHides() || (!timed && idleHidesOnPhone());
     // The panel's copy exists for one reason: on a phone the sheet covers the map's copy. So
     // it appears when there is something for a clock to move and not otherwise -- a waypoint,
     // an ADS-B aircraft or a note has nothing in it that answers to time, and a slider on

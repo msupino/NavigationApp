@@ -100,3 +100,74 @@ test('the feature switch still wins over both', async ({ page }) => {
   });
   expect(await clockHidden(page)).toBe(true);
 });
+
+// Reported twice, from a phone: there is a dimmed time slider on the map although nothing
+// needs it. On a phone the strip lies across the bottom of the chart, and the deck's own
+// strip along the top already carries this clock's readout beside the Zulu time -- so when
+// nothing answers to it, the dim is not a quieter control, it is a band of chart saying
+// nothing that is not already said two lines away.
+const PHONE = { width: 390, height: 844 };
+
+async function phone(page, opts) {
+  await page.setViewportSize(PHONE);
+  await page.goto('?lang=en&nogist' + ((opts && opts.deck === false) ? '&deck=0' : ''));
+  await page.waitForFunction(() => document.getElementById('map-time')
+    && window.NavAid && NavAid.refreshMapClock && NavAid.refreshMobileDeck);
+}
+
+// NOTAM is disabled without a feed in a `nogist` boot, so the wind overlay stands in: the
+// rule is about whether ANY timed layer is on, not about which one.
+const timedLayerOn = (page, on) => page.evaluate((want) => {
+  const cb = document.getElementById('show-wind-cb');
+  if (!!cb.checked !== want) cb.click();
+  NavAid.refreshMapClock();
+  return cb.checked;
+}, on);
+
+test('on a phone the clock goes away when nothing answers to it', async ({ page }) => {
+  await phone(page);
+  expect(await page.evaluate(() => document.body.classList.contains('deck-on'))).toBe(true);
+  expect(await clockHidden(page), 'nothing timed is on').toBe(true);
+  // ...and comes straight back when something needs it.
+  await timedLayerOn(page, true);
+  expect(await clockHidden(page)).toBe(false);
+  await timedLayerOn(page, false);
+  expect(await clockHidden(page)).toBe(true);
+});
+
+test('the desktop still dims rather than hides', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => document.getElementById('map-time') && window.NavAid);
+  // No deck: the strip has a fixed place and the room to keep it, and a control that
+  // vanishes from a fixed place is one a pilot hunts for.
+  expect(await page.evaluate(() => document.body.classList.contains('deck-on'))).toBe(false);
+  expect(await clockHidden(page)).toBe(false);
+  expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle')))
+    .toBe(true);
+});
+
+test('without the deck, a phone keeps the old behaviour', async ({ page }) => {
+  await phone(page, { deck: false });
+  expect(await clockHidden(page)).toBe(false);
+});
+
+test('the gist can keep it on screen on a phone too', async ({ page }) => {
+  await phone(page);
+  expect(await clockHidden(page)).toBe(true);
+  const shown = await page.evaluate(() => {
+    NavAid.tuningDefaults.hideIdleMapClockOnPhone.value = false;
+    NavAid.refreshMapClock();
+    return !document.getElementById('map-time').hidden;
+  });
+  expect(shown).toBe(true);
+});
+
+// The live rule still outranks everything: flying is not "nothing to scrub".
+test('a live position hides it on a phone even with a timed layer on', async ({ page }) => {
+  await phone(page);
+  await timedLayerOn(page, true);
+  expect(await clockHidden(page)).toBe(false);
+  await setLive(page, 'location');
+  expect(await clockHidden(page)).toBe(true);
+});
