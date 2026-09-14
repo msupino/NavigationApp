@@ -271,6 +271,31 @@
   const requireSignedLinks = () => typeof tune === 'function'
     && tune('followMeRequireSignedLinks') === true;
 
+  // ...with one thing the link cannot talk this device out of. Whether to verify is decided
+  // by the address a viewer opened, which is a value from outside: hand someone the same
+  // aeroplane's link with `&v=` cut off and their app would read forgeries as positions.
+  // So the key is remembered per topic the first time one is seen, and a later link for that
+  // topic is held to it. Downgrading then needs the device, not the address.
+  const VERIFY_SEEN_KEY = 'navaid.followVerified';
+  function seenVerifyKeys() {
+    try { return JSON.parse(localStorage.getItem(VERIFY_SEEN_KEY) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+  function rememberVerifyKey(id, b64) {
+    if (!id || !b64) return;
+    try {
+      const all = seenVerifyKeys();
+      if (all[id] === b64) return;
+      all[id] = b64;
+      // One aeroplane per entry, and a bounded number of them: this is a note about links
+      // this device has opened, not a history worth keeping.
+      const ids = Object.keys(all);
+      while (ids.length > 32) delete all[ids.shift()];
+      localStorage.setItem(VERIFY_SEEN_KEY, JSON.stringify(all));
+    } catch (e) { /* private mode: the link's own key still verifies this session */ }
+  }
+  const rememberedVerifyKey = (id) => (id && seenVerifyKeys()[id]) || '';
+
   // What is signed: the object as it is written on the wire, WITHOUT its own signature. The
   // field is added last, so a reader that removes it and re-serialises gets back exactly the
   // bytes that were signed -- JSON.stringify walks keys in insertion order, and the spread
@@ -1037,7 +1062,12 @@
     // A link that carries a public key gets every packet verified against it -- a follower
     // can read this aeroplane, and cannot publish one. A link without it is from before
     // signing existed and is read the way it always was, unless the gist says otherwise.
-    const verifyKey = verifyB64 ? await importVerifyKey(verifyB64) : null;
+    // The link's key, or the one this device already saw for this aeroplane -- whichever
+    // exists. A link that dropped the key cannot make this viewer stop checking.
+    const known = rememberedVerifyKey(id);
+    const useB64 = verifyB64 || known;
+    const verifyKey = useB64 ? await importVerifyKey(useB64) : null;
+    if (verifyKey) rememberVerifyKey(id, useB64);
     const state = { id, fix: null, at: null, connected: false, lastOrder: -1,
                     verified: !!verifyKey };
     const client = mqttConnect(brokerUrl(), Object.assign(
@@ -1327,7 +1357,7 @@
     if (session && !shareWhileViewing()) {
       try { await followMeStop(); } catch (e) { /* stop is best-effort here */ }
     }
-    if (!p.verify && requireSignedLinks()) return null;
+    if (!p.verify && !rememberedVerifyKey(p.id) && requireSignedLinks()) return null;
     const state = await followMeWatch(p.id, p.key, opts, p.verify);
     viewer = { state, marker: null, timer: 0, rotateHandler: null };
     // Following an aircraft is not route onboarding. Drop any intro that was painted before

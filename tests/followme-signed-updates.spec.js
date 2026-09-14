@@ -46,20 +46,6 @@ async function boot(page) {
   await page.evaluate(() => { setTune('featureFollowMe', true); window.gpsLiveOn = true; });
 }
 
-// A PUBLISH frame's payload, off the wire, for the position topic.
-const publishedFix = () => `(() => {
-  const f = window.__sent.filter(f => (f[0] >> 4) === 3 && f.length > 4).map(f => {
-    let at = 1, digit;
-    do { digit = f[at++]; } while (digit & 0x80);
-    const len = (f[at] << 8) | f[at + 1];
-    const topic = String.fromCharCode(...f.slice(at + 2, at + 2 + len));
-    let body = at + 2 + len;
-    if (((f[0] >> 1) & 3) > 0) body += 2;           // qos > 0 carries a packet id
-    return { topic, payload: f.slice(body) };
-  }).filter(p => !p.topic.endsWith('/route') && p.payload.length > 13);
-  return f[f.length - 1] || null;
-})()`;
-
 test('the link carries a public key, and the private one never leaves the device', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
@@ -250,4 +236,57 @@ test('a packet signed by the Python simulator verifies in the app', async ({ pag
   expect(got.reg).toBe('4X-PY');
   expect(got.lat).toBe(32.5);
   expect(got.bad, 'a tampered packet was accepted').toBeNull();
+});
+
+// Whether a viewer verifies is decided by the address it was opened on, and an address comes
+// from outside. Hand someone the same aeroplane's link with `&v=` cut off and their app would
+// read forgeries as positions -- so the key is remembered per topic, and a later link for
+// that topic is held to it. Downgrading needs the device, not the address.
+test('a link with the verify key stripped cannot downgrade a viewer that has seen it', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const link = await F.start('4X-DOWN');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 20));
+    await F.publish({ lat: 32.0, lng: 34.9, trk: 90, kt: 100 });
+    const url = new URL(link);
+    const id = new URLSearchParams(url.search).get('follow');
+
+    // Once, on the real link: this is what teaches the device the aeroplane's key.
+    await F.viewerStart({ search: url.search, hash: url.hash });
+    const learned = F.watching().verified;
+    F.viewerStop();
+
+    // And again on the same link with the key cut off, the way someone passing it on could.
+    const stripped = '#k=' + /(?:^#?|&)k=([^&]+)/.exec(url.hash)[1];
+    const state = await F.viewerStart({ search: url.search, hash: stripped });
+    const stillVerifying = state && state.verified;
+
+    // A forgery -- sealed with the AES key everyone holding the link has, and signed by
+    // nobody -- must still be refused.
+    const rawKey = Uint8Array.from(atob(/(?:^#?|&)k=([^&]+)/.exec(url.hash)[1]
+      .replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', rawKey, 'AES-GCM', false, ['encrypt', 'decrypt']);
+    const forged = await F._seal(key, { reg: 'NOT THEM', lat: 31, lng: 35.5,
+      t: Date.now(), seq: Date.now() });
+    const sub = window.__sockets[window.__sockets.length - 1];
+    sub.connack();
+    await new Promise(r => setTimeout(r, 20));
+    const topic = 'navaid/follow/' + id;
+    const frame = [0x30];
+    let n = 2 + topic.length + forged.length; const len = [];
+    do { let b = n % 128; n = Math.floor(n / 128); if (n > 0) b |= 128; len.push(b); } while (n > 0);
+    frame.push(...len, topic.length >> 8, topic.length & 0xff,
+      ...[...topic].map(c => c.charCodeAt(0)), ...forged);
+    sub.deliver(frame);
+    await new Promise(r => setTimeout(r, 60));
+    const fix = F.watching() && F.watching().fix;
+    F.viewerStop(); await F.stop();
+    return { learned, stillVerifying, fix, remembered: !!localStorage.getItem('navaid.followVerified') };
+  });
+  expect(got.learned).toBe(true);
+  expect(got.remembered, 'the key was not remembered for this aeroplane').toBe(true);
+  expect(got.stillVerifying, 'a stripped link turned verification off').toBe(true);
+  expect(got.fix, 'a forged position was accepted on a stripped link').toBeNull();
 });
