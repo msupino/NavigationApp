@@ -1,0 +1,77 @@
+[
+  {
+    "url": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+    "path": "leaflet/leaflet.css",
+    "integrity": "sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H"
+  },
+  {
+    "url": "https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css",
+    "path": "leaflet-velocity/leaflet-velocity.min.css",
+    "integrity": "sha384-Qm8XP6jA/vqgUN+6tu/z6ZsIHXhzrR9iXidnm7fEzyTqGgWfekx335Jj55dexNPB"
+  },
+  {
+    "url": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+    "path": "leaflet/leaflet.js",
+    "integrity": "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"
+  },
+  {
+    "url": "https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js",
+    "path": "leaflet-rotate/leaflet-rotate.js",
+    "integrity": "sha384-MtIdllebpZyms2pw9K3YJl8BEqrKNQCdSFAySjeglab6z2PkeFdF4Lb9cDsnxQuG"
+  },
+  {
+    "url": "https://unpkg.com/leaflet-imageoverlay-rotated@0.2.1/Leaflet.ImageOverlay.Rotated.js",
+    "path": "leaflet-imageoverlay-rotated/Leaflet.ImageOverlay.Rotated.js",
+    "integrity": "sha384-7oBmAX73N5DMKPSTLhXDB3qYFCIcDn1NtkLTsqtvLbzJjwYn/GF+0TnSMG6o4Bg9"
+  },
+  {
+    "url": "https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.js",
+    "path": "leaflet-velocity/leaflet-velocity.min.js",
+    "integrity": "sha384-quWDbobCTGKxZkGplLk3Dw6mrjO/vIqTVLDRTh1MNumhbQ5ZDCviVnH3UNOpwrEQ"
+  },
+  {
+    "url": "https://unpkg.com/leaflet@1.9.4/dist/images/layers.png",
+    "path": "leaflet/images/layers.png",
+    "integrity": "sha384-80x85ZS+G189o0xL8E8D7BnfhuNss6EwUPHzG7e+qByRD2xnpxikZ6UQU4Re5nNy"
+  },
+  {
+    "url": "https://unpkg.com/leaflet@1.9.4/dist/images/layers-2x.png",
+    "path": "leaflet/images/layers-2x.png",
+    "integrity": "sha384-+F2ZWK/HTpkV9kN2HnMGCQOTM/cnQJLs770FLOeHznwVWRfDESI8z4JwcGYmy2Au"
+  },
+  {
+    "url": "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    "path": "leaflet/images/marker-icon.png",
+    "integrity": "sha384-wg83fCOXjBtqzFAWhTL9Sd9vmLUNhfEEzfmNUX9zwv2igKlz/YQbdapF4ObdxF+R"
+  },
+  {
+    "url": "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    "path": "leaflet/images/marker-icon-2x.png",
+    "integrity": "sha384-bDEa1RhAAKIr/VQnMZ7gUhhXwmKYB4V0g8AsxOvCEPwGxfHCUEzAEMAEEzkjuxiA"
+  },
+  {
+    "url": "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    "path": "leaflet/images/marker-shadow.png",
+    "integrity": "sha384-dB8ivfvPGb1MSIzX8oWTakCxmq+VwqP/QL1TX4jT4INR3pM5T4FgF3Gx4mN3NTMq"
+  },
+  {
+    "url": "https://unpkg.com/leaflet@1.9.4/LICENSE",
+    "path": "leaflet/LICENSE",
+    "integrity": "sha384-CXYK4I2izUBQWizu8sKhYyBLtabBOMnWJhiEcYE2hnY+ov3P+/NGnAkucH4hN0hK"
+  },
+  {
+    "url": "https://unpkg.com/leaflet-rotate@0.2.8/LICENSE",
+    "path": "leaflet-rotate/LICENSE",
+    "integrity": "sha384-0FcvaKAP7A07A60p7LnXilKcqiYbZ2kpXqdLmIK9d3w6vQY5AFsSg+3EP6BDupnB"
+  },
+  {
+    "url": "https://unpkg.com/leaflet-imageoverlay-rotated@0.2.1/README.md",
+    "path": "leaflet-imageoverlay-rotated/README.md",
+    "integrity": "sha384-qBQZG5tjtjaVoBryDEGenFmmlnRl5NThRbD9fRaMMHXCAYcM9gwdOuRQGjNG8HSO"
+  },
+  {
+    "url": "https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/LICENSE",
+    "path": "leaflet-velocity/LICENSE",
+    "integrity": "sha384-EQXzMgw3yJa6akqF5+FdEdD8OjFhN0RuZY3WgjdCzpPGaa3U1mppt6xIZj3Sl6ff"
+  }
+]

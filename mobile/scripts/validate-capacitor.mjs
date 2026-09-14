@@ -21,21 +21,31 @@ const pkg = readJson(packagePath);
 
 if (config.appId !== 'org.supino.navaid') fail('unexpected appId');
 if (config.appName !== 'NavAid') fail('unexpected appName');
-// Remote-URL shell: the WebView loads production, so the installed app
-// self-updates with every web deploy. webDir is only a packaged stub.
-if (config.webDir !== 'shell') fail('webDir must point at the mobile/shell stub');
-if (config.server?.url !== 'https://navaid.supino.org') {
-  fail('native shell must load the production site (self-updating app)');
+// App Store and its TestFlight candidate use the embedded build.
+const embedded = !config.server?.url;
+if (embedded) {
+  if (config.webDir !== 'www') fail('embedded build must serve mobile/www');
+  if (!fs.existsSync(path.join(mobileRoot, 'www', 'index.html'))) {
+    fail('embedded build has no mobile/www: run `node scripts/bundle-web.mjs --embed`');
+  }
+  if (config.ios?.limitsNavigationsToAppBoundDomains !== true) {
+    fail('embedded build must preserve app-bound bridge injection');
+  }
+} else {
+  if (config.webDir !== 'shell') fail('webDir must point at the mobile/shell stub');
+  if (config.server.url !== 'https://navaid.supino.org') {
+    fail('native shell must load the production site (self-updating app)');
+  }
+  // Info.plist declares WKAppBoundDomains so the remote shell can use service workers.
+  // WebKit then permits Capacitor's JavaScript bridge on that domain only when this
+  // matching WKWebView option is enabled. Without it the page looks like Safari and
+  // native plugins (including the iOS local-HTTP simulator transport) disappear.
+  if (config.ios?.limitsNavigationsToAppBoundDomains !== true) {
+    fail('iOS remote shell must enable app-bound navigation for the Capacitor bridge');
+  }
 }
 if (config.server?.androidScheme !== 'https') {
   fail('Android must use an https app origin for secure WebView APIs');
-}
-// Info.plist declares WKAppBoundDomains so the remote shell can use service workers.
-// WebKit then permits Capacitor's JavaScript bridge on that domain only when this
-// matching WKWebView option is enabled. Without it the page looks like Safari and
-// native plugins (including the iOS local-HTTP simulator transport) disappear.
-if (config.ios?.limitsNavigationsToAppBoundDomains !== true) {
-  fail('iOS remote shell must enable app-bound navigation for the Capacitor bridge');
 }
 
 // The background-geolocation package supplies Android's foreground service. Its current
@@ -48,14 +58,19 @@ const expectedIosPlugins = [
   '@capacitor/share',
   '@capacitor/local-notifications',
   '@capgo/capacitor-social-login',
+  '@capgo/capacitor-updater',
+  '@capacitor/network',
 ];
 if (JSON.stringify(config.ios?.includePlugins) !== JSON.stringify(expectedIosPlugins)) {
   fail('iOS plugin allowlist must exclude Android-only background geolocation');
 }
 
 const webDir = path.resolve(mobileRoot, config.webDir);
-if (webDir !== path.join(mobileRoot, 'shell')) fail('webDir resolved outside mobile/shell');
-if (!fs.existsSync(path.join(webDir, 'index.html'))) fail('missing mobile/shell/index.html');
+const expectedWebDir = path.join(mobileRoot, embedded ? 'www' : 'shell');
+if (webDir !== expectedWebDir) fail('webDir resolved outside mobile/' + (embedded ? 'www' : 'shell'));
+if (!fs.existsSync(path.join(webDir, 'index.html'))) {
+  fail('missing ' + path.relative(repoRoot, path.join(webDir, 'index.html')));
+}
 // The real app still ships from docs/ — sanity-check it exists for the web deploy.
 for (const file of ['index.html', 'app/core.js', 'app/ui.js', 'manifest.json']) {
   if (!fs.existsSync(path.join(repoRoot, 'docs', file))) fail(`missing docs/${file}`);
@@ -63,6 +78,34 @@ for (const file of ['index.html', 'app/core.js', 'app/ui.js', 'manifest.json']) 
 
 for (const dep of ['@capacitor/core', '@capacitor/android', '@capacitor/ios']) {
   if (!pkg.dependencies?.[dep]) fail(`missing dependency ${dep}`);
+}
+
+// Over-the-air updates carry the web app only, and only into the embedded build. The
+// decisions -- when to check, whether to accept, when to swap -- live in docs/app/ota.js,
+// which is why the plugin's own automatic updater must stay off: two updaters disagreeing
+// about which bundle is current is the failure that strands an app on a broken one.
+for (const dep of ['@capgo/capacitor-updater', '@capacitor/network']) {
+  if (!pkg.dependencies?.[dep]) fail(`missing dependency ${dep}`);
+}
+const updater = config.plugins?.CapacitorUpdater;
+if (!updater) fail('CapacitorUpdater config is missing');
+if (updater.autoUpdate !== false) fail('the plugin must not update on its own -- see docs/app/ota.js');
+if (updater.updateUrl || updater.channelUrl) {
+  fail('no Capgo endpoints: updates are self-hosted and driven from docs/app/ota.js');
+}
+// Unset is NOT off. The plugin defaults statsUrl to Capgo's own server and the native
+// lifecycle reports there -- device id, app and OS version, on every backgrounding -- with
+// autoUpdate off and this app never having talked to Capgo. An empty string is the off
+// switch, and it has to be written down in both modes.
+if (updater.statsUrl !== '') fail('CapacitorUpdater telemetry must be explicitly disabled (statsUrl: "")');
+if (embedded && updater.appReadyTimeout !== 20000) {
+  fail('embedded build must keep the rollback window docs/app/ota.js is written against');
+}
+const spm = fs.readFileSync(path.join(mobileRoot, 'ios/App/CapApp-SPM/Package.swift'), 'utf8');
+for (const plugin of ['CapgoCapacitorUpdater', 'CapacitorNetwork', 'CapacitorFilesystem', 'CapacitorShare']) {
+  // An iOS plugin listed in includePlugins but absent from the Swift package is not
+  // installed at all: the JavaScript sees no plugin and the feature is quietly dead.
+  if (!spm.includes(plugin)) fail(`iOS plugin ${plugin} is not linked in Package.swift`);
 }
 if (!pkg.devDependencies?.['@capacitor/cli']) fail('missing @capacitor/cli');
 
@@ -159,17 +202,21 @@ if (fs.existsSync(iosInfo)) {
   // anywhere outside WKAppBoundDomains. The APK/IPA loads the whole app from server.url, so
   // a mismatch here is not a degraded feature -- it is a white screen. Everything else in
   // this file is checked; this was the one whose drift breaks the app outright.
-  const host = new URL(config.server.url).host;
-  const bound = text.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/);
-  if (!bound) {
-    fail('iOS WKAppBoundDomains missing while limitsNavigationsToAppBoundDomains is true');
-  } else {
-    // Compare the parsed entries rather than building a regex out of the host: escaping only
-    // dots leaves backslashes and every other metacharacter unescaped (CodeQL
-    // js/incomplete-sanitization), and an exact string match is what is wanted anyway.
-    const domains = [...bound[1].matchAll(/<string>([^<]*)<\/string>/g)].map(m => m[1].trim());
-    if (!domains.includes(host)) {
-      fail('iOS WKAppBoundDomains does not list server.url host ' + host);
+  //
+  // Both origins retain app-bound bridge injection.
+  {
+    const host = embedded ? 'localhost' : new URL(config.server.url).host;
+    const bound = text.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/);
+    if (!bound) {
+      fail('iOS WKAppBoundDomains missing while limitsNavigationsToAppBoundDomains is true');
+    } else {
+      // Compare the parsed entries rather than building a regex out of the host: escaping
+      // only dots leaves backslashes and every other metacharacter unescaped (CodeQL
+      // js/incomplete-sanitization), and an exact string match is what is wanted anyway.
+      const domains = [...bound[1].matchAll(/<string>([^<]*)<\/string>/g)].map(m => m[1].trim());
+      if (!domains.includes(host)) {
+        fail('iOS WKAppBoundDomains does not list server.url host ' + host);
+      }
     }
   }
 

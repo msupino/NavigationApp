@@ -7,6 +7,7 @@
 (function () {
   'use strict';
 
+  const tileCaches = window.NavAidNativeTiles && NavAidNativeTiles.enabled ? NavAidNativeTiles.storage : window.caches;
   const TILE_CACHE = 'navaid-tiles-v1';
   const OFFLINE_MIN_Z = 7;
   const OFFLINE_MAX_Z = 13;
@@ -134,12 +135,12 @@
   async function cvfrCoverage(zMin, zMax, options) {
     const plan = prioritizeRouteTiles(cvfrPlan(zMin, zMax), currentRouteWaypoints());
     if (!plan.length) return { error: 'no CVFR layer', present: 0, total: 0, percent: 0, complete: false };
-    if (!(await caches.has(TILE_CACHE))) {
+    if (!(await tileCaches.has(TILE_CACHE))) {
       return { name: 'CVFR', present: 0, total: plan.length, missing: plan.length,
         percent: 0, complete: false, zMin: plan[0].coords.z,
         zMax: plan[plan.length - 1].coords.z };
     }
-    const cache = await caches.open(TILE_CACHE);
+    const cache = await tileCaches.open(TILE_CACHE);
     const keys = await cache.keys();
     const wanted = new Set(plan.map(item => item.liveUrl));
     if (options && options.pruneOtherLayers) {
@@ -173,6 +174,7 @@
     if (typeof tune === 'function' && tune('offlineAutoCvfr') !== true) return false;
     if (!connectionSuitable()) return false;
     try {
+      if (window.NavAidNativeTiles && NavAidNativeTiles.enabled) return true;
       if (location.hostname !== 'navaid.supino.org') return false;
       const path = location.pathname || '/';
       return path.indexOf('/pr/') !== 0 && path.indexOf('/staging/') !== 0;
@@ -213,7 +215,7 @@
     runningPromise = (async () => {
       try {
         try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* */ }
-        const cache = await caches.open(TILE_CACHE);
+        const cache = await tileCaches.open(TILE_CACHE);
         const existing = new Set((await cache.keys()).map(key => key.url));
         const wanted = new Set(plan.map(item => item.liveUrl));
         // Previous versions could download any selected chart into this shared bucket. CVFR is
@@ -292,7 +294,7 @@
   async function deletePack() {
     suppressAutoThisSession = true;
     try {
-      await caches.delete(TILE_CACHE);
+      await tileCaches.delete(TILE_CACHE);
       notifySw();
       setReport(await cvfrCoverage());
       return true;
@@ -301,8 +303,8 @@
 
   async function packSize() {
     try {
-      if (!(await caches.has(TILE_CACHE))) return 0;
-      return (await (await caches.open(TILE_CACHE)).keys()).length;
+      if (!(await tileCaches.has(TILE_CACHE))) return 0;
+      return (await (await tileCaches.open(TILE_CACHE)).keys()).length;
     }
     catch (e) { return 0; }
   }
