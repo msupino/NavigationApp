@@ -180,36 +180,31 @@ test('the suite switch is what keeps the notice out of every other spec', async 
   expect(suppressed).toBe(false);
 });
 
-// Asked for: a small HE / EN switch on the notice. The notice is the first thing the app
-// puts on screen, so the menu's own language control is behind it -- a pilot who reads the
-// other language better should not have to dismiss a safety notice to find the switch.
-test('the notice carries its own HE / EN switch, marked where you are', async ({ page }) => {
+// Asked for: the notice carries the language control, and as a dropdown -- the same shape
+// the menu uses. The notice is the first thing the app puts on screen, so the menu's own
+// control sits behind it: a pilot who reads the other language better had to dismiss a
+// safety notice to go and find the switch that changes the language it was written in.
+test('the notice carries a language dropdown, set to the language on screen', async ({ page }) => {
   await openApp(page);
-  const langs = notice(page).locator('.disclaimer-lang');
-  await expect(langs).toHaveCount(2);
-  // The labels are the same in both languages: a switch whose own labels are translated is
-  // one a reader cannot find when the page is in the language they do not read.
-  await expect(langs.nth(0)).toHaveText('HE');
-  await expect(langs.nth(1)).toHaveText('EN');
-  await expect(langs.nth(1)).toHaveAttribute('aria-current', 'true');
-  expect(await langs.nth(0).getAttribute('aria-current')).toBeNull();
-  // Each button says which language it is, for a screen reader that would otherwise read
-  // two pairs of Latin letters.
-  await expect(langs.nth(0)).toHaveAttribute('aria-label', 'עברית');
-  await expect(langs.nth(1)).toHaveAttribute('aria-label', 'English');
+  const select = notice(page).locator('.disclaimer-lang-select');
+  await expect(select).toHaveCount(1);
+  // Each language named in itself: a list whose entries are translated is one a reader
+  // cannot use when the page is in the language they do not read.
+  await expect(select.locator('option')).toHaveText(['עברית', 'English']);
+  await expect(select).toHaveValue('en');
+  await expect(select).toHaveAttribute('aria-label', 'Language / שפה');
 });
 
-test('pressing HE reopens the notice in Hebrew', async ({ page }) => {
+test('choosing Hebrew reopens the notice in Hebrew', async ({ page }) => {
   await openApp(page);
-  await notice(page).locator('.disclaimer-lang[lang="he"]').click();
+  await notice(page).locator('.disclaimer-lang-select').selectOption('he');
   // A navigation: wait for the app on the other side before touching its boot screen.
   await page.waitForFunction(() => document.documentElement.lang === 'he'
     && typeof clearBootLoading === 'function');
   await page.evaluate(() => clearBootLoading());
   await expect(notice(page)).toBeVisible();
   await expect(page.locator('.disclaimer-accept')).toHaveText('הבנתי');
-  await expect(notice(page).locator('.disclaimer-lang[lang="he"]'))
-    .toHaveAttribute('aria-current', 'true');
+  await expect(notice(page).locator('.disclaimer-lang-select')).toHaveValue('he');
   expect(new URL(page.url()).searchParams.get('lang')).toBe('he');
 });
 
@@ -220,7 +215,7 @@ test('switching language keeps the link that was opened', async ({ page }) => {
   await page.waitForFunction(() => typeof clearBootLoading === 'function');
   await page.evaluate(() => clearBootLoading());
   await expect(notice(page)).toBeVisible();
-  await notice(page).locator('.disclaimer-lang[lang="he"]').click();
+  await notice(page).locator('.disclaimer-lang-select').selectOption('he');
   await page.waitForFunction(() => document.documentElement.lang === 'he');
   const url = new URL(page.url());
   expect(url.searchParams.get('follow')).toBe('TOPIC123');
@@ -228,10 +223,10 @@ test('switching language keeps the link that was opened', async ({ page }) => {
   expect(url.hash).toBe('#k=SECRETKEY&v=PUB');
 });
 
-test('the language you are already reading does not navigate', async ({ page }) => {
+test('choosing the language already on screen does not navigate', async ({ page }) => {
   await openApp(page);
   const before = page.url();
-  await notice(page).locator('.disclaimer-lang[lang="en"]').click();
+  await notice(page).locator('.disclaimer-lang-select').selectOption('en');
   await page.waitForTimeout(150);
   expect(page.url()).toBe(before);
   await expect(notice(page)).toBeVisible();

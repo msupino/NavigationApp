@@ -31,35 +31,41 @@
     return S2[key] || fallback;
   }
 
-  // HE / EN, in those words in both languages: a switch whose labels are themselves
-  // translated is one a reader cannot find when the page is in the language they do not
-  // read. Switching is a navigation, exactly as the menu's own language control is -- and
-  // the notice opens again on the other side, which is the point.
+  // The same control the menu has, on the notice: a dropdown, each language named in itself
+  // -- עברית, English -- because a list whose entries are translated is one a reader cannot
+  // use when the page is in the language they do not read, which is exactly the reader this
+  // is for. Switching is a navigation, as it is in the menu, and the notice opens again on
+  // the other side, which is the point.
+  const LANGUAGES = [['he', 'עברית'], ['en', 'English']];
+
   function languageSwitch() {
     const wrap = document.createElement('div');
     wrap.className = 'disclaimer-langs';
     const current = lang();
-    for (const code of ['he', 'en']) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'disclaimer-lang';
-      b.lang = code;
-      b.textContent = code.toUpperCase();
-      b.setAttribute('aria-label', code === 'he' ? 'עברית' : 'English');
-      if (code === current) b.setAttribute('aria-current', 'true');
-      b.addEventListener('click', () => {
-        if (code === current) return;
-        try {
-          // Everything else about the address is kept: a follower reading this arrived on
-          // ?follow=<id>#k=<key>, and a language switch that dropped either would take the
-          // aeroplane away from them to answer a question about words.
-          const url = new URL(location.href);
-          url.searchParams.set('lang', code);
-          location.href = url.toString();
-        } catch (e) { location.search = '?lang=' + code; }
-      });
-      wrap.appendChild(b);
+    const select = document.createElement('select');
+    select.className = 'disclaimer-lang-select';
+    select.setAttribute('aria-label', 'Language / שפה');
+    for (const [code, name] of LANGUAGES) {
+      const option = document.createElement('option');
+      option.value = code;
+      option.lang = code;
+      option.textContent = name;
+      if (code === current) option.selected = true;
+      select.appendChild(option);
     }
+    select.addEventListener('change', () => {
+      const code = select.value;
+      if (code === current) return;
+      try {
+        // Everything else about the address is kept: a follower reading this arrived on
+        // ?follow=<id>#k=<key>, and a language switch that dropped either would take the
+        // aeroplane away from them to answer a question about words.
+        const url = new URL(location.href);
+        url.searchParams.set('lang', code);
+        location.href = url.toString();
+      } catch (e) { location.search = '?lang=' + code; }
+    });
+    wrap.appendChild(select);
     return wrap;
   }
 
