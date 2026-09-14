@@ -29,5 +29,11 @@
   "source": "b35a412a112e5707e2526be82523e68564fcb64bd76a419cad4751b4593de67596e2987fd3ae9bb3a6f49a76d9160432e3dac3e4bcb367c73290aba623fb768c",
   "transform": "rotated 90 degrees to portrait from the CAA landscape sheet; the georeferenced SID overlay corners were fitted against this orientation",
   "verified": "2026-09-14"
+ },
+ "docs/byop/LLBG_SID_08.pdf": {
+  "title": "Standart Instrument Departure Chart (SID) - ICAO RWY 08 IVONA 1B, RAPIV 1B, SIGGA 1B, TALMI 1B",
+  "source": "d10fc96e5246e25b343fb9c5b1a51d8b8969ff65086a92c097403d58592f1d2feeb2700e7798ecce43ad3d970094ec3b131135a75b73e7c0cf12cfc867ffde34",
+  "transform": "rotated 90 degrees to portrait from the CAA landscape sheet; the georeferenced SID overlay corners were fitted against this orientation",
+  "verified": "2026-09-14"
  }
 }
