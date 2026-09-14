@@ -276,12 +276,37 @@
   // aeroplane's link with `&v=` cut off and their app would read forgeries as positions.
   // So the key is remembered per topic the first time one is seen, and a later link for that
   // topic is held to it. Downgrading then needs the device, not the address.
+  // Everything out of a link is somebody else's text until it has been checked against the
+  // shape this app actually mints. A topic id is 16 random bytes as base64url and a key is
+  // 32 or 65; anything else is not ours, and letting it through reaches two places it has no
+  // business in -- a property name on the map of remembered keys (`__proto__` is a topic id
+  // as far as an object is concerned), and the decision about whether to verify at all.
+  const SAFE_B64 = /^[A-Za-z0-9_-]{16,512}$/;
+  const SAFE_ID = /^[A-Za-z0-9_-]{6,64}$/;
+  // `__proto__` is a perfectly good base64url word and a terrible property name. The map of
+  // remembered keys has no prototype to poison, but a topic id that names one is not an id
+  // this app minted, and the cheapest place to say so is here.
+  const RESERVED_ID = /^(?:__proto__|constructor|prototype)$/;
+  const safeId = (s) => (typeof s === 'string' && SAFE_ID.test(s) && !RESERVED_ID.test(s)) ? s : '';
+  const safeB64 = (s) => (typeof s === 'string' && SAFE_B64.test(s)) ? s : '';
+
   const VERIFY_SEEN_KEY = 'navaid.followVerified';
+  // Built with no prototype and filled only from entries that match the shapes above: this
+  // map is keyed by something that arrived in an address.
   function seenVerifyKeys() {
-    try { return JSON.parse(localStorage.getItem(VERIFY_SEEN_KEY) || '{}') || {}; }
-    catch (e) { return {}; }
+    const out = Object.create(null);
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(VERIFY_SEEN_KEY) || '{}'); }
+    catch (e) { return out; }
+    if (!raw || typeof raw !== 'object') return out;
+    for (const key of Object.keys(raw)) {
+      if (safeId(key) && safeB64(raw[key])) out[key] = raw[key];
+    }
+    return out;
   }
-  function rememberVerifyKey(id, b64) {
+  function rememberVerifyKey(rawId, rawB64) {
+    const id = safeId(rawId);
+    const b64 = safeB64(rawB64);
     if (!id || !b64) return;
     try {
       const all = seenVerifyKeys();
@@ -291,10 +316,13 @@
       // this device has opened, not a history worth keeping.
       const ids = Object.keys(all);
       while (ids.length > 32) delete all[ids.shift()];
-      localStorage.setItem(VERIFY_SEEN_KEY, JSON.stringify(all));
+      localStorage.setItem(VERIFY_SEEN_KEY, JSON.stringify(Object.assign({}, all)));
     } catch (e) { /* private mode: the link's own key still verifies this session */ }
   }
-  const rememberedVerifyKey = (id) => (id && seenVerifyKeys()[id]) || '';
+  const rememberedVerifyKey = (rawId) => {
+    const id = safeId(rawId);
+    return id ? (seenVerifyKeys()[id] || '') : '';
+  };
 
   // What is signed: the object as it is written on the wire, WITHOUT its own signature. The
   // field is added last, so a reader that removes it and re-serialises gets back exactly the
@@ -1065,7 +1093,7 @@
     // The link's key, or the one this device already saw for this aeroplane -- whichever
     // exists. A link that dropped the key cannot make this viewer stop checking.
     const known = rememberedVerifyKey(id);
-    const useB64 = verifyB64 || known;
+    const useB64 = safeB64(verifyB64) || known;
     const verifyKey = useB64 ? await importVerifyKey(useB64) : null;
     if (verifyKey) rememberVerifyKey(id, useB64);
     const state = { id, fix: null, at: null, connected: false, lastOrder: -1,
@@ -1339,12 +1367,15 @@
   // ?follow=<id> with #k=<key>. Returns the id when this page IS a viewer, else null.
   function followMeLinkParams(search, hash) {
     try {
-      const id = new URLSearchParams(search || location.search).get('follow');
+      // Checked here, at the edge, rather than wherever they are eventually used: an id and
+      // a key that are not the shape this app mints are not this app's link.
+      const id = safeId(new URLSearchParams(search || location.search).get('follow'));
       const raw = hash || location.hash || '';
       const m = /(?:^#?|&)k=([A-Za-z0-9\-_]+)/.exec(raw);
       // The public half the packets are verified against, when the link carries one.
       const v = /(?:^#?|&)v=([A-Za-z0-9\-_]+)/.exec(raw);
-      return (id && m) ? { id, key: m[1], verify: v ? v[1] : '' } : null;
+      const key = m ? safeB64(m[1]) : '';
+      return (id && key) ? { id, key, verify: v ? safeB64(v[1]) : '' } : null;
     } catch (e) { return null; }
   }
 

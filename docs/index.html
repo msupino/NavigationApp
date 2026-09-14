@@ -89,11 +89,17 @@
        loader (below) uses it to pick the right strings.js. -->
   <script>
     (function () {
+      // Hebrew unless the address says otherwise. NavAid is flown in Israeli airspace and
+      // read in Hebrew by most of the people who open it, so that is what a plain address
+      // opens in -- every time, not only the first. English is a choice the address carries
+      // (?lang=en), which the language control and the safety notice both set, and which
+      // every link shared from inside the app keeps.
+      //
+      // Deliberately NOT remembered: a stored language made a plain address mean different
+      // things on different devices, and made "open navaid.supino.org" an unanswerable
+      // question about what a pilot would see.
       var p = new URLSearchParams(location.search).get('lang');
-      var stored = '';
-      try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
-      var lang = (p === 'en' || p === 'he') ? p : (stored === 'en' ? 'en' : 'he');
-      try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
+      var lang = (p === 'en' || p === 'he') ? p : 'he';
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
       if (lang === 'he') document.title = 'NavAid — מתכנן טיסה';

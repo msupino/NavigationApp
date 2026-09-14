@@ -290,3 +290,61 @@ test('a link with the verify key stripped cannot downgrade a viewer that has see
   expect(got.stillVerifying, 'a stripped link turned verification off').toBe(true);
   expect(got.fix, 'a forged position was accepted on a stripped link').toBeNull();
 });
+
+// A topic id arrives in an address, and an address is somebody else's text. It is used as a
+// property name on the map of keys this device has seen -- and `__proto__` is a topic id as
+// far as an object is concerned -- and it decides whether packets get verified at all. Both
+// are checked against the shape this app actually mints.
+test('a link whose id is not the shape we mint is not a link', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    const out = {};
+    // Nothing here is one of ours: a prototype name, an empty id, a key of the wrong shape.
+    out.proto = await F.viewerStart({ search: '?follow=__proto__', hash: '#k=' + 'A'.repeat(43) });
+    out.empty = await F.viewerStart({ search: '?follow=', hash: '#k=' + 'A'.repeat(43) });
+    out.badKey = await F.viewerStart({ search: '?follow=abcdefgh', hash: '#k=short' });
+    out.punctuation = await F.viewerStart({ search: '?follow=a/../b', hash: '#k=' + 'A'.repeat(43) });
+    // ...and the map of remembered keys is untouched by any of them.
+    out.stored = localStorage.getItem('navaid.followVerified');
+    // The prototype is where it was, not wherever a link said to put it.
+    out.protoIntact = Object.getPrototypeOf({}) === Object.prototype
+      && ({}).polluted === undefined;
+    return out;
+  });
+  expect(got.proto).toBeNull();
+  expect(got.empty).toBeNull();
+  expect(got.badKey).toBeNull();
+  expect(got.punctuation).toBeNull();
+  expect(got.stored).toBeNull();
+  expect(got.protoIntact).toBe(true);
+});
+
+// And a stored map that has been tampered with -- by anything, this app included -- is read
+// for the entries that are the right shape and no others.
+test('the remembered keys are read as the shapes they are meant to be', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    // A real key for the well-formed entry: a string of the right shape is not a key, and
+    // this test is about which entries are READ, not about what importing nonsense does.
+    const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' },
+      true, ['sign', 'verify']);
+    const raw = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey));
+    const pub = btoa(String.fromCharCode(...raw))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    localStorage.setItem('navaid.followVerified', JSON.stringify({
+      __proto__: { polluted: true },
+      'a/../b': 'AAAAAAAAAAAAAAAAAAAAAA',
+      'goodTopicId': pub,
+    }));
+    const F = NavAid.followMe;
+    // A link for an id we have nothing for: it may be read unverified, which is the
+    // compatibility rule -- but nothing from the tampered entries may reach it.
+    const state = await F.viewerStart({ search: '?follow=goodTopicId', hash: '#k=' + 'A'.repeat(43) });
+    const verified = state && state.verified;
+    F.viewerStop();
+    return { verified, polluted: ({}).polluted !== undefined };
+  });
+  expect(got.verified, 'the well-formed entry was not used').toBe(true);
+  expect(got.polluted, 'a stored key reached Object.prototype').toBe(false);
+});
