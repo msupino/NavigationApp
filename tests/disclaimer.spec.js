@@ -46,6 +46,65 @@ test('the first run asks, and says what it is asking', async ({ page }) => {
   }
 });
 
+// Found in review: the notice was shown on `load`, and #boot-loading is still up then --
+// fixed, opaque, z-index 6000, above this notice, and it comes down only when the first chart
+// tiles paint. So the notice was created BEHIND the splash: invisible, and clickable through
+// it, because the splash drops pointer events as soon as the map is ready. An acknowledgement
+// that can be recorded by a tap on a screen which never showed the words is worth nothing.
+test('the notice waits for the boot screen, and cannot be tapped through it', async ({ page }) => {
+  await fresh(page);
+  await boot(page);
+  // The app is up -- `load` has long fired -- and the splash is still there.
+  await page.waitForFunction(() => typeof draw === 'function');
+  const during = await page.evaluate(() => {
+    const splash = document.getElementById('boot-loading');
+    return {
+      splash: !!splash,
+      z: splash ? getComputedStyle(splash).zIndex : null,
+      notice: !!document.querySelector('.disclaimer-back'),
+      accepted: localStorage.getItem('navaid.disclaimerAck'),
+    };
+  });
+  expect(during.splash, 'this test is about the splash still being up').toBe(true);
+  expect(Number(during.z)).toBeGreaterThan(3200);       // above the notice, which is the bug
+  expect(during.notice, 'the notice was painted behind the boot screen').toBe(false);
+  // Nothing can have been acknowledged while there was nothing to read.
+  expect(during.accepted).toBeNull();
+
+  // The splash comes down the way the app takes it down.
+  await page.evaluate(() => clearBootLoading());
+  await expect(notice(page)).toBeVisible();
+  // ...and now the button is the topmost thing where it is drawn.
+  const reachable = await page.evaluate(() => {
+    const btn = document.querySelector('.disclaimer-accept');
+    const r = btn.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!top && (top === btn || btn.contains(top));
+  });
+  expect(reachable).toBe(true);
+});
+
+// Belt and braces: a boot screen that never goes must not take the notice with it. The cap
+// is twenty seconds in the app; the wait takes one so this can ask the question in a second.
+test('a boot screen that never clears does not swallow the notice', async ({ page }) => {
+  await fresh(page);
+  await boot(page);
+  await page.waitForFunction(() => window.NavAid && NavAid.whenBootScreenGone);
+  const got = await page.evaluate(() => new Promise((resolve) => {
+    const splashUp = !!document.getElementById('boot-loading');
+    const started = Date.now();
+    NavAid.whenBootScreenGone(
+      () => resolve({ splashUp, ran: true, waited: Date.now() - started,
+                      stillUp: !!document.getElementById('boot-loading') }),
+      300);
+    setTimeout(() => resolve({ splashUp, ran: false }), 3000);
+  }));
+  expect(got.splashUp, 'this test is about a splash that is still there').toBe(true);
+  expect(got.ran, 'the wait never ended').toBe(true);
+  expect(got.stillUp, 'it gave up while the splash was still up, which is the point').toBe(true);
+  expect(got.waited).toBeGreaterThanOrEqual(250);
+});
+
 test('the only way out is the acknowledgement', async ({ page }) => {
   await fresh(page);
   await boot(page);

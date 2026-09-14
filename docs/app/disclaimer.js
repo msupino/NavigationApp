@@ -132,9 +132,35 @@
   NavAid.disclaimerVersion = DISCLAIMER_VERSION;
   NavAid.maybeShowDisclaimer = maybeShowDisclaimer;
 
-  // After the boot overlay has gone, so the notice is not painted over a loading screen.
+  // AFTER the boot screen, and `load` is not that moment. #boot-loading is fixed, opaque and
+  // z-index 6000 -- above this notice -- and comes down only when the first chart tiles paint
+  // (ui.js: armBootLoading, with a bootLogoMinMs floor and a six-second fallback), which is
+  // well after the load event. Shown on `load`, the notice was created behind it: invisible,
+  // and clickable straight THROUGH it, because the splash drops pointer events as soon as the
+  // map is ready. A safety acknowledgement that can be recorded by a tap on a screen which
+  // never showed the words is the one thing this must not be.
+  //
+  // Waiting on the ELEMENT rather than on any event of its own: it is removed by
+  // clearBootLoading(), which nothing else announces, and a poll that cannot outlive its
+  // reason is cheaper than a contract between two files. The cap is belt and braces -- a
+  // boot screen that somehow never goes must not take the notice with it.
+  const BOOT_POLL_MS = 100;
+  const BOOT_WAIT_CAP_MS = 20000;
+  function whenBootScreenGone(run, capMs) {
+    const gone = () => !document.getElementById('boot-loading');
+    if (gone()) { run(); return; }
+    const until = Date.now() + (capMs === undefined ? BOOT_WAIT_CAP_MS : capMs);
+    const timer = setInterval(() => {
+      if (!gone() && Date.now() < until) return;
+      clearInterval(timer);
+      run();
+    }, BOOT_POLL_MS);
+  }
+  NavAid.whenBootScreenGone = whenBootScreenGone;
+
   if (typeof document !== 'undefined') {
-    if (document.readyState === 'complete') setTimeout(maybeShowDisclaimer, 0);
-    else window.addEventListener('load', () => setTimeout(maybeShowDisclaimer, 0));
+    const start = () => whenBootScreenGone(maybeShowDisclaimer);
+    if (document.readyState === 'complete') setTimeout(start, 0);
+    else window.addEventListener('load', () => setTimeout(start, 0));
   }
 }());
