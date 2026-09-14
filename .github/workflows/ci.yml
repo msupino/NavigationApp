@@ -119,6 +119,16 @@ jobs:
           xcodebuild -project App.xcodeproj -scheme App -sdk iphonesimulator \
             -configuration Debug CODE_SIGNING_ALLOWED=NO build
 
+      - name: Build and verify embedded iOS release
+        run: |
+          cd mobile
+          node scripts/test-ios-origin.mjs
+          npm run embed
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath ios/App/DerivedData \
+            -configuration Release CODE_SIGNING_ALLOWED=NO build
+          node scripts/verify-ios-app.mjs ios/App/DerivedData/Build/Products/Release-iphonesimulator/App.app
+
   dev-history:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest

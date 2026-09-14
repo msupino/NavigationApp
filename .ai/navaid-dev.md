@@ -1305,3 +1305,50 @@ downloadable `route.json`.
   the exact production app root. Staging and PR pages cannot initiate LAN scans.
 
 <!-- ci-flake-audit: no-op change to trigger a full CI run -->
+
+
+### Embedded iOS App Store build
+
+`mobile/scripts/bundle-web.mjs` packages `docs/` plus the existing pinned Leaflet JS, CSS,
+images, and license notices from `mobile/vendor/`. It verifies SHA-384 hashes and rewrites
+CDN URLs only in generated `mobile/www/index.html`. Pages retains its source URLs and
+`?v=src` placeholders. The generated page sets `window.__navaidEmbedded = true` before
+loading modules. `app/native-tiles.js` loads before `core.js`; normal web pages use the
+existing Leaflet and Cache Storage paths.
+
+`npm --prefix mobile run embed` configures and syncs **iOS only**. Use that embedded binary
+for both the App Store and its TestFlight candidate. `npm run remote` restores the remote
+development shell. Both modes retain app-bound bridge injection; the plist includes the
+production host and `localhost`. Simulator discovery trusts only the production root or
+`capacitor://localhost/` and `/index.html`; staging, preview, and other origins are denied.
+
+A `capacitor:` page cannot rely on the production service worker. In embedded mode,
+`offline-tiles.js` uses `NavAidNativeTiles.storage`, backed by the existing Filesystem
+plugin's `LIBRARY_NO_CLOUD/navaid-tiles-v1` directory. Each PNG filename is its encoded
+request URL. Pack audits enumerate actual files; failed writes do not count as downloaded.
+The CVFR Leaflet layer and magnifier read those PNGs directly and use the network on a
+cache miss. Other layers remain online-only. `plateBase()` uses the absolute production
+BYOP URL in embedded mode, covering the manifest, rendered pages, and PDF downloads.
+
+`PrivacyInfo.xcprivacy` belongs to the app target's Copy Bundle Resources phase. CI builds
+an embedded Release simulator app and runs `mobile/scripts/verify-ios-app.mjs` against
+its actual resources, in addition to compiling the remote shell. Native URL-policy cases
+run through Swift using the production helper. Browser coverage in `appstore-native.spec.js`
+checks native file persistence across reloads, offline rendering, failed writes, plate URLs,
+and the generated bundle with external requests blocked. Physical device, signed archive,
+and App Store Connect checks remain in `mobile/appstore/README.md`.
+
+The embedded iOS build fetches web updates (`docs/app/ota.js`; see
+`mobile/appstore/README.md` for publishing one). It stores `navaid.otaInstalling` — the id of
+the bundle this launch tried to install — as a device-local marker, excluded from settings
+sync: it is about one device's install attempt, not a preference, and syncing it would stop
+another device ever trying that bundle. One attempt per bundle, cleared once a bundle proves
+it comes up, so a bundle that cannot be applied is not a reload loop on the launch screen.
+The pending bundle is applied through the plugin's `reload()` — the pending-aware path, which
+also clears the pointer — never `set()` + `reload()`, which leaves the pointer behind and
+reinstalls the same bundle on every launch.
+
+The first-run safety notice stores `navaid.disclaimerAck` as a device-local wording-version
+acknowledgement; it is excluded from settings sync. The shared test fixture acknowledges
+that version after storage-reset init scripts run; first-run tests opt out with
+`test.use({ acknowledgeDisclaimer: false })`. `disclaimer.spec.js` verifies the fixture and notice agree.

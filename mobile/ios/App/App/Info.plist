@@ -24,6 +24,18 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- The app is bilingual; without this the App Store lists it as English only and iOS
+	     will not pick Hebrew from the device's language order. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>he</string>
+	</array>
+	<!-- Encryption: HTTPS, and AES-GCM from the platform's own Web Crypto for the Follow me
+	     link. Both are exempt under the standard categories, so every upload would otherwise
+	     stop to ask the same question. Declared here instead. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
@@ -57,6 +69,7 @@
 	<key>WKAppBoundDomains</key>
 	<array>
 		<string>navaid.supino.org</string>
+		<string>localhost</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>

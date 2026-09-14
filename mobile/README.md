@@ -26,6 +26,30 @@ Native bits baked into the shell:
   support after the first online launch, including the *Extra layers →
   Download charts for offline* tile packs.
 
+## Two builds: remote and embedded
+
+The default config is the **remote** development/Android shell described above. Use the
+**embedded** build for App Store submission and its TestFlight candidate. It packages the
+web app and pinned Leaflet assets locally. Bundling alone does not guarantee App Review
+acceptance; review evaluates functionality and the complete experience.
+
+```sh
+npm run bundle:check   # validate local assets and dependency integrity
+npm run embed          # docs + vendor -> mobile/www, configure and sync iOS only
+npm run remote         # restore remote configuration and sync native projects
+```
+
+Embedded CVFR downloads use the existing Filesystem plugin and load directly into the map
+and magnifier without a service worker. Plates remain online at the production BYOP URL.
+
+The embedded build can still be updated without a submission: `scripts/build-ota.mjs` packs
+the same bundle as a zip, and `docs/app/ota.js` fetches it, verifies it and arms it for the
+NEXT launch -- never swapping it under a pilot mid-flight. Guideline 2.5.2 allows exactly
+this for interpreted code; native changes still need a release.
+
+See [appstore/README.md](appstore/README.md) for archive validation, device checks and the
+two commands that publish a web update.
+
 ## First setup
 
 ```sh

@@ -67,6 +67,10 @@ test.describe('Capacitor mobile wrapper', () => {
       '@capacitor/share',
       '@capacitor/local-notifications',
       '@capgo/capacitor-social-login',
+      // Web updates for the embedded App Store build, and the connection type they refuse
+      // to spend a pilot's data plan on -- navigator.connection does not exist in WKWebView.
+      '@capgo/capacitor-updater',
+      '@capacitor/network',
     ]);
     expect(config.ios.includePlugins).not.toContain('@capacitor-community/background-geolocation');
     for (const perm of ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION',

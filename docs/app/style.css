@@ -7965,3 +7965,30 @@ body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom,
 @media (max-width: 680px), (pointer: coarse) {
   .modal-back, .sim-overlay { align-items: flex-start; }
 }
+
+/* The safety acknowledgement. Deliberately plain: it is read once, and the only thing on it
+   that can be pressed is the acknowledgement. Above every other modal, because nothing
+   should be usable in front of it. */
+/* Its own backdrop, deliberately not .modal-back -- the global Escape handler removes
+   those, and this notice is answered rather than escaped. */
+.disclaimer-back {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.62);
+}
+.modal.disclaimer-modal {
+  max-width: min(460px, 92vw);
+  line-height: 1.5;
+}
+.disclaimer-lead { margin: 6px 0 10px; font-size: 14px; font-weight: 600; }
+.disclaimer-points { margin: 0 0 10px; padding-inline-start: 20px; font-size: 13px; }
+.disclaimer-points li { margin: 4px 0; }
+.disclaimer-links { margin: 0 0 12px; font-size: 12.5px; }
+.disclaimer-btns { display: flex; justify-content: flex-end; }
+.disclaimer-accept { min-height: 44px; padding: 8px 18px; font-weight: 600; }
+/* Nothing behind it scrolls while it is up: the chart is not in use yet. */
+body.disclaimer-open { overflow: hidden; }

@@ -1,0 +1,6 @@
+{
+  "note": "No web bundle has been published for the embedded iOS build yet. docs/app/ota.js requires version, url and checksum, so this file reads as 'nothing to update' until mobile/scripts/build-ota.mjs writes a real one. The Android app and the web app do not read this at all -- they load the live site.",
+  "version": null,
+  "url": null,
+  "checksum": null
+}

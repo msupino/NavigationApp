@@ -59,7 +59,15 @@ public class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func isTrustedProductionPage() -> Bool {
         guard let url = bridge?.webView?.url else { return false }
-        return url.scheme == "https" && url.host == "navaid.supino.org" && url.port == nil &&
+        return Self.isTrustedAppURL(url)
+    }
+
+    static func isTrustedAppURL(_ url: URL) -> Bool {
+        guard url.port == nil, url.user == nil, url.password == nil else { return false }
+        if url.scheme == "capacitor" && url.host == "localhost" {
+            return url.path.isEmpty || url.path == "/" || url.path == "/index.html"
+        }
+        return url.scheme == "https" && url.host == "navaid.supino.org" &&
             (url.path.isEmpty || url.path == "/")
     }
 

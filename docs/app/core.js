@@ -850,6 +850,8 @@ NavAid.tuningDefaults = {
   // and the map is where a pilot is reading, so it is opted into rather than out of. On
   // brings back the button and the panel with nothing else to configure.
   featureAssistant: { value: false, type: 'bool', label: 'Feature: AI assistant button' },
+  featureDisclaimer: { value: true, type: 'bool', label: 'Safety notice on first run' },
+  featureOtaUpdates: { value: true, type: 'bool', label: 'Embedded build fetches web updates' },
   featureMobileDeck: { value: true, type: 'bool', label: 'Feature: phone data strip and bottom deck' },
   // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
   // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
@@ -1067,7 +1069,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -2745,6 +2747,12 @@ window.S = Object.assign({
   tbSimStatusErr: '⚠ No data',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
+  disclaimerTitle: 'Before you fly',
+  disclaimerLead: 'NavAid is a planning aid. It is NOT certified for navigation and must not be used as a primary reference in flight.',
+  disclaimerPointOfficial: 'Plan and fly using current official charts, AIP, NOTAM and weather.',
+  disclaimerPointData: 'Chart, airspace, NOTAM and weather data here may be incomplete, delayed or wrong.',
+  disclaimerPointPic: 'The pilot in command is responsible for the safe conduct of every flight.',
+  disclaimerAccept: 'I understand',
   tbPrivacy: 'Privacy',
   tbTerms: 'Terms',
   tbIssues: 'Issues / Requests',
@@ -4586,7 +4594,7 @@ const withPane = (opts, pane) => (pane ? { ...opts, pane } : opts);
 // the pilot puts UNDER it (underlayLayer below). `pane` is the only difference -- Leaflet
 // will not hold one layer object in two places, and the pane is what decides which is on top.
 const CHART_SPECS = {
-  'CVFR': (pane) => L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+  'CVFR': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }, pane))),
