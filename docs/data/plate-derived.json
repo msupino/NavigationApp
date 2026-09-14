@@ -5,5 +5,35 @@
   "source": "b14cf8511ccec6cc7b10fedbd76a191a5d24313fb22ea4f8fe0dc8b99a00df91e433147ff81c422ce4fd0152d5093b3a94e6800f22b1549084bc24eeaa82c2b3",
   "transform": "rotated 90 degrees to portrait; the georeferenced CVFR overlay corners were fitted against this orientation",
   "verified": "2026-09-08"
+ },
+ "docs/byop/LLBG_SID_26.pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 26 SALAM 4E, TOMAL 4E, MERVA 2E, SUVAS 1E, DAFNA 1E",
+  "source": "d5ee59754dcec8dc9022621d7fd5ac974a8ed569310cf1865a15a9c900887a46af56f96e39ccf977a67a68d4fde39b05edf314c44fb2ab3b3f5399ec986d8702",
+  "transform": "rotated 90 degrees to portrait from the CAA landscape sheet; the georeferenced SID overlay corners were fitted against this orientation",
+  "verified": "2026-09-14"
+ },
+ "docs/byop/LLBG_SID_30.pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 30 SALAM 4F, TOMAL 4F, SUVAS 1F, DAFNA 1F, MERVA 2F",
+  "source": "8c1add17712b0bb4f090c97839996e00a936b805183c5003857513f1164984199b0ed13564d38c6b1e14bbd6a57faadf813970fb11194dc06c4e5182f71e0c24",
+  "transform": "rotated 90 degrees to portrait from the CAA landscape sheet; the georeferenced SID overlay corners were fitted against this orientation",
+  "verified": "2026-09-14"
+ },
+ "docs/byop/LLBG_SID_12-26-30 (Orlev).pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 ORLEV 1C, 1E, 1F",
+  "source": "cfb526c5d13fafd536630d1db7839df6f5670ff68a84b1880297f7df58a03d13b879ac2ee6a98af73a733e85101a6c7569bed0bfbe0622930c5c1a97a840f19c",
+  "transform": "rotated 90 degrees to portrait from the CAA landscape sheet; the georeferenced SID overlay corners were fitted against this orientation",
+  "verified": "2026-09-14"
+ },
+ "docs/byop/LLBG_SID_SUVAS1G.pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 03, 08, 12, 21 NAT 1A,1B,1D, SUVAS 1G",
+  "source": "b35a412a112e5707e2526be82523e68564fcb64bd76a419cad4751b4593de67596e2987fd3ae9bb3a6f49a76d9160432e3dac3e4bcb367c73290aba623fb768c",
+  "transform": "rotated 90 degrees to portrait from the CAA landscape sheet; the georeferenced SID overlay corners were fitted against this orientation",
+  "verified": "2026-09-14"
+ },
+ "docs/byop/LLBG_SID_08.pdf": {
+  "title": "Standart Instrument Departure Chart (SID) - ICAO RWY 08 IVONA 1B, RAPIV 1B, SIGGA 1B, TALMI 1B",
+  "source": "d10fc96e5246e25b343fb9c5b1a51d8b8969ff65086a92c097403d58592f1d2feeb2700e7798ecce43ad3d970094ec3b131135a75b73e7c0cf12cfc867ffde34",
+  "transform": "rotated 90 degrees to portrait from the CAA landscape sheet; the georeferenced SID overlay corners were fitted against this orientation",
+  "verified": "2026-09-14"
  }
 }

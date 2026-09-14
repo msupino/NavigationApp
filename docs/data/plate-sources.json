@@ -36,6 +36,14 @@
   "title": "ערד - נספח ב_ תרשים ההקפה",
   "modified": "2021-08-21"
  },
+ "docs/byop/LLBG_APPROACH_ILS 08.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO ILS RWY 08",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLBG_APPROACH_ILS 12.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO ILS RWY 12",
+  "modified": "2025-05-15"
+ },
  "docs/byop/LLBG_APPROACH_ILS 21.pdf": {
   "title": "Instrument approach chart (IAC) - ICAO ILS RWY 21",
   "modified": "2024-10-31"
@@ -43,6 +51,10 @@
  "docs/byop/LLBG_APPROACH_ILS 26.pdf": {
   "title": "Instrument approach chart (IAC) - ICAO ILS RWY 26",
   "modified": "2023-11-02"
+ },
+ "docs/byop/LLBG_APPROACH_ILS 30.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO ILS RWY 30",
+  "modified": "2026-08-06"
  },
  "docs/byop/LLBG_APPROACH_LOC 12.pdf": {
   "title": "Instrument approach chart (IAC) - ICAO LOC RWY 12",
@@ -60,9 +72,29 @@
   "title": "Instrument approach chart (IAC) - ICAO RNP RWY 08",
   "modified": "2024-08-12"
  },
+ "docs/byop/LLBG_APPROACH_RNP 12.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO RNP RWY 12",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLBG_APPROACH_RNP 26.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO RNP RWY 26",
+  "modified": "2024-05-16"
+ },
  "docs/byop/LLBG_APPROACH_RNP X 21.pdf": {
   "title": "Instrument approach chart (IAC) - ICAO RNP X RWY 21",
   "modified": "2022-08-01"
+ },
+ "docs/byop/LLBG_APPROACH_RNP X 30.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO RNP X RWY 30",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLBG_APPROACH_RNP Y 21.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO RNP Y RWY 21",
+  "modified": "2026-08-06"
+ },
+ "docs/byop/LLBG_APPROACH_RNP Z 30.pdf": {
+  "title": "Instrument approach chart (IAC) - ICAO RNP Z RWY 30",
+  "modified": "2025-05-15"
  },
  "docs/byop/LLBG_ATC_SMAC.pdf": {
   "title": "ATC Surveillance Minimum Altitude Chart - ICAO",
@@ -88,9 +120,33 @@
   "title": "Aircraft parking-docking chart – ICAO Terminal 1",
   "modified": "2025-08-13"
  },
+ "docs/byop/LLBG_SID_12-26-30 (Orlev).pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 ORLEV 1C, 1E, 1F",
+  "modified": "2024-10-31",
+  "stale": true
+ },
  "docs/byop/LLBG_SID_12-26-30 (Pidet+Ripud).pdf": {
   "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 PIDET 2C, 1E, 1F, RIPUD 1E, 1F",
   "modified": "2024-10-31"
+ },
+ "docs/byop/LLBG_SID_12.pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 12 SALAM 5C, TOMAL 5C, MERVA 3C, SUVAS 2C, DAFNA 2C.pdf",
+  "modified": "2025-05-15"
+ },
+ "docs/byop/LLBG_SID_26.pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 26 SALAM 4E, TOMAL 4E, MERVA 2E, SUVAS 1E, DAFNA 1E",
+  "modified": "2024-10-31",
+  "stale": true
+ },
+ "docs/byop/LLBG_SID_30.pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 30 SALAM 4F, TOMAL 4F, SUVAS 1F, DAFNA 1F, MERVA 2F",
+  "modified": "2024-10-31",
+  "stale": true
+ },
+ "docs/byop/LLBG_SID_SUVAS1G.pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 03, 08, 12, 21 NAT 1A,1B,1D, SUVAS 1G",
+  "modified": "2024-10-31",
+  "stale": true
  },
  "docs/byop/LLBG_STAR_08-1_V1_en.pdf": {
   "title": "Standard Arrival Chart Instrument (STAR) - ICAO RWY 08 PURLA 1A",

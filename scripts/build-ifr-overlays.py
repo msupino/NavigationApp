@@ -74,6 +74,12 @@ def tidy(code, title):
     return c
 
 def main(argv):
+    # ORDER MATTERS: georef-plate.py fits each sheet against docs/byop/<plate>-p01.png -- the
+    # viewer's own page image, not a fresh render of the PDF. So a refreshed plate must have
+    # its page images re-rendered (scripts/render-plates.sh) BEFORE this runs, or the corners
+    # are fitted to the edition that has just been replaced. That mistake put eight LLBG
+    # approach overlays out by up to 1.3 arcmin, which is about 2 km, and nothing in the
+    # output looks wrong when it happens.
     only = set(a.upper() for a in argv)
     placed, skipped = {}, []
     for icao, plate, title in sheets():
