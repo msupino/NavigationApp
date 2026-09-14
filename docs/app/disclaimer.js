@@ -60,10 +60,10 @@
     select.addEventListener('change', () => {
       const code = select.value;
       if (code === current) return;
-      // This is the app's language, not the notice's. index.html persists whatever ?lang
-      // says on the way back up, but the choice is made HERE -- writing it here says so, and
-      // means a navigation that never completes has still been remembered.
-      try { localStorage.setItem('navaid.lang', code); } catch (e) { /* private mode */ }
+      // This is the app's language, not the notice's: ?lang carries the choice, index.html
+      // persists it on the way back up, and the map, the menu and every panel come back in
+      // it. Writing the key here as well would put a second author on a setting whose home
+      // is index.html -- and the allowlist test is right to ask who owns it.
       try {
         // Everything else about the address is kept: a follower reading this arrived on
         // ?follow=<id>#k=<key>, and a language switch that dropped either would take the
