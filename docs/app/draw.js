@@ -1520,7 +1520,8 @@ async function loadNotamBorders() {
   return notamBorders;
 }
 // Build a closed buffer polygon by offsetting a border arc inland (toward the
-// Israel interior) by km. Mirrors the offset fpl.co.il applies server-side.
+// Israel interior) by km. A border NOTAM is published as a line, and what it restricts is
+// the strip beside it, so the polygon is ours to construct from the published arc.
 const NOTAM_BORDER_INTERIOR = [31.4, 34.9];     // reference point inside Israel
 const NOTAM_BORDER_SIMPLIFY_KM = 1.5;           // follow the border closely; small enough that the inland offset rarely self-folds
 function notamKmBetween(p, q) {

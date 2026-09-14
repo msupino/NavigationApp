@@ -2385,7 +2385,7 @@ function buildIcaoFpl(profile, opts) {
     '-' + (destIcao || 'ZZZZ') + fplHhmm(eetH),
     '-' + f18.join(' '),
     // No space before the paren: that is how the AIP's own sample closes
-    // (א'-11 נספח א'). fpl.co.il emits "P/002 )"; the AIP is the authority.
+    // (א'-11 נספח א'), and the AIP is the authority on the form's own shape.
     '-E/' + endurance + ' P/' + fplPad(persons || 1, 3) + ')',
   ].join('\n');
   return {
