@@ -31,6 +31,44 @@
     return S2[key] || fallback;
   }
 
+  // HE / EN, in those words in both languages: a switch whose labels are themselves
+  // translated is one a reader cannot find when the page is in the language they do not
+  // read. Switching is a navigation, exactly as the menu's own language control is -- and
+  // the notice opens again on the other side, which is the point.
+  function languageSwitch() {
+    const wrap = document.createElement('div');
+    wrap.className = 'disclaimer-langs';
+    const current = lang();
+    for (const code of ['he', 'en']) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'disclaimer-lang';
+      b.lang = code;
+      b.textContent = code.toUpperCase();
+      b.setAttribute('aria-label', code === 'he' ? 'עברית' : 'English');
+      if (code === current) b.setAttribute('aria-current', 'true');
+      b.addEventListener('click', () => {
+        if (code === current) return;
+        try {
+          // Everything else about the address is kept: a follower reading this arrived on
+          // ?follow=<id>#k=<key>, and a language switch that dropped either would take the
+          // aeroplane away from them to answer a question about words.
+          const url = new URL(location.href);
+          url.searchParams.set('lang', code);
+          location.href = url.toString();
+        } catch (e) { location.search = '?lang=' + code; }
+      });
+      wrap.appendChild(b);
+    }
+    return wrap;
+  }
+
+  // Which language the notice is being read in, resolved the way index.html resolved it
+  // before any of this loaded: it stamps the answer on <html>.
+  function lang() {
+    return (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
+  }
+
   // Built by hand rather than through createDraggableModal: this one is not draggable, has
   // no close X, and does not answer to Escape or a click on the backdrop. A notice with a
   // way out that is not "I understand" is a notice that can be dismissed without being read.
@@ -44,10 +82,18 @@
     box.setAttribute('role', 'alertdialog');
     box.setAttribute('aria-modal', 'true');
 
+    // The notice and the language switch together. A pilot who reads the other language
+    // better should not have to dismiss a safety notice in order to find the control that
+    // changes it -- especially as this is the first thing the app puts on screen, so the
+    // menu's own switch is behind it.
+    const head = document.createElement('div');
+    head.className = 'disclaimer-head';
     const title = document.createElement('div');
     title.className = 'modal-title';
     title.textContent = textOf('disclaimerTitle', 'Before you fly');
-    box.appendChild(title);
+    head.appendChild(title);
+    head.appendChild(languageSwitch());
+    box.appendChild(head);
 
     const lead = document.createElement('p');
     lead.className = 'disclaimer-lead';
