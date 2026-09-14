@@ -13,8 +13,14 @@
       var p = new URLSearchParams(location.search).get('lang');
       var stored = '';
       try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
-      var lang = (p === 'en' || p === 'he') ? p : (stored === 'he' ? 'he' : 'en');
-      try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
+      // Hebrew by default, like the app: these pages used to fall back to English and then
+      // WRITE that fallback, so a first-time visitor who opened Terms before the planner had
+      // their language chosen for them by a page they were only reading. A page persists a
+      // CHOICE -- the ?lang the language switch links carry -- never its own guess.
+      var lang = (p === 'en' || p === 'he') ? p : (stored === 'en' ? 'en' : 'he');
+      if (p === 'en' || p === 'he') {
+        try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
+      }
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
       document.title = lang === 'he' ? 'NavAid — מדיניות פרטיות' : 'NavAid — Privacy Policy';
