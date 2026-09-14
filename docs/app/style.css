@@ -7991,28 +7991,23 @@ body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom,
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
 }
 .disclaimer-head .modal-title { margin: 0; }
-.disclaimer-langs { display: flex; gap: 4px; flex: none; }
-/* HE / EN in those words in both languages -- a switch whose own labels are translated is
-   one a reader cannot find when the page is in the language they do not read. */
-.disclaimer-lang {
-  font: 700 11px/1 system-ui, sans-serif;
+.disclaimer-langs { display: flex; flex: none; }
+/* Each language named in itself, so the list is usable from either side of it. */
+.disclaimer-lang-select {
+  font: 700 12px/1.2 system-ui, sans-serif;
   letter-spacing: 0.04em;
   padding: 5px 8px;
-  min-height: 30px;
-  min-width: 34px;
+  min-height: 32px;
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.35);
   background: transparent;
   color: inherit;
   cursor: pointer;
 }
-.disclaimer-lang[aria-current="true"] {
-  background: #ffd966;
-  border-color: #ffd966;
-  color: #231F20;
-  cursor: default;
-}
-body.theme-light .disclaimer-lang { border-color: rgba(31, 37, 44, 0.35); }
+/* A dark dropdown draws its OPTIONS from the page, not from this rule, and a transparent
+   background leaves them unreadable on the platforms that paint the list themselves. */
+.disclaimer-lang-select option { color: #1f252c; background: #fff; }
+body.theme-light .disclaimer-lang-select { border-color: rgba(31, 37, 44, 0.35); }
 .disclaimer-lead { margin: 6px 0 10px; font-size: 14px; font-weight: 600; }
 .disclaimer-points { margin: 0 0 10px; padding-inline-start: 20px; font-size: 13px; }
 .disclaimer-points li { margin: 4px 0; }
