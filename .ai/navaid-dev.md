@@ -1348,11 +1348,14 @@ The pending bundle is applied through the plugin's `reload()` — the pending-aw
 also clears the pointer — never `set()` + `reload()`, which leaves the pointer behind and
 reinstalls the same bundle on every launch.
 
-The first-run safety notice waits for `#boot-loading` to be removed, not for the `load`
-event: the boot screen is fixed, opaque and z-index 6000 -- above the notice -- and comes
-down only when the first chart tiles paint, so showing on `load` put the notice behind it,
-invisible and clickable through it once the splash dropped pointer events. It stores
-`navaid.disclaimerAck` as a device-local wording-version
-acknowledgement; it is excluded from settings sync. The shared test fixture acknowledges
-that version after storage-reset init scripts run; first-run tests opt out with
-`test.use({ acknowledgeDisclaimer: false })`. `disclaimer.spec.js` verifies the fixture and notice agree.
+The safety notice opens on EVERY launch, the way airmap-israel does: a pilot starting the
+app is about to fly, and "you agreed to this in March" is not what a notice about not
+navigating by it is for. Nothing is stored -- no acknowledgement, no wording version, no
+per-language bookkeeping -- so a reload is a launch: a refresh, a language switch
+(`lang-select` navigates), an APK picking up a new build, an embedded iOS bundle installed at
+startup. It waits for `#boot-loading` to be removed rather than for the `load` event: the
+boot screen is fixed, opaque and z-index 6000 -- above the notice -- and comes down only when
+the first chart tiles paint, so showing on `load` put the notice behind it, invisible and
+clickable through it once the splash dropped pointer events. The suite switches the notice
+off with `window.__navaidNoDisclaimer` (set by the shared fixture); specs that are about it
+opt back in with `test.use({ acknowledgeDisclaimer: false })`.

@@ -138,11 +138,11 @@ exports.test = base.test.extend({
       } catch (e) {}
     });
 
-    // Seed after init scripts that clear storage, but before the notice's load handler.
+    // The notice opens on EVERY launch now, so there is nothing to pre-acknowledge: it is
+    // switched off for the suite instead. Specs that are about the notice opt back in with
+    // test.use({ acknowledgeDisclaimer: false }).
     if (acknowledgeDisclaimer) await context.addInitScript(() => {
-      document.addEventListener('DOMContentLoaded', () => {
-        try { localStorage.setItem('navaid.disclaimerAck', '2026-09-13'); } catch (e) {}
-      }, { once: true });
+      window.__navaidNoDisclaimer = true;
     });
 
     // 2b. Page-level: make map.setView() land instantly under test. Specs read

@@ -9,23 +9,22 @@
 // Apple's reviewers look for exactly this on an aviation app, and it is the right thing on
 // the web too, so it lives in the app rather than in the native shell.
 //
-// Once, not every launch: acknowledging it stores the version acknowledged. Bumping
-// DISCLAIMER_VERSION is how a materially changed notice is put in front of everyone again,
-// and it is the only thing that should ever do so.
+// EVERY launch, not once: the same way airmap-israel opens. A pilot starting the app is
+// about to fly, and "you agreed to this in March" is not what a notice about not navigating
+// by it is for -- it is read at the top of the session, like a briefing, or it is decoration.
+// So nothing is remembered: no stored acknowledgement, no wording version, no per-language
+// bookkeeping. Opening the app is the trigger, and pressing the button is the whole answer.
+//
+// It follows that a RELOAD shows it again, because a reload is a launch: a web refresh, a
+// language switch (lang-select navigates), an APK picking up a new build, an embedded iOS
+// bundle installed at startup. That is the intended reading of "every launch" and not an
+// accident of one.
 (function () {
-  const KEY = 'navaid.disclaimerAck';
-  // The date the wording last changed materially. Not the app version: this asks again only
-  // when what is being acknowledged is different.
-  const DISCLAIMER_VERSION = '2026-09-13';
-
   const featureOn = () => typeof tune !== 'function' || tune('featureDisclaimer') !== false;
-
-  function accepted() {
-    try { return localStorage.getItem(KEY) === DISCLAIMER_VERSION; } catch (e) { return false; }
-  }
-  function remember() {
-    try { localStorage.setItem(KEY, DISCLAIMER_VERSION); } catch (e) { /* private mode */ }
-  }
+  // The suite would otherwise meet this modal in every one of its thousands of specs, and a
+  // notice shown on every launch cannot be acknowledged away for them. tests/_setup.js sets
+  // this; nothing in the app ever does.
+  const suppressed = () => window.__navaidNoDisclaimer === true;
 
   function textOf(key, fallback) {
     const S2 = window.S || {};
@@ -98,7 +97,6 @@
     ok.className = 'disclaimer-accept';
     ok.textContent = textOf('disclaimerAccept', 'I understand');
     ok.addEventListener('click', () => {
-      remember();
       back.remove();
       document.body.classList.remove('disclaimer-open');
       if (typeof onAccept === 'function') onAccept();
@@ -122,14 +120,12 @@
   }
 
   function maybeShowDisclaimer() {
-    if (!featureOn() || accepted()) return null;
+    if (!featureOn() || suppressed()) return null;
     return showDisclaimer();
   }
 
   window.NavAid = window.NavAid || {};
   NavAid.showDisclaimer = showDisclaimer;
-  NavAid.disclaimerAccepted = accepted;
-  NavAid.disclaimerVersion = DISCLAIMER_VERSION;
   NavAid.maybeShowDisclaimer = maybeShowDisclaimer;
 
   // AFTER the boot screen, and `load` is not that moment. #boot-loading is fixed, opaque and
