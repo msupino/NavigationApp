@@ -111,3 +111,45 @@ test('the shared plan is printed, compressed or not', () => {
   expect(pycall('module.fmt_route({"from": "A", "to": "B", "zf": "gzip", "gz": "not-gzip"})'))
     .toMatch(/could not be read/);
 });
+
+// Anyone holding the link can encrypt -- they must, or they could not read it -- so the AES
+// key alone cannot say WHO published. The signature is what attributes a packet to the
+// aeroplane, and a log that printed somebody else's position as the pilot's would be worse
+// than no log at all. Checked against the real signer, in the other language.
+test('the tail attributes a packet to the aeroplane, or drops it', () => {
+  const path = require('path');
+  const sim = path.join(__dirname, '..', 'scripts', 'follow-me-simulator.py');
+  const code = [
+    'import importlib.util, json, os, sys',
+    'def load(name, p):',
+    '    spec = importlib.util.spec_from_file_location(name, p)',
+    '    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m); return m',
+    'tail = load("tail", sys.argv[1])',
+    'sim = load("sim", sys.argv[2])',
+    'priv, pub = sim.signing_keys()',
+    'other, other_pub = sim.signing_keys()',
+    'key = os.urandom(32)',
+    'fix = {"reg": "TEST", "lat": 32.0, "lng": 34.9, "t": 1, "seq": 2}',
+    'ours = tail.unseal(key, sim.seal(key, fix, priv))',
+    'theirs = tail.unseal(key, sim.seal(key, fix, other))',
+    'plain = tail.unseal(key, sim.seal(key, fix))',
+    'raw = tail.b64url_decode(pub)',
+    'print(json.dumps({',
+    '  "ours": tail.check_signature(raw, ours),',
+    '  "signedByOther": tail.check_signature(raw, theirs),',
+    '  "unsigned": tail.check_signature(raw, plain),',
+    '  "linkKey": tail.verify_key("https://x/?follow=a#k=zz&v=" + pub) == pub,',
+    '  "noKeyInOldLink": tail.verify_key("https://x/?follow=a#k=zz") == "",',
+    '}))',
+  ].join('\n');
+  const run = spawnSync('python3', ['-c', code, script, sim], { encoding: 'utf8' });
+  if (run.status !== 0) throw new Error(run.stderr || 'signature check failed to run');
+  const got = JSON.parse(run.stdout);
+  expect(got.ours, 'the aeroplane\'s own packet was refused').toBe(true);
+  // The two cases that matter: somebody else's signature, and no signature at all -- which
+  // is exactly what a follower with the AES key can produce.
+  expect(got.signedByOther).toBe(false);
+  expect(got.unsigned).toBe(false);
+  expect(got.linkKey).toBe(true);
+  expect(got.noKeyInOldLink).toBe(true);
+});

@@ -214,20 +214,99 @@
     return new TextDecoder().decode(out);
   }
 
-  async function seal(key, obj) {
+  // --- who may WRITE to the topic -------------------------------------------------------
+  // The AES key travels in the link so that everyone holding the link can READ. It follows
+  // that everyone holding the link can also write -- a symmetric key is both halves -- so
+  // until now a follower could publish a position of their own choosing under the pilot's
+  // aeroplane, and nothing on the receiving side could tell.
+  //
+  // Asymmetric ENCRYPTION does not fix that, which is the trap: the viewer must be able to
+  // decrypt, so the link must carry the decryption key, and from any standard private key
+  // the matching encryption key falls out. Confidentiality and unforgeability are different
+  // properties, and the one wanted here is the second. So the packet is SIGNED: the private
+  // key never leaves the aeroplane's device, the link carries only the public half, and a
+  // viewer verifies what it decrypts.
+  //
+  //   pilot   AES key + private signing key   publishes, and nobody else can
+  //   viewer  AES key + public verify key     reads and verifies, never forges
+  //   relay   neither                         ciphertext
+  //
+  // ECDSA P-256 rather than Ed25519: every WebView this app runs in has it today, including
+  // the older iPads, and the cost is 88 base64 characters on a packet published every couple
+  // of seconds.
+  //
+  // The signature rides INSIDE the sealed object, as one more field. Appending it to the
+  // sealed bytes was the obvious shape and is the wrong one: AES-GCM decrypts everything
+  // after the IV, so trailing bytes break the tag and every viewer that predates this would
+  // stop reading the link it already has. A field is ignored by an old viewer and checked by
+  // a new one, which is what "the link keeps working" has to mean.
+  const SIGN_ALGO = { name: 'ECDSA', namedCurve: 'P-256' };
+  const SIGN_PARAMS = { name: 'ECDSA', hash: 'SHA-256' };
+
+  const canSign = () => !!(crypto && crypto.subtle && typeof crypto.subtle.sign === 'function');
+
+  async function newSigningKeys() {
+    const pair = await crypto.subtle.generateKey(SIGN_ALGO, true, ['sign', 'verify']);
+    return {
+      // The private half is stored as JWK beside the session, which is device-local and
+      // excluded from settings sync -- it is the aeroplane's write capability, not a setting.
+      privateJwk: await crypto.subtle.exportKey('jwk', pair.privateKey),
+      publicB64: b64url.from(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey))),
+    };
+  }
+  async function importSigningKey(jwk) {
+    try {
+      return await crypto.subtle.importKey('jwk', jwk, SIGN_ALGO, false, ['sign']);
+    } catch (e) { return null; }
+  }
+  async function importVerifyKey(b64) {
+    try {
+      return await crypto.subtle.importKey('raw', b64url.to(b64), SIGN_ALGO, false, ['verify']);
+    } catch (e) { return null; }
+  }
+
+  // A link that carries a public key gets its packets verified, always. A link that does not
+  // is from before this existed: it is read the way it always was, and the gist can refuse
+  // those outright once enough of them have aged out.
+  const requireSignedLinks = () => typeof tune === 'function'
+    && tune('followMeRequireSignedLinks') === true;
+
+  // What is signed: the object as it is written on the wire, WITHOUT its own signature. The
+  // field is added last, so a reader that removes it and re-serialises gets back exactly the
+  // bytes that were signed -- JSON.stringify walks keys in insertion order, and the spread
+  // below preserves it.
+  const signedBytes = (obj) => new TextEncoder().encode(JSON.stringify(obj));
+
+  async function seal(key, obj, signKey) {
+    let body = obj;
+    if (signKey) {
+      const sig = new Uint8Array(await crypto.subtle.sign(SIGN_PARAMS, signKey, signedBytes(obj)));
+      body = Object.assign({}, obj, { sig: b64url.from(sig) });
+    }
     const iv = randomBytes(12);
-    const data = new TextEncoder().encode(JSON.stringify(obj));
+    const data = new TextEncoder().encode(JSON.stringify(body));
     const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data));
     const out = new Uint8Array(iv.length + ct.length);
     out.set(iv, 0); out.set(ct, iv.length);
     return out;
   }
-  async function open(key, bytes) {
+  async function open(key, bytes, verifyKey) {
     if (!bytes || bytes.length < 13) return null;
     try {
       const iv = bytes.subarray(0, 12);
       const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, bytes.subarray(12));
-      return JSON.parse(new TextDecoder().decode(pt));
+      const msg = JSON.parse(new TextDecoder().decode(pt));
+      if (verifyKey) {
+        // A link that verifies accepts nothing unsigned: an unsigned packet on a signed
+        // link is exactly what a follower with the AES key can produce.
+        if (!msg || typeof msg.sig !== 'string') return null;
+        const sig = b64url.to(msg.sig);
+        const rest = Object.assign({}, msg);
+        delete rest.sig;
+        const ok = await crypto.subtle.verify(SIGN_PARAMS, verifyKey, sig, signedBytes(rest));
+        if (!ok) return null;
+      }
+      return msg;
     } catch (e) {
       // Wrong key, or something that is not ours on the same topic. Silence is right: the
       // viewer's staleness readout already says nothing is arriving.
@@ -360,6 +439,9 @@
     return {
       id: s.id, k: s.rawKeyB64, reg: s.reg, at: s.lastActiveAt,
       seq: s.seq, on: on === true, pendingStop: pendingStop === true,
+      // The write capability for this topic. It stays here -- device-local, never synced,
+      // never in the link -- and a new link mints a new one.
+      sk: s.signJwk || null, v: s.verifyB64 || '',
     };
   }
 
@@ -479,19 +561,28 @@
     const id = raw.id;
     const rawKey = b64url.to(raw.k);
     const key = await importKey(rawKey);
+    // Resumed from storage, or minted by followMeStart. A session from before signing exists
+    // carries neither, and publishes unsigned exactly as it did -- the links people are
+    // holding for it have no public key to verify against.
+    const signKey = raw.sk ? await importSigningKey(raw.sk) : null;
     const client = mqttConnect(brokerUrl(), {
       clientId: 'navaid-pub-' + id.slice(0, 8),
       will: { topic: topicFor(id), payload: new Uint8Array(0), retain: true },
     });
     const s = {
       id, key, client, reg, rawKeyB64: raw.k, lastActiveAt: Number(raw.at) || Date.now(),
+      signKey, signJwk: raw.sk || null, verifyB64: raw.v || '',
       seq: Number.isSafeInteger(raw.seq) ? raw.seq : 0,
       lastSentAt: 0, status: pendingStop ? 'stopping' : 'connecting', everConnected: false,
       resolveStop: null, stopPromise: null, clearPacketId: null, clearAckTimer: 0,
       stopDeadlineTimer: 0, forcedStop: false, lastRouteText: '',
       revocationRetryTimer: 0,
       resolveConnected: null, connectedPromise: null,
-      link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k,
+      // The public half rides in the fragment beside the key, so it reaches a viewer without
+      // ever reaching the relay -- and a viewer verifies against the key from ITS OWN link,
+      // never one offered inside a packet, which a forger would simply supply.
+      link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k
+        + (raw.v ? '&v=' + raw.v : ''),
     };
     if (pendingStop) {
       s.stopPromise = new Promise(resolve => { s.resolveStop = resolve; });
@@ -574,8 +665,19 @@
       const reuse = !!prev && (!perName || prev.reg === reg);
       const id = reuse ? prev.id : b64url.from(randomBytes(16));
       const rawKeyB64 = reuse ? prev.k : b64url.from(randomBytes(32));
+      // The signing pair belongs to the link: reusing the link keeps it, so the followers
+      // already holding that link keep verifying, and `New link` mints both together.
+      let sk = reuse ? (prev.sk || null) : null;
+      let v = reuse ? (prev.v || '') : '';
+      if (!sk && canSign()) {
+        try {
+          const pair = await newSigningKeys();
+          sk = pair.privateJwk;
+          v = pair.publicB64;
+        } catch (e) { sk = null; v = ''; }   // no signing here: publish as before
+      }
       const s = await openPublisher({
-        id, k: rawKeyB64, at: Date.now(), seq: reuse ? prev.seq : 0,
+        id, k: rawKeyB64, at: Date.now(), seq: reuse ? prev.seq : 0, sk, v,
       }, reg, false);
       // `on` is the consent a restart reads back. Persist it inside the same lock as Stop.
       if (!saveSession(sessionRecord(s, true, false))) {
@@ -721,7 +823,7 @@
     const wire = envelope.gz ? envelope.gz.length : text.length;
     if (wire > maxKb * 1024) return false;
     s.lastRouteText = text;
-    const payload = await seal(s.key, envelope);
+    const payload = await seal(s.key, envelope, s.signKey);
     if (session !== s || s.status === 'stopping' || !s.client.ready) return false;
     try { s.client.publish(routeTopicFor(s.id), payload, { retain: true, qos: 0 }); }
     catch (e) { return false; }
@@ -784,7 +886,7 @@
         kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
         t: now,
         seq: s.seq,
-      });
+      }, s.signKey);
       // Avoid waiting behind a Stop that deliberately holds the lifecycle lock through
       // PUBACK. Shared storage provides the cross-tab revocation signal synchronously here.
       if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
@@ -821,13 +923,13 @@
   // route of a flight that had already ended. So the route waits here until a live position
   // has arrived, and is thrown away with the watch.
   let routePending = null;
-  async function onRouteMessage(key, payload) {
+  async function onRouteMessage(key, payload, verifyKey) {
     if (!payload || !payload.length) {            // cleared: the pilot stopped sharing
       routePending = null;
       return;
     }
     if (!routeSharingOn()) return;
-    const msg = await open(key, payload);
+    const msg = await open(key, payload, verifyKey);
     if (!msg) return;
     let route = msg.route || null;
     if (!route && msg.gz) {
@@ -929,10 +1031,15 @@
     }
   }
 
-  async function followMeWatch(id, rawKeyB64, opts) {
+  async function followMeWatch(id, rawKeyB64, opts, verifyB64) {
     if (watch) followMeUnwatch();
     const key = await importKey(b64url.to(rawKeyB64));
-    const state = { id, fix: null, at: null, connected: false, lastOrder: -1 };
+    // A link that carries a public key gets every packet verified against it -- a follower
+    // can read this aeroplane, and cannot publish one. A link without it is from before
+    // signing existed and is read the way it always was, unless the gist says otherwise.
+    const verifyKey = verifyB64 ? await importVerifyKey(verifyB64) : null;
+    const state = { id, fix: null, at: null, connected: false, lastOrder: -1,
+                    verified: !!verifyKey };
     const client = mqttConnect(brokerUrl(), Object.assign(
       { clientId: 'navaid-sub-' + id.slice(0, 8) }, opts || {}));
     client.onOpen = () => {
@@ -942,10 +1049,10 @@
     };
     client.onClose = () => { state.connected = false; };
     client.onMessage = async (topic, payload) => {
-      if (topic === routeTopicFor(id)) { await onRouteMessage(key, payload); return; }
+      if (topic === routeTopicFor(id)) { await onRouteMessage(key, payload, verifyKey); return; }
       if (topic !== topicFor(id)) return;
       if (!payload || !payload.length) return;   // the cleared retained value: sharing stopped
-      const msg = await open(key, payload);
+      const msg = await open(key, payload, verifyKey);
       if (!msg) return;                       // not ours, or the wrong key
       const now = Date.now();
       // `seq` was added after the first Follow Me release. During a rolling cache update,
@@ -1203,8 +1310,11 @@
   function followMeLinkParams(search, hash) {
     try {
       const id = new URLSearchParams(search || location.search).get('follow');
-      const m = /(?:^#?|&)k=([A-Za-z0-9\-_]+)/.exec(hash || location.hash || '');
-      return (id && m) ? { id, key: m[1] } : null;
+      const raw = hash || location.hash || '';
+      const m = /(?:^#?|&)k=([A-Za-z0-9\-_]+)/.exec(raw);
+      // The public half the packets are verified against, when the link carries one.
+      const v = /(?:^#?|&)v=([A-Za-z0-9\-_]+)/.exec(raw);
+      return (id && m) ? { id, key: m[1], verify: v ? v[1] : '' } : null;
     } catch (e) { return null; }
   }
 
@@ -1217,7 +1327,8 @@
     if (session && !shareWhileViewing()) {
       try { await followMeStop(); } catch (e) { /* stop is best-effort here */ }
     }
-    const state = await followMeWatch(p.id, p.key, opts);
+    if (!p.verify && requireSignedLinks()) return null;
+    const state = await followMeWatch(p.id, p.key, opts, p.verify);
     viewer = { state, marker: null, timer: 0, rotateHandler: null };
     // Following an aircraft is not route onboarding. Drop any intro that was painted before
     // this async viewer started, and begin with route edits locked just like a live own-ship.
