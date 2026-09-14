@@ -5,6 +5,10 @@
   "description": "Native iOS and Android shell for NavAid, built with Capacitor around the static docs app.",
   "scripts": {
     "validate": "node scripts/validate-capacitor.mjs",
+    "bundle": "node scripts/bundle-web.mjs",
+    "bundle:check": "node scripts/bundle-web.mjs --check",
+    "embed": "node scripts/bundle-web.mjs --embed && npm run validate && cap sync ios",
+    "remote": "node scripts/bundle-web.mjs --remote && npm run sync",
     "copy": "npm run validate && cap copy",
     "sync": "npm run validate && cap sync",
     "open:android": "cap open android",

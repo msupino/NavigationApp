@@ -72,7 +72,8 @@ function mirrorUrlFor(url) {
 }
 
 exports.test = base.test.extend({
-  page: async ({ page }, use) => {
+  acknowledgeDisclaimer: [true, { option: true }],
+  page: async ({ page, context, acknowledgeDisclaimer }, use) => {
     // 1. Network-level: every Google Analytics / GTM request aborts before it
     //    leaves the test harness. Catches both the gtag/js loader and the
     //    /g/collect beacons that the in-page script would have fired.
@@ -135,6 +136,13 @@ exports.test = base.test.extend({
         window.dataLayer = { push: () => {} };
         window.gtag = function () { /* no-op for tests */ };
       } catch (e) {}
+    });
+
+    // Seed after init scripts that clear storage, but before the notice's load handler.
+    if (acknowledgeDisclaimer) await context.addInitScript(() => {
+      document.addEventListener('DOMContentLoaded', () => {
+        try { localStorage.setItem('navaid.disclaimerAck', '2026-09-13'); } catch (e) {}
+      }, { once: true });
     });
 
     // 2b. Page-level: make map.setView() land instantly under test. Specs read

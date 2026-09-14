@@ -21,21 +21,31 @@ const pkg = readJson(packagePath);
 
 if (config.appId !== 'org.supino.navaid') fail('unexpected appId');
 if (config.appName !== 'NavAid') fail('unexpected appName');
-// Remote-URL shell: the WebView loads production, so the installed app
-// self-updates with every web deploy. webDir is only a packaged stub.
-if (config.webDir !== 'shell') fail('webDir must point at the mobile/shell stub');
-if (config.server?.url !== 'https://navaid.supino.org') {
-  fail('native shell must load the production site (self-updating app)');
+// App Store and its TestFlight candidate use the embedded build.
+const embedded = !config.server?.url;
+if (embedded) {
+  if (config.webDir !== 'www') fail('embedded build must serve mobile/www');
+  if (!fs.existsSync(path.join(mobileRoot, 'www', 'index.html'))) {
+    fail('embedded build has no mobile/www: run `node scripts/bundle-web.mjs --embed`');
+  }
+  if (config.ios?.limitsNavigationsToAppBoundDomains !== true) {
+    fail('embedded build must preserve app-bound bridge injection');
+  }
+} else {
+  if (config.webDir !== 'shell') fail('webDir must point at the mobile/shell stub');
+  if (config.server.url !== 'https://navaid.supino.org') {
+    fail('native shell must load the production site (self-updating app)');
+  }
+  // Info.plist declares WKAppBoundDomains so the remote shell can use service workers.
+  // WebKit then permits Capacitor's JavaScript bridge on that domain only when this
+  // matching WKWebView option is enabled. Without it the page looks like Safari and
+  // native plugins (including the iOS local-HTTP simulator transport) disappear.
+  if (config.ios?.limitsNavigationsToAppBoundDomains !== true) {
+    fail('iOS remote shell must enable app-bound navigation for the Capacitor bridge');
+  }
 }
 if (config.server?.androidScheme !== 'https') {
   fail('Android must use an https app origin for secure WebView APIs');
-}
-// Info.plist declares WKAppBoundDomains so the remote shell can use service workers.
-// WebKit then permits Capacitor's JavaScript bridge on that domain only when this
-// matching WKWebView option is enabled. Without it the page looks like Safari and
-// native plugins (including the iOS local-HTTP simulator transport) disappear.
-if (config.ios?.limitsNavigationsToAppBoundDomains !== true) {
-  fail('iOS remote shell must enable app-bound navigation for the Capacitor bridge');
 }
 
 // The background-geolocation package supplies Android's foreground service. Its current
@@ -54,8 +64,11 @@ if (JSON.stringify(config.ios?.includePlugins) !== JSON.stringify(expectedIosPlu
 }
 
 const webDir = path.resolve(mobileRoot, config.webDir);
-if (webDir !== path.join(mobileRoot, 'shell')) fail('webDir resolved outside mobile/shell');
-if (!fs.existsSync(path.join(webDir, 'index.html'))) fail('missing mobile/shell/index.html');
+const expectedWebDir = path.join(mobileRoot, embedded ? 'www' : 'shell');
+if (webDir !== expectedWebDir) fail('webDir resolved outside mobile/' + (embedded ? 'www' : 'shell'));
+if (!fs.existsSync(path.join(webDir, 'index.html'))) {
+  fail('missing ' + path.relative(repoRoot, path.join(webDir, 'index.html')));
+}
 // The real app still ships from docs/ — sanity-check it exists for the web deploy.
 for (const file of ['index.html', 'app/core.js', 'app/ui.js', 'manifest.json']) {
   if (!fs.existsSync(path.join(repoRoot, 'docs', file))) fail(`missing docs/${file}`);
@@ -159,17 +172,21 @@ if (fs.existsSync(iosInfo)) {
   // anywhere outside WKAppBoundDomains. The APK/IPA loads the whole app from server.url, so
   // a mismatch here is not a degraded feature -- it is a white screen. Everything else in
   // this file is checked; this was the one whose drift breaks the app outright.
-  const host = new URL(config.server.url).host;
-  const bound = text.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/);
-  if (!bound) {
-    fail('iOS WKAppBoundDomains missing while limitsNavigationsToAppBoundDomains is true');
-  } else {
-    // Compare the parsed entries rather than building a regex out of the host: escaping only
-    // dots leaves backslashes and every other metacharacter unescaped (CodeQL
-    // js/incomplete-sanitization), and an exact string match is what is wanted anyway.
-    const domains = [...bound[1].matchAll(/<string>([^<]*)<\/string>/g)].map(m => m[1].trim());
-    if (!domains.includes(host)) {
-      fail('iOS WKAppBoundDomains does not list server.url host ' + host);
+  //
+  // Both origins retain app-bound bridge injection.
+  {
+    const host = embedded ? 'localhost' : new URL(config.server.url).host;
+    const bound = text.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/);
+    if (!bound) {
+      fail('iOS WKAppBoundDomains missing while limitsNavigationsToAppBoundDomains is true');
+    } else {
+      // Compare the parsed entries rather than building a regex out of the host: escaping
+      // only dots leaves backslashes and every other metacharacter unescaped (CodeQL
+      // js/incomplete-sanitization), and an exact string match is what is wanted anyway.
+      const domains = [...bound[1].matchAll(/<string>([^<]*)<\/string>/g)].map(m => m[1].trim());
+      if (!domains.includes(host)) {
+        fail('iOS WKAppBoundDomains does not list server.url host ' + host);
+      }
     }
   }
 

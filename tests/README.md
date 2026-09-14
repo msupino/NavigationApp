@@ -84,3 +84,21 @@ name matches `sw.spec` or `pwa.spec` is automatically excluded.
   those hosts as defense in depth against regressions.
 
 - `wiki-screenshots.spec.js` is an on-demand generator (wiki images): it skips itself unless `WIKI_IMG` is set, so it runs only from `.github/workflows/wiki-screenshots.yml`, never in CI `npm test` or e2e-deployed.
+
+## Embedded iOS release coverage
+
+`appstore-prep.spec.js` checks source packaging, vendor integrity, and CI requirements.
+`appstore-native.spec.js` uses a Filesystem bridge double to verify pack persistence across
+reloads, offline tile decoding, write failures, and production plate URLs. It also serves
+the generated embedded bundle with all external requests blocked. Both run in normal CI
+and the built-artifact test suite; the native bundle test verifies its own generated assets.
+
+The `native-ios` job additionally builds remote Debug and embedded Release simulator apps,
+runs the Swift discovery-origin policy cases, and inspects the built `.app` for its privacy
+manifest and bundled dependencies. Use `mobile/scripts/verify-ios-app.mjs` on the signed
+archive as part of submission; CI does not validate distribution signing or physical devices.
+
+The default fixture seeds the safety acknowledgement at `DOMContentLoaded`, after per-test
+storage resets and before the notice's load handler. First-run notice tests explicitly use
+`test.use({ acknowledgeDisclaimer: false })`; `disclaimer-fixture.spec.js` guards reset/reload
+ordering without changing the app's acknowledgement behavior.

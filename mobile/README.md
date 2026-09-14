@@ -26,6 +26,23 @@ Native bits baked into the shell:
   support after the first online launch, including the *Extra layers →
   Download charts for offline* tile packs.
 
+## Two builds: remote and embedded
+
+The default config is the **remote** development/Android shell described above. Use the
+**embedded** build for App Store submission and its TestFlight candidate. It packages the
+web app and pinned Leaflet assets locally. Bundling alone does not guarantee App Review
+acceptance; review evaluates functionality and the complete experience.
+
+```sh
+npm run bundle:check   # validate local assets and dependency integrity
+npm run embed          # docs + vendor -> mobile/www, configure and sync iOS only
+npm run remote         # restore remote configuration and sync native projects
+```
+
+Embedded CVFR downloads use the existing Filesystem plugin and load directly into the map
+and magnifier without a service worker. Plates remain online at the production BYOP URL.
+See [appstore/README.md](appstore/README.md) for archive validation and device checks.
+
 ## First setup
 
 ```sh
