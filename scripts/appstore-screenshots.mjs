@@ -66,11 +66,10 @@ async function shoot(chromium, deviceKey, base) {
     hasTouch: device.isMobile,
     locale: 'en-GB',
   });
-  // The safety notice is a first-run dialog and would sit over every screenshot. It is not
-  // suppressed -- it is acknowledged, exactly as a pilot acknowledges it once.
-  await context.addInitScript(() => {
-    try { localStorage.setItem('navaid.disclaimerAck', '2026-09-13'); } catch (e) {}
-  });
+  // The safety notice opens on every launch and would sit over every screenshot. A store
+  // listing shows the app, not its front door -- the notice is in the review notes, and a
+  // reviewer meets it on the first launch of the build itself.
+  await context.addInitScript(() => { window.__navaidNoDisclaimer = true; });
   const page = await context.newPage();
   const written = [];
 

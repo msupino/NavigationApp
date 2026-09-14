@@ -98,7 +98,10 @@ runs the Swift discovery-origin policy cases, and inspects the built `.app` for 
 manifest and bundled dependencies. Use `mobile/scripts/verify-ios-app.mjs` on the signed
 archive as part of submission; CI does not validate distribution signing or physical devices.
 
-The default fixture seeds the safety acknowledgement at `DOMContentLoaded`, after per-test
-storage resets and before the notice's load handler. First-run notice tests explicitly use
-`test.use({ acknowledgeDisclaimer: false })`; `disclaimer-fixture.spec.js` guards reset/reload
-ordering without changing the app's acknowledgement behavior.
+The safety notice opens on every launch and remembers nothing, so there is no
+acknowledgement to seed: the default fixture switches it off with
+`window.__navaidNoDisclaimer`, which a per-test storage reset cannot reach. Tests about the
+notice opt back in with `test.use({ acknowledgeDisclaimer: false })`, and take the boot
+screen down themselves (`clearBootLoading()`) because the notice waits for it.
+`disclaimer-fixture.spec.js` guards the reset/reload case, where losing the switch would put
+a modal in the middle of a test about something else.
