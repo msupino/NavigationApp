@@ -36,3 +36,5 @@ playwright-report/
 blob-report/
 playwright/.cache/
 .claude/
+# Release artefacts: the OTA zip is uploaded, never committed (mobile/scripts/build-ota.mjs).
+build/

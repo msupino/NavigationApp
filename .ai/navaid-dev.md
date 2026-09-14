@@ -1338,6 +1338,16 @@ checks native file persistence across reloads, offline rendering, failed writes,
 and the generated bundle with external requests blocked. Physical device, signed archive,
 and App Store Connect checks remain in `mobile/appstore/README.md`.
 
+The embedded iOS build fetches web updates (`docs/app/ota.js`; see
+`mobile/appstore/README.md` for publishing one). It stores `navaid.otaInstalling` — the id of
+the bundle this launch tried to install — as a device-local marker, excluded from settings
+sync: it is about one device's install attempt, not a preference, and syncing it would stop
+another device ever trying that bundle. One attempt per bundle, cleared once a bundle proves
+it comes up, so a bundle that cannot be applied is not a reload loop on the launch screen.
+The pending bundle is applied through the plugin's `reload()` — the pending-aware path, which
+also clears the pointer — never `set()` + `reload()`, which leaves the pointer behind and
+reinstalls the same bundle on every launch.
+
 The first-run safety notice stores `navaid.disclaimerAck` as a device-local wording-version
 acknowledgement; it is excluded from settings sync. The shared test fixture acknowledges
 that version after storage-reset init scripts run; first-run tests opt out with

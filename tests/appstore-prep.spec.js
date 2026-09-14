@@ -25,6 +25,30 @@ test('the embedded build is a real bundle, not a stub around a URL', async () =>
   expect([JSON.stringify(remote), JSON.stringify(embedded)]).toContain(JSON.stringify(current));
 });
 
+// Over-the-air updates are an updater the app drives, not one that phones home. Both halves
+// have to be written down in the config: unset is not off.
+test('the updater neither updates on its own nor reports to anyone', async () => {
+  const bundle = await import('../mobile/scripts/bundle-web.mjs');
+  for (const [mode, config] of [['remote', bundle.remoteConfig()], ['embedded', bundle.embeddedConfig()]]) {
+    const updater = config.plugins && config.plugins.CapacitorUpdater;
+    expect(updater, mode + ' has no CapacitorUpdater config').toBeTruthy();
+    // Two updaters disagreeing about which bundle is current is what strands an app on a
+    // broken one. Ours is docs/app/ota.js.
+    expect(updater.autoUpdate, mode).toBe(false);
+    expect(updater.updateUrl, mode).toBeUndefined();
+    expect(updater.channelUrl, mode).toBeUndefined();
+    // statsUrl defaults to Capgo's own server, and the NATIVE lifecycle reports there --
+    // a device id, app and OS version, on every backgrounding -- even with autoUpdate off.
+    // The plugin skips the report only when the URL is empty.
+    expect(updater.statsUrl, mode + ' sends telemetry to Capgo').toBe('');
+  }
+  // The rollback window docs/app/ota.js waits inside before vouching for a bundle.
+  expect(bundle.embeddedConfig().plugins.CapacitorUpdater.appReadyTimeout).toBe(20000);
+  // navigator.connection does not exist in WKWebView, so the connection type has to come
+  // from a native plugin or the cellular check is decoration.
+  expect(bundle.remoteConfig().ios.includePlugins).toContain('@capacitor/network');
+});
+
 test('the bundle carries every file the app cannot start without', async () => {
   const bundle = await import('../mobile/scripts/bundle-web.mjs');
   for (const rel of bundle.MUST_BUNDLE) {

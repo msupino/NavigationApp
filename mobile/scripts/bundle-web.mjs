@@ -33,6 +33,7 @@ export const MUST_BUNDLE = [
   'manifest.json',
   'app/core.js',
   'app/native-tiles.js',
+  'app/ota.js',
   'app/ui.js',
   'app/io.js',
   'app/draw.js',
@@ -69,7 +70,20 @@ export function remoteConfig() {
         '@capacitor/share',
         '@capacitor/local-notifications',
         '@capgo/capacitor-social-login',
+        '@capgo/capacitor-updater',
+        '@capacitor/network',
       ],
+    },
+    // The updater is installed in both modes -- one plugin graph, one thing to get wrong --
+    // but it acts only where there is something to update. The remote shell IS the live
+    // site, so nothing here may run on its own: every decision is made in docs/app/ota.js.
+    //
+    // statsUrl: '' is not a formality. Left unset it defaults to Capgo's own server, and the
+    // NATIVE lifecycle reports to it -- a device id, the app and OS version, every time the
+    // app is backgrounded -- with autoUpdate off and this app never having talked to Capgo.
+    // The plugin skips the report when the URL is empty, which is the only way to say no.
+    plugins: {
+      CapacitorUpdater: { autoUpdate: false, resetWhenUpdate: true, statsUrl: '' },
     },
     server: { url: REMOTE_URL, androidScheme: 'https' },
   };
@@ -80,6 +94,21 @@ export function embeddedConfig() {
   config.webDir = 'www';
   // Local assets are app-bound; keep bridge injection restricted in both modes.
   config.ios.limitsNavigationsToAppBoundDomains = true;
+  // A bundle that never says it started is rolled back to the one before it. Ten seconds is
+  // the plugin's own default and is the number docs/app/ota.js is written against: it calls
+  // notifyAppReady() before anything else, so a bundle that cannot boot cannot strand a
+  // pilot -- the previous one, or the one Apple reviewed, comes back on the next launch.
+  config.plugins = {
+    CapacitorUpdater: {
+      autoUpdate: false,
+      // The rollback window docs/app/ota.js is written against: it waits for the app to
+      // actually be up -- chart, state, strings, boot overlay gone -- before reporting
+      // health, and that has to fit inside this with room to spare on a cold device.
+      appReadyTimeout: 20000,
+      resetWhenUpdate: true,
+      statsUrl: '',
+    },
+  };
   delete config.server.url;
   return config;
 }

@@ -58,6 +58,8 @@ const expectedIosPlugins = [
   '@capacitor/share',
   '@capacitor/local-notifications',
   '@capgo/capacitor-social-login',
+  '@capgo/capacitor-updater',
+  '@capacitor/network',
 ];
 if (JSON.stringify(config.ios?.includePlugins) !== JSON.stringify(expectedIosPlugins)) {
   fail('iOS plugin allowlist must exclude Android-only background geolocation');
@@ -76,6 +78,34 @@ for (const file of ['index.html', 'app/core.js', 'app/ui.js', 'manifest.json']) 
 
 for (const dep of ['@capacitor/core', '@capacitor/android', '@capacitor/ios']) {
   if (!pkg.dependencies?.[dep]) fail(`missing dependency ${dep}`);
+}
+
+// Over-the-air updates carry the web app only, and only into the embedded build. The
+// decisions -- when to check, whether to accept, when to swap -- live in docs/app/ota.js,
+// which is why the plugin's own automatic updater must stay off: two updaters disagreeing
+// about which bundle is current is the failure that strands an app on a broken one.
+for (const dep of ['@capgo/capacitor-updater', '@capacitor/network']) {
+  if (!pkg.dependencies?.[dep]) fail(`missing dependency ${dep}`);
+}
+const updater = config.plugins?.CapacitorUpdater;
+if (!updater) fail('CapacitorUpdater config is missing');
+if (updater.autoUpdate !== false) fail('the plugin must not update on its own -- see docs/app/ota.js');
+if (updater.updateUrl || updater.channelUrl) {
+  fail('no Capgo endpoints: updates are self-hosted and driven from docs/app/ota.js');
+}
+// Unset is NOT off. The plugin defaults statsUrl to Capgo's own server and the native
+// lifecycle reports there -- device id, app and OS version, on every backgrounding -- with
+// autoUpdate off and this app never having talked to Capgo. An empty string is the off
+// switch, and it has to be written down in both modes.
+if (updater.statsUrl !== '') fail('CapacitorUpdater telemetry must be explicitly disabled (statsUrl: "")');
+if (embedded && updater.appReadyTimeout !== 20000) {
+  fail('embedded build must keep the rollback window docs/app/ota.js is written against');
+}
+const spm = fs.readFileSync(path.join(mobileRoot, 'ios/App/CapApp-SPM/Package.swift'), 'utf8');
+for (const plugin of ['CapgoCapacitorUpdater', 'CapacitorNetwork', 'CapacitorFilesystem', 'CapacitorShare']) {
+  // An iOS plugin listed in includePlugins but absent from the Swift package is not
+  // installed at all: the JavaScript sees no plugin and the feature is quietly dead.
+  if (!spm.includes(plugin)) fail(`iOS plugin ${plugin} is not linked in Package.swift`);
 }
 if (!pkg.devDependencies?.['@capacitor/cli']) fail('missing @capacitor/cli');
 

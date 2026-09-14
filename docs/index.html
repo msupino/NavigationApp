@@ -1104,7 +1104,8 @@
         'app/assistant.js' + v,
         'app/offline-tiles.js' + v,
         'app/deck.js' + v,
-        'app/disclaimer.js' + v
+        'app/disclaimer.js' + v,
+        'app/ota.js' + v
       ];
       // Subresource integrity for the pinned CDN dependencies. A wrong hash means the
       // browser refuses the script and the app is a blank page, so these are not guesses:
@@ -1127,6 +1128,22 @@
       // route, plan, plates -- works. Treating it like Leaflet meant a blocked CDN for an
       // optional animation blacked out the whole app behind a "could not load a required
       // component" overlay, which is worse than the blank chart the overlay was added to fix.
+      // Boot health, recorded before the first app script is appended. app/ota.js is the LAST
+      // entry in the list above, so a listener registered inside it cannot see an exception
+      // thrown by any script before it -- which is every script that matters. The embedded
+      // iOS build decides on this flag whether to keep a downloaded bundle or let the plugin
+      // roll it back, so it has to be armed first or it is worth nothing.
+      //
+      // Uncaught exceptions only. A rejected promise during boot is usually a feed that did
+      // not answer -- offline, a slow relay -- and rolling an app back over that would make
+      // every update a coin toss.
+      window.__navaidBootBroke = false;
+      window.addEventListener('error', function (ev) {
+        // Resource errors (an image, a tile) do not bubble to window, so this is script code.
+        window.__navaidBootBroke = true;
+        window.__navaidBootBrokeBy = (ev && (ev.filename || ev.message)) || 'error';
+      });
+
       var OPTIONAL = /leaflet-velocity/;
       function loadFailedOptional(src) {
         window.__navOptionalScriptFailed = window.__navOptionalScriptFailed || [];
@@ -1138,6 +1155,9 @@
       }
       function loadFailed(src) {
         if (OPTIONAL.test(String(src))) { loadFailedOptional(src); return; }
+        // A required script that never arrived is a broken app, whatever the rest of it does.
+        window.__navaidBootBroke = true;
+        window.__navaidBootBrokeBy = String(src);
         var seen = document.getElementById('boot-error');
         if (!seen) {
           seen = document.createElement('div');

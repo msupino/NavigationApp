@@ -23,7 +23,40 @@ The embedded app uses the Filesystem plugin to store downloaded CVFR tiles in
 they do not need a service worker. Downloaded tiles are audited on launch. Other chart
 layers, airfield plates, and live aviation feeds require a connection. Plates resolve to
 `https://navaid.supino.org/byop/` because the large plate collection is not bundled.
-The app's JavaScript changes only with a new binary; online aviation data can refresh.
+Online aviation data refreshes on its own. The app's own JavaScript is frozen in the binary
+-- unless a web bundle is published, below.
+
+## Updating the web app without a submission
+
+App Review guideline 2.5.2 permits updating the *interpreted* code a WebView runs -- HTML,
+CSS, JavaScript -- provided the app stays the app that was reviewed. Native changes
+(plugins, permissions, Info.plist, an SDK bump) still require a submission, and nothing that
+changes what NavAid *is* may go this way.
+
+```sh
+cd mobile
+node scripts/build-ota.mjs                       # zip + manifest; version from the git sha
+gh release create ota-<version> build/ota/navaid-<version>.zip \
+  --title "OTA <version>" --notes "Web bundle for the embedded iOS app"
+git add ../docs/ota/manifest.json                # deploy the pointer with the site
+```
+
+The zip (~25 MB) is a release asset and is never committed; `docs/ota/manifest.json` is the
+few hundred bytes the app fetches. `docs/app/ota.js` reads it fifteen seconds after launch,
+leaves a metered connection alone, verifies the checksum, and arms the bundle for the **next**
+launch rather than swapping it under a pilot who is reading a chart.
+
+Three things make this safe to ship, and `tests/ota-updates.spec.js` pins all three:
+
+- `notifyAppReady()` is called at boot. A bundle that never says it started is rolled back
+  after ten seconds to the one before it -- ultimately to the bundle Apple reviewed. A
+  broken update cannot strand anyone.
+- Every failure -- no manifest, a bad checksum, a relay that is down -- leaves the app on the
+  bundle it already has.
+- `featureOtaUpdates` in the tuning gist stops it without a release.
+
+The web app and the Android shell ignore all of this: they load the live site, so a deploy
+has already reached them.
 
 ## Submission checks
 
@@ -44,6 +77,8 @@ The app's JavaScript changes only with a new binary; online aviation data can re
 - [ ] Confirm export-compliance answers; `ITSAppUsesNonExemptEncryption` is currently false.
 - [ ] Paste the review notes, complete the age-rating questionnaire, and select Navigation.
 - [ ] Confirm rights to distribute bundled libraries and aviation content.
+- [ ] After the release is live, publish the matching web bundle (above), so the first web
+      fix after submission does not need a second one.
 
 CI compiles both the remote shell and an unsigned embedded Release simulator app, exercises
 the native discovery origin policy, and verifies the built resources. It does not replace

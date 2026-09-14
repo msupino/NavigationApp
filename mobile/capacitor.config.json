@@ -9,8 +9,17 @@
       "@capacitor/filesystem",
       "@capacitor/share",
       "@capacitor/local-notifications",
-      "@capgo/capacitor-social-login"
+      "@capgo/capacitor-social-login",
+      "@capgo/capacitor-updater",
+      "@capacitor/network"
     ]
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "resetWhenUpdate": true,
+      "statsUrl": ""
+    }
   },
   "server": {
     "url": "https://navaid.supino.org",

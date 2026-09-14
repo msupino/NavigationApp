@@ -25,8 +25,10 @@
     "@capacitor/filesystem": "^8.0.1",
     "@capacitor/ios": "8.4.0",
     "@capacitor/local-notifications": "^8.2.1",
+    "@capacitor/network": "^8.0.1",
     "@capacitor/share": "^8.0.1",
-    "@capgo/capacitor-social-login": "^8.3.35"
+    "@capgo/capacitor-social-login": "^8.3.35",
+    "@capgo/capacitor-updater": "^8.51.15"
   },
   "devDependencies": {
     "@capacitor/cli": "8.4.0"
