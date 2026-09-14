@@ -122,23 +122,31 @@
  },
  "docs/byop/LLBG_SID_12-26-30 (Orlev).pdf": {
   "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 ORLEV 1C, 1E, 1F",
-  "modified": "2024-10-31"
+  "modified": "2024-10-31",
+  "stale": true
  },
  "docs/byop/LLBG_SID_12-26-30 (Pidet+Ripud).pdf": {
   "title": "Standard departure chart instrument (SID) - ICAO RWY 12, 26, 30 PIDET 2C, 1E, 1F, RIPUD 1E, 1F",
   "modified": "2024-10-31"
  },
+ "docs/byop/LLBG_SID_12.pdf": {
+  "title": "Standard departure chart instrument (SID) - ICAO RWY 12 SALAM 5C, TOMAL 5C, MERVA 3C, SUVAS 2C, DAFNA 2C.pdf",
+  "modified": "2025-05-15"
+ },
  "docs/byop/LLBG_SID_26.pdf": {
   "title": "Standard departure chart instrument (SID) - ICAO RWY 26 SALAM 4E, TOMAL 4E, MERVA 2E, SUVAS 1E, DAFNA 1E",
-  "modified": "2024-10-31"
+  "modified": "2024-10-31",
+  "stale": true
  },
  "docs/byop/LLBG_SID_30.pdf": {
   "title": "Standard departure chart instrument (SID) - ICAO RWY 30 SALAM 4F, TOMAL 4F, SUVAS 1F, DAFNA 1F, MERVA 2F",
-  "modified": "2024-10-31"
+  "modified": "2024-10-31",
+  "stale": true
  },
  "docs/byop/LLBG_SID_SUVAS1G.pdf": {
   "title": "Standard departure chart instrument (SID) - ICAO RWY 03, 08, 12, 21 NAT 1A,1B,1D, SUVAS 1G",
-  "modified": "2024-10-31"
+  "modified": "2024-10-31",
+  "stale": true
  },
  "docs/byop/LLBG_STAR_08-1_V1_en.pdf": {
   "title": "Standard Arrival Chart Instrument (STAR) - ICAO RWY 08 PURLA 1A",
