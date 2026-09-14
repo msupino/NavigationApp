@@ -31,6 +31,58 @@
     return S2[key] || fallback;
   }
 
+  // The same control the menu has, on the notice: a dropdown, listing HE and EN. Two letters
+  // rather than עברית and English, because the whole point of this control is to be usable
+  // by someone who cannot read the page it is sitting on -- and a code that is the same in
+  // both alphabets is legible from either side. The language's own name rides on the option
+  // as its title, for whoever wants it spelt out.
+  // Switching is a navigation, as it is in the menu, and the notice opens again on the other
+  // side, which is the point.
+  const LANGUAGES = [['he', 'HE', 'עברית'], ['en', 'EN', 'English']];
+
+  function languageSwitch() {
+    const wrap = document.createElement('div');
+    wrap.className = 'disclaimer-langs';
+    const current = lang();
+    const select = document.createElement('select');
+    select.className = 'disclaimer-lang-select';
+    select.setAttribute('aria-label', 'Language / שפה');
+    for (const [code, label, name] of LANGUAGES) {
+      const option = document.createElement('option');
+      option.value = code;
+      option.lang = 'en';                 // HE and EN are Latin, whichever language they name
+      option.textContent = label;
+      option.title = name;
+      option.setAttribute('aria-label', name);
+      if (code === current) option.selected = true;
+      select.appendChild(option);
+    }
+    select.addEventListener('change', () => {
+      const code = select.value;
+      if (code === current) return;
+      // This is the app's language, not the notice's: ?lang carries the choice, index.html
+      // persists it on the way back up, and the map, the menu and every panel come back in
+      // it. Writing the key here as well would put a second author on a setting whose home
+      // is index.html -- and the allowlist test is right to ask who owns it.
+      try {
+        // Everything else about the address is kept: a follower reading this arrived on
+        // ?follow=<id>#k=<key>, and a language switch that dropped either would take the
+        // aeroplane away from them to answer a question about words.
+        const url = new URL(location.href);
+        url.searchParams.set('lang', code);
+        location.href = url.toString();
+      } catch (e) { location.search = '?lang=' + code; }
+    });
+    wrap.appendChild(select);
+    return wrap;
+  }
+
+  // Which language the notice is being read in, resolved the way index.html resolved it
+  // before any of this loaded: it stamps the answer on <html>.
+  function lang() {
+    return (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
+  }
+
   // Built by hand rather than through createDraggableModal: this one is not draggable, has
   // no close X, and does not answer to Escape or a click on the backdrop. A notice with a
   // way out that is not "I understand" is a notice that can be dismissed without being read.
@@ -44,10 +96,18 @@
     box.setAttribute('role', 'alertdialog');
     box.setAttribute('aria-modal', 'true');
 
+    // The notice and the language switch together. A pilot who reads the other language
+    // better should not have to dismiss a safety notice in order to find the control that
+    // changes it -- especially as this is the first thing the app puts on screen, so the
+    // menu's own switch is behind it.
+    const head = document.createElement('div');
+    head.className = 'disclaimer-head';
     const title = document.createElement('div');
     title.className = 'modal-title';
     title.textContent = textOf('disclaimerTitle', 'Before you fly');
-    box.appendChild(title);
+    head.appendChild(title);
+    head.appendChild(languageSwitch());
+    box.appendChild(head);
 
     const lead = document.createElement('p');
     lead.className = 'disclaimer-lead';

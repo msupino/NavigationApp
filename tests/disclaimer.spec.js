@@ -179,3 +179,96 @@ test('the suite switch is what keeps the notice out of every other spec', async 
   });
   expect(suppressed).toBe(false);
 });
+
+// Asked for: the notice carries the language control, and as a dropdown -- the same shape
+// the menu uses. The notice is the first thing the app puts on screen, so the menu's own
+// control sits behind it: a pilot who reads the other language better had to dismiss a
+// safety notice to go and find the switch that changes the language it was written in.
+test('the notice carries a language dropdown, set to the language on screen', async ({ page }) => {
+  await openApp(page);
+  const select = notice(page).locator('.disclaimer-lang-select');
+  await expect(select).toHaveCount(1);
+  // HE and EN: two letters that read the same in both alphabets, because the reader this
+  // control exists for is the one who cannot read the page it is sitting on. The language's
+  // own name is on the option for whoever wants it spelt out.
+  await expect(select.locator('option')).toHaveText(['HE', 'EN']);
+  await expect(select.locator('option').nth(0)).toHaveAttribute('title', 'עברית');
+  await expect(select.locator('option').nth(1)).toHaveAttribute('aria-label', 'English');
+  await expect(select).toHaveValue('en');
+  await expect(select).toHaveAttribute('aria-label', 'Language / שפה');
+});
+
+test('choosing Hebrew reopens the notice in Hebrew', async ({ page }) => {
+  await openApp(page);
+  await notice(page).locator('.disclaimer-lang-select').selectOption('he');
+  // A navigation: wait for the app on the other side before touching its boot screen.
+  await page.waitForFunction(() => document.documentElement.lang === 'he'
+    && typeof clearBootLoading === 'function');
+  await page.evaluate(() => clearBootLoading());
+  await expect(notice(page)).toBeVisible();
+  await expect(page.locator('.disclaimer-accept')).toHaveText('הבנתי');
+  await expect(notice(page).locator('.disclaimer-lang-select')).toHaveValue('he');
+  expect(new URL(page.url()).searchParams.get('lang')).toBe('he');
+});
+
+// A follower arrived on ?follow=<id>#k=<key>. A language switch that dropped either would
+// take the aeroplane away from them to answer a question about words.
+test('switching language keeps the link that was opened', async ({ page }) => {
+  await page.goto('?lang=en&nogist&follow=TOPIC123#k=SECRETKEY&v=PUB');
+  await page.waitForFunction(() => typeof clearBootLoading === 'function');
+  await page.evaluate(() => clearBootLoading());
+  await expect(notice(page)).toBeVisible();
+  await notice(page).locator('.disclaimer-lang-select').selectOption('he');
+  await page.waitForFunction(() => document.documentElement.lang === 'he');
+  const url = new URL(page.url());
+  expect(url.searchParams.get('follow')).toBe('TOPIC123');
+  expect(url.searchParams.get('lang')).toBe('he');
+  expect(url.hash).toBe('#k=SECRETKEY&v=PUB');
+});
+
+test('choosing the language already on screen does not navigate', async ({ page }) => {
+  await openApp(page);
+  const before = page.url();
+  await notice(page).locator('.disclaimer-lang-select').selectOption('en');
+  await page.waitForTimeout(150);
+  expect(page.url()).toBe(before);
+  await expect(notice(page)).toBeVisible();
+});
+
+// The control on the notice is the APP's language control, not the notice's: what it picks
+// is what the map, the menu and every panel are in, on this visit and the next one. And with
+// nothing chosen yet, that is Hebrew.
+test('the notice opens in Hebrew by default, and its choice is the app\'s language', async ({ page }) => {
+  await page.goto('?nogist');                 // a first-time visitor: no ?lang at all
+  await page.waitForFunction(() => typeof clearBootLoading === 'function');
+  const first = await page.evaluate(() => ({
+    html: document.documentElement.lang,
+    dir: document.documentElement.dir,
+    menu: document.getElementById('lang-select').value,
+  }));
+  expect(first.html, 'a first visit is not in Hebrew').toBe('he');
+  expect(first.dir).toBe('rtl');
+  expect(first.menu).toBe('he');
+
+  await page.evaluate(() => clearBootLoading());
+  await expect(notice(page)).toBeVisible();
+  await expect(notice(page).locator('.disclaimer-lang-select')).toHaveValue('he');
+  await notice(page).locator('.disclaimer-lang-select').selectOption('en');
+  await page.waitForFunction(() => document.documentElement.lang === 'en');
+
+  // The whole interface followed it, not just the notice.
+  const picked = await page.evaluate(() => ({
+    stored: localStorage.getItem('navaid.lang'),
+    menu: document.getElementById('lang-select').value,
+    dir: document.documentElement.dir,
+  }));
+  expect(picked.stored).toBe('en');
+  expect(picked.menu, 'the menu still says the old language').toBe('en');
+  expect(picked.dir).toBe('ltr');
+
+  // ...and it is still English next time, with no ?lang to carry it.
+  await page.goto('?nogist');
+  await page.waitForFunction(() => typeof clearBootLoading === 'function');
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe('en');
+  expect(await page.evaluate(() => document.getElementById('lang-select').value)).toBe('en');
+});
