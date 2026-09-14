@@ -653,6 +653,7 @@
     strip = deck = stripLeg = stripVals = stripSub = null;
     for (const key of Object.keys(buttons)) delete buttons[key];
     document.body.classList.remove('deck-on');
+    if (NavAid.refreshMapClock) NavAid.refreshMapClock();
   }
 
   // A menu item that opens something -- a chart, the route templates, the NOTAM list -- has
@@ -688,6 +689,8 @@
     wireLongPress();
     watchModals();
     document.body.classList.add('deck-on');
+    // The map clock asks whether it is on a phone, so it has to be told when that changes.
+    if (NavAid.refreshMapClock) NavAid.refreshMapClock();
     // The strip reads these three; nothing else needs to tell it anything.
     watch('gps-readout');
     watch('zulu-clock');
