@@ -139,9 +139,11 @@ exports.test = base.test.extend({
     });
 
     // Seed after init scripts that clear storage, but before the notice's load handler.
+    // Both languages: the notice is acknowledged per language it was read in (a Hebrew
+    // acknowledgement says nothing about the English wording), and specs switch freely.
     if (acknowledgeDisclaimer) await context.addInitScript(() => {
       document.addEventListener('DOMContentLoaded', () => {
-        try { localStorage.setItem('navaid.disclaimerAck', '2026-09-13'); } catch (e) {}
+        try { localStorage.setItem('navaid.disclaimerAck', '2026-09-13|en,he'); } catch (e) {}
       }, { once: true });
     });
 

@@ -125,8 +125,9 @@ test('it is asked once, not at every launch', async ({ page }) => {
   await boot(page);
   await page.locator('.disclaimer-accept').click();
   await expect(notice(page)).toHaveCount(0);
+  // The wording acknowledged, and the language it was read in.
   const stored = await page.evaluate(() => localStorage.getItem('navaid.disclaimerAck'));
-  expect(stored).toBe(await page.evaluate(() => NavAid.disclaimerVersion));
+  expect(stored).toBe(await page.evaluate(() => NavAid.disclaimerVersion) + '|en');
   await boot(page);
   await page.waitForFunction(() => window.NavAid && NavAid.disclaimerAccepted);
   await expect(notice(page)).toHaveCount(0);
@@ -190,7 +191,59 @@ test('the fixture acknowledges the version the app is actually asking about', as
   const setup = fs.readFileSync(path.join(__dirname, '_setup.js'), 'utf8');
   const m = setup.match(/navaid\.disclaimerAck',\s*'([^']+)'/);
   expect(m, 'the fixture no longer pre-acknowledges the notice').not.toBeNull();
+  const [version, langs] = m[1].split('|');
   await boot(page);
   await page.waitForFunction(() => window.NavAid && NavAid.disclaimerVersion);
-  expect(await page.evaluate(() => NavAid.disclaimerVersion)).toBe(m[1]);
+  expect(await page.evaluate(() => NavAid.disclaimerVersion)).toBe(version);
+  // Both languages, or every spec that switches to Hebrew meets a modal.
+  expect((langs || '').split(',').sort()).toEqual(['en', 'he']);
+});
+
+// Asked for: an acknowledgement in one language is not an acknowledgement of the other. The
+// meaning is the same, the text is not, and "I understand" is a statement about text someone
+// has read. Switching language is a full reload, so the question is simply what the notice
+// answers on the way back up.
+test('a notice read in one language is asked again in the other', async ({ page }) => {
+  await fresh(page);
+  await page.goto('?lang=en&nogist');
+  await expect(notice(page)).toBeVisible();
+  await page.locator('.disclaimer-accept').click();
+  await expect(notice(page)).toHaveCount(0);
+
+  await page.goto('?lang=he&nogist');
+  await expect(notice(page), 'the Hebrew wording was never read').toBeVisible();
+  await expect(page.locator('.disclaimer-accept')).toHaveText('הבנתי');
+  await page.locator('.disclaimer-accept').click();
+  await expect(notice(page)).toHaveCount(0);
+
+  // Both are recorded now, and neither asks again.
+  const stored = await page.evaluate(() => localStorage.getItem('navaid.disclaimerAck'));
+  expect(stored.split('|')[1].split(',').sort()).toEqual(['en', 'he']);
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => window.NavAid && NavAid.disclaimerAccepted);
+  await expect(notice(page)).toHaveCount(0);
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => window.NavAid && NavAid.disclaimerAccepted);
+  await expect(notice(page)).toHaveCount(0);
+});
+
+// A changed wording drops both languages at once: it is a different notice, in either.
+test('a changed notice is asked again in every language it was read in', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.disclaimerAck', '2001-01-01|en,he'); } catch (e) {}
+  });
+  for (const lang of ['en', 'he']) {
+    await page.goto('?lang=' + lang + '&nogist');
+    await expect(notice(page)).toBeVisible();
+  }
+});
+
+// An acknowledgement from before the language was recorded names no language, so it credits
+// nobody with having read anything. One more reading is the cheaper mistake.
+test('an acknowledgement in an unknown language is not one', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.disclaimerAck', '2026-09-13'); } catch (e) {}
+  });
+  await page.goto('?lang=en&nogist');
+  await expect(notice(page)).toBeVisible();
 });

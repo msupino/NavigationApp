@@ -20,11 +20,41 @@
 
   const featureOn = () => typeof tune !== 'function' || tune('featureDisclaimer') !== false;
 
+  // Which language the words were actually read in. A notice acknowledged in Hebrew says
+  // nothing about the English one: it is the same meaning, but it is not the same text, and
+  // "I understand" is a statement about text a person has read. Switching language is a full
+  // reload (lang-select navigates), so asking again is simply a matter of what `accepted()`
+  // answers on the way back up.
+  function lang() {
+    const html = (document.documentElement.lang || '').toLowerCase();
+    if (html) return html.startsWith('he') ? 'he' : 'en';
+    let stored = '';
+    try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) { /* no storage */ }
+    return stored === 'he' ? 'he' : 'en';
+  }
+
+  // "<version>|<langs>" -- the wording acknowledged, and every language it was read in.
+  // Anything that does not parse (an acknowledgement from before this was recorded, so in a
+  // language nobody wrote down) counts as not acknowledged: the cost is one more reading of
+  // a notice, and the alternative is crediting someone with having read something in a
+  // language we cannot name.
+  function readAck() {
+    let raw = '';
+    try { raw = localStorage.getItem(KEY) || ''; } catch (e) { return null; }
+    const at = raw.indexOf('|');
+    if (at < 0) return null;
+    return { version: raw.slice(0, at), langs: raw.slice(at + 1).split(',').filter(Boolean) };
+  }
   function accepted() {
-    try { return localStorage.getItem(KEY) === DISCLAIMER_VERSION; } catch (e) { return false; }
+    const ack = readAck();
+    return !!ack && ack.version === DISCLAIMER_VERSION && ack.langs.indexOf(lang()) > -1;
   }
   function remember() {
-    try { localStorage.setItem(KEY, DISCLAIMER_VERSION); } catch (e) { /* private mode */ }
+    const ack = readAck();
+    const langs = (ack && ack.version === DISCLAIMER_VERSION) ? ack.langs.slice() : [];
+    if (langs.indexOf(lang()) < 0) langs.push(lang());
+    try { localStorage.setItem(KEY, DISCLAIMER_VERSION + '|' + langs.join(',')); }
+    catch (e) { /* private mode */ }
   }
 
   function textOf(key, fallback) {

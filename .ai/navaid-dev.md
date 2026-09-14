@@ -1352,7 +1352,11 @@ The first-run safety notice waits for `#boot-loading` to be removed, not for the
 event: the boot screen is fixed, opaque and z-index 6000 -- above the notice -- and comes
 down only when the first chart tiles paint, so showing on `load` put the notice behind it,
 invisible and clickable through it once the splash dropped pointer events. It stores
-`navaid.disclaimerAck` as a device-local wording-version
+`navaid.disclaimerAck` as `"<wording-version>|<languages>"` -- the wording acknowledged and
+every language it was read in, because an acknowledgement in Hebrew says nothing about the
+English text and switching language is a full reload. A value that does not parse names no
+language and counts as not acknowledged. The shared fixture seeds both languages. It is a
+device-local wording-version
 acknowledgement; it is excluded from settings sync. The shared test fixture acknowledges
 that version after storage-reset init scripts run; first-run tests opt out with
 `test.use({ acknowledgeDisclaimer: false })`. `disclaimer.spec.js` verifies the fixture and notice agree.
