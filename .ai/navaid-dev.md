@@ -1348,7 +1348,11 @@ The pending bundle is applied through the plugin's `reload()` — the pending-aw
 also clears the pointer — never `set()` + `reload()`, which leaves the pointer behind and
 reinstalls the same bundle on every launch.
 
-The first-run safety notice stores `navaid.disclaimerAck` as a device-local wording-version
+The first-run safety notice waits for `#boot-loading` to be removed, not for the `load`
+event: the boot screen is fixed, opaque and z-index 6000 -- above the notice -- and comes
+down only when the first chart tiles paint, so showing on `load` put the notice behind it,
+invisible and clickable through it once the splash dropped pointer events. It stores
+`navaid.disclaimerAck` as a device-local wording-version
 acknowledgement; it is excluded from settings sync. The shared test fixture acknowledges
 that version after storage-reset init scripts run; first-run tests opt out with
 `test.use({ acknowledgeDisclaimer: false })`. `disclaimer.spec.js` verifies the fixture and notice agree.
