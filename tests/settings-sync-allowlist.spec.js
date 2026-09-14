@@ -146,6 +146,8 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.editor\./,          '?edit=1 overlay editor scratch data'],
   [/^navaid\.sim/,               'simulator link, per device'],
   [/^navaid\.gpsLiveOn$/,        'whether live location is on, per device -- resumed on reload, not synced to others'],
+  [/^navaid\.otaInstalling$/,   'one launch\'s attempt at installing a downloaded web bundle -- about this device\'s install, not a setting, and syncing it would stop another device ever trying that bundle'],
+  [/^navaid\.disclaimerAck$/,   'an acknowledgement is given by a person on a device, in front of that screen -- not inherited by another device from an account'],
   [/^navaid\.followMeCode$/,     'the aircraft code typed for a follow-me link -- belongs to the aeroplane being flown from THIS device, not to the pilot account'],
   [/^navaid\.followMeSession$/,  'the live share topic and its encryption key -- a capability to watch THIS aeroplane right now, not a setting; syncing it would put two devices on one topic and hand the key to every device on the account'],
   [/^navaid\.followRouteAsked$/, 'a note that this tab has already been asked about the pilot\'s plan -- session-scoped, and about a question, not a preference'],

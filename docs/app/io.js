@@ -6666,6 +6666,7 @@ function restoreRoute() {
 // '/NavigationApp/') — so the deploy pipeline no longer has to rewrite a
 // per-environment absolute path (which 404'd on the custom domain).
 function plateBase(pathname) {
+  if (window.__navaidEmbedded === true) return 'https://navaid.supino.org/byop/';
   let dir = (pathname || location.pathname).replace(/[^/]*$/, '');  // drop filename, keep trailing '/'
   // Preview suffix → shared root. `branch/.+` (not `[^/]+`) so branch names
   // that contain a slash (e.g. feat/loading-charts-indicator) strip fully,
@@ -9198,15 +9199,17 @@ function rebuildMagnifier() {
             tile.remove();
             onSettle(ev);
           });
-          tile.src = tileLayerUrl(activeLayer,
-            { z: tileTarget, x: tx, y: ty });
+          const magUrl = tileLayerUrl(activeLayer, { z: tileTarget, x: tx, y: ty });
+          if (window.NavAidNativeTiles && NavAidNativeTiles.enabled) {
+            NavAidNativeTiles.imageUrl(magUrl).then(src => { tile.src = src; });
+          } else tile.src = magUrl;
           // Cached images can fire `load` before listeners are attached.
           // `complete` + `naturalWidth > 0` ⇒ already loaded; `complete`
           // alone (with `naturalWidth === 0`) ⇒ already errored. Settle
           // synchronously here so the counter doesn't get stuck; the
           // `dataset.settled` guard in `onSettle` makes the (still
           // pending) async load callback a no-op.
-          if (tile.complete) {
+          if (tile.getAttribute('src') && tile.complete) {
             if (tile.naturalWidth === 0) tile.remove();
             onSettle({ target: tile });
           }
