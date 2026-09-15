@@ -28,11 +28,6 @@ async function boot(page) {
   });
 }
 
-const fix = (altM) => ({
-  coords: { latitude: 32.1, longitude: 34.9, altitude: altM, accuracy: 5, speed: 40, heading: 90 },
-  timestamp: Date.now(),
-});
-
 test('the altitude published is the altitude the pilot is reading', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {

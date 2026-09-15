@@ -47,8 +47,6 @@ async function boot(page) {
 
 // Build a PUBLISH frame the viewer's own client will parse, carrying a sealed fix whose
 // timestamp is the PUBLISHER's clock -- deliberately not this machine's.
-const KEY = 'k'.repeat(43);
-
 async function watchWith(page, { publisherOffsetMs, retained }) {
   return page.evaluate(async (args) => {
     const F = NavAid.followMe;
