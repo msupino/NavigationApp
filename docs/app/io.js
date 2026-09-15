@@ -9591,13 +9591,15 @@ async function _simFetch() {
       NavAid.followMe.publish({
         lat: window.simAircraft.lat,
         lng: window.simAircraft.lng,
-        alt: Number.isFinite(window.simAircraft.alt) ? window.simAircraft.alt / 3.28084 : null,
+        // The numbers this screen is showing, in its units: the simulator reports feet and
+        // knots, and its altitude is already an indicated one -- no geoid or temperature term
+        // belongs on it. A follower prints them; it does not convert them.
+        af: Number.isFinite(window.simAircraft.alt) ? Math.round(window.simAircraft.alt) : null,
+        kt: Number.isFinite(window.simAircraft.ias) ? Math.round(window.simAircraft.ias) : null,
+        mh: (typeof toMagnetic === 'function' && Number.isFinite(window.simAircraft.hdg))
+          ? toMagnetic(window.simAircraft.hdg) : null,
+        // True, for the geometry that points the icon on a map that can itself be rotated.
         trk: window.simAircraft.hdg,
-        // The variation this app is using, so a follower renders the magnetic heading this
-        // screen shows rather than applying its own gist to someone else's true track.
-        mv: (typeof tune === 'function' && Number.isFinite(Number(tune('magneticVariationDeg'))))
-          ? Number(tune('magneticVariationDeg')) : null,
-        kt: window.simAircraft.ias,
       }).catch(() => { /* sharing must never break the simulator poll */ });
     }
     // How much faster than real time the reporting aircraft's own clock is running (cvfr-

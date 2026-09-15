@@ -211,7 +211,7 @@ test('a packet signed by the Python simulator verifies in the app', async ({ pag
     'sim = importlib.util.module_from_spec(spec); spec.loader.exec_module(sim)',
     'priv, pub = sim.signing_keys()',
     'key = os.urandom(32)',
-    'fix = {"reg": "4X-PY", "lat": 32.5, "lng": 34.95, "alt": 457, "kt": 90, "trk": 88,',
+    'fix = {"reg": "4X-PY", "lat": 32.5, "lng": 34.95, "af": 1500, "kt": 90, "mh": 83, "trk": 88,',
     '       "t": 1700000000000, "seq": 1700000000001}',
     'sealed = sim.seal(key, fix, priv)',
     'print(json.dumps({"key": sim.b64url(key), "v": pub, "packet": sim.b64url(sealed)}))',

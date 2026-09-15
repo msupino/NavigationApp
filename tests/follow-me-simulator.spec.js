@@ -71,9 +71,14 @@ test('simulated fixes follow every leg and use the browser Follow Me schema', ()
   expect(result.starts).toMatchObject({ lat: 32, lng: 34.8, waypoint: 'A' });
   expect(result.ends).toMatchObject({ lat: 32.01, lng: 34.81, waypoint: 'C' });
   expect(result.arrivals).toEqual(['A', 'B', 'C']);
+  // The fix carries the numbers a cockpit would be showing, in a cockpit's units -- the viewer
+  // prints them and converts nothing -- plus the true track, which is geometry for the icon.
   expect(result.fix).toMatchObject({
-    reg: 'TEST', alt: 457, kt: 100, t: 1200, seq: 1234,
+    reg: 'TEST', af: 1500, kt: 100, t: 1200, seq: 1234,
   });
+  expect(result.fix.alt, 'metres are not on the wire').toBe(undefined);
+  expect(result.fix.mh).toBeGreaterThanOrEqual(0);
+  expect(result.fix.mh).toBeLessThan(360);
   expect(result.fix.trk).toBeGreaterThanOrEqual(0);
   expect(result.fix.trk).toBeLessThan(360);
 });

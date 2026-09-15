@@ -13,8 +13,6 @@
 // was running.
 const { test, expect } = require('./_setup');
 
-const M_PER_FT = 1 / 3.28084;
-
 async function boot(page) {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof onLivePosition === 'function'
@@ -41,11 +39,14 @@ test('the altitude published is the altitude the pilot is reading', async ({ pag
     return { published: window.__published, shownFt: gpsAltitudeForCompare(), geoidFt: gpsGeoidFt() };
   });
   expect(got.published).toHaveLength(1);
-  // Metres on the wire, as they have always been -- viewers already in the air convert from them.
-  expect(got.published[0].alt * 3.28084).toBeCloseTo(got.shownFt, 3);
+  // Feet, as the cockpit rounded them: the follower prints this, it does not convert it.
+  expect(got.published[0].af).toBe(Math.round(got.shownFt));
   // And that is the raw height LESS the geoid, not the raw height.
-  expect(got.published[0].alt).toBeCloseTo(1000 - got.geoidFt * M_PER_FT, 3);
-  expect(got.published[0].alt).toBeLessThan(1000);
+  expect(got.published[0].af).toBe(Math.round(1000 * 3.28084 - got.geoidFt));
+  expect(got.published[0].af).toBeLessThan(Math.round(1000 * 3.28084));
+  // Nothing in metres goes out at all any more: a unit the viewer would have to convert is a
+  // unit the two screens can disagree in.
+  expect(got.published[0].alt).toBe(undefined);
 });
 
 test('with the correction switched off, the raw height is what both of them read', async ({ page }) => {
@@ -61,8 +62,8 @@ test('with the correction switched off, the raw height is what both of them read
     await new Promise(r => setTimeout(r, 20));
     return { published: window.__published, shownFt: gpsAltitudeForCompare() };
   });
-  expect(got.published[0].alt).toBeCloseTo(1000, 3);
-  expect(got.published[0].alt * 3.28084).toBeCloseTo(got.shownFt, 3);
+  expect(got.published[0].af).toBe(Math.round(1000 * 3.28084));
+  expect(got.published[0].af).toBe(Math.round(got.shownFt));
 });
 
 // A fix with no altitude at all (indoors, a phone that reports none) says so, rather than
@@ -80,7 +81,7 @@ test('a fix with no altitude publishes none', async ({ page }) => {
     return window.__published;
   });
   expect(got).toHaveLength(1);
-  expect(got[0].alt).toBe(null);
+  expect(got[0].af).toBe(null);
 });
 
 test('a recording publishes too, and publishes the same corrected altitude', async ({ page }) => {
@@ -97,8 +98,8 @@ test('a recording publishes too, and publishes the same corrected altitude', asy
     return { published: window.__published, shownFt: gpsAltitudeForCompare(), geoidFt: gpsGeoidFt() };
   });
   expect(got.published, 'Record on = a share that goes quiet').toHaveLength(1);
-  expect(got.published[0].alt).toBeCloseTo(1000 - got.geoidFt / 3.28084, 3);
-  expect(got.published[0].alt * 3.28084).toBeCloseTo(got.shownFt, 3);
+  expect(got.published[0].af).toBe(Math.round(got.shownFt));
+  expect(got.published[0].af).toBe(Math.round(1000 * 3.28084 - got.geoidFt));
 });
 
 // Both watches run when a pilot records with Location already on. The live one stands down so
@@ -138,12 +139,12 @@ test('the ground speed published is the one the readout derived', async ({ page 
   });
   const last = got.published[got.published.length - 1];
   expect(got.shownKt).toBeGreaterThan(0);          // the readout has a speed
-  expect(last.kt).toBeCloseTo(got.shownKt, 3);     // ...and so does the follower
+  expect(last.kt).toBe(Math.round(got.shownKt));   // ...and so does the follower, the same one
 });
 
 // Magnetic is a conversion, and a conversion needs a variation. The viewer used its own, so a
 // follower on ?nogist and a pilot on a tuned gist read different headings off one true track.
-test('the variation behind the pilot\'s heading travels with it', async ({ page }) => {
+test('the magnetic heading is computed in the aeroplane, not on the ground', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
     setTune('magneticVariationDeg', -7);
@@ -152,11 +153,41 @@ test('the variation behind the pilot\'s heading travels with it', async ({ page 
     onLivePosition({ coords: { latitude: 32.1, longitude: 34.9, altitude: 300, accuracy: 5, speed: 40, heading: 90 }, timestamp: Date.now() });
     await new Promise(r => setTimeout(r, 20));
     const fix = window.__published[window.__published.length - 1];
-    // A viewer whose own gist says something else renders the PUBLISHER's number.
-    setTune('magneticVariationDeg', -2);
-    return { fix, withPublisher: gpsHeadingText(fix.trk, false, fix.mv), withOwn: gpsHeadingText(fix.trk, false) };
+    return { fix, cockpit: toMagnetic(90) };
   });
-  expect(got.fix.mv).toBe(-7);
-  expect(got.withPublisher).toBe('083°');          // 90 true, 7°E variation
-  expect(got.withOwn).toBe('088°');                // what the follower used to show instead
+  // 90 true with 7 degrees of east variation: the aeroplane says 083, and says it in the packet.
+  expect(got.fix.mh).toBe(83);
+  expect(got.fix.mh).toBe(got.cockpit);
+  // True goes too, but only as the geometry the follower's map points the icon with.
+  expect(got.fix.trk).toBe(90);
+  // The variation itself is nobody else's business: it was already applied.
+  expect(got.fix.mv).toBe(undefined);
+});
+
+// Reported after the correction landed: 261 in the aeroplane, 262 on the ground. The altitude
+// was right by then -- what was left was the wire's unit. A metre is 3.28 ft, so feet rounded
+// into metres and converted back land a foot or two away. Feet go on the wire now.
+test('the follower quotes the pilot\'s feet exactly, across the rounding cases', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const out = [];
+    window.gpsLiveOn = true;
+    window.gpsRecording = false;
+    // A sweep, because the disagreement only shows at particular heights.
+    for (let m = 80; m < 100; m += 1.7) {
+      window.__published.length = 0;
+      onLivePosition({ coords: { latitude: 32.1, longitude: 34.9, altitude: m, accuracy: 5, speed: 40, heading: 90 }, timestamp: Date.now() });
+      const fix = window.__published[0];
+      out.push({
+        cockpit: Math.round(gpsAltitudeForCompare()),
+        sent: fix.af,
+        // What the old wire would have carried, and what it would have come back as.
+        viaMetres: Math.round(Math.round(gpsAltitudeForCompare() / 3.28084) * 3.28084),
+      });
+    }
+    return out;
+  });
+  for (const sample of got) expect(sample.sent).toBe(sample.cockpit);
+  expect(got.some(sample => sample.viaMetres !== sample.cockpit),
+    'the sweep never hit the rounding case').toBe(true);
 });
