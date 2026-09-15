@@ -3133,6 +3133,13 @@ function restoreOpenChartModal() {
     showRouteLibraryModal();
     return;
   }
+  if (kind === 'nav-table') {
+    // navlog.js loads after this file, so on a reload this can run before the module exists.
+    // Return either way -- the key must survive for the module to restore itself, and the
+    // fallthrough below would clear it.
+    if (window.NavAid && NavAid.navLog) NavAid.navLog.show();
+    return;
+  }
   if (typeof clearOpenChartModal === 'function') clearOpenChartModal();
 }
 

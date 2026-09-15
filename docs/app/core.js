@@ -1656,7 +1656,7 @@ window.S = Object.assign({
   // --- nav log ---------------------------------------------------------------
   // NOT the same thing as tbNavLog below, which prints the flight plan as a PDF. This is the
   // computed sheet: an exercise's 23 columns, from CAS to a compass heading.
-  tbNavTable: '📐 Planning form',
+  tbNavTable: '📐 Flight planning form',
   tbNavTableTitle: 'The flight planning form: CAS to compass heading, leg by leg',
   navTableTitle: 'Flight planning form',
   navLogHeaders: ['LEG', 'From', 'To', 'CAS', 'PA', 'Temp', 'TAS', 'W kt', 'W dir', 'TT', 'Drift',
@@ -3387,18 +3387,17 @@ function tasFromCas(casKt, pressureAltFt, oatC) {
 // something else. The height is always measured from the field, never from sea level.
 const NAVLOG_DEFAULT_CLIMB_FRACTION = 2 / 3;
 const NAVLOG_DEFAULT_DESCENT_FRACTION = 1 / 2;
-function navLogSegmentAltFt(kind, fieldElevFt, cruiseFt, fractions) {
-  const field = Number.isFinite(fieldElevFt) ? fieldElevFt : 0;
-  if (!Number.isFinite(cruiseFt)) return null;
+// Measured from the LOWER end in both cases -- the exercise says two thirds of the height
+// GAINED above the field you left, and half the height lost above the field you are landing at.
+// Written this way it generalises to a step climb or a step descent in the middle of a route,
+// where the "field" is simply the level being left or joined.
+function navLogSegmentAltFt(kind, fromFt, toFt, fractions) {
+  if (!Number.isFinite(fromFt) || !Number.isFinite(toFt)) return null;
   const f = fractions || {};
   const frac = (v, d) => (Number.isFinite(v) && v >= 0 && v <= 1 ? v : d);
-  if (kind === 'climb') {
-    return field + frac(f.climb, NAVLOG_DEFAULT_CLIMB_FRACTION) * (cruiseFt - field);
-  }
-  if (kind === 'descent') {
-    return field + frac(f.descent, NAVLOG_DEFAULT_DESCENT_FRACTION) * (cruiseFt - field);
-  }
-  return cruiseFt;
+  if (kind === 'climb') return fromFt + frac(f.climb, NAVLOG_DEFAULT_CLIMB_FRACTION) * (toFt - fromFt);
+  if (kind === 'descent') return toFt + frac(f.descent, NAVLOG_DEFAULT_DESCENT_FRACTION) * (fromFt - toFt);
+  return toFt;
 }
 
 // The met row for an altitude: the NEAREST row, not an interpolation between two. The exercise
@@ -3489,8 +3488,6 @@ function navLogRows(input) {
   const wps = Array.isArray(o.waypoints) ? o.waypoints.filter(w => w
     && Number.isFinite(w.lat) && Number.isFinite(w.lng)) : [];
   if (wps.length < 2) return [];
-  const cruiseFt = Number(o.cruiseAltFt);
-  if (!Number.isFinite(cruiseFt)) return [];
   const depElev = Number.isFinite(o.depElevFt) ? o.depElevFt : 0;
   const destElev = Number.isFinite(o.destElevFt) ? o.destElevFt : 0;
   const cas = o.cas || {};
@@ -3508,16 +3505,22 @@ function navLogRows(input) {
     const g = geo(wps[i], wps[i + 1]);
     legs.push({ from: wps[i], to: wps[i + 1], dist: g.dist, track: g.brg });
   }
+  // The altitude each leg is PLANNED at -- the number on its own kite, not one level for the
+  // whole route. A route that leaves at 800 ft and steps up to 2,500 climbs twice, and the top
+  // of the first climb is inside the first leg where the pilot put it. `cruiseAltFt` is the
+  // fallback for a leg nobody has typed an altitude on, and for a file that carries no legs.
+  const fallbackAlt = Number(o.cruiseAltFt);
+  const planned = Array.isArray(o.legAltitudes) ? o.legAltitudes : [];
+  const legAlt = (i) => {
+    const a = Number(planned[i]);
+    if (Number.isFinite(a) && a > 0) return a;
+    return Number.isFinite(fallbackAlt) ? fallbackAlt : null;
+  };
+  if (!Number.isFinite(legAlt(0))) return [];
 
-  // The air a segment flies in: the typed table first, and where it has nothing to say, whatever
-  // the app already knows about the wind on this leg. Each row remembers which it was, because a
-  // sheet that mixes a typed table with a weather fetch and does not say so is a sheet nobody can
-  // check.
   const airAt = (altFt, legIndex) => {
     const row = navLogMetRow(met, altFt);
-    if (row) {
-      return { wind: { dir: row.dir, speed: row.kt }, tempC: row.tempC, source: 'table' };
-    }
+    if (row) return { wind: { dir: row.dir, speed: row.kt }, tempC: row.tempC, source: 'table' };
     const fallback = (typeof o.windFor === 'function') ? o.windFor(legIndex, altFt) : null;
     return {
       wind: (fallback && Number.isFinite(fallback.dir) && fallback.speed > 0) ? fallback : null,
@@ -3525,107 +3528,104 @@ function navLogRows(input) {
       source: fallback ? 'app' : 'isa',
     };
   };
-
   const label = (wp) => (wp && wp.name) || '';
   const mkRow = (kind, fromName, toName, altFt, casKt, legIndex, track) => {
     const air = airAt(altFt, legIndex);
     const tas = tasFromCas(casKt, altFt, air.tempC);
     const h = navLogHeadings(track, tas, air.wind, variation, card);
     return Object.assign({
-      kind,
-      from: fromName,
-      to: toName,
-      casKt,
-      pressureAltFt: altFt,
-      tempC: air.tempC,
-      metSource: air.source,
-      tasKt: tas,
-      wind: air.wind,
-      trackTrue: track,
-      legIndex,
+      kind, from: fromName, to: toName, casKt,
+      pressureAltFt: altFt, tempC: air.tempC, metSource: air.source,
+      tasKt: tas, wind: air.wind, trackTrue: track, legIndex,
     }, h);
   };
 
-  // --- the climb, forward from the departure ------------------------------------------------
-  const rows = [];
-  const climbAlt = navLogSegmentAltFt('climb', depElev, cruiseFt, o.paFraction);
-  let climbTimeH = (climbFpm > 0 && cruiseFt > depElev) ? (cruiseFt - depElev) / climbFpm / 60 : 0;
-  let legIndex = 0;
-  let legRemaining = legs.length ? legs[0].dist : 0;
-  let legFrom = label(wps[0]);
-  while (climbTimeH > 1e-9 && legIndex < legs.length) {
-    const leg = legs[legIndex];
-    const row = mkRow('climb', legFrom, '', climbAlt, Number(cas.climb), legIndex, leg.track);
-    const gs = row.groundSpeedKt;
-    if (!(gs > 0)) break;                       // unflyable: stop rather than invent a distance
-    const reach = gs * climbTimeH;
-    if (reach < legRemaining - 1e-9) {          // the top of climb is inside this leg
-      row.to = 'TOC';
-      row.distNm = reach;
-      row.timeH = climbTimeH;
-      rows.push(row);
-      legRemaining -= reach;
-      legFrom = 'TOC';
-      climbTimeH = 0;
-    } else {                                    // still climbing when the leg runs out
-      row.to = label(leg.to);
-      row.distNm = legRemaining;
-      row.timeH = legRemaining / gs;
-      rows.push(row);
-      climbTimeH -= row.timeH;
-      legIndex += 1;
-      legFrom = label(leg.to);
-      legRemaining = legIndex < legs.length ? legs[legIndex].dist : 0;
-    }
-  }
-
-  // --- the descent, backwards from the destination -------------------------------------------
-  const descAlt = navLogSegmentAltFt('descent', destElev, cruiseFt, o.paFraction);
-  let descTimeH = (descentFpm > 0 && cruiseFt > destElev) ? (cruiseFt - destElev) / descentFpm / 60 : 0;
+  // --- the descent onto the destination, taken backwards from the end -------------------------
+  // Bounded by TIME, like the climb: a rate and a height to lose. Walking it backwards is what
+  // puts the top of descent at the right distance from the field rather than from the last
+  // waypoint, and it may reach back through more than one leg.
   const tail = [];
+  const remaining = legs.map(l => l.dist);
   let backLeg = legs.length - 1;
-  let backRemaining = legs.length ? legs[backLeg].dist : 0;
+  const lastAlt = legAlt(backLeg);
+  const descAlt = navLogSegmentAltFt('descent', lastAlt, destElev, o.paFraction);
+  let descTimeH = (descentFpm > 0 && lastAlt > destElev) ? (lastAlt - destElev) / descentFpm / 60 : 0;
   let backTo = label(wps[wps.length - 1]);
-  if (backLeg === legIndex) backRemaining = legRemaining;   // the climb already ate part of it
-  while (descTimeH > 1e-9 && backLeg >= legIndex) {
+  while (descTimeH > 1e-9 && backLeg >= 0) {
     const leg = legs[backLeg];
     const row = mkRow('descent', '', backTo, descAlt, Number(cas.descent), backLeg, leg.track);
     const gs = row.groundSpeedKt;
     if (!(gs > 0)) break;
     const reach = gs * descTimeH;
-    if (reach < backRemaining - 1e-9) {         // the top of descent is inside this leg
+    if (reach < remaining[backLeg] - 1e-9) {
       row.from = 'TOD';
       row.distNm = reach;
       row.timeH = descTimeH;
       tail.unshift(row);
-      backRemaining -= reach;
-      backTo = 'TOD';
+      remaining[backLeg] -= reach;
       descTimeH = 0;
     } else {
       row.from = label(leg.from);
-      row.distNm = backRemaining;
-      row.timeH = backRemaining / gs;
+      row.distNm = remaining[backLeg];
+      row.timeH = remaining[backLeg] / gs;
       tail.unshift(row);
       descTimeH -= row.timeH;
+      remaining[backLeg] = 0;
       backLeg -= 1;
-      backTo = label(leg.to);
-      backRemaining = backLeg >= 0 ? legs[backLeg].dist : 0;
-      if (backLeg === legIndex) backRemaining = legRemaining;
+      backTo = backLeg >= 0 ? label(legs[backLeg].to) : '';
     }
   }
 
-  // --- everything between them is cruise -----------------------------------------------------
-  for (let i = legIndex; i <= backLeg && i < legs.length; i++) {
+  // --- forward along the route, at the altitude each leg is planned at ------------------------
+  const rows = [];
+  let alt = depElev;                       // on the ground at the departure field
+  let climbGalLeft = Number(fuel.climbGal) > 0 ? Number(fuel.climbGal) : 0;
+  for (let i = 0; i <= backLeg && i < legs.length; i++) {
     const leg = legs[i];
-    const from = (i === legIndex) ? legFrom : label(leg.from);
-    const to = (i === backLeg) ? backTo : label(leg.to);
-    const dist = (i === legIndex ? legRemaining : leg.dist)
-      - (i === backLeg ? (leg.dist - backRemaining) : 0);
-    if (!(dist > 1e-9)) continue;
-    const row = mkRow('cruise', from, to, cruiseFt, Number(cas.cruise), i, leg.track);
-    row.distNm = dist;
-    row.timeH = row.groundSpeedKt > 0 ? dist / row.groundSpeedKt : null;
-    rows.push(row);
+    const target = legAlt(i);
+    let from = (i === 0) ? label(wps[0]) : label(leg.from);
+    // A step: up to the leg's level, or down onto it. Both are bounded by time, so both can
+    // outlast the leg they start on -- and then they carry on down the next leg's track rather
+    // than being capped at a waypoint the aeroplane passes still climbing.
+    while (remaining[i] > 1e-9 && Math.abs(target - alt) > 1) {
+      const climbing = target > alt;
+      const rate = climbing ? climbFpm : descentFpm;
+      if (!(rate > 0)) break;
+      const segAlt = navLogSegmentAltFt(climbing ? 'climb' : 'descent', alt, target, o.paFraction);
+      const row = mkRow(climbing ? 'climb' : 'descent', from, '', segAlt,
+        Number(climbing ? cas.climb : cas.descent), i, leg.track);
+      const gs = row.groundSpeedKt;
+      if (!(gs > 0)) break;
+      const needH = Math.abs(target - alt) / rate / 60;
+      const reach = gs * needH;
+      if (reach < remaining[i] - 1e-9) {           // the top (or bottom) is inside this leg
+        row.to = climbing ? 'TOC' : 'TOD';
+        row.distNm = reach;
+        row.timeH = needH;
+        rows.push(row);
+        remaining[i] -= reach;
+        from = row.to;
+        alt = target;
+      } else {                                      // still changing level when the leg runs out
+        row.to = label(leg.to);
+        row.distNm = remaining[i];
+        row.timeH = remaining[i] / gs;
+        rows.push(row);
+        alt += (climbing ? 1 : -1) * rate * row.timeH * 60;
+        remaining[i] = 0;
+      }
+      if (climbing) row.climbSegment = true;
+    }
+    // Whatever is left of the leg is flown at its planned level.
+    if (remaining[i] > 1e-9) {
+      const row = mkRow('cruise', from, (i === backLeg && tail.length) ? 'TOD' : label(leg.to),
+        target, Number(cas.cruise), i, leg.track);
+      row.distNm = remaining[i];
+      row.timeH = row.groundSpeedKt > 0 ? remaining[i] / row.groundSpeedKt : null;
+      rows.push(row);
+      remaining[i] = 0;
+      alt = target;
+    }
   }
   rows.push(...tail);
 
@@ -3633,13 +3633,12 @@ function navLogRows(input) {
   // The climb's fuel is a flat allowance, not a rate times a time: that is how a POH gives it and
   // how the exercise states it. Split across climb rows by time when the climb spans more than
   // one, so the cumulative column still adds up.
-  const climbGal = Number(fuel.climbGal) > 0 ? Number(fuel.climbGal) : 0;
   const climbTotalH = rows.reduce((sum, r) => sum + (r.kind === 'climb' && r.timeH > 0 ? r.timeH : 0), 0);
   let cumTimeH = 0, cumFuel = 0;
   for (const row of rows) {
     row.gph = row.kind === 'climb' ? null : cruiseGph;
     row.fuelGal = row.kind === 'climb'
-      ? (climbTotalH > 0 ? climbGal * (row.timeH / climbTotalH) : climbGal)
+      ? (climbTotalH > 0 ? climbGalLeft * (row.timeH / climbTotalH) : climbGalLeft)
       : (row.timeH > 0 ? cruiseGph * row.timeH : 0);
     cumTimeH += row.timeH > 0 ? row.timeH : 0;
     cumFuel += row.fuelGal > 0 ? row.fuelGal : 0;
@@ -3648,6 +3647,7 @@ function navLogRows(input) {
   }
   return rows;
 }
+
 // Winds-aloft level mapping: Open-Meteo serves wind/temperature on
 // these pressure levels (hPa). Map a planned altitude to the nearest one so a
 // CVFR leg at ~3000 ft pulls ~900 hPa, ~5000 ft pulls ~850 hPa, etc.

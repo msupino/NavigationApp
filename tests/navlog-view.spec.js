@@ -27,7 +27,7 @@ const openLog = async (page) => {
 test('the toolbar offers it, and it opens a sheet', async ({ page }) => {
   await boot(page);
   // The icon is part of the label, as it is on every other button in this section.
-  await expect(page.locator('#nav-log')).toHaveText('📐 Planning form');
+  await expect(page.locator('#nav-log')).toHaveText('📐 Flight planning form');
   await page.evaluate(() => document.getElementById('nav-log').click());
   await expect(page.locator('.navlog-modal .navlog-table')).toBeVisible();
   // 23 columns, the exercise's own set.
@@ -920,4 +920,102 @@ test('the undo arrow is always there, dimmed when there is nothing to undo', asy
   });
   expect(after.idle).toBe(false);
   expect(after.title).toMatch(/back to the variation/i);
+});
+
+// Reported: a refresh, or a language switch (which IS a refresh -- it reloads with ?lang),
+// closed the form, while every other table on the toolbar comes back.
+test('the form comes back after a reload, like every other chart window', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  expect(await page.evaluate(() => sessionStorage.getItem('navaid.openChartModal'))).toBe('nav-table');
+  await page.reload();
+  await page.waitForSelector('.navlog-modal .navlog-table', { timeout: 8000 });
+  await expect(page.locator('.navlog-modal')).toBeVisible();
+});
+
+test('closing it means it stays closed', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  await page.evaluate(() => {
+    const back = document.querySelector('.navlog-modal').closest('.modal-back');
+    if (back && back._navaidClose) back._navaidClose();
+    else document.querySelector('.modal-back .modal-x, .modal-x').click();
+  });
+  expect(await page.evaluate(() => sessionStorage.getItem('navaid.openChartModal'))).toBe(null);
+  await page.reload();
+  await page.waitForFunction(() => typeof draw === 'function');
+  expect(await page.locator('.navlog-modal').count()).toBe(0);
+});
+
+// Dark is the window's own colour (.modal is #2a2626); the form used to be the only light thing
+// inside it, because its inputs and grids were the browser's defaults.
+test('the form is painted from the window\'s palette, not the browser\'s', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  const paint = await page.evaluate(() => {
+    // The app boots light in tests; this is about what dark mode looks like.
+    document.body.classList.remove('theme-light');
+    const input = document.querySelector('.navlog-setup input');
+    const th = document.querySelector('.navlog-table th');
+    const rgb = (el, prop) => getComputedStyle(el)[prop];
+    // Alpha matters: a header tinted rgba(255,255,255,0.05) is a whisper over the dark window,
+    // not a white box, and reading only the channels calls it white.
+    const parse = (css) => {
+      const m = (css.match(/[\d.]+/g) || []).map(Number);
+      const a = m.length > 3 ? m[3] : 1;
+      return { lum: (m[0] * 0.299 + m[1] * 0.587 + m[2] * 0.114) / 255, alpha: a };
+    };
+    return { input: parse(rgb(input, 'backgroundColor')), text: parse(rgb(input, 'color')),
+             head: parse(rgb(th, 'backgroundColor')) };
+  });
+  // The box is opaque and darker than its text, which is the definition of not-a-white-box.
+  expect(paint.input.alpha).toBe(1);
+  expect(paint.input.lum).toBeLessThan(0.3);
+  expect(paint.text.lum).toBeGreaterThan(0.6);
+  // The header is a tint over the window, not a panel of its own.
+  expect(paint.head.alpha).toBeLessThan(0.2);
+});
+
+// Reported: "the first leg is lower than 2500, it's 800" -- a TOC that landed in the second leg
+// because the whole route was flattened to its highest planned level. Each leg is flown at the
+// altitude on its own kite, so a route that leaves at 800 and steps up to 2,500 climbs twice.
+test('each leg is flown at its own planned altitude', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { name: 'LLHZ', lat: 32.17944, lng: 34.83444 },
+      { name: 'A', lat: 32.35, lng: 34.95 },
+      { name: 'B', lat: 32.7, lng: 35.2 },
+      { name: 'LLIB', lat: 32.98111, lng: 35.57194 },
+    ];
+    syncLegs();
+    state.legs[0].inboundAltitude = 800;      // low, out of the circuit
+    state.legs[1].inboundAltitude = 2500;     // then up
+    state.legs[2].inboundAltitude = 2500;
+    save(); draw();
+  });
+  const rows = await page.evaluate(() => NavAid.navLog.rows().map(r => ({
+    kind: r.kind, from: r.from, to: r.to, pa: Math.round(r.pressureAltFt) })));
+  // The first climb is to 800 and ends inside the first leg -- LLHZ 121 ft to 800 is 679 ft.
+  expect(rows[0]).toMatchObject({ kind: 'climb', from: 'LLHZ', to: 'TOC' });
+  expect(rows[0].pa).toBe(574);              // 121 + two thirds of 679
+  expect(rows[1]).toMatchObject({ kind: 'cruise', from: 'TOC', to: 'A' });
+  expect(rows[1].pa).toBe(800);              // the leg's own level, not the route's highest
+  // The step up to 2,500 is its own climb, on the leg that is planned at 2,500.
+  const step = rows.find(r => r.kind === 'climb' && r.from === 'A');
+  expect(step, JSON.stringify(rows)).toBeTruthy();
+  expect(step.pa).toBe(1933);                // 800 + two thirds of 1,700
+  expect(rows[rows.length - 1].kind).toBe('descent');
+});
+
+// A route with no altitudes typed on it is still a sheet: one level, the fallback.
+test('a route with no planned altitudes uses the single level', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.legs.forEach(l => { l.inboundAltitude = NaN; });
+    save(); draw();
+  });
+  const rows = await page.evaluate(() => NavAid.navLog.rows().map(r => Math.round(r.pressureAltFt)));
+  expect(rows.length).toBeGreaterThan(0);
+  expect(rows.every(pa => Number.isFinite(pa))).toBe(true);
 });

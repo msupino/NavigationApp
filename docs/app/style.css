@@ -8074,6 +8074,32 @@ body.disclaimer-open { overflow: hidden; }
 .navlog-grid { border-collapse: collapse; font-size: 12px; }
 .navlog-grid th, .navlog-grid td { border: 1px solid rgba(128, 128, 128, 0.35); padding: 1px 4px; }
 .navlog-grid input { width: 5em; }
+/* The window is dark (.modal is #2a2626); browser-default inputs and a white grid were the
+   only light things in it. Borders and fills are drawn from the modal's own palette so the
+   form reads as part of the window rather than a page pasted into it. */
+.navlog-body input {
+  background: #221f1f;
+  color: #e8e8e8;
+  border: 1px solid #4a4444;
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.navlog-body input:focus { outline: 1px solid #6b8f6b; border-color: #6b8f6b; }
+.navlog-grid th, .navlog-table th { background: rgba(255, 255, 255, 0.05); font-weight: 600; }
+.navlog-grid th, .navlog-grid td,
+.navlog-table th, .navlog-table td { border-color: rgba(255, 255, 255, 0.18); }
+.navlog-body button { background: #3a3535; color: #e8e8e8; border: 1px solid #4a4444;
+  border-radius: 4px; }
+.navlog-body button:hover:not(:disabled) { background: #474040; }
+.navlog-body .navlog-reset, .navlog-body .navlog-row-del { background: none; border: 0; }
+.navlog-note { color: #cfc9c9; }
+/* Light theme: the same shapes, the other way up. */
+body.theme-light .navlog-body input { background: #fff; color: #1a1a1a; border-color: #bbb; }
+body.theme-light .navlog-grid th, body.theme-light .navlog-table th { background: rgba(0, 0, 0, 0.05); }
+body.theme-light .navlog-grid th, body.theme-light .navlog-grid td,
+body.theme-light .navlog-table th, body.theme-light .navlog-table td { border-color: rgba(0, 0, 0, 0.25); }
+body.theme-light .navlog-body button { background: #f0eded; color: #1a1a1a; border-color: #c8c2c2; }
+body.theme-light .navlog-note { color: #333; }
 /* The compass card is printed two pairs of columns wide; a twelve-row single column is taller
    than the sheet it belongs to. The divider marks where the second half starts. */
 .navlog-card-grid td:nth-child(3), .navlog-card-grid th:nth-child(3) {

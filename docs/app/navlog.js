@@ -264,7 +264,7 @@
       let take = false;
       try {
         take = typeof window.askYesNo === 'function'
-          ? await window.askYesNo(S2.navTableTitle || 'Nav table', ask,
+          ? await window.askYesNo(S2.navTableTitle || 'Flight planning form', ask,
             S2.navTableReplaceRouteOk || 'Load the route')
           : true;
       } catch (e) { take = false; }
@@ -433,6 +433,13 @@
       met: c.met,
       deviation: c.deviation,
       paFraction: c.paFraction,
+      // The altitude on each leg's own kite. A route that leaves at 800 ft and steps up to
+      // 2,500 climbs twice, and the first top of climb is inside the first leg where the pilot
+      // put it -- reported as a TOC that landed in the second leg because the whole route was
+      // flattened to its highest level.
+      legAltitudes: ((typeof state === 'object' && state && Array.isArray(state.legs))
+        ? state.legs : []).map(l => (l && Number(l.inboundAltitude) > 0)
+        ? Number(l.inboundAltitude) : null),
       variationDeg: c.variationDeg,
       // Where the typed table is silent, whatever the app itself knows about the wind on this
       // leg -- the route wind, or a per-leg override the pilot set on the map.
@@ -559,8 +566,15 @@
     const S2 = window.S || {};
     if (typeof createDraggableModal !== 'function') return null;
     const cfg = config();
-    const modal = createDraggableModal(S2.navTableTitle || 'Nav table', 'modal wide navlog-modal',
-      () => { live = null; }, { nonBlocking: true });
+    // Remembered like every other chart window: a refresh, or a language switch (which IS a
+    // refresh -- it reloads with ?lang), brings it back. Reported as the form closing itself
+    // when every other table on the toolbar survives.
+    const modal = createDraggableModal(S2.navTableTitle || 'Flight planning form', 'modal wide navlog-modal',
+      () => {
+        live = null;
+        if (typeof clearOpenChartModal === 'function') clearOpenChartModal('nav-table');
+      }, { nonBlocking: true });
+    if (typeof rememberOpenChartModal === 'function') rememberOpenChartModal('nav-table');
     const body = document.createElement('div');
     body.className = 'navlog-body';
     modal.box.appendChild(body);
@@ -899,6 +913,21 @@
         'nav-log-' + slug + (stamp ? '-' + stamp : '') + '.csv');
     }
     return text;
+  }
+
+  // ...and the other half of that: if the page came back with the form open, open it, whichever
+  // of the two files won the race. show() is idempotent enough -- one window at a time -- and a
+  // key for a window nobody restored would otherwise sit in the session forever.
+  function restoreIfWasOpen() {
+    if (typeof readOpenChartModal !== 'function') return;
+    if (readOpenChartModal() !== 'nav-table') return;
+    if (document.querySelector('.navlog-modal')) return;
+    show();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', restoreIfWasOpen);
+  } else {
+    setTimeout(restoreIfWasOpen, 0);
   }
 
   NS.navLog = { show, config, save, rows, exportCsv, headers, cells, defaults,
