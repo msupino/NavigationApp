@@ -295,3 +295,80 @@ test('the window offers both, in the language it is in', async ({ page }) => {
   // The picker is a real file input, not a drop of custom UI that cannot be reached by keyboard.
   expect(await page.locator('.navlog-file').getAttribute('accept')).toContain('json');
 });
+
+// End to end, through the control a pilot actually presses: the toolbar's own Import, the real
+// file input, the real load(). The unit tests above drive importExercise() directly; this one
+// proves the file reaches it at all.
+test('the toolbar Import opens an exercise file', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { window.askYesNo = async () => true; });
+  await page.setInputFiles('#file', {
+    name: 'nav-table-herzliya-rosh-pina.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      title: 'Herzliya - Rosh Pina (CVFR exercise)',
+      route: FIXTURE.route,
+      navlog: FIXTURE.navlog,
+    }), 'utf8'),
+  });
+  await page.waitForFunction(() => state.waypoints.length === 5, null, { timeout: 5000 });
+  const got = await page.evaluate(() => ({
+    names: state.waypoints.map(w => w.name),
+    met: NavAid.navLog.config().met.length,
+    cruise: NavAid.navLog.config().cruiseAltFt,
+    dep: NavAid.navLog.config().depElevFt,
+  }));
+  expect(got).toEqual({ names: ['LLHZ', 'א', 'ב', 'ג', 'LLIB'], met: 6, cruise: 6000, dep: 100 });
+});
+
+// ...and an ordinary route file still takes the route path, untouched by any of this.
+const ROUTE_FILE = require('./fixtures/route-herzliya-rosh-pina.json');
+
+test('a plain route file is still just a route', async ({ page }) => {
+  await boot(page);
+  const before = await page.evaluate(() => NavAid.navLog.config().met.length);
+  await page.setInputFiles('#file', {
+    name: 'route.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(ROUTE_FILE), 'utf8'),
+  });
+  await page.waitForFunction(() => state.waypoints.length === 5, null, { timeout: 5000 });
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name)))
+    .toEqual(['LLHZ', 'א', 'ב', 'ג', 'LLIB']);
+  expect(await page.evaluate(() => NavAid.navLog.config().met.length)).toBe(before);
+});
+
+// The file that is both: a route this app exported, with the sheet's assumptions beside it. The
+// route must land on the map COMPLETE -- legs, planned altitudes, speeds -- which only the app's
+// own route path does, so that is the path it takes.
+test('an exercise that is also a route lands whole: map and sheet', async ({ page }) => {
+  await boot(page);
+  const both = Object.assign({}, ROUTE_FILE, {
+    title: 'Herzliya - Rosh Pina (CVFR exercise)',
+    navlog: FIXTURE.navlog,
+  });
+  await page.evaluate(() => { window.askYesNo = async () => true; });
+  await page.setInputFiles('#file', {
+    name: 'navaid-exercise.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(both), 'utf8'),
+  });
+  await page.waitForFunction(() => state.waypoints.length === 5, null, { timeout: 5000 });
+  const got = await page.evaluate(() => ({
+    names: state.waypoints.map(w => w.name),
+    // The legs the route file carries, not a bare list of points: this is what the route path
+    // gives that the nav table's own reader cannot.
+    legs: state.legs.length,
+    planned: state.legs[0].inboundAltitude,
+    speed: state.legs[0].flightSpeed,
+    met: NavAid.navLog.config().met.length,
+    cruise: NavAid.navLog.config().cruiseAltFt,
+    dep: NavAid.navLog.config().depElevFt,
+  }));
+  expect(got).toEqual({ names: ['LLHZ', 'א', 'ב', 'ג', 'LLIB'], legs: 4, planned: 6000,
+    speed: 90, met: 6, cruise: 6000, dep: 100 });
+  // ...and the sheet it produces is the exercise's own.
+  const rows = await page.evaluate(() => NavAid.navLog.rows().map(r => Math.round(r.pressureAltFt)));
+  expect(rows[0]).toBe(4033);
+  expect(rows[rows.length - 1]).toBe(3450);
+});

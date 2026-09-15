@@ -3033,7 +3033,13 @@ function load(file) {
     // button is a second thing to find. The nav table owns what it means.
     if (d && typeof d === 'object' && d.navlog && typeof d.navlog === 'object'
       && window.NavAid && NavAid.navLog && typeof NavAid.navLog.importExercise === 'function') {
-      NavAid.navLog.importExercise(reader.result);
+      // An exercise file may also BE a route -- the shape this app exports, legs and planned
+      // altitudes and all. When it is, the route goes down the ordinary route path so it lands
+      // on the map complete, and only the sheet's assumptions go to the nav table. A file that
+      // carries a bare list of points instead lets the nav table read those itself.
+      const asRoute = validateRoute(d) ? null : d;
+      if (asRoute) applyRouteData(asRoute);
+      NavAid.navLog.importExercise(reader.result, { skipRoute: !!asRoute });
       return;
     }
     // Strict schema check before applying any state. Any

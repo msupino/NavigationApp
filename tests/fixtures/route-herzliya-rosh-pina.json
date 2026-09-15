@@ -1,0 +1,144 @@
+{
+  "waypoints": [
+    {
+      "lat": 32.17944,
+      "lng": 34.83444,
+      "name": "LLHZ"
+    },
+    {
+      "lat": 32.5,
+      "lng": 35,
+      "name": "א"
+    },
+    {
+      "lat": 32.66667,
+      "lng": 35.5,
+      "name": "ב"
+    },
+    {
+      "lat": 32.96667,
+      "lng": 35.16667,
+      "name": "ג"
+    },
+    {
+      "lat": 32.98111,
+      "lng": 35.57194,
+      "name": "LLIB"
+    }
+  ],
+  "legs": [
+    {
+      "inboundAltitude": 6000,
+      "outboundAltitude": "NaN",
+      "flightSpeed": 90,
+      "outboundSpeed": 90,
+      "inLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "outLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "speedAuto": 1,
+      "retSpeedAuto": 1,
+      "cumLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "cumLabelRet": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      }
+    },
+    {
+      "inboundAltitude": 6000,
+      "outboundAltitude": "NaN",
+      "flightSpeed": 90,
+      "outboundSpeed": 90,
+      "inLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "outLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "speedAuto": 1,
+      "retSpeedAuto": 1,
+      "cumLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "cumLabelRet": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      }
+    },
+    {
+      "inboundAltitude": 6000,
+      "outboundAltitude": "NaN",
+      "flightSpeed": 90,
+      "outboundSpeed": 90,
+      "inLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "outLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "speedAuto": 1,
+      "retSpeedAuto": 1,
+      "cumLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "cumLabelRet": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      }
+    },
+    {
+      "inboundAltitude": 6000,
+      "outboundAltitude": "NaN",
+      "flightSpeed": 90,
+      "outboundSpeed": 90,
+      "inLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "outLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "speedAuto": 1,
+      "retSpeedAuto": 1,
+      "cumLabel": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      },
+      "cumLabelRet": {
+        "a": 0,
+        "_default": 1,
+        "_m": 1
+      }
+    }
+  ],
+  "notes": []
+}

@@ -162,9 +162,12 @@
 
   // Applies one. The route is REPLACED, so it asks first when there is one to lose -- in the
   // app's own dialog, because the answer decides whether a drawn plan survives.
-  async function importExercise(text) {
+  async function importExercise(text, opts) {
     const S2 = window.S || {};
     const parsed = parseExercise(text);
+    // The caller has already drawn the route itself -- an exercise that is also a route file
+    // goes down the app's own route path, legs and planned altitudes intact.
+    if (parsed && opts && opts.skipRoute) parsed.waypoints = null;
     if (!parsed) {
       if (typeof showToast === 'function') {
         showToast(S2.navTableImportBad || 'That file is not an exercise: no route and no settings in it.',
