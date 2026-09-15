@@ -69,8 +69,13 @@
   }
 
   function config() {
-    const d = defaults();
-    const s = stored();
+    return coerce(stored(), defaults());
+  }
+  // Everything that reads a config goes through here: what this device stored last time, and
+  // what an exercise file hands over. A file is somebody else's JSON -- it gets the same
+  // coercion, field by field, and nothing it carries becomes a number without passing it.
+  function coerce(s, d) {
+    s = (s && typeof s === 'object') ? s : {};
     return {
       cruiseAltFt: num(s.cruiseAltFt, d.cruiseAltFt),
       variationDeg: num(s.variationDeg, d.variationDeg),
@@ -89,14 +94,131 @@
         climbGal: num(s.fuel && s.fuel.climbGal, d.fuel.climbGal),
         cruiseGph: num(s.fuel && s.fuel.cruiseGph, d.fuel.cruiseGph),
       },
+      // Capped: a met table is a page of a briefing and a compass card has twelve marks. A file
+      // claiming ten thousand rows is not an exercise, and the table it would build is a hang.
       met: Array.isArray(s.met) ? s.met.filter(r => r && Number.isFinite(Number(r.alt)))
+        .slice(0, 60)
         .map(r => ({ alt: Number(r.alt), dir: num(r.dir, 0), kt: num(r.kt, 0), tempC: num(r.tempC, 0) }))
         : d.met,
       deviation: Array.isArray(s.deviation) && s.deviation.length
-        ? s.deviation.filter(r => r && Number.isFinite(Number(r.mh)))
+        ? s.deviation.filter(r => r && Number.isFinite(Number(r.mh))).slice(0, 72)
           .map(r => ({ mh: Number(r.mh), ch: num(r.ch, Number(r.mh)) }))
         : d.deviation,
     };
+  }
+
+  // --- exercises as files -------------------------------------------------------------------
+  // An exercise is handed out as a sheet: a route, a met table, a compass card and a set of
+  // assumptions. Reading one back as JSON is the difference between a feature a pilot can use
+  // and one only a console can drive.
+  const MAX_POINTS = 100;
+  function readWaypoints(raw) {
+    const list = (raw && raw.route && Array.isArray(raw.route.waypoints)) ? raw.route.waypoints
+      : (Array.isArray(raw && raw.waypoints) ? raw.waypoints : null);
+    if (!list) return null;
+    const out = [];
+    for (const w of list.slice(0, MAX_POINTS)) {
+      if (!w || typeof w !== 'object') continue;
+      const lat = Number(w.lat), lng = Number(w.lng);
+      // Israel is the airspace, but the check here is only that these are coordinates at all:
+      // an exercise may legitimately run off the edge of the chart, and a silent reject is
+      // worse than a route the pilot can see is wrong.
+      if (!Number.isFinite(lat) || Math.abs(lat) > 90) continue;
+      if (!Number.isFinite(lng) || Math.abs(lng) > 180) continue;
+      const name = typeof w.name === 'string' ? w.name.slice(0, 40)
+        : (typeof w.he === 'string' ? w.he.slice(0, 40) : '');
+      out.push({ lat, lng, name });
+    }
+    return out.length >= 2 ? out : null;
+  }
+  // Parses, never applies. Returns null for anything that is not an exercise, so the caller can
+  // say so rather than half-loading one.
+  function parseExercise(text) {
+    let raw = null;
+    try { raw = JSON.parse(String(text)); } catch (e) { return null; }
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const src = (raw.navlog && typeof raw.navlog === 'object') ? raw.navlog : raw;
+    const waypoints = readWaypoints(raw);
+    // A file with neither a route nor any assumption in it is not an exercise.
+    const hasConfig = ['cruiseAltFt', 'cas', 'met', 'deviation', 'variationDeg', 'rates', 'fuel']
+      .some(k => Object.prototype.hasOwnProperty.call(src, k));
+    if (!waypoints && !hasConfig) return null;
+    // The elevations an exercise states beat the dataset's: it may be flying from a strip that
+    // is not in it, or -- as the Herzliya sheet does -- round 121 ft to 100.
+    const d = defaults();
+    if (waypoints) {
+      const first = (raw.route && raw.route.waypoints) ? raw.route.waypoints[0] : null;
+      const last = (raw.route && raw.route.waypoints)
+        ? raw.route.waypoints[raw.route.waypoints.length - 1] : null;
+      if (first && Number.isFinite(Number(first.elevFt))) d.depElevFt = Number(first.elevFt);
+      if (last && Number.isFinite(Number(last.elevFt))) d.destElevFt = Number(last.elevFt);
+    }
+    return {
+      title: typeof raw.title === 'string' ? raw.title.slice(0, 120) : '',
+      waypoints,
+      navlog: coerce(src, d),
+    };
+  }
+
+  // Applies one. The route is REPLACED, so it asks first when there is one to lose -- in the
+  // app's own dialog, because the answer decides whether a drawn plan survives.
+  async function importExercise(text) {
+    const S2 = window.S || {};
+    const parsed = parseExercise(text);
+    if (!parsed) {
+      if (typeof showToast === 'function') {
+        showToast(S2.navTableImportBad || 'That file is not an exercise: no route and no settings in it.',
+          { warn: true });
+      }
+      return null;
+    }
+    if (parsed.waypoints && typeof state === 'object' && state
+      && Array.isArray(state.waypoints) && state.waypoints.length) {
+      const ask = S2.navTableReplaceRoute
+        || 'This exercise carries its own route. Load it? This replaces the route on your map.';
+      let take = false;
+      try {
+        take = typeof window.askYesNo === 'function'
+          ? await window.askYesNo(S2.navTableTitle || 'Nav table', ask,
+            S2.navTableReplaceRouteOk || 'Load the route')
+          : true;
+      } catch (e) { take = false; }
+      if (!take) parsed.waypoints = null;      // the settings still land; the plan is untouched
+    }
+    if (parsed.waypoints) {
+      if (typeof recordUndoSnapshot === 'function') recordUndoSnapshot();
+      state.waypoints = parsed.waypoints;
+      if (typeof syncLegs === 'function') syncLegs();
+      if (typeof draw === 'function') draw();
+    }
+    save(parsed.navlog);
+    if (typeof showToast === 'function') {
+      showToast((S2.navTableImported || 'Exercise loaded.') + (parsed.title ? ' — ' + parsed.title : ''));
+    }
+    return parsed;
+  }
+
+  // The other direction: this device's sheet as a file, in the shape an exercise arrives in.
+  function exportExercise(cfg) {
+    const c = cfg || config();
+    const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
+      ? state.waypoints : [];
+    const doc = {
+      title: (typeof routeFileSlug === 'function') ? routeFileSlug() : 'route',
+      route: {
+        waypoints: wps.map((w, i) => Object.assign({ name: w.name || '', lat: w.lat, lng: w.lng },
+          i === 0 ? { elevFt: c.depElevFt } : {},
+          i === wps.length - 1 ? { elevFt: c.destElevFt } : {})),
+      },
+      navlog: c,
+    };
+    const text = JSON.stringify(doc, null, 2);
+    if (typeof saveFile === 'function' && typeof Blob === 'function') {
+      const stamp = (typeof fileStamp === 'function') ? fileStamp() : '';
+      saveFile(new Blob([text], { type: 'application/json' }),
+        'nav-table-' + doc.title + (stamp ? '-' + stamp : '') + '.json');
+    }
+    return text;
   }
 
   // The rows, from the route on the map and the config above.
@@ -353,6 +475,42 @@
 
     const actions = document.createElement('div');
     actions.className = 'navlog-actions';
+    // The same file the app's own Open accepts -- this is the shortcut from inside the window
+    // you are already looking at, not a second format.
+    const importBtn = document.createElement('button');
+    importBtn.type = 'button';
+    importBtn.className = 'navlog-import';
+    importBtn.textContent = S2.navTableImport || 'Open exercise';
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = '.json,application/json';
+    picker.className = 'navlog-file';
+    picker.hidden = true;
+    picker.addEventListener('change', () => {
+      const file = picker.files && picker.files[0];
+      picker.value = '';
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {           // the same cap the route loader uses
+        if (typeof refuse === 'function') refuse((S2.errLoadFile || '') + 'file too large');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const applied = await importExercise(reader.result);
+        if (!applied) return;
+        Object.assign(cfg, config());
+        renderMet();
+        renderCard();
+        render();
+      };
+      reader.readAsText(file);
+    });
+    importBtn.addEventListener('click', () => picker.click());
+    const exportBtn = document.createElement('button');
+    exportBtn.type = 'button';
+    exportBtn.className = 'navlog-export';
+    exportBtn.textContent = S2.navTableExport || 'Save exercise';
+    exportBtn.addEventListener('click', () => exportExercise(cfg));
     const csv = document.createElement('button');
     csv.type = 'button';
     csv.textContent = S2.navLogCsv || 'CSV';
@@ -361,7 +519,7 @@
     print.type = 'button';
     print.textContent = S2.navLogPrint || 'Print';
     print.addEventListener('click', () => window.print());
-    actions.append(csv, print);
+    actions.append(importBtn, picker, exportBtn, csv, print);
 
     renderMet();
     renderCard();
@@ -395,5 +553,6 @@
     return text;
   }
 
-  NS.navLog = { show, config, save, rows, exportCsv, headers, cells, defaults };
+  NS.navLog = { show, config, save, rows, exportCsv, headers, cells, defaults,
+    parseExercise, importExercise, exportExercise };
 }());

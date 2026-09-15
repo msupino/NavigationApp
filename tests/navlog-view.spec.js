@@ -166,3 +166,132 @@ test('the Hebrew sheet is Hebrew, with the numbers left to right', async ({ page
   expect(seen.firstHeader).toBe('קטע');
   expect(seen.valueDir).toBe('ltr');
 });
+
+// An exercise arrives as a file. It goes in through the app's OWN Open, because "open a file"
+// is one action to a pilot and a second import button is a second thing to find -- and through
+// a shortcut inside the window you are already looking at, which is the same code path.
+const FIXTURE = require('./fixtures/navlog-herzliya-rosh-pina.json');
+
+test('the app\'s own Open recognises an exercise and hands it to the nav table', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async (fixture) => {
+    // What load() does with the file's text, without a file picker: the dispatch is the point.
+    const text = JSON.stringify(fixture);
+    const parsed = JSON.parse(text);
+    const isExercise = !!(parsed && parsed.navlog && window.NavAid && NavAid.navLog
+      && typeof NavAid.navLog.importExercise === 'function');
+    window.askYesNo = async () => true;
+    await NavAid.navLog.importExercise(text);
+    return {
+      isExercise,
+      names: state.waypoints.map(w => w.name),
+      cfg: NavAid.navLog.config(),
+    };
+  }, FIXTURE);
+  expect(got.isExercise).toBe(true);
+  // The route the exercise sets, drawn on the map, under the names the APP identifies points by
+  // -- LLHZ, not the sheet's Hebrew alias for it, which is a label on a page rather than a
+  // waypoint the airfield dataset, the plates and the frequencies all key on.
+  expect(got.names).toEqual(['LLHZ', 'א', 'ב', 'ג', 'LLIB']);
+  // ...and its assumptions, including the elevations IT states rather than the dataset's 121.
+  expect(got.cfg.depElevFt).toBe(100);
+  expect(got.cfg.destElevFt).toBe(900);
+  expect(got.cfg.variationDeg).toBe(4);
+  expect(got.cfg.met).toHaveLength(6);
+  expect(got.cfg.deviation[1]).toEqual({ mh: 30, ch: 27 });
+});
+
+test('the loaded exercise reproduces its own published sheet', async ({ page }) => {
+  await boot(page);
+  const rows = await page.evaluate(async (fixture) => {
+    window.askYesNo = async () => true;
+    await NavAid.navLog.importExercise(JSON.stringify(fixture));
+    const cfg = NavAid.navLog.config();
+    return NavAid.navLog.rows(cfg).map(r => ({
+      pa: Math.round(r.pressureAltFt), tas: Math.round(r.tasKt * 10) / 10 }));
+  }, FIXTURE);
+  expect(rows).toHaveLength(6);
+  expect(rows[0]).toEqual({ pa: 4033, tas: 74.2 });
+  expect(rows[5]).toEqual({ pa: 3450, tas: 105.2 });
+});
+
+// Replacing the route is the destructive half, so it is asked -- and saying no still lands the
+// settings, because the pilot opened the file for a reason.
+test('a drawn route is not replaced without being asked', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async (fixture) => {
+    const before = state.waypoints.map(w => w.name);
+    let asked = '';
+    window.askYesNo = async (title, text) => { asked = String(text); return false; };
+    await NavAid.navLog.importExercise(JSON.stringify(fixture));
+    return { asked, before, after: state.waypoints.map(w => w.name),
+             met: NavAid.navLog.config().met.length };
+  }, FIXTURE);
+  expect(got.asked).toMatch(/replaces the route/i);
+  expect(got.after).toEqual(got.before);
+  expect(got.met).toBe(6);            // the exercise's met table landed anyway
+});
+
+test('a file that is not an exercise is refused, and says so', async ({ page }) => {
+  await boot(page);
+  const said = await page.evaluate(async () => {
+    const toasts = [];
+    window.showToast = (m) => toasts.push(String(m));
+    const bad = await NavAid.navLog.importExercise('{"hello":"world"}');
+    const worse = await NavAid.navLog.importExercise('not json at all');
+    return { bad, worse, toasts };
+  });
+  expect(said.bad).toBeNull();
+  expect(said.worse).toBeNull();
+  expect(said.toasts.join(' ')).toMatch(/not an exercise/i);
+});
+
+test('a file with absurd contents cannot build an absurd sheet', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    window.askYesNo = async () => true;
+    const parsed = NavAid.navLog.parseExercise(JSON.stringify({
+      route: { waypoints: [
+        { name: 'ok', lat: 32, lng: 35 },
+        { name: 'off the planet', lat: 999, lng: 999 },
+        { name: 'ok2', lat: 32.5, lng: 35.1 },
+      ] },
+      navlog: {
+        met: new Array(500).fill({ alt: 1000, dir: 0, kt: 0, tempC: 0 }),
+        deviation: new Array(500).fill({ mh: 0, ch: 0 }),
+      },
+    }));
+    return { points: parsed.waypoints.length, met: parsed.navlog.met.length,
+             card: parsed.navlog.deviation.length };
+  });
+  expect(got.points).toBe(2);         // the impossible coordinate is dropped, the rest stands
+  expect(got.met).toBe(60);
+  expect(got.card).toBe(72);
+});
+
+test('what it saves is what it opens', async ({ page }) => {
+  await boot(page);
+  const round = await page.evaluate(async (fixture) => {
+    window.askYesNo = async () => true;
+    await NavAid.navLog.importExercise(JSON.stringify(fixture));
+    const text = NavAid.navLog.exportExercise();
+    const again = NavAid.navLog.parseExercise(text);
+    return {
+      points: again.waypoints.length,
+      met: again.navlog.met.length,
+      cruise: again.navlog.cruiseAltFt,
+      dep: again.navlog.depElevFt,
+      variation: again.navlog.variationDeg,
+    };
+  }, FIXTURE);
+  expect(round).toEqual({ points: 5, met: 6, cruise: 6000, dep: 100, variation: 4 });
+});
+
+test('the window offers both, in the language it is in', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  await expect(page.locator('.navlog-import')).toHaveText('Open exercise');
+  await expect(page.locator('.navlog-export')).toHaveText('Save exercise');
+  // The picker is a real file input, not a drop of custom UI that cannot be reached by keyboard.
+  expect(await page.locator('.navlog-file').getAttribute('accept')).toContain('json');
+});
