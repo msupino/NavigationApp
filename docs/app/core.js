@@ -1656,7 +1656,7 @@ window.S = Object.assign({
   // --- nav log ---------------------------------------------------------------
   // NOT the same thing as tbNavLog below, which prints the flight plan as a PDF. This is the
   // computed sheet: an exercise's 23 columns, from CAS to a compass heading.
-  tbNavTable: 'Nav table',
+  tbNavTable: '📐 Nav table',
   tbNavTableTitle: 'The wind-triangle nav table: CAS to compass heading, leg by leg',
   navTableTitle: 'Nav table',
   navLogHeaders: ['LEG', 'From', 'To', 'CAS', 'PA', 'Temp', 'TAS', 'W dir', 'W kt', 'TT', 'Drift',

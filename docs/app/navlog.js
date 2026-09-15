@@ -96,9 +96,13 @@
       },
       // Capped: a met table is a page of a briefing and a compass card has twelve marks. A file
       // claiming ten thousand rows is not an exercise, and the table it would build is a hang.
+      // Sorted by altitude, always: a briefing table is read up the page, and a level typed out
+      // of order is a level nobody can check against the sheet it was copied from. The lookup
+      // takes the nearest row whatever the order, so this is for the reader, not the maths.
       met: Array.isArray(s.met) ? s.met.filter(r => r && Number.isFinite(Number(r.alt)))
         .slice(0, 60)
         .map(r => ({ alt: Number(r.alt), dir: num(r.dir, 0), kt: num(r.kt, 0), tempC: num(r.tempC, 0) }))
+        .sort((a, b) => a.alt - b.alt)
         : d.met,
       deviation: Array.isArray(s.deviation) && s.deviation.length
         ? s.deviation.filter(r => r && Number.isFinite(Number(r.mh))).slice(0, 72)
@@ -301,6 +305,14 @@
   }
 
   // --- the window -------------------------------------------------------------------------
+  // The open sheet's own refresh, while it is open. One window at a time: opening a second
+  // replaces the first's handle, and closing either clears it.
+  let live = null;
+  function routeChanged() { if (typeof live === 'function') live(); }
+
+  // `read` lets the window refresh a field from the config without rebuilding it: the route can
+  // change under an open sheet, and rebuilding an input the pilot is typing in takes the caret
+  // with it.
   function field(label, value, onInput, opts) {
     const wrap = document.createElement('label');
     wrap.className = 'navlog-field';
@@ -312,6 +324,11 @@
     if (opts && opts.step) input.step = opts.step;
     input.addEventListener('input', () => onInput(input.value));
     wrap.append(text, input);
+    wrap.sync = (next) => {
+      if (document.activeElement === input) return;      // never fight the pilot for the caret
+      const shown = Number.isFinite(next) ? String(next) : '';
+      if (input.value !== shown) input.value = shown;
+    };
     return wrap;
   }
 
@@ -321,7 +338,7 @@
     if (typeof createDraggableModal !== 'function') return null;
     const cfg = config();
     const modal = createDraggableModal(S2.navTableTitle || 'Nav table', 'modal wide navlog-modal',
-      null, { nonBlocking: true });
+      () => { live = null; }, { nonBlocking: true });
     const body = document.createElement('div');
     body.className = 'navlog-body';
     modal.box.appendChild(body);
@@ -336,10 +353,12 @@
     // The assumptions, in one row of fields: the aeroplane, the day, and the two fields.
     const setup = document.createElement('div');
     setup.className = 'navlog-setup';
+    const fields = [];
+    const add = (f, read) => { fields.push({ f, read }); return f; };
     setup.append(
-      field(S2.navLogCruiseAlt || 'Cruise (ft)', cfg.cruiseAltFt, v => { cfg.cruiseAltFt = num(v, 0); commit(); }),
-      field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt, v => { cfg.depElevFt = num(v, 0); commit(); }),
-      field(S2.navLogDestElev || 'Destination elev (ft)', cfg.destElevFt, v => { cfg.destElevFt = num(v, 0); commit(); }),
+      add(field(S2.navLogCruiseAlt || 'Cruise (ft)', cfg.cruiseAltFt, v => { cfg.cruiseAltFt = num(v, 0); commit(); }), c => c.cruiseAltFt),
+      add(field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt, v => { cfg.depElevFt = num(v, 0); commit(); }), c => c.depElevFt),
+      add(field(S2.navLogDestElev || 'Destination elev (ft)', cfg.destElevFt, v => { cfg.destElevFt = num(v, 0); commit(); }), c => c.destElevFt),
       field(S2.navLogVariation || 'Variation (°E)', cfg.variationDeg, v => { cfg.variationDeg = num(v, 0); commit(); }),
       field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit(); }),
       field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit(); }),
@@ -378,6 +397,15 @@
           input.type = 'number';
           input.value = String(row[key]);
           input.addEventListener('input', () => { row[key] = num(input.value, 0); save(cfg); render(); });
+          // Sorting WHILE typing would move the row out from under the caret, so it happens on
+          // the way out of the field -- which is also when the number is finished.
+          if (key === 'alt') {
+            input.addEventListener('change', () => {
+              cfg.met.sort((a, b) => a.alt - b.alt);
+              commit();
+              renderMet();
+            });
+          }
           td.appendChild(input);
           tr.appendChild(td);
         }
@@ -399,8 +427,9 @@
       add.className = 'navlog-add';
       add.textContent = S2.navLogAddRow || 'Add a level';
       add.addEventListener('click', () => {
-        const last = cfg.met[cfg.met.length - 1];
-        cfg.met.push({ alt: last ? last.alt + 1000 : 2000, dir: 0, kt: 0, tempC: 15 });
+        const highest = cfg.met.reduce((top, r) => Math.max(top, r.alt), 0);
+        cfg.met.push({ alt: highest ? highest + 1000 : 2000, dir: 0, kt: 0, tempC: 15 });
+        cfg.met.sort((a, b) => a.alt - b.alt);
         commit();
         renderMet();
       });
@@ -470,6 +499,20 @@
       note.textContent = list.length ? ''
         : (S2.navLogNoRoute || 'Draw a route with at least two points, and set a cruise altitude above both fields.');
     }
+    // The route can change under an open sheet -- a waypoint dragged on the map, a point added,
+    // a leg's altitude edited. Reported as "moving waypoints while the table is open does not
+    // affect the data": it was built once at open and then never looked again.
+    //
+    // Only the DATA is rebuilt. The editors are left alone unless what they show has actually
+    // changed, because rebuilding an input mid-keystroke takes the caret with it.
+    function refresh() {
+      const next = config();
+      // Defaults follow the route: swap the destination airfield and its elevation should
+      // follow, unless the pilot typed one, in which case what they typed is in the config.
+      for (const key of ['cruiseAltFt', 'depElevFt', 'destElevFt']) cfg[key] = next[key];
+      for (const { f, read } of fields) f.sync(read(cfg));
+      render();
+    }
     function sourceText(source) {
       if (source === 'table') return S2.navLogFromTable || 'from the met table';
       if (source === 'app') return S2.navLogFromApp || 'from the route wind';
@@ -527,6 +570,7 @@
     renderMet();
     renderCard();
     render();
+    live = refresh;
     const editors = document.createElement('div');
     editors.className = 'navlog-editors';
     editors.append(met, card);
@@ -557,5 +601,5 @@
   }
 
   NS.navLog = { show, config, save, rows, exportCsv, headers, cells, defaults,
-    parseExercise, importExercise, exportExercise };
+    parseExercise, importExercise, exportExercise, routeChanged };
 }());

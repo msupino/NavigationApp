@@ -29,7 +29,7 @@
   "legs": [
     {
       "inboundAltitude": 6000,
-      "outboundAltitude": "NaN",
+      "outboundAltitude": 6000,
       "flightSpeed": 90,
       "outboundSpeed": 90,
       "inLabel": {
@@ -57,7 +57,7 @@
     },
     {
       "inboundAltitude": 6000,
-      "outboundAltitude": "NaN",
+      "outboundAltitude": 6000,
       "flightSpeed": 90,
       "outboundSpeed": 90,
       "inLabel": {
@@ -85,7 +85,7 @@
     },
     {
       "inboundAltitude": 6000,
-      "outboundAltitude": "NaN",
+      "outboundAltitude": 6000,
       "flightSpeed": 90,
       "outboundSpeed": 90,
       "inLabel": {
@@ -113,7 +113,7 @@
     },
     {
       "inboundAltitude": 6000,
-      "outboundAltitude": "NaN",
+      "outboundAltitude": 6000,
       "flightSpeed": 90,
       "outboundSpeed": 90,
       "inLabel": {

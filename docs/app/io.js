@@ -6449,6 +6449,11 @@ function persist() {
   if (window.NavAid && NavAid.followMe && typeof NavAid.followMe.routeChanged === 'function') {
     NavAid.followMe.routeChanged();
   }
+  // The nav table is worked out FROM the route, so a waypoint dragged on the map is a sheet
+  // that has just gone wrong. It redraws itself if it is open, and costs nothing if it is not.
+  if (window.NavAid && NavAid.navLog && typeof NavAid.navLog.routeChanged === 'function') {
+    NavAid.navLog.routeChanged();
+  }
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(function tick() {
     // Export started after this timer was scheduled. Don't write (the export mutates

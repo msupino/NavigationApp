@@ -26,7 +26,8 @@ const openLog = async (page) => {
 
 test('the toolbar offers it, and it opens a sheet', async ({ page }) => {
   await boot(page);
-  await expect(page.locator('#nav-log')).toHaveText('Nav table');
+  // The icon is part of the label, as it is on every other button in this section.
+  await expect(page.locator('#nav-log')).toHaveText('📐 Nav table');
   await page.evaluate(() => document.getElementById('nav-log').click());
   await expect(page.locator('.navlog-modal .navlog-table')).toBeVisible();
   // 23 columns, the exercise's own set.
@@ -371,4 +372,88 @@ test('an exercise that is also a route lands whole: map and sheet', async ({ pag
   const rows = await page.evaluate(() => NavAid.navLog.rows().map(r => Math.round(r.pressureAltFt)));
   expect(rows[0]).toBe(4033);
   expect(rows[rows.length - 1]).toBe(3450);
+});
+
+// Reported: moving a waypoint with the table open changed nothing on it. The sheet is worked
+// out FROM the route, so a dragged point is a sheet that has just gone wrong.
+test('the sheet follows the route while it is open', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  // The cumulative time at the bottom of the sheet: the one number every leg feeds. Not the
+  // last row's own distance -- a descent is bounded by its rate, so it covers the same ground
+  // wherever the aeroplane starts it from.
+  const total = () => page.evaluate(() => {
+    const rows = document.querySelectorAll('.navlog-table tr.navlog-row');
+    return rows[rows.length - 1].querySelectorAll('td')[19].textContent;
+  });
+  const before = await total();
+  await page.evaluate(() => {
+    state.waypoints[state.waypoints.length - 1].lng += 0.6;
+    syncLegs();
+    save();          // the app's own persist path, which is what an edit goes through
+    draw();
+  });
+  expect(await total()).not.toBe(before);
+});
+
+test('a point added to the route becomes a row', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  const before = await page.evaluate(() =>
+    document.querySelectorAll('.navlog-table tr.navlog-row').length);
+  await page.evaluate(() => {
+    state.waypoints.splice(1, 0, { name: 'NEW', lat: 32.3, lng: 34.9 });
+    syncLegs(); save(); draw();
+  });
+  const after = await page.evaluate(() => ({
+    rows: document.querySelectorAll('.navlog-table tr.navlog-row').length,
+    names: [...document.querySelectorAll('.navlog-table tr.navlog-row')]
+      .map(tr => tr.querySelectorAll('td')[2].textContent),
+  }));
+  expect(after.rows).toBeGreaterThan(before);
+  expect(after.names).toContain('NEW');
+});
+
+// A destination swapped for a different field brings its own elevation with it -- unless the
+// pilot typed one, which is a decision and not a default.
+test('the field elevations follow the route, until they are typed', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  expect(await page.evaluate(() => NavAid.navLog.config().destElevFt)).toBeGreaterThan(500);
+  await page.evaluate(() => {
+    state.waypoints[state.waypoints.length - 1] = { name: 'LLHZ', lat: 32.17944, lng: 34.83444 };
+    syncLegs(); save(); draw();
+  });
+  expect(await page.evaluate(() => NavAid.navLog.config().destElevFt)).toBe(121);
+  // Typed: it stays, whatever the route does next.
+  await page.evaluate(() => {
+    const cfg = NavAid.navLog.config();
+    cfg.destElevFt = 900;
+    NavAid.navLog.save(cfg);
+    state.waypoints[state.waypoints.length - 1] = { name: 'LLIB', lat: 32.98111, lng: 35.57194 };
+    syncLegs(); save(); draw();
+  });
+  expect(await page.evaluate(() => NavAid.navLog.config().destElevFt)).toBe(900);
+});
+
+// Reported: a met level added while the table was open landed at the bottom of the list.
+test('met levels are kept in altitude order', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const cfg = NavAid.navLog.config();
+    cfg.met = [{ alt: 6000, dir: 320, kt: 25, tempC: 2 }, { alt: 2000, dir: 315, kt: 17, tempC: 10 }];
+    NavAid.navLog.save(cfg);
+  });
+  // Out of order going in, in order coming back.
+  expect(await page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt))).toEqual([2000, 6000]);
+  await openLog(page);
+  const shown = await page.evaluate(() => {
+    const grid = document.querySelectorAll('.navlog-met .navlog-grid tr');
+    return [...grid].slice(1).map(tr => tr.querySelector('input').value);
+  });
+  expect(shown).toEqual(['2000', '6000']);
+  // Adding one puts it above the highest, and the list stays sorted.
+  await page.evaluate(() => document.querySelector('.navlog-add').click());
+  const after = await page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt));
+  expect(after).toEqual([2000, 6000, 7000]);
 });
