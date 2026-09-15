@@ -27,7 +27,7 @@ const openLog = async (page) => {
 test('the toolbar offers it, and it opens a sheet', async ({ page }) => {
   await boot(page);
   // The icon is part of the label, as it is on every other button in this section.
-  await expect(page.locator('#nav-log')).toHaveText('📐 Nav table');
+  await expect(page.locator('#nav-log')).toHaveText('📐 Planning form');
   await page.evaluate(() => document.getElementById('nav-log').click());
   await expect(page.locator('.navlog-modal .navlog-table')).toBeVisible();
   // 23 columns, the exercise's own set.
@@ -70,7 +70,7 @@ test('a typed met level reaches the sheet, and the cell says where it came from'
   const row = await page.evaluate(() => {
     const tr = [...document.querySelectorAll('.navlog-table tr.navlog-cruise')][0];
     const tds = [...tr.querySelectorAll('td')].map(td => td.textContent);
-    return { temp: tds[5], windDir: tds[7], windKt: tds[8], title: tr.querySelectorAll('td')[7].title };
+    return { temp: tds[5], windKt: tds[7], windDir: tds[8], title: tr.querySelectorAll('td')[7].title };
   });
   expect(row.temp).toBe('+2');
   expect(row.windDir).toBe('320');
@@ -92,16 +92,17 @@ test('what is typed is remembered, and stays on this device', async ({ page }) =
   await boot(page);
   await openLog(page);
   await page.evaluate(() => {
-    const input = document.querySelector('.navlog-setup input');
-    input.value = '7500';
+    const input = document.querySelector('.navlog-setup input');   // departure elevation
+    input.value = '250';
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   const after = await page.evaluate(() => ({
-    stored: JSON.parse(localStorage.getItem('navaid.navlog')).cruiseAltFt,
-    shown: document.querySelector('.navlog-table tr.navlog-cruise td:nth-child(5)').textContent,
+    stored: JSON.parse(localStorage.getItem('navaid.navlog')).depElevFt,
+    shown: document.querySelector('.navlog-table tr.navlog-climb td:nth-child(5)').textContent,
   }));
-  expect(after.stored).toBe(7500);
-  expect(after.shown).toBe('7500');
+  expect(after.stored).toBe(250);
+  // The climb reads its air two thirds up from the field it left, so a higher field moves it.
+  expect(Number(after.shown)).toBeGreaterThan(4033);
 });
 
 test('the compass card is typed once and read everywhere', async ({ page }) => {
@@ -115,7 +116,9 @@ test('the compass card is typed once and read everywhere', async ({ page }) => {
   const devs = await page.evaluate(() =>
     [...document.querySelectorAll('.navlog-table tr.navlog-row')]
       .map(tr => tr.querySelectorAll('td')[14].textContent));
-  for (const d of devs) expect(d).toBe('+2');
+  // Written as a chart writes a correction: a card that steers two degrees HIGH of magnetic is
+  // 2W, the same way an east variation subtracts. Not "+2", which says nothing about which way.
+  for (const d of devs) expect(d).toBe('2W');
 });
 
 test('CSV carries the same numbers the table shows', async ({ page }) => {
@@ -163,8 +166,8 @@ test('the Hebrew sheet is Hebrew, with the numbers left to right', async ({ page
     firstHeader: document.querySelector('.navlog-table th').textContent,
     valueDir: document.querySelector('.navlog-table tr.navlog-row td:nth-child(4) bdi').dir,
   }));
-  expect(seen.title).toBe('טבלת ניווט');
-  expect(seen.firstHeader).toBe('קטע');
+  expect(seen.title).toBe('טופס תכנון טיסה');
+  expect(seen.firstHeader).toBe('LEG');       // the sheet's own header, in either language
   expect(seen.valueDir).toBe('ltr');
 });
 
@@ -535,14 +538,15 @@ test('an odd card keeps every mark', async ({ page }) => {
 test('an untouched elevation follows the route, however much else is typed', async ({ page }) => {
   await boot(page);
   await openLog(page);
-  // Type something unrelated -- the cruise altitude -- which is what used to freeze the rest.
+  // Type something unrelated -- the cruise CAS -- which is what used to freeze the rest.
   await page.evaluate(() => {
-    const input = document.querySelector('.navlog-setup input');
-    input.value = '7500';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const inputs = [...document.querySelectorAll('.navlog-setup input')];
+    const cas = inputs[3];                       // departure, destination, variation, climb CAS...
+    cas.value = '75';
+    cas.dispatchEvent(new Event('input', { bubbles: true }));
   });
   expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('navaid.navlog')))))
-    .toEqual(['cruiseAltFt']);
+    .toEqual(['cas']);
   // Now fly somewhere else: the elevations are the new field's, not the old one's.
   await page.evaluate(() => {
     state.waypoints[state.waypoints.length - 1] = { name: 'LLHZ', lat: 32.17944, lng: 34.83444 };
@@ -550,7 +554,7 @@ test('an untouched elevation follows the route, however much else is typed', asy
   });
   const cfg = await page.evaluate(() => NavAid.navLog.config());
   expect(cfg.destElevFt).toBe(121);          // LLHZ's own, from the airfield dataset
-  expect(cfg.cruiseAltFt).toBe(7500);        // what was typed is still what was typed
+  expect(cfg.cas.climb).toBe(75);            // what was typed is still what was typed
 });
 
 test('a typed elevation is a decision and outlives the route', async ({ page }) => {
@@ -558,8 +562,8 @@ test('a typed elevation is a decision and outlives the route', async ({ page }) 
   await openLog(page);
   await page.evaluate(() => {
     const inputs = [...document.querySelectorAll('.navlog-setup input')];
-    inputs[2].value = '900';                 // destination elevation, as the exercise states it
-    inputs[2].dispatchEvent(new Event('input', { bubbles: true }));
+    inputs[1].value = '900';                 // destination elevation, as the exercise states it
+    inputs[1].dispatchEvent(new Event('input', { bubbles: true }));
   });
   await page.evaluate(() => {
     state.waypoints[state.waypoints.length - 1] = { name: 'LLHZ', lat: 32.17944, lng: 34.83444 };
@@ -585,18 +589,18 @@ test('clearing an elevation hands it back to the airfield data', async ({ page }
   await boot(page);
   await openLog(page);
   const dest = () => page.evaluate(() =>
-    [...document.querySelectorAll('.navlog-setup input')][2].value);
+    [...document.querySelectorAll('.navlog-setup input')][1].value);
   expect(await dest()).toBe('884');                  // LLIB, from the dataset
 
   await page.evaluate(() => {
-    const input = [...document.querySelectorAll('.navlog-setup input')][2];
+    const input = [...document.querySelectorAll('.navlog-setup input')][1];
     input.value = '900';                             // as the exercise rounds it
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   expect(await page.evaluate(() => NavAid.navLog.config().destElevFt)).toBe(900);
 
   await page.evaluate(() => {
-    const input = [...document.querySelectorAll('.navlog-setup input')][2];
+    const input = [...document.querySelectorAll('.navlog-setup input')][1];
     input.value = '';
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
@@ -612,4 +616,24 @@ test('the header shows no airfield elevation of its own', async ({ page }) => {
   await openLog(page);
   expect(await page.locator('.navlog-hint').count()).toBe(0);
   expect(await page.locator('.navlog-reset').count()).toBe(0);
+});
+
+// The variation the form starts from is NavAid's own, not a number of its own. The app signs it
+// the other way round -- magnetic = true + variation, so its -5 is 5E on a sheet -- and the form
+// writes what a chart writes.
+test('variation defaults to the app\'s own, in the sheet\'s sign', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(() => tune('magneticVariationDeg'))).toBe(-5);
+  expect(await page.evaluate(() => NavAid.navLog.config().variationDeg)).toBe(5);
+  await openLog(page);
+  const shown = await page.evaluate(() => {
+    const row = document.querySelector('.navlog-table tr.navlog-row');
+    return { field: [...document.querySelectorAll('.navlog-setup input')][2].value,
+             column: row.querySelectorAll('td')[12].textContent };
+  });
+  expect(shown.field).toBe('5');
+  expect(shown.column).toBe('5E');
+  // A fleet that tunes the variation moves the form with it.
+  await page.evaluate(() => { setTune('magneticVariationDeg', -4); });
+  expect(await page.evaluate(() => NavAid.navLog.config().variationDeg)).toBe(4);
 });

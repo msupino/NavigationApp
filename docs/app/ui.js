@@ -3136,6 +3136,69 @@ function restoreOpenChartModal() {
   if (typeof clearOpenChartModal === 'function') clearOpenChartModal();
 }
 
+// A coordinate typed into the search box.
+//
+// The go-to widget's six numeric slots are for reading a coordinate OFF the map and nudging it,
+// not for entering one: a pilot with "N32 30 / E035 00" in front of them types it, and the box
+// they are already typing in should take it. Accepts what an exercise, a chart margin or a
+// clipboard actually carries:
+//
+//   32.5, 35.0        32.5 35.0        N32.5 E35.0
+//   N32 30 E035 00    3230N 03500E     N32°30' E035°00'
+//   N32 30 15 E035 00 30            (degrees, minutes, seconds)
+//
+// Hemispheres are optional -- Israel is north and east -- but honoured when present, including
+// S and W, because a typed minus sign is not the only way to be south of the equator.
+function parseSearchLatLng(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+  // Degrees/minutes/seconds marks, commas and slashes are separators; letters are not, so that
+  // "N32" stays one token whose hemisphere is known.
+  const cleaned = raw.replace(/[°'"\u2032\u2033,/]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // The packed form first, because it has no separators to split on: 3230N03500E, or with the
+  // halves spaced apart, and with seconds. This is field 15 of a flight plan and the way a
+  // clearance is written down, so it is the one shape that must not need reformatting to search.
+  const packed = /^(\d{2})(\d{2})(\d{2})?([NS])\s*(\d{3})(\d{2})(\d{2})?([EW])$/i.exec(cleaned.replace(/\s+/g, ''))
+    || /^(\d{3})(\d{2})(\d{2})?([EW])\s*(\d{2})(\d{2})(\d{2})?([NS])$/i.exec(cleaned.replace(/\s+/g, ''));
+  if (packed) {
+    const dms = (d, m, sec, hemi) => {
+      const v = Number(d) + Number(m) / 60 + (sec ? Number(sec) / 3600 : 0);
+      return /[SW]/i.test(hemi) ? -v : v;
+    };
+    const first = dms(packed[1], packed[2], packed[3], packed[4]);
+    const second = dms(packed[5], packed[6], packed[7], packed[8]);
+    const latFirst = /[NS]/i.test(packed[4]);
+    const lat = latFirst ? first : second;
+    const lng = latFirst ? second : first;
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+    return null;
+  }
+  // Two halves, each: an optional leading hemisphere, 1-3 numbers, an optional trailing one.
+  const half = '(?:([NSEWnsew])\\s*)?(-?\\d+(?:\\.\\d+)?)(?:\\s+(\\d+(?:\\.\\d+)?))?(?:\\s+(\\d+(?:\\.\\d+)?))?\\s*([NSEWnsew])?';
+  const m = new RegExp('^' + half + '\\s+' + half + '$').exec(cleaned);
+  if (!m) return null;
+  const part = (hemiBefore, d, mi, se, hemiAfter) => {
+    const hemi = (hemiBefore || hemiAfter || '').toUpperCase();
+    const deg = Number(d);
+    if (!Number.isFinite(deg)) return null;
+    const value = Math.abs(deg) + (Number(mi) || 0) / 60 + (Number(se) || 0) / 3600;
+    const negative = deg < 0 || hemi === 'S' || hemi === 'W';
+    return { value: negative ? -value : value, hemi };
+  };
+  const a = part(m[1], m[2], m[3], m[4], m[5]);
+  const b = part(m[6], m[7], m[8], m[9], m[10]);
+  if (!a || !b) return null;
+  // Written the other way round -- "E035 00 N32 30" -- is still a coordinate, and the letters
+  // say which is which. Without letters the first number is the latitude, as everyone writes it.
+  const lngFirst = (a.hemi === 'E' || a.hemi === 'W' || b.hemi === 'N' || b.hemi === 'S');
+  const lat = lngFirst ? b.value : a.value;
+  const lng = lngFirst ? a.value : b.value;
+  if (!Number.isFinite(lat) || Math.abs(lat) > 90) return null;
+  if (!Number.isFinite(lng) || Math.abs(lng) > 180) return null;
+  return { lat, lng };
+}
+window.parseSearchLatLng = parseSearchLatLng;
+
 function runSearch() {
   // Use the raw value (not trimmed) so a trailing space — meaning "I just
   // accepted the previous token, waiting to type the next one" — suppresses
@@ -3146,6 +3209,10 @@ function runSearch() {
   const multi = /\s/.test(qRaw) || trailingSpace;
   const lastToken = trailingSpace ? '' : (multi ? (qRaw.split(/\s+/).pop() || '') : qRaw);
   if (multi && !lastToken) { closeSearch(); return; }
+  // A coordinate is read whole -- it has spaces in it, and the token logic below would see
+  // "N32 30 E035 00" as a route of four waypoints.
+  const coord = parseSearchLatLng(qRaw);
+  if (coord) { showCoordinateHit(coord); return; }
   const q = lastToken.toUpperCase();
   if (!q) { closeSearch(); return; }
   // They are searching — the tip has done its job.
@@ -3318,6 +3385,29 @@ function runSearch() {
   wpResults.classList.remove('hidden');
   syncSearchResultsStacking();
 }
+// The one row a typed coordinate produces: where it is, and what happens if you take it.
+function showCoordinateHit(ll) {
+  wpResults.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'wp-search-item wp-search-coord';
+  // One text node, like every other row in this list: "32°30.0'N 035°00.0'E / Go to".
+  const where = (typeof fmtLatLng === 'function')
+    ? fmtLatLng(ll.lat, 'N', 'S') + ' ' + fmtLatLng(ll.lng, 'E', 'W')
+    : ll.lat.toFixed(5) + ', ' + ll.lng.toFixed(5);
+  item.textContent = where + ' / ' + (S.searchCoordHint || 'Go to this coordinate');
+  item.onclick = () => {
+    // The same landing the go-to widget makes: a jump rather than a glide, and a marker left
+    // behind so the point you typed is still on the map after the box is closed.
+    map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 11), { animate: false });
+    if (typeof dropGotoMarker === 'function') dropGotoMarker(ll.lat, ll.lng);
+    else if (typeof flashMapPoint === 'function') flashMapPoint(ll.lat, ll.lng);
+    closeSearch();
+  };
+  wpResults.appendChild(item);
+  wpResults.classList.remove('hidden');
+  syncSearchResultsStacking();
+}
+
 wpSearch.addEventListener('input', runSearch);
 wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });
 wpSearch.addEventListener('keydown', e => {

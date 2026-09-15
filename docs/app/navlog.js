@@ -95,7 +95,10 @@
     const variation = (typeof tune === 'function') ? Number(tune('magneticVariationDeg')) : NaN;
     const cruiseSpeed = legs.map(l => l && Number(l.speed)).find(s => Number.isFinite(s) && s > 0);
     return {
+      // The route's own planned level -- the number already on the leg lines. There is no field
+      // for it in the form: two places to set one altitude is two numbers to disagree.
       cruiseAltFt: planned.length ? Math.max(...planned) : 6000,
+      routeStatesCruise: planned.length > 0,
       // East positive, as an exercise writes it (4E). The app's own tune is signed the other
       // way -- magnetic = true + variation, so -5 there is 5E here.
       variationDeg: -(Number.isFinite(variation) ? variation : -5),
@@ -118,7 +121,10 @@
   function coerce(s, d) {
     s = (s && typeof s === 'object') ? s : {};
     return {
-      cruiseAltFt: num(s.cruiseAltFt, d.cruiseAltFt),
+      // The route wins whenever it says anything: the altitude is edited on the leg, not here.
+      // A file may still state one -- an exercise that hands over bare coordinates has no legs
+      // to carry it -- and then there is nothing to be overridden.
+      cruiseAltFt: d.routeStatesCruise ? d.cruiseAltFt : num(s.cruiseAltFt, d.cruiseAltFt),
       variationDeg: num(s.variationDeg, d.variationDeg),
       depElevFt: num(s.depElevFt, d.depElevFt),
       destElevFt: num(s.destElevFt, d.destElevFt),
@@ -317,6 +323,15 @@
   const one = (v) => (Number.isFinite(v) ? (Math.round(v * 10) / 10).toFixed(1) : '');
   const whole = (v) => (Number.isFinite(v) ? String(Math.round(v)) : '');
   const signed = (v) => (Number.isFinite(v) ? (v > 0 ? '+' : '') + Math.round(v) : '');
+  // A correction written the way a chart writes it: 4E, 2W, or nothing at all when it is zero.
+  // The sign convention is the sheet's -- east SUBTRACTS -- so the caller passes the value that
+  // is subtracted.
+  function eastWest(v) {
+    if (!Number.isFinite(v)) return '';
+    const n = Math.round(v);
+    if (n === 0) return '0';
+    return Math.abs(n) + (n > 0 ? 'E' : 'W');
+  }
   function clock(hours) {
     if (!Number.isFinite(hours) || hours < 0) return '';
     const total = Math.round(hours * 3600);
@@ -333,15 +348,18 @@
       whole(row.pressureAltFt),
       signed(row.tempC),
       one(row.tasKt),
-      row.wind ? deg(row.wind.dir) : '',
+      // Strength then direction, the order the exercise's own sheet prints them in.
       row.wind ? whole(row.wind.speed) : '',
+      row.wind ? deg(row.wind.dir) : '',
       deg(row.trackShownDeg),
       row.driftSide ? (Math.round(row.driftShownDeg) + row.driftSide) : '0',
       deg(row.trueHeadingDeg),
-      (cfg.variationDeg >= 0 ? Math.abs(Math.round(cfg.variationDeg)) + 'E'
-        : Math.abs(Math.round(cfg.variationDeg)) + 'W'),
+      eastWest(cfg.variationDeg),
       deg(row.magneticHeadingDeg),
-      Number.isFinite(row.deviationDeg) ? signed(row.deviationDeg) : '',
+      // Deviation is written as the sheet writes it -- 2E, not -2. East subtracts, exactly as an
+      // east variation does, which is why the two columns read the same way and a pilot can
+      // apply them the same way.
+      eastWest(-row.deviationDeg),
       deg(row.compassHeadingDeg),
       row.unflyable ? (S2.navLogUnflyable || '—') : one(row.groundSpeedKt),
       one(row.distNm),
@@ -428,7 +446,6 @@
     const fields = [];
     const add = (f, read) => { fields.push({ f, read }); return f; };
     setup.append(
-      add(field(S2.navLogCruiseAlt || 'Cruise (ft)', cfg.cruiseAltFt, v => { cfg.cruiseAltFt = num(v, 0); commit('cruiseAltFt'); }), c => c.cruiseAltFt),
       // Emptying either box hands it back to the airfield data -- see elevationEdited.
       add(field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt,
         v => elevationEdited('depElevFt', v)), c => c.depElevFt),
@@ -596,6 +613,8 @@
       // Defaults follow the route: swap the destination airfield and its elevation should
       // follow, unless the pilot typed one, in which case what they typed is in the config.
       for (const key of ['cruiseAltFt', 'depElevFt', 'destElevFt']) cfg[key] = next[key];
+      // The cruise level has no field: it is read off the legs every time, so a level changed on
+      // the map is a sheet recomputed at the new one.
       for (const { f, read } of fields) f.sync(read(cfg));
       render();
     }
