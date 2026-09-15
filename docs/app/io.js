@@ -172,6 +172,14 @@ function closeOpenChartModals() {
   if (typeof fpOpen !== 'undefined' && fpOpen && typeof closeFlightPlan === 'function') {
     closeFlightPlan();
   }
+  // ...and so is the planning form, for the same reason and with the same shape: a non-blocking
+  // backdrop the generic sweep above cannot see. Two full-width tables of the same route, one
+  // over the other, is what "open the flight plan" looked like with the form already up.
+  for (const back of Array.from(document.querySelectorAll('.modal-back'))) {
+    if (!back.querySelector('.navlog-modal')) continue;
+    if (typeof back._navaidClose === 'function') back._navaidClose();
+    else back.remove();
+  }
 }
 
 function isChartModalOpen(kind) {
@@ -3025,6 +3033,16 @@ function load(file) {
         return;
       }
       if (typeof showToast === 'function') showToast(routeLibraryImportMessage(res));
+      return;
+    }
+    // A nav-table exercise: a route the app can draw PLUS the assumptions the sheet is worked
+    // from -- a met table, a compass card, speeds and rates. It arrives the way a route does,
+    // through the same Open, because "open a file" is one action to a pilot and a second import
+    // button is a second thing to find. The nav table owns what it means.
+    if (d && typeof d === 'object' && d.navlog && typeof d.navlog === 'object'
+      && window.NavAid && NavAid.navLog && typeof NavAid.navLog.importExercise === 'function') {
+      // One door for an exercise file, wherever it was opened from: see openExerciseFile.
+      NavAid.navLog.openExerciseFile(reader.result);
       return;
     }
     // Strict schema check before applying any state. Any
@@ -6433,6 +6451,11 @@ function persist() {
   // the people watching. Debounced inside: this runs on every edit.
   if (window.NavAid && NavAid.followMe && typeof NavAid.followMe.routeChanged === 'function') {
     NavAid.followMe.routeChanged();
+  }
+  // The nav table is worked out FROM the route, so a waypoint dragged on the map is a sheet
+  // that has just gone wrong. It redraws itself if it is open, and costs nothing if it is not.
+  if (window.NavAid && NavAid.navLog && typeof NavAid.navLog.routeChanged === 'function') {
+    NavAid.navLog.routeChanged();
   }
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(function tick() {
