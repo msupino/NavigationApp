@@ -1701,7 +1701,11 @@ window.S = Object.assign({
   navTableReplaceRouteOk: 'Load the route',
   navLogCsv: 'CSV',
   navLogPrint: 'Print',
-  navLogUnflyable: 'crosswind exceeds the airspeed',
+  navLogNoRate: 'no rate',
+  navLogNoteNoRate: 'No rate of climb: the first row cannot be worked out.',
+  navLogNoteUnflyable: 'A crosswind on this route is stronger than the airspeed flown against it.',
+  navLogNoteClipped: 'The descent does not fit in the route: the aeroplane arrives above the field.',
+  navLogUnflyable: 'no solution',
   navLogFromTable: 'from the met table',
   navLogFromApp: 'from the route wind',
   navLogFromIsa: 'standard atmosphere — nothing typed, nothing fetched',
@@ -3540,104 +3544,145 @@ function navLogRows(input) {
     }, h);
   };
 
-  // --- the descent onto the destination, taken backwards from the end -------------------------
-  // Bounded by TIME, like the climb: a rate and a height to lose. Walking it backwards is what
-  // puts the top of descent at the right distance from the field rather than from the last
-  // waypoint, and it may reach back through more than one leg.
-  const tail = [];
+  // --- the climb off the departure field, forwards -------------------------------------------
+  // FIRST, and that order is the fix for a sheet that came out as a single descent row: on a
+  // short route with a high planned level and a slow descent, the descent used to eat every leg
+  // before the climb was laid down, and the sheet then claimed a descent from a level the
+  // aeroplane never reached. You cannot come down from somewhere you have not been.
+  //
+  // ONE top of climb: off the departure field, the only place the aeroplane demonstrably leaves
+  // a known elevation -- the rule routeProfile() draws the map with. A later leg planned higher
+  // or lower is flown AT its level; it gets no ramp of its own, because the pilot has said what
+  // each leg is flown at, not where in it the level changes, and a sheet that guesses prints a
+  // TOC at every waypoint.
+  const rows = [];
   const remaining = legs.map(l => l.dist);
+  const startLabel = legs.map((l, i) => (i === 0 ? label(wps[0]) : label(l.from)));
+  const endLabel = legs.map(l => label(l.to));
+  const firstAlt = legAlt(0);
+  let alt = depElev;
+  let climbLeg = 0;
+  if (firstAlt - alt > 1) {
+    if (!(climbFpm > 0)) {
+      // No rate, but a height to gain: say so rather than start the sheet at cruise level.
+      const row = mkRow('climb', startLabel[0], endLabel[0], depElev, Number(cas.climb), 0, legs[0].track);
+      row.distNm = 0; row.timeH = 0; row.unflyable = true; row.noRate = true;
+      rows.push(row);
+      alt = firstAlt;
+    } else {
+      while (climbLeg < legs.length && firstAlt - alt > 1) {
+        const leg = legs[climbLeg];
+        const segAlt = navLogSegmentAltFt('climb', alt, firstAlt, o.paFraction);
+        const row = mkRow('climb', startLabel[climbLeg], '', segAlt, Number(cas.climb),
+          climbLeg, leg.track);
+        const gs = row.groundSpeedKt;
+        if (!(gs > 0)) {
+          // A crosswind the aeroplane cannot hold, or no airspeed at all. The row goes in
+          // carrying `unflyable`, because a sheet that is simply SHORT says nothing about why.
+          row.to = endLabel[climbLeg];
+          row.distNm = 0; row.timeH = 0; row.unflyable = true;
+          rows.push(row);
+          alt = firstAlt;
+          break;
+        }
+        const needH = (firstAlt - alt) / climbFpm / 60;
+        const reach = gs * needH;
+        if (reach < remaining[climbLeg] - 1e-9) {        // the top of climb is inside this leg
+          row.to = 'TOC';
+          row.distNm = reach;
+          row.timeH = needH;
+          rows.push(row);
+          remaining[climbLeg] -= reach;
+          startLabel[climbLeg] = 'TOC';
+          alt = firstAlt;
+        } else {                                          // still climbing when the leg runs out
+          row.to = endLabel[climbLeg];
+          row.distNm = remaining[climbLeg];
+          row.timeH = remaining[climbLeg] / gs;
+          rows.push(row);
+          alt += climbFpm * row.timeH * 60;
+          remaining[climbLeg] = 0;
+          climbLeg += 1;
+        }
+      }
+    }
+  }
+
+  // --- the descent onto the destination, backwards from the field -----------------------------
+  // Bounded by time, like the climb: a rate and a height to lose. Walking it backwards puts the
+  // top of descent at the right distance from the FIELD rather than from the last waypoint, and
+  // it may reach back through more than one leg -- but never into ground the climb has used.
+  const tail = [];
   let backLeg = legs.length - 1;
   const lastAlt = legAlt(backLeg);
   const descAlt = navLogSegmentAltFt('descent', lastAlt, destElev, o.paFraction);
   let descTimeH = (descentFpm > 0 && lastAlt > destElev) ? (lastAlt - destElev) / descentFpm / 60 : 0;
-  let backTo = label(wps[wps.length - 1]);
   while (descTimeH > 1e-9 && backLeg >= 0) {
+    if (remaining[backLeg] <= 1e-9) { backLeg -= 1; continue; }   // the climb owns this ground
     const leg = legs[backLeg];
-    const row = mkRow('descent', '', backTo, descAlt, Number(cas.descent), backLeg, leg.track);
+    const row = mkRow('descent', '', endLabel[backLeg], descAlt, Number(cas.descent),
+      backLeg, leg.track);
     const gs = row.groundSpeedKt;
-    if (!(gs > 0)) break;
+    if (!(gs > 0)) {
+      row.from = startLabel[backLeg];
+      row.distNm = 0; row.timeH = 0; row.unflyable = true;
+      tail.unshift(row);
+      break;
+    }
     const reach = gs * descTimeH;
-    if (reach < remaining[backLeg] - 1e-9) {
+    if (reach < remaining[backLeg] - 1e-9) {              // the top of descent is inside this leg
       row.from = 'TOD';
       row.distNm = reach;
       row.timeH = descTimeH;
       tail.unshift(row);
       remaining[backLeg] -= reach;
+      endLabel[backLeg] = 'TOD';
       descTimeH = 0;
     } else {
-      row.from = label(leg.from);
+      row.from = startLabel[backLeg];
       row.distNm = remaining[backLeg];
       row.timeH = remaining[backLeg] / gs;
       tail.unshift(row);
       descTimeH -= row.timeH;
       remaining[backLeg] = 0;
       backLeg -= 1;
-      backTo = backLeg >= 0 ? label(legs[backLeg].to) : '';
     }
   }
+  // Asked for more descent than the route has left: the aeroplane arrives high, and the sheet
+  // says so on its last row rather than quietly inventing distance that is not there. With
+  // nothing left at all -- a climb that used the whole route -- the mark goes on whatever the
+  // last row turns out to be, which is done after the rows are in order below.
+  const descentShort = descTimeH > 1e-9;
+  if (descentShort && tail.length) tail[tail.length - 1].descentClipped = true;
 
-  // --- forward along the route, at the altitude each leg is planned at ------------------------
-  const rows = [];
-  let alt = depElev;                       // on the ground at the departure field
-  const climbGalLeft = Number(fuel.climbGal) > 0 ? Number(fuel.climbGal) : 0;
-  for (let i = 0; i <= backLeg && i < legs.length; i++) {
-    const leg = legs[i];
-    const target = legAlt(i);
-    let from = (i === 0) ? label(wps[0]) : label(leg.from);
-    // ONE top of climb: the climb off the departure field, which is the only place the aeroplane
-    // demonstrably leaves a known elevation -- the same rule routeProfile() draws the map with.
-    // A later leg planned higher or lower is flown AT its own altitude; it does not get a ramp
-    // row of its own, because the pilot has not said where in the leg the level changes and a
-    // sheet that guesses prints a TOC at every waypoint. Reported exactly that way: TOC, TOC,
-    // TOC down the page.
-    const initialClimb = (i === 0) || (alt < legAlt(0) - 1 && rows.every(r => r.kind !== 'cruise'));
-    while (initialClimb && remaining[i] > 1e-9 && target - alt > 1 && climbFpm > 0) {
-      const segAlt = navLogSegmentAltFt('climb', alt, target, o.paFraction);
-      const row = mkRow('climb', from, '', segAlt, Number(cas.climb), i, leg.track);
-      const gs = row.groundSpeedKt;
-      if (!(gs > 0)) break;
-      const needH = (target - alt) / climbFpm / 60;
-      const reach = gs * needH;
-      if (reach < remaining[i] - 1e-9) {           // the top of climb is inside this leg
-        row.to = 'TOC';
-        row.distNm = reach;
-        row.timeH = needH;
-        rows.push(row);
-        remaining[i] -= reach;
-        from = 'TOC';
-        alt = target;
-      } else {                                      // still climbing when the leg runs out
-        row.to = label(leg.to);
-        row.distNm = remaining[i];
-        row.timeH = remaining[i] / gs;
-        rows.push(row);
-        alt += climbFpm * row.timeH * 60;
-        remaining[i] = 0;
-      }
-    }
-    // Whatever is left of the leg is flown at the level the pilot planned it at.
-    if (remaining[i] > 1e-9) {
-      const row = mkRow('cruise', from, (i === backLeg && tail.length) ? 'TOD' : label(leg.to),
-        target, Number(cas.cruise), i, leg.track);
-      row.distNm = remaining[i];
-      row.timeH = row.groundSpeedKt > 0 ? remaining[i] / row.groundSpeedKt : null;
-      rows.push(row);
-      remaining[i] = 0;
-      alt = target;
-    }
+  // --- everything in between is flown at the level its leg is planned at -----------------------
+  for (let i = 0; i < legs.length; i++) {
+    if (remaining[i] <= 1e-9) continue;
+    const row = mkRow('cruise', startLabel[i], endLabel[i], legAlt(i), Number(cas.cruise),
+      i, legs[i].track);
+    row.distNm = remaining[i];
+    row.timeH = row.groundSpeedKt > 0 ? remaining[i] / row.groundSpeedKt : null;
+    if (!(row.groundSpeedKt > 0)) { row.timeH = 0; row.unflyable = true; }
+    rows.push(row);
+    remaining[i] = 0;
   }
+  // The sheet reads down the route: climb, then each leg in order, then the descent.
+  rows.sort((a, b) => (a.legIndex - b.legIndex)
+    || (a.kind === b.kind ? 0 : (a.kind === 'climb' ? -1 : (b.kind === 'climb' ? 1 : (a.kind === 'descent' ? 1 : -1)))));
   rows.push(...tail);
+  if (descentShort && !tail.length && rows.length) rows[rows.length - 1].descentClipped = true;
 
   // --- times and fuel down the sheet ----------------------------------------------------------
   // The climb's fuel is a flat allowance, not a rate times a time: that is how a POH gives it and
   // how the exercise states it. Split across climb rows by time when the climb spans more than
   // one, so the cumulative column still adds up.
+  const climbGal = Number(fuel.climbGal) > 0 ? Number(fuel.climbGal) : 0;
   const climbTotalH = rows.reduce((sum, r) => sum + (r.kind === 'climb' && r.timeH > 0 ? r.timeH : 0), 0);
   let cumTimeH = 0, cumFuel = 0;
   for (const row of rows) {
     row.gph = row.kind === 'climb' ? null : cruiseGph;
     row.fuelGal = row.kind === 'climb'
-      ? (climbTotalH > 0 ? climbGalLeft * (row.timeH / climbTotalH) : climbGalLeft)
+      ? (climbTotalH > 0 ? climbGal * (row.timeH / climbTotalH) : climbGal)
       : (row.timeH > 0 ? cruiseGph * row.timeH : 0);
     cumTimeH += row.timeH > 0 ? row.timeH : 0;
     cumFuel += row.fuelGal > 0 ? row.fuelGal : 0;
