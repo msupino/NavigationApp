@@ -53,7 +53,7 @@ async function deliver(page, { hb, seq, offsetMs, retained }) {
     const key = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt']);
     const body = args.hb
       ? { reg: '4X-TST', hb: 1, t: Date.now() + args.offsetMs, seq: args.seq }
-      : { reg: '4X-TST', lat: 32.1, lng: 34.9, alt: 300, trk: 90, kt: 100,
+      : { reg: '4X-TST', lat: 32.1, lng: 34.9, af: 984, kt: 100, mh: 85, trk: 90,
           t: Date.now() + args.offsetMs, seq: args.seq };
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key,
@@ -166,7 +166,7 @@ test('the heartbeat is not retained, so a late follower still gets a position', 
     window.__sockets[window.__sockets.length - 1].connack();
     await new Promise(r => setTimeout(r, 20));
     setTune('followMeRateSec', 1);
-    await F.publish({ lat: 32.1, lng: 34.9, alt: 300, trk: 90, kt: 100 });
+    await F.publish({ lat: 32.1, lng: 34.9, af: 984, kt: 100, mh: 85, trk: 90 });
     await new Promise(r => setTimeout(r, 20));
     const fixFrames = window.__sent.filter(f => (f[0] & 0xf0) === 0x30 && f.length > 40);
     const fixRetain = fixFrames.length ? (fixFrames[fixFrames.length - 1][0] & 0x01) : null;
@@ -183,4 +183,50 @@ test('the heartbeat is not retained, so a late follower still gets a position', 
   // would hand them an aeroplane with no position at all.
   expect(got.fixRetain).toBe(1);
   expect(got.hbRetain).toBe(0);
+});
+
+// The banner prints what the aeroplane sent, in the aeroplane's units. There is nothing to
+// convert and nothing to fall back to: a number the follower would have to compute is a number
+// the two screens can disagree about, which is exactly how this started.
+test('the banner prints the numbers as sent', async ({ page }) => {
+  await boot(page);
+  await watching(page);
+  await page.evaluate(async () => {
+    const raw = Uint8Array.from(atob('k'.repeat(43) + '='), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt']);
+    window.__send = async (body) => {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key,
+        new TextEncoder().encode(JSON.stringify(body))));
+      const payload = new Uint8Array(iv.length + sealed.length);
+      payload.set(iv); payload.set(sealed, iv.length);
+      const topicBytes = new TextEncoder().encode('navaid/follow/watched000000000');
+      const remaining = 2 + topicBytes.length + payload.length;
+      const header = [0x30];
+      let len = remaining;
+      do { let b = len % 128; len = Math.floor(len / 128); if (len > 0) b |= 128; header.push(b); } while (len > 0);
+      const frame = new Uint8Array(header.length + remaining);
+      frame.set(header);
+      frame[header.length] = topicBytes.length >> 8;
+      frame[header.length + 1] = topicBytes.length & 0xff;
+      frame.set(topicBytes, header.length + 2);
+      frame.set(payload, header.length + 2 + topicBytes.length);
+      window.__sockets[window.__sockets.length - 1].deliver(Array.from(frame));
+      await new Promise(r => setTimeout(r, 40));
+    };
+    // A viewer whose own config says something else entirely: it must change nothing.
+    setTune('magneticVariationDeg', -2);
+  });
+  await page.evaluate(() => window.__send({ reg: '4X-TST', lat: 32.12345, lng: 34.98765,
+    af: 261, kt: 97, mh: 83, trk: 90, t: Date.now(), seq: 1 }));
+  const said = (await banner(page)).text;
+  expect(said).toMatch(/\b261 ft\b/);        // not 262, which is what metres came back as
+  expect(said).toMatch(/\b97 kt\b/);
+  expect(said).toMatch(/\b083°/);             // the aeroplane's magnetic, not the viewer's
+  expect(said).toMatch(/32\.12345, 34\.98765/);
+
+  // A compass reading rather than a course keeps its tilde, as it does in the cockpit.
+  await page.evaluate(() => window.__send({ reg: '4X-TST', lat: 32.12345, lng: 34.98765,
+    af: 261, kt: 0, mh: 83, hc: 1, trk: 90, t: Date.now(), seq: 2 }));
+  expect((await banner(page)).text).toMatch(/~083°/);
 });

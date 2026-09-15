@@ -38,6 +38,8 @@ DEFAULT_BASE_URL = 'https://navaid.supino.org/'
 TOPIC_PREFIX = 'navaid/follow/'
 NM_EARTH_RADIUS = 3440.065
 FT_TO_M = 0.3048
+# Israel: magnetic = true + variation, the same default the app's tuning registry carries.
+DEFAULT_VARIATION = -5
 DEFAULT_ROUTE = Path(__file__).resolve().parent / 'routes' / 'LLHZ-to-LLHA.json'
 
 
@@ -206,9 +208,13 @@ def make_fix(point, code, speed_kt, altitude_ft, sequence, now_ms):
         'reg': code,
         'lat': round(point['lat'], 5),
         'lng': round(point['lng'], 5),
-        'alt': round(altitude_ft * FT_TO_M),
-        'trk': round(point['trk']),
+        # The readouts, in the units the cockpit shows: the viewer prints these and converts
+        # nothing, so a simulated aeroplane has to speak the same way a real one does.
+        'af': round(altitude_ft),
         'kt': round(speed_kt),
+        'mh': round(point['trk'] + DEFAULT_VARIATION) % 360,
+        # True, for the geometry that points the icon on a rotatable map.
+        'trk': round(point['trk']),
         't': now_ms,
         'seq': sequence,
     }
