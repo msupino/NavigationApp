@@ -1,13 +1,13 @@
 // @ts-check
-// Privacy Policy + Terms of Service are standalone static pages that localize
-// themselves the same way index.html does: ?lang wins, then the stored
-// navaid.lang (shared per-origin with the app), else HEBREW. Hebrew renders
-// RTL. These checks guard the language resolver and the per-language blocks.
+// Privacy Policy + Terms of Service are standalone static pages that localize themselves the
+// same way index.html does: ?lang wins, else HEBREW. Hebrew renders RTL. These checks guard
+// the language resolver and the per-language blocks.
 //
 // They used to fall back to English and then WRITE that fallback into navaid.lang, which the
-// planner reads: a first-time visitor who opened Terms before the app had the app's language
-// chosen for them by a page they were only reading. A page persists a CHOICE -- the ?lang the
-// switch links carry -- never its own guess.
+// planner read: a first-time visitor who opened Terms before the app had the app's language
+// chosen for them by a page they were only reading. Nothing is stored now, on any of these
+// pages or in the app: a plain address opens in Hebrew, and English is a choice the address
+// carries.
 const { test, expect } = require('./_setup');
 
 const PAGES = [
@@ -40,14 +40,6 @@ test.describe('Localized legal pages', () => {
       await expect(page.locator('[data-lang="he"] h1')).toBeHidden();
     });
 
-    test(`${p.file} follows stored navaid.lang when no ?lang param`, async ({ page }) => {
-      await page.addInitScript(() => {
-        try { localStorage.setItem('navaid.lang', 'he'); } catch (e) {}
-      });
-      await page.goto(p.file);
-      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-      await expect(page.locator('[data-lang="he"] h1')).toBeVisible();
-    });
 
     test(`${p.file} language switch links to both locales`, async ({ page }) => {
       await page.goto(p.file + '?lang=en');
@@ -63,25 +55,25 @@ test.describe('Localized legal pages', () => {
       await expect(page.locator('[data-lang="he"] h1')).toBeVisible();
     });
 
-    // The bug this pins: reading a page must not choose the planner's language.
-    test(`${p.file} does not pin a language it only guessed`, async ({ page }) => {
+    // A plain address means one thing: Hebrew. Nothing is stored, so a page nobody chose a
+    // language on cannot decide it for the planner -- which is what the old fallback did,
+    // and what this replaces.
+    test(`${p.file} stores nothing, whichever way it was opened`, async ({ page }) => {
       await page.goto(p.file);
       expect(await page.evaluate(() => localStorage.getItem('navaid.lang')),
         'a page the pilot only read wrote the app\'s language').toBeNull();
-      // ...and a stored choice is still followed, and still not rewritten by the page.
-      await page.evaluate(() => localStorage.setItem('navaid.lang', 'en'));
-      await page.goto(p.file);
+      await page.goto(p.file + '?lang=en');
       await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-      expect(await page.evaluate(() => localStorage.getItem('navaid.lang'))).toBe('en');
+      expect(await page.evaluate(() => localStorage.getItem('navaid.lang'))).toBeNull();
     });
 
-    // Pressing the switch IS a choice, and that one is kept -- it is what carries the
-    // language back to the planner.
-    test(`${p.file} remembers the language the reader asked for`, async ({ page }) => {
-      await page.goto(p.file + '?lang=en');
-      expect(await page.evaluate(() => localStorage.getItem('navaid.lang'))).toBe('en');
-      await page.goto(p.file + '?lang=he');
-      expect(await page.evaluate(() => localStorage.getItem('navaid.lang'))).toBe('he');
+    // And a language left over from before does not resurrect itself.
+    test(`${p.file} ignores a stored language`, async ({ page }) => {
+      await page.addInitScript(() => {
+        try { localStorage.setItem('navaid.lang', 'en'); } catch (e) {}
+      });
+      await page.goto(p.file);
+      await expect(page.locator('html')).toHaveAttribute('lang', 'he');
     });
   }
 });

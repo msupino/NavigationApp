@@ -22,8 +22,9 @@ test.describe('NavAid smoke', () => {
     await expect(page.locator('#tool-add')).toHaveText(/Add waypoint/);
   });
 
-  test('boots in Hebrew when localStorage prefers he and switches to English', async ({ page }) => {
-    await page.addInitScript(() => { try { localStorage.setItem('navaid.lang', 'he'); } catch (e) {} });
+  // A plain address is Hebrew -- nothing is stored, so a stale navaid.lang cannot change it.
+  test('boots in Hebrew with no language in the address, and switches to English', async ({ page }) => {
+    await page.addInitScript(() => { try { localStorage.setItem('navaid.lang', 'en'); } catch (e) {} });
     await page.goto('.');
     await expect(page.locator('html')).toHaveAttribute('lang', 'he');
     await page.locator('#lang-select').selectOption('en');

@@ -37,6 +37,46 @@ def b64url_decode(s):
     return base64.urlsafe_b64decode(s + '=' * (-len(s) % 4))
 
 
+def verify_key(link):
+    """The public half out of the link's fragment, when it carries one.
+
+    A follower necessarily holds the AES key -- they could not read anything otherwise -- so
+    the key alone cannot say WHO published. Every packet is signed by the aeroplane, and this
+    is what checks it. A link without `v` is from before signing existed: it is read
+    unverified, and said to be.
+    """
+    u = urllib.parse.urlsplit(link)
+    raw = u.fragment.lstrip('#') if u.scheme else (link.split('#', 1)[1] if '#' in link else '')
+    got = urllib.parse.parse_qs(raw).get('v', [''])[0]
+    return got or ''
+
+
+def check_signature(public_raw, fix):
+    """True when `sig` is the aeroplane's, over the packet without it.
+
+    The field is added last and the app removes it and re-serialises to check, so the bytes
+    signed are the object as it went on the wire, minus its own signature.
+    """
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+
+    if not isinstance(fix, dict) or not isinstance(fix.get('sig'), str):
+        return False
+    raw = b64url_decode(fix['sig'])
+    if len(raw) != 64:
+        return False
+    body = {k: v for k, v in fix.items() if k != 'sig'}
+    signed = json.dumps(body, separators=(',', ':')).encode('utf-8')
+    der = encode_dss_signature(int.from_bytes(raw[:32], 'big'), int.from_bytes(raw[32:], 'big'))
+    key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), public_raw)
+    try:
+        key.verify(der, signed, ec.ECDSA(hashes.SHA256()))
+        return True
+    except Exception:
+        return False
+
+
 def parse_link(link):
     """Pull the topic id and the key out of a share link.
 
@@ -168,6 +208,10 @@ def main():
 
     follow, key_b64 = parse_link(args.link)
     key = b64url_decode(key_b64)
+    verify_raw = b64url_decode(verify_key(args.link)) if verify_key(args.link) else None
+    if verify_raw is None:
+        print('# no verify key in this link: packets cannot be attributed to the aeroplane',
+              file=sys.stderr)
     if len(key) not in (16, 24, 32):
         raise SystemExit('key is %d bytes; expected a 128/192/256-bit AES key' % len(key))
 
@@ -207,6 +251,12 @@ def main():
         fix = unseal(key, msg.payload)
         order = accepted_order(fix, last_order)
         if order is None:
+            return
+        # Anyone holding the link can encrypt; only the aeroplane can sign. A packet that
+        # does not check out is somebody else's, and printing it as a position would be the
+        # one thing this tool must not do.
+        if verify_raw is not None and not check_signature(verify_raw, fix):
+            print('# dropped a packet that is not signed by this aeroplane', file=sys.stderr)
             return
         last_order = order
         at = time.strftime('%H:%M:%S')
