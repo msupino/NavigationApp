@@ -292,20 +292,39 @@
   // It fills the TABLE rather than feeding the sheet directly, which is the point: what was
   // fetched is then visible, editable, and saved with everything else, and the rows say where
   // they came from. A forecast a pilot cannot see or correct is not planning data.
+  // The levels this flight actually touches, not a ladder.
+  //
+  // Asked why it pulled 2,000 / 3,000 / 4,000 on a route flown at 800: it was a fixed ladder
+  // from 2,000 ft up. The sheet knows better than that -- it has a pressure altitude for every
+  // row, which is where the TAS for that row is read. So those are the levels fetched: the two
+  // thirds point of each climb, the level of each leg, the half-way point of the descent.
+  //
+  // Rounded to the nearest hundred (a forecast is not finer than that), de-duplicated, and
+  // bracketed by a level above and below so the nearest-row lookup always has one either side
+  // of whatever it is asked about -- including after the pilot edits an altitude on the map.
   function metLevelsFor(cfg) {
-    const top = Math.max(Number(cfg.cruiseAltFt) || 0,
-      navLogSegmentAltFt('climb', cfg.depElevFt, cfg.cruiseAltFt, cfg.paFraction) || 0,
-      navLogSegmentAltFt('descent', cfg.destElevFt, cfg.cruiseAltFt, cfg.paFraction) || 0);
-    if (!(top > 0)) return [];
-    // From 2,000 ft -- below that the surface wind is the one that matters and it is not what
-    // this table is for -- up to a thousand above the cruise level, so the nearest-row lookup
-    // always has a row above and below the number it is asked about.
-    const levels = [];
-    for (let ft = 2000; ft <= Math.ceil((top + 1000) / 1000) * 1000 && levels.length < 14; ft += 1000) {
-      levels.push(ft);
+    const c = cfg || config();
+    const wanted = new Set();
+    let rows = [];
+    try { rows = rowsFor(c); } catch (e) { rows = []; }
+    for (const row of rows) {
+      const pa = Number(row.pressureAltFt);
+      if (Number.isFinite(pa) && pa > 0) wanted.add(Math.round(pa / 100) * 100);
     }
-    return levels;
+    if (!wanted.size) {
+      // No route yet: a plain ladder is the only honest guess, and it is what the exercise's
+      // own met table looks like.
+      for (let ft = 2000; ft <= 7000; ft += 1000) wanted.add(ft);
+    } else {
+      const list = Array.from(wanted);
+      const lo = Math.max(500, Math.min(...list) - 1000);
+      const hi = Math.max(...list) + 1000;
+      wanted.add(Math.round(lo / 100) * 100);
+      wanted.add(Math.round(hi / 100) * 100);
+    }
+    return Array.from(wanted).sort((a, b) => a - b).slice(0, 14);
   }
+
   // The shared look-ahead clock, in hours from now. One master slider drives every layer that
   // answers to time; this reads it rather than keeping a clock of its own.
   function lookaheadHoursAhead() {
@@ -417,7 +436,7 @@
   }
 
   // The rows, from the route on the map and the config above.
-  function rows(cfg) {
+  function rowsFor(cfg) {
     const c = cfg || config();
     const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
       ? state.waypoints : [];
@@ -573,8 +592,12 @@
       () => {
         live = null;
         if (typeof clearOpenChartModal === 'function') clearOpenChartModal('nav-table');
+        if (NS.refreshMapClock) setTimeout(NS.refreshMapClock, 0);
       }, { nonBlocking: true });
     if (typeof rememberOpenChartModal === 'function') rememberOpenChartModal('nav-table');
+    // The clock dims when nothing answers to it. This form does -- its forecast is fetched for
+    // the hour the slider points at -- so it says so, on the way in and on the way out.
+    const tellClock = () => { if (NS.refreshMapClock) NS.refreshMapClock(); };
     const body = document.createElement('div');
     body.className = 'navlog-body';
     modal.box.appendChild(body);
@@ -810,7 +833,7 @@
     }
 
     function render() {
-      const list = rows(cfg);
+      const list = rowsFor(cfg);
       table.replaceChildren();
       const hr = document.createElement('tr');
       for (const h of headers()) {
@@ -890,7 +913,15 @@
     editors.className = 'navlog-editors';
     editors.append(met, card);
     body.append(setup, editors, note, table, actions);
-    modal.show();     // createDraggableModal is already draggable by its title bar
+    modal.show();
+    // Dragged by its title bar and remembered where it was put, like the flight plan. The
+    // factory's name is about the SHAPE it builds; the dragging itself is wired here, which is
+    // why the window would not move.
+    if (typeof makeModalDraggable === 'function') {
+      const title = modal.box.querySelector('.modal-title');
+      if (title) makeModalDraggable(modal.box, title, 'navaid.navlogPos');
+    }
+    tellClock();
     return modal;
   }
 
@@ -898,7 +929,7 @@
   // the display, not here, or anything downstream keyed on a column loses it.
   function exportCsv(cfg) {
     const c = cfg || config();
-    const list = rows(c);
+    const list = rowsFor(c);
     if (!list.length) return null;
     const esc = (v) => (/[",\n]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : v);
     const lines = [headers().map(esc).join(',')];
@@ -930,7 +961,7 @@
     setTimeout(restoreIfWasOpen, 0);
   }
 
-  NS.navLog = { show, config, save, rows, exportCsv, headers, cells, defaults,
+  NS.navLog = { show, config, save, rows: rowsFor, exportCsv, headers, cells, defaults,
     parseExercise, importExercise, openExerciseFile, exportExercise, routeChanged,
     fetchMet, metLevelsFor, lookaheadHoursAhead };
 }());

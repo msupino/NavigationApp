@@ -8054,7 +8054,13 @@ body.disclaimer-open { overflow: hidden; }
 /* --- nav log -------------------------------------------------------------
    A planning-desk table: 23 columns that will not fit a phone, so the table
    scrolls inside its own box and the page never scrolls sideways. */
-.navlog-body { display: flex; flex-direction: column; gap: 10px; max-height: 78vh; overflow: auto; }
+/* Movable by its title bar (createDraggableModal does that) and resizable by its corner: a
+   23-column sheet is a table somebody wants wider, and the window it is in should not be the
+   thing stopping them. */
+.navlog-modal { resize: both; overflow: auto; min-width: 320px; min-height: 220px;
+  max-width: 96vw; max-height: 92vh; }
+.navlog-body { display: flex; flex-direction: column; gap: 10px;
+  max-height: none; overflow: visible; }
 .navlog-setup { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 /* Label across the top, then the box with its restore arrow BESIDE it -- the arrow belongs to
    the box, and under it reads as another row of the form. */

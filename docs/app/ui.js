@@ -10890,6 +10890,12 @@ const NavWxTime = (function () {
   // altitude needs to find it.
   const inspectorTimed = () => !!document.querySelector('#inspector:not(.hidden) input.da-time');
 
+  // The flight planning form is a timed consumer too, and a louder one: the forecast it fetches
+  // is for whatever hour this clock is pointing at, so a pilot planning a departure two hours
+  // out has to be able to find the slider. Reported as barely visible while the form is open,
+  // which is exactly when it decides something.
+  const planningFormOpen = () => !!document.querySelector('.navlog-modal');
+
   // "+14h · 21:00Z" is a Hebrew word, a number and a clock in one string, and in an RTL
   // paragraph the bidi algorithm runs them together: "+14ש · 21:00Z" rendered as
   // "+1421:00 · שZ", with the digits merged and the Z adrift. Each part gets its own <bdi>
@@ -10951,7 +10957,7 @@ const NavWxTime = (function () {
     }
   }
   function refresh() {
-    const timed = anyTimedLayer() || inspectorTimed();
+    const timed = anyTimedLayer() || inspectorTimed() || planningFormOpen();
     el.hidden = !featureOn() || liveHides() || (!timed && idleHidesOnPhone());
     // The panel's copy exists for one reason: on a phone the sheet covers the map's copy. So
     // it appears when there is something for a clock to move and not otherwise -- a waypoint,
