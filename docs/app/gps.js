@@ -243,6 +243,37 @@ var _gpsLivePrev = null;
 function gpsLastFix() { return _gpsLivePrev ? { lat: _gpsLivePrev.lat, lng: _gpsLivePrev.lng } : null; }
 if (typeof window !== 'undefined') window.gpsLastFix = gpsLastFix;
 
+// Follow me, if the pilot is sharing: the same fix, encrypted, to a topic nobody can guess.
+// Rate-limited inside; a failure here must never disturb the fix handling around it.
+//
+// One place, because there are TWO fix paths. onLivePosition stands down while a recording
+// runs (that watch drives the own-ship), and the recording path never published -- so turning
+// Record on mid-flight stopped the share while the button, the banner and the map control all
+// still said it was running, and the follower was left on "waiting for a position".
+function gpsPublishFollowMeFix(p, hdg, hdgFromCompass, speedMs) {
+  if (!(window.NavAid && NavAid.followMe && NavAid.followMe.sharing())) return;
+  try {
+    // The altitude the PILOT is reading, not the raw fix. Everything in the app that shows or
+    // compares an altitude goes through gpsAltitudeForCompare(): geometric height less the
+    // ~59 ft geoid undulation over Israel, less the temperature term. The wire carried the
+    // raw height instead, so a follower read 60 ft high on a cold day and a few hundred on a
+    // hot one -- two people on one flight quoting different numbers for the same aeroplane,
+    // which is worse than a follower with no altitude at all.
+    //
+    // Still metres on the wire: that is what every viewer already in the air converts from.
+    const shownFt = (typeof gpsAltitudeForCompare === 'function') ? gpsAltitudeForCompare() : null;
+    // `hc` says the heading is the compass, not a course made good -- a stationary aeroplane
+    // has no course, and a follower must not read one off a phone lying on a seat. It is the
+    // same mark the pilot's own readout shows.
+    NavAid.followMe.publish({
+      lat: p.lat, lng: p.lng,
+      alt: Number.isFinite(shownFt) ? shownFt / 3.28084 : null,
+      trk: hdg,
+      hc: hdgFromCompass,
+      kt: (speedMs != null && !isNaN(speedMs) && speedMs >= 0) ? speedMs * 1.94384 : null,
+    });
+  } catch (e) { /* sharing is a courtesy, never a reason to lose a fix */ }
+}
 function onLivePosition(pos) {
   if (!gpsLiveOn || !pos || !pos.coords) return;
   if (gpsRecording) return;   // recording drives own-ship + recenter; avoid dueling
@@ -296,18 +327,7 @@ function onLivePosition(pos) {
   gpsNoteFixArrived();
   gpsRefreshQnh(p.lat, p.lng);
   gpsCheckLegAlerts();
-  // Follow me, if the pilot is sharing: the same fix, encrypted, to a topic nobody can guess.
-  // Rate-limited inside; a failure here must never disturb the fix handling around it.
-  if (window.NavAid && NavAid.followMe && NavAid.followMe.sharing()) {
-    try {
-      // `hc` says the heading is the compass, not a course made good -- a stationary
-      // aeroplane has no course, and a follower must not read one off a phone lying on a
-      // seat. It is the same mark the pilot's own readout shows.
-      NavAid.followMe.publish({ lat: p.lat, lng: p.lng, alt: c.altitude, trk: hdg,
-        hc: hdgFromCompass,
-        kt: (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed * 1.94384 : null });
-    } catch (e) { /* sharing is a courtesy, never a reason to lose a fix */ }
-  }
+  gpsPublishFollowMeFix(p, hdg, hdgFromCompass, c.speed);
   if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   // The compass needle and the track written under it are read from this fix, so they have
   // to be redrawn with it -- not only when the map is rotated or tracking starts.
@@ -1011,6 +1031,7 @@ function onGpsPosition(pos) {
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t, hdgCompass: hdgFromCompass };
   gpsNoteFixArrived();
   gpsRefreshQnh(pt.lat, pt.lng);
+  gpsPublishFollowMeFix(pt, hdg, hdgFromCompass, c.speed);
   gpsUpdateReadout();
   gpsCheckLegAlerts();
   scheduleDraw();
