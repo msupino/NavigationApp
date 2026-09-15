@@ -253,34 +253,33 @@ if (typeof window !== 'undefined') window.gpsLastFix = gpsLastFix;
 function gpsPublishFollowMeFix(p, hdg, hdgFromCompass) {
   if (!(window.NavAid && NavAid.followMe && NavAid.followMe.sharing())) return;
   try {
-    // The altitude the PILOT is reading, not the raw fix. Everything in the app that shows or
-    // compares an altitude goes through gpsAltitudeForCompare(): geometric height less the
-    // ~59 ft geoid undulation over Israel, less the temperature term. The wire carried the
-    // raw height instead, so a follower read 60 ft high on a cold day and a few hundred on a
-    // hot one -- two people on one flight quoting different numbers for the same aeroplane,
-    // which is worse than a follower with no altitude at all.
+    // WHAT THE COCKPIT IS SHOWING, in the cockpit's units. The follower prints these; it does
+    // not convert them, because every conversion is a chance for the two screens to disagree
+    // about one aeroplane -- and the aeroplane is the one entitled to do the arithmetic.
     //
-    // Still metres on the wire: that is what every viewer already in the air converts from.
+    // Altitude: everything here that shows or compares an altitude goes through
+    // gpsAltitudeForCompare() -- the geometric height less the ~59 ft geoid undulation over
+    // Israel and less the ISA temperature term. The raw fix used to go on the wire instead, so
+    // a follower read 60 ft high on a standard day and a few hundred on a hot one.
     const shownFt = (typeof gpsAltitudeForCompare === 'function') ? gpsAltitudeForCompare() : null;
-    // The pilot's own ground speed, for the same reason: the device omits `speed` when it is
-    // stationary or when the chipset simply does not report it, and both fix paths then derive
-    // it from the last two positions for the readout. Publishing the device field alone left a
-    // follower with no speed beside a cockpit reading 95 kt.
+    // Ground speed: the device omits `speed` when stationary and some chipsets never report it,
+    // so both fix paths derive one from the last two positions for the readout. Publishing the
+    // device field alone left a follower with no speed beside a cockpit reading 95 kt.
     const shownKt = (typeof gpsLastGS === 'number' && Number.isFinite(gpsLastGS)) ? gpsLastGS : null;
-    // The variation this readout is using, so the viewer renders the pilot's magnetic heading
-    // rather than its own gist's idea of one.
-    const mv = (typeof tune === 'function') ? Number(tune('magneticVariationDeg')) : NaN;
-    // `hc` says the heading is the compass, not a course made good -- a stationary aeroplane
-    // has no course, and a follower must not read one off a phone lying on a seat. It is the
-    // same mark the pilot's own readout shows.
+    // Heading: magnetic, as the readout writes it. The true track goes too, but only as the
+    // geometry the follower's map points the icon with.
+    const shownMag = (Number.isFinite(hdg) && typeof toMagnetic === 'function')
+      ? toMagnetic(hdg) : null;
     NavAid.followMe.publish({
       lat: p.lat, lng: p.lng,
-      alt: Number.isFinite(shownFt) ? shownFt / 3.28084 : null,
       af: Number.isFinite(shownFt) ? Math.round(shownFt) : null,
-      trk: hdg,
+      kt: Number.isFinite(shownKt) ? Math.round(shownKt) : null,
+      mh: Number.isFinite(shownMag) ? shownMag : null,
+      // `hc` says the heading is the compass, not a course made good -- a stationary aeroplane
+      // has no course, and a follower must not read one off a phone lying on a seat. It is the
+      // same mark the pilot's own readout shows.
       hc: hdgFromCompass,
-      mv: Number.isFinite(mv) ? mv : null,
-      kt: shownKt,
+      trk: hdg,
     });
   } catch (e) { /* sharing is a courtesy, never a reason to lose a fix */ }
 }

@@ -53,7 +53,7 @@ async function deliver(page, { hb, seq, offsetMs, retained }) {
     const key = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt']);
     const body = args.hb
       ? { reg: '4X-TST', hb: 1, t: Date.now() + args.offsetMs, seq: args.seq }
-      : { reg: '4X-TST', lat: 32.1, lng: 34.9, alt: 300, trk: 90, kt: 100,
+      : { reg: '4X-TST', lat: 32.1, lng: 34.9, af: 984, kt: 100, mh: 85, trk: 90,
           t: Date.now() + args.offsetMs, seq: args.seq };
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key,
@@ -166,7 +166,7 @@ test('the heartbeat is not retained, so a late follower still gets a position', 
     window.__sockets[window.__sockets.length - 1].connack();
     await new Promise(r => setTimeout(r, 20));
     setTune('followMeRateSec', 1);
-    await F.publish({ lat: 32.1, lng: 34.9, alt: 300, trk: 90, kt: 100 });
+    await F.publish({ lat: 32.1, lng: 34.9, af: 984, kt: 100, mh: 85, trk: 90 });
     await new Promise(r => setTimeout(r, 20));
     const fixFrames = window.__sent.filter(f => (f[0] & 0xf0) === 0x30 && f.length > 40);
     const fixRetain = fixFrames.length ? (fixFrames[fixFrames.length - 1][0] & 0x01) : null;
@@ -185,9 +185,10 @@ test('the heartbeat is not retained, so a late follower still gets a position', 
   expect(got.hbRetain).toBe(0);
 });
 
-// The banner reads the feet the aeroplane sent. An older publisher sends only metres, and the
-// viewer converts those -- right to within the metre they were rounded to.
-test('the banner shows the feet the aeroplane sent, and falls back to metres', async ({ page }) => {
+// The banner prints what the aeroplane sent, in the aeroplane's units. There is nothing to
+// convert and nothing to fall back to: a number the follower would have to compute is a number
+// the two screens can disagree about, which is exactly how this started.
+test('the banner prints the numbers as sent', async ({ page }) => {
   await boot(page);
   await watching(page);
   await page.evaluate(async () => {
@@ -213,12 +214,19 @@ test('the banner shows the feet the aeroplane sent, and falls back to metres', a
       window.__sockets[window.__sockets.length - 1].deliver(Array.from(frame));
       await new Promise(r => setTimeout(r, 40));
     };
+    // A viewer whose own config says something else entirely: it must change nothing.
+    setTune('magneticVariationDeg', -2);
   });
-  // 80 m is 262 ft converted, but the aeroplane's own readout said 261.
-  await page.evaluate(() => window.__send({ reg: '4X-TST', lat: 32.1, lng: 34.9, alt: 80, af: 261, trk: 90, kt: 100, t: Date.now(), seq: 1 }));
-  expect((await banner(page)).text).toMatch(/\b261 ft\b/);
+  await page.evaluate(() => window.__send({ reg: '4X-TST', lat: 32.12345, lng: 34.98765,
+    af: 261, kt: 97, mh: 83, trk: 90, t: Date.now(), seq: 1 }));
+  const said = (await banner(page)).text;
+  expect(said).toMatch(/\b261 ft\b/);        // not 262, which is what metres came back as
+  expect(said).toMatch(/\b97 kt\b/);
+  expect(said).toMatch(/\b083°/);             // the aeroplane's magnetic, not the viewer's
+  expect(said).toMatch(/32\.12345, 34\.98765/);
 
-  // An older publisher, metres only: converted, and right to the metre it was rounded to.
-  await page.evaluate(() => window.__send({ reg: '4X-TST', lat: 32.1, lng: 34.9, alt: 80, trk: 90, kt: 100, t: Date.now(), seq: 2 }));
-  expect((await banner(page)).text).toMatch(/\b262 ft\b/);
+  // A compass reading rather than a course keeps its tilde, as it does in the cockpit.
+  await page.evaluate(() => window.__send({ reg: '4X-TST', lat: 32.12345, lng: 34.98765,
+    af: 261, kt: 0, mh: 83, hc: 1, trk: 90, t: Date.now(), seq: 2 }));
+  expect((await banner(page)).text).toMatch(/~083°/);
 });

@@ -100,7 +100,7 @@ test('a session publishes an encrypted position nobody else can read', async ({ 
     const link = await F.start('4X-CDE');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
-    await F.publish({ lat: 32.0, lng: 34.9, alt: 2500, trk: 90, kt: 100 });
+    await F.publish({ lat: 32.0, lng: 34.9, af: 8202, kt: 100, mh: 85, trk: 90 });
     window.WebSocket = orig;
 
     const url = new URL(link);
@@ -131,7 +131,7 @@ test('a session publishes an encrypted position nobody else can read', async ({ 
   expect(seen.looksEncrypted).toBe(true);
   expect(seen.wrong).toBe(null);
   // ...and exactly right with it.
-  expect(seen.right).toMatchObject({ lat: 32, lng: 34.9, alt: 2500, trk: 90, kt: 100 });
+  expect(seen.right).toMatchObject({ lat: 32, lng: 34.9, af: 8202, kt: 100, mh: 85, trk: 90 });
   expect(seen.right.t).toBeGreaterThan(0);
 });
 
@@ -144,7 +144,7 @@ test('a watcher decrypts what the pilot published', async ({ page }) => {
     const link = await F.start('4X-CDE');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
-    await F.publish({ lat: 31.5, lng: 35.1, alt: 3000 });
+    await F.publish({ lat: 31.5, lng: 35.1, af: 9843 });
     const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
 
     const url = new URL(link);
@@ -161,7 +161,7 @@ test('a watcher decrypts what the pilot published', async ({ page }) => {
   });
   expect(got.subscribed).toBe(true);
   expect(got.connected).toBe(true);
-  expect(got.fix).toMatchObject({ lat: 31.5, lng: 35.1, alt: 3000 });
+  expect(got.fix).toMatchObject({ lat: 31.5, lng: 35.1, af: 9843 });
 });
 
 // The part that matters more than the transport: a viewer must never quietly draw an
@@ -274,7 +274,7 @@ test('the follower reads the same heading the pilot does, in magnetic', async ({
     const link = await F.start('4X-VAR');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
-    await F.publish({ lat: 32.0, lng: 34.9, trk: 304, kt: 100 });
+    await F.publish({ lat: 32.0, lng: 34.9, kt: 100, mh: toMagnetic(304), trk: 304 });
     const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
     const url = new URL(link);
     await F.viewerStart({ search: url.search, hash: url.hash });
@@ -412,7 +412,7 @@ test('a compass heading reaches the follower marked, as it is on the phone', asy
     const link = await F.start('4X-CMP');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 10));
-    await F.publish({ lat: 32.0, lng: 34.9, trk: 304, kt: 0, hc: true });
+    await F.publish({ lat: 32.0, lng: 34.9, kt: 0, mh: toMagnetic(304), hc: true, trk: 304 });
     const pub = new Uint8Array(window.__sent.find(f => (f[0] & 0xf0) === 0x30 && f.length > 4));
     const url = new URL(link);
     await F.viewerStart({ search: url.search, hash: url.hash });
@@ -588,8 +588,8 @@ test('the Hebrew viewer banner keeps telemetry LTR in an RTL segment order', asy
     await new Promise(resolve => setTimeout(resolve, 10));
     const url = new URL(link);
     const state = await F.viewerStart({ search: url.search, hash: url.hash });
-    state.fix = { reg: 'TEST', lat: 32.3728, lng: 34.9068, alt: 456.9, kt: 90,
-      trk: 3, t: Date.now() };
+    state.fix = { reg: 'TEST', lat: 32.3728, lng: 34.9068, af: 1499, kt: 90,
+      mh: 358, trk: 3, t: Date.now() };
     state.at = state.fix.t;
     F.viewerRefresh();
     const banner = document.getElementById('follow-me-banner');
@@ -1348,7 +1348,7 @@ test('the banner reads out altitude, speed, track and position', async ({ page }
     // sees anyway.
     const frames = [];
     // Two fixes: one complete, one with no altitude and no speed at all.
-    for (const fix of [{ lat: 32.1, lng: 34.8, alt: 610, kt: 95, trk: 7 },
+    for (const fix of [{ lat: 32.1, lng: 34.8, af: 2001, kt: 95, mh: 2, trk: 7 },
                        { lat: 32.2, lng: 34.85, trk: 7 }]) {
       window.__sent.length = 0;
       // The publisher rate-limits itself; the floor is one second, so wait it out rather
@@ -1371,14 +1371,16 @@ test('the banner reads out altitude, speed, track and position', async ({ page }
     window.WebSocket = orig;
     return seen;
   });
-  expect(got[0]).toContain('2001 ft');          // 610 m read back in feet
+  // Printed as sent, in the aeroplane's own units -- the viewer converts nothing.
+  expect(got[0]).toContain('2001 ft');
   expect(got[0]).toContain('95 kt');
-  // The wire carries true; the banner prints magnetic, exactly as the pilot's own readout
-  // does. 007 true with the default -5 variation is 002 magnetic.
-  expect(got[0]).toContain('002°');        // track, three digits like a heading
-  expect(got[0]).toContain('32.1000, 34.8000');
+  expect(got[0]).toContain('002°');        // the magnetic heading the cockpit displayed
+  expect(got[0]).toContain('32.1, 34.8');
   expect(got[1]).not.toMatch(/ft|kt/);          // nothing invented for what was not sent
-  expect(got[1]).toContain('32.2000');
+  // ...and a true track with no magnetic heading beside it is geometry, not a readout: it
+  // points the icon and says nothing on the banner.
+  expect(got[1]).not.toMatch(/°/);
+  expect(got[1]).toContain('32.2');
 });
 
 // The cockpit case: the socket dies mid-flight (screen lock, cell handover, doze). Silence

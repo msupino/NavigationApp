@@ -59,7 +59,7 @@ async function watchWith(page, { publisherOffsetMs, retained }) {
     // The same sealing the aeroplane does, with a stamp from the PUBLISHER's clock.
     const raw = Uint8Array.from(atob('k'.repeat(43) + '='), c => c.charCodeAt(0));
     const key = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt']);
-    const fix = { reg: '4X-TST', lat: 32.1, lng: 34.9, alt: 300, trk: 90, kt: 100,
+    const fix = { reg: '4X-TST', lat: 32.1, lng: 34.9, af: 984, kt: 100, mh: 85, trk: 90,
                   t: Date.now() + args.publisherOffsetMs, seq: 1 };
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const body = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key,
