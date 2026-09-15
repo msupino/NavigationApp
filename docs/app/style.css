@@ -8078,7 +8078,8 @@ body.disclaimer-open { overflow: hidden; }
 }
 .navlog-card-grid input { width: 4em; }
 .navlog-row-del { background: none; border: 0; cursor: pointer; color: inherit; padding: 0 4px; }
-.navlog-add { align-self: flex-start; margin-top: 4px; }
+.navlog-met-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.navlog-add, .navlog-fetch { padding: 2px 8px; }
 .navlog-table { border-collapse: collapse; font-size: 12px; display: block; overflow-x: auto; max-width: 100%; }
 .navlog-table th, .navlog-table td { border: 1px solid rgba(128, 128, 128, 0.35); padding: 1px 5px;
   white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }

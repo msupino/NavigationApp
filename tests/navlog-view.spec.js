@@ -870,3 +870,17 @@ test('the forecast is fetched for the hour the look-ahead clock points at', asyn
   expect(await page.evaluate(() => NavAid.navLog.config().met[0].kt)).toBe(3);
   expect(asked).toBe(null);
 });
+
+// Side by side and touching, the two buttons read as one control with a seam down it.
+test('the met table\'s buttons have room between them', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  const gap = await page.evaluate(() => {
+    const a = document.querySelector('.navlog-add').getBoundingClientRect();
+    const f = document.querySelector('.navlog-fetch').getBoundingClientRect();
+    const [left, right] = a.left < f.left ? [a, f] : [f, a];
+    return { between: right.left - left.right, sameRow: right.top < left.bottom && right.bottom > left.top };
+  });
+  expect(gap.between).toBeGreaterThanOrEqual(6);
+  expect(gap.sameRow).toBe(true);
+});

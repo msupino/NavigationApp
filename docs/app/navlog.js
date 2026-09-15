@@ -704,7 +704,12 @@
         render();
         renderMet();
       });
-      met.appendChild(add);
+      // The two buttons share a row, with room between them: side by side and touching, they
+      // read as one control with a seam down it.
+      const metActions = document.createElement('div');
+      metActions.className = 'navlog-met-actions';
+      met.appendChild(metActions);
+      metActions.appendChild(add);
       // The forecast, into the table rather than past it: what it fetched is then visible,
       // editable and saved, and the sheet reads it like any typed level.
       const fetchBtn = document.createElement('button');
@@ -733,7 +738,7 @@
           fetchBtn.textContent = was;
         }
       });
-      met.appendChild(fetchBtn);
+      metActions.appendChild(fetchBtn);
     }
 
     // The compass card: the headings are fixed at the 30° marks a card is swung on, and only
