@@ -994,17 +994,26 @@
         t: now,
         seq: s.seq,
       } : {
+        // THE NUMBERS THE COCKPIT IS SHOWING, in the cockpit's own units, already rounded.
+        //
+        // The follower does no arithmetic on any of them. Every conversion the viewer used to
+        // do was a way for the two screens to disagree about one aeroplane: metres rounded back
+        // into feet came out a foot or two off, and a magnetic heading computed from a true
+        // track used whichever variation the FOLLOWER's config happened to carry. A unit
+        // conversion is a calculation, and the aeroplane is the only one entitled to make it.
+        //
         // Inside the envelope: the broker relays the label without being able to read it.
         reg: s.reg,
         lat: Math.round(fix.lat * 1e5) / 1e5,
         lng: Math.round(fix.lng * 1e5) / 1e5,
-        alt: Number.isFinite(fix.alt) ? Math.round(fix.alt) : null,
-        trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
+        af: Number.isFinite(fix.af) ? Math.round(fix.af) : null,     // feet, as displayed
+        kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,     // knots, as displayed
+        mh: Number.isFinite(fix.mh) ? Math.round(fix.mh) : null,     // magnetic, as displayed
         hc: fix.hc ? 1 : null,          // the heading is the compass, not a course made good
-        // The variation this aeroplane's own readout is using, so the follower's number is the
-        // pilot's number and not the follower's gist applied to the pilot's track.
-        mv: Number.isFinite(fix.mv) ? fix.mv : null,
-        kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
+        // The one field that is NOT a readout: the aeroplane's true track, which the follower's
+        // map needs as geometry to point the icon with -- and which it must keep true, because
+        // the map it is drawn on can be rotated.
+        trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
         t: now,
         seq: s.seq,
       }, s.signKey);
@@ -1322,23 +1331,28 @@
     // rendered as zero, which would read as "on the ground".
     const f = st.fix || {};
     const bits = [];
-    if (Number.isFinite(f.alt)) bits.push(Math.round(f.alt * 3.28084) + ' ft');
-    if (Number.isFinite(f.kt)) bits.push(Math.round(f.kt) + ' kt');
+    // Printed, not computed. Each of these is the number the aeroplane's own readout showed;
+    // the only thing done to it here is padding a heading to three digits and marking a
+    // compass reading with `~`, which is how the same number is written in the cockpit.
+    if (Number.isFinite(f.af)) bits.push(f.af + ' ft');
+    if (Number.isFinite(f.kt)) bits.push(f.kt + ' kt');
     // The wire carries TRUE -- gpsCompassTrue() undoes the variation before publishing, and
     // the icon's rotation below is geometry that must stay true. The number is rendered by
     // the pilot's own readout formatter: magnetic, and marked `~` when it is the compass
     // rather than a course, which is what a stationary aeroplane sends.
-    if (Number.isFinite(f.trk)) {
-      // `mv` is the variation the AEROPLANE used. Without it the viewer applied its own tune,
-      // so a follower on ?nogist and a pilot on a tuned gist read different magnetic headings
-      // off one true track. Older publishers send none, and then the viewer's own is all there is.
-      const txt = (typeof gpsHeadingText === 'function')
-        ? gpsHeadingText(f.trk, !!f.hc, Number.isFinite(f.mv) ? f.mv : undefined)
-        : String(Math.round(f.trk)).padStart(3, '0') + '\u00b0';
-      if (txt) bits.push(txt);
+    // `mh` is the magnetic heading the cockpit displayed. The viewer does not convert the true
+    // track it also receives: magnetic = true + variation, and the variation the FOLLOWER's
+    // config carries is not necessarily the one the aeroplane flew with. `~` marks a compass
+    // reading rather than a course made good -- a stationary aeroplane has no course, and the
+    // pilot's own readout marks it the same way.
+    if (Number.isFinite(f.mh)) {
+      const shown = (typeof pad3 === 'function') ? pad3(f.mh)
+        : String(f.mh).padStart(3, '0');
+      bits.push((f.hc ? '~' : '') + shown + '\u00b0');
     }
+    // As sent: the aeroplane rounded these to five decimals, and five is what is shown.
     if (Number.isFinite(f.lat) && Number.isFinite(f.lng)) {
-      bits.push(f.lat.toFixed(4) + ', ' + f.lng.toFixed(4));
+      bits.push(f.lat + ', ' + f.lng);
     }
     // Stale has two meanings and the follower has to be able to tell them apart: an aeroplane
     // that has stopped saying anything, and one still on the relay with nothing new to report
