@@ -394,7 +394,6 @@ window.S = {
   navLogCard: 'טבלת סטיות',
   navLogCardFor: 'עבור כיוון מגנטי',
   navLogCardSteer: 'טוס כיוון מצפני',
-  navTableImport: 'פתיחת תרגיל',
   navTableExport: 'שמירת תרגיל',
   navTableImported: 'התרגיל נטען.',
   navTableImportBad: 'הקובץ הזה אינו תרגיל: אין בו מסלול ואין בו הגדרות.',

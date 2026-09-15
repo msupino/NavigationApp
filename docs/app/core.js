@@ -1682,7 +1682,6 @@ window.S = Object.assign({
   navLogCard: 'Compass card',
   navLogCardFor: 'For (M)',
   navLogCardSteer: 'Steer (C)',
-  navTableImport: 'Open exercise',
   navTableExport: 'Save exercise',
   navTableImported: 'Exercise loaded.',
   navTableImportBad: 'That file is not an exercise: no route and no settings in it.',

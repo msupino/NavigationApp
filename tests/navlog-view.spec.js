@@ -288,14 +288,7 @@ test('what it saves is what it opens', async ({ page }) => {
   expect(round).toEqual({ points: 5, met: 6, cruise: 6000, dep: 100, variation: 4 });
 });
 
-test('the window offers both, in the language it is in', async ({ page }) => {
-  await boot(page);
-  await openLog(page);
-  await expect(page.locator('.navlog-import')).toHaveText('Open exercise');
-  await expect(page.locator('.navlog-export')).toHaveText('Save exercise');
-  // The picker is a real file input, not a drop of custom UI that cannot be reached by keyboard.
-  expect(await page.locator('.navlog-file').getAttribute('accept')).toContain('json');
-});
+
 
 // End to end, through the control a pilot actually presses: the toolbar's own Import, the real
 // file input, the real load(). The unit tests above drive importExercise() directly; this one
@@ -456,6 +449,44 @@ test('met levels are kept in altitude order', async ({ page }) => {
   await page.evaluate(() => document.querySelector('.navlog-add').click());
   const after = await page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt));
   expect(after).toEqual([2000, 6000, 7000]);
+});
+
+// Reported: opening the file left every altitude as a dash -- the importer read the points and
+// dropped the legs. One door now, and it lands the route complete.
+test('an opened exercise lands the route with its altitudes', async ({ page }) => {
+  await boot(page);
+  const both = Object.assign({}, ROUTE_FILE, {
+    title: 'Herzliya - Rosh Pina (CVFR exercise)',
+    navlog: FIXTURE.navlog,
+  });
+  await openLog(page);
+  await page.evaluate(() => { window.askYesNo = async () => true; });
+  await page.setInputFiles('#file', {
+    name: 'navaid-exercise.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(both), 'utf8'),
+  });
+  await page.waitForFunction(() => state.legs.length === 4 && state.legs[0].inboundAltitude === 6000,
+    null, { timeout: 5000 });
+  const got = await page.evaluate(() => ({
+    // Every leg, both ways: a kite showing a dash is what was reported.
+    kites: state.legs.map(l => [kiteAltitudeLabel(l.inboundAltitude, l, 'inboundAltitude'),
+      kiteAltitudeLabel(l.outboundAltitude, l, 'outboundAltitude')]),
+    met: NavAid.navLog.config().met.length,
+  }));
+  expect(got.kites).toEqual([['6000', '6000'], ['6000', '6000'], ['6000', '6000'], ['6000', '6000']]);
+  expect(got.met).toBe(6);
+});
+
+// There is exactly one way in, and it is the app's own Open, in Import/Export. A second import
+// button inside the window is a second place to look for the same thing.
+test('the window offers no import of its own', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  expect(await page.locator('.navlog-import').count()).toBe(0);
+  expect(await page.locator('.navlog-file').count()).toBe(0);
+  // The way OUT stays here: the sheet it saves is a nav-table document nothing else composes.
+  await expect(page.locator('.navlog-export')).toHaveText('Save exercise');
 });
 
 // Reported: the compass card took too many lines. It is printed two pairs of columns wide, and

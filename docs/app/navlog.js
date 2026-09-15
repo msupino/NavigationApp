@@ -205,6 +205,21 @@
     return parsed;
   }
 
+  // One door for a file, whichever control opened it: the app's Open, or this window's own.
+  //
+  // An exercise may also BE a route -- the shape this app exports, legs and planned altitudes and
+  // all. When it is, the route goes down the ordinary route path so it lands on the map complete;
+  // only the sheet's assumptions come here. Reported as "the alt is ---": the window's own
+  // importer read the points and dropped the legs, so every kite showed a dash.
+  function openExerciseFile(text) {
+    let doc = null;
+    try { doc = JSON.parse(String(text)); } catch (e) { doc = null; }
+    const asRoute = (doc && typeof doc === 'object' && typeof validateRoute === 'function'
+      && !validateRoute(doc)) ? doc : null;
+    if (asRoute && typeof applyRouteData === 'function') applyRouteData(asRoute);
+    return importExercise(text, { skipRoute: !!asRoute });
+  }
+
   // The other direction: this device's sheet as a file, in the shape an exercise arrives in.
   function exportExercise(cfg) {
     const c = cfg || config();
@@ -530,37 +545,9 @@
 
     const actions = document.createElement('div');
     actions.className = 'navlog-actions';
-    // The same file the app's own Open accepts -- this is the shortcut from inside the window
-    // you are already looking at, not a second format.
-    const importBtn = document.createElement('button');
-    importBtn.type = 'button';
-    importBtn.className = 'navlog-import';
-    importBtn.textContent = S2.navTableImport || 'Open exercise';
-    const picker = document.createElement('input');
-    picker.type = 'file';
-    picker.accept = '.json,application/json';
-    picker.className = 'navlog-file';
-    picker.hidden = true;
-    picker.addEventListener('change', () => {
-      const file = picker.files && picker.files[0];
-      picker.value = '';
-      if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {           // the same cap the route loader uses
-        if (typeof refuse === 'function') refuse((S2.errLoadFile || '') + 'file too large');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const applied = await importExercise(reader.result);
-        if (!applied) return;
-        Object.assign(cfg, config());
-        renderMet();
-        renderCard();
-        render();
-      };
-      reader.readAsText(file);
-    });
-    importBtn.addEventListener('click', () => picker.click());
+    // No Import here. A file goes in through the app's own Open, in Import/Export -- one door,
+    // and one place to look for it. This window only offers the way OUT, because the sheet it
+    // saves is a nav-table document that nothing else composes.
     const exportBtn = document.createElement('button');
     exportBtn.type = 'button';
     exportBtn.className = 'navlog-export';
@@ -574,7 +561,7 @@
     print.type = 'button';
     print.textContent = S2.navLogPrint || 'Print';
     print.addEventListener('click', () => window.print());
-    actions.append(importBtn, picker, exportBtn, csv, print);
+    actions.append(exportBtn, csv, print);
 
     renderMet();
     renderCard();
@@ -610,5 +597,5 @@
   }
 
   NS.navLog = { show, config, save, rows, exportCsv, headers, cells, defaults,
-    parseExercise, importExercise, exportExercise, routeChanged };
+    parseExercise, importExercise, openExerciseFile, exportExercise, routeChanged };
 }());
