@@ -909,6 +909,7 @@ window.S = {
   followMeLastFix: (sec) => (sec < 90 ? 'המיקום האחרון לפני ' + sec + ' שניות'
     : 'המיקום האחרון לפני ' + Math.round(sec / 60) + ' דקות'),
   followMeStale: 'לא זז — ההזנה נפסקה',
+  followMeNoNewFix: 'עדיין מחובר — אין מיקום חדש',
   tbFollowMeTitle: 'שיתוף קישור מיקום חי דרך ממסר ציבורי ללא הבטחת זמינות. כל מי שמחזיק בקישור יכול לצפות במיקומים או לשלוח מיקומים.',
   tbFollowMeStop: 'הפסק שיתוף',
   followMeCopied: 'קישור המעקב הועתק.',
