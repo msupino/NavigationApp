@@ -725,6 +725,7 @@ window.S = {
   deckDirectTo: 'ישר לשם',
   deckDirectNeedsFix: 'אין עדיין מיקום — הפעילו מיקום',
   deckDirectConfirm: 'להחליף את המסלול בקטע ישיר לנקודה הזו?',
+  deckDirectOk: 'להחליף מסלול',
   deckAddWaypoint: 'הוספת ציון דרך',
   attribToggle: 'קרדיטים למפות ולדפיות',
   mapTimeLabel: 'הסתכלות קדימה',
@@ -914,6 +915,8 @@ window.S = {
   followMeCopiedNoFix: 'קישור המעקב הועתק — המיקום יתחיל לזוז כשמפעילים מיקום או הקלטה.',
   followMeShareFailed: 'השיתוף התחיל, אך לא ניתן לשתף או להעתיק את הקישור.',
   followMeLeaveWatchConfirm: 'שיתוף המיקום שלכם מפסיק את המעקב אחרי המטוס הזה, והמפה תיטען מחדש בלי הקישור. להמשיך?',
+  followMeLeaveWatchOk: 'להפסיק לעקוב',
+  followMeLeave: 'להפסיק לעקוב אחרי המטוס הזה',
   followMeRouteOffer: (named) => 'הטייס משתף מסלול' + (named ? ' (' + named + ')' : '')
     + '. לטעון אותו? הפעולה מחליפה את המסלול במפה שלכם.',
   followMeRouteLoad: 'טען מסלול',

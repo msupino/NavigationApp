@@ -496,12 +496,62 @@ test('Direct to asks before it throws a plan away', async ({ page }) => {
   });
   await press(page, 200, 200);
   await page.waitForSelector('.deck-here');
-  page.once('dialog', d => d.dismiss());
-  await page.evaluate(() => {
+  // The app's own dialog, not the browser's: a question about throwing a plan away is one the
+  // pilot has to be able to read, in their language, on a phone.
+  const asked = await page.evaluate(async () => {
+    const seen = [];
+    window.askYesNo = async (title, text) => { seen.push(String(text)); return false; };
     const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
     b.click();
+    await new Promise(r => setTimeout(r, 30));
+    return seen;
   });
+  expect(asked).toHaveLength(1);
+  expect(asked[0]).toMatch(/replace the route/i);
   // Declined: the route is exactly as it was.
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['HRTZ', 'LLEV']);
+});
+
+// The other half of the same question: agreeing replaces the plan with the direct leg.
+test('Direct to replaces the plan once the pilot agrees', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.05, lng: 34.85, hdg: 90, t: Date.now() };
+  });
+  await press(page, 200, 200);
+  await page.waitForSelector('.deck-here');
+  await page.evaluate(async () => {
+    window.askYesNo = async () => true;
+    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
+    b.click();
+    await new Promise(r => setTimeout(r, 30));
+  });
+  const got = await page.evaluate(() => ({
+    count: state.waypoints.length,
+    from: { lat: state.waypoints[0].lat, lng: state.waypoints[0].lng },
+  }));
+  expect(got.count).toBe(2);
+  expect(got.from.lat).toBeCloseTo(32.05, 3);
+});
+
+// No dialog available at all is not consent: the plan the pilot drew survives.
+test('Direct to leaves the plan alone when it cannot ask', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => {
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.05, lng: 34.85, hdg: 90, t: Date.now() };
+  });
+  await press(page, 200, 200);
+  await page.waitForSelector('.deck-here');
+  await page.evaluate(async () => {
+    window.askYesNo = undefined;
+    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
+    b.click();
+    await new Promise(r => setTimeout(r, 30));
+  });
   expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['HRTZ', 'LLEV']);
 });
 

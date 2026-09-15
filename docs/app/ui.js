@@ -4201,10 +4201,19 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     if (watchIsExclusive && typeof f.viewing === 'function' && f.viewing()) {
       const ask = S.followMeLeaveWatchConfirm
         || 'Sharing your own position stops following this aircraft. Continue?';
-      // No confirm at all (a runtime that blocks it, which is the whole reason the identifier
-      // dialog stopped using prompt) means going ahead: the pilot pressed the button.
+      // Asked in the app, like the route offer this viewer may already have answered: the
+      // same dialog, in the page's own language and styling, and one that cannot be silenced
+      // by a browser that has decided this page asks too much. The old path was confirm()
+      // with `catch -> yes`, so a runtime that refused the dialog dropped the watch with
+      // nobody asked; the fallback is kept only for having no dialog at all, where the press
+      // itself is the answer.
       let leave;
-      try { leave = confirm(ask); } catch (e) { leave = true; }
+      try {
+        leave = typeof askYesNo === 'function'
+          ? await askYesNo(S.followMeAskTitle || 'Follow me', ask,
+            S.followMeLeaveWatchOk || S.ok || 'Stop following')
+          : true;
+      } catch (e) { leave = true; }
       if (!leave) return;
       if (typeof f.viewerStop === 'function') f.viewerStop();
       const url = typeof f.urlWithoutWatch === 'function' ? f.urlWithoutWatch() : location.href;

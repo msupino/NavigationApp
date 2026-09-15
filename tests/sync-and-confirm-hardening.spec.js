@@ -95,15 +95,56 @@ test('the assistant refuses a change it cannot ask about', async ({ page }) => {
     NavAid.assistant._resetConsent();
     NavAid.assistant._setConfirm(null);          // back to the shipped default
     const realConfirm = window.confirm;
-    // A WebView with dialogs suppressed: there is nothing to ask with. The old default
+    const realAsk = window.askYesNo;
+    // Nothing to ask with: no in-app dialog and no browser one either. The old default
     // answered "yes" on the pilot's behalf here.
+    window.askYesNo = undefined;
     Object.defineProperty(window, 'confirm', { value: undefined, configurable: true });
     let res;
     try { res = await NavAid.assistant._runTool('set_route', { points: ['LLHZ', 'LLIB'] }); }
-    finally { Object.defineProperty(window, 'confirm', { value: realConfirm, configurable: true }); }
+    finally {
+      Object.defineProperty(window, 'confirm', { value: realConfirm, configurable: true });
+      window.askYesNo = realAsk;
+    }
     return { res, toasts, unchanged: JSON.stringify(state.waypoints) === before };
   });
   expect(out.unchanged).toBe(true);                                  // nothing was applied
   expect(String(out.res && out.res.error)).toMatch(/declined/i);     // and the model is told
   expect(out.toasts.join(' ')).toMatch(/cannot show the confirmation/i);
+});
+
+// What it uses when there IS something to ask with: the app's own dialog, not the browser's.
+// A browser told to stop showing this page's dialogs keeps confirm() and answers false from
+// it, so the pilot would have seen a change refused with no question ever on screen.
+test('the assistant asks in the app, not through the browser', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await enableAssistant(page);
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.assistant && NavAid.assistant._runTool));
+  const out = await page.evaluate(async () => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
+    state.legs = []; syncLegs(); draw();
+    const before = JSON.stringify(state.waypoints);
+    NavAid.assistant._resetConsent();
+    NavAid.assistant._setConfirm(null);        // the shipped default
+    const asked = [];
+    let confirmCalls = 0;
+    const realConfirm = window.confirm;
+    const realAsk = window.askYesNo;
+    Object.defineProperty(window, 'confirm', { value: () => { confirmCalls++; return true; }, configurable: true });
+    window.askYesNo = async (title, text) => { asked.push({ title: String(title), text: String(text) }); return false; };
+    let res;
+    try { res = await NavAid.assistant._runTool('set_route', { points: ['LLHZ', 'LLIB'] }); }
+    finally {
+      Object.defineProperty(window, 'confirm', { value: realConfirm, configurable: true });
+      window.askYesNo = realAsk;
+    }
+    return { res, asked, confirmCalls, unchanged: JSON.stringify(state.waypoints) === before };
+  });
+  expect(out.asked).toHaveLength(1);
+  expect(out.asked[0].title).toMatch(/assistant/i);
+  expect(out.asked[0].text).toMatch(/change your route/i);
+  expect(out.confirmCalls, 'went through the browser dialog anyway').toBe(0);
+  // Declined in the app means declined, even though confirm() would have said yes.
+  expect(out.unchanged).toBe(true);
+  expect(String(out.res && out.res.error)).toMatch(/declined/i);
 });
