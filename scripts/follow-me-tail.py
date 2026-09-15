@@ -26,10 +26,9 @@ import urllib.parse
 
 DEFAULT_BROKER = 'wss://broker.emqx.io:8084/mqtt'
 TOPIC = 'navaid/follow/'
-M_TO_FT = 3.28084
-# The app's own default (tuning key magneticVariationDeg): magnetic = true + variation, so
-# -5 means "subtract 5". The wire carries TRUE; every number a pilot reads is magnetic.
-DEFAULT_VARIATION = -5.0
+# The wire carries the numbers the cockpit is showing, in the cockpit's units: feet, knots,
+# and a magnetic heading. This tool prints them and converts nothing -- a conversion here is
+# one more way for two screens to disagree about one aeroplane.
 
 
 def b64url_decode(s):
@@ -116,28 +115,28 @@ def unseal(key, payload):
         return None
 
 
-def heading_text(fix, variation=DEFAULT_VARIATION):
-    """The heading as the app prints it: magnetic, and marked when it is the compass.
+def heading_text(fix):
+    """The heading as the aeroplane printed it: magnetic, and marked when it is the compass.
 
-    The wire carries TRUE. A stationary aeroplane reports no course at all, so the phone
-    falls back to its compass and sends `hc` -- where the device points, not where anything
-    is going. Printing that as a course is how a follower reads out a heading nobody is
-    flying, so it keeps the same leading tilde the app's own readout shows.
+    A stationary aeroplane reports no course at all, so the phone falls back to its compass
+    and sends `hc` -- where the device points, not where anything is going. Printing that as
+    a course is how a follower reads out a heading nobody is flying, so it keeps the same
+    leading tilde the app's own readout shows.
     """
-    trk = fix.get('trk')
-    if not isinstance(trk, (int, float)) or isinstance(trk, bool):
+    mag = fix.get('mh')
+    if not isinstance(mag, (int, float)) or isinstance(mag, bool):
         return None
-    mag = round(trk + variation) % 360
-    return '%s%03d°' % ('~' if fix.get('hc') else '', mag)
+    return '%s%03d°' % ('~' if fix.get('hc') else '', round(mag) % 360)
 
 
-def fmt(fix, at, variation=DEFAULT_VARIATION):
+def fmt(fix, at):
     bits = ['%.5f, %.5f' % (fix['lat'], fix['lng'])]
-    if isinstance(fix.get('alt'), (int, float)):
-        bits.append('%d ft' % round(fix['alt'] * M_TO_FT))
+    # Printed, never converted: these are the cockpit's own numbers in the cockpit's own units.
+    if isinstance(fix.get('af'), (int, float)):
+        bits.append('%d ft' % round(fix['af']))
     if isinstance(fix.get('kt'), (int, float)):
         bits.append('%d kt' % round(fix['kt']))
-    heading = heading_text(fix, variation)
+    heading = heading_text(fix)
     if heading:
         bits.append(heading)
     age = int(max(0, time.time() - fix.get('t', 0) / 1000)) if fix.get('t') else None
@@ -199,9 +198,6 @@ def main():
                     help='wss:// URL of the MQTT broker (default: %(default)s)')
     ap.add_argument('--json', action='store_true', help='one JSON object per line, unformatted')
     ap.add_argument('--once', action='store_true', help='print the first position and exit')
-    ap.add_argument('--variation', type=float, default=DEFAULT_VARIATION,
-                    help='magnetic variation in degrees, negative for east '
-                         '(default: %(default)s, the app\'s own)')
     ap.add_argument('--no-route', action='store_true',
                     help='do not print the shared flight plan')
     args = ap.parse_args()
@@ -260,7 +256,7 @@ def main():
             return
         last_order = order
         at = time.strftime('%H:%M:%S')
-        print(json.dumps(fix) if args.json else fmt(fix, at, args.variation), flush=True)
+        print(json.dumps(fix) if args.json else fmt(fix, at), flush=True)
         if args.once:
             c.disconnect()
 

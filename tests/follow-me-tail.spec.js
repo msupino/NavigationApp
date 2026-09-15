@@ -82,13 +82,17 @@ test('the share link is read the way the app writes it', () => {
   expect(stripped.stderr).toMatch(/QUOTE THE LINK/);
 });
 
-// The wire carries TRUE, and a stationary aeroplane sends its compass instead of a course.
-// Whoever reads this log out to a pilot must be reading the same number the pilot sees.
-test('headings print magnetic, and a compass heading is marked', () => {
-  expect(pycall('module.heading_text({"trk": 304})')).toBe('299\u00b0');
-  expect(pycall('module.heading_text({"trk": 304, "hc": 1})')).toBe('~299\u00b0');
-  expect(pycall('module.heading_text({"trk": 3})')).toBe('358\u00b0');   // wraps
-  expect(pycall('module.heading_text({"trk": 304}, 0)')).toBe('304\u00b0');  // --variation 0
+// The wire carries the magnetic heading the cockpit displayed, and a stationary aeroplane sends
+// its compass instead of a course. Whoever reads this log out to a pilot must be reading the
+// same number the pilot sees -- so this prints what arrived and computes nothing: a variation
+// applied here is this machine's guess about someone else's aeroplane.
+test('headings print as sent, and a compass heading is marked', () => {
+  expect(pycall('module.heading_text({"mh": 299})')).toBe('299\u00b0');
+  expect(pycall('module.heading_text({"mh": 299, "hc": 1})')).toBe('~299\u00b0');
+  expect(pycall('module.heading_text({"mh": 358})')).toBe('358\u00b0');
+  expect(pycall('module.heading_text({"mh": 365})')).toBe('005\u00b0');   // wraps
+  // A true track with no magnetic heading beside it is geometry, not a readout.
+  expect(pycall('module.heading_text({"trk": 304})')).toBeNull();
   expect(pycall('module.heading_text({})')).toBeNull();
 });
 
