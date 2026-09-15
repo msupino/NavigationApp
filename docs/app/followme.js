@@ -565,6 +565,7 @@
   function relinquishPublisher(s) {
     if (!s || session !== s) return;
     s.status = 'stopping';
+    clearInterval(s.heartbeatTimer);
     clearTimeout(s.stopDeadlineTimer);
     clearTimeout(s.clearAckTimer);
     clearTimeout(s.revocationRetryTimer);
@@ -605,6 +606,7 @@
       s.revocationRetryTimer = setTimeout(() => finishStop(s), 1000);
       return;
     }
+    clearInterval(s.heartbeatTimer);
     session = null;
     refreshSessionControls();
     if (s.resolveStop) s.resolveStop({ pending: false, forced: !!s.forcedStop });
@@ -653,6 +655,7 @@
       resolveStop: null, stopPromise: null, clearPacketId: null, clearAckTimer: 0,
       stopDeadlineTimer: 0, forcedStop: false, lastRouteText: '',
       revocationRetryTimer: 0,
+      heartbeatTimer: 0,
       resolveConnected: null, connectedPromise: null,
       // The public half rides in the fragment beside the key, so it reaches a viewer without
       // ever reaching the relay -- and a viewer verifies against the key from ITS OWN link,
@@ -666,6 +669,7 @@
     }
     s.connectedPromise = new Promise(resolve => { s.resolveConnected = resolve; });
     session = s;
+    armHeartbeat(s);
     client.onOpen = () => {
       if (session !== s) return;
       s.everConnected = true;
@@ -917,9 +921,40 @@
     }, Math.max(0, Number(tune('followMeRouteDebounceMs')) || 1500));
   }
 
+  // A packet with no position: "the aeroplane is still here, it just has nothing new to say".
+  //
+  // Publishing is fix-driven, so the feed goes quiet whenever fixes stop -- a phone in the bag,
+  // an app the OS suspended, a spell of accuracy too poor to use. From the ground those look
+  // exactly like a phone that died, and the follower cannot tell which they are watching. A
+  // heartbeat separates them: the mark stays where it last was, honestly aged, and the banner
+  // says the aircraft is still connected.
+  //
+  // Deliberately NOT retained. The retained packet on the relay is what a late joiner gets, and
+  // a position-less one there would hand them an aeroplane with no position at all.
+  // Sent only when nothing else has been: the publish gate below skips it if a real fix went
+  // out inside the same window, so a flying aeroplane never sends one. The cadence has to sit
+  // under the viewer's staleness threshold, or the banner would call the feed stopped in the
+  // gaps between heartbeats.
+  function heartbeatMs() {
+    const v = Number(tune('followMeHeartbeatSec', 10));
+    return (Number.isFinite(v) && v > 0 ? Math.max(2, v) : 10) * 1000;
+  }
+  function armHeartbeat(s) {
+    clearInterval(s.heartbeatTimer);
+    if (typeof tune === 'function' && tune('featureFollowMeHeartbeat') === false) return;
+    s.heartbeatTimer = setInterval(() => {
+      if (session !== s || s.status === 'stopping') return;
+      if (Date.now() - s.lastSentAt < heartbeatMs()) return;   // a real fix already said it
+      followMePublishHeartbeat().catch(() => { /* the next tick tries again */ });
+    }, Math.max(1000, Math.round(heartbeatMs() / 2)));
+  }
+  async function followMePublishHeartbeat() {
+    return followMePublish({ hb: true });
+  }
   async function followMePublish(fix) {
+    const heartbeat = !!(fix && fix.hb);
     if (!session || session.status === 'stopping' || !fix ||
-        !Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)) return false;
+        (!heartbeat && (!Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)))) return false;
     const s = session;
     // localStorage is shared by same-origin tabs. A Stop or replacement session in another
     // tab revokes this publisher immediately, even before its storage event is delivered.
@@ -951,7 +986,14 @@
         return true;
       });
       if (!reserved) return false;
-      const payload = await seal(s.key, {
+      // Signed like any other packet: "still connected" is a claim about the aeroplane, and a
+      // claim a follower acts on is one only the aeroplane may make.
+      const payload = await seal(s.key, heartbeat ? {
+        reg: s.reg,
+        hb: 1,
+        t: now,
+        seq: s.seq,
+      } : {
         // Inside the envelope: the broker relays the label without being able to read it.
         reg: s.reg,
         lat: Math.round(fix.lat * 1e5) / 1e5,
@@ -979,7 +1021,7 @@
         }
         // The final authorization and retained send do not yield. A later Stop tombstone
         // therefore cannot be followed by this older retained position.
-        return s.client.publish(topicFor(s.id), payload, { retain: true });
+        return s.client.publish(topicFor(s.id), payload, { retain: !heartbeat });
       });
     });
   }
@@ -1122,8 +1164,8 @@
     const useB64 = safeB64(verifyB64) || known;
     const verifyKey = useB64 ? await importVerifyKey(useB64) : null;
     if (verifyKey) rememberVerifyKey(id, useB64);
-    const state = { id, fix: null, at: null, skew: null, connected: false, lastOrder: -1,
-                    verified: !!verifyKey };
+    const state = { id, fix: null, at: null, skew: null, aliveAt: null, connected: false,
+                    lastOrder: -1, verified: !!verifyKey };
     const client = mqttConnect(brokerUrl(), Object.assign(
       { clientId: 'navaid-sub-' + id.slice(0, 8) }, opts || {}));
     client.onOpen = () => {
@@ -1152,14 +1194,20 @@
         const offset = msg.t - now;
         state.skew = Number.isFinite(state.skew) ? Math.min(state.skew, offset) : offset;
       }
-      if (!Number.isFinite(msg.lat) || msg.lat < -90 || msg.lat > 90 ||
-          !Number.isFinite(msg.lng) || msg.lng < -180 || msg.lng > 180 ||
+      const alive = msg.hb === 1;
+      if ((!alive && (!Number.isFinite(msg.lat) || msg.lat < -90 || msg.lat > 90 ||
+                      !Number.isFinite(msg.lng) || msg.lng < -180 || msg.lng > 180)) ||
           !Number.isFinite(msg.t) || msg.t <= 0 ||
           msg.t - followMeSkew(state) > now + 300000 ||
           !Number.isSafeInteger(order) || order < 0 || order <= state.lastOrder) return;
       state.lastOrder = order;
+      // A heartbeat says the aeroplane is still there and nothing more. It must not become the
+      // fix: the mark stays where it last really was, and goes on aging from when it was sent.
+      state.aliveAt = msg.t;
+      if (alive) { followMeViewerRefresh(); return; }
       state.fix = msg;
       state.at = msg.t;
+      state.aliveAt = msg.t;
       // A route that arrived before any position -- the usual order, since both are retained
       // and the route topic is the smaller one -- gets asked about now that there is an
       // aeroplane to attach it to.
@@ -1267,7 +1315,6 @@
     const st = viewer.state;
     const age = followMeFixAge(st);
     const stale = age === null || age > followMeStaleSec();
-    el.classList.toggle('stale', stale);
     const reg = (st.fix && st.fix.reg) ? String(st.fix.reg) : '';
     // What a follower on the ground wants to know, in the units a pilot reads: altitude in
     // feet (the fix carries metres), speed in knots, track, and the position itself. Only
@@ -1293,10 +1340,25 @@
     if (Number.isFinite(f.lat) && Number.isFinite(f.lng)) {
       bits.push(f.lat.toFixed(4) + ', ' + f.lng.toFixed(4));
     }
+    // Stale has two meanings and the follower has to be able to tell them apart: an aeroplane
+    // that has stopped saying anything, and one still on the relay with nothing new to report
+    // -- a phone in a bag, an app the OS put to sleep, a spell of poor accuracy. The heartbeat
+    // is what separates them, so the wording does too.
+    const aliveAge = followMeAge(Number.isFinite(st.aliveAt)
+      ? st.aliveAt - followMeSkew(st) : NaN);
+    const connected = aliveAge !== null && aliveAge <= followMeStaleSec();
+    // Red is "nothing is arriving". An aeroplane whose position is old but whose heartbeat is
+    // current is amber instead: something IS arriving, it just is not a new position.
+    el.classList.toggle('stale', stale && !connected);
+    el.classList.toggle('holding', stale && connected);
     const said = age === null
       ? (S.followMeWaiting || 'Follow me: waiting for a position…')
       : ((S.followMeLastFix ? S.followMeLastFix(age) : ('Last position ' + age + 's ago'))
-         + (stale ? ' · ' + (S.followMeStale || 'not moving — the feed has stopped') : ''));
+         + (stale
+           ? ' · ' + (connected
+             ? (S.followMeNoNewFix || 'still connected — no new position')
+             : (S.followMeStale || 'not moving — the feed has stopped'))
+           : ''));
     // The code leads, because on a link shared into a group chat it is the only thing that
     // says WHICH aeroplane this is. Then what it is doing, then how old that is -- the age
     // goes last because it qualifies everything before it.
@@ -1327,7 +1389,9 @@
     });
     el.appendChild(followMeViewerLeaveButton());
     followMeViewerPlaceBanner(el);
-    if (viewer.markEl) viewer.markEl.style.opacity = stale ? '0.45' : '1';
+    // The mark fades with the same three steps: solid on a fresh fix, half-faded while the
+    // aeroplane is connected but not moving its position, faintest when nothing is arriving.
+    if (viewer.markEl) viewer.markEl.style.opacity = !stale ? '1' : (connected ? '0.7' : '0.45');
   }
 
   // The way out of a watch, on the thing that says you are in one. Until this button the only
@@ -1529,6 +1593,7 @@
     routeChanged: followMeRouteChanged, publishRoute: publishRoute,
     shareWhileViewing: shareWhileViewing,
     viewerFix: () => (viewer && viewer.state && viewer.state.fix) || null,
+    publishHeartbeat: followMePublishHeartbeat,
     viewerDraw: followMeViewerDraw, viewerRefresh: followMeViewerRefresh,
     linkParams: followMeLinkParams, staleSec: followMeStaleSec,
     start: followMeStart, stop: followMeStop, sharing: followMeSharing, status: followMeStatus,
