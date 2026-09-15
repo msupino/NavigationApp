@@ -8056,11 +8056,15 @@ body.disclaimer-open { overflow: hidden; }
    scrolls inside its own box and the page never scrolls sideways. */
 .navlog-body { display: flex; flex-direction: column; gap: 10px; max-height: 78vh; overflow: auto; }
 .navlog-setup { display: flex; flex-wrap: wrap; gap: 6px 12px; }
-.navlog-field { display: flex; flex-direction: column; font-size: 11px; gap: 2px; }
+/* Label across the top, then the box with its restore arrow BESIDE it -- the arrow belongs to
+   the box, and under it reads as another row of the form. */
+.navlog-field { display: grid; grid-template-columns: max-content max-content;
+  align-items: center; column-gap: 4px; row-gap: 2px; font-size: 11px; }
+.navlog-field > span { grid-column: 1 / -1; }
 .navlog-field input { width: 7em; }
 /* Back to what the app knows. Only there when there is something to go back from. */
-.navlog-reset { background: none; border: 0; cursor: pointer; color: inherit; font-size: 12px;
-  padding: 0; align-self: flex-start; line-height: 1; opacity: 0.75; }
+.navlog-reset { background: none; border: 0; cursor: pointer; color: inherit; font-size: 13px;
+  padding: 0 2px; line-height: 1; opacity: 0.75; }
 .navlog-reset:hover { opacity: 1; }
 .navlog-editors { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .navlog-sub-title { font-weight: 600; margin-bottom: 4px; }

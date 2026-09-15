@@ -726,3 +726,26 @@ test('an impossible fraction is refused, and the last good one stands', async ({
       .toBeCloseTo(0.5, 5);
   }
 });
+
+// The arrow belongs to the box it resets. Under it, it reads as another row of the form.
+test('the restore arrow sits beside its box, not below it', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  await page.evaluate(() => {
+    const input = [...document.querySelectorAll('.navlog-setup input')][2];   // variation
+    input.value = '4';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const box = await page.evaluate(() => {
+    const field = [...document.querySelectorAll('.navlog-field')][2];
+    const i = field.querySelector('input').getBoundingClientRect();
+    const r = field.querySelector('.navlog-reset').getBoundingClientRect();
+    return { input: { left: i.left, right: i.right, top: i.top, bottom: i.bottom },
+             reset: { left: r.left, right: r.right, top: r.top, bottom: r.bottom } };
+  });
+  // To the right of the box...
+  expect(box.reset.left).toBeGreaterThanOrEqual(box.input.right - 1);
+  // ...and on the same line as it, not under it.
+  expect(box.reset.top).toBeLessThan(box.input.bottom);
+  expect(box.reset.bottom).toBeGreaterThan(box.input.top);
+});
