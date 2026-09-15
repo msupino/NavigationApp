@@ -824,3 +824,49 @@ test('the levels asked for are the ones the flight touches', async ({ page }) =>
   expect(levels[levels.length - 1]).toBe(6000);    // a thousand above the cruise level
   expect(levels.every((ft, i) => i === 0 || ft - levels[i - 1] === 1000)).toBe(true);
 });
+
+// Asked: is it affected by the time slider? It is now. Planning is done for a departure that has
+// not happened yet, so a forecast pinned to "now" is the wrong forecast for most of the flights
+// this sheet is worked out for. It reads the same master look-ahead clock every other layer
+// answers to -- NOTAM, wind field, airfield wind, density altitude.
+test('the forecast is fetched for the hour the look-ahead clock points at', async ({ page }) => {
+  await boot(page);
+  let asked = null;
+  await page.route('**/api.open-meteo.com/**', (route) => {
+    const url = new URL(route.request().url());
+    const names = (url.searchParams.get('hourly') || '').split(',');
+    // Twelve hours of forecast starting at the top of this UTC hour.
+    const start = new Date();
+    start.setUTCMinutes(0, 0, 0);
+    const time = [];
+    for (let h = 0; h < 12; h++) {
+      time.push(new Date(start.getTime() + h * 3600000).toISOString().slice(0, 16));
+    }
+    const hourly = { time };
+    for (const name of names) {
+      const level = Number((name.match(/_(\d+)hPa$/) || [])[1]) || 0;
+      // The VALUE encodes the hour, so the row that lands says which hour was read.
+      hourly[name] = time.map((t, h) => (name.startsWith('wind_direction')
+        ? (level % 360) : (name.startsWith('wind_speed') ? h : Math.round((level - 700) / 10))));
+    }
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ hourly }) });
+  });
+  await openLog(page);
+
+  // Live: the first hour.
+  await page.locator('.navlog-fetch').click();
+  await page.waitForFunction(() => NavAid.navLog.config().met.length > 0, null, { timeout: 5000 });
+  expect(await page.evaluate(() => NavAid.navLog.config().met[0].kt)).toBe(0);
+
+  // Three hours ahead on the shared clock: the same fetch reads three hours in.
+  await page.evaluate(() => {
+    const master = document.getElementById('lookahead-time');
+    master.value = '3';
+    master.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(await page.evaluate(() => NavAid.navLog.lookaheadHoursAhead())).toBe(3);
+  await page.locator('.navlog-fetch').click();
+  await page.waitForFunction(() => NavAid.navLog.config().met[0].kt === 3, null, { timeout: 5000 });
+  expect(await page.evaluate(() => NavAid.navLog.config().met[0].kt)).toBe(3);
+  expect(asked).toBe(null);
+});

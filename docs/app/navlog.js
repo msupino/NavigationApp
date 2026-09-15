@@ -306,6 +306,13 @@
     }
     return levels;
   }
+  // The shared look-ahead clock, in hours from now. One master slider drives every layer that
+  // answers to time; this reads it rather than keeping a clock of its own.
+  function lookaheadHoursAhead() {
+    const el = document.getElementById('lookahead-time');
+    const v = el ? parseInt(el.value, 10) : 0;
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  }
   function routeMidpoint() {
     const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
       ? state.waypoints.filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng)) : [];
@@ -335,9 +342,14 @@
     const j = await res.json();
     const hours = (j && j.hourly && Array.isArray(j.hourly.time)) ? j.hourly.time : null;
     if (!hours || !hours.length) throw new Error('no data');
-    // The hour the flight is in, not the first hour the forecast happens to start at.
-    const now = new Date();
-    const stamp = now.toISOString().slice(0, 13);
+    // The hour the FLIGHT is in, which is the one the look-ahead clock is pointing at -- the same
+    // master slider the NOTAM list, the wind field, the airfield wind and the density-altitude
+    // panel all answer to. Planning is done for a departure that has not happened yet, so a
+    // forecast pinned to "now" would be the wrong forecast for most of the flights this sheet
+    // is worked out for.
+    const ahead = lookaheadHoursAhead();
+    const when = new Date(Date.now() + ahead * 3600000);
+    const stamp = when.toISOString().slice(0, 13);
     let idx = hours.findIndex(t => String(t).slice(0, 13) === stamp);
     if (idx < 0) idx = 0;
     const read = (name) => {
@@ -358,9 +370,10 @@
     const s = stored();
     s.met = c.met;
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+    c.metAtZ = stamp.slice(11) + ':00Z';
     if (typeof showToast === 'function') {
-      showToast((S2.navTableMetFetched ? S2.navTableMetFetched(rows.length)
-        : (rows.length + ' levels fetched')));
+      showToast((S2.navTableMetFetched ? S2.navTableMetFetched(rows.length, c.metAtZ)
+        : (rows.length + ' levels fetched for ' + c.metAtZ)));
     }
     return c.met;
   }
@@ -875,5 +888,5 @@
 
   NS.navLog = { show, config, save, rows, exportCsv, headers, cells, defaults,
     parseExercise, importExercise, openExerciseFile, exportExercise, routeChanged,
-    fetchMet, metLevelsFor };
+    fetchMet, metLevelsFor, lookaheadHoursAhead };
 }());
