@@ -8064,8 +8064,11 @@ body.disclaimer-open { overflow: hidden; }
 .navlog-field input { width: 7em; }
 /* Back to what the app knows. Only there when there is something to go back from. */
 .navlog-reset { background: none; border: 0; cursor: pointer; color: inherit; font-size: 13px;
-  padding: 0 2px; line-height: 1; opacity: 0.75; }
+  padding: 0 2px; line-height: 1; opacity: 0.8; }
 .navlog-reset:hover { opacity: 1; }
+/* Nothing to undo: dimmed, never removed. A control that comes and goes moves the row under
+   the hand reaching for it. */
+.navlog-reset-idle { opacity: 0.3; }
 .navlog-editors { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .navlog-sub-title { font-weight: 600; margin-bottom: 4px; }
 .navlog-grid { border-collapse: collapse; font-size: 12px; }

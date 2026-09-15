@@ -377,6 +377,7 @@ window.S = {
     'דלק נצרך', 'דלק מצטבר'],
   coordPointTitle: 'נקודת ציון',
   searchCoordHint: 'מעבר לנקודה הזו',
+  navLogAtDefault: 'כבר ברירת המחדל',
   navLogUseFieldElev: 'חזרה לגובה השדה עצמו',
   navLogUseTuneVariation: 'חזרה לנטייה שהאפליקציה משתמשת בה',
   navLogDepElev: 'גובה שדה יציאה (רגל)',

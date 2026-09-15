@@ -534,12 +534,17 @@
       reset.type = 'button';
       reset.className = 'navlog-reset';
       reset.textContent = '\u21ba';
-      reset.title = o.resetTitle || '';
-      reset.setAttribute('aria-label', reset.title);
-      reset.hidden = true;
       reset.addEventListener('click', o.onReset);
       wrap.appendChild(reset);
-      wrap.showReset = (on) => { reset.hidden = !on; };
+      // Always there, dimmed while there is nothing to undo -- the house rule, and the reason
+      // for it: a control that appears and disappears moves the row under the pilot's hand, and
+      // one they have never seen is one they do not know they have. Pressing it on a field that
+      // is already at its default costs nothing.
+      wrap.showReset = (on) => {
+        reset.classList.toggle('navlog-reset-idle', !on);
+        reset.title = on ? (o.resetTitle || '') : (o.atDefaultTitle || o.resetTitle || '');
+        reset.setAttribute('aria-label', reset.title);
+      };
     }
     wrap.sync = (next) => {
       if (document.activeElement === input) return;      // never fight the pilot for the caret
@@ -604,16 +609,19 @@
       add(field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt,
         v => settingEdited('depElevFt', v), {
           resetTitle: S2.navLogUseFieldElev || 'Back to the airfield\u2019s own elevation',
+          atDefaultTitle: S2.navLogAtDefault || 'Already the default',
           onReset: () => restore('depElevFt'),
         }), c => c.depElevFt, 'depElevFt'),
       add(field(S2.navLogDestElev || 'Destination elev (ft)', cfg.destElevFt,
         v => settingEdited('destElevFt', v), {
           resetTitle: S2.navLogUseFieldElev || 'Back to the airfield\u2019s own elevation',
+          atDefaultTitle: S2.navLogAtDefault || 'Already the default',
           onReset: () => restore('destElevFt'),
         }), c => c.destElevFt, 'destElevFt'),
       add(field(S2.navLogVariation || 'Variation (°E)', cfg.variationDeg,
         v => settingEdited('variationDeg', v), {
           resetTitle: S2.navLogUseTuneVariation || 'Back to the variation the app uses',
+          atDefaultTitle: S2.navLogAtDefault || 'Already the default',
           onReset: () => restore('variationDeg'),
         }), c => c.variationDeg, 'variationDeg'),
       field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }),
@@ -625,11 +633,13 @@
       add(field(S2.navLogClimbPa || 'Climb met at (%)', Math.round(cfg.paFraction.climb * 100),
         v => fractionEdited('paFraction.climb', v), {
           resetTitle: S2.navLogUseDefaultFraction || 'Back to the standard fraction',
+          atDefaultTitle: S2.navLogAtDefault || 'Already the default',
           onReset: () => restore('paFraction.climb'),
         }), c => Math.round(c.paFraction.climb * 100), 'paFraction.climb'),
       add(field(S2.navLogDescentPa || 'Descent met at (%)', Math.round(cfg.paFraction.descent * 100),
         v => fractionEdited('paFraction.descent', v), {
           resetTitle: S2.navLogUseDefaultFraction || 'Back to the standard fraction',
+          atDefaultTitle: S2.navLogAtDefault || 'Already the default',
           onReset: () => restore('paFraction.descent'),
         }), c => Math.round(c.paFraction.descent * 100), 'paFraction.descent'),
       field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit('rates.climbFpm'); }),

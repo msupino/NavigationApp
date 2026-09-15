@@ -1663,6 +1663,7 @@ window.S = Object.assign({
     'TH', 'Var', 'MH', 'Dev', 'CH', 'GS', 'Dist', 'Time', 'Cum time', 'FF', 'Fuel', 'Cum fuel'],
   coordPointTitle: 'Coordinate',
   searchCoordHint: 'Go to this coordinate',
+  navLogAtDefault: 'Already the default',
   navLogUseFieldElev: 'Back to the airfield\u2019s own elevation',
   navLogUseTuneVariation: 'Back to the variation the app uses',
   navLogDepElev: 'Departure elev (ft)',

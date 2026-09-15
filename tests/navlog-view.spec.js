@@ -618,8 +618,10 @@ test('the way back appears only when a field is holding an override', async ({ p
   await boot(page);
   await openLog(page);
   expect(await page.locator('.navlog-hint').count()).toBe(0);
+  // Always on screen; dimmed when there is nothing to undo. `true` here means "live".
   const resets = () => page.evaluate(() =>
-    [...document.querySelectorAll('.navlog-reset')].map(b => !b.hidden));
+    [...document.querySelectorAll('.navlog-reset')]
+      .map(b => !b.hidden && !b.classList.contains('navlog-reset-idle')));
   // Departure elevation, destination elevation, variation, and the two met fractions: five
   // fields with a default worth returning to, all quiet to begin with.
   expect(await resets()).toEqual([false, false, false, false, false]);
@@ -745,6 +747,8 @@ test('the restore arrow sits beside its box, not below it', async ({ page }) => 
   });
   // To the right of the box...
   expect(box.reset.left).toBeGreaterThanOrEqual(box.input.right - 1);
+  // And it was on screen before anything was typed, holding its place in the row.
+
   // ...and on the same line as it, not under it.
   expect(box.reset.top).toBeLessThan(box.input.bottom);
   expect(box.reset.bottom).toBeGreaterThan(box.input.top);
@@ -883,4 +887,37 @@ test('the met table\'s buttons have room between them', async ({ page }) => {
   });
   expect(gap.between).toBeGreaterThanOrEqual(6);
   expect(gap.sameRow).toBe(true);
+});
+
+// Asked for: the undo arrow stays on screen even when the field is already at its default.
+// Dim, never hide -- a control that comes and goes moves the row under the hand reaching for
+// it, and one a pilot has never seen is one they do not know they have.
+test('the undo arrow is always there, dimmed when there is nothing to undo', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  const state1 = await page.evaluate(() => [...document.querySelectorAll('.navlog-reset')]
+    .map(b => ({ hidden: b.hidden, idle: b.classList.contains('navlog-reset-idle'),
+                 title: b.title, visible: b.getBoundingClientRect().width > 0 })));
+  expect(state1).toHaveLength(5);
+  for (const b of state1) {
+    expect(b.hidden).toBe(false);
+    expect(b.visible).toBe(true);
+    expect(b.idle).toBe(true);
+    expect(b.title).toMatch(/already the default/i);
+  }
+  // Pressing one that has nothing to undo is harmless.
+  await page.evaluate(() => document.querySelectorAll('.navlog-reset')[2].click());
+  expect(await page.evaluate(() => NavAid.navLog.config().variationDeg)).toBe(5);
+
+  await page.evaluate(() => {
+    const input = [...document.querySelectorAll('.navlog-setup input')][2];
+    input.value = '4';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const after = await page.evaluate(() => {
+    const b = document.querySelectorAll('.navlog-reset')[2];
+    return { idle: b.classList.contains('navlog-reset-idle'), title: b.title };
+  });
+  expect(after.idle).toBe(false);
+  expect(after.title).toMatch(/back to the variation/i);
 });
