@@ -8063,6 +8063,12 @@ body.disclaimer-open { overflow: hidden; }
 .navlog-grid { border-collapse: collapse; font-size: 12px; }
 .navlog-grid th, .navlog-grid td { border: 1px solid rgba(128, 128, 128, 0.35); padding: 1px 4px; }
 .navlog-grid input { width: 5em; }
+/* The compass card is printed two pairs of columns wide; a twelve-row single column is taller
+   than the sheet it belongs to. The divider marks where the second half starts. */
+.navlog-card-grid td:nth-child(3), .navlog-card-grid th:nth-child(3) {
+  border-inline-start-width: 2px;
+}
+.navlog-card-grid input { width: 4em; }
 .navlog-row-del { background: none; border: 0; cursor: pointer; color: inherit; padding: 0 4px; }
 .navlog-add { align-self: flex-start; margin-top: 4px; }
 .navlog-table { border-collapse: collapse; font-size: 12px; display: block; overflow-x: auto; max-width: 100%; }

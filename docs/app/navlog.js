@@ -446,26 +446,35 @@
       head.className = 'navlog-sub-title';
       head.textContent = S2.navLogCard || 'Compass card';
       card.appendChild(head);
+      // Two pairs of columns, the way a card is printed and the way the exercise hands it over:
+      // twelve marks down one column is a table taller than the sheet it belongs to.
       const grid = document.createElement('table');
-      grid.className = 'navlog-grid';
+      grid.className = 'navlog-grid navlog-card-grid';
+      const half = Math.ceil(cfg.deviation.length / 2);
       const hr = document.createElement('tr');
-      for (const h of [S2.navLogCardFor || 'For (M)', S2.navLogCardSteer || 'Steer (C)']) {
-        const th = document.createElement('th');
-        th.textContent = h;
-        hr.appendChild(th);
+      for (let col = 0; col < 2; col++) {
+        for (const h of [S2.navLogCardFor || 'For (M)', S2.navLogCardSteer || 'Steer (C)']) {
+          const th = document.createElement('th');
+          th.textContent = h;
+          hr.appendChild(th);
+        }
       }
       grid.appendChild(hr);
-      for (const entry of cfg.deviation) {
-        const tr = document.createElement('tr');
+      const cell = (entry) => {
         const mh = document.createElement('td');
-        mh.textContent = deg(entry.mh);
         const ch = document.createElement('td');
+        if (!entry) return [mh, ch];
+        mh.textContent = deg(entry.mh);
         const input = document.createElement('input');
         input.type = 'number';
         input.value = String(entry.ch);
         input.addEventListener('input', () => { entry.ch = num(input.value, entry.mh); save(cfg); render(); });
         ch.appendChild(input);
-        tr.append(mh, ch);
+        return [mh, ch];
+      };
+      for (let i = 0; i < half; i++) {
+        const tr = document.createElement('tr');
+        tr.append(...cell(cfg.deviation[i]), ...cell(cfg.deviation[i + half]));
         grid.appendChild(tr);
       }
       card.appendChild(grid);

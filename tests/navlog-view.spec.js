@@ -457,3 +457,43 @@ test('met levels are kept in altitude order', async ({ page }) => {
   const after = await page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt));
   expect(after).toEqual([2000, 6000, 7000]);
 });
+
+// Reported: the compass card took too many lines. It is printed two pairs of columns wide, and
+// twelve marks down a single column is a table taller than the sheet it belongs to.
+test('the compass card is laid out two pairs wide', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  const grid = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.navlog-card-grid tr')];
+    return {
+      headers: [...rows[0].querySelectorAll('th')].map(th => th.textContent),
+      bodyRows: rows.length - 1,
+      inputs: document.querySelectorAll('.navlog-card-grid input').length,
+      firstRow: [...rows[1].querySelectorAll('td')].map(td => td.textContent || td.querySelector('input').value),
+    };
+  });
+  expect(grid.headers).toEqual(['For (M)', 'Steer (C)', 'For (M)', 'Steer (C)']);
+  expect(grid.bodyRows).toBe(6);            // twelve marks, six lines
+  expect(grid.inputs).toBe(12);             // every one of them still editable
+  // The second half sits beside the first: 000 and 180 share a line, as they do on the sheet.
+  expect(grid.firstRow[0]).toBe('000');
+  expect(grid.firstRow[2]).toBe('180');
+});
+
+// An odd number of marks -- a card swung at other headings -- must not drop the last one.
+test('an odd card keeps every mark', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const cfg = NavAid.navLog.config();
+    cfg.deviation = [{ mh: 0, ch: 1 }, { mh: 90, ch: 91 }, { mh: 180, ch: 181 },
+                     { mh: 240, ch: 241 }, { mh: 300, ch: 301 }];
+    NavAid.navLog.save(cfg);
+  });
+  await openLog(page);
+  const got = await page.evaluate(() => ({
+    rows: document.querySelectorAll('.navlog-card-grid tr').length - 1,
+    inputs: document.querySelectorAll('.navlog-card-grid input').length,
+  }));
+  expect(got.rows).toBe(3);
+  expect(got.inputs).toBe(5);
+});
