@@ -5,22 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NavAid — Privacy Policy</title>
   <link rel="canonical" href="https://navaid.supino.org/privacy.html">
-  <!-- Resolve language the same way index.html does: ?lang wins, then the
-       stored navaid.lang (shared per-origin with the app), else English.
+  <!-- Resolve language the same way index.html does: ?lang wins, else Hebrew. Nothing is
+       stored, so a plain address means the same thing everywhere.
        Runs before <body> so there's no flash of the wrong language. -->
   <script>
     (function () {
       var p = new URLSearchParams(location.search).get('lang');
-      var stored = '';
-      try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
-      // Hebrew by default, like the app: these pages used to fall back to English and then
-      // WRITE that fallback, so a first-time visitor who opened Terms before the planner had
-      // their language chosen for them by a page they were only reading. A page persists a
-      // CHOICE -- the ?lang the language switch links carry -- never its own guess.
-      var lang = (p === 'en' || p === 'he') ? p : (stored === 'en' ? 'en' : 'he');
-      if (p === 'en' || p === 'he') {
-        try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
-      }
+      // Hebrew unless the address says otherwise, exactly as the app resolves it: a plain
+      // address opens in Hebrew, and English is a choice the address carries. Nothing is
+      // stored, so a page nobody chose a language on cannot decide it for the planner.
+      var lang = (p === 'en' || p === 'he') ? p : 'he';
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
       document.title = lang === 'he' ? 'NavAid — מדיניות פרטיות' : 'NavAid — Privacy Policy';

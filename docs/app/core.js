@@ -810,6 +810,7 @@ NavAid.tuningDefaults = {
   // everyone who already has it. Hours, because a link that outlives the flight is a link
   // that tracks you next week: past this, sharing again mints a new one.
   featureFollowMeShareWhileViewing: { value: false, type: 'bool', label: 'Follow me: may a page share while it is watching' },
+  followMeRequireSignedLinks: { value: false, type: 'bool', label: 'Follow me: refuse links with no verify key' },
   featureFollowMeRoute: { value: true, type: 'bool', label: 'Follow me: share the route beside the position' },
   followMeRouteCompress: { value: 'gzip', type: 'select', options: ['gzip', 'deflate-raw', 'off'],
     label: 'Follow me: how the shared route is compressed' },
@@ -1002,7 +1003,7 @@ NavAid.tuningGroups = [
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'followMeBroker', 'followMeRateSec',
-    'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',
+    'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRequireSignedLinks', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',
     'featureFollowMePersist', 'featureFollowMeNewLink', 'followMeLinkPerName'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },

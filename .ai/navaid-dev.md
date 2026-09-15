@@ -945,7 +945,19 @@ as a machine-readable registry.
   (`navaid.simFollow`, since removed), and requiring both meant the lock could not
   resume following after a pan.
 - `navaid.followMeCode` — the device-local aircraft label used by Follow Me.
-- `navaid.followMeSession` — the device-local Follow Me bearer capability:
+- `navaid.followMeSession` — the device-local Follow Me bearer capability, which now also
+  carries `sk` (the ECDSA P-256 private key, as JWK) and `v` (its public half). Every packet
+  is signed with `sk`; the link carries `v` beside the AES key, so a follower can read the
+  aeroplane and cannot publish one. Asymmetric ENCRYPTION would not have given that — the
+  viewer must decrypt, so the link must carry the decryption key, and from any standard
+  private key the encryption key falls out; unforgeability is a signature, not a cipher. The
+  signature rides INSIDE the sealed object as `sig`, because AES-GCM decrypts everything
+  after the IV and appended bytes would break the tag for every viewer holding an older link.
+  A link without `v` predates signing and is read unverified unless
+  `followMeRequireSignedLinks` says otherwise — except for an aeroplane this device has
+  already seen a key for: `navaid.followVerified` remembers up to 32 of them, so handing
+  someone the same link with `&v=` cut off cannot talk their app out of checking signatures.
+  Downgrading needs the device, not the address. It is also:
   random topic id, AES key, aircraft label, last activity time, monotonic packet sequence,
   sharing consent, and pending-stop cleanup state. It is deliberately excluded from
   Drive sync. Normally Stop stores `pendingStop: true` and `on: false`, waits for the

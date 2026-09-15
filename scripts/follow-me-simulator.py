@@ -45,9 +45,37 @@ def b64url(value):
     return base64.urlsafe_b64encode(value).decode('ascii').rstrip('=')
 
 
-def follower_link(base_url, session_id, key):
+def follower_link(base_url, session_id, key, verify_b64=None):
     root = base_url.rstrip('/') + '/'
-    return '%s?follow=%s#k=%s' % (root, session_id, b64url(key))
+    link = '%s?follow=%s#k=%s' % (root, session_id, b64url(key))
+    return link + ('&v=' + verify_b64 if verify_b64 else '')
+
+
+def signing_keys():
+    """An ECDSA P-256 pair: the private half signs here, the public half rides in the link.
+
+    The app signs every packet so that a follower -- who necessarily holds the AES key, or
+    they could not read anything -- cannot publish a position of their own under someone
+    else's aeroplane. A simulator that did not sign would be refused by any viewer opening
+    the link it prints, which is the whole point of printing a link with a `v` in it.
+    """
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives import serialization
+
+    private = ec.generate_private_key(ec.SECP256R1())
+    public = private.public_key().public_bytes(
+        serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    return private, b64url(public)
+
+
+def sign(private, payload):
+    """WebCrypto wants r||s, 32 bytes each; `cryptography` hands back DER."""
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+
+    r, s = decode_dss_signature(private.sign(payload, ec.ECDSA(hashes.SHA256())))
+    return r.to_bytes(32, 'big') + s.to_bytes(32, 'big')
 
 
 def validate_waypoints(values):
@@ -227,11 +255,23 @@ def route_envelope(document, route, now_ms=None):
     }
 
 
-def seal(key, fix):
+def seal(key, fix, private=None):
+    """AES-GCM, with the signature as one more field INSIDE the sealed object.
+
+    Inside rather than appended: AES-GCM decrypts everything after the IV, so trailing bytes
+    would break the tag for every viewer that predates signing. A field is ignored by an old
+    viewer and checked by a new one. What is signed is the object WITHOUT `sig`, serialised
+    exactly as it goes on the wire -- the app removes the field and re-serialises to check,
+    and JSON keeps insertion order on both sides.
+    """
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+    body = dict(fix)
+    if private is not None:
+        signed = json.dumps(body, separators=(',', ':')).encode('utf-8')
+        body['sig'] = b64url(sign(private, signed))
     iv = os.urandom(12)
-    plaintext = json.dumps(fix, separators=(',', ':')).encode('utf-8')
+    plaintext = json.dumps(body, separators=(',', ':')).encode('utf-8')
     return iv + AESGCM(key).encrypt(iv, plaintext, None)
 
 
@@ -294,7 +334,12 @@ def main():
         raise SystemExit(str(error)) from error
 
     session_id, key = b64url(os.urandom(16)), os.urandom(32)
-    link = follower_link(args.base_url, session_id, key)
+    try:
+        private, verify_b64 = signing_keys()
+    except ImportError as error:
+        raise SystemExit('%s\nInstall: python3 -m pip install -r '
+                         'scripts/requirements-follow-me.txt' % error) from error
+    link = follower_link(args.base_url, session_id, key, verify_b64)
     total_nm = sum(distance_nm(a, b) for a, b in zip(route, route[1:]))
     print('Route: %s (%0.1f NM, %d fixes)' %
           (' -> '.join(point['name'] for point in route), total_nm, len(points)), file=sys.stderr)
@@ -337,7 +382,7 @@ def main():
         # route as well as the aeroplane flying it. The app publishes this the moment sharing
         # starts, and the browser only offers it once a live position has arrived.
         if not args.no_route:
-            client.publish(route_topic, seal(key, route_envelope(document, route)),
+            client.publish(route_topic, seal(key, route_envelope(document, route), private),
                            qos=0, retain=True)
         print('Publishing to %s. Press Ctrl-C to stop.' % args.broker, file=sys.stderr)
 
@@ -348,7 +393,7 @@ def main():
                 now_ms = int(time.time() * 1000)
                 sequence = max(sequence + 1, now_ms)
                 fix = make_fix(point, code, point['speed_kt'], point['altitude_ft'], sequence, now_ms)
-                client.publish(topic, seal(key, fix), qos=0, retain=True)
+                client.publish(topic, seal(key, fix, private), qos=0, retain=True)
                 if point.get('waypoint'):
                     print('%s  %s' % (time.strftime('%H:%M:%S'), point['waypoint']), file=sys.stderr)
                 deadline = started + (index + 1) * args.interval

@@ -236,8 +236,8 @@ test('choosing the language already on screen does not navigate', async ({ page 
 });
 
 // The control on the notice is the APP's language control, not the notice's: what it picks
-// is what the map, the menu and every panel are in, on this visit and the next one. And with
-// nothing chosen yet, that is Hebrew.
+// is what the map, the menu and every panel are in. And with nothing in the address, that
+// is Hebrew -- every visit, not only the first: the choice rides in ?lang, and nowhere else.
 test('the notice opens in Hebrew by default, and its choice is the app\'s language', async ({ page }) => {
   await page.goto('?nogist');                 // a first-time visitor: no ?lang at all
   await page.waitForFunction(() => typeof clearBootLoading === 'function');
@@ -254,21 +254,24 @@ test('the notice opens in Hebrew by default, and its choice is the app\'s langua
   await expect(notice(page)).toBeVisible();
   await expect(notice(page).locator('.disclaimer-lang-select')).toHaveValue('he');
   await notice(page).locator('.disclaimer-lang-select').selectOption('en');
-  await page.waitForFunction(() => document.documentElement.lang === 'en');
+  await page.waitForFunction(() => document.documentElement.lang === 'en'
+    && typeof clearBootLoading === 'function');
 
-  // The whole interface followed it, not just the notice.
+  // The whole interface followed it, not just the notice -- and the address carries it, so a
+  // link copied from here opens in English on someone else's phone.
   const picked = await page.evaluate(() => ({
     stored: localStorage.getItem('navaid.lang'),
     menu: document.getElementById('lang-select').value,
     dir: document.documentElement.dir,
   }));
-  expect(picked.stored).toBe('en');
+  expect(new URL(page.url()).searchParams.get('lang')).toBe('en');
   expect(picked.menu, 'the menu still says the old language').toBe('en');
   expect(picked.dir).toBe('ltr');
+  expect(picked.stored, 'a language was remembered on the device').toBeNull();
 
-  // ...and it is still English next time, with no ?lang to carry it.
+  // ...and an address with no language is Hebrew again, whatever the last visit picked.
   await page.goto('?nogist');
   await page.waitForFunction(() => typeof clearBootLoading === 'function');
-  expect(await page.evaluate(() => document.documentElement.lang)).toBe('en');
-  expect(await page.evaluate(() => document.getElementById('lang-select').value)).toBe('en');
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe('he');
+  expect(await page.evaluate(() => document.getElementById('lang-select').value)).toBe('he');
 });
