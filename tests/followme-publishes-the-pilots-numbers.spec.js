@@ -124,3 +124,44 @@ test('with both watches running, the recording is what keeps the share alive', a
   expect(got.afterLive).toBe(0);
   expect(got.total).toBe(1);
 });
+
+// The same rule for the ground speed. A device omits `speed` when it is stationary and some
+// chipsets never report it at all; both fix paths then derive it from the last two positions
+// so the readout keeps showing one. Publishing only the device field left a follower with no
+// speed beside a cockpit reading 95 kt.
+test('the ground speed published is the one the readout derived', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    window.gpsLiveOn = true;
+    window.gpsRecording = false;
+    const t0 = Date.now();
+    // Two fixes a minute apart with NO device speed: the readout derives it, so the wire must.
+    onLivePosition({ coords: { latitude: 32.0, longitude: 34.9, altitude: 300, accuracy: 5, speed: null, heading: 90 }, timestamp: t0 });
+    onLivePosition({ coords: { latitude: 32.0, longitude: 35.0, altitude: 300, accuracy: 5, speed: null, heading: 90 }, timestamp: t0 + 60000 });
+    await new Promise(r => setTimeout(r, 20));
+    return { published: window.__published, shownKt: gpsLastGS };
+  });
+  const last = got.published[got.published.length - 1];
+  expect(got.shownKt).toBeGreaterThan(0);          // the readout has a speed
+  expect(last.kt).toBeCloseTo(got.shownKt, 3);     // ...and so does the follower
+});
+
+// Magnetic is a conversion, and a conversion needs a variation. The viewer used its own, so a
+// follower on ?nogist and a pilot on a tuned gist read different headings off one true track.
+test('the variation behind the pilot\'s heading travels with it', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    setTune('magneticVariationDeg', -7);
+    window.gpsLiveOn = true;
+    window.gpsRecording = false;
+    onLivePosition({ coords: { latitude: 32.1, longitude: 34.9, altitude: 300, accuracy: 5, speed: 40, heading: 90 }, timestamp: Date.now() });
+    await new Promise(r => setTimeout(r, 20));
+    const fix = window.__published[window.__published.length - 1];
+    // A viewer whose own gist says something else renders the PUBLISHER's number.
+    setTune('magneticVariationDeg', -2);
+    return { fix, withPublisher: gpsHeadingText(fix.trk, false, fix.mv), withOwn: gpsHeadingText(fix.trk, false) };
+  });
+  expect(got.fix.mv).toBe(-7);
+  expect(got.withPublisher).toBe('083°');          // 90 true, 7°E variation
+  expect(got.withOwn).toBe('088°');                // what the follower used to show instead
+});

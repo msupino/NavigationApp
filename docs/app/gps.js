@@ -250,7 +250,7 @@ if (typeof window !== 'undefined') window.gpsLastFix = gpsLastFix;
 // runs (that watch drives the own-ship), and the recording path never published -- so turning
 // Record on mid-flight stopped the share while the button, the banner and the map control all
 // still said it was running, and the follower was left on "waiting for a position".
-function gpsPublishFollowMeFix(p, hdg, hdgFromCompass, speedMs) {
+function gpsPublishFollowMeFix(p, hdg, hdgFromCompass) {
   if (!(window.NavAid && NavAid.followMe && NavAid.followMe.sharing())) return;
   try {
     // The altitude the PILOT is reading, not the raw fix. Everything in the app that shows or
@@ -262,6 +262,14 @@ function gpsPublishFollowMeFix(p, hdg, hdgFromCompass, speedMs) {
     //
     // Still metres on the wire: that is what every viewer already in the air converts from.
     const shownFt = (typeof gpsAltitudeForCompare === 'function') ? gpsAltitudeForCompare() : null;
+    // The pilot's own ground speed, for the same reason: the device omits `speed` when it is
+    // stationary or when the chipset simply does not report it, and both fix paths then derive
+    // it from the last two positions for the readout. Publishing the device field alone left a
+    // follower with no speed beside a cockpit reading 95 kt.
+    const shownKt = (typeof gpsLastGS === 'number' && Number.isFinite(gpsLastGS)) ? gpsLastGS : null;
+    // The variation this readout is using, so the viewer renders the pilot's magnetic heading
+    // rather than its own gist's idea of one.
+    const mv = (typeof tune === 'function') ? Number(tune('magneticVariationDeg')) : NaN;
     // `hc` says the heading is the compass, not a course made good -- a stationary aeroplane
     // has no course, and a follower must not read one off a phone lying on a seat. It is the
     // same mark the pilot's own readout shows.
@@ -270,7 +278,8 @@ function gpsPublishFollowMeFix(p, hdg, hdgFromCompass, speedMs) {
       alt: Number.isFinite(shownFt) ? shownFt / 3.28084 : null,
       trk: hdg,
       hc: hdgFromCompass,
-      kt: (speedMs != null && !isNaN(speedMs) && speedMs >= 0) ? speedMs * 1.94384 : null,
+      mv: Number.isFinite(mv) ? mv : null,
+      kt: shownKt,
     });
   } catch (e) { /* sharing is a courtesy, never a reason to lose a fix */ }
 }
@@ -327,7 +336,7 @@ function onLivePosition(pos) {
   gpsNoteFixArrived();
   gpsRefreshQnh(p.lat, p.lng);
   gpsCheckLegAlerts();
-  gpsPublishFollowMeFix(p, hdg, hdgFromCompass, c.speed);
+  gpsPublishFollowMeFix(p, hdg, hdgFromCompass);
   if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
   // The compass needle and the track written under it are read from this fix, so they have
   // to be redrawn with it -- not only when the map is rotated or tracking starts.
@@ -913,9 +922,14 @@ function gpsSpokenFreq(freq, lang) {
 // stays on whatever the source, so the number is always plainly a heading, and a leading
 // tilde says the instrument is approximate. One character, and this line has no width to
 // spare.
-function gpsHeadingText(trueDeg, fromCompass) {
+// `mv` is the magnetic variation to use. Omitted, it is this device's own tune -- which is
+// right for this device's own fix and wrong for someone else's: a Follow me viewer rendering a
+// pilot's true track must use the variation the PILOT's readout used, or the two of them read
+// different magnetic headings off one aeroplane.
+function gpsHeadingText(trueDeg, fromCompass, mv) {
   if (!Number.isFinite(trueDeg)) return null;
-  const mag = (typeof toMagnetic === 'function') ? toMagnetic(trueDeg) : trueDeg;
+  const mag = Number.isFinite(mv) ? (((Math.round(trueDeg + mv) % 360) + 360) % 360)
+    : ((typeof toMagnetic === 'function') ? toMagnetic(trueDeg) : trueDeg);
   if (!Number.isFinite(mag)) return null;
   const r = ((Math.round(mag) % 360) + 360) % 360;
   const shown = (typeof pad3 === 'function') ? pad3(r) : String(r);
@@ -1031,7 +1045,7 @@ function onGpsPosition(pos) {
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t, hdgCompass: hdgFromCompass };
   gpsNoteFixArrived();
   gpsRefreshQnh(pt.lat, pt.lng);
-  gpsPublishFollowMeFix(pt, hdg, hdgFromCompass, c.speed);
+  gpsPublishFollowMeFix(pt, hdg, hdgFromCompass);
   gpsUpdateReadout();
   gpsCheckLegAlerts();
   scheduleDraw();
