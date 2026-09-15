@@ -631,8 +631,11 @@ test('a position that stops arriving is called stale, not drawn as current', asy
     await new Promise(r => setTimeout(r, 10));
     window.__sockets[1].deliver(pub);
     await new Promise(r => setTimeout(r, 40));
-    // Age it past the staleness threshold without waiting for real time to pass.
-    state.at = Date.now() - (F.staleSec() + 5) * 1000;
+    // Age it past the staleness threshold without waiting for real time to pass. Both stamps:
+    // `at` is the position, `aliveAt` is anything at all arriving -- a feed that has stopped
+    // has neither, and an aeroplane still sending heartbeats is a different banner (amber,
+    // "still connected"), covered in followme-heartbeat.spec.js.
+    state.at = state.aliveAt = Date.now() - (F.staleSec() + 5) * 1000;
     F.viewerRefresh();
     const banner = document.getElementById('follow-me-banner');
     const out = { text: banner.textContent, stale: banner.classList.contains('stale') };

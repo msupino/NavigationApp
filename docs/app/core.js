@@ -801,6 +801,14 @@ NavAid.tuningDefaults = {
   followMeRateSec: { value: 2, min: 1, max: 30, step: 1, label: 'Follow me: publish every (s)' },
   followMeStaleSec: { value: 30, min: 5, max: 300, step: 5,
     label: 'Follow me: call the position stale after (s)' },
+  // Proof of life when there is no new position: a phone in a bag, an app the OS suspended, a
+  // spell of accuracy too poor to publish. Without it a follower cannot tell any of those from
+  // a phone that died. Keep the cadence under followMeStaleSec or the banner calls the feed
+  // stopped in the gaps between heartbeats.
+  featureFollowMeHeartbeat: { value: true, type: 'bool',
+    label: 'Follow me: say "still connected" when there is no new position' },
+  followMeHeartbeatSec: { value: 10, min: 2, max: 60, step: 1,
+    label: 'Follow me: heartbeat cadence (s)' },
   followMePlanePx: { value: 26, min: 14, max: 50, step: 1,
     label: 'Follow me: follower aircraft size (px)' },
   followMePlaneColor: { value: '#182839', type: 'color',
@@ -1003,7 +1011,7 @@ NavAid.tuningGroups = [
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'followMeBroker', 'followMeRateSec',
-    'followMeStaleSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRequireSignedLinks', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',
+    'followMeStaleSec', 'featureFollowMeHeartbeat', 'followMeHeartbeatSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRequireSignedLinks', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',
     'featureFollowMePersist', 'featureFollowMeNewLink', 'followMeLinkPerName'] },
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
@@ -2219,6 +2227,7 @@ window.S = Object.assign({
   followMeLastFix: (sec) => (sec < 90 ? 'Last position ' + sec + 's ago'
     : 'Last position ' + Math.round(sec / 60) + ' min ago'),
   followMeStale: 'not moving — the feed has stopped',
+  followMeNoNewFix: 'still connected — no new position',
   followMeResumed: 'Follow me: still sharing — the same link as before still works.',
   tbFollowMeTitle: 'Share a best-effort live position link through a public relay. Anyone with the link can view or submit positions.',
   tbFollowMeStop: 'Stop sharing',

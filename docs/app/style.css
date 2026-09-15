@@ -7485,10 +7485,18 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
 body.theme-light .follow-me-banner-leave { background: rgba(16, 36, 15, 0.12); }
 body.theme-light .follow-me-banner-leave:hover { background: rgba(16, 36, 15, 0.22); }
 /* Stale is a different statement, so it looks different rather than just older. */
+/* Three states, three colours, because a follower reads the colour before the words.
+   Green: a fresh position. Amber: the position is old but the aeroplane is still on the relay
+   and saying so. Red: nothing at all is arriving. */
 .follow-me-banner.stale {
   color: #ffe3d0;
   background: rgba(78, 34, 20, 0.94);
   border-color: rgba(214, 122, 74, 0.65);
+}
+.follow-me-banner.holding {
+  color: #ffeecd;
+  background: rgba(74, 56, 16, 0.94);
+  border-color: rgba(216, 178, 74, 0.65);
 }
 .follow-me-mark {
   display: flex; align-items: center; justify-content: center;
@@ -7521,6 +7529,7 @@ body.theme-light .follow-me-banner-leave:hover { background: rgba(16, 36, 15, 0.
 }
 body.theme-light .follow-me-banner { color: #10240f; background: rgba(222, 245, 224, 0.95); }
 body.theme-light .follow-me-banner.stale { color: #4a1c08; background: rgba(255, 226, 209, 0.96); }
+body.theme-light .follow-me-banner.holding { color: #4a3608; background: rgba(255, 243, 212, 0.96); }
 
 /* Follow me, on the map: the same square as the follow lock and the compass beside it. */
 /* The same square as the rest of the column. It was 34px with a radius of 8 and a dark
