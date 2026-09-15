@@ -789,9 +789,12 @@ test('the forecast fills the met table, and the sheet computes from it', async (
     source: NavAid.navLog.rows()[0].metSource,
     rows: document.querySelectorAll('.navlog-met .navlog-grid tr').length - 1,
   }));
-  // Every thousand feet the flight touches, from 2,000 to a thousand above the cruise level.
-  expect(got.met[0].alt).toBe(2000);
-  expect(got.met[got.met.length - 1].alt).toBeGreaterThanOrEqual(7000);
+  // The altitudes the sheet reads its air at, bracketed either side -- not a fixed ladder.
+  const pas = await page.evaluate(() =>
+    NavAid.navLog.rows().map(r => Math.round(r.pressureAltFt / 100) * 100));
+  for (const pa of pas) expect(got.met.map(r => r.alt)).toContain(pa);
+  expect(got.met[0].alt).toBeLessThan(Math.min(...pas));
+  expect(got.met[got.met.length - 1].alt).toBeGreaterThan(Math.max(...pas));
   expect(got.met.every(r => Number.isFinite(r.dir) && Number.isFinite(r.kt) && Number.isFinite(r.tempC))).toBe(true);
   // In the table on screen, in the storage, and in the arithmetic.
   expect(got.rows).toBe(got.met.length);
@@ -817,16 +820,35 @@ test('a forecast that does not arrive leaves the table alone', async ({ page }) 
   expect(await page.evaluate(() => window.__t.join(' '))).toMatch(/could not fetch/i);
 });
 
-test('the levels asked for are the ones the flight touches', async ({ page }) => {
+// Asked why it pulled 2,000 / 3,000 / 4,000 on a route flown at 800 ft: it was a fixed ladder.
+// The sheet has a pressure altitude for every row -- that is where each row's TAS is read -- so
+// those are the levels fetched, bracketed by one above and below for the nearest-row lookup.
+test('the levels asked for are the ones the sheet reads its air at', async ({ page }) => {
   await boot(page);
-  const levels = await page.evaluate(() => {
-    const cfg = NavAid.navLog.config();
-    cfg.cruiseAltFt = 4500;
-    return NavAid.navLog.metLevelsFor(cfg);
+  await page.evaluate(() => {
+    state.legs[0].inboundAltitude = 800;
+    for (let i = 1; i < state.legs.length; i++) state.legs[i].inboundAltitude = 2500;
+    save(); draw();
   });
+  const got = await page.evaluate(() => ({
+    levels: NavAid.navLog.metLevelsFor(),
+    pas: NavAid.navLog.rows().map(r => Math.round(r.pressureAltFt / 100) * 100),
+  }));
+  // Every altitude the sheet reads its air at is asked for.
+  for (const pa of got.pas) expect(got.levels, JSON.stringify(got)).toContain(pa);
+  // Nothing from a ladder that has nothing to do with this flight.
+  expect(got.levels).not.toContain(7000);
+  // Bracketed either side, so the nearest-row lookup always has a neighbour.
+  expect(Math.min(...got.levels)).toBeLessThan(Math.min(...got.pas));
+  expect(Math.max(...got.levels)).toBeGreaterThan(Math.max(...got.pas));
+});
+
+test('with no route at all it falls back to a plain ladder', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.navLog));
+  const levels = await page.evaluate(() => NavAid.navLog.metLevelsFor());
   expect(levels[0]).toBe(2000);
-  expect(levels[levels.length - 1]).toBe(6000);    // a thousand above the cruise level
-  expect(levels.every((ft, i) => i === 0 || ft - levels[i - 1] === 1000)).toBe(true);
+  expect(levels[levels.length - 1]).toBe(7000);
 });
 
 // Asked: is it affected by the time slider? It is now. Planning is done for a departure that has
@@ -1001,10 +1023,13 @@ test('each leg is flown at its own planned altitude', async ({ page }) => {
   expect(rows[0].pa).toBe(574);              // 121 + two thirds of 679
   expect(rows[1]).toMatchObject({ kind: 'cruise', from: 'TOC', to: 'A' });
   expect(rows[1].pa).toBe(800);              // the leg's own level, not the route's highest
-  // The step up to 2,500 is its own climb, on the leg that is planned at 2,500.
-  const step = rows.find(r => r.kind === 'climb' && r.from === 'A');
-  expect(step, JSON.stringify(rows)).toBeTruthy();
-  expect(step.pa).toBe(1933);                // 800 + two thirds of 1,700
+  // The step up to 2,500 is NOT a second top of climb: the pilot has not said where in the leg
+  // the level changes, and a sheet that guesses prints a TOC at every waypoint -- which is how
+  // this was reported. The leg is simply flown at the level it is planned at.
+  expect(rows.filter(r => r.to === 'TOC')).toHaveLength(1);
+  const stepped = rows.find(r => r.kind === 'cruise' && r.from === 'A');
+  expect(stepped, JSON.stringify(rows)).toBeTruthy();
+  expect(stepped.pa).toBe(2500);
   expect(rows[rows.length - 1].kind).toBe('descent');
 });
 
@@ -1018,4 +1043,90 @@ test('a route with no planned altitudes uses the single level', async ({ page })
   const rows = await page.evaluate(() => NavAid.navLog.rows().map(r => Math.round(r.pressureAltFt)));
   expect(rows.length).toBeGreaterThan(0);
   expect(rows.every(pa => Number.isFinite(pa))).toBe(true);
+});
+
+// Reported with a screenshot: TOC, TOC, TOC down the page, one for every leg planned a little
+// higher than the last. There is one top of climb -- the climb off the departure field.
+test('there is exactly one TOC, however the levels step', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { name: 'LLHZ', lat: 32.17944, lng: 34.83444 },
+      { name: 'BAZRA', lat: 32.28, lng: 34.93 },
+      { name: 'DEROR', lat: 32.40, lng: 35.02 },
+      { name: 'SHARO', lat: 32.55, lng: 35.10 },
+      { name: 'HADRA', lat: 32.70, lng: 35.20 },
+      { name: 'LLIB', lat: 32.98111, lng: 35.57194 },
+    ];
+    syncLegs();
+    // Levels that step up and down the way a real CVFR route does.
+    const alts = [800, 2500, 2000, 2500, 3000];
+    state.legs.forEach((l, i) => { l.inboundAltitude = alts[i]; });
+    save(); draw();
+  });
+  const rows = await page.evaluate(() => NavAid.navLog.rows().map(r => ({
+    kind: r.kind, from: r.from, to: r.to, pa: Math.round(r.pressureAltFt) })));
+  expect(rows.filter(r => r.to === 'TOC'), JSON.stringify(rows)).toHaveLength(1);
+  expect(rows[0].kind).toBe('climb');
+  expect(rows[0].from).toBe('LLHZ');
+  // Every later leg is a cruise row at its own level, and the sheet ends in the descent.
+  expect(rows.filter(r => r.kind === 'cruise').map(r => r.pa)).toEqual([800, 2500, 2000, 2500, 3000]);
+  expect(rows[rows.length - 1].kind).toBe('descent');
+  expect(rows.filter(r => r.from === 'TOD')).toHaveLength(1);
+});
+
+// Only one chart on screen: two full-width tables of the same route, one over the other, is what
+// opening the flight plan with the form already up looked like.
+test('opening the flight plan closes the planning form', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  await expect(page.locator('.navlog-modal')).toBeVisible();
+  await page.evaluate(() => showFlightPlan());
+  await page.waitForFunction(() => !document.querySelector('.navlog-modal'), null, { timeout: 5000 });
+  expect(await page.locator('.navlog-modal').count()).toBe(0);
+  await expect(page.locator('.modal-back.flight-plan')).toBeVisible();
+  // ...and the session no longer says to bring it back on the next reload.
+  expect(await page.evaluate(() => sessionStorage.getItem('navaid.openChartModal'))).toBe(null);
+});
+
+// ...and the other way round, which the generic sweep already did for every other table.
+test('opening another chart closes it too', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  await page.evaluate(() => { if (typeof showFreqTableModal === 'function') showFreqTableModal(); });
+  await page.waitForFunction(() => !document.querySelector('.navlog-modal'), null, { timeout: 5000 });
+  expect(await page.locator('.navlog-modal').count()).toBe(0);
+});
+
+// Movable by its title bar, resizable by its corner: 23 columns is a table somebody wants wider.
+test('the window can be moved and resized', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  const css = await page.evaluate(() => {
+    const box = document.querySelector('.navlog-modal');
+    const s = getComputedStyle(box);
+    return { resize: s.resize, overflow: s.overflow,
+             title: !!box.querySelector('.modal-title.modal-drag-handle') };
+  });
+  expect(css.resize).toBe('both');
+  expect(css.title, 'the title bar is the drag handle').toBe(true);
+});
+
+// The clock decides which hour the forecast is fetched for, so it must be findable while the
+// form is open. Reported as barely visible -- which is exactly when it decides something.
+test('the look-ahead clock is lit while the form is open', async ({ page }) => {
+  await boot(page);
+  const idle = () => page.evaluate(() => {
+    const el = document.getElementById('map-time');
+    return el ? el.classList.contains('idle') : null;
+  });
+  expect(await idle()).toBe(true);           // nothing else timed on this map
+  await openLog(page);
+  expect(await idle()).toBe(false);
+  await page.evaluate(() => {
+    const back = document.querySelector('.navlog-modal').closest('.modal-back');
+    if (back && back._navaidClose) back._navaidClose();
+  });
+  await page.waitForTimeout(50);
+  expect(await idle()).toBe(true);
 });

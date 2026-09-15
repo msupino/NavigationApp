@@ -3579,44 +3579,43 @@ function navLogRows(input) {
   // --- forward along the route, at the altitude each leg is planned at ------------------------
   const rows = [];
   let alt = depElev;                       // on the ground at the departure field
-  let climbGalLeft = Number(fuel.climbGal) > 0 ? Number(fuel.climbGal) : 0;
+  const climbGalLeft = Number(fuel.climbGal) > 0 ? Number(fuel.climbGal) : 0;
   for (let i = 0; i <= backLeg && i < legs.length; i++) {
     const leg = legs[i];
     const target = legAlt(i);
     let from = (i === 0) ? label(wps[0]) : label(leg.from);
-    // A step: up to the leg's level, or down onto it. Both are bounded by time, so both can
-    // outlast the leg they start on -- and then they carry on down the next leg's track rather
-    // than being capped at a waypoint the aeroplane passes still climbing.
-    while (remaining[i] > 1e-9 && Math.abs(target - alt) > 1) {
-      const climbing = target > alt;
-      const rate = climbing ? climbFpm : descentFpm;
-      if (!(rate > 0)) break;
-      const segAlt = navLogSegmentAltFt(climbing ? 'climb' : 'descent', alt, target, o.paFraction);
-      const row = mkRow(climbing ? 'climb' : 'descent', from, '', segAlt,
-        Number(climbing ? cas.climb : cas.descent), i, leg.track);
+    // ONE top of climb: the climb off the departure field, which is the only place the aeroplane
+    // demonstrably leaves a known elevation -- the same rule routeProfile() draws the map with.
+    // A later leg planned higher or lower is flown AT its own altitude; it does not get a ramp
+    // row of its own, because the pilot has not said where in the leg the level changes and a
+    // sheet that guesses prints a TOC at every waypoint. Reported exactly that way: TOC, TOC,
+    // TOC down the page.
+    const initialClimb = (i === 0) || (alt < legAlt(0) - 1 && rows.every(r => r.kind !== 'cruise'));
+    while (initialClimb && remaining[i] > 1e-9 && target - alt > 1 && climbFpm > 0) {
+      const segAlt = navLogSegmentAltFt('climb', alt, target, o.paFraction);
+      const row = mkRow('climb', from, '', segAlt, Number(cas.climb), i, leg.track);
       const gs = row.groundSpeedKt;
       if (!(gs > 0)) break;
-      const needH = Math.abs(target - alt) / rate / 60;
+      const needH = (target - alt) / climbFpm / 60;
       const reach = gs * needH;
-      if (reach < remaining[i] - 1e-9) {           // the top (or bottom) is inside this leg
-        row.to = climbing ? 'TOC' : 'TOD';
+      if (reach < remaining[i] - 1e-9) {           // the top of climb is inside this leg
+        row.to = 'TOC';
         row.distNm = reach;
         row.timeH = needH;
         rows.push(row);
         remaining[i] -= reach;
-        from = row.to;
+        from = 'TOC';
         alt = target;
-      } else {                                      // still changing level when the leg runs out
+      } else {                                      // still climbing when the leg runs out
         row.to = label(leg.to);
         row.distNm = remaining[i];
         row.timeH = remaining[i] / gs;
         rows.push(row);
-        alt += (climbing ? 1 : -1) * rate * row.timeH * 60;
+        alt += climbFpm * row.timeH * 60;
         remaining[i] = 0;
       }
-      if (climbing) row.climbSegment = true;
     }
-    // Whatever is left of the leg is flown at its planned level.
+    // Whatever is left of the leg is flown at the level the pilot planned it at.
     if (remaining[i] > 1e-9) {
       const row = mkRow('cruise', from, (i === backLeg && tail.length) ? 'TOD' : label(leg.to),
         target, Number(cas.cruise), i, leg.track);

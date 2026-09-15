@@ -172,6 +172,14 @@ function closeOpenChartModals() {
   if (typeof fpOpen !== 'undefined' && fpOpen && typeof closeFlightPlan === 'function') {
     closeFlightPlan();
   }
+  // ...and so is the planning form, for the same reason and with the same shape: a non-blocking
+  // backdrop the generic sweep above cannot see. Two full-width tables of the same route, one
+  // over the other, is what "open the flight plan" looked like with the form already up.
+  for (const back of Array.from(document.querySelectorAll('.modal-back'))) {
+    if (!back.querySelector('.navlog-modal')) continue;
+    if (typeof back._navaidClose === 'function') back._navaidClose();
+    else back.remove();
+  }
 }
 
 function isChartModalOpen(kind) {
