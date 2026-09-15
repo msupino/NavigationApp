@@ -8099,6 +8099,9 @@ body.disclaimer-open { overflow: hidden; }
 .navlog-body button:hover:not(:disabled) { background: #474040; }
 .navlog-body .navlog-reset, .navlog-body .navlog-row-del { background: none; border: 0; }
 .navlog-note { color: #cfc9c9; }
+/* Something the sheet could not do. Said under it, in the colour the app warns in. */
+.navlog-note-warn { color: #ffbe8a; }
+body.theme-light .navlog-note-warn { color: #8a3b00; }
 /* Light theme: the same shapes, the other way up. */
 body.theme-light .navlog-body input { background: #fff; color: #1a1a1a; border-color: #bbb; }
 body.theme-light .navlog-grid th, body.theme-light .navlog-table th { background: rgba(0, 0, 0, 0.05); }

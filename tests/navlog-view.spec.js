@@ -1130,3 +1130,36 @@ test('the look-ahead clock is lit while the form is open', async ({ page }) => {
   await page.waitForTimeout(50);
   expect(await idle()).toBe(true);
 });
+
+// Found in review: the sheet could come up short -- a missing row, a dash for a ground speed --
+// and say nothing about why. What it cannot do is now said under it.
+test('the sheet says what it could not work out', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const cfg = NavAid.navLog.config();
+    cfg.met = [{ alt: 2000, dir: 90, kt: 200, tempC: 10 }];   // a gale across the route
+    NavAid.navLog.save(cfg);
+  });
+  await openLog(page);
+  const seen = await page.evaluate(() => ({
+    note: document.querySelector('.navlog-note').textContent,
+    warn: document.querySelector('.navlog-note').classList.contains('navlog-note-warn'),
+    gs: [...document.querySelectorAll('.navlog-table tr.navlog-row')]
+      .map(tr => tr.querySelectorAll('td')[16].textContent),
+  }));
+  expect(seen.warn).toBe(true);
+  expect(seen.note).toMatch(/crosswind/i);
+  expect(seen.gs.some(t => /no solution/i.test(t))).toBe(true);
+});
+
+test('a climb with no rate says so under the sheet', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  await page.evaluate(() => {
+    const input = [...document.querySelectorAll('.navlog-setup input')][8];   // climb fpm
+    input.value = '0';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const note = await page.evaluate(() => document.querySelector('.navlog-note').textContent);
+  expect(note).toMatch(/no rate of climb/i);
+});
