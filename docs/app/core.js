@@ -3285,6 +3285,301 @@ function windTriangle(courseTrue, tas, wind) {
     gs,
   };
 }
+// --- nav log: the wind-triangle document ----------------------------------
+// The flight plan is zero-wind on purpose -- a printed plan must not change because a weather
+// fetch landed. The nav log is the other document: the one a CVFR written exercise asks for,
+// where the whole point is the arithmetic between an indicated airspeed and a compass heading.
+//
+// Everything here is pure: route in, rows out, no DOM and no storage. Full precision throughout;
+// rounding happens where a number is shown, because rounding at each step and then again at the
+// next one is how two correct sheets end up a digit apart.
+//
+// The rules below are not conventions I picked. Each one is what reproduces a real exercise's
+// published answers (see tests/navlog-golden.spec.js); where an obvious alternative exists, the
+// comment says why it is not the one used.
+
+// Named for what they TAKE. `docs/app/density-altitude.js` already publishes a global
+// densityAltFt(), and it means something else: field elevation plus a QNH, for the airfield
+// panel. These take a pressure altitude that is already known -- a planned cruise level, or the
+// two-thirds point of a climb -- and a collision between the two signatures is a silent null.
+function isaTempAtPaC(pressureAltFt) {
+  return 15 - 1.98 * (Number(pressureAltFt) || 0) / 1000;
+}
+// Density altitude: the pressure altitude the air is behaving like, given how far the day is
+// from standard. 120 ft per degree is the flight-computer figure the exercise is set against.
+function densityAltFromPaFt(pressureAltFt, oatC) {
+  if (!Number.isFinite(pressureAltFt) || !Number.isFinite(oatC)) return null;
+  return pressureAltFt + 120 * (oatC - isaTempAtPaC(pressureAltFt));
+}
+// True airspeed from calibrated: CAS divided by the square root of the density ratio.
+// Reference sheet: 70 KCAS at 4033'/+6 -> 74.2, 90 at 6000'/+2 -> 98.2, 100 at 3450'/+8 -> 105.2.
+function tasFromCas(casKt, pressureAltFt, oatC) {
+  const da = densityAltFromPaFt(pressureAltFt, oatC);
+  if (!Number.isFinite(casKt) || casKt <= 0 || da === null) return null;
+  const sigma = Math.pow(1 - 6.8756e-6 * da, 4.2561);
+  if (!(sigma > 0)) return null;
+  return casKt / Math.sqrt(sigma);
+}
+
+// The altitude a segment's air is taken at. The exercise states both rules, and they are what
+// make a climb row computable at all: the aeroplane is not at one altitude during a climb, so
+// the met data is read at two thirds of the way up (half of the way down, descending), measured
+// from the field it starts or ends at rather than from sea level.
+function navLogSegmentAltFt(kind, fieldElevFt, cruiseFt) {
+  const field = Number.isFinite(fieldElevFt) ? fieldElevFt : 0;
+  if (!Number.isFinite(cruiseFt)) return null;
+  if (kind === 'climb') return field + (2 / 3) * (cruiseFt - field);
+  if (kind === 'descent') return field + (1 / 2) * (cruiseFt - field);
+  return cruiseFt;
+}
+
+// The met row for an altitude: the NEAREST row, not an interpolation between two. The exercise
+// does not interpolate, and a sheet a grader marks against has to be reproducible rather than
+// merely defensible. A tie goes to the lower row, so the choice is deterministic.
+function navLogMetRow(met, altFt) {
+  if (!Array.isArray(met) || !met.length || !Number.isFinite(altFt)) return null;
+  let best = null, bestGap = Infinity;
+  for (const row of met) {
+    if (!row || !Number.isFinite(row.alt)) continue;
+    const gap = Math.abs(row.alt - altFt);
+    if (gap < bestGap || (gap === bestGap && best && row.alt < best.alt)) { best = row; bestGap = gap; }
+  }
+  return best;
+}
+
+// The deviation for a magnetic heading, off the compass card: again the NEAREST entry, not an
+// interpolation. This is the rule that reproduces every row of the reference sheet -- MH 050
+// takes the 060 entry's -1 and prints 049, where interpolating between 030 and 060 would give
+// 048 -- and it is also what a pilot does with a card in the cockpit.
+function navLogDeviation(card, magneticDeg) {
+  if (!Array.isArray(card) || !card.length || !Number.isFinite(magneticDeg)) return 0;
+  const mh = ((magneticDeg % 360) + 360) % 360;
+  let best = null, bestGap = Infinity;
+  for (const entry of card) {
+    if (!entry || !Number.isFinite(entry.mh) || !Number.isFinite(entry.ch)) continue;
+    // Around the compass, not along a number line: 355 is five degrees from 000, not 355.
+    const raw = Math.abs((((entry.mh - mh) % 360) + 360) % 360);
+    const gap = Math.min(raw, 360 - raw);
+    if (gap < bestGap || (gap === bestGap && best && entry.mh < best.mh)) { best = entry; bestGap = gap; }
+  }
+  if (!best) return 0;
+  const delta = (((best.ch - best.mh + 180) % 360) + 360) % 360 - 180;
+  return delta;
+}
+
+// One row's worth of arithmetic, from a true track to a compass heading.
+// `wind` is {dir, speed} FROM-direction in degrees true; null or calm means the aeroplane flies
+// its track, which is the honest answer rather than a refusal.
+function navLogHeadings(trackTrue, tasKt, wind, variationDeg, card) {
+  // The triangle is solved on the track as PRINTED -- whole degrees -- not on the fraction the
+  // great-circle maths produces. That is the number the pilot reads off the chart and the one in
+  // the column beside it, and solving from anything else gives a sheet whose own columns are half
+  // a degree out of step with each other.
+  const track = Math.round((((trackTrue % 360) + 360) % 360)) % 360;
+  const tri = (typeof windTriangle === 'function') ? windTriangle(track, tasKt, wind) : null;
+  // windTriangle returns the CORRECTION (toward the wind). The log prints the DRIFT, which is
+  // the other side of it: a wind from the left pushes you right, so you hold left of track.
+  const wca = tri ? tri.wcaDeg : 0;
+  const thTrue = tri ? tri.hdgTrue : track;
+  const gs = tri ? tri.gs : tasKt;
+  const variation = Number.isFinite(variationDeg) ? variationDeg : 0;
+  // East is positive here, as the exercise writes it (4E): magnetic = true - variation.
+  const mh = (((thTrue - variation) % 360) + 360) % 360;
+  const dev = navLogDeviation(card, mh);
+  // The drift a sheet PRINTS is the difference between the two columns beside it -- the track and
+  // the heading, both already rounded to whole degrees. Rounding the exact correction separately
+  // gives a sheet that does not add up: 15.5 rounds to 16 while the headings it sits between,
+  // 024 and 009, differ by 15. So it is derived from what is shown.
+  const shownTrack = track;
+  const shownTh = Math.round(thTrue) % 360;
+  const shownDrift = ((shownTrack - shownTh + 540) % 360) - 180;
+  return {
+    trackShownDeg: track,
+    driftDeg: Math.abs(wca),
+    driftShownDeg: Math.abs(shownDrift),
+    driftSide: Math.abs(shownDrift) < 1 ? '' : (shownDrift > 0 ? 'R' : 'L'),
+    trueHeadingDeg: thTrue,
+    variationDeg: variation,
+    magneticHeadingDeg: mh,
+    deviationDeg: dev,
+    compassHeadingDeg: (((mh + dev) % 360) + 360) % 360,
+    groundSpeedKt: gs,
+    unflyable: !!(wind && wind.speed > 0 && !tri),   // crosswind beats the airspeed
+  };
+}
+// The whole sheet: a route and a set of assumptions in, one row per segment out.
+//
+// The climb and the descent are segments in their own right, not an allowance smeared into the
+// first and last legs: they fly at their own speed, in their own air, and the exercise grades
+// where they end. Both are bounded by TIME (a rate of climb and a height to gain), so their
+// distance falls out of the ground speed they happen to make -- which means a climb can outlast
+// the first leg. When it does it is split at the waypoint and keeps climbing on the next leg's
+// track, rather than being quietly capped, which would put the top of climb somewhere the
+// aeroplane will not be.
+function navLogRows(input) {
+  const o = input || {};
+  const wps = Array.isArray(o.waypoints) ? o.waypoints.filter(w => w
+    && Number.isFinite(w.lat) && Number.isFinite(w.lng)) : [];
+  if (wps.length < 2) return [];
+  const cruiseFt = Number(o.cruiseAltFt);
+  if (!Number.isFinite(cruiseFt)) return [];
+  const depElev = Number.isFinite(o.depElevFt) ? o.depElevFt : 0;
+  const destElev = Number.isFinite(o.destElevFt) ? o.destElevFt : 0;
+  const cas = o.cas || {};
+  const rates = o.rates || {};
+  const fuel = o.fuel || {};
+  const card = o.deviation || [];
+  const met = o.met || [];
+  const variation = Number.isFinite(o.variationDeg) ? o.variationDeg : 0;
+  const climbFpm = Number(rates.climbFpm) > 0 ? Number(rates.climbFpm) : 0;
+  const descentFpm = Number(rates.descentFpm) > 0 ? Number(rates.descentFpm) : 0;
+  const cruiseGph = Number(fuel.cruiseGph) > 0 ? Number(fuel.cruiseGph) : 0;
+
+  const legs = [];
+  for (let i = 0; i < wps.length - 1; i++) {
+    const g = geo(wps[i], wps[i + 1]);
+    legs.push({ from: wps[i], to: wps[i + 1], dist: g.dist, track: g.brg });
+  }
+
+  // The air a segment flies in: the typed table first, and where it has nothing to say, whatever
+  // the app already knows about the wind on this leg. Each row remembers which it was, because a
+  // sheet that mixes a typed table with a weather fetch and does not say so is a sheet nobody can
+  // check.
+  const airAt = (altFt, legIndex) => {
+    const row = navLogMetRow(met, altFt);
+    if (row) {
+      return { wind: { dir: row.dir, speed: row.kt }, tempC: row.tempC, source: 'table' };
+    }
+    const fallback = (typeof o.windFor === 'function') ? o.windFor(legIndex, altFt) : null;
+    return {
+      wind: (fallback && Number.isFinite(fallback.dir) && fallback.speed > 0) ? fallback : null,
+      tempC: Number.isFinite(o.fallbackTempC) ? o.fallbackTempC : isaTempAtPaC(altFt),
+      source: fallback ? 'app' : 'isa',
+    };
+  };
+
+  const label = (wp) => (wp && wp.name) || '';
+  const mkRow = (kind, fromName, toName, altFt, casKt, legIndex, track) => {
+    const air = airAt(altFt, legIndex);
+    const tas = tasFromCas(casKt, altFt, air.tempC);
+    const h = navLogHeadings(track, tas, air.wind, variation, card);
+    return Object.assign({
+      kind,
+      from: fromName,
+      to: toName,
+      casKt,
+      pressureAltFt: altFt,
+      tempC: air.tempC,
+      metSource: air.source,
+      tasKt: tas,
+      wind: air.wind,
+      trackTrue: track,
+      legIndex,
+    }, h);
+  };
+
+  // --- the climb, forward from the departure ------------------------------------------------
+  const rows = [];
+  const climbAlt = navLogSegmentAltFt('climb', depElev, cruiseFt);
+  let climbTimeH = (climbFpm > 0 && cruiseFt > depElev) ? (cruiseFt - depElev) / climbFpm / 60 : 0;
+  let legIndex = 0;
+  let legRemaining = legs.length ? legs[0].dist : 0;
+  let legFrom = label(wps[0]);
+  while (climbTimeH > 1e-9 && legIndex < legs.length) {
+    const leg = legs[legIndex];
+    const row = mkRow('climb', legFrom, '', climbAlt, Number(cas.climb), legIndex, leg.track);
+    const gs = row.groundSpeedKt;
+    if (!(gs > 0)) break;                       // unflyable: stop rather than invent a distance
+    const reach = gs * climbTimeH;
+    if (reach < legRemaining - 1e-9) {          // the top of climb is inside this leg
+      row.to = 'TOC';
+      row.distNm = reach;
+      row.timeH = climbTimeH;
+      rows.push(row);
+      legRemaining -= reach;
+      legFrom = 'TOC';
+      climbTimeH = 0;
+    } else {                                    // still climbing when the leg runs out
+      row.to = label(leg.to);
+      row.distNm = legRemaining;
+      row.timeH = legRemaining / gs;
+      rows.push(row);
+      climbTimeH -= row.timeH;
+      legIndex += 1;
+      legFrom = label(leg.to);
+      legRemaining = legIndex < legs.length ? legs[legIndex].dist : 0;
+    }
+  }
+
+  // --- the descent, backwards from the destination -------------------------------------------
+  const descAlt = navLogSegmentAltFt('descent', destElev, cruiseFt);
+  let descTimeH = (descentFpm > 0 && cruiseFt > destElev) ? (cruiseFt - destElev) / descentFpm / 60 : 0;
+  const tail = [];
+  let backLeg = legs.length - 1;
+  let backRemaining = legs.length ? legs[backLeg].dist : 0;
+  let backTo = label(wps[wps.length - 1]);
+  if (backLeg === legIndex) backRemaining = legRemaining;   // the climb already ate part of it
+  while (descTimeH > 1e-9 && backLeg >= legIndex) {
+    const leg = legs[backLeg];
+    const row = mkRow('descent', '', backTo, descAlt, Number(cas.descent), backLeg, leg.track);
+    const gs = row.groundSpeedKt;
+    if (!(gs > 0)) break;
+    const reach = gs * descTimeH;
+    if (reach < backRemaining - 1e-9) {         // the top of descent is inside this leg
+      row.from = 'TOD';
+      row.distNm = reach;
+      row.timeH = descTimeH;
+      tail.unshift(row);
+      backRemaining -= reach;
+      backTo = 'TOD';
+      descTimeH = 0;
+    } else {
+      row.from = label(leg.from);
+      row.distNm = backRemaining;
+      row.timeH = backRemaining / gs;
+      tail.unshift(row);
+      descTimeH -= row.timeH;
+      backLeg -= 1;
+      backTo = label(leg.to);
+      backRemaining = backLeg >= 0 ? legs[backLeg].dist : 0;
+      if (backLeg === legIndex) backRemaining = legRemaining;
+    }
+  }
+
+  // --- everything between them is cruise -----------------------------------------------------
+  for (let i = legIndex; i <= backLeg && i < legs.length; i++) {
+    const leg = legs[i];
+    const from = (i === legIndex) ? legFrom : label(leg.from);
+    const to = (i === backLeg) ? backTo : label(leg.to);
+    const dist = (i === legIndex ? legRemaining : leg.dist)
+      - (i === backLeg ? (leg.dist - backRemaining) : 0);
+    if (!(dist > 1e-9)) continue;
+    const row = mkRow('cruise', from, to, cruiseFt, Number(cas.cruise), i, leg.track);
+    row.distNm = dist;
+    row.timeH = row.groundSpeedKt > 0 ? dist / row.groundSpeedKt : null;
+    rows.push(row);
+  }
+  rows.push(...tail);
+
+  // --- times and fuel down the sheet ----------------------------------------------------------
+  // The climb's fuel is a flat allowance, not a rate times a time: that is how a POH gives it and
+  // how the exercise states it. Split across climb rows by time when the climb spans more than
+  // one, so the cumulative column still adds up.
+  const climbGal = Number(fuel.climbGal) > 0 ? Number(fuel.climbGal) : 0;
+  const climbTotalH = rows.reduce((sum, r) => sum + (r.kind === 'climb' && r.timeH > 0 ? r.timeH : 0), 0);
+  let cumTimeH = 0, cumFuel = 0;
+  for (const row of rows) {
+    row.gph = row.kind === 'climb' ? null : cruiseGph;
+    row.fuelGal = row.kind === 'climb'
+      ? (climbTotalH > 0 ? climbGal * (row.timeH / climbTotalH) : climbGal)
+      : (row.timeH > 0 ? cruiseGph * row.timeH : 0);
+    cumTimeH += row.timeH > 0 ? row.timeH : 0;
+    cumFuel += row.fuelGal > 0 ? row.fuelGal : 0;
+    row.cumTimeH = cumTimeH;
+    row.cumFuelGal = cumFuel;
+  }
+  return rows;
+}
 // Winds-aloft level mapping: Open-Meteo serves wind/temperature on
 // these pressure levels (hPa). Map a planned altitude to the nearest one so a
 // CVFR leg at ~3000 ft pulls ~900 hPa, ~5000 ft pulls ~850 hPa, etc.
