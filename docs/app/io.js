@@ -9593,6 +9593,10 @@ async function _simFetch() {
         lng: window.simAircraft.lng,
         alt: Number.isFinite(window.simAircraft.alt) ? window.simAircraft.alt / 3.28084 : null,
         trk: window.simAircraft.hdg,
+        // The variation this app is using, so a follower renders the magnetic heading this
+        // screen shows rather than applying its own gist to someone else's true track.
+        mv: (typeof tune === 'function' && Number.isFinite(Number(tune('magneticVariationDeg'))))
+          ? Number(tune('magneticVariationDeg')) : null,
         kt: window.simAircraft.ias,
       }).catch(() => { /* sharing must never break the simulator poll */ });
     }

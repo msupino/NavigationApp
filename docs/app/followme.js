@@ -133,7 +133,11 @@
         const topicLen = (buf[len.next] << 8) | buf[len.next + 1];
         const topic = new TextDecoder().decode(buf.subarray(len.next + 2, len.next + 2 + topicLen));
         const payload = buf.subarray(len.next + 2 + topicLen, len.next + len.value);
-        if (client.onMessage) client.onMessage(topic, payload);
+        // The RETAIN bit, which the viewer needs to tell "the relay's stored copy, of unknown
+        // age" from "this just happened" -- the one packet whose arrival time says anything
+        // about the publisher's clock.
+        const retained = (buf[0] & 0x01) === 1;
+        if (client.onMessage) client.onMessage(topic, payload, retained);
       };
     }
     open();
@@ -388,6 +392,25 @@
     const now = Number.isFinite(nowMs) ? nowMs : Date.now();
     if (!Number.isFinite(atMs)) return null;
     return Math.max(0, Math.round((now - atMs) / 1000));
+  }
+  // How old the last fix is, in the VIEWER's clock rather than the publisher's.
+  //
+  // The packet is stamped by the aeroplane and read by a device whose clock is its own. Two
+  // phones minutes apart -- one on a network clock, one set by hand -- turned a live feed into
+  // "not moving, the feed has stopped" (viewer behind) or hid a genuinely dead feed behind an
+  // age that never grew (viewer ahead). Worse, a viewer more than five minutes slow rejected
+  // every packet as impossibly-future and drew nothing at all.
+  //
+  // A LIVE packet (not the relay's retained copy) crosses in milliseconds, so the difference
+  // between its stamp and its arrival IS the clock offset. The smallest one seen is the best
+  // estimate: transit only ever adds. A retained packet says nothing about it -- its age is
+  // exactly the unknown -- so the correction stays at zero until a live fix arrives.
+  function followMeSkew(state) {
+    return (state && Number.isFinite(state.skew)) ? state.skew : 0;
+  }
+  function followMeFixAge(state) {
+    if (!state || !Number.isFinite(state.at)) return null;
+    return followMeAge(state.at - followMeSkew(state));
   }
 
   // --- publishing -----------------------------------------------------------
@@ -936,6 +959,9 @@
         alt: Number.isFinite(fix.alt) ? Math.round(fix.alt) : null,
         trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
         hc: fix.hc ? 1 : null,          // the heading is the compass, not a course made good
+        // The variation this aeroplane's own readout is using, so the follower's number is the
+        // pilot's number and not the follower's gist applied to the pilot's track.
+        mv: Number.isFinite(fix.mv) ? fix.mv : null,
         kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
         t: now,
         seq: s.seq,
@@ -1010,7 +1036,7 @@
   // a flight that is over.
   function followMeFixIsLive() {
     if (!watch || !watch.state || !watch.state.fix) return false;
-    const age = followMeAge(watch.state.at);
+    const age = followMeFixAge(watch.state);
     return age !== null && age <= followMeStaleSec();
   }
 
@@ -1096,7 +1122,7 @@
     const useB64 = safeB64(verifyB64) || known;
     const verifyKey = useB64 ? await importVerifyKey(useB64) : null;
     if (verifyKey) rememberVerifyKey(id, useB64);
-    const state = { id, fix: null, at: null, connected: false, lastOrder: -1,
+    const state = { id, fix: null, at: null, skew: null, connected: false, lastOrder: -1,
                     verified: !!verifyKey };
     const client = mqttConnect(brokerUrl(), Object.assign(
       { clientId: 'navaid-sub-' + id.slice(0, 8) }, opts || {}));
@@ -1106,7 +1132,7 @@
       if (routeSharingOn()) client.subscribe(routeTopicFor(id));
     };
     client.onClose = () => { state.connected = false; };
-    client.onMessage = async (topic, payload) => {
+    client.onMessage = async (topic, payload, retained) => {
       if (topic === routeTopicFor(id)) { await onRouteMessage(key, payload, verifyKey); return; }
       if (topic !== topicFor(id)) return;
       if (!payload || !payload.length) return;   // the cleared retained value: sharing stopped
@@ -1118,9 +1144,18 @@
       // millisecond timestamp is monotonic enough for that compatibility window and still
       // prevents an older retained packet replacing a newer one.
       const order = msg.seq == null ? msg.t : msg.seq;
+      // A live packet is the clock comparison: it left the aeroplane milliseconds ago, so its
+      // stamp minus its arrival is how far the two devices disagree. Smallest wins -- transit
+      // only ever adds to it -- and it is learnt BEFORE the sanity check below, so a viewer
+      // whose own clock is wrong is corrected rather than left staring at an empty map.
+      if (!retained && Number.isFinite(msg.t)) {
+        const offset = msg.t - now;
+        state.skew = Number.isFinite(state.skew) ? Math.min(state.skew, offset) : offset;
+      }
       if (!Number.isFinite(msg.lat) || msg.lat < -90 || msg.lat > 90 ||
           !Number.isFinite(msg.lng) || msg.lng < -180 || msg.lng > 180 ||
-          !Number.isFinite(msg.t) || msg.t <= 0 || msg.t > now + 300000 ||
+          !Number.isFinite(msg.t) || msg.t <= 0 ||
+          msg.t - followMeSkew(state) > now + 300000 ||
           !Number.isSafeInteger(order) || order < 0 || order <= state.lastOrder) return;
       state.lastOrder = order;
       state.fix = msg;
@@ -1230,7 +1265,7 @@
     const S = window.S || {};
     const el = followMeViewerBanner();
     const st = viewer.state;
-    const age = followMeAge(st.at);
+    const age = followMeFixAge(st);
     const stale = age === null || age > followMeStaleSec();
     el.classList.toggle('stale', stale);
     const reg = (st.fix && st.fix.reg) ? String(st.fix.reg) : '';
@@ -1247,8 +1282,11 @@
     // the pilot's own readout formatter: magnetic, and marked `~` when it is the compass
     // rather than a course, which is what a stationary aeroplane sends.
     if (Number.isFinite(f.trk)) {
+      // `mv` is the variation the AEROPLANE used. Without it the viewer applied its own tune,
+      // so a follower on ?nogist and a pilot on a tuned gist read different magnetic headings
+      // off one true track. Older publishers send none, and then the viewer's own is all there is.
       const txt = (typeof gpsHeadingText === 'function')
-        ? gpsHeadingText(f.trk, !!f.hc)
+        ? gpsHeadingText(f.trk, !!f.hc, Number.isFinite(f.mv) ? f.mv : undefined)
         : String(Math.round(f.trk)).padStart(3, '0') + '\u00b0';
       if (txt) bits.push(txt);
     }
