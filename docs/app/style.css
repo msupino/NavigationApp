@@ -7459,6 +7459,25 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
   white-space: nowrap;
 }
 .follow-me-banner-segment + .follow-me-banner-segment { padding-inline-start: 0.35em; }
+.follow-me-banner-leave {
+  /* The banner itself is pointer-events: none so the chart under it stays draggable. */
+  pointer-events: auto;
+  margin-inline-start: 0.5em;
+  padding: 0 0.3em;
+  min-width: 22px;
+  min-height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: inherit;
+  font: 600 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+  align-self: center;
+}
+.follow-me-banner-leave:hover { background: rgba(255, 255, 255, 0.26); }
+.follow-me-banner-leave:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+body.theme-light .follow-me-banner-leave { background: rgba(16, 36, 15, 0.12); }
+body.theme-light .follow-me-banner-leave:hover { background: rgba(16, 36, 15, 0.22); }
 /* Stale is a different statement, so it looks different rather than just older. */
 .follow-me-banner.stale {
   color: #ffe3d0;

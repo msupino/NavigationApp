@@ -101,6 +101,49 @@ test('a stored share is not resumed on a page opened as a viewer', async ({ page
   expect(got.status).toBe('idle');
 });
 
+// The exit that is where a follower looks for it. Before this, leaving a watch meant pressing
+// Follow me -- the control for starting to SHARE -- and agreeing to a question about sharing.
+test('the banner carries an X that leaves the watch', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    history.replaceState(null, '', '?lang=en&nogist&follow=watched000000000#k=' + 'k'.repeat(43));
+    await F.viewerStart({ search: location.search, hash: location.hash });
+    F.viewerRefresh();
+    let sentTo = null;
+    window.navaidReloadTo = (url) => { sentTo = url; };
+    const btn = document.querySelector('#follow-me-banner .follow-me-banner-leave');
+    const label = btn ? btn.getAttribute('aria-label') : null;
+    btn.click();
+    await new Promise(r => setTimeout(r, 30));
+    return { label, sentTo, viewing: F.viewing(), banner: !!document.getElementById('follow-me-banner') };
+  });
+  // Named, not just a glyph: this is the only control on the banner.
+  expect(got.label).toMatch(/stop following/i);
+  // No question asked -- pressing the X is the answer -- and the watch is gone.
+  expect(got.viewing).toBe(false);
+  expect(got.banner).toBe(false);
+  const url = new URL(got.sentTo);
+  expect(url.searchParams.get('follow')).toBe(null);
+  expect(url.hash).toBe('');
+  // Everything else about the page survives.
+  expect(url.searchParams.get('lang')).toBe('en');
+});
+
+// The X survives a refresh: the banner rebuilds its contents on every fix.
+test('the X is still there after the banner redraws', async ({ page }) => {
+  await boot(page);
+  const count = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    await F.viewerStart({ search: '?follow=watched000000000', hash: '#k=' + 'k'.repeat(43) });
+    F.viewerRefresh();
+    F.viewerRefresh();
+    F.viewerRefresh();
+    return document.querySelectorAll('#follow-me-banner .follow-me-banner-leave').length;
+  });
+  expect(count).toBe(1);
+});
+
 test('pressing the button offers to leave the watch, and leaving reloads without the link', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
@@ -109,12 +152,12 @@ test('pressing the button offers to leave the watch, and leaving reloads without
     await F.viewerStart({ search: location.search, hash: location.hash });
     const asked = [];
     let sentTo = null;
-    window.confirm = (text) => { asked.push(String(text)); return false; };
+    window.askYesNo = async (title, text) => { asked.push(String(text)); return false; };
     window.navaidReloadTo = (url) => { sentTo = url; };
     document.getElementById('follow-me').click();
     await new Promise(r => setTimeout(r, 30));
     const declined = { viewing: F.viewing(), sentTo };
-    window.confirm = (text) => { asked.push(String(text)); return true; };
+    window.askYesNo = async (title, text) => { asked.push(String(text)); return true; };
     document.getElementById('follow-me').click();
     await new Promise(r => setTimeout(r, 30));
     return { asked, declined, viewing: F.viewing(), sentTo };
@@ -188,7 +231,7 @@ test.describe('with the gist switch on', () => {
       await F.viewerStart({ search: '?follow=watched000000000', hash: '#k=' + 'k'.repeat(43) });
       const asked = [];
       let sentTo = null;
-      window.confirm = (text) => { asked.push(String(text)); return true; };
+      window.askYesNo = async (title, text) => { asked.push(String(text)); return true; };
       window.navaidReloadTo = (url) => { sentTo = url; };
       window.askFollowMeCode = async () => '4X-MINE';
       document.getElementById('follow-me').click();
