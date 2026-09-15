@@ -2020,6 +2020,7 @@ window.S = Object.assign({
   deckDirectTo: 'Direct to',
   deckDirectNeedsFix: 'No position yet — turn Location on',
   deckDirectConfirm: 'Replace the route with a direct leg to this point?',
+  deckDirectOk: 'Replace route',
   deckAddWaypoint: 'Add waypoint',
   attribToggle: 'Chart and map credits',
   mapTimeLabel: 'Look ahead',
@@ -2225,6 +2226,8 @@ window.S = Object.assign({
   followMeCopiedNoFix: 'Follow-me link copied — positions start once Location or Record is on.',
   followMeShareFailed: 'Follow me started, but the link could not be shared or copied.',
   followMeLeaveWatchConfirm: 'Sharing your own position stops following this aircraft, and reloads the map without the link. Continue?',
+  followMeLeaveWatchOk: 'Stop following',
+  followMeLeave: 'Stop following this aircraft',
   followMeRouteOffer: (named) => 'The pilot is sharing a route' + (named ? ' (' + named + ')' : '')
     + '. Load it? This replaces the route on your map.',
   followMeRouteLoad: 'Load route',

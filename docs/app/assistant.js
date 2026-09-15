@@ -542,7 +542,7 @@
         // The gate above already showed and confirmed this exact save, so asking again here
         // would be two dialogs for one action.
         if (!mutationApproved('save_route') &&
-            !confirmAction(t('assistantConfirmSave', 'Save this route as') + ' "' + a.name + '"?')) {
+            !(await confirmAction(t('assistantConfirmSave', 'Save this route as') + ' "' + a.name + '"?'))) {
           return { cancelled: true };
         }
         if (typeof routeLibrarySaveCurrent === 'function') { routeLibrarySaveCurrent(a.name); return { ok: true, name: a.name }; }
@@ -555,7 +555,17 @@
   // No way to ask means no. This used to return true when confirm() was missing -- a WebView
   // with dialogs suppressed would have had every route change the model proposed applied
   // without anyone seeing the question.
-  let confirmAction = (msg) => {
+  // Asked in the app, not by the browser. The guard below tests that confirm EXISTS, which is
+  // not the failure that happens: a browser that has been told to stop showing this page's
+  // dialogs keeps the function and returns false from it, so the model's change was refused
+  // with no question ever on screen and nothing said about why. askYesNo is the app's own
+  // dialog -- it cannot be suppressed, and it is bilingual like the rest of the assistant.
+  // confirm() stays as the fallback, and no way to ask at all is still no.
+  let confirmAction = async (msg) => {
+    if (typeof window !== 'undefined' && typeof window.askYesNo === 'function') {
+      return !!(await window.askYesNo(t('assistantTitle', 'Flight plan assistant'), msg,
+        t('ok', 'OK')));
+    }
     if (typeof confirm === 'function') return confirm(msg);
     toast(t('assistantNoConfirm', 'Change not made: this browser cannot show the confirmation.'));
     return false;
@@ -788,7 +798,7 @@
     return name + ' ' + js.slice(0, 300);
   }
 
-  function confirmMutation(name, args) {
+  async function confirmMutation(name, args) {
     const head = t('assistantConfirmChange', 'The assistant wants to change your route:');
     const tail = contextTainted
       // The pilot has to be able to tell this case apart: the request may have come from text
@@ -798,7 +808,7 @@
         'route). Approve only if this is the change you asked for.')
       : '\n\n' + t('assistantUndoHint', 'You can undo it.');
     let ok = false;
-    try { ok = !!confirmAction(head + '\n\n' + mutationSummary(name, args) + tail); }
+    try { ok = !!(await confirmAction(head + '\n\n' + mutationSummary(name, args) + tail)); }
     catch (e) { ok = false; }
     return ok;
   }
@@ -814,10 +824,10 @@
     try { return name + ' ' + JSON.stringify(args || {}); } catch (e) { return name + ' ?'; }
   }
   const approvedThisTurn = new Set();
-  function allowMutation(name, args) {
+  async function allowMutation(name, args) {
     const sig = signature(name, args);
     if (!contextTainted && approvedThisTurn.has(sig)) { lastApproved = null; return true; }
-    const ok = confirmMutation(name, args);
+    const ok = await confirmMutation(name, args);
     if (ok) {
       lastApproved = name;
       if (!contextTainted) approvedThisTurn.add(sig);
@@ -837,7 +847,7 @@
     // Fails CLOSED on a missing tier: the earlier `tool.tier &&` let a tool declared
     // without one skip the gate. Every tool carries a tier today, so this guards the
     // next one added rather than closing a live hole.
-    if (tool && tool.tier !== 'read' && !allowMutation(name, args)) {
+    if (tool && tool.tier !== 'read' && !(await allowMutation(name, args))) {
       return { error: 'declined: the pilot did not approve this change' };
     }
     try {

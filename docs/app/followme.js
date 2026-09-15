@@ -1287,8 +1287,37 @@
       group.appendChild(value);
       el.appendChild(group);
     });
+    el.appendChild(followMeViewerLeaveButton());
     followMeViewerPlaceBanner(el);
     if (viewer.markEl) viewer.markEl.style.opacity = stale ? '0.45' : '1';
+  }
+
+  // The way out of a watch, on the thing that says you are in one. Until this button the only
+  // exit was pressing Follow me and agreeing to leave -- an exit through the door marked
+  // "start sharing", which is not where anyone looks for it, and not available at all to a
+  // viewer with no wish to share. The banner is pointer-events: none so the chart under it
+  // stays draggable; the button turns them back on for itself alone.
+  function followMeViewerLeaveButton() {
+    const S = window.S || {};
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'follow-me-banner-leave';
+    b.textContent = '\u2715';
+    const label = S.followMeLeave || 'Stop following';
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.addEventListener('click', followMeViewerLeave);
+    return b;
+  }
+
+  // No question asked: pressing an X on the banner IS the answer, and nothing is lost -- the
+  // watch holds no state of the pilot's own. The reload is what actually leaves, because the
+  // watch is wired into the page from the address it opened with.
+  function followMeViewerLeave() {
+    followMeViewerStop();
+    const url = followMeUrlWithoutWatch();
+    if (typeof window.navaidReloadTo === 'function') window.navaidReloadTo(url);
+    else location.replace(url);
   }
 
   // The route, its waypoints and their names are painted on #overlay -- a canvas that sits
@@ -1457,6 +1486,7 @@
 
   NS.followMe = {
     viewerStart: followMeViewerStart, viewerStop: followMeViewerStop, viewing: followMeViewing,
+    viewerLeave: followMeViewerLeave,
     forceStop: followMeForceStop, urlWithoutWatch: followMeUrlWithoutWatch,
     routeChanged: followMeRouteChanged, publishRoute: publishRoute,
     shareWhileViewing: shareWhileViewing,

@@ -442,7 +442,7 @@
         ? ((typeof S === 'object' && S && S.editLockBlockedToast) || '')
         : (!live ? ((typeof S === 'object' && S && S.deckDirectNeedsFix)
           || 'No position yet — turn Location on') : '');
-      direct.addEventListener('click', () => { directTo(latlng); });
+      direct.addEventListener('click', () => { directTo(latlng); });   // async: the sheet closes when it resolves
 
       const add = document.createElement('button');
       add.type = 'button';
@@ -476,12 +476,24 @@
 
   // Straight there from where the aeroplane actually is. A plan already drawn is not thrown
   // away on a tap: this replaces it, so it asks first.
-  function directTo(latlng) {
+  async function directTo(latlng) {
     if (typeof state !== 'object' || !state || !gpsOwn) return;
     if (state.waypoints.length) {
       const ask = (typeof S === 'object' && S && S.deckDirectConfirm)
         || 'Replace the route with a direct leg to this point?';
-      try { if (!confirm(ask)) return; } catch (e) { /* no confirm: go ahead */ }
+      // The question is about throwing a drawn plan away, so it is asked in the app rather
+      // than by the browser: readable in Hebrew, styled like the rest, and not something a
+      // browser can suppress. It used to be confirm() with the failure taken as CONSENT --
+      // the one path where a silent runtime would have replaced the route nobody agreed to
+      // replace. No way to ask now means the route stays as the pilot planned it.
+      let go = false;
+      try {
+        go = typeof askYesNo === 'function'
+          ? await askYesNo((typeof S === 'object' && S && S.deckDirectTo) || 'Direct to', ask,
+            (typeof S === 'object' && S && S.deckDirectOk) || 'Replace route')
+          : false;
+      } catch (e) { go = false; }
+      if (!go) return;
     }
     const here = { lat: gpsOwn.lat, lng: gpsOwn.lng,
                    name: (typeof S === 'object' && S && S.deckHereNow) || 'NOW' };

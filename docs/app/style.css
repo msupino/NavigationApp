@@ -7438,7 +7438,8 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
      that an expanded menu remains usable. */
   z-index: 1090;
   max-width: min(92vw, 460px);
-  padding: 6px 12px;
+  /* Left padding leaves the corner to the leave button (absolute, below). */
+  padding: 6px 12px 6px 32px;
   border-radius: 999px;
   font: 600 13px/1.3 system-ui, sans-serif;
   color: #eaf3ea;
@@ -7459,6 +7460,30 @@ tr.freq-notam-changed td:last-child { border-inline-end: 2px solid #b03636; }
   white-space: nowrap;
 }
 .follow-me-banner-segment + .follow-me-banner-segment { padding-inline-start: 0.35em; }
+.follow-me-banner-leave {
+  /* The banner itself is pointer-events: none so the chart under it stays draggable. */
+  pointer-events: auto;
+  /* Top left, in the corner a close control is looked for -- and LEFT in both languages, not
+     at the inline start, because the corner is where the eye goes and it does not move when
+     the page turns RTL. Out of the flow, so the readout stays centred in the pill and a
+     banner that wraps to two lines keeps the button on the first. */
+  position: absolute;
+  left: 6px;
+  top: 5px;
+  padding: 0 0.3em;
+  min-width: 22px;
+  min-height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: inherit;
+  font: 600 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.follow-me-banner-leave:hover { background: rgba(255, 255, 255, 0.26); }
+.follow-me-banner-leave:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+body.theme-light .follow-me-banner-leave { background: rgba(16, 36, 15, 0.12); }
+body.theme-light .follow-me-banner-leave:hover { background: rgba(16, 36, 15, 0.22); }
 /* Stale is a different statement, so it looks different rather than just older. */
 .follow-me-banner.stale {
   color: #ffe3d0;
