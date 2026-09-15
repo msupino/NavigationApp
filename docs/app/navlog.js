@@ -59,24 +59,6 @@
     delete dst[parts[parts.length - 1]];
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
   }
-  function storedHas(path) {
-    const parts = String(path).split('.');
-    let at = stored();
-    for (const part of parts) {
-      if (!at || typeof at !== 'object' || !Object.prototype.hasOwnProperty.call(at, part)) return false;
-      at = at[part];
-    }
-    return true;
-  }
-  // The elevation the airfield dataset has for an endpoint, or null when the point is not a
-  // field we know -- a coordinate in the middle of nowhere, which an exercise is full of.
-  function knownElevation(which) {
-    const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
-      ? state.waypoints : [];
-    if (wps.length < 2) return null;
-    return elevationOf(which === 'dep' ? wps[0] : wps[wps.length - 1]);
-  }
-
   // Typed data rather than a setting: a met table and a compass card are the exercise itself,
   // and there is no default to fall back to.
   function saveTables(cfg) {
@@ -399,27 +381,6 @@
     if (o.step) input.step = o.step;
     input.addEventListener('input', () => onInput(input.value));
     wrap.append(text, input);
-    // What the app itself knows, kept in front of the pilot rather than replaced by whatever
-    // was typed over it: an elevation from the airfield data, with one press to go back to it.
-    // A typed number is a decision -- an exercise may round a field's 884 ft to 900 -- so it is
-    // never silently overwritten, but it must not hide the real one either.
-    if (o.hint) {
-      const hint = document.createElement('span');
-      hint.className = 'navlog-hint';
-      const reset = document.createElement('button');
-      reset.type = 'button';
-      reset.className = 'navlog-reset';
-      wrap.append(hint, reset);
-      wrap.hint = (real, overridden) => {
-        hint.textContent = real == null ? '' : o.hint(real);
-        reset.textContent = '↺';
-        reset.title = o.resetTitle || '';
-        reset.setAttribute('aria-label', reset.title);
-        reset.hidden = !(overridden && real != null);
-        hint.hidden = real == null;
-      };
-      reset.addEventListener('click', () => o.onReset && o.onReset());
-    }
     wrap.sync = (next) => {
       if (document.activeElement === input) return;      // never fight the pilot for the caret
       const shown = Number.isFinite(next) ? String(next) : '';
@@ -445,26 +406,34 @@
     note.className = 'navlog-note';
 
     const commit = (path) => { if (path) saveField(cfg, path); render(); };
+    // A field elevation is the airfield's own until somebody types over it. Clearing the box is
+    // how they take that back: the override goes, and the number returns to what the dataset
+    // says for whatever the route ends at now. (Asked for the other way round first -- the real
+    // figure printed beside the box -- but it is already on the sheet, in the climb and descent
+    // rows those two numbers decide.)
+    const elevationEdited = (path, value) => {
+      if (String(value).trim() === '') {
+        clearField(path);
+        cfg[path] = config()[path];
+        refresh();
+        return;
+      }
+      cfg[path] = num(value, 0);
+      commit(path);
+    };
 
     // The assumptions, in one row of fields: the aeroplane, the day, and the two fields.
     const setup = document.createElement('div');
     setup.className = 'navlog-setup';
     const fields = [];
-    const add = (f, read, which, path) => { fields.push({ f, read, which, path }); return f; };
+    const add = (f, read) => { fields.push({ f, read }); return f; };
     setup.append(
       add(field(S2.navLogCruiseAlt || 'Cruise (ft)', cfg.cruiseAltFt, v => { cfg.cruiseAltFt = num(v, 0); commit('cruiseAltFt'); }), c => c.cruiseAltFt),
+      // Emptying either box hands it back to the airfield data -- see elevationEdited.
       add(field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt,
-        v => { cfg.depElevFt = num(v, 0); commit('depElevFt'); }, {
-          hint: (ft) => (S2.navLogFieldElev ? S2.navLogFieldElev(ft) : ('field: ' + ft + ' ft')),
-          resetTitle: S2.navLogUseFieldElev || 'Use the airfield\'s own elevation',
-          onReset: () => { clearField('depElevFt'); refresh(); },
-        }), c => c.depElevFt, 'dep', 'depElevFt'),
+        v => elevationEdited('depElevFt', v)), c => c.depElevFt),
       add(field(S2.navLogDestElev || 'Destination elev (ft)', cfg.destElevFt,
-        v => { cfg.destElevFt = num(v, 0); commit('destElevFt'); }, {
-          hint: (ft) => (S2.navLogFieldElev ? S2.navLogFieldElev(ft) : ('field: ' + ft + ' ft')),
-          resetTitle: S2.navLogUseFieldElev || 'Use the airfield\'s own elevation',
-          onReset: () => { clearField('destElevFt'); refresh(); },
-        }), c => c.destElevFt, 'dest', 'destElevFt'),
+        v => elevationEdited('destElevFt', v)), c => c.destElevFt),
       field(S2.navLogVariation || 'Variation (°E)', cfg.variationDeg, v => { cfg.variationDeg = num(v, 0); commit('variationDeg'); }),
       field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }),
       field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit('cas.cruise'); }),
@@ -627,14 +596,7 @@
       // Defaults follow the route: swap the destination airfield and its elevation should
       // follow, unless the pilot typed one, in which case what they typed is in the config.
       for (const key of ['cruiseAltFt', 'depElevFt', 'destElevFt']) cfg[key] = next[key];
-      for (const { f, read, which, path } of fields) {
-        f.sync(read(cfg));
-        // The airfield's own number, and whether what is shown is something typed over it.
-        if (f.hint) {
-          const real = knownElevation(which);
-          f.hint(real, storedHas(path) && real != null && Math.round(real) !== Math.round(read(cfg)));
-        }
-      }
+      for (const { f, read } of fields) f.sync(read(cfg));
       render();
     }
     function sourceText(source) {

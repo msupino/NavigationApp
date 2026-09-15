@@ -578,54 +578,38 @@ test('the tables are stored whole, and nothing else rides along', async ({ page 
   expect(keys).toEqual(['deviation', 'met']);
 });
 
-// Asked for: the elevation fields should show the real thing when the app knows it. A typed
-// number is still a decision -- an exercise rounds LLIB's 884 ft to 900 -- so it is never
-// overwritten, but the airfield's own figure stays in front of the pilot with one press back.
-test('an elevation typed over the airfield\'s own says so, and can be handed back', async ({ page }) => {
+// The header carries no airfield figure: those two numbers are already on the sheet, in the
+// climb and descent rows they decide. What it carries instead is the way back -- clearing the
+// box drops the override, and the elevation is the airfield's own again.
+test('clearing an elevation hands it back to the airfield data', async ({ page }) => {
   await boot(page);
   await openLog(page);
-  const hints = () => page.evaluate(() => [...document.querySelectorAll('.navlog-field')]
-    .map(f => ({
-      hint: f.querySelector('.navlog-hint') ? f.querySelector('.navlog-hint').textContent : null,
-      reset: f.querySelector('.navlog-reset') ? !f.querySelector('.navlog-reset').hidden : null,
-      value: f.querySelector('input').value,
-    })));
-  const before = await hints();
-  // LLHZ 121, LLIB 884, straight from the dataset -- and nothing to hand back yet.
-  expect(before[1]).toMatchObject({ hint: 'field: 121 ft', reset: false, value: '121' });
-  expect(before[2]).toMatchObject({ hint: 'field: 884 ft', reset: false, value: '884' });
+  const dest = () => page.evaluate(() =>
+    [...document.querySelectorAll('.navlog-setup input')][2].value);
+  expect(await dest()).toBe('884');                  // LLIB, from the dataset
 
   await page.evaluate(() => {
     const input = [...document.querySelectorAll('.navlog-setup input')][2];
-    input.value = '900';
+    input.value = '900';                             // as the exercise rounds it
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    NavAid.navLog.routeChanged();          // what a redraw does
   });
-  const typed = await hints();
-  expect(typed[2]).toMatchObject({ hint: 'field: 884 ft', reset: true, value: '900' });
+  expect(await page.evaluate(() => NavAid.navLog.config().destElevFt)).toBe(900);
 
-  // Handed back: the stored override goes, and the field is the airfield's again.
-  await page.evaluate(() => document.querySelectorAll('.navlog-reset')[1].click());
-  const after = await hints();
-  expect(after[2]).toMatchObject({ hint: 'field: 884 ft', reset: false, value: '884' });
+  await page.evaluate(() => {
+    const input = [...document.querySelectorAll('.navlog-setup input')][2];
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(await page.evaluate(() => NavAid.navLog.config().destElevFt)).toBe(884);
+  expect(await dest()).toBe('884');
   expect(await page.evaluate(() =>
     Object.prototype.hasOwnProperty.call(JSON.parse(localStorage.getItem('navaid.navlog') || '{}'),
       'destElevFt'))).toBe(false);
 });
 
-// A point that is not an airfield has nothing to offer, and the hint says nothing rather than
-// inventing a sea-level field.
-test('a route that ends nowhere in particular offers no elevation', async ({ page }) => {
+test('the header shows no airfield elevation of its own', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => {
-    state.waypoints[state.waypoints.length - 1] = { name: 'ג', lat: 32.96667, lng: 35.16667 };
-    syncLegs(); save(); draw();
-  });
   await openLog(page);
-  const dest = await page.evaluate(() => {
-    const f = [...document.querySelectorAll('.navlog-field')][2];
-    return { hint: f.querySelector('.navlog-hint').hidden, reset: f.querySelector('.navlog-reset').hidden };
-  });
-  expect(dest.hint).toBe(true);
-  expect(dest.reset).toBe(true);
+  expect(await page.locator('.navlog-hint').count()).toBe(0);
+  expect(await page.locator('.navlog-reset').count()).toBe(0);
 });
