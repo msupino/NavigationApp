@@ -276,6 +276,7 @@ function gpsPublishFollowMeFix(p, hdg, hdgFromCompass) {
     NavAid.followMe.publish({
       lat: p.lat, lng: p.lng,
       alt: Number.isFinite(shownFt) ? shownFt / 3.28084 : null,
+      af: Number.isFinite(shownFt) ? Math.round(shownFt) : null,
       trk: hdg,
       hc: hdgFromCompass,
       mv: Number.isFinite(mv) ? mv : null,

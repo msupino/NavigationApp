@@ -999,6 +999,12 @@
         lat: Math.round(fix.lat * 1e5) / 1e5,
         lng: Math.round(fix.lng * 1e5) / 1e5,
         alt: Number.isFinite(fix.alt) ? Math.round(fix.alt) : null,
+        // The same altitude in FEET, already rounded the way the cockpit rounded it. `alt` is
+        // metres because that is what the wire has always carried and what older viewers
+        // convert from -- but a metre is 3.28 ft, so rounding to it and converting back lands
+        // one or two feet off the number the pilot is looking at (261 in the aeroplane, 262 on
+        // the ground). Both are sent: viewers that know about this one quote the pilot exactly.
+        af: Number.isFinite(fix.af) ? Math.round(fix.af) : null,
         trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
         hc: fix.hc ? 1 : null,          // the heading is the compass, not a course made good
         // The variation this aeroplane's own readout is using, so the follower's number is the
@@ -1322,7 +1328,11 @@
     // rendered as zero, which would read as "on the ground".
     const f = st.fix || {};
     const bits = [];
-    if (Number.isFinite(f.alt)) bits.push(Math.round(f.alt * 3.28084) + ' ft');
+    // `af` is the pilot's own rounded feet; `alt` (metres) is what an older publisher sends, and
+    // converting that back is right to within the metre it was rounded to.
+    const altFt = Number.isFinite(f.af) ? Math.round(f.af)
+      : (Number.isFinite(f.alt) ? Math.round(f.alt * 3.28084) : null);
+    if (Number.isFinite(altFt)) bits.push(altFt + ' ft');
     if (Number.isFinite(f.kt)) bits.push(Math.round(f.kt) + ' kt');
     // The wire carries TRUE -- gpsCompassTrue() undoes the variation before publishing, and
     // the icon's rotation below is geometry that must stay true. The number is rendered by

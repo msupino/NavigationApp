@@ -160,3 +160,35 @@ test('the variation behind the pilot\'s heading travels with it', async ({ page 
   expect(got.withPublisher).toBe('083°');          // 90 true, 7°E variation
   expect(got.withOwn).toBe('088°');                // what the follower used to show instead
 });
+
+// Reported after the correction landed: 261 in the aeroplane, 262 on the ground. Nothing was
+// wrong with the altitude any more -- it was the wire's own unit. A metre is 3.28 ft, so
+// rounding feet into metres and converting back lands a foot or two away. The fix carries both:
+// metres, which every older viewer converts from, and the cockpit's own rounded feet.
+test('the follower quotes the pilot\'s feet, not feet rounded through metres', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(async () => {
+    const out = [];
+    window.gpsLiveOn = true;
+    window.gpsRecording = false;
+    // Sweep a range of raw heights: somewhere in here is a value that rounds badly.
+    for (let m = 80; m < 100; m += 1.7) {
+      window.__published.length = 0;
+      onLivePosition({ coords: { latitude: 32.1, longitude: 34.9, altitude: m, accuracy: 5, speed: 40, heading: 90 }, timestamp: Date.now() });
+      const fix = window.__published[0];
+      // What the wire carries, rounded the way the publisher rounds it...
+      const wire = { alt: Math.round(fix.alt), af: Math.round(fix.af) };
+      out.push({
+        cockpit: Math.round(gpsAltitudeForCompare()),
+        viaMetres: Math.round(wire.alt * 3.28084),
+        viaFeet: wire.af,
+      });
+    }
+    return out;
+  });
+  // Every sample: the feet field is exactly the cockpit's number.
+  for (const s of got) expect(s.viaFeet).toBe(s.cockpit);
+  // ...and at least one of them would have been off had the viewer gone through metres, which
+  // is the bug this covers.
+  expect(got.some(s => s.viaMetres !== s.cockpit), 'the sweep never hit the rounding case').toBe(true);
+});

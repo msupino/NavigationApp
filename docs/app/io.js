@@ -9592,6 +9592,9 @@ async function _simFetch() {
         lat: window.simAircraft.lat,
         lng: window.simAircraft.lng,
         alt: Number.isFinite(window.simAircraft.alt) ? window.simAircraft.alt / 3.28084 : null,
+        // Feet as this screen shows them, so a follower quotes the same number rather than one
+        // rounded through metres and back.
+        af: Number.isFinite(window.simAircraft.alt) ? Math.round(window.simAircraft.alt) : null,
         trk: window.simAircraft.hdg,
         // The variation this app is using, so a follower renders the magnetic heading this
         // screen shows rather than applying its own gist to someone else's true track.

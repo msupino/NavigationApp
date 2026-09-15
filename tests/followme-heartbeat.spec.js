@@ -184,3 +184,41 @@ test('the heartbeat is not retained, so a late follower still gets a position', 
   expect(got.fixRetain).toBe(1);
   expect(got.hbRetain).toBe(0);
 });
+
+// The banner reads the feet the aeroplane sent. An older publisher sends only metres, and the
+// viewer converts those -- right to within the metre they were rounded to.
+test('the banner shows the feet the aeroplane sent, and falls back to metres', async ({ page }) => {
+  await boot(page);
+  await watching(page);
+  await page.evaluate(async () => {
+    const raw = Uint8Array.from(atob('k'.repeat(43) + '='), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt']);
+    window.__send = async (body) => {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key,
+        new TextEncoder().encode(JSON.stringify(body))));
+      const payload = new Uint8Array(iv.length + sealed.length);
+      payload.set(iv); payload.set(sealed, iv.length);
+      const topicBytes = new TextEncoder().encode('navaid/follow/watched000000000');
+      const remaining = 2 + topicBytes.length + payload.length;
+      const header = [0x30];
+      let len = remaining;
+      do { let b = len % 128; len = Math.floor(len / 128); if (len > 0) b |= 128; header.push(b); } while (len > 0);
+      const frame = new Uint8Array(header.length + remaining);
+      frame.set(header);
+      frame[header.length] = topicBytes.length >> 8;
+      frame[header.length + 1] = topicBytes.length & 0xff;
+      frame.set(topicBytes, header.length + 2);
+      frame.set(payload, header.length + 2 + topicBytes.length);
+      window.__sockets[window.__sockets.length - 1].deliver(Array.from(frame));
+      await new Promise(r => setTimeout(r, 40));
+    };
+  });
+  // 80 m is 262 ft converted, but the aeroplane's own readout said 261.
+  await page.evaluate(() => window.__send({ reg: '4X-TST', lat: 32.1, lng: 34.9, alt: 80, af: 261, trk: 90, kt: 100, t: Date.now(), seq: 1 }));
+  expect((await banner(page)).text).toMatch(/\b261 ft\b/);
+
+  // An older publisher, metres only: converted, and right to the metre it was rounded to.
+  await page.evaluate(() => window.__send({ reg: '4X-TST', lat: 32.1, lng: 34.9, alt: 80, trk: 90, kt: 100, t: Date.now(), seq: 2 }));
+  expect((await banner(page)).text).toMatch(/\b262 ft\b/);
+});
