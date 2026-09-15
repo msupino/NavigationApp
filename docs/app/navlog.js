@@ -283,6 +283,88 @@
     return parsed;
   }
 
+  // --- the met table, fetched ----------------------------------------------------------------
+  // The table is the exercise's to hand over, but a pilot planning a real flight has no sheet to
+  // copy from -- so the same forecast the wind overlay and the density-altitude panel already
+  // use can fill it: Open-Meteo's pressure levels, at the middle of the route, for every
+  // thousand feet the flight actually touches.
+  //
+  // It fills the TABLE rather than feeding the sheet directly, which is the point: what was
+  // fetched is then visible, editable, and saved with everything else, and the rows say where
+  // they came from. A forecast a pilot cannot see or correct is not planning data.
+  function metLevelsFor(cfg) {
+    const top = Math.max(Number(cfg.cruiseAltFt) || 0,
+      navLogSegmentAltFt('climb', cfg.depElevFt, cfg.cruiseAltFt, cfg.paFraction) || 0,
+      navLogSegmentAltFt('descent', cfg.destElevFt, cfg.cruiseAltFt, cfg.paFraction) || 0);
+    if (!(top > 0)) return [];
+    // From 2,000 ft -- below that the surface wind is the one that matters and it is not what
+    // this table is for -- up to a thousand above the cruise level, so the nearest-row lookup
+    // always has a row above and below the number it is asked about.
+    const levels = [];
+    for (let ft = 2000; ft <= Math.ceil((top + 1000) / 1000) * 1000 && levels.length < 14; ft += 1000) {
+      levels.push(ft);
+    }
+    return levels;
+  }
+  function routeMidpoint() {
+    const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
+      ? state.waypoints.filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng)) : [];
+    if (!wps.length) return null;
+    const mid = wps[Math.floor(wps.length / 2)];
+    return { lat: mid.lat, lng: mid.lng };
+  }
+  async function fetchMet(cfg) {
+    const c = cfg || config();
+    const S2 = window.S || {};
+    const levels = metLevelsFor(c);
+    const at = routeMidpoint();
+    if (!levels.length || !at) return null;
+    // One request for every level, the way the route-wind fetch does it: a dozen round trips for
+    // one table is a dozen chances to half-fill it.
+    const hpa = Array.from(new Set(levels.map(ft => (typeof nearestPressureLevelHpa === 'function')
+      ? nearestPressureLevelHpa(ft) : null))).filter(Boolean);
+    if (!hpa.length) return null;
+    const params = hpa.flatMap(l => ['wind_speed_' + l + 'hPa', 'wind_direction_' + l + 'hPa',
+      'temperature_' + l + 'hPa']);
+    const url = 'https://api.open-meteo.com/v1/forecast'
+      + '?latitude=' + at.lat.toFixed(3) + '&longitude=' + at.lng.toFixed(3)
+      + '&hourly=' + params.join(',')
+      + '&wind_speed_unit=kn&timezone=UTC&forecast_days=2';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const j = await res.json();
+    const hours = (j && j.hourly && Array.isArray(j.hourly.time)) ? j.hourly.time : null;
+    if (!hours || !hours.length) throw new Error('no data');
+    // The hour the flight is in, not the first hour the forecast happens to start at.
+    const now = new Date();
+    const stamp = now.toISOString().slice(0, 13);
+    let idx = hours.findIndex(t => String(t).slice(0, 13) === stamp);
+    if (idx < 0) idx = 0;
+    const read = (name) => {
+      const arr = j.hourly[name];
+      return (Array.isArray(arr) && Number.isFinite(Number(arr[idx]))) ? Number(arr[idx]) : null;
+    };
+    const rows = [];
+    for (const ft of levels) {
+      const level = nearestPressureLevelHpa(ft);
+      const dir = read('wind_direction_' + level + 'hPa');
+      const kt = read('wind_speed_' + level + 'hPa');
+      const tempC = read('temperature_' + level + 'hPa');
+      if (dir === null || kt === null || tempC === null) continue;
+      rows.push({ alt: ft, dir: Math.round(dir), kt: Math.round(kt), tempC: Math.round(tempC) });
+    }
+    if (!rows.length) throw new Error('no data');
+    c.met = rows.sort((a, b) => a.alt - b.alt);
+    const s = stored();
+    s.met = c.met;
+    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+    if (typeof showToast === 'function') {
+      showToast((S2.navTableMetFetched ? S2.navTableMetFetched(rows.length)
+        : (rows.length + ' levels fetched')));
+    }
+    return c.met;
+  }
+
   // One door for a file, whichever control opened it: the app's Open, or this window's own.
   //
   // An exercise may also BE a route -- the shape this app exports, legs and planned altitudes and
@@ -610,6 +692,35 @@
         renderMet();
       });
       met.appendChild(add);
+      // The forecast, into the table rather than past it: what it fetched is then visible,
+      // editable and saved, and the sheet reads it like any typed level.
+      const fetchBtn = document.createElement('button');
+      fetchBtn.type = 'button';
+      fetchBtn.className = 'navlog-fetch';
+      fetchBtn.textContent = S2.navTableFetchMet || 'Fetch forecast';
+      fetchBtn.title = S2.navTableFetchMetTitle
+        || 'Wind and temperature for every level this flight touches, at the middle of the route';
+      fetchBtn.addEventListener('click', async () => {
+        if (fetchBtn.disabled) return;
+        const was = fetchBtn.textContent;
+        fetchBtn.disabled = true;
+        fetchBtn.textContent = S2.navTableFetching || 'Fetching…';
+        try {
+          await fetchMet(cfg);
+          renderMet();
+          refresh();
+        } catch (e) {
+          // A forecast that did not arrive leaves the table exactly as it was: half a met table
+          // is worse than none, because the sheet would quietly compute from it.
+          if (typeof showToast === 'function') {
+            showToast(S2.navTableFetchMetErr || 'Could not fetch the forecast.', { warn: true });
+          }
+        } finally {
+          fetchBtn.disabled = false;
+          fetchBtn.textContent = was;
+        }
+      });
+      met.appendChild(fetchBtn);
     }
 
     // The compass card: the headings are fixed at the 30° marks a card is swung on, and only
@@ -763,5 +874,6 @@
   }
 
   NS.navLog = { show, config, save, rows, exportCsv, headers, cells, defaults,
-    parseExercise, importExercise, openExerciseFile, exportExercise, routeChanged };
+    parseExercise, importExercise, openExerciseFile, exportExercise, routeChanged,
+    fetchMet, metLevelsFor };
 }());

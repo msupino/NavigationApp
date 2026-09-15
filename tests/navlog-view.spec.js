@@ -749,3 +749,78 @@ test('the restore arrow sits beside its box, not below it', async ({ page }) => 
   expect(box.reset.top).toBeLessThan(box.input.bottom);
   expect(box.reset.bottom).toBeGreaterThan(box.input.top);
 });
+
+// Asked for: fetch the wind and temperature for the relevant altitudes, and calculate from them.
+// It fills the TABLE rather than feeding the sheet directly -- what was fetched is then visible,
+// editable and saved, and the sheet reads it like any level typed off an exercise.
+async function stubForecast(page) {
+  await page.route('**/api.open-meteo.com/**', (route) => {
+    const url = new URL(route.request().url());
+    const names = (url.searchParams.get('hourly') || '').split(',');
+    const hourly = { time: ['2026-09-15T00:00', '2026-09-15T01:00'] };
+    for (const name of names) {
+      const level = Number((name.match(/_(\d+)hPa$/) || [])[1]) || 0;
+      // Something level-dependent, so a wrong level cannot pass unnoticed.
+      if (name.startsWith('wind_speed')) hourly[name] = [Math.round(1000 - level) / 10, 0];
+      else if (name.startsWith('wind_direction')) hourly[name] = [(level % 360), 0];
+      else hourly[name] = [Math.round((level - 700) / 10), 0];
+    }
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ hourly }) });
+  });
+}
+
+test('the forecast fills the met table, and the sheet computes from it', async ({ page }) => {
+  await boot(page);
+  await stubForecast(page);
+  await openLog(page);
+  expect(await page.evaluate(() => NavAid.navLog.config().met.length)).toBe(0);
+  const before = await page.evaluate(() => NavAid.navLog.rows()[0].metSource);
+  expect(before).toBe('isa');            // nothing typed, nothing fetched
+
+  await page.locator('.navlog-fetch').click();
+  await page.waitForFunction(() => NavAid.navLog.config().met.length > 0, null, { timeout: 5000 });
+  const got = await page.evaluate(() => ({
+    met: NavAid.navLog.config().met,
+    stored: JSON.parse(localStorage.getItem('navaid.navlog')).met.length,
+    source: NavAid.navLog.rows()[0].metSource,
+    rows: document.querySelectorAll('.navlog-met .navlog-grid tr').length - 1,
+  }));
+  // Every thousand feet the flight touches, from 2,000 to a thousand above the cruise level.
+  expect(got.met[0].alt).toBe(2000);
+  expect(got.met[got.met.length - 1].alt).toBeGreaterThanOrEqual(7000);
+  expect(got.met.every(r => Number.isFinite(r.dir) && Number.isFinite(r.kt) && Number.isFinite(r.tempC))).toBe(true);
+  // In the table on screen, in the storage, and in the arithmetic.
+  expect(got.rows).toBe(got.met.length);
+  expect(got.stored).toBe(got.met.length);
+  expect(got.source).toBe('table');
+});
+
+test('a forecast that does not arrive leaves the table alone', async ({ page }) => {
+  await boot(page);
+  await page.route('**/api.open-meteo.com/**', route => route.fulfill({ status: 503, body: '' }));
+  await page.evaluate(() => {
+    const cfg = NavAid.navLog.config();
+    cfg.met = [{ alt: 6000, dir: 320, kt: 25, tempC: 2 }];
+    NavAid.navLog.save(cfg);
+  });
+  await openLog(page);
+  const toasts = await page.evaluate(() => { window.__t = []; window.showToast = m => window.__t.push(String(m)); return true; });
+  expect(toasts).toBe(true);
+  await page.locator('.navlog-fetch').click();
+  await page.waitForFunction(() => (window.__t || []).length > 0, null, { timeout: 5000 });
+  // Half a met table is worse than none: the sheet would quietly compute from it.
+  expect(await page.evaluate(() => NavAid.navLog.config().met)).toEqual([{ alt: 6000, dir: 320, kt: 25, tempC: 2 }]);
+  expect(await page.evaluate(() => window.__t.join(' '))).toMatch(/could not fetch/i);
+});
+
+test('the levels asked for are the ones the flight touches', async ({ page }) => {
+  await boot(page);
+  const levels = await page.evaluate(() => {
+    const cfg = NavAid.navLog.config();
+    cfg.cruiseAltFt = 4500;
+    return NavAid.navLog.metLevelsFor(cfg);
+  });
+  expect(levels[0]).toBe(2000);
+  expect(levels[levels.length - 1]).toBe(6000);    // a thousand above the cruise level
+  expect(levels.every((ft, i) => i === 0 || ft - levels[i - 1] === 1000)).toBe(true);
+});
