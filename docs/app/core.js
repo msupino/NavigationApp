@@ -805,6 +805,9 @@ NavAid.tuningDefaults = {
   // spell of accuracy too poor to publish. Without it a follower cannot tell any of those from
   // a phone that died. Keep the cadence under followMeStaleSec or the banner calls the feed
   // stopped in the gaps between heartbeats.
+  // The nav log is a planning-desk document, not an in-flight one. On by default because it
+  // costs nothing until it is opened; the gist can withdraw it for a fleet that has no use for it.
+  featureNavLog: { value: true, type: 'bool', label: 'Offer the nav log' },
   featureFollowMeHeartbeat: { value: true, type: 'bool',
     label: 'Follow me: say "still connected" when there is no new position' },
   followMeHeartbeatSec: { value: 10, min: 2, max: 60, step: 1,
@@ -1078,7 +1081,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1650,6 +1653,42 @@ window.S = Object.assign({
   // Shown in the table; fpHeaders stays the CSV export contract. Only the two time
   // columns differ — "13:15" beside a Zulu clock reads as a clock time, not elapsed.
   fpHeadersDisplay: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time (mm:ss)', 'Fuel (gal)', 'Cum. time (mm:ss)', 'Cum. fuel', 'Radial', 'DME', ''],
+  // --- nav log ---------------------------------------------------------------
+  // NOT the same thing as tbNavLog below, which prints the flight plan as a PDF. This is the
+  // computed sheet: an exercise's 23 columns, from CAS to a compass heading.
+  tbNavTable: 'Nav table',
+  tbNavTableTitle: 'The wind-triangle nav table: CAS to compass heading, leg by leg',
+  navTableTitle: 'Nav table',
+  navLogHeaders: ['LEG', 'From', 'To', 'CAS', 'PA', 'Temp', 'TAS', 'W dir', 'W kt', 'TT', 'Drift',
+    'TH', 'Var', 'MH', 'Dev', 'CH', 'GS', 'Dist', 'Time', 'Cum time', 'FF', 'Fuel', 'Cum fuel'],
+  navLogCruiseAlt: 'Cruise (ft)',
+  navLogDepElev: 'Departure elev (ft)',
+  navLogDestElev: 'Destination elev (ft)',
+  navLogVariation: 'Variation (°E)',
+  navLogCasClimb: 'Climb CAS',
+  navLogCasCruise: 'Cruise CAS',
+  navLogCasDescent: 'Descent CAS',
+  navLogClimbRate: 'Climb (fpm)',
+  navLogDescentRate: 'Descent (fpm)',
+  navLogClimbFuel: 'Climb fuel (gal)',
+  navLogCruiseGph: 'Cruise (gal/h)',
+  navLogMet: 'Met table',
+  navLogMetAlt: 'Alt (ft)',
+  navLogMetDir: 'Wind °',
+  navLogMetKt: 'Wind kt',
+  navLogMetTemp: 'Temp °C',
+  navLogAddRow: 'Add a level',
+  navLogRemoveRow: 'Remove this row',
+  navLogCard: 'Compass card',
+  navLogCardFor: 'For (M)',
+  navLogCardSteer: 'Steer (C)',
+  navLogCsv: 'CSV',
+  navLogPrint: 'Print',
+  navLogUnflyable: 'crosswind exceeds the airspeed',
+  navLogFromTable: 'from the met table',
+  navLogFromApp: 'from the route wind',
+  navLogFromIsa: 'standard atmosphere — nothing typed, nothing fetched',
+  navLogNoRoute: 'Draw a route with at least two points, and set a cruise altitude above both fields.',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', 'Radial', 'DME', ''],
   // Printed PNG plan-card column headers — fixed kneeboard set.
   planColDestination: 'Destination',

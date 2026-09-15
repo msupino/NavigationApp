@@ -3988,6 +3988,19 @@ const openFlightPlan = () => {
 document.getElementById('plan').onclick = openFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
+(function () {
+  // The nav log sits with the other tables, not beside Plan: it is a different document, and a
+  // pilot reaching for the plan in the air must not land on a sheet of exercise arithmetic.
+  const btn = document.getElementById('nav-log');
+  if (!btn) return;
+  const on = typeof tune !== 'function' || tune('featureNavLog') !== false;
+  // Dim, never hide: a control that vanishes is one the pilot hunts for. Only the gist removes it.
+  if (!on) { btn.hidden = true; return; }
+  btn.onclick = () => {
+    if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
+    if (window.NavAid && NavAid.navLog) NavAid.navLog.show();
+  };
+}());
 document.getElementById('charts').onclick = showChartsModal;
 (function () {
   const mb = document.getElementById('mosaic-btn');

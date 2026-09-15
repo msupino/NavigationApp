@@ -8050,3 +8050,26 @@ body.theme-light .disclaimer-lang-select { border-color: rgba(31, 37, 44, 0.35);
 .disclaimer-accept { min-height: 44px; padding: 8px 18px; font-weight: 600; }
 /* Nothing behind it scrolls while it is up: the chart is not in use yet. */
 body.disclaimer-open { overflow: hidden; }
+
+/* --- nav log -------------------------------------------------------------
+   A planning-desk table: 23 columns that will not fit a phone, so the table
+   scrolls inside its own box and the page never scrolls sideways. */
+.navlog-body { display: flex; flex-direction: column; gap: 10px; max-height: 78vh; overflow: auto; }
+.navlog-setup { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.navlog-field { display: flex; flex-direction: column; font-size: 11px; gap: 2px; }
+.navlog-field input { width: 7em; }
+.navlog-editors { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.navlog-sub-title { font-weight: 600; margin-bottom: 4px; }
+.navlog-grid { border-collapse: collapse; font-size: 12px; }
+.navlog-grid th, .navlog-grid td { border: 1px solid rgba(128, 128, 128, 0.35); padding: 1px 4px; }
+.navlog-grid input { width: 5em; }
+.navlog-row-del { background: none; border: 0; cursor: pointer; color: inherit; padding: 0 4px; }
+.navlog-add { align-self: flex-start; margin-top: 4px; }
+.navlog-table { border-collapse: collapse; font-size: 12px; display: block; overflow-x: auto; max-width: 100%; }
+.navlog-table th, .navlog-table td { border: 1px solid rgba(128, 128, 128, 0.35); padding: 1px 5px;
+  white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
+/* The climb and the descent are not cruise legs, and the sheet should say so at a glance. */
+.navlog-row.navlog-climb td { background: rgba(120, 200, 130, 0.14); }
+.navlog-row.navlog-descent td { background: rgba(214, 178, 74, 0.16); }
+.navlog-note { font-size: 12px; opacity: 0.8; }
+.navlog-actions { display: flex; gap: 8px; }
