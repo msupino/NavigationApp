@@ -1665,6 +1665,8 @@ window.S = Object.assign({
   navLogDepElev: 'Departure elev (ft)',
   navLogDestElev: 'Destination elev (ft)',
   navLogVariation: 'Variation (°E)',
+  navLogFieldElev: (ft) => 'field: ' + ft + ' ft',
+  navLogUseFieldElev: 'Use the airfield\'s own elevation',
   navLogCasClimb: 'Climb CAS',
   navLogCasCruise: 'Cruise CAS',
   navLogCasDescent: 'Descent CAS',

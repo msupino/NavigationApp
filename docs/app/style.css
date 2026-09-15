@@ -8058,6 +8058,10 @@ body.disclaimer-open { overflow: hidden; }
 .navlog-setup { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .navlog-field { display: flex; flex-direction: column; font-size: 11px; gap: 2px; }
 .navlog-field input { width: 7em; }
+/* What the airfield data says, beside what was typed over it, and one press back to it. */
+.navlog-hint { font-size: 10px; opacity: 0.7; }
+.navlog-reset { background: none; border: 0; cursor: pointer; color: inherit;
+  font-size: 12px; padding: 0; align-self: flex-start; }
 .navlog-editors { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .navlog-sub-title { font-weight: 600; margin-bottom: 4px; }
 .navlog-grid { border-collapse: collapse; font-size: 12px; }

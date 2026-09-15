@@ -26,6 +26,65 @@
   function save(cfg) {
     try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) { /* private mode */ }
   }
+  // Store ONE field, the one that was just typed.
+  //
+  // Saving the whole config on every keystroke stored the defaults too -- so the first edit
+  // anywhere froze the field elevations at whatever route was open, and they never followed
+  // another one again. Reported as a destination elevation of 861 ft, which belongs to no
+  // airfield in the dataset: it was a leftover, kept alive by a save that meant nothing.
+  //
+  // What is not in storage is re-derived every time, which is how an elevation stays the
+  // airfield's own until a pilot decides otherwise.
+  function saveField(cfg, path) {
+    const parts = String(path).split('.');
+    const s = stored();
+    let src = cfg, dst = s;
+    for (let i = 0; i < parts.length - 1; i++) {
+      src = src[parts[i]];
+      if (!dst[parts[i]] || typeof dst[parts[i]] !== 'object') dst[parts[i]] = {};
+      dst = dst[parts[i]];
+    }
+    dst[parts[parts.length - 1]] = src[parts[parts.length - 1]];
+    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+  }
+  // Forget one typed value, so the field goes back to what the app knows.
+  function clearField(path) {
+    const parts = String(path).split('.');
+    const s = stored();
+    let dst = s;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!dst[parts[i]] || typeof dst[parts[i]] !== 'object') return;
+      dst = dst[parts[i]];
+    }
+    delete dst[parts[parts.length - 1]];
+    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+  }
+  function storedHas(path) {
+    const parts = String(path).split('.');
+    let at = stored();
+    for (const part of parts) {
+      if (!at || typeof at !== 'object' || !Object.prototype.hasOwnProperty.call(at, part)) return false;
+      at = at[part];
+    }
+    return true;
+  }
+  // The elevation the airfield dataset has for an endpoint, or null when the point is not a
+  // field we know -- a coordinate in the middle of nowhere, which an exercise is full of.
+  function knownElevation(which) {
+    const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
+      ? state.waypoints : [];
+    if (wps.length < 2) return null;
+    return elevationOf(which === 'dep' ? wps[0] : wps[wps.length - 1]);
+  }
+
+  // Typed data rather than a setting: a met table and a compass card are the exercise itself,
+  // and there is no default to fall back to.
+  function saveTables(cfg) {
+    const s = stored();
+    s.met = cfg.met;
+    s.deviation = cfg.deviation;
+    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+  }
 
   // The elevation of an endpoint, when the endpoint is a field we know. Typed values win: an
   // exercise may put the aeroplane on a strip the dataset has never heard of.
@@ -329,6 +388,7 @@
   // change under an open sheet, and rebuilding an input the pilot is typing in takes the caret
   // with it.
   function field(label, value, onInput, opts) {
+    const o = opts || {};
     const wrap = document.createElement('label');
     wrap.className = 'navlog-field';
     const text = document.createElement('span');
@@ -336,9 +396,30 @@
     const input = document.createElement('input');
     input.type = 'number';
     input.value = Number.isFinite(value) ? String(value) : '';
-    if (opts && opts.step) input.step = opts.step;
+    if (o.step) input.step = o.step;
     input.addEventListener('input', () => onInput(input.value));
     wrap.append(text, input);
+    // What the app itself knows, kept in front of the pilot rather than replaced by whatever
+    // was typed over it: an elevation from the airfield data, with one press to go back to it.
+    // A typed number is a decision -- an exercise may round a field's 884 ft to 900 -- so it is
+    // never silently overwritten, but it must not hide the real one either.
+    if (o.hint) {
+      const hint = document.createElement('span');
+      hint.className = 'navlog-hint';
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'navlog-reset';
+      wrap.append(hint, reset);
+      wrap.hint = (real, overridden) => {
+        hint.textContent = real == null ? '' : o.hint(real);
+        reset.textContent = '↺';
+        reset.title = o.resetTitle || '';
+        reset.setAttribute('aria-label', reset.title);
+        reset.hidden = !(overridden && real != null);
+        hint.hidden = real == null;
+      };
+      reset.addEventListener('click', () => o.onReset && o.onReset());
+    }
     wrap.sync = (next) => {
       if (document.activeElement === input) return;      // never fight the pilot for the caret
       const shown = Number.isFinite(next) ? String(next) : '';
@@ -363,25 +444,35 @@
     const note = document.createElement('div');
     note.className = 'navlog-note';
 
-    const commit = () => { save(cfg); render(); };
+    const commit = (path) => { if (path) saveField(cfg, path); render(); };
 
     // The assumptions, in one row of fields: the aeroplane, the day, and the two fields.
     const setup = document.createElement('div');
     setup.className = 'navlog-setup';
     const fields = [];
-    const add = (f, read) => { fields.push({ f, read }); return f; };
+    const add = (f, read, which, path) => { fields.push({ f, read, which, path }); return f; };
     setup.append(
-      add(field(S2.navLogCruiseAlt || 'Cruise (ft)', cfg.cruiseAltFt, v => { cfg.cruiseAltFt = num(v, 0); commit(); }), c => c.cruiseAltFt),
-      add(field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt, v => { cfg.depElevFt = num(v, 0); commit(); }), c => c.depElevFt),
-      add(field(S2.navLogDestElev || 'Destination elev (ft)', cfg.destElevFt, v => { cfg.destElevFt = num(v, 0); commit(); }), c => c.destElevFt),
-      field(S2.navLogVariation || 'Variation (°E)', cfg.variationDeg, v => { cfg.variationDeg = num(v, 0); commit(); }),
-      field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit(); }),
-      field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit(); }),
-      field(S2.navLogCasDescent || 'Descent CAS', cfg.cas.descent, v => { cfg.cas.descent = num(v, 0); commit(); }),
-      field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit(); }),
-      field(S2.navLogDescentRate || 'Descent (fpm)', cfg.rates.descentFpm, v => { cfg.rates.descentFpm = num(v, 0); commit(); }),
-      field(S2.navLogClimbFuel || 'Climb fuel (gal)', cfg.fuel.climbGal, v => { cfg.fuel.climbGal = num(v, 0); commit(); }, { step: '0.1' }),
-      field(S2.navLogCruiseGph || 'Cruise (gal/h)', cfg.fuel.cruiseGph, v => { cfg.fuel.cruiseGph = num(v, 0); commit(); }, { step: '0.1' }),
+      add(field(S2.navLogCruiseAlt || 'Cruise (ft)', cfg.cruiseAltFt, v => { cfg.cruiseAltFt = num(v, 0); commit('cruiseAltFt'); }), c => c.cruiseAltFt),
+      add(field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt,
+        v => { cfg.depElevFt = num(v, 0); commit('depElevFt'); }, {
+          hint: (ft) => (S2.navLogFieldElev ? S2.navLogFieldElev(ft) : ('field: ' + ft + ' ft')),
+          resetTitle: S2.navLogUseFieldElev || 'Use the airfield\'s own elevation',
+          onReset: () => { clearField('depElevFt'); refresh(); },
+        }), c => c.depElevFt, 'dep', 'depElevFt'),
+      add(field(S2.navLogDestElev || 'Destination elev (ft)', cfg.destElevFt,
+        v => { cfg.destElevFt = num(v, 0); commit('destElevFt'); }, {
+          hint: (ft) => (S2.navLogFieldElev ? S2.navLogFieldElev(ft) : ('field: ' + ft + ' ft')),
+          resetTitle: S2.navLogUseFieldElev || 'Use the airfield\'s own elevation',
+          onReset: () => { clearField('destElevFt'); refresh(); },
+        }), c => c.destElevFt, 'dest', 'destElevFt'),
+      field(S2.navLogVariation || 'Variation (°E)', cfg.variationDeg, v => { cfg.variationDeg = num(v, 0); commit('variationDeg'); }),
+      field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }),
+      field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit('cas.cruise'); }),
+      field(S2.navLogCasDescent || 'Descent CAS', cfg.cas.descent, v => { cfg.cas.descent = num(v, 0); commit('cas.descent'); }),
+      field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit('rates.climbFpm'); }),
+      field(S2.navLogDescentRate || 'Descent (fpm)', cfg.rates.descentFpm, v => { cfg.rates.descentFpm = num(v, 0); commit('rates.descentFpm'); }),
+      field(S2.navLogClimbFuel || 'Climb fuel (gal)', cfg.fuel.climbGal, v => { cfg.fuel.climbGal = num(v, 0); commit('fuel.climbGal'); }, { step: '0.1' }),
+      field(S2.navLogCruiseGph || 'Cruise (gal/h)', cfg.fuel.cruiseGph, v => { cfg.fuel.cruiseGph = num(v, 0); commit('fuel.cruiseGph'); }, { step: '0.1' }),
     );
 
     // The met table. Empty by default -- an exercise hands you one, and inventing rows would
@@ -411,13 +502,14 @@
           const input = document.createElement('input');
           input.type = 'number';
           input.value = String(row[key]);
-          input.addEventListener('input', () => { row[key] = num(input.value, 0); save(cfg); render(); });
+          input.addEventListener('input', () => { row[key] = num(input.value, 0); saveTables(cfg); render(); });
           // Sorting WHILE typing would move the row out from under the caret, so it happens on
           // the way out of the field -- which is also when the number is finished.
           if (key === 'alt') {
             input.addEventListener('change', () => {
               cfg.met.sort((a, b) => a.alt - b.alt);
-              commit();
+              saveTables(cfg);
+              render();
               renderMet();
             });
           }
@@ -431,7 +523,7 @@
         btn.textContent = '✕';
         btn.title = S2.navLogRemoveRow || 'Remove this row';
         btn.setAttribute('aria-label', btn.title);
-        btn.addEventListener('click', () => { cfg.met.splice(i, 1); commit(); renderMet(); });
+        btn.addEventListener('click', () => { cfg.met.splice(i, 1); saveTables(cfg); render(); renderMet(); });
         del.appendChild(btn);
         tr.appendChild(del);
         grid.appendChild(tr);
@@ -445,7 +537,8 @@
         const highest = cfg.met.reduce((top, r) => Math.max(top, r.alt), 0);
         cfg.met.push({ alt: highest ? highest + 1000 : 2000, dir: 0, kt: 0, tempC: 15 });
         cfg.met.sort((a, b) => a.alt - b.alt);
-        commit();
+        saveTables(cfg);
+        render();
         renderMet();
       });
       met.appendChild(add);
@@ -483,7 +576,7 @@
         const input = document.createElement('input');
         input.type = 'number';
         input.value = String(entry.ch);
-        input.addEventListener('input', () => { entry.ch = num(input.value, entry.mh); save(cfg); render(); });
+        input.addEventListener('input', () => { entry.ch = num(input.value, entry.mh); saveTables(cfg); render(); });
         ch.appendChild(input);
         return [mh, ch];
       };
@@ -534,7 +627,14 @@
       // Defaults follow the route: swap the destination airfield and its elevation should
       // follow, unless the pilot typed one, in which case what they typed is in the config.
       for (const key of ['cruiseAltFt', 'depElevFt', 'destElevFt']) cfg[key] = next[key];
-      for (const { f, read } of fields) f.sync(read(cfg));
+      for (const { f, read, which, path } of fields) {
+        f.sync(read(cfg));
+        // The airfield's own number, and whether what is shown is something typed over it.
+        if (f.hint) {
+          const real = knownElevation(which);
+          f.hint(real, storedHas(path) && real != null && Math.round(real) !== Math.round(read(cfg)));
+        }
+      }
       render();
     }
     function sourceText(source) {
@@ -565,7 +665,7 @@
 
     renderMet();
     renderCard();
-    render();
+    refresh();
     live = refresh;
     const editors = document.createElement('div');
     editors.className = 'navlog-editors';

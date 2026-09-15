@@ -377,6 +377,8 @@ window.S = {
   navLogDepElev: 'גובה שדה יציאה (רגל)',
   navLogDestElev: 'גובה שדה נחיתה (רגל)',
   navLogVariation: 'נטייה מגנטית (מעלות מזרחה)',
+  navLogFieldElev: (ft) => 'בשדה: ' + ft + ' רגל',
+  navLogUseFieldElev: 'להשתמש בגובה השדה עצמו',
   navLogCasClimb: 'מ.א.מ בנסיקה',
   navLogCasCruise: 'מ.א.מ בשיוט',
   navLogCasDescent: 'מ.א.מ בהנמכה',
