@@ -89,3 +89,64 @@ test('a two-waypoint route search still searches', async ({ page }) => {
   });
   expect(await page.locator('.wp-search-coord').count()).toBe(0);
 });
+
+// Asked for: flying there and leaving no handle on the point is not enough. A coordinate off an
+// exercise or a clearance has to be LOOKABLE at -- where it falls, what is around it -- and then
+// go on the route, like any other point on the chart.
+test('taking a coordinate opens the inspector on it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    if (typeof showSearchOverlay === 'function') showSearchOverlay();
+    const box = document.getElementById('wp-search');
+    box.value = 'N32 30 E035 00';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('.wp-search-coord').click();
+  await expect(page.locator('#inspector')).toBeVisible();
+  const seen = await page.evaluate(() => ({
+    sel: state.selected,
+    title: document.getElementById('insp-title').value,
+    text: document.querySelector('#inspector').textContent,
+  }));
+  expect(seen.sel.type).toBe('coord');
+  expect(seen.sel.lat).toBeCloseTo(32.5, 4);
+  expect(seen.title).toBe('Coordinate');
+  expect(seen.text).toMatch(/32°30/);        // where it is, in the app's own notation
+});
+
+test('and it carries the same Add to route every chart point has', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    if (typeof showSearchOverlay === 'function') showSearchOverlay();
+    const box = document.getElementById('wp-search');
+    box.value = '32.5 35.0';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('.wp-search-coord').click();
+  await page.locator('#insp-add-to-route').click();
+  const route = await page.evaluate(() => state.waypoints.map(w => ({ lat: w.lat, lng: w.lng })));
+  expect(route).toHaveLength(1);
+  expect(route[0].lat).toBeCloseTo(32.5, 4);
+  expect(route[0].lng).toBeCloseTo(35, 4);
+  // The selection moves to the waypoint it just made, as adding from any other point does.
+  expect(await page.evaluate(() => state.selected.type)).toBe('wp');
+});
+
+// A second coordinate replaces the first: the panel is about the point you just asked for.
+test('a coordinate selection survives a redraw and yields to the next one', async ({ page }) => {
+  await boot(page);
+  const pick = async (text) => {
+    await page.evaluate((t) => {
+      if (typeof showSearchOverlay === 'function') showSearchOverlay();
+      const box = document.getElementById('wp-search');
+      box.value = t;
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    }, text);
+    await page.locator('.wp-search-coord').click();
+  };
+  await pick('32.5 35.0');
+  await page.evaluate(() => draw());
+  expect(await page.evaluate(() => state.selected.lat)).toBeCloseTo(32.5, 4);
+  await pick('33.0 35.4');
+  expect(await page.evaluate(() => state.selected.lat)).toBeCloseTo(33.0, 4);
+});

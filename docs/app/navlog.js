@@ -15,6 +15,18 @@
 
   const featureOn = () => typeof tune !== 'function' || tune('featureNavLog') !== false;
   const num = (v, fallback) => (Number.isFinite(Number(v)) && v !== '' ? Number(v) : fallback);
+  // A percentage box, read as the fraction it means. Anything that is not a number -- and any
+  // number that is not a percentage -- leaves the last good value alone: typing over a field
+  // character by character must not pass through nonsense on the way.
+  const pct = (v, fallback) => {
+    const n = Number(String(v).trim());
+    if (!Number.isFinite(n)) return fallback;
+    return frac(n / 100, fallback);
+  };
+  const frac = (v, fallback) => {
+    const n = Number(v);
+    return (Number.isFinite(n) && n >= 0 && n <= 1) ? n : fallback;
+  };
 
   function stored() {
     try {
@@ -59,6 +71,16 @@
     delete dst[parts[parts.length - 1]];
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
   }
+  function storedHas(path) {
+    const parts = String(path).split('.');
+    let at = stored();
+    for (const part of parts) {
+      if (!at || typeof at !== 'object' || !Object.prototype.hasOwnProperty.call(at, part)) return false;
+      at = at[part];
+    }
+    return true;
+  }
+
   // Typed data rather than a setting: a met table and a compass card are the exercise itself,
   // and there is no default to fall back to.
   function saveTables(cfg) {
@@ -107,6 +129,9 @@
       cas: { climb: 70, cruise: cruiseSpeed || t('defaultSpeed', 90), descent: 100 },
       rates: { climbFpm: t('profileClimbFpm', 800), descentFpm: 1000 },
       fuel: { climbGal: 7, cruiseGph: Number(ac.gph) > 0 ? Number(ac.gph) : t('defaultGph', 8) },
+      // Where in the climb and the descent the met data is read -- the exercise's two thirds
+      // and one half. Written as fractions of the height gained or lost, measured from the field.
+      paFraction: { climb: 2 / 3, descent: 1 / 2 },
       met: [],
       deviation: CARD_HEADINGS.map(mh => ({ mh, ch: mh })),
     };
@@ -140,6 +165,12 @@
       fuel: {
         climbGal: num(s.fuel && s.fuel.climbGal, d.fuel.climbGal),
         cruiseGph: num(s.fuel && s.fuel.cruiseGph, d.fuel.cruiseGph),
+      },
+      // Typed as a percentage in the form; kept as a fraction, which is how the exercise states
+      // it and how the arithmetic wants it. Outside 0..1 is not a fraction of anything.
+      paFraction: {
+        climb: frac(s.paFraction && s.paFraction.climb, d.paFraction.climb),
+        descent: frac(s.paFraction && s.paFraction.descent, d.paFraction.descent),
       },
       // Capped: a met table is a page of a briefing and a compass card has twelve marks. A file
       // claiming ten thousand rows is not an exercise, and the table it would build is a hang.
@@ -306,6 +337,7 @@
       fuel: c.fuel,
       met: c.met,
       deviation: c.deviation,
+      paFraction: c.paFraction,
       variationDeg: c.variationDeg,
       // Where the typed table is silent, whatever the app itself knows about the wind on this
       // leg -- the route wind, or a per-leg override the pilot set on the map.
@@ -399,6 +431,21 @@
     if (o.step) input.step = o.step;
     input.addEventListener('input', () => onInput(input.value));
     wrap.append(text, input);
+    // Back to what the app knows -- the airfield's own elevation, the tuning gist's variation --
+    // shown only when there is something to go back FROM. A control that is always there and
+    // does nothing most of the time is a control nobody trusts.
+    if (o.onReset) {
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'navlog-reset';
+      reset.textContent = '\u21ba';
+      reset.title = o.resetTitle || '';
+      reset.setAttribute('aria-label', reset.title);
+      reset.hidden = true;
+      reset.addEventListener('click', o.onReset);
+      wrap.appendChild(reset);
+      wrap.showReset = (on) => { reset.hidden = !on; };
+    }
     wrap.sync = (next) => {
       if (document.activeElement === input) return;      // never fight the pilot for the caret
       const shown = Number.isFinite(next) ? String(next) : '';
@@ -423,19 +470,31 @@
     const note = document.createElement('div');
     note.className = 'navlog-note';
 
-    const commit = (path) => { if (path) saveField(cfg, path); render(); };
+    // refresh(), not render(): typing a value is also the moment the way back to the default
+    // appears beside it. The inputs are left alone while they have the caret, so this cannot
+    // fight the pilot for the field they are in.
+    const commit = (path) => { if (path) saveField(cfg, path); refresh(); };
     // A field elevation is the airfield's own until somebody types over it. Clearing the box is
     // how they take that back: the override goes, and the number returns to what the dataset
     // says for whatever the route ends at now. (Asked for the other way round first -- the real
     // figure printed beside the box -- but it is already on the sheet, in the climb and descent
     // rows those two numbers decide.)
-    const elevationEdited = (path, value) => {
-      if (String(value).trim() === '') {
-        clearField(path);
-        cfg[path] = config()[path];
-        refresh();
-        return;
-      }
+    const restore = (path) => {
+      clearField(path);
+      cfg[path] = config()[path];
+      refresh();
+    };
+    // Emptying the box -- which is also what a `number` input does with anything unparseable --
+    // hands it back to the standard fraction, exactly as an emptied elevation does.
+    const fractionEdited = (path, value) => {
+      if (String(value).trim() === '') { restore(path); return; }
+      const parts = path.split('.');
+      const next = pct(value, cfg[parts[0]][parts[1]]);
+      cfg[parts[0]][parts[1]] = next;
+      commit(path);
+    };
+    const settingEdited = (path, value) => {
+      if (String(value).trim() === '') { restore(path); return; }
       cfg[path] = num(value, 0);
       commit(path);
     };
@@ -444,17 +503,40 @@
     const setup = document.createElement('div');
     setup.className = 'navlog-setup';
     const fields = [];
-    const add = (f, read) => { fields.push({ f, read }); return f; };
+    const add = (f, read, path) => { fields.push({ f, read, path }); return f; };
     setup.append(
-      // Emptying either box hands it back to the airfield data -- see elevationEdited.
+      // Emptying the box, or pressing the arrow, hands it back -- see settingEdited.
       add(field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt,
-        v => elevationEdited('depElevFt', v)), c => c.depElevFt),
+        v => settingEdited('depElevFt', v), {
+          resetTitle: S2.navLogUseFieldElev || 'Back to the airfield\u2019s own elevation',
+          onReset: () => restore('depElevFt'),
+        }), c => c.depElevFt, 'depElevFt'),
       add(field(S2.navLogDestElev || 'Destination elev (ft)', cfg.destElevFt,
-        v => elevationEdited('destElevFt', v)), c => c.destElevFt),
-      field(S2.navLogVariation || 'Variation (°E)', cfg.variationDeg, v => { cfg.variationDeg = num(v, 0); commit('variationDeg'); }),
+        v => settingEdited('destElevFt', v), {
+          resetTitle: S2.navLogUseFieldElev || 'Back to the airfield\u2019s own elevation',
+          onReset: () => restore('destElevFt'),
+        }), c => c.destElevFt, 'destElevFt'),
+      add(field(S2.navLogVariation || 'Variation (°E)', cfg.variationDeg,
+        v => settingEdited('variationDeg', v), {
+          resetTitle: S2.navLogUseTuneVariation || 'Back to the variation the app uses',
+          onReset: () => restore('variationDeg'),
+        }), c => c.variationDeg, 'variationDeg'),
       field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }),
       field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit('cas.cruise'); }),
       field(S2.navLogCasDescent || 'Descent CAS', cfg.cas.descent, v => { cfg.cas.descent = num(v, 0); commit('cas.descent'); }),
+      // Where in the climb and the descent the met data is read, as a percentage of the height
+      // gained or lost: the exercise's 67% and 50%. A percentage is what a pilot can type; the
+      // fraction is what the arithmetic uses.
+      add(field(S2.navLogClimbPa || 'Climb met at (%)', Math.round(cfg.paFraction.climb * 100),
+        v => fractionEdited('paFraction.climb', v), {
+          resetTitle: S2.navLogUseDefaultFraction || 'Back to the standard fraction',
+          onReset: () => restore('paFraction.climb'),
+        }), c => Math.round(c.paFraction.climb * 100), 'paFraction.climb'),
+      add(field(S2.navLogDescentPa || 'Descent met at (%)', Math.round(cfg.paFraction.descent * 100),
+        v => fractionEdited('paFraction.descent', v), {
+          resetTitle: S2.navLogUseDefaultFraction || 'Back to the standard fraction',
+          onReset: () => restore('paFraction.descent'),
+        }), c => Math.round(c.paFraction.descent * 100), 'paFraction.descent'),
       field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit('rates.climbFpm'); }),
       field(S2.navLogDescentRate || 'Descent (fpm)', cfg.rates.descentFpm, v => { cfg.rates.descentFpm = num(v, 0); commit('rates.descentFpm'); }),
       field(S2.navLogClimbFuel || 'Climb fuel (gal)', cfg.fuel.climbGal, v => { cfg.fuel.climbGal = num(v, 0); commit('fuel.climbGal'); }, { step: '0.1' }),
@@ -615,7 +697,10 @@
       for (const key of ['cruiseAltFt', 'depElevFt', 'destElevFt']) cfg[key] = next[key];
       // The cruise level has no field: it is read off the legs every time, so a level changed on
       // the map is a sheet recomputed at the new one.
-      for (const { f, read } of fields) f.sync(read(cfg));
+      for (const { f, read, path } of fields) {
+        f.sync(read(cfg));
+        if (f.showReset) f.showReset(!!path && storedHas(path));
+      }
       render();
     }
     function sourceText(source) {

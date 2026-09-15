@@ -611,11 +611,47 @@ test('clearing an elevation hands it back to the airfield data', async ({ page }
       'destElevFt'))).toBe(false);
 });
 
-test('the header shows no airfield elevation of its own', async ({ page }) => {
+// No figure printed beside the box -- that is on the sheet already -- but the way back is a
+// control, on each field that has a default worth returning to, and only while it is holding
+// something else.
+test('the way back appears only when a field is holding an override', async ({ page }) => {
   await boot(page);
   await openLog(page);
   expect(await page.locator('.navlog-hint').count()).toBe(0);
-  expect(await page.locator('.navlog-reset').count()).toBe(0);
+  const resets = () => page.evaluate(() =>
+    [...document.querySelectorAll('.navlog-reset')].map(b => !b.hidden));
+  // Departure elevation, destination elevation, variation, and the two met fractions: five
+  // fields with a default worth returning to, all quiet to begin with.
+  expect(await resets()).toEqual([false, false, false, false, false]);
+
+  await page.evaluate(() => {
+    const input = [...document.querySelectorAll('.navlog-setup input')][2];   // variation
+    input.value = '4';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(await resets()).toEqual([false, false, true, false, false]);
+
+  await page.evaluate(() => document.querySelectorAll('.navlog-reset')[2].click());
+  expect(await resets()).toEqual([false, false, false, false, false]);
+  expect(await page.evaluate(() => NavAid.navLog.config().variationDeg)).toBe(5);
+  expect(await page.evaluate(() =>
+    Object.prototype.hasOwnProperty.call(JSON.parse(localStorage.getItem('navaid.navlog') || '{}'),
+      'variationDeg'))).toBe(false);
+});
+
+test('the arrow hands an elevation back to the airfield data', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  await page.evaluate(() => {
+    const input = [...document.querySelectorAll('.navlog-setup input')][1];   // destination
+    input.value = '900';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(await page.evaluate(() => NavAid.navLog.config().destElevFt)).toBe(900);
+  await page.evaluate(() => document.querySelectorAll('.navlog-reset')[1].click());
+  expect(await page.evaluate(() => NavAid.navLog.config().destElevFt)).toBe(884);   // LLIB's own
+  expect(await page.evaluate(() =>
+    [...document.querySelectorAll('.navlog-setup input')][1].value)).toBe('884');
 });
 
 // The variation the form starts from is NavAid's own, not a number of its own. The app signs it
@@ -636,4 +672,57 @@ test('variation defaults to the app\'s own, in the sheet\'s sign', async ({ page
   // A fleet that tunes the variation moves the form with it.
   await page.evaluate(() => { setTune('magneticVariationDeg', -4); });
   expect(await page.evaluate(() => NavAid.navLog.config().variationDeg)).toBe(4);
+});
+
+// "לחישוב TAS בנסיקה התחשב ב-2/3 גובה הטיפוס והווסף גובה שדה יציאה" -- two thirds of the height
+// GAINED, plus the field it left; a half of the height lost for the descent. Those are the
+// defaults, and they are now typed rather than built in, because another syllabus may say
+// something else.
+test('the met fractions are the exercise\'s, and they are editable', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  const cfg = await page.evaluate(() => NavAid.navLog.config());
+  expect(cfg.paFraction.climb).toBeCloseTo(2 / 3, 5);
+  expect(cfg.paFraction.descent).toBeCloseTo(1 / 2, 5);
+  const shown = await page.evaluate(() =>
+    [...document.querySelectorAll('.navlog-setup input')].map(i => i.value));
+  // The order in the row: two elevations, variation, three CAS values, then the two fractions.
+  expect(shown[6]).toBe('67');          // climb, as a percentage
+  expect(shown[7]).toBe('50');          // descent
+
+  const pa = () => page.evaluate(() => ({
+    climb: Math.round(NavAid.navLog.rows()[0].pressureAltFt),
+    descent: Math.round(NavAid.navLog.rows().slice(-1)[0].pressureAltFt),
+  }));
+  // LLHZ 121 -> 6,000: two thirds of the 5,879 ft gained is 4,040 above the field it left.
+  expect((await pa()).climb).toBe(4040);
+
+  await page.evaluate(() => {
+    const input = [...document.querySelectorAll('.navlog-setup input')][6];
+    input.value = '50';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect((await pa()).climb).toBe(3061);          // 121 + half of 5,879
+  expect(await page.evaluate(() => NavAid.navLog.config().paFraction.climb)).toBeCloseTo(0.5, 5);
+
+  // And back, without remembering what the standard one was.
+  await page.evaluate(() => document.querySelectorAll('.navlog-reset')[3].click());
+  expect((await pa()).climb).toBe(4040);
+});
+
+// A percentage outside 0-100 is not a fraction of anything, and must not silently become one.
+test('an impossible fraction is refused, and the last good one stands', async ({ page }) => {
+  await boot(page);
+  await openLog(page);
+  // 'abc' never reaches the handler as text -- a number input hands over '' -- and an empty box
+  // means "the standard one", which is checked in the fraction test above.
+  for (const bad of ['150', '-20', '250']) {
+    await page.evaluate((v) => {
+      const input = [...document.querySelectorAll('.navlog-setup input')][7];
+      input.value = v;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }, bad);
+    expect(await page.evaluate(() => NavAid.navLog.config().paFraction.descent), bad)
+      .toBeCloseTo(0.5, 5);
+  }
 });

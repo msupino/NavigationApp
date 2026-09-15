@@ -1661,13 +1661,19 @@ window.S = Object.assign({
   navTableTitle: 'Flight planning form',
   navLogHeaders: ['LEG', 'From', 'To', 'CAS', 'PA', 'Temp', 'TAS', 'W kt', 'W dir', 'TT', 'Drift',
     'TH', 'Var', 'MH', 'Dev', 'CH', 'GS', 'Dist', 'Time', 'Cum time', 'FF', 'Fuel', 'Cum fuel'],
+  coordPointTitle: 'Coordinate',
   searchCoordHint: 'Go to this coordinate',
+  navLogUseFieldElev: 'Back to the airfield\u2019s own elevation',
+  navLogUseTuneVariation: 'Back to the variation the app uses',
   navLogDepElev: 'Departure elev (ft)',
   navLogDestElev: 'Destination elev (ft)',
   navLogVariation: 'Variation (°E)',
   navLogCasClimb: 'Climb CAS',
   navLogCasCruise: 'Cruise CAS',
   navLogCasDescent: 'Descent CAS',
+  navLogClimbPa: 'Climb met at (%)',
+  navLogDescentPa: 'Descent met at (%)',
+  navLogUseDefaultFraction: 'Back to the standard fraction',
   navLogClimbRate: 'Climb (fpm)',
   navLogDescentRate: 'Descent (fpm)',
   navLogClimbFuel: 'Climb fuel (gal)',
@@ -3369,11 +3375,23 @@ function tasFromCas(casKt, pressureAltFt, oatC) {
 // make a climb row computable at all: the aeroplane is not at one altitude during a climb, so
 // the met data is read at two thirds of the way up (half of the way down, descending), measured
 // from the field it starts or ends at rather than from sea level.
-function navLogSegmentAltFt(kind, fieldElevFt, cruiseFt) {
+// The fractions are the exercise's ("לחישוב TAS בנסיקה התחשב ב-2/3 גובה הטיפוס והווסף גובה שדה
+// יציאה" -- two thirds of the height GAINED, plus the field it left), and they are a parameter
+// rather than a constant because another syllabus, or another aeroplane's book, may say
+// something else. The height is always measured from the field, never from sea level.
+const NAVLOG_DEFAULT_CLIMB_FRACTION = 2 / 3;
+const NAVLOG_DEFAULT_DESCENT_FRACTION = 1 / 2;
+function navLogSegmentAltFt(kind, fieldElevFt, cruiseFt, fractions) {
   const field = Number.isFinite(fieldElevFt) ? fieldElevFt : 0;
   if (!Number.isFinite(cruiseFt)) return null;
-  if (kind === 'climb') return field + (2 / 3) * (cruiseFt - field);
-  if (kind === 'descent') return field + (1 / 2) * (cruiseFt - field);
+  const f = fractions || {};
+  const frac = (v, d) => (Number.isFinite(v) && v >= 0 && v <= 1 ? v : d);
+  if (kind === 'climb') {
+    return field + frac(f.climb, NAVLOG_DEFAULT_CLIMB_FRACTION) * (cruiseFt - field);
+  }
+  if (kind === 'descent') {
+    return field + frac(f.descent, NAVLOG_DEFAULT_DESCENT_FRACTION) * (cruiseFt - field);
+  }
   return cruiseFt;
 }
 
@@ -3524,7 +3542,7 @@ function navLogRows(input) {
 
   // --- the climb, forward from the departure ------------------------------------------------
   const rows = [];
-  const climbAlt = navLogSegmentAltFt('climb', depElev, cruiseFt);
+  const climbAlt = navLogSegmentAltFt('climb', depElev, cruiseFt, o.paFraction);
   let climbTimeH = (climbFpm > 0 && cruiseFt > depElev) ? (cruiseFt - depElev) / climbFpm / 60 : 0;
   let legIndex = 0;
   let legRemaining = legs.length ? legs[0].dist : 0;
@@ -3556,7 +3574,7 @@ function navLogRows(input) {
   }
 
   // --- the descent, backwards from the destination -------------------------------------------
-  const descAlt = navLogSegmentAltFt('descent', destElev, cruiseFt);
+  const descAlt = navLogSegmentAltFt('descent', destElev, cruiseFt, o.paFraction);
   let descTimeH = (descentFpm > 0 && cruiseFt > destElev) ? (cruiseFt - destElev) / descentFpm / 60 : 0;
   const tail = [];
   let backLeg = legs.length - 1;

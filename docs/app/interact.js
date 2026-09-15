@@ -114,6 +114,7 @@ const INSPECTOR_SELECTION_KEY = 'navaid.selected';
 
 function inspectorSelectionDataReady(sel) {
   if (!sel || typeof sel !== 'object') return true;
+  if (sel.type === 'coord') return Number.isFinite(sel.lat) && Number.isFinite(sel.lng);
   if (sel.type === 'navwp') return Array.isArray(navWP);
   if (sel.type === 'airfield') return Array.isArray(airfields);
   if (sel.type === 'vor') return Array.isArray(vors);
@@ -130,6 +131,13 @@ function normalizeInspectorSelection(sel) {
     const hex = String(sel.hex || '');
     return hex && (window.trafficAircraft || []).some(a => a && a.hex === hex)
       ? { type: 'traffic', hex } : null;
+  }
+  // A coordinate someone typed into the search box. Like an aircraft, it is not an entry in any
+  // of our arrays -- it carries its own position -- so it is resolved BEFORE the index guard
+  // below, which would throw it away for having no index.
+  if (sel.type === 'coord') {
+    return (Number.isFinite(sel.lat) && Number.isFinite(sel.lng))
+      ? { type: 'coord', lat: sel.lat, lng: sel.lng } : null;
   }
   const index = Number(sel.index);
   if (!Number.isInteger(index) || index < 0) return null;
@@ -3944,6 +3952,18 @@ function showInspector() {
     if (ac.type) body.appendChild(textRow(S.trafficType || 'Type', ac.type));
     if (ac.squawk) body.appendChild(textRow(S.trafficSquawk || 'Squawk', ac.squawk));
     body.appendChild(coordRow(fmtLatLng(ac.lat, 'N', 'S'), fmtLatLng(ac.lon, 'E', 'W')));
+  } else if (state.selected.type === 'coord') {
+    // A point that is only a position: typed into the search box, not found in a dataset. It
+    // gets an inspector so a coordinate off an exercise or a clearance can be LOOKED at -- where
+    // it falls, what is around it -- and then put on the route, instead of being a place the map
+    // merely flew to and left no handle on.
+    const pt = { lat: state.selected.lat, lng: state.selected.lng };
+    title.value = S.coordPointTitle || 'Coordinate';
+    title.placeholder = ''; title.readOnly = true; title.oninput = null;
+    appendPointCoordinateRows(body, pt);
+    appendSatelliteSnippet(body, pt, title.value);
+    appendVorRadialRow(body, pt.lat, pt.lng);
+    appendAddToRouteButton(body, pt);
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
     if (!nw) {

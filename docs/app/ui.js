@@ -3401,6 +3401,12 @@ function showCoordinateHit(ll) {
     map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 11), { animate: false });
     if (typeof dropGotoMarker === 'function') dropGotoMarker(ll.lat, ll.lng);
     else if (typeof flashMapPoint === 'function') flashMapPoint(ll.lat, ll.lng);
+    // ...and the inspector on it, which is what makes the coordinate something you can look at
+    // and then DO something with -- it carries the same Add to route every chart point has.
+    // Flying there and leaving no handle on the point is how this was reported.
+    state.selected = { type: 'coord', lat: ll.lat, lng: ll.lng };
+    if (typeof showInspector === 'function') showInspector();
+    if (typeof draw === 'function') draw();
     closeSearch();
   };
   wpResults.appendChild(item);
