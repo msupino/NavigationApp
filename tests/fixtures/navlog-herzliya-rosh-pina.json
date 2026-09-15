@@ -1,0 +1,80 @@
+{
+  "title": "Herzliya - Rosh Pina",
+  "titleHe": "הרצליה – ראש פינה",
+  "source": "Israeli CVFR written navigation exercise",
+  "notes": [
+    "Straight lines between the points, ignoring CVFR routes.",
+    "Climb and descent are flown on the route, not on separate legs.",
+    "Climb met data is read at 2/3 of the height gained, above the departure field.",
+    "Descent met data is read at 1/2 of the height lost, above the destination field."
+  ],
+  "route": {
+    "waypoints": [
+      { "name": "LLHZ", "he": "הרצליה", "lat": 32.17944, "lng": 34.83444, "elevFt": 100 },
+      { "name": "א", "lat": 32.5, "lng": 35.0 },
+      { "name": "ב", "lat": 32.66667, "lng": 35.5 },
+      { "name": "ג", "lat": 32.96667, "lng": 35.16667 },
+      { "name": "LLIB", "he": "ראש פינה", "lat": 32.98111, "lng": 35.57194, "elevFt": 900 }
+    ]
+  },
+  "navlog": {
+    "cruiseAltFt": 6000,
+    "depElevFt": 100,
+    "destElevFt": 900,
+    "variationDeg": 4,
+    "cas": { "climb": 70, "cruise": 90, "descent": 100 },
+    "rates": { "climbFpm": 800, "descentFpm": 1000 },
+    "fuel": { "climbGal": 7, "cruiseGph": 8 },
+    "met": [
+      { "alt": 2000, "dir": 315, "kt": 17, "tempC": 10 },
+      { "alt": 3000, "dir": 290, "kt": 17, "tempC": 8 },
+      { "alt": 4000, "dir": 300, "kt": 20, "tempC": 6 },
+      { "alt": 5000, "dir": 300, "kt": 22, "tempC": 4 },
+      { "alt": 6000, "dir": 320, "kt": 25, "tempC": 2 },
+      { "alt": 7000, "dir": 325, "kt": 27, "tempC": 0 }
+    ],
+    "deviation": [
+      { "mh": 0, "ch": 358 },
+      { "mh": 30, "ch": 27 },
+      { "mh": 60, "ch": 59 },
+      { "mh": 90, "ch": 90 },
+      { "mh": 120, "ch": 122 },
+      { "mh": 150, "ch": 152 },
+      { "mh": 180, "ch": 180 },
+      { "mh": 210, "ch": 209 },
+      { "mh": 240, "ch": 241 },
+      { "mh": 270, "ch": 272 },
+      { "mh": 300, "ch": 300 },
+      { "mh": 330, "ch": 332 }
+    ]
+  },
+  "published": {
+    "note": "The exercise's own answer sheet. Its heading columns were worked on a flight computer and do not always agree with themselves -- the last row reads 087 track, 5R drift, 083 true heading, and 87 - 5 is 82 -- so tests compare headings to within a degree.",
+    "rows": [
+      { "leg": 1, "from": "הרצליה", "to": "TOC", "cas": 70, "paFt": 4033, "tempC": 6, "tas": 74.2,
+        "windDir": 300, "windKt": 20, "trackTrue": 24, "drift": "15R", "headingTrue": 9,
+        "variation": "4E", "headingMag": 5, "deviation": "2E", "headingCompass": 3,
+        "gsKt": 69.4, "distNm": 8.5, "time": "7:23", "cumTime": "7:23", "fuelGal": 7, "cumFuelGal": 7 },
+      { "leg": 2, "from": "TOC", "to": "א", "cas": 90, "paFt": 6000, "tempC": 2, "tas": 98.2,
+        "windDir": 320, "windKt": 25, "trackTrue": 24, "drift": "13R", "headingTrue": 11,
+        "variation": "4E", "headingMag": 7, "deviation": "2E", "headingCompass": 5,
+        "gsKt": 84.6, "distNm": 12.5, "time": "8:52", "cumTime": "16:15", "gph": 8, "fuelGal": 1.2, "cumFuelGal": 8.2 },
+      { "leg": 3, "from": "א", "to": "ב", "cas": 90, "paFt": 6000, "tempC": 2, "tas": 98.2,
+        "windDir": 320, "windKt": 25, "trackTrue": 68, "drift": "14R", "headingTrue": 54,
+        "variation": "4E", "headingMag": 50, "deviation": "1E", "headingCompass": 49,
+        "gsKt": 103, "distNm": 27, "time": "15:44", "cumTime": "31:59", "gph": 8, "fuelGal": 2.1, "cumFuelGal": 10.3 },
+      { "leg": 4, "from": "ב", "to": "ג", "cas": 90, "paFt": 6000, "tempC": 2, "tas": 98.2,
+        "windDir": 320, "windKt": 25, "trackTrue": 317, "drift": "1L", "headingTrue": 318,
+        "variation": "4E", "headingMag": 314, "deviation": "0", "headingCompass": 314,
+        "gsKt": 73.2, "distNm": 24.5, "time": "20:05", "cumTime": "52:04", "gph": 8, "fuelGal": 2.7, "cumFuelGal": 13 },
+      { "leg": 5, "from": "ג", "to": "TOD", "cas": 90, "paFt": 6000, "tempC": 2, "tas": 98.2,
+        "windDir": 320, "windKt": 25, "trackTrue": 87, "drift": "12R", "headingTrue": 75,
+        "variation": "4E", "headingMag": 71, "deviation": "1E", "headingCompass": 70,
+        "gsKt": 111.2, "distNm": 10.2, "time": "5:30", "cumTime": "57:34", "gph": 8, "fuelGal": 0.7, "cumFuelGal": 13.7 },
+      { "leg": 6, "from": "TOD", "to": "ראש פינה", "cas": 100, "paFt": 3450, "tempC": 8, "tas": 105.2,
+        "windDir": 290, "windKt": 17, "trackTrue": 87, "drift": "5R", "headingTrue": 83,
+        "variation": "4E", "headingMag": 79, "deviation": "1E", "headingCompass": 79,
+        "gsKt": 120.6, "distNm": 10.3, "time": "5:06", "cumTime": "62:40", "gph": 8, "fuelGal": 0.7, "cumFuelGal": 14.4 }
+    ]
+  }
+}
