@@ -120,6 +120,11 @@ test('the whole sheet, cell by cell', async ({ page }) => {
   };
   got.forEach((row, i) => {
     const [kind, from, to, cas, pa, temp, tas, track, drift, th, mh, ch] = sheet[i];
+    // The last row's magnetic and compass headings are wrong in the source: 083 true less the
+    // 4E variation is 079, and 079 takes the card's 090 entry, so the compass heading is 079
+    // too. The document prints 067 and 066 -- row 5's magnetic heading carried down and
+    // decremented again. Our own chain is asserted below; the sheet's two cells are not.
+    const sheetSlip = !!FIXTURE.published.rows[i].sheetError;
     const at = 'row ' + (i + 1) + ' ';
     expect([row.kind, row.from, row.to], at + 'identity').toEqual([kind, from, to]);
     expect([row.cas, row.pa, row.temp], at + 'air').toEqual([cas, pa, temp]);
@@ -128,8 +133,14 @@ test('the whole sheet, cell by cell', async ({ page }) => {
     expect(row.track, at + 'track').toBe(track);
     near(parseInt(row.drift, 10), drift, at + 'drift');
     near(row.th, th, at + 'true heading');
-    near(row.mh, mh, at + 'magnetic heading');
-    near(row.ch, ch, at + 'compass heading');
+    if (sheetSlip) {
+      expect(row.mh, at + 'magnetic heading, worked from this row').toBe(79);
+      expect(row.ch, at + 'compass heading, worked from this row').toBe(79);
+      expect(mh, 'the fixture must record what the document PRINTS, slip and all').toBe(67);
+    } else {
+      near(row.mh, mh, at + 'magnetic heading');
+      near(row.ch, ch, at + 'compass heading');
+    }
     // Our own columns must add up exactly, whatever the sheet's flight computer did.
     const side = row.drift.slice(-1);
     const signed = side === 'R' ? -parseInt(row.drift, 10) : parseInt(row.drift, 10);
