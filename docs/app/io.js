@@ -1046,6 +1046,7 @@ function serializeRoute() {
       // Only when set: a loop route repeats no waypoint, so nothing in the geometry says
       // where it turns for home -- the pilot does.
       ...(w.turn ? { turn: 1 } : {}),
+      ...(w.timerStart ? { timerStart: 1 } : {}),
       ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
     })),
     legs: state.legs.map(l => ({
@@ -3094,6 +3095,7 @@ function applyRouteData(d) {
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
     ...(w._defaultWpName ? { _defaultWpName: 1 } : {}),
     ...(w.turn ? { turn: 1 } : {}),
+    ...(w.timerStart ? { timerStart: 1 } : {}),
     ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
   }));
   // Use the blob's `legArrowSize` if present (forward-compat — current
@@ -6646,6 +6648,7 @@ function restoreRoute() {
     // are the other two). Anything not named here is dropped, which is how a marked
     // turning point vanished on every reload -- and switching language IS a reload.
     ...(w.turn ? { turn: 1 } : {}),
+    ...(w.timerStart ? { timerStart: 1 } : {}),
     ...(Object.prototype.hasOwnProperty.call(w, 'hotspot') ? { hotspot: w.hotspot === true } : {}),
   }));
   // Normalise inLabel/outLabel offsets to a zoom-12 reference so they

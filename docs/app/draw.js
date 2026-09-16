@@ -4928,6 +4928,10 @@ function drawLegs() {
   const legProfile = (typeof routeProfile === 'function') ? routeProfile() : null;
 
   let cumInH = 0;  // running inbound cumulative time (hours)
+  // Where the pilot asked the clock to start, if not the departure field. The legs before it
+  // have no cumulative time to show, and the chain restarts on it -- the same mark and the same
+  // rule the planning form's Cum time column reads.
+  const timerAt = (typeof routeTimerIndex === 'function') ? routeTimerIndex() : -1;
 
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
@@ -5020,8 +5024,11 @@ function drawLegs() {
     // untouched: field 15 and the nav log stay continuous, because a filing desk does want
     // the total. See legRetraceTurnIndex.
     if (typeof legRetraceTurnIndex === 'function' && i === legRetraceTurnIndex()) cumInH = 0;
-    if (!preClock) cumInH += durH;
-    const cumInStr = (!preClock && cumInH > 0) ? toHMS(cumInH) : '--';
+    if (timerAt > 0 && i === timerAt) cumInH = 0;
+    // Before the mark the clock is not running, so there is nothing to add and nothing to show.
+    const beforeTimer = timerAt > 0 && i < timerAt;
+    if (!preClock && !beforeTimer) cumInH += durH;
+    const cumInStr = (!preClock && !beforeTimer && cumInH > 0) ? toHMS(cumInH) : '--';
 
     // A blocked inbound direction (one-way leg flown the disallowed way) has no
     // valid altitude to show — skip its nav kite entirely (the return kite is
