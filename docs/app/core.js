@@ -1688,6 +1688,7 @@ window.S = Object.assign({
   navLogAddRow: 'Add a level',
   navLogRemoveRow: 'Remove this row',
   navLogCard: 'Compass card',
+  navLogCardReset: 'Clear the card: steer what you are told to fly',
   navLogCardFor: 'For (M)',
   navLogCardSteer: 'Steer (C)',
   navTableFetchMet: 'Fetch forecast',

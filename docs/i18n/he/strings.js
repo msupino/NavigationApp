@@ -402,6 +402,7 @@ window.S = {
   navLogAddRow: 'הוספת גובה',
   navLogRemoveRow: 'מחיקת השורה',
   navLogCard: 'טבלת סטיות',
+  navLogCardReset: 'ניקוי הטבלה: לטוס את הכיוון שנמסר',
   navLogCardFor: 'עבור כיוון מגנטי',
   navLogCardSteer: 'טוס כיוון מצפני',
   navTableFetchMet: 'משיכת תחזית',

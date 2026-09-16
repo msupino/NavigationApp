@@ -15,6 +15,13 @@
 
   const featureOn = () => typeof tune !== 'function' || tune('featureNavLog') !== false;
   const num = (v, fallback) => (Number.isFinite(Number(v)) && v !== '' ? Number(v) : fallback);
+  // A heading is a point on a circle, so 364 is 004 and -10 is 350. Typed as 364 it used to
+  // stay 364: a number the compass in front of the pilot cannot show, on a card whose whole
+  // job is to say what that compass will read.
+  const deg360 = (v, fallback) => {
+    const n = num(v, null);
+    return n === null ? fallback : ((Math.round(n) % 360) + 360) % 360;
+  };
   // A percentage box, read as the fraction it means. Anything that is not a number -- and any
   // number that is not a percentage -- leaves the last good value alone: typing over a field
   // character by character must not pass through nonsense on the way.
@@ -796,11 +803,40 @@
     // the "steer" column is typed.
     const card = document.createElement('div');
     card.className = 'navlog-card';
+    // A card with no deviation on it: steer what you were told to fly. That is the state the
+    // window starts in, and the one the arrow goes back to -- it clears the whole map rather
+    // than one row, because a half-cleared card is a card that still lies about the rows left
+    // on it. Twelve rows is also twelve arrows if this were per-row, on a table that is already
+    // the densest thing in the window.
+    const cardIsClear = () => cfg.deviation.every(e => e && e.ch === e.mh);
+    let showCardReset = () => {};
+    const clearCard = () => {
+      for (const e of cfg.deviation) e.ch = e.mh;
+      saveTables(cfg);
+      renderCard();
+      render();
+    };
     function renderCard() {
       card.replaceChildren();
       const head = document.createElement('div');
       head.className = 'navlog-sub-title';
       head.textContent = S2.navLogCard || 'Compass card';
+      // Always there, dimmed while there is nothing to undo -- the house rule every other box
+      // in this window follows.
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'navlog-reset';
+      reset.textContent = '\u21ba';
+      reset.addEventListener('click', clearCard);
+      showCardReset = () => {
+        const on = !cardIsClear();
+        reset.classList.toggle('navlog-reset-idle', !on);
+        reset.title = on
+          ? (S2.navLogCardReset || 'Clear the card: steer what you are told to fly')
+          : (S2.navLogAtDefault || 'Already the default');
+        reset.setAttribute('aria-label', reset.title);
+      };
+      head.appendChild(reset);
       card.appendChild(head);
       // Two pairs of columns, the way a card is printed and the way the exercise hands it over:
       // twelve marks down one column is a table taller than the sheet it belongs to.
@@ -823,8 +859,27 @@
         mh.textContent = deg(entry.mh);
         const input = document.createElement('input');
         input.type = 'number';
-        input.value = String(entry.ch);
-        input.addEventListener('input', () => { entry.ch = num(input.value, entry.mh); saveTables(cfg); render(); });
+        input.min = '0';
+        input.max = '359';
+        input.step = '1';
+        // Three digits, the way the magnetic column beside it is printed and the way a heading
+        // is spoken: a card reading 000 / 030 against boxes reading 0 / 30 is the same number
+        // written two ways, on the one table whose job is to be compared across.
+        input.value = deg(entry.ch);
+        // Emptying the box is how a row's deviation is taken back, the same as every other box
+        // in this window: the steer heading returns to the magnetic one beside it.
+        input.addEventListener('input', () => {
+          entry.ch = deg360(input.value, entry.mh);
+          saveTables(cfg);
+          render();
+          showCardReset();
+        });
+        // What is stored is on the circle; what is typed is whatever was typed. Putting the
+        // wrapped value back on blur rather than mid-keystroke leaves the caret alone.
+        input.addEventListener('change', () => {
+          const shown = deg(entry.ch);
+          if (input.value !== shown) input.value = shown;
+        });
         ch.appendChild(input);
         return [mh, ch];
       };
@@ -834,6 +889,7 @@
         grid.appendChild(tr);
       }
       card.appendChild(grid);
+      showCardReset();
     }
 
     function render() {
