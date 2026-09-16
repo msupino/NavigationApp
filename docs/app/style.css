@@ -8062,11 +8062,16 @@ body.disclaimer-open { overflow: hidden; }
   box-shadow: none;
 }
 #search-overlay.deck-hosted-search #search-close { display: none; }
-/* The clear ✕, inside the box's own inline end. Only there when the box has something in it. */
+/* The box and its clear ✕ are one object: the field is padded on its inline end and the button
+   sits in that padding, so it is inside the box on either layout and on either side of an RTL
+   flip. Only there when the box has something in it. */
+.search-box { position: relative; display: flex; flex: 1 1 auto; min-width: 0; }
+.search-box #wp-search { padding-inline-end: 26px; }
 .search-clear {
   position: absolute;
-  inset-inline-end: 34px;
-  top: 10px;
+  inset-inline-end: 4px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: 0;
   color: inherit;
@@ -8077,7 +8082,6 @@ body.disclaimer-open { overflow: hidden; }
   padding: 2px 4px;
 }
 .search-clear:hover { opacity: 1; }
-#search-overlay.deck-hosted-search .search-clear { inset-inline-end: 8px; }
 
 /* --- nav log -------------------------------------------------------------
    A planning-desk table: 23 columns that will not fit a phone, so the table

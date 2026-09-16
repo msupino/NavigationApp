@@ -165,6 +165,19 @@ test('the box has an X that clears it without closing anything', async ({ page }
   await page.waitForSelector('.wp-search-coord');
   await expect(clear).toBeVisible();
 
+  // INSIDE the field, not straddling its edge and not over the overlay's own close -- which is
+  // how it was first built, and why it could not be found in the preview.
+  const where = await page.evaluate(() => {
+    const r = (id) => document.getElementById(id).getBoundingClientRect();
+    const box = r('wp-search'), x = r('search-clear'), close = r('search-close');
+    return {
+      insideH: x.left > box.left && x.right <= box.right + 1,
+      insideV: x.top >= box.top && x.bottom <= box.bottom,
+      clearOfClose: x.right <= close.left,
+    };
+  });
+  expect(where).toEqual({ insideH: true, insideV: true, clearOfClose: true });
+
   await clear.click();
   const after = await page.evaluate(() => ({
     value: document.getElementById('wp-search').value,
