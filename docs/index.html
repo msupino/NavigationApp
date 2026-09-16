@@ -549,6 +549,10 @@
         <button id="airmet-btn" type="button" disabled data-i18n-title="tbAirmetTitle"><span data-i18n="tbAirmet"></span><span class="layer-count" id="airmet-btn-count" aria-hidden="true"></span></button>
         <!-- Active-NOTAM text list (modal). Hidden until notam data loads; the
              on-map NOTAM layer + timeline live in the Information section. -->
+        <!-- The four things that can say "not this plan, not at this time": airspace
+             crossed, NOTAMs on the route or its fields, SIGMET/AIRMET polygons, and a
+             ceiling below a planned leg -- all against the planned time window. -->
+        <button id="route-check-btn" type="button" data-i18n-title="tbRouteCheckTitle"><span data-i18n="tbRouteCheck"></span></button>
         <button id="notam-list-btn" type="button" disabled data-i18n-title="tbNotamListTitle"><span data-i18n="tbNotamList"></span><span class="layer-count" id="notam-list-count" aria-hidden="true"></span></button>
         <!-- LSA airspace bubble list (modal). Hidden until areas load on the Low
              Alt layer; the on-map bubbles + toggle live in the Extra layers section. -->
@@ -1148,6 +1152,7 @@
         'app/offline-tiles.js' + v,
         'app/deck.js' + v,
         'app/navlog.js' + v,
+        'app/routecheck.js' + v,
         'app/disclaimer.js' + v,
         'app/ota.js' + v
       ];

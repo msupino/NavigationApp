@@ -8244,3 +8244,53 @@ body.theme-light .navlog-table {
 .navlog-row.navlog-descent td { background: rgba(214, 178, 74, 0.16); }
 .navlog-note { font-size: 12px; opacity: 0.8; }
 .navlog-actions { display: flex; gap: 8px; }
+
+/* --- route check ---------------------------------------------------------
+   A list a pilot reads top to bottom before they go: what it is, where on the route, and
+   when. The severity mark carries the weight, so the rows stay plain -- a wall of coloured
+   panels reads as decoration and this is the opposite of decoration. */
+/* The list scrolls, the window does not: findings ran off the bottom edge and over the map --
+   nine of them on a real route is 200px of alerts outside the window, with no scrollbar and no
+   sign there was more. The box takes `hidden` and the body takes the scrolling, which is also
+   what keeps the title and its close X in place. */
+.route-check-modal { overflow: hidden; }
+.route-check-body { display: flex; flex-direction: column; gap: 8px;
+  flex: 1 1 auto; min-height: 0; overflow: auto;
+  /* A pixel cap as well as a ch one: `ch` scales with the font, so a zoomed page or a larger
+     base font took the panel as wide as the screen and ran NOTAM text right across it. */
+  max-width: min(72ch, 620px); }
+/* Outside the scroller: it is the window every finding below is relative to. */
+.route-check-when { font-weight: 600; flex: 0 0 auto; padding-bottom: 6px; }
+.route-check-list { list-style: none; margin: 0; padding: 0; display: flex;
+  flex-direction: column; gap: 8px; }
+.route-check-item { display: grid; grid-template-columns: 1.4em minmax(0, 1fr); gap: 8px;
+  align-items: start; }
+/* NOTAM text is somebody else's, and it arrives with coordinate strings and reference numbers
+   that have no break opportunity in them. minmax(0, 1fr) lets the column shrink; this lets the
+   word inside it break rather than push the panel wider than the window. */
+.route-check-item > div { min-width: 0; overflow-wrap: anywhere; }
+.route-check-mark { line-height: 1.3; }
+.route-check-head { font-weight: 600; }
+.route-check-detail, .route-check-where, .route-check-when-row { font-size: 12.5px;
+  opacity: 0.85; }
+/* The window is the point of the whole panel, so it is not the quietest line on the row. */
+.route-check-when-row { opacity: 1; font-variant-numeric: tabular-nums; }
+.route-check-stop .route-check-head { color: #ffb3a7; }
+body.theme-light .route-check-stop .route-check-head { color: #8a1c00; }
+.route-check-clear, .route-check-waiting { margin: 0; opacity: 0.85; }
+/* Five rows ticking off while the sources answer. The mark carries the state, so the labels
+   stay still and the eye only has to watch one column: a row that changes is a feed that came
+   back, and one still holding a dot when the others are ticked is the slow one. */
+.route-check-progress { list-style: none; margin: 0; padding: 0; display: flex;
+  flex-direction: column; gap: 4px; font-size: 12.5px; }
+.route-check-step { display: grid; grid-template-columns: 1.4em minmax(0, 1fr); gap: 8px;
+  opacity: 0.55; }
+.route-check-step-mark { font-variant-numeric: tabular-nums; text-align: center; }
+.route-check-step-asking { opacity: 0.9; }
+.route-check-step-done { opacity: 1; }
+/* A source that could not be read is the one thing on this list worth a colour: the findings
+   below do not cover it. */
+.route-check-step-failed { opacity: 1; color: #ffb3a7; }
+body.theme-light .route-check-step-failed { color: #8a1c00; }
+/* Not a finding and not silence: a source that could not be read. */
+.route-check-unchecked { margin: 0; font-size: 12.5px; opacity: 0.7; }
