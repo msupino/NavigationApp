@@ -11599,6 +11599,53 @@ const NavWxAvailability = (function () {
     if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
     if (sidePanel) { sidePanel.remove(); sidePanel = null; hdrImg = null; tblImg = null; }
   }
+  // The table is 746 x 1427 source pixels. Fitted whole into the height beside the chart it
+  // comes out around 360px wide -- half its own resolution, which is the complaint: the text is
+  // too small to read. As an overlay it never had to fit, because it grew with the zoom (~640px
+  // at z8, ~1270px at z9) and ran off the screen when it got big.
+  //
+  // It cannot be both whole and readable in a corner, so it is both, in two places: fitted to
+  // the height beside the chart, where it says what kind of weather is on the sheet, and opened
+  // at full size in a window that scrolls, where it can actually be read.
+  const TABLE_ASPECT = (CROP_TABLE.y1 - CROP_TABLE.y0) * 1755
+    / ((CROP_TABLE.x1 - CROP_TABLE.x0) * 1240);
+  const TABLE_SRC_W = Math.round((CROP_TABLE.x1 - CROP_TABLE.x0) * 1240);
+  // Pure, and exported, because it is the whole answer to "why is the text that size" and the
+  // part worth pinning: as wide as the height leaves room for, never past the source's own
+  // resolution (upscaling a scanned table adds blur, not letters), never more than half the map.
+  window.sigwxSideWidthPx = function sigwxSideWidthPx(hostW, hostH, scale) {
+    const top = 96, margin = 16;
+    const room = Math.max(120, (hostH || 0) - top - margin);
+    const w = Math.min(TABLE_SRC_W, room / TABLE_ASPECT, (hostW || 0) * 0.5)
+      * (Number(scale) > 0 ? Number(scale) : 1);
+    return Math.round(Math.max(160, w));
+  };
+  function sizeSideBox() {
+    if (!sidePanel) return;
+    const host = map.getContainer();
+    sidePanel.style.width =
+      window.sigwxSideWidthPx(host.clientWidth, host.clientHeight, off('sigwxTblScale') || 1) + 'px';
+  }
+  map.on('resize', sizeSideBox);
+  // The full-size table, in a window that scrolls. This is the one that can be read.
+  function openTableFull() {
+    if (!tblImg || !tblImg.getAttribute('src')) return;
+    if (typeof createDraggableModal !== 'function') return;
+    const S2 = window.S || {};
+    const m = createDraggableModal(S2.sigwxTableTitle || 'Significant weather — table',
+      'modal wide sigwx-table-modal', null);
+    const body = document.createElement('div');
+    body.className = 'sigwx-table-full';
+    for (const src of [hdrImg && hdrImg.getAttribute('src'), tblImg.getAttribute('src')]) {
+      if (!src) continue;
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      body.appendChild(img);
+    }
+    m.box.appendChild(body);
+    m.show();
+  }
   // The box beside the chart. Built once, on the map container rather than in a pane, so no
   // pan, zoom or bearing reaches it.
   function sideBox() {
@@ -11614,9 +11661,26 @@ const NavWxAvailability = (function () {
     tblImg.className = 'sigwx-side-table';
     tblImg.alt = '';
     sidePanel.append(hdrImg, tblImg);
+    // Pressable, and said so: at this size the panel is a summary, and the way to read it is to
+    // open it. The map behind stays draggable everywhere else -- this is a small box in a
+    // corner, not a layer over the chart.
+    sidePanel.tabIndex = 0;
+    sidePanel.setAttribute('role', 'button');
+    const S2 = window.S || {};
+    sidePanel.title = S2.sigwxTableOpen || 'Open the table at full size';
+    sidePanel.setAttribute('aria-label', sidePanel.title);
+    sidePanel.addEventListener('click', openTableFull);
+    sidePanel.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTableFull(); }
+    });
     host.appendChild(sidePanel);
+    sizeSideBox();
     return sidePanel;
   }
+  // The real builder, reachable by name: the module only reaches it after fetching and cropping
+  // a half-megabyte chart, and the box's placement and affordances are worth testing without
+  // that. Nothing else calls it.
+  window.sigwxSideBox = sideBox;
   // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
   // makes the chart's white paper transparent so it doesn't read as a glaring
   // print sheet over a dark-mode map (the table keeps its white, for legibility).
@@ -11754,6 +11818,7 @@ const NavWxAvailability = (function () {
       box.style.opacity = String(op);
       const img = which === 'header' ? hdrImg : tblImg;
       if (img && img.getAttribute('src') !== data) img.src = data;
+      sizeSideBox();
       return;
     }
     if (!mapLayer) {

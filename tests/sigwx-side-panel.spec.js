@@ -2,11 +2,11 @@
 // The SIGWX sheet's header and table are not geography. They were image overlays pinned to
 // invented coordinates east of Israel -- the code said so itself: "the TABLE isn't geographic,
 // park it just east of Israel" -- which works only while the map is north-up. Rotate it and
-// those fake points swing away with everything else: off to the side, half off-screen, on their
-// ear. Counter-rotating them fixed the angle and left the position wrong, which reads worse.
+// those fake points swing away: off to the side, half off-screen, on their ear. Counter-rotating
+// them fixed the angle and left the position wrong, which reads worse.
 //
-// They live in screen space now. These tests are about the one property that failed: the panel
-// holds its place and its orientation whatever the map does underneath.
+// They live in screen space now. The panel is torn down whenever the layer is off, so each test
+// builds it and measures inside one evaluate rather than across several.
 const { test, expect } = require('./_setup');
 
 const PIX = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
@@ -14,97 +14,116 @@ const PIX = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 async function boot(page, w, h) {
   await page.setViewportSize({ width: w || 1000, height: h || 800 });
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof map === 'object' && map && typeof L === 'object');
+  await page.waitForFunction(() => typeof map === 'object' && map
+    && typeof sigwxSideBox === 'function');
   await page.evaluate(() => { if (window.clearBootLoading) clearBootLoading(); });
 }
 
-// The box the SIGWX module builds (sideBox), reproduced here: the module only builds it after
-// fetching and cropping a half-megabyte chart, and this is about where the box lands.
-const addBox = (page) => page.evaluate((src) => {
-  const box = document.createElement('div');
-  box.className = 'sigwx-side';
-  for (const cls of ['sigwx-side-header', 'sigwx-side-table']) {
-    const img = document.createElement('img');
-    img.className = cls;
-    img.src = src;
-    box.appendChild(img);
-  }
-  map.getContainer().appendChild(box);
-}, PIX);
-
-const boxRect = (page) => page.evaluate(() => {
-  const b = document.querySelector('.sigwx-side').getBoundingClientRect();
-  return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width) };
-});
+// Build the module's own box (not a copy) and hand back whatever the callback measures.
+const withBox = (page, fn) => page.evaluate(({ src, body }) => {
+  const box = sigwxSideBox();
+  for (const img of box.querySelectorAll('img')) img.src = src;
+  return new Function('box', 'return (' + body + ')(box)')(box);
+}, { src: PIX, body: fn });
 
 test('it holds its place and its orientation while the map turns', async ({ page }) => {
   await boot(page);
-  await addBox(page);
-  const at0 = await boxRect(page);
-  const transformAt = (deg) => page.evaluate((d) => {
-    map.setBearing(d);
-    const el = document.querySelector('.sigwx-side');
-    return getComputedStyle(el).transform;
-  }, deg);
-  expect(await transformAt(45)).toBe('none');       // nothing rotates it
-  expect(await boxRect(page)).toEqual(at0);          // ...and nothing moves it
-  expect(await transformAt(135)).toBe('none');
-  expect(await boxRect(page)).toEqual(at0);
-  await page.evaluate(() => map.setBearing(0));
+  const got = await withBox(page, `(box) => {
+    const at = () => { const b = box.getBoundingClientRect();
+      return { x: Math.round(b.x), y: Math.round(b.y),
+               t: getComputedStyle(box).transform }; };
+    const a0 = at();
+    map.setBearing(45); const a45 = at();
+    map.setBearing(135); const a135 = at();
+    map.setBearing(0);
+    return { a0, a45, a135 };
+  }`);
+  // Nothing rotates it, and nothing moves it: that is the whole fix.
+  expect(got.a45.t).toBe('none');
+  expect(got.a135.t).toBe('none');
+  expect({ x: got.a45.x, y: got.a45.y }).toEqual({ x: got.a0.x, y: got.a0.y });
+  expect({ x: got.a135.x, y: got.a135.y }).toEqual({ x: got.a0.x, y: got.a0.y });
 });
 
 // The old failure came from living in a rotating pane. This is the structural reason it cannot
 // happen again.
 test('it is on the map container, not in a rotating pane', async ({ page }) => {
   await boot(page);
-  await addBox(page);
-  const where = await page.evaluate(() => {
-    const el = document.querySelector('.sigwx-side');
-    return {
-      inPane: !!el.closest('.leaflet-pane'),
-      inRotatePane: !!el.closest('.leaflet-rotate-pane'),
-      parentIsContainer: el.parentElement === map.getContainer(),
-    };
-  });
+  const where = await withBox(page, `(box) => ({
+    inPane: !!box.closest('.leaflet-pane'),
+    inRotatePane: !!box.closest('.leaflet-rotate-pane'),
+    parentIsContainer: box.parentElement === map.getContainer(),
+  })`);
   expect(where.inPane).toBe(false);
   expect(where.inRotatePane).toBe(false);
   expect(where.parentIsContainer).toBe(true);
 });
 
-// Panning and zooming moved it too, at any bearing -- it was pinned to ground, not to the screen.
+// Panning and zooming moved it too: it was pinned to ground, not to the screen.
 test('panning and zooming leave it where it is', async ({ page }) => {
   await boot(page);
-  await addBox(page);
-  const before = await boxRect(page);
-  await page.evaluate(() => { map.setView([31.2, 34.6], 9); });
-  await page.waitForTimeout(150);
-  expect(await boxRect(page)).toEqual(before);
+  const got = await withBox(page, `(box) => {
+    const at = () => { const b = box.getBoundingClientRect();
+      return { x: Math.round(b.x), y: Math.round(b.y) }; };
+    const before = at();
+    map.setView([31.2, 34.6], 9);
+    return { before, after: at() };
+  }`);
+  expect(got.after).toEqual(got.before);
 });
 
 // It must not cover the toolbar: that is how the pilot turns it back off.
 test('it clears the toolbar', async ({ page }) => {
   await boot(page);
-  await addBox(page);
-  const clear = await page.evaluate(() => {
-    const box = document.querySelector('.sigwx-side').getBoundingClientRect();
-    const tb = document.getElementById('toolbar').getBoundingClientRect();
-    return box.top >= tb.bottom;
-  });
+  const clear = await withBox(page, `(box) => box.getBoundingClientRect().top
+    >= document.getElementById('toolbar').getBoundingClientRect().bottom`);
   expect(clear).toBe(true);
 });
 
-// It is a read-out, not a control: the map underneath stays draggable through it.
-test('it does not swallow the map underneath', async ({ page }) => {
+// Reported: the text is too small. The table is 746x1427 source pixels, so fitting it whole
+// beside the chart lands it around 360px wide -- half its own resolution. As an overlay it never
+// had to fit: it grew with the zoom (~640px at z8, ~1270px at z9) and ran off the screen instead.
+test('the width comes from the height there is room for, not a fixed cap', async ({ page }) => {
   await boot(page);
-  await addBox(page);
-  expect(await page.evaluate(() =>
-    getComputedStyle(document.querySelector('.sigwx-side')).pointerEvents)).toBe('none');
+  const got = await page.evaluate(() => ({
+    tall: sigwxSideWidthPx(1400, 1400, 1),
+    short: sigwxSideWidthPx(1400, 600, 1),
+    narrow: sigwxSideWidthPx(700, 1400, 1),
+    tiny: sigwxSideWidthPx(400, 260, 1),
+    scaled: sigwxSideWidthPx(1400, 1400, 0.5),
+  }));
+  // Its own resolution and no further: upscaling a scanned table adds blur, not letters.
+  expect(got.tall).toBeLessThanOrEqual(746);
+  // A short window gets less, because the whole table still has to fit inside it. The first
+  // version capped the WIDTH at 380px instead and let the height fall out of that, which is
+  // smaller than fitting the height allows on any window taller than about 830px.
+  expect(got.short).toBeLessThan(got.tall);
+  // Never more than half the map, however tall the window.
+  expect(got.narrow).toBeLessThanOrEqual(350);
+  // A floor, so a tiny window shows a panel rather than a sliver.
+  expect(got.tiny).toBe(160);
+  // The tunable still means what it meant: a size knob.
+  expect(got.scaled).toBeLessThan(got.tall);
+});
+
+// At that size the panel is a summary. The way to READ the table is to open it.
+test('it is pressable, and says so', async ({ page }) => {
+  await boot(page);
+  const got = await withBox(page, `(box) => ({
+    role: box.getAttribute('role'),
+    label: box.getAttribute('aria-label'),
+    tab: box.tabIndex,
+    cursor: getComputedStyle(box).cursor,
+  })`);
+  expect(got.role).toBe('button');
+  expect(got.label).toMatch(/full size/i);
+  expect(got.tab).toBe(0);
+  expect(got.cursor).toBe('zoom-in');
 });
 
 // A third of a phone is too much to give a table nobody can read at that size.
 test('a phone gets the chart instead of the table', async ({ page }) => {
   await boot(page, 430, 780);
-  await addBox(page);
-  expect(await page.evaluate(() =>
-    getComputedStyle(document.querySelector('.sigwx-side')).display)).toBe('none');
+  const display = await withBox(page, `(box) => getComputedStyle(box).display`);
+  expect(display).toBe('none');
 });

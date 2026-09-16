@@ -8244,11 +8244,15 @@ body.theme-light .navlog-table {
   top: 96px;
   inset-inline-end: 8px;
   z-index: 620;                 /* over the panes, under the toolbar and the modals */
-  width: min(34%, 380px);
+  /* Width is set in JS, from the height there is room for and the table's own resolution --
+     see sizeSideBox. This is only the floor for the moment before it runs. */
+  width: 260px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  pointer-events: none;         /* it is a read-out: the map underneath stays draggable */
+  /* Pressable: at this size the panel is a summary, and the way to READ the table is to open
+     it. A small box in a corner, so the map stays draggable everywhere that matters. */
+  cursor: zoom-in;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 .sigwx-side img { display: block; width: 100%; height: auto; }
@@ -8257,3 +8261,10 @@ body.theme-light .navlog-table {
 @media (max-width: 680px) {
   .sigwx-side { display: none; }
 }
+
+/* The table at its own size, in a window that scrolls. The panel beside the chart says what
+   kind of weather is on the sheet; this is where it can be read. */
+.sigwx-table-full { max-height: 78vh; overflow: auto; display: flex; flex-direction: column;
+  gap: 2px; }
+.sigwx-table-full img { display: block; width: auto; max-width: none; }
+.sigwx-side:focus-visible { outline: 2px solid #6fb0ff; outline-offset: 2px; }
