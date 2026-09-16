@@ -289,3 +289,117 @@ test.describe('what the review found', () => {
     expect(await page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt))).toContain(named);
   });
 });
+
+// A second review, of the fixes above. Three more, all in or beside what they touched.
+test.describe('what the second review found', () => {
+  const inkProbe = (page, setup) => page.evaluate((body) => {
+    eval(body);
+    const seen = { in: [], out: [], cumIn: [], cumRet: [] };
+    const o = {
+      legLabelCenter: window.legLabelCenter,
+      cumLabelCenter: window.cumLabelCenter,
+      cumLabelRetCenter: window.cumLabelRetCenter,
+    };
+    window.legLabelCenter = (i, which, ...r) => {
+      seen[which === 'out' ? 'out' : 'in'].push(i);
+      return o.legLabelCenter.call(null, i, which, ...r);
+    };
+    window.cumLabelCenter = (i, ...r) => { seen.cumIn.push(i); return o.cumLabelCenter.call(null, i, ...r); };
+    window.cumLabelRetCenter = (i, ...r) => { seen.cumRet.push(i); return o.cumLabelRetCenter.call(null, i, ...r); };
+    routeInkRects();
+    Object.assign(window, o);
+    return seen;
+  }, setup);
+
+  // The draw site checks the feature flag as well as the toggle -- "belt and braces", against a
+  // stored or synced showReturn that outlived the gist switching the feature off. The ink gate
+  // did not, so it counted return kites nobody paints: a larger fitted sheet than the export
+  // needs, and a clipping warning for ink that is not there.
+  test('a return path the gist switched off is not counted as ink', async ({ page }) => {
+    await boot(page);
+    const on = await inkProbe(page, `
+      showCumTime = true; showReturn = true;
+      window.showReturnFeatureOn = () => true;
+      for (const l of state.legs) { l.outboundAltitude = 3000; l.outboundSpeed = 90; }
+      draw();`);
+    expect(on.out.length, 'return nav kites counted while the feature is on').toBeGreaterThan(0);
+    expect(on.cumRet.length).toBeGreaterThan(0);
+
+    const off = await inkProbe(page, `
+      showCumTime = true; showReturn = true;          // stored on...
+      window.showReturnFeatureOn = () => false;       // ...but switched off by the gist
+      draw();`);
+    expect(off.out, 'nothing is painted, so nothing may be counted').toEqual([]);
+    expect(off.cumRet).toEqual([]);
+    expect(off.in.length, 'the inbound side is untouched by the return flag').toBeGreaterThan(0);
+  });
+
+  // An out-and-back steps each direction to its own side. The boxes are elongated, so orienting
+  // one about the unshifted waypoint gives the wrong SHAPE, not merely a few pixels of offset.
+  test('the ink boxes are built on the ends the kites are drawn from', async ({ page }) => {
+    await boot(page);
+    const moved = await page.evaluate(() => {
+      // a-b-a: the two directions of the same ground, which is what legScreenEnds steps apart.
+      state.waypoints = [
+        { name: 'A', lat: 32.1, lng: 34.9 },
+        { name: 'B', lat: 32.6, lng: 35.2 },
+        { name: 'A', lat: 32.1, lng: 34.9 },
+      ];
+      syncLegs();
+      for (const l of state.legs) { l.inboundAltitude = 3000; l.flightSpeed = 90; }
+      showCumTime = true;
+      draw();
+      const ends = legScreenEnds(0);
+      const raw = proj(state.waypoints[1]);
+      return { shifted: Math.round(Math.abs(ends.b.x - raw.x) + Math.abs(ends.b.y - raw.y)) };
+    });
+    // The fixture only proves anything if this route really is stepped apart.
+    expect(moved.shifted, 'legScreenEnds steps an out-and-back aside').toBeGreaterThan(0);
+    // Isolate the ANCHOR. The kite centres are themselves computed from legScreenEnds, so
+    // moving it moves them too and any difference proves nothing; pinned to constants, the only
+    // thing left that legScreenEnds can reach is the point each box is oriented about. Run it
+    // with the real ends and again with them forced back to the raw waypoints: if the boxes are
+    // built on the drawn ends the two differ, and if they are built on proj(wps[i]) -- which is
+    // what they were -- the two are identical.
+    const both = await page.evaluate(() => {
+      const sum = (rs) => rs.map(r => [r.x, r.y, r.w, r.h].map(Math.round).join(',')).join('|');
+      // A kite sits beside its waypoint, not across the map: the anchor sets only the ANGLE the
+      // box is rotated to, so on a long lever a four-pixel step is a fifth of a degree and
+      // rounds away. Pinned 40px from the waypoint, the way a real kite sits, the same step is
+      // about five degrees -- which is the difference this is about.
+      const near = proj(state.waypoints[1]);
+      const pin = { x: near.x + 40, y: near.y + 10 };
+      const saved = {
+        legLabelCenter: window.legLabelCenter,
+        cumLabelCenter: window.cumLabelCenter,
+        cumLabelRetCenter: window.cumLabelRetCenter,
+        legScreenEnds: window.legScreenEnds,
+      };
+      window.legLabelCenter = () => pin;
+      window.cumLabelCenter = () => pin;
+      window.cumLabelRetCenter = () => pin;
+      const real = sum(routeInkRects());
+      window.legScreenEnds = (i) => ({ a: proj(state.waypoints[i]), b: proj(state.waypoints[i + 1]) });
+      const raw = sum(routeInkRects());
+      Object.assign(window, saved);
+      return { real, raw };
+    });
+    expect(both.real).not.toBe(both.raw);
+  });
+
+  // The header row is the export contract.
+  test('the built-in header order matches the cells beneath it', async ({ page }) => {
+    await boot(page);
+    const got = await page.evaluate(() => {
+      const saved = window.S.navLogHeaders;
+      delete window.S.navLogHeaders;                 // a language pack that omits the key
+      const fallback = NavAid.navLog.headers();
+      window.S.navLogHeaders = saved;
+      return { fallback, localized: saved };
+    });
+    expect(got.fallback).toHaveLength(23);
+    expect(got.fallback).toEqual(got.localized);     // one order, not two
+    expect(got.fallback[7]).toBe('W kt');            // cells() emits wind SPEED here
+    expect(got.fallback[8]).toBe('W dir');
+  });
+});
