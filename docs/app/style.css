@@ -8231,3 +8231,29 @@ body.theme-light .navlog-table {
 .navlog-row.navlog-descent td { background: rgba(214, 178, 74, 0.16); }
 .navlog-note { font-size: 12px; opacity: 0.8; }
 .navlog-actions { display: flex; gap: 8px; }
+
+/* --- SIGWX side panel ----------------------------------------------------
+   The sheet's header and table are not geography. They used to be image overlays pinned to
+   invented coordinates east of Israel, which works only while the map is north-up: rotate it
+   and they swing away with that fiction, off to the side and on their ear. They sit in screen
+   space now -- same place, same way up, whatever the map is doing underneath. */
+.sigwx-side {
+  position: absolute;
+  /* Clear of the toolbar, which sits at top: 12px and is the one thing that must never be
+     covered: it is how the pilot turns this panel back off. */
+  top: 96px;
+  inset-inline-end: 8px;
+  z-index: 620;                 /* over the panes, under the toolbar and the modals */
+  width: min(34%, 380px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;         /* it is a read-out: the map underneath stays draggable */
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+.sigwx-side img { display: block; width: 100%; height: auto; }
+/* Narrow screens: the chart is the point, and a third of a phone is too much to give a table
+   nobody can read at that size anyway. */
+@media (max-width: 680px) {
+  .sigwx-side { display: none; }
+}

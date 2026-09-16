@@ -11572,27 +11572,50 @@ const NavWxAvailability = (function () {
   const CROP_HEADER = { x0: 0.00000, x1: 0.99200, y0: 0.02258, y1: 0.10484 };
   const CROP_MAP = { x0: 0.01595, x1: 0.38860, y0: 0.10484, y1: 0.91774 };
   const CROP_TABLE = { x0: 0.39000, x1: 0.99200, y0: 0.10484, y1: 0.91774 };
-  // Header strip aspect (height/width in source px) — used to size it when it's
-  // scaled to the table's width.
-  const HEADER_ASPECT = (CROP_HEADER.y1 - CROP_HEADER.y0) / (CROP_HEADER.x1 - CROP_HEADER.x0)
-    * (1240 / 1755);
   // Map-panel geographic extent (re-solved for the header-trimmed crop) as a
   // similarity fit over three airfields shared with our own layers — LLHA, LLBS
   // and LLIB; LLIB constrains the longitude scale. ~-0.8° tilt → sigwxRotationDeg.
   const BOUNDS_MAP = { n: 33.97, s: 29.37, w: 33.29, e: 36.80 };
-  // The TABLE isn't geographic — park it just east of Israel (over Jordan) so it
-  // sits to the right of the map; position/size are tunable.
-  const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
+  // (HEADER_ASPECT and BOUNDS_TABLE lived here. The header keeps its own aspect now because it
+  // is an <img> in a box, and the table has no geographic extent to invent -- see sideBox.)
 
-  let manifest = null, mapLayer = null, tblLayer = null, hdrLayer = null;
+  let manifest = null, mapLayer = null;
+  // The header and the table are NOT geography. They were image overlays pinned to invented
+  // coordinates -- the old comment said so: "the TABLE isn't geographic, park it just east of
+  // Israel" -- which works only while the map is north-up. Rotate it and those fake points swing
+  // with everything else, so the panels land wherever that geography now falls: off to the side,
+  // half off-screen, turned on their side. Counter-rotating them fixes the angle and leaves the
+  // position wrong, which reads worse than leaving them alone.
+  //
+  // So they live in SCREEN space now: one box beside the chart, always in the same place,
+  // always the right way up, whatever the map is doing underneath. The weather panel stays a
+  // map layer, because its fronts and areas do belong over the ground they describe.
+  let sidePanel = null, hdrImg = null, tblImg = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
   const cropCache = {};                      // key → cropped dataURL
 
   function removeLayers() {
     if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
-    if (tblLayer) { map.removeLayer(tblLayer); tblLayer = null; }
-    if (hdrLayer) { map.removeLayer(hdrLayer); hdrLayer = null; }
+    if (sidePanel) { sidePanel.remove(); sidePanel = null; hdrImg = null; tblImg = null; }
+  }
+  // The box beside the chart. Built once, on the map container rather than in a pane, so no
+  // pan, zoom or bearing reaches it.
+  function sideBox() {
+    if (sidePanel && sidePanel.isConnected) return sidePanel;
+    const host = (typeof map !== 'undefined' && map.getContainer) ? map.getContainer() : null;
+    if (!host) return null;
+    sidePanel = document.createElement('div');
+    sidePanel.className = 'sigwx-side';
+    hdrImg = document.createElement('img');
+    hdrImg.className = 'sigwx-side-header';
+    hdrImg.alt = '';
+    tblImg = document.createElement('img');
+    tblImg.className = 'sigwx-side-table';
+    tblImg.alt = '';
+    sidePanel.append(hdrImg, tblImg);
+    host.appendChild(sidePanel);
+    return sidePanel;
   }
   // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
   // makes the chart's white paper transparent so it doesn't read as a glaring
@@ -11725,13 +11748,19 @@ const NavWxAvailability = (function () {
   }
   map.on('move zoom zoomend viewreset', applyRotation);
   function place(which, data, bounds, op) {
-    const ref = which === 'map' ? mapLayer : (which === 'header' ? hdrLayer : tblLayer);
-    if (!ref) {
-      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
-      lyr.addTo(map);
-      if (which === 'map') mapLayer = lyr; else if (which === 'header') hdrLayer = lyr; else tblLayer = lyr;
+    if (which !== 'map') {                 // header and table: screen space, see sideBox
+      const box = sideBox();
+      if (!box) return;
+      box.style.opacity = String(op);
+      const img = which === 'header' ? hdrImg : tblImg;
+      if (img && img.getAttribute('src') !== data) img.src = data;
+      return;
+    }
+    if (!mapLayer) {
+      mapLayer = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
+      mapLayer.addTo(map);
     } else {
-      ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
+      mapLayer.setUrl(data); mapLayer.setBounds(bounds); mapLayer.setOpacity(op);
     }
   }
   // Cropping a SIGWX panel is asynchronous (image decode + canvas), and the pilot can
@@ -11784,20 +11813,17 @@ const NavWxAvailability = (function () {
       showLoading(false);
       removeLayers();
     });
+    // No bounds for these two any more: they are a box beside the chart, not places on it. The
+    // header keeps its own aspect from the crop, and the table sits under it, both as wide as
+    // the box -- which is what the old lat/lng arithmetic was doing the long way round.
     const tblOp = off('sigwxTblOpacity') || 0.92;
-    const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
     cropPanel(url, CROP_TABLE, false).then(data => {
       if (gen !== sigwxGen || !cb.checked) return;
-      place('table', data, tblBounds, tblOp);
+      place('table', data, null, tblOp);
     }).catch(() => { /* table optional */ });
-    // Title header: full-width strip shrunk to the table's width, parked just
-    // above the table (height keeps the strip's aspect at that width).
     cropPanel(url, CROP_HEADER, false).then(data => {
       if (gen !== sigwxGen || !cb.checked) return;
-      const w = tblBounds[0][1], e = tblBounds[1][1], nT = tblBounds[1][0];
-      const midLat = (tblBounds[0][0] + nT) / 2;
-      const hLat = (e - w) * Math.cos(midLat * Math.PI / 180) * HEADER_ASPECT;
-      place('header', data, [[nT, w], [nT + hLat, e]], tblOp);
+      place('header', data, null, tblOp);
     }).catch(() => { /* header optional */ });
   }
   // Merge into the shared #wx-time dropdown (deduped; does not clear PWX's
