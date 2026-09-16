@@ -121,14 +121,15 @@ test('a saved route keeps the angle, through the library and its validator', asy
     syncLegs();
     state.notes = [{ lat: 32.1, lng: 34.95, text: 'ridge', rot: 60 }];
   });
-  const round = await page.evaluate(() => {
+  const round = await page.evaluate(async () => {
     const entry = routeLibrarySaveCurrent('rot test');
     const stored = entry && entry.data.notes[0].rot;
     const invalid = typeof validateRoute === 'function' ? validateRoute(entry.data) : null;
     state.notes = [];
     state.waypoints = [];
     syncLegs();
-    const applied = routeLibraryApply(entry);
+    // Nothing on the map to lose, so the replace question does not come up.
+    const applied = await routeLibraryApply(entry);
     return { stored, invalid, applied, after: state.notes.length ? state.notes[0].rot : null };
   });
   expect(round.stored).toBe(60);

@@ -318,11 +318,14 @@ test('the toolbar Import opens an exercise file', async ({ page }) => {
   expect(got).toEqual({ names: ['LLHZ', 'א', 'ב', 'ג', 'LLIB'], met: 6, cruise: 6000, dep: 100 });
 });
 
-// ...and an ordinary route file still takes the route path, untouched by any of this.
+// ...and an ordinary route file still takes the route path, untouched by any of this. It asks
+// the same question -- the gate is the app's, not this window's (see import.spec.js) -- so the
+// sheet is what this one is about: a route file carries none, and must not invent one.
 const ROUTE_FILE = require('./fixtures/route-herzliya-rosh-pina.json');
 
 test('a plain route file is still just a route', async ({ page }) => {
   await boot(page);
+  await page.evaluate(() => { window.askYesNo = async () => true; });
   const before = await page.evaluate(() => NavAid.navLog.config().met.length);
   await page.setInputFiles('#file', {
     name: 'route.json',

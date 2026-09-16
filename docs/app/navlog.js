@@ -242,27 +242,21 @@
     };
   }
 
-  // Is there a drawn plan an incoming route would destroy?
-  function routeOnMap() {
-    return typeof state === 'object' && state
-      && Array.isArray(state.waypoints) && state.waypoints.length > 0;
-  }
-
-  // The one gate in front of every exercise route, asked before anything is applied. Both doors
-  // pass through it: an exercise that is also a route file (drawn by the app's own route path)
-  // and one that is only points (drawn here). Reported as a route replaced with no warning --
-  // the ask lived after applyRouteData had already overwritten the map.
-  async function askReplaceRoute() {
-    if (!routeOnMap()) return true;
+  // The gate in front of every exercise route, asked before anything is applied. Both doors pass
+  // through it: an exercise that is also a route file (drawn by the app's own route path) and one
+  // that is only points (drawn here). Reported as a route replaced with no warning -- the ask
+  // lived after applyRouteData had already overwritten the map.
+  //
+  // The question itself is io.js's, shared with the app's other route doors; only the wording is
+  // this window's, because an exercise carries a sheet as well as a route.
+  async function askExerciseRoute() {
     const S2 = window.S || {};
-    const ask = S2.navTableReplaceRoute
-      || 'This exercise carries its own route. Load it? This replaces the route on your map.';
-    try {
-      return typeof window.askYesNo === 'function'
-        ? !!await window.askYesNo(S2.navTableTitle || 'Flight planning form', ask,
-          S2.navTableReplaceRouteOk || 'Load the route')
-        : true;
-    } catch (e) { return false; }
+    if (typeof askReplaceRoute !== 'function') return true;
+    return askReplaceRoute(
+      S2.navTableReplaceRoute
+        || 'This exercise carries its own route. Load it? This replaces the route on your map.',
+      S2.navTableReplaceRouteOk || 'Load the route',
+      S2.navTableTitle || 'Flight planning form');
   }
 
   // The undo the route path takes, so declining is not the only way back.
@@ -288,7 +282,7 @@
       return null;
     }
     // Already asked and answered upstairs when the caller drew the route itself.
-    if (parsed.waypoints && !(await askReplaceRoute())) {
+    if (parsed.waypoints && !(await askExerciseRoute())) {
       parsed.waypoints = null;               // the settings still land; the plan is untouched
     }
     if (parsed.waypoints) {
@@ -433,7 +427,7 @@
       // Ask BEFORE applying: applyRouteData overwrites waypoints, legs and notes outright, and
       // a question asked afterwards is asking about a plan that is already gone. Declining
       // keeps the map and still takes the sheet -- met table, card, speeds, field elevations.
-      if (await askReplaceRoute()) {
+      if (await askExerciseRoute()) {
         snapshotRoute();
         applyRouteData(asRoute);
       }

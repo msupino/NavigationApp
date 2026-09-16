@@ -3008,7 +3008,7 @@ function load(file) {
     return;
   }
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     let d;
     try {
       d = JSON.parse(reader.result);
@@ -3053,9 +3053,34 @@ function load(file) {
       refuse(S.errInvalidRoute(verr));
       return;
     }
+    if (!await askReplaceRoute()) return;
     applyRouteData(d);
   };
   reader.readAsText(file);
+}
+
+// One question in front of every route that replaces the one on the map. applyRouteData
+// overwrites waypoints, legs and notes outright, so this has to be asked BEFORE it runs -- a
+// question asked afterwards is asking about a plan that is already gone.
+//
+// Asked why an exercise file warned and an ordinary route file did not: it was the same picker,
+// the same load(), and the answer came down to whether the JSON happened to carry a `navlog`
+// key. Notes count as a route worth losing, the same as waypoints.
+//
+// Returns true when there is nothing to lose, so callers can await it unconditionally.
+async function askReplaceRoute(text, okLabel, title) {
+  const empty = !(state && ((state.waypoints && state.waypoints.length)
+    || (state.notes && state.notes.length)));
+  if (empty) return true;
+  const ask = text || S.routeOpenReplaceConfirm || 'Replace the route on your map with this one?';
+  // No dialog at all (an old build, a stripped page) loads it: the pilot picked this file, and
+  // a silent refusal would be worse than a silent replace. A dialog that THREW is different --
+  // that is a question with no answer, so the drawn plan stays.
+  try {
+    return typeof window.askYesNo === 'function'
+      ? !!await window.askYesNo(title || S.tbImport || 'Import', ask, okLabel || S.routeLibraryLoad || 'Load')
+      : true;
+  } catch (e) { return false; }
 }
 
 // Apply a parsed, validated route blob (the shape serializeRoute() emits) to
@@ -3301,13 +3326,13 @@ function routeLibraryUpdate(id) {
   return entry;
 }
 // Apply a saved library entry to the live route. Returns true if applied.
-function routeLibraryApply(entry) {
+async function routeLibraryApply(entry) {
   if (!entry || !entry.data) return false;
   const verr = typeof validateRoute === 'function' ? validateRoute(entry.data) : null;
   if (verr) { refuse(S.errInvalidRoute ? S.errInvalidRoute(verr) : verr); return false; }
-  if ((state.waypoints.length || state.notes.length) &&
-      !confirm(S.routeLibraryReplaceConfirm ||
-        S.routeTemplateReplaceConfirm || 'Replace the current route?')) return false;
+  const ask = S.routeLibraryReplaceConfirm || S.routeTemplateReplaceConfirm
+    || 'Replace the current route?';
+  if (!await askReplaceRoute(ask, S.routeLibraryLoad, S.routeLibraryTitle)) return false;
   applyRouteData(entry.data);
   currentRouteLibraryId = entry.id;   // track the loaded entry for in-place Save
   return true;

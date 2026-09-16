@@ -2871,7 +2871,7 @@ function showRouteLibraryModal(focusSave) {
       // GPS tracks toggle a map overlay; routes replace the working route.
       main.onclick = isGps
         ? () => { if (typeof toggleTrackOverlay === 'function') { toggleTrackOverlay(entry); render(); } }
-        : () => { if (routeLibraryApply(entry)) modal.close(); };
+        : async () => { if (await routeLibraryApply(entry)) modal.close(); };
 
       const actions = document.createElement('div');
       actions.className = 'route-library-actions';
@@ -2884,7 +2884,7 @@ function showRouteLibraryModal(focusSave) {
         loadBtn.onclick = () => { if (typeof toggleTrackOverlay === 'function') { toggleTrackOverlay(entry); render(); } };
       } else {
         loadBtn.textContent = S.routeLibraryLoad || 'Load';
-        loadBtn.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
+        loadBtn.onclick = async () => { if (await routeLibraryApply(entry)) modal.close(); };
       }
       // Per-row Save overwrites this saved route with the current one — routes
       // only (a GPS track is a recording, not an editable route). Appended

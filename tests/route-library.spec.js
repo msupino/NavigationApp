@@ -207,3 +207,40 @@ test.describe('Inspector', () => {
     expect(pos && Number.isFinite(pos.x)).toBeTruthy();
   });
 });
+
+// Loading a saved route over a drawn one asked with a raw confirm(), the one browser dialog this
+// app does not use anywhere else -- it is not styled, not translated with the rest, and not the
+// dialog the other three route doors ask through. Same question, same gate.
+test('loading a saved route over a drawn one asks in the app, not the browser', async ({ page }) => {
+  await boot(page);
+  const browserDialogs = [];
+  page.on('dialog', (d) => { browserDialogs.push(d.message()); d.dismiss(); });
+  await setRoute(page, ['LLSD', 'BAZRA', 'LLHA']);
+  await page.evaluate(() => {
+    routeLibrarySaveCurrent('Coast hop');
+  });
+  await setRoute(page, ['LLHZ', 'LLIB']);
+
+  // Declining keeps what is drawn.
+  await page.evaluate(async () => {
+    window.__askedWith = null;
+    window.askYesNo = async (title, text) => { window.__askedWith = [title, text]; return false; };
+    const entry = loadRouteLibrary()[0];
+    window.__declined = await routeLibraryApply(entry);
+  });
+  expect(await page.evaluate(() => window.__declined)).toBe(false);
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['LLHZ', 'LLIB']);
+  const asked = await page.evaluate(() => window.__askedWith);
+  expect(asked[0]).toBe('Saved routes');
+  expect(asked[1]).toMatch(/Replace the current route/i);
+
+  // ...and accepting loads it.
+  await page.evaluate(async () => {
+    window.askYesNo = async () => true;
+    const entry = loadRouteLibrary()[0];
+    window.__took = await routeLibraryApply(entry);
+  });
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name)))
+    .toEqual(['LLSD', 'BAZRA', 'LLHA']);
+  expect(browserDialogs, 'the browser dialog is the one this app never uses').toEqual([]);
+});
