@@ -133,6 +133,20 @@
     }
     box.appendChild(body);
 
+    // Said where it is true, and only there. The inline tag in index.html defines window.gtag
+    // synchronously when its gates pass, so this reads the same decision rather than repeating
+    // it: no line in the native app, on staging, on a PR preview or when running locally -- and
+    // if the tag is ever removed again, the sentence goes with it instead of standing as a
+    // claim about something that no longer happens.
+    if (typeof window.gtag === 'function') {
+      const note = document.createElement('p');
+      note.className = 'disclaimer-note';
+      note.textContent = textOf('disclaimerAnalytics',
+        'This site uses Google Analytics to count anonymous visits, and it sets Google\u2019s '
+        + 'cookies. Your routes, positions and flight plans are never sent to it.');
+      box.appendChild(note);
+    }
+
     // The full text, for whoever wants it now rather than from the footer later. New tab:
     // this dialog is not finished with, and losing an unanswered acknowledgement to a
     // navigation would be worse than a second tab.

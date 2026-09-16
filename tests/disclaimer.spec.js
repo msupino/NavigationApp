@@ -275,3 +275,44 @@ test('the notice opens in Hebrew by default, and its choice is the app\'s langua
   expect(await page.evaluate(() => document.documentElement.lang)).toBe('he');
   expect(await page.evaluate(() => document.getElementById('lang-select').value)).toBe('he');
 });
+
+// The notice is the first thing a pilot sees, which makes it the honest place to say that the
+// web site counts visits -- and pressing "I understand" is the only acknowledgement in the app.
+// Said where it is true and nowhere else: the line reads the same decision the tag itself made,
+// so it cannot outlive the tag or appear where the tag never loads.
+test.describe('the analytics line', () => {
+  test('it says so, once, beside the links rather than among the points', async ({ page }) => {
+    await openApp(page);
+    const note = notice(page).locator('.disclaimer-note');
+    await expect(note).toHaveCount(1);
+    await expect(note).toContainText('Google Analytics');
+    await expect(note).toContainText('cookies');
+    // What it does NOT see is the half a pilot cares about.
+    await expect(note).toContainText(/routes, positions and flight plans are never sent/i);
+    // Not one of the three flight-safety points: those are about the flight.
+    await expect(notice(page).locator('.disclaimer-points li')).toHaveCount(3);
+    await expect(notice(page).locator('.disclaimer-points')).not.toContainText('Analytics');
+  });
+
+  test('it is not shown where the tag does not load', async ({ page }) => {
+    // The native shell, staging, a PR preview and a local run all leave window.gtag undefined.
+    // (The harness stubs gtag itself so nothing in CI can reach the real property, so the
+    // notice is rebuilt here with it taken away rather than fought over at boot.)
+    await openApp(page);
+    await expect(notice(page).locator('.disclaimer-note')).toHaveCount(1);
+    await page.evaluate(() => {
+      document.querySelector('.disclaimer-back').remove();
+      delete window.gtag;
+      window.gtag = undefined;
+      NavAid.showDisclaimer();
+    });
+    await expect(notice(page)).toBeVisible();
+    await expect(notice(page).locator('.disclaimer-note')).toHaveCount(0);
+  });
+
+  test('Hebrew says it too', async ({ page }) => {
+    await openApp(page, 'he');
+    await expect(notice(page).locator('.disclaimer-note')).toContainText('Google Analytics');
+    await expect(notice(page).locator('.disclaimer-note')).toContainText('עוגיות');
+  });
+});
