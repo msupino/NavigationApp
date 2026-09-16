@@ -157,11 +157,15 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(iosInfo).toContain('<string>NavAid</string>');
   });
 
-  test('loads no analytics runtime and lets the SW run in the remote shell', () => {
+  test('keeps analytics out of the native shell and lets the SW run in it', () => {
     const indexHtml = readText('docs/index.html');
     const uiJs = readText('docs/app/ui.js');
 
-    expect(indexHtml).not.toContain('googletagmanager');
+    // The shell loads the production URL, so it loads this very file: what keeps GA out of the
+    // app is the gate, not the absence of the tag. (This asserted the tag was absent, from the
+    // six weeks it was missing from production by accident.)
+    const ga = indexHtml.match(/typeof window\.Capacitor === 'undefined'[\s\S]{0,400}?googletagmanager/);
+    expect(ga, 'the GA tag must sit behind the Capacitor gate').not.toBeNull();
     expect(uiJs).toContain('function isNativeCapacitorShell()');
     // The SW must register in the remote-URL shell (offline + chart packs
     // depend on it) — only the legacy local-origin shell skips it.

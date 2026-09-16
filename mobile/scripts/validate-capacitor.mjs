@@ -119,12 +119,17 @@ for (const dep of ['@capacitor/core', '@capacitor/android', '@capacitor/ios', '@
 }
 
 const indexHtml = fs.readFileSync(path.join(repoRoot, 'docs', 'index.html'), 'utf8');
-// GA was removed from the whole app (production has no mutable analytics runtime at all --
-// see tests/ga-blocked.spec.js, which asserts its absence). This used to check that GA was
-// gated behind the native-shell detection instead; that markup is gone along with GA itself,
-// so the only invariant left to hold here is that it stays gone.
-if (/googletagmanager|google-analytics|\bgtag\s*\(/.test(indexHtml)) {
-  fail('docs/index.html must not reintroduce a Google Analytics / GTM runtime');
+// The shell loads the production URL, so it loads this very file -- what keeps GA out of the
+// APK and the IPA is the gate, not the absence of the tag. This is the check that was here
+// originally; it was replaced by "GA must not exist" during the six weeks the tag was missing
+// from production by accident, which turned that accident into a rule.
+const ga = /googletagmanager|google-analytics|\bgtag\s*\(/.test(indexHtml);
+if (ga && !/typeof window\.Capacitor === 'undefined'/.test(indexHtml)) {
+  fail('docs/index.html loads analytics without the native-shell gate');
+}
+// ...and the gate has to sit in front of the tag, not merely somewhere in the file.
+if (ga && !/typeof window\.Capacitor === 'undefined'[\s\S]{0,400}?googletagmanager/.test(indexHtml)) {
+  fail('docs/index.html has the native-shell gate, but not in front of the analytics tag');
 }
 
 const uiJs = fs.readFileSync(path.join(repoRoot, 'docs', 'app/ui.js'), 'utf8');
