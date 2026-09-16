@@ -684,8 +684,9 @@ test('the way back appears only when a field is holding an override', async ({ p
   await openLog(page);
   expect(await page.locator('.navlog-hint').count()).toBe(0);
   // Always on screen; dimmed when there is nothing to undo. `true` here means "live".
+  // The setup row's own arrows. The compass card carries one too, and it answers to the card.
   const resets = () => page.evaluate(() =>
-    [...document.querySelectorAll('.navlog-reset')]
+    [...document.querySelectorAll('.navlog-setup .navlog-reset')]
       .map(b => !b.hidden && !b.classList.contains('navlog-reset-idle')));
   // Departure elevation, destination elevation, variation, and the two met fractions: five
   // fields with a default worth returning to, all quiet to begin with.
@@ -698,7 +699,7 @@ test('the way back appears only when a field is holding an override', async ({ p
   });
   expect(await resets()).toEqual([false, false, true, false, false]);
 
-  await page.evaluate(() => document.querySelectorAll('.navlog-reset')[2].click());
+  await page.evaluate(() => document.querySelectorAll('.navlog-setup .navlog-reset')[2].click());
   expect(await resets()).toEqual([false, false, false, false, false]);
   expect(await page.evaluate(() => NavAid.navLog.config().variationDeg)).toBe(5);
   expect(await page.evaluate(() =>
@@ -982,7 +983,7 @@ test('the met table\'s buttons have room between them', async ({ page }) => {
 test('the undo arrow is always there, dimmed when there is nothing to undo', async ({ page }) => {
   await boot(page);
   await openLog(page);
-  const state1 = await page.evaluate(() => [...document.querySelectorAll('.navlog-reset')]
+  const state1 = await page.evaluate(() => [...document.querySelectorAll('.navlog-setup .navlog-reset')]
     .map(b => ({ hidden: b.hidden, idle: b.classList.contains('navlog-reset-idle'),
                  title: b.title, visible: b.getBoundingClientRect().width > 0 })));
   expect(state1).toHaveLength(5);
@@ -1002,7 +1003,7 @@ test('the undo arrow is always there, dimmed when there is nothing to undo', asy
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   const after = await page.evaluate(() => {
-    const b = document.querySelectorAll('.navlog-reset')[2];
+    const b = document.querySelectorAll('.navlog-setup .navlog-reset')[2];
     return { idle: b.classList.contains('navlog-reset-idle'), title: b.title };
   });
   expect(after.idle).toBe(false);
@@ -1227,6 +1228,163 @@ test('a climb with no rate says so under the sheet', async ({ page }) => {
   });
   const note = await page.evaluate(() => document.querySelector('.navlog-note').textContent);
   expect(note).toMatch(/no rate of climb/i);
+});
+
+// Reported with a screenshot of the deviation table showing 364 in the Steer column: a heading
+// is a point on a circle, and a compass in front of a pilot cannot read 364. The card's whole
+// job is to say what that compass WILL read.
+test.describe('the compass card', () => {
+  const steerInputs = (page) => page.locator('.navlog-card-grid input');
+
+  // The card is printed as two pairs of columns, six marks each, so the box for a given mark is
+  // not the nth input: 000 and 180 share the first row.
+  const boxFor = (page, devIndex) =>
+    steerInputs(page).nth((devIndex % 6) * 2 + (devIndex >= 6 ? 1 : 0));
+
+  const typeSteer = async (page, devIndex, value) => {
+    const box = boxFor(page, devIndex);
+    await box.fill(String(value));
+    await box.blur();
+    return box;
+  };
+
+  test('a steer heading stays on the circle', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 0, 364);
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(4);
+    await expect(boxFor(page, 0)).toHaveValue('004');
+  });
+
+  // A max would make the spinner STOP at 359. A compass does not stop: one step up from 359 is
+  // 000, and one step down from 000 is 359.
+  test('the spinner steps round the circle rather than hitting a wall', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const box = boxFor(page, 0);
+    await expect(box).not.toHaveAttribute('max', /.*/);
+    await box.fill('359');
+    await box.press('ArrowUp');
+    await expect(box).toHaveValue('000');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(0);
+    await box.press('ArrowDown');
+    await expect(box).toHaveValue('359');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(359);
+  });
+
+  // ...and a half-typed number is left alone, or nobody could type 120 past the 1.
+  test('typing is not rewritten under the caret', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const box = boxFor(page, 0);
+    await box.fill('');
+    await box.pressSequentially('120', { delay: 20 });
+    await expect(box).toHaveValue('120');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(120);
+  });
+
+  test('360 is 000, and a negative heading comes back round', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 1, 360);
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[1].ch)).toBe(0);
+    await typeSteer(page, 1, -10);
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[1].ch)).toBe(350);
+  });
+
+  // Every other box in this window carries its own way back. The card had one arrow for the
+  // whole table, which is a way back to nothing in particular: asked where the undo for each
+  // element was, the answer was that there wasn't one.
+  const rowArrow = (page, devIndex) =>
+    page.locator('.navlog-card-grid td .navlog-reset').nth((devIndex % 6) * 2 + (devIndex >= 6 ? 1 : 0));
+
+  test('every row carries its own way back', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    expect(await page.locator('.navlog-card-grid td .navlog-reset').count()).toBe(12);
+    // Always there, dimmed while that heading carries no deviation.
+    await expect(rowArrow(page, 2)).toBeVisible();
+    await expect(rowArrow(page, 2)).toHaveClass(/navlog-reset-idle/);
+    await typeSteer(page, 2, 66);
+    await expect(rowArrow(page, 2)).not.toHaveClass(/navlog-reset-idle/);
+    // ...and its neighbours stay quiet: this arrow is that heading's, not the table's.
+    await expect(rowArrow(page, 3)).toHaveClass(/navlog-reset-idle/);
+  });
+
+  test('a row arrow clears that heading and leaves the rest', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 2, 66);
+    await typeSteer(page, 7, 215);
+    await rowArrow(page, 2).click();
+    const after = await page.evaluate(() => NavAid.navLog.config().deviation.map(e => e.ch));
+    expect(after[2]).toBe(60);            // back to its magnetic heading
+    expect(after[7]).toBe(215);           // the other one is untouched
+    await expect(rowArrow(page, 2)).toHaveClass(/navlog-reset-idle/);
+    // The card as a whole still has something to undo, so its arrow stays live.
+    await expect(page.locator('.navlog-card .navlog-sub-title .navlog-reset'))
+      .not.toHaveClass(/navlog-reset-idle/);
+  });
+
+  // The house rule: always there, dimmed when there is nothing to undo.
+  test('the card carries a restore arrow, dimmed while the card is clear', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const arrow = page.locator('.navlog-card .navlog-sub-title .navlog-reset');
+    await expect(arrow).toBeVisible();
+    await expect(arrow).toHaveClass(/navlog-reset-idle/);
+    await typeSteer(page, 0, 4);
+    await expect(arrow).not.toHaveClass(/navlog-reset-idle/);
+  });
+
+  test('the arrow clears the whole card back to steer-what-you-are-told', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 0, 4);
+    await typeSteer(page, 2, 66);
+    expect(await page.evaluate(() =>
+      NavAid.navLog.config().deviation.filter(e => e.ch !== e.mh).length)).toBe(2);
+    await page.locator('.navlog-card .navlog-sub-title .navlog-reset').click();
+    expect(await page.evaluate(() =>
+      NavAid.navLog.config().deviation.every(e => e.ch === e.mh))).toBe(true);
+    // ...and it is the stored card that was cleared, not just the boxes on screen.
+    expect(await page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem('navaid.navlog') || '{}');
+      return (s.deviation || []).every(e => e.ch === e.mh);
+    })).toBe(true);
+    await expect(page.locator('.navlog-card .navlog-sub-title .navlog-reset'))
+      .toHaveClass(/navlog-reset-idle/);
+    // ...and every row's own arrow went quiet with it.
+    expect(await page.locator('.navlog-card-grid td .navlog-reset:not(.navlog-reset-idle)').count())
+      .toBe(0);
+  });
+
+  // The card the window starts with: no deviation anywhere, written the way the column beside
+  // it is written. North is the row that showed it -- 000 against a box reading 0.
+  test('the default card matches the magnetic column, north included', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const pairs = await page.evaluate(() =>
+      [...document.querySelectorAll('.navlog-card-grid tr')].slice(1).flatMap((tr) => {
+        const tds = [...tr.children];
+        return [[tds[0], tds[1]], [tds[2], tds[3]]]
+          .filter(([m, c]) => m && c && c.querySelector('input'))
+          .map(([m, c]) => [m.textContent, c.querySelector('input').value]);
+      }));
+    expect(pairs).toHaveLength(12);
+    expect(pairs[0]).toEqual(['000', '000']);
+    for (const [magnetic, steer] of pairs) expect(steer).toBe(magnetic);
+  });
+
+  // Emptying a box is the other way back, as it is for every box in this window.
+  test('emptying one box hands that row back to its magnetic heading', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 3, 95);
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[3].ch)).toBe(95);
+    await typeSteer(page, 3, '');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[3])).toEqual({ mh: 90, ch: 90 });
+  });
 });
 
 // A UI pass over the window: what a pilot reads, and in what order. Each of these was a real
