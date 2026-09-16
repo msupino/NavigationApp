@@ -4,6 +4,9 @@
 const { test, expect } = require('./_setup');
 
 const GA_RE = /(googletagmanager|google-analytics|analytics\.google|doubleclick)\.(com|net)/;
+// The property the live site feeds. Pinned here so removing or blanking it fails the build:
+// it was lost once in a commit that never mentioned analytics, and nothing noticed for weeks.
+const GA4_ID = 'G-0XM5PHEK8B';
 
 // Static guard: every spec must import test/expect from ./_setup, not straight
 // from @playwright/test. The GA-blocking route lives in the _setup `page`
@@ -22,11 +25,60 @@ test.describe('GA-block coverage', () => {
 });
 
 test.describe('third-party runtime integrity', () => {
-  test('production HTML contains no Google Analytics / GTM runtime', () => {
+  // The tag is SUPPOSED to be here. It was removed on 4 Aug 2026 inside a hardening commit
+  // whose message never mentions analytics, and the GA4 property recorded nothing for six
+  // weeks before anyone noticed it was empty. This test used to assert the opposite -- that
+  // the tag was absent -- which would have made putting it back fail the build.
+  test('production HTML carries the GA4 tag, gated to production', () => {
     const fs = require('fs');
     const path = require('path');
     const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'index.html'), 'utf8');
-    expect(html).not.toMatch(/googletagmanager|google-analytics|\bgtag\s*\(/);
+    // The exact property, not just "some GA tag": a blanked or mistyped id is a tag that
+    // loads, reports success, and feeds nothing -- indistinguishable from what happened here.
+    expect(html, 'the GA4 tag must not be removed; see the comment beside it in index.html')
+      .toContain('googletagmanager.com/gtag/js?id=' + GA4_ID);
+    expect(html).toContain("gtag('config', '" + GA4_ID + "')");
+    // ...and every gate it is supposed to be behind. A tag that fired from a PR preview, a
+    // branch build or the native shell would mix three different things into one property.
+    expect(html, 'the staging / pr / branch exclusion').toMatch(/staging\|pr\|branch/);
+    expect(html, 'the native-shell exclusion').toMatch(/typeof window\.Capacitor === 'undefined'/);
+    expect(html, 'the local-dev exclusion').toMatch(/location\.hostname !== 'app\.navaid\.local'/);
+  });
+
+  // The gate is a regex in a one-line script, which is exactly the kind of thing that rots
+  // silently: it is never exercised in CI (the tests run at the origin root) and a mistake in
+  // it mixes PR previews and branch builds into the production property. Pull it out of the
+  // page and run it against the paths it is meant to divide.
+  test('the path gate keeps previews out of the property', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'index.html'), 'utf8');
+    const m = html.match(/location\.pathname\.match\((\/.+?\/)\)/);
+    expect(m, 'the path exclusion regex is still in the page').not.toBeNull();
+    const re = eval(m[1]);
+    const blocked = (p) => !!p.match(re);
+    // Served from the apex and from the GitHub Pages repo prefix: production either way.
+    expect(blocked('/')).toBe(false);
+    expect(blocked('/index.html')).toBe(false);
+    expect(blocked('/NavigationApp/')).toBe(false);
+    // ...and everything that is not production.
+    expect(blocked('/staging/')).toBe(true);
+    expect(blocked('/pr/2341/')).toBe(true);
+    expect(blocked('/branch/restore-ga/')).toBe(true);
+    expect(blocked('/NavigationApp/pr/2341/')).toBe(true);
+    expect(blocked('/NavigationApp/staging/index.html')).toBe(true);
+  });
+
+  // What the page promises has to match what it loads. Both languages.
+  test('the privacy page discloses it', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const privacy = fs.readFileSync(path.join(__dirname, '..', 'docs', 'privacy.html'), 'utf8');
+    expect(privacy).toMatch(/Google Analytics/);
+    expect(privacy).toMatch(/אנליטיקס|Google Analytics/);
+    // The claim this replaced. Leaving it in place beside the tag would be a false statement.
+    expect(privacy, 'the old "no analytics" claim must be gone')
+      .not.toMatch(/no backend and no analytics/);
   });
 
   test('no GA / GTM request completes successfully', async ({ page }) => {

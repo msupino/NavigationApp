@@ -198,6 +198,16 @@ jobs:
             fi
             rewrite_cache_busts "$ROOT" "$SHA"
           done
+          # The GA4 tag must survive everything above. It was lost once already -- removed in a
+          # hardening commit whose message never mentioned analytics -- and the property sat
+          # empty for six weeks before anyone noticed. The test suite guards the SOURCE; this
+          # guards what is actually about to be published, which is the only thing a stray sed
+          # in this file can break. Production only: staging is deliberately excluded from the
+          # property by the tag's own path gate.
+          if ! grep -q 'googletagmanager\.com/gtag/js?id=G-' site/index.html; then
+            echo "::error::The GA4 tag is missing from site/index.html -- refusing to publish a build that records nothing. See tests/ga-blocked.spec.js."
+            exit 1
+          fi
       - name: Build previews for every open PR
         # Pages publishes the WHOLE site from one artifact, so every deploy has to
         # rebuild every preview -- otherwise a push to dev would delete the previews of
