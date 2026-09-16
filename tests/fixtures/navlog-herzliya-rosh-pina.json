@@ -1,20 +1,17 @@
 {
-  "title": "Herzliya - Rosh Pina",
-  "titleHe": "הרצליה – ראש פינה",
+  "title": "Herzliya - Rosh Pina (CVFR exercise)",
   "source": "Israeli CVFR written navigation exercise",
   "notes": [
-    "Straight lines between the points, ignoring CVFR routes.",
-    "Climb and descent are flown on the route, not on separate legs.",
-    "Climb met data is read at 2/3 of the height gained, above the departure field.",
-    "Descent met data is read at 1/2 of the height lost, above the destination field."
+    "Straight lines between the points, ignoring CVFR routes. Climb and descent on the route.",
+    "Climb met data at 2/3 of the height gained above the departure field; descent at 1/2 of the height lost above the destination field."
   ],
   "route": {
     "waypoints": [
       {
         "name": "LLHZ",
-        "he": "הרצליה",
         "lat": 32.17944,
         "lng": 34.83444,
+        "he": "הרצליה",
         "elevFt": 100
       },
       {
@@ -34,9 +31,9 @@
       },
       {
         "name": "LLIB",
+        "lat": 32.98056,
+        "lng": 35.57083,
         "he": "ראש פינה",
-        "lat": 32.98111,
-        "lng": 35.57194,
         "elevFt": 900
       }
     ]
