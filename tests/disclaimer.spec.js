@@ -316,3 +316,23 @@ test.describe('the analytics line', () => {
     await expect(notice(page).locator('.disclaimer-note')).toContainText('עוגיות');
   });
 });
+
+// The browser's own link colours, on the one screen every pilot sees before every flight: a
+// default blue on a near-black panel that turns purple once visited -- the one colour in the
+// app belonging to no palette in it.
+test('the Terms and Privacy links are the app\'s blue, visited or not', async ({ page }) => {
+  await openApp(page);
+  const links = notice(page).locator('.disclaimer-links a');
+  await expect(links).toHaveCount(2);
+  const colours = await page.evaluate(() =>
+    [...document.querySelectorAll('.disclaimer-links a')].map(a => getComputedStyle(a).color));
+  // Either theme's blue -- the suite runs light, the cockpit usually runs dark, and both are
+  // the app's own. Asserting one of them was asserting which theme the harness happened to use.
+  const APP_BLUES = ['rgb(111, 176, 255)', 'rgb(29, 111, 224)'];
+  for (const c of colours) expect(APP_BLUES).toContain(c);
+  // The UA defaults this replaced, so a regression is caught by name.
+  for (const c of colours) {
+    expect(c).not.toBe('rgb(0, 0, 238)');        // -webkit-link
+    expect(c).not.toBe('rgb(85, 26, 139)');      // :visited purple
+  }
+});
