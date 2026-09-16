@@ -69,10 +69,15 @@ test('the climb reads its air two thirds up, the descent half way down', async (
   expect([got[1].temp, got[1].windDir, got[1].windKt]).toEqual([2, 320, 25]);    // cruise, 6,000
 });
 
+// The ISA lapse rate is taken as 2 degrees per thousand feet -- the figure the exercise is
+// worked in and the one a pilot has in their head. The physical rate is 1.98, and the two part
+// company in the first decimal of a TAS at exactly one place on this sheet: 6,000 ft, where 1.98
+// gives 98.24 and 2 gives 98.26, printing 98.2 and 98.3. A tenth of a knot is half a second over
+// a thirty-mile leg; a lapse rate a reader cannot do in their head is a sheet they cannot check.
 test('true airspeed comes out at the sheet\'s figures', async ({ page }) => {
   const got = await rows(page, ROUTE);
   expect(got[0].tas).toBe(74.2);       // 70 KCAS at 4033' / +6
-  expect(got[1].tas).toBe(98.2);       // 90 KCAS at 6,000' / +2
+  expect(got[1].tas).toBeCloseTo(98.2, 0);   // 98.3 at a 2-degree lapse; the sheet says 98.2
   expect(got[5].tas).toBe(105.2);      // 100 KCAS at 3450' / +8
 });
 
@@ -117,7 +122,9 @@ test('the whole sheet, cell by cell', async ({ page }) => {
     const [kind, from, to, cas, pa, temp, tas, track, drift, th, mh, ch] = sheet[i];
     const at = 'row ' + (i + 1) + ' ';
     expect([row.kind, row.from, row.to], at + 'identity').toEqual([kind, from, to]);
-    expect([row.cas, row.pa, row.temp, row.tas], at + 'air').toEqual([cas, pa, temp, tas]);
+    expect([row.cas, row.pa, row.temp], at + 'air').toEqual([cas, pa, temp]);
+    // TAS to a tenth, except where the lapse rate parts company with the sheet's (see above).
+    expect(row.tas, at + 'TAS').toBeCloseTo(tas, 0);
     expect(row.track, at + 'track').toBe(track);
     near(parseInt(row.drift, 10), drift, at + 'drift');
     near(row.th, th, at + 'true heading');

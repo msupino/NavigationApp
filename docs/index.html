@@ -998,8 +998,15 @@
        moved out of the Build section so the search no longer requires the
        section to be expanded. -->
   <div id="search-overlay" class="hidden">
-    <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder"
-           data-i18n-title="tbSearchHint" autocomplete="off">
+    <!-- The box and the ✕ that empties it are one object: the button sits INSIDE the field,
+         which is where a phone user reaches for it, and the field is padded to leave it room.
+         Emptying is not closing -- the overlay's own ✕ is the next element along. -->
+    <span class="search-box">
+      <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder"
+             data-i18n-title="tbSearchHint" autocomplete="off">
+      <button id="search-clear" type="button" class="search-clear" hidden
+              data-i18n-title="tbSearchClear" aria-label="Clear">✕</button>
+    </span>
     <button id="search-close" type="button" data-i18n-title="modalCloseTitle" aria-label="Close">✕</button>
     <small id="wp-search-hint" class="search-hint" data-i18n="tbSearchHint"></small>
     <div id="wp-search-results" class="hidden"></div>

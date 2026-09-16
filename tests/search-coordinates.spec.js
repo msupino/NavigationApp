@@ -208,3 +208,62 @@ test('route building does not open a panel', async ({ page }) => {
   await expect(page.locator('#inspector')).toBeHidden();
   expect(await page.evaluate(() => document.getElementById('wp-search').value)).toMatch(/^BAZRA /);
 });
+
+// Asked for: an ✕ that empties the box. On a phone the search sits at the top of the menu sheet,
+// where the only ✕ in reach puts the whole menu away -- so clearing a mistyped waypoint meant
+// thirteen backspaces, or losing the sheet.
+test('the box has an X that clears it without closing anything', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { if (typeof showSearchOverlay === 'function') showSearchOverlay(); });
+  const clear = page.locator('#search-clear');
+  // Nothing to clear: nothing offered.
+  await expect(clear).toBeHidden();
+
+  await page.locator('#wp-search').fill('N32 30 E035 00');
+  await page.waitForSelector('.wp-search-coord');
+  await expect(clear).toBeVisible();
+
+  // INSIDE the field, not straddling its edge and not over the overlay's own close -- which is
+  // how it was first built, and why it could not be found in the preview.
+  const where = await page.evaluate(() => {
+    const r = (id) => document.getElementById(id).getBoundingClientRect();
+    const box = r('wp-search'), x = r('search-clear'), close = r('search-close');
+    return {
+      insideH: x.left > box.left && x.right <= box.right + 1,
+      insideV: x.top >= box.top && x.bottom <= box.bottom,
+      clearOfClose: x.right <= close.left,
+    };
+  });
+  expect(where).toEqual({ insideH: true, insideV: true, clearOfClose: true });
+
+  await clear.click();
+  const after = await page.evaluate(() => ({
+    value: document.getElementById('wp-search').value,
+    results: !document.getElementById('wp-search-results').classList.contains('hidden'),
+    overlayOpen: !document.getElementById('search-overlay').classList.contains('hidden'),
+    focused: document.activeElement === document.getElementById('wp-search'),
+    clearShown: !document.getElementById('search-clear').hidden,
+  }));
+  // Emptied, results gone, caret back in the box -- and the search itself still open, because
+  // clearing is not closing.
+  expect(after).toEqual({ value: '', results: false, overlayOpen: true, focused: true, clearShown: false });
+});
+
+test('the clear X is there in the phone menu too, where the other X means something else', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof draw === 'function' && !!document.querySelector('.deck-btn-menu'));
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
+  await page.locator('.deck-sheet-body #wp-search').fill('LLHZ');
+  const seen = await page.evaluate(() => {
+    const body = document.querySelector('.deck-sheet-body');
+    return {
+      clearInSheet: !!body.querySelector('#search-clear'),
+      clearShown: !document.getElementById('search-clear').hidden,
+      // The overlay's own close is hidden in the sheet: the sheet has its own, and two ✕s a
+      // centimetre apart doing different things is a trap.
+      closeHidden: getComputedStyle(document.getElementById('search-close')).display === 'none',
+    };
+  });
+  expect(seen).toEqual({ clearInSheet: true, clearShown: true, closeHidden: true });
+});

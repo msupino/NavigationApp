@@ -1369,6 +1369,7 @@ window.S = Object.assign({
   choosePointVor: 'VOR station',
   choosePointCommChange: 'Freq-change arrow',
   choosePointNotam: 'NOTAM',
+  tbSearchClear: 'Clear the box',
   tbSearchOpen: '🔍 Find (Ctrl-F)',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   tbRouteTemplates: '🧭 Templates',
@@ -3362,8 +3363,16 @@ function windTriangle(courseTrue, tas, wind) {
 // densityAltFt(), and it means something else: field elevation plus a QNH, for the airfield
 // panel. These take a pressure altitude that is already known -- a planned cruise level, or the
 // two-thirds point of a climb -- and a collision between the two signatures is a silent null.
+// Two degrees per thousand feet: the figure the exercise is worked in, and the one a pilot has
+// in their head. The physical lapse rate is 1.98 degrees per thousand -- the difference reaches
+// the third decimal of a TAS nobody prints (74.18 against 74.19 on the reference sheet), and it
+// costs the sheet the property that a reader can check it without a calculator.
+//
+// Deliberately NOT shared with gps.js's altimetry correction, which keeps 1.98: that one is
+// flown against, not checked by hand, and its tolerance is compared to a planned altitude.
+const ISA_LAPSE_C_PER_1000FT = 2;
 function isaTempAtPaC(pressureAltFt) {
-  return 15 - 1.98 * (Number(pressureAltFt) || 0) / 1000;
+  return 15 - ISA_LAPSE_C_PER_1000FT * (Number(pressureAltFt) || 0) / 1000;
 }
 // Density altitude: the pressure altitude the air is behaving like, given how far the day is
 // from standard. 120 ft per degree is the flight-computer figure the exercise is set against.

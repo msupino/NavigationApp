@@ -3501,6 +3501,24 @@ function escapeSearch() {
 }
 document.getElementById('search-trigger').onclick = revealSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
+// Clearing the box is not closing the search: on a phone the overlay lives at the top of the
+// menu sheet, where the only ✕ in reach puts the whole menu away -- so emptying a mistyped
+// waypoint meant thirteen backspaces or losing the sheet. Shown only when there is something to
+// clear, which is also how the pilot can tell the two ✕s apart.
+(function () {
+  const clear = document.getElementById('search-clear');
+  if (!clear) return;
+  const sync = () => { clear.hidden = !wpSearch.value; };
+  clear.addEventListener('click', () => {
+    wpSearch.value = '';
+    sync();
+    closeSearch();
+    wpSearch.focus();
+  });
+  wpSearch.addEventListener('input', sync);
+  wpSearch.addEventListener('focus', sync);
+  sync();
+}());
 
 // Ctrl/Cmd-F and the toolbar button always bring the panel up and put the caret
 // in it — never dismiss it, since Ctrl-F pressed while already in the search box
