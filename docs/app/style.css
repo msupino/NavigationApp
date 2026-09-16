@@ -8045,6 +8045,10 @@ body.theme-light .disclaimer-lang-select { border-color: rgba(31, 37, 44, 0.35);
 .disclaimer-lead { margin: 6px 0 10px; font-size: 14px; font-weight: 600; }
 .disclaimer-points { margin: 0 0 10px; padding-inline-start: 20px; font-size: 13px; }
 .disclaimer-points li { margin: 4px 0; }
+/* Quieter than the three points above it: those are about the flight, this is housekeeping,
+   and a cookie sentence set as loud as "the pilot in command is responsible" would be a lie
+   about what matters on this screen. */
+.disclaimer-note { margin: 0 0 8px; font-size: 12px; opacity: 0.75; line-height: 1.45; }
 .disclaimer-links { margin: 0 0 12px; font-size: 12.5px; }
 .disclaimer-btns { display: flex; justify-content: flex-end; }
 .disclaimer-accept { min-height: 44px; padding: 8px 18px; font-weight: 600; }

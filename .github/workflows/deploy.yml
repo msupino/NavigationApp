@@ -198,6 +198,25 @@ jobs:
             fi
             rewrite_cache_busts "$ROOT" "$SHA"
           done
+          # The GA4 tag must survive the rewrites above -- it was lost once already, in a
+          # hardening commit whose message never mentioned analytics, and the property sat
+          # empty for six weeks before anyone noticed. What this guards is the ASSEMBLY: if the
+          # source carried the tag and the assembled copy does not, a step in this job stripped
+          # it. Whether the source should carry it at all is tests/ga-blocked.spec.js's job --
+          # this step assembles main and dev, neither of which is the branch under review, so
+          # policing their content here would fail every PR until the change reached main.
+          # (It did, first time out.)
+          check_ga_survived() {
+            SRC=$1
+            OUT=$2
+            if grep -q 'googletagmanager\.com/gtag/js?id=G-' "$SRC" \
+               && ! grep -q 'googletagmanager\.com/gtag/js?id=G-' "$OUT"; then
+              echo "::error::The GA4 tag is in $SRC but missing from $OUT -- a step in this job stripped it."
+              exit 1
+            fi
+          }
+          check_ga_survived m/docs/index.html site/index.html
+          check_ga_survived d/docs/index.html site/staging/index.html
       - name: Build previews for every open PR
         # Pages publishes the WHOLE site from one artifact, so every deploy has to
         # rebuild every preview -- otherwise a push to dev would delete the previews of

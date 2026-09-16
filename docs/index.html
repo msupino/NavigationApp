@@ -113,6 +113,32 @@
       window.__navLang = lang;
     }());
   </script>
+  <!-- Google Analytics (GA4) — production only. Excludes /staging/,
+       /pr/NNN/, /branch/NAME/ so only the canonical production site at
+       https://navaid.supino.org/ feeds the GA4 property.
+       The regex matches an optional `NavigationApp/` repo prefix
+       (GitHub Pages serves the site under that path) followed by any
+       of `staging/`, `pr/`, `branch/`.
+
+       Removed by accident on 4 Aug 2026 -- swept into a hardening commit whose
+       message never mentions analytics -- and the property recorded nothing for
+       six weeks before anyone noticed it was empty. tests/ga-blocked.spec.js now
+       asserts this tag is HERE as well as asserting it never fires anywhere but
+       production, so a second silent removal fails the build. Disclosed in
+       docs/privacy.html, in both languages. -->
+  <script>
+    if (location.hostname !== 'app.navaid.local' &&
+        typeof window.Capacitor === 'undefined' &&   // native shell loads the prod URL — keep GA browser-only
+        !location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
+      (function(w,d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);
+      j.async=true;j.src='https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B';
+      f.parentNode.insertBefore(j,f);})(window,document,'script');
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function(){ dataLayer.push(arguments); };
+      window.gtag('js', new Date());
+      window.gtag('config', 'G-0XM5PHEK8B');
+    }
+  </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css"
