@@ -484,6 +484,10 @@
       met: c.met,
       deviation: c.deviation,
       paFraction: c.paFraction,
+      // Where the cumulative clock starts, if a waypoint says somewhere other than the
+      // departure field. It lives on the route, not in the sheet's own settings: it is a fact
+      // about this flight, and the map's cumulative kites read the same mark.
+      timerFromIndex: (typeof routeTimerIndex === 'function') ? routeTimerIndex() : -1,
       // The altitude on each leg's own kite. A route that leaves at 800 ft and steps up to
       // 2,500 climbs twice, and the first top of climb is inside the first leg where the pilot
       // put it -- reported as a TOC that landed in the second leg because the whole route was
@@ -553,7 +557,10 @@
         : one(row.groundSpeedKt),
       one(row.distNm),
       clock(row.timeH),
-      clock(row.cumTimeH),
+      // A clock that has not started yet has nothing to say, and the row it starts on says so:
+      // a dash reads as missing data, and this is not missing, it is not yet running.
+      row.cumTimeH === null ? '\u2014'
+        : (row.timerStartsHere ? '\u25b6 ' + clock(row.cumTimeH) : clock(row.cumTimeH)),
       one(row.gph),
       one(row.fuelGal),
       one(row.cumFuelGal),
