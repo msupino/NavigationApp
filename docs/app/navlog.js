@@ -1076,7 +1076,7 @@
     const exportBtn = document.createElement('button');
     exportBtn.type = 'button';
     exportBtn.className = 'navlog-export';
-    exportBtn.textContent = S2.navTableExport || 'Save exercise';
+    exportBtn.textContent = S2.navTableExport || 'Save as a file';
     exportBtn.addEventListener('click', () => exportExercise(cfg));
     const csv = document.createElement('button');
     csv.type = 'button';
