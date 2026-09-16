@@ -3568,7 +3568,9 @@ function navLogRows(input) {
       const row = mkRow('climb', startLabel[0], endLabel[0], depElev, Number(cas.climb), 0, legs[0].track);
       row.distNm = 0; row.timeH = 0; row.unflyable = true; row.noRate = true;
       rows.push(row);
-      alt = firstAlt;
+      // Nothing reads `alt` after this: with no rate there is no climb to walk, and the legs
+      // below are flown at their own planned levels. (CodeQL caught the assignment that used
+      // to sit here as dead, and it was.)
     } else {
       while (climbLeg < legs.length && firstAlt - alt > 1) {
         const leg = legs[climbLeg];
@@ -3582,8 +3584,7 @@ function navLogRows(input) {
           row.to = endLabel[climbLeg];
           row.distNm = 0; row.timeH = 0; row.unflyable = true;
           rows.push(row);
-          alt = firstAlt;
-          break;
+          break;                 // the walk is over; `alt` has no reader past here
         }
         const needH = (firstAlt - alt) / climbFpm / 60;
         const reach = gs * needH;
