@@ -1393,10 +1393,11 @@ test.describe('the compass card', () => {
   });
 });
 
-// "Add a level" appended the next rung of a ladder -- highest + 1000, with wind 00/00 and 15 °C
-// whatever the altitude. Three problems in one button: the altitude was not a level this flight
-// reads its air at, and the sheet works its true airspeeds from that temperature column, so a
-// flat 15 is a wrong number wearing the shape of a default.
+// "Add a level" appended the next rung of a ladder -- highest + 1000, at 15 °C whatever the
+// altitude. Two problems: the altitude was not a level this flight reads its air at, and the
+// sheet works its true airspeeds from that temperature column, so a flat 15 is a wrong number
+// wearing the shape of a default. The wind was always calm and stays calm -- 000/00 reads as a
+// row nobody has filled in, which is what it is.
 test.describe('adding a met level', () => {
   const alts = (page) => page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt));
 
@@ -1420,11 +1421,14 @@ test.describe('adding a met level', () => {
     const row = await page.evaluate(() => NavAid.navLog.config().met[0]);
     // 15 − 2 °C per 1,000 ft, the lapse rate this sheet is worked to.
     expect(row.tempC).toBe(Math.round(15 - 2 * row.alt / 1000));
-    expect(row.dir).toBe(0);      // nothing to copy from, so calm: it claims nothing
+    expect(row.dir).toBe(0);      // calm: a row nobody has filled in says so
     expect(row.kt).toBe(0);
   });
 
-  test('the wind is copied from the nearest row there is', async ({ page }) => {
+  // Copying the nearest row's wind into the new one was tried, and is worse than calm: 270/22
+  // at a level nobody measured is a number wearing the shape of data, and the sheet works drift
+  // and ground speed out of it.
+  test('the wind is not borrowed from another level', async ({ page }) => {
     await boot(page);
     // Stored before the window opens: calling show() twice would leave two of them on screen.
     await page.evaluate(() => {
@@ -1434,8 +1438,10 @@ test.describe('adding a met level', () => {
     await page.locator('.navlog-add').click();
     const rows = await page.evaluate(() => NavAid.navLog.config().met);
     const added = rows.find(r => r.alt !== 3000);
-    expect(added.dir).toBe(270);
-    expect(added.kt).toBe(22);
+    expect(added.dir).toBe(0);
+    expect(added.kt).toBe(0);
+    // ...and the row it did not copy from is untouched.
+    expect(rows.find(r => r.alt === 3000)).toEqual({ alt: 3000, dir: 270, kt: 22, tempC: 9 });
   });
 
   // Adding a level is asking to type one.

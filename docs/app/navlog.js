@@ -809,18 +809,20 @@
       add.setAttribute('aria-label', add.title);
       add.addEventListener('click', () => {
         const alt = nextLevel();
-        // Wind is copied from the nearest row the table already has, because a copy is plainly
-        // a copy and the pilot can see what it came from; with nothing to copy it is calm,
-        // which claims nothing. The temperature is ISA for that altitude rather than a flat 15
-        // at every level -- 15 °C at 7,000 ft is not a default, it is a wrong number wearing
-        // the shape of one, and this sheet works its true airspeeds from that column.
-        const near = cfg.met.length
-          ? cfg.met.reduce((best, r) => (Math.abs(r.alt - alt) < Math.abs(best.alt - alt) ? r : best))
-          : null;
+        // The wind stays calm. It was calm before, and calm is the one honest answer: 000/00
+        // reads as a row nobody has filled in, which is what it is. Copying the nearest row's
+        // wind up here was tried and is worse -- 270/22 at a level nobody measured is a number
+        // wearing the shape of data, and the sheet works drift and ground speed from it.
+        //
+        // The temperature is different, and is why this row changed at all: ISA is not a guess
+        // but the defined standard for an atmosphere nobody has measured, and it is the lapse
+        // rate this sheet is already worked to. A flat 15 at every level is neither -- at 7,000
+        // ft it is a wrong number wearing the shape of a default, and every true airspeed on
+        // the sheet comes out of that column.
         cfg.met.push({
           alt,
-          dir: near ? near.dir : 0,
-          kt: near ? near.kt : 0,
+          dir: 0,
+          kt: 0,
           tempC: typeof isaTempAtPaC === 'function' ? Math.round(isaTempAtPaC(alt)) : 15,
         });
         cfg.met.sort((a, b) => a.alt - b.alt);
