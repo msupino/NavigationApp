@@ -4117,6 +4117,42 @@ function showInspector() {
     if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
     resetName.onclick = () => resetWpName(state.selected.index);
     body.appendChild(resetName);
+    // Start the cumulative clock here. A cumulative time counts from the departure field by
+    // definition, which is the wrong answer for a pilot joining a plan part-way or picking the
+    // route up at a reporting point: the times they want are the ones from where they actually
+    // start. One per route -- two origins would make "cumulative" mean nothing -- and pressing
+    // it on the point that already holds it clears it, back to counting from departure.
+    // Not offered on the departure point itself: the clock already starts there.
+    if (state.selected.index > 0) {
+      const timerIdx = (typeof routeTimerIndex === 'function') ? routeTimerIndex() : -1;
+      const isTimer = timerIdx === state.selected.index;
+      const timer = document.createElement('button');
+      timer.className = 'insp-btn';
+      timer.id = 'insp-timer-btn';
+      timer.textContent = isTimer
+        ? (S.inspTimerClear || '⏱ Count from departure again')
+        : (S.inspTimerStart || '⏱ Start the clock here');
+      if (S.inspTimerStartTitle) timer.title = S.inspTimerStartTitle;
+      timer.onclick = () => {
+        if (typeof setTimerWaypoint === 'function') setTimerWaypoint(state.selected.index);
+        persist();
+        draw();
+        if (typeof NavAid === 'object' && NavAid.navLog
+          && typeof NavAid.navLog.routeChanged === 'function') NavAid.navLog.routeChanged();
+        showInspector();
+      };
+      body.appendChild(timer);
+      // Said in words, like the turning point: a bold label on a button reads as an offer, not
+      // as a state, and a pilot could not tell a marked point from an unmarked one.
+      if (isTimer) {
+        const st = document.createElement('div');
+        st.className = 'insp-status insp-timer-status';
+        st.id = 'insp-timer-status';
+        st.textContent = S.inspTimerIsHere
+          || '⏱ The cumulative times count from here, on the map and on the planning form.';
+        body.appendChild(st);
+      }
+    }
     // Airfields do not expose the route-only turning-point action, including when the
     // overlap chooser keeps a coincident route waypoint as the editable selection.
     if (!afInsp) {
