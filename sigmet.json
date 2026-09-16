@@ -1,0 +1,90 @@
+{
+ "generatedAt": "2026-09-16T01:21:41.868Z",
+ "source": "NOAA AWC isigmet",
+ "sigmets": [
+  {
+   "id": "7",
+   "firId": "LTAA",
+   "firName": "LTAA ANKARA",
+   "hazard": "TS",
+   "qualifier": "EMBD",
+   "base": null,
+   "top": 34000,
+   "dir": "N",
+   "spd": "12",
+   "validFrom": 1789511400,
+   "validTo": 1789525800,
+   "coords": [
+    [
+     41.6,
+     37.35
+    ],
+    [
+     39.683,
+     36.117
+    ],
+    [
+     39,
+     37.967
+    ],
+    [
+     41.2,
+     40.3
+    ],
+    [
+     41.6,
+     37.35
+    ]
+   ],
+   "raw": "WSTU31 LTAC 152230\nLTAA SIGMET 7 VALID 152230/160230 LTAC-\nLTAA ANKARA FIR EMBD TS OBS AT 2225Z WI N4136 E03721 -\nN3941 E03607 - N3900 E03758 - N4112 E04018 - N4136 E03721\nTOP FL340 MOV N 12KT NC="
+  },
+  {
+   "id": "8",
+   "firId": "LTAA",
+   "firName": "LTAA ANKARA",
+   "hazard": "TS",
+   "qualifier": "EMBD",
+   "base": null,
+   "top": 32000,
+   "dir": "NE",
+   "spd": "12",
+   "validFrom": 1789520880,
+   "validTo": 1789535280,
+   "coords": [
+    [
+     41.628,
+     41.217
+    ],
+    [
+     41.897,
+     40.33
+    ],
+    [
+     42.367,
+     38.767
+    ],
+    [
+     42.367,
+     38.767
+    ],
+    [
+     39.15,
+     37.55
+    ],
+    [
+     39.117,
+     39.95
+    ],
+    [
+     41.617,
+     41.217
+    ],
+    [
+     41.628,
+     41.217
+    ]
+   ],
+   "raw": "WSTU31 LTAC 160110\nLTAA SIGMET 8 VALID 160108/160508 LTAC-\nLTAA ANKARA FIR EMBD TS FCST N OF LINE N4222 E03846 - N3909 E03733 -\nN3907 E03957 - N4137 E04113 TOP FL320 MOV NE 12KT NC="
+  }
+ ]
+}
