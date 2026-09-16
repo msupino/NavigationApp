@@ -507,3 +507,120 @@ test.describe('cloud between the fields', () => {
     expect(parts.when).toBe('08:00–08:30Z');
   });
 });
+
+// Reported with a screenshot of a real route: nine findings, the last of them hanging off the
+// bottom of the window and over the map, with no scrollbar and no sign there was more. The
+// panel had no scroller of its own -- the same mistake the planning form's header made.
+test.describe('a panel full of findings', () => {
+  async function loaded(page, count, text) {
+    await page.setViewportSize({ width: 900, height: 700 });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck)
+      && typeof draw === 'function');
+    await page.evaluate(({ n, body }) => {
+      clearBootLoading();
+      state.waypoints = [{ name: 'LLHZ', lat: 32.18, lng: 34.83 },
+        { name: 'LLIB', lat: 32.98, lng: 35.57 }];
+      syncLegs();
+      for (const l of state.legs) { l.inboundAltitude = 3000; l.flightSpeed = 90; }
+      draw();
+      const now = Date.now(), iso = (ms) => new Date(ms).toISOString();
+      window.airspace = [];
+      window.loadNotam = async () => Array.from({ length: n }, (_, k) => ({
+        id: 'C' + (1900 + k) + '/26', icao: 'LLIB', text: body,
+        start: iso(now - 3600000), end: iso(now + 6 * 3600000),
+      }));
+      window.loadSigmets = async () => ([]);
+      window.loadAirmets = async () => ([]);
+      window.loadWxFile = async () => ({ stations: {} });
+      window.fetch = async () => { throw new Error('offline'); };
+    }, { n: count, body: text });
+    await page.evaluate(() => NavAid.routeCheck.show());
+    await page.waitForSelector('.route-check-item');
+  }
+
+  const REAL = 'UAS/UAV ACT WILL TAKE PLACE AT OR-AKIVA INDUSTRY AREA. AN AREA BTN THE FLW PSN '
+    + 'CLSD FM GND UP TO 500FT AMSL N323122E0345511 N323119E0345512. CTN ADZ.';
+
+  test('the list scrolls and the window does not', async ({ page }) => {
+    await loaded(page, 9, REAL);
+    const got = await page.evaluate(() => {
+      const box = document.querySelector('.route-check-modal');
+      const body = document.querySelector('.route-check-body');
+      return {
+        bodyScrolls: body.scrollHeight > body.clientHeight + 1,
+        boxScrolls: box.scrollHeight > box.clientHeight + 1,
+        boxOverflowY: getComputedStyle(box).overflowY,
+      };
+    });
+    expect(got.bodyScrolls, 'there is more than fits, and it is the body that holds it').toBe(true);
+    expect(got.boxScrolls).toBe(false);
+    expect(got.boxOverflowY).toBe('hidden');
+  });
+
+  test('the last finding can be reached, not just clipped', async ({ page }) => {
+    await loaded(page, 9, REAL);
+    const reach = await page.evaluate(async () => {
+      const box = document.querySelector('.route-check-modal');
+      const body = document.querySelector('.route-check-body');
+      const items = document.querySelectorAll('.route-check-item');
+      const last = items[items.length - 1];
+      const before = last.getBoundingClientRect().bottom <= box.getBoundingClientRect().bottom;
+      body.scrollTop = body.scrollHeight;
+      await new Promise(r => setTimeout(r, 50));
+      return {
+        before,
+        after: last.getBoundingClientRect().bottom <= box.getBoundingClientRect().bottom + 1,
+      };
+    });
+    expect(reach.before, 'nine of them do not fit at once').toBe(false);
+    expect(reach.after, 'and scrolling brings the last one inside the window').toBe(true);
+  });
+
+  // The title and its X stay put while the findings move under them.
+  test('the header does not scroll away with the list', async ({ page }) => {
+    await loaded(page, 9, REAL);
+    const pos = () => page.evaluate(() => {
+      const x = document.querySelector('.route-check-modal .modal-close-x');
+      return x ? Math.round(x.getBoundingClientRect().top) : null;
+    });
+    const before = await pos();
+    await page.evaluate(() => {
+      const body = document.querySelector('.route-check-body');
+      body.scrollTop = body.scrollHeight;
+    });
+    expect(await pos()).toBe(before);
+  });
+
+  // NOTAM text is somebody else's, and it arrives with coordinate strings that have no break
+  // opportunity in them.
+  test('an unbreakable word breaks rather than widening the panel', async ({ page }) => {
+    await loaded(page, 1, 'CLSD SEE N323122E0345511N323119E0345512N323119E0345515N323123E0345514REFAIPPARTA17PAGE10');
+    const got = await page.evaluate(() => {
+      const box = document.querySelector('.route-check-modal');
+      const detail = document.querySelector('.route-check-detail');
+      return {
+        modalW: Math.round(box.getBoundingClientRect().width),
+        detailRight: Math.round(detail.getBoundingClientRect().right),
+        boxRight: Math.round(box.getBoundingClientRect().right),
+        viewport: innerWidth,
+      };
+    });
+    expect(got.detailRight).toBeLessThanOrEqual(got.boxRight);
+    expect(got.modalW).toBeLessThanOrEqual(got.viewport);
+  });
+
+  // `ch` scales with the font, so a zoomed page took the panel as wide as the screen.
+  test('a large base font cannot widen the panel past its cap', async ({ page }) => {
+    await loaded(page, 3, REAL);
+    const got = await page.evaluate(() => {
+      const box = document.querySelector('.route-check-modal');
+      const normal = Math.round(box.getBoundingClientRect().width);
+      document.documentElement.style.fontSize = '32px';
+      const zoomed = Math.round(box.getBoundingClientRect().width);
+      document.documentElement.style.fontSize = '';
+      return { normal, zoomed };
+    });
+    expect(got.zoomed).toBeLessThanOrEqual(got.normal + 2);
+  });
+});
