@@ -12,6 +12,9 @@
   // Every 30°, which is how a compass card is swung and printed. Deviation zero until the
   // pilot types their own: a made-up card is worse than none, since it looks like data.
   const CARD_HEADINGS = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
+  // Cum time, counted from LEG: the one column the table draws differently from what cells()
+  // returns, because a clock that has not started is a fact about the flight, not a value.
+  const COL_CUM_TIME = 19;
 
   const featureOn = () => typeof tune !== 'function' || tune('featureNavLog') !== false;
   const num = (v, fallback) => (Number.isFinite(Number(v)) && v !== '' ? Number(v) : fallback);
@@ -557,10 +560,10 @@
         : one(row.groundSpeedKt),
       one(row.distNm),
       clock(row.timeH),
-      // A clock that has not started yet has nothing to say, and the row it starts on says so:
-      // a dash reads as missing data, and this is not missing, it is not yet running.
-      row.cumTimeH === null ? '\u2014'
-        : (row.timerStartsHere ? '\u25b6 ' + clock(row.cumTimeH) : clock(row.cumTimeH)),
+      // The VALUE, not the typography: cells() is what exportCsv writes, and an em dash and a
+      // \u25b6 in a spreadsheet column of times are not times. A clock that has not started has
+      // nothing to say, so it says nothing; the table below decorates its own cell.
+      clock(row.cumTimeH),
       one(row.gph),
       one(row.fuelGal),
       one(row.cumFuelGal),
@@ -747,6 +750,7 @@
     // put numbers on the sheet nobody chose.
     const met = document.createElement('div');
     met.className = 'navlog-met';
+    let syncAddTitle = () => {};
     function renderMet() {
       met.replaceChildren();
       const head = document.createElement('div');
@@ -812,8 +816,15 @@
         const highest = cfg.met.reduce((top, r) => Math.max(top, r.alt), 0);
         return highest ? highest + 1000 : 2000;
       };
-      add.title = S2.navLogAddRowAt ? S2.navLogAddRowAt(nextLevel()) : add.textContent;
-      add.setAttribute('aria-label', add.title);
+      // Re-read on every refresh, not once when the table was built: the levels this flight
+      // reads come from the route, and a waypoint dragged under an open window changed them
+      // while the button went on naming the old one. It ADDED the right level either way --
+      // nextLevel() is re-evaluated on the press -- so the button was lying, not misbehaving.
+      syncAddTitle = () => {
+        add.title = S2.navLogAddRowAt ? S2.navLogAddRowAt(nextLevel()) : add.textContent;
+        add.setAttribute('aria-label', add.title);
+      };
+      syncAddTitle();
       add.addEventListener('click', () => {
         const alt = nextLevel();
         // The wind stays calm. It was calm before, and calm is the one honest answer: 000/00
@@ -885,10 +896,12 @@
     const card = document.createElement('div');
     card.className = 'navlog-card';
     // A card with no deviation on it: steer what you were told to fly. That is the state the
-    // window starts in, and the one the arrow goes back to -- it clears the whole map rather
-    // than one row, because a half-cleared card is a card that still lies about the rows left
-    // on it. Twelve rows is also twelve arrows if this were per-row, on a table that is already
-    // the densest thing in the window.
+    // window starts in, and the one this arrow goes back to. It clears the WHOLE card; each
+    // row has its own arrow beside its box for clearing one heading. (This comment used to
+    // argue against those per-row arrows, on the grounds that twelve of them would be noise on
+    // the densest table in the window. That was my call and it was wrong: every other box in
+    // this window has its own way back, and one arrow for the whole table is a way back to
+    // nothing in particular.)
     const cardIsClear = () => cfg.deviation.every(e => e && e.ch === e.mh);
     let showCardReset = () => {};
     const clearCard = () => {
@@ -1027,6 +1040,13 @@
         tr.className = 'navlog-row navlog-' + row.kind;
         cells(row, i, cfg).forEach((text, col) => {
           const td = document.createElement('td');
+          // The cumulative-time cell, on screen only: an empty cell reads as missing data, and
+          // this is not missing -- the clock has not started. The row it starts on says so.
+          // (COL_CUM_TIME is the 20th column; see headers().)
+          if (col === COL_CUM_TIME) {
+            if (row.cumTimeH === null) text = '\u2014';
+            else if (row.timerStartsHere) text = '\u25b6 ' + text;
+          }
           // Aviation values read left to right in either language, like the live readout.
           const bdi = document.createElement('bdi');
           bdi.dir = col === 1 || col === 2 ? 'auto' : 'ltr';
@@ -1067,6 +1087,9 @@
         f.sync(read(cfg));
         if (f.showReset) f.showReset(!!path && storedHas(path));
       }
+      // Not renderMet(): rebuilding the met table would take the caret out of whichever box is
+      // being typed in. Only the one thing in it that reads the route.
+      syncAddTitle();
       render();
     }
     function sourceText(source) {

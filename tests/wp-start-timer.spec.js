@@ -188,3 +188,104 @@ test('a leg with no cum kite offers nothing to grab', async ({ page }) => {
   });
   if (boxes !== null) for (const i of boxes) expect(i).toBeGreaterThanOrEqual(2);
 });
+
+// Found in review, all four introduced or widened by the change above.
+test.describe('what the review found', () => {
+  // The inbound hit test knew about CTR legs and not about the mark, so the legs before it kept
+  // a kite that is never drawn -- sitting right over the leg's own endpoint waypoint. The
+  // comment there had already been written about exactly this, for the CTR case.
+  test('a kite that is not drawn cannot be grabbed', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => { showCumTime = true; draw(); });
+    // Where leg 0's cum kite sits while the clock runs from departure.
+    const spot = await page.evaluate(() => {
+      const c = cumLabelCenter(0);
+      return c ? { x: Math.round(c.x), y: Math.round(c.y) } : null;
+    });
+    expect(spot).not.toBeNull();
+    expect(await page.evaluate(p => !!hitCumLabel(p.x, p.y), spot)).toBe(true);
+    // Start the clock later: leg 0 draws no kite, so nothing there is grabbable.
+    await page.evaluate(() => { setTimerWaypoint(2); draw(); });
+    expect(await page.evaluate(p => hitCumLabel(p.x, p.y), spot)).toBeNull();
+  });
+
+  // The return kite is drawn whenever the return path is -- its own clock, counted backwards
+  // from the last waypoint -- so the inbound clock's gate is not its to answer to.
+  test('a return kite that IS drawn is counted in the page bounds', async ({ page }) => {
+    await boot(page);
+    const counted = await page.evaluate(() => {
+      showCumTime = true;
+      window.showReturnFeatureOn = () => true;
+      showReturn = true;
+      for (const l of state.legs) { l.outboundAltitude = 3000; l.outboundSpeed = 90; }
+      setTimerWaypoint(2);
+      const painted = [];
+      const origArrow = window.drawCumTimeArrow;
+      window.drawCumTimeArrow = (...a) => { painted.push(a[3]); return origArrow.apply(null, a); };
+      draw();
+      window.drawCumTimeArrow = origArrow;
+      const box = { in: [], ret: [] };
+      const oIn = window.cumLabelCenter, oRet = window.cumLabelRetCenter;
+      window.cumLabelCenter = (i, ...r) => { box.in.push(i); return oIn.call(null, i, ...r); };
+      window.cumLabelRetCenter = (i, ...r) => { box.ret.push(i); return oRet.call(null, i, ...r); };
+      routeInkRects();
+      window.cumLabelCenter = oIn; window.cumLabelRetCenter = oRet;
+      return { painted: painted.length, box, legs: state.legs.length };
+    });
+    // One inbound kite (the only leg on the clock) and one return kite per leg.
+    expect(counted.painted).toBe(1 + counted.legs);
+    expect(counted.box.in).toEqual([2]);                       // only the leg that draws one
+    expect(counted.box.ret).toEqual([0, 1, 2]);                // every return kite that is drawn
+  });
+
+  // cells() is what exportCsv writes. An em dash and a play glyph are not times.
+  test('the CSV carries values, not typography', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => setTimerWaypoint(2));
+    const col = await page.evaluate(() => {
+      const saved = window.saveFile;
+      window.saveFile = () => {};
+      const text = NavAid.navLog.exportCsv();
+      window.saveFile = saved;
+      const head = text.split('\n')[0].split(',');
+      const at = head.indexOf('Cum time');
+      return text.split('\n').slice(1).map(l => l.split(',')[at]);
+    });
+    for (const cell of col) expect(cell).not.toMatch(/[—▶]/);
+    expect(col[0]).toBe('');            // the clock had not started
+    expect(col[col.length - 1]).toMatch(/^\d+:\d\d$/);
+    // ...while the table still says which is which.
+    await page.evaluate(() => NavAid.navLog.show());
+    await page.waitForSelector('.navlog-table');
+    const shown = await page.evaluate(() => {
+      const heads = [...document.querySelectorAll('.navlog-table tr')[0].children].map(t => t.textContent);
+      const at = heads.indexOf('Cum time');
+      return [...document.querySelectorAll('.navlog-table tr.navlog-row')]
+        .map(tr => tr.children[at].textContent.trim());
+    });
+    expect(shown[0]).toBe('—');
+    expect(shown.some(v => v.startsWith('▶'))).toBe(true);
+  });
+
+  // The button named a level the route no longer needed. It always ADDED the right one.
+  test('the Add button keeps naming the level it will actually add', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => NavAid.navLog.show());
+    await page.waitForSelector('.navlog-table');
+    const titleNow = () => page.locator('.navlog-add').getAttribute('title');
+    const before = await titleNow();
+    // Change the route under the open window: different levels, so a different next level.
+    await page.evaluate(() => {
+      for (const l of state.legs) l.inboundAltitude = 8500;
+      syncLegs();
+      draw();
+      NavAid.navLog.routeChanged();
+    });
+    const after = await titleNow();
+    expect(after).not.toBe(before);
+    // ...and what it says is what it does.
+    const named = Number(String(after).replace(/[^0-9]/g, ''));
+    await page.locator('.navlog-add').click();
+    expect(await page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt))).toContain(named);
+  });
+});
