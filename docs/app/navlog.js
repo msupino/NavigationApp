@@ -859,8 +859,9 @@
         mh.textContent = deg(entry.mh);
         const input = document.createElement('input');
         input.type = 'number';
-        input.min = '0';
-        input.max = '359';
+        // No max: a max makes the spinner STOP at 359, and a compass does not stop -- one step
+        // up from 359 is 000. The circle is enforced by wrapping what is typed or stepped, not
+        // by walling off the end of it.
         input.step = '1';
         // Three digits, the way the magnetic column beside it is printed and the way a heading
         // is spoken: a card reading 000 / 030 against boxes reading 0 / 30 is the same number
@@ -868,11 +869,19 @@
         input.value = deg(entry.ch);
         // Emptying the box is how a row's deviation is taken back, the same as every other box
         // in this window: the steer heading returns to the magnetic one beside it.
-        input.addEventListener('input', () => {
+        input.addEventListener('input', (e) => {
           entry.ch = deg360(input.value, entry.mh);
           saveTables(cfg);
           render();
           showCardReset();
+          // A step -- the spinner, or an arrow key -- carries no inputType, and it is a finished
+          // answer: show it wrapped at once, which is what makes 359 step round to 000. A typed
+          // digit is a half-finished answer, and rewriting the box under the caret would stop
+          // anyone typing 120 (1 ... 12 ... 120) from ever reaching the second digit.
+          if (!e.inputType) {
+            const shown = deg(entry.ch);
+            if (input.value !== shown) input.value = shown;
+          }
         });
         // What is stored is on the circle; what is typed is whatever was typed. Putting the
         // wrapped value back on blur rather than mid-keystroke leaves the caret alone.

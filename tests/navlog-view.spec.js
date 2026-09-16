@@ -1189,9 +1189,33 @@ test.describe('the compass card', () => {
     await typeSteer(page, 0, 364);
     expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(4);
     await expect(boxFor(page, 0)).toHaveValue('004');
-    // The box says so too, so the spinner cannot walk past the end of the circle.
-    await expect(boxFor(page, 0)).toHaveAttribute('max', '359');
-    await expect(boxFor(page, 0)).toHaveAttribute('min', '0');
+  });
+
+  // A max would make the spinner STOP at 359. A compass does not stop: one step up from 359 is
+  // 000, and one step down from 000 is 359.
+  test('the spinner steps round the circle rather than hitting a wall', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const box = boxFor(page, 0);
+    await expect(box).not.toHaveAttribute('max', /.*/);
+    await box.fill('359');
+    await box.press('ArrowUp');
+    await expect(box).toHaveValue('000');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(0);
+    await box.press('ArrowDown');
+    await expect(box).toHaveValue('359');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(359);
+  });
+
+  // ...and a half-typed number is left alone, or nobody could type 120 past the 1.
+  test('typing is not rewritten under the caret', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const box = boxFor(page, 0);
+    await box.fill('');
+    await box.pressSequentially('120', { delay: 20 });
+    await expect(box).toHaveValue('120');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(120);
   });
 
   test('360 is 000, and a negative heading comes back round', async ({ page }) => {
