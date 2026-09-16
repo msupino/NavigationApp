@@ -79,7 +79,7 @@ window.S = {
   tbRouteCheck: '\u2713 בדיקת מסלול',
   tbRouteCheckTitle: 'מרחב אווירי, נוטאמים, SIGMET/AIRMET ובסיס עננים מול המסלול הזה, בשעה שבה אתם מתכננים לטוס',
   routeCheckTitle: 'בדיקת מסלול',
-  routeCheckWorking: 'שואל את ארבעת המקורות\u2026',
+  routeCheckWorking: 'שואל את המרחב האווירי, הנוטאמים, SIGMET/AIRMET, דיווחי השדות והתחזית לאורך המסלול\u2026',
   routeCheckNeedRoute: 'שרטטו קודם מסלול: אין עדיין מה לבדוק.',
   routeCheckWindow: 'נבדק עבור',
   routeCheckClear: 'לא נמצא דבר נגד התוכנית הזו בחלון הזמן הזה.',

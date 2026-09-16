@@ -1,14 +1,15 @@
-// The route check: the four things that can say "not this plan, not at this time", asked
+// The route check: the five things that can say "not this plan, not at this time", asked
 // together and against the clock.
 //
 // Each of them already knew its own half. The airspace inspector knew the route crossed a
 // CTR, the NOTAM list knew a field was closed, the SIGMET layer knew where the weather was,
-// the METAR knew the ceiling -- four surfaces, none of them looking at the plan, and none of
+// the METAR knew the ceiling -- and none of them knew what the air was doing between the
+// fields at all. Five surfaces now, none of which was looking at the plan, and none of
 // them looking at WHEN. A NOTAM that lifts at 10:00 is not a warning on a flight that lands
 // at 11:00, and a danger area live from 09:00 is not a warning on a leg flown at 08:20.
 //
 // The arithmetic is core.js's routeCheckFindings(), which is pure and knows nothing about
-// fetching or the DOM. This file is the part that goes and gets the four datasets, hands them
+// fetching or the DOM. This file is the part that goes and gets the five datasets, hands them
 // over, and puts the answer on screen.
 (function () {
   const NS = (window.NavAid = window.NavAid || {});
@@ -104,8 +105,8 @@
     return out;
   }
 
-  // The four datasets, each fetched the way its own layer fetches it, and each allowed to fail
-  // on its own: one feed that is down must not turn the other three into silence.
+  // The five datasets, each fetched the way its own layer fetches it, and each allowed to fail
+  // on its own: one feed that is down must not turn the others into silence.
   async function gather() {
     const want = (fn, force) => {
       try { return typeof fn === 'function' ? fn(force) : null; } catch (e) { return null; }
@@ -297,7 +298,8 @@
     body.className = 'route-check-body';
     const waiting = document.createElement('p');
     waiting.className = 'route-check-waiting';
-    waiting.textContent = S2.routeCheckWorking || 'Asking the four sources…';
+    waiting.textContent = S2.routeCheckWorking
+      || 'Asking airspace, NOTAMs, SIGMET/AIRMET, the aerodrome reports and the forecast along the route…';
     body.appendChild(waiting);
     modal.box.append(head, body);
     // createDraggableModal BUILDS the window; show() is what puts it on screen. Without this

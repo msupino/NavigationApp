@@ -1373,7 +1373,7 @@ window.S = Object.assign({
   tbRouteCheck: '\u2713 Route check',
   tbRouteCheckTitle: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against this route, at the time you plan to fly it',
   routeCheckTitle: 'Route check',
-  routeCheckWorking: 'Asking the four sources\u2026',
+  routeCheckWorking: 'Asking airspace, NOTAMs, SIGMET/AIRMET, the aerodrome reports and the forecast along the route\u2026',
   routeCheckNeedRoute: 'Draw a route first: there is nothing to check yet.',
   routeCheckWindow: 'Checked for',
   routeCheckClear: 'Nothing found against this plan in that window.',
@@ -6025,7 +6025,7 @@ function setTurnWaypoint(idx) {
   return !was;
 }
 // --- the route check ---------------------------------------------------------------------
-// "Can I fly this plan, at the time I mean to fly it?" Four things can say no, and until now
+// "Can I fly this plan, at the time I mean to fly it?" Five things can say no, and until now
 // each of them answered only if you went and asked it: the airspace inspector knew the route
 // crossed a CTR, the NOTAM list knew a field was closed, the SIGMET layer knew where the
 // weather was, and the METAR knew the ceiling -- four surfaces, none of them looking at the

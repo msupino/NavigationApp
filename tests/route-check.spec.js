@@ -366,6 +366,27 @@ test.describe('the panel', () => {
     await expect(panel.locator('.route-check-unchecked')).not.toContainText('airspace');
   });
 
+  // "Asking the four sources" said neither which sources nor the right number -- the forecast
+  // along the route made five, and the line had gone stale without anyone noticing.
+  test('the waiting line names the sources, and there are five of them', async ({ page }) => {
+    await app(page);
+    await drawRoute(page);
+    await page.evaluate(() => {
+      // Held open: this is about what the panel says while it waits.
+      window.loadNotam = () => new Promise(() => {});
+      window.loadSigmets = async () => ([]);
+      window.loadAirmets = async () => ([]);
+      window.loadWxFile = async () => ({ stations: {} });
+      window.airspace = [];
+      NavAid.routeCheck.show();
+    });
+    const said = await page.locator('.route-check-waiting').textContent();
+    for (const src of ['airspace', 'NOTAM', 'SIGMET/AIRMET', 'aerodrome', 'forecast']) {
+      expect(said, src + ' is named').toContain(src);
+    }
+    expect(said).not.toMatch(/four/i);
+  });
+
   test('a clean plan says so plainly', async ({ page }) => {
     await app(page);
     await drawRoute(page);

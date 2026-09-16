@@ -6004,7 +6004,7 @@ function notamPrefWrite(on) {
   if (pref !== null) window.showNotam = pref;
 }
 const notamCb = document.getElementById('notam-cb');
-// The four things that can say "not this plan, not at this time", asked together and against
+// The five things that can say "not this plan, not at this time", asked together and against
 // the clock. Each of them already knew its own half; none of them looked at the plan, and none
 // of them looked at when. See routecheck.js.
 const routeCheckBtn = document.getElementById('route-check-btn');
@@ -11726,14 +11726,30 @@ const NavWxAvailability = (function () {
     return [[cLat - hLat + dLat, cLng - hLng + dLng], [cLat + hLat + dLat, cLng + hLng + dLng]];
   }
   function applyRotation() {       // only the map panel is tilted; the table is upright
-    if (!mapLayer || typeof mapLayer.getElement !== 'function') return;
-    const el = mapLayer.getElement(); if (!el) return;
-    const deg = off('sigwxRotationDeg');
-    const base = el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
-    el.style.transformOrigin = '50% 50%';
-    el.style.transform = deg ? (base + ' rotate(' + deg + 'deg)') : base;
+    if (mapLayer && typeof mapLayer.getElement === 'function') {
+      const el = mapLayer.getElement();
+      if (el) {
+        const deg = off('sigwxRotationDeg');
+        const base = el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
+        el.style.transformOrigin = '50% 50%';
+        el.style.transform = deg ? (base + ' rotate(' + deg + 'deg)') : base;
+      }
+    }
+    // The weather panel turns with the map: its fronts and areas belong over the ground they
+    // describe. The header and the table are annotations pinned beside it -- turning those makes
+    // them unreadable and buys nothing -- so they are counter-rotated by the bearing and stay
+    // the right way up, the way leaflet-rotate already keeps divIcon content upright.
+    const bearing = (typeof map.getBearing === 'function') ? (map.getBearing() || 0) : 0;
+    for (const lyr of [hdrLayer, tblLayer]) {
+      if (lyr && typeof lyr.getElement === 'function' && typeof keepOverlayUpright === 'function') {
+        keepOverlayUpright(lyr.getElement(), bearing);
+      }
+    }
   }
-  map.on('move zoom zoomend viewreset', applyRotation);
+  // `rotate` is the one leaflet-rotate fires on a bearing change; the rest are Leaflet's own,
+  // and both matter because Leaflet rewrites the positioning transform these rotations are
+  // appended to whenever the view moves.
+  map.on('move zoom zoomend viewreset rotate', applyRotation);
   function place(which, data, bounds, op) {
     const ref = which === 'map' ? mapLayer : (which === 'header' ? hdrLayer : tblLayer);
     if (!ref) {
@@ -11743,6 +11759,9 @@ const NavWxAvailability = (function () {
     } else {
       ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
     }
+    // A newly placed element carries only Leaflet's positioning transform: without this the
+    // header and table come back turned every time the valid time changes under a rotated map.
+    applyRotation();
   }
   // Cropping a SIGWX panel is asynchronous (image decode + canvas), and the pilot can
   // change the valid time while one is in flight. Without a generation token a slower crop
