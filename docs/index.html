@@ -1000,6 +1000,10 @@
   <div id="search-overlay" class="hidden">
     <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder"
            data-i18n-title="tbSearchHint" autocomplete="off">
+    <!-- Empties the box without closing it: the same thing the first Escape does, for a phone
+         where there is no Escape and the sheet's own ✕ means "put the menu away". -->
+    <button id="search-clear" type="button" class="search-clear" hidden
+            data-i18n-title="tbSearchClear" aria-label="Clear">✕</button>
     <button id="search-close" type="button" data-i18n-title="modalCloseTitle" aria-label="Close">✕</button>
     <small id="wp-search-hint" class="search-hint" data-i18n="tbSearchHint"></small>
     <div id="wp-search-results" class="hidden"></div>

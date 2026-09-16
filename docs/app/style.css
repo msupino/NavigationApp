@@ -8062,6 +8062,22 @@ body.disclaimer-open { overflow: hidden; }
   box-shadow: none;
 }
 #search-overlay.deck-hosted-search #search-close { display: none; }
+/* The clear ✕, inside the box's own inline end. Only there when the box has something in it. */
+.search-clear {
+  position: absolute;
+  inset-inline-end: 34px;
+  top: 10px;
+  background: none;
+  border: 0;
+  color: inherit;
+  opacity: 0.65;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.search-clear:hover { opacity: 1; }
+#search-overlay.deck-hosted-search .search-clear { inset-inline-end: 8px; }
 
 /* --- nav log -------------------------------------------------------------
    A planning-desk table: 23 columns that will not fit a phone, so the table
