@@ -103,6 +103,42 @@ test.describe('wiki screenshots', () => {
     });
   }
 
+  // ── Flight planning form ─────────────────────────────────────────────────
+  for (const [name, lang] of [['15-planning-form', 'en'], ['15-planning-form-he', 'he']]) {
+    test(name, async ({ page }) => {
+      // 23 columns plus the two editors beside each other: the widest window the app has.
+      await page.setViewportSize({ width: 1700, height: 1000 });
+      await boot(page, lang);
+      await seedRoute(page);
+      await page.evaluate(() => {
+        // A met table and a compass card, so the picture shows the sheet doing its arithmetic
+        // rather than an empty form: the exercise's own figures.
+        const cfg = NavAid.navLog.config();
+        cfg.met = [
+          { alt: 2000, dir: 315, kt: 17, tempC: 10 },
+          { alt: 3000, dir: 290, kt: 17, tempC: 8 },
+          { alt: 4000, dir: 300, kt: 20, tempC: 6 },
+          { alt: 5000, dir: 300, kt: 22, tempC: 4 },
+          { alt: 6000, dir: 320, kt: 25, tempC: 2 },
+        ];
+        cfg.deviation = [
+          { mh: 0, ch: 358 }, { mh: 30, ch: 27 }, { mh: 60, ch: 59 }, { mh: 90, ch: 90 },
+          { mh: 120, ch: 122 }, { mh: 150, ch: 152 }, { mh: 180, ch: 180 }, { mh: 210, ch: 209 },
+          { mh: 240, ch: 241 }, { mh: 270, ch: 272 }, { mh: 300, ch: 300 }, { mh: 330, ch: 332 },
+        ];
+        NavAid.navLog.save(cfg);
+        // The docked search sits over the form's top-left corner on a wide screen.
+        if (typeof hideSearchOverlay === 'function') hideSearchOverlay();
+        const overlay = document.getElementById('search-overlay');
+        if (overlay) overlay.classList.add('hidden');
+        NavAid.navLog.show();
+      });
+      await page.waitForSelector('.navlog-table tr.navlog-row');
+      await page.waitForTimeout(400);
+      await save(page, name);
+    });
+  }
+
   // ── Floating search overlay (with results) ───────────────────────────────
   for (const [name, lang, q] of [['04-search', 'en', 'her'], ['04-search-he', 'he', 'הרצ']]) {
     test(name, async ({ page }) => {

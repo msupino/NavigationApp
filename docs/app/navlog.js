@@ -514,7 +514,11 @@
       // apply them the same way.
       eastWest(-row.deviationDeg),
       deg(row.compassHeadingDeg),
-      row.unflyable ? (S2.navLogUnflyable || '—') : one(row.groundSpeedKt),
+      // A segment with no solution has no ground speed to print, and a dash is not an answer:
+      // the cell says which of the two it is, and the row is marked for the note below the sheet.
+      row.unflyable
+        ? (row.noRate ? (S2.navLogNoRate || 'no rate') : (S2.navLogUnflyable || 'no solution'))
+        : one(row.groundSpeedKt),
       one(row.distNm),
       clock(row.timeH),
       clock(row.cumTimeH),
@@ -857,8 +861,18 @@
         });
         table.appendChild(tr);
       });
-      note.textContent = list.length ? ''
+      // What the sheet could not do, said under it. A row that is simply missing, or a ground
+      // speed cell reading "no solution", is not an explanation.
+      const trouble = [];
+      if (list.some(r => r.noRate)) trouble.push(S2.navLogNoteNoRate
+        || 'No rate of climb: the first row cannot be worked out.');
+      if (list.some(r => r.unflyable && !r.noRate)) trouble.push(S2.navLogNoteUnflyable
+        || 'A crosswind on this route is stronger than the airspeed flown against it.');
+      if (list.some(r => r.descentClipped)) trouble.push(S2.navLogNoteClipped
+        || 'The descent does not fit in the route: the aeroplane arrives above the field.');
+      note.textContent = list.length ? trouble.join(' ')
         : (S2.navLogNoRoute || 'Draw a route with at least two points, and set a cruise altitude above both fields.');
+      note.classList.toggle('navlog-note-warn', list.length > 0 && trouble.length > 0);
     }
     // The route can change under an open sheet -- a waypoint dragged on the map, a point added,
     // a leg's altitude edited. Reported as "moving waypoints while the table is open does not

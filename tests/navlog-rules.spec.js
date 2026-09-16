@@ -192,3 +192,52 @@ test('where the table is silent the app\'s own wind answers, and the row says so
   // everywhere. The fallback is for a table with no rows at all, or none within reach.
   expect(got.every(r => r.src === 'table')).toBe(true);
 });
+
+// Found in review, not in flying: three ways the sheet used to come up short and say nothing.
+
+// You cannot come down from a level you never reached. On a short route with a high planned
+// level and a slow descent, the descent used to consume every leg before the climb was laid
+// down, and the sheet came out as one descent row from an altitude the aeroplane never saw.
+test('the climb is laid down before the descent, whatever the route is', async ({ page }) => {
+  const rows = await call(page, () => navLogRows({
+    waypoints: [{ name: 'A', lat: 32.0, lng: 34.9 }, { name: 'B', lat: 32.08, lng: 34.95 }],
+    depElevFt: 100, destElevFt: 100, cruiseAltFt: 9500,
+    cas: { climb: 70, cruise: 90, descent: 100 },
+    rates: { climbFpm: 500, descentFpm: 300 },      // five miles, 9,400 ft, 300 fpm down
+    fuel: { climbGal: 7, cruiseGph: 8 }, variationDeg: 4, met: [], deviation: [],
+  }).map(r => ({ kind: r.kind, dist: Math.round(r.distNm * 10) / 10, clipped: !!r.descentClipped })));
+  expect(rows[0].kind).toBe('climb');
+  expect(rows[0].dist).toBeGreaterThan(0);
+  // ...and the descent takes whatever ground is left -- here, none at all, because the climb
+  // used the route up. The sheet says the descent did not fit rather than inventing distance.
+  const last = rows[rows.length - 1];
+  expect(last.clipped, JSON.stringify(rows)).toBe(true);
+});
+
+// A crosswind bigger than the airspeed has no solution. The row used to be dropped, leaving a
+// sheet that was simply short and said nothing about why.
+test('a segment that cannot be flown is a row that says so', async ({ page }) => {
+  const rows = await call(page, () => navLogRows({
+    waypoints: [{ name: 'A', lat: 32.0, lng: 34.9 }, { name: 'B', lat: 32.4, lng: 35.1 }],
+    depElevFt: 100, destElevFt: 100, cruiseAltFt: 3000,
+    cas: { climb: 70, cruise: 90, descent: 100 },
+    rates: { climbFpm: 500, descentFpm: 500 },
+    fuel: { climbGal: 7, cruiseGph: 8 }, variationDeg: 4, deviation: [],
+    met: [{ alt: 2000, dir: 90, kt: 200, tempC: 10 }],
+  }).map(r => ({ kind: r.kind, unflyable: !!r.unflyable })));
+  expect(rows.some(r => r.unflyable), JSON.stringify(rows)).toBe(true);
+  expect(rows.some(r => r.kind === 'climb')).toBe(true);
+});
+
+// No rate of climb typed, but a height to gain: the sheet used to start at cruise level as if
+// the aeroplane had teleported there.
+test('a climb with no rate is a row that says so, not a silent teleport', async ({ page }) => {
+  const rows = await call(page, () => navLogRows({
+    waypoints: [{ name: 'A', lat: 32.0, lng: 34.9 }, { name: 'B', lat: 32.4, lng: 35.1 }],
+    depElevFt: 100, destElevFt: 100, cruiseAltFt: 3000,
+    cas: { climb: 70, cruise: 90, descent: 100 },
+    rates: { climbFpm: 0, descentFpm: 500 },
+    fuel: { climbGal: 7, cruiseGph: 8 }, variationDeg: 4, met: [], deviation: [],
+  }).map(r => ({ kind: r.kind, unflyable: !!r.unflyable, noRate: !!r.noRate })));
+  expect(rows[0]).toMatchObject({ kind: 'climb', unflyable: true, noRate: true });
+});
