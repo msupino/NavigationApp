@@ -318,11 +318,14 @@ test('the toolbar Import opens an exercise file', async ({ page }) => {
   expect(got).toEqual({ names: ['LLHZ', 'א', 'ב', 'ג', 'LLIB'], met: 6, cruise: 6000, dep: 100 });
 });
 
-// ...and an ordinary route file still takes the route path, untouched by any of this.
+// ...and an ordinary route file still takes the route path, untouched by any of this. It asks
+// the same question -- the gate is the app's, not this window's (see import.spec.js) -- so the
+// sheet is what this one is about: a route file carries none, and must not invent one.
 const ROUTE_FILE = require('./fixtures/route-herzliya-rosh-pina.json');
 
 test('a plain route file is still just a route', async ({ page }) => {
   await boot(page);
+  await page.evaluate(() => { window.askYesNo = async () => true; });
   const before = await page.evaluate(() => NavAid.navLog.config().met.length);
   await page.setInputFiles('#file', {
     name: 'route.json',
@@ -368,6 +371,68 @@ test('an exercise that is also a route lands whole: map and sheet', async ({ pag
   const rows = await page.evaluate(() => NavAid.navLog.rows().map(r => Math.round(r.pressureAltFt)));
   expect(rows[0]).toBe(4033);
   expect(rows[rows.length - 1]).toBe(3450);
+});
+
+// Reported: opening an exercise replaced the route on the map without asking. The question was
+// being asked -- after applyRouteData had already overwritten waypoints, legs and notes, which
+// is asking whether to destroy something already destroyed. It is asked first now, and the
+// answer decides. Both files below are the same exercise; only the answer differs.
+const BOTH = () => Object.assign({}, ROUTE_FILE, {
+  title: 'Herzliya - Rosh Pina (CVFR exercise)',
+  navlog: FIXTURE.navlog,
+});
+
+test('it asks before the route on the map is touched', async ({ page }) => {
+  await boot(page);
+  // The stub answers yes, but records what the map still held at the moment it was asked.
+  await page.evaluate(() => {
+    window.__askedWith = null;
+    window.askYesNo = async () => {
+      window.__askedWith = state.waypoints.map(w => w.name);
+      return true;
+    };
+  });
+  await page.setInputFiles('#file', {
+    name: 'navaid-exercise.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(BOTH()), 'utf8'),
+  });
+  await page.waitForFunction(() => state.waypoints.length === 5, null, { timeout: 5000 });
+  // The three points boot() drew -- not the five the file carries.
+  expect(await page.evaluate(() => window.__askedWith)).toEqual(['LLHZ', 'א', 'LLIB']);
+});
+
+test('declining keeps the route on the map, and still takes the sheet', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { window.askYesNo = async () => false; });
+  await page.setInputFiles('#file', {
+    name: 'navaid-exercise.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(BOTH()), 'utf8'),
+  });
+  // The sheet lands either way: the met table is what tells us the import ran at all.
+  await page.waitForFunction(() => NavAid.navLog.config().met.length === 6, null, { timeout: 5000 });
+  const got = await page.evaluate(() => ({
+    names: state.waypoints.map(w => w.name),
+    cruise: NavAid.navLog.config().cruiseAltFt,
+    dep: NavAid.navLog.config().depElevFt,
+  }));
+  expect(got).toEqual({ names: ['LLHZ', 'א', 'LLIB'], cruise: 6000, dep: 100 });
+});
+
+// Saying yes is not a one-way door: the route path's own Undo takes the old plan back.
+test('accepting is undoable', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { window.askYesNo = async () => true; });
+  await page.setInputFiles('#file', {
+    name: 'navaid-exercise.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(BOTH()), 'utf8'),
+  });
+  await page.waitForFunction(() => state.waypoints.length === 5, null, { timeout: 5000 });
+  await page.evaluate(() => undo());
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name)))
+    .toEqual(['LLHZ', 'א', 'LLIB']);
 });
 
 // Reported: moving a waypoint with the table open changed nothing on it. The sheet is worked
@@ -448,10 +513,16 @@ test('met levels are kept in altitude order', async ({ page }) => {
     return [...grid].slice(1).map(tr => tr.querySelector('input').value);
   });
   expect(shown).toEqual(['2000', '6000']);
-  // Adding one puts it above the highest, and the list stays sorted.
+  // Adding one keeps the list sorted, wherever the new level belongs. (It used to land above
+  // the highest by construction; it now lands on a level the flight reads its air at, which is
+  // as likely to be between two existing rows as above them -- so this asserts the order, which
+  // is what the test is named for.)
   await page.evaluate(() => document.querySelector('.navlog-add').click());
   const after = await page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt));
-  expect(after).toEqual([2000, 6000, 7000]);
+  expect(after).toHaveLength(3);
+  expect(after).toEqual([...after].sort((a, b) => a - b));
+  expect(after).toContain(2000);
+  expect(after).toContain(6000);
 });
 
 // Reported: opening the file left every altitude as a dash -- the importer read the points and
@@ -619,8 +690,9 @@ test('the way back appears only when a field is holding an override', async ({ p
   await openLog(page);
   expect(await page.locator('.navlog-hint').count()).toBe(0);
   // Always on screen; dimmed when there is nothing to undo. `true` here means "live".
+  // The setup row's own arrows. The compass card carries one too, and it answers to the card.
   const resets = () => page.evaluate(() =>
-    [...document.querySelectorAll('.navlog-reset')]
+    [...document.querySelectorAll('.navlog-setup .navlog-reset')]
       .map(b => !b.hidden && !b.classList.contains('navlog-reset-idle')));
   // Departure elevation, destination elevation, variation, and the two met fractions: five
   // fields with a default worth returning to, all quiet to begin with.
@@ -633,7 +705,7 @@ test('the way back appears only when a field is holding an override', async ({ p
   });
   expect(await resets()).toEqual([false, false, true, false, false]);
 
-  await page.evaluate(() => document.querySelectorAll('.navlog-reset')[2].click());
+  await page.evaluate(() => document.querySelectorAll('.navlog-setup .navlog-reset')[2].click());
   expect(await resets()).toEqual([false, false, false, false, false]);
   expect(await page.evaluate(() => NavAid.navLog.config().variationDeg)).toBe(5);
   expect(await page.evaluate(() =>
@@ -917,7 +989,7 @@ test('the met table\'s buttons have room between them', async ({ page }) => {
 test('the undo arrow is always there, dimmed when there is nothing to undo', async ({ page }) => {
   await boot(page);
   await openLog(page);
-  const state1 = await page.evaluate(() => [...document.querySelectorAll('.navlog-reset')]
+  const state1 = await page.evaluate(() => [...document.querySelectorAll('.navlog-setup .navlog-reset')]
     .map(b => ({ hidden: b.hidden, idle: b.classList.contains('navlog-reset-idle'),
                  title: b.title, visible: b.getBoundingClientRect().width > 0 })));
   expect(state1).toHaveLength(5);
@@ -937,7 +1009,7 @@ test('the undo arrow is always there, dimmed when there is nothing to undo', asy
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   const after = await page.evaluate(() => {
-    const b = document.querySelectorAll('.navlog-reset')[2];
+    const b = document.querySelectorAll('.navlog-setup .navlog-reset')[2];
     return { idle: b.classList.contains('navlog-reset-idle'), title: b.title };
   });
   expect(after.idle).toBe(false);
@@ -1162,4 +1234,335 @@ test('a climb with no rate says so under the sheet', async ({ page }) => {
   });
   const note = await page.evaluate(() => document.querySelector('.navlog-note').textContent);
   expect(note).toMatch(/no rate of climb/i);
+});
+
+// Reported with a screenshot of the deviation table showing 364 in the Steer column: a heading
+// is a point on a circle, and a compass in front of a pilot cannot read 364. The card's whole
+// job is to say what that compass WILL read.
+test.describe('the compass card', () => {
+  const steerInputs = (page) => page.locator('.navlog-card-grid input');
+
+  // The card is printed as two pairs of columns, six marks each, so the box for a given mark is
+  // not the nth input: 000 and 180 share the first row.
+  const boxFor = (page, devIndex) =>
+    steerInputs(page).nth((devIndex % 6) * 2 + (devIndex >= 6 ? 1 : 0));
+
+  const typeSteer = async (page, devIndex, value) => {
+    const box = boxFor(page, devIndex);
+    await box.fill(String(value));
+    await box.blur();
+    return box;
+  };
+
+  test('a steer heading stays on the circle', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 0, 364);
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(4);
+    await expect(boxFor(page, 0)).toHaveValue('004');
+  });
+
+  // A max would make the spinner STOP at 359. A compass does not stop: one step up from 359 is
+  // 000, and one step down from 000 is 359.
+  test('the spinner steps round the circle rather than hitting a wall', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const box = boxFor(page, 0);
+    await expect(box).not.toHaveAttribute('max', /.*/);
+    await box.fill('359');
+    await box.press('ArrowUp');
+    await expect(box).toHaveValue('000');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(0);
+    await box.press('ArrowDown');
+    await expect(box).toHaveValue('359');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(359);
+  });
+
+  // ...and a half-typed number is left alone, or nobody could type 120 past the 1.
+  test('typing is not rewritten under the caret', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const box = boxFor(page, 0);
+    await box.fill('');
+    await box.pressSequentially('120', { delay: 20 });
+    await expect(box).toHaveValue('120');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[0].ch)).toBe(120);
+  });
+
+  test('360 is 000, and a negative heading comes back round', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 1, 360);
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[1].ch)).toBe(0);
+    await typeSteer(page, 1, -10);
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[1].ch)).toBe(350);
+  });
+
+  // Every other box in this window carries its own way back. The card had one arrow for the
+  // whole table, which is a way back to nothing in particular: asked where the undo for each
+  // element was, the answer was that there wasn't one.
+  const rowArrow = (page, devIndex) =>
+    page.locator('.navlog-card-grid td .navlog-reset').nth((devIndex % 6) * 2 + (devIndex >= 6 ? 1 : 0));
+
+  test('every row carries its own way back', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    expect(await page.locator('.navlog-card-grid td .navlog-reset').count()).toBe(12);
+    // Always there, dimmed while that heading carries no deviation.
+    await expect(rowArrow(page, 2)).toBeVisible();
+    await expect(rowArrow(page, 2)).toHaveClass(/navlog-reset-idle/);
+    await typeSteer(page, 2, 66);
+    await expect(rowArrow(page, 2)).not.toHaveClass(/navlog-reset-idle/);
+    // ...and its neighbours stay quiet: this arrow is that heading's, not the table's.
+    await expect(rowArrow(page, 3)).toHaveClass(/navlog-reset-idle/);
+  });
+
+  test('a row arrow clears that heading and leaves the rest', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 2, 66);
+    await typeSteer(page, 7, 215);
+    await rowArrow(page, 2).click();
+    const after = await page.evaluate(() => NavAid.navLog.config().deviation.map(e => e.ch));
+    expect(after[2]).toBe(60);            // back to its magnetic heading
+    expect(after[7]).toBe(215);           // the other one is untouched
+    await expect(rowArrow(page, 2)).toHaveClass(/navlog-reset-idle/);
+    // The card as a whole still has something to undo, so its arrow stays live.
+    await expect(page.locator('.navlog-card .navlog-sub-title .navlog-reset'))
+      .not.toHaveClass(/navlog-reset-idle/);
+  });
+
+  // The house rule: always there, dimmed when there is nothing to undo.
+  test('the card carries a restore arrow, dimmed while the card is clear', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const arrow = page.locator('.navlog-card .navlog-sub-title .navlog-reset');
+    await expect(arrow).toBeVisible();
+    await expect(arrow).toHaveClass(/navlog-reset-idle/);
+    await typeSteer(page, 0, 4);
+    await expect(arrow).not.toHaveClass(/navlog-reset-idle/);
+  });
+
+  test('the arrow clears the whole card back to steer-what-you-are-told', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 0, 4);
+    await typeSteer(page, 2, 66);
+    expect(await page.evaluate(() =>
+      NavAid.navLog.config().deviation.filter(e => e.ch !== e.mh).length)).toBe(2);
+    await page.locator('.navlog-card .navlog-sub-title .navlog-reset').click();
+    expect(await page.evaluate(() =>
+      NavAid.navLog.config().deviation.every(e => e.ch === e.mh))).toBe(true);
+    // ...and it is the stored card that was cleared, not just the boxes on screen.
+    expect(await page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem('navaid.navlog') || '{}');
+      return (s.deviation || []).every(e => e.ch === e.mh);
+    })).toBe(true);
+    await expect(page.locator('.navlog-card .navlog-sub-title .navlog-reset'))
+      .toHaveClass(/navlog-reset-idle/);
+    // ...and every row's own arrow went quiet with it.
+    expect(await page.locator('.navlog-card-grid td .navlog-reset:not(.navlog-reset-idle)').count())
+      .toBe(0);
+  });
+
+  // The card the window starts with: no deviation anywhere, written the way the column beside
+  // it is written. North is the row that showed it -- 000 against a box reading 0.
+  test('the default card matches the magnetic column, north included', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const pairs = await page.evaluate(() =>
+      [...document.querySelectorAll('.navlog-card-grid tr')].slice(1).flatMap((tr) => {
+        const tds = [...tr.children];
+        return [[tds[0], tds[1]], [tds[2], tds[3]]]
+          .filter(([m, c]) => m && c && c.querySelector('input'))
+          .map(([m, c]) => [m.textContent, c.querySelector('input').value]);
+      }));
+    expect(pairs).toHaveLength(12);
+    expect(pairs[0]).toEqual(['000', '000']);
+    for (const [magnetic, steer] of pairs) expect(steer).toBe(magnetic);
+  });
+
+  // Emptying a box is the other way back, as it is for every box in this window.
+  test('emptying one box hands that row back to its magnetic heading', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 3, 95);
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[3].ch)).toBe(95);
+    await typeSteer(page, 3, '');
+    expect(await page.evaluate(() => NavAid.navLog.config().deviation[3])).toEqual({ mh: 90, ch: 90 });
+  });
+});
+
+// "Add a level" appended the next rung of a ladder -- highest + 1000, at 15 °C whatever the
+// altitude. Two problems: the altitude was not a level this flight reads its air at, and the
+// sheet works its true airspeeds from that temperature column, so a flat 15 is a wrong number
+// wearing the shape of a default. The wind was always calm and stays calm -- 000/00 reads as a
+// row nobody has filled in, which is what it is.
+test.describe('adding a met level', () => {
+  const alts = (page) => page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt));
+
+  test('it adds a level this flight actually reads its air at', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    // The levels the sheet asks the forecast for: the same list, and the table starts empty.
+    const wanted = await page.evaluate(() => NavAid.navLog.metLevelsFor(NavAid.navLog.config()));
+    expect(await alts(page)).toEqual([]);
+    await page.locator('.navlog-add').click();
+    expect(await alts(page)).toEqual([wanted[0]]);
+    await page.locator('.navlog-add').click();
+    expect(await alts(page)).toEqual(wanted.slice(0, 2));
+  });
+
+  // The temperature column is where every TAS on the sheet comes from.
+  test('the new row is ISA for its altitude, not 15 °C everywhere', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await page.locator('.navlog-add').click();
+    const row = await page.evaluate(() => NavAid.navLog.config().met[0]);
+    // 15 − 2 °C per 1,000 ft, the lapse rate this sheet is worked to.
+    expect(row.tempC).toBe(Math.round(15 - 2 * row.alt / 1000));
+    expect(row.dir).toBe(0);      // calm: a row nobody has filled in says so
+    expect(row.kt).toBe(0);
+  });
+
+  // Copying the nearest row's wind into the new one was tried, and is worse than calm: 270/22
+  // at a level nobody measured is a number wearing the shape of data, and the sheet works drift
+  // and ground speed out of it.
+  test('the wind is not borrowed from another level', async ({ page }) => {
+    await boot(page);
+    // Stored before the window opens: calling show() twice would leave two of them on screen.
+    await page.evaluate(() => {
+      NavAid.navLog.save({ met: [{ alt: 3000, dir: 270, kt: 22, tempC: 9 }] });
+    });
+    await openLog(page);
+    await page.locator('.navlog-add').click();
+    const rows = await page.evaluate(() => NavAid.navLog.config().met);
+    const added = rows.find(r => r.alt !== 3000);
+    expect(added.dir).toBe(0);
+    expect(added.kt).toBe(0);
+    // ...and the row it did not copy from is untouched.
+    expect(rows.find(r => r.alt === 3000)).toEqual({ alt: 3000, dir: 270, kt: 22, tempC: 9 });
+  });
+
+  // Adding a level is asking to type one.
+  test('the caret lands on the altitude just added', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await page.locator('.navlog-add').click();
+    const focused = await page.evaluate(() => {
+      const el = document.activeElement;
+      const cell = el && el.closest('td');
+      return { tag: el && el.tagName, first: !!(cell && cell === cell.parentElement.children[0]),
+        value: el && el.value };
+    });
+    expect(focused.tag).toBe('INPUT');
+    expect(focused.first).toBe(true);
+    expect(Number(focused.value)).toBe((await alts(page))[0]);
+  });
+
+  // The button says which level it is about to add, so it is not a surprise.
+  test('the button names the level it will add', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const wanted = await page.evaluate(() => NavAid.navLog.metLevelsFor(NavAid.navLog.config()));
+    // Written the way a number is written: 2,000 rather than 2000. The locale is pinned, so the
+    // separator is always a comma -- a literal in a regex, and nothing to escape.
+    await expect(page.locator('.navlog-add'))
+      .toHaveAttribute('title', new RegExp(wanted[0].toLocaleString('en-US')));
+  });
+});
+
+// A UI pass over the window: what a pilot reads, and in what order. Each of these was a real
+// complaint about the form as it stood.
+test.describe('the form as a thing to read', () => {
+  // It opened at .modal.wide's cap -- 92vw -- because nothing ever set a width, so a third of a
+  // desktop window was empty and the map underneath it was covered for no reason.
+  test('the window opens at the sheet\'s width, not the screen\'s', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await boot(page);
+    await openLog(page);
+    const got = await page.evaluate(() => ({
+      modal: Math.round(document.querySelector('.navlog-modal').getBoundingClientRect().width),
+      cap: Math.round(innerWidth * 0.92),
+    }));
+    expect(got.modal).toBeLessThan(got.cap);
+    // ...and still wide enough that the 23 columns are not a scroller on a desktop.
+    expect(got.modal).toBeGreaterThan(880);
+  });
+
+  // Twelve boxes in one flow wrapped wherever the window ended, leaving one box alone on a line.
+  test('the setup row is four groups that wrap as units', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const groups = await page.evaluate(() =>
+      [...document.querySelectorAll('.navlog-setup .navlog-group')].map(g => g.children.length));
+    // Where the flight starts and ends, how fast, where the air is read, what it costs.
+    expect(groups).toEqual([3, 3, 2, 4]);
+    expect(await page.locator('.navlog-setup .navlog-field').count()).toBe(12);
+  });
+
+  // Figures on this sheet are read DOWN a column, which centring undoes: tabular digits line up
+  // only against an edge.
+  test('the numbers line up on an edge; the names stay centred', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const align = await page.evaluate(() => {
+      const cells = [...document.querySelectorAll('.navlog-table tr.navlog-row')[0].children];
+      return cells.map(c => getComputedStyle(c).textAlign);
+    });
+    expect(align.slice(0, 3)).toEqual(['center', 'center', 'center']);   // LEG, From, To
+    for (const a of align.slice(3)) expect(a).toBe('end');
+  });
+
+  // The sheet is three sheets: what you were given, the triangle worked through it, what comes
+  // out. The printed exercise rules those apart; 23 identical hairlines do not.
+  test('the three groups of columns are ruled apart', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const widths = await page.evaluate(() =>
+      [...document.querySelectorAll('.navlog-table tr')[0].children]
+        .map(th => parseFloat(getComputedStyle(th).borderInlineStartWidth)));
+    // W kt opens the wind triangle; GS opens the results.
+    expect(widths[7]).toBeGreaterThan(widths[6]);
+    expect(widths[16]).toBeGreaterThan(widths[15]);
+    expect(widths[6]).toBe(widths[5]);        // ...and nothing else is ruled
+  });
+
+  // "FF" and "TT" are columns somebody has to be told about once. The full name is the tooltip
+  // rather than a wider sheet.
+  test('every abbreviated column says what it is', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const heads = await page.evaluate(() =>
+      [...document.querySelectorAll('.navlog-table th')].map(th => [th.textContent, th.title]));
+    expect(heads).toHaveLength(23);
+    const ff = heads.find(([t]) => t === 'FF');
+    expect(ff[1]).toBe('Fuel flow');
+    expect(heads.find(([t]) => t === 'TT')[1]).toBe('True track');
+    // The three that need no explaining carry none.
+    expect(heads.find(([t]) => t === 'From')[1]).toBe('');
+  });
+
+  // On a phone the scrollbar is an overlay that shows only while it moves, so the sheet simply
+  // looked cut off at "W dir" -- and in Hebrew, cut off at the other end.
+  test('the sideways scroll says it is there', async ({ page }) => {
+    await page.setViewportSize({ width: 430, height: 880 });
+    await boot(page);
+    await openLog(page);
+    const got = await page.evaluate(() => {
+      const t = document.querySelector('.navlog-table');
+      const cs = getComputedStyle(t);
+      return {
+        scrolls: t.scrollWidth > t.clientWidth,
+        layers: cs.backgroundImage.split('linear-gradient').length - 1,
+        attach: cs.backgroundAttachment,
+      };
+    });
+    expect(got.scrolls).toBe(true);
+    expect(got.layers).toBe(4);
+    // The pair pinned to the content is what makes each shadow appear only while there is more
+    // table past that edge.
+    expect(got.attach).toContain('local');
+    expect(got.attach).toContain('scroll');
+  });
 });

@@ -15,6 +15,13 @@
 
   const featureOn = () => typeof tune !== 'function' || tune('featureNavLog') !== false;
   const num = (v, fallback) => (Number.isFinite(Number(v)) && v !== '' ? Number(v) : fallback);
+  // A heading is a point on a circle, so 364 is 004 and -10 is 350. Typed as 364 it used to
+  // stay 364: a number the compass in front of the pilot cannot show, on a card whose whole
+  // job is to say what that compass will read.
+  const deg360 = (v, fallback) => {
+    const n = num(v, null);
+    return n === null ? fallback : ((Math.round(n) % 360) + 360) % 360;
+  };
   // A percentage box, read as the fraction it means. Anything that is not a number -- and any
   // number that is not a percentage -- leaves the last good value alone: typing over a field
   // character by character must not pass through nonsense on the way.
@@ -242,6 +249,30 @@
     };
   }
 
+  // The gate in front of every exercise route, asked before anything is applied. Both doors pass
+  // through it: an exercise that is also a route file (drawn by the app's own route path) and one
+  // that is only points (drawn here). Reported as a route replaced with no warning -- the ask
+  // lived after applyRouteData had already overwritten the map.
+  //
+  // The question itself is io.js's, shared with the app's other route doors; only the wording is
+  // this window's, because an exercise carries a sheet as well as a route.
+  async function askExerciseRoute() {
+    const S2 = window.S || {};
+    if (typeof askReplaceRoute !== 'function') return true;
+    return askReplaceRoute(
+      S2.navTableReplaceRoute
+        || 'This exercise carries its own route. Load it? This replaces the route on your map.',
+      S2.navTableReplaceRouteOk || 'Load the route',
+      S2.navTableTitle || 'Flight planning form');
+  }
+
+  // The undo the route path takes, so declining is not the only way back.
+  function snapshotRoute() {
+    if (typeof recordUndoSnapshot !== 'function'
+      || typeof routeSnapshotForStorage !== 'function') return;
+    try { recordUndoSnapshot(JSON.stringify(routeSnapshotForStorage())); } catch (e) { /* not fatal */ }
+  }
+
   // Applies one. The route is REPLACED, so it asks first when there is one to lose -- in the
   // app's own dialog, because the answer decides whether a drawn plan survives.
   async function importExercise(text, opts) {
@@ -257,21 +288,12 @@
       }
       return null;
     }
-    if (parsed.waypoints && typeof state === 'object' && state
-      && Array.isArray(state.waypoints) && state.waypoints.length) {
-      const ask = S2.navTableReplaceRoute
-        || 'This exercise carries its own route. Load it? This replaces the route on your map.';
-      let take = false;
-      try {
-        take = typeof window.askYesNo === 'function'
-          ? await window.askYesNo(S2.navTableTitle || 'Flight planning form', ask,
-            S2.navTableReplaceRouteOk || 'Load the route')
-          : true;
-      } catch (e) { take = false; }
-      if (!take) parsed.waypoints = null;      // the settings still land; the plan is untouched
+    // Already asked and answered upstairs when the caller drew the route itself.
+    if (parsed.waypoints && !(await askExerciseRoute())) {
+      parsed.waypoints = null;               // the settings still land; the plan is untouched
     }
     if (parsed.waypoints) {
-      if (typeof recordUndoSnapshot === 'function') recordUndoSnapshot();
+      snapshotRoute();
       state.waypoints = parsed.waypoints;
       if (typeof syncLegs === 'function') syncLegs();
       if (typeof draw === 'function') draw();
@@ -403,12 +425,22 @@
   // all. When it is, the route goes down the ordinary route path so it lands on the map complete;
   // only the sheet's assumptions come here. Reported as "the alt is ---": the window's own
   // importer read the points and dropped the legs, so every kite showed a dash.
-  function openExerciseFile(text) {
+  async function openExerciseFile(text) {
     let doc = null;
     try { doc = JSON.parse(String(text)); } catch (e) { doc = null; }
     const asRoute = (doc && typeof doc === 'object' && typeof validateRoute === 'function'
       && !validateRoute(doc)) ? doc : null;
-    if (asRoute && typeof applyRouteData === 'function') applyRouteData(asRoute);
+    if (asRoute && typeof applyRouteData === 'function') {
+      // Ask BEFORE applying: applyRouteData overwrites waypoints, legs and notes outright, and
+      // a question asked afterwards is asking about a plan that is already gone. Declining
+      // keeps the map and still takes the sheet -- met table, card, speeds, field elevations.
+      if (await askExerciseRoute()) {
+        snapshotRoute();
+        applyRouteData(asRoute);
+      }
+    }
+    // skipRoute when this path drew the route, and also when it was offered and declined:
+    // either way the answer is settled, and importExercise must not ask a second time.
     return importExercise(text, { skipRoute: !!asRoute });
   }
 
@@ -645,7 +677,19 @@
     setup.className = 'navlog-setup';
     const fields = [];
     const add = (f, read, path) => { fields.push({ f, read, path }); return f; };
+    // Twelve boxes in one flow is twelve boxes to read before finding the one you want, and it
+    // wrapped wherever the window happened to end -- "Cruise (gal/h)" alone on a second line.
+    // They belong in four groups, and a group wraps as a unit: where the aeroplane starts and
+    // ends, how fast it flies, where in the climb and descent the air is read, and what it
+    // costs to get there.
+    const group = (...items) => {
+      const g = document.createElement('div');
+      g.className = 'navlog-group';
+      g.append(...items);
+      return g;
+    };
     setup.append(
+      group(
       // Emptying the box, or pressing the arrow, hands it back -- see settingEdited.
       add(field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt,
         v => settingEdited('depElevFt', v), {
@@ -664,10 +708,12 @@
           resetTitle: S2.navLogUseTuneVariation || 'Back to the variation the app uses',
           atDefaultTitle: S2.navLogAtDefault || 'Already the default',
           onReset: () => restore('variationDeg'),
-        }), c => c.variationDeg, 'variationDeg'),
-      field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }),
-      field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit('cas.cruise'); }),
-      field(S2.navLogCasDescent || 'Descent CAS', cfg.cas.descent, v => { cfg.cas.descent = num(v, 0); commit('cas.descent'); }),
+        }), c => c.variationDeg, 'variationDeg')),
+      group(
+        field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }),
+        field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit('cas.cruise'); }),
+        field(S2.navLogCasDescent || 'Descent CAS', cfg.cas.descent, v => { cfg.cas.descent = num(v, 0); commit('cas.descent'); })),
+      group(
       // Where in the climb and the descent the met data is read, as a percentage of the height
       // gained or lost: the exercise's 67% and 50%. A percentage is what a pilot can type; the
       // fraction is what the arithmetic uses.
@@ -682,11 +728,12 @@
           resetTitle: S2.navLogUseDefaultFraction || 'Back to the standard fraction',
           atDefaultTitle: S2.navLogAtDefault || 'Already the default',
           onReset: () => restore('paFraction.descent'),
-        }), c => Math.round(c.paFraction.descent * 100), 'paFraction.descent'),
-      field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit('rates.climbFpm'); }),
-      field(S2.navLogDescentRate || 'Descent (fpm)', cfg.rates.descentFpm, v => { cfg.rates.descentFpm = num(v, 0); commit('rates.descentFpm'); }),
-      field(S2.navLogClimbFuel || 'Climb fuel (gal)', cfg.fuel.climbGal, v => { cfg.fuel.climbGal = num(v, 0); commit('fuel.climbGal'); }, { step: '0.1' }),
-      field(S2.navLogCruiseGph || 'Cruise (gal/h)', cfg.fuel.cruiseGph, v => { cfg.fuel.cruiseGph = num(v, 0); commit('fuel.cruiseGph'); }, { step: '0.1' }),
+        }), c => Math.round(c.paFraction.descent * 100), 'paFraction.descent')),
+      group(
+        field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit('rates.climbFpm'); }),
+        field(S2.navLogDescentRate || 'Descent (fpm)', cfg.rates.descentFpm, v => { cfg.rates.descentFpm = num(v, 0); commit('rates.descentFpm'); }),
+        field(S2.navLogClimbFuel || 'Climb fuel (gal)', cfg.fuel.climbGal, v => { cfg.fuel.climbGal = num(v, 0); commit('fuel.climbGal'); }, { step: '0.1' }),
+        field(S2.navLogCruiseGph || 'Cruise (gal/h)', cfg.fuel.cruiseGph, v => { cfg.fuel.cruiseGph = num(v, 0); commit('fuel.cruiseGph'); }, { step: '0.1' })),
     );
 
     // The met table. Empty by default -- an exercise hands you one, and inventing rows would
@@ -747,13 +794,47 @@
       add.type = 'button';
       add.className = 'navlog-add';
       add.textContent = S2.navLogAddRow || 'Add a level';
-      add.addEventListener('click', () => {
+      // The level the FLIGHT is missing, not the next rung of a ladder. metLevelsFor already
+      // knows the pressure altitudes this sheet reads its air at -- it is the list Fetch
+      // forecast asks for -- so the first of those with no row is the one worth adding. Only
+      // once the table covers the flight does it fall back to a thousand feet above the top.
+      const nextLevel = () => {
+        const have = new Set(cfg.met.map(r => Math.round(r.alt)));
+        const wanted = metLevelsFor(cfg).find(ft => !have.has(ft));
+        if (Number.isFinite(wanted)) return wanted;
         const highest = cfg.met.reduce((top, r) => Math.max(top, r.alt), 0);
-        cfg.met.push({ alt: highest ? highest + 1000 : 2000, dir: 0, kt: 0, tempC: 15 });
+        return highest ? highest + 1000 : 2000;
+      };
+      add.title = S2.navLogAddRowAt ? S2.navLogAddRowAt(nextLevel()) : add.textContent;
+      add.setAttribute('aria-label', add.title);
+      add.addEventListener('click', () => {
+        const alt = nextLevel();
+        // The wind stays calm. It was calm before, and calm is the one honest answer: 000/00
+        // reads as a row nobody has filled in, which is what it is. Copying the nearest row's
+        // wind up here was tried and is worse -- 270/22 at a level nobody measured is a number
+        // wearing the shape of data, and the sheet works drift and ground speed from it.
+        //
+        // The temperature is different, and is why this row changed at all: ISA is not a guess
+        // but the defined standard for an atmosphere nobody has measured, and it is the lapse
+        // rate this sheet is already worked to. A flat 15 at every level is neither -- at 7,000
+        // ft it is a wrong number wearing the shape of a default, and every true airspeed on
+        // the sheet comes out of that column.
+        cfg.met.push({
+          alt,
+          dir: 0,
+          kt: 0,
+          tempC: typeof isaTempAtPaC === 'function' ? Math.round(isaTempAtPaC(alt)) : 15,
+        });
         cfg.met.sort((a, b) => a.alt - b.alt);
         saveTables(cfg);
         render();
         renderMet();
+        // Adding a level is asking to type one, so the caret lands in the row just added -- and
+        // on its altitude, the one figure the app cannot guess better than the pilot can.
+        const idx = cfg.met.findIndex(r => Math.round(r.alt) === Math.round(alt));
+        const tr = met.querySelectorAll('.navlog-grid tr')[idx + 1];
+        const box = tr && tr.querySelector('input');
+        if (box) { box.focus(); box.select(); }
       });
       // The two buttons share a row, with room between them: side by side and touching, they
       // read as one control with a seam down it.
@@ -796,11 +877,40 @@
     // the "steer" column is typed.
     const card = document.createElement('div');
     card.className = 'navlog-card';
+    // A card with no deviation on it: steer what you were told to fly. That is the state the
+    // window starts in, and the one the arrow goes back to -- it clears the whole map rather
+    // than one row, because a half-cleared card is a card that still lies about the rows left
+    // on it. Twelve rows is also twelve arrows if this were per-row, on a table that is already
+    // the densest thing in the window.
+    const cardIsClear = () => cfg.deviation.every(e => e && e.ch === e.mh);
+    let showCardReset = () => {};
+    const clearCard = () => {
+      for (const e of cfg.deviation) e.ch = e.mh;
+      saveTables(cfg);
+      renderCard();          // rebuilt, so every row's own arrow is re-lit with it
+      render();
+    };
     function renderCard() {
       card.replaceChildren();
       const head = document.createElement('div');
       head.className = 'navlog-sub-title';
       head.textContent = S2.navLogCard || 'Compass card';
+      // Always there, dimmed while there is nothing to undo -- the house rule every other box
+      // in this window follows.
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'navlog-reset';
+      reset.textContent = '\u21ba';
+      reset.addEventListener('click', clearCard);
+      showCardReset = () => {
+        const on = !cardIsClear();
+        reset.classList.toggle('navlog-reset-idle', !on);
+        reset.title = on
+          ? (S2.navLogCardReset || 'Clear the card: steer what you are told to fly')
+          : (S2.navLogAtDefault || 'Already the default');
+        reset.setAttribute('aria-label', reset.title);
+      };
+      head.appendChild(reset);
       card.appendChild(head);
       // Two pairs of columns, the way a card is printed and the way the exercise hands it over:
       // twelve marks down one column is a table taller than the sheet it belongs to.
@@ -823,9 +933,62 @@
         mh.textContent = deg(entry.mh);
         const input = document.createElement('input');
         input.type = 'number';
-        input.value = String(entry.ch);
-        input.addEventListener('input', () => { entry.ch = num(input.value, entry.mh); saveTables(cfg); render(); });
-        ch.appendChild(input);
+        // No max: a max makes the spinner STOP at 359, and a compass does not stop -- one step
+        // up from 359 is 000. The circle is enforced by wrapping what is typed or stepped, not
+        // by walling off the end of it.
+        input.step = '1';
+        // Three digits, the way the magnetic column beside it is printed and the way a heading
+        // is spoken: a card reading 000 / 030 against boxes reading 0 / 30 is the same number
+        // written two ways, on the one table whose job is to be compared across.
+        input.value = deg(entry.ch);
+        // Emptying the box is how a row's deviation is taken back, the same as every other box
+        // in this window: the steer heading returns to the magnetic one beside it.
+        input.addEventListener('input', (e) => {
+          entry.ch = deg360(input.value, entry.mh);
+          saveTables(cfg);
+          render();
+          lightBack();
+          showCardReset();
+          // A step -- the spinner, or an arrow key -- carries no inputType, and it is a finished
+          // answer: show it wrapped at once, which is what makes 359 step round to 000. A typed
+          // digit is a half-finished answer, and rewriting the box under the caret would stop
+          // anyone typing 120 (1 ... 12 ... 120) from ever reaching the second digit.
+          if (!e.inputType) {
+            const shown = deg(entry.ch);
+            if (input.value !== shown) input.value = shown;
+          }
+        });
+        // What is stored is on the circle; what is typed is whatever was typed. Putting the
+        // wrapped value back on blur rather than mid-keystroke leaves the caret alone.
+        input.addEventListener('change', () => {
+          const shown = deg(entry.ch);
+          if (input.value !== shown) input.value = shown;
+        });
+        // Its own way back, on every row, the way every other box in this window has one --
+        // always there, dimmed while that row carries no deviation. The arrow in the title
+        // clears the whole card; this one clears the heading it sits on.
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'navlog-reset';
+        back.textContent = '\u21ba';
+        const lightBack = () => {
+          const on = entry.ch !== entry.mh;
+          back.classList.toggle('navlog-reset-idle', !on);
+          back.title = on
+            ? (S2.navLogCardRowReset || 'No deviation on this heading')
+            : (S2.navLogAtDefault || 'Already the default');
+          back.setAttribute('aria-label', back.title);
+        };
+        back.addEventListener('click', () => {
+          entry.ch = entry.mh;
+          input.value = deg(entry.ch);
+          saveTables(cfg);
+          render();
+          lightBack();
+          showCardReset();
+        });
+        lightBack();
+        ch.append(input, back);
         return [mh, ch];
       };
       for (let i = 0; i < half; i++) {
@@ -834,17 +997,23 @@
         grid.appendChild(tr);
       }
       card.appendChild(grid);
+      showCardReset();
     }
 
     function render() {
       const list = rowsFor(cfg);
       table.replaceChildren();
       const hr = document.createElement('tr');
-      for (const h of headers()) {
+      // A column called "FF" or "TT" is a column somebody has to be told about once. The full
+      // name rides along as the tooltip rather than widening a sheet that is already 23 wide.
+      const titles = Array.isArray(S2.navLogHeaderTitles) && S2.navLogHeaderTitles.length === 23
+        ? S2.navLogHeaderTitles : null;
+      headers().forEach((h, i) => {
         const th = document.createElement('th');
         th.textContent = h;
+        if (titles && titles[i] && titles[i] !== h) th.title = titles[i];
         hr.appendChild(th);
-      }
+      });
       table.appendChild(hr);
       list.forEach((row, i) => {
         const tr = document.createElement('tr');
