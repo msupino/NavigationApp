@@ -1,0 +1,295 @@
+{
+  "title": "Haifa - Atarot (CVFR exercise)",
+  "source": "Israeli CVFR written navigation exercise",
+  "notes": [
+    "Straight lines between the points, ignoring CVFR routes. Climb and descent on the route.",
+    "Climb met data at 2/3 of the height gained above the departure field; descent at 1/2 of the height lost above the destination field."
+  ],
+  "route": {
+    "waypoints": [
+      {
+        "name": "LLHA",
+        "lat": 32.80833,
+        "lng": 35.04278,
+        "he": "חיפה",
+        "elevFt": 100
+      },
+      {
+        "name": "א",
+        "lat": 32.66667,
+        "lng": 35.33333
+      },
+      {
+        "name": "ב",
+        "lat": 32.33333,
+        "lng": 35.0
+      },
+      {
+        "name": "ג",
+        "lat": 32.0,
+        "lng": 35.5
+      },
+      {
+        "name": "LLAT",
+        "lat": 31.86472,
+        "lng": 35.21944,
+        "he": "עטרות",
+        "elevFt": 2500
+      }
+    ]
+  },
+  "navlog": {
+    "cruiseAltFt": 7000,
+    "depElevFt": 100,
+    "destElevFt": 2500,
+    "variationDeg": 3,
+    "cas": {
+      "climb": 65,
+      "cruise": 85,
+      "descent": 100
+    },
+    "rates": {
+      "climbFpm": 850,
+      "descentFpm": 1000
+    },
+    "fuel": {
+      "climbGal": 7,
+      "cruiseGph": 8
+    },
+    "met": [
+      {
+        "alt": 2000,
+        "dir": 315,
+        "kt": 17,
+        "tempC": 10
+      },
+      {
+        "alt": 3000,
+        "dir": 290,
+        "kt": 17,
+        "tempC": 8
+      },
+      {
+        "alt": 4000,
+        "dir": 300,
+        "kt": 20,
+        "tempC": 6
+      },
+      {
+        "alt": 5000,
+        "dir": 300,
+        "kt": 22,
+        "tempC": 4
+      },
+      {
+        "alt": 6000,
+        "dir": 320,
+        "kt": 25,
+        "tempC": 2
+      },
+      {
+        "alt": 7000,
+        "dir": 325,
+        "kt": 27,
+        "tempC": 0
+      }
+    ],
+    "deviation": [
+      {
+        "mh": 0,
+        "ch": 358
+      },
+      {
+        "mh": 30,
+        "ch": 27
+      },
+      {
+        "mh": 60,
+        "ch": 59
+      },
+      {
+        "mh": 90,
+        "ch": 90
+      },
+      {
+        "mh": 120,
+        "ch": 122
+      },
+      {
+        "mh": 150,
+        "ch": 152
+      },
+      {
+        "mh": 180,
+        "ch": 180
+      },
+      {
+        "mh": 210,
+        "ch": 209
+      },
+      {
+        "mh": 240,
+        "ch": 241
+      },
+      {
+        "mh": 270,
+        "ch": 272
+      },
+      {
+        "mh": 300,
+        "ch": 300
+      },
+      {
+        "mh": 330,
+        "ch": 332
+      }
+    ]
+  },
+  "published": {
+    "rows": [
+      {
+        "leg": 1,
+        "from": "חיפה",
+        "to": "TOC",
+        "cas": 65,
+        "paFt": 4700,
+        "tempC": 5,
+        "tas": 69.7,
+        "wind": "300/22",
+        "trackTrue": 120,
+        "drift": "0",
+        "headingTrue": 120,
+        "variation": "3E",
+        "headingMag": 117,
+        "deviation": "2W",
+        "headingCompass": 119,
+        "gsKt": 91.5,
+        "distNm": 12.4,
+        "time": "8:07",
+        "cumTime": "8:07",
+        "fuelGal": 7,
+        "cumFuelGal": 7
+      },
+      {
+        "leg": 2,
+        "from": "TOC",
+        "to": "א",
+        "cas": 85,
+        "paFt": 7000,
+        "tempC": 0,
+        "tas": 94.2,
+        "wind": "325/27",
+        "trackTrue": 120,
+        "drift": "7R",
+        "headingTrue": 113,
+        "variation": "3E",
+        "headingMag": 110,
+        "deviation": "2W",
+        "headingCompass": 112,
+        "gsKt": 118,
+        "distNm": 4.8,
+        "time": "2:26",
+        "cumTime": "10:33",
+        "gph": 8,
+        "fuelGal": 0.3,
+        "cumFuelGal": 7.3
+      },
+      {
+        "leg": 3,
+        "from": "א",
+        "to": "ב",
+        "cas": 85,
+        "paFt": 7000,
+        "tempC": 0,
+        "tas": 94.2,
+        "wind": "325/27",
+        "trackTrue": 220,
+        "drift": "16L",
+        "headingTrue": 236,
+        "variation": "3E",
+        "headingMag": 233,
+        "deviation": "1W",
+        "headingCompass": 234,
+        "gsKt": 97.5,
+        "distNm": 26.2,
+        "time": "16:07",
+        "cumTime": "26:40",
+        "gph": 8,
+        "fuelGal": 2.1,
+        "cumFuelGal": 9.4
+      },
+      {
+        "leg": 4,
+        "from": "ב",
+        "to": "ג",
+        "cas": 85,
+        "paFt": 7000,
+        "tempC": 0,
+        "tas": 94.2,
+        "wind": "325/27",
+        "trackTrue": 128,
+        "drift": "5R",
+        "headingTrue": 123,
+        "variation": "3E",
+        "headingMag": 120,
+        "deviation": "2W",
+        "headingCompass": 122,
+        "gsKt": 119.7,
+        "distNm": 32.5,
+        "time": "16:18",
+        "cumTime": "42:58",
+        "gph": 8,
+        "fuelGal": 2.2,
+        "cumFuelGal": 11.6
+      },
+      {
+        "leg": 5,
+        "from": "ג",
+        "to": "TOD",
+        "cas": 85,
+        "paFt": 7000,
+        "tempC": 0,
+        "tas": 94.2,
+        "wind": "325/27",
+        "trackTrue": 242,
+        "drift": "17L",
+        "headingTrue": 259,
+        "variation": "3E",
+        "headingMag": 256,
+        "deviation": "1W",
+        "headingCompass": 257,
+        "gsKt": 87,
+        "distNm": 9.5,
+        "time": "6:33",
+        "cumTime": "49:31",
+        "gph": 8,
+        "fuelGal": 0.9,
+        "cumFuelGal": 12.5
+      },
+      {
+        "leg": 6,
+        "from": "TOD",
+        "to": "עטרות",
+        "cas": 100,
+        "paFt": 4750,
+        "tempC": 4,
+        "tas": 107,
+        "wind": "300/22",
+        "trackTrue": 242,
+        "drift": "10L",
+        "headingTrue": 252,
+        "variation": "3E",
+        "headingMag": 249,
+        "deviation": "1W",
+        "headingCompass": 250,
+        "gsKt": 93.7,
+        "distNm": 7,
+        "time": "4:30",
+        "cumTime": "54:01",
+        "gph": 8,
+        "fuelGal": 0.6,
+        "cumFuelGal": 13.1
+      }
+    ]
+  }
+}
