@@ -75,6 +75,7 @@ window.S = {
   choosePointVor: 'תחנת VOR',
   choosePointCommChange: 'חץ שינוי תדר',
   choosePointNotam: 'NOTAM',
+  tbSearchClear: 'ניקוי התיבה',
   tbSearchOpen: '🔍 חפש (Ctrl-F)',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
   tbRouteTemplates: '🧭 תבניות',

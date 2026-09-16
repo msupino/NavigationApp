@@ -14,6 +14,7 @@ test('ISA, density altitude and TAS at the standard reference points', async ({ 
   const got = await call(page, () => ({
     isaSl: isaTempAtPaC(0),
     isa5: Math.round(isaTempAtPaC(5000) * 100) / 100,
+    lapse: isaTempAtPaC(0) - isaTempAtPaC(1000),
     // A standard day: density altitude IS the pressure altitude.
     standard: Math.round(densityAltFromPaFt(5000, isaTempAtPaC(5000))),
     // Twenty degrees above standard: 120 ft per degree.
@@ -27,7 +28,8 @@ test('ISA, density altitude and TAS at the standard reference points', async ({ 
     noTemp: tasFromCas(100, 5000, null),
   }));
   expect(got.isaSl).toBe(15);
-  expect(got.isa5).toBe(5.1);
+  expect(got.isa5).toBe(5);        // 2 degrees per thousand, the exercise's own figure
+  expect(got.lapse).toBe(2);
   expect(got.standard).toBe(5000);
   expect(got.hot).toBe(7400);
   expect(got.tasSl).toBe(100);
@@ -45,7 +47,7 @@ test('the nav log\'s altitude maths does not collide with the airfield panel\'s'
     panelTakesThreeArgs: typeof window.densityAltFt === 'function'
       && window.densityAltFt.length === 3,
   }));
-  expect(got.navlog).toBe(5866);   // 6000 + 120 * (2 - 3.12)
+  expect(got.navlog).toBe(5880);   // 6000 + 120 * (2 - 3)
   expect(got.panelTakesThreeArgs).toBe(true);
 });
 

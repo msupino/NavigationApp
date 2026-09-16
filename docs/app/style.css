@@ -8051,6 +8051,38 @@ body.theme-light .disclaimer-lang-select { border-color: rgba(31, 37, 44, 0.35);
 /* Nothing behind it scrolls while it is up: the chart is not in use yet. */
 body.disclaimer-open { overflow: hidden; }
 
+/* The search, hosted at the top of the deck's menu sheet: the overlay element itself, so it is
+   the same input and the same results list. Its floating-overlay geometry means nothing here. */
+#search-overlay.deck-hosted-search {
+  position: static;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  margin: 0 0 8px;
+  box-shadow: none;
+}
+#search-overlay.deck-hosted-search #search-close { display: none; }
+/* The box and its clear ✕ are one object: the field is padded on its inline end and the button
+   sits in that padding, so it is inside the box on either layout and on either side of an RTL
+   flip. Only there when the box has something in it. */
+.search-box { position: relative; display: flex; flex: 1 1 auto; min-width: 0; }
+.search-box #wp-search { padding-inline-end: 26px; }
+.search-clear {
+  position: absolute;
+  inset-inline-end: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: 0;
+  color: inherit;
+  opacity: 0.65;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.search-clear:hover { opacity: 1; }
+
 /* --- nav log -------------------------------------------------------------
    A planning-desk table: 23 columns that will not fit a phone, so the table
    scrolls inside its own box and the page never scrolls sideways. */

@@ -870,3 +870,48 @@ test('the deck and the strip reserve the side insets too', async ({ page }) => {
   expect(got.strip.left).toBeTruthy();
   expect(got.deck.left).toBeTruthy();
 });
+
+// Asked for: the search as an input at the top of the menu, not two taps into a section. On a
+// phone the only way in was Menu -> Edit -> Find, for the one control that is a text box rather
+// than a switch.
+test('the menu sheet opens with the search at the top of it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
+  const sheet = page.locator('#deck-sheet');
+  await expect(sheet).toBeVisible();
+  const placed = await page.evaluate(() => {
+    const body = document.querySelector('.deck-sheet-body');
+    const overlay = document.getElementById('search-overlay');
+    const input = document.getElementById('wp-search');
+    return {
+      inside: !!(body && overlay && body.contains(overlay)),
+      first: body.firstElementChild === overlay,     // above the toolbar, not below it
+      visible: !overlay.classList.contains('hidden'),
+      // The same input the desktop uses, not a copy: one element with that id.
+      copies: document.querySelectorAll('#wp-search').length,
+      inputInside: !!(body && input && body.contains(input)),
+    };
+  });
+  expect(placed).toEqual({ inside: true, first: true, visible: true, copies: 1, inputInside: true });
+});
+
+test('searching from the sheet works, and the box goes home when it closes', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
+  await page.locator('.deck-sheet-body #wp-search').fill('32.5 35.0');
+  await page.waitForSelector('.deck-sheet-body .wp-search-coord');
+  await page.locator('.deck-sheet-body .wp-search-coord').click();
+  const at = await page.evaluate(() => ({ lat: map.getCenter().lat, lng: map.getCenter().lng }));
+  expect(at.lat).toBeCloseTo(32.5, 2);
+
+  // Closing the sheet puts the element back where it came from, hidden as it was.
+  await page.evaluate(() => { if (NavAid.closeDeckSheet) NavAid.closeDeckSheet(); });
+  const home = await page.evaluate(() => {
+    const overlay = document.getElementById('search-overlay');
+    const body = document.querySelector('.deck-sheet-body');
+    return { inSheet: !!(body && body.contains(overlay)),
+             hidden: overlay.classList.contains('hidden'),
+             hosted: overlay.classList.contains('deck-hosted-search') };
+  });
+  expect(home).toEqual({ inSheet: false, hidden: true, hosted: false });
+});
