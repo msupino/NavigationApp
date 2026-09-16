@@ -1704,7 +1704,7 @@ window.S = Object.assign({
   navTableFetchMetTitle: 'Wind and temperature for every level this flight touches, at the middle of the route and the hour the look-ahead clock is pointing at',
   navTableFetchMetErr: 'Could not fetch the forecast.',
   navTableMetFetched: (n, at) => n + ' levels fetched into the met table, for ' + at + '.',
-  navTableExport: 'Save exercise',
+  navTableExport: 'Save as a file',
   navTableImported: 'Exercise loaded.',
   navTableImportBad: 'That file is not an exercise: no route and no settings in it.',
   navTableReplaceRoute: 'This exercise carries its own route. Load it? This replaces the route on your map.',
