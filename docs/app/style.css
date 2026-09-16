@@ -8050,6 +8050,19 @@ body.theme-light .disclaimer-lang-select { border-color: rgba(31, 37, 44, 0.35);
    about what matters on this screen. */
 .disclaimer-note { margin: 0 0 8px; font-size: 12px; opacity: 0.75; line-height: 1.45; }
 .disclaimer-links { margin: 0 0 12px; font-size: 12.5px; }
+/* The browser's own link colours, on the one screen every pilot sees before every flight: a
+   default blue on a near-black panel, turning purple once visited, which is the one colour in
+   the app that belongs to no palette in it. The same blue the NOTAM and filing links already
+   use -- and :visited pinned to it, because "have I read the terms before" is not a thing this
+   dialog should be colouring in. */
+.disclaimer-links a,
+.disclaimer-links a:visited { color: #6fb0ff; }
+.disclaimer-links a:hover,
+.disclaimer-links a:focus-visible { color: #9cc8ff; }
+body.theme-light .disclaimer-links a,
+body.theme-light .disclaimer-links a:visited { color: #1d6fe0; }
+body.theme-light .disclaimer-links a:hover,
+body.theme-light .disclaimer-links a:focus-visible { color: #1a56b0; }
 .disclaimer-btns { display: flex; justify-content: flex-end; }
 .disclaimer-accept { min-height: 44px; padding: 8px 18px; font-weight: 600; }
 /* Nothing behind it scrolls while it is up: the chart is not in use yet. */
