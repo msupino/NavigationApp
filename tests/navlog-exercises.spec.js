@@ -67,8 +67,8 @@ for (const name of EXERCISES) {
       rows.forEach((r, i) => {
         const s = sheet[i];
         const at = name + ' row ' + (i + 1) + ' ';
-        const pa = Number(String(s.paFt ?? s['גובה לחץ']).replace('+', ''));
-        const tas = Number(String(s.tas ?? s['מ.א.א']).replace('..', '.'));
+        const pa = Number(String(s.paFt ?? s['גובה לחץ']).replace(/\+/g, ''));
+        const tas = Number(s.tas ?? s['מ.א.א']);
         // To the foot, except that a sheet worked by hand truncates where we round: Masada's
         // climb is -1200 + two thirds of 8,200 = 4266.67, printed 4266 and computed 4267.
         expect(Math.abs(r.pa - pa), at + 'pressure altitude (' + r.pa + ' vs ' + pa + ')')
